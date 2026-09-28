@@ -58,7 +58,7 @@ public sealed interface Value permits
         throw Raised.cannotUse(this, "a set operation");
     }
 
-    default Optional<Value[]> meeting(Value other) {
+    default Optional<Value[]> broughtTogetherWith(Value other) {
         return Optional.empty();
     }
 
@@ -74,7 +74,7 @@ public sealed interface Value permits
         return Optional.empty();
     }
 
-    default Optional<MoneyValue> asMoneyBeside(MoneyValue meeting) {
+    default Optional<MoneyValue> asMoneyInTheCurrencyOf(MoneyValue other) {
         return Optional.empty();
     }
 

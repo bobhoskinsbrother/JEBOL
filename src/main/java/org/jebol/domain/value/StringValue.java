@@ -37,7 +37,7 @@ public record StringValue(StringStorage storage, int index, Datatype datatype)
     }
 
     @Override
-    public Optional<Value[]> meeting(Value other) {
+    public Optional<Value[]> broughtTogetherWith(Value other) {
         return other.datatype().isAnyString() ? both(this, other) : Optional.empty();
     }
 

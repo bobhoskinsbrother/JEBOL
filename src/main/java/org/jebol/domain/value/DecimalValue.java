@@ -17,14 +17,14 @@ public record DecimalValue(double quantity, Datatype datatype) implements Value 
     }
 
     @Override
-    public Optional<MoneyValue> asMoneyBeside(MoneyValue meeting) {
-        return Optional.of(meeting.amounting(BigDecimal.valueOf(quantity)));
+    public Optional<MoneyValue> asMoneyInTheCurrencyOf(MoneyValue other) {
+        return Optional.of(other.amounting(BigDecimal.valueOf(quantity)));
     }
 
     @Override
-    public Optional<Value[]> meeting(Value other) {
+    public Optional<Value[]> broughtTogetherWith(Value other) {
         return switch (other) {
-            case MoneyValue theirs -> both(asMoneyBeside(theirs).orElseThrow(), theirs);
+            case MoneyValue theirs -> both(asMoneyInTheCurrencyOf(theirs).orElseThrow(), theirs);
             case DecimalValue ignored -> both(this, other);
             case TimeValue theirs -> both(this, theirs.asSeconds());
             default -> Optional.empty();

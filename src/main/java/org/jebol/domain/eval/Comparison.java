@@ -94,8 +94,8 @@ public final class Comparison {
     }
 
     private static Optional<Value[]> broughtTogether(Value left, Value right) {
-        return left.meeting(right)
-                .or(() -> right.meeting(left).map(Comparison::theOtherWayRound));
+        return left.broughtTogetherWith(right)
+                .or(() -> right.broughtTogetherWith(left).map(Comparison::theOtherWayRound));
     }
 
     private static Value[] theOtherWayRound(Value[] pair) {

@@ -21,16 +21,16 @@ public record IntegerValue(long magnitude) implements Value {
     }
 
     @Override
-    public Optional<MoneyValue> asMoneyBeside(MoneyValue meeting) {
-        return Optional.of(meeting.amounting(BigDecimal.valueOf(magnitude)));
+    public Optional<MoneyValue> asMoneyInTheCurrencyOf(MoneyValue other) {
+        return Optional.of(other.amounting(BigDecimal.valueOf(magnitude)));
     }
 
     @Override
-    public Optional<Value[]> meeting(Value other) {
+    public Optional<Value[]> broughtTogetherWith(Value other) {
         return switch (other) {
             case DecimalValue ignored -> theyMeetAsDecimals(other);
             case TimeValue ignored -> theyMeetAsDecimals(other);
-            case MoneyValue theirs -> both(asMoneyBeside(theirs).orElseThrow(), theirs);
+            case MoneyValue theirs -> both(asMoneyInTheCurrencyOf(theirs).orElseThrow(), theirs);
             case CharacterValue letter ->
                     both(this, letter.asWholeNumber().orElseThrow());
             default -> Optional.empty();

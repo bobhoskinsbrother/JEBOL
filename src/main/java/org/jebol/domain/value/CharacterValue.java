@@ -16,7 +16,7 @@ public record CharacterValue(int codepoint) implements Value {
     }
 
     @Override
-    public Optional<Value[]> meeting(Value other) {
+    public Optional<Value[]> broughtTogetherWith(Value other) {
         return other instanceof IntegerValue
                 ? both(asWholeNumber().orElseThrow(), other)
                 : Optional.empty();

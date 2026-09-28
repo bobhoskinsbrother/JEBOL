@@ -64,7 +64,7 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency) implement
     }
 
     @Override
-    public Optional<MoneyValue> asMoneyBeside(MoneyValue meeting) {
+    public Optional<MoneyValue> asMoneyInTheCurrencyOf(MoneyValue other) {
         return Optional.of(this);
     }
 
