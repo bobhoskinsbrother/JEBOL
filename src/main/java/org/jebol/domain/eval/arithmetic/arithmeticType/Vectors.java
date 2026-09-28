@@ -13,7 +13,7 @@ import static org.jebol.domain.eval.Arithmetic.notRelated;
 public class Vectors implements ArithmeticType {
 
     @Override
-    public boolean shouldHandle(Value left, Value right) {
+    public boolean shouldHandle(Value left, Value right, ArithmeticOperation operation) {
         return VectorMath.isVectorArithmetic(left, right);
     }
 

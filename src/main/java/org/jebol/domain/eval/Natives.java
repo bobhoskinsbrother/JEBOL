@@ -830,10 +830,7 @@ public final class Natives {
                 });
 
         define("negate", withBitsets(acceptsNumbers("value")),
-                (arguments, evaluator, context) -> arguments.getFirst()
-                        instanceof BitsetValue members
-                        ? members.complemented()
-                        : Arithmetic.difference(IntegerValue.of(0), arguments.get(0)));
+                (arguments, evaluator, context) -> negated(arguments.getFirst()));
 
         define("maximum", takesComparable("value1", "value2"),
                 (arguments, evaluator, context) ->
@@ -1013,6 +1010,14 @@ public final class Natives {
             parameters.add(Parameter.required(name));
         }
         return parameters;
+    }
+
+    private static Value negated(Value value) {
+        return switch (value) {
+            case BitsetValue members -> members.complemented();
+            case PairValue(double x, double y) -> PairValue.of(-x, -y);
+            default -> Arithmetic.difference(IntegerValue.of(0), value);
+        };
     }
 
     private static Value extreme(Value left, Value right, boolean wantingLarger) {

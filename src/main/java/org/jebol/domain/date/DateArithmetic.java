@@ -49,10 +49,19 @@ public final class DateArithmetic {
     }
 
     private Value movedBy(Value span, ArithmeticOperation operation) {
+        refuseASpanADateCannotMoveBy(span);
         int sign = operation.signWhenMoving();
         return span.datatype() == Datatype.INTEGER
                 ? movedByDays(sign * (long) Comparison.asDouble(span))
                 : movedByTheClock(sign * clockShiftOf(span));
+    }
+
+    private void refuseASpanADateCannotMoveBy(Value span) {
+        if (span.datatype() != Datatype.INTEGER
+                && span.datatype() != Datatype.DECIMAL
+                && span.datatype() != Datatype.TIME) {
+            throw Raised.cannotUse(moment, "date arithmetic");
+        }
     }
 
     private DateValue movedByDays(long days) {

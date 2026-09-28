@@ -11,7 +11,7 @@ import org.jebol.domain.value.Value;
 public class ANumberAndACharacter implements ArithmeticType {
 
     @Override
-    public boolean shouldHandle(Value left, Value right) {
+    public boolean shouldHandle(Value left, Value right, ArithmeticOperation operation) {
         return right instanceof CharacterValue
                 && (left instanceof IntegerValue || left instanceof DecimalValue);
     }

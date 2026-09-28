@@ -77,14 +77,17 @@ public final class Arithmetic {
     }
 
     public static Value combined(Value left, Value right, ArithmeticOperation operation) {
-        return firstRegisteredHandler(left, right).combine(left, right, operation);
+        return firstRegisteredHandler(left, right, operation)
+                .combine(left, right, operation);
     }
 
-    private static ArithmeticType firstRegisteredHandler(Value left, Value right) {
+    private static ArithmeticType firstRegisteredHandler(
+            Value left, Value right, ArithmeticOperation operation) {
+
         return arithmeticTypes().stream()
-                .filter(kind -> kind.shouldHandle(left, right))
+                .filter(kind -> kind.shouldHandle(left, right, operation))
                 .findFirst()
-                .orElse(new Fractions());
+                .orElseThrow(() -> Raised.notRelated(left, right));
     }
 
     private static List<ArithmeticType> arithmeticTypes() {

@@ -9,8 +9,9 @@ import org.jebol.domain.value.Value;
 public class Dates implements ArithmeticType {
 
     @Override
-    public boolean shouldHandle(Value left, Value right) {
-        return left instanceof DateValue || right instanceof DateValue;
+    public boolean shouldHandle(Value left, Value right, ArithmeticOperation operation) {
+        return left instanceof DateValue
+                || operation.isCommutative() && right instanceof DateValue;
     }
 
     @Override

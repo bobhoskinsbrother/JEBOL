@@ -9,8 +9,9 @@ import org.jebol.domain.value.Value;
 public class Points implements ArithmeticType {
 
     @Override
-    public boolean shouldHandle(Value left, Value right) {
-        return left instanceof PairValue || right instanceof PairValue;
+    public boolean shouldHandle(Value left, Value right, ArithmeticOperation operation) {
+        return left instanceof PairValue
+                || operation.isCommutative() && right instanceof PairValue;
     }
 
     @Override
