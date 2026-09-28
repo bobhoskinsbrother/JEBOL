@@ -2,10 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
 
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 public final class CharacterActions {
 

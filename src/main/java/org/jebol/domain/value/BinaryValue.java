@@ -2,6 +2,34 @@ package org.jebol.domain.value;
 
 public record BinaryValue(BinaryStorage storage, int index) implements SeriesValue {
 
+    @Override
+    public Value bitwise(Value right, BitwiseOperation operation) {
+        return octetsCycledAgainstTheLonger(someOctetsFrom(right), operation);
+    }
+
+    private BinaryValue someOctetsFrom(Value right) {
+        if (right instanceof BinaryValue octets) {
+            return octets;
+        }
+        throw Raised.of(EvaluationFailure.INVALID_ARG, right);
+    }
+
+    private Value octetsCycledAgainstTheLonger(
+            BinaryValue right, BitwiseOperation operation) {
+
+        BinaryValue longer = lengthFromHere() >= right.lengthFromHere() ? this : right;
+        BinaryValue shorter = longer == this ? right : this;
+        int cycle = shorter.lengthFromHere();
+        int[] combined = new int[longer.lengthFromHere()];
+        for (int at = 0; at < combined.length; at++) {
+            int theirs = cycle == 0 ? 0 : shorter.storage().at(shorter.index() + at % cycle);
+            combined[at] = (int) operation.onWholeElements(
+                    longer.storage().at(longer.index() + at), theirs) & 0xFF;
+        }
+        return BinaryValue.of(combined);
+    }
+
+
     public BinaryValue {
         if (storage == null) {
             throw new IllegalArgumentException("a binary value needs storage");

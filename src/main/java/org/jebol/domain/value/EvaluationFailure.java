@@ -1,6 +1,4 @@
-package org.jebol.domain.eval;
-
-import org.jebol.domain.value.ErrorCategory;
+package org.jebol.domain.value;
 
 /** Why evaluation stopped, identified by id rather than by message text. */
 public enum EvaluationFailure {

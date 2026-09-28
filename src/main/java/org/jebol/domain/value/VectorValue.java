@@ -28,6 +28,18 @@ public record VectorValue(VectorStorage storage, int index) implements SeriesVal
         return new VectorValue(VectorStorage.holding(kind, stored), 1);
     }
 
+    @Override
+    public Value bitwise(Value right, BitwiseOperation operation) {
+        refuseWhatItCannotTake(right);
+        return VectorMath.done(this, right, operation);
+    }
+
+    private void refuseWhatItCannotTake(Value right) {
+        if (!(right instanceof VectorValue) && !(right instanceof IntegerValue)) {
+            throw Raised.cannotUse(right, "a bit operation on a vector");
+        }
+    }
+
     public VectorKind kind() {
         return storage.kind();
     }

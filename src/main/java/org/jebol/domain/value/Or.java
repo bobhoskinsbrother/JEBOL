@@ -1,19 +1,19 @@
-package org.jebol.domain.eval.arithmetic;
+package org.jebol.domain.value;
 
-final class And implements BitwiseOperation {
+final class Or implements BitwiseOperation {
 
     @Override
     public String spelling() {
-        return "and";
+        return "or";
     }
 
     @Override
     public long onWholeElements(long ours, long theirs) {
-        return ours & theirs;
+        return ours | theirs;
     }
 
     @Override
     public boolean onLogics(boolean ours, boolean theirs) {
-        return ours && theirs;
+        return ours || theirs;
     }
 }

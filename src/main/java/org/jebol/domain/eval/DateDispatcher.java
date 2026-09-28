@@ -1,9 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.date.part.DatePart;
-import org.jebol.domain.value.DateValue;
-import org.jebol.domain.value.Slot;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 final class DateDispatcher implements Dispatcher {
 

@@ -1,6 +1,5 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.date.part.DatePart;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.*;

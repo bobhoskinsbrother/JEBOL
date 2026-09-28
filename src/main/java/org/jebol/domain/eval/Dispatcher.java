@@ -1,5 +1,7 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Slot;
 import org.jebol.domain.value.Value;
 

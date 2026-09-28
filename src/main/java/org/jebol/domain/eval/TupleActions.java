@@ -2,11 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
 
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.TimeValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 public final class TupleActions {
 

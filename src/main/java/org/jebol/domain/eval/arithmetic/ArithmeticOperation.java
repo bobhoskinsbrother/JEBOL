@@ -2,6 +2,7 @@ package org.jebol.domain.eval.arithmetic;
 
 import org.jebol.domain.value.MoneyValue;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.ValueOperation;
 
 import java.math.BigDecimal;
 import java.util.Map;

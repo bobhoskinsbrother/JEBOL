@@ -2,10 +2,9 @@ package org.jebol.domain.date;
 
 import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
 
-import org.jebol.domain.eval.Arithmetic;
 import org.jebol.domain.eval.Comparison;
-import org.jebol.domain.eval.EvaluationFailure;
-import org.jebol.domain.eval.Raised;
+import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.Raised;
 
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DatatypeValue;
@@ -16,7 +15,6 @@ import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
 import java.time.LocalDate;
-import java.util.Locale;
 import java.util.Optional;
 
 public final class DateArithmetic {

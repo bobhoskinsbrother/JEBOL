@@ -3,6 +3,21 @@ package org.jebol.domain.value;
 /** {@code true} or {@code false}. The only value whose truth is its content. */
 public record LogicValue(boolean truth) implements Value {
 
+    @Override
+    public Value bitwise(Value right, BitwiseOperation operation) {
+        return LogicValue.of(operation.onLogics(truth, aTruthFrom(right)));
+    }
+
+    private boolean aTruthFrom(Value right) {
+        if (right instanceof LogicValue(boolean theirs)) {
+            return theirs;
+        }
+        throw Raised.of(EvaluationFailure.EXPECT_VAL,
+                WordValue.of("logic!"),
+                WordValue.of(right.datatype().literalSpelling()));
+    }
+
+
     private static final LogicValue TRUE = new LogicValue(true);
     private static final LogicValue FALSE = new LogicValue(false);
 

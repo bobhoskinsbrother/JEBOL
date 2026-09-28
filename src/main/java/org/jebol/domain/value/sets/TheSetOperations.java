@@ -1,4 +1,4 @@
-package org.jebol.domain.eval.sets;
+package org.jebol.domain.value.sets;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

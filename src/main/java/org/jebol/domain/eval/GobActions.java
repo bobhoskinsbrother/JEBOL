@@ -1,10 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.GobValue;
-import org.jebol.domain.value.SeriesValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 

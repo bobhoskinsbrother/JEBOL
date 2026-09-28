@@ -1,15 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.GobValue;
-import org.jebol.domain.value.ImageValue;
-import org.jebol.domain.value.MapValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.VectorValue;
+import org.jebol.domain.value.*;
 
 import java.util.Optional;
 

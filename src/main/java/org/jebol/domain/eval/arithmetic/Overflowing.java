@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.arithmetic;
 
-import org.jebol.domain.eval.EvaluationFailure;
-import org.jebol.domain.eval.Raised;
+import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Value;
 
 import java.util.function.Supplier;

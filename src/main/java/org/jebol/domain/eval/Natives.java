@@ -1,8 +1,8 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.eval.arithmetic.BitwiseOperation;
+import org.jebol.domain.value.BitwiseOperation;
 import org.jebol.domain.eval.definition.*;
-import org.jebol.domain.eval.sets.SetOperation;
+import org.jebol.domain.value.sets.SetOperation;
 
 import org.jebol.domain.date.DateMaking;
 import org.jebol.domain.date.part.DatePart;

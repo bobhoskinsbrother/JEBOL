@@ -1,8 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.ImageStorage;
-import org.jebol.domain.value.ImageValue;
-import org.jebol.domain.value.PairValue;
+import org.jebol.domain.value.*;
 
 final class ImageOperations {
 

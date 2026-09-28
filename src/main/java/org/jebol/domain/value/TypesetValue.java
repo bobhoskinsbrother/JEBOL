@@ -1,6 +1,9 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.value.sets.MembersKept;
+
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
 
@@ -19,6 +22,45 @@ public record TypesetValue(Optional<Typeset> family, Set<Datatype> members) impl
 
     public TypesetValue {
         members = members.isEmpty() ? Set.of() : EnumSet.copyOf(members);
+    }
+
+    @Override
+    public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
+        if (!(other instanceof TypesetValue theirs)) {
+            throw Raised.cannotUse(this, "a set operation");
+        }
+        return new TypesetActions(this).combinedWith(theirs, keeping.how());
+    }
+
+    @Override
+    public Value bitwise(Value right, BitwiseOperation operation) {
+        return TypesetValue.of(membersKeptAgainst(someDatatypesFrom(right), operation));
+    }
+
+    private Set<Datatype> someDatatypesFrom(Value right) {
+        return switch (right) {
+            case TypesetValue set -> set.members();
+            case DatatypeValue(Datatype represents) -> Set.of(represents);
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, right);
+        };
+    }
+
+    private Set<Datatype> membersKeptAgainst(
+            Set<Datatype> theirs, BitwiseOperation operation) {
+
+        Set<Datatype> named = new LinkedHashSet<>(members);
+        named.addAll(theirs);
+        Set<Datatype> kept = new LinkedHashSet<>();
+        for (Datatype candidate : named) {
+            if (isKept(members.contains(candidate), theirs.contains(candidate), operation)) {
+                kept.add(candidate);
+            }
+        }
+        return kept;
+    }
+
+    private boolean isKept(boolean inOurs, boolean inTheirs, BitwiseOperation operation) {
+        return operation.onWholeElements(inOurs ? 1 : 0, inTheirs ? 1 : 0) != 0;
     }
 
     public static TypesetValue of(Typeset represents) {

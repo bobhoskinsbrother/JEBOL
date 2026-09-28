@@ -1,5 +1,8 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.Raised;
+
 /**
  * The image codec the host carries, which turns encoded bytes into pixels and
  * back.

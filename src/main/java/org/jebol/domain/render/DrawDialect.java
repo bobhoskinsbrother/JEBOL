@@ -69,7 +69,7 @@ public final class DrawDialect {
         void walk(BlockValue block) {
             try {
                 readEveryCommandOfOneAtATime(block);
-            } catch (org.jebol.domain.eval.Raised
+            } catch (Raised
                     malformedSoWhatWasPaintedStandsRatherThanTakingTheWindowDown) {
             }
         }

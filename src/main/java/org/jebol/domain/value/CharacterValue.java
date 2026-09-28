@@ -8,6 +8,21 @@ package org.jebol.domain.value;
  */
 public record CharacterValue(int codepoint) implements Value {
 
+    @Override
+    public Value bitwise(Value right, BitwiseOperation operation) {
+        return CharacterValue.of(
+                (int) operation.onWholeElements(codepoint, aWholeNumberFrom(right)));
+    }
+
+    private long aWholeNumberFrom(Value right) {
+        return switch (right) {
+            case CharacterValue(int other) -> other;
+            case IntegerValue(long magnitude) -> magnitude;
+            default -> throw Raised.notRelated(this, right);
+        };
+    }
+
+
     public static final int MAXIMUM_CODEPOINT = 0x10FFFF;
 
     public CharacterValue {

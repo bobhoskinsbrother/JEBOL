@@ -1,5 +1,7 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.Raised;
+
 /**
  * A script asking to stop and hand control back, by calling HALT.
  *

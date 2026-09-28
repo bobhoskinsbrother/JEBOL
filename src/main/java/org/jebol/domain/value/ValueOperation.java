@@ -1,4 +1,4 @@
-package org.jebol.domain.eval.arithmetic;
+package org.jebol.domain.value;
 
 public interface ValueOperation {
 

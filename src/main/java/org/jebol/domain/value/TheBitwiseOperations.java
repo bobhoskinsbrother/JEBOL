@@ -1,4 +1,4 @@
-package org.jebol.domain.eval.arithmetic;
+package org.jebol.domain.value;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

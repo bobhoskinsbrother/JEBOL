@@ -1,11 +1,10 @@
 package org.jebol.domain.parse;
 
-import org.jebol.domain.eval.EvaluationFailure;
+import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.eval.Evaluator;
-import org.jebol.domain.eval.Raised;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.eval.SeriesContents;
 import org.jebol.domain.parse.keyword.ParseKeyword;
-import org.jebol.domain.parse.keyword.WhenNothingFollowsIt;
 import org.jebol.domain.value.*;
 
 import java.util.ArrayDeque;

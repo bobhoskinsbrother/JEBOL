@@ -149,9 +149,7 @@ public final class Arithmetic {
     }
 
     public static Raised notRelated(Value left, Value right) {
-        return Raised.of(EvaluationFailure.NOT_RELATED,
-                WordValue.of(left.datatype().literalSpelling()),
-                WordValue.of(right.datatype().literalSpelling()));
+        return Raised.notRelated(left, right);
     }
 
 }

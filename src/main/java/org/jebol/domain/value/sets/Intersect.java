@@ -1,4 +1,4 @@
-package org.jebol.domain.eval.sets;
+package org.jebol.domain.value.sets;
 
 final class Intersect implements SetOperation {
 

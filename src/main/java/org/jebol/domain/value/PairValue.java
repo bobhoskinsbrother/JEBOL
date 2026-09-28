@@ -44,6 +44,31 @@ import java.util.Optional;
  */
 public record PairValue(double x, double y) implements Value {
 
+    @Override
+    public Value bitwise(Value right, BitwiseOperation operation) {
+        PairValue theirs = aPointFrom(right);
+        return PairValue.of(
+                bitsOf(x, theirs.x, operation),
+                bitsOf(y, theirs.y, operation));
+    }
+
+    private PairValue aPointFrom(Value right) {
+        return switch (right) {
+            case PairValue point -> point;
+            case IntegerValue(long magnitude) -> PairValue.of(magnitude, magnitude);
+            default -> throw Raised.notRelated(this, right);
+        };
+    }
+
+    private long bitsOf(double ours, double theirs, BitwiseOperation operation) {
+        return operation.onWholeElements(roundedHalfUp(ours), roundedHalfUp(theirs));
+    }
+
+    private long roundedHalfUp(double half) {
+        return (long) Math.floor(half + 0.5);
+    }
+
+
     private static final String FIRST_HALF = "x";
     private static final String SECOND_HALF = "y";
     private static final String AREA = "area";

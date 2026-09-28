@@ -1,5 +1,7 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.value.sets.MembersKept;
+
 import java.util.Arrays;
 
 public final class BitsetValue implements Value {
@@ -136,6 +138,62 @@ public final class BitsetValue implements Value {
 
     public byte[] octets() {
         return octets.clone();
+    }
+
+    @Override
+    public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
+        if (!(other instanceof BitsetValue theirs)) {
+            throw Raised.cannotUse(this, "a set operation");
+        }
+        byte[] mine = octets;
+        byte[] yours = theirs.octets;
+        byte[] both = new byte[Math.max(mine.length, yours.length)];
+        for (int at = 0; at < both.length; at++) {
+            int ours = at < mine.length ? mine[at] & 0xFF : 0;
+            int theirsHere = at < yours.length ? yours[at] & 0xFF : 0;
+            both[at] = (byte) keeping.how().combinedBits(ours, theirsHere);
+        }
+        return BitsetValue.of(both);
+    }
+
+    @Override
+    public Value bitwise(Value right, BitwiseOperation operation) {
+        return BitsetValue.of(withoutTheTrailingZeros(
+                octetByOctet(someBitsFrom(right), operation)));
+    }
+
+    private byte[] someBitsFrom(Value right) {
+        return switch (right) {
+            case BitsetValue members -> members.octets();
+            case BinaryValue given -> theBytesOf(given);
+            default -> throw Raised.notRelated(this, right);
+        };
+    }
+
+    private byte[] theBytesOf(BinaryValue given) {
+        byte[] read = new byte[given.lengthFromHere()];
+        for (int at = 0; at < read.length; at++) {
+            read[at] = (byte) given.storage().at(given.index() + at);
+        }
+        return read;
+    }
+
+    private byte[] octetByOctet(byte[] theirs, BitwiseOperation operation) {
+        byte[] both = new byte[Math.max(octets.length, theirs.length)];
+        for (int at = 0; at < both.length; at++) {
+            long mine = at < octets.length ? octets[at] & 0xFF : 0;
+            long yours = at < theirs.length ? theirs[at] & 0xFF : 0;
+            both[at] = (byte) operation.onWholeElements(mine, yours);
+        }
+        return both;
+    }
+
+    private byte[] withoutTheTrailingZeros(byte[] combined) {
+        int kept = combined.length;
+        while (kept > 0 && combined[kept - 1] == 0) {
+            kept--;
+        }
+        return Arrays.copyOf(combined, kept);
     }
 
     @Override

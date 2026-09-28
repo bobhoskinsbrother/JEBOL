@@ -1,5 +1,8 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.value.sets.MembersKept;
+import org.jebol.domain.value.sets.SetOperation;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,6 +33,31 @@ public final class MapValue implements Value {
 
     private MapValue(Map<Value, Value> entries) {
         this.entries = entries;
+    }
+
+    @Override
+    public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
+        MapValue theirs = other instanceof MapValue map ? map : MapValue.empty();
+        return combinedWith(theirs, keeping.how(), mindingCase);
+    }
+
+    MapValue combinedWith(MapValue theirs, SetOperation how, boolean mindingCase) {
+        MapValue kept = MapValue.empty();
+        for (Value key : keys()) {
+            if (how.theFirstSetKeeps(theirs.holds(key, mindingCase))
+                    && !kept.holds(key, mindingCase)) {
+                kept.put(key, select(key, mindingCase), mindingCase);
+            }
+        }
+        if (how.theSecondSetContributes()) {
+            for (Value key : theirs.keys()) {
+                if (how.theSecondSetKeeps(holds(key, mindingCase))
+                        && !kept.holds(key, mindingCase)) {
+                    kept.put(key, theirs.select(key, mindingCase), mindingCase);
+                }
+            }
+        }
+        return kept;
     }
 
     public static MapValue empty() {

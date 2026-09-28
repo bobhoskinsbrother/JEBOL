@@ -1,5 +1,8 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.Raised;
+
 final class Lzma {
 
     private Lzma() {

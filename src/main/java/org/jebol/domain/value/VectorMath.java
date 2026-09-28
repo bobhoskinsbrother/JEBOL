@@ -1,7 +1,4 @@
-package org.jebol.domain.eval;
-
-import org.jebol.domain.eval.arithmetic.ValueOperation;
-import org.jebol.domain.value.*;
+package org.jebol.domain.value;
 
 
 /**

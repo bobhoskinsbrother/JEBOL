@@ -1,5 +1,9 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.value.sets.MembersKept;
+
+import java.util.List;
+
 /**
  * A position into string storage, reported as one of the {@code any-string!}
  * datatypes: {@code string!}, {@code file!}, {@code url!}, {@code email!} or
@@ -29,6 +33,25 @@ public record StringValue(StringStorage storage, int index, Datatype datatype)
 
     public static StringValue of(String text) {
         return new StringValue(StringStorage.of(text), 1, Datatype.STRING);
+    }
+
+    @Override
+    public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
+        return textOf(keeping.from(charactersOf(this), charactersOf(other)), datatype);
+    }
+
+    static StringValue textOf(List<Value> letters, Datatype datatype) {
+        StringBuilder written = new StringBuilder();
+        letters.forEach(letter ->
+                written.appendCodePoint(((CharacterValue) letter).codepoint()));
+        return StringValue.of(written.toString(), datatype);
+    }
+
+    static List<Value> charactersOf(Value value) {
+        if (!(value instanceof StringValue text)) {
+            return value instanceof BlockValue block ? block.remaining() : List.of(value);
+        }
+        return text.text().codePoints().<Value>mapToObj(CharacterValue::of).toList();
     }
 
     public static StringValue of(String text, Datatype datatype) {

@@ -1,14 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.ContextSlot;
-import org.jebol.domain.value.ModuleValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.PortValue;
-import org.jebol.domain.value.Slot;
-import org.jebol.domain.value.TaskValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 final class ContextDispatcher implements Dispatcher {
 

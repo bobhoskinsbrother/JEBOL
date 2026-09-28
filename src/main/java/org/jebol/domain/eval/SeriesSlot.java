@@ -1,17 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.GobValue;
-import org.jebol.domain.value.ImageValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.SeriesValue;
-import org.jebol.domain.value.Slot;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.VectorValue;
+import org.jebol.domain.value.*;
 
 record SeriesSlot(SeriesValue series, int at, Value held) implements Slot {
 

@@ -1,5 +1,9 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.value.sets.MembersKept;
+
+import java.util.Optional;
+
 /**
  * A REBOL value.
  *
@@ -46,6 +50,14 @@ public sealed interface Value permits
     /** The datatype this value reports to {@code type?}. */
     Datatype datatype();
 
+    default Value bitwise(Value right, BitwiseOperation operation) {
+        throw Raised.of(EvaluationFailure.EXPECT_ARG, this);
+    }
+
+    default Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
+        throw Raised.cannotUse(this, "a set operation");
+    }
+
     /**
      * Whether a conditional native treats this value as true.
      *
@@ -58,7 +70,7 @@ public sealed interface Value permits
         return true;
     }
 
-    default java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
+    default Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
         return java.util.Optional.empty();
     }
 

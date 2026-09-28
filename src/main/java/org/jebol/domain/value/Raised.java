@@ -1,11 +1,4 @@
-package org.jebol.domain.eval;
-
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.ErrorCategory;
-import org.jebol.domain.value.ErrorValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+package org.jebol.domain.value;
 
 /**
  * Internal control flow for an error travelling out of evaluation.
@@ -92,5 +85,11 @@ public final class Raised extends RuntimeException {
                         + value.datatype().literalSpelling() + " value",
                 WordValue.of(nativeName),
                 DatatypeValue.of(value.datatype())));
+    }
+
+    public static Raised notRelated(Value left, Value right) {
+        return of(EvaluationFailure.NOT_RELATED,
+                WordValue.of(left.datatype().literalSpelling()),
+                WordValue.of(right.datatype().literalSpelling()));
     }
 }

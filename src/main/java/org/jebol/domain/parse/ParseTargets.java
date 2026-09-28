@@ -2,8 +2,8 @@ package org.jebol.domain.parse;
 
 import java.util.Set;
 
-import org.jebol.domain.eval.EvaluationFailure;
-import org.jebol.domain.eval.Raised;
+import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.SeriesValue;
 import org.jebol.domain.value.Value;

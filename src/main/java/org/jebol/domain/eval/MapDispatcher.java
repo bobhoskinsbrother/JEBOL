@@ -1,8 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.MapValue;
-import org.jebol.domain.value.Slot;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 final class MapDispatcher implements Dispatcher {
 

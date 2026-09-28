@@ -57,6 +57,40 @@ public record TupleValue(int[] segments) implements Value {
         return new TupleValue(segments);
     }
 
+    @Override
+    public Value bitwise(Value right, BitwiseOperation operation) {
+        return switch (right) {
+            case TupleValue theirs -> octetByOctetAgainst(theirs, operation);
+            case IntegerValue(long magnitude) -> everyOctetAgainst(magnitude, operation);
+            default -> throw Raised.notRelated(this, right);
+        };
+    }
+
+    private Value everyOctetAgainst(long magnitude, BitwiseOperation operation) {
+        int[] combined = new int[segments.length];
+        for (int at = 0; at < combined.length; at++) {
+            combined[at] = clampedToAnOctet(
+                    operation.onWholeElements(segments[at], magnitude));
+        }
+        return TupleValue.of(combined);
+    }
+
+    private Value octetByOctetAgainst(TupleValue theirs, BitwiseOperation operation) {
+        int[] yours = theirs.segments;
+        int[] combined = new int[Math.max(segments.length, yours.length)];
+        for (int at = 0; at < combined.length; at++) {
+            long mine = at < segments.length ? segments[at] : 0;
+            long theirsHere = at < yours.length ? yours[at] : 0;
+            combined[at] = clampedToAnOctet(
+                    operation.onWholeElements(mine, theirsHere));
+        }
+        return TupleValue.of(combined);
+    }
+
+    private int clampedToAnOctet(long combined) {
+        return (int) Math.clamp(combined, 0L, 255L);
+    }
+
     /** How many octets were written down, which may be fewer than three. */
     public int segmentCount() {
         return segments.length;

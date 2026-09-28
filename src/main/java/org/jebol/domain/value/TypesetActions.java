@@ -1,15 +1,6 @@
-package org.jebol.domain.eval;
+package org.jebol.domain.value;
 
-import org.jebol.domain.eval.sets.SetOperation;
-
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.TypesetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.sets.SetOperation;
 
 import java.util.EnumSet;
 import java.util.Optional;

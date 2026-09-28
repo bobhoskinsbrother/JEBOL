@@ -1,5 +1,7 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.value.sets.MembersKept;
+
 import java.util.List;
 
 /**
@@ -25,6 +27,21 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
             throw new IllegalArgumentException(
                     "index " + index + " is outside 1.." + (storage.length() + 1));
         }
+    }
+
+    @Override
+    public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
+        return switch (other) {
+            case StringValue ignored -> StringValue.textOf(
+                    keeping.from(StringValue.charactersOf(this),
+                            StringValue.charactersOf(other)),
+                    Datatype.STRING);
+            case MapValue theirs -> MapValue.empty()
+                    .combinedWith(theirs, keeping.how(), mindingCase);
+            case BlockValue theirs -> BlockValue.block(
+                    keeping.from(remaining(), theirs.remaining()));
+            default -> throw Raised.cannotUse(other, "a set operation");
+        };
     }
 
     public static BlockValue block(Value... items) {

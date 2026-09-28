@@ -1,10 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 

@@ -10,7 +10,6 @@ import org.jebol.domain.cipher.OneBlock;
 import org.jebol.domain.value.*;
 
 import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.GeneralSecurityException;

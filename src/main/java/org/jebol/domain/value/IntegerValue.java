@@ -7,6 +7,21 @@ package org.jebol.domain.value;
  */
 public record IntegerValue(long magnitude) implements Value {
 
+    @Override
+    public Value bitwise(Value right, BitwiseOperation operation) {
+        return IntegerValue.of(
+                operation.onWholeElements(magnitude, aWholeNumberFrom(right)));
+    }
+
+    private long aWholeNumberFrom(Value right) {
+        return switch (right) {
+            case IntegerValue(long other) -> other;
+            case CharacterValue(int codepoint) -> codepoint;
+            default -> throw Raised.notRelated(this, right);
+        };
+    }
+
+
     public static IntegerValue of(long magnitude) {
         return new IntegerValue(magnitude);
     }

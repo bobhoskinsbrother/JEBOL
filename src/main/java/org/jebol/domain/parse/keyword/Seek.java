@@ -2,8 +2,8 @@ package org.jebol.domain.parse.keyword;
 
 import org.jebol.domain.parse.ParseTargets;
 import org.jebol.domain.parse.ParseWalk;
-import org.jebol.domain.eval.EvaluationFailure;
-import org.jebol.domain.eval.Raised;
+import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;

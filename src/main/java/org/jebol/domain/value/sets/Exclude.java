@@ -1,29 +1,29 @@
-package org.jebol.domain.eval.sets;
+package org.jebol.domain.value.sets;
 
-final class Union implements SetOperation {
+final class Exclude implements SetOperation {
 
     @Override
     public String spelling() {
-        return "union";
+        return "exclude";
     }
 
     @Override
     public boolean theFirstSetKeeps(boolean inTheirs) {
-        return true;
+        return !inTheirs;
     }
 
     @Override
     public boolean theSecondSetContributes() {
-        return true;
+        return false;
     }
 
     @Override
     public boolean theSecondSetKeeps(boolean inOurs) {
-        return true;
+        return false;
     }
 
     @Override
     public int combinedBits(int mine, int yours) {
-        return mine | yours;
+        return mine & ~yours;
     }
 }

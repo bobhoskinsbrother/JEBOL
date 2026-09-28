@@ -2,17 +2,9 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.eval.arithmetic.ArithmeticOperation;
 
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.TimeValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.math.BigDecimal;
-import java.util.Locale;
 
 public final class TimeActions {
 
