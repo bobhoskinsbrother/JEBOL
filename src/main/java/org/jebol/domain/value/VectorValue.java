@@ -12,7 +12,7 @@ import java.util.List;
  * machine words rather than a million boxed values, and that TO BINARY! is the
  * bytes themselves.
  */
-public record VectorValue(VectorStorage storage, int index) implements SeriesValue {
+public record VectorValue(VectorStorage storage, int index) implements RebolSeries {
 
     public VectorValue {
         if (storage == null) {
@@ -115,7 +115,7 @@ public record VectorValue(VectorStorage storage, int index) implements SeriesVal
     }
 
     @Override
-    public boolean sharesStorageWith(SeriesValue other) {
+    public boolean sharesStorageWith(RebolSeries other) {
         return other instanceof VectorValue vector && vector.storage == storage;
     }
 

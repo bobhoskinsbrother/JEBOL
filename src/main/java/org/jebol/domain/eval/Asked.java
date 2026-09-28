@@ -84,8 +84,8 @@ public record Asked(
         if (limit instanceof IntegerValue(long magnitude)) {
             return (int) magnitude;
         }
-        if (limit instanceof SeriesValue upTo
-                && given instanceof SeriesValue from
+        if (limit instanceof RebolSeries upTo
+                && given instanceof RebolSeries from
                 && from.sharesStorageWith(upTo)) {
             return Math.abs(upTo.index() - from.index());
         }
@@ -134,8 +134,8 @@ public record Asked(
         if (limit instanceof DecimalValue || limit instanceof PairValue) {
             throw Raised.of(EvaluationFailure.INVALID_PART, Molder.mold(limit));
         }
-        if (limit instanceof SeriesValue upTo) {
-            if (!(given instanceof SeriesValue from)
+        if (limit instanceof RebolSeries upTo) {
+            if (!(given instanceof RebolSeries from)
                     || from.datatype() != upTo.datatype()
                     || !from.sharesStorageWith(upTo)) {
                 throw Raised.of(EvaluationFailure.INVALID_PART, "part");

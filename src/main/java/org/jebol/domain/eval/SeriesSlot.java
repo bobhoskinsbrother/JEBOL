@@ -2,7 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.*;
 
-record SeriesSlot(SeriesValue series, int at, Value held) implements Slot {
+record SeriesSlot(RebolSeries series, int at, Value held) implements Slot {
 
     @Override
     public Value value() {
@@ -14,7 +14,7 @@ record SeriesSlot(SeriesValue series, int at, Value held) implements Slot {
         write(series, at, replacement);
     }
 
-    static void write(SeriesValue series, int at, Value value) {
+    static void write(RebolSeries series, int at, Value value) {
         switch (series) {
             case BlockValue block -> block.storage().set(at, value);
             case StringValue text -> text.storage().set(at,

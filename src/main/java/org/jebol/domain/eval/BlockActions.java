@@ -25,7 +25,7 @@ public final class BlockActions extends SeriesActions {
     }
 
     @Override
-    List<Value> elementsOf(org.jebol.domain.value.SeriesValue from) {
+    List<Value> elementsOf(org.jebol.domain.value.RebolSeries from) {
         return ((BlockValue) from).remaining();
     }
 

@@ -23,7 +23,7 @@ public final class GobActions extends SeriesActions {
     }
 
     @Override
-    List<Value> elementsOf(SeriesValue from) {
+    List<Value> elementsOf(RebolSeries from) {
         GobValue pane = (GobValue) from;
         return pane.storage().pane().subList(
                 Math.min(pane.index() - 1, pane.storage().length()),

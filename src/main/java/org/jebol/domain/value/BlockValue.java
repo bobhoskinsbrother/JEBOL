@@ -13,7 +13,7 @@ import java.util.List;
  * {@code first 'face/color} gives you a word.
  */
 public record BlockValue(BlockStorage storage, int index, Datatype datatype)
-        implements SeriesValue {
+        implements RebolSeries {
 
     public BlockValue {
         if (storage == null) {
@@ -136,7 +136,7 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
     }
 
     @Override
-    public boolean sharesStorageWith(SeriesValue other) {
+    public boolean sharesStorageWith(RebolSeries other) {
         return other instanceof BlockValue block && block.storage == storage;
     }
 

@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.definition;
 
-import org.jebol.domain.eval.Arithmetic;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.ArithmeticOperation;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
@@ -20,8 +20,9 @@ public class AddFunctionDefinition extends DefaultFunctionDefinition {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) ->
-                Arithmetic.sum(arguments.get(0), arguments.get(1), name());
+        return (arguments, evaluator, context, refinements) -> {
+            return arguments.get(0).arithmetic(arguments.get(1), ArithmeticOperation.findOperation(name()));
+        };
     }
 
     @Override

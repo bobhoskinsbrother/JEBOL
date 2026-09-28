@@ -1,6 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.SeriesValue;
+import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorStorage;
 import org.jebol.domain.value.VectorValue;
@@ -27,7 +27,7 @@ public final class VectorActions extends SeriesActions {
     }
 
     @Override
-    List<Value> elementsOf(SeriesValue from) {
+    List<Value> elementsOf(RebolSeries from) {
         return ((VectorValue) from).remaining();
     }
 

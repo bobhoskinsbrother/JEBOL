@@ -1,6 +1,6 @@
 package org.jebol.domain.value;
 
-public record BinaryValue(BinaryStorage storage, int index) implements SeriesValue {
+public record BinaryValue(BinaryStorage storage, int index) implements RebolSeries {
 
     @Override
     public Value bitwise(Value right, BitwiseOperation operation) {
@@ -97,7 +97,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements SeriesVal
     }
 
     @Override
-    public boolean sharesStorageWith(SeriesValue other) {
+    public boolean sharesStorageWith(RebolSeries other) {
         return other instanceof BinaryValue binary && binary.storage == storage;
     }
 

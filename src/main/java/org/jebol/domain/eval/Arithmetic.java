@@ -15,24 +15,12 @@ public final class Arithmetic {
     private Arithmetic() {
     }
 
-    public static Value sum(Value left, Value right, String name) {
-        return combined(left, right, ArithmeticOperation.findOperation(name));
-    }
-
     public static Value difference(Value left, Value right) {
-        return combined(left, right, ArithmeticOperation.findOperation("subtract"));
-    }
-
-    public static Value product(Value left, Value right) {
-        return combined(left, right, ArithmeticOperation.findOperation("multiply"));
-    }
-
-    public static Value quotient(Value left, Value right) {
-        return combined(left, right, ArithmeticOperation.findOperation("divide"));
+        return left.arithmetic(right, ArithmeticOperation.findOperation("subtract"));
     }
 
     public static Value remainder(Value left, Value right) {
-        return combined(left, right, ArithmeticOperation.findOperation("remainder"));
+        return left.arithmetic(right, ArithmeticOperation.findOperation("remainder"));
     }
 
     public static Value wholeQuotient(Value dividend, Value divisor) {
@@ -70,10 +58,6 @@ public final class Arithmetic {
                     ? rest + divisor
                     : rest;
         };
-    }
-
-    public static Value combined(Value left, Value right, ArithmeticOperation operation) {
-        return left.arithmetic(right, operation);
     }
 
     private static Value likeTheDividend(Value dividend, double magnitude) {

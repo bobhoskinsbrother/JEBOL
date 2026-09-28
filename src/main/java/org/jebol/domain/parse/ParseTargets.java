@@ -5,7 +5,7 @@ import java.util.Set;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.SeriesValue;
+import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
@@ -51,7 +51,7 @@ public final class ParseTargets {
     }
 
     public static void refuseAnInputThatIsNotASeries(Value rule, Value held) {
-        if (!(held instanceof SeriesValue)) {
+        if (!(held instanceof RebolSeries)) {
             throw Raised.of(EvaluationFailure.PARSE_SERIES, rule);
         }
     }

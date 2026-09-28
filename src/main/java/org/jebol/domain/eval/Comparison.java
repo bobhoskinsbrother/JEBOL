@@ -263,7 +263,7 @@ public final class Comparison {
         if (left instanceof HandleValue first && right instanceof HandleValue second) {
             return first.isTheSameHandleAs(second);
         }
-        if (left instanceof SeriesValue first && right instanceof SeriesValue second) {
+        if (left instanceof RebolSeries first && right instanceof RebolSeries second) {
             return first.sharesStorageWith(second) && first.index() == second.index();
         }
         if (left instanceof WordValue first && right instanceof WordValue second) {

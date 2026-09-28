@@ -31,7 +31,7 @@ public sealed interface Value permits
         HandleValue,
         TimeValue,
         DateValue,
-        SeriesValue,
+        RebolSeries,
         WordValue,
         DatatypeValue,
         TypesetValue,

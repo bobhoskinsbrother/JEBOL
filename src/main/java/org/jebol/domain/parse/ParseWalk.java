@@ -1,7 +1,7 @@
 package org.jebol.domain.parse;
 
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.SeriesValue;
+import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
@@ -46,7 +46,7 @@ public interface ParseWalk {
 
     int mindCaseFromHereOn(boolean minding);
 
-    ParseWalk walkingOver(SeriesValue nested);
+    ParseWalk walkingOver(RebolSeries nested);
 
     boolean matchesTheWholeOf(BlockValue rule);
 

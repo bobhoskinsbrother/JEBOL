@@ -8,7 +8,7 @@ package org.jebol.domain.value;
  * storage rather than to the position, which is what makes {@code at img 3} the
  * third pixel of the same image rather than a smaller image.
  */
-public record ImageValue(ImageStorage storage, int index) implements SeriesValue {
+public record ImageValue(ImageStorage storage, int index) implements RebolSeries {
 
     public ImageValue {
         if (storage == null) {
@@ -67,7 +67,7 @@ public record ImageValue(ImageStorage storage, int index) implements SeriesValue
     }
 
     @Override
-    public boolean sharesStorageWith(SeriesValue other) {
+    public boolean sharesStorageWith(RebolSeries other) {
         return other instanceof ImageValue image && image.storage == storage;
     }
 

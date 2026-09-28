@@ -1,17 +1,17 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.SeriesValue;
+import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
 
 abstract class SeriesActions implements Actions {
 
-    abstract SeriesValue held();
+    abstract RebolSeries held();
 
     abstract void takeOneOutAt(int oneBasedIndex);
 
-    abstract List<Value> elementsOf(SeriesValue from);
+    abstract List<Value> elementsOf(RebolSeries from);
 
     abstract Value ofTheSameKindHolding(List<Value> items);
 
@@ -26,7 +26,7 @@ abstract class SeriesActions implements Actions {
     }
 
     public Value removed(long howMany) {
-        SeriesValue removingFrom = theRunReachingBackIfNegative(howMany);
+        RebolSeries removingFrom = theRunReachingBackIfNegative(howMany);
         for (long dropped = 0; dropped < Math.abs(howMany)
                 && !removingFrom.atTail(); dropped++) {
             takeOneOutAt(removingFrom.index());
@@ -71,7 +71,7 @@ abstract class SeriesActions implements Actions {
         return held();
     }
 
-    private SeriesValue theRunReachingBackIfNegative(long wanted) {
+    private RebolSeries theRunReachingBackIfNegative(long wanted) {
         if (wanted >= 0) {
             return held();
         }

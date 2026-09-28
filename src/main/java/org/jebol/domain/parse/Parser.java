@@ -22,7 +22,7 @@ public final class Parser implements ParseWalk {
     Evaluator evaluator;
     Context context;
 
-    SeriesValue source;
+    RebolSeries source;
     int position;
     boolean mindingCase;
     boolean blockEndedInAMatch;
@@ -292,9 +292,9 @@ public final class Parser implements ParseWalk {
             this.source = block;
             this.input = new ArrayList<>(block != null ? block.remaining() : List.of(given));
         } else {
-            this.source = (SeriesValue) given;
+            this.source = (RebolSeries) given;
             this.walkingBytes = given instanceof BinaryValue;
-            this.codePoints = codePointsOfSeries((SeriesValue) given);
+            this.codePoints = codePointsOfSeries((RebolSeries) given);
         }
     }
 
@@ -338,7 +338,7 @@ public final class Parser implements ParseWalk {
         if (!holder.knows(word.canonical())) {
             return null;
         }
-        return holder.slotFor(word.canonical()).value() instanceof SeriesValue marked && marked.sharesStorageWith(source) ? marked.index() - source.index() : null;
+        return holder.slotFor(word.canonical()).value() instanceof RebolSeries marked && marked.sharesStorageWith(source) ? marked.index() - source.index() : null;
     }
 
     @Override
@@ -459,7 +459,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public ParseWalk walkingOver(SeriesValue nested) {
+    public ParseWalk walkingOver(RebolSeries nested) {
         return over(evaluator, context, nested, mindingCase);
     }
 
@@ -757,7 +757,7 @@ public final class Parser implements ParseWalk {
         return codePoints.length;
     }
 
-    private void adoptInput(SeriesValue newInput) {
+    private void adoptInput(RebolSeries newInput) {
         this.source = newInput;
         this.walkingBytes = newInput instanceof BinaryValue;
         this.codePoints = codePointsOfSeries(newInput);
@@ -782,7 +782,7 @@ public final class Parser implements ParseWalk {
         }
     }
 
-    private static int[] codePointsOfSeries(SeriesValue series) {
+    private static int[] codePointsOfSeries(RebolSeries series) {
         if (series instanceof StringValue text) {
             return text.text().codePoints().toArray();
         }

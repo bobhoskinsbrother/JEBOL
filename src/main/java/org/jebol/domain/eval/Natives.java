@@ -1907,7 +1907,7 @@ public final class Natives {
                     derivedFunction(original, given);
             case FunctionValue original when body instanceof BlockValue given ->
                     derivedFunction(original, given);
-            case SeriesValue original -> makeOfDatatype(
+            case RebolSeries original -> makeOfDatatype(
                     DatatypeValue.of(original.datatype()), body, evaluator, context);
             case EventValue original -> EventPath.made(original, body,
                     value -> simpleValueOf(value, evaluator, context));
@@ -2344,7 +2344,7 @@ public final class Natives {
                     if (arguments.get(1) instanceof NoneValue nothing) {
                         return nothing;
                     }
-                    if (arguments.get(1) instanceof SeriesValue walked) {
+                    if (arguments.get(1) instanceof RebolSeries walked) {
                         return countedLoop(evaluator, context, counter, body,
                                 index -> walked.atIndex(walked.index() + (int) index),
                                 walked.lengthFromHere());
@@ -2425,7 +2425,7 @@ public final class Natives {
                         return removedEachPairFrom(
                                 map, arguments, refinements, evaluator, context);
                     }
-                    if (arguments.get(1) instanceof SeriesValue other
+                    if (arguments.get(1) instanceof RebolSeries other
                             && !(other instanceof BlockValue)) {
                         return removedEachFromDecidingForwardsThenRewriting(
                                 other, arguments, refinements, evaluator, context);
@@ -2598,7 +2598,7 @@ public final class Natives {
         locals.define(counter.spelling());
         BlockValue bound = Binder.bind(body, locals);
 
-        if (start instanceof SeriesValue series) {
+        if (start instanceof RebolSeries series) {
             return steppedOverSeries(evaluator, locals, counter, series, end, step, bound);
         }
         if (start instanceof IntegerValue(long magnitude2)
@@ -2657,10 +2657,10 @@ public final class Natives {
 
     private static Value steppedOverSeries(
             Evaluator evaluator, Context locals, WordValue counter,
-            SeriesValue series, Value end, Value step, BlockValue body) {
+            RebolSeries series, Value end, Value step, BlockValue body) {
 
         int tail = series.storageLength() + 1;
-        int endIndex = end instanceof SeriesValue other
+        int endIndex = end instanceof RebolSeries other
                 ? other.index()
                 : (int) Arithmetic.asMagnitude(end);
         endIndex = Math.max(0, Math.min(endIndex, tail));
@@ -2672,7 +2672,7 @@ public final class Natives {
                 locals.set(counter.spelling(), series.atIndex(at));
                 last = oneRoundCatchingContinue(evaluator,body, locals);
                 int landedAt = locals.slotFor(counter.canonical()).value()
-                        instanceof SeriesValue moved ? moved.index() : at;
+                        instanceof RebolSeries moved ? moved.index() : at;
                 at = (int) (landedAt + stepBy);
             }
         } catch (LoopSignal stopped) {
@@ -2762,7 +2762,7 @@ public final class Natives {
     }
 
     private static Value positionWithin(Value walked, int reached) {
-        if (!(walked instanceof SeriesValue series)) {
+        if (!(walked instanceof RebolSeries series)) {
             return walked;
         }
         return series.atIndex(Math.min(
@@ -2796,7 +2796,7 @@ public final class Natives {
         if (slot.value() instanceof NoneValue nothing) {
             return nothing;
         }
-        if (!(slot.value() instanceof SeriesValue start)) {
+        if (!(slot.value() instanceof RebolSeries start)) {
             return raiseCannotUse(slot.value(), "forall");
         }
         if (step == 0) {
@@ -2809,10 +2809,10 @@ public final class Natives {
         }
         Value last = NoneValue.none();
         try {
-            while (slot.value() instanceof SeriesValue here
+            while (slot.value() instanceof RebolSeries here
                     && here.index() >= 1 && here.index() <= here.storageLength()) {
                 last = oneRoundCatchingContinue(evaluator,body, evaluator.systemContext());
-                if (!(slot.value() instanceof SeriesValue moved)
+                if (!(slot.value() instanceof RebolSeries moved)
                         || moved.datatype() != walkingA) {
                     return raiseCannotUse(slot.value(), "forall");
                 }
@@ -2828,7 +2828,7 @@ public final class Natives {
     }
 
     private static boolean steppedOnwards(
-            ContextSlot slot, SeriesValue moved, int step) {
+            ContextSlot slot, RebolSeries moved, int step) {
 
         int next = moved.index() + step;
         if (next > moved.storageLength() && step < 0) {
@@ -2853,7 +2853,7 @@ public final class Natives {
 
     private static List<Value> itemsOf(Value series) {
         return switch (series) {
-            case SeriesValue walkable -> armsOf(walkable).elementsOf(walkable);
+            case RebolSeries walkable -> armsOf(walkable).elementsOf(walkable);
             case ObjectValue object -> fieldsAndValuesOf(object.context());
             case PortValue port -> fieldsAndValuesOf(port.context());
             case ModuleValue module -> fieldsAndValuesOf(module.context());
@@ -3403,7 +3403,7 @@ public final class Natives {
                         CryptPort.update(port);
                         return CryptPort.read(port);
                     }
-                    if (!(arguments.get(0) instanceof SeriesValue series)) {
+                    if (!(arguments.get(0) instanceof RebolSeries series)) {
                         return raiseCannotUse(arguments.get(0), "take");
                     }
                     if (refinements.contains("all")) {
@@ -3417,7 +3417,7 @@ public final class Natives {
                                 : takeOne(series);
                         return deepenedIfAsked(taken, refinements);
                     }
-                    if (arguments.size() > 1 && arguments.get(1) instanceof SeriesValue upTo) {
+                    if (arguments.size() > 1 && arguments.get(1) instanceof RebolSeries upTo) {
                         return deepenedIfAsked(takeSeveral(earlierOf(series, upTo),
                                 Math.abs(upTo.index() - series.index())), refinements);
                     }
@@ -3500,7 +3500,7 @@ public final class Natives {
                         return arguments.get(2);
                     }
                     long at = positionPokedAt(arguments.get(1));
-                    if (arguments.get(0) instanceof SeriesValue series
+                    if (arguments.get(0) instanceof RebolSeries series
                             && (at < 1 || at > series.lengthFromHere())) {
                         throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                                 "poke at " + at + " on a series of "
@@ -3816,7 +3816,7 @@ public final class Natives {
                                         .ownSlotFor(field).value();
                     }
                     refuseUnbyteableNeedle(arguments.getFirst(), arguments.get(1), "select");
-                    if (!(arguments.get(0) instanceof SeriesValue series)) {
+                    if (!(arguments.get(0) instanceof RebolSeries series)) {
                         return raiseCannotUse(arguments.get(0), "select");
                     }
                     long stride = searchStride(arguments, refinements);
@@ -3905,7 +3905,7 @@ public final class Natives {
                         case IntegerValue whole -> IntegerValue.of(whole.magnitude() + step);
                         case CharacterValue letter ->
                                 CharacterValue.of(letter.codepoint() + step);
-                        case SeriesValue series -> series.atIndex(
+                        case RebolSeries series -> series.atIndex(
                                 clampToSeries(series, series.index() + step));
                         default -> raiseCannotUse(before, spelling);
                     });
@@ -4372,14 +4372,14 @@ public final class Natives {
                     case PortValue buffered
                             when buffered.schemeName().equals("udp") ->
                             IntegerValue.of(
-                                    buffered.fieldNamed("data") instanceof SeriesValue held
+                                    buffered.fieldNamed("data") instanceof RebolSeries held
                                             ? held.lengthFromHere() : 0);
                     case TupleValue tuple -> IntegerValue.of(tuple.shownCount());
                     case WordValue word -> IntegerValue.of(
                             word.spelling().codePointCount(0, word.spelling().length()));
                     case Value subject when Actions.of(subject).isPresent() ->
                             IntegerValue.of(Actions.of(subject).orElseThrow().length());
-                    case SeriesValue series -> IntegerValue.of(series.lengthFromHere());
+                    case RebolSeries series -> IntegerValue.of(series.lengthFromHere());
                     case ModuleValue module ->
                             IntegerValue.of(module.context().fieldCount());
                     case PortValue port when isAFilePort(port) ->
@@ -4423,7 +4423,7 @@ public final class Natives {
                         return movedWithinTheFile(port, evaluator,
                                 (long) Arithmetic.asMagnitude(arguments.get(1)));
                     }
-                    if (!(arguments.getFirst() instanceof SeriesValue series)) {
+                    if (!(arguments.getFirst() instanceof RebolSeries series)) {
                         return raiseWrongArgument(arguments.getFirst(), "atz", "series");
                     }
                     return series.atIndex(clampedPosition(series,
@@ -4438,7 +4438,7 @@ public final class Natives {
                         refuseAClosedPosition(port);
                         yield IntegerValue.of(SeekableFilePort.positionOf(port));
                     }
-                    case SeriesValue series -> IntegerValue.of(series.index() - 1);
+                    case RebolSeries series -> IntegerValue.of(series.index() - 1);
                     default -> raiseCannotUse(arguments.get(0), "indexz?");
                 });
         define("pickz", List.of(Parameter.required("series"),
@@ -4452,7 +4452,7 @@ public final class Natives {
                 });
 
         define("past?", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> arguments.get(0) instanceof SeriesValue series
+                (arguments, evaluator, context) -> arguments.get(0) instanceof RebolSeries series
                         ? LogicValue.of(series.index() > series.storageLength() + 1)
                         : raiseWrongArgument(arguments.get(0), "past?", "series"));
 
@@ -4502,7 +4502,7 @@ public final class Natives {
                         throw Raised.of(EvaluationFailure.INVALID_ARG, arguments.get(0));
                     }
                     ContextSlot slot = word.binding().slotFor(word.canonical());
-                    if (!(slot.value() instanceof SeriesValue series)) {
+                    if (!(slot.value() instanceof RebolSeries series)) {
                         throw Raised.of(EvaluationFailure.INVALID_ARG,
                                 WordValue.of(word.spelling()));
                     }
@@ -4514,7 +4514,7 @@ public final class Natives {
                 });
 
         define("head?", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> arguments.get(0) instanceof SeriesValue series
+                (arguments, evaluator, context) -> arguments.get(0) instanceof RebolSeries series
                         ? LogicValue.of(series.atHead())
                         : raiseCannotUse(arguments.get(0), "head?"));
         define("tail?", List.of(Parameter.required("series", WHAT_TAIL_TAKES)),
@@ -4533,7 +4533,7 @@ public final class Natives {
                                     .allMatch(slot -> slot.canonical().equals("self")));
                     case PortValue port when isAFilePort(port) ->
                             LogicValue.of(theFileIsAtItsEnd(port, evaluator));
-                    case SeriesValue series -> LogicValue.of(series.atTail());
+                    case RebolSeries series -> LogicValue.of(series.atTail());
                     default -> raiseCannotUse(arguments.get(0), "tail?");
                 });
         define("next", List.of(Parameter.required("series")),
@@ -4541,7 +4541,7 @@ public final class Natives {
                     case PortValue port when isAFilePort(port) ->
                             movedWithinTheFile(port, evaluator,
                                     SeekableFilePort.positionOf(port) + 1);
-                    case SeriesValue series -> (Value) series.atIndex(Math.min(
+                    case RebolSeries series -> (Value) series.atIndex(Math.min(
                             series.index() + 1, series.storageLength() + 1));
                     default -> raiseCannotUse(arguments.get(0), "next");
                 });
@@ -4549,7 +4549,7 @@ public final class Natives {
                 (arguments, evaluator, context) -> switch (arguments.getFirst()) {
                     case PortValue port when isAFilePort(port) ->
                             movedWithinTheFile(port, evaluator, 0);
-                    case SeriesValue series -> (Value) series.head();
+                    case RebolSeries series -> (Value) series.head();
                     default -> raiseCannotUse(arguments.get(0), "head");
                 });
         define("tail", List.of(Parameter.required("series")),
@@ -4558,7 +4558,7 @@ public final class Natives {
                             movedWithinTheFile(port, evaluator,
                                     ((IntegerValue) wholeSizeOfTheFile(port, evaluator))
                                             .magnitude());
-                    case SeriesValue series -> (Value) series.tail();
+                    case RebolSeries series -> (Value) series.tail();
                     default -> raiseCannotUse(arguments.get(0), "tail");
                 });
         define("index?", List.of(Parameter.required("series", positionable())),
@@ -4572,7 +4572,7 @@ public final class Natives {
                         yield IntegerValue.of(SeekableFilePort.positionOf(port) + 1);
                     }
                     case GobValue gob -> IntegerValue.of(gob.positionCountedAsUnsigned());
-                    case SeriesValue series -> IntegerValue.of(series.index());
+                    case RebolSeries series -> IntegerValue.of(series.index());
                     default -> raiseCannotUse(arguments.get(0), "index?");
                 });
 
@@ -4598,7 +4598,7 @@ public final class Natives {
                 (arguments, evaluator, context) -> switch (arguments.get(0)) {
                     case TupleValue parts ->
                             IntegerValue.of(parts.octetAt(parts.segmentCount()));
-                    case SeriesValue series ->
+                    case RebolSeries series ->
                             pick(series, series.lengthFromHere());
                     default -> raiseCannotUse(arguments.get(0), "last");
                 });
@@ -4608,7 +4608,7 @@ public final class Natives {
                     case PortValue port when isAFilePort(port) ->
                             movedWithinTheFile(port, evaluator,
                                     SeekableFilePort.positionOf(port) - 1);
-                    case SeriesValue series ->
+                    case RebolSeries series ->
                             (Value) series.atIndex(Math.max(1, series.index() - 1));
                     default -> raiseCannotUse(arguments.get(0), "back");
                 });
@@ -4620,11 +4620,11 @@ public final class Natives {
                         Parameter.belongingTo("part", "count", PART_LIMIT)),
                 of("part"),
                 (arguments, evaluator, context, refinements) -> {
-                    if (!(arguments.getFirst() instanceof SeriesValue series)) {
+                    if (!(arguments.getFirst() instanceof RebolSeries series)) {
                         return raiseCannotUse(arguments.getFirst(), "truncate");
                     }
                     removeFrom(series, 1, series.index() - 1);
-                    SeriesValue kept = series.atIndex(1);
+                    RebolSeries kept = series.atIndex(1);
                     if (refinements.contains("part") && arguments.size() > 1) {
                         long wanted = ((IntegerValue) arguments.get(1)).magnitude();
                         removeFrom(kept, (int) wanted + 1,
@@ -4645,7 +4645,7 @@ public final class Natives {
                                 SeekableFilePort.positionOf(port)
                                         + (long) Arithmetic.asMagnitude(arguments.get(1)));
                     }
-                    if (!(arguments.get(0) instanceof SeriesValue series)) {
+                    if (!(arguments.get(0) instanceof RebolSeries series)) {
                         return raiseCannotUse(arguments.get(0), "skip");
                     }
                     long by = positionAskedFor(series, arguments.get(1), false);
@@ -4665,7 +4665,7 @@ public final class Natives {
                         return movedWithinTheFile(port, evaluator,
                                 (long) Arithmetic.asMagnitude(arguments.get(1)) - 1);
                     }
-                    if (!(arguments.get(0) instanceof SeriesValue series)) {
+                    if (!(arguments.get(0) instanceof RebolSeries series)) {
                         return raiseCannotUse(arguments.get(0), "at");
                     }
                     long wanted = positionAskedFor(series, arguments.get(1), true);
@@ -4704,7 +4704,7 @@ public final class Natives {
                                         + original.datatype().literalSpelling()
                                         + " has none");
                     }
-                    if (!(original instanceof SeriesValue series)) {
+                    if (!(original instanceof RebolSeries series)) {
                         return raiseCannotUse(original, "copy");
                     }
                     Value limit = argumentFor("part", List.of("part", "types"),
@@ -4758,7 +4758,7 @@ public final class Natives {
                     if (arguments.get(0) instanceof ImageValue picture) {
                         return thePixelFoundIn(picture, arguments.get(1), refinements);
                     }
-                    if (!(arguments.get(0) instanceof SeriesValue series)
+                    if (!(arguments.get(0) instanceof RebolSeries series)
                             || series instanceof VectorValue) {
                         return raiseCannotUse(arguments.get(0), "find");
                     }
@@ -4834,7 +4834,7 @@ public final class Natives {
                                         List.of("part", "key"),
                                         arguments, refinements, 1));
                     }
-                    if (!(arguments.get(0) instanceof SeriesValue series)) {
+                    if (!(arguments.get(0) instanceof RebolSeries series)) {
                         return raiseWrongArgument(arguments.get(0), "remove", "series");
                     }
                     if (refinements.contains("key") && series instanceof BlockValue pairs) {
@@ -4856,7 +4856,7 @@ public final class Natives {
                 of("part"),
                 (arguments, evaluator, context, refinements) -> {
                     if (refinements.contains("part")
-                            && arguments.getFirst() instanceof SeriesValue series) {
+                            && arguments.getFirst() instanceof RebolSeries series) {
                         Value limit = argumentFor(
                                 "part", List.of("part"), arguments, refinements, 1);
                         return reversedFrontInPlace(series, limit);
@@ -4912,11 +4912,11 @@ public final class Natives {
                                 theShapeOfTheRectangle(arguments, refinements));
                     }
                     if (refinements.contains("part") && arguments.size() > 2
-                            && arguments.get(0) instanceof SeriesValue stranded) {
+                            && arguments.get(0) instanceof RebolSeries stranded) {
                         Value replacement = copied(arguments.get(1),
                                 arguments.get(1) instanceof BlockValue);
                         long taking = countUpTo(stranded, arguments.get(2));
-                        SeriesValue series = clampedToTail(stranded);
+                        RebolSeries series = clampedToTail(stranded);
                         if (taking < 0) {
                             long back = Math.min(-taking, series.index() - 1L);
                             series = series.atIndex((int) (series.index() - back));
@@ -5025,7 +5025,7 @@ public final class Natives {
                         Parameter.belongingTo("part", "count", PART_LIMIT)),
                 of("case", "compare", "skip", "reverse", "all", "part", "unstable"),
                 (arguments, evaluator, context, refinements) -> {
-                    if (!(arguments.get(0) instanceof SeriesValue series)) {
+                    if (!(arguments.get(0) instanceof RebolSeries series)) {
                         return raiseCannotUse(arguments.get(0), "sort");
                     }
                     List<String> declared = List.of("skip", "compare", "part");
@@ -5524,7 +5524,7 @@ public final class Natives {
     private static final List<String> SEARCH_ARGUMENTS = List.of("part", "with", "skip");
 
     private static int positionSearched(
-            SeriesValue series, Value wanted, Set<String> refinements,
+            RebolSeries series, Value wanted, Set<String> refinements,
             int limit, long stride, Wildcards wildcards) {
         boolean forcedToSingleStep = refinements.contains("reverse")
                 || refinements.contains("last");
@@ -5535,7 +5535,7 @@ public final class Natives {
     }
 
     private static int searchLimit(
-            SeriesValue series, List<Value> arguments, Set<String> refinements) {
+            RebolSeries series, List<Value> arguments, Set<String> refinements) {
         if (!refinements.contains("part")) {
             return Integer.MAX_VALUE;
         }
@@ -5551,14 +5551,14 @@ public final class Natives {
                 "skip", SEARCH_ARGUMENTS, arguments, refinements, 2)).magnitude();
     }
 
-    private static int searchEnd(SeriesValue series, List<Value> items, int limit) {
+    private static int searchEnd(RebolSeries series, List<Value> items, int limit) {
         return limit < 0
                 ? items.size()
                 : (int) Math.min(items.size(), (long) series.index() - 1 + limit);
     }
 
     private static int positionOfMatch(
-            SeriesValue series, Value wanted, Set<String> refinements, int limit,
+            RebolSeries series, Value wanted, Set<String> refinements, int limit,
             Wildcards wildcards) {
 
         boolean lookingBehind = refinements.contains("reverse");
@@ -5594,7 +5594,7 @@ public final class Natives {
     }
 
     private static int widthOfNeedle(
-            SeriesValue series, Value wanted, Set<String> refinements) {
+            RebolSeries series, Value wanted, Set<String> refinements) {
 
         if (refinements.contains("only")) {
             return 1;
@@ -5614,7 +5614,7 @@ public final class Natives {
     }
 
     private static boolean matchesHere(
-            SeriesValue series, List<Value> items, int at, Value wanted,
+            RebolSeries series, List<Value> items, int at, Value wanted,
             Set<String> refinements, Wildcards wildcards, int end) {
 
         if (series instanceof StringValue text && refinements.contains("any")) {
@@ -5651,7 +5651,7 @@ public final class Natives {
     }
 
     private static boolean textRunMatchesAt(
-            SeriesValue series, List<Value> items, int at, Value wanted,
+            RebolSeries series, List<Value> items, int at, Value wanted,
             Set<String> refinements) {
 
         if (wanted instanceof BitsetValue members) {
@@ -5686,7 +5686,7 @@ public final class Natives {
         return octets;
     }
 
-    private static List<Value> itemsOfNeedle(SeriesValue series, Value wanted) {
+    private static List<Value> itemsOfNeedle(RebolSeries series, Value wanted) {
         if (series instanceof BinaryValue && wanted instanceof BinaryValue bytes) {
             return itemsOf(bytes);
         }
@@ -5741,7 +5741,7 @@ public final class Natives {
     }
 
     private static int positionOfMatchInRecords(
-            SeriesValue series, Value wanted, Set<String> refinements, int stride,
+            RebolSeries series, Value wanted, Set<String> refinements, int stride,
             int limit, Wildcards wildcards) {
         boolean backwards = stride < 0 || refinements.contains("reverse")
                 || refinements.contains("last");
@@ -5759,7 +5759,7 @@ public final class Natives {
     }
 
     private static boolean matchesAtRecord(
-            SeriesValue series, List<Value> items, int at, Value wanted,
+            RebolSeries series, List<Value> items, int at, Value wanted,
             Set<String> refinements, Wildcards wildcards, int end) {
         if (series instanceof StringValue text && refinements.contains("any")) {
             return patternEnd(text.head().text(), at, end, Molder.form(wanted),
@@ -5873,7 +5873,7 @@ public final class Natives {
     }
 
     private static int matchLength(
-            SeriesValue series, Value wanted, Set<String> refinements, int found,
+            RebolSeries series, Value wanted, Set<String> refinements, int found,
             Wildcards wildcards, int end) {
         if (series instanceof StringValue patterned && refinements.contains("any")) {
             String within = patterned.head().text();
@@ -5932,7 +5932,7 @@ public final class Natives {
         return null;
     }
 
-    private static Value sorted(SeriesValue series, int stride, Value comparator,
+    private static Value sorted(RebolSeries series, int stride, Value comparator,
             boolean mindingCase, boolean reversed, boolean wholeRecord,
             int howMany, Evaluator evaluator, boolean unstably) {
         int step = Math.max(1, stride);
@@ -5998,7 +5998,7 @@ public final class Natives {
 
     private static int compareRecords(List<Value> left, List<Value> right,
             Value comparator, boolean mindingCase, boolean wholeRecord,
-            SeriesValue series, Evaluator evaluator) {
+            RebolSeries series, Evaluator evaluator) {
 
         if (comparator instanceof IntegerValue column) {
             return compareByColumns(left, right, List.of(column), mindingCase);
@@ -6017,7 +6017,7 @@ public final class Natives {
                         lentElementOf(series, right.getFirst()), evaluator);
     }
 
-    private static Value lentRecordOf(SeriesValue series, List<Value> record) {
+    private static Value lentRecordOf(RebolSeries series, List<Value> record) {
         if (series instanceof BinaryValue) {
             int[] octets = new int[record.size()];
             for (int at = 0; at < record.size(); at++) {
@@ -6035,7 +6035,7 @@ public final class Natives {
         return lentRecord(record);
     }
 
-    private static Value lentElementOf(SeriesValue series, Value element) {
+    private static Value lentElementOf(RebolSeries series, Value element) {
         return series instanceof BinaryValue && element instanceof IntegerValue(long magnitude)
                 ? CharacterValue.of((int) magnitude)
                 : element;
@@ -6120,7 +6120,7 @@ public final class Natives {
         return -1;
     }
 
-    private static Value takeOne(SeriesValue series) {
+    private static Value takeOne(RebolSeries series) {
         return armsOf(series).takenOne();
     }
 
@@ -6130,12 +6130,12 @@ public final class Natives {
                 : taken;
     }
 
-    private static Value takeSeveral(SeriesValue series, long wanted) {
+    private static Value takeSeveral(RebolSeries series, long wanted) {
         return armsOf(series).takenSeveral(wanted);
     }
 
     /** The series arms for a value, which every series datatype now has. */
-    private static SeriesActions armsOf(SeriesValue series) {
+    private static SeriesActions armsOf(RebolSeries series) {
         return (SeriesActions) Actions.of(series).orElseThrow();
     }
 
@@ -6232,10 +6232,10 @@ public final class Natives {
     }
 
     static List<Value> numbersOfferedTo(VectorKind kind, Value value, int limit) {
-        if (!(value instanceof SeriesValue source)) {
+        if (!(value instanceof RebolSeries source)) {
             return numbersContributedTo(kind, value);
         }
-        SeriesValue run = theRunReachingBackIfNegative(source, limit);
+        RebolSeries run = theRunReachingBackIfNegative(source, limit);
         long wanted = limit >= 0 ? limit : source.index() - run.index();
         if (run instanceof BinaryValue bytes) {
             return numbersSpeltByWithTheOddBytesDropped(kind, bytes,
@@ -6245,7 +6245,7 @@ public final class Natives {
         return offered.subList(0, (int) Math.min(wanted, offered.size()));
     }
 
-    private static void removeFrom(SeriesValue series, int oneBasedIndex, int howMany) {
+    private static void removeFrom(RebolSeries series, int oneBasedIndex, int howMany) {
         armsOf(series).takeOutFrom(oneBasedIndex, howMany);
     }
 
@@ -6640,13 +6640,13 @@ public final class Natives {
         return Binder.bindAndDefine(read.values().orElseThrow(), context);
     }
 
-    static SeriesValue clampedToTail(SeriesValue series) {
+    static RebolSeries clampedToTail(RebolSeries series) {
         int tail = series.storageLength() + 1;
         return series.index() > tail ? series.atIndex(tail) : series;
     }
 
-    private static Value insertInto(SeriesValue stranded, Value value) {
-        SeriesValue series = clampedToTail(stranded);
+    private static Value insertInto(RebolSeries stranded, Value value) {
+        RebolSeries series = clampedToTail(stranded);
         switch (series) {
             case BlockValue block -> {
                 BlockValue added = value instanceof BlockValue given ? given : null;
@@ -6687,8 +6687,8 @@ public final class Natives {
         if (limit instanceof IntegerValue(long magnitude)) {
             return (int) magnitude;
         }
-        if (limit instanceof SeriesValue upTo
-                && arguments.get(1) instanceof SeriesValue from
+        if (limit instanceof RebolSeries upTo
+                && arguments.get(1) instanceof RebolSeries from
                 && from.sharesStorageWith(upTo)) {
             return Math.abs(upTo.index() - from.index());
         }
@@ -6715,7 +6715,7 @@ public final class Natives {
     }
 
     private static Value removedEachFromDecidingForwardsThenRewriting(
-            SeriesValue series, List<Value> arguments, Set<String> refinements,
+            RebolSeries series, List<Value> arguments, Set<String> refinements,
             Evaluator evaluator, Context within) {
 
         refuseIfProtected(series);
@@ -6747,7 +6747,7 @@ public final class Natives {
         return refinements.contains("count") ? IntegerValue.of(taken) : series;
     }
 
-    private static void insertOneInto(SeriesValue series, int at, Value item) {
+    private static void insertOneInto(RebolSeries series, int at, Value item) {
         switch (series) {
             case BinaryValue bytes ->
                     bytes.storage().insertAt(at, (int) ((IntegerValue) item).magnitude());
@@ -6783,7 +6783,7 @@ public final class Natives {
                 : map;
     }
 
-    private static void refuseIfProtected(SeriesValue series) {
+    private static void refuseIfProtected(RebolSeries series) {
         boolean guarded = switch (series) {
             case BlockValue block -> block.storage().isProtected();
             case StringValue text -> text.storage().isProtected();
@@ -6993,7 +6993,7 @@ public final class Natives {
 
     private static Value copied(Value original, boolean deeply, Set<Datatype> kinds) {
         if (!kinds.contains(original.datatype()) && original != null
-                && !(original instanceof SeriesValue) && !(original instanceof MapValue)
+                && !(original instanceof RebolSeries) && !(original instanceof MapValue)
                 && !(original instanceof BitsetValue)
                 && !(original instanceof ErrorValue)
                 && !(original instanceof ObjectValue)) {
@@ -7069,9 +7069,9 @@ public final class Natives {
     }
 
     private static Value copiedFront(
-            SeriesValue series, Value limit, boolean deeply, Set<Datatype> kinds) {
+            RebolSeries series, Value limit, boolean deeply, Set<Datatype> kinds) {
         long wanted = countUpTo(series, limit);
-        SeriesValue from = limit instanceof SeriesValue upTo
+        RebolSeries from = limit instanceof RebolSeries upTo
                 ? earlierOf(series, upTo)
                 : series;
         if (wanted < 0) {
@@ -7123,7 +7123,7 @@ public final class Natives {
                 : branch;
     }
 
-    private static Value reversedFrontInPlace(SeriesValue series, Value limit) {
+    private static Value reversedFrontInPlace(RebolSeries series, Value limit) {
         int howMany = limit instanceof IntegerValue(long magnitude)
                 ? (int) Math.max(0, Math.min(magnitude, series.lengthFromHere()))
                 : series.lengthFromHere();
@@ -7469,7 +7469,7 @@ public final class Natives {
     }
 
     private static boolean carriesProtection(Value value) {
-        return value instanceof SeriesValue
+        return value instanceof RebolSeries
                 || value instanceof ObjectValue
                 || value instanceof MapValue;
     }
@@ -7595,7 +7595,7 @@ public final class Natives {
                 block.storage().protectFromChange(protectedNow);
                 if (deeply) {
                     block.remaining().stream()
-                            .filter(item -> item instanceof SeriesValue
+                            .filter(item -> item instanceof RebolSeries
                                     || item instanceof ObjectValue)
                             .forEach(item -> setProtection(item, protectedNow, true));
                 }
@@ -7614,7 +7614,7 @@ public final class Natives {
                     slot.allowAssignment();
                 }
                 if (deeply && !slot.canonical().equals("self")
-                        && (slot.value() instanceof SeriesValue
+                        && (slot.value() instanceof RebolSeries
                                 || slot.value() instanceof ObjectValue)) {
                     setProtection(slot.value(), protectedNow, true);
                 }
@@ -7665,7 +7665,7 @@ public final class Natives {
         }
     }
 
-    private static long countUpTo(SeriesValue series, Value howMuch) {
+    private static long countUpTo(RebolSeries series, Value howMuch) {
         if (howMuch instanceof IntegerValue count) {
             if (count.magnitude() < Integer.MIN_VALUE
                     || count.magnitude() > Integer.MAX_VALUE) {
@@ -7677,18 +7677,18 @@ public final class Natives {
                 && datatype != Datatype.PERCENT) {
             return (long) quantity;
         }
-        if (!(howMuch instanceof SeriesValue upTo)
+        if (!(howMuch instanceof RebolSeries upTo)
                 || !series.sharesStorageWith(upTo)) {
             throw Raised.of(EvaluationFailure.INVALID_PART, Molder.mold(howMuch));
         }
         return Math.abs(upTo.index() - series.index());
     }
 
-    private static SeriesValue earlierOf(SeriesValue series, SeriesValue other) {
+    private static RebolSeries earlierOf(RebolSeries series, RebolSeries other) {
         return other.index() < series.index() ? other : series;
     }
 
-    private static int clampedPosition(SeriesValue series, long wanted) {
+    private static int clampedPosition(RebolSeries series, long wanted) {
         return (int) Math.max(1, Math.min(wanted, series.storageLength() + 1));
     }
 
@@ -7746,7 +7746,7 @@ public final class Natives {
         if (target instanceof GobValue gob) {
             return GobPath.childOf(gob, oneBasedIndex);
         }
-        if (!(target instanceof SeriesValue series)) {
+        if (!(target instanceof RebolSeries series)) {
             return raiseCannotUse(target, "pick");
         }
         if (oneBasedIndex == 0) {
@@ -8120,7 +8120,7 @@ public final class Natives {
         return roundedHalfAway(value);
     }
 
-    private static int clampToSeries(SeriesValue series, long wanted) {
+    private static int clampToSeries(RebolSeries series, long wanted) {
         return (int) Math.max(1, Math.min(wanted, series.storageLength() + 1L));
     }
 
@@ -8602,7 +8602,7 @@ public final class Natives {
     }
 
     private static byte[] theOctetsBehind(Value source, byte[] octets, long count) {
-        if (!(source instanceof SeriesValue positioned)) {
+        if (!(source instanceof RebolSeries positioned)) {
             return new byte[0];
         }
         int landsOn = (int) Math.max(1, positioned.index() - count);
@@ -10409,7 +10409,7 @@ public final class Natives {
                 Molder.mold(from));
     }
 
-    private static long positionAskedFor(SeriesValue series, Value given, boolean fromOne) {
+    private static long positionAskedFor(RebolSeries series, Value given, boolean fromOne) {
         if (given instanceof PairValue(double x, double y)) {
             if (!(series instanceof ImageValue image)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
@@ -11867,8 +11867,8 @@ public final class Natives {
         return howManyWanted(NoneValue.none(), arguments, refinements, where);
     }
 
-    private static SeriesValue theRunReachingBackIfNegative(
-            SeriesValue series, long wanted) {
+    private static RebolSeries theRunReachingBackIfNegative(
+            RebolSeries series, long wanted) {
 
         if (wanted >= 0) {
             return series;
@@ -11894,8 +11894,8 @@ public final class Natives {
         if (count instanceof DecimalValue || count instanceof PairValue) {
             throw Raised.of(EvaluationFailure.INVALID_PART, Molder.mold(count));
         }
-        if (count instanceof SeriesValue upTo) {
-            if (!(source instanceof SeriesValue from)
+        if (count instanceof RebolSeries upTo) {
+            if (!(source instanceof RebolSeries from)
                     || from.datatype() != upTo.datatype()
                     || !from.sharesStorageWith(upTo)) {
                 throw Raised.of(EvaluationFailure.INVALID_PART, "part");
@@ -11989,7 +11989,7 @@ public final class Natives {
     }
 
     private static byte[] theUnitsBehind(Value value, long count) {
-        if (!(value instanceof SeriesValue positioned)) {
+        if (!(value instanceof RebolSeries positioned)) {
             return new byte[0];
         }
         int reachedBack = (int) Math.min(count, positioned.index() - 1);
@@ -12018,7 +12018,7 @@ public final class Natives {
     }
 
     private static String theTextBehind(Value value, long count) {
-        if (!(value instanceof SeriesValue positioned)) {
+        if (!(value instanceof RebolSeries positioned)) {
             return "";
         }
         int reachedBack = (int) Math.min(count, positioned.index() - 1);
@@ -13963,7 +13963,7 @@ public final class Natives {
             ChecksumPort.startEvenOnAnAlreadyOpenPort(
                     port, ChecksumPort.methodOf(port));
         }
-        SeriesValue written = (SeriesValue) data;
+        RebolSeries written = (RebolSeries) data;
         ChecksumPort.add(port,
                 octetsOf(written.head()),
                 written.index() - 1,

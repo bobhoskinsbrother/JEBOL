@@ -118,7 +118,7 @@ class SourceProgrammeLoadingTest {
     }
 
     private static long seriesAwayFromHead(Value value) {
-        long here = value instanceof SeriesValue series && !series.atHead() ? 1 : 0;
+        long here = value instanceof RebolSeries series && !series.atHead() ? 1 : 0;
         if (value instanceof BlockValue block) {
             return here + block.remaining().stream()
                     .mapToLong(SourceProgrammeLoadingTest::seriesAwayFromHead)

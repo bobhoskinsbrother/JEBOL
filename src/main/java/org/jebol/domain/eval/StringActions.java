@@ -4,7 +4,7 @@ import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.SeriesValue;
+import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
 
@@ -30,7 +30,7 @@ public final class StringActions extends SeriesActions {
     }
 
     @Override
-    List<Value> elementsOf(SeriesValue from) {
+    List<Value> elementsOf(RebolSeries from) {
         return ((StringValue) from).text().codePoints()
                 .<Value>mapToObj(CharacterValue::of)
                 .toList();

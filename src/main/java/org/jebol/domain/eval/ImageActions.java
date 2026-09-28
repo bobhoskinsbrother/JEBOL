@@ -2,7 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.ImageStorage;
 import org.jebol.domain.value.ImageValue;
-import org.jebol.domain.value.SeriesValue;
+import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Value;
 
@@ -41,7 +41,7 @@ public final class ImageActions extends SeriesActions {
     }
 
     @Override
-    List<Value> elementsOf(SeriesValue from) {
+    List<Value> elementsOf(RebolSeries from) {
         ImageValue pixels = (ImageValue) from;
         List<Value> read = new ArrayList<>(pixels.lengthFromHere());
         for (int at = pixels.index(); at <= pixels.storageLength(); at++) {

@@ -100,7 +100,7 @@ public final class Molder {
     }
 
     private static int standsWithinNeverPastTheEndForABlockOrAPath(
-            SeriesValue series) {
+            RebolSeries series) {
         return series instanceof BlockValue
                 ? Math.min(series.index(), series.storageLength() + 1)
                 : series.index();
@@ -124,7 +124,7 @@ public final class Molder {
             if (value instanceof ImageValue picture) {
                 return render(picture, true);
             }
-            if (value instanceof SeriesValue series
+            if (value instanceof RebolSeries series
                     && standsWithinNeverPastTheEndForABlockOrAPath(series) > 1) {
                 return "#(" + value.datatype().literalSpelling() + " "
                         + constructBodyOf(series) + " "
@@ -151,7 +151,7 @@ public final class Molder {
         }
     }
 
-    private static String constructBodyOf(SeriesValue series) {
+    private static String constructBodyOf(RebolSeries series) {
         return switch (series) {
             case StringValue text -> moldedText(text.head().text());
             case BlockValue block -> "[" + block.head().remaining().stream()
@@ -651,7 +651,7 @@ public final class Molder {
                 + closing + shuts;
     }
 
-    private static String positionOf(SeriesValue series) {
+    private static String positionOf(RebolSeries series) {
         return series.index() > 1 ? " " + series.index() : "";
     }
 

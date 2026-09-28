@@ -1328,7 +1328,7 @@ public final class Evaluator {
             StructPath.write(struct, selectorFor(lastSegment, frame.context), written);
             return;
         }
-        if (target instanceof SeriesValue series
+        if (target instanceof RebolSeries series
                 && selectorFor(lastSegment, frame.context) instanceof IntegerValue(long magnitude)) {
             SeriesSlot.write(series,
                     series.index() + (int) magnitude - 1, written);
@@ -1428,7 +1428,7 @@ public final class Evaluator {
         if (dispatched.isPresent()) {
             return dispatched.get().placeWithin(holder, selector);
         }
-        if (target instanceof SeriesValue series
+        if (target instanceof RebolSeries series
                 && selector instanceof IntegerValue position
                 && reachesIntoTheSeries(series, position)) {
             return new SeriesSlot(series, positionIn(series, position),
@@ -1438,13 +1438,13 @@ public final class Evaluator {
     }
 
     private static boolean reachesIntoTheSeries(
-            SeriesValue series, IntegerValue position) {
+            RebolSeries series, IntegerValue position) {
 
         long counted = countedFromTheSeriesPosition(position.magnitude());
         return counted >= 1 && counted <= series.lengthFromHere();
     }
 
-    private static int positionIn(SeriesValue series, IntegerValue position) {
+    private static int positionIn(RebolSeries series, IntegerValue position) {
         return series.index()
                 + (int) countedFromTheSeriesPosition(position.magnitude()) - 1;
     }
@@ -1563,7 +1563,7 @@ public final class Evaluator {
         if (target instanceof StructValue struct) {
             return StructPath.read(struct, selector);
         }
-        if (target instanceof SeriesValue series && selector instanceof IntegerValue(long magnitude)) {
+        if (target instanceof RebolSeries series && selector instanceof IntegerValue(long magnitude)) {
             long index = countedFromTheSeriesPosition(magnitude);
             if (index < 1 - (series.index() - 1) || index > series.lengthFromHere()) {
                 return NoneValue.none();

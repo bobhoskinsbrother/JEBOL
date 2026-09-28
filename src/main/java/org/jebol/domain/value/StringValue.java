@@ -16,7 +16,7 @@ import java.util.Optional;
  * {@code email!} is a deliverable address.
  */
 public record StringValue(StringStorage storage, int index, Datatype datatype)
-        implements SeriesValue {
+        implements RebolSeries {
 
     public StringValue {
         if (storage == null) {
@@ -110,7 +110,7 @@ public record StringValue(StringStorage storage, int index, Datatype datatype)
     }
 
     @Override
-    public boolean sharesStorageWith(SeriesValue other) {
+    public boolean sharesStorageWith(RebolSeries other) {
         return other instanceof StringValue string && string.storage == storage;
     }
 

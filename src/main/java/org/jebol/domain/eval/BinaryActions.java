@@ -3,7 +3,7 @@ package org.jebol.domain.eval;
 import org.jebol.domain.value.BinaryStorage;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.SeriesValue;
+import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 
 import java.util.ArrayList;
@@ -28,7 +28,7 @@ public final class BinaryActions extends SeriesActions {
     }
 
     @Override
-    List<Value> elementsOf(SeriesValue from) {
+    List<Value> elementsOf(RebolSeries from) {
         BinaryValue octets = (BinaryValue) from;
         List<Value> read = new ArrayList<>(octets.lengthFromHere());
         for (int at = 0; at < octets.lengthFromHere(); at++) {

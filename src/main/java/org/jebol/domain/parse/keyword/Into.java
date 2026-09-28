@@ -4,7 +4,7 @@ import org.jebol.domain.parse.ParseWalk;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.SeriesValue;
+import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -21,7 +21,7 @@ final class Into extends DeclaredKeyword {
             throw Raised.of(EvaluationFailure.PARSE_RULE,
                     "into needs a block of rules to apply");
         }
-        if (walk.atEnd() || !(walk.current() instanceof SeriesValue nested)
+        if (walk.atEnd() || !(walk.current() instanceof RebolSeries nested)
                 || !walk.walkingOver(nested).matchesTheWholeOf(innerRule)) {
             return ParseWalk.NO_MATCH;
         }

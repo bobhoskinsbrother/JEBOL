@@ -700,7 +700,7 @@ public final class Transcoder {
     }
 
     private Value standingWhereItWasTold(Value whole, Value position) {
-        if (!(whole instanceof SeriesValue series)) {
+        if (!(whole instanceof RebolSeries series)) {
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
         }
         if (!(position instanceof IntegerValue(long magnitude))) {

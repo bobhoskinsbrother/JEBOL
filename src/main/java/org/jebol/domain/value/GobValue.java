@@ -7,7 +7,7 @@ package org.jebol.domain.value;
  * {@code next gob} is the same gob standing at its second child. That is why the
  * gob's own fields are reached through a path and never through a position.
  */
-public record GobValue(GobStorage storage, int index) implements SeriesValue {
+public record GobValue(GobStorage storage, int index) implements RebolSeries {
 
     public GobValue {
         if (storage == null) {
@@ -72,7 +72,7 @@ public record GobValue(GobStorage storage, int index) implements SeriesValue {
     }
 
     @Override
-    public boolean sharesStorageWith(SeriesValue other) {
+    public boolean sharesStorageWith(RebolSeries other) {
         return other instanceof GobValue gob && gob.storage == storage;
     }
 

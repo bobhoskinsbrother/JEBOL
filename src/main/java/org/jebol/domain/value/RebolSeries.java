@@ -13,7 +13,7 @@ package org.jebol.domain.value;
  * tail is a legal position to hold and an illegal one to read from, which is
  * what lets {@code until [tail? series: next series]} terminate.
  */
-public sealed interface SeriesValue extends Value
+public sealed interface RebolSeries extends Value
         permits StringValue, BinaryValue, BlockValue, ImageValue, GobValue, VectorValue {
 
     /** 1-based position within the storage. {@code length() + 1} is the tail. */
@@ -51,15 +51,15 @@ public sealed interface SeriesValue extends Value
     }
 
     /** The same storage, seen from a different position. */
-    SeriesValue atIndex(int oneBasedIndex);
+    RebolSeries atIndex(int oneBasedIndex);
 
     /** The same storage, seen from its head. */
-    default SeriesValue head() {
+    default RebolSeries head() {
         return atIndex(1);
     }
 
     /** The same storage, seen from its tail. */
-    default SeriesValue tail() {
+    default RebolSeries tail() {
         return atIndex(storageLength() + 1);
     }
 
@@ -68,5 +68,5 @@ public sealed interface SeriesValue extends Value
      * from equality, which compares contents: {@code same?} against
      * {@code equal?}.
      */
-    boolean sharesStorageWith(SeriesValue other);
+    boolean sharesStorageWith(RebolSeries other);
 }
