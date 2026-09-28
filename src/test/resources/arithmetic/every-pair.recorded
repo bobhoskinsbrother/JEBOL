@@ -1,0 +1,812 @@
+add (2) (3)                                   | 5  #(integer!)
+add (2) (3.0)                                 | 5.0  #(decimal!)
+add (2) (300%)                                | 5.0  #(decimal!)
+add (2) ($3)                                  | $5  #(money!)
+add (2) (#"C")                                | 69  #(integer!)
+add (2) (0:00:03)                             | 0:00:05  #(time!)
+add (2) (2-Jan-2020)                          | 4-Jan-2020  #(date!)
+add (2) (3x3)                                 | 5x5  #(pair!)
+add (2) (3.3.3)                               | 5.5.5  #(tuple!)
+add (2.0) (3)                                 | 5.0  #(decimal!)
+add (2.0) (3.0)                               | 5.0  #(decimal!)
+add (2.0) (300%)                              | 5.0  #(decimal!)
+add (2.0) ($3)                                | $5  #(money!)
+add (2.0) (#"C")                              | 69.0  #(decimal!)
+add (2.0) (0:00:03)                           | 0:00:05  #(time!)
+add (2.0) (2-Jan-2020)                        | !not-related
+add (2.0) (3x3)                               | 5x5  #(pair!)
+add (2.0) (3.3.3)                             | 5.5.5  #(tuple!)
+add (200%) (3)                                | 5.0  #(decimal!)
+add (200%) (3.0)                              | 5.0  #(decimal!)
+add (200%) (300%)                             | 500%  #(percent!)
+add (200%) ($3)                               | $5  #(money!)
+add (200%) (#"C")                             | 69.0  #(decimal!)
+add (200%) (0:00:03)                          | !not-related
+add (200%) (2-Jan-2020)                       | !not-related
+add (200%) (3x3)                              | 5x5  #(pair!)
+add (200%) (3.3.3)                            | 5.5.5  #(tuple!)
+add ($2) (3)                                  | $5  #(money!)
+add ($2) (3.0)                                | $5  #(money!)
+add ($2) (300%)                               | $5  #(money!)
+add ($2) ($3)                                 | $5  #(money!)
+add ($2) (#"C")                               | !not-related
+add ($2) (0:00:03)                            | !not-related
+add ($2) (2-Jan-2020)                         | !not-related
+add ($2) (3x3)                                | !not-related
+add ($2) (3.3.3)                              | !not-related
+add (#"B") (3)                                | #"E"  #(char!)
+add (#"B") (3.0)                              | #"E"  #(char!)
+add (#"B") (300%)                             | !not-related
+add (#"B") ($3)                               | !not-related
+add (#"B") (#"C")                             | #"^(85)"  #(char!)
+add (#"B") (0:00:03)                          | !not-related
+add (#"B") (2-Jan-2020)                       | !not-related
+add (#"B") (3x3)                              | !not-related
+add (#"B") (3.3.3)                            | !not-related
+add (0:00:02) (3)                             | 0:00:05  #(time!)
+add (0:00:02) (3.0)                           | 0:00:05  #(time!)
+add (0:00:02) (300%)                          | !not-related
+add (0:00:02) ($3)                            | !not-related
+add (0:00:02) (#"C")                          | !not-related
+add (0:00:02) (0:00:03)                       | 0:00:05  #(time!)
+add (0:00:02) (2-Jan-2020)                    | 2-Jan-2020/0:00:02  #(date!)
+add (0:00:02) (3x3)                           | !not-related
+add (0:00:02) (3.3.3)                         | !not-related
+add (1-Jan-2020) (3)                          | 4-Jan-2020  #(date!)
+add (1-Jan-2020) (3.0)                        | 4-Jan-2020/0:00  #(date!)
+add (1-Jan-2020) (300%)                       | !cannot-use
+add (1-Jan-2020) ($3)                         | !cannot-use
+add (1-Jan-2020) (#"C")                       | !cannot-use
+add (1-Jan-2020) (0:00:03)                    | 1-Jan-2020/0:00:03  #(date!)
+add (1-Jan-2020) (2-Jan-2020)                 | !cannot-use
+add (1-Jan-2020) (3x3)                        | !cannot-use
+add (1-Jan-2020) (3.3.3)                      | !cannot-use
+add (2x2) (3)                                 | 5x5  #(pair!)
+add (2x2) (3.0)                               | 5x5  #(pair!)
+add (2x2) (300%)                              | 5x5  #(pair!)
+add (2x2) ($3)                                | !not-related
+add (2x2) (#"C")                              | !not-related
+add (2x2) (0:00:03)                           | !not-related
+add (2x2) (2-Jan-2020)                        | !not-related
+add (2x2) (3x3)                               | 5x5  #(pair!)
+add (2x2) (3.3.3)                             | !not-related
+add (2.2.2) (3)                               | 5.5.5  #(tuple!)
+add (2.2.2) (3.0)                             | 5.5.5  #(tuple!)
+add (2.2.2) (300%)                            | 5.5.5  #(tuple!)
+add (2.2.2) ($3)                              | !not-related
+add (2.2.2) (#"C")                            | !not-related
+add (2.2.2) (0:00:03)                         | !not-related
+add (2.2.2) (2-Jan-2020)                      | !not-related
+add (2.2.2) (3x3)                             | !not-related
+add (2.2.2) (3.3.3)                           | 5.5.5  #(tuple!)
+subtract (2) (3)                              | -1  #(integer!)
+subtract (2) (3.0)                            | -1.0  #(decimal!)
+subtract (2) (300%)                           | -1.0  #(decimal!)
+subtract (2) ($3)                             | -$1  #(money!)
+subtract (2) (#"C")                           | -65  #(integer!)
+subtract (2) (0:00:03)                        | -0:00:01  #(time!)
+subtract (2) (2-Jan-2020)                     | !not-related
+subtract (2) (3x3)                            | !not-related
+subtract (2) (3.3.3)                          | !not-related
+subtract (2.0) (3)                            | -1.0  #(decimal!)
+subtract (2.0) (3.0)                          | -1.0  #(decimal!)
+subtract (2.0) (300%)                         | -1.0  #(decimal!)
+subtract (2.0) ($3)                           | -$1  #(money!)
+subtract (2.0) (#"C")                         | -65.0  #(decimal!)
+subtract (2.0) (0:00:03)                      | !not-related
+subtract (2.0) (2-Jan-2020)                   | !not-related
+subtract (2.0) (3x3)                          | !not-related
+subtract (2.0) (3.3.3)                        | !not-related
+subtract (200%) (3)                           | -1.0  #(decimal!)
+subtract (200%) (3.0)                         | -1.0  #(decimal!)
+subtract (200%) (300%)                        | -100%  #(percent!)
+subtract (200%) ($3)                          | -$1  #(money!)
+subtract (200%) (#"C")                        | -65.0  #(decimal!)
+subtract (200%) (0:00:03)                     | !not-related
+subtract (200%) (2-Jan-2020)                  | !not-related
+subtract (200%) (3x3)                         | !not-related
+subtract (200%) (3.3.3)                       | !not-related
+subtract ($2) (3)                             | -$1  #(money!)
+subtract ($2) (3.0)                           | -$1  #(money!)
+subtract ($2) (300%)                          | -$1  #(money!)
+subtract ($2) ($3)                            | -$1  #(money!)
+subtract ($2) (#"C")                          | !not-related
+subtract ($2) (0:00:03)                       | !not-related
+subtract ($2) (2-Jan-2020)                    | !not-related
+subtract ($2) (3x3)                           | !not-related
+subtract ($2) (3.3.3)                         | !not-related
+subtract (#"B") (3)                           | #"?"  #(char!)
+subtract (#"B") (3.0)                         | #"?"  #(char!)
+subtract (#"B") (300%)                        | !not-related
+subtract (#"B") ($3)                          | !not-related
+subtract (#"B") (#"C")                        | 4294967295  #(integer!)
+subtract (#"B") (0:00:03)                     | !not-related
+subtract (#"B") (2-Jan-2020)                  | !not-related
+subtract (#"B") (3x3)                         | !not-related
+subtract (#"B") (3.3.3)                       | !not-related
+subtract (0:00:02) (3)                        | -0:00:01  #(time!)
+subtract (0:00:02) (3.0)                      | -0:00:01  #(time!)
+subtract (0:00:02) (300%)                     | !not-related
+subtract (0:00:02) ($3)                       | !not-related
+subtract (0:00:02) (#"C")                     | !not-related
+subtract (0:00:02) (0:00:03)                  | -0:00:01  #(time!)
+subtract (0:00:02) (2-Jan-2020)               | !not-related
+subtract (0:00:02) (3x3)                      | !not-related
+subtract (0:00:02) (3.3.3)                    | !not-related
+subtract (1-Jan-2020) (3)                     | 29-Dec-2019  #(date!)
+subtract (1-Jan-2020) (3.0)                   | 29-Dec-2019/0:00  #(date!)
+subtract (1-Jan-2020) (300%)                  | !cannot-use
+subtract (1-Jan-2020) ($3)                    | !cannot-use
+subtract (1-Jan-2020) (#"C")                  | !cannot-use
+subtract (1-Jan-2020) (0:00:03)               | 31-Dec-2019/23:59:57  #(date!)
+subtract (1-Jan-2020) (2-Jan-2020)            | -1  #(integer!)
+subtract (1-Jan-2020) (3x3)                   | !cannot-use
+subtract (1-Jan-2020) (3.3.3)                 | !cannot-use
+subtract (2x2) (3)                            | -1x-1  #(pair!)
+subtract (2x2) (3.0)                          | -1x-1  #(pair!)
+subtract (2x2) (300%)                         | -1x-1  #(pair!)
+subtract (2x2) ($3)                           | !not-related
+subtract (2x2) (#"C")                         | !not-related
+subtract (2x2) (0:00:03)                      | !not-related
+subtract (2x2) (2-Jan-2020)                   | !not-related
+subtract (2x2) (3x3)                          | -1x-1  #(pair!)
+subtract (2x2) (3.3.3)                        | !not-related
+subtract (2.2.2) (3)                          | 0.0.0  #(tuple!)
+subtract (2.2.2) (3.0)                        | 0.0.0  #(tuple!)
+subtract (2.2.2) (300%)                       | 0.0.0  #(tuple!)
+subtract (2.2.2) ($3)                         | !not-related
+subtract (2.2.2) (#"C")                       | !not-related
+subtract (2.2.2) (0:00:03)                    | !not-related
+subtract (2.2.2) (2-Jan-2020)                 | !not-related
+subtract (2.2.2) (3x3)                        | !not-related
+subtract (2.2.2) (3.3.3)                      | 0.0.0  #(tuple!)
+multiply (2) (3)                              | 6  #(integer!)
+multiply (2) (3.0)                            | 6.0  #(decimal!)
+multiply (2) (300%)                           | 6.0  #(decimal!)
+multiply (2) ($3)                             | $6  #(money!)
+multiply (2) (#"C")                           | 134  #(integer!)
+multiply (2) (0:00:03)                        | 0:00:06  #(time!)
+multiply (2) (2-Jan-2020)                     | !cannot-use
+multiply (2) (3x3)                            | 6x6  #(pair!)
+multiply (2) (3.3.3)                          | 6.6.6  #(tuple!)
+multiply (2.0) (3)                            | 6.0  #(decimal!)
+multiply (2.0) (3.0)                          | 6.0  #(decimal!)
+multiply (2.0) (300%)                         | 6.0  #(decimal!)
+multiply (2.0) ($3)                           | $6  #(money!)
+multiply (2.0) (#"C")                         | 134.0  #(decimal!)
+multiply (2.0) (0:00:03)                      | 0:00:06  #(time!)
+multiply (2.0) (2-Jan-2020)                   | !not-related
+multiply (2.0) (3x3)                          | 6x6  #(pair!)
+multiply (2.0) (3.3.3)                        | 6.6.6  #(tuple!)
+multiply (200%) (3)                           | 6.0  #(decimal!)
+multiply (200%) (3.0)                         | 6.0  #(decimal!)
+multiply (200%) (300%)                        | 600%  #(percent!)
+multiply (200%) ($3)                          | $6  #(money!)
+multiply (200%) (#"C")                        | 134.0  #(decimal!)
+multiply (200%) (0:00:03)                     | 0:00:06  #(time!)
+multiply (200%) (2-Jan-2020)                  | !not-related
+multiply (200%) (3x3)                         | 6x6  #(pair!)
+multiply (200%) (3.3.3)                       | 6.6.6  #(tuple!)
+multiply ($2) (3)                             | $6  #(money!)
+multiply ($2) (3.0)                           | $6  #(money!)
+multiply ($2) (300%)                          | $6  #(money!)
+multiply ($2) ($3)                            | $6  #(money!)
+multiply ($2) (#"C")                          | !not-related
+multiply ($2) (0:00:03)                       | $0.0016666666666666668  #(money!)
+multiply ($2) (2-Jan-2020)                    | !not-related
+multiply ($2) (3x3)                           | !not-related
+multiply ($2) (3.3.3)                         | !not-related
+multiply (#"B") (3)                           | #"Æ"  #(char!)
+multiply (#"B") (3.0)                         | #"Æ"  #(char!)
+multiply (#"B") (300%)                        | !not-related
+multiply (#"B") ($3)                          | !not-related
+multiply (#"B") (#"C")                        | #"ᅆ"  #(char!)
+multiply (#"B") (0:00:03)                     | !not-related
+multiply (#"B") (2-Jan-2020)                  | !not-related
+multiply (#"B") (3x3)                         | !not-related
+multiply (#"B") (3.3.3)                       | !not-related
+multiply (0:00:02) (3)                        | 0:00:06  #(time!)
+multiply (0:00:02) (3.0)                      | 0:00:06  #(time!)
+multiply (0:00:02) (300%)                     | 0:00:06  #(time!)
+multiply (0:00:02) ($3)                       | $0.0016666666666666668  #(money!)
+multiply (0:00:02) (#"C")                     | !not-related
+multiply (0:00:02) (0:00:03)                  | !not-related
+multiply (0:00:02) (2-Jan-2020)               | !not-related
+multiply (0:00:02) (3x3)                      | !not-related
+multiply (0:00:02) (3.3.3)                    | !not-related
+multiply (1-Jan-2020) (3)                     | !cannot-use
+multiply (1-Jan-2020) (3.0)                   | !cannot-use
+multiply (1-Jan-2020) (300%)                  | !cannot-use
+multiply (1-Jan-2020) ($3)                    | !cannot-use
+multiply (1-Jan-2020) (#"C")                  | !cannot-use
+multiply (1-Jan-2020) (0:00:03)               | !cannot-use
+multiply (1-Jan-2020) (2-Jan-2020)            | !cannot-use
+multiply (1-Jan-2020) (3x3)                   | !cannot-use
+multiply (1-Jan-2020) (3.3.3)                 | !cannot-use
+multiply (2x2) (3)                            | 6x6  #(pair!)
+multiply (2x2) (3.0)                          | 6x6  #(pair!)
+multiply (2x2) (300%)                         | 6x6  #(pair!)
+multiply (2x2) ($3)                           | !not-related
+multiply (2x2) (#"C")                         | !not-related
+multiply (2x2) (0:00:03)                      | !not-related
+multiply (2x2) (2-Jan-2020)                   | !not-related
+multiply (2x2) (3x3)                          | 6x6  #(pair!)
+multiply (2x2) (3.3.3)                        | !not-related
+multiply (2.2.2) (3)                          | 6.6.6  #(tuple!)
+multiply (2.2.2) (3.0)                        | 6.6.6  #(tuple!)
+multiply (2.2.2) (300%)                       | 6.6.6  #(tuple!)
+multiply (2.2.2) ($3)                         | !not-related
+multiply (2.2.2) (#"C")                       | !not-related
+multiply (2.2.2) (0:00:03)                    | !not-related
+multiply (2.2.2) (2-Jan-2020)                 | !not-related
+multiply (2.2.2) (3x3)                        | !not-related
+multiply (2.2.2) (3.3.3)                      | 6.6.6  #(tuple!)
+divide (2) (3)                                | 0.666666666666667  #(decimal!)
+divide (2) (3.0)                              | 0.666666666666667  #(decimal!)
+divide (2) (300%)                             | 0.666666666666667  #(decimal!)
+divide (2) ($3)                               | $0.66666666666666666666666667  #(money!)
+divide (2) (#"C")                             | 0.0298507462686567  #(decimal!)
+divide (2) (0:00:03)                          | !not-related
+divide (2) (2-Jan-2020)                       | !not-related
+divide (2) (3x3)                              | !not-related
+divide (2) (3.3.3)                            | !not-related
+divide (2.0) (3)                              | 0.666666666666667  #(decimal!)
+divide (2.0) (3.0)                            | 0.666666666666667  #(decimal!)
+divide (2.0) (300%)                           | 0.666666666666667  #(decimal!)
+divide (2.0) ($3)                             | $0.66666666666666666666666667  #(money!)
+divide (2.0) (#"C")                           | 0.0298507462686567  #(decimal!)
+divide (2.0) (0:00:03)                        | !not-related
+divide (2.0) (2-Jan-2020)                     | !not-related
+divide (2.0) (3x3)                            | !not-related
+divide (2.0) (3.3.3)                          | !not-related
+divide (200%) (3)                             | 0.666666666666667  #(decimal!)
+divide (200%) (3.0)                           | 0.666666666666667  #(decimal!)
+divide (200%) (300%)                          | 0.666666666666667  #(decimal!)
+divide (200%) ($3)                            | $0.66666666666666666666666667  #(money!)
+divide (200%) (#"C")                          | 0.0298507462686567  #(decimal!)
+divide (200%) (0:00:03)                       | !not-related
+divide (200%) (2-Jan-2020)                    | !not-related
+divide (200%) (3x3)                           | !not-related
+divide (200%) (3.3.3)                         | !not-related
+divide ($2) (3)                               | $0.66666666666666666666666667  #(money!)
+divide ($2) (3.0)                             | $0.66666666666666666666666667  #(money!)
+divide ($2) (300%)                            | $0.66666666666666666666666667  #(money!)
+divide ($2) ($3)                              | $0.66666666666666666666666667  #(money!)
+divide ($2) (#"C")                            | !not-related
+divide ($2) (0:00:03)                         | !not-related
+divide ($2) (2-Jan-2020)                      | !not-related
+divide ($2) (3x3)                             | !not-related
+divide ($2) (3.3.3)                           | !not-related
+divide (#"B") (3)                             | #"^V"  #(char!)
+divide (#"B") (3.0)                           | #"^V"  #(char!)
+divide (#"B") (300%)                          | !not-related
+divide (#"B") ($3)                            | !not-related
+divide (#"B") (#"C")                          | #"^@"  #(char!)
+divide (#"B") (0:00:03)                       | !not-related
+divide (#"B") (2-Jan-2020)                    | !not-related
+divide (#"B") (3x3)                           | !not-related
+divide (#"B") (3.3.3)                         | !not-related
+divide (0:00:02) (3)                          | 0:00:00.666666666  #(time!)
+divide (0:00:02) (3.0)                        | 0:00:00.666666666  #(time!)
+divide (0:00:02) (300%)                       | !not-related
+divide (0:00:02) ($3)                         | $5399.9999999999995680000000  #(money!)
+divide (0:00:02) (#"C")                       | !not-related
+divide (0:00:02) (0:00:03)                    | 0.666666666666667  #(decimal!)
+divide (0:00:02) (2-Jan-2020)                 | !not-related
+divide (0:00:02) (3x3)                        | !not-related
+divide (0:00:02) (3.3.3)                      | !not-related
+divide (1-Jan-2020) (3)                       | !cannot-use
+divide (1-Jan-2020) (3.0)                     | !cannot-use
+divide (1-Jan-2020) (300%)                    | !cannot-use
+divide (1-Jan-2020) ($3)                      | !cannot-use
+divide (1-Jan-2020) (#"C")                    | !cannot-use
+divide (1-Jan-2020) (0:00:03)                 | !cannot-use
+divide (1-Jan-2020) (2-Jan-2020)              | !cannot-use
+divide (1-Jan-2020) (3x3)                     | !cannot-use
+divide (1-Jan-2020) (3.3.3)                   | !cannot-use
+divide (2x2) (3)                              | 0.6666667x0.6666667  #(pair!)
+divide (2x2) (3.0)                            | 0.6666667x0.6666667  #(pair!)
+divide (2x2) (300%)                           | 0.6666667x0.6666667  #(pair!)
+divide (2x2) ($3)                             | !not-related
+divide (2x2) (#"C")                           | !not-related
+divide (2x2) (0:00:03)                        | !not-related
+divide (2x2) (2-Jan-2020)                     | !not-related
+divide (2x2) (3x3)                            | 0.6666667x0.6666667  #(pair!)
+divide (2x2) (3.3.3)                          | !not-related
+divide (2.2.2) (3)                            | 0.0.0  #(tuple!)
+divide (2.2.2) (3.0)                          | 1.1.1  #(tuple!)
+divide (2.2.2) (300%)                         | 1.1.1  #(tuple!)
+divide (2.2.2) ($3)                           | !not-related
+divide (2.2.2) (#"C")                         | !not-related
+divide (2.2.2) (0:00:03)                      | !not-related
+divide (2.2.2) (2-Jan-2020)                   | !not-related
+divide (2.2.2) (3x3)                          | !not-related
+divide (2.2.2) (3.3.3)                        | 0.0.0  #(tuple!)
+remainder (2) (3)                             | 2  #(integer!)
+remainder (2) (3.0)                           | 2.0  #(decimal!)
+remainder (2) (300%)                          | 2.0  #(decimal!)
+remainder (2) ($3)                            | $2  #(money!)
+remainder (2) (#"C")                          | 2  #(integer!)
+remainder (2) (0:00:03)                       | !not-related
+remainder (2) (2-Jan-2020)                    | !not-related
+remainder (2) (3x3)                           | !not-related
+remainder (2) (3.3.3)                         | !not-related
+remainder (2.0) (3)                           | 2.0  #(decimal!)
+remainder (2.0) (3.0)                         | 2.0  #(decimal!)
+remainder (2.0) (300%)                        | 2.0  #(decimal!)
+remainder (2.0) ($3)                          | $2  #(money!)
+remainder (2.0) (#"C")                        | 2.0  #(decimal!)
+remainder (2.0) (0:00:03)                     | !not-related
+remainder (2.0) (2-Jan-2020)                  | !not-related
+remainder (2.0) (3x3)                         | !not-related
+remainder (2.0) (3.3.3)                       | !not-related
+remainder (200%) (3)                          | 2.0  #(decimal!)
+remainder (200%) (3.0)                        | 2.0  #(decimal!)
+remainder (200%) (300%)                       | 200%  #(percent!)
+remainder (200%) ($3)                         | $2  #(money!)
+remainder (200%) (#"C")                       | 2.0  #(decimal!)
+remainder (200%) (0:00:03)                    | !not-related
+remainder (200%) (2-Jan-2020)                 | !not-related
+remainder (200%) (3x3)                        | !not-related
+remainder (200%) (3.3.3)                      | !not-related
+remainder ($2) (3)                            | $2  #(money!)
+remainder ($2) (3.0)                          | $2  #(money!)
+remainder ($2) (300%)                         | $2  #(money!)
+remainder ($2) ($3)                           | $2  #(money!)
+remainder ($2) (#"C")                         | !not-related
+remainder ($2) (0:00:03)                      | !not-related
+remainder ($2) (2-Jan-2020)                   | !not-related
+remainder ($2) (3x3)                          | !not-related
+remainder ($2) (3.3.3)                        | !not-related
+remainder (#"B") (3)                          | #"^@"  #(char!)
+remainder (#"B") (3.0)                        | #"^@"  #(char!)
+remainder (#"B") (300%)                       | !not-related
+remainder (#"B") ($3)                         | !not-related
+remainder (#"B") (#"C")                       | #"B"  #(char!)
+remainder (#"B") (0:00:03)                    | !not-related
+remainder (#"B") (2-Jan-2020)                 | !not-related
+remainder (#"B") (3x3)                        | !not-related
+remainder (#"B") (3.3.3)                      | !not-related
+remainder (0:00:02) (3)                       | 0:00:00.000000002  #(time!)
+remainder (0:00:02) (3.0)                     | !not-related
+remainder (0:00:02) (300%)                    | !not-related
+remainder (0:00:02) ($3)                      | !not-related
+remainder (0:00:02) (#"C")                    | !not-related
+remainder (0:00:02) (0:00:03)                 | 0:00:02  #(time!)
+remainder (0:00:02) (2-Jan-2020)              | !not-related
+remainder (0:00:02) (3x3)                     | !not-related
+remainder (0:00:02) (3.3.3)                   | !not-related
+remainder (1-Jan-2020) (3)                    | !cannot-use
+remainder (1-Jan-2020) (3.0)                  | !cannot-use
+remainder (1-Jan-2020) (300%)                 | !cannot-use
+remainder (1-Jan-2020) ($3)                   | !cannot-use
+remainder (1-Jan-2020) (#"C")                 | !cannot-use
+remainder (1-Jan-2020) (0:00:03)              | !cannot-use
+remainder (1-Jan-2020) (2-Jan-2020)           | !cannot-use
+remainder (1-Jan-2020) (3x3)                  | !cannot-use
+remainder (1-Jan-2020) (3.3.3)                | !cannot-use
+remainder (2x2) (3)                           | 2x2  #(pair!)
+remainder (2x2) (3.0)                         | 2x2  #(pair!)
+remainder (2x2) (300%)                        | 2x2  #(pair!)
+remainder (2x2) ($3)                          | !not-related
+remainder (2x2) (#"C")                        | !not-related
+remainder (2x2) (0:00:03)                     | !not-related
+remainder (2x2) (2-Jan-2020)                  | !not-related
+remainder (2x2) (3x3)                         | 2x2  #(pair!)
+remainder (2x2) (3.3.3)                       | !not-related
+remainder (2.2.2) (3)                         | 2.2.2  #(tuple!)
+remainder (2.2.2) (3.0)                       | 2.2.2  #(tuple!)
+remainder (2.2.2) (300%)                      | 2.2.2  #(tuple!)
+remainder (2.2.2) ($3)                        | !not-related
+remainder (2.2.2) (#"C")                      | !not-related
+remainder (2.2.2) (0:00:03)                   | !not-related
+remainder (2.2.2) (2-Jan-2020)                | !not-related
+remainder (2.2.2) (3x3)                       | !not-related
+remainder (2.2.2) (3.3.3)                     | 2.2.2  #(tuple!)
+power (2) (3)                                 | 8.0  #(decimal!)
+power (2) (3.0)                               | 8.0  #(decimal!)
+power (2) (300%)                              | 8.0  #(decimal!)
+power (2) ($3)                                | !expect-arg
+power (2) (#"C")                              | !expect-arg
+power (2) (0:00:03)                           | !expect-arg
+power (2) (2-Jan-2020)                        | !expect-arg
+power (2) (3x3)                               | !expect-arg
+power (2) (3.3.3)                             | !expect-arg
+power (2.0) (3)                               | 8.0  #(decimal!)
+power (2.0) (3.0)                             | 8.0  #(decimal!)
+power (2.0) (300%)                            | 8.0  #(decimal!)
+power (2.0) ($3)                              | !expect-arg
+power (2.0) (#"C")                            | !expect-arg
+power (2.0) (0:00:03)                         | !expect-arg
+power (2.0) (2-Jan-2020)                      | !expect-arg
+power (2.0) (3x3)                             | !expect-arg
+power (2.0) (3.3.3)                           | !expect-arg
+power (200%) (3)                              | 8.0  #(decimal!)
+power (200%) (3.0)                            | 8.0  #(decimal!)
+power (200%) (300%)                           | 800%  #(percent!)
+power (200%) ($3)                             | !expect-arg
+power (200%) (#"C")                           | !expect-arg
+power (200%) (0:00:03)                        | !expect-arg
+power (200%) (2-Jan-2020)                     | !expect-arg
+power (200%) (3x3)                            | !expect-arg
+power (200%) (3.3.3)                          | !expect-arg
+power ($2) (3)                                | !expect-arg
+power ($2) (3.0)                              | !expect-arg
+power ($2) (300%)                             | !expect-arg
+power ($2) ($3)                               | !expect-arg
+power ($2) (#"C")                             | !expect-arg
+power ($2) (0:00:03)                          | !expect-arg
+power ($2) (2-Jan-2020)                       | !expect-arg
+power ($2) (3x3)                              | !expect-arg
+power ($2) (3.3.3)                            | !expect-arg
+power (#"B") (3)                              | !expect-arg
+power (#"B") (3.0)                            | !expect-arg
+power (#"B") (300%)                           | !expect-arg
+power (#"B") ($3)                             | !expect-arg
+power (#"B") (#"C")                           | !expect-arg
+power (#"B") (0:00:03)                        | !expect-arg
+power (#"B") (2-Jan-2020)                     | !expect-arg
+power (#"B") (3x3)                            | !expect-arg
+power (#"B") (3.3.3)                          | !expect-arg
+power (0:00:02) (3)                           | !expect-arg
+power (0:00:02) (3.0)                         | !expect-arg
+power (0:00:02) (300%)                        | !expect-arg
+power (0:00:02) ($3)                          | !expect-arg
+power (0:00:02) (#"C")                        | !expect-arg
+power (0:00:02) (0:00:03)                     | !expect-arg
+power (0:00:02) (2-Jan-2020)                  | !expect-arg
+power (0:00:02) (3x3)                         | !expect-arg
+power (0:00:02) (3.3.3)                       | !expect-arg
+power (1-Jan-2020) (3)                        | !expect-arg
+power (1-Jan-2020) (3.0)                      | !expect-arg
+power (1-Jan-2020) (300%)                     | !expect-arg
+power (1-Jan-2020) ($3)                       | !expect-arg
+power (1-Jan-2020) (#"C")                     | !expect-arg
+power (1-Jan-2020) (0:00:03)                  | !expect-arg
+power (1-Jan-2020) (2-Jan-2020)               | !expect-arg
+power (1-Jan-2020) (3x3)                      | !expect-arg
+power (1-Jan-2020) (3.3.3)                    | !expect-arg
+power (2x2) (3)                               | !expect-arg
+power (2x2) (3.0)                             | !expect-arg
+power (2x2) (300%)                            | !expect-arg
+power (2x2) ($3)                              | !expect-arg
+power (2x2) (#"C")                            | !expect-arg
+power (2x2) (0:00:03)                         | !expect-arg
+power (2x2) (2-Jan-2020)                      | !expect-arg
+power (2x2) (3x3)                             | !expect-arg
+power (2x2) (3.3.3)                           | !expect-arg
+power (2.2.2) (3)                             | !expect-arg
+power (2.2.2) (3.0)                           | !expect-arg
+power (2.2.2) (300%)                          | !expect-arg
+power (2.2.2) ($3)                            | !expect-arg
+power (2.2.2) (#"C")                          | !expect-arg
+power (2.2.2) (0:00:03)                       | !expect-arg
+power (2.2.2) (2-Jan-2020)                    | !expect-arg
+power (2.2.2) (3x3)                           | !expect-arg
+power (2.2.2) (3.3.3)                         | !expect-arg
+
+=== the same pairs written as operators ===
+(2) + (3)                                     | 5  #(integer!)
+(2) + (3.0)                                   | 5.0  #(decimal!)
+(2) + (300%)                                  | 5.0  #(decimal!)
+(2) + ($3)                                    | $5  #(money!)
+(2) + (#"C")                                  | 69  #(integer!)
+(2) + (0:00:03)                               | 0:00:05  #(time!)
+(2) + (2-Jan-2020)                            | 4-Jan-2020  #(date!)
+(2) + (3x3)                                   | 5x5  #(pair!)
+(2) + (3.3.3)                                 | 5.5.5  #(tuple!)
+(2.0) + (3)                                   | 5.0  #(decimal!)
+(2.0) + (3.0)                                 | 5.0  #(decimal!)
+(2.0) + (300%)                                | 5.0  #(decimal!)
+(2.0) + ($3)                                  | $5  #(money!)
+(2.0) + (#"C")                                | 69.0  #(decimal!)
+(2.0) + (0:00:03)                             | 0:00:05  #(time!)
+(2.0) + (2-Jan-2020)                          | !not-related
+(2.0) + (3x3)                                 | 5x5  #(pair!)
+(2.0) + (3.3.3)                               | 5.5.5  #(tuple!)
+(200%) + (3)                                  | 5.0  #(decimal!)
+(200%) + (3.0)                                | 5.0  #(decimal!)
+(200%) + (300%)                               | 500%  #(percent!)
+(200%) + ($3)                                 | $5  #(money!)
+(200%) + (#"C")                               | 69.0  #(decimal!)
+(200%) + (0:00:03)                            | !not-related
+(200%) + (2-Jan-2020)                         | !not-related
+(200%) + (3x3)                                | 5x5  #(pair!)
+(200%) + (3.3.3)                              | 5.5.5  #(tuple!)
+($2) + (3)                                    | $5  #(money!)
+($2) + (3.0)                                  | $5  #(money!)
+($2) + (300%)                                 | $5  #(money!)
+($2) + ($3)                                   | $5  #(money!)
+($2) + (#"C")                                 | !not-related
+($2) + (0:00:03)                              | !not-related
+($2) + (2-Jan-2020)                           | !not-related
+($2) + (3x3)                                  | !not-related
+($2) + (3.3.3)                                | !not-related
+(#"B") + (3)                                  | #"E"  #(char!)
+(#"B") + (3.0)                                | #"E"  #(char!)
+(#"B") + (300%)                               | !not-related
+(#"B") + ($3)                                 | !not-related
+(#"B") + (#"C")                               | #"^(85)"  #(char!)
+(#"B") + (0:00:03)                            | !not-related
+(#"B") + (2-Jan-2020)                         | !not-related
+(#"B") + (3x3)                                | !not-related
+(#"B") + (3.3.3)                              | !not-related
+(0:00:02) + (3)                               | 0:00:05  #(time!)
+(0:00:02) + (3.0)                             | 0:00:05  #(time!)
+(0:00:02) + (300%)                            | !not-related
+(0:00:02) + ($3)                              | !not-related
+(0:00:02) + (#"C")                            | !not-related
+(0:00:02) + (0:00:03)                         | 0:00:05  #(time!)
+(0:00:02) + (2-Jan-2020)                      | 2-Jan-2020/0:00:02  #(date!)
+(0:00:02) + (3x3)                             | !not-related
+(0:00:02) + (3.3.3)                           | !not-related
+(1-Jan-2020) + (3)                            | 4-Jan-2020  #(date!)
+(1-Jan-2020) + (3.0)                          | 4-Jan-2020/0:00  #(date!)
+(1-Jan-2020) + (300%)                         | !cannot-use
+(1-Jan-2020) + ($3)                           | !cannot-use
+(1-Jan-2020) + (#"C")                         | !cannot-use
+(1-Jan-2020) + (0:00:03)                      | 1-Jan-2020/0:00:03  #(date!)
+(1-Jan-2020) + (2-Jan-2020)                   | !cannot-use
+(1-Jan-2020) + (3x3)                          | !cannot-use
+(1-Jan-2020) + (3.3.3)                        | !cannot-use
+(2x2) + (3)                                   | 5x5  #(pair!)
+(2x2) + (3.0)                                 | 5x5  #(pair!)
+(2x2) + (300%)                                | 5x5  #(pair!)
+(2x2) + ($3)                                  | !not-related
+(2x2) + (#"C")                                | !not-related
+(2x2) + (0:00:03)                             | !not-related
+(2x2) + (2-Jan-2020)                          | !not-related
+(2x2) + (3x3)                                 | 5x5  #(pair!)
+(2x2) + (3.3.3)                               | !not-related
+(2.2.2) + (3)                                 | 5.5.5  #(tuple!)
+(2.2.2) + (3.0)                               | 5.5.5  #(tuple!)
+(2.2.2) + (300%)                              | 5.5.5  #(tuple!)
+(2.2.2) + ($3)                                | !not-related
+(2.2.2) + (#"C")                              | !not-related
+(2.2.2) + (0:00:03)                           | !not-related
+(2.2.2) + (2-Jan-2020)                        | !not-related
+(2.2.2) + (3x3)                               | !not-related
+(2.2.2) + (3.3.3)                             | 5.5.5  #(tuple!)
+(2) - (3)                                     | -1  #(integer!)
+(2) - (3.0)                                   | -1.0  #(decimal!)
+(2) - (300%)                                  | -1.0  #(decimal!)
+(2) - ($3)                                    | -$1  #(money!)
+(2) - (#"C")                                  | -65  #(integer!)
+(2) - (0:00:03)                               | -0:00:01  #(time!)
+(2) - (2-Jan-2020)                            | !not-related
+(2) - (3x3)                                   | !not-related
+(2) - (3.3.3)                                 | !not-related
+(2.0) - (3)                                   | -1.0  #(decimal!)
+(2.0) - (3.0)                                 | -1.0  #(decimal!)
+(2.0) - (300%)                                | -1.0  #(decimal!)
+(2.0) - ($3)                                  | -$1  #(money!)
+(2.0) - (#"C")                                | -65.0  #(decimal!)
+(2.0) - (0:00:03)                             | !not-related
+(2.0) - (2-Jan-2020)                          | !not-related
+(2.0) - (3x3)                                 | !not-related
+(2.0) - (3.3.3)                               | !not-related
+(200%) - (3)                                  | -1.0  #(decimal!)
+(200%) - (3.0)                                | -1.0  #(decimal!)
+(200%) - (300%)                               | -100%  #(percent!)
+(200%) - ($3)                                 | -$1  #(money!)
+(200%) - (#"C")                               | -65.0  #(decimal!)
+(200%) - (0:00:03)                            | !not-related
+(200%) - (2-Jan-2020)                         | !not-related
+(200%) - (3x3)                                | !not-related
+(200%) - (3.3.3)                              | !not-related
+($2) - (3)                                    | -$1  #(money!)
+($2) - (3.0)                                  | -$1  #(money!)
+($2) - (300%)                                 | -$1  #(money!)
+($2) - ($3)                                   | -$1  #(money!)
+($2) - (#"C")                                 | !not-related
+($2) - (0:00:03)                              | !not-related
+($2) - (2-Jan-2020)                           | !not-related
+($2) - (3x3)                                  | !not-related
+($2) - (3.3.3)                                | !not-related
+(#"B") - (3)                                  | #"?"  #(char!)
+(#"B") - (3.0)                                | #"?"  #(char!)
+(#"B") - (300%)                               | !not-related
+(#"B") - ($3)                                 | !not-related
+(#"B") - (#"C")                               | 4294967295  #(integer!)
+(#"B") - (0:00:03)                            | !not-related
+(#"B") - (2-Jan-2020)                         | !not-related
+(#"B") - (3x3)                                | !not-related
+(#"B") - (3.3.3)                              | !not-related
+(0:00:02) - (3)                               | -0:00:01  #(time!)
+(0:00:02) - (3.0)                             | -0:00:01  #(time!)
+(0:00:02) - (300%)                            | !not-related
+(0:00:02) - ($3)                              | !not-related
+(0:00:02) - (#"C")                            | !not-related
+(0:00:02) - (0:00:03)                         | -0:00:01  #(time!)
+(0:00:02) - (2-Jan-2020)                      | !not-related
+(0:00:02) - (3x3)                             | !not-related
+(0:00:02) - (3.3.3)                           | !not-related
+(1-Jan-2020) - (3)                            | 29-Dec-2019  #(date!)
+(1-Jan-2020) - (3.0)                          | 29-Dec-2019/0:00  #(date!)
+(1-Jan-2020) - (300%)                         | !cannot-use
+(1-Jan-2020) - ($3)                           | !cannot-use
+(1-Jan-2020) - (#"C")                         | !cannot-use
+(1-Jan-2020) - (0:00:03)                      | 31-Dec-2019/23:59:57  #(date!)
+(1-Jan-2020) - (2-Jan-2020)                   | -1  #(integer!)
+(1-Jan-2020) - (3x3)                          | !cannot-use
+(1-Jan-2020) - (3.3.3)                        | !cannot-use
+(2x2) - (3)                                   | -1x-1  #(pair!)
+(2x2) - (3.0)                                 | -1x-1  #(pair!)
+(2x2) - (300%)                                | -1x-1  #(pair!)
+(2x2) - ($3)                                  | !not-related
+(2x2) - (#"C")                                | !not-related
+(2x2) - (0:00:03)                             | !not-related
+(2x2) - (2-Jan-2020)                          | !not-related
+(2x2) - (3x3)                                 | -1x-1  #(pair!)
+(2x2) - (3.3.3)                               | !not-related
+(2.2.2) - (3)                                 | 0.0.0  #(tuple!)
+(2.2.2) - (3.0)                               | 0.0.0  #(tuple!)
+(2.2.2) - (300%)                              | 0.0.0  #(tuple!)
+(2.2.2) - ($3)                                | !not-related
+(2.2.2) - (#"C")                              | !not-related
+(2.2.2) - (0:00:03)                           | !not-related
+(2.2.2) - (2-Jan-2020)                        | !not-related
+(2.2.2) - (3x3)                               | !not-related
+(2.2.2) - (3.3.3)                             | 0.0.0  #(tuple!)
+(2) * (3)                                     | 6  #(integer!)
+(2) * (3.0)                                   | 6.0  #(decimal!)
+(2) * (300%)                                  | 6.0  #(decimal!)
+(2) * ($3)                                    | $6  #(money!)
+(2) * (#"C")                                  | 134  #(integer!)
+(2) * (0:00:03)                               | 0:00:06  #(time!)
+(2) * (2-Jan-2020)                            | !cannot-use
+(2) * (3x3)                                   | 6x6  #(pair!)
+(2) * (3.3.3)                                 | 6.6.6  #(tuple!)
+(2.0) * (3)                                   | 6.0  #(decimal!)
+(2.0) * (3.0)                                 | 6.0  #(decimal!)
+(2.0) * (300%)                                | 6.0  #(decimal!)
+(2.0) * ($3)                                  | $6  #(money!)
+(2.0) * (#"C")                                | 134.0  #(decimal!)
+(2.0) * (0:00:03)                             | 0:00:06  #(time!)
+(2.0) * (2-Jan-2020)                          | !not-related
+(2.0) * (3x3)                                 | 6x6  #(pair!)
+(2.0) * (3.3.3)                               | 6.6.6  #(tuple!)
+(200%) * (3)                                  | 6.0  #(decimal!)
+(200%) * (3.0)                                | 6.0  #(decimal!)
+(200%) * (300%)                               | 600%  #(percent!)
+(200%) * ($3)                                 | $6  #(money!)
+(200%) * (#"C")                               | 134.0  #(decimal!)
+(200%) * (0:00:03)                            | 0:00:06  #(time!)
+(200%) * (2-Jan-2020)                         | !not-related
+(200%) * (3x3)                                | 6x6  #(pair!)
+(200%) * (3.3.3)                              | 6.6.6  #(tuple!)
+($2) * (3)                                    | $6  #(money!)
+($2) * (3.0)                                  | $6  #(money!)
+($2) * (300%)                                 | $6  #(money!)
+($2) * ($3)                                   | $6  #(money!)
+($2) * (#"C")                                 | !not-related
+($2) * (0:00:03)                              | $0.0016666666666666668  #(money!)
+($2) * (2-Jan-2020)                           | !not-related
+($2) * (3x3)                                  | !not-related
+($2) * (3.3.3)                                | !not-related
+(#"B") * (3)                                  | #"Æ"  #(char!)
+(#"B") * (3.0)                                | #"Æ"  #(char!)
+(#"B") * (300%)                               | !not-related
+(#"B") * ($3)                                 | !not-related
+(#"B") * (#"C")                               | #"ᅆ"  #(char!)
+(#"B") * (0:00:03)                            | !not-related
+(#"B") * (2-Jan-2020)                         | !not-related
+(#"B") * (3x3)                                | !not-related
+(#"B") * (3.3.3)                              | !not-related
+(0:00:02) * (3)                               | 0:00:06  #(time!)
+(0:00:02) * (3.0)                             | 0:00:06  #(time!)
+(0:00:02) * (300%)                            | 0:00:06  #(time!)
+(0:00:02) * ($3)                              | $0.0016666666666666668  #(money!)
+(0:00:02) * (#"C")                            | !not-related
+(0:00:02) * (0:00:03)                         | !not-related
+(0:00:02) * (2-Jan-2020)                      | !not-related
+(0:00:02) * (3x3)                             | !not-related
+(0:00:02) * (3.3.3)                           | !not-related
+(1-Jan-2020) * (3)                            | !cannot-use
+(1-Jan-2020) * (3.0)                          | !cannot-use
+(1-Jan-2020) * (300%)                         | !cannot-use
+(1-Jan-2020) * ($3)                           | !cannot-use
+(1-Jan-2020) * (#"C")                         | !cannot-use
+(1-Jan-2020) * (0:00:03)                      | !cannot-use
+(1-Jan-2020) * (2-Jan-2020)                   | !cannot-use
+(1-Jan-2020) * (3x3)                          | !cannot-use
+(1-Jan-2020) * (3.3.3)                        | !cannot-use
+(2x2) * (3)                                   | 6x6  #(pair!)
+(2x2) * (3.0)                                 | 6x6  #(pair!)
+(2x2) * (300%)                                | 6x6  #(pair!)
+(2x2) * ($3)                                  | !not-related
+(2x2) * (#"C")                                | !not-related
+(2x2) * (0:00:03)                             | !not-related
+(2x2) * (2-Jan-2020)                          | !not-related
+(2x2) * (3x3)                                 | 6x6  #(pair!)
+(2x2) * (3.3.3)                               | !not-related
+(2.2.2) * (3)                                 | 6.6.6  #(tuple!)
+(2.2.2) * (3.0)                               | 6.6.6  #(tuple!)
+(2.2.2) * (300%)                              | 6.6.6  #(tuple!)
+(2.2.2) * ($3)                                | !not-related
+(2.2.2) * (#"C")                              | !not-related
+(2.2.2) * (0:00:03)                           | !not-related
+(2.2.2) * (2-Jan-2020)                        | !not-related
+(2.2.2) * (3x3)                               | !not-related
+(2.2.2) * (3.3.3)                             | 6.6.6  #(tuple!)
+(2) / (3)                                     | 0.666666666666667  #(decimal!)
+(2) / (3.0)                                   | 0.666666666666667  #(decimal!)
+(2) / (300%)                                  | 0.666666666666667  #(decimal!)
+(2) / ($3)                                    | $0.66666666666666666666666667  #(money!)
+(2) / (#"C")                                  | 0.0298507462686567  #(decimal!)
+(2) / (0:00:03)                               | !not-related
+(2) / (2-Jan-2020)                            | !not-related
+(2) / (3x3)                                   | !not-related
+(2) / (3.3.3)                                 | !not-related
+(2.0) / (3)                                   | 0.666666666666667  #(decimal!)
+(2.0) / (3.0)                                 | 0.666666666666667  #(decimal!)
+(2.0) / (300%)                                | 0.666666666666667  #(decimal!)
+(2.0) / ($3)                                  | $0.66666666666666666666666667  #(money!)
+(2.0) / (#"C")                                | 0.0298507462686567  #(decimal!)
+(2.0) / (0:00:03)                             | !not-related
+(2.0) / (2-Jan-2020)                          | !not-related
+(2.0) / (3x3)                                 | !not-related
+(2.0) / (3.3.3)                               | !not-related
+(200%) / (3)                                  | 0.666666666666667  #(decimal!)
+(200%) / (3.0)                                | 0.666666666666667  #(decimal!)
+(200%) / (300%)                               | 0.666666666666667  #(decimal!)
+(200%) / ($3)                                 | $0.66666666666666666666666667  #(money!)
+(200%) / (#"C")                               | 0.0298507462686567  #(decimal!)
+(200%) / (0:00:03)                            | !not-related
+(200%) / (2-Jan-2020)                         | !not-related
+(200%) / (3x3)                                | !not-related
+(200%) / (3.3.3)                              | !not-related
+($2) / (3)                                    | $0.66666666666666666666666667  #(money!)
+($2) / (3.0)                                  | $0.66666666666666666666666667  #(money!)
+($2) / (300%)                                 | $0.66666666666666666666666667  #(money!)
+($2) / ($3)                                   | $0.66666666666666666666666667  #(money!)
+($2) / (#"C")                                 | !not-related
+($2) / (0:00:03)                              | !not-related
+($2) / (2-Jan-2020)                           | !not-related
+($2) / (3x3)                                  | !not-related
+($2) / (3.3.3)                                | !not-related
+(#"B") / (3)                                  | #"^V"  #(char!)
+(#"B") / (3.0)                                | #"^V"  #(char!)
+(#"B") / (300%)                               | !not-related
+(#"B") / ($3)                                 | !not-related
+(#"B") / (#"C")                               | #"^@"  #(char!)
+(#"B") / (0:00:03)                            | !not-related
+(#"B") / (2-Jan-2020)                         | !not-related
+(#"B") / (3x3)                                | !not-related
+(#"B") / (3.3.3)                              | !not-related
+(0:00:02) / (3)                               | 0:00:00.666666666  #(time!)
+(0:00:02) / (3.0)                             | 0:00:00.666666666  #(time!)
+(0:00:02) / (300%)                            | !not-related
+(0:00:02) / ($3)                              | $5399.9999999999995680000000  #(money!)
+(0:00:02) / (#"C")                            | !not-related
+(0:00:02) / (0:00:03)                         | 0.666666666666667  #(decimal!)
+(0:00:02) / (2-Jan-2020)                      | !not-related
+(0:00:02) / (3x3)                             | !not-related
+(0:00:02) / (3.3.3)                           | !not-related
+(1-Jan-2020) / (3)                            | !cannot-use
+(1-Jan-2020) / (3.0)                          | !cannot-use
+(1-Jan-2020) / (300%)                         | !cannot-use
+(1-Jan-2020) / ($3)                           | !cannot-use
+(1-Jan-2020) / (#"C")                         | !cannot-use
+(1-Jan-2020) / (0:00:03)                      | !cannot-use
+(1-Jan-2020) / (2-Jan-2020)                   | !cannot-use
+(1-Jan-2020) / (3x3)                          | !cannot-use
+(1-Jan-2020) / (3.3.3)                        | !cannot-use
+(2x2) / (3)                                   | 0.6666667x0.6666667  #(pair!)
+(2x2) / (3.0)                                 | 0.6666667x0.6666667  #(pair!)
+(2x2) / (300%)                                | 0.6666667x0.6666667  #(pair!)
+(2x2) / ($3)                                  | !not-related
+(2x2) / (#"C")                                | !not-related
+(2x2) / (0:00:03)                             | !not-related
+(2x2) / (2-Jan-2020)                          | !not-related
+(2x2) / (3x3)                                 | 0.6666667x0.6666667  #(pair!)
+(2x2) / (3.3.3)                               | !not-related
+(2.2.2) / (3)                                 | 0.0.0  #(tuple!)
+(2.2.2) / (3.0)                               | 1.1.1  #(tuple!)
+(2.2.2) / (300%)                              | 1.1.1  #(tuple!)
+(2.2.2) / ($3)                                | !not-related
+(2.2.2) / (#"C")                              | !not-related
+(2.2.2) / (0:00:03)                           | !not-related
+(2.2.2) / (2-Jan-2020)                        | !not-related
+(2.2.2) / (3x3)                               | !not-related
+(2.2.2) / (3.3.3)                             | 0.0.0  #(tuple!)
