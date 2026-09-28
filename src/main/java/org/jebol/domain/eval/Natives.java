@@ -1030,6 +1030,8 @@ public final class Natives {
             case PairValue(double x, double y) -> PairValue.of(-x, -y);
             case DecimalValue(double quantity, Datatype datatype) ->
                     new DecimalValue(-quantity, datatype);
+            case MoneyValue money ->
+                    money.amounting(money.amount().negate()).signed(!money.negative());
             default -> Arithmetic.difference(IntegerValue.of(0), value);
         };
     }

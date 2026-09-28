@@ -1123,7 +1123,7 @@ public final class Transcoder {
         }
         try {
             BigDecimal amount = new BigDecimal(withTheOnePointWrittenAsADot(digits));
-            return MoneyValue.of(negative ? amount.negate() : amount);
+            return MoneyValue.of(negative ? amount.negate() : amount).signed(negative);
         } catch (NumberFormatException notANumber) {
             throw failureReading(SyntaxFailure.INVALID_LEXEME, "money", token);
         }

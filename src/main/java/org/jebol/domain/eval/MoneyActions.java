@@ -15,8 +15,24 @@ public final class MoneyActions {
     }
 
     public Value combinedWith(Value other, ArithmeticOperation operation) {
-        return withinTheDeciRange(
+        MoneyValue answered = withinTheDeciRange(
                 amountCombined(amount.amount(), widenedToMeet(other, operation), operation));
+        return answered.amount().signum() != 0
+                ? answered
+                : answered.signed(theSignAZeroKeeps(other, operation));
+    }
+
+    private boolean theSignAZeroKeeps(Value other, ArithmeticOperation operation) {
+        if (!operation.scalesRatherThanShifts()) {
+            return amount.negative();
+        }
+        return amount.negative() != isNegative(other);
+    }
+
+    private static boolean isNegative(Value other) {
+        return other instanceof MoneyValue money
+                ? money.negative()
+                : asBigDecimal(other).signum() < 0;
     }
 
     private static BigDecimal widenedToMeet(Value other, ArithmeticOperation operation) {

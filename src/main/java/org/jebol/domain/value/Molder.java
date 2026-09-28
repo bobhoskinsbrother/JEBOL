@@ -403,9 +403,11 @@ public final class Molder {
     }
 
     private static String renderMoney(MoneyValue money) {
-        String sign = money.amount().signum() < 0 ? "-" : "";
-        return sign + money.currency().orElse("$")
-                + money.amount().abs().toPlainString();
+        String sign = money.negative() ? "-" : "";
+        BigDecimal shown = money.amount().signum() == 0
+                ? BigDecimal.ZERO
+                : money.amount().abs();
+        return sign + money.currency().orElse("$") + shown.toPlainString();
     }
 
     private static String renderMap(MapValue map, boolean forReading) {

@@ -19,7 +19,16 @@ import java.util.Optional;
  * mean is an open question in {@code spec/values.allium}; until it is
  * settled, this type exposes both rather than choosing.
  */
-public record MoneyValue(BigDecimal amount, Optional<String> currency) implements Value {
+public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean negative)
+        implements Value {
+
+    public MoneyValue(BigDecimal amount, Optional<String> currency) {
+        this(amount, currency, amount != null && amount.signum() < 0);
+    }
+
+    public MoneyValue signed(boolean wanted) {
+        return new MoneyValue(amount, currency, wanted);
+    }
 
     /** 26 significant digits, matching R3-Alpha's width. */
     public static final MathContext ARITHMETIC = new MathContext(26, RoundingMode.HALF_EVEN);
@@ -178,9 +187,9 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency) implement
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof MoneyValue(BigDecimal amount1, Optional<String> currency1)
-                && currency.equals(currency1)
-                && amount.compareTo(amount1) == 0;
+        return other instanceof MoneyValue theirs
+                && currency.equals(theirs.currency)
+                && amount.compareTo(theirs.amount) == 0;
     }
 
     @Override
