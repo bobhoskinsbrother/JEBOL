@@ -58,6 +58,26 @@ public sealed interface Value permits
         throw Raised.cannotUse(this, "a set operation");
     }
 
+    default Optional<Value[]> meeting(Value other) {
+        return Optional.empty();
+    }
+
+    default Optional<Value[]> both(Value mine, Value theirs) {
+        return Optional.of(new Value[] {mine, theirs});
+    }
+
+    default Optional<IntegerValue> asWholeNumber() {
+        return Optional.empty();
+    }
+
+    default Optional<DecimalValue> asDecimalNumber() {
+        return Optional.empty();
+    }
+
+    default Optional<MoneyValue> asMoneyBeside(MoneyValue meeting) {
+        return Optional.empty();
+    }
+
     /**
      * Whether a conditional native treats this value as true.
      *

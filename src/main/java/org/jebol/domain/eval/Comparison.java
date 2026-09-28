@@ -3,7 +3,6 @@ package org.jebol.domain.eval;
 import org.jebol.domain.date.DateOrder;
 import org.jebol.domain.value.*;
 
-import java.math.BigDecimal;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -73,11 +72,6 @@ public final class Comparison {
         return Set.copyOf(refusing);
     }
 
-    private static final Set<Datatype> NUMBERS_A_TIME_WILL_MEET_WHICH_EXCLUDE_MONEY =
-            Typeset.NUMBER.members();
-
-    private static final long NANOSECONDS_PER_SECOND = 1_000_000_000L;
-
     /** Whether the comparison holds at this strictness. */
     public static boolean holds(Value left, Value right, Strictness strictness) {
         Value first = left;
@@ -86,8 +80,7 @@ public final class Comparison {
             if (strictness.mindsTheDatatype()) {
                 return false;
             }
-            Optional<Value[]> brought =
-                    broughtTogetherBySwitchingOnTheLeftAlone(left, right);
+            Optional<Value[]> brought = broughtTogether(left, right);
             if (brought.isEmpty()) {
                 if (!strictness.isAboutOrder()) {
                     return false;
@@ -100,99 +93,19 @@ public final class Comparison {
         return atOneDatatype(first, second, strictness);
     }
 
+    private static Optional<Value[]> broughtTogether(Value left, Value right) {
+        return left.meeting(right)
+                .or(() -> right.meeting(left).map(Comparison::theOtherWayRound));
+    }
+
+    private static Value[] theOtherWayRound(Value[] pair) {
+        return new Value[] {pair[1], pair[0]};
+    }
+
     private static Raised refusal(Value left, Value right) {
         return Raised.of(EvaluationFailure.INVALID_COMPARE,
                 "cannot compare " + left.datatype().literalSpelling()
                         + " with " + right.datatype().literalSpelling());
-    }
-
-    private static Optional<Value[]> broughtTogetherBySwitchingOnTheLeftAlone(
-            Value left, Value right) {
-        Datatype theirs = right.datatype();
-        return switch (left.datatype()) {
-            case INTEGER -> fromAnInteger((IntegerValue) left, right, theirs);
-            case DECIMAL, PERCENT -> fromADecimal((DecimalValue) left, right, theirs);
-            case MONEY -> fromAMoney((MoneyValue) left, right, theirs);
-            case CHAR -> theirs == Datatype.INTEGER
-                    ? both(left, right)
-                    : Optional.empty();
-            case TIME -> fromATime((TimeValue) left, right, theirs);
-            default -> {
-                if (left.datatype().isAnyWord() && theirs.isAnyWord()) {
-                    yield both(left, right);
-                }
-                if (left.datatype().isAnyString() && theirs.isAnyString()) {
-                    yield both(left, right);
-                }
-                yield Optional.empty();
-            }
-        };
-    }
-
-    private static Optional<Value[]> fromAnInteger(
-            IntegerValue left, Value right, Datatype theirs) {
-
-        return switch (theirs) {
-            case DECIMAL, PERCENT -> both(DecimalValue.of(left.magnitude()), right);
-            case MONEY -> both(asMoneyInTheCurrencyItIsMeeting(
-                    left.magnitude(), (MoneyValue) right), right);
-            case CHAR -> both(left, IntegerValue.of(((CharacterValue) right).codepoint()));
-            case TIME -> both(DecimalValue.of(left.magnitude()), asSeconds((TimeValue) right));
-            default -> Optional.empty();
-        };
-    }
-
-    private static Optional<Value[]> fromADecimal(
-            DecimalValue left, Value right, Datatype theirs) {
-
-        return switch (theirs) {
-            case INTEGER -> both(left, DecimalValue.of(((IntegerValue) right).magnitude()));
-            case MONEY -> both(asMoneyInTheCurrencyItIsMeeting(
-                    left.quantity(), (MoneyValue) right), right);
-            case DECIMAL, PERCENT -> both(left, right);
-            case TIME -> both(left, asSeconds((TimeValue) right));
-            default -> Optional.empty();
-        };
-    }
-
-    private static Optional<Value[]> fromAMoney(
-            MoneyValue left, Value right, Datatype theirs) {
-
-        return switch (theirs) {
-            case INTEGER -> both(left, asMoneyInTheCurrencyItIsMeeting(
-                    ((IntegerValue) right).magnitude(), left));
-            case DECIMAL, PERCENT -> both(left, asMoneyInTheCurrencyItIsMeeting(
-                    ((DecimalValue) right).quantity(), left));
-            default -> Optional.empty();
-        };
-    }
-
-    private static Optional<Value[]> fromATime(TimeValue left, Value right, Datatype theirs) {
-        if (!NUMBERS_A_TIME_WILL_MEET_WHICH_EXCLUDE_MONEY.contains(theirs)) {
-            return Optional.empty();
-        }
-        Value theirNumber = theirs == Datatype.INTEGER
-                ? DecimalValue.of(((IntegerValue) right).magnitude())
-                : right;
-        return both(asSeconds(left), theirNumber);
-    }
-
-    private static Optional<Value[]> both(Value left, Value right) {
-        return Optional.of(new Value[] {left, right});
-    }
-
-    private static MoneyValue asMoneyInTheCurrencyItIsMeeting(
-            double amount, MoneyValue meeting) {
-        return new MoneyValue(BigDecimal.valueOf(amount), meeting.currency());
-    }
-
-    private static MoneyValue asMoneyInTheCurrencyItIsMeeting(
-            long amount, MoneyValue meeting) {
-        return new MoneyValue(BigDecimal.valueOf(amount), meeting.currency());
-    }
-
-    private static DecimalValue asSeconds(TimeValue time) {
-        return DecimalValue.of((double) time.nanoseconds() / NANOSECONDS_PER_SECOND);
     }
 
     private static boolean atOneDatatype(Value left, Value right, Strictness strictness) {
@@ -637,7 +550,7 @@ public final class Comparison {
     public static double asDouble(Value value) {
         return switch (value) {
             case IntegerValue integer -> integer.magnitude();
-            case TimeValue time -> (double) time.nanoseconds() / NANOSECONDS_PER_SECOND;
+            case TimeValue time -> time.asSeconds().quantity();
             case DecimalValue decimal -> decimal.quantity();
             case MoneyValue money -> money.amount().doubleValue();
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,

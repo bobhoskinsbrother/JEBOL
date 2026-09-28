@@ -1,6 +1,18 @@
 package org.jebol.domain.value;
 
+import java.util.Optional;
+
 public record TimeValue(long nanoseconds) implements Value {
+
+    public DecimalValue asSeconds() {
+        return DecimalValue.of((double) nanoseconds / NANOSECONDS_PER_SECOND);
+    }
+
+    @Override
+    public Optional<DecimalValue> asDecimalNumber() {
+        return Optional.of(asSeconds());
+    }
+
 
     public static final long NANOSECONDS_PER_SECOND = 1_000_000_000L;
 

@@ -1,5 +1,7 @@
 package org.jebol.domain.value;
 
+import java.util.Optional;
+
 /**
  * A word in one of its six shapes: {@code word}, {@code word:}, {@code :word},
  * {@code 'word}, {@code /word} or {@code #word}.
@@ -15,6 +17,11 @@ package org.jebol.domain.value;
  */
 public record WordValue(String spelling, String canonical, Context binding, Datatype datatype)
         implements Value {
+
+    @Override
+    public Optional<Value[]> meeting(Value other) {
+        return other.datatype().isAnyWord() ? both(this, other) : Optional.empty();
+    }
 
     public WordValue {
         if (spelling == null || spelling.isEmpty()) {

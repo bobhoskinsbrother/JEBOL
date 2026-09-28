@@ -63,6 +63,11 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency) implement
         return new MoneyValue(replacement, currency);
     }
 
+    @Override
+    public Optional<MoneyValue> asMoneyBeside(MoneyValue meeting) {
+        return Optional.of(this);
+    }
+
     /** Digits after the decimal point, as written. Not normalised away. */
     public int scale() {
         return amount.scale();

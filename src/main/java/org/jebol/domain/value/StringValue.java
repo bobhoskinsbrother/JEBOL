@@ -3,6 +3,7 @@ package org.jebol.domain.value;
 import org.jebol.domain.value.sets.MembersKept;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * A position into string storage, reported as one of the {@code any-string!}
@@ -33,6 +34,11 @@ public record StringValue(StringStorage storage, int index, Datatype datatype)
 
     public static StringValue of(String text) {
         return new StringValue(StringStorage.of(text), 1, Datatype.STRING);
+    }
+
+    @Override
+    public Optional<Value[]> meeting(Value other) {
+        return other.datatype().isAnyString() ? both(this, other) : Optional.empty();
     }
 
     @Override

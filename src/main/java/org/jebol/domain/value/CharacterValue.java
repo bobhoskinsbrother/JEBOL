@@ -1,5 +1,7 @@
 package org.jebol.domain.value;
 
+import java.util.Optional;
+
 /**
  * A single Unicode scalar value.
  *
@@ -7,6 +9,18 @@ package org.jebol.domain.value;
  * UTF-16 code unit and half of an astral character is not a character.
  */
 public record CharacterValue(int codepoint) implements Value {
+
+    @Override
+    public Optional<IntegerValue> asWholeNumber() {
+        return Optional.of(IntegerValue.of(codepoint));
+    }
+
+    @Override
+    public Optional<Value[]> meeting(Value other) {
+        return other instanceof IntegerValue
+                ? both(asWholeNumber().orElseThrow(), other)
+                : Optional.empty();
+    }
 
     @Override
     public Value bitwise(Value right, BitwiseOperation operation) {
