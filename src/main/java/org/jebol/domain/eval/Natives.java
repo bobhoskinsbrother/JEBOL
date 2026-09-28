@@ -825,8 +825,11 @@ public final class Natives {
                     if (!Comparison.isNumeric(arguments.get(0)) || !Comparison.isNumeric(arguments.get(1))) {
                         return raiseWrongArgument(arguments.get(0), "power", "number");
                     }
-                    return DecimalValue.of(
-                            Math.pow(Comparison.asDouble(arguments.get(0)), Comparison.asDouble(arguments.get(1))));
+                    double raised = Math.pow(Comparison.asDouble(arguments.get(0)),
+                            Comparison.asDouble(arguments.get(1)));
+                    return bothArePercents(arguments.get(0), arguments.get(1))
+                            ? DecimalValue.percent(raised)
+                            : DecimalValue.of(raised);
                 });
 
         define("negate", withBitsets(acceptsNumbers("value")),
@@ -1010,6 +1013,10 @@ public final class Natives {
             parameters.add(Parameter.required(name));
         }
         return parameters;
+    }
+
+    private static boolean bothArePercents(Value left, Value right) {
+        return left.datatype() == Datatype.PERCENT && right.datatype() == Datatype.PERCENT;
     }
 
     private static Value negated(Value value) {

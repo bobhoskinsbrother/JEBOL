@@ -40,8 +40,8 @@ public final class TupleActions {
             throw Raised.cannotUse(left, "tuple arithmetic");
         }
         TupleValue theirs = right instanceof TupleValue tuple ? tuple : null;
-        if (theirs == null && !Comparison.isNumeric(right)) {
-            throw Raised.cannotUse(right, "tuple arithmetic");
+        if (theirs == null && !aPlainNumber(right)) {
+            throw Raised.notRelated(left, right);
         }
         int width = theirs == null
                 ? ours.segmentCount()
@@ -57,6 +57,10 @@ public final class TupleActions {
             answer[at - 1] = (int) Math.max(0, Math.min(255, worked));
         }
         return TupleValue.of(answer);
+    }
+
+    private boolean aPlainNumber(Value right) {
+        return right instanceof IntegerValue || right instanceof DecimalValue;
     }
 
     private void refuseATimeBesideATuple(Value left, Value right) {

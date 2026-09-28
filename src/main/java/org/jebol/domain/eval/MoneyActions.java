@@ -57,11 +57,17 @@ public final class MoneyActions {
         return amount.amount().signum() == 0;
     }
 
+    private static BigDecimal withoutATrailingZero(BigDecimal quantity) {
+        BigDecimal stripped = quantity.stripTrailingZeros();
+        return stripped.scale() < 0 ? stripped.setScale(0) : stripped;
+    }
+
     public static BigDecimal asBigDecimal(Value value) {
         return switch (value) {
             case MoneyValue money -> money.amount();
             case IntegerValue integer -> BigDecimal.valueOf(integer.magnitude());
-            case DecimalValue decimal -> BigDecimal.valueOf(decimal.quantity());
+            case DecimalValue decimal -> withoutATrailingZero(
+                    BigDecimal.valueOf(decimal.quantity()));
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     value.datatype().literalSpelling() + " is not a number");
         };

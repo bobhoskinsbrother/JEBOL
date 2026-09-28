@@ -12,24 +12,31 @@ public final class CharacterActions {
         this.letter = letter;
     }
 
+    private static final long PAST_THE_WIDEST_CODEPOINT_COUNT = 1L << 32;
+
     public Value combinedWith(Value right, ArithmeticOperation operation) {
         long other = codepointOfferedBy(right);
         long codepoint = letter.codepoint();
         long answered = operation.onCodepoints(codepoint, other);
         if (operation.subtractsOneFromTheOther() && right instanceof CharacterValue) {
-            return IntegerValue.of(answered);
+            return IntegerValue.of(asAnUnsignedWord(answered));
         }
         return CharacterValue.of(requireACodepoint(answered));
     }
 
-    private static long codepointOfferedBy(Value right) {
+    private static long asAnUnsignedWord(long answered) {
+        return answered < 0
+                ? answered + PAST_THE_WIDEST_CODEPOINT_COUNT
+                : answered;
+    }
+
+    private long codepointOfferedBy(Value right) {
         return switch (right) {
             case CharacterValue another -> another.codepoint();
             case IntegerValue whole -> whole.magnitude();
-            case DecimalValue fraction -> (long) fraction.quantity();
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "a character takes a character or a number, not a "
-                            + right.datatype().literalSpelling());
+            case DecimalValue fraction when fraction.datatype() == Datatype.DECIMAL ->
+                    (long) fraction.quantity();
+            default -> throw Raised.notRelated(letter, right);
         };
     }
 

@@ -28,6 +28,9 @@ public final class TimeActions {
         if (!(right instanceof IntegerValue) && !(right instanceof DecimalValue)) {
             throw notRelatedToATime(operation);
         }
+        if (operation.keepsTheSignOfTheDividend()) {
+            return theRestOfTheNanoseconds(right, operation);
+        }
         if (operation.scalesRatherThanShifts()) {
             return scaledByAPlainNumber(right, operation);
         }
@@ -76,6 +79,14 @@ public final class TimeActions {
             throw notRelatedToATime(operation);
         }
         return TimeValue.ofNanoseconds((long) (span.nanoseconds() * portion.quantity()));
+    }
+
+    private Value theRestOfTheNanoseconds(Value right, ArithmeticOperation operation) {
+        if (!(right instanceof IntegerValue(long divisor))) {
+            throw notRelatedToATime(operation);
+        }
+        Arithmetic.requireNonZero(divisor);
+        return TimeValue.ofNanoseconds(span.nanoseconds() % divisor);
     }
 
     private Value scaledByAPlainNumber(Value right, ArithmeticOperation operation) {
