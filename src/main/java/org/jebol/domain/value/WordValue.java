@@ -19,6 +19,11 @@ public record WordValue(String spelling, String canonical, Context binding, Data
         implements Value {
 
     @Override
+    public boolean equalTo(Value other, Sameness how) {
+        return other instanceof WordValue theirs && namesSameAs(theirs);
+    }
+
+    @Override
     public Optional<Value[]> broughtTogetherWith(Value other) {
         return other.datatype().isAnyWord() ? both(this, other) : Optional.empty();
     }

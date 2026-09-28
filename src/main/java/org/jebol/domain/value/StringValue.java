@@ -37,6 +37,13 @@ public record StringValue(StringStorage storage, int index, Datatype datatype)
     }
 
     @Override
+    public boolean equalTo(Value other, Sameness how) {
+        return other instanceof StringValue theirs
+                && (how.theyWereBroughtTogetherFirst() || datatype == theirs.datatype)
+                && equalsIgnoringCase(theirs);
+    }
+
+    @Override
     public Optional<Value[]> broughtTogetherWith(Value other) {
         return other.datatype().isAnyString() ? both(this, other) : Optional.empty();
     }

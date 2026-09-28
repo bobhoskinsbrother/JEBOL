@@ -40,6 +40,18 @@ public record VectorValue(VectorStorage storage, int index) implements SeriesVal
         }
     }
 
+    @Override
+    public boolean equalTo(Value other, Sameness how) {
+        if (!(other instanceof VectorValue theirs)) {
+            return false;
+        }
+        if (kind().measures() != theirs.kind().measures()) {
+            throw Raised.of(EvaluationFailure.NOT_SAME_TYPE,
+                    kind().spelling() + " against " + theirs.kind().spelling());
+        }
+        return compareWith(theirs) == 0;
+    }
+
     public VectorKind kind() {
         return storage.kind();
     }

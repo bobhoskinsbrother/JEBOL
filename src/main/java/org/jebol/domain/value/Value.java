@@ -62,6 +62,13 @@ public sealed interface Value permits
         return Optional.empty();
     }
 
+    default boolean equalTo(Value other, Sameness how) {
+        if (Numbers.theyMayBeCompared(this, other, how)) {
+            return Numbers.areEqual(this, other, how);
+        }
+        return datatype() == other.datatype() && equals(other);
+    }
+
     default Optional<Value[]> both(Value mine, Value theirs) {
         return Optional.of(new Value[] {mine, theirs});
     }

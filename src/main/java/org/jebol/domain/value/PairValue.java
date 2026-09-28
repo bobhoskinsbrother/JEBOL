@@ -45,6 +45,12 @@ import java.util.Optional;
 public record PairValue(double x, double y) implements Value {
 
     @Override
+    public boolean equalTo(Value other, Sameness how) {
+        return other instanceof PairValue(double theirX, double theirY)
+                && x == theirX && y == theirY;
+    }
+
+    @Override
     public Value bitwise(Value right, BitwiseOperation operation) {
         PairValue theirs = aPointFrom(right);
         return PairValue.of(

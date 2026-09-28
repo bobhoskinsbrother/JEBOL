@@ -11,6 +11,24 @@ import java.util.Optional;
 public record CharacterValue(int codepoint) implements Value {
 
     @Override
+    public boolean equalTo(Value other, Sameness how) {
+        if (other instanceof CharacterValue || how.theyWereBroughtTogetherFirst()) {
+            return foldedTo(codepoint) == foldedTo(codepointOf(other));
+        }
+        return false;
+    }
+
+    private static int foldedTo(int codepoint) {
+        return Character.toLowerCase(codepoint);
+    }
+
+    private static int codepointOf(Value value) {
+        return value instanceof CharacterValue(int theirs)
+                ? theirs
+                : (int) ((IntegerValue) value).magnitude();
+    }
+
+    @Override
     public Optional<IntegerValue> asWholeNumber() {
         return Optional.of(IntegerValue.of(codepoint));
     }

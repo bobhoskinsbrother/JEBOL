@@ -16,6 +16,12 @@ public record DateValue(
         Optional<TimeValue> timeOfDay,
         Optional<Integer> zoneMinutes) implements Value {
 
+    @Override
+    public boolean equalTo(Value other, Sameness how) {
+        return other instanceof DateValue theirs
+                && moment().compareTo(theirs.moment()) == 0;
+    }
+
     private static final String[] MONTH_NAMES = {
         "Jan", "Feb", "Mar", "Apr", "May", "Jun",
         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"

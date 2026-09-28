@@ -35,6 +35,25 @@ public final class MapValue implements Value {
         this.entries = entries;
     }
 
+    private static final boolean MINDING_CASE = true;
+
+    @Override
+    public boolean equalTo(Value other, Sameness how) {
+        if (!(other instanceof MapValue theirs) || pairCount() != theirs.pairCount()) {
+            return false;
+        }
+        for (Value key : keys()) {
+            if (!theirs.holds(key, MINDING_CASE)) {
+                return false;
+            }
+            Value ours = select(key, MINDING_CASE);
+            if (!ours.equalTo(theirs.select(key, MINDING_CASE), Sameness.insideASeries())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
         MapValue theirs = other instanceof MapValue map ? map : MapValue.empty();

@@ -154,101 +154,15 @@ public final class Comparison {
     private static boolean equalValues(
             Value left, Value right, long stepsAllowed, boolean approved) {
 
-        if (left instanceof HandleValue first && right instanceof HandleValue second) {
-            return first.isEqualHandleTo(second);
-        }
-        if (left instanceof VectorValue first && right instanceof VectorValue second) {
-            return orderingOfVectors(first, second) == 0;
-        }
-        if (left instanceof StructValue first && right instanceof StructValue second) {
-            return first.holdsTheSameAs(second);
-        }
-
-        if (left instanceof CharacterValue && right instanceof CharacterValue) {
-            return foldedCodepointsAgree(left, right);
-        }
-        if (left instanceof CharacterValue && approved) {
-            return foldedCodepointsAgree(left, right);
-        }
-        if (left instanceof StringValue leftText && right instanceof StringValue rightText) {
-            return (approved || leftText.datatype() == rightText.datatype())
-                    && leftText.equalsIgnoringCase(rightText);
-        }
-        if (left instanceof WordValue leftWord && right instanceof WordValue rightWord) {
-            return leftWord.namesSameAs(rightWord);
-        }
-        if (numbersMeet(left, right, approved)) {
-            double first = asDouble(left);
-            double second = asDouble(right);
-            if (Double.isNaN(first) || Double.isNaN(second)) {
-                return Double.isNaN(first) && Double.isNaN(second) && stepsAllowed > 0;
-            }
-            if (left instanceof DecimalValue || right instanceof DecimalValue) {
-                return nearlyTheSameNumber(first, second, stepsAllowed);
-            }
-            return ordering(left, right) == 0;
-        }
-        if (left instanceof PairValue && right instanceof PairValue) {
-            return ordering(left, right) == 0;
-        }
-        if (left instanceof DateValue && right instanceof DateValue) {
-            return ordering(left, right) == 0;
-        }
-        if (left instanceof ObjectValue leftObject && right instanceof ObjectValue rightObject) {
-            return sameFields(leftObject, rightObject);
-        }
-        if (left instanceof BlockValue leftBlock && right instanceof BlockValue rightBlock) {
-            List<Value> theirs = rightBlock.remaining();
-            List<Value> ours = leftBlock.remaining();
-            if (ours.size() != theirs.size() || left.datatype() != right.datatype()) {
-                return false;
-            }
-            for (int at = 0; at < ours.size(); at++) {
-                if (!looselyEqual(ours.get(at), theirs.get(at))) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        if (left instanceof MapValue ours && right instanceof MapValue theirs) {
-            return sameKeysAgainstLooselyEqualValues(ours, theirs);
-        }
-        return left.datatype() == right.datatype() && left.equals(right);
+        return left.equalTo(right, approved
+                ? new Sameness(stepsAllowed, true)
+                : Sameness.insideASeriesAllowing(stepsAllowed));
     }
 
-    private static boolean sameKeysAgainstLooselyEqualValues(
-            MapValue ours, MapValue theirs) {
-        if (ours.pairCount() != theirs.pairCount()) {
-            return false;
-        }
-        for (Value key : ours.keys()) {
-            if (!theirs.holds(key, MINDING_CASE)
-                    || !looselyEqual(ours.select(key, MINDING_CASE),
-                            theirs.select(key, MINDING_CASE))) {
-                return false;
-            }
-        }
-        return true;
-    }
 
-    private static final boolean MINDING_CASE = true;
 
-    private static boolean foldedCodepointsAgree(Value left, Value right) {
-        return Character.toLowerCase(codepointOf(left)) == Character.toLowerCase(codepointOf(right));
-    }
 
-    private static boolean numbersMeet(Value left, Value right, boolean approved) {
-        if (approved) {
-            return isNumeric(left) && isNumeric(right);
-        }
-        return ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(left.datatype())
-                && ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(right.datatype())
-                || left.datatype() == Datatype.TIME && right.datatype() == Datatype.TIME;
-    }
 
-    private static boolean sameFields(ObjectValue left, ObjectValue right) {
-        return fieldsAgree(left, right, Comparison::looselyEqual);
-    }
 
     private static boolean strictFields(ObjectValue left, ObjectValue right) {
         return fieldsAgree(left, right, Comparison::identicallyEqual);

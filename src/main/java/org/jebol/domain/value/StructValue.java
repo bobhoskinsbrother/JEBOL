@@ -23,6 +23,12 @@ import java.util.Optional;
  */
 public record StructValue(StructSpec spec, StructData data, int offset) implements Value {
 
+    @Override
+    public boolean equalTo(Value other, Sameness how) {
+        return other instanceof StructValue theirs && holdsTheSameAs(theirs);
+    }
+
+
     public static StructValue of(StructSpec spec) {
         return new StructValue(spec, new StructData(spec.size()), 0);
     }

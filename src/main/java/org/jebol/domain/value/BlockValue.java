@@ -30,6 +30,24 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
     }
 
     @Override
+    public boolean equalTo(Value other, Sameness how) {
+        if (!(other instanceof BlockValue theirs) || datatype != theirs.datatype) {
+            return false;
+        }
+        List<Value> ours = remaining();
+        List<Value> yours = theirs.remaining();
+        if (ours.size() != yours.size()) {
+            return false;
+        }
+        for (int at = 0; at < ours.size(); at++) {
+            if (!ours.get(at).equalTo(yours.get(at), Sameness.insideASeries())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
     public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
         return switch (other) {
             case StringValue ignored -> StringValue.textOf(

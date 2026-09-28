@@ -38,6 +38,11 @@ public record HandleValue(
         int identity,
         Value payload) implements Value {
 
+    @Override
+    public boolean equalTo(Value other, Sameness how) {
+        return other instanceof HandleValue theirs && isEqualHandleTo(theirs);
+    }
+
     /**
      * What the handle is holding.
      *
