@@ -31,8 +31,25 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
     }
 
     @Override
+    public Value absolute() {
+        return MoneyValue.of(amount.abs()).signed(false);
+    }
+
+
+    @Override
     public Value arithmetic(Value right, ArithmeticOperation operation) {
         return new MoneyActions(this).combinedWith(right, operation);
+    }
+
+    @Override
+    public Value negated() {
+        return amounting(amount.negate()).signed(!negative);
+    }
+
+    @Override
+    public Value heldBetween(Value lowest, Value highest) {
+        return new MoneyActions(this).heldBetween(
+                (MoneyValue) lowest, (MoneyValue) highest);
     }
 
 

@@ -59,6 +59,31 @@ public sealed interface Value permits
         throw Raised.cannotUse(this, operation.spelling());
     }
 
+    default Value absolute() {
+        throw Raised.cannotUse(this, "absolute");
+    }
+
+    default Value negated() {
+        return IntegerValue.of(0).arithmetic(this, new Subtract());
+    }
+
+    default Value heldBetween(Value lowest, Value highest) {
+        return this;
+    }
+
+    default Value partWayTo(Value destination, double fraction) {
+        if (!Numbers.isANumber(this)) {
+            throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(this));
+        }
+        if (!Numbers.isANumber(destination)) {
+            throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(destination));
+        }
+        double from = Numbers.quantityOf(this);
+        return DecimalValue.of(
+                from + (Numbers.quantityOf(destination) - from) * fraction);
+    }
+
+
     default Value refuseTheArithmetic(Value right) {
         throw Raised.notRelated(this, right);
     }

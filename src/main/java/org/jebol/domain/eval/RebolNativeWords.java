@@ -50,6 +50,7 @@ public final class RebolNativeWords {
 
     private RebolNativeWords() {
         registerArithmeticFunctions();
+        registerTheRemainingNatives();
         registerComparators();
         registerConditionalFunctions();
         registerFunctionMaking();
@@ -447,17 +448,6 @@ public final class RebolNativeWords {
         operatorTwins.put(spelling, prefixTwin);
     }
 
-    private static List<Parameter> takesCombinable(String... names) {
-        Set<Datatype> combinable = of(Datatype.LOGIC, Datatype.INTEGER, Datatype.CHAR,
-                Datatype.TUPLE, Datatype.BINARY, Datatype.BITSET, Datatype.TYPESET,
-                Datatype.DATATYPE, Datatype.PAIR, Datatype.VECTOR);
-        List<Parameter> parameters = new ArrayList<>();
-        for (String name : names) {
-            parameters.add(Parameter.required(name, combinable));
-        }
-        return parameters;
-    }
-
     private static List<Parameter> takes(String... names) {
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
@@ -482,26 +472,8 @@ public final class RebolNativeWords {
         return parameters;
     }
 
-    private static List<Parameter> withBitsets(List<Parameter> parameters) {
-        List<Parameter> widened = new ArrayList<>(parameters);
-        Parameter first = widened.getFirst();
-        Set<Datatype> accepted = EnumSet.copyOf(first.acceptedTypes());
-        accepted.add(Datatype.BITSET);
-        widened.set(0, Parameter.required(first.name(), accepted));
-        return widened;
-    }
-
     public static List<Parameter> takesOnlyNumbers(String... names) {
         Set<Datatype> numbers = Typeset.NUMBER.members();
-        List<Parameter> parameters = new ArrayList<>();
-        for (String name : names) {
-            parameters.add(Parameter.required(name, numbers));
-        }
-        return parameters;
-    }
-
-    private static List<Parameter> takesWholeNumbersAndDecimals(String... names) {
-        Set<Datatype> numbers = of(Datatype.INTEGER, Datatype.DECIMAL);
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
             parameters.add(Parameter.required(name, numbers));
@@ -534,11 +506,54 @@ public final class RebolNativeWords {
         registerFunction(new DivideFunction());
         registerFunction(new RemainderFunction());
         registerFunction(new SquareRootFunction());
+        registerFunction(new SineFunction());
+        registerFunction(new CosineFunction());
+        registerFunction(new TangentFunction());
+        registerFunction(new ArcsineFunction());
+        registerFunction(new ArccosineFunction());
+        registerFunction(new ArctangentFunction());
+        registerFunction(new NaturalLogarithmFunction());
+        registerFunction(new CommonLogarithmFunction());
+        registerFunction(new BinaryLogarithmFunction());
+        registerFunction(new ExponentialFunction());
+        registerFunction(new AbsoluteFunction());
+        registerFunction(new ToDegreesFunction());
+        registerFunction(new ToRadiansFunction());
+        registerFunction(new IntegerDivideFunction());
+        registerFunction(new AbsFunction());
+        registerFunction(new SinFunction());
+        registerFunction(new CosFunction());
+        registerFunction(new TanFunction());
+        registerFunction(new AsinFunction());
+        registerFunction(new AcosFunction());
+        registerFunction(new AtanFunction());
+        registerFunction(new SqrtFunction());
+        registerFunction(new GreatestCommonDivisorFunction());
+        registerFunction(new LowestCommonMultipleFunction());
+        registerFunction(new PrimeFunction());
+        registerFunction(new FactorialFunction());
+        registerFunction(new ArctangentOfAPointFunction());
+        registerFunction(new ArctangentOfTwoSidesFunction());
+        registerFunction(new FractionFunction());
+        registerFunction(new WhetherComplementedFunction());
+        registerFunction(new ComplementFunction());
+        registerFunction(new ClampFunction());
+        registerFunction(new DistanceFunction());
+        registerFunction(new PowerFunction());
+        registerFunction(new NegateFunction());
+        registerFunction(new MaximumFunction());
+        registerFunction(new MinimumFunction());
+        registerFunction(new BitwiseAndFunction());
+        registerFunction(new BitwiseOrFunction());
+        registerFunction(new BitwiseXorFunction());
+        registerFunction(new LerpFunction());
+        registerFunction(new ModFunction());
+        registerFunction(new ModuloFunction());
+        registerFunction(new ShiftLeftFunction());
+        registerFunction(new ShiftRightFunction());
+    }
 
-
-        define("sqrt", List.of(Parameter.required("value", of(Datatype.DECIMAL))),
-                (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.sqrt(Comparison.asDouble(arguments.get(0)))));
+    private void registerTheRemainingNatives() {
         define("now", List.of(),
                 of("year", "month", "day", "time", "zone", "date",
                         "weekday", "yearday", "precise", "utc"),
@@ -634,65 +649,6 @@ public final class RebolNativeWords {
                     return signalled(arguments.get(1));
                 });
 
-        define("arctangent2", List.of(Parameter.required("point", of(Datatype.PAIR))),
-                of("radians"),
-                (arguments, evaluator, context, refinements) -> {
-                    PairValue point = (PairValue) arguments.getFirst();
-                    double angle = Math.atan2(point.y(), point.x());
-                    return DecimalValue.of(refinements.contains("radians")
-                            ? angle
-                            : Math.toDegrees(angle));
-                });
-        define("log-e", takesOnlyNumbers("value"),
-                (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.log(Comparison.asDouble(arguments.get(0)))));
-        define("log-10", takesOnlyNumbers("value"),
-                (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.log10(Comparison.asDouble(arguments.get(0)))));
-        define("exp", takesOnlyNumbers("value"),
-                (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.exp(Comparison.asDouble(arguments.get(0)))));
-        define("fraction", List.of(Parameter.required("number",
-                        of(Datatype.DECIMAL))),
-                (arguments, evaluator, context) -> {
-                    double whole = Comparison.asDouble(arguments.get(0));
-                    return DecimalValue.of(whole - (long) whole);
-                });
-        define("log-2", takesOnlyNumbers("value"),
-                (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.log(Comparison.asDouble(arguments.get(0))) / Math.log(2)));
-        define("sine", takesOnlyNumbers("value"), of("radians"),
-                (arguments, evaluator, context, refinements) -> DecimalValue.of(
-                        withoutTheNoiseNearZero(
-                                Math.sin(inRadians(arguments.get(0), refinements)))));
-        define("cosine", takesOnlyNumbers("value"), of("radians"),
-                (arguments, evaluator, context, refinements) -> DecimalValue.of(
-                        withoutTheNoiseNearZero(
-                                Math.cos(inRadians(arguments.get(0), refinements)))));
-        define("tangent", takesOnlyNumbers("value"), of("radians"),
-                (arguments, evaluator, context, refinements) ->
-                        DecimalValue.of(tangentOf(inRadians(arguments.get(0), refinements))));
-        define("arcsine", takesOnlyNumbers("value"), of("radians"),
-                (arguments, evaluator, context, refinements) -> DecimalValue.of(
-                        refinements.contains("radians")
-                                ? Math.asin(Comparison.asDouble(arguments.get(0)))
-                                : Math.toDegrees(Math.asin(Comparison.asDouble(arguments.get(0))))));
-        define("arccosine", takesOnlyNumbers("value"), of("radians"),
-                (arguments, evaluator, context, refinements) -> DecimalValue.of(
-                        refinements.contains("radians")
-                                ? Math.acos(Comparison.asDouble(arguments.get(0)))
-                                : Math.toDegrees(Math.acos(Comparison.asDouble(arguments.get(0))))));
-        define("arctangent", takesOnlyNumbers("value"), of("radians"),
-                (arguments, evaluator, context, refinements) -> DecimalValue.of(
-                        refinements.contains("radians")
-                                ? Math.atan(Comparison.asDouble(arguments.get(0)))
-                                : Math.toDegrees(Math.atan(Comparison.asDouble(arguments.get(0))))));
-
-        define("abs", List.of(Parameter.required("value", MEASURABLE)),
-                (arguments, evaluator, context) -> magnitudeOf(arguments.get(0)));
-        define("absolute", List.of(Parameter.required("value", MEASURABLE)),
-                (arguments, evaluator, context) -> magnitudeOf(arguments.get(0)));
-
         define("random", List.of(Parameter.required("value")),
                 of("seed", "only", "secure"),
                 (arguments, evaluator, context, refinements) -> {
@@ -737,234 +693,6 @@ public final class RebolNativeWords {
                     };
                 });
 
-        define("complement?", List.of(Parameter.required("value", of(Datatype.BITSET))),
-                (arguments, evaluator, context) -> LogicValue.of(
-                        ((BitsetValue) arguments.getFirst()).isComplemented()));
-
-        define("complement", List.of(Parameter.required("value", of(
-                        Datatype.LOGIC, Datatype.INTEGER, Datatype.TUPLE,
-                        Datatype.BINARY, Datatype.BITSET, Datatype.TYPESET,
-                        Datatype.IMAGE))),
-                (arguments, evaluator, context) -> switch (arguments.get(0)) {
-                    case LogicValue truth -> LogicValue.of(!truth.truth());
-                    case IntegerValue whole -> IntegerValue.of(~whole.magnitude());
-                    case TypesetValue kinds -> new TypesetActions(kinds).complemented();
-                    case TupleValue tuple -> new TupleActions().complemented(tuple);
-                    case Value subject when Actions.of(subject).isPresent() ->
-                            Actions.of(subject).orElseThrow().complemented();
-                    default -> raiseWrongArgument(
-                            arguments.get(0), "complement", "logic or integer");
-                });
-
-        defineRadianFunction("sin", Math::sin);
-        defineRadianFunction("cos", Math::cos);
-        defineRadianFunction("tan", Math::tan);
-        defineRadianFunction("asin", Math::asin);
-        defineRadianFunction("acos", Math::acos);
-        defineRadianFunction("atan", Math::atan);
-        defineRadianFunction("sqrt", Math::sqrt);
-        define("atan2", List.of(
-                        Parameter.required("y", of(Datatype.DECIMAL)),
-                        Parameter.required("x", of(Datatype.DECIMAL))),
-                (arguments, evaluator, context) -> DecimalValue.of(Math.atan2(
-                        Comparison.asDouble(arguments.get(0)), Comparison.asDouble(arguments.get(1)))));
-
-        define("to-degrees", takesWholeNumbersAndDecimals("radians"),
-                (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.toDegrees(Comparison.asDouble(arguments.get(0)))));
-        define("to-radians", takesWholeNumbersAndDecimals("degrees"),
-                (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.toRadians(Comparison.asDouble(arguments.get(0)))));
-
-        define("gcd", takesWholeNumbers("first", "second"),
-                (arguments, evaluator, context) -> IntegerValue.of(greatestCommonDivisor(
-                        wholeNumberOf(arguments.get(0), "gcd"),
-                        wholeNumberOf(arguments.get(1), "gcd"))));
-        define("lcm", takesWholeNumbers("first", "second"),
-                (arguments, evaluator, context) -> {
-                    long first = wholeNumberOf(arguments.get(0), "lcm");
-                    long second = wholeNumberOf(arguments.get(1), "lcm");
-                    long divisor = greatestCommonDivisor(first, second);
-                    return IntegerValue.of(divisor == 0
-                            ? 0
-                            : Math.abs(first / divisor * second));
-                });
-        define("prime?", takesWholeNumbers("value"),
-                (arguments, evaluator, context) -> LogicValue.of(
-                        isPrime(wholeNumberOf(arguments.get(0), "prime?"))));
-        define("integer-divide", acceptsNumbers("dividend", "divisor"),
-                (arguments, evaluator, context) ->
-                        Arithmetic.wholeQuotient(arguments.get(0), arguments.get(1)));
-
-        define("clamp", List.of(
-                        Parameter.required("value", CLAMPABLE),
-                        Parameter.required("minimum", CLAMPABLE),
-                        Parameter.required("maximum", CLAMPABLE)),
-                (arguments, evaluator, context) -> heldInsideTheRange(
-                        arguments.get(0), arguments.get(1), arguments.get(2)));
-
-        define("distance", List.of(
-                        Parameter.required("value1", of(Datatype.PAIR)),
-                        Parameter.required("value2", of(Datatype.PAIR))),
-                of("taxicab"),
-                (arguments, evaluator, context, refinements) -> betweenTwoPoints(
-                        (PairValue) arguments.get(0), (PairValue) arguments.get(1),
-                        refinements.contains("taxicab")));
-
-        define("factorial", takesWholeNumbers("value"),
-                (arguments, evaluator, context) -> theFactorialOf(
-                        wholeNumberOf(arguments.get(0), "factorial")));
-
-        define("power", List.of(
-                        Parameter.required("base", Typeset.NUMBER.members()),
-                        Parameter.required("exponent", Typeset.NUMBER.members())),
-                (arguments, evaluator, context) -> {
-                    if (arguments.get(0) instanceof TupleValue tuple) {
-                        return raiseCannotUse(tuple, "power");
-                    }
-                    if (!Comparison.isNumeric(arguments.get(0)) || !Comparison.isNumeric(arguments.get(1))) {
-                        return raiseWrongArgument(arguments.get(0), "power", "number");
-                    }
-                    double raised = Math.pow(Comparison.asDouble(arguments.get(0)),
-                            Comparison.asDouble(arguments.get(1)));
-                    return bothArePercents(arguments.get(0), arguments.get(1))
-                            ? DecimalValue.percent(raised)
-                            : DecimalValue.of(raised);
-                });
-
-        define("negate", List.of(Parameter.required("value", NEGATABLE)),
-                (arguments, evaluator, context) -> negated(arguments.getFirst()));
-
-        define("maximum", takesComparable("value1", "value2"),
-                (arguments, evaluator, context) ->
-                        extreme(arguments.get(0), arguments.get(1), true));
-        define("minimum", takesComparable("value1", "value2"),
-                (arguments, evaluator, context) ->
-                        extreme(arguments.get(0), arguments.get(1), false));
-
-        define("and~", takesCombinable("value1", "value2"),
-                (arguments, evaluator, context) ->
-                        Combining.bitwise(arguments.get(0), arguments.get(1),
-                                BitwiseOperation.theOneCalled("and")));
-        define("or~", takesCombinable("value1", "value2"),
-                (arguments, evaluator, context) ->
-                        Combining.bitwise(arguments.get(0), arguments.get(1),
-                                BitwiseOperation.theOneCalled("or")));
-        define("xor~", takesCombinable("value1", "value2"),
-                (arguments, evaluator, context) ->
-                        Combining.bitwise(arguments.get(0), arguments.get(1),
-                                BitwiseOperation.theOneCalled("xor")));
-
-        define("lerp", List.of(Parameter.required("value1"),
-                        Parameter.required("value2"), Parameter.required("fraction")),
-                (arguments, evaluator, context) -> interpolated(
-                        arguments.get(0), arguments.get(1), arguments.get(2)));
-
-        define("mod", List.of(
-                        Parameter.required("dividend", DIVISIBLE),
-                        Parameter.required("divisor", DIVISIBLE)),
-                (arguments, evaluator, context) -> Arithmetic.rest(
-                        arguments.get(0), arguments.get(1),
-                        Arithmetic.Division.SIGN_FOLLOWS_THE_DIVIDEND));
-
-        define("modulo", List.of(
-                        Parameter.required("dividend", DIVISIBLE),
-                        Parameter.required("divisor", DIVISIBLE)),
-                of("floor"),
-                (arguments, evaluator, context, refinements) -> Arithmetic.rest(
-                        arguments.get(0), arguments.get(1),
-                        refinements.contains("floor")
-                                ? Arithmetic.Division.SIGN_FOLLOWS_THE_DIVISOR
-                                : Arithmetic.Division.NEVER_NEGATIVE));
-
-        define("shift-left", List.of(
-                        Parameter.required("value", of(Datatype.INTEGER)),
-                        Parameter.required("bits", of(Datatype.INTEGER))),
-                (arguments, evaluator, context) -> shifted(arguments, true));
-        define("shift-right", List.of(
-                        Parameter.required("value", of(Datatype.INTEGER)),
-                        Parameter.required("bits", of(Datatype.INTEGER))),
-                (arguments, evaluator, context) -> shifted(arguments, false));
-
-    }
-
-    private void defineRadianFunction(String name, java.util.function.DoubleUnaryOperator work) {
-        define(name, List.of(Parameter.required("value", of(Datatype.DECIMAL))),
-                (arguments, evaluator, context) -> DecimalValue.of(
-                        work.applyAsDouble(Comparison.asDouble(arguments.get(0)))));
-    }
-
-    private static List<Parameter> takesWholeNumbers(String... names) {
-        List<Parameter> parameters = new ArrayList<>();
-        for (String name : names) {
-            parameters.add(Parameter.required(name, of(Datatype.INTEGER)));
-        }
-        return parameters;
-    }
-
-    private static long greatestCommonDivisor(long first, long second) {
-        long left = Math.abs(first);
-        long right = Math.abs(second);
-        while (right != 0) {
-            long rest = left % right;
-            left = right;
-            right = rest;
-        }
-        return left;
-    }
-
-    private static boolean isPrime(long candidate) {
-        if (candidate < 2) {
-            return false;
-        }
-        for (long divisor = 2; divisor * divisor <= candidate; divisor++) {
-            if (candidate % divisor == 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static final Set<Datatype> MEASURABLE = Typeset.NUMBER.membersAnd(
-            Datatype.MONEY, Datatype.TIME, Datatype.PAIR);
-
-    private static final Set<Datatype> DIVISIBLE = Typeset.NUMBER.membersAnd(
-            Datatype.MONEY, Datatype.CHAR, Datatype.TIME);
-
-    private static double inRadians(Value angle, Set<String> refinements) {
-        double given = Comparison.asDouble(angle);
-        return refinements.contains("radians") ? given : Math.toRadians(given);
-    }
-
-    private static double withoutTheNoiseNearZero(double answer) {
-        return Math.abs(answer) < Math.ulp(1.0) ? 0.0 : answer;
-    }
-
-    private static double tangentOf(double radians) {
-        if (Arithmetic.nearlyTheSame(Math.abs(radians), Math.PI / 2.0)) {
-            return radians < 0 ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
-        }
-        return Math.tan(radians);
-    }
-
-    private static Value magnitudeOf(Value value) {
-        return switch (value) {
-            case IntegerValue whole -> {
-                if (whole.magnitude() == Long.MIN_VALUE) {
-                    throw Raised.of(EvaluationFailure.OVERFLOW,
-                            "there is no positive counterpart to " + whole.magnitude());
-                }
-                yield IntegerValue.of(Math.abs(whole.magnitude()));
-            }
-            case DecimalValue(double quantity, Datatype datatype) -> quantity == 0.0
-                    ? value
-                    : new DecimalValue(Math.abs(quantity), datatype);
-            case PairValue pair -> PairValue.of(Math.abs(pair.x()), Math.abs(pair.y()));
-            case TimeValue time -> TimeValue.ofNanoseconds(Math.abs(time.nanoseconds()));
-            case MoneyValue money -> MoneyValue.of(money.amount().abs());
-            case CharacterValue character -> character;
-            default -> raiseCannotUse(value, "abs");
-        };
     }
 
     private static long shiftedKeepingTheSign(long value, long places) {
@@ -996,58 +724,6 @@ public final class RebolNativeWords {
             return 0;
         }
         return places >= 0 ? value << places : value >>> -places;
-    }
-
-    private static Value shifted(List<Value> arguments, boolean leftwards) {
-        long value = ((IntegerValue) arguments.get(0)).magnitude();
-        long count = ((IntegerValue) arguments.get(1)).magnitude();
-        if (count < 0) {
-            return IntegerValue.of(value);
-        }
-        return IntegerValue.of(leftwards ? value << count : value >> count);
-    }
-
-    private static List<Parameter> takesComparable(String... names) {
-        List<Parameter> parameters = new ArrayList<>();
-        for (String name : names) {
-            parameters.add(Parameter.required(name));
-        }
-        return parameters;
-    }
-
-    private static boolean bothArePercents(Value left, Value right) {
-        return left.datatype() == Datatype.PERCENT && right.datatype() == Datatype.PERCENT;
-    }
-
-    private static final Set<Datatype> NEGATABLE = Typeset.NUMBER.membersAnd(
-            Datatype.PAIR, Datatype.MONEY, Datatype.TIME, Datatype.BITSET);
-
-    private static Value negated(Value value) {
-        return switch (value) {
-            case BitsetValue members -> members.complemented();
-            case PairValue(double x, double y) -> PairValue.of(-x, -y);
-            case DecimalValue(double quantity, Datatype datatype) ->
-                    new DecimalValue(-quantity, datatype);
-            case MoneyValue money ->
-                    money.amounting(money.amount().negate()).signed(!money.negative());
-            default -> Arithmetic.difference(IntegerValue.of(0), value);
-        };
-    }
-
-    private static Value extreme(Value left, Value right, boolean wantingLarger) {
-        if (left instanceof PairValue(double x1, double y1) && right instanceof PairValue(double x, double y)) {
-            return PairValue.of(
-                    furtherOf(x1, x, wantingLarger),
-                    furtherOf(y1, y, wantingLarger));
-        }
-        boolean takeLeft = wantingLarger
-                ? Comparison.compareForSorting(left, right, false) >= 0
-                : Comparison.compareForSorting(left, right, false) <= 0;
-        return takeLeft ? left : right;
-    }
-
-    private static double furtherOf(double left, double right, boolean wantingLarger) {
-        return wantingLarger ? Math.max(left, right) : Math.min(left, right);
     }
 
     private int aValidCodepointUpTo(int limit) {
@@ -1191,34 +867,6 @@ public final class RebolNativeWords {
     private static final int MONTHS_A_YEAR = 12;
     private static final int LONGEST_MONTH = 31;
 
-    private static Value interpolated(Value from, Value to, Value fraction) {
-        double walked = Math.max(0, Math.min(1, Comparison.asDouble(fraction)));
-        if (Comparison.isNumeric(from) && !(from instanceof TupleValue) && !(from instanceof PairValue)) {
-            if (!Comparison.isNumeric(to) || to instanceof TupleValue || to instanceof PairValue) {
-                throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(to));
-            }
-            return DecimalValue.of(alongTheWay(Comparison.asDouble(from), Comparison.asDouble(to), walked));
-        }
-        if (from instanceof TupleValue start) {
-            if (!(to instanceof TupleValue end)) {
-                throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(to));
-            }
-            int width = Math.max(start.segmentCount(), end.segmentCount());
-            int[] octets = new int[width];
-            for (int at = 1; at <= width; at++) {
-                octets[at - 1] = (int) alongTheWay(start.octetAt(at), end.octetAt(at), walked);
-            }
-            return TupleValue.of(octets);
-        }
-        if (from instanceof PairValue(double x1, double y1)) {
-            if (!(to instanceof PairValue(double x, double y))) {
-                throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(to));
-            }
-            return PairValue.of(alongTheWay(x1, x, walked),
-                    alongTheWay(y1, y, walked));
-        }
-        throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(from));
-    }
 
     private static double alongTheWay(double from, double to, double fraction) {
         return from + (to - from) * fraction;
@@ -14709,65 +14357,6 @@ public final class RebolNativeWords {
         define("split", List.of(Parameter.required("input"), Parameter.required("delimiters")),
                 (arguments, evaluator, context) -> splitOn(
                         arguments.get(0), arguments.get(1)));
-    }
-
-    private static final Set<Datatype> CLAMPABLE = Typeset.NUMBER.membersAnd(
-            Datatype.TUPLE, Datatype.PAIR, Datatype.MONEY);
-
-    private static Value heldInsideTheRange(Value value, Value lowest, Value highest) {
-        if (value.datatype() != lowest.datatype()
-                || value.datatype() != highest.datatype()) {
-            throw Raised.of(EvaluationFailure.TYPE_MISMATCH,
-                    value.datatype().literalSpelling()
-                            + " cannot be clamped between "
-                            + lowest.datatype().literalSpelling() + " and "
-                            + highest.datatype().literalSpelling());
-        }
-        return switch (value) {
-            case IntegerValue whole -> IntegerValue.of(Math.max(
-                    ((IntegerValue) lowest).magnitude(),
-                    Math.min(((IntegerValue) highest).magnitude(), whole.magnitude())));
-            case DecimalValue fraction -> new DecimalValue(
-                    clipped(fraction.quantity(),
-                            ((DecimalValue) lowest).quantity(),
-                            ((DecimalValue) highest).quantity()),
-                    fraction.datatype());
-            case PairValue point -> PairValue.of(
-                    clipped(point.x(), ((PairValue) lowest).x(), ((PairValue) highest).x()),
-                    clipped(point.y(), ((PairValue) lowest).y(), ((PairValue) highest).y()));
-            case TupleValue parts -> clampedTuple(
-                    parts, (TupleValue) lowest, (TupleValue) highest);
-            case MoneyValue amount -> new MoneyActions(amount).heldBetween(
-                    (MoneyValue) lowest, (MoneyValue) highest);
-            default -> value;
-        };
-    }
-
-    private static Value clampedTuple(
-            TupleValue value, TupleValue lowest, TupleValue highest) {
-
-        int[] octets = value.segments();
-        int[] held = new int[octets.length];
-        for (int at = 0; at < octets.length; at++) {
-            int low = at < lowest.segments().length ? lowest.segments()[at] : 0;
-            int high = at < highest.segments().length ? highest.segments()[at] : 0;
-            held[at] = Math.max(low, Math.min(high, octets[at]));
-        }
-        return TupleValue.of(held);
-    }
-
-    private static double clipped(double value, double lowest, double highest) {
-        return Math.max(lowest, Math.min(highest, value));
-    }
-
-    private static Value betweenTwoPoints(
-            PairValue from, PairValue to, boolean alongTheStreets) {
-
-        double across = from.x() - to.x();
-        double down = from.y() - to.y();
-        return DecimalValue.of(alongTheStreets
-                ? Math.abs(across) + Math.abs(down)
-                : Math.hypot(across, down));
     }
 
     private static final int LARGEST_EXACT_FACTORIAL = 20;

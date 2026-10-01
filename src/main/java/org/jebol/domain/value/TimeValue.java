@@ -5,6 +5,12 @@ import java.util.Optional;
 public record TimeValue(long nanoseconds) implements Value {
 
     @Override
+    public Value absolute() {
+        return TimeValue.ofNanoseconds(Math.abs(nanoseconds));
+    }
+
+
+    @Override
     public Value arithmetic(Value right, ArithmeticOperation operation) {
         return right instanceof DateValue moment
                 && operation.isCommutative() && !operation.multiplies()

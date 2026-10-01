@@ -9,6 +9,22 @@ import java.util.Optional;
  * <p>Zero is a value and therefore true. That catches everyone once.
  */
 public record IntegerValue(long magnitude) implements Value, RebolNumber {
+
+    @Override
+    public Value absolute() {
+        if (magnitude == Long.MIN_VALUE) {
+            throw Raised.of(EvaluationFailure.OVERFLOW,
+                    "there is no positive counterpart to " + magnitude);
+        }
+        return IntegerValue.of(Math.abs(magnitude));
+    }
+
+    @Override
+    public Value heldBetween(Value lowest, Value highest) {
+        return IntegerValue.of(Math.max(((IntegerValue) lowest).magnitude,
+                Math.min(((IntegerValue) highest).magnitude, magnitude)));
+    }
+
     @Override
     public Value combinedWithANumber(Value right, ArithmeticOperation operation) {
         return switch (right) {

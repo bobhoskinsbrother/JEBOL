@@ -62,6 +62,32 @@ public record TupleValue(int[] segments) implements Value {
         return new TupleActions().combinedWith(this, right, operation);
     }
 
+    @Override
+    public Value heldBetween(Value lowest, Value highest) {
+        TupleValue floor = (TupleValue) lowest;
+        TupleValue ceiling = (TupleValue) highest;
+        int[] held = new int[segments.length];
+        for (int at = 0; at < held.length; at++) {
+            held[at] = Math.max(floor.octetAt(at + 1),
+                    Math.min(ceiling.octetAt(at + 1), segments[at]));
+        }
+        return TupleValue.of(held);
+    }
+
+    @Override
+    public Value partWayTo(Value destination, double fraction) {
+        if (!(destination instanceof TupleValue reached)) {
+            throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(destination));
+        }
+        int width = Math.max(segmentCount(), reached.segmentCount());
+        int[] octets = new int[width];
+        for (int at = 1; at <= width; at++) {
+            int from = octetAt(at);
+            octets[at - 1] = (int) (from + (reached.octetAt(at) - from) * fraction);
+        }
+        return TupleValue.of(octets);
+    }
+
 
     @Override
     public Value bitwise(Value right, BitwiseOperation operation) {

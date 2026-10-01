@@ -45,6 +45,49 @@ import java.util.Optional;
 public record PairValue(double x, double y) implements Value {
 
     @Override
+    public Value absolute() {
+        return PairValue.of(Math.abs(x), Math.abs(y));
+    }
+
+    @Override
+    public Value negated() {
+        return PairValue.of(-x, -y);
+    }
+
+    @Override
+    public Value heldBetween(Value lowest, Value highest) {
+        PairValue floor = (PairValue) lowest;
+        PairValue ceiling = (PairValue) highest;
+        return PairValue.of(
+                Math.max(floor.x, Math.min(ceiling.x, x)),
+                Math.max(floor.y, Math.min(ceiling.y, y)));
+    }
+
+    @Override
+    public Value partWayTo(Value destination, double fraction) {
+        if (!(destination instanceof PairValue(double reachedX, double reachedY))) {
+            throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(destination));
+        }
+        return PairValue.of(
+                x + (reachedX - x) * fraction,
+                y + (reachedY - y) * fraction);
+    }
+
+    public Value apartFrom(PairValue other, boolean alongTheStreets) {
+        double across = x - other.x;
+        double down = y - other.y;
+        return DecimalValue.of(alongTheStreets
+                ? Math.abs(across) + Math.abs(down)
+                : Math.hypot(across, down));
+    }
+
+    public Value angleFromTheOrigin(boolean inRadians) {
+        double angle = Math.atan2(y, x);
+        return DecimalValue.of(inRadians ? angle : Math.toDegrees(angle));
+    }
+
+
+    @Override
     public Value arithmetic(Value right, ArithmeticOperation operation) {
         return new PairActions(this).combinedWith(right, operation);
     }

@@ -1,6 +1,6 @@
 package org.jebol.domain.value;
 
-final class Or implements BitwiseOperation {
+public final class Or implements BitwiseOperation {
 
     @Override
     public String spelling() {

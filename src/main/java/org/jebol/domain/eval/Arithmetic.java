@@ -75,7 +75,7 @@ public final class Arithmetic {
 
     private static final long STEPS_MODULUS_ALLOWS = 10;
 
-    static boolean nearlyTheSame(double first, double second) {
+    public static boolean nearlyTheSame(double first, double second) {
         return Comparison.looselyEqual(
                 DecimalValue.of(first), DecimalValue.of(second), STEPS_MODULUS_ALLOWS);
     }

@@ -1,0 +1,15 @@
+package org.jebol.domain.eval.definition;
+
+public class SineFunction extends TrigonometryFunction {
+
+    @Override
+    public String name() {
+        return "sine";
+    }
+
+    @Override
+    protected double ratioOf(double radians) {
+        double answered = Math.sin(radians);
+        return Math.abs(answered) < Math.ulp(1.0) ? 0.0 : answered;
+    }
+}

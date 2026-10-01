@@ -12,6 +12,23 @@ public record DecimalValue(double quantity, Datatype datatype)
         implements Value, RebolNumber {
 
     @Override
+    public Value absolute() {
+        return quantity == 0.0 ? this : new DecimalValue(Math.abs(quantity), datatype);
+    }
+
+    @Override
+    public Value negated() {
+        return new DecimalValue(-quantity, datatype);
+    }
+
+    @Override
+    public Value heldBetween(Value lowest, Value highest) {
+        return new DecimalValue(Math.max(((DecimalValue) lowest).quantity,
+                Math.min(((DecimalValue) highest).quantity, quantity)), datatype);
+    }
+
+
+    @Override
     public Value combinedWithANumber(Value right, ArithmeticOperation operation) {
         Value answered = operation.onFractions(
                 quantity, Numbers.quantityOfANumber(right), true);

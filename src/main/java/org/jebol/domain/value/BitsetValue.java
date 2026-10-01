@@ -40,6 +40,11 @@ public final class BitsetValue implements Value {
         return turned;
     }
 
+    @Override
+    public Value negated() {
+        return complemented();
+    }
+
     public void addAll(BitsetValue others) {
         byte[] theirs = others.octets;
         if (theirs.length > octets.length) {
