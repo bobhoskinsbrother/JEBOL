@@ -1,6 +1,5 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.BitwiseOperation;
 import org.jebol.domain.eval.definition.*;
 import org.jebol.domain.value.sets.SetOperation;
 
@@ -101,12 +100,6 @@ public final class RebolNativeWords {
 
     public void useFileSeparator(char separator) {
         this.localFileSeparator = separator;
-    }
-
-    private String bootLauncher = "";
-
-    public void useBootLauncher(String launcherPath) {
-        this.bootLauncher = launcherPath;
     }
 
     private String operatingSystemName = "JVM";
@@ -300,9 +293,7 @@ public final class RebolNativeWords {
         options.set("flags", new ObjectValue(bootFlags));
         options.set("home", StringValue.of(
                 System.getProperty("user.home", "") + "/", Datatype.FILE));
-        options.set("boot", bootLauncher.isEmpty()
-                ? NoneValue.none()
-                : StringValue.of(bootLauncher, Datatype.FILE));
+        options.set("boot", NoneValue.none());
         options.set("path", StringValue.of(
                 System.getProperty("user.dir", "") + "/", Datatype.FILE));
         options.set("data", StringValue.of(
@@ -418,14 +409,6 @@ public final class RebolNativeWords {
         operatorTwins.forEach((operator, twin) ->
                 context.set(operator, new OperatorValue(operator, definitions.get(twin))));
         return context;
-    }
-
-    public int nativeCount() {
-        return definitions.size();
-    }
-
-    public int operatorCount() {
-        return operatorTwins.size();
     }
 
     private void define(String name, List<Parameter> parameters, Callable behaviour) {
@@ -868,10 +851,6 @@ public final class RebolNativeWords {
     private static final int LONGEST_MONTH = 31;
 
 
-    private static double alongTheWay(double from, double to, double fraction) {
-        return from + (to - from) * fraction;
-    }
-
     private static Value reversedOctets(TupleValue tuple, int howMany) {
         if (howMany < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Integer.toString(howMany));
@@ -1047,37 +1026,18 @@ public final class RebolNativeWords {
         return scanning.readsATime() ? scanning.nanoseconds() : null;
     }
 
-    private static Value scalarOf(Value value) {
-        return value instanceof TimeValue(long nanoseconds)
-                ? DecimalValue.of(nanoseconds)
-                : value;
-    }
-
-
     private void registerComparators() {
-        asksAbout("equal?", Comparison.Strictness.EQUAL, true);
-        asksAbout("not-equal?", Comparison.Strictness.EQUAL, false);
-        asksAbout("equiv?", Comparison.Strictness.EQUIV, true);
-        asksAbout("not-equiv?", Comparison.Strictness.EQUIV, false);
-        asksAbout("strict-equal?", Comparison.Strictness.STRICT_EQUAL, true);
-        asksAbout("strict-not-equal?", Comparison.Strictness.STRICT_EQUAL, false);
-        asksAboutOrder("greater-or-equal?", Comparison.Strictness.GREATER_OR_EQUAL, true);
-        asksAboutOrder("lesser?", Comparison.Strictness.GREATER_OR_EQUAL, false);
-        asksAboutOrder("greater?", Comparison.Strictness.GREATER, true);
-        asksAboutOrder("lesser-or-equal?", Comparison.Strictness.GREATER, false);
-        asksAbout("same?", Comparison.Strictness.SAME, true);
-    }
-
-    private void asksAbout(String name, Comparison.Strictness strictness, boolean asAsked) {
-        define(name, takesAnything("value1", "value2"),
-                (arguments, evaluator, context) -> LogicValue.of(asAsked
-                        == Comparison.holds(arguments.get(0), arguments.get(1), strictness)));
-    }
-
-    private void asksAboutOrder(String name, Comparison.Strictness strictness, boolean asAsked) {
-        define(name, takes("value1", "value2"),
-                (arguments, evaluator, context) -> LogicValue.of(asAsked
-                        == Comparison.holds(arguments.get(0), arguments.get(1), strictness)));
+        registerFunction(new EqualFunction());
+        registerFunction(new NotEqualFunction());
+        registerFunction(new EquivFunction());
+        registerFunction(new NotEquivFunction());
+        registerFunction(new StrictEqualFunction());
+        registerFunction(new StrictNotEqualFunction());
+        registerFunction(new GreaterOrEqualFunction());
+        registerFunction(new LesserFunction());
+        registerFunction(new GreaterFunction());
+        registerFunction(new LesserOrEqualFunction());
+        registerFunction(new SameFunction());
     }
 
     private void registerConditionalFunctions() {
@@ -9023,13 +8983,6 @@ public final class RebolNativeWords {
         return given;
     }
 
-    private static MapValue structCatalogueOf(Evaluator evaluator) {
-        return pathInto(evaluator.systemContext(), "system", "catalog", "structs")
-                instanceof MapValue catalogue
-                ? catalogue
-                : MapValue.empty();
-    }
-
     private static Value resizedImage(
             List<Value> arguments, Set<String> refinements) {
 
@@ -10857,14 +10810,6 @@ public final class RebolNativeWords {
         }
     }
 
-    private static Value wordNamed(String spelling, Datatype kind) {
-        if (spelling.isEmpty()) {
-            throw Raised.of(EvaluationFailure.TOO_SHORT,
-                    "a " + kind.literalSpelling() + " needs a spelling");
-        }
-        return WordValue.of(spelling, kind);
-    }
-
     private static Value wordFrom(Value value, Datatype kind) {
         if (value instanceof WordValue word) {
             return WordValue.of(word.spelling(), kind);
@@ -11548,23 +11493,6 @@ public final class RebolNativeWords {
             return Optional.of((long) (upTo.index() - from.index()));
         }
         return Optional.empty();
-    }
-
-    private static List<Value> partOf(
-            BlockValue block, List<Value> arguments, Set<String> refinements) {
-
-        return howManyWanted(block, arguments, refinements, 2)
-                .map(count -> {
-                    List<Value> whole = block.head().remaining();
-                    int here = block.index() - 1;
-                    int from = count >= 0 ? here : (int) Math.max(0, here + count);
-                    int to = count >= 0
-                            ? (int) Math.min(whole.size(), here + count)
-                            : here;
-                    return whole.subList(Math.min(from, whole.size()),
-                            Math.max(Math.min(to, whole.size()), Math.min(from, whole.size())));
-                })
-                .orElseGet(block::remaining);
     }
 
     private static void refuseASizeItCannotWrite(long width) {
@@ -14357,29 +14285,6 @@ public final class RebolNativeWords {
         define("split", List.of(Parameter.required("input"), Parameter.required("delimiters")),
                 (arguments, evaluator, context) -> splitOn(
                         arguments.get(0), arguments.get(1)));
-    }
-
-    private static final int LARGEST_EXACT_FACTORIAL = 20;
-    private static final int LARGEST_FACTORIAL_AT_ALL = 170;
-
-    private static Value theFactorialOf(long value) {
-        if (value < 0 || value > LARGEST_FACTORIAL_AT_ALL) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    "factorial takes 0 to " + LARGEST_FACTORIAL_AT_ALL
-                            + " and was given " + value);
-        }
-        if (value > LARGEST_EXACT_FACTORIAL) {
-            double approximate = 1;
-            for (long each = 2; each <= value; each++) {
-                approximate *= each;
-            }
-            return DecimalValue.of(approximate);
-        }
-        long exact = 1;
-        for (long each = 2; each <= value; each++) {
-            exact *= each;
-        }
-        return IntegerValue.of(exact);
     }
 
     private static Value splitOn(Value input, Value rule) {

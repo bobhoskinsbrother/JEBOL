@@ -70,6 +70,10 @@ public abstract class DefaultFunction implements FunctionDefinition {
                 Datatype.DATATYPE, Datatype.PAIR, Datatype.VECTOR));
     }
 
+    protected List<Parameter> acceptsAnyType(String... names) {
+        return each(names, Typeset.ANY_TYPE.members());
+    }
+
     protected List<Parameter> acceptsWhateverComesAlong(String... names) {
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
