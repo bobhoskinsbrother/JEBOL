@@ -361,7 +361,7 @@ to be plumbed. But registering a bare function says nothing about what it
 withholding another, or report that an extension failed to start rather
 than that a word was missing.
 
-`FunctionDefinition` is the beginning of that contract: a name, its parameters, its
+`NativeDefinition` is the beginning of that contract: a name, its parameters, its
 behaviour, its refinements, and `registerWordDefinition` taking the
 interface so a shipped built-in and an added library register the same way.
 
@@ -370,7 +370,7 @@ interface so a shipped built-in and an added library register the same way.
 **This comes first, and not because extensions need it.** `RebolNativeWords` is
 fifteen thousand lines that define every built-in through a private
 `define` and dispatch through switches on a verb or a scheme name. Moving
-those onto `FunctionDefinition` is the type-major refactor's delivery mechanism,
+those onto `NativeDefinition` is the type-major refactor's delivery mechanism,
 and doing it first means the contract is proved against four hundred real
 cases before anything outside depends on it. A contract drawn from one
 example and published is a contract that will be wrong.
@@ -380,8 +380,8 @@ capability this build ships from one a library added**.
 
 Work, roughly in order:
 
-- one `FunctionDefinition` per built-in, replacing the `define(...)` call
-- the shared helpers off the interface: `acceptsAllNumbers` is on `FunctionDefinition`
+- one `NativeDefinition` per built-in, replacing the `define(...)` call
+- the shared helpers off the interface: `acceptsAllNumbers` is on `NativeDefinition`
   today because it needed somewhere to live, and a scheme definition should
   not inherit a method about numeric parameter lists. An abstract class the
   arithmetic definitions extend is the likelier home
@@ -430,7 +430,7 @@ built-in.
 
 A scheme is not a function and has no parameters or behaviour in the same
 sense: it has a spec, an init, an awake and an actor. A codec has a name,
-suffixes, and three functions. So `FunctionDefinition` is the function contract and
+suffixes, and three functions. So `NativeDefinition` is the function contract and
 the others are siblings, with the registration overloaded per kind rather
 than one contract wide enough to leave most of itself empty in every use.
 

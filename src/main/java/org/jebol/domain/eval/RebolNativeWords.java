@@ -75,7 +75,7 @@ public final class RebolNativeWords {
         for (int at = 0; at + 1 < written.size(); at += 2) {
             if (written.get(at) instanceof WordValue operator
                     && written.get(at + 1) instanceof WordValue twin) {
-                defineOperator(operator.spelling(), twin.spelling());
+                registerOperator(operator.spelling(), twin.spelling());
             }
         }
     }
@@ -423,7 +423,7 @@ public final class RebolNativeWords {
         behaviours.put(name, behaviour);
     }
 
-    private void defineOperator(String spelling, String prefixTwin) {
+    private void registerOperator(String spelling, String prefixTwin) {
         if (!definitions.containsKey(prefixTwin)) {
             throw new IllegalStateException(
                     "operator " + spelling + " has no prefix twin called " + prefixTwin);
@@ -475,7 +475,7 @@ public final class RebolNativeWords {
         return parameters;
     }
 
-    private void registerFunction(FunctionDefinition function) {
+    private void register(NativeDefinition function) {
         String name = function.name();
         definitions.put(name, new NativeValue(name, function.parameters(), function.refinements(), of()));
         behaviours.put(name, function.behaviour());
@@ -483,57 +483,57 @@ public final class RebolNativeWords {
 
 
     private void registerArithmeticFunctions() {
-        registerFunction(new AddFunction());
-        registerFunction(new SubtractFunction());
-        registerFunction(new MultiplyFunction());
-        registerFunction(new DivideFunction());
-        registerFunction(new RemainderFunction());
-        registerFunction(new SquareRootFunction());
-        registerFunction(new SineFunction());
-        registerFunction(new CosineFunction());
-        registerFunction(new TangentFunction());
-        registerFunction(new ArcsineFunction());
-        registerFunction(new ArccosineFunction());
-        registerFunction(new ArctangentFunction());
-        registerFunction(new NaturalLogarithmFunction());
-        registerFunction(new CommonLogarithmFunction());
-        registerFunction(new BinaryLogarithmFunction());
-        registerFunction(new ExponentialFunction());
-        registerFunction(new AbsoluteFunction());
-        registerFunction(new ToDegreesFunction());
-        registerFunction(new ToRadiansFunction());
-        registerFunction(new IntegerDivideFunction());
-        registerFunction(new AbsFunction());
-        registerFunction(new SinFunction());
-        registerFunction(new CosFunction());
-        registerFunction(new TanFunction());
-        registerFunction(new AsinFunction());
-        registerFunction(new AcosFunction());
-        registerFunction(new AtanFunction());
-        registerFunction(new SqrtFunction());
-        registerFunction(new GreatestCommonDivisorFunction());
-        registerFunction(new LowestCommonMultipleFunction());
-        registerFunction(new PrimeFunction());
-        registerFunction(new FactorialFunction());
-        registerFunction(new ArctangentOfAPointFunction());
-        registerFunction(new ArctangentOfTwoSidesFunction());
-        registerFunction(new FractionFunction());
-        registerFunction(new WhetherComplementedFunction());
-        registerFunction(new ComplementFunction());
-        registerFunction(new ClampFunction());
-        registerFunction(new DistanceFunction());
-        registerFunction(new PowerFunction());
-        registerFunction(new NegateFunction());
-        registerFunction(new MaximumFunction());
-        registerFunction(new MinimumFunction());
-        registerFunction(new BitwiseAndFunction());
-        registerFunction(new BitwiseOrFunction());
-        registerFunction(new BitwiseXorFunction());
-        registerFunction(new LerpFunction());
-        registerFunction(new ModFunction());
-        registerFunction(new ModuloFunction());
-        registerFunction(new ShiftLeftFunction());
-        registerFunction(new ShiftRightFunction());
+        register(new AddAction());
+        register(new SubtractAction());
+        register(new MultiplyAction());
+        register(new DivideAction());
+        register(new RemainderAction());
+        register(new SquareRootNative());
+        register(new SineNative());
+        register(new CosineNative());
+        register(new TangentNative());
+        register(new ArcsineNative());
+        register(new ArccosineNative());
+        register(new ArctangentNative());
+        register(new NaturalLogarithmNative());
+        register(new CommonLogarithmNative());
+        register(new BinaryLogarithmNative());
+        register(new ExponentialNative());
+        register(new AbsoluteAction());
+        register(new ToDegreesNative());
+        register(new ToRadiansNative());
+        register(new IntegerDivideNative());
+        register(new AbsAction());
+        register(new SinNative());
+        register(new CosNative());
+        register(new TanNative());
+        register(new AsinNative());
+        register(new AcosNative());
+        register(new AtanNative());
+        register(new SqrtNative());
+        register(new GreatestCommonDivisorNative());
+        register(new LowestCommonMultipleNative());
+        register(new PrimeNative());
+        register(new FactorialNative());
+        register(new ArctangentOfAPointNative());
+        register(new ArctangentOfTwoSidesNative());
+        register(new FractionNative());
+        register(new WhetherComplementedNative());
+        register(new ComplementAction());
+        register(new ClampNative());
+        register(new DistanceNative());
+        register(new PowerAction());
+        register(new NegateAction());
+        register(new MaximumNative());
+        register(new MinimumNative());
+        register(new BitwiseAndAction());
+        register(new BitwiseOrAction());
+        register(new BitwiseXorAction());
+        register(new LerpNative());
+        register(new ModNative());
+        register(new ModuloNative());
+        register(new ShiftLeftNative());
+        register(new ShiftRightNative());
     }
 
     private void registerTheRemainingNatives() {
@@ -1027,17 +1027,17 @@ public final class RebolNativeWords {
     }
 
     private void registerComparators() {
-        registerFunction(new EqualFunction());
-        registerFunction(new NotEqualFunction());
-        registerFunction(new EquivFunction());
-        registerFunction(new NotEquivFunction());
-        registerFunction(new StrictEqualFunction());
-        registerFunction(new StrictNotEqualFunction());
-        registerFunction(new GreaterOrEqualFunction());
-        registerFunction(new LesserFunction());
-        registerFunction(new GreaterFunction());
-        registerFunction(new LesserOrEqualFunction());
-        registerFunction(new SameFunction());
+        register(new EqualNative());
+        register(new NotEqualNative());
+        register(new EquivNative());
+        register(new NotEquivNative());
+        register(new StrictEqualNative());
+        register(new StrictNotEqualNative());
+        register(new GreaterOrEqualNative());
+        register(new LesserNative());
+        register(new GreaterNative());
+        register(new LesserOrEqualNative());
+        register(new SameNative());
     }
 
     private void registerConditionalFunctions() {

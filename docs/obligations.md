@@ -459,7 +459,7 @@ Hunt the gap. The question is "what has no test", never "is this covered".
 | `invariant.NativeDefinition.OperatorsAreBinary` — Verify invariant OperatorsAreBinary holds after any field mutation on NativeDefinition | OperatorValue.arity is 2 by construction |
 | `invariant.NativeNamesAreCanonical` — Verify invariant NativeNamesAreCanonical holds after every state-changing rule that touches constrained entities | Natives.define uses a map keyed by name |
 | `invariant.NativeNamesAreUnique` — Verify invariant NativeNamesAreUnique holds after every state-changing rule that touches constrained entities | Natives.define uses a map keyed by name |
-| `invariant.OperatorsHaveAPrefixTwin` — Verify invariant OperatorsHaveAPrefixTwin holds after every state-changing rule that touches constrained entities | Natives.defineOperator refuses an unknown twin |
+| `invariant.OperatorsHaveAPrefixTwin` — Verify invariant OperatorsHaveAPrefixTwin holds after every state-changing rule that touches constrained entities | RebolNativeWords.registerOperator refuses an unknown twin |
 
 ### rule_failure (13)
 
