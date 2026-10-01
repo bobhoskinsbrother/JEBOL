@@ -2,13 +2,14 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.ArithmeticOperation;
+import org.jebol.domain.value.Divide;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
 import java.util.Set;
 
-public class DivideFunctionDefinition extends DefaultFunctionDefinition {
+public class DivideFunction extends DefaultFunction {
     public String name() {
         return "divide";
     }
@@ -24,7 +25,7 @@ public class DivideFunctionDefinition extends DefaultFunctionDefinition {
         {
             Value left = arguments.get(0);
             Value right = arguments.get(1);
-            return left.arithmetic(right, ArithmeticOperation.findOperation(name()));
+            return left.arithmetic(right, new Divide());
         };
     }
 

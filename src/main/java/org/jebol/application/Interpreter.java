@@ -53,7 +53,7 @@ public final class Interpreter {
         Set<HostService> duringTheBoot =
                 EnumSet.of(HostService.CLOCK, HostService.WINDOWS);
         duringTheBoot.addAll(bounds.grantedServices());
-        Natives natives = Natives.standard(duringTheBoot);
+        RebolNativeWords natives = RebolNativeWords.standard(duringTheBoot);
         natives.useFileSeparator(File.separatorChar);
         natives.useOperatingSystemNamed(whatRebolCallsThisOperatingSystem());
         natives.useErrorCatalogue(theSourceIn("/org/jebol/errors.reb"));

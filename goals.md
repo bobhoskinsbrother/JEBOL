@@ -367,7 +367,7 @@ interface so a shipped built-in and an added library register the same way.
 
 #### Part one: put Natives on the contract
 
-**This comes first, and not because extensions need it.** `Natives` is
+**This comes first, and not because extensions need it.** `RebolNativeWords` is
 fifteen thousand lines that define every built-in through a private
 `define` and dispatch through switches on a verb or a scheme name. Moving
 those onto `FunctionDefinition` is the type-major refactor's delivery mechanism,
@@ -382,7 +382,7 @@ Work, roughly in order:
 
 - one `FunctionDefinition` per built-in, replacing the `define(...)` call
 - the shared helpers off the interface: `acceptsAllNumbers` is on `FunctionDefinition`
-  today because it needed somewhere to live, and a scheme functionDefinition should
+  today because it needed somewhere to live, and a scheme definition should
   not inherit a method about numeric parameter lists. An abstract class the
   arithmetic definitions extend is the likelier home
 - accessors in the house style. `getName` and `parameters` are JavaBean
@@ -408,10 +408,10 @@ would break parity.
 | `add: func [a b][99]` then `add 1 2` | 99 | 99 |
 | then `lib/add 1 2` | **3** | **99** |
 
-In Rebol the script's functionDefinition lands in the user context and shadows;
+In Rebol the script's definition lands in the user context and shadows;
 lib keeps its own. Here it overwrites lib. So the separation this goal
 needs at the registry is already missing one layer below it, and the two
-are the same problem: `Natives` does not distinguish what it ships from
+are the same problem: `RebolNativeWords` does not distinguish what it ships from
 what a script adds.
 
 The shape that answers both: two collections the registry owns, the
@@ -984,7 +984,7 @@ takes, and several of the measures in this file are written that way.
 **The original complaint, and much the largest piece left.** One `t-*.c` per
 increment: a bitset must answer what happens when you append to it, and answer
 it in the class called bitset. Today that answer is an arm in a switch inside a
-fifteen-thousand-line `Natives`, and an enum constant with a body is the same
+fifteen-thousand-line `RebolNativeWords`, and an enum constant with a body is the same
 switch wearing a jacket.
 
 **Some of the targets this goal used to name are gone and two are not.**
@@ -1044,7 +1044,7 @@ million adds allocate seventy-two megabytes of garbage. The list is
 constant: it wants building once, and held by a registry instance rather
 than returned from a static.
 
-What is left after that is the rest of `Natives`.
+What is left after that is the rest of `RebolNativeWords`.
 
 An enum does earn its keep, but only as a **registry**: it is right for the name,
 the number and the closed set, and wrong for the behaviour, which goes in a class
@@ -1809,7 +1809,7 @@ character. The one that did not was `empty?`, and it turned out not to be a
 fork either.
 
 **The prelude's copies are replaced as Rebol's library loads.** 32 of the 36
-are also defined in a vendored `mezz` file, and the functionDefinition standing at
+are also defined in a vendored `mezz` file, and the definition standing at
 runtime is the library's: `collect`'s body at runtime is
 `mezz-series.reb`'s, not the prelude's, and the two differ. The prelude's
 versions exist so that the prelude and the earliest library files can run at

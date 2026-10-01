@@ -55,7 +55,7 @@ public final class StringActions extends SeriesActions {
 
     @Override
     public Value insert(Asked asked) {
-        StringValue held = (StringValue) Natives.clampedToTail(text);
+        StringValue held = (StringValue) RebolNativeWords.clampedToTail(text);
         int[] added = contributedBy(asked).codePoints().toArray();
         for (int at = 0; at < added.length; at++) {
             held.storage().insertAt(held.index() + at, added[at]);

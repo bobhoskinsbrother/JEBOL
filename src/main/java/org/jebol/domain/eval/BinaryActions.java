@@ -67,7 +67,7 @@ public final class BinaryActions extends SeriesActions {
 
     @Override
     public Value insert(Asked asked) {
-        BinaryValue held = (BinaryValue) Natives.clampedToTail(bytes);
+        BinaryValue held = (BinaryValue) RebolNativeWords.clampedToTail(bytes);
         int[] octets = octetsContributedBy(asked);
         for (int at = octets.length; at > 0; at--) {
             held.storage().insertAt(held.index(), octets[at - 1]);

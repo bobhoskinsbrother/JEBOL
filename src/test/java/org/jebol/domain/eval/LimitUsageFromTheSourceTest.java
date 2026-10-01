@@ -51,14 +51,14 @@ class LimitUsageFromTheSourceTest {
     class TheNativeItself {
 
         private static Value called(Evaluator evaluator, String field, Value limit) {
-            return Natives.standard(Set.of()).behaviours()
+            return RebolNativeWords.standard(Set.of()).behaviours()
                     .get("limit-usage")
                     .call(List.of(WordValue.of(field), limit),
                             evaluator, null, Set.of());
         }
 
         private static Evaluator anEvaluator() {
-            Natives natives = Natives.standard(Set.of());
+            RebolNativeWords natives = RebolNativeWords.standard(Set.of());
             return new Evaluator(natives.behaviours(), natives.asContext(),
                     line -> { });
         }

@@ -55,7 +55,7 @@ public final class BlockActions extends SeriesActions {
 
     @Override
     public Value insert(Asked asked) {
-        BlockValue held = (BlockValue) Natives.clampedToTail(block);
+        BlockValue held = (BlockValue) RebolNativeWords.clampedToTail(block);
         if (asked.duplicated() instanceof BlockValue added
                 && splicesRatherThanGoesInWhole(added, asked)) {
             List<Value> items = asked.theWantedItemsOf(added);

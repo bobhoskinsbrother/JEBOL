@@ -20,7 +20,7 @@ sum 123 321
 --- origin adapted from REBOL/Core User Guide 2.3 section 9
 --- requires control
 --- note The same thing without infix, so a failure says whether the gap is
---- note function functionDefinition or operators.
+--- note function definition or operators.
 --- code
 sum: func [arg1 arg2] [add arg1 arg2]
 sum 123 321

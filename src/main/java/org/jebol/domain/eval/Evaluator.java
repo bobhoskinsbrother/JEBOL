@@ -1581,7 +1581,7 @@ public final class Evaluator {
             };
         }
         if (target instanceof BitsetValue members) {
-            return Natives.bitsetHoldsForAPath(members, selector);
+            return RebolNativeWords.bitsetHoldsForAPath(members, selector);
         }
         if (target instanceof CharacterValue(int codepoint)
                 && selector instanceof WordValue asked) {

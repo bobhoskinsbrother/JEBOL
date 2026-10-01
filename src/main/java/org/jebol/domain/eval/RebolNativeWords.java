@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 import static java.util.Set.copyOf;
 import static java.util.Set.of;
 
-public final class Natives {
+public final class RebolNativeWords {
 
     private final RebolRandom randomness = new RebolRandom();
 
@@ -48,25 +48,25 @@ public final class Natives {
         runState.set("last-result", NoneValue.none());
     }
 
-    private Natives() {
-        defineArithmetic();
-        defineComparison();
-        defineControl();
-        defineFunctionMaking();
-        defineNonLocalExit();
-        defineObjects();
-        defineLoops();
-        defineReflection();
-        defineSeries();
-        defineStrings();
-        defineConversion();
-        defineEncodings();
-        defineInterpreterState();
-        definePorts();
-        defineParse();
-        defineLayout();
-        defineScreen();
-        defineOutput();
+    private RebolNativeWords() {
+        registerArithmeticFunctions();
+        registerComparators();
+        registerConditionalFunctions();
+        registerFunctionMaking();
+        registerNonLocalExit();
+        registerObjects();
+        registerLoops();
+        registerReflection();
+        registerSeries();
+        registerStrings();
+        registerConversion();
+        registerEncodings();
+        registerInterpreterState();
+        registerPorts();
+        registerParse();
+        registerLayout();
+        registerScreen();
+        registerOutput();
     }
 
     public void useOperatorTable(String source) {
@@ -141,8 +141,8 @@ public final class Natives {
         this.declaredSpecs = null;
     }
 
-    public static Natives standard(Set<HostService> granted) {
-        Natives natives = standard();
+    public static RebolNativeWords standard(Set<HostService> granted) {
+        RebolNativeWords natives = standard();
         natives.grantedServices = copyOf(granted);
         return natives;
     }
@@ -230,8 +230,8 @@ public final class Natives {
                                 .toLowerCase(java.util.Locale.ROOT).replace('_', ' '));
     }
 
-    public static Natives standard() {
-        return new Natives();
+    public static RebolNativeWords standard() {
+        return new RebolNativeWords();
     }
 
     private static final List<String> ACTION_NAMES = ActionNames.inDeclarationOrder();
@@ -491,7 +491,7 @@ public final class Natives {
         return widened;
     }
 
-    private static List<Parameter> takesOnlyNumbers(String... names) {
+    public static List<Parameter> takesOnlyNumbers(String... names) {
         Set<Datatype> numbers = Typeset.NUMBER.members();
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
@@ -520,24 +520,22 @@ public final class Natives {
         return parameters;
     }
 
-    private void registerFunctionDefinition(FunctionDefinition functionDefinition) {
-        String name = functionDefinition.name();
-        definitions.put(name, new NativeValue(name, functionDefinition.parameters(), functionDefinition.refinements(), of()));
-        behaviours.put(name, functionDefinition.behaviour());
+    private void registerFunction(FunctionDefinition function) {
+        String name = function.name();
+        definitions.put(name, new NativeValue(name, function.parameters(), function.refinements(), of()));
+        behaviours.put(name, function.behaviour());
     }
 
 
-    private void defineArithmetic() {
-        registerFunctionDefinition(new AddFunctionDefinition());
-        registerFunctionDefinition(new SubtractFunctionDefinition());
-        registerFunctionDefinition(new MultiplyFunctionDefinition());
-        registerFunctionDefinition(new DivideFunctionDefinition());
-        define("remainder", acceptsNumbers("value1", "value2"),
-                (arguments, evaluator, context) ->
-                        Arithmetic.remainder(arguments.get(0), arguments.get(1)));
-        define("square-root", takesOnlyNumbers("value"),
-                (arguments, evaluator, context) -> DecimalValue.of(
-                        Math.sqrt(Comparison.asDouble(arguments.get(0)))));
+    private void registerArithmeticFunctions() {
+        registerFunction(new AddFunction());
+        registerFunction(new SubtractFunction());
+        registerFunction(new MultiplyFunction());
+        registerFunction(new DivideFunction());
+        registerFunction(new RemainderFunction());
+        registerFunction(new SquareRootFunction());
+
+
         define("sqrt", List.of(Parameter.required("value", of(Datatype.DECIMAL))),
                 (arguments, evaluator, context) -> DecimalValue.of(
                         Math.sqrt(Comparison.asDouble(arguments.get(0)))));
@@ -1408,7 +1406,7 @@ public final class Natives {
     }
 
 
-    private void defineComparison() {
+    private void registerComparators() {
         asksAbout("equal?", Comparison.Strictness.EQUAL, true);
         asksAbout("not-equal?", Comparison.Strictness.EQUAL, false);
         asksAbout("equiv?", Comparison.Strictness.EQUIV, true);
@@ -1434,11 +1432,10 @@ public final class Natives {
                         == Comparison.holds(arguments.get(0), arguments.get(1), strictness)));
     }
 
-    private void defineControl() {
+    private void registerConditionalFunctions() {
         define("if", List.of(Parameter.required("condition", ANYTHING),
                         Parameter.required("branch", ANYTHING)),
-                of("only"),
-                (arguments, evaluator, context, refinements) -> {
+                of("only"), (arguments, evaluator, context, refinements) -> {
                     if (!arguments.get(0).isTruthy()) {
                         return NoneValue.none();
                     }
@@ -1726,7 +1723,7 @@ public final class Natives {
     }
 
 
-    private void defineNonLocalExit() {
+    private void registerNonLocalExit() {
         define("return", takesAnything("value"),
                 (arguments, evaluator, context) -> {
                     throw new ReturnSignal(arguments.get(0));
@@ -1798,7 +1795,7 @@ public final class Natives {
                 });
     }
 
-    private void defineFunctionMaking() {
+    private void registerFunctionMaking() {
         Transcoder.buildFunctionsWith(
                 (spec, body) -> makeFunction(spec, body, Context.root()));
         Transcoder.makeValuesWith(this::constructionOf);
@@ -1919,7 +1916,7 @@ public final class Natives {
         };
     }
 
-    private void defineObjects() {
+    private void registerObjects() {
         define("make", takesAnything("prototype", "body"),
                 (arguments, evaluator, context) ->
                         madeFrom(arguments.get(0), arguments.get(1), evaluator, context));
@@ -2313,7 +2310,7 @@ public final class Natives {
                 .toList();
     }
 
-    private void defineLoops() {
+    private void registerLoops() {
         define("loop", List.of(
                         Parameter.required("count", Typeset.NUMBER.members()),
                         Parameter.required("body", of(Datatype.BLOCK))),
@@ -2905,7 +2902,7 @@ public final class Natives {
         }
     }
 
-    private void defineReflection() {
+    private void registerReflection() {
         define("load", takes("source"), of("all"),
                 (arguments, evaluator, context, refinements) -> loaded(
                         arguments.get(0), !refinements.contains("all")));
@@ -3460,7 +3457,7 @@ public final class Natives {
                         default -> Datatype.STRING;
                     };
                     return StringValue.of(pieces.stream()
-                            .map(Natives::runTogether)
+                            .map(RebolNativeWords::runTogether)
                             .collect(Collectors.joining(separator)), kind);
                 });
 
@@ -4356,7 +4353,7 @@ public final class Natives {
         return word.binding().slotFor(word.canonical());
     }
 
-    private void defineSeries() {
+    private void registerSeries() {
         define("length?", List.of(Parameter.required("series")),
                 (arguments, evaluator, context) -> theRebolActorsAnswer(
                         "length?", arguments, of(), evaluator)
@@ -7930,7 +7927,7 @@ public final class Natives {
                 return theFirstWokenAmongEmptyingTheWakeList(waitedOn, queue);
             }
             if (!(said instanceof LogicValue)) {
-                theWakeListOf(queue).ifPresent(Natives::emptied);
+                theWakeListOf(queue).ifPresent(RebolNativeWords::emptied);
                 return NoneValue.none();
             }
         }
@@ -7945,7 +7942,7 @@ public final class Natives {
                 .filter(one -> one instanceof PortValue && woken.contains(one))
                 .findFirst()
                 .orElse(NoneValue.none());
-        theWakeListOf(queue).ifPresent(Natives::emptied);
+        theWakeListOf(queue).ifPresent(RebolNativeWords::emptied);
         return answer;
     }
 
@@ -8128,7 +8125,7 @@ public final class Natives {
         throw Raised.cannotUse(value, nativeName);
     }
 
-    private void defineEncodings() {
+    private void registerEncodings() {
         define("enhex", List.of(
                         Parameter.required("value", anyStringOr(Datatype.BINARY)),
                         Parameter.belongingTo("escape", "char", of(Datatype.CHAR)),
@@ -8646,7 +8643,7 @@ public final class Natives {
         return copyOf(accepted);
     }
 
-    private void defineInterpreterState() {
+    private void registerInterpreterState() {
         define("version", List.of(), of("data"),
                 (arguments, evaluator, context, refinements) ->
                         refinements.contains("data")
@@ -9223,7 +9220,7 @@ public final class Natives {
         List<Integer> octets = octetsOfTheBuffer(writing.head());
         Bincode.Cursor cursor = new Bincode.Cursor(octets, writing.index() - 1);
         Bincode.write(cursor, new Bincode.Script(dialect, lookedUp),
-                Natives::secondsSinceTheEpoch, Natives::nameTheValueRead);
+                RebolNativeWords::secondsSinceTheEpoch, RebolNativeWords::nameTheValueRead);
         BinaryValue written = BinaryValue.of(
                 cursor.octets().stream().mapToInt(Integer::intValue).toArray());
         held.context().set("buffer",
@@ -9241,7 +9238,7 @@ public final class Natives {
         List<Value> read = Bincode.read(cursor,
                 new Bincode.Script(List.of(WordValue.of("bytes"), howMany),
                         UnaryOperator.identity()),
-                Natives::nameTheValueRead);
+                RebolNativeWords::nameTheValueRead);
         held.context().set("buffer", reading.atIndex(cursor.at() + 1));
         return read.getFirst();
     }
@@ -9262,7 +9259,7 @@ public final class Natives {
             codes.add(count);
         }
         List<Value> read = Bincode.read(cursor,
-                new Bincode.Script(codes, lookedUp), Natives::nameTheValueRead);
+                new Bincode.Script(codes, lookedUp), RebolNativeWords::nameTheValueRead);
         held.context().set("r-mask", IntegerValue.of(cursor.bitsTaken()));
         if (cursor.cropped() > 0) {
             shortenedFromTheFront(held, cursor);
@@ -9946,7 +9943,7 @@ public final class Natives {
         return copyOf(accepted);
     }
 
-    private void defineStrings() {
+    private void registerStrings() {
         define("find-script", List.of(Parameter.required("script", of(Datatype.BINARY))),
                 (arguments, evaluator, context) -> {
                     BinaryValue script = (BinaryValue) arguments.getFirst();
@@ -10062,7 +10059,7 @@ public final class Natives {
         return new ModuleValue(context, specification);
     }
 
-    private void defineConversion() {
+    private void registerConversion() {
         define("to", takesAnything("type", "value"),
                 (arguments, evaluator, context) -> {
                     DatatypeValue wanted = arguments.getFirst() instanceof DatatypeValue asked
@@ -10099,7 +10096,7 @@ public final class Natives {
                             ? OptionalLong.of(
                                     ((IntegerValue) arguments.get(1)).magnitude())
                             : OptionalLong.empty();
-                    width.ifPresent(Natives::refuseASizeItCannotWrite);
+                    width.ifPresent(RebolNativeWords::refuseASizeItCannotWrite);
                     return WordValue.of(switch (arguments.getFirst()) {
                         case TupleValue tuple -> hexOfEachSegment(tuple, width);
                         case CharacterValue character -> hexSizedToItsMagnitude(
@@ -10123,7 +10120,7 @@ public final class Natives {
                                         text.text()));
                     }
                     return rewrittenInPlace(
-                            text, Natives::withOneLineFeedPerEnding);
+                            text, RebolNativeWords::withOneLineFeedPerEnding);
                 });
         define("enline", List.of(Parameter.required("text",
                         of(Datatype.STRING, Datatype.BLOCK))),
@@ -10133,7 +10130,7 @@ public final class Natives {
                                 "joining a block of lines is not written yet");
                     }
                     return rewrittenInPlace((StringValue) arguments.getFirst(),
-                            Natives::withOneLineFeedPerEnding);
+                            RebolNativeWords::withOneLineFeedPerEnding);
                 });
 
         define("as", List.of(
@@ -11518,7 +11515,7 @@ public final class Natives {
     private static MoneyValue readMoney(String text) {
         String written = qualifiedNumberIn(text, "a money", MOST_FRACTION_CHARACTERS);
         return amountWithoutTheCurrencyMark(written)
-                .flatMap(Natives::numberRewrittenForTheJvm)
+                .flatMap(RebolNativeWords::numberRewrittenForTheJvm)
                 .map(plain -> MoneyValue.of(new BigDecimal(plain)))
                 .orElseGet(() -> (MoneyValue)
                         raiseBadMakeArg(StringValue.of(text), "money!"));
@@ -12073,12 +12070,12 @@ public final class Natives {
     private static String runTogether(Value value) {
         if (value.datatype().isAnyPath() && value instanceof BlockValue path) {
             return path.remaining().stream()
-                    .map(Natives::runTogether)
+                    .map(RebolNativeWords::runTogether)
                     .collect(Collectors.joining("/"));
         }
         if (value instanceof BlockValue block) {
             return block.remaining().stream()
-                    .map(Natives::runTogether)
+                    .map(RebolNativeWords::runTogether)
                     .collect(Collectors.joining());
         }
         return Molder.form(value);
@@ -12090,7 +12087,7 @@ public final class Natives {
                 : runTogether(value);
     }
 
-    private void definePorts() {
+    private void registerPorts() {
         define("read", List.of(
                         Parameter.required("source",
                                 of(Datatype.FILE, Datatype.PORT, Datatype.URL,
@@ -14694,7 +14691,7 @@ public final class Natives {
         return items.stream().map(Molder::form).toList();
     }
 
-    private void defineParse() {
+    private void registerParse() {
         define("parse", List.of(Parameter.required("input", WHAT_PARSE_TAKES),
                         Parameter.required("rule")),
                 of("case"),
@@ -14825,10 +14822,10 @@ public final class Natives {
     }
 
     /** Deliberately empty: a real 3.22.1 has no LAYOUT either. Do not stub it. */
-    private void defineLayout() {
+    private void registerLayout() {
     }
 
-    private void defineScreen() {
+    private void registerScreen() {
         define("init-top-window",
                 List.of(Parameter.required("gob", of(Datatype.GOB))),
                 (arguments, evaluator, context) -> {
@@ -14947,7 +14944,7 @@ public final class Natives {
                 : 16;
     }
 
-    private void defineOutput() {
+    private void registerOutput() {
         define("mold", List.of(Parameter.required("value", ANYTHING),
                         Parameter.belongingTo("part", "limit", of(Datatype.INTEGER))),
                 of("all", "only", "flat", "part"),

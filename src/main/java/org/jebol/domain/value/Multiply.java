@@ -2,7 +2,7 @@ package org.jebol.domain.value;
 
 import java.math.BigDecimal;
 
-final class Multiply implements ArithmeticOperation {
+public final class Multiply implements ArithmeticOperation {
 
     private static final int THE_LARGEST_AN_OCTET_HOLDS = 255;
 

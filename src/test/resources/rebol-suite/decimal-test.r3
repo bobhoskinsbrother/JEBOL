@@ -411,7 +411,7 @@ Rebol [
 		b: copy [] for i -7 7 1 [append b i %% -3] b
 		--assert b = [2 0 1 2 0 1 2 0 1 2 0 1 2 0 1]
 
-		;; F-functionDefinition modulo (compatible with Python)
+		;; F-definition modulo (compatible with Python)
 		b: copy [] for i -7 7 1 [append b modulo/floor i  3] b
 		--assert b = [2 0 1 2 0 1 2 0 1 2 0 1 2 0 1]
 		b: copy [] for i -7 7 1 [append b modulo/floor i -3] b

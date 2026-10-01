@@ -36,16 +36,16 @@ public final class ObjectActions implements Actions {
         if (object.context().isClosedToNewNames()) {
             throw Raised.of(EvaluationFailure.PROTECTED, nativeName);
         }
-        Natives.refuseHiddenField(object, asked.given());
+        RebolNativeWords.refuseHiddenField(object, asked.given());
         if (asked.given() instanceof WordValue only) {
-            Natives.refuseTheSelfTheObjectAlreadyHas(object, only);
+            RebolNativeWords.refuseTheSelfTheObjectAlreadyHas(object, only);
             object.context().set(only.canonical(), UnsetValue.unset());
             return object;
         }
         List<Value> pairs = asked.duplicated() instanceof BlockValue added
                 ? asked.theWantedItemsOf(added)
                 : List.of(asked.given());
-        Natives.refuseTheObjectsOwnSelfBeforeAnyFieldIsAdded(object, pairs);
+        RebolNativeWords.refuseTheObjectsOwnSelfBeforeAnyFieldIsAdded(object, pairs);
         for (int at = 0; at + 1 < pairs.size(); at += 2) {
             if (pairs.get(at) instanceof WordValue field) {
                 object.context().set(field.canonical(), pairs.get(at + 1));

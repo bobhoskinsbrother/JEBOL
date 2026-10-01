@@ -55,17 +55,4 @@ public interface ArithmeticOperation extends ValueOperation {
         return subtractsOneFromTheOther() ? -1 : 1;
     }
 
-    Map<String, ArithmeticOperation> BY_SPELLING = Stream.of(
-                    new Add(), new Subtract(), new Multiply(), new Divide(),
-                    new Remainder(), new Modulo())
-            .collect(toUnmodifiableMap(
-                    ArithmeticOperation::spelling, identity()));
-
-    static Optional<ArithmeticOperation> named(String spelling) {
-        return Optional.ofNullable(BY_SPELLING.get(spelling));
-    }
-
-    static ArithmeticOperation findOperation(String spelling) {
-        return named(spelling).orElseThrow();
-    }
 }

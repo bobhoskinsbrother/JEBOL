@@ -7,7 +7,7 @@ import org.jebol.domain.value.Parameter;
 import java.util.List;
 import java.util.Set;
 
-public class SubtractFunctionDefinition extends DefaultFunctionDefinition {
+public class SubtractFunction extends DefaultFunction {
 
     public String name() {
         return "subtract";

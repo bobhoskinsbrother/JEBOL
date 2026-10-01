@@ -55,7 +55,7 @@ public final class VectorActions extends SeriesActions {
 
     @Override
     public Value insert(Asked asked) {
-        VectorValue held = (VectorValue) Natives.clampedToTail(vector);
+        VectorValue held = (VectorValue) RebolNativeWords.clampedToTail(vector);
         List<Value> numbers = numbersAddedBy(asked);
         for (int at = numbers.size(); at > 0; at--) {
             held.storage().insertAt(held.index(),
@@ -66,9 +66,9 @@ public final class VectorActions extends SeriesActions {
 
     private List<Value> numbersAddedBy(Asked asked) {
         List<Value> once = asked.refinementsAsked().contains("part")
-                ? Natives.numbersOfferedTo(vector.kind(), asked.given(),
+                ? RebolNativeWords.numbersOfferedTo(vector.kind(), asked.given(),
                         asked.howManyOctetsWanted())
-                : Natives.numbersContributedTo(vector.kind(), asked.given());
+                : RebolNativeWords.numbersContributedTo(vector.kind(), asked.given());
         List<Value> added = new ArrayList<>();
         for (long round = 0; round < asked.howManyTimes(); round++) {
             added.addAll(once);

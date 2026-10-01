@@ -194,7 +194,7 @@ to-CLF-idate: func [
 ]
 
 ;------------------------------------------------------------------------
-;-- Scheme functionDefinition:                                                 --
+;-- Scheme definition:                                                 --
 ;------------------------------------------------------------------------
 sys/make-scheme [
 	Title: "HTTP Server"

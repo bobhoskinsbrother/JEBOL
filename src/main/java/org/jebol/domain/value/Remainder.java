@@ -2,7 +2,7 @@ package org.jebol.domain.value;
 
 import java.math.BigDecimal;
 
-final class Remainder implements ArithmeticOperation {
+public final class Remainder implements ArithmeticOperation {
 
     @Override
     public String spelling() {

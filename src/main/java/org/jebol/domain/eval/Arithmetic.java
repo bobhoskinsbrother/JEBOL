@@ -16,11 +16,7 @@ public final class Arithmetic {
     }
 
     public static Value difference(Value left, Value right) {
-        return left.arithmetic(right, ArithmeticOperation.findOperation("subtract"));
-    }
-
-    public static Value remainder(Value left, Value right) {
-        return left.arithmetic(right, ArithmeticOperation.findOperation("remainder"));
+        return left.arithmetic(right, new Subtract());
     }
 
     public static Value wholeQuotient(Value dividend, Value divisor) {

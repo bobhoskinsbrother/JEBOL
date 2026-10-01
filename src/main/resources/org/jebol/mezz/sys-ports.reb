@@ -58,7 +58,7 @@ make-port*: func [
 		]
 	]
 
-	; Get the scheme functionDefinition:
+	; Get the scheme definition:
 	unless all [
 		word? name
 		scheme: get in system/schemes name
