@@ -65,6 +65,13 @@ public record WordValue(String spelling, String canonical, Context binding, Data
         return new WordValue(spelling, canonical, context, datatype);
     }
 
+    public ContextSlot boundSlot() {
+        if (!isBound() || !binding.knows(canonical)) {
+            throw Raised.of(EvaluationFailure.NOT_DEFINED, spelling);
+        }
+        return binding.slotFor(canonical);
+    }
+
     /** The same word, in a different shape. {@code 'foo} becomes {@code foo}. */
     public WordValue as(Datatype otherDatatype) {
         return new WordValue(spelling, canonical, binding, otherDatatype);

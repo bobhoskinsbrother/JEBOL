@@ -49,11 +49,36 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     public byte[] octetsFromHere() {
-        byte[] octets = new byte[storageLength() - index + 1];
+        return octetsUpTo(storageLength() + 1);
+    }
+
+    public String asStrictText() {
+        return strictlyUtf8(octetsFromHere());
+    }
+
+    public String asStrictTextUpTo(int endIndex) {
+        return strictlyUtf8(octetsUpTo(endIndex));
+    }
+
+    private byte[] octetsUpTo(int endIndex) {
+        byte[] octets = new byte[Math.max(0, endIndex - index)];
         for (int at = 0; at < octets.length; at++) {
             octets[at] = (byte) storage.at(index + at);
         }
         return octets;
+    }
+
+    private static String strictlyUtf8(byte[] octets) {
+        try {
+            return java.nio.charset.StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                    .decode(java.nio.ByteBuffer.wrap(octets))
+                    .toString();
+        } catch (java.nio.charset.CharacterCodingException notText) {
+            throw Raised.of(EvaluationFailure.INVALID_CHARS,
+                    "the bytes given to load are not valid UTF-8 text");
+        }
     }
 
     @Override

@@ -44,8 +44,11 @@ public final class Transcoder {
     private final List<Integer> topLevelEnds = new ArrayList<>();
     private int column = 1;
 
-    private Transcoder(String source) {
+    private final Construction construction;
+
+    private Transcoder(String source, Construction construction) {
         this.codepoints = source.codePoints().toArray();
+        this.construction = construction;
     }
 
     /**
@@ -89,7 +92,7 @@ public final class Transcoder {
         if (source == null) {
             throw new IllegalArgumentException("nothing to read: source was null");
         }
-        Transcoder reader = new Transcoder(source);
+        Transcoder reader = new Transcoder(source, new OnlyFindingWhereValuesAre());
         try {
             reader.readSequence(NO_TERMINATOR);
         } catch (MalformedSource unreadable) {
@@ -120,11 +123,13 @@ public final class Transcoder {
      * it answers `'%` for `'%/` where this fails: the token boundaries are the
      * reader's, not the longest thing that happens to parse.
      */
-    public static Reading read(String source, long firstLine, Extent extent) {
+    public static Reading read(
+            String source, long firstLine, Extent extent, Construction construction) {
+
         if (source == null) {
             throw new IllegalArgumentException("nothing to read: source was null");
         }
-        Transcoder reader = new Transcoder(source);
+        Transcoder reader = new Transcoder(source, construction);
         reader.line = (int) firstLine;
         reader.stopAfterOneValue = extent != Extent.THE_WHOLE_SOURCE;
         reader.stopAtEveryDepth = extent == Extent.THE_FIRST_VALUE_AT_EVERY_DEPTH;
@@ -171,12 +176,18 @@ public final class Transcoder {
 
     /** Reads every value in the source, or reports the first failure. */
     public static TranscodeResult transcode(String source) {
-        return transcode(source, 1);
+        return transcode(source, Construction.refused());
+    }
+
+    public static TranscodeResult transcode(String source, Construction construction) {
+        return transcode(source, 1, construction);
     }
 
     /** Lines counted from somewhere other than one, for a caller reading a fragment. */
-    public static TranscodeResult transcode(String source, long firstLine) {
-        Reading reading = read(source, firstLine, Extent.THE_WHOLE_SOURCE);
+    public static TranscodeResult transcode(
+            String source, long firstLine, Construction construction) {
+
+        Reading reading = read(source, firstLine, Extent.THE_WHOLE_SOURCE, construction);
         return reading.whyItStopped()
                 .<TranscodeResult>map(failure -> failure)
                 .orElseGet(() -> new TranscodeResult.Success(reading.asABlock()));
@@ -759,8 +770,7 @@ public final class Transcoder {
                             ? items.as(datatype)
                             : requireDatatype(only, datatype);
             case FUNCTION, CLOSURE -> {
-                if (functionBuilder == null
-                        || !(only instanceof BlockValue definition)
+                if (!(only instanceof BlockValue definition)
                         || definition.remaining().size() != 2
                         || !(definition.remaining().get(0) instanceof BlockValue spec)
                         || !(definition.remaining().get(1) instanceof BlockValue body)
@@ -769,7 +779,7 @@ public final class Transcoder {
                     throw failure(SyntaxFailure.MALCONSTRUCT, null);
                 }
                 try {
-                    yield functionBuilder.apply(spec, body);
+                    yield construction.functionMadeFrom(spec, body);
                 } catch (RuntimeException badSpec) {
                     throw failure(SyntaxFailure.MALCONSTRUCT, null);
                 }
@@ -779,16 +789,13 @@ public final class Transcoder {
     }
 
     private Value madeByTheEvaluator(Datatype datatype, List<Value> contents) {
-        if (maker == null) {
-            throw failure(SyntaxFailure.MALCONSTRUCT, null);
-        }
         Value specification = !alwaysReadsABlock(datatype)
                 && (contents.size() == 1 || readsOneLooseValue(datatype))
                 ? contents.getFirst()
                 : BlockValue.block(contents);
         Value made;
         try {
-            made = maker.apply(datatype, specification);
+            made = construction.madeOf(datatype, specification);
         } catch (RuntimeException refused) {
             throw failure(SyntaxFailure.MALCONSTRUCT, null);
         }
@@ -806,20 +813,17 @@ public final class Transcoder {
         return datatype == Datatype.IMAGE;
     }
 
-    private static volatile
-            java.util.function.BiFunction<Datatype, Value, Value> maker;
+    private static final class OnlyFindingWhereValuesAre implements Construction {
 
-    public static void makeValuesWith(
-            java.util.function.BiFunction<Datatype, Value, Value> builder) {
-        maker = builder;
-    }
+        @Override
+        public Value madeOf(Datatype datatype, Value specification) {
+            return NoneValue.none();
+        }
 
-    private static volatile
-            java.util.function.BiFunction<BlockValue, BlockValue, Value> functionBuilder;
-
-    public static void buildFunctionsWith(
-            java.util.function.BiFunction<BlockValue, BlockValue, Value> builder) {
-        functionBuilder = builder;
+        @Override
+        public Value functionMadeFrom(BlockValue spec, BlockValue body) {
+            return NoneValue.none();
+        }
     }
 
     private static byte[] bytesOf(BinaryValue binary) {
@@ -1723,7 +1727,8 @@ public final class Transcoder {
 
     private Value readPathSegment(String segment) {
         if (segment.startsWith("(") && segment.endsWith(")")) {
-            TranscodeResult inside = transcode(segment.substring(1, segment.length() - 1));
+            TranscodeResult inside = transcode(
+                    segment.substring(1, segment.length() - 1), construction);
             if (!inside.succeeded()) {
                 throw failure(SyntaxFailure.INVALID_LEXEME, null);
             }
@@ -1741,7 +1746,7 @@ public final class Transcoder {
         if (DECIMAL.matcher(segment).matches() && holdsAPlainDigit(segment)) {
             return DecimalValue.of(Double.parseDouble(segment));
         }
-        TranscodeResult read = transcode(segment);
+        TranscodeResult read = transcode(segment, construction);
         if (read.succeeded()) {
             List<Value> values = read.values().orElseThrow().remaining();
             if (values.size() == 1 && !(values.getFirst() instanceof WordValue)) {

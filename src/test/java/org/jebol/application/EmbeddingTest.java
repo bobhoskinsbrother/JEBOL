@@ -168,6 +168,62 @@ class EmbeddingTest {
     @DisplayName("many interpreters at once, which is how concurrency is had")
     class ManyAtOnce {
 
+        private static final String A_PAIR_OF_BYTES = """
+                register pair8!: make struct! [x [uint8!] y [uint8!]]""";
+
+        private static final String A_PAIR_OF_SHORTS = """
+                register pair8!: make struct! [x [uint16!] y [uint16!]]""";
+
+        private static final String THE_SIZE_OF_A_RECORD_HOLDING_A_PAIR = """
+                length? load {#(struct! [id [uint8!] pos [struct! pair8!]] [id: 1])}""";
+
+        @Test
+        @DisplayName("a construction literal is laid out by the interpreter reading it, not the newest one")
+        void aConstructionLiteralBelongsToItsOwnInterpreter() {
+            Interpreter older = Interpreter.create();
+            older.run(A_PAIR_OF_BYTES);
+            Interpreter newer = Interpreter.create();
+            newer.run(A_PAIR_OF_SHORTS);
+
+            assertThat(older.run(THE_SIZE_OF_A_RECORD_HOLDING_A_PAIR).display()).isEqualTo("3");
+            assertThat(newer.run(THE_SIZE_OF_A_RECORD_HOLDING_A_PAIR).display()).isEqualTo("5");
+        }
+
+        @Test
+        @DisplayName("a layout registered only in another interpreter is unknown here")
+        void aLayoutRegisteredElsewhereIsUnknownHere() {
+            Interpreter older = Interpreter.create();
+            Interpreter newer = Interpreter.create();
+            newer.run(A_PAIR_OF_BYTES);
+
+            assertThat(older.run(THE_SIZE_OF_A_RECORD_HOLDING_A_PAIR).conclusion())
+                    .isEqualTo(Conclusion.RAISED);
+        }
+
+        @Test
+        @DisplayName("interpreters reading construction literals in parallel each use their own layouts")
+        void constructionLiteralsReadInParallelStayApart() throws Exception {
+            ExecutorService workers = Executors.newFixedThreadPool(8);
+            try {
+                List<Future<String>> sizes = workers.invokeAll(
+                        java.util.stream.IntStream.rangeClosed(1, 40)
+                                .mapToObj(number -> (Callable<String>) () -> {
+                                    Interpreter own = Interpreter.create();
+                                    own.run(number % 2 == 0 ? A_PAIR_OF_BYTES : A_PAIR_OF_SHORTS);
+                                    return own.run(THE_SIZE_OF_A_RECORD_HOLDING_A_PAIR).display();
+                                })
+                                .toList());
+
+                for (int number = 1; number <= 40; number++) {
+                    assertThat(sizes.get(number - 1).get())
+                            .as("interpreter %d", number)
+                            .isEqualTo(number % 2 == 0 ? "3" : "5");
+                }
+            } finally {
+                workers.shutdownNow();
+            }
+        }
+
         @Test
         @DisplayName("one interpreter per task, running in parallel")
         void interpretersRunIndependentlyInParallel() throws Exception {

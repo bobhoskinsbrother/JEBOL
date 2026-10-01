@@ -295,6 +295,37 @@ public final class Context {
         return slot;
     }
 
+    public Value valueAt(String first, String... fieldsAfter) {
+        Value reached = knows(first) ? slotFor(first).value() : NoneValue.none();
+        for (String field : fieldsAfter) {
+            if (!(reached instanceof ObjectValue(Context object)) || !object.holds(field)) {
+                return NoneValue.none();
+            }
+            reached = object.ownSlotFor(field).value();
+        }
+        return reached;
+    }
+
+    public Value systemFunctionNamed(String name) {
+        if (!(valueAt("system", "contexts", "sys") instanceof ObjectValue(Context sys))) {
+            throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
+        }
+        if (!sys.knows(name)) {
+            throw Raised.of(EvaluationFailure.BAD_SYS_FUNC, UnsetValue.unset());
+        }
+        Value held = sys.slotFor(name).value();
+        if (!isAFunctionTheInterpreterCanCall(held)) {
+            throw Raised.of(EvaluationFailure.BAD_SYS_FUNC, held);
+        }
+        return held;
+    }
+
+    private static boolean isAFunctionTheInterpreterCanCall(Value held) {
+        return held instanceof FunctionValue
+                || held instanceof NativeValue
+                || held instanceof OperatorValue;
+    }
+
     /**
      * This context's own fields by name, without {@code self}.
      *

@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.read.Construction;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.*;
@@ -52,6 +53,8 @@ public final class Evaluator {
 
     private NetworkPort network = NetworkPort.none();
     private BundledModules bundledModules = BundledModules.none();
+    private final Construction construction;
+    private final ErrorWording wording;
     private int stepsSinceLastCheck;
 
     private int framesOpen;
@@ -143,19 +146,22 @@ public final class Evaluator {
     public Evaluator(
             Map<String, RefinedCallable> behaviours, Context systemContext,
             OutputPort output) {
-        this(behaviours, systemContext, output, DEFAULT_MAXIMUM_DEPTH,
-                Interruption.never(), DEFAULT_CHECK_EVERY);
+        this(behaviours, systemContext, Construction.refused(), output,
+                DEFAULT_MAXIMUM_DEPTH, Interruption.never(), DEFAULT_CHECK_EVERY);
     }
 
     public Evaluator(
             Map<String, RefinedCallable> behaviours,
             Context systemContext,
+            Construction construction,
             OutputPort output,
             int maximumDepth,
             Interruption interruption,
             int checkEvery) {
         this.behaviours = new java.util.HashMap<>(behaviours);
         this.systemContext = systemContext;
+        this.construction = construction;
+        this.wording = new ErrorWording(systemContext);
         this.output = output;
         this.maximumDepth = maximumDepth;
         this.interruption = interruption;
@@ -235,6 +241,14 @@ public final class Evaluator {
 
     public void useBundledModules(BundledModules bundled) {
         this.bundledModules = bundled;
+    }
+
+    public Construction construction() {
+        return construction;
+    }
+
+    public ErrorValue spokenHere(ErrorValue error) {
+        return error.wording().equals(wording) ? error : error.spokenBy(wording);
     }
 
     public void useProcesses(ProcessPort port) {
@@ -363,7 +377,7 @@ public final class Evaluator {
      * point of view it is one.
      */
     public Value evaluateSource(String source) {
-        TranscodeResult read = Transcoder.transcode(source);
+        TranscodeResult read = Transcoder.transcode(source, construction);
         if (!read.succeeded()) {
             throw new Raised(read.error().orElseThrow());
         }
@@ -654,7 +668,8 @@ public final class Evaluator {
         }
     }
 
-    private Raised sayingWhereItCameFrom(Raised raised, Deque<Frame> frames) {
+    private Raised sayingWhereItCameFrom(Raised escaping, Deque<Frame> frames) {
+        Raised raised = spokenHere(escaping);
         if (raised.error().whereChain().isPresent()) {
             return raised;
         }
@@ -684,6 +699,11 @@ public final class Evaluator {
             said = said.raisedThrough(BlockValue.block(chain));
         }
         return said == raised.error() ? raised : new Raised(said);
+    }
+
+    private Raised spokenHere(Raised escaping) {
+        ErrorValue spoken = spokenHere(escaping.error());
+        return spoken == escaping.error() ? escaping : new Raised(spoken);
     }
 
     private List<Frame> everyCallOpenInnermostFirst(Deque<Frame> frames) {

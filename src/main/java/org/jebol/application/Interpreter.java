@@ -71,6 +71,7 @@ public final class Interpreter {
         this.evaluator = new Evaluator(
                 natives.behaviours(),
                 systemContext,
+                natives.construction(),
                 output,
                 bounds.maximumNesting(),
                 this::reasonToStop,
@@ -576,7 +577,7 @@ public final class Interpreter {
         long startedAt = System.nanoTime();
         deadlineNanos = startedAt + bounds.wallClockLimit().toNanos();
         try {
-            TranscodeResult read = Transcoder.transcode(source);
+            TranscodeResult read = Transcoder.transcode(source, evaluator.construction());
             if (!read.succeeded()) {
                 return new Step(
                         conclude(new Outcome.Raised(read.error().orElseThrow()), startedAt),
@@ -620,7 +621,7 @@ public final class Interpreter {
     }
 
     private Outcome evaluate(String source) {
-        TranscodeResult read = Transcoder.transcode(source);
+        TranscodeResult read = Transcoder.transcode(source, evaluator.construction());
         if (!read.succeeded()) {
             return new Outcome.Raised(read.error().orElseThrow());
         }
@@ -670,7 +671,7 @@ public final class Interpreter {
      * a word nobody defined reports "has no value" rather than "not defined".
      */
     public void defineFreshWordsIn(String source) {
-        TranscodeResult read = Transcoder.transcode(source);
+        TranscodeResult read = Transcoder.transcode(source, evaluator.construction());
         read.values().ifPresent(this::defineWordsIn);
     }
 
@@ -869,7 +870,7 @@ public final class Interpreter {
 
     /** Reads source without evaluating it, leaving every word unbound. */
     public TranscodeResult read(String source) {
-        return Transcoder.transcode(source);
+        return Transcoder.transcode(source, evaluator.construction());
     }
 
     /** What a console would show for an outcome. */

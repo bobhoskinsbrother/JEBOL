@@ -1,0 +1,198 @@
+package org.jebol.domain.eval.definition;
+
+import org.jebol.domain.eval.Binder;
+import org.jebol.domain.eval.Comparison;
+import org.jebol.domain.eval.Evaluator;
+import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.ReturnSignal;
+import org.jebol.domain.read.SyntaxFailure;
+import org.jebol.domain.read.TranscodeResult;
+import org.jebol.domain.read.Transcoder;
+import org.jebol.domain.value.BinaryValue;
+import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.Context;
+import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.ErrorValue;
+import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.Molder;
+import org.jebol.domain.value.NoneValue;
+import org.jebol.domain.value.ObjectValue;
+import org.jebol.domain.value.Parameter;
+import org.jebol.domain.value.Raised;
+import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.TupleValue;
+import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.UnsetValue;
+import org.jebol.domain.value.Value;
+import org.jebol.domain.value.WordValue;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+public class DoNative extends DefaultNative {
+
+    private static final int WHERE_THE_SCRIPT_ARGUMENTS_ARRIVE = 1;
+
+    @Override
+    public String name() {
+        return "do";
+    }
+
+    @Override
+    public List<Parameter> parameters() {
+        return List.of(Parameter.required("value", Typeset.ANY_TYPE.members()),
+                Parameter.belongingTo("args", "arg", Set.of()),
+                Parameter.belongingTo("next", "var", Set.of(Datatype.WORD)));
+    }
+
+    @Override
+    public Set<String> refinements() {
+        return Set.of("next", "args");
+    }
+
+    @Override
+    public RefinedCallable behaviour() {
+        return (arguments, evaluator, context, refinements) -> {
+            if (refinements.contains("args") && arguments.size() > 1) {
+                recordTheScriptArguments(
+                        evaluator, arguments.get(WHERE_THE_SCRIPT_ARGUMENTS_ARRIVE));
+            }
+            if (refinements.contains("next") && arguments.size() > 1
+                    && arguments.getLast() instanceof WordValue var) {
+                return oneStepThrough(arguments.getFirst(), var, evaluator, context);
+            }
+            return evaluated(arguments.getFirst(), evaluator, context);
+        };
+    }
+
+    private static Value oneStepThrough(
+            Value value, WordValue var, Evaluator evaluator, Context context) {
+
+        Optional<BlockValue> steppable = steppable(value, evaluator, context);
+        if (steppable.isEmpty()) {
+            var.boundSlot().setValue(NoneValue.none());
+            return value;
+        }
+        BlockValue stepping = steppable.get();
+        if (stepping.atTail()) {
+            var.boundSlot().setValue(stepping);
+            return UnsetValue.unset();
+        }
+        Evaluator.Step taken = evaluator.evaluateNextOrRaise(stepping, context);
+        var.boundSlot().setValue(stepping.atIndex(taken.nextIndex()));
+        return taken.value();
+    }
+
+    private static Optional<BlockValue> steppable(
+            Value value, Evaluator evaluator, Context context) {
+
+        return switch (value) {
+            case BlockValue block when block.datatype() == Datatype.BLOCK
+                    || block.datatype() == Datatype.PAREN -> Optional.of(block);
+            case StringValue text when text.datatype() == Datatype.STRING ->
+                    Optional.of(loadedForStepping(text.text(), evaluator, context));
+            default -> Optional.empty();
+        };
+    }
+
+    private static Value evaluated(Value value, Evaluator evaluator, Context context) {
+        return switch (value) {
+            case BlockValue block when block.datatype() == Datatype.BLOCK
+                    || block.datatype() == Datatype.PAREN ->
+                    evaluator.evaluateOrRaise(block, context);
+            case StringValue address when address.datatype() == Datatype.FILE
+                    || address.datatype() == Datatype.URL ->
+                    runAsAScript(address, evaluator);
+            case StringValue text -> evaluatedSource(text.text(), evaluator);
+            case BinaryValue bytes -> doneAsAScript(bytes, evaluator);
+            case ErrorValue built -> throw new Raised(built);
+            case WordValue word when word.datatype() == Datatype.WORD
+                    || word.datatype() == Datatype.GET_WORD ->
+                    evaluator.valueOfWordIn(word, context);
+            case WordValue quoted when quoted.datatype() == Datatype.LIT_WORD ->
+                    quoted.as(Datatype.WORD);
+            case BlockValue quoted when quoted.datatype() == Datatype.LIT_PATH ->
+                    quoted.as(Datatype.PATH);
+            case BlockValue path when path.datatype() == Datatype.PATH ->
+                    evaluator.valueOfPathIn(path, context);
+            case WordValue assigning when assigning.datatype() == Datatype.SET_WORD ->
+                    raiseHalfAnExpression(assigning);
+            case BlockValue assigning when assigning.datatype() == Datatype.SET_PATH ->
+                    raiseHalfAnExpression(assigning);
+            default -> value;
+        };
+    }
+
+    private static Value evaluatedSource(String source, Evaluator evaluator) {
+        try {
+            return evaluator.evaluateSource(source);
+        } catch (ReturnSignal returned) {
+            return returned.value();
+        }
+    }
+
+    private static Value doneAsAScript(BinaryValue bytes, Evaluator evaluator) {
+        Value loadHeader = evaluator.systemContext().systemFunctionNamed("load-header");
+        Value read = evaluator.applyFunction(loadHeader, List.of(bytes));
+        if (read instanceof WordValue why) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, why.spelling());
+        }
+        List<Value> parts = ((BlockValue) read).remaining();
+        refuseAScriptThatNeedsANewerInterpreter(parts.getFirst(), evaluator);
+        return evaluatedSource(theBodyOf(parts), evaluator);
+    }
+
+    private static void refuseAScriptThatNeedsANewerInterpreter(
+            Value header, Evaluator evaluator) {
+
+        if (header instanceof ObjectValue(Context fields)
+                && fields.holds("needs")
+                && fields.slotFor("needs").value() instanceof TupleValue wanted
+                && !interpreterMeets(wanted, evaluator)) {
+            throw new Raised(ErrorValue.of(SyntaxFailure.NEEDS.category(),
+                    SyntaxFailure.NEEDS.errorId(),
+                    SyntaxFailure.NEEDS.description()));
+        }
+    }
+
+    private static String theBodyOf(List<Value> parts) {
+        return parts.get(1) instanceof BinaryValue mark
+                && parts.get(2) instanceof BinaryValue remaining
+                && mark.sharesStorageWith(remaining)
+                ? mark.asStrictTextUpTo(remaining.index())
+                : ((BinaryValue) parts.get(1)).asStrictText();
+    }
+
+    private static boolean interpreterMeets(TupleValue wanted, Evaluator evaluator) {
+        return evaluator.systemContext().valueAt("system", "version") instanceof TupleValue own
+                && !Comparison.holds(wanted, own, Comparison.Strictness.GREATER);
+    }
+
+    private static Value runAsAScript(StringValue address, Evaluator evaluator) {
+        Value doStar = evaluator.systemContext().systemFunctionNamed("do*");
+        return evaluator.applyFunction(doStar, List.of(address));
+    }
+
+    private static BlockValue loadedForStepping(
+            String source, Evaluator evaluator, Context context) {
+
+        TranscodeResult read = Transcoder.transcode(source, evaluator.construction());
+        if (!read.succeeded()) {
+            throw new Raised(read.error().orElseThrow());
+        }
+        return Binder.bindAndDefine(read.values().orElseThrow(), context);
+    }
+
+    private static Value raiseHalfAnExpression(Value assigning) {
+        throw Raised.of(EvaluationFailure.INVALID_ARG,
+                Molder.mold(assigning) + " assigns, and there is nothing here to assign");
+    }
+
+    private static void recordTheScriptArguments(Evaluator evaluator, Value given) {
+        if (evaluator.systemContext().valueAt("system", "script")
+                instanceof ObjectValue(Context script)) {
+            script.set("args", given);
+        }
+    }
+}

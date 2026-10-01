@@ -1,6 +1,6 @@
 package org.jebol.suite;
 
-import org.jebol.domain.read.Transcoder;
+import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -165,8 +165,9 @@ class SuiteFileTest {
             List<String> unreadable = new java.util.ArrayList<>();
 
             for (SuiteFile file : RebolSuiteTest.filesInSuite()) {
+                Interpreter reader = Interpreter.create();
                 for (SuiteFile.Assertion assertion : file.assertions()) {
-                    if (!Transcoder.transcode(assertion.source()).succeeded()) {
+                    if (!reader.read(assertion.source()).succeeded()) {
                         unreadable.add(assertion + "  ->  " + assertion.source());
                     }
                 }

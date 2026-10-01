@@ -1,6 +1,6 @@
 package org.jebol.domain.eval;
 
-final class ContinueSignal extends RuntimeException {
+public final class ContinueSignal extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 

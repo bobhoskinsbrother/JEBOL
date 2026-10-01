@@ -4,7 +4,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.Optional;
 
-final class ThrownSignal extends RuntimeException {
+public final class ThrownSignal extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
@@ -21,11 +21,11 @@ final class ThrownSignal extends RuntimeException {
         this.name = name;
     }
 
-    Value value() {
+    public Value value() {
         return value;
     }
 
-    Optional<String> name() {
+    public Optional<String> name() {
         return Optional.ofNullable(name);
     }
 }

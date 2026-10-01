@@ -2,7 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.Value;
 
-final class ReturnSignal extends RuntimeException {
+public final class ReturnSignal extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
@@ -13,7 +13,7 @@ final class ReturnSignal extends RuntimeException {
         this.value = value;
     }
 
-    Value value() {
+    public Value value() {
         return value;
     }
 }

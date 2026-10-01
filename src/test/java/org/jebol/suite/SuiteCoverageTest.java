@@ -2,7 +2,6 @@ package org.jebol.suite;
 
 import org.jebol.application.Interpreter;
 import org.jebol.domain.read.TranscodeResult;
-import org.jebol.domain.read.Transcoder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -98,8 +97,9 @@ class SuiteCoverageTest {
     private static Coverage coverageOf(Path path, int written, String source) {
         String name = path.getFileName().toString();
         try {
-            TranscodeResult loaded = Transcoder.transcode(source);
-            String note = loaded.succeeded() ? "read" : firstLineThatWillNotRead(source);
+            Interpreter reader = Interpreter.create();
+            TranscodeResult loaded = reader.read(source);
+            String note = loaded.succeeded() ? "read" : firstLineThatWillNotRead(reader, source);
             return new Coverage(name, written, SuiteFile.read(path).assertions().size(), note);
         } catch (RuntimeException thrown) {
             return new Coverage(name, written, 0,
@@ -108,12 +108,12 @@ class SuiteCoverageTest {
         }
     }
 
-    private static String firstLineThatWillNotRead(String source) {
+    private static String firstLineThatWillNotRead(Interpreter reader, String source) {
         List<String> lines = source.lines().toList();
         int lastGood = 0;
         for (int upTo = 1; upTo <= lines.size(); upTo++) {
             String prefix = String.join("\n", lines.subList(0, upTo));
-            if (Transcoder.transcode(prefix).succeeded()) {
+            if (reader.read(prefix).succeeded()) {
                 lastGood = upTo;
             }
         }

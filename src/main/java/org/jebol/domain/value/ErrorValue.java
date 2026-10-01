@@ -22,7 +22,8 @@ public record ErrorValue(
         Optional<Value> thirdArgument,
         Optional<Value> near,
         Optional<Value> whereChain,
-        Map<String, Value> writtenFields) implements Value {
+        Map<String, Value> writtenFields,
+        ErrorWording wording) implements Value {
 
     public ErrorValue {
         if (category == null) {
@@ -38,6 +39,29 @@ public record ErrorValue(
                 || near == null || whereChain == null) {
             throw new IllegalArgumentException("optional fields are empty, never null");
         }
+        if (wording == null) {
+            throw new IllegalArgumentException("an error with no catalogue has ErrorWording.none()");
+        }
+    }
+
+    public ErrorValue(
+            ErrorCategory category,
+            String errorId,
+            String message,
+            Optional<Value> subject,
+            Optional<Value> secondArgument,
+            Optional<Value> thirdArgument,
+            Optional<Value> near,
+            Optional<Value> whereChain,
+            Map<String, Value> writtenFields) {
+
+        this(category, errorId, message, subject, secondArgument, thirdArgument,
+                near, whereChain, writtenFields, ErrorWording.none());
+    }
+
+    public ErrorValue spokenBy(ErrorWording catalogue) {
+        return new ErrorValue(category, errorId, message, subject,
+                secondArgument, thirdArgument, near, whereChain, writtenFields, catalogue);
     }
 
     public static ErrorValue of(ErrorCategory category, String errorId, String message) {
@@ -208,10 +232,12 @@ public record ErrorValue(
     }
 
     private String theMessageTheCatalogueGives() {
-        Value said = ErrorWording.forTheId(category.spelling(), errorId).orElse(null);
-        if (said == null) {
-            return ErrorWording.NOTHING_IN_THE_CATALOGUE;
-        }
+        return wording.forTheId(category.spelling(), errorId)
+                .map(this::theMessageWrittenFrom)
+                .orElse(ErrorWording.NOTHING_IN_THE_CATALOGUE);
+    }
+
+    private String theMessageWrittenFrom(Value said) {
         if (!(said instanceof BlockValue words)) {
             return Molder.form(said);
         }
@@ -279,7 +305,7 @@ public record ErrorValue(
     public ErrorValue near(Value fragment) {
         return new ErrorValue(category, errorId, message, subject,
                 secondArgument, thirdArgument, Optional.of(fragment), whereChain,
-                writtenFields);
+                writtenFields, wording);
     }
 
     /**
@@ -293,7 +319,7 @@ public record ErrorValue(
     public ErrorValue raisedThrough(Value chain) {
         return new ErrorValue(category, errorId, message, subject,
                 secondArgument, thirdArgument, near, Optional.of(chain),
-                writtenFields);
+                writtenFields, wording);
     }
 
     /** Whether anything has already said where this came from. */

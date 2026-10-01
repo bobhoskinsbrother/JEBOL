@@ -1,6 +1,6 @@
 package org.jebol.domain.eval;
 
-final class LoopSignal extends RuntimeException {
+public final class LoopSignal extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 

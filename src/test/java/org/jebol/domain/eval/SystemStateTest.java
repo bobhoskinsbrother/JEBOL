@@ -36,6 +36,23 @@ class SystemStateTest {
     }
 
     @Test
+    @DisplayName("a TRY that succeeds clears what an earlier one caught")
+    void aSucceedingTryClearsLastError() {
+        assertThat(answerTo("try [1 / 0] try [1] none? system/state/last-error"))
+                .isEqualTo("#(true)");
+    }
+
+    @Test
+    @DisplayName("TRY writes into the very object a script holds as system/state")
+    void tryWritesIntoTheStateTheScriptSees() {
+        assertThat(answerTo("""
+                held: system/state
+                try [1 / 0]
+                held/last-error/id"""))
+                .isEqualTo("zero-divide");
+    }
+
+    @Test
     @DisplayName("last-result holds what the most recent CATCH carried")
     void lastResultRemembersTheThrow() {
         assertThat(answerTo("catch [throw 3] system/state/last-result")).isEqualTo("3");
