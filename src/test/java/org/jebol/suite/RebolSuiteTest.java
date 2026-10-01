@@ -280,6 +280,14 @@ class RebolSuiteTest {
     }
 
     static List<SuiteFile> filesInSuite() {
+        return TheSuiteReadOncePerProcess.FILES;
+    }
+
+    private static final class TheSuiteReadOncePerProcess {
+        static final List<SuiteFile> FILES = readEveryFileInTheSuite();
+    }
+
+    private static List<SuiteFile> readEveryFileInTheSuite() {
         try (Stream<Path> files = Files.list(SUITE)) {
             return files.filter(path -> path.toString().endsWith(".r3"))
                     .sorted(Comparator.comparing(Path::toString))
