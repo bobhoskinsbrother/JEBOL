@@ -206,6 +206,7 @@ public final class Interpreter {
 
     private void loadRebolsOwnLibrary() {
         declareEverySystemWordBeforeBindingAny();
+        declareEveryLibraryWordBeforeBindingAny();
         declareTheWordsThePreludeSets();
         for (String entry : borrowedFileNames()) {
             String name = fileNameIn(entry);
@@ -251,6 +252,20 @@ public final class Interpreter {
                 AnAssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
         return evaluator.evaluate(
                 Binder.bind(body, systemInternals), systemInternals);
+    }
+
+    private void declareEveryLibraryWordBeforeBindingAny() {
+        for (String entry : borrowedFileNames()) {
+            String name = fileNameIn(entry);
+            if (entry.endsWith(INTO_SYS) || isAProtocolAndSoAModuleWhateverItsHeaderSays(name)) {
+                continue;
+            }
+            theLibraryFileAt(MEZZANINE + name)
+                    .filter(file -> !file.header().declaresAModule())
+                    .ifPresent(file -> declareTheSetWordsOf(
+                            file.body(), systemContext,
+                            AnAssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE));
+        }
     }
 
     private void declareEverySystemWordBeforeBindingAny() {

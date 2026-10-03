@@ -230,6 +230,9 @@ public final class RebolNativeWords {
 
     private static final List<String> ACTION_NAMES = ActionNames.inDeclarationOrder();
 
+    private static final List<Typeset> TYPESETS_WHOSE_PREDICATE_ONLY_JEBOL_OFFERS = List.of(
+            Typeset.ANY_TYPE, Typeset.COPYABLE, Typeset.IMMEDIATE, Typeset.INTERNAL);
+
     private ObjectValue systemObject(Context systemContext) {
         Context catalog = Context.root();
         catalog.set("datatypes", BlockValue.block(
@@ -1282,22 +1285,6 @@ public final class RebolNativeWords {
                                     arguments, refinements, 2));
                 });
 
-        define("use", List.of(
-                        Parameter.required("words", of(Datatype.BLOCK)),
-                        Parameter.required("body", of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> {
-                    Context scope = Context.childOf(context);
-                    for (Value item : ((BlockValue) arguments.get(0)).remaining()) {
-                        if (!(item instanceof WordValue word)) {
-                            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                                    "use names words, not "
-                                            + item.datatype().literalSpelling());
-                        }
-                        scope.define(word.spelling());
-                    }
-                    return evaluator.evaluateOrRaise(
-                            Binder.bind((BlockValue) arguments.get(1), scope), scope);
-                });
 
         define("context", List.of(Parameter.required("body", of(Datatype.BLOCK))),
                 of("only"),
@@ -2165,44 +2152,9 @@ public final class RebolNativeWords {
         };
     }
 
-    private static Value loaded(Value source, boolean unwrapSingle, Construction construction) {
-        if (source instanceof BlockValue sources && sources.datatype() == Datatype.BLOCK) {
-            List<Value> answers = new ArrayList<>();
-            for (Value each : sources.remaining()) {
-                answers.add(loaded(each, unwrapSingle, construction));
-            }
-            return BlockValue.block(answers);
-        }
-        TranscodeResult read = Transcoder.transcode(textToLoad(source), construction);
-        BlockValue values = read.values().orElseThrow(
-                () -> new Raised(read.error().orElseThrow()));
-        return unwrapSingle && values.remaining().size() == 1
-                ? values.first()
-                : values;
-    }
-
-    private static String textToLoad(Value source) {
-        if (source instanceof StringValue text) {
-            return text.text();
-        }
-        if (!(source instanceof BinaryValue bytes)) {
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "load reads a string, a binary or a block of either, not "
-                            + source.datatype().literalSpelling());
-        }
-        String text = bytes.asStrictText();
-        return text.startsWith("\uFEFF") ? text.substring(1) : text;
-    }
-
 
     private void registerReflection() {
-        define("load", takes("source"), of("all"),
-                (arguments, evaluator, context, refinements) -> loaded(
-                        arguments.get(0), !refinements.contains("all"),
-                        evaluator.construction()));
 
-        define("quote", List.of(Parameter.hardQuoted("value")),
-                (arguments, evaluator, context) -> arguments.get(0));
 
         define("shift", List.of(
                         Parameter.required("value", of(Datatype.INTEGER)),
@@ -2272,7 +2224,7 @@ public final class RebolNativeWords {
                     (arguments, evaluator, context) -> LogicValue.of(
                             arguments.get(0).datatype() == asked));
         }
-        for (Typeset typeset : Typeset.values()) {
+        for (Typeset typeset : TYPESETS_WHOSE_PREDICATE_ONLY_JEBOL_OFFERS) {
             Typeset asked = typeset;
             define(typeset.spelling() + "?", takesAnything("value"),
                     (arguments, evaluator, context) -> LogicValue.of(
@@ -11370,30 +11322,7 @@ public final class RebolNativeWords {
                             calling.answerThrough(evaluator.processes(), evaluator));
                 });
 
-        define("input", List.of(), of("hide"),
-                (arguments, evaluator, context, refinements) -> {
-                    requireService(HostService.CONSOLE);
-                    return throughPort(() -> {
-                        String line = refinements.contains("hide")
-                                ? evaluator.console().readHiddenLine()
-                                : evaluator.console().readLine();
-                        return line == null ? NoneValue.none() : StringValue.of(line);
-                    });
-                });
 
-        define("ask", List.of(Parameter.required("question", Typeset.SERIES.members())),
-                of("hide"),
-                (arguments, evaluator, context, refinements) -> {
-                    requireService(HostService.CONSOLE);
-                    return throughPort(() -> {
-                        evaluator.output().write(
-                                ((StringValue) arguments.getFirst()).text());
-                        String line = refinements.contains("hide")
-                                ? evaluator.console().readHiddenLine()
-                                : evaluator.console().readLine();
-                        return line == null ? NoneValue.none() : StringValue.of(line);
-                    });
-                });
 
         define("get-env", List.of(Parameter.required("name",
                         of(Datatype.STRING, Datatype.WORD, Datatype.LIT_WORD))),
@@ -11456,17 +11385,6 @@ public final class RebolNativeWords {
                     });
                 });
 
-        define("make-dir", List.of(Parameter.required("path", of(Datatype.FILE))),
-                of("deep"),
-                (arguments, evaluator, context, refinements) -> {
-                    requireService(HostService.FILES);
-                    return throughPort(() -> {
-                        evaluator.files().makeDirectory(
-                                ((StringValue) arguments.getFirst()).text(),
-                                refinements.contains("deep"));
-                        return arguments.getFirst();
-                    });
-                });
 
         define("create", List.of(Parameter.required("path",
                         of(Datatype.FILE, Datatype.URL))),
@@ -11532,13 +11450,6 @@ public final class RebolNativeWords {
                                     .toList()));
                 });
 
-        define("exists?", List.of(Parameter.required("path", of(Datatype.FILE))),
-                (arguments, evaluator, context) -> {
-                    requireService(HostService.FILES);
-                    return throughPort(() -> LogicValue.of(
-                            evaluator.files().exists(
-                                    ((StringValue) arguments.get(0)).text())));
-                });
 
         define("dir?", List.of(Parameter.required("target",
                         of(Datatype.FILE, Datatype.URL, Datatype.NONE))),
@@ -13849,37 +13760,6 @@ public final class RebolNativeWords {
                     }
                 });
 
-        define("split", List.of(Parameter.required("input"), Parameter.required("delimiters")),
-                (arguments, evaluator, context) -> splitOn(
-                        arguments.get(0), arguments.get(1)));
-    }
-
-    private static Value splitOn(Value input, Value rule) {
-        if (!(input instanceof StringValue text)) {
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "split takes a string, not " + input.datatype().literalSpelling());
-        }
-        String delimiters = switch (rule) {
-            case StringValue given -> given.text();
-            case CharacterValue given -> Character.toString(given.codepoint());
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "split needs delimiters, not " + rule.datatype().literalSpelling());
-        };
-        List<Value> pieces = new ArrayList<>();
-        if (text.text().isEmpty()) {
-            return BlockValue.block(pieces);
-        }
-        StringBuilder piece = new StringBuilder();
-        for (int codepoint : text.text().codePoints().toArray()) {
-            if (delimiters.indexOf(codepoint) >= 0) {
-                pieces.add(StringValue.of(piece.toString()));
-                piece.setLength(0);
-                continue;
-            }
-            piece.appendCodePoint(codepoint);
-        }
-        pieces.add(StringValue.of(piece.toString()));
-        return BlockValue.block(pieces);
     }
 
     /** Deliberately empty: a real 3.22.1 has no LAYOUT either. Do not stub it. */
