@@ -247,6 +247,12 @@ public final class Evaluator {
         return construction;
     }
 
+    public void setSystemState(String field, Value value) {
+        if (systemContext.valueAt("system", "state") instanceof ObjectValue(Context state)) {
+            state.set(field, value);
+        }
+    }
+
     public ErrorValue spokenHere(ErrorValue error) {
         return error.wording().equals(wording) ? error : error.spokenBy(wording);
     }

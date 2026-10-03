@@ -12,7 +12,6 @@ import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.UnsetValue;
@@ -44,7 +43,7 @@ public class TryNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            rememberTheLastError(NoneValue.none(), evaluator);
+            evaluator.setSystemState("last-error", NoneValue.none());
             Value failure;
             try {
                 return evaluator.evaluateOrRaise((BlockValue) arguments.getFirst(), context);
@@ -56,18 +55,11 @@ public class TryNative extends DefaultNative {
                 }
                 failure = theErrorStandingFor(escaping);
             }
-            rememberTheLastError(failure, evaluator);
+            evaluator.setSystemState("last-error", failure);
             return refinements.contains("with")
                     ? handled(failure, arguments.getLast(), evaluator, context)
                     : failure;
         };
-    }
-
-    private static void rememberTheLastError(Value failure, Evaluator evaluator) {
-        if (evaluator.systemContext().valueAt("system", "state")
-                instanceof ObjectValue(Context state)) {
-            state.set("last-error", failure);
-        }
     }
 
     private static ErrorValue theErrorStandingFor(RuntimeException escaping) {

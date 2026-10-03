@@ -1,0 +1,43 @@
+package org.jebol.domain.eval.definition;
+
+import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.ThrownSignal;
+import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.Parameter;
+import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.WordValue;
+
+import java.util.List;
+import java.util.Set;
+
+public class ThrowNative extends DefaultNative {
+
+    private static final int WHERE_THE_NAME_ARRIVES = 1;
+
+    @Override
+    public String name() {
+        return "throw";
+    }
+
+    @Override
+    public List<Parameter> parameters() {
+        return List.of(Parameter.required("value", Typeset.ANY_TYPE.members()),
+                Parameter.belongingTo("name", "word", Set.of(Datatype.WORD)));
+    }
+
+    @Override
+    public Set<String> refinements() {
+        return Set.of("name");
+    }
+
+    @Override
+    public RefinedCallable behaviour() {
+        return (arguments, evaluator, context, refinements) -> {
+            if (refinements.contains("name") && arguments.size() > WHERE_THE_NAME_ARRIVES) {
+                throw new ThrownSignal(arguments.getFirst(),
+                        ((WordValue) arguments.get(WHERE_THE_NAME_ARRIVES)).canonical());
+            }
+            throw new ThrownSignal(arguments.getFirst());
+        };
+    }
+}

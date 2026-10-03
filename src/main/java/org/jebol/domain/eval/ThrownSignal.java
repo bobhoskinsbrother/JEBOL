@@ -9,13 +9,17 @@ public final class ThrownSignal extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
     private final transient Value value;
-    private final transient String name;
+    private final transient Optional<String> name;
 
-    ThrownSignal(Value value) {
-        this(value, null);
+    public ThrownSignal(Value value) {
+        this(value, Optional.empty());
     }
 
-    ThrownSignal(Value value, String name) {
+    public ThrownSignal(Value value, String name) {
+        this(value, Optional.of(name));
+    }
+
+    private ThrownSignal(Value value, Optional<String> name) {
         super("throw", null, false, false);
         this.value = value;
         this.name = name;
@@ -26,6 +30,6 @@ public final class ThrownSignal extends RuntimeException {
     }
 
     public Optional<String> name() {
-        return Optional.ofNullable(name);
+        return name;
     }
 }

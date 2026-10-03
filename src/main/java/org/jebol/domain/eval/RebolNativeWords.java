@@ -1057,75 +1057,10 @@ public final class RebolNativeWords {
 
 
     private void registerNonLocalExit() {
-        define("return", takesAnything("value"),
-                (arguments, evaluator, context) -> {
-                    throw new ReturnSignal(arguments.get(0));
-                });
-
-        define("exit", List.of(),
-                (arguments, evaluator, context) -> {
-                    throw new ReturnSignal(UnsetValue.unset());
-                });
-
-        define("throw", List.of(Parameter.required("value", ANYTHING),
-                        Parameter.belongingTo("name", "word", of(Datatype.WORD))),
-                of("name"),
-                (arguments, evaluator, context, refinements) -> {
-                    throw new ThrownSignal(arguments.getFirst(),
-                            refinements.contains("name") && arguments.size() > 1
-                                    ? ((WordValue) arguments.get(1)).canonical()
-                                    : null);
-                });
-
-        define("catch", List.of(Parameter.required("block", of(Datatype.BLOCK)),
-                        Parameter.belongingTo("name", "word",
-                                of(Datatype.WORD, Datatype.BLOCK)),
-                        Parameter.belongingTo("with", "callback", of())),
-                of("name", "all", "quit", "with"),
-                (arguments, evaluator, context, refinements) -> {
-                    Value handled;
-                    Value carriedName = NoneValue.none();
-                    try {
-                        return evaluator.evaluateOrRaise(
-                                (BlockValue) arguments.getFirst(), context);
-                    } catch (ThrownSignal thrown) {
-                        boolean catchesQuitOnly = refinements.contains("quit")
-                                && !refinements.contains("name")
-                                && !refinements.contains("all");
-                        if (catchesQuitOnly
-                                || (!refinements.contains("all")
-                                        && !answersTo(thrown,
-                                                expectedNames(arguments, refinements)))) {
-                            throw thrown;
-                        }
-                        handled = thrown.value();
-                        carriedName = thrown.name()
-                                .<Value>map(WordValue::of)
-                                .orElseGet(NoneValue::none);
-                    } catch (QuitRequested quit) {
-                        if (!refinements.contains("quit")) {
-                            throw quit;
-                        }
-                        handled = quit.answer();
-                        runState.set("quit?", LogicValue.of(true));
-                    } catch (HaltRequested halted) {
-                        if (!refinements.contains("quit")) {
-                            throw halted;
-                        }
-                        handled = UnsetValue.unset();
-                    }
-                    runState.set("last-result", handled);
-                    if (refinements.contains("with")) {
-                        Value handler = arguments.getLast();
-                        if (handler instanceof BlockValue block) {
-                            Value answered = evaluator.evaluateOrRaise(block, context);
-                            runState.set("last-result", answered);
-                            return answered;
-                        }
-                        return evaluator.applyToCaught(handler, handled, carriedName);
-                    }
-                    return handled;
-                });
+        register(new ReturnNative());
+        register(new ExitNative());
+        register(new ThrowNative());
+        register(new CatchNative());
     }
 
     private final Construction madeByThisInterpreter = new Construction() {
@@ -1224,7 +1159,8 @@ public final class RebolNativeWords {
         };
     }
 
-    private void registerObjects() {
+    private void
+    registerObjects() {
         define("make", takesAnything("prototype", "body"),
                 (arguments, evaluator, context) ->
                         madeFrom(arguments.get(0), arguments.get(1), evaluator, context));
@@ -3114,29 +3050,6 @@ public final class RebolNativeWords {
                     }
                     return held;
                 });
-    }
-
-    private static Set<String> expectedNames(
-            List<Value> arguments, Set<String> refinements) {
-
-        if (!refinements.contains("name") || arguments.size() < 2) {
-            return of();
-        }
-        return switch (arguments.get(1)) {
-            case WordValue single -> of(single.canonical());
-            case BlockValue several -> several.remaining().stream()
-                    .filter(WordValue.class::isInstance)
-                    .map(WordValue.class::cast)
-                    .map(WordValue::canonical)
-                    .collect(java.util.stream.Collectors.toSet());
-            default -> of();
-        };
-    }
-
-    private static boolean answersTo(ThrownSignal thrown, Set<String> expected) {
-        return thrown.name()
-                .map(expected::contains)
-                .orElseGet(expected::isEmpty);
     }
 
     private void defineStepper(String spelling, int step) {

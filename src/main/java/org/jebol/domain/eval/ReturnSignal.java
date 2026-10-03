@@ -8,7 +8,7 @@ public final class ReturnSignal extends RuntimeException {
 
     private final transient Value value;
 
-    ReturnSignal(Value value) {
+    public ReturnSignal(Value value) {
         super("return", null, false, false);
         this.value = value;
     }

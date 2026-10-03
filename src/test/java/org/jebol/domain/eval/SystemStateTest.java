@@ -59,6 +59,26 @@ class SystemStateTest {
     }
 
     @Test
+    @DisplayName("CATCH writes into the very object a script holds as system/state")
+    void catchWritesIntoTheStateTheScriptSees() {
+        assertThat(answerTo("""
+                held: system/state
+                catch [throw 3]
+                held/last-result"""))
+                .isEqualTo("3");
+    }
+
+    @Test
+    @DisplayName("CATCH/QUIT marks quit? and keeps the quit's value in that same object")
+    void catchQuitMarksQuitInTheStateTheScriptSees() {
+        assertThat(answerTo("""
+                held: system/state
+                catch/quit [quit/return 4]
+                equal? reduce [true 4] reduce [held/quit? held/last-result]"""))
+                .isEqualTo("#(true)");
+    }
+
+    @Test
     @DisplayName("a block handler reaches the thrown value through last-result")
     void aBlockHandlerCanReadIt() {
         assertThat(answerTo("catch/with [throw 3] [system/state/last-result * 10]"))
