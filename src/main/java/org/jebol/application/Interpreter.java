@@ -80,7 +80,6 @@ public final class Interpreter {
         evaluator.useBundledModules(Interpreter::bundledModules);
         declareRebolSequentially();
         publishTheUserContext();
-        loadPrelude();
         putTheAddressesOfTheModulesRebolPublishes();
         loadRebolsOwnLibrary();
         nameTheLauncherOnlyOnceTheLibraryHasLoaded();
@@ -178,15 +177,25 @@ public final class Interpreter {
             THE_FIRST_BORROWED_FILE_THAT_REGISTERS_A_SCHEME_OF_ITS_OWN =
             "prot-mysql.reb";
 
+    private static final String THE_BORROWED_FILE_THAT_GIVES_REBOL_ITS_FUNC =
+            "base-funcs.reb";
+
     private static final String PRELUDE = "/org/jebol/prelude.reb";
 
-    private void loadPrelude() {
-        BlockValue body = theLibraryFileAt(PRELUDE)
+    private BlockValue thePrelude() {
+        return theLibraryFileAt(PRELUDE)
                 .orElseThrow(() -> new IllegalStateException(
                         "the prelude is missing from the build, or does not read"))
                 .body();
-        declareTheSetWordsOf(body, systemContext,
+    }
+
+    private void declareTheWordsThePreludeSets() {
+        declareTheSetWordsOf(thePrelude(), systemContext,
                 AnAssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
+    }
+
+    private void loadPrelude() {
+        BlockValue body = thePrelude();
         Outcome outcome = evaluator.evaluate(Binder.bind(body, systemContext), systemContext);
         if (outcome instanceof Outcome.Raised(ErrorValue failure)) {
             throw new IllegalStateException("the prelude failed to load: " + failure);
@@ -197,6 +206,7 @@ public final class Interpreter {
 
     private void loadRebolsOwnLibrary() {
         declareEverySystemWordBeforeBindingAny();
+        declareTheWordsThePreludeSets();
         for (String entry : borrowedFileNames()) {
             String name = fileNameIn(entry);
             if (name.equals(
@@ -224,6 +234,9 @@ public final class Interpreter {
                             : loadInto(body, systemContext);
             if (outcome instanceof Outcome.Raised(ErrorValue failure)) {
                 borrowedLoadFailures.put(name, failure.toString());
+            }
+            if (name.equals(THE_BORROWED_FILE_THAT_GIVES_REBOL_ITS_FUNC)) {
+                loadPrelude();
             }
         }
         describeTheQoiCodec();

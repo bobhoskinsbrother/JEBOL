@@ -53,7 +53,6 @@ public final class RebolNativeWords {
         registerTheRemainingNatives();
         registerComparators();
         registerConditionalFunctions();
-        registerFunctionMaking();
         registerNonLocalExit();
         registerObjects();
         registerLoops();
@@ -1142,44 +1141,6 @@ public final class RebolNativeWords {
         return madeByThisInterpreter;
     }
 
-    private void registerFunctionMaking() {
-        define("func", List.of(
-                        Parameter.required("spec", of(Datatype.BLOCK)),
-                        Parameter.required("body", of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> makeFunction(
-                        (BlockValue) arguments.get(0),
-                        (BlockValue) arguments.get(1),
-                        context));
-
-        define("function", List.of(
-                        Parameter.required("spec", of(Datatype.BLOCK)),
-                        Parameter.required("body", of(Datatype.BLOCK)),
-                        Parameter.belongingTo("with", "object", of())),
-                of("with", "extern"),
-                (arguments, evaluator, context, refinements) -> {
-                    BlockValue spec = (BlockValue) arguments.get(0);
-                    BlockValue body = (BlockValue) arguments.get(1);
-                    Context inside = context;
-                    if (refinements.contains("with") && arguments.size() > 2) {
-                        Value given = arguments.get(2);
-                        inside = given instanceof ObjectValue(Context context1)
-                                ? context1
-                                : ((ObjectValue) makeObject(evaluator, context,
-                                        Optional.empty(), (BlockValue) given)).context();
-                    }
-                    List<Value> combined = new ArrayList<>(spec.remaining());
-                    List<Value> assigned = new ArrayList<>();
-                    gatherWords(body, true, true, assigned);
-                    Context enclosing = inside;
-                    assigned.removeIf(word -> enclosing != context
-                            && enclosing.holds(((WordValue) word).canonical()));
-                    if (!assigned.isEmpty()) {
-                        combined.add(WordValue.of("local", Datatype.REFINEMENT));
-                        combined.addAll(assigned);
-                    }
-                    return makeFunction(BlockValue.block(combined), body, inside);
-                });
-    }
 
     private static Value makeFunction(BlockValue spec, BlockValue body, Context context) {
         return withItsBodyBound(new FunctionValue(

@@ -12,34 +12,9 @@ REBOL [
     }
 ]
 
-; MAX and MIN are not here. They were, written as a comparison and a
-; choice between the two arguments, and that is wrong for pairs: MIN of
-; 1x2 and 2x1 is 1x1, which is neither argument. Choosing between two
-; whole values cannot produce a third, so they moved to Java.
-max: :maximum
-min: :minimum
-
 ;; Moved here from Java, following how Rebol splits its own library:
 ;; two thirds of theirs is written in REBOL, and none of these needs
 ;; anything the language cannot say.
-
-;; Needed by the prelude itself, which runs before Rebol's library. The
-;; library's own EMPTY? -- TAIL? widened with object! and none! in
-;; mezz-series.reb -- replaces this one as soon as that file loads, and is
-;; what a script sees. Deleting this makes the prelude fail to load.
-empty?: func [
-    "Whether a series has nothing left from where it is."
-    series
-][
-    either none? series [true] [tail? series]
-]
-
-does: func [
-    "A function of no arguments, which is the shape a thunk wants."
-    body [block!]
-][
-    func [] body
-]
 
 rejoin: func [
     "Reduces a block and runs the results together into one value."
@@ -179,17 +154,6 @@ use [name spelling] [
 ;; TO PAREN! to build the loop body at run time: the behaviour is what
 ;; matters and the plain form says what it is.
 
-default: func [
-    "Sets a word to a value if it has not got one yet."
-    'word [word! set-word! lit-word!] "The word, or :var for a computed one"
-    value "What to set it to"
-][
-    ;; Answers the default whether or not it was needed, which reads
-    ;; oddly and is what a real R3 does.
-    unless all [value? word  not none? get word] [set word :value]
-    :value
-]
-
 has: func [
     "A function with local names and no arguments."
     vars [block!] "The names that are local to it"
@@ -261,22 +225,6 @@ map: func [
     make map! :val
 ]
 
-cause-error: func [
-    "Raises an error of the given kind, as though the interpreter had."
-    err-type [word!] "Its category"
-    err-id [word!] "Which error"
-    args "One argument, or a block of up to three"
-][
-    args: compose [(:args)]
-    do make error! [
-        type: err-type
-        id: err-id
-        arg1: first args
-        arg2: second args
-        arg3: third args
-    ]
-]
-
 script?: func [
     "The start of a script header in some source, or none if there is none."
     source [binary! string!]
@@ -319,23 +267,6 @@ suffix?: func [
         not find path #"/"
         to file! copy path
     ]
-]
-
-funct: func [
-    "Builds a function in which every set-word in the body is a local."
-    spec [block!] "Its interface"
-    body [block!] "What it does"
-    /extern words [block!] "Names that must not be made local"
-][
-    ;; Rebol's own definition. The set-words are collected from the body
-    ;; and added after /local, so a function written this way cannot
-    ;; change a word outside itself by accident.
-    spec: copy/deep spec
-    unless find spec /local [append spec [/local]]
-    body: copy/deep body
-    insert find/tail spec /local collect-words/deep/set/ignore body
-        either extern [append copy spec words] [spec]
-    make function! reduce [spec body]
 ]
 
 clos: func [
