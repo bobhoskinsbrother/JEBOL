@@ -45,6 +45,11 @@ public record ObjectValue(Context context) implements Value {
     }
 
     @Override
+    public Value made(Value spec, Making making) {
+        return making.objectLike(this, spec);
+    }
+
+    @Override
     public Optional<Context> fieldsAsAContext() {
         return Optional.of(context);
     }

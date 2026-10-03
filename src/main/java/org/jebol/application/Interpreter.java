@@ -72,6 +72,7 @@ public final class Interpreter {
                 natives.behaviours(),
                 systemContext,
                 natives.construction(),
+                natives::makingIn,
                 output,
                 bounds.maximumNesting(),
                 this::reasonToStop,

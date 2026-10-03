@@ -29,6 +29,11 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
     }
 
 
+    @Override
+    public Value made(Value spec, Making making) {
+        return making.structLike(this, spec);
+    }
+
     public static StructValue of(StructSpec spec) {
         return new StructValue(spec, new StructData(spec.size()), 0);
     }

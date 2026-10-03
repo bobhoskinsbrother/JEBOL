@@ -60,6 +60,13 @@ public record ErrorValue(
     }
 
     @Override
+    public Value made(Value spec, Making making) {
+        return spec instanceof StringValue
+                ? making.errorFrom(spec)
+                : making.madeFromAValueOf(datatype(), spec);
+    }
+
+    @Override
     public Optional<Context> fieldsAsAContext() {
         Context fields = Context.root();
         for (String name : FIELDS) {

@@ -1090,65 +1090,82 @@ public final class RebolNativeWords {
     }
 
 
-    private Value madeFrom(
-            Value prototype, Value body, Evaluator evaluator, Context context) {
+    public Making makingIn(Evaluator evaluator, Context where) {
+        return new MakingInThisInterpreter(evaluator, where);
+    }
 
-        return switch (prototype) {
-            case DatatypeValue wanted when wanted.represents() == Datatype.OBJECT
-                    && body instanceof NoneValue ->
-                    raiseBadMakeArg(body, "object!");
-            case DatatypeValue wanted when wanted.represents() == Datatype.OBJECT
-                    && !(body instanceof BlockValue) ->
-                    makeObject(evaluator, context, Optional.empty(),
-                            BlockValue.block(List.of()));
-            case DatatypeValue wanted when wanted.represents() == Datatype.OBJECT ->
-                    makeObject(evaluator, context, Optional.empty(), (BlockValue) body);
-            case ObjectValue original when body instanceof ObjectValue other ->
-                    mergedObject(original, other, context);
-            case ObjectValue original ->
-                    makeObject(evaluator, context, Optional.of(original), (BlockValue) body);
-            case DatatypeValue wanted when wanted.represents() == Datatype.MAP ->
-                    mapMadeFrom(body);
-            case DatatypeValue wanted when wanted.represents() == Datatype.BITSET ->
-                    BitsetActions.madeFrom(body);
-            case DatatypeValue wanted when wanted.represents() == Datatype.PAIR ->
-                    asPair(body);
-            case DatatypeValue wanted when wanted.represents() == Datatype.FUNCTION ->
-                    functionFrom(body, context);
-            case DatatypeValue wanted when wanted.represents() == Datatype.CLOSURE ->
-                    functionFrom(body, context) instanceof FunctionValue made
-                            ? made.asClosure()
-                            : NoneValue.none();
-            case DatatypeValue wanted when wanted.represents() == Datatype.OP ->
-                    operatorFrom(body, context);
-            case DatatypeValue wanted when wanted.represents() == Datatype.ERROR ->
-                    errorFromSpec(body, evaluator, context);
-            case ErrorValue original when body instanceof StringValue ->
-                    errorFromSpec(body, evaluator, context);
-            case DatatypeValue wanted when wanted.represents() == Datatype.MODULE ->
-                    moduleFromSpec(body, evaluator, context);
-            case NativeValue original when body instanceof BlockValue given ->
-                    derivedFunction(original, given);
-            case FunctionValue original when body instanceof BlockValue given ->
-                    derivedFunction(original, given);
-            case RebolSeries original -> makeOfDatatype(
-                    DatatypeValue.of(original.datatype()), body, evaluator, context);
-            case EventValue original -> EventPath.made(original, body,
-                    value -> simpleValueOf(value, evaluator, context));
-            case StructValue original ->
-                    structLikeThePrototype(original, body, evaluator);
-            case DatatypeValue wanted -> makeOfDatatype(wanted, body, evaluator, context);
-            default -> makeOfDatatype(
-                    DatatypeValue.of(prototype.datatype()), body, evaluator, context);
-        };
+    private final class MakingInThisInterpreter implements Making {
+
+        private final Evaluator evaluator;
+        private final Context where;
+
+        private MakingInThisInterpreter(Evaluator evaluator, Context where) {
+            this.evaluator = evaluator;
+            this.where = where;
+        }
+
+        @Override
+        public Value made(Datatype kind, Value spec) {
+            return switch (kind) {
+                case OBJECT -> anObjectMadeFrom(spec);
+                case MAP -> mapMadeFrom(spec);
+                case BITSET -> BitsetActions.madeFrom(spec);
+                case PAIR -> asPair(spec);
+                case FUNCTION -> functionFrom(spec, where);
+                case CLOSURE -> functionFrom(spec, where) instanceof FunctionValue function
+                        ? function.asClosure()
+                        : NoneValue.none();
+                case OP -> operatorFrom(spec, where);
+                case ERROR -> errorFromSpec(spec, evaluator, where);
+                case MODULE -> moduleFromSpec(spec, evaluator, where);
+                default -> madeFromAValueOf(kind, spec);
+            };
+        }
+
+        private Value anObjectMadeFrom(Value spec) {
+            if (spec instanceof NoneValue) {
+                return raiseBadMakeArg(spec, "object!");
+            }
+            return makeObject(evaluator, where, Optional.empty(),
+                    spec instanceof BlockValue block ? block : BlockValue.block(List.of()));
+        }
+
+        @Override
+        public Value madeFromAValueOf(Datatype kind, Value spec) {
+            return makeOfDatatype(DatatypeValue.of(kind), spec, evaluator, where);
+        }
+
+        @Override
+        public Value objectLike(ObjectValue prototype, Value spec) {
+            return spec instanceof ObjectValue other
+                    ? mergedObject(prototype, other, where)
+                    : makeObject(evaluator, where, Optional.of(prototype), (BlockValue) spec);
+        }
+
+        @Override
+        public Value derivedFrom(Value function, BlockValue spec) {
+            return derivedFunction(function, spec);
+        }
+
+        @Override
+        public Value errorFrom(Value spec) {
+            return errorFromSpec(spec, evaluator, where);
+        }
+
+        @Override
+        public Value structLike(StructValue prototype, Value spec) {
+            return structLikeThePrototype(prototype, spec, evaluator);
+        }
+
+        @Override
+        public Value eventLike(EventValue prototype, Value spec) {
+            return EventPath.made(prototype, spec, value -> simpleValueOf(value, evaluator, where));
+        }
     }
 
     private void
     registerObjects() {
-        define("make", takesAnything("prototype", "body"),
-                (arguments, evaluator, context) ->
-                        madeFrom(arguments.get(0), arguments.get(1), evaluator, context));
-
+        register(new MakeAction());
         register(new ConstructNative());
         register(new ContextOfWordNative());
         register(new ResolveNative());
@@ -8620,7 +8637,7 @@ public final class RebolNativeWords {
                                 value -> simpleValueOf(value, evaluator, context));
                     }
                     if (SHARES_ITS_BRANCH_WITH_MAKE.contains(wanted.represents())) {
-                        return madeFrom(wanted, arguments.get(1), evaluator, context);
+                        return wanted.made(arguments.get(1), makingIn(evaluator, context));
                     }
                     if (wanted.represents() == Datatype.OBJECT) {
                         return objectConvertedFrom(arguments.get(1));

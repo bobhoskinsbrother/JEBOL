@@ -43,6 +43,10 @@ class WhatEachObjectNativeDeclaresTest {
 
     static Stream<Arguments> whatEachDeclares() {
         return Stream.of(
+                Arguments.of(new MakeAction(), "make",
+                        List.of(Parameter.required("prototype", Typeset.ANY_TYPE.members()),
+                                Parameter.required("body", Typeset.ANY_TYPE.members())),
+                        NOTHING),
                 Arguments.of(new ConstructNative(), "construct",
                         List.of(Parameter.required("body",
                                         Set.of(Datatype.BLOCK, Datatype.STRING, Datatype.BINARY)),

@@ -83,6 +83,11 @@ public record EventValue(
     }
 
     @Override
+    public Value made(Value spec, Making making) {
+        return making.eventLike(this, spec);
+    }
+
+    @Override
     public Datatype datatype() {
         return Datatype.EVENT;
     }

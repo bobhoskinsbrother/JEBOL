@@ -51,6 +51,13 @@ public record FunctionValue(
                 true, declaredWords);
     }
 
+    @Override
+    public Value made(Value spec, Making making) {
+        return spec instanceof BlockValue block
+                ? making.derivedFrom(this, block)
+                : making.madeFromAValueOf(datatype(), spec);
+    }
+
     public int arity() {
         return (int) parameters.stream().filter(Parameter::consumesAnArgument).count();
     }

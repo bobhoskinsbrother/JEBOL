@@ -33,6 +33,13 @@ public record NativeValue(
                 askedRefinements, Optional.of(spec));
     }
 
+    @Override
+    public Value made(Value spec, Making making) {
+        return spec instanceof BlockValue block
+                ? making.derivedFrom(this, block)
+                : making.madeFromAValueOf(datatype(), spec);
+    }
+
     public boolean declares(String refinement) {
         return declaredRefinements.contains(refinement);
     }

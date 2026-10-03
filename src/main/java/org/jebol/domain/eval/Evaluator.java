@@ -54,6 +54,7 @@ public final class Evaluator {
     private NetworkPort network = NetworkPort.none();
     private BundledModules bundledModules = BundledModules.none();
     private final Construction construction;
+    private final Makers makers;
     private final ErrorWording wording;
     private int stepsSinceLastCheck;
 
@@ -146,7 +147,7 @@ public final class Evaluator {
     public Evaluator(
             Map<String, RefinedCallable> behaviours, Context systemContext,
             OutputPort output) {
-        this(behaviours, systemContext, Construction.refused(), output,
+        this(behaviours, systemContext, Construction.refused(), Makers.none(), output,
                 DEFAULT_MAXIMUM_DEPTH, Interruption.never(), DEFAULT_CHECK_EVERY);
     }
 
@@ -154,6 +155,7 @@ public final class Evaluator {
             Map<String, RefinedCallable> behaviours,
             Context systemContext,
             Construction construction,
+            Makers makers,
             OutputPort output,
             int maximumDepth,
             Interruption interruption,
@@ -161,6 +163,7 @@ public final class Evaluator {
         this.behaviours = new java.util.HashMap<>(behaviours);
         this.systemContext = systemContext;
         this.construction = construction;
+        this.makers = makers;
         this.wording = new ErrorWording(systemContext);
         this.output = output;
         this.maximumDepth = maximumDepth;
@@ -245,6 +248,10 @@ public final class Evaluator {
 
     public Construction construction() {
         return construction;
+    }
+
+    public Making makingIn(Context where) {
+        return makers.makingIn(this, where);
     }
 
     public void setSystemState(String field, Value value) {
