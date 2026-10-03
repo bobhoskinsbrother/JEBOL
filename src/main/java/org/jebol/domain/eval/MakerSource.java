@@ -32,7 +32,7 @@ public interface MakerSource {
         }
 
         @Override
-        public Value makeAnother(Datatype kind, Value spec) {
+        public Value makeAnotherFrom(Datatype kind, Value spec) {
             throw Raised.cannotUse(spec, "make");
         }
 
@@ -42,12 +42,12 @@ public interface MakerSource {
         }
 
         @Override
-        public Value deriveFunction(Value function, BlockValue spec) {
+        public Value makeFunctionFrom(Value function, BlockValue spec) {
             throw Raised.cannotUse(spec, "make");
         }
 
         @Override
-        public Value makeError(Value spec) {
+        public Value makeErrorFrom(Value spec) {
             throw Raised.cannotUse(spec, "make");
         }
 

@@ -116,6 +116,8 @@ public final class ErrorCatalogue {
      * The number R3 gives an error of this category and id, or the
      * category's base when the id is not one R3 knows.
      */
+    public static final int LOWEST_CODE_AN_ENTRY_HAS = 100;
+
     public static int codeFor(String category, String errorId) {
         int at = idsIn(category).indexOf(errorId);
         return at < 0 ? baseCodeOf(category) : baseCodeOf(category) + at;

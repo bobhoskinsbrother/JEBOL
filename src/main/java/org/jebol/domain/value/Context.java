@@ -1,18 +1,9 @@
 package org.jebol.domain.value;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-/**
- * A set of named slots that words resolve through. The global environment and
- * every {@code object!} share this representation.
- *
- * <p>Lookup is by canonical (lowercased) name, because REBOL words compare
- * without regard to case while printing as they were written.
- *
- * <p>{@link #unbound()} is a null object rather than a null reference: an
- * unbound word carries a context that knows nothing and says so, so no code
- * downstream has to branch on null to find out.
- */
 public final class Context {
 
     private static final Context UNBOUND = new Context(null, true);
@@ -20,20 +11,22 @@ public final class Context {
     private final Map<String, ContextSlot> slotsByCanonicalName = new LinkedHashMap<>();
     private final Context parent;
     private final boolean unbound;
-
     private boolean loopFrameWhichContextQuestionCannotReach;
+    private Value ownedByFunction;
+    private boolean callEnded;
+    private boolean onlyThroughACallThatIsRunning;
+    private Context supersededBy;
+    private boolean closedToNewNames;
 
     private Context(Context parent, boolean unbound) {
         this.parent = parent;
         this.unbound = unbound;
     }
 
-    /** A fresh context with no parent. */
     public static Context root() {
         return new Context(null, false);
     }
 
-    /** A fresh context that falls back to another for names it lacks. */
     public static Context childOf(Context parent) {
         if (parent == null) {
             throw new IllegalArgumentException("a child context needs a parent");
@@ -41,87 +34,46 @@ public final class Context {
         return new Context(parent, false);
     }
 
-    /**
-     * The words a function declares, which name slots only while one of its
-     * calls is running.
-     *
-     * <p>A function's body is bound when the function is made, and there is no
-     * frame yet to bind it to, so the words are bound to this and a call lends
-     * it one. That is what makes the same bound word read a different value
-     * each time round, and the innermost call's value inside a recursion.
-     *
-     * <p>It answers nothing of its own. A word bound to a function nobody is
-     * running names no slot, and saying so is the behaviour: a body shared
-     * between two functions belongs to whichever was made last, and calling
-     * the other one has to fail rather than read the wrong frame.
-     */
     public static Context theWordsAFunctionDeclares() {
         Context declared = new Context(null, false);
         declared.onlyThroughACallThatIsRunning = true;
         return declared;
     }
 
-    private boolean onlyThroughACallThatIsRunning;
-
-    /** A loop's own frame, hidden from CONTEXT?. */
     public static Context loopFrameOf(Context parent) {
         Context frame = childOf(parent);
         frame.loopFrameWhichContextQuestionCannotReach = true;
         return frame;
     }
 
+    public static Context unbound() {
+        return UNBOUND;
+    }
+
+    public static String canonicalise(String spelling) {
+        return spelling.toLowerCase(Locale.ROOT);
+    }
+
     public boolean isALoopFrame() {
         return loopFrameWhichContextQuestionCannotReach;
     }
-
-    private Value ownedByFunction;
-
-    private boolean callEnded;
 
     public void markAsCallFrameOf(Value function) {
         this.ownedByFunction = function;
     }
 
-    /**
-     * The function whose call this frame is, following the frame a call has
-     * lent it.
-     *
-     * <p>A function's declared words are marked with the function too, so a
-     * word bound when the function was made answers the function whether or
-     * not one of its calls is running -- which is what CONTEXT? reads.
-     */
     public Value functionOwningThisFrame() {
-        return supersededBy != null
-                ? frameThatResolvesForThisOne().functionOwningThisFrame()
-                : ownedByFunction;
+        return supersededBy != null ? frameThatResolvesForThisOne().functionOwningThisFrame() : ownedByFunction;
     }
-
-    private Context supersededBy;
 
     public void supersededBy(Context newer) {
         this.supersededBy = newer;
-    }
-
-    private Context frameThatResolvesForThisOne() {
-        Context frame = this;
-        while (frame.supersededBy != null) {
-            frame = frame.supersededBy;
-        }
-        return frame;
     }
 
     public void markCallEnded() {
         this.callEnded = true;
     }
 
-    /**
-     * Whether the call this frame belongs to has finished.
-     *
-     * <p>A function's declared words say yes whenever no call is lending them
-     * a frame, because that is exactly what "no call of this function is
-     * running" means. A word kept past the end of its call is bound to them,
-     * and CONTEXT? of one has to say the call is over.
-     */
     public boolean callHasEnded() {
         if (supersededBy != null) {
             return frameThatResolvesForThisOne().callHasEnded();
@@ -129,31 +81,18 @@ public final class Context {
         return callEnded || onlyThroughACallThatIsRunning;
     }
 
-    /**
-     * The context an unbound word carries. It holds nothing, accepts nothing,
-     * and reports itself as unbound.
-     */
-    public static Context unbound() {
-        return UNBOUND;
-    }
-
     public boolean isUnbound() {
         return unbound;
     }
 
-    private boolean closedToNewNames;
-
-    /** Whether a new name may be added to this context. */
     public boolean isClosedToNewNames() {
         return closedToNewNames;
     }
 
-    /** Closes or reopens this context to new names. */
     public void closeToNewNames(boolean closed) {
         this.closedToNewNames = closed;
     }
 
-    /** Whether this context or an ancestor holds the name. */
     public boolean knows(String canonicalName) {
         if (unbound || noCallIsLendingItAFrame()) {
             return false;
@@ -161,55 +100,18 @@ public final class Context {
         if (supersededBy != null) {
             return frameThatResolvesForThisOne().knows(canonicalName);
         }
-        return slotsByCanonicalName.containsKey(canonicalName)
-                || (parent != null && parent.knows(canonicalName));
+        return slotsByCanonicalName.containsKey(canonicalName) || (parent != null && parent.knows(canonicalName));
     }
 
-    /**
-     * Whether this context itself holds the name, ignoring ancestors.
-     *
-     * <p>A hidden field is not held, as far as anything outside the object
-     * is concerned. This is the question field selection asks, so
-     * `o/f` on a hidden f fails as though there were no such field --
-     * while {@link #knows}, which is how a word inside the object
-     * resolves, still finds it. That split is the whole of PROTECT/HIDE.
-     */
     public boolean holds(String canonicalName) {
-        ContextSlot slot = unbound || noCallIsLendingItAFrame()
-                ? null
-                : slotsByCanonicalName.get(canonicalName);
+        ContextSlot slot = unbound || noCallIsLendingItAFrame() ? null : slotsByCanonicalName.get(canonicalName);
         return slot != null && !slot.isHidden();
     }
 
-    private boolean noCallIsLendingItAFrame() {
-        return onlyThroughACallThatIsRunning && supersededBy == null;
-    }
-
-    /**
-     * Whether this is a function's declared words and the function declares
-     * this one, whatever is or is not running.
-     *
-     * <p>BIND asks it, and it is a different question from {@link #knows}.
-     * Binding a word into a function's words is binding it relatively -- the
-     * answer is a word that will read whichever call is running when it is
-     * evaluated -- so the target has the name because the spec declares it,
-     * not because a call is lending a frame. `bind 'x word` on a word kept
-     * past the end of its call answers the same word rather than refusing.
-     */
     public boolean declaresItRelatively(String canonicalName) {
-        return onlyThroughACallThatIsRunning
-                && slotsByCanonicalName.containsKey(canonicalName);
+        return onlyThroughACallThatIsRunning && slotsByCanonicalName.containsKey(canonicalName);
     }
 
-    /**
-     * The context that actually holds the name, which may be an ancestor.
-     *
-     * <p>What a bound word must point at. Pointing at a descendant that only
-     * reaches the slot through its parent would be true enough for reading,
-     * but a caller that asks a word where it lives and then defines a name
-     * there would write into a scope that is about to be thrown away. Ask
-     * {@link #knows} first.
-     */
     public Context holderOf(String canonicalName) {
         if (supersededBy != null) {
             return frameThatResolvesForThisOne().holderOf(canonicalName);
@@ -220,19 +122,12 @@ public final class Context {
         if (!unbound && parent != null) {
             return parent.holderOf(canonicalName);
         }
-        throw new IllegalStateException(
-                "no context holds \"" + canonicalName + "\"; ask knows() first");
+        throw new IllegalStateException("no context holds \"" + canonicalName + "\"; ask knows() first");
     }
 
-    /**
-     * The slot for a name, searching ancestors. Absent rather than null, so a
-     * caller must decide what an unknown word means rather than tripping over
-     * it later.
-     */
     public ContextSlot slotFor(String canonicalName) {
         if (unbound) {
-            throw new IllegalStateException(
-                    "the unbound context holds no slots; ask knows() first");
+            throw new IllegalStateException("the unbound context holds no slots; ask knows() first");
         }
         if (supersededBy != null) {
             return frameThatResolvesForThisOne().slotFor(canonicalName);
@@ -244,15 +139,9 @@ public final class Context {
         if (parent != null) {
             return parent.slotFor(canonicalName);
         }
-        throw new IllegalStateException(
-                "no slot for \"" + canonicalName + "\"; ask knows() first");
+        throw new IllegalStateException("no slot for \"" + canonicalName + "\"; ask knows() first");
     }
 
-    /**
-     * Adds a slot holding {@code unset}, or returns the existing one. A word
-     * that has been named but not assigned is exactly what {@code unset!} is
-     * for.
-     */
     public ContextSlot define(String spelling) {
         if (unbound) {
             throw new IllegalStateException("the unbound context cannot be extended");
@@ -270,27 +159,16 @@ public final class Context {
         return created;
     }
 
-    /** Defines the name if needed, then sets its value. */
     public ContextSlot set(String spelling, Value value) {
         ContextSlot slot = define(spelling);
         slot.setValue(value);
         return slot;
     }
 
-    /**
-     * The slot this context itself holds, ignoring ancestors.
-     *
-     * <p>Field selection uses this rather than {@link #slotFor}. An object's
-     * context hangs beneath where it was written, so a word inside its body
-     * can still reach the enclosing script; but {@code account/balance} must
-     * find a field of the account, not a global that happens to share the
-     * name, or every object would appear to have every word ever defined.
-     */
     public ContextSlot ownSlotFor(String canonicalName) {
         ContextSlot slot = slotsByCanonicalName.get(canonicalName);
         if (slot == null) {
-            throw new IllegalStateException(
-                    "no field \"" + canonicalName + "\" here; ask holds() first");
+            throw new IllegalStateException("no field \"" + canonicalName + "\" here; ask holds() first");
         }
         return slot;
     }
@@ -320,19 +198,6 @@ public final class Context {
         return held;
     }
 
-    private static boolean isAFunctionTheInterpreterCanCall(Value held) {
-        return held instanceof FunctionValue
-                || held instanceof NativeValue
-                || held instanceof OperatorValue;
-    }
-
-    /**
-     * This context's own fields by name, without {@code self}.
-     *
-     * <p>What object equality compares. {@code self} is left out because
-     * every object has one and it points back at the object, so counting
-     * it would make the comparison recurse for ever.
-     */
     public Map<String, Value> fieldsExcludingSelf() {
         Map<String, Value> fields = new LinkedHashMap<>();
         slotsByCanonicalName.forEach((name, slot) -> {
@@ -343,50 +208,44 @@ public final class Context {
         return fields;
     }
 
-    /**
-     * How many fields there are, hidden ones counted and SELF not.
-     *
-     * <p>Not {@link #slotCount}: an object built one way carries SELF and
-     * one built another does not, so counting slots makes two objects
-     * with the same fields unequal for a reason that has nothing to do
-     * with their fields.
-     */
     public int fieldCount() {
-        return (int) slotsByCanonicalName.entrySet().stream()
-                .filter(entry -> !entry.getKey().equals("self"))
-                .count();
+        return (int) slotsByCanonicalName.entrySet().stream().filter(entry -> !entry.getKey().equals("self")).count();
     }
 
     public int slotCount() {
         return slotsByCanonicalName.size();
     }
 
-    /**
-     * This context's slots, without the hidden ones.
-     *
-     * <p>What WORDS-OF, VALUES-OF, BODY-OF and MOLD all walk, so hiding a
-     * field takes it out of every one of them at once. Anything that has
-     * to see a hidden field asks {@link #everySlot} instead, and there is
-     * only one such caller: the code that hides them.
-     */
-    public List<ContextSlot> slots() {
-        return slotsByCanonicalName.values().stream()
-                .filter(slot -> !slot.isHidden())
-                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+    public List<Value> setWordsAndValues() {
+        return slots().stream().filter(slot -> !slot.canonical().equals("self")).flatMap(slot -> Stream.of(WordValue.of(slot.spelling(), Datatype.SET_WORD), slot.value())).toList();
     }
 
-    /** Every slot, hidden ones included. */
+    public List<ContextSlot> slots() {
+        return slotsByCanonicalName.values().stream().filter(slot -> !slot.isHidden()).collect(Collectors.toCollection(ArrayList::new));
+    }
+
     public List<ContextSlot> everySlot() {
         return new ArrayList<>(slotsByCanonicalName.values());
-    }
-
-    /** The form a word compares by: lowercased. */
-    public static String canonicalise(String spelling) {
-        return spelling.toLowerCase(Locale.ROOT);
     }
 
     @Override
     public String toString() {
         return unbound ? "Context(unbound)" : "Context(" + slotCount() + " slots)";
+    }
+
+    private Context frameThatResolvesForThisOne() {
+        Context frame = this;
+        while (frame.supersededBy != null) {
+            frame = frame.supersededBy;
+        }
+        return frame;
+    }
+
+    private boolean noCallIsLendingItAFrame() {
+        return onlyThroughACallThatIsRunning && supersededBy == null;
+    }
+
+    private boolean isAFunctionTheInterpreterCanCall(Value held) {
+        return held instanceof FunctionValue || held instanceof NativeValue || held instanceof OperatorValue;
     }
 }

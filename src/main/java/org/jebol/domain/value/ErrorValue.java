@@ -62,8 +62,8 @@ public record ErrorValue(
     @Override
     public Value make(Value spec, Maker maker) {
         return spec instanceof StringValue
-                ? maker.makeError(spec)
-                : maker.makeAnother(datatype(), spec);
+                ? maker.makeErrorFrom(spec)
+                : maker.makeAnotherFrom(datatype(), spec);
     }
 
     @Override

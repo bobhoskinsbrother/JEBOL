@@ -4,13 +4,13 @@ public interface Maker {
 
     Value make(Datatype kind, Value spec);
 
-    Value makeAnother(Datatype kind, Value spec);
+    Value makeAnotherFrom(Datatype kind, Value spec);
 
     Value makeObjectFrom(ObjectValue prototype, Value spec);
 
-    Value deriveFunction(Value function, BlockValue spec);
+    Value makeFunctionFrom(Value function, BlockValue spec);
 
-    Value makeError(Value spec);
+    Value makeErrorFrom(Value spec);
 
     Value makeStructFrom(StructValue prototype, Value spec);
 

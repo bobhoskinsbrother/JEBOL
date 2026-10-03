@@ -1071,7 +1071,7 @@ public final class RebolNativeWords {
 
         @Override
         public Value functionMadeFrom(BlockValue spec, BlockValue body) {
-            return makeFunction(spec, body, Context.root());
+            return Binder.functionWithItsBodyBound(spec, body, Context.root());
         }
     };
 
@@ -1079,88 +1079,10 @@ public final class RebolNativeWords {
         return madeByThisInterpreter;
     }
 
-
-    private static Value makeFunction(BlockValue spec, BlockValue body, Context context) {
-        return Binder.withItsBodyBound(new FunctionValue(
-                spec,
-                body,
-                FunctionSpec.parametersIn(spec),
-                FunctionSpec.localNamesIn(spec),
-                context));
-    }
-
-
     public Maker makerFor(Evaluator evaluator, Context where) {
-        return new InterpreterMaker(evaluator, where);
-    }
-
-    private final class InterpreterMaker implements Maker {
-
-        private final Evaluator evaluator;
-        private final Context where;
-
-        private InterpreterMaker(Evaluator evaluator, Context where) {
-            this.evaluator = evaluator;
-            this.where = where;
-        }
-
-        @Override
-        public Value make(Datatype kind, Value spec) {
-            return switch (kind) {
-                case OBJECT -> anObjectMadeFrom(spec);
-                case MAP -> mapMadeFrom(spec);
-                case BITSET -> BitsetActions.madeFrom(spec);
-                case PAIR -> asPair(spec);
-                case FUNCTION -> functionFrom(spec, where);
-                case CLOSURE -> functionFrom(spec, where) instanceof FunctionValue function
-                        ? function.asClosure()
-                        : NoneValue.none();
-                case OP -> operatorFrom(spec, where);
-                case ERROR -> errorFromSpec(spec, evaluator, where);
-                case MODULE -> moduleFromSpec(spec, evaluator, where);
-                default -> makeAnother(kind, spec);
-            };
-        }
-
-        private Value anObjectMadeFrom(Value spec) {
-            if (spec instanceof NoneValue) {
-                return raiseBadMakeArg(spec, "object!");
-            }
-            return makeObject(evaluator, where, Optional.empty(),
-                    spec instanceof BlockValue block ? block : BlockValue.block(List.of()));
-        }
-
-        @Override
-        public Value makeAnother(Datatype kind, Value spec) {
-            return makeOfDatatype(DatatypeValue.of(kind), spec, evaluator, where);
-        }
-
-        @Override
-        public Value makeObjectFrom(ObjectValue prototype, Value spec) {
-            return spec instanceof ObjectValue other
-                    ? mergedObject(prototype, other, where)
-                    : makeObject(evaluator, where, Optional.of(prototype), (BlockValue) spec);
-        }
-
-        @Override
-        public Value deriveFunction(Value function, BlockValue spec) {
-            return derivedFunction(function, spec);
-        }
-
-        @Override
-        public Value makeError(Value spec) {
-            return errorFromSpec(spec, evaluator, where);
-        }
-
-        @Override
-        public Value makeStructFrom(StructValue prototype, Value spec) {
-            return structLikeThePrototype(prototype, spec, evaluator);
-        }
-
-        @Override
-        public Value makeEventFrom(EventValue prototype, Value spec) {
-            return EventPath.made(prototype, spec, value -> simpleValueOf(value, evaluator, where));
-        }
+        return new InterpreterMaker(evaluator, where, (kind, spec) ->
+                makeOfDatatype(DatatypeValue.of(kind), spec, evaluator, where,
+                        value -> evaluator.simpleValueOf(value, where)));
     }
 
     private void
@@ -1183,92 +1105,6 @@ public final class RebolNativeWords {
         register(new WhetherProtectedNative());
         register(new UnbindNative());
         register(new BindNative());
-    }
-
-    private static Value makeObject(
-            Evaluator evaluator,
-            Context enclosing,
-            Optional<ObjectValue> prototype,
-            BlockValue body) {
-
-        Context fields = Context.childOf(enclosing);
-        ObjectValue built = new ObjectValue(fields);
-        fields.set("self", built);
-
-        prototype.ifPresent(existing -> existing.context().slots().stream()
-                .filter(slot -> !slot.canonical().equals("self"))
-                .forEach(slot -> fields.set(
-                        slot.spelling(), clonedAndRebound(slot.value(),
-                                of(existing.context()), fields))));
-
-        declaredFieldsIn(body).forEach(fields::define);
-
-        evaluator.evaluateOrRaise(
-                Binder.bindOnly(body, fields, itsOwnFieldNames(fields)), fields);
-        return built;
-    }
-
-    private static Set<String> itsOwnFieldNames(Context fields) {
-        return fields.slots().stream()
-                .map(ContextSlot::canonical)
-                .collect(Collectors.toSet());
-    }
-
-    private static Value mergedObject(
-            ObjectValue prototype, ObjectValue other, Context enclosing) {
-
-        Context fields = Context.childOf(enclosing);
-        prototype.context().slots().stream()
-                .filter(slot -> !slot.canonical().equals("self"))
-                .forEach(slot -> fields.set(slot.spelling(), slot.value()));
-        other.context().slots().stream()
-                .filter(slot -> !slot.canonical().equals("self"))
-                .forEach(slot -> fields.set(slot.spelling(), slot.value()));
-
-        ObjectValue merged = new ObjectValue(fields);
-        fields.set("self", merged);
-        Set<Context> sources = of(prototype.context(), other.context());
-        fields.slots().stream()
-                .filter(slot -> !slot.canonical().equals("self"))
-                .toList()
-                .forEach(slot -> fields.set(slot.spelling(),
-                        clonedAndRebound(slot.value(), sources, fields)));
-        return merged;
-    }
-
-    private static Value clonedAndRebound(Value value, Set<Context> from, Context into) {
-        return switch (value) {
-            case WordValue word -> word.isBound() && from.contains(word.binding())
-                    ? word.boundTo(into)
-                    : word;
-            case BlockValue block -> {
-                List<Value> items = new ArrayList<>();
-                for (Value item : block.remaining()) {
-                    items.add(clonedAndRebound(item, from, into));
-                }
-                yield BlockValue.block(items).as(block.datatype());
-            }
-            case StringValue text -> StringValue.of(text.text(), text.datatype());
-            case BinaryValue bytes -> bytes.copyOfTheFirst(bytes.lengthFromHere());
-            case MapValue map -> {
-                MapValue cloned = map.copy();
-                for (Value key : cloned.keys()) {
-                    cloned.put(key, clonedAndRebound(cloned.select(key), from, into));
-                }
-                yield cloned;
-            }
-            case FunctionValue function -> Binder.withItsBodyBound(new FunctionValue(
-                    function.spec(),
-                    (BlockValue) clonedAndRebound(function.body(), from, into),
-                    function.parameters(), function.localNames(), into));
-            default -> value;
-        };
-    }
-
-    private static List<String> declaredFieldsIn(BlockValue body) {
-        return body.setWordsFromHere().stream()
-                .map(WordValue::spelling)
-                .toList();
     }
 
     private void registerLoops() {
@@ -2814,92 +2650,6 @@ public final class RebolNativeWords {
         }
     }
 
-    private static Value errorFromSpec(Value spec, Evaluator evaluator, Context context) {
-        Value theSpecAsWritten = spec;
-        boolean fromAnObject = spec instanceof ObjectValue;
-        if (spec instanceof ObjectValue(Context context2)) {
-            spec = BlockValue.block(setWordsAndValuesOf(context2));
-        } else if (spec instanceof BlockValue body && body.datatype() == Datatype.BLOCK) {
-            Value built = makeObject(evaluator, context, Optional.empty(), body);
-            if (built instanceof ObjectValue(Context context1)) {
-                spec = BlockValue.block(setWordsAndValuesOf(context1));
-            }
-        }
-        if (!(spec instanceof BlockValue fields)) {
-            if (!(spec instanceof StringValue written)) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
-            }
-            return evaluator.spokenHere(new ErrorValue(ErrorCategory.USER, "message",
-                    written.text(), Optional.of(spec),
-                    Optional.empty(), Optional.empty(),
-                    Optional.empty(), Optional.empty(),
-                    new LinkedHashMap<>()));
-        }
-        List<Value> items = fields.remaining();
-        ErrorCategory category = ErrorCategory.USER;
-        String errorId = "user-error";
-        String typeWordAsSpelled = "";
-        boolean namedAType = false;
-        boolean namedAnId = false;
-        Value unknownId = NoneValue.none();
-        Optional<Value> subject = Optional.empty();
-        Optional<Value> second = Optional.empty();
-        Optional<Value> third = Optional.empty();
-        for (int at = 0; at + 1 < items.size(); at += 2) {
-            if (!(items.get(at) instanceof WordValue name)
-                    || name.datatype() != Datatype.SET_WORD) {
-                continue;
-            }
-            String said = items.get(at + 1) instanceof WordValue spelled
-                    ? spelled.canonical()
-                    : Molder.form(items.get(at + 1));
-            Value asWritten = items.get(at + 1);
-            switch (name.canonical()) {
-                case "type" -> {
-                    namedAType = true;
-                    typeWordAsSpelled = asWritten instanceof WordValue spelled
-                            ? spelled.spelling()
-                            : said;
-                    category = ErrorCategory.named(said).orElseThrow(() ->
-                            Raised.of(EvaluationFailure.INVALID_ARG, asWritten));
-                }
-                case "id" -> {
-                    namedAnId = true;
-                    errorId = said;
-                    unknownId = asWritten;
-                }
-                case "arg1" -> subject = Optional.of(items.get(at + 1));
-                case "arg2" -> second = Optional.of(items.get(at + 1));
-                case "arg3" -> third = Optional.of(items.get(at + 1));
-                default -> { }
-            }
-        }
-        if (!namedAType || !namedAnId) {
-            throw new Raised(ErrorValue.of(ErrorCategory.INTERNAL,
-                    "invalid-error", "an error spec names a type and an id"));
-        }
-        refuseAnErrorTheCatalogueHasNot(
-                category, errorId, unknownId, theSpecAsWritten, fromAnObject);
-        ErrorValue built = new ErrorValue(category, errorId, errorId, subject,
-                second, third, Optional.empty(), Optional.empty(),
-                new LinkedHashMap<>());
-        built.write("type", WordValue.of(typeWordAsSpelled));
-        return evaluator.spokenHere(built);
-    }
-
-    private static void refuseAnErrorTheCatalogueHasNot(
-            ErrorCategory category, String errorId, Value asWritten, Value spec,
-            boolean fromAnObject) {
-
-        if (!ErrorCatalogue.idsIn(category.spelling()).contains(errorId)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, asWritten);
-        }
-        if (!fromAnObject && ErrorCatalogue.codeFor(category.spelling(), errorId)
-                < LOWEST_CODE_AN_ERROR_CATALOGUE_ENTRY_HAS) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
-        }
-    }
-
     private static boolean theTruthInWhatALoopTests(Value tested) {
         if (tested instanceof UnsetValue) {
             throw Raised.of(EvaluationFailure.NO_RETURN);
@@ -3916,7 +3666,7 @@ public final class RebolNativeWords {
                                     || toReduce.datatype() == Datatype.PAREN)) {
                         if (refinements.contains("no-set")) {
                             reduced = BlockValue.block(
-                                    reducedLeavingSetWords(toReduce, evaluator));
+                                    evaluator.reducedLeavingSetWords(toReduce));
                         } else if (refinements.contains("only")) {
                             reduced = BlockValue.block(reducedOnlyWords(toReduce, evaluator,
                                     argumentFor("only", List.of("into", "only"),
@@ -5819,25 +5569,6 @@ public final class RebolNativeWords {
         return results;
     }
 
-    private static List<Value> reducedLeavingSetWords(BlockValue block, Evaluator evaluator) {
-        List<Value> results = new ArrayList<>();
-        BlockValue at = block;
-        while (!at.atTail()) {
-            Value here = at.first();
-            if (here.datatype() == Datatype.SET_WORD || here.datatype() == Datatype.SET_PATH) {
-                results.add(here);
-                at = at.atIndex(at.index() + 1);
-                if (at.atTail()) {
-                    break;
-                }
-            }
-            Evaluator.Step step = evaluator.evaluateNextOrRaise(at, evaluator.systemContext());
-            results.add(step.value());
-            at = at.atIndex(step.nextIndex());
-        }
-        return results;
-    }
-
     private static void hideEachWordIn(BlockValue names) {
         names.remaining().stream()
                 .filter(WordValue.class::isInstance)
@@ -6363,7 +6094,7 @@ public final class RebolNativeWords {
         }
     }
 
-    private static Value madeGob(Value from, Evaluator evaluator, Context context) {
+    private static Value madeGob(Value from, UnaryOperator<Value> lookedUp) {
         if (from instanceof GobValue cloned) {
             return new GobValue(cloned.storage().copyWithoutPane(), 1);
         }
@@ -6373,7 +6104,7 @@ public final class RebolNativeWords {
             return made;
         }
         if (from instanceof BlockValue spec && spec.datatype() == Datatype.BLOCK) {
-            fillGobFromSpec(made, spec.remaining(), evaluator, context);
+            fillGobFromSpec(made, spec.remaining(), lookedUp);
             return made;
         }
         throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
@@ -6382,7 +6113,7 @@ public final class RebolNativeWords {
     }
 
     private static void fillGobFromSpec(
-            GobValue gob, List<Value> spec, Evaluator evaluator, Context context) {
+            GobValue gob, List<Value> spec, UnaryOperator<Value> lookedUp) {
         for (int at = 0; at < spec.size(); at += 2) {
             Value name = spec.get(at);
             if (!(name instanceof WordValue field)
@@ -6396,7 +6127,7 @@ public final class RebolNativeWords {
                     || given.datatype() == Datatype.SET_WORD) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE, field.spelling());
             }
-            Value written = simpleValueOf(given, evaluator, context);
+            Value written = lookedUp.apply(given);
             if (!GobPath.accepted(gob.storage(), field.canonical(), written)) {
                 throw Raised.of(EvaluationFailure.BAD_FIELD_SET,
                         WordValue.of(field.spelling()),
@@ -7046,7 +6777,7 @@ public final class RebolNativeWords {
                     || !from.context().holds(slot.canonical())) {
                 continue;
             }
-            slot.setValue(clonedAndRebound(slot.value(),
+            slot.setValue(Binder.clonedAndRebound(slot.value(),
                     of(from.context()), into.context()));
         }
     }
@@ -8597,7 +8328,7 @@ public final class RebolNativeWords {
             return raiseBadMakeArg(value, "object!");
         }
         if (raised.field("code").orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
-                && magnitude < LOWEST_CODE_AN_ERROR_CATALOGUE_ENTRY_HAS) {
+                && magnitude < ErrorCatalogue.LOWEST_CODE_AN_ENTRY_HAS) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, value);
         }
         Context fields = Context.childOf(Context.root());
@@ -8607,7 +8338,6 @@ public final class RebolNativeWords {
         return new ObjectValue(fields);
     }
 
-    private static final int LOWEST_CODE_AN_ERROR_CATALOGUE_ENTRY_HAS = 100;
 
     private static Value moduleConvertedFrom(Value value) {
         if (!(value instanceof BlockValue parts)
@@ -8634,7 +8364,7 @@ public final class RebolNativeWords {
                             : DatatypeValue.of(arguments.getFirst().datatype());
                     if (wanted.represents() == Datatype.EVENT) {
                         return EventPath.made(wanted, arguments.get(1),
-                                value -> simpleValueOf(value, evaluator, context));
+                                value -> evaluator.simpleValueOf(value, context));
                     }
                     if (SHARES_ITS_BRANCH_WITH_MAKE.contains(wanted.represents())) {
                         return wanted.make(arguments.get(1), makerFor(evaluator, context));
@@ -8723,93 +8453,6 @@ public final class RebolNativeWords {
                                     + wanted.literalSpelling() + " hold different things");
                 });
 
-    }
-
-    private Value functionFrom(Value given, Context context) {
-        if (!(given instanceof BlockValue parts)) {
-            return raiseBadMakeArg(given, "function!");
-        }
-        List<Value> items = parts.remaining();
-        if (items.size() < 2
-                || !(items.get(0) instanceof BlockValue spec)
-                || !(items.get(1) instanceof BlockValue body)) {
-            return raiseBadMakeArg(given, "function!");
-        }
-        return makeFunction(spec, body, context);
-    }
-
-    private Value operatorFrom(Value given, Context context) {
-        Value dispatching = given instanceof BlockValue parts
-                ? functionFrom(parts, context)
-                : given;
-        if (!dispatching.datatype().isAnyFunction()
-                || howManyArgumentsBeforeAnyRefinement(dispatching) != 2) {
-            return raiseBadMakeArg(given, "op!");
-        }
-        return new OperatorValue(AN_OPERATOR_NOBODY_HAS_NAMED, dispatching);
-    }
-
-    private static int howManyArgumentsBeforeAnyRefinement(Value dispatching) {
-        List<Parameter> declared = switch (dispatching) {
-            case FunctionValue function -> function.parameters();
-            case NativeValue built -> built.parameters();
-            case OperatorValue operator ->
-                    List.of(Parameter.required("a"), Parameter.required("b"));
-            default -> List.of();
-        };
-        int counted = 0;
-        for (Parameter parameter : declared) {
-            if (parameter.kind() == ParameterKind.REFINEMENT) {
-                return counted;
-            }
-            if (parameter.kind() != ParameterKind.RETURN_TYPE) {
-                counted++;
-            }
-        }
-        return counted;
-    }
-
-    private static final String AN_OPERATOR_NOBODY_HAS_NAMED = "?";
-
-    private static Value derivedFunction(Value original, BlockValue given) {
-        List<Value> parts = given.remaining();
-        if (parts.isEmpty()) {
-            return original;
-        }
-        Value first = parts.getFirst();
-        boolean keepingTheSpecification = isTheStarThatMeansKeepIt(first);
-        if (!keepingTheSpecification && !(first instanceof BlockValue)) {
-            return raiseCannotUse(given, "make on a function");
-        }
-        Value replacementBody = parts.size() > 1 ? parts.get(1) : NoneValue.none();
-        if (original instanceof NativeValue && replacementBody instanceof BlockValue) {
-            return raiseCannotUse(given, "make");
-        }
-        if (!(original instanceof FunctionValue written)) {
-            return original instanceof NativeValue built && !keepingTheSpecification
-                    ? built.derivedWith((BlockValue) first,
-                            FunctionSpec.parametersIn((BlockValue) first))
-                    : original;
-        }
-        BlockValue spec = keepingTheSpecification
-                ? asABlock(written.spec())
-                : (BlockValue) first;
-        BlockValue body = replacementBody instanceof BlockValue replacement
-                ? replacement
-                : asABlock(written.body());
-        return Binder.withItsBodyBound(new FunctionValue(
-                spec, body, FunctionSpec.parametersIn(spec),
-                FunctionSpec.localNamesIn(spec), written.closedOver()));
-    }
-
-    private static BlockValue asABlock(Value half) {
-        return half instanceof BlockValue block
-                ? block
-                : BlockValue.block(List.of());
-    }
-
-    private static boolean isTheStarThatMeansKeepIt(Value first) {
-        return first instanceof WordValue star && star.canonical().equals("*");
     }
 
     private static Value madeImage(Value from) {
@@ -9037,21 +8680,7 @@ public final class RebolNativeWords {
         return image;
     }
 
-    private static Value simpleValueOf(Value given, Evaluator evaluator, Context context) {
-        if (given instanceof WordValue word
-                && (word.datatype() == Datatype.WORD
-                        || word.datatype() == Datatype.GET_WORD)) {
-            return evaluator.valueOfWordIn(word, context);
-        }
-        if (given instanceof BlockValue path
-                && (path.datatype() == Datatype.PATH
-                        || path.datatype() == Datatype.GET_PATH)) {
-            return evaluator.valueOfPathIn(path, context);
-        }
-        return given;
-    }
-
-    private static Value madeVector(Value from, Evaluator evaluator, Context context) {
+    private static Value madeVector(Value from, UnaryOperator<Value> lookedUp) {
         if (from instanceof IntegerValue counted || from instanceof DecimalValue) {
             long howMany = from instanceof IntegerValue(long magnitude)
                     ? magnitude
@@ -9068,8 +8697,7 @@ public final class RebolNativeWords {
             return copiedElements(already, already.lengthFromHere());
         }
         if (from instanceof BlockValue spec) {
-            return VectorSpec.readMakeSpec(spec.remaining(),
-                            written -> simpleValueOf(written, evaluator, context))
+            return VectorSpec.readMakeSpec(spec.remaining(), lookedUp)
                     .orElseThrow(() -> Raised.of(EvaluationFailure.BAD_MAKE_ARG,
                             Datatype.VECTOR.literalSpelling()));
         }
@@ -9135,17 +8763,8 @@ public final class RebolNativeWords {
         return wanted == Datatype.BLOCK || wanted == Datatype.PAREN || wanted.isAnyPath();
     }
 
-    private static List<Value> setWordsAndValuesOf(Context fields) {
-        return fields.slots().stream()
-                .filter(slot -> !slot.canonical().equals("self"))
-                .flatMap(slot -> java.util.stream.Stream.of(
-                        WordValue.of(slot.spelling(), Datatype.SET_WORD),
-                        slot.value()))
-                .toList();
-    }
-
     private static BlockValue blockOfFieldsAndValues(Context fields) {
-        BlockValue block = BlockValue.block(setWordsAndValuesOf(fields));
+        BlockValue block = BlockValue.block(fields.setWordsAndValues());
         for (int at = 1; at <= block.storageLength(); at += 2) {
             block.storage().setLineBreakAt(at, true);
         }
@@ -9202,7 +8821,7 @@ public final class RebolNativeWords {
 
     private static Value structChangedBy(StructValue struct, Value given) {
         if (given instanceof BlockValue written) {
-            startedWith(struct, written);
+            struct.startedWith(written);
             return struct;
         }
         if (!(given instanceof BinaryValue octets)) {
@@ -9212,7 +8831,7 @@ public final class RebolNativeWords {
             throw Raised.of(EvaluationFailure.PROTECTED,
                     "this struct holds a REBOL value, and raw bytes would land on it");
         }
-        struct.changeFrom(bytesFromHere(octets));
+        struct.changeFrom(octets.bytesFromHere());
         return struct;
     }
 
@@ -9248,7 +8867,7 @@ public final class RebolNativeWords {
         StructValue made = StructValue.of(
                 structLaidOutBy(layout, structLayoutsKnown()));
         if (carriesInitialValues) {
-            startedWith(made, written.get(1));
+            made.startedWith(written.get(1));
         }
         return made;
     }
@@ -9264,38 +8883,6 @@ public final class RebolNativeWords {
         }
     }
 
-    private static Value structLikeThePrototype(StructValue prototype, Value given,
-            Evaluator evaluator) {
-        StructValue made = prototype.separateCopy();
-        if (given instanceof BinaryValue octets) {
-            byte[] bytes = bytesFromHere(octets);
-            if (bytes.length < made.size()) {
-                return raiseBadMakeArg(given, "struct!");
-            }
-            made.changeFrom(bytes);
-            return made;
-        }
-        if (!(given instanceof BlockValue written)) {
-            return raiseBadMakeArg(given, "struct!");
-        }
-        startedWith(made, BlockValue.block(
-                reducedLeavingSetWords(written, evaluator)));
-        return made;
-    }
-
-    private static void startedWith(StructValue made, Value given) {
-        if (given instanceof BinaryValue octets) {
-            made.changeFrom(bytesFromHere(octets));
-            return;
-        }
-        BlockValue written = (BlockValue) given;
-        try {
-            made.initialiseFrom(written);
-        } catch (StructLayoutRefused refused) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(written));
-        }
-    }
-
     private Value constructionOf(Datatype datatype, Value specification) {
         if (datatype == Datatype.DATE
                 && !(specification instanceof BlockValue
@@ -9303,7 +8890,7 @@ public final class RebolNativeWords {
             return raiseBadMakeArg(specification, "date!");
         }
         return makeOfDatatype(DatatypeValue.of(datatype), specification,
-                null, Context.root());
+                null, Context.root(), UnaryOperator.identity());
     }
 
     private Value portMadeFrom(Value from, Evaluator evaluator, Context context) {
@@ -9323,7 +8910,17 @@ public final class RebolNativeWords {
             Datatype.OBJECT, Datatype.WORD, Datatype.PORT);
 
     private Value makeOfDatatype(
-            DatatypeValue wanted, Value from, Evaluator evaluator, Context context) {
+            DatatypeValue wanted, Value from, Evaluator evaluator, Context context,
+            UnaryOperator<Value> lookedUp) {
+        if (wanted.represents() == Datatype.MAP) {
+            return mapMadeFrom(from);
+        }
+        if (wanted.represents() == Datatype.BITSET) {
+            return BitsetActions.madeFrom(from);
+        }
+        if (wanted.represents() == Datatype.PAIR) {
+            return asPair(from);
+        }
         if (wanted.represents() == Datatype.STRUCT) {
             return structMadeFrom(from);
         }
@@ -9331,15 +8928,14 @@ public final class RebolNativeWords {
             return madeImage(from);
         }
         if (wanted.represents() == Datatype.GOB) {
-            return madeGob(from, evaluator, context);
+            return madeGob(from, lookedUp);
         }
         if (wanted.represents() == Datatype.EVENT) {
-            return EventPath.made(wanted, from,
-                    value -> simpleValueOf(value, evaluator, context));
+            return EventPath.made(wanted, from, lookedUp);
         }
         if (wanted.represents() == Datatype.VECTOR) {
             refuseMoreRoomThanASeriesCounts(Datatype.VECTOR, from);
-            return whatTheHostHadRoomFor(() -> madeVector(from, evaluator, context));
+            return whatTheHostHadRoomFor(() -> madeVector(from, lookedUp));
         }
         if (wanted.represents() == Datatype.PORT) {
             return portMadeFrom(from, evaluator, context);
@@ -9373,15 +8969,6 @@ public final class RebolNativeWords {
                                     wanted.represents()));
         }
         return converted(Conversion.MAKE, wanted, from, construction());
-    }
-
-    private static byte[] bytesFromHere(BinaryValue binary) {
-        int howMany = binary.lengthFromHere();
-        byte[] bytes = new byte[howMany];
-        for (int at = 0; at < howMany; at++) {
-            bytes[at] = (byte) binary.storage().at(binary.index() + at);
-        }
-        return bytes;
     }
 
     private static Value binaryOfBytes(byte[] bytes) {
@@ -9988,7 +9575,7 @@ public final class RebolNativeWords {
     }
 
     private static Value characterLeadingThe(BinaryValue octets) {
-        byte[] bytes = bytesFromHere(octets);
+        byte[] bytes = octets.bytesFromHere();
         if (bytes.length == 0) {
             return raiseBadMakeArg(octets, "char!");
         }
@@ -10066,7 +9653,7 @@ public final class RebolNativeWords {
             case DecimalValue quantity ->
                     MoneyValue.of(BigDecimal.valueOf(quantity.quantity()));
             case StringValue text -> readMoney(text.text());
-            case BinaryValue bytes -> MoneyValue.fromBytes(bytesFromHere(bytes));
+            case BinaryValue bytes -> MoneyValue.fromBytes(bytes.bytesFromHere());
             case LogicValue truth -> asking.builds()
                     ? MoneyValue.of(truth.truth() ? BigDecimal.ONE : BigDecimal.ZERO)
                     : (MoneyValue) raiseBadMakeArg(value, "money!");
@@ -10233,14 +9820,7 @@ public final class RebolNativeWords {
     }
 
     private static Value raiseBadMakeArg(Value value, String wanted) {
-        throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
-                theDatatypeItselfRatherThanItsName(wanted), value);
-    }
-
-    private static Value theDatatypeItselfRatherThanItsName(String wanted) {
-        return Datatype.named(wanted)
-                .<Value>map(DatatypeValue::of)
-                .orElseGet(() -> WordValue.of(wanted));
+        throw Raised.badMakeArg(value, wanted);
     }
 
     private static Value raiseWrongArgument(Value value, String nativeName, String wanted) {
@@ -12266,19 +11846,6 @@ public final class RebolNativeWords {
         return copyOf(accepted);
     }
 
-
-    private static Value moduleFromSpec(
-            Value spec, Evaluator evaluator, Context context) {
-        if (!(spec instanceof BlockValue given)) {
-            return raiseBadMakeArg(spec, "module!");
-        }
-        Value built = evaluator.applyFunction(
-                context.systemFunctionNamed("make-module*"), List.of(given));
-        if (!(built instanceof ModuleValue module)) {
-            throw Raised.of(EvaluationFailure.INVALID_SPEC, "module!");
-        }
-        return module;
-    }
 
     private static Value moduleFromHeaderAndWords(Value value) {
         if (!(value instanceof BlockValue parts)) {

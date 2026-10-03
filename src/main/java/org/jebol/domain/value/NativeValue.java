@@ -36,8 +36,8 @@ public record NativeValue(
     @Override
     public Value make(Value spec, Maker maker) {
         return spec instanceof BlockValue block
-                ? maker.deriveFunction(this, block)
-                : maker.makeAnother(datatype(), spec);
+                ? maker.makeFunctionFrom(this, block)
+                : maker.makeAnotherFrom(datatype(), spec);
     }
 
     public boolean declares(String refinement) {

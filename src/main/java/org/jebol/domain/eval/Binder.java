@@ -21,6 +21,46 @@ public final class Binder {
         return made;
     }
 
+    public static FunctionValue functionWithItsBodyBound(
+            BlockValue spec, BlockValue body, Context closedOver) {
+
+        return withItsBodyBound(new FunctionValue(
+                spec,
+                body,
+                FunctionSpec.parametersIn(spec),
+                FunctionSpec.localNamesIn(spec),
+                closedOver));
+    }
+
+    public static Value clonedAndRebound(Value value, Set<Context> from, Context into) {
+        return switch (value) {
+            case WordValue word -> word.isBound() && from.contains(word.binding())
+                    ? word.boundTo(into)
+                    : word;
+            case BlockValue block -> {
+                List<Value> items = new ArrayList<>();
+                for (Value item : block.remaining()) {
+                    items.add(clonedAndRebound(item, from, into));
+                }
+                yield BlockValue.block(items).as(block.datatype());
+            }
+            case StringValue text -> StringValue.of(text.text(), text.datatype());
+            case BinaryValue bytes -> bytes.copyOfTheFirst(bytes.lengthFromHere());
+            case MapValue map -> {
+                MapValue cloned = map.copy();
+                for (Value key : cloned.keys()) {
+                    cloned.put(key, clonedAndRebound(cloned.select(key), from, into));
+                }
+                yield cloned;
+            }
+            case FunctionValue function -> withItsBodyBound(new FunctionValue(
+                    function.spec(),
+                    (BlockValue) clonedAndRebound(function.body(), from, into),
+                    function.parameters(), function.localNames(), into));
+            default -> value;
+        };
+    }
+
     private static Set<String> theNamesDeclaredBy(FunctionValue function) {
         Set<String> declared = new HashSet<>();
         function.parameters().forEach(

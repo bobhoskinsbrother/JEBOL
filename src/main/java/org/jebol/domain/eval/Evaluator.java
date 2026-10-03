@@ -254,6 +254,39 @@ public final class Evaluator {
         return makerSource.makerFor(this, where);
     }
 
+    public Value simpleValueOf(Value given, Context where) {
+        if (given instanceof WordValue word
+                && (word.datatype() == Datatype.WORD
+                        || word.datatype() == Datatype.GET_WORD)) {
+            return valueOfWordIn(word, where);
+        }
+        if (given instanceof BlockValue path
+                && (path.datatype() == Datatype.PATH
+                        || path.datatype() == Datatype.GET_PATH)) {
+            return valueOfPathIn(path, where);
+        }
+        return given;
+    }
+
+    public List<Value> reducedLeavingSetWords(BlockValue block) {
+        List<Value> results = new ArrayList<>();
+        BlockValue at = block;
+        while (!at.atTail()) {
+            Value here = at.first();
+            if (here.datatype() == Datatype.SET_WORD || here.datatype() == Datatype.SET_PATH) {
+                results.add(here);
+                at = at.atIndex(at.index() + 1);
+                if (at.atTail()) {
+                    break;
+                }
+            }
+            Step step = evaluateNextOrRaise(at, systemContext());
+            results.add(step.value());
+            at = at.atIndex(step.nextIndex());
+        }
+        return results;
+    }
+
     public void setSystemState(String field, Value value) {
         if (systemContext.valueAt("system", "state") instanceof ObjectValue(Context state)) {
             state.set(field, value);

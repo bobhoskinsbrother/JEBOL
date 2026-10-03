@@ -48,11 +48,10 @@ public sealed interface Value permits
         StructValue,
         JavaObjectValue {
 
-    /** The datatype this value reports to {@code type?}. */
     Datatype datatype();
 
     default Value make(Value spec, Maker maker) {
-        return maker.makeAnother(datatype(), spec);
+        return maker.makeAnotherFrom(datatype(), spec);
     }
 
     default Optional<Context> fieldsAsAContext() {

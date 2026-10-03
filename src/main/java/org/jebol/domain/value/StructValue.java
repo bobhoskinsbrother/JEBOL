@@ -227,6 +227,19 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
      * walks the fields in order and stops when the block runs out, which is
      * how {@code make proto! [10]} sets the first field and leaves the rest.
      */
+    public void startedWith(Value given) {
+        if (given instanceof BinaryValue octets) {
+            changeFrom(octets.bytesFromHere());
+            return;
+        }
+        BlockValue written = (BlockValue) given;
+        try {
+            initialiseFrom(written);
+        } catch (StructLayoutRefused refused) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(written));
+        }
+    }
+
     public void initialiseFrom(BlockValue given) {
         List<Value> written = given.remaining();
         if (!written.isEmpty() && written.getFirst() instanceof WordValue first

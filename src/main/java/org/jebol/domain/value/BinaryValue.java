@@ -57,6 +57,15 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return octetsUpTo(storageLength() + 1);
     }
 
+    public byte[] bytesFromHere() {
+        int howMany = lengthFromHere();
+        byte[] bytes = new byte[howMany];
+        for (int at = 0; at < howMany; at++) {
+            bytes[at] = (byte) storage.at(index + at);
+        }
+        return bytes;
+    }
+
     public BinaryValue copyOfTheFirst(int howMany) {
         BinaryStorage copied = new BinaryStorage();
         for (int at = 0; at < howMany; at++) {

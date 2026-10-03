@@ -29,7 +29,7 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
-        public Value makeAnother(Datatype kind, Value spec) {
+        public Value makeAnotherFrom(Datatype kind, Value spec) {
             asked.add("made from a " + kind.literalSpelling());
             return WHAT_WAS_MADE;
         }
@@ -41,13 +41,13 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
-        public Value deriveFunction(Value function, BlockValue spec) {
+        public Value makeFunctionFrom(Value function, BlockValue spec) {
             asked.add("derived from " + function.datatype().literalSpelling());
             return WHAT_WAS_MADE;
         }
 
         @Override
-        public Value makeError(Value spec) {
+        public Value makeErrorFrom(Value spec) {
             asked.add("error from");
             return WHAT_WAS_MADE;
         }
