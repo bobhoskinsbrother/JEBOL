@@ -1081,7 +1081,7 @@ public final class RebolNativeWords {
 
 
     private static Value makeFunction(BlockValue spec, BlockValue body, Context context) {
-        return withItsBodyBound(new FunctionValue(
+        return Binder.withItsBodyBound(new FunctionValue(
                 spec,
                 body,
                 FunctionSpec.parametersIn(spec),
@@ -1089,22 +1089,6 @@ public final class RebolNativeWords {
                 context));
     }
 
-    static FunctionValue withItsBodyBound(FunctionValue made) {
-        made.declaredWords().markAsCallFrameOf(made);
-        Set<String> declared = theNamesDeclaredBy(made);
-        declared.forEach(made.declaredWords()::define);
-        Binder.bindEachInPlace(made.body(), made.declaredWords(), declared);
-        return made;
-    }
-
-    private static Set<String> theNamesDeclaredBy(FunctionValue function) {
-        Set<String> declared = new java.util.HashSet<>();
-        function.parameters().forEach(
-                parameter -> declared.add(Context.canonicalise(parameter.name())));
-        function.localNames().forEach(
-                name -> declared.add(Context.canonicalise(name)));
-        return declared;
-    }
 
     private Value madeFrom(
             Value prototype, Value body, Evaluator evaluator, Context context) {
@@ -1165,291 +1149,23 @@ public final class RebolNativeWords {
                 (arguments, evaluator, context) ->
                         madeFrom(arguments.get(0), arguments.get(1), evaluator, context));
 
-        define("construct", List.of(
-                        Parameter.required("body", of(Datatype.BLOCK,
-                                Datatype.STRING, Datatype.BINARY)),
-                        Parameter.belongingTo("with", "object", of(Datatype.OBJECT))),
-                of("only", "with"),
-                (arguments, evaluator, context, refinements) -> {
-                    Context built = Context.childOf(evaluator.systemContext());
-                    Value body = arguments.getFirst();
-                    List<Value> items = body instanceof BlockValue block
-                            ? block.remaining()
-                            : headerFieldsIn(body instanceof StringValue text
-                                    ? text.text()
-                                    : textOfBytes((BinaryValue) body));
-                    if (refinements.contains("with") && arguments.size() > 1
-                            && arguments.get(1) instanceof ObjectValue(Context context1)) {
-                        context1.fieldsExcludingSelf()
-                                .forEach(built::set);
-                    }
-                    constructInto(built, items, refinements.contains("only"));
-                    return new ObjectValue(built);
-                });
-
-        define("context?", List.of(Parameter.required("word", Typeset.ANY_WORD.members())),
-                (arguments, evaluator, context) -> {
-                    WordValue word = (WordValue) arguments.getFirst();
-                    if (!word.isBound() || word.binding().isALoopFrame()) {
-                        return NoneValue.none();
-                    }
-                    if (word.binding().functionOwningThisFrame() != null) {
-                        if (word.binding().callHasEnded()) {
-                            return evaluator.systemContext().knows("do")
-                                    ? evaluator.systemContext().slotFor("do").value()
-                                    : NoneValue.none();
-                        }
-                        return word.binding().functionOwningThisFrame();
-                    }
-                    return new ObjectValue(word.binding());
-                });
-
-        define("resolve", List.of(
-                        Parameter.required("target", Typeset.ANY_OBJECT.members()),
-                        Parameter.required("source", Typeset.ANY_OBJECT.members()),
-                        Parameter.belongingTo("only", "from",
-                                of(Datatype.BLOCK, Datatype.INTEGER))),
-                of("only", "all", "extend"),
-                (arguments, evaluator, context, refinements) -> {
-                    Context into = fieldsOf(arguments.getFirst());
-                    if (into.isClosedToNewNames()) {
-                        throw Raised.of(EvaluationFailure.PROTECTED, "resolve");
-                    }
-                    return resolvedFrom(into, fieldsOf(arguments.get(1)),
-                            arguments.getFirst(), refinements,
-                            argumentFor("only", List.of("only"),
-                                    arguments, refinements, 2));
-                });
-
-
-        define("context", List.of(Parameter.required("body", of(Datatype.BLOCK))),
-                of("only"),
-                (arguments, evaluator, context, refinements) -> makeObject(
-                        evaluator, context, Optional.empty(), (BlockValue) arguments.get(0)));
-
-        define("in", List.of(
-                        Parameter.required("object",
-                                Typeset.ANY_OBJECT.membersAnd(Datatype.BLOCK)),
-                        Parameter.required("word", Typeset.ANY_WORD.membersAnd(
-                                Datatype.BLOCK, Datatype.PAREN))),
-                (arguments, evaluator, context) -> {
-                    if (arguments.getFirst() instanceof BlockValue searched
-                            && searched.datatype() != Datatype.PATH) {
-                        return firstHolderIn(searched, arguments.get(1), evaluator, context);
-                    }
-                    Context frame = contextOf(arguments.getFirst());
-                    if (arguments.get(1) instanceof BlockValue body) {
-                        return Binder.bindInPlace(body, frame);
-                    }
-                    WordValue word = (WordValue) arguments.get(1);
-                    if (!frame.holds(word.canonical())) {
-                        return NoneValue.none();
-                    }
-                    return word.boundTo(frame);
-                });
-
-        define("apply", List.of(Parameter.required("func"),
-                        Parameter.required("block", of(Datatype.BLOCK))),
-                of("only"),
-                (arguments, evaluator, context, refinements) -> {
-                    BlockValue given = (BlockValue) arguments.get(1);
-                    List<Value> supplied = refinements.contains("only")
-                            ? new ArrayList<>(given.remaining())
-                            : new ArrayList<>(
-                                    evaluator.evaluateEachOrRaise(given, context));
-                    Value callee = arguments.get(0);
-                    while (callee instanceof NativeValue builtIn
-                            && builtIn.nativeName().equals("do")
-                            && !supplied.isEmpty()
-                            && supplied.getFirst().datatype().isAnyFunction()) {
-                        callee = supplied.removeFirst();
-                    }
-                    if (callee instanceof NativeValue builtIn
-                            && !builtIn.declaredRefinements().isEmpty()) {
-                        return applyWithRefinements(builtIn, supplied, evaluator);
-                    }
-                    int wanted = (int) arityOf(callee);
-                    List<Value> exactly = new ArrayList<>(
-                            supplied.subList(0, Math.min(wanted, supplied.size())));
-                    while (exactly.size() < wanted) {
-                        exactly.add(NoneValue.none());
-                    }
-                    return evaluator.applyFunction(callee, exactly);
-                });
-
-        define("assert", List.of(Parameter.required("conditions", of(Datatype.BLOCK))),
-                of("type"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (refinements.contains("type")) {
-                        return assertedTypes(
-                                (BlockValue) arguments.get(0), evaluator, context);
-                    }
-                    return everyConditionHeld(
-                            (BlockValue) arguments.getFirst(), evaluator, context);
-                });
-
-        define("hash", List.of(Parameter.required("value")),
-                (arguments, evaluator, context) -> IntegerValue.of(
-                        Molder.mold(arguments.get(0)).hashCode()));
-
-        define("collect-words", List.of(Parameter.required("block", of(Datatype.BLOCK)),
-                        Parameter.belongingTo("ignore", "words",
-                                anyObjectOr(Datatype.BLOCK, Datatype.NONE)),
-                        Parameter.belongingTo("as", "type", of(Datatype.DATATYPE))),
-                of("deep", "set", "ignore", "as"),
-                (arguments, evaluator, context, refinements) -> {
-                    List<Value> found = new ArrayList<>();
-                    gatherWords((BlockValue) arguments.get(0), refinements.contains("deep"),
-                            refinements.contains("set"), found);
-                    Value ignoring = argumentFor(
-                            "ignore", List.of("ignore", "as"), arguments, refinements, 1);
-                    if (ignoring != null && !(ignoring instanceof NoneValue)) {
-                        Set<String> known = namesIn(ignoring);
-                        found.removeIf(word -> word instanceof WordValue spelt
-                                && known.contains(spelt.canonical()));
-                    }
-                    if (refinements.contains("as")) {
-                        Value wanted = argumentFor(
-                                "as", List.of("ignore", "as"), arguments, refinements, 1);
-                        if (!(wanted instanceof DatatypeValue(Datatype represents))
-                                || !ANY_WORD_DATATYPES.contains(represents)) {
-                            throw Raised.of(EvaluationFailure.BAD_FUNC_ARG, "as");
-                        }
-                        found.replaceAll(word -> word instanceof WordValue spelt
-                                ? spelt.as(represents)
-                                : word);
-                    }
-                    return BlockValue.block(found);
-                });
-
-        define("new-line", List.of(
-                        Parameter.required("position", of(Datatype.BLOCK, Datatype.PAREN)),
-                        Parameter.required("value"),
-                        Parameter.belongingTo("skip", "size", of(Datatype.INTEGER))),
-                of("all", "skip"),
-                (arguments, evaluator, context, refinements) -> {
-                    BlockValue block = (BlockValue) arguments.get(0);
-                    boolean wanted = arguments.get(1).isTruthy();
-                    int stride = -1;
-                    if (refinements.contains("all")) {
-                        stride = 1;
-                    }
-                    if (refinements.contains("skip") && arguments.size() > 2
-                            && arguments.get(2) instanceof IntegerValue size) {
-                        if (size.magnitude() < 1) {
-                            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                                    Molder.mold(size));
-                        }
-                        stride = (int) size.magnitude();
-                    }
-                    for (int n = 0; block.index() + n <= block.storageLength(); n++) {
-                        boolean marking = stride < 0
-                                ? wanted
-                                : wanted ^ (n % stride != 0);
-                        block.storage().setLineBreakAt(block.index() + n, marking);
-                        if (stride < 0) {
-                            break;
-                        }
-                    }
-                    return block;
-                });
-        define("new-line?", List.of(
-                        Parameter.required("position", of(Datatype.BLOCK, Datatype.PAREN))),
-                (arguments, evaluator, context) -> {
-                    BlockValue block = (BlockValue) arguments.get(0);
-                    return LogicValue.of(block.storage().breaksLineAt(block.index()));
-                });
-
-        define("object", List.of(Parameter.required("spec", of(Datatype.BLOCK))),
-                of("only"),
-                (arguments, evaluator, context, refinements) -> makeObject(
-                        evaluator, context, Optional.empty(), (BlockValue) arguments.get(0)));
-
-        define("with", List.of(
-                        Parameter.required("context", of(Datatype.OBJECT)),
-                        Parameter.required("body", of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> {
-                    Context inside = ((ObjectValue) arguments.get(0)).context();
-                    return evaluator.evaluateOrRaise(
-                            Binder.bindWhatTheTargetHoldsItself(
-                                    (BlockValue) arguments.get(1), inside),
-                            context);
-                });
-
-        define("selfless?", List.of(Parameter.required("context")),
-                (arguments, evaluator, context) -> LogicValue.of(
-                        !(arguments.get(0) instanceof ObjectValue(Context context1))
-                                || !context1.holds("self")));
-
-        define("protected?", List.of(Parameter.required("value")),
-                (arguments, evaluator, context) -> LogicValue.of(switch (arguments.get(0)) {
-                    case BlockValue path when isAPath(path) -> {
-                        ContextSlot field = fieldNamedBy(path.remaining());
-                        yield field != null && field.isProtected();
-                    }
-                    case BlockValue block -> block.storage().isProtected();
-                    case StringValue text -> text.storage().isProtected();
-                    case BinaryValue bytes -> bytes.storage().isProtected();
-                    case MapValue map -> map.isProtected();
-                    case ObjectValue object -> object.context().slots().stream()
-                            .anyMatch(ContextSlot::isProtected);
-                    case WordValue word -> word.isBound()
-                            && word.binding().knows(word.canonical())
-                            && word.binding().slotFor(word.canonical()).isProtected();
-                    default -> false;
-                }));
-
-        define("unbind", List.of(Parameter.required("word", aBlockOrAnyWord())),
-                of("deep"),
-                (arguments, evaluator, context, refinements) ->
-                        unbound(arguments.get(0), refinements.contains("deep")));
-
-        define("bind", List.of(
-                        Parameter.required("word"),
-                        Parameter.required("target")),
-                of("copy", "only", "new", "set"),
-                (arguments, evaluator, context, refinements) -> {
-                    Context target = arguments.get(1) instanceof WordValue word
-                            ? boundContextOf(word)
-                            : fieldsOf(arguments.get(1));
-                    if (target == null) {
-                        throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                                "bind wanted an object or a bound word, not "
-                                        + arguments.get(1).datatype().literalSpelling());
-                    }
-                    if (arguments.get(0) instanceof WordValue word) {
-                        if (refinements.contains("new") || refinements.contains("set")) {
-                            target.define(word.canonical());
-                        }
-                        if (!(arguments.get(1) instanceof WordValue)) {
-                            if (!target.holds(word.canonical())) {
-                                throw Raised.of(EvaluationFailure.NOT_IN_CONTEXT,
-                                        word.spelling());
-                            }
-                            return word.boundTo(target);
-                        }
-                        if (target.declaresItRelatively(word.canonical())) {
-                            return word.boundTo(target);
-                        }
-                        if (!target.knows(word.canonical())) {
-                            throw Raised.of(EvaluationFailure.NOT_IN_CONTEXT,
-                                    word.spelling());
-                        }
-                        return word.boundTo(target.holderOf(word.canonical()));
-                    }
-                    if (!(arguments.get(0) instanceof BlockValue block)) {
-                        return raiseWrongArgument(arguments.get(0), "bind", "word or block");
-                    }
-                    boolean deeply = !refinements.contains("only");
-                    if (refinements.contains("new") || refinements.contains("set")) {
-                        defineFreshWordsOf(
-                                block, target, refinements.contains("set"), deeply);
-                    }
-                    return refinements.contains("copy")
-                            ? Binder.bindACopyOfWhatTheTargetHoldsItself(
-                                    block, target, deeply)
-                            : Binder.bindWhatTheTargetHoldsItself(block, target, deeply);
-                });
+        register(new ConstructNative());
+        register(new ContextOfWordNative());
+        register(new ResolveNative());
+        register(new ContextNative());
+        register(new InNative());
+        register(new ApplyNative());
+        register(new AssertNative());
+        register(new HashNative());
+        register(new CollectWordsNative());
+        register(new NewLineNative());
+        register(new WhetherANewLineNative());
+        register(new ObjectNative());
+        register(new WithNative());
+        register(new WhetherSelflessNative());
+        register(new WhetherProtectedNative());
+        register(new UnbindNative());
+        register(new BindNative());
     }
 
     private static Value makeObject(
@@ -1516,7 +1232,7 @@ public final class RebolNativeWords {
                 yield BlockValue.block(items).as(block.datatype());
             }
             case StringValue text -> StringValue.of(text.text(), text.datatype());
-            case BinaryValue bytes -> copiedBytes(bytes, bytes.lengthFromHere());
+            case BinaryValue bytes -> bytes.copyOfTheFirst(bytes.lengthFromHere());
             case MapValue map -> {
                 MapValue cloned = map.copy();
                 for (Value key : cloned.keys()) {
@@ -1524,7 +1240,7 @@ public final class RebolNativeWords {
                 }
                 yield cloned;
             }
-            case FunctionValue function -> withItsBodyBound(new FunctionValue(
+            case FunctionValue function -> Binder.withItsBodyBound(new FunctionValue(
                     function.spec(),
                     (BlockValue) clonedAndRebound(function.body(), from, into),
                     function.parameters(), function.localNames(), into));
@@ -2991,7 +2707,7 @@ public final class RebolNativeWords {
                         String field = ((WordValue) arguments.get(1)).canonical();
                         return arguments.getFirst() instanceof ErrorValue raised
                                 ? raised.field(field).orElseGet(NoneValue::none)
-                                : fieldsOf(arguments.getFirst())
+                                : arguments.getFirst().fieldsAsAContext().orElseThrow()
                                         .ownSlotFor(field).value();
                     }
                     refuseUnbyteableNeedle(arguments.getFirst(), arguments.get(1), "select");
@@ -3067,98 +2783,6 @@ public final class RebolNativeWords {
                     });
                     return before;
                 });
-    }
-
-    private static Value namedConstant(Value value) {
-        if (!(value instanceof WordValue word) || word.datatype() != Datatype.WORD) {
-            return value;
-        }
-        return switch (word.canonical()) {
-            case "none" -> NoneValue.none();
-            case "true", "on", "yes" -> LogicValue.of(true);
-            case "false", "off", "no" -> LogicValue.of(false);
-            default -> value;
-        };
-    }
-
-    private static void constructInto(Context built, List<Value> items, boolean asWritten) {
-        List<WordValue> waiting = new ArrayList<>();
-        for (Value item : items) {
-            if (item instanceof WordValue name && name.datatype() == Datatype.SET_WORD) {
-                waiting.add(name);
-                continue;
-            }
-            Value held = asWritten ? item : namedConstant(item);
-            if (!asWritten && held instanceof UnsetValue) {
-                held = NoneValue.none();
-            }
-            for (WordValue name : waiting) {
-                built.set(name.spelling(), held);
-            }
-            waiting.clear();
-        }
-        for (WordValue name : waiting) {
-            if (asWritten) {
-                if (!built.knows(name.canonical())) {
-                    built.define(name.spelling());
-                }
-            } else {
-                built.set(name.spelling(), NoneValue.none());
-            }
-        }
-    }
-
-    private static List<Value> headerFieldsIn(String header) {
-        List<Value> fields = new ArrayList<>();
-        String[] lines = header.split("\n", -1);
-        for (int at = 0; at < lines.length; at++) {
-            String line = lines[at].endsWith("\r")
-                    ? lines[at].substring(0, lines[at].length() - 1)
-                    : lines[at];
-            int colon = colonAfterAName(line);
-            if (colon < 0) {
-                continue;
-            }
-            StringBuilder value = new StringBuilder(line.substring(colon + 1).stripLeading());
-            while (at + 1 < lines.length && startsWithSpaceOrTab(lines[at + 1])) {
-                at++;
-                String continued = lines[at].endsWith("\r")
-                        ? lines[at].substring(0, lines[at].length() - 1)
-                        : lines[at];
-                value.append(' ').append(continued.stripLeading());
-            }
-            fields.add(WordValue.of(line.substring(0, colon).strip(), Datatype.SET_WORD));
-            fields.add(StringValue.of(value.toString()));
-        }
-        return fields;
-    }
-
-    private static int colonAfterAName(String line) {
-        String name = line.stripLeading();
-        if (name.isEmpty() || !Character.isLetter(name.charAt(0))) {
-            return -1;
-        }
-        int at = 0;
-        while (at < name.length() && (Character.isLetterOrDigit(name.charAt(at))
-                || name.charAt(at) == '.' || name.charAt(at) == '-'
-                || name.charAt(at) == '_')) {
-            at++;
-        }
-        return at < name.length() && name.charAt(at) == ':'
-                ? at + (line.length() - name.length())
-                : -1;
-    }
-
-    private static boolean startsWithSpaceOrTab(String line) {
-        return !line.isEmpty() && (line.charAt(0) == ' ' || line.charAt(0) == '\t');
-    }
-
-    private static String textOfBytes(BinaryValue bytes) {
-        byte[] held = new byte[bytes.lengthFromHere()];
-        for (int at = 0; at < held.length; at++) {
-            held[at] = (byte) bytes.storage().at(bytes.index() + at);
-        }
-        return new String(held, java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private static void refuseUnbyteableNeedle(
@@ -3378,7 +3002,7 @@ public final class RebolNativeWords {
     private static Value trimmedObject(Value subject) {
         Context fields = subject instanceof ErrorValue raised
                 ? errorAsAContext(raised)
-                : fieldsOf(subject);
+                : subject.fieldsAsAContext().orElseThrow();
         Context kept = Context.root();
         for (ContextSlot slot : fields.slots()) {
             if (slot.canonical().equals("self")
@@ -5480,18 +5104,6 @@ public final class RebolNativeWords {
                 });
     }
 
-    private static long arityOf(Value callee) {
-        return switch (callee) {
-            case NativeValue built -> built.parameters().stream()
-                    .filter(Parameter::consumesAnArgument)
-                    .filter(parameter -> parameter.owningRefinement().isEmpty())
-                    .count();
-            case FunctionValue function -> function.parameters().size();
-            case OperatorValue operator -> arityOf(operator.underlying());
-            default -> 0;
-        };
-    }
-
     private void defineTabbing(String name, boolean toTabs) {
         define(name, List.of(
                         Parameter.required("text", anyStringOr(Datatype.BINARY)),
@@ -5512,37 +5124,6 @@ public final class RebolNativeWords {
                             ? binaryOfBytes(tabbed.getBytes(StandardCharsets.ISO_8859_1))
                             : StringValue.of(tabbed, textDatatypeOf(given));
                 });
-    }
-
-    private static void defineFreshWordsOf(
-            BlockValue block, Context target, boolean settersOnly, boolean deeply) {
-
-        List<Value> words = new ArrayList<>();
-        gatherWords(block, deeply, settersOnly, words);
-        words.forEach(word -> target.define(((WordValue) word).canonical()));
-    }
-
-    private static void gatherWords(
-            BlockValue block, boolean deeply, boolean settersOnly, List<Value> found) {
-        for (Value item : block.remaining()) {
-            if (item instanceof BlockValue nested) {
-                if (deeply) {
-                    gatherWords(nested, true, settersOnly, found);
-                }
-                continue;
-            }
-            if (!(item instanceof WordValue word)) {
-                continue;
-            }
-            if (settersOnly && word.datatype() != Datatype.SET_WORD) {
-                continue;
-            }
-            WordValue plain = WordValue.of(word.spelling());
-            if (found.stream().noneMatch(seen -> seen instanceof WordValue already
-                    && already.canonical().equals(plain.canonical()))) {
-                found.add(plain);
-            }
-        }
     }
 
     private Map<String, DatatypeSpec> datatypeSpecs;
@@ -5637,60 +5218,6 @@ public final class RebolNativeWords {
         }
         declaredSpecs = Map.copyOf(found);
         return declaredSpecs;
-    }
-
-    private Value applyWithRefinements(
-            NativeValue builtIn, List<Value> supplied, Evaluator evaluator) {
-
-        Set<String> asked = new LinkedHashSet<>();
-        List<Value> beforeAnyRefinement = new ArrayList<>();
-        Map<String, List<Value>> belongingTo = new LinkedHashMap<>();
-        String reading = null;
-        int at = 0;
-        for (Value word : wordsOfBuiltIn(builtIn)) {
-            Value next = at < supplied.size() ? supplied.get(at) : NoneValue.none();
-            at++;
-            if (word instanceof WordValue marker
-                    && marker.datatype() == Datatype.REFINEMENT) {
-                reading = marker.canonical();
-                belongingTo.putIfAbsent(reading, new ArrayList<>());
-                if (next.isTruthy()) {
-                    asked.add(reading);
-                }
-            } else if (reading == null) {
-                beforeAnyRefinement.add(next);
-            } else {
-                belongingTo.get(reading).add(next);
-            }
-        }
-
-        NativeValue refined = builtIn.askedFor(asked);
-        Deque<Value> plain = new ArrayDeque<>(beforeAnyRefinement);
-        Map<String, Deque<Value>> refinementArguments = new LinkedHashMap<>();
-        belongingTo.forEach((name, values) ->
-                refinementArguments.put(name, new ArrayDeque<>(values)));
-
-        List<Value> arguments = new ArrayList<>();
-        for (Parameter parameter : refined.parameters()) {
-            if (!parameter.consumesAnArgument()) {
-                continue;
-            }
-            Optional<String> owner = parameter.owningRefinement();
-            if (owner.isEmpty()) {
-                arguments.add(plain.isEmpty() ? NoneValue.none() : plain.removeFirst());
-            } else if (asked.contains(owner.get())) {
-                Deque<Value> waiting = refinementArguments
-                        .getOrDefault(owner.get(), new ArrayDeque<>());
-                arguments.add(waiting.isEmpty() ? NoneValue.none() : waiting.removeFirst());
-            }
-        }
-        return evaluator.applyFunction(refined, arguments);
-    }
-
-    private List<Value> wordsOfBuiltIn(NativeValue builtIn) {
-        return wordsNamedIn(specOf(builtIn)) instanceof BlockValue words
-                ? words.remaining()
-                : List.of();
     }
 
     private Value specOf(NativeValue built) {
@@ -5957,20 +5484,6 @@ public final class RebolNativeWords {
         return joined.toString();
     }
 
-    private static Set<String> namesIn(Value source) {
-        return switch (source) {
-            case BlockValue words -> words.remaining().stream()
-                    .filter(WordValue.class::isInstance)
-                    .map(WordValue.class::cast)
-                    .map(WordValue::canonical)
-                    .collect(java.util.stream.Collectors.toSet());
-            case ObjectValue object -> object.context().slots().stream()
-                    .map(ContextSlot::canonical)
-                    .collect(java.util.stream.Collectors.toSet());
-            default -> of();
-        };
-    }
-
     private static Set<Datatype> aSeriesATupleOrAGob() {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
         accepted.add(Datatype.TUPLE);
@@ -6092,7 +5605,7 @@ public final class RebolNativeWords {
                             .map(item -> memberCopiedFrom(item, deeply, kinds))
                             .toList()));
             case StringValue text -> StringValue.of(text.text(), text.datatype());
-            case BinaryValue binary -> copiedBytes(binary, binary.lengthFromHere());
+            case BinaryValue binary -> binary.copyOfTheFirst(binary.lengthFromHere());
             case VectorValue vector -> copiedElements(vector, vector.lengthFromHere());
             case BitsetValue members -> members.duplicate();
             case ImageValue picture ->
@@ -6177,7 +5690,7 @@ public final class RebolNativeWords {
                             .toList()));
             case StringValue text -> StringValue.of(
                     theFirstCodePointsOf(text.text(), taking), text.datatype());
-            case BinaryValue bytes -> copiedBytes(bytes, taking);
+            case BinaryValue bytes -> bytes.copyOfTheFirst(taking);
             case ImageValue image -> copiedPixelsAsWholeRows(image, taking);
             case GobValue gob -> raiseCannotUse(gob, "copy");
             case VectorValue vector -> copiedElements(vector, taking);
@@ -6190,14 +5703,6 @@ public final class RebolNativeWords {
             made.append(vector.storage().at(vector.index() + at));
         }
         return new VectorValue(made, 1);
-    }
-
-    private static BinaryValue copiedBytes(BinaryValue bytes, int howMany) {
-        BinaryStorage copiedStorage = new BinaryStorage();
-        for (int at = 0; at < howMany; at++) {
-            copiedStorage.append(bytes.storage().at(bytes.index() + at));
-        }
-        return new BinaryValue(copiedStorage, 1);
     }
 
     private static Value reversedFrontInPlace(RebolSeries series, Value limit) {
@@ -6551,26 +6056,20 @@ public final class RebolNativeWords {
                 || value instanceof MapValue;
     }
 
-    private static boolean isAPath(BlockValue block) {
-        return block.datatype() == Datatype.PATH
-                || block.datatype() == Datatype.LIT_PATH
-                || block.datatype() == Datatype.GET_PATH
-                || block.datatype() == Datatype.SET_PATH;
-    }
-
     private static boolean protectFieldNamedBy(
             Value target, boolean protectedNow, Set<String> refinements) {
 
-        if (!(target instanceof BlockValue path) || !isAPath(path)) {
+        if (!(target instanceof BlockValue path) || !path.datatype().isAnyPath()) {
             return false;
         }
         if (refinements.contains("values")) {
             return false;
         }
-        ContextSlot field = fieldNamedBy(path.remaining());
-        if (field == null) {
+        Optional<ContextSlot> named = path.fieldThePathNames();
+        if (named.isEmpty()) {
             return true;
         }
+        ContextSlot field = named.get();
         if (refinements.contains("hide")) {
             field.hide(protectedNow);
             return true;
@@ -6586,28 +6085,6 @@ public final class RebolNativeWords {
         return true;
     }
 
-    private static ContextSlot fieldNamedBy(List<Value> segments) {
-        if (segments.size() < 2 || !(segments.getFirst() instanceof WordValue start)
-                || !start.isBound() || !start.binding().knows(start.canonical())) {
-            return null;
-        }
-        Value reached = start.binding().slotFor(start.canonical()).value();
-        for (int at = 1; at < segments.size() - 1; at++) {
-            if (!(reached instanceof ObjectValue(Context context))
-                    || !(segments.get(at) instanceof WordValue between)
-                    || !context.holds(between.canonical())) {
-                return null;
-            }
-            reached = context.ownSlotFor(between.canonical()).value();
-        }
-        if (!(reached instanceof ObjectValue(Context context))
-                || !(segments.getLast() instanceof WordValue last)
-                || !context.holds(last.canonical())) {
-            return null;
-        }
-        return context.ownSlotFor(last.canonical());
-    }
-
     private static boolean protectNamed(
             Value target, boolean protectedNow, Set<String> refinements) {
 
@@ -6617,7 +6094,7 @@ public final class RebolNativeWords {
             return false;
         }
         List<Value> items = switch (target) {
-            case BlockValue block when !isAPath(block) -> block.remaining();
+            case BlockValue block when !block.datatype().isAnyPath() -> block.remaining();
             case WordValue only -> List.of(only);
             default -> List.of();
         };
@@ -6625,10 +6102,11 @@ public final class RebolNativeWords {
             return false;
         }
         for (Value item : items) {
-            ContextSlot slot = slotNamedInAList(item);
-            if (slot == null) {
+            Optional<ContextSlot> named = slotNamedInAList(item);
+            if (named.isEmpty()) {
                 continue;
             }
+            ContextSlot slot = named.get();
             if (values && carriesProtection(slot.value())) {
                 setProtection(slot.value(), protectedNow,
                         refinements.contains("deep"));
@@ -6650,15 +6128,15 @@ public final class RebolNativeWords {
         return true;
     }
 
-    private static ContextSlot slotNamedInAList(Value item) {
-        if (item instanceof BlockValue path && isAPath(path)) {
-            return fieldNamedBy(path.remaining());
+    private static Optional<ContextSlot> slotNamedInAList(Value item) {
+        if (item instanceof BlockValue path && path.datatype().isAnyPath()) {
+            return path.fieldThePathNames();
         }
         if (item instanceof WordValue word && word.isBound()
                 && word.binding().knows(word.canonical())) {
-            return word.binding().slotFor(word.canonical());
+            return Optional.of(word.binding().slotFor(word.canonical()));
         }
-        return null;
+        return Optional.empty();
     }
 
     private static void setProtection(Value target, boolean protectedNow, boolean deeply) {
@@ -9302,7 +8780,7 @@ public final class RebolNativeWords {
         BlockValue body = replacementBody instanceof BlockValue replacement
                 ? replacement
                 : asABlock(written.body());
-        return withItsBodyBound(new FunctionValue(
+        return Binder.withItsBodyBound(new FunctionValue(
                 spec, body, FunctionSpec.parametersIn(spec),
                 FunctionSpec.localNamesIn(spec), written.closedOver()));
     }
@@ -9606,7 +9084,7 @@ public final class RebolNativeWords {
             return aPairToALine(BlockValue.block(pairs.flattened())).as(wanted);
         }
         if (isAnyObject(from)) {
-            return blockOfFieldsAndValues(fieldsOf(from)).as(wanted);
+            return blockOfFieldsAndValues(from.fieldsAsAContext().orElseThrow()).as(wanted);
         }
         if (from instanceof VectorValue numbers) {
             return BlockValue.block(numbers.remaining()).as(wanted);
@@ -11068,29 +10546,6 @@ public final class RebolNativeWords {
         return whole.substring(0, Math.min(reachedBack, whole.length()));
     }
 
-    private static Value unbound(Value value, boolean deeply) {
-        if (value instanceof WordValue word) {
-            return WordValue.of(word.spelling(), word.datatype());
-        }
-        if (value instanceof BlockValue block) {
-            loosenInPlace(block, deeply);
-            return block;
-        }
-        return value;
-    }
-
-    private static void loosenInPlace(BlockValue block, boolean deeply) {
-        for (int at = block.index(); at <= block.storageLength(); at++) {
-            Value item = block.storage().at(at);
-            if (item instanceof WordValue word) {
-                block.storage().rebindAt(at,
-                        WordValue.of(word.spelling(), word.datatype()));
-            } else if (deeply && item instanceof BlockValue nested) {
-                loosenInPlace(nested, true);
-            }
-        }
-    }
-
     private static boolean isExactlyAString(Value value) {
         return value instanceof StringValue && value.datatype() == Datatype.STRING;
     }
@@ -12094,108 +11549,6 @@ public final class RebolNativeWords {
         });
     }
 
-    private static Context contextOf(Value value) {
-        return switch (value) {
-            case ObjectValue object -> object.context();
-            case PortValue port -> port.context();
-            case ModuleValue module -> module.context();
-            case ErrorValue raised -> contextOfError(raised);
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "in wanted an object, an error, a port or a block, not "
-                            + value.datatype().literalSpelling());
-        };
-    }
-
-    private static Context contextOfError(ErrorValue raised) {
-        Context fields = Context.root();
-        for (String name : ErrorValue.FIELDS) {
-            raised.field(name).ifPresent(value -> fields.set(name, value));
-        }
-        return fields;
-    }
-
-    private static Value firstHolderIn(
-            BlockValue searched, Value wanted, Evaluator evaluator, Context context) {
-
-        if (!(wanted instanceof WordValue word) || wanted instanceof BlockValue) {
-            return raiseWrongArgument(wanted, "in", "word");
-        }
-        for (Value item : searched.remaining()) {
-            Value resolved = item instanceof WordValue bound && bound.isBound()
-                    ? evaluator.evaluateOrRaise(BlockValue.block(List.of(bound)), context)
-                    : item;
-            if (resolved instanceof ObjectValue(Context context1)
-                    && context1.holds(word.canonical())) {
-                return word.boundTo(context1);
-            }
-        }
-        return NoneValue.none();
-    }
-
-    private static Value assertedTypes(
-            BlockValue pairs, Evaluator evaluator, Context context) {
-
-        List<Value> items = pairs.remaining();
-        for (int at = 0; at < items.size(); at += 2) {
-            Value subject = items.get(at);
-            Value held = switch (subject) {
-                case WordValue word when word.datatype() == Datatype.WORD ->
-                        evaluator.evaluateOrRaise(
-                                BlockValue.block(List.of(subject)), context);
-                case BlockValue path when path.datatype() == Datatype.PATH ->
-                        evaluator.evaluateOrRaise(
-                                BlockValue.block(List.of(subject)), context);
-                default -> {
-                    throw Raised.of(EvaluationFailure.INVALID_ARG, subject);
-                }
-            };
-            if (at + 1 >= items.size()) {
-                throw Raised.of(EvaluationFailure.MISSING_ARG);
-            }
-            if (!isOfType(held, items.get(at + 1), context)) {
-                throw Raised.of(EvaluationFailure.WRONG_TYPE, subject);
-            }
-        }
-        return LogicValue.of(true);
-    }
-
-    private static Value everyConditionHeld(
-            BlockValue conditions, Evaluator evaluator, Context context) {
-
-        BlockValue at = conditions;
-        while (!at.atTail()) {
-            Evaluator.Step step = evaluator.evaluateNextOrRaise(at, context);
-            at = at.atIndex(step.nextIndex());
-            if (!step.value().isTruthy()) {
-                throw Raised.of(EvaluationFailure.ASSERT_FAILED,
-                        BlockValue.block(conditions.remaining()));
-            }
-        }
-        return LogicValue.of(true);
-    }
-
-    private static boolean isOfType(Value held, Value type, Context context) {
-        return switch (type) {
-            case DatatypeValue wanted -> held.datatype() == wanted.represents();
-            case TypesetValue set -> set.holds(held.datatype());
-            case WordValue word -> {
-                Value resolved = context.knows(word.canonical())
-                        ? context.slotFor(word.canonical()).value()
-                        : NoneValue.none();
-                yield resolved != type && isOfType(held, resolved, context);
-            }
-            case BlockValue any -> any.remaining().stream()
-                    .anyMatch(one -> isOfType(held, one, context));
-            default -> raiseWrongArgumentBoolean(type);
-        };
-    }
-
-    private static boolean raiseWrongArgumentBoolean(Value type) {
-        throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                "assert/type wants a datatype, not "
-                        + type.datatype().literalSpelling());
-    }
-
     private static final Set<Datatype> A_REFINEMENTS_SLOT =
             EnumSet.of(Datatype.NONE, Datatype.LOGIC);
 
@@ -12246,10 +11599,6 @@ public final class RebolNativeWords {
             }
         }
         return BlockValue.block(spec);
-    }
-
-    private static Context boundContextOf(WordValue word) {
-        return word.isBound() ? word.binding() : null;
     }
 
     private static byte[] withSurrogatePairsJoined(byte[] bytes) {
@@ -12363,20 +11712,6 @@ public final class RebolNativeWords {
         return true;
     }
 
-    private static final Set<Datatype> ANY_WORD_DATATYPES = Typeset.ANY_WORD.members();
-
-    private static Set<Datatype> aBlockOrAnyWord() {
-        Set<Datatype> accepted = EnumSet.copyOf(ANY_WORD_DATATYPES);
-        accepted.add(Datatype.BLOCK);
-        return copyOf(accepted);
-    }
-
-    private static Set<Datatype> anyObjectOr(Datatype... alsoAccepted) {
-        Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_OBJECT.members());
-        accepted.addAll(List.of(alsoAccepted));
-        return copyOf(accepted);
-    }
-
     private static final Set<Datatype> PART_LIMIT = java.util.stream.Stream.concat(
             Typeset.NUMBER.membersAnd(Datatype.PAIR).stream(),
             Arrays.stream(Datatype.values()).filter(Datatype::isSeries))
@@ -12407,7 +11742,7 @@ public final class RebolNativeWords {
     }
 
     private static boolean isAnyObject(Value value) {
-        return value instanceof ErrorValue || fieldsOf(value) != null;
+        return value.fieldsAsAContext().isPresent();
     }
 
     private static boolean objectHasFieldToFind(Value subject, Value wanted) {
@@ -12421,23 +11756,7 @@ public final class RebolNativeWords {
         if (subject instanceof ErrorValue) {
             return ErrorValue.FIELDS.contains(field);
         }
-        return fieldsOf(subject).holds(field);
-    }
-
-    private static Context fieldsOf(Value value) {
-        return switch (value) {
-            case ObjectValue object -> object.context();
-            case ModuleValue module -> module.context();
-            case PortValue port -> port.context();
-            case ErrorValue error -> {
-                Context fields = Context.root();
-                for (String name : ErrorValue.FIELDS) {
-                    fields.set(name, error.field(name).orElseGet(NoneValue::none));
-                }
-                yield fields;
-            }
-            default -> null;
-        };
+        return subject.fieldsAsAContext().map(fields -> fields.holds(field)).orElse(false);
     }
 
     private static Value theContentsOfThatFileSummed(
@@ -12594,87 +11913,6 @@ public final class RebolNativeWords {
         }
         built.setLength(length);
         built.append(separator);
-    }
-
-    private record WordsToResolve(int startAt, Set<String> spellings, boolean limited) {
-
-        static WordsToResolve everything() {
-            return new WordsToResolve(1, of(), false);
-        }
-
-        boolean allows(String canonical) {
-            return !limited || spellings.contains(canonical);
-        }
-    }
-
-    private static WordsToResolve wordsToResolve(
-            Context into, List<ContextSlot> targetSlots,
-            Set<String> refinements, Value onlyThese) {
-
-        if (!refinements.contains("only")) {
-            return WordsToResolve.everything();
-        }
-        if (onlyThese instanceof IntegerValue(long magnitude)) {
-            int startAt = Math.max(1, (int) magnitude);
-            if (startAt > targetSlots.size()) {
-                return new WordsToResolve(startAt, of(), true);
-            }
-            return new WordsToResolve(startAt,
-                    targetSlots.subList(startAt - 1, targetSlots.size()).stream()
-                            .map(ContextSlot::canonical)
-                            .collect(java.util.stream.Collectors.toUnmodifiableSet()),
-                    true);
-        }
-        if (onlyThese instanceof BlockValue only) {
-            return new WordsToResolve(1, only.remaining().stream()
-                    .filter(word -> word instanceof WordValue spelled
-                            && (spelled.datatype() == Datatype.WORD
-                                    || spelled.datatype() == Datatype.SET_WORD))
-                    .map(word -> ((WordValue) word).canonical())
-                    .collect(java.util.stream.Collectors.toUnmodifiableSet()),
-                    true);
-        }
-        return WordsToResolve.everything();
-    }
-
-    private static Value resolvedFrom(
-            Context into, Context from, Value target,
-            Set<String> refinements, Value onlyThese) {
-
-        List<ContextSlot> targetSlots = into.slots();
-        WordsToResolve writable =
-                wordsToResolve(into, targetSlots, refinements, onlyThese);
-        Map<String, Value> available = new LinkedHashMap<>();
-        for (ContextSlot slot : from.slots()) {
-            if (!slot.canonical().equals("self")) {
-                available.put(slot.canonical(), slot.value());
-            }
-        }
-
-        for (int at = writable.startAt(); at <= targetSlots.size(); at++) {
-            ContextSlot slot = targetSlots.get(at - 1);
-            if (slot.canonical().equals("self") || slot.isProtected()) {
-                continue;
-            }
-            boolean known = available.containsKey(slot.canonical());
-            if (!writable.allows(slot.canonical())
-                    || (!known && !writable.limited())) {
-                continue;
-            }
-            if (!refinements.contains("all") && !(slot.value() instanceof UnsetValue)) {
-                continue;
-            }
-            slot.setValue(known ? available.get(slot.canonical()) : UnsetValue.unset());
-        }
-
-        if (refinements.contains("extend")) {
-            available.forEach((name, value) -> {
-                if (!into.holds(name) && writable.allows(name)) {
-                    into.set(name, value);
-                }
-            });
-        }
-        return target;
     }
 
     private Value queriedVector(VectorValue vector, Value field, Evaluator evaluator) {

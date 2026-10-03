@@ -51,6 +51,10 @@ public sealed interface Value permits
     /** The datatype this value reports to {@code type?}. */
     Datatype datatype();
 
+    default Optional<Context> fieldsAsAContext() {
+        return Optional.empty();
+    }
+
     default Value bitwise(Value right, BitwiseOperation operation) {
         throw Raised.of(EvaluationFailure.EXPECT_ARG, this);
     }

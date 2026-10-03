@@ -1,5 +1,10 @@
 package org.jebol.domain.value;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
+
 public record BinaryValue(BinaryStorage storage, int index) implements RebolSeries {
 
     @Override
@@ -45,11 +50,19 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     public String asText() {
-        return new String(octetsFromHere(), java.nio.charset.StandardCharsets.UTF_8);
+        return new String(octetsFromHere(), StandardCharsets.UTF_8);
     }
 
     public byte[] octetsFromHere() {
         return octetsUpTo(storageLength() + 1);
+    }
+
+    public BinaryValue copyOfTheFirst(int howMany) {
+        BinaryStorage copied = new BinaryStorage();
+        for (int at = 0; at < howMany; at++) {
+            copied.append(storage.at(index + at));
+        }
+        return new BinaryValue(copied, 1);
     }
 
     public String asStrictText() {
@@ -70,12 +83,12 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
 
     private static String strictlyUtf8(byte[] octets) {
         try {
-            return java.nio.charset.StandardCharsets.UTF_8.newDecoder()
-                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
-                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
-                    .decode(java.nio.ByteBuffer.wrap(octets))
+            return StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(octets))
                     .toString();
-        } catch (java.nio.charset.CharacterCodingException notText) {
+        } catch (CharacterCodingException notText) {
             throw Raised.of(EvaluationFailure.INVALID_CHARS,
                     "the bytes given to load are not valid UTF-8 text");
         }

@@ -3,6 +3,7 @@ package org.jebol.domain.eval;
 import org.jebol.domain.value.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -10,6 +11,23 @@ import java.util.Set;
 public final class Binder {
 
     private Binder() {
+    }
+
+    public static FunctionValue withItsBodyBound(FunctionValue made) {
+        made.declaredWords().markAsCallFrameOf(made);
+        Set<String> declared = theNamesDeclaredBy(made);
+        declared.forEach(made.declaredWords()::define);
+        bindEachInPlace(made.body(), made.declaredWords(), declared);
+        return made;
+    }
+
+    private static Set<String> theNamesDeclaredBy(FunctionValue function) {
+        Set<String> declared = new HashSet<>();
+        function.parameters().forEach(
+                parameter -> declared.add(Context.canonicalise(parameter.name())));
+        function.localNames().forEach(
+                name -> declared.add(Context.canonicalise(name)));
+        return declared;
     }
 
     public static BlockValue bind(BlockValue block, Context context) {

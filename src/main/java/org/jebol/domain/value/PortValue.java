@@ -1,5 +1,7 @@
 package org.jebol.domain.value;
 
+import java.util.Optional;
+
 /**
  * A port: something outside the interpreter that a script reads and writes.
  *
@@ -22,6 +24,11 @@ public record PortValue(Context context) implements Value {
         if (context == null || context.isUnbound()) {
             throw new IllegalArgumentException("a port needs a real context");
         }
+    }
+
+    @Override
+    public Optional<Context> fieldsAsAContext() {
+        return Optional.of(context);
     }
 
     /** The name of the scheme this port belongs to, or an empty string. */

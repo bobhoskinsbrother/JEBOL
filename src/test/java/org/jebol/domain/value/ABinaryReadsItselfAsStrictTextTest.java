@@ -79,6 +79,43 @@ class ABinaryReadsItselfAsStrictTextTest {
     }
 
     @Nested
+    @DisplayName("copyOfTheFirst copies bytes from the index into storage of its own")
+    class CopyOfTheFirst {
+
+        @Test
+        @DisplayName("it starts at the index and takes as many as asked")
+        void startsAtTheIndex() {
+            assertThat(abc().atIndex(2).copyOfTheFirst(1)).isEqualTo(BinaryValue.of(LOWER_B));
+        }
+
+        @Test
+        @DisplayName("none asked is an empty binary")
+        void noneAsked() {
+            assertThat(abc().copyOfTheFirst(0).lengthFromHere()).isZero();
+        }
+
+        @Test
+        @DisplayName("everything from here asked is all of it, at the head of its own storage")
+        void everythingAsked() {
+            BinaryValue copied = abc().atIndex(2).copyOfTheFirst(2);
+
+            assertThat(copied).isEqualTo(BinaryValue.of(LOWER_B, LOWER_C));
+            assertThat(copied.index()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("changing the copy leaves the original alone")
+        void theCopyIsIndependent() {
+            BinaryValue original = abc();
+            BinaryValue copied = original.copyOfTheFirst(3);
+
+            copied.storage().append(LOWER_A);
+
+            assertThat(original.lengthFromHere()).isEqualTo(3);
+        }
+    }
+
+    @Nested
     @DisplayName("asStrictTextUpTo reads from the index up to, not including, another index")
     class FromHereUpToAnIndex {
 

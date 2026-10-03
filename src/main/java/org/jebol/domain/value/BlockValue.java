@@ -2,7 +2,9 @@ package org.jebol.domain.value;
 
 import org.jebol.domain.value.sets.MembersKept;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * A position into block storage, reported as one of the {@code any-block!}
@@ -133,6 +135,59 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
                 .map(WordValue.class::cast)
                 .filter(word -> word.datatype() == Datatype.SET_WORD)
                 .toList();
+    }
+
+    public List<Value> wordsWritten(boolean deeply, boolean settersOnly) {
+        List<Value> found = new ArrayList<>();
+        gatherWordsInto(found, deeply, settersOnly);
+        return found;
+    }
+
+    private void gatherWordsInto(List<Value> found, boolean deeply, boolean settersOnly) {
+        for (Value item : remaining()) {
+            if (item instanceof BlockValue nested) {
+                if (deeply) {
+                    nested.gatherWordsInto(found, true, settersOnly);
+                }
+                continue;
+            }
+            if (item instanceof WordValue word
+                    && (!settersOnly || word.datatype() == Datatype.SET_WORD)
+                    && isNotYetAmong(found, word)) {
+                found.add(WordValue.of(word.spelling()));
+            }
+        }
+    }
+
+    private static boolean isNotYetAmong(List<Value> found, WordValue word) {
+        return found.stream().noneMatch(seen -> seen instanceof WordValue already
+                && already.canonical().equals(word.canonical()));
+    }
+
+    public Optional<ContextSlot> fieldThePathNames() {
+        List<Value> segments = remaining();
+        if (!datatype.isAnyPath() || segments.size() < 2
+                || !(segments.getFirst() instanceof WordValue start)
+                || !start.isBound() || !start.binding().knows(start.canonical())) {
+            return Optional.empty();
+        }
+        Value reached = start.binding().slotFor(start.canonical()).value();
+        for (Value between : segments.subList(1, segments.size() - 1)) {
+            Optional<ContextSlot> field = theFieldNamed(reached, between);
+            if (field.isEmpty()) {
+                return Optional.empty();
+            }
+            reached = field.get().value();
+        }
+        return theFieldNamed(reached, segments.getLast());
+    }
+
+    private static Optional<ContextSlot> theFieldNamed(Value holder, Value name) {
+        return holder instanceof ObjectValue(Context context)
+                && name instanceof WordValue word
+                && context.holds(word.canonical())
+                ? Optional.of(context.ownSlotFor(word.canonical()))
+                : Optional.empty();
     }
 
     @Override

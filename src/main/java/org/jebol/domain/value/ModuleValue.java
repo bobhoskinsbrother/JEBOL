@@ -1,6 +1,7 @@
 package org.jebol.domain.value;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * A module: a context that carries a header saying what it is called, what
@@ -34,6 +35,11 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
         if (header == null) {
             throw new IllegalArgumentException("a module needs a header");
         }
+    }
+
+    @Override
+    public Optional<Context> fieldsAsAContext() {
+        return Optional.of(context);
     }
 
     /**

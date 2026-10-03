@@ -1,5 +1,7 @@
 package org.jebol.domain.value;
 
+import java.util.Optional;
+
 /** An object: a context reached as a value. */
 public record ObjectValue(Context context) implements Value {
 
@@ -40,6 +42,11 @@ public record ObjectValue(Context context) implements Value {
     @Override
     public int hashCode() {
         return context.fieldsExcludingSelf().hashCode();
+    }
+
+    @Override
+    public Optional<Context> fieldsAsAContext() {
+        return Optional.of(context);
     }
 
     @Override

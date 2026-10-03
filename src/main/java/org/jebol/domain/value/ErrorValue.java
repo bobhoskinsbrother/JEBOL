@@ -59,6 +59,15 @@ public record ErrorValue(
                 near, whereChain, writtenFields, ErrorWording.none());
     }
 
+    @Override
+    public Optional<Context> fieldsAsAContext() {
+        Context fields = Context.root();
+        for (String name : FIELDS) {
+            fields.set(name, field(name).orElseGet(NoneValue::none));
+        }
+        return Optional.of(fields);
+    }
+
     public ErrorValue spokenBy(ErrorWording catalogue) {
         return new ErrorValue(category, errorId, message, subject,
                 secondArgument, thirdArgument, near, whereChain, writtenFields, catalogue);
