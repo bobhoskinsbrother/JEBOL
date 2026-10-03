@@ -24,7 +24,7 @@ public class MakeAction extends DefaultNative {
         {
             Value first = value.getFirst();
             Value second = value.get(1);
-            return first.made(second, evaluator.makingIn(context));
+            return first.make(second, evaluator.makerIn(context));
         };
     }
 }

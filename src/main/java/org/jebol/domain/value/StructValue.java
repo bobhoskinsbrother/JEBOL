@@ -30,8 +30,8 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
 
 
     @Override
-    public Value made(Value spec, Making making) {
-        return making.structLike(this, spec);
+    public Value make(Value spec, Maker maker) {
+        return maker.makeStructFrom(this, spec);
     }
 
     public static StructValue of(StructSpec spec) {

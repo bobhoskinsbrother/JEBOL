@@ -4,60 +4,60 @@ import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EventValue;
-import org.jebol.domain.value.Making;
+import org.jebol.domain.value.Maker;
 import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.StructValue;
 import org.jebol.domain.value.Value;
 
 @FunctionalInterface
-public interface Makers {
+public interface MakerSource {
 
-    Making makingIn(Evaluator evaluator, Context where);
+    Maker makerFor(Evaluator evaluator, Context where);
 
-    static Makers none() {
-        return (evaluator, where) -> NothingIsMade.INSTANCE;
+    static MakerSource none() {
+        return (evaluator, where) -> RefusingMaker.INSTANCE;
     }
 
-    final class NothingIsMade implements Making {
+    final class RefusingMaker implements Maker {
 
-        private static final NothingIsMade INSTANCE = new NothingIsMade();
+        private static final RefusingMaker INSTANCE = new RefusingMaker();
 
-        private NothingIsMade() {
+        private RefusingMaker() {
         }
 
         @Override
-        public Value made(Datatype kind, Value spec) {
+        public Value make(Datatype kind, Value spec) {
             throw Raised.cannotUse(spec, "make");
         }
 
         @Override
-        public Value madeFromAValueOf(Datatype kind, Value spec) {
+        public Value makeAnother(Datatype kind, Value spec) {
             throw Raised.cannotUse(spec, "make");
         }
 
         @Override
-        public Value objectLike(ObjectValue prototype, Value spec) {
+        public Value makeObjectFrom(ObjectValue prototype, Value spec) {
             throw Raised.cannotUse(spec, "make");
         }
 
         @Override
-        public Value derivedFrom(Value function, BlockValue spec) {
+        public Value deriveFunction(Value function, BlockValue spec) {
             throw Raised.cannotUse(spec, "make");
         }
 
         @Override
-        public Value errorFrom(Value spec) {
+        public Value makeError(Value spec) {
             throw Raised.cannotUse(spec, "make");
         }
 
         @Override
-        public Value structLike(StructValue prototype, Value spec) {
+        public Value makeStructFrom(StructValue prototype, Value spec) {
             throw Raised.cannotUse(spec, "make");
         }
 
         @Override
-        public Value eventLike(EventValue prototype, Value spec) {
+        public Value makeEventFrom(EventValue prototype, Value spec) {
             throw Raised.cannotUse(spec, "make");
         }
     }

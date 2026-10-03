@@ -14,8 +14,8 @@ public record DatatypeValue(Datatype represents) implements Value {
     }
 
     @Override
-    public Value made(Value spec, Making making) {
-        return making.made(represents, spec);
+    public Value make(Value spec, Maker maker) {
+        return maker.make(represents, spec);
     }
 
     @Override

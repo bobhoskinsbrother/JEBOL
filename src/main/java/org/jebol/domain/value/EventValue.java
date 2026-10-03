@@ -83,8 +83,8 @@ public record EventValue(
     }
 
     @Override
-    public Value made(Value spec, Making making) {
-        return making.eventLike(this, spec);
+    public Value make(Value spec, Maker maker) {
+        return maker.makeEventFrom(this, spec);
     }
 
     @Override

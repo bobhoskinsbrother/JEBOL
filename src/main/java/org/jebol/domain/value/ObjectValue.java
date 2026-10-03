@@ -45,8 +45,8 @@ public record ObjectValue(Context context) implements Value {
     }
 
     @Override
-    public Value made(Value spec, Making making) {
-        return making.objectLike(this, spec);
+    public Value make(Value spec, Maker maker) {
+        return maker.makeObjectFrom(this, spec);
     }
 
     @Override

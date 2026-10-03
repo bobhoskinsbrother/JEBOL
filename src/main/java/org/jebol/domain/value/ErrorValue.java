@@ -60,10 +60,10 @@ public record ErrorValue(
     }
 
     @Override
-    public Value made(Value spec, Making making) {
+    public Value make(Value spec, Maker maker) {
         return spec instanceof StringValue
-                ? making.errorFrom(spec)
-                : making.madeFromAValueOf(datatype(), spec);
+                ? maker.makeError(spec)
+                : maker.makeAnother(datatype(), spec);
     }
 
     @Override

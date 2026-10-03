@@ -1090,22 +1090,22 @@ public final class RebolNativeWords {
     }
 
 
-    public Making makingIn(Evaluator evaluator, Context where) {
-        return new MakingInThisInterpreter(evaluator, where);
+    public Maker makerFor(Evaluator evaluator, Context where) {
+        return new InterpreterMaker(evaluator, where);
     }
 
-    private final class MakingInThisInterpreter implements Making {
+    private final class InterpreterMaker implements Maker {
 
         private final Evaluator evaluator;
         private final Context where;
 
-        private MakingInThisInterpreter(Evaluator evaluator, Context where) {
+        private InterpreterMaker(Evaluator evaluator, Context where) {
             this.evaluator = evaluator;
             this.where = where;
         }
 
         @Override
-        public Value made(Datatype kind, Value spec) {
+        public Value make(Datatype kind, Value spec) {
             return switch (kind) {
                 case OBJECT -> anObjectMadeFrom(spec);
                 case MAP -> mapMadeFrom(spec);
@@ -1118,7 +1118,7 @@ public final class RebolNativeWords {
                 case OP -> operatorFrom(spec, where);
                 case ERROR -> errorFromSpec(spec, evaluator, where);
                 case MODULE -> moduleFromSpec(spec, evaluator, where);
-                default -> madeFromAValueOf(kind, spec);
+                default -> makeAnother(kind, spec);
             };
         }
 
@@ -1131,34 +1131,34 @@ public final class RebolNativeWords {
         }
 
         @Override
-        public Value madeFromAValueOf(Datatype kind, Value spec) {
+        public Value makeAnother(Datatype kind, Value spec) {
             return makeOfDatatype(DatatypeValue.of(kind), spec, evaluator, where);
         }
 
         @Override
-        public Value objectLike(ObjectValue prototype, Value spec) {
+        public Value makeObjectFrom(ObjectValue prototype, Value spec) {
             return spec instanceof ObjectValue other
                     ? mergedObject(prototype, other, where)
                     : makeObject(evaluator, where, Optional.of(prototype), (BlockValue) spec);
         }
 
         @Override
-        public Value derivedFrom(Value function, BlockValue spec) {
+        public Value deriveFunction(Value function, BlockValue spec) {
             return derivedFunction(function, spec);
         }
 
         @Override
-        public Value errorFrom(Value spec) {
+        public Value makeError(Value spec) {
             return errorFromSpec(spec, evaluator, where);
         }
 
         @Override
-        public Value structLike(StructValue prototype, Value spec) {
+        public Value makeStructFrom(StructValue prototype, Value spec) {
             return structLikeThePrototype(prototype, spec, evaluator);
         }
 
         @Override
-        public Value eventLike(EventValue prototype, Value spec) {
+        public Value makeEventFrom(EventValue prototype, Value spec) {
             return EventPath.made(prototype, spec, value -> simpleValueOf(value, evaluator, where));
         }
     }
@@ -8637,7 +8637,7 @@ public final class RebolNativeWords {
                                 value -> simpleValueOf(value, evaluator, context));
                     }
                     if (SHARES_ITS_BRANCH_WITH_MAKE.contains(wanted.represents())) {
-                        return wanted.made(arguments.get(1), makingIn(evaluator, context));
+                        return wanted.make(arguments.get(1), makerFor(evaluator, context));
                     }
                     if (wanted.represents() == Datatype.OBJECT) {
                         return objectConvertedFrom(arguments.get(1));

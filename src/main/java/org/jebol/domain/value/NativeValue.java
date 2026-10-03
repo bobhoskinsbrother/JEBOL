@@ -34,10 +34,10 @@ public record NativeValue(
     }
 
     @Override
-    public Value made(Value spec, Making making) {
+    public Value make(Value spec, Maker maker) {
         return spec instanceof BlockValue block
-                ? making.derivedFrom(this, block)
-                : making.madeFromAValueOf(datatype(), spec);
+                ? maker.deriveFunction(this, block)
+                : maker.makeAnother(datatype(), spec);
     }
 
     public boolean declares(String refinement) {

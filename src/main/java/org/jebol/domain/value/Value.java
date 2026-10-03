@@ -51,8 +51,8 @@ public sealed interface Value permits
     /** The datatype this value reports to {@code type?}. */
     Datatype datatype();
 
-    default Value made(Value spec, Making making) {
-        return making.madeFromAValueOf(datatype(), spec);
+    default Value make(Value spec, Maker maker) {
+        return maker.makeAnother(datatype(), spec);
     }
 
     default Optional<Context> fieldsAsAContext() {
