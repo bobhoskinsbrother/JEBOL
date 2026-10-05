@@ -228,6 +228,16 @@ public final class Context {
         return new ArrayList<>(slotsByCanonicalName.values());
     }
 
+    public List<Value> boundWordsAndValues() {
+        return slots().stream()
+                .filter(slot -> !slot.canonical().equals("self"))
+                .<Value>mapMulti((slot, accept) -> {
+                    accept.accept(WordValue.of(slot.spelling()).boundTo(this));
+                    accept.accept(slot.value());
+                })
+                .toList();
+    }
+
     @Override
     public String toString() {
         return unbound ? "Context(unbound)" : "Context(" + slotCount() + " slots)";

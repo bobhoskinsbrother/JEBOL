@@ -40,17 +40,6 @@ public final class ImageActions extends SeriesActions {
         return new ImageValue(flipped, 1);
     }
 
-    @Override
-    List<Value> elementsOf(RebolSeries from) {
-        ImageValue pixels = (ImageValue) from;
-        List<Value> read = new ArrayList<>(pixels.lengthFromHere());
-        for (int at = pixels.index(); at <= pixels.storageLength(); at++) {
-            int[] channels = pixels.storage().pixelAt(at);
-            read.add(TupleValue.of(
-                    channels[0], channels[1], channels[2], channels[3]));
-        }
-        return List.copyOf(read);
-    }
 
     @Override
     Value ofTheSameKindHolding(List<Value> items) {

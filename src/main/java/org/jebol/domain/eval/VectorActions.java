@@ -27,11 +27,6 @@ public final class VectorActions extends SeriesActions {
     }
 
     @Override
-    List<Value> elementsOf(RebolSeries from) {
-        return ((VectorValue) from).remaining();
-    }
-
-    @Override
     Value ofTheSameKindHolding(List<Value> items) {
         VectorStorage made = new VectorStorage(vector.kind(), 0);
         items.forEach(number ->

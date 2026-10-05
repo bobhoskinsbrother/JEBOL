@@ -3,15 +3,6 @@ package org.jebol.domain.value;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * A position into a vector's storage, written {@code #(int32! [1 2 3])}.
- *
- * <p>A vector is a series of numbers at one fixed machine width rather than a
- * series of REBOL values. What it costs is that only numbers go in it and only
- * numbers come out; what it buys is that a million of them are a million
- * machine words rather than a million boxed values, and that TO BINARY! is the
- * bytes themselves.
- */
 public record VectorValue(VectorStorage storage, int index) implements RebolSeries {
 
     public VectorValue {
@@ -26,6 +17,16 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
 
     public static VectorValue holding(VectorKind kind, long... stored) {
         return new VectorValue(VectorStorage.holding(kind, stored), 1);
+    }
+
+    @Override
+    public boolean isProtected() {
+        return storage.isProtected();
+    }
+
+    @Override
+    public List<Value> items() {
+        return remaining();
     }
 
     @Override
@@ -62,12 +63,10 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
         return storage.kind();
     }
 
-    /** The element at a 1-based position within the whole storage. */
     public Value elementAt(int oneBasedIndex) {
         return kind().read(storage.at(oneBasedIndex));
     }
 
-    /** Every element from this position on, as the numbers a script sees. */
     public List<Value> remaining() {
         List<Value> found = new ArrayList<>();
         for (int at = index; at <= storage.length(); at++) {
@@ -76,7 +75,6 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
         return found;
     }
 
-    /** The stored bytes from this position on, least significant byte first. */
     public byte[] octetsFromHere() {
         VectorKind kind = kind();
         byte[] octets = new byte[lengthFromHere() * kind.bytes()];
@@ -119,14 +117,6 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
         return other instanceof VectorValue vector && vector.storage == storage;
     }
 
-    /**
-     * Compares two vectors element by element, then by what is left over.
-     *
-     * <p>Widths and signedness need not match, and a narrower vector holding
-     * the same numbers is equal to a wider one. What may not be mixed is
-     * counting with measuring: {@code Compare_Vector} refuses that pair
-     * outright rather than converting one to the other.
-     */
     public int compareWith(VectorValue other) {
         if (kind().measures() != other.kind().measures()) {
             throw new IllegalArgumentException("a counting vector and a measuring one");

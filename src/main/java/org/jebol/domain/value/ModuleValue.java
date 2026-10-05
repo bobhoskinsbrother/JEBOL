@@ -3,29 +3,6 @@ package org.jebol.domain.value;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * A module: a context that carries a header saying what it is called, what
- * version it is, and which of its words the rest of the world may see.
- *
- * <p>An object underneath, and Rebol's is the same object with one extra
- * field. {@code types.reb} gives module! its own row, whose mold typeclass
- * and typeset are both {@code object}, so a module molds as an object and
- * answers {@code any-object?} while answering {@code object?} false.
- *
- * <p>What makes it a module rather than an object is the header, because the
- * header is what decides which names escape. A module whose header exports
- * three words puts three words into the library and keeps the rest to
- * itself, and a name it holds privately cannot collide with a library
- * function of the same spelling.
- *
- * <p>That collision is why this datatype exists rather than being deferred
- * again. Rebol's own JSON codec is a module holding a parse rule named
- * {@code exp} and another named {@code stack}. Loaded flat, both replace the
- * library functions of those names, and the failure is silent: the word
- * still answers, it just answers a block.
- *
- * <p>Specified in {@code spec/values.allium}.
- */
 public record ModuleValue(Context context, ObjectValue header) implements Value {
 
     public ModuleValue {
@@ -42,13 +19,11 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
         return Optional.of(context);
     }
 
-    /**
-     * The words this module publishes, in the order the header lists them.
-     *
-     * <p>Every other word it defines is private to it. A header with no
-     * exports field publishes nothing, which is the right answer for a codec
-     * whose whole job is to register itself with a side effect.
-     */
+    @Override
+    public List<Value> items() {
+        return context.boundWordsAndValues();
+    }
+
     public List<String> exportedNames() {
         if (!(headerField("exports") instanceof BlockValue exports)) {
             return List.of();
@@ -60,7 +35,6 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
                 .toList();
     }
 
-    /** One field of the header, or none when the header has no such field. */
     public Value headerField(String name) {
         Context fields = header.context();
         return fields.holds(name) ? fields.ownSlotFor(name).value() : NoneValue.none();

@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 
@@ -10,8 +11,6 @@ abstract class SeriesActions implements Actions {
     abstract RebolSeries held();
 
     abstract void takeOneOutAt(int oneBasedIndex);
-
-    abstract List<Value> elementsOf(RebolSeries from);
 
     abstract Value ofTheSameKindHolding(List<Value> items);
 
@@ -34,7 +33,8 @@ abstract class SeriesActions implements Actions {
         return removingFrom;
     }
 
-    void takeOutFrom(int oneBasedIndex, int howMany) {
+    @Override
+    public void takeOutFrom(int oneBasedIndex, int howMany) {
         for (int gone = 0; gone < howMany; gone++) {
             takeOneOutAt(oneBasedIndex);
         }
@@ -50,16 +50,16 @@ abstract class SeriesActions implements Actions {
             from -= howMany;
         }
         List<Value> taken = List.copyOf(
-                elementsOf(held().head()).subList(from - 1, from - 1 + howMany));
+                held().head().items().subList(from - 1, from - 1 + howMany));
         takeOutFrom(from, howMany);
         return ofTheSameKindHolding(taken);
     }
 
     public Value takenOne() {
         if (held().lengthFromHere() == 0) {
-            return org.jebol.domain.value.NoneValue.none();
+            return NoneValue.none();
         }
-        Value taken = elementsOf(held()).getFirst();
+        Value taken = held().items().getFirst();
         takeOutFrom(held().index(), 1);
         return taken;
     }

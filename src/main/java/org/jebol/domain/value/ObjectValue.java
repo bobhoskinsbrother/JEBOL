@@ -1,8 +1,8 @@
 package org.jebol.domain.value;
 
+import java.util.List;
 import java.util.Optional;
 
-/** An object: a context reached as a value. */
 public record ObjectValue(Context context) implements Value {
 
     @Override
@@ -52,6 +52,11 @@ public record ObjectValue(Context context) implements Value {
     @Override
     public Optional<Context> fieldsAsAContext() {
         return Optional.of(context);
+    }
+
+    @Override
+    public List<Value> items() {
+        return context.boundWordsAndValues();
     }
 
     @Override

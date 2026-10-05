@@ -1,29 +1,30 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.UnsetValue;
+import org.jebol.domain.value.Value;
+
 public final class LoopSignal extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
-    private static final LoopSignal BREAK = new LoopSignal(null);
+    private static final LoopSignal BREAK = new LoopSignal(UnsetValue.unset());
 
-    private final transient org.jebol.domain.value.Value answer;
+    private final transient Value answer;
 
-    private LoopSignal(org.jebol.domain.value.Value answer) {
+    private LoopSignal(Value answer) {
         super("break", null, false, false);
         this.answer = answer;
     }
 
-    static LoopSignal breaking() {
+    public static LoopSignal breaking() {
         return BREAK;
     }
 
-    static LoopSignal breakingWith(org.jebol.domain.value.Value answer) {
+    public static LoopSignal breakingWith(Value answer) {
         return new LoopSignal(answer);
     }
 
-    org.jebol.domain.value.Value answer() {
-        return answer == null
-                ? org.jebol.domain.value.UnsetValue.unset()
-                : answer;
+    public Value answer() {
+        return answer;
     }
 }

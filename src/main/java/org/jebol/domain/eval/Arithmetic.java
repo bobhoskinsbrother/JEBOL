@@ -80,7 +80,7 @@ public final class Arithmetic {
                 DecimalValue.of(first), DecimalValue.of(second), STEPS_MODULUS_ALLOWS);
     }
 
-    static double asMagnitude(Value value) {
+    public static double asMagnitude(Value value) {
         return switch (value) {
             case CharacterValue character -> character.codepoint();
             case TimeValue time -> time.nanoseconds();

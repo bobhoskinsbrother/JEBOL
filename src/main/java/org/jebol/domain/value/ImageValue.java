@@ -1,13 +1,8 @@
 package org.jebol.domain.value;
 
-/**
- * A position into an image, counted in pixels.
- *
- * <p>{@code VAL_INDEX} is the pixel and {@code QUAD_SKIP} turns it into a byte
- * offset, so an image navigates exactly as a block does. The width belongs to the
- * storage rather than to the position, which is what makes {@code at img 3} the
- * third pixel of the same image rather than a smaller image.
- */
+import java.util.ArrayList;
+import java.util.List;
+
 public record ImageValue(ImageStorage storage, int index) implements RebolSeries {
 
     public ImageValue {
@@ -20,9 +15,23 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         }
     }
 
-    /** An image of this size, filled opaque white, standing at its head. */
     public static ImageValue of(int wide, int high) {
         return new ImageValue(ImageStorage.of(wide, high), 1);
+    }
+
+    @Override
+    public boolean isProtected() {
+        return storage.isProtected();
+    }
+
+    @Override
+    public List<Value> items() {
+        List<Value> read = new ArrayList<>(lengthFromHere());
+        for (int at = index; at <= storageLength(); at++) {
+            int[] channels = storage.pixelAt(at);
+            read.add(TupleValue.of(channels[0], channels[1], channels[2], channels[3]));
+        }
+        return List.copyOf(read);
     }
 
     @Override
@@ -40,18 +49,6 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return new ImageValue(storage, oneBasedIndex);
     }
 
-    /**
-     * The image standing at a position, with anything past the last pixel
-     * brought back to the tail.
-     *
-     * <p>Rebol stores a position past the end and shows it brought back, which
-     * comes to the same thing everywhere a script can see it: an image built to
-     * stand at nine on a picture of four reads as standing at five. Bringing it
-     * back here keeps a position an honest one rather than a number every
-     * reader has to interpret, and the C's own arithmetic runs past the tail
-     * often enough to need it -- writing a rectangle at the tail steps one
-     * pixel further on from a place that was already the end.
-     */
     public ImageValue standingAt(int oneBasedIndex) {
         return atIndex(Math.min(oneBasedIndex, storage.length() + 1));
     }
@@ -71,18 +68,10 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return other instanceof ImageValue image && image.storage == storage;
     }
 
-    /** The pixel here, as red, green, blue, alpha. */
     public int[] pixelAt(int offsetFromHere) {
         return storage.pixelAt(index + offsetFromHere - 1);
     }
 
-    /**
-     * The size, as the pair {@code img/size} answers.
-     *
-     * <p>The whole image's size, not what is left from here: the C reads
-     * {@code VAL_IMAGE_WIDE} and {@code VAL_IMAGE_HIGH} off the series and never
-     * consults the index.
-     */
     public PairValue size() {
         return PairValue.of(storage.wide(), storage.high());
     }

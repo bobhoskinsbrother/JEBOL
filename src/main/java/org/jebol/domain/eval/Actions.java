@@ -39,6 +39,10 @@ public interface Actions {
         throw Raised.cannotUse(subject(), "length?");
     }
 
+    default void takeOutFrom(int oneBasedIndex, int howMany) {
+        throw Raised.cannotUse(subject(), "remove");
+    }
+
     default Value complemented() {
         throw Raised.of(EvaluationFailure.EXPECT_ARG,
                 "complement wanted a logic or integer, not a "

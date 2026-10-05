@@ -6,14 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * A position into block storage, reported as one of the {@code any-block!}
- * datatypes: {@code block!}, {@code paren!}, or one of the four path types.
- *
- * <p>They share a representation because they are the same thing read
- * differently. A path is a block whose items are selectors, which is why
- * {@code first 'face/color} gives you a word.
- */
 public record BlockValue(BlockStorage storage, int index, Datatype datatype)
         implements RebolSeries {
 
@@ -29,6 +21,16 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
             throw new IllegalArgumentException(
                     "index " + index + " is outside 1.." + (storage.length() + 1));
         }
+    }
+
+    @Override
+    public boolean isProtected() {
+        return storage.isProtected();
+    }
+
+    @Override
+    public List<Value> items() {
+        return remaining();
     }
 
     @Override
@@ -104,12 +106,10 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
         return atIndex(storage.length() + 1);
     }
 
-    /** The same storage and position, read as a different any-block! type. */
     public BlockValue as(Datatype otherDatatype) {
         return new BlockValue(storage, index, otherDatatype);
     }
 
-    /** The item at this position. Fails at the tail, which holds nothing. */
     public Value first() {
         if (atTail()) {
             throw new IllegalStateException("nothing to read at the tail");
@@ -117,18 +117,11 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
         return storage.at(index);
     }
 
-    /** The items from this position to the tail. */
     public List<Value> remaining() {
         return storage.snapshot().subList(
                 Math.min(index - 1, storage.length()), storage.length());
     }
 
-    /**
-     * The set-words from this position on, in the order they are written.
-     *
-     * <p>What a loader walks to give a name a slot before the body that
-     * assigns it runs.
-     */
     public List<WordValue> setWordsFromHere() {
         return remaining().stream()
                 .filter(WordValue.class::isInstance)

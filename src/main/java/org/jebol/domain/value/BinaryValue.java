@@ -4,8 +4,24 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 public record BinaryValue(BinaryStorage storage, int index) implements RebolSeries {
+
+    @Override
+    public boolean isProtected() {
+        return storage.isProtected();
+    }
+
+    @Override
+    public List<Value> items() {
+        List<Value> read = new ArrayList<>(lengthFromHere());
+        for (int at = 0; at < lengthFromHere(); at++) {
+            read.add(IntegerValue.of(storage.at(index + at)));
+        }
+        return List.copyOf(read);
+    }
 
     @Override
     public Value bitwise(Value right, BitwiseOperation operation) {

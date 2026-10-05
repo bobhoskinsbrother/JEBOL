@@ -6118,3 +6118,73 @@ Before spending an afternoon looking for an input that reaches a `Trap` line,
 check which of the three it is in: `bad-path` is raised only in the `xx*/` one
 and therefore never. `expect-type` is the same shape one file over --
 `Trap_Expect` in `c-error.c` has a single caller and it is commented out.
+
+## 214. Facts that used to sit beside the value classes
+
+These were javadoc on `org.jebol.domain.value` until the comments came out of
+the code. Each one is a reading of the C that the code depends on.
+
+**Truth.** Only none and a false logic are false. `IS_FALSE` in `sys-value.h`
+never asks whether a value is unset, so an unset is true and `if () [1]`
+answers 1 rather than failing.
+
+**String equality ignores the datatype.** `Compare_Values` sends any string
+against any other string to `CT_String`, which compares contents and nothing
+else, so `equal? "a" %a` and `equal? "a" <a>` are both true. Only `==` minds
+the datatype, and it does so before `CT_String` is reached.
+
+**A gob's position is unsigned.** `VAL_GOB_INDEX` is a `REBCNT` and nothing
+clamps it, so stepping back past the head wraps: `index? skip g -2` answers
+4294967295. Every arm that then reads or writes a child clamps to the pane,
+and a wrapped position clamps to the tail rather than the head. That is why an
+insert at a wrapped position appends, and why `move g -1` takes the first
+child and puts it last.
+
+**An image position past the end shows as the tail.** Rebol stores a position
+past the end and shows it brought back: an image built to stand at nine on a
+picture of four reads as standing at five. The C's own arithmetic runs past
+the tail -- writing a rectangle at the tail steps one pixel further on. And
+`img/size` is the whole image: the C reads `VAL_IMAGE_WIDE` and
+`VAL_IMAGE_HIGH` off the series and never consults the index.
+
+**Vectors refuse to compare counting with measuring.** Width and signedness
+need not match, and a narrower vector holding the same numbers equals a wider
+one, but `Compare_Vector` refuses an integer vector against a decimal one
+outright rather than converting.
+
+**A map hands its keys back three ways.** Word keys are stored as set-words.
+`Map_To_Block` turns them back into plain words only for KEYS-OF (`what < 0`),
+so KEYS-OF answers `[a]` where BODY-OF answers `[a: 1]`; MOLD, BODY-OF and
+`to block!` (`what == 0`) keep the set-word, which is what lets a molded map
+read back equal. FOREACH turns them back too -- `if (IS_SET_WORD(vars))
+SET_TYPE(vars, REB_WORD);` in `Loop_Each` -- so a walk agrees with KEYS-OF.
+FIND on a map answers the stored key (`// find returns the key`), which is
+the one thing it can tell a caller that SELECT cannot. A write that matches a
+key without minding case keeps the key already there, because the C sets only
+the slot after the key.
+
+**Map protection.** `if (ANY_SERIES(value) || IS_MAP(value) ||
+IS_BITSET(value)) Protect_Series(value, flags);` -- a map is protected as a
+series is, and PROTECT/DEEP stops at it rather than reaching its values.
+`Copy_Map` builds a new series, and the protection lives on the series, so a
+copy of a protected map is changeable.
+
+**A map is malformed with an odd number of items.** `#[none]` is a mistake,
+not a map holding none.
+
+**OPEN? reads the port's own state.** `Awake_System` reads STATE and tests
+`IS_HANDLE(state)`. What a built-in actor leaves there varies by scheme, but
+it is never an object: an actor written in REBOL keeps its own object there
+and answers OPEN? from its own function. So an object in STATE came from
+elsewhere, and reading it as open is how a connection stopped being made:
+Rebol's TLS hands a TCP port the HTTP protocol's object --
+`conn/state: port/parent/state` -- and then asks
+`either open? conn [...] [open conn]`.
+
+**Why module! exists.** `types.reb` gives module! its own row whose mold
+typeclass and typeset are both `object`, so a module molds as an object and
+answers `any-object?` true and `object?` false. Its header decides which names
+escape into the library. Rebol's own JSON codec is a module holding parse
+rules named `exp` and `stack`; loaded flat, both silently replace the library
+functions of those names. A header with no exports publishes nothing, which is
+right for a codec whose only job is to register itself.

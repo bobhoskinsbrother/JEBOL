@@ -30,13 +30,6 @@ public final class StringActions extends SeriesActions {
     }
 
     @Override
-    List<Value> elementsOf(RebolSeries from) {
-        return ((StringValue) from).text().codePoints()
-                .<Value>mapToObj(CharacterValue::of)
-                .toList();
-    }
-
-    @Override
     Value ofTheSameKindHolding(List<Value> items) {
         return StringValue.of(items.stream()
                 .map(Molder::form).collect(Collectors.joining()), text.datatype());

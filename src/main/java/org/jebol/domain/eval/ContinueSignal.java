@@ -10,7 +10,7 @@ public final class ContinueSignal extends RuntimeException {
         super("continue", null, false, false);
     }
 
-    static ContinueSignal instance() {
+    public static ContinueSignal instance() {
         return INSTANCE;
     }
 }

@@ -25,8 +25,7 @@ import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static java.util.Set.copyOf;
-import static java.util.Set.of;
+import static java.util.Set.copyOf;import static java.util.Set.of;
 
 public final class RebolNativeWords {
 
@@ -371,22 +370,14 @@ public final class RebolNativeWords {
         return new ObjectValue(system);
     }
 
-    /** What the evaluator dispatches on: native name to behaviour. */
     public Map<String, RefinedCallable> behaviours() {
         return Map.copyOf(behaviours);
     }
 
-    /**
-     * Where the sys files define their words.
-     *
-     * <p>Only meaningful after {@link #asContext()} has run, which is where
-     * the system object and its three contexts are assembled.
-     */
     public Context systemInternals() {
         return systemInternals;
     }
 
-    /** A fresh context holding every native, and the operators alongside. */
     public Context asContext() {
         Context context = Context.root();
         context.set("true", LogicValue.yes());
@@ -557,19 +548,6 @@ public final class RebolNativeWords {
                         arguments.getFirst() instanceof UnsetValue
                                 ? NoneValue.none()
                                 : arguments.getFirst());
-
-        define("forever", List.of(Parameter.required("body", of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> {
-                    BlockValue body = (BlockValue) arguments.getFirst();
-                    Value last = NoneValue.none();
-                    try {
-                        while (true) {
-                            last = oneRoundCatchingContinue(evaluator,body, context);
-                        }
-                    } catch (LoopSignal stopped) {
-                        return stopped.answer();
-                    }
-                });
 
         define("seventh", List.of(Parameter.required("series")),
                 (arguments, evaluator, context) -> pick(arguments.getFirst(), 7));
@@ -1108,554 +1086,21 @@ public final class RebolNativeWords {
     }
 
     private void registerLoops() {
-        define("loop", List.of(
-                        Parameter.required("count", Typeset.NUMBER.members()),
-                        Parameter.required("body", of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> {
-                    long passes = ((IntegerValue) arguments.get(0)).magnitude();
-                    BlockValue body = (BlockValue) arguments.get(1);
-                    Value last = NoneValue.none();
-                    try {
-                        for (long pass = 0; pass < passes; pass++) {
-                            last = oneRoundCatchingContinue(evaluator,body, evaluator.systemContext());
-                        }
-                    } catch (LoopSignal stopped) {
-                        return stopped.answer();
-                    }
-                    return last;
-                });
-
-        define("repeat", List.of(
-                        Parameter.softQuoted("counter"),
-                        Parameter.required("count", WHAT_REPEAT_COUNTS_BY),
-                        Parameter.required("body", of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> {
-                    WordValue counter = (WordValue) arguments.get(0);
-                    BlockValue body = (BlockValue) arguments.get(2);
-                    if (arguments.get(1) instanceof PairValue grid) {
-                        return repeatedOverGrid(evaluator, context, counter, grid, body);
-                    }
-                    if (arguments.get(1) instanceof NoneValue nothing) {
-                        return nothing;
-                    }
-                    if (arguments.get(1) instanceof RebolSeries walked) {
-                        return countedLoop(evaluator, context, counter, body,
-                                index -> walked.atIndex(walked.index() + (int) index),
-                                walked.lengthFromHere());
-                    }
-                    long passes = (long) Arithmetic.asMagnitude(arguments.get(1));
-                    return countedLoop(
-                            evaluator, context, counter, body,
-                            index -> IntegerValue.of(index + 1), passes);
-                });
-
-        define("while", List.of(
-                        Parameter.required("condition", of(Datatype.BLOCK)),
-                        Parameter.required("body", of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> {
-                    BlockValue condition = (BlockValue) arguments.get(0);
-                    BlockValue body = (BlockValue) arguments.get(1);
-                    Value last = NoneValue.none();
-                    try {
-                        while (theTruthInWhatALoopTests(evaluator.evaluateOrRaise(
-                                condition, evaluator.systemContext()))) {
-                            last = oneRoundCatchingContinue(evaluator,body, evaluator.systemContext());
-                        }
-                    } catch (LoopSignal stopped) {
-                        return stopped.answer();
-                    }
-                    return last;
-                });
-
-        define("until", List.of(Parameter.required("body", of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> {
-                    BlockValue body = (BlockValue) arguments.get(0);
-                    Value last;
-                    try {
-                        do {
-                            last = oneRoundCatchingContinue(evaluator,body, evaluator.systemContext());
-                        } while (!theTruthInWhatALoopTests(last));
-                    } catch (LoopSignal stopped) {
-                        return stopped.answer();
-                    }
-                    return last;
-                });
-
-        define("for", List.of(
-                        Parameter.softQuoted("counter"),
-                        Parameter.required("start"),
-                        Parameter.required("end"),
-                        Parameter.required("step"),
-                        Parameter.required("body", of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> steppedLoop(
-                        evaluator,
-                        context,
-                        (WordValue) arguments.get(0),
-                        arguments.get(1),
-                        arguments.get(2),
-                        arguments.get(3),
-                        (BlockValue) arguments.get(4)));
-
-        define("foreach", List.of(
-                        Parameter.softQuoted("target"),
-                        Parameter.required("series"),
-                        Parameter.required("body", of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> forEachLoop(
-                        evaluator,
-                        context,
-                        arguments.get(0),
-                        arguments.get(1),
-                        (BlockValue) arguments.get(2)));
-
-        define("remove-each", List.of(
-                        Parameter.softQuoted("word"),
-                        Parameter.required("series",
-                                of(Datatype.BLOCK, Datatype.BINARY,
-                                        Datatype.STRING, Datatype.MAP, Datatype.VECTOR)),
-                        Parameter.required("body", of(Datatype.BLOCK))),
-                of("count"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (arguments.get(1) instanceof MapValue map) {
-                        return removedEachPairFrom(
-                                map, arguments, refinements, evaluator, context);
-                    }
-                    if (arguments.get(1) instanceof RebolSeries other
-                            && !(other instanceof BlockValue)) {
-                        return removedEachFromDecidingForwardsThenRewriting(
-                                other, arguments, refinements, evaluator, context);
-                    }
-                    BlockValue series = (BlockValue) arguments.get(1);
-                    Context locals = Context.loopFrameOf(context);
-                    List<WordValue> names = loopNamesIn(arguments.get(0), "remove-each");
-                    names.forEach(name -> locals.define(name.spelling()));
-                    BlockValue bound = Binder.bind((BlockValue) arguments.get(2), locals);
-                    List<Value> items = series.remaining();
-                    List<Value> kept = new ArrayList<>();
-                    int taken = 0;
-                    int at = 0;
-                    Value stoppedWith = null;
-                    while (at < items.size()) {
-                        int reached = setLoopNamesFillingWithNonePastTheEnd(
-                                locals, names, items, at, series);
-                        int through = Math.min(reached, items.size());
-                        boolean drop;
-                        try {
-                            drop = evaluator.evaluateOrRaise(bound, locals).isTruthy();
-                        } catch (LoopSignal stopped) {
-                            kept.addAll(items.subList(at, items.size()));
-                            stoppedWith = stopped.answer();
-                            break;
-                        }
-                        if (drop) {
-                            taken += through - at;
-                        } else {
-                            kept.addAll(items.subList(at, through));
-                        }
-                        at = reached;
-                    }
-                    int had = series.lengthFromHere();
-                    for (int removed = 0; removed < had; removed++) {
-                        series.storage().removeAt(series.index());
-                    }
-                    for (int back = kept.size(); back > 0; back--) {
-                        series.storage().insertAt(series.index(), kept.get(back - 1));
-                    }
-                    if (stoppedWith != null && !(stoppedWith instanceof UnsetValue)) {
-                        return stoppedWith;
-                    }
-                    return refinements.contains("count")
-                            ? IntegerValue.of(taken)
-                            : series;
-                });
-
-        define("map-each", List.of(
-                        Parameter.softQuoted("word"),
-                        Parameter.required("series", of(Datatype.BLOCK)),
-                        Parameter.required("body", of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> {
-                    Context locals = Context.loopFrameOf(context);
-                    List<WordValue> names = loopNamesIn(arguments.get(0), "map-each");
-                    names.forEach(name -> locals.define(name.spelling()));
-                    BlockValue bound = Binder.bind(
-                            (BlockValue) arguments.get(2), locals);
-                    List<Value> items = itemsOf(arguments.get(1));
-                    List<Value> gathered = new ArrayList<>();
-                    int at = 0;
-                    while (at < items.size()) {
-                        at = setLoopNamesFillingWithNonePastTheEnd(
-                                locals, names, items, at, arguments.get(1));
-                        Value made = evaluator.evaluateOrRaise(bound, locals);
-                        if (!(made instanceof UnsetValue)) {
-                            gathered.add(made);
-                        }
-                    }
-                    return BlockValue.block(gathered);
-                });
-
-        define("forskip", List.of(
-                        Parameter.softQuoted("word"),
-                        Parameter.required("size",
-                                of(Datatype.INTEGER, Datatype.DECIMAL)),
-                        Parameter.required("body", of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> walkBySteps(
-                        evaluator,
-                        (WordValue) arguments.get(0),
-                        (int) Comparison.asDouble(arguments.get(1)),
-                        (BlockValue) arguments.get(2)));
-
-        define("forall", List.of(
-                        Parameter.softQuoted("word"),
-                        Parameter.required("body", of(Datatype.BLOCK))),
-                (arguments, evaluator, context) -> walkBySteps(
-                        evaluator,
-                        (WordValue) arguments.get(0),
-                        1,
-                        (BlockValue) arguments.get(1)));
-
-        define("continue", List.of(),
-                (arguments, evaluator, context) -> {
-                    throw ContinueSignal.instance();
-                });
-
-        define("break", List.of(Parameter.belongingTo("return", "value", ANYTHING)),
-                of("return"),
-                (arguments, evaluator, context, refinements) -> {
-                    throw refinements.contains("return") && !arguments.isEmpty()
-                            ? LoopSignal.breakingWith(arguments.getFirst())
-                            : LoopSignal.breaking();
-                });
+        register(new LoopNative());
+        register(new RepeatNative());
+        register(new WhileNative());
+        register(new UntilNative());
+        register(new ForeverNative());
+        register(new ForNative());
+        register(new ForEachNative());
+        register(new RemoveEachNative());
+        register(new MapEachNative());
+        register(new ForSkipNative());
+        register(new ForAllNative());
+        register(new ContinueNative());
+        register(new BreakNative());
     }
 
-    private static Value countedLoop(
-            Evaluator evaluator,
-            Context within,
-            WordValue counter,
-            BlockValue body,
-            java.util.function.LongFunction<Value> valueAt,
-            long passes) {
-
-        Context locals = Context.loopFrameOf(within);
-        locals.define(counter.spelling());
-        BlockValue bound = Binder.bind(body, locals);
-        Value last = NoneValue.none();
-        try {
-            for (long pass = 0; pass < passes; pass++) {
-                locals.set(counter.spelling(), valueAt.apply(pass));
-                last = oneRoundCatchingContinue(evaluator,bound, locals);
-            }
-        } catch (LoopSignal stopped) {
-            return stopped.answer();
-        }
-        return last;
-    }
-
-    private static Value repeatedOverGrid(
-            Evaluator evaluator, Context within, WordValue counter,
-            PairValue grid, BlockValue body) {
-
-        Context locals = Context.loopFrameOf(within);
-        locals.define(counter.spelling());
-        BlockValue bound = Binder.bind(body, locals);
-        long across = (long) grid.x();
-        long down = (long) grid.y();
-        Value last = NoneValue.none();
-        try {
-            for (long onDown = 1; onDown <= down; onDown++) {
-                for (long onAcross = 1; onAcross <= across; onAcross++) {
-                    locals.set(counter.spelling(), PairValue.of(onAcross, onDown));
-                    last = oneRoundCatchingContinue(evaluator,bound, locals);
-                }
-            }
-        } catch (LoopSignal stopped) {
-            return stopped.answer();
-        }
-        return last;
-    }
-
-    private static Value steppedLoop(
-            Evaluator evaluator,
-            Context within,
-            WordValue counter,
-            Value start,
-            Value end,
-            Value step,
-            BlockValue body) {
-
-        if (Comparison.asDouble(step) == 0.0) {
-            throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    "a for loop with a step of zero would never end");
-        }
-        rejectCharacterBound(start);
-        rejectCharacterBound(end);
-
-        Context locals = Context.loopFrameOf(within);
-        locals.define(counter.spelling());
-        BlockValue bound = Binder.bind(body, locals);
-
-        if (start instanceof RebolSeries series) {
-            return steppedOverSeries(evaluator, locals, counter, series, end, step, bound);
-        }
-        if (start instanceof IntegerValue(long magnitude2)
-                && end instanceof IntegerValue(long magnitude1)
-                && step instanceof IntegerValue(long magnitude)) {
-            return steppedOverWholeNumbers(evaluator, locals, counter,
-                    magnitude2, magnitude1, magnitude, bound);
-        }
-        return steppedOverRealNumbers(evaluator, locals, counter,
-                Comparison.asDouble(start), Comparison.asDouble(end),
-                Comparison.asDouble(step), bound);
-    }
-
-    private static Value steppedOverWholeNumbers(
-            Evaluator evaluator, Context locals, WordValue counter,
-            long from, long to, long stepBy, BlockValue body) {
-
-        Value last = NoneValue.none();
-        try {
-            long at = from;
-            while (stepBy > 0 ? at <= to : at >= to) {
-                locals.set(counter.spelling(), IntegerValue.of(at));
-                last = oneRoundCatchingContinue(evaluator,body, locals);
-                at = steppedOrOverflowed(at, stepBy);
-            }
-        } catch (LoopSignal stopped) {
-            return stopped.answer();
-        }
-        return last;
-    }
-
-    private static long steppedOrOverflowed(long at, long stepBy) {
-        try {
-            return Math.addExact(at, stepBy);
-        } catch (ArithmeticException overflowed) {
-            throw Raised.of(EvaluationFailure.OVERFLOW,
-                    "a for loop counter stepped past the integer range");
-        }
-    }
-
-    private static Value steppedOverRealNumbers(
-            Evaluator evaluator, Context locals, WordValue counter,
-            double from, double to, double stepBy, BlockValue body) {
-
-        Value last = NoneValue.none();
-        try {
-            for (double at = from; stepBy > 0 ? at <= to : at >= to; at += stepBy) {
-                locals.set(counter.spelling(), DecimalValue.of(at));
-                last = oneRoundCatchingContinue(evaluator,body, locals);
-            }
-        } catch (LoopSignal stopped) {
-            return stopped.answer();
-        }
-        return last;
-    }
-
-    private static Value steppedOverSeries(
-            Evaluator evaluator, Context locals, WordValue counter,
-            RebolSeries series, Value end, Value step, BlockValue body) {
-
-        int tail = series.storageLength() + 1;
-        int endIndex = end instanceof RebolSeries other
-                ? other.index()
-                : (int) Arithmetic.asMagnitude(end);
-        endIndex = Math.max(0, Math.min(endIndex, tail));
-        long stepBy = (long) Arithmetic.asMagnitude(step);
-        Value last = NoneValue.none();
-        try {
-            int at = series.index();
-            while (stepBy > 0 ? at <= endIndex : at >= endIndex) {
-                locals.set(counter.spelling(), series.atIndex(at));
-                last = oneRoundCatchingContinue(evaluator,body, locals);
-                int landedAt = locals.slotFor(counter.canonical()).value()
-                        instanceof RebolSeries moved ? moved.index() : at;
-                at = (int) (landedAt + stepBy);
-            }
-        } catch (LoopSignal stopped) {
-            return stopped.answer();
-        }
-        return last;
-    }
-
-    private static void rejectCharacterBound(Value bound) {
-        if (bound instanceof CharacterValue character) {
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "for does not step a character range, and " + character
-                            + " is a character");
-        }
-    }
-
-    private static Value forEachLoop(
-            Evaluator evaluator, Context within,
-            Value target, Value series, BlockValue body) {
-
-        List<WordValue> names = loopNamesIn(target, "foreach");
-        List<WordValue> taking = namesThatTakeAValue(names);
-        MapActions.refuseMoreNamesThanAPairHas(series, taking);
-        Supplier<List<Value>> itemsAsTheyStandNow =
-                () -> keysOnly(series, taking.size());
-
-        Context locals = Context.loopFrameOf(within);
-        names.forEach(name -> locals.define(name.spelling()));
-        BlockValue bound = Binder.bind(body, locals);
-        Value last = NoneValue.none();
-
-        try {
-            int at = 0;
-            List<Value> items = itemsAsTheyStandNow.get();
-            while (at < items.size()) {
-                at = setLoopNamesFillingWithNonePastTheEnd(
-                        locals, names, items, at, series);
-                last = oneRoundCatchingContinue(evaluator,bound, locals);
-                items = itemsAsTheyStandNow.get();
-            }
-        } catch (LoopSignal stopped) {
-            return stopped.answer();
-        }
-        return last;
-    }
-
-
-    private static List<WordValue> loopNamesIn(Value target, String nativeName) {
-        if (!(target instanceof BlockValue block)) {
-            if (target instanceof WordValue single) {
-                return List.of(single);
-            }
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    nativeName + " walks with a word or a block of words, not a "
-                            + target.datatype().literalSpelling());
-        }
-        if (block.lengthFromHere() == 0) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, block);
-        }
-        List<WordValue> names = new ArrayList<>(block.lengthFromHere());
-        for (Value item : block.remaining()) {
-            if (!(item instanceof WordValue name)) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        nativeName + " walks with words, and " + Molder.mold(item)
-                                + " is not one");
-            }
-            names.add(name);
-        }
-        return List.copyOf(names);
-    }
-
-    private static int setLoopNamesFillingWithNonePastTheEnd(
-            Context locals, List<WordValue> names, List<Value> items,
-            int at, Value walked) {
-
-        int reached = at;
-        for (WordValue name : names) {
-            if (name.datatype() == Datatype.SET_WORD) {
-                locals.set(name.spelling(), positionWithin(walked, reached));
-                continue;
-            }
-            locals.set(name.spelling(),
-                    reached < items.size() ? items.get(reached) : NoneValue.none());
-            reached++;
-        }
-        return reached == at ? at + 1 : reached;
-    }
-
-    private static Value positionWithin(Value walked, int reached) {
-        if (!(walked instanceof RebolSeries series)) {
-            return walked;
-        }
-        return series.atIndex(Math.min(
-                series.index() + reached, series.storageLength() + 1));
-    }
-
-    private static List<WordValue> namesThatTakeAValue(List<WordValue> names) {
-        return names.stream()
-                .filter(name -> name.datatype() != Datatype.SET_WORD)
-                .toList();
-    }
-
-    private static List<Value> keysOnly(Value series, int howManyNames) {
-        if (howManyNames != 1) {
-            return itemsOf(series);
-        }
-        return switch (series) {
-            case ObjectValue object -> object.context().slots().stream()
-                    .filter(slot -> !slot.canonical().equals("self"))
-                    .<Value>map(slot -> WordValue.of(slot.spelling()))
-                    .toList();
-            case MapValue map -> map.keys();
-            default -> itemsOf(series);
-        };
-    }
-
-    private static Value walkBySteps(
-            Evaluator evaluator, WordValue word, int step, BlockValue body) {
-
-        ContextSlot slot = word.boundSlot();
-        if (slot.value() instanceof NoneValue nothing) {
-            return nothing;
-        }
-        if (!(slot.value() instanceof RebolSeries start)) {
-            return raiseCannotUse(slot.value(), "forall");
-        }
-        if (step == 0) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "a step of zero would never reach the end");
-        }
-        Datatype walkingA = start.datatype();
-        if (step < 0 && start.index() > start.storageLength()) {
-            slot.setValue(start.atIndex(start.storageLength() + 1 + step));
-        }
-        Value last = NoneValue.none();
-        try {
-            while (slot.value() instanceof RebolSeries here
-                    && here.index() >= 1 && here.index() <= here.storageLength()) {
-                last = oneRoundCatchingContinue(evaluator,body, evaluator.systemContext());
-                if (!(slot.value() instanceof RebolSeries moved)
-                        || moved.datatype() != walkingA) {
-                    return raiseCannotUse(slot.value(), "forall");
-                }
-                if (!steppedOnwards(slot, moved, step)) {
-                    break;
-                }
-            }
-        } catch (LoopSignal stopped) {
-            return stopped.answer();
-        }
-        slot.setValue(start);
-        return last;
-    }
-
-    private static boolean steppedOnwards(
-            ContextSlot slot, RebolSeries moved, int step) {
-
-        int next = moved.index() + step;
-        if (next > moved.storageLength() && step < 0) {
-            next = moved.storageLength() + 1 + step;
-        }
-        if (next < 1 || next > moved.storageLength()) {
-            return false;
-        }
-        slot.setValue(moved.atIndex(next));
-        return true;
-    }
-
-    private static List<Value> fieldsAndValuesOf(Context fields) {
-        return fields.slots().stream()
-                .filter(slot -> !slot.canonical().equals("self"))
-                .<Value>mapMulti((slot, accept) -> {
-                    accept.accept(WordValue.of(slot.spelling()).boundTo(fields));
-                    accept.accept(slot.value());
-                })
-                .toList();
-    }
-
-    private static List<Value> itemsOf(Value series) {
-        return switch (series) {
-            case RebolSeries walkable -> armsOf(walkable).elementsOf(walkable);
-            case ObjectValue object -> fieldsAndValuesOf(object.context());
-            case PortValue port -> fieldsAndValuesOf(port.context());
-            case ModuleValue module -> fieldsAndValuesOf(module.context());
-            case MapValue map -> map.walkable();
-            default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    "cannot walk " + series.datatype().literalSpelling() + " value");
-        };
-    }
 
 
     private void registerReflection() {
@@ -2022,7 +1467,7 @@ public final class RebolNativeWords {
                         Parameter.belongingTo("in", "where", of(Datatype.BLOCK))),
                 of("in", "all"),
                 (arguments, evaluator, context, refinements) -> {
-                    requireChangeable(arguments.get(2));
+                    arguments.get(2).requireChangeable();
                     return Delect.read(
                             (ObjectValue) arguments.getFirst(),
                             (BlockValue) arguments.get(1),
@@ -2238,7 +1683,7 @@ public final class RebolNativeWords {
                         return arguments.get(2);
                     }
                     if (arguments.get(0) instanceof BitsetValue members) {
-                        requireChangeable(members);
+                        members.requireChangeable();
                         new BitsetActions(members).holdAllOf(
                                 arguments.get(1), arguments.get(2).isTruthy());
                         return members;
@@ -2586,7 +2031,7 @@ public final class RebolNativeWords {
                     if (found < 0) {
                         return NoneValue.none();
                     }
-                    List<Value> items = itemsOf(series.head());
+                    List<Value> items = series.head().items();
                     int end = searchEnd(series, items, limit);
                     int after = found - 1
                             + matchLength(series, arguments.get(1), refinements,
@@ -2647,22 +2092,6 @@ public final class RebolNativeWords {
         if (magnitude < 0 || magnitude > 255) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                     nativeName + " on a binary wanted a byte, not " + magnitude);
-        }
-    }
-
-    private static boolean theTruthInWhatALoopTests(Value tested) {
-        if (tested instanceof UnsetValue) {
-            throw Raised.of(EvaluationFailure.NO_RETURN);
-        }
-        return tested.isTruthy();
-    }
-
-    private static Value oneRoundCatchingContinue(
-            Evaluator evaluator, BlockValue body, Context where) {
-        try {
-            return evaluator.evaluateOrRaise(body, where);
-        } catch (ContinueSignal skipped) {
-            return NoneValue.none();
         }
     }
 
@@ -3164,11 +2593,11 @@ public final class RebolNativeWords {
                     if (!(arguments.getFirst() instanceof RebolSeries series)) {
                         return raiseCannotUse(arguments.getFirst(), "truncate");
                     }
-                    removeFrom(series, 1, series.index() - 1);
+                    Actions.of(series).orElseThrow().takeOutFrom(1, series.index() - 1);
                     RebolSeries kept = series.atIndex(1);
                     if (refinements.contains("part") && arguments.size() > 1) {
                         long wanted = ((IntegerValue) arguments.get(1)).magnitude();
-                        removeFrom(kept, (int) wanted + 1,
+                        Actions.of(kept).orElseThrow().takeOutFrom((int) wanted + 1,
                                 (int) (kept.lengthFromHere() - wanted));
                     }
                     return kept;
@@ -3326,7 +2755,7 @@ public final class RebolNativeWords {
                     return series.atIndex(refinements.contains("tail")
                             ? found + matchLength(
                                     series, arguments.get(1), refinements, found, wildcards,
-                                    searchEnd(series, itemsOf(series.head()), limit))
+                                    searchEnd(series, series.head().items(), limit))
                             : found);
                 });
 
@@ -3369,7 +2798,7 @@ public final class RebolNativeWords {
                         return map;
                     }
                     if (arguments.get(0) instanceof BitsetValue members) {
-                        requireChangeable(members);
+                        members.requireChangeable();
                         return new BitsetActions(members).removed(refinements,
                                 refinement -> argumentFor(refinement,
                                         List.of("part", "key"),
@@ -4098,7 +3527,7 @@ public final class RebolNativeWords {
 
         boolean lookingBehind = refinements.contains("reverse");
         boolean takingTheLast = refinements.contains("last");
-        List<Value> items = itemsOf(series.head());
+        List<Value> items = series.head().items();
         int here = series.index() - 1;
         int needleWidth = widthOfNeedle(series, wanted, refinements);
 
@@ -4223,7 +3652,7 @@ public final class RebolNativeWords {
 
     private static List<Value> itemsOfNeedle(RebolSeries series, Value wanted) {
         if (series instanceof BinaryValue && wanted instanceof BinaryValue bytes) {
-            return itemsOf(bytes);
+            return bytes.items();
         }
         if (series instanceof BinaryValue
                 && (wanted instanceof CharacterValue || wanted instanceof StringValue)) {
@@ -4281,7 +3710,7 @@ public final class RebolNativeWords {
         boolean backwards = stride < 0 || refinements.contains("reverse")
                 || refinements.contains("last");
         int width = Math.abs(stride);
-        List<Value> items = itemsOf(series.head());
+        List<Value> items = series.head().items();
         int from = backwards ? series.index() - 2 : series.index() - 1;
         int end = searchEnd(series, items, limit);
 
@@ -4471,8 +3900,8 @@ public final class RebolNativeWords {
             boolean mindingCase, boolean reversed, boolean wholeRecord,
             int howMany, Evaluator evaluator, boolean unstably) {
         int step = Math.max(1, stride);
-        List<Value> items = itemsOf(series).subList(
-                0, Math.min(howMany, itemsOf(series).size()));
+        List<Value> items = series.items().subList(
+                0, Math.min(howMany, series.items().size()));
         List<List<Value>> records = new ArrayList<>();
         Map<List<Value>, Integer> whereEachRecordBegan = new IdentityHashMap<>();
         for (int at = 0; at + step <= items.size(); at += step) {
@@ -4669,7 +4098,6 @@ public final class RebolNativeWords {
         return armsOf(series).takenSeveral(wanted);
     }
 
-    /** The series arms for a value, which every series datatype now has. */
     private static SeriesActions armsOf(RebolSeries series) {
         return (SeriesActions) Actions.of(series).orElseThrow();
     }
@@ -4780,9 +4208,6 @@ public final class RebolNativeWords {
         return offered.subList(0, (int) Math.min(wanted, offered.size()));
     }
 
-    private static void removeFrom(RebolSeries series, int oneBasedIndex, int howMany) {
-        armsOf(series).takeOutFrom(oneBasedIndex, howMany);
-    }
 
     private static double roundedHalfAway(double value) {
         return java.math.BigDecimal.valueOf(value)
@@ -5095,88 +4520,7 @@ public final class RebolNativeWords {
         return bytes;
     }
 
-    private static Value removedEachFromDecidingForwardsThenRewriting(
-            RebolSeries series, List<Value> arguments, Set<String> refinements,
-            Evaluator evaluator, Context within) {
 
-        refuseIfProtected(series);
-        Context locals = Context.loopFrameOf(within);
-        WordValue word = (WordValue) arguments.getFirst();
-        locals.define(word.spelling());
-        BlockValue body = Binder.bind((BlockValue) arguments.get(2), locals);
-        List<Value> kept = new ArrayList<>();
-        int taken = 0;
-        for (int at = series.index(); at <= series.storageLength(); at++) {
-            Value item = switch (series) {
-                case BinaryValue bytes -> IntegerValue.of(bytes.storage().at(at));
-                case VectorValue numbers -> numbers.elementAt(at);
-                default -> CharacterValue.of(((StringValue) series).storage().at(at));
-            };
-            locals.set(word.spelling(), item);
-            if (evaluator.evaluateOrRaise(body, locals).isTruthy()) {
-                taken++;
-            } else {
-                kept.add(item);
-            }
-        }
-        for (int at = series.storageLength(); at >= series.index(); at--) {
-            removeFrom(series, at, 1);
-        }
-        for (int at = 0; at < kept.size(); at++) {
-            insertOneInto(series, series.index() + at, kept.get(at));
-        }
-        return refinements.contains("count") ? IntegerValue.of(taken) : series;
-    }
-
-    private static void insertOneInto(RebolSeries series, int at, Value item) {
-        switch (series) {
-            case BinaryValue bytes ->
-                    bytes.storage().insertAt(at, (int) ((IntegerValue) item).magnitude());
-            case VectorValue numbers ->
-                    numbers.storage().insertAt(at, ((IntegerValue) item).magnitude());
-            case StringValue text ->
-                    text.storage().insertAt(at, ((CharacterValue) item).codepoint());
-            default -> throw Raised.of(EvaluationFailure.CANNOT_USE, "remove-each");
-        }
-    }
-
-    private static Value removedEachPairFrom(
-            MapValue map, List<Value> arguments, Set<String> refinements,
-            Evaluator evaluator, Context within) {
-
-        requireChangeable(map);
-        List<WordValue> names = loopNamesIn(arguments.getFirst(), "remove-each");
-        MapActions.refuseMoreNamesThanAPairHas(map, namesThatTakeAValue(names));
-        Context locals = Context.loopFrameOf(within);
-        names.forEach(name -> locals.define(name.spelling()));
-        BlockValue body = Binder.bind((BlockValue) arguments.get(2), locals);
-        List<Value> pairs = map.walkable();
-        List<Value> takeOut = new ArrayList<>();
-        for (int at = 0; at < pairs.size(); at += 2) {
-            setLoopNamesFillingWithNonePastTheEnd(locals, names, pairs, at, map);
-            if (evaluator.evaluateOrRaise(body, locals).isTruthy()) {
-                takeOut.add(pairs.get(at));
-            }
-        }
-        takeOut.forEach(map::remove);
-        return refinements.contains("count")
-                ? IntegerValue.of(takeOut.size())
-                : map;
-    }
-
-    private static void refuseIfProtected(RebolSeries series) {
-        boolean guarded = switch (series) {
-            case BlockValue block -> block.storage().isProtected();
-            case StringValue text -> text.storage().isProtected();
-            case BinaryValue bytes -> bytes.storage().isProtected();
-            case ImageValue image -> image.storage().isProtected();
-            case GobValue ignored -> false;
-            case VectorValue vector -> vector.storage().isProtected();
-        };
-        if (guarded) {
-            throw new org.jebol.domain.value.ProtectedFromChange();
-        }
-    }
 
     private static Value duplicated(
             Value value, List<Value> arguments, Set<String> refinements) {
@@ -5939,10 +5283,6 @@ public final class RebolNativeWords {
         }
     }
 
-    /**
-     * Reads /PART, /ONLY and /DUP once, so that the arm the action lands in
-     * is handed an answered question rather than the plumbing.
-     */
     private static Asked askedOf(
             Value subject, List<Value> arguments, Set<String> refinements,
             Evaluator evaluator, Context context) {
@@ -5953,20 +5293,6 @@ public final class RebolNativeWords {
                 evaluator, context);
     }
 
-    static void requireChangeable(Value series) {
-        boolean refused = switch (series) {
-            case BlockValue block -> block.storage().isProtected();
-            case StringValue text -> text.storage().isProtected();
-            case BinaryValue bytes -> bytes.storage().isProtected();
-            case MapValue map -> map.isProtected();
-            case BitsetValue members -> members.isProtected();
-            default -> false;
-        };
-        if (refused) {
-            throw Raised.of(EvaluationFailure.PROTECTED,
-                    series.datatype().literalSpelling() + " is protected");
-        }
-    }
 
     private static long countUpTo(RebolSeries series, Value howMuch) {
         if (howMuch instanceof IntegerValue count) {
@@ -6707,7 +6033,7 @@ public final class RebolNativeWords {
                 of("with"),
                 (arguments, evaluator, context, refinements) -> {
                     BinaryValue data = (BinaryValue) arguments.getFirst();
-                    refuseIfProtected(data);
+                    data.refuseChangeIfProtected();
                     byte[] octets = data.octetsFromHere();
                     if (!Encodings.cloak(decode, octets, keyBytesFor(
                             arguments.get(1), refinements.contains("with")))) {
@@ -7304,15 +6630,6 @@ public final class RebolNativeWords {
         }
     }
 
-    private static final Set<Datatype> WHAT_REPEAT_COUNTS_BY = whatRepeatCountsBy();
-
-    private static Set<Datatype> whatRepeatCountsBy() {
-        Set<Datatype> accepted = new java.util.HashSet<>(Typeset.NUMBER.members());
-        accepted.addAll(Typeset.SERIES.members());
-        accepted.add(Datatype.PAIR);
-        accepted.add(Datatype.NONE);
-        return copyOf(accepted);
-    }
 
     private static final Set<String> SCHEMES_THIS_BUILD_SERVES =
             of("console", "tcp", "dns", "event", "checksum", "file", "dir",
@@ -7387,7 +6704,7 @@ public final class RebolNativeWords {
                     DIALECT_OPTIONAL_ARGUMENTS, arguments, refinements, 1));
         }
         if (refinements.contains("write")) {
-            requireChangeable(arguments.getFirst());
+            arguments.getFirst().requireChangeable();
             writeThroughTheDialect(held,
                     dialectBlockIn(arguments, refinements, "write"),
                     item -> valueLookedUpThroughItsOwnBinding(
@@ -8110,7 +7427,7 @@ public final class RebolNativeWords {
                 || !(carried.held().orElse(null) instanceof StreamCipher cipher)) {
             throw Raised.of(EvaluationFailure.INVALID_HANDLE, held.typeName());
         }
-        requireChangeable(data);
+        data.requireChangeable();
         for (int at = data.index(); at <= data.storageLength(); at++) {
             data.storage().set(at, data.storage().at(at)
                     ^ cipher.nextKeystreamByteAdvancingThePermutation());

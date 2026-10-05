@@ -21,7 +21,7 @@ public final class MapActions implements Actions {
 
     @Override
     public Value cleared() {
-        RebolNativeWords.requireChangeable(pairs);
+        pairs.requireChangeable();
         pairs.clear();
         return pairs;
     }
@@ -42,7 +42,7 @@ public final class MapActions implements Actions {
     }
 
     Value givenTheBlockOfPairs(Asked asked, String nativeName) {
-        RebolNativeWords.requireChangeable(pairs);
+        pairs.requireChangeable();
         refuseWhatIsNotAWholeBlockOfPairs(
                 asked.given(), asked.refinementsAsked().contains("dup"), nativeName);
         return given(theWantedPairsOf((BlockValue) asked.given(), asked));

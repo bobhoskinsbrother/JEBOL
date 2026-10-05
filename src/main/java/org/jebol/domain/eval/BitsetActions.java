@@ -23,7 +23,7 @@ public final class BitsetActions implements Actions {
 
     @Override
     public Value cleared() {
-        RebolNativeWords.requireChangeable(members);
+        members.requireChangeable();
         members.clear();
         return members;
     }
@@ -49,7 +49,7 @@ public final class BitsetActions implements Actions {
     }
 
     private Value givenTheBitsOf(Asked asked) {
-        RebolNativeWords.requireChangeable(members);
+        members.requireChangeable();
         addAllOf(asked.given());
         return members;
     }

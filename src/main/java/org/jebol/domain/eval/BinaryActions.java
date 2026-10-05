@@ -27,15 +27,6 @@ public final class BinaryActions extends SeriesActions {
         bytes.storage().removeAt(oneBasedIndex);
     }
 
-    @Override
-    List<Value> elementsOf(RebolSeries from) {
-        BinaryValue octets = (BinaryValue) from;
-        List<Value> read = new ArrayList<>(octets.lengthFromHere());
-        for (int at = 0; at < octets.lengthFromHere(); at++) {
-            read.add(IntegerValue.of(octets.storage().at(octets.index() + at)));
-        }
-        return List.copyOf(read);
-    }
 
     @Override
     Value ofTheSameKindHolding(List<Value> items) {
