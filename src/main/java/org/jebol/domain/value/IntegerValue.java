@@ -2,6 +2,7 @@ package org.jebol.domain.value;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Optional;
 
 public record IntegerValue(long magnitude) implements Value, RebolNumber {
@@ -21,6 +22,18 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     @Override
     public byte[] asOctets() {
         return ByteBuffer.allocate(Long.BYTES).putLong(magnitude).array();
+    }
+
+    public byte[] asFewOctetsAsHoldIt() {
+        byte[] whole = asOctets();
+        if (magnitude < 0) {
+            return whole;
+        }
+        int from = 0;
+        while (from < Long.BYTES - 1 && whole[from] == 0) {
+            from++;
+        }
+        return Arrays.copyOfRange(whole, from, Long.BYTES);
     }
 
     @Override

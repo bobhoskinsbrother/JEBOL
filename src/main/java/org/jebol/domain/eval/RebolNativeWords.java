@@ -31,7 +31,9 @@ public final class RebolNativeWords {
     private final MapValue registeredStructLayouts = MapValue.empty();
     private final MakingAndConverting makingAndConverting =
             new MakingAndConverting(registeredStructLayouts);
-
+    private final Encodings encodings = new Encodings();
+    private final ChecksumPort checksumPort = new ChecksumPort(encodings);
+    private final Codecs codecs = new Codecs(encodings);
 
     public void forgetStartupState() {
         runState.set("last-error", NoneValue.none());
@@ -225,7 +227,7 @@ public final class RebolNativeWords {
                 WordValue.of("codec"))));
 
         catalog.set("checksums", BlockValue.block(
-                Encodings.checksumMethods().stream()
+                encodings.checksumMethods().stream()
                         .<Value>map(WordValue::of).toList()));
         catalog.set("compressions", BlockValue.block(
                 Encodings.COMPRESSIONS.stream()
@@ -599,9 +601,9 @@ public final class RebolNativeWords {
             case DecimalValue quantity -> Double.doubleToRawLongBits(quantity.quantity());
             case CharacterValue letter -> letter.codepoint();
             case StringValue text ->
-                    Encodings.checksumSeedOf(text.text().getBytes(StandardCharsets.UTF_8));
-            case BinaryValue bytes -> Encodings.checksumSeedOf(bytes.octetsFromHere());
-            case TupleValue tuple -> Encodings.checksumSeedOf(shownOctetsOf(tuple));
+                    encodings.checksumSeedOf(text.text().getBytes(StandardCharsets.UTF_8));
+            case BinaryValue bytes -> encodings.checksumSeedOf(bytes.octetsFromHere());
+            case TupleValue tuple -> encodings.checksumSeedOf(shownOctetsOf(tuple));
             case TimeValue span -> span.nanoseconds();
             case DateValue day -> seedPackedFrom(day);
             case PairValue point -> halvesSideBySide(point);
@@ -1452,7 +1454,7 @@ public final class RebolNativeWords {
 
     private static final int CODEC_HANDLE_IDENTITY = 1000;
 
-    private static Value ranCodec(HandleValue handle, WordValue action, Value data) {
+    private Value ranCodec(HandleValue handle, WordValue action, Value data) {
         if (!handle.typeName().equals("codec")) {
             throw Raised.of(EvaluationFailure.INVALID_HANDLE,
                     "a codec was wanted, not a " + handle.typeName() + " handle");
@@ -1475,7 +1477,7 @@ public final class RebolNativeWords {
                     "decoding takes a binary, not a "
                             + data.datatype().literalSpelling());
         }
-        Codecs.Answer answered = Codecs.run(
+        Codecs.Answer answered = codecs.run(
                 ((WordValue) handle.payload()).canonical(), asked, data);
         if (answered.error() != 0 && answered.kind() != Codecs.Answer.Kind.CHECK) {
             throw Raised.of(EvaluationFailure.BAD_MEDIA,
@@ -1490,402 +1492,19 @@ public final class RebolNativeWords {
 
 
     private void registerEncodings() {
-        define("enhex", List.of(
-                        Parameter.required("value", anyStringOr(Datatype.BINARY)),
-                        Parameter.belongingTo("escape", "char", of(Datatype.CHAR)),
-                        Parameter.belongingTo("except", "unescaped", of(Datatype.BITSET))),
-                of("escape", "except", "uri"),
-                (arguments, evaluator, context, refinements) -> {
-                    Value value = arguments.getFirst();
-                    char escape = escapeCharacterIn(arguments, refinements);
-                    java.util.function.IntPredicate keep = unescapedSetFor(
-                            value, arguments, refinements);
-                    byte[] encoded = Encodings.percentEncoded(
-                            value.asOctets(), keep, escape,
-                            refinements.contains("uri"));
-                    return value instanceof BinaryValue
-                            ? BinaryValue.ofBytes(encoded)
-                            : StringValue.of(
-                                    new String(encoded, StandardCharsets.UTF_8),
-                                    textDatatypeOf(value));
-                });
-
-        define("dehex", List.of(
-                        Parameter.required("value", anyStringOr(Datatype.BINARY)),
-                        Parameter.belongingTo("escape", "char", of(Datatype.CHAR))),
-                of("escape", "uri"),
-                (arguments, evaluator, context, refinements) -> {
-                    Value value = arguments.getFirst();
-                    byte[] decoded = Encodings.percentDecoded(
-                            textOf(value), escapeCharacterIn(arguments, refinements),
-                            refinements.contains("uri"));
-                    return value instanceof BinaryValue
-                            ? BinaryValue.ofBytes(decoded)
-                            : StringValue.of(
-                                    new String(decoded, StandardCharsets.UTF_8),
-                                    textDatatypeOf(value));
-                });
-
-        define("enbase", List.of(
-                        Parameter.required("value",
-                                anyStringOr(Datatype.BINARY, Datatype.INTEGER)),
-                        Parameter.required("base", of(Datatype.INTEGER)),
-                        Parameter.belongingTo("part", "limit",
-                                anyStringOr(Datatype.BINARY, Datatype.INTEGER))),
-                of("url", "part", "flat"),
-                (arguments, evaluator, context, refinements) -> {
-                    int base = (int) ((IntegerValue) arguments.get(1)).magnitude();
-                    requireAKnownBase(base);
-                    byte[] octets = arguments.getFirst() instanceof IntegerValue(long magnitude)
-                            ? boundedByAnyPart(asFewBytesAsHoldIt(magnitude),
-                                    arguments, refinements)
-                            : theUnitsAskedFor(
-                                    arguments.getFirst(), arguments, refinements);
-                    String encoded;
-                    try {
-                        encoded = Encodings.enbase(
-                                octets, base, refinements.contains("url"));
-                    } catch (ArithmeticException tooWideForANumber) {
-                        throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                                arguments.getFirst());
-                    }
-                    return StringValue.of(refinements.contains("flat")
-                            ? encoded
-                            : Encodings.brokenIntoLines(encoded, base, octets.length));
-                });
-
-        define("debase", List.of(
-                        Parameter.required("value", anyStringOr(Datatype.BINARY)),
-                        Parameter.required("base", of(Datatype.INTEGER)),
-                        Parameter.belongingTo("part", "limit",
-                                anyStringOr(Datatype.BINARY, Datatype.INTEGER))),
-                of("url", "part"),
-                (arguments, evaluator, context, refinements) -> {
-                    int base = (int) ((IntegerValue) arguments.get(1)).magnitude();
-                    requireAKnownBase(base);
-                    try {
-                        return BinaryValue.ofBytes(Encodings.debase(
-                                boundedTextByAnyPart(
-                                        textOf(arguments.getFirst()),
-                                        arguments, refinements),
-                                base, refinements.contains("url")));
-                    } catch (IllegalArgumentException malformed) {
-                        throw Raised.of(EvaluationFailure.INVALID_DATA,
-                                malformed.getMessage());
-                    }
-                });
-
-        define("checksum", List.of(
-                        Parameter.required("data", CHECKSUMMABLE),
-                        Parameter.required("method", of(Datatype.WORD)),
-                        Parameter.belongingTo("with", "spec",
-                                anyStringOr(Datatype.BINARY, Datatype.INTEGER)),
-                        Parameter.belongingTo("part", "length", PART_LIMIT)),
-                of("with", "part"),
-                (arguments, evaluator, context, refinements) -> {
-                    String method = ((WordValue) arguments.get(1)).canonical();
-                    if (arguments.getFirst().datatype() == Datatype.FILE) {
-                        return theContentsOfThatFileSummed(
-                                arguments.getFirst(), method, evaluator, refinements);
-                    }
-                    byte[] octets = partOfOctets(arguments.getFirst(),
-                            arguments.getFirst().asOctets(), arguments, refinements, 2);
-                    Value spec = refinements.contains("with")
-                            ? argumentFor("with", List.of("with", "part"),
-                                    arguments, refinements, 2)
-                            : null;
-                    if (Encodings.DIGESTS.containsKey(method)) {
-                        if (spec instanceof IntegerValue) {
-                            throw Raised.of(EvaluationFailure.BAD_REFINE, spec);
-                        }
-                        return BinaryValue.ofBytes(spec == null
-                                ? Encodings.digestOf(octets, method)
-                                : Encodings.keyedDigestOf(octets, method, spec.asOctets()));
-                    }
-                    if (Encodings.CYCLIC.contains(method)) {
-                        if (spec != null) {
-                            throw Raised.of(EvaluationFailure.BAD_REFINES);
-                        }
-                        return IntegerValue.of(Encodings.cyclicOf(octets, method));
-                    }
-                    if (HASH_INTO_A_TABLE.equals(method)) {
-                        return IntegerValue.of(hashedIntoATable(
-                                arguments.getFirst(), spec));
-                    }
-                    throw Raised.of(EvaluationFailure.INVALID_ARG, method);
-                });
-
-        define("compress", List.of(
-                        Parameter.required("data", COMPRESSIBLE),
-                        Parameter.required("method", of(Datatype.WORD)),
-                        Parameter.belongingTo("part", "length", PART_LIMIT),
-                        Parameter.belongingTo("level", "lvl", of(Datatype.INTEGER))),
-                of("part", "level"),
-                (arguments, evaluator, context, refinements) -> {
-                    String method = requireAKnownCompression(arguments.get(1));
-                    Value level = refinements.contains("level")
-                            ? argumentFor("level", List.of("part", "level"),
-                                    arguments, refinements, 2)
-                            : null;
-                    return BinaryValue.ofBytes(Encodings.compressed(
-                            partOfOctets(arguments.getFirst(),
-                                    arguments.getFirst().asOctets(),
-                                    arguments, refinements, 2),
-                            method,
-                            level instanceof IntegerValue(long magnitude)
-                                    ? (int) magnitude
-                                    : java.util.zip.Deflater.DEFAULT_COMPRESSION));
-                });
-
-        define("decompress", List.of(
-                        Parameter.required("data", of(Datatype.BINARY)),
-                        Parameter.required("method", of(Datatype.WORD)),
-                        Parameter.belongingTo("part", "length", COUNT_OR_POSITION),
-                        Parameter.belongingTo("size", "bytes", of(Datatype.INTEGER))),
-                of("part", "size"),
-                (arguments, evaluator, context, refinements) -> {
-                    String method = requireAKnownCompression(arguments.get(1));
-                    try {
-                        Value wanted = refinements.contains("size")
-                                ? argumentFor("size", List.of("part", "size"),
-                                        arguments, refinements, 2)
-                                : null;
-                        return BinaryValue.ofBytes(Encodings.decompressed(
-                                partOfOctets(arguments.getFirst(),
-                                        arguments.getFirst().asOctets(),
-                                        arguments, refinements, 2),
-                                method,
-                                wanted instanceof IntegerValue(long magnitude)
-                                        ? (int) magnitude
-                                        : 0));
-                    } catch (IllegalArgumentException notCompressed) {
-                        throw Raised.of(EvaluationFailure.BAD_PRESS,
-                                notCompressed.getMessage());
-                    }
-                });
-
-        defineCloak("encloak", false);
-        defineCloak("decloak", true);
-
-        define("iconv", List.of(
-                        Parameter.required("data", of(Datatype.BINARY)),
-                        Parameter.required("codepage", characterSetNames()),
-                        Parameter.belongingTo("to", "target", characterSetNames())),
-                of("to"),
-                (arguments, evaluator, context, refinements) -> {
-                    byte[] octets = ((BinaryValue) arguments.getFirst()).octetsFromHere();
-                    Charset from = characterSetFor(arguments.get(1));
-                    String text = Encodings.textDecodedAs(octets, from);
-                    if (!refinements.contains("to")) {
-                        return StringValue.of(text);
-                    }
-                    Value target = argumentFor("to", List.of("to"),
-                            arguments, refinements, 2);
-                    Charset into = characterSetFor(target);
-                    return java.nio.charset.StandardCharsets.UTF_8.equals(into)
-                            ? StringValue.of(text)
-                            : BinaryValue.ofBytes(text.getBytes(into));
-                });
-
-        define("filter", List.of(
-                        Parameter.required("data", of(Datatype.BINARY)),
-                        Parameter.required("width", Typeset.NUMBER.members()),
-                        Parameter.required("type",
-                                of(Datatype.INTEGER, Datatype.WORD)),
-                        Parameter.belongingTo("skip", "bpp", of(Datatype.INTEGER))),
-                of("skip"),
-                (arguments, evaluator, context, refinements) -> {
-                    byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
-                    int width = (int) Comparison.asDouble(arguments.get(1));
-                    int bpp = bytesPerPixelIn(arguments, refinements, 3);
-                    requirePngGeometry(width, bpp, data.length);
-                    return BinaryValue.ofBytes(Encodings.pngFiltered(
-                            data, width, pngFilterNamedBy(arguments.get(2)), bpp));
-                });
-
-        define("unfilter", List.of(
-                        Parameter.required("data", of(Datatype.BINARY)),
-                        Parameter.required("width", Typeset.NUMBER.members()),
-                        Parameter.belongingTo("as", "type",
-                                of(Datatype.INTEGER, Datatype.WORD)),
-                        Parameter.belongingTo("skip", "bpp", of(Datatype.INTEGER))),
-                of("as", "skip"),
-                (arguments, evaluator, context, refinements) -> {
-                    byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
-                    int width = (int) Comparison.asDouble(arguments.get(1));
-                    boolean filterGiven = refinements.contains("as");
-                    int bpp = bytesPerPixelIn(arguments, refinements, 2);
-                    requirePngGeometry(filterGiven ? width : width + 1, bpp, data.length);
-                    int filter = -1;
-                    if (filterGiven) {
-                        filter = pngFilterNamedBy(argumentFor("as",
-                                List.of("as", "skip"), arguments, refinements, 2));
-                    }
-                    return BinaryValue.ofBytes(Encodings.pngUnfiltered(
-                            data, width, filter, bpp));
-                });
-
-        define("swap-endian", List.of(
-                        Parameter.required("value", of(Datatype.BINARY)),
-                        Parameter.belongingTo("width", "bytes", of(Datatype.INTEGER)),
-                        Parameter.belongingTo("part", "range", COUNT_OR_POSITION)),
-                of("width", "part"),
-                (arguments, evaluator, context, refinements) -> {
-                    BinaryValue bytes = (BinaryValue) arguments.getFirst();
-                    Value asked = refinements.contains("width")
-                            ? argumentFor("width", List.of("width", "part"),
-                                    arguments, refinements, 1)
-                            : null;
-                    int width = asked instanceof IntegerValue(long magnitude)
-                            ? (int) magnitude
-                            : 2;
-                    byte[] octets = bytes.octetsFromHere();
-                    int reach = refinements.contains("part")
-                            ? (int) Math.max(0, Math.min(octets.length, bytes.countUpTo(
-                                    argumentFor("part", List.of("width", "part"),
-                                            arguments, refinements, 1))))
-                            : octets.length;
-                    try {
-                        Encodings.swapEndian(octets, reach - reach % width, width);
-                    } catch (IllegalArgumentException badWidth) {
-                        throw Raised.of(EvaluationFailure.INVALID_ARG,
-                                "swap-endian takes a width of 2, 4 or 8");
-                    }
-                    for (int at = 0; at < octets.length; at++) {
-                        bytes.storage().set(bytes.index() + at, octets[at] & 0xFF);
-                    }
-                    return bytes;
-                });
-    }
-
-    private void defineCloak(String name, boolean decode) {
-        define(name, List.of(
-                        Parameter.required("data", of(Datatype.BINARY)),
-                        Parameter.required("key", of(Datatype.STRING,
-                                Datatype.BINARY, Datatype.INTEGER))),
-                of("with"),
-                (arguments, evaluator, context, refinements) -> {
-                    BinaryValue data = (BinaryValue) arguments.getFirst();
-                    data.refuseChangeIfProtected();
-                    byte[] octets = data.octetsFromHere();
-                    if (!Encodings.cloak(decode, octets, keyBytesFor(
-                            arguments.get(1), refinements.contains("with")))) {
-                        throw Raised.of(EvaluationFailure.INVALID_ARG,
-                                name + " needs a key with bytes in it");
-                    }
-                    for (int at = 0; at < octets.length; at++) {
-                        data.storage().set(data.index() + at, octets[at] & 0xFF);
-                    }
-                    return data;
-                });
-    }
-
-    private static byte[] keyBytesFor(Value key, boolean asItStands) {
-        if (key instanceof IntegerValue(long magnitude)) {
-            return Encodings.hashedKey(Long.toString(magnitude)
-                    .getBytes(StandardCharsets.UTF_8));
-        }
-        byte[] bytes = key instanceof BinaryValue octets
-                ? octets.octetsFromHere()
-                : ((StringValue) key).text().getBytes(StandardCharsets.UTF_8);
-        return asItStands ? bytes : Encodings.hashedKey(bytes);
-    }
-
-    private static Set<Datatype> characterSetNames() {
-        return of(Datatype.WORD, Datatype.INTEGER, Datatype.TAG, Datatype.STRING);
-    }
-
-    private static Charset characterSetFor(Value asked) {
-        String spelling = switch (asked) {
-            case WordValue word -> word.canonical();
-            case StringValue text -> text.text();
-            default -> Molder.form(asked);
-        };
-        Charset found = Encodings.charsetNamed(spelling);
-        if (found == null) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, spelling);
-        }
-        return found;
-    }
-
-    private static int pngFilterNamedBy(Value asked) {
-        if (asked instanceof IntegerValue(long magnitude)) {
-            int which = (int) magnitude;
-            if (which < 0 || which >= Encodings.PNG_FILTERS.size()) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG, "filter type");
-            }
-            return which;
-        }
-        int found = Encodings.PNG_FILTERS.indexOf(((WordValue) asked).canonical());
-        if (found < 0) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    ((WordValue) asked).spelling());
-        }
-        return found;
-    }
-
-    private static int bytesPerPixelIn(
-            List<Value> arguments, Set<String> refinements, int where) {
-
-        Value asked = refinements.contains("skip")
-                ? argumentFor("skip", List.of("as", "skip"),
-                        arguments, refinements, where)
-                : null;
-        return asked instanceof IntegerValue(long magnitude) ? (int) magnitude : 1;
-    }
-
-    private static void requirePngGeometry(int width, int bytesPerPixel, int length) {
-        if (width <= 1 || width > length) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, "width " + width);
-        }
-        if (bytesPerPixel < 1 || bytesPerPixel > width) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "bytes per pixel " + bytesPerPixel);
-        }
-    }
-
-    private static void requireAKnownBase(int base) {
-        if (!Encodings.BASES.contains(base)) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        "base " + base + " is not 2, 16, 36, 64 or 85");
-        }
-    }
-
-    private static String requireAKnownCompression(Value method) {
-        String asked = ((WordValue) method).canonical();
-        if (Encodings.COMPRESSIONS_ELSEWHERE.contains(asked)) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA, asked);
-        }
-        if (!Encodings.COMPRESSIONS.contains(asked)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
-        }
-        return asked;
-    }
-
-    private static char escapeCharacterIn(
-            List<Value> arguments, Set<String> refinements) {
-        Value asked = refinements.contains("escape")
-                ? argumentFor("escape", List.of("escape", "except"),
-                        arguments, refinements, 1)
-                : null;
-        return asked instanceof CharacterValue(int codepoint)
-                ? (char) codepoint
-                : '%';
-    }
-
-    private static java.util.function.IntPredicate unescapedSetFor(
-            Value value, List<Value> arguments, Set<String> refinements) {
-
-        if (refinements.contains("except")) {
-            Value asked = argumentFor("except", List.of("escape", "except"),
-                    arguments, refinements, 1);
-            if (asked instanceof BitsetValue members) {
-                return octet -> Encodings.setHolds(members, octet);
-            }
-        }
-        return value.datatype() == Datatype.FILE || value.datatype() == Datatype.URL
-                ? Encodings::uriKeeps
-                : Encodings::uriComponentKeeps;
+        register(new EnhexNative(encodings));
+        register(new DehexNative(encodings));
+        register(new EnbaseNative(encodings));
+        register(new DebaseNative(encodings));
+        register(new ChecksumNative(encodings));
+        register(new CompressNative(encodings));
+        register(new DecompressNative(encodings));
+        register(new EncloakNative(encodings));
+        register(new DecloakNative(encodings));
+        register(new IconvNative(encodings));
+        register(new FilterNative(encodings));
+        register(new UnfilterNative(encodings));
+        register(new SwapEndianNative(encodings));
     }
 
 
@@ -1893,67 +1512,6 @@ public final class RebolNativeWords {
         return asked instanceof WordValue word
                 ? word.spelling()
                 : ((StringValue) asked).text();
-    }
-
-    private static String textOf(Value value) {
-        return switch (value) {
-            case BinaryValue bytes ->
-                    new String(bytes.octetsFromHere(), StandardCharsets.UTF_8);
-            case StringValue written -> written.text();
-            default -> Molder.form(value);
-        };
-    }
-
-    private static Datatype textDatatypeOf(Value value) {
-        return value.datatype().isAnyString() ? value.datatype() : Datatype.STRING;
-    }
-
-    private static byte[] partOfOctets(
-            Value source, byte[] octets, List<Value> arguments,
-            Set<String> refinements, int where) {
-
-        return howManyWanted(source, arguments, refinements, where)
-                .map(count -> count < 0
-                        ? theOctetsBehind(source, octets, -count)
-                        : Arrays.copyOf(octets,
-                                (int) Math.min(count, octets.length)))
-                .orElse(octets);
-    }
-
-    private static byte[] theOctetsBehind(Value source, byte[] octets, long count) {
-        if (!(source instanceof RebolSeries positioned)) {
-            return new byte[0];
-        }
-        int landsOn = (int) Math.max(1, positioned.index() - count);
-        byte[] fromThere = positioned.atIndex(landsOn).asOctets();
-        return Arrays.copyOf(fromThere, fromThere.length - octets.length);
-    }
-
-    private static final String HASH_INTO_A_TABLE = "hash";
-
-    private static long hashedIntoATable(Value value, Value size) {
-        if (size == null) {
-            throw Raised.of(EvaluationFailure.MISSING_ARG);
-        }
-        if (!(size instanceof IntegerValue(long magnitude))) {
-            throw Raised.of(EvaluationFailure.BAD_REFINE, size);
-        }
-        long slots = Math.max(1, magnitude) & 0xFFFFFFFFL;
-        long hash = Integer.toUnsignedLong(hashOfValue(value));
-        return slots == 0 ? hash : hash % slots;
-    }
-
-    private static int hashOfValue(Value value) {
-        return value instanceof BinaryValue bytes
-                ? Encodings.murmurOf(bytes.octetsFromHere())
-                : Encodings.caseFoldedHashOf(value.asOctets())
-                        ^ value.datatype().ordinal();
-    }
-
-    private static Set<Datatype> anyStringOr(Datatype... alsoAccepted) {
-        Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_STRING.members());
-        accepted.addAll(List.of(alsoAccepted));
-        return copyOf(accepted);
     }
 
     private void registerInterpreterState() {
@@ -2351,21 +1909,6 @@ public final class RebolNativeWords {
     }
 
 
-    private static byte[] asFewBytesAsHoldIt(long number) {
-        byte[] whole = new byte[Long.BYTES];
-        for (int at = 0; at < Long.BYTES; at++) {
-            whole[at] = (byte) (number >> (Long.BYTES - 1 - at) * 8);
-        }
-        if (number < 0) {
-            return whole;
-        }
-        int from = 0;
-        while (from < Long.BYTES - 1 && whole[from] == 0) {
-            from++;
-        }
-        return Arrays.copyOfRange(whole, from, Long.BYTES);
-    }
-
     private static String moldedWithin(Value value, int width) {
         String written = Molder.mold(value);
         return written.length() <= width ? written : written.substring(0, width);
@@ -2581,92 +2124,6 @@ public final class RebolNativeWords {
                 java.util.Optional.of(offsetMinutes));
     }
 
-
-    private static Optional<Long> howManyWanted(
-            Value source, List<Value> arguments, Set<String> refinements, int where) {
-        Value count = argumentFor(
-                "part", List.of("part", "dup"), arguments, refinements, where);
-        if (count instanceof IntegerValue(long magnitude)) {
-            if (magnitude > Integer.MAX_VALUE || magnitude < Integer.MIN_VALUE) {
-                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Long.toString(magnitude));
-            }
-            return Optional.of(magnitude);
-        }
-        if (count instanceof DecimalValue fraction
-                && fraction.datatype() != Datatype.PERCENT) {
-            return Optional.of((long) Comparison.asDouble(fraction));
-        }
-        if (count instanceof DecimalValue || count instanceof PairValue) {
-            throw Raised.of(EvaluationFailure.INVALID_PART, Molder.mold(count));
-        }
-        if (count instanceof RebolSeries upTo) {
-            if (!(source instanceof RebolSeries from)
-                    || from.datatype() != upTo.datatype()
-                    || !from.sharesStorageWith(upTo)) {
-                throw Raised.of(EvaluationFailure.INVALID_PART, "part");
-            }
-            return Optional.of((long) (upTo.index() - from.index()));
-        }
-        return Optional.empty();
-    }
-
-    private static byte[] boundedByAnyPart(
-            byte[] octets, List<Value> arguments, Set<String> refinements) {
-        return howManyWanted(arguments.getFirst(), arguments, refinements, 2)
-                .map(count -> Arrays.copyOf(octets,
-                        (int) Math.max(0, Math.min(count, octets.length))))
-                .orElse(octets);
-    }
-
-    private static byte[] theUnitsAskedFor(
-            Value value, List<Value> arguments, Set<String> refinements) {
-
-        Optional<Long> asked = howManyWanted(value, arguments, refinements, 2);
-        if (asked.isPresent() && asked.get() < 0) {
-            return theUnitsBehind(value, -asked.get());
-        }
-        int howMany = asked.map(count -> (int) Math.max(0, count))
-                .orElse(SeriesContents.EVERY_ONE);
-        return toBytes(SeriesContents.octetsContributedBy(value, howMany));
-    }
-
-    private static byte[] theUnitsBehind(Value value, long count) {
-        if (!(value instanceof RebolSeries positioned)) {
-            return new byte[0];
-        }
-        int reachedBack = (int) Math.min(count, positioned.index() - 1);
-        return toBytes(SeriesContents.octetsContributedBy(
-                positioned.atIndex(positioned.index() - reachedBack), reachedBack));
-    }
-
-    private static byte[] toBytes(int[] octets) {
-        byte[] bytes = new byte[octets.length];
-        for (int at = 0; at < octets.length; at++) {
-            bytes[at] = (byte) octets[at];
-        }
-        return bytes;
-    }
-
-    private static String boundedTextByAnyPart(
-            String text, List<Value> arguments, Set<String> refinements) {
-        Optional<Long> asked =
-                howManyWanted(arguments.getFirst(), arguments, refinements, 2);
-        if (asked.isPresent() && asked.get() < 0) {
-            return theTextBehind(arguments.getFirst(), -asked.get());
-        }
-        return asked.map(count -> text.substring(0,
-                        (int) Math.max(0, Math.min(count, text.length()))))
-                .orElse(text);
-    }
-
-    private static String theTextBehind(Value value, long count) {
-        if (!(value instanceof RebolSeries positioned)) {
-            return "";
-        }
-        int reachedBack = (int) Math.min(count, positioned.index() - 1);
-        String whole = textOf(positioned.atIndex(positioned.index() - reachedBack));
-        return whole.substring(0, Math.min(reachedBack, whole.length()));
-    }
 
     private static boolean isExactlyAString(Value value) {
         return value instanceof StringValue && value.datatype() == Datatype.STRING;
@@ -2988,8 +2445,8 @@ public final class RebolNativeWords {
                         startTheCipherBehindBlankingTheKeyInTheSpec(port);
                     }
                     if (port.schemeName().equals("checksum")) {
-                        ChecksumPort.startEvenOnAnAlreadyOpenPort(
-                                port, ChecksumPort.methodOf(port));
+                        checksumPort.startEvenOnAnAlreadyOpenPort(
+                                port, checksumPort.methodOf(port));
                     }
                     if (port.isAFile()) {
                         openTheFileBehind(port, evaluator, refinements);
@@ -3008,7 +2465,7 @@ public final class RebolNativeWords {
                     }
                     PortValue port = (PortValue) arguments.getFirst();
                     if (port.schemeName().equals("checksum")) {
-                        ChecksumPort.digestSoFarLeftInTheDataFieldAsWell(port);
+                        checksumPort.digestSoFarLeftInTheDataFieldAsWell(port);
                         return port;
                     }
                     if (port.schemeName().equals("crypt")) {
@@ -3054,7 +2511,7 @@ public final class RebolNativeWords {
                     handBackTheConnectionBehind(port);
                     port.markOpen(false);
                     if (port.schemeName().equals("checksum")) {
-                        ChecksumPort.stop(port);
+                        checksumPort.stop(port);
                     }
                     return port;
                 });
@@ -3580,7 +3037,7 @@ public final class RebolNativeWords {
             case "udp" -> oneDatagramReadInto(port, evaluator);
             case "dns" -> addressesOfTheNameThePortNames(port, evaluator);
             case "checksum" ->
-                    ChecksumPort.digestSoFarLeftInTheDataFieldAsWell(port);
+                    checksumPort.digestSoFarLeftInTheDataFieldAsWell(port);
             case "crypt" -> {
                 CryptPort.refuseWhenClosed(port);
                 yield CryptPort.read(port);
@@ -3653,47 +3110,12 @@ public final class RebolNativeWords {
     }
 
 
-    private static final Set<Datatype> PART_LIMIT = java.util.stream.Stream.concat(
-            Typeset.NUMBER.membersAnd(Datatype.PAIR).stream(),
-            Arrays.stream(Datatype.values()).filter(Datatype::isSeries))
-            .collect(java.util.stream.Collectors.toUnmodifiableSet());
-
-    private static final Set<Datatype> COUNT_OR_POSITION = PART_LIMIT.stream()
-            .filter(accepted -> accepted != Datatype.PAIR)
-            .collect(java.util.stream.Collectors.toUnmodifiableSet());
-
-    private static final Set<Datatype> CHECKSUMMABLE =
-            of(Datatype.BINARY, Datatype.STRING, Datatype.FILE);
-
-    private static final Set<Datatype> COMPRESSIBLE =
-            of(Datatype.BINARY, Datatype.STRING);
-
-
     private static Value libraryFunction(Context context, String name) {
         if (!context.knows(name)) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
         }
         return context.slotFor(name).value();
     }
-
-    private static Value theContentsOfThatFileSummed(
-            Value file, String method, Evaluator evaluator, Set<String> refinements) {
-
-        if (!Encodings.DIGESTS.containsKey(method)) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA);
-        }
-        if (refinements.contains("part") || refinements.contains("with")) {
-            throw Raised.of(EvaluationFailure.BAD_REFINES);
-        }
-        Context library = evaluator.systemContext();
-        if (!library.knows(FILE_CHECKSUM)) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA);
-        }
-        return evaluator.applyFunction(library.slotFor(FILE_CHECKSUM).value(),
-                List.of(file, WordValue.of(method)));
-    }
-
-    private static final String FILE_CHECKSUM = "file-checksum";
 
 
     private static String oneSlashPerRunOfSeparators(String path) {
@@ -3859,8 +3281,8 @@ public final class RebolNativeWords {
         requireServiceForScheme(port.schemeName());
         port.markOpen(true);
         if (port.schemeName().equals("checksum")) {
-            ChecksumPort.startEvenOnAnAlreadyOpenPort(
-                    port, ChecksumPort.methodOf(port));
+            checksumPort.startEvenOnAnAlreadyOpenPort(
+                    port, checksumPort.methodOf(port));
         }
         return port;
     }
@@ -3968,31 +3390,32 @@ public final class RebolNativeWords {
         }
         if (!port.isOpen()) {
             port.markOpen(true);
-            ChecksumPort.startEvenOnAnAlreadyOpenPort(
-                    port, ChecksumPort.methodOf(port));
+            checksumPort.startEvenOnAnAlreadyOpenPort(
+                    port, checksumPort.methodOf(port));
         }
         RebolSeries written = (RebolSeries) data;
-        ChecksumPort.add(port,
-                written.head().asOctets(),
-                written.index() - 1,
-                wholeNumberAsked("seek", arguments, refinements),
-                wholeNumberAsked("part", arguments, refinements));
+        byte[] whole = written.head().asOctets();
+        long from = checksumPort.seekedFrom(whole, written.index() - 1,
+                wholeNumberAsked("seek", arguments, refinements).orElse(0L));
+        wholeNumberAsked("part", arguments, refinements).ifPresentOrElse(
+                wanted -> checksumPort.addPart(port, whole, from, wanted),
+                () -> checksumPort.add(port, whole, from));
         return port;
     }
 
     private static final List<String> WRITE_OPTIONAL_ARGUMENTS =
             List.of("part", "seek", "allow");
 
-    private static Long wholeNumberAsked(
+    private Optional<Long> wholeNumberAsked(
             String refinement, List<Value> arguments, Set<String> refinements) {
         if (!refinements.contains(refinement)) {
-            return null;
+            return Optional.empty();
         }
         Value asked = argumentFor(refinement, WRITE_OPTIONAL_ARGUMENTS,
                 arguments, refinements, 2);
         return Comparison.isNumeric(asked)
-                ? (long) Comparison.asDouble(asked)
-                : null;
+                ? Optional.of((long) Comparison.asDouble(asked))
+                : Optional.empty();
     }
 
     private Value writtenToTheConsole(

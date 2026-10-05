@@ -9,13 +9,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PngFilterFromTheSourceTest {
 
-    private static String answerTo(String source) {
+    private String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private String errorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -61,9 +61,15 @@ class PngFilterFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a filter of NONE leaves the bytes as they are")
-        void noneChangesNothing() {
-            assertThat(answerTo("filter #{0A141E28} 4 'none")).isEqualTo("#{0A141E28}");
+        @DisplayName("NONE is not one of the words")
+        void noneIsNotAFilterWord() {
+            assertThat(errorIdFrom("filter #{0A141E28} 4 'none")).isEqualTo("invalid-arg");
+        }
+
+        @Test
+        @DisplayName("a type of zero writes nothing, so the cleared output stays zero")
+        void zeroWritesNothing() {
+            assertThat(answerTo("filter #{0A141E28} 4 0")).isEqualTo("#{00000000}");
         }
 
         @Test
@@ -80,9 +86,9 @@ class PngFilterFromTheSourceTest {
     class Reversible {
 
         @Test
-        @DisplayName("/AS names the type on the way back, for all five")
-        void allFiveReverse() {
-            for (String kind : new String[] {"'none", "'sub", "'up", "'average", "'paeth"}) {
+        @DisplayName("/AS names the type on the way back, for all four")
+        void allFourReverse() {
+            for (String kind : new String[] {"'sub", "'up", "'average", "'paeth"}) {
                 assertThat(answerTo(
                         "b: #{0A141E28 0B151F29 00FF00FF} "
                         + "b = unfilter/as (filter b 4 " + kind + ") 4 " + kind))
@@ -112,15 +118,22 @@ class PngFilterFromTheSourceTest {
         @Test
         @DisplayName("the leading byte of each line names that line's filter")
         void theLeadingByteNamesIt() {
-            assertThat(answerTo("unfilter #{00 0A14 00 0B16} 2"))
+            assertThat(answerTo("unfilter #{01 0A0A 01 0B0B} 2"))
                     .isEqualTo("#{0A140B16}");
         }
 
         @Test
         @DisplayName("a leading 2 means UP, and undoes an UP-filtered line")
         void aLeadingTwoMeansUp() {
-            assertThat(answerTo("unfilter #{00 0A14 02 0102} 2"))
+            assertThat(answerTo("unfilter #{01 0A0A 02 0102} 2"))
                     .isEqualTo("#{0A140B16}");
+        }
+
+        @Test
+        @DisplayName("a leading 0 writes nothing for its line, and UP then reads zeros above")
+        void aLeadingZeroWritesNothing() {
+            assertThat(answerTo("unfilter #{00 0A14 00 0B16} 2")).isEqualTo("#{00000000}");
+            assertThat(answerTo("unfilter #{00 0A14 02 0102} 2")).isEqualTo("#{00000102}");
         }
 
         @Test
@@ -128,7 +141,7 @@ class PngFilterFromTheSourceTest {
         void theWidthExcludesTheTypeByte() {
             assertThat(answerTo("4 = length? unfilter #{00 0A14 00 0B16} 2"))
                     .isEqualTo(TRUE);
-            assertThat(answerTo("6 = length? unfilter/as #{00 0A14 00 0B16} 2 'none"))
+            assertThat(answerTo("6 = length? unfilter/as #{00 0A14 00 0B16} 2 'sub"))
                     .isEqualTo(TRUE);
         }
     }
@@ -160,12 +173,17 @@ class PngFilterFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a filter nobody has heard of")
+        @DisplayName("a filter word nobody has heard of")
         void anUnknownFilter() {
             assertThat(errorIdFrom("filter #{0A141E28} 4 'invented"))
-                    .isNotEqualTo("no-error");
-            assertThat(errorIdFrom("filter #{0A141E28} 4 9"))
-                    .isNotEqualTo("no-error");
+                    .isEqualTo("invalid-arg");
+        }
+
+        @Test
+        @DisplayName("a number past PAETH is clamped to PAETH rather than refused")
+        void aNumberPastPaethIsPaeth() {
+            assertThat(answerTo("(filter #{0A141E28} 4 9) = filter #{0A141E28} 4 'paeth"))
+                    .isEqualTo(TRUE);
         }
     }
 }

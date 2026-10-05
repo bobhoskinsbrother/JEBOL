@@ -8,7 +8,10 @@ import java.util.List;
 
 final class Codecs {
 
-    private Codecs() {
+    private final Encodings encodings;
+
+    Codecs(Encodings encodings) {
+        this.encodings = encodings;
     }
 
     enum Action { IDENTIFY, DECODE, ENCODE }
@@ -42,7 +45,7 @@ final class Codecs {
 
     static final List<String> REGISTERED = List.of("text", "markup", "qoi");
 
-    static Answer run(String codec, Action action, Value data) {
+    Answer run(String codec, Action action, Value data) {
         return switch (codec) {
             case "text" -> text(action, data);
             case "markup" -> markup(action, data);
@@ -51,7 +54,7 @@ final class Codecs {
         };
     }
 
-    private static Answer qoi(Action action, Value data) {
+    private Answer qoi(Action action, Value data) {
         return switch (action) {
             case IDENTIFY -> Answer.checkWhoseErrorCodeIsTheInvertedResult(
                     Qoi.identifies(bytesOf(data)) ? YES : NO);
@@ -64,7 +67,7 @@ final class Codecs {
 
     private static final int NO = 1;
 
-    private static Answer theImageIn(byte[] bytes) {
+    private Answer theImageIn(byte[] bytes) {
         Qoi.Decoded read = Qoi.decoded(bytes);
         if (read == null) {
             return Answer.notAvailable();
@@ -80,7 +83,7 @@ final class Codecs {
         return new Answer(Answer.Kind.IMAGE, picture, 0);
     }
 
-    private static Value theBytesBlueFirstOf(ImageValue picture) {
+    private Value theBytesBlueFirstOf(ImageValue picture) {
         int wide = picture.storage().wide();
         int high = picture.storage().high();
         byte[] pixels = new byte[wide * high * 4];
@@ -100,16 +103,16 @@ final class Codecs {
         return BinaryValue.of(octets);
     }
 
-    private static Answer text(Action action, Value data) {
+    private Answer text(Action action, Value data) {
         return switch (action) {
             case IDENTIFY -> Answer.checkWhoseErrorCodeIsTheInvertedResult(YES);
             case DECODE -> Answer.string(StringValue.of(
-                    Encodings.textBehindAnyMark(bytesOf(data))));
+                    encodings.textBehindAnyMark(bytesOf(data))));
             case ENCODE -> Answer.binary(BinaryValue.of());
         };
     }
 
-    private static Answer markup(Action action, Value data) {
+    private Answer markup(Action action, Value data) {
         return switch (action) {
             case IDENTIFY -> Answer.checkWhoseErrorCodeIsTheInvertedResult(NO);
             case DECODE -> Answer.block(BlockValue.block(
@@ -118,7 +121,7 @@ final class Codecs {
         };
     }
 
-    private static byte[] bytesOf(Value data) {
+    private byte[] bytesOf(Value data) {
         BinaryValue binary = (BinaryValue) data;
         byte[] bytes = new byte[binary.lengthFromHere()];
         for (int at = 0; at < bytes.length; at++) {
@@ -127,7 +130,7 @@ final class Codecs {
         return bytes;
     }
 
-    static List<Value> markupOf(String source) {
+    private List<Value> markupOf(String source) {
         List<Value> parts = new ArrayList<>();
         int textFrom = 0;
         int at = 0;
@@ -160,11 +163,11 @@ final class Codecs {
         return parts;
     }
 
-    private static int aTagThatNeverClosesIsText(int opened) {
+    private int aTagThatNeverClosesIsText(int opened) {
         return opened;
     }
 
-    private static boolean couldStartATag(String source, int at) {
+    private boolean couldStartATag(String source, int at) {
         if (at >= source.length()) {
             return false;
         }
@@ -172,7 +175,7 @@ final class Codecs {
         return Character.isLetter(next) || next == '/' || next == '?' || next == '!';
     }
 
-    private static int endOfTag(String source, int from) {
+    private int endOfTag(String source, int from) {
         if (source.startsWith("!--", from)) {
             return endOfComment(source, from);
         }
@@ -192,12 +195,12 @@ final class Codecs {
         return NOWHERE;
     }
 
-    private static int endOfComment(String source, int from) {
+    private int endOfComment(String source, int from) {
         int ended = source.indexOf("-->", from + 3);
         return ended < 0 ? NOWHERE : ended + 2;
     }
 
-    private static int aQuotedRunMayHoldAClosingSign(
+    private int aQuotedRunMayHoldAClosingSign(
             String source, char quote, int at) {
         return source.indexOf(quote, at + 1);
     }

@@ -6243,3 +6243,45 @@ at its first line.
 callback and console ports. All three are none until a window system fills
 them, in a stock 3.22.1 console too, which is why Rebol's event test guards
 its port case with `if system/ports/event [...]`.
+
+## 216. The encoding natives, swept against r3-head
+
+**An integer cloak key is hashed from the cell, not the number.** `Cloak` in
+`s-ops.c` writes the digits of an integer key into `dst` and sets `klen` to
+their count, but never points `kp` at them, so it hashes the first `klen`
+bytes of the REBVAL itself. `encloak #{616263} 1` and `encloak #{616263} 5`
+both answer `#{0B9029}`, and 12 and 99 agree with each other too. There is no
+value there to match, so JEBOL hashes the digits, which is what the code
+meant: `encloak data 5` is `encloak data "5"`.
+
+**The TCP checksum adds a trailing odd byte as the low byte.** RFC 1071 pads
+it to the high byte. `Compute_IPC` in `s-crc.c` does `hash += *up`, so
+`checksum #{FF} 'tcp` is 65280, not 255. The sum is also a 32-bit REBCNT that
+wraps and is folded exactly twice, which only shows past 131 KB of input.
+
+**DECOMPRESS reports a codec's own error number.** `Trap1(RE_BAD_PRESS,
+DS_RETURN)` carries the integer the decoder set. For the three zlib formats
+that is libdeflate's result: 1 for bad data, 2 when /size asks for more than
+the stream holds, 3 when it asks for less. Those three must match /size
+exactly. Brotli, LZW, LZMA and Crush cut the output short instead, and fail
+with 2, 1, 6 and 0. Crush shorter than its four-byte length field raises
+`bad-press` naming the method, and a bad LZMA stream raises `past-end`.
+/size is read by `Int32s(size, 1)`, so 0 and below are `out-of-range`.
+
+**COMPRESS for zlib, deflate and gzip is libdeflate, not zlib.** The
+headers agree, and so does level 0, which is all Rebol's own suite pins.
+The deflated bytes differ from java.util.zip in general. libdeflate stores
+`"aaaaaaaa"` at level 9 where zlib compresses it, and it ends an empty
+stream with a stored block. Byte parity means porting libdeflate's encoder.
+
+**FILTER and UNFILTER leave a line of unknown type unwritten.** The switch on
+the filter type has no default, and `Make_Binary` clears its memory, so type
+0, a clamped negative, and a per-line type byte above 4 all give zeros. So
+does the remainder past the last whole line. An integer type is clamped to
+0..4, so 5 and 9 are Paeth. The words are only `sub up average paeth`, so
+`'none` is `invalid-arg`. UNFILTER without /as answers `bytes - rows` bytes,
+with rows counted at `width + 1` each.
+
+**SWAP-ENDIAN writes into a protected binary.** It never checks
+`IS_PROTECT_SERIES`, so `swap-endian protect #{0102}` answers `#{0201}`.
+JEBOL's storage refuses the write, and still does.

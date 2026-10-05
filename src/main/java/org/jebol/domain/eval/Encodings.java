@@ -3,16 +3,29 @@ package org.jebol.domain.eval;
 import org.jebol.domain.eval.brotli.Brotli;
 import org.jebol.domain.value.BitsetValue;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.IntPredicate;
+import java.util.zip.Adler32;
+import java.util.zip.CRC32;
+import java.util.zip.Checksum;
+import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 
-final class Encodings {
-
-    private Encodings() {
-    }
+public final class Encodings {
 
     private static final class Octets {
 
@@ -21,25 +34,21 @@ final class Encodings {
 
         void write(int octet) {
             if (used == held.length) {
-                held = java.util.Arrays.copyOf(held, held.length * 2);
+                held = Arrays.copyOf(held, held.length * 2);
             }
             held[used++] = (byte) octet;
         }
 
         void write(byte[] more, int from, int count) {
             while (used + count > held.length) {
-                held = java.util.Arrays.copyOf(held, held.length * 2);
+                held = Arrays.copyOf(held, held.length * 2);
             }
             System.arraycopy(more, from, held, used, count);
             used += count;
         }
 
-        int length() {
-            return used;
-        }
-
         byte[] toArray() {
-            return java.util.Arrays.copyOf(held, used);
+            return Arrays.copyOf(held, used);
         }
     }
 
@@ -51,20 +60,20 @@ final class Encodings {
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
                     + "!'()*-._~";
 
-    static boolean uriKeeps(int octet) {
+    public boolean uriKeeps(int octet) {
         return octet < 128 && URI_UNESCAPED.indexOf(octet) >= 0;
     }
 
-    static boolean uriComponentKeeps(int octet) {
+    public boolean uriComponentKeeps(int octet) {
         return octet < 128 && URI_COMPONENT_UNESCAPED.indexOf(octet) >= 0;
     }
 
-    static char spaceStandsForUnder(char escape) {
+    char spaceStandsForUnder(char escape) {
         return escape == '=' ? '_' : '+';
     }
 
-    static byte[] percentEncoded(
-            byte[] octets, java.util.function.IntPredicate keep,
+    public byte[] percentEncoded(
+            byte[] octets, IntPredicate keep,
             char escape, boolean spaceIsSpecial) {
 
         Octets encoded = new Octets();
@@ -87,14 +96,14 @@ final class Encodings {
         return encoded.toArray();
     }
 
-    private static void escapedInto(Octets encoded, char escape, int octet) {
+    private void escapedInto(Octets encoded, char escape, int octet) {
         String digits = "%02X".formatted(octet);
         encoded.write(escape);
         encoded.write(digits.charAt(0));
         encoded.write(digits.charAt(1));
     }
 
-    static byte[] percentDecoded(String text, char escape, boolean spaceIsSpecial) {
+    public byte[] percentDecoded(String text, char escape, boolean spaceIsSpecial) {
         Octets octets = new Octets();
         char special = spaceStandsForUnder(escape);
         for (int at = 0; at < text.length(); at++) {
@@ -119,11 +128,11 @@ final class Encodings {
         return octets.toArray();
     }
 
-    static boolean setHolds(BitsetValue set, int octet) {
+    public boolean setHolds(BitsetValue set, int octet) {
         return set.holds(octet);
     }
 
-    static final List<Integer> BASES = List.of(2, 16, 36, 64, 85);
+    public static final List<Integer> BASES = List.of(2, 16, 36, 64, 85);
 
     private static final String BASE64 =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -132,7 +141,7 @@ final class Encodings {
     private static final String BASE36 =
             "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    static String enbase(byte[] octets, int base, boolean urlSafe) {
+    public String enbase(byte[] octets, int base, boolean urlSafe) {
         return switch (base) {
             case 16 -> hexOf(octets);
             case 2 -> bitsOf(octets);
@@ -143,7 +152,7 @@ final class Encodings {
         };
     }
 
-    static byte[] debase(String text, int base, boolean urlSafe) {
+    public byte[] debase(String text, int base, boolean urlSafe) {
         return switch (base) {
             case 16 -> octetsOfHex(text);
             case 2 -> octetsOfBits(text);
@@ -154,7 +163,7 @@ final class Encodings {
         };
     }
 
-    private static String hexOf(byte[] octets) {
+    private String hexOf(byte[] octets) {
         StringBuilder text = new StringBuilder(octets.length * 2);
         for (byte each : octets) {
             text.append("%02X".formatted(each & 0xFF));
@@ -162,11 +171,11 @@ final class Encodings {
         return text.toString();
     }
 
-    private static boolean skippedBetweenDigits(char letter) {
+    private boolean skippedBetweenDigits(char letter) {
         return letter == ' ' || letter == '\n' || letter == '\r';
     }
 
-    private static byte[] octetsOfHex(String text) {
+    private byte[] octetsOfHex(String text) {
         Octets decoded = new Octets();
         int nibblesSoFar = text.length() % 2;
         int accumulated = 0;
@@ -190,7 +199,7 @@ final class Encodings {
         return decoded.toArray();
     }
 
-    private static String bitsOf(byte[] octets) {
+    private String bitsOf(byte[] octets) {
         StringBuilder text = new StringBuilder(octets.length * 8);
         for (byte each : octets) {
             for (int bit = 7; bit >= 0; bit--) {
@@ -200,7 +209,7 @@ final class Encodings {
         return text.toString();
     }
 
-    private static byte[] octetsOfBits(String text) {
+    private byte[] octetsOfBits(String text) {
         Octets decoded = new Octets();
         int bitsSoFar = text.length() % 8;
         if (bitsSoFar != 0) {
@@ -228,7 +237,7 @@ final class Encodings {
         return decoded.toArray();
     }
 
-    private static String base64Of(byte[] octets, String alphabet) {
+    private String base64Of(byte[] octets, String alphabet) {
         StringBuilder text = new StringBuilder();
         for (int at = 0; at < octets.length; at += 3) {
             int remaining = Math.min(3, octets.length - at);
@@ -251,7 +260,7 @@ final class Encodings {
         return text.toString();
     }
 
-    private static byte[] octetsOfBase64(String text, String alphabet) {
+    private byte[] octetsOfBase64(String text, String alphabet) {
         Octets decoded = new Octets();
         boolean urlSafe = BASE64_URL.equals(alphabet);
         int group = 0;
@@ -308,7 +317,7 @@ final class Encodings {
 
     private static final int LONGEST_BASE36_NUMBER = 13;
 
-    private static String base36Of(byte[] octets) {
+    private String base36Of(byte[] octets) {
         if (octets.length == 0) {
             return "";
         }
@@ -330,7 +339,7 @@ final class Encodings {
         return digits.reverse().toString();
     }
 
-    private static byte[] octetsOfBase36(String text) {
+    private byte[] octetsOfBase36(String text) {
         if (text.isEmpty()) {
             return new byte[0];
         }
@@ -353,7 +362,7 @@ final class Encodings {
         return eight;
     }
 
-    private static long powerOfThirtySix(int exponent) {
+    private long powerOfThirtySix(int exponent) {
         long power = 1;
         for (int step = 0; step < exponent; step++) {
             power *= 36;
@@ -365,7 +374,7 @@ final class Encodings {
     private static final int ASCII85_LAST = 'u';
     private static final char ASCII85_ZERO_GROUP = 'z';
 
-    private static String ascii85Of(byte[] octets) {
+    private String ascii85Of(byte[] octets) {
         StringBuilder text = new StringBuilder(octets.length * 5 / 4 + 2);
         for (int at = 0; at < octets.length; at += 4) {
             int held = Math.min(4, octets.length - at);
@@ -388,7 +397,7 @@ final class Encodings {
         return text.toString();
     }
 
-    private static byte[] octetsOfAscii85(String text) {
+    private byte[] octetsOfAscii85(String text) {
         Octets decoded = new Octets();
         long group = 0;
         int held = 0;
@@ -426,7 +435,7 @@ final class Encodings {
         return decoded.toArray();
     }
 
-    private static void writeTheTopBytesOf(Octets decoded, long group, int wanted) {
+    private void writeTheTopBytesOf(Octets decoded, long group, int wanted) {
         if (group > 0xFFFFFFFFL) {
             throw new IllegalArgumentException("an ascii85 group above four bytes");
         }
@@ -436,7 +445,7 @@ final class Encodings {
     }
 
 
-    private static String withoutWhitespace(String text) {
+    private String withoutWhitespace(String text) {
         StringBuilder kept = new StringBuilder(text.length());
         for (int at = 0; at < text.length(); at++) {
             if (!Character.isWhitespace(text.charAt(at))) {
@@ -448,7 +457,7 @@ final class Encodings {
 
     static final int LINE_WIDTH = 64;
 
-    static String brokenIntoLines(String text, int base, int byteCount) {
+    public String brokenIntoLines(String text, int base, int byteCount) {
         return switch (base) {
             case 2 -> withBreaks(text, byteCount > 8, byteCount > 8 ? byteCount / 8 : 0);
             case 16 -> withBreaks(text, byteCount >= 32, byteCount / 32);
@@ -458,7 +467,7 @@ final class Encodings {
         };
     }
 
-    private static String withBreaks(String text, boolean leading, int closedLines) {
+    private String withBreaks(String text, boolean leading, int closedLines) {
         if (!leading && closedLines == 0) {
             return text;
         }
@@ -475,30 +484,25 @@ final class Encodings {
         return broken.append(text, at, text.length()).toString();
     }
 
-    static final Map<String, String> DIGESTS = digestMethods();
+    public static final Map<String, String> DIGESTS = Map.ofEntries(
+            Map.entry("md5", "MD5"),
+            Map.entry("sha1", "SHA-1"),
+            Map.entry("sha224", "SHA-224"),
+            Map.entry("sha256", "SHA-256"),
+            Map.entry("sha384", "SHA-384"),
+            Map.entry("sha512", "SHA-512"),
+            Map.entry("sha3-224", "SHA3-224"),
+            Map.entry("sha3-256", "SHA3-256"),
+            Map.entry("sha3-384", "SHA3-384"),
+            Map.entry("sha3-512", "SHA3-512"),
+            Map.entry("ripemd160", "RIPEMD160"),
+            Map.entry("xxh3", "XXH3"),
+            Map.entry("xxh32", "XXH32"),
+            Map.entry("xxh64", "XXH64"),
+            Map.entry("xxh128", "XXH128"),
+            Map.entry("md4", "MD4"));
 
-    private static Map<String, String> digestMethods() {
-        Map<String, String> theJdkCallsIt = new LinkedHashMap<>();
-        theJdkCallsIt.put("md5", "MD5");
-        theJdkCallsIt.put("sha1", "SHA-1");
-        theJdkCallsIt.put("sha224", "SHA-224");
-        theJdkCallsIt.put("sha256", "SHA-256");
-        theJdkCallsIt.put("sha384", "SHA-384");
-        theJdkCallsIt.put("sha512", "SHA-512");
-        theJdkCallsIt.put("sha3-224", "SHA3-224");
-        theJdkCallsIt.put("sha3-256", "SHA3-256");
-        theJdkCallsIt.put("sha3-384", "SHA3-384");
-        theJdkCallsIt.put("sha3-512", "SHA3-512");
-        theJdkCallsIt.put("ripemd160", RIPEMD_160);
-        theJdkCallsIt.put("xxh3", XXH_3);
-        theJdkCallsIt.put("xxh32", XXH_32);
-        theJdkCallsIt.put("xxh64", XXH_64);
-        theJdkCallsIt.put("xxh128", XXH_128);
-        theJdkCallsIt.put("md4", MD_4);
-        return Map.copyOf(theJdkCallsIt);
-    }
-
-    static final List<String> CYCLIC = List.of("crc32", "adler32", "crc24", "tcp");
+    public static final List<String> CYCLIC = List.of("crc32", "adler32", "crc24", "tcp");
 
     private static final List<String> CATALOGUE_ORDER = List.of(
             "adler32", "crc24", "crc32",
@@ -508,7 +512,7 @@ final class Encodings {
             "xxh3", "xxh32", "xxh64", "xxh128",
             "tcp");
 
-    static List<String> checksumMethods() {
+    List<String> checksumMethods() {
         List<String> served = new ArrayList<>(DIGESTS.keySet());
         served.addAll(CYCLIC);
         return CATALOGUE_ORDER.stream().filter(served::contains).toList();
@@ -518,26 +522,26 @@ final class Encodings {
 
     private static final int MURMUR_COMBINING_MULTIPLIER = 0x1b873593;
 
-    private static int blockMixedInto(int running, int block) {
+    private int blockMixedInto(int running, int block) {
         int mixed = Integer.rotateLeft(block * MURMUR_MIXING_MULTIPLIER, 15)
                 * MURMUR_COMBINING_MULTIPLIER;
         return Integer.rotateLeft(running ^ mixed, 13) * 5 + 0xe6546b64;
     }
 
-    private static int avalanched(int hash) {
+    private int avalanched(int hash) {
         int mixed = (hash ^ (hash >>> 16)) * 0x85ebca6b;
         mixed = (mixed ^ (mixed >>> 13)) * 0xc2b2ae35;
         return mixed ^ (mixed >>> 16);
     }
 
-    private static int littleEndianWordAt(byte[] octets, int from) {
+    private int littleEndianWordAt(byte[] octets, int from) {
         return (octets[from] & 0xFF)
                 | ((octets[from + 1] & 0xFF) << 8)
                 | ((octets[from + 2] & 0xFF) << 16)
                 | ((octets[from + 3] & 0xFF) << 24);
     }
 
-    static int murmurOf(byte[] octets) {
+    public int murmurOf(byte[] octets) {
         int hash = 0;
         int wholeWords = octets.length / 4;
         for (int word = 0; word < wholeWords; word++) {
@@ -555,7 +559,7 @@ final class Encodings {
         return avalanched(hash ^ octets.length);
     }
 
-    static int caseFoldedHashOf(byte[] utf8) {
+    public int caseFoldedHashOf(byte[] utf8) {
         int hash = 0;
         for (byte each : utf8) {
             hash = blockMixedInto(hash, Character.toLowerCase(each & 0xFF));
@@ -575,7 +579,7 @@ final class Encodings {
 
     static final String MD_4 = "MD4";
 
-    static byte[] digestOf(byte[] octets, String method) {
+    public byte[] digestOf(byte[] octets, String method) {
         String algorithm = DIGESTS.get(method);
         if (RIPEMD_160.equals(algorithm)) {
             return RipeMd160.of(octets);
@@ -596,47 +600,47 @@ final class Encodings {
             return Md4.of(octets);
         }
         try {
-            return java.security.MessageDigest.getInstance(DIGESTS.get(method))
+            return MessageDigest.getInstance(DIGESTS.get(method))
                     .digest(octets);
-        } catch (java.security.NoSuchAlgorithmException unavailable) {
+        } catch (NoSuchAlgorithmException unavailable) {
             throw new IllegalArgumentException(method + " is not available here");
         }
     }
 
-    static byte[] keyedDigestOf(byte[] octets, String method, byte[] key) {
+    public byte[] keyedDigestOf(byte[] octets, String method, byte[] key) {
         try {
             String algorithm = "Hmac" + DIGESTS.get(method).replace("-", "");
-            javax.crypto.Mac mac = javax.crypto.Mac.getInstance(algorithm);
-            mac.init(new javax.crypto.spec.SecretKeySpec(
+            Mac mac = Mac.getInstance(algorithm);
+            mac.init(new SecretKeySpec(
                     key.length == 0 ? new byte[1] : key, algorithm));
             return mac.doFinal(octets);
-        } catch (java.security.NoSuchAlgorithmException
-                | java.security.InvalidKeyException unavailable) {
+        } catch (NoSuchAlgorithmException
+                | InvalidKeyException unavailable) {
             throw new IllegalArgumentException(
                     method + " has no keyed form here");
         }
     }
 
-    static long cyclicOf(byte[] octets, String method) {
+    public long cyclicOf(byte[] octets, String method) {
         return switch (method) {
-            case "crc32" -> checksumValue(new java.util.zip.CRC32(), octets);
-            case "adler32" -> checksumValue(new java.util.zip.Adler32(), octets);
+            case "crc32" -> checksumValue(new CRC32(), octets);
+            case "adler32" -> checksumValue(new Adler32(), octets);
             case "crc24" -> crc24Of(octets);
             case "tcp" -> tcpSumOf(octets);
             default -> throw new IllegalArgumentException(method);
         };
     }
 
-    private static long checksumValue(java.util.zip.Checksum running, byte[] octets) {
+    private long checksumValue(Checksum running, byte[] octets) {
         running.update(octets, 0, octets.length);
         return running.getValue();
     }
 
-    static long checksumSeedOf(byte[] octets) {
+    long checksumSeedOf(byte[] octets) {
         return crc24Of(octets);
     }
 
-    private static long crc24Of(byte[] octets) {
+    private long crc24Of(byte[] octets) {
         int running = 0xB704CE;
         for (byte each : octets) {
             running ^= (each & 0xFF) << 16;
@@ -650,30 +654,29 @@ final class Encodings {
         return running & 0xFFFFFF;
     }
 
-    private static long tcpSumOf(byte[] octets) {
-        long running = 0;
+    private long tcpSumOf(byte[] octets) {
+        int running = 0;
         for (int at = 0; at + 1 < octets.length; at += 2) {
             running += ((octets[at] & 0xFF) << 8) | (octets[at + 1] & 0xFF);
         }
         if (octets.length % 2 != 0) {
-            running += (octets[octets.length - 1] & 0xFF) << 8;
+            running += octets[octets.length - 1] & 0xFF;
         }
-        while ((running >> 16) != 0) {
-            running = (running & 0xFFFF) + (running >> 16);
-        }
+        running = (running >>> 16) + (running & 0xFFFF);
+        running += running >>> 16;
         return (~running) & 0xFFFF;
     }
 
     private static final List<String> COMPRESSIONS_WITH_NO_HEADER =
             List.of("zlib", "gzip", "deflate");
 
-    static final List<String> COMPRESSIONS =
+    public static final List<String> COMPRESSIONS =
             List.of("zlib", "gzip", "deflate", "crush", "lzw", "lzma", "br");
 
-    static final List<String> COMPRESSIONS_ELSEWHERE =
+    public static final List<String> COMPRESSIONS_ELSEWHERE =
             List.of("lz4", "lzav");
 
-    static byte[] compressed(byte[] octets, String method, int level) {
+    public byte[] compressed(byte[] octets, String method, int level) {
         return switch (method) {
             case "gzip" -> gzipped(octets, level);
             case "zlib" -> deflated(octets, level, false);
@@ -686,7 +689,7 @@ final class Encodings {
         };
     }
 
-    static byte[] decompressed(byte[] octets, String method, int wanted) {
+    public byte[] decompressed(byte[] octets, String method, int wanted) {
         if (octets.length == 0 && COMPRESSIONS_WITH_NO_HEADER.contains(method)) {
             return octets;
         }
@@ -700,9 +703,13 @@ final class Encodings {
             case "br" -> Brotli.decompressed(octets, wanted);
             default -> throw new IllegalArgumentException(method);
         };
-        return wanted > 0 && whole.length > wanted
-                ? java.util.Arrays.copyOf(whole, wanted)
+        return wanted > 0 && whole.length > wanted && cutsShortToTheSizeAsked(method)
+                ? Arrays.copyOf(whole, wanted)
                 : whole;
+    }
+
+    public boolean cutsShortToTheSizeAsked(String method) {
+        return !COMPRESSIONS_WITH_NO_HEADER.contains(method);
     }
 
     private static final int GZIP_MAGIC_FIRST = 0x1F;
@@ -717,7 +724,7 @@ final class Encodings {
     private static final int GZIP_HEADER_LENGTH = 10;
     private static final int GZIP_TRAILER_LENGTH = 8;
 
-    private static byte[] gzipped(byte[] octets, int level) {
+    private byte[] gzipped(byte[] octets, int level) {
         Octets into = new Octets();
         into.write(GZIP_MAGIC_FIRST);
         into.write(GZIP_MAGIC_SECOND);
@@ -730,14 +737,14 @@ final class Encodings {
         into.write(GZIP_OPERATING_SYSTEM_UNKNOWN);
         byte[] deflated = deflated(octets, level, true);
         into.write(deflated, 0, deflated.length);
-        java.util.zip.CRC32 checked = new java.util.zip.CRC32();
+        CRC32 checked = new CRC32();
         checked.update(octets, 0, octets.length);
         writeLittleEndian(into, checked.getValue());
         writeLittleEndian(into, octets.length);
         return into.toArray();
     }
 
-    private static int howHardTheCompressorWasAskedToTry(int level) {
+    private int howHardTheCompressorWasAskedToTry(int level) {
         int asked = effortAskedFor(level);
         if (asked < 2) {
             return GZIP_FASTEST;
@@ -745,19 +752,19 @@ final class Encodings {
         return asked >= 8 ? GZIP_SLOWEST : GZIP_UNREMARKABLE_EFFORT;
     }
 
-    static int effortAskedFor(int level) {
+    int effortAskedFor(int level) {
         return level < 0 || level > SLOWEST_DEFLATE ? SLOWEST_DEFLATE : level;
     }
 
     private static final int SLOWEST_DEFLATE = 9;
 
-    private static void writeLittleEndian(Octets into, long quantity) {
+    private void writeLittleEndian(Octets into, long quantity) {
         for (int each = 0; each < 4; each++) {
             into.write((int) ((quantity >> (each * 8)) & 0xFF));
         }
     }
 
-    private static byte[] ungzipped(byte[] octets) {
+    private byte[] ungzipped(byte[] octets) {
         if (octets.length < GZIP_HEADER_LENGTH + GZIP_TRAILER_LENGTH
                 || (octets[0] & 0xFF) != GZIP_MAGIC_FIRST
                 || (octets[1] & 0xFF) != GZIP_MAGIC_SECOND) {
@@ -782,10 +789,10 @@ final class Encodings {
         if (length < 0) {
             throw new IllegalArgumentException("gzip data ends early");
         }
-        return inflated(java.util.Arrays.copyOfRange(octets, from, from + length), true);
+        return inflated(Arrays.copyOfRange(octets, from, from + length), true);
     }
 
-    private static int pastTheNextZero(byte[] octets, int from) {
+    private int pastTheNextZero(byte[] octets, int from) {
         int at = from;
         while (at < octets.length && octets[at] != 0) {
             at++;
@@ -793,9 +800,9 @@ final class Encodings {
         return at + 1;
     }
 
-    private static byte[] deflated(byte[] octets, int level, boolean raw) {
-        java.util.zip.Deflater deflater =
-                new java.util.zip.Deflater(effortAskedFor(level), raw);
+    private byte[] deflated(byte[] octets, int level, boolean raw) {
+        Deflater deflater =
+                new Deflater(effortAskedFor(level), raw);
         try {
             deflater.setInput(octets);
             deflater.finish();
@@ -810,8 +817,8 @@ final class Encodings {
         }
     }
 
-    private static byte[] inflated(byte[] octets, boolean raw) {
-        java.util.zip.Inflater inflater = new java.util.zip.Inflater(raw);
+    private byte[] inflated(byte[] octets, boolean raw) {
+        Inflater inflater = new Inflater(raw);
         try {
             inflater.setInput(octets);
             Octets into = new Octets();
@@ -825,14 +832,14 @@ final class Encodings {
                 }
             }
             return into.toArray();
-        } catch (java.util.zip.DataFormatException notDeflate) {
+        } catch (DataFormatException notDeflate) {
             throw new IllegalArgumentException("not deflate data");
         } finally {
             inflater.end();
         }
     }
 
-    static boolean cloak(boolean decode, byte[] octets, byte[] key) {
+    public boolean cloak(boolean decode, byte[] octets, byte[] key) {
         if (octets.length == 0) {
             return true;
         }
@@ -856,7 +863,7 @@ final class Encodings {
         return true;
     }
 
-    static byte[] hashedKey(byte[] key) {
+    public byte[] hashedKey(byte[] key) {
         if (key.length == 0) {
             return key;
         }
@@ -867,11 +874,7 @@ final class Encodings {
         return digestOf(cycled, "sha1");
     }
 
-    static boolean hasCharacterSet(String asked) {
-        return charsetNamed(asked) != null;
-    }
-
-    static String textDecodedAs(byte[] octets, java.nio.charset.Charset charset) {
+    public String textDecodedAs(byte[] octets, Charset charset) {
         boolean bigEndian = "UTF-32BE".equalsIgnoreCase(charset.name());
         if (!bigEndian && !"UTF-32LE".equalsIgnoreCase(charset.name())) {
             return new String(octets, charset);
@@ -879,7 +882,7 @@ final class Encodings {
         return utf32KeepingTheLeadingMarkTheJvmWouldDrop(octets, bigEndian);
     }
 
-    private static String utf32KeepingTheLeadingMarkTheJvmWouldDrop(
+    private String utf32KeepingTheLeadingMarkTheJvmWouldDrop(
             byte[] octets, boolean bigEndian) {
         StringBuilder text = new StringBuilder();
         for (int at = 0; at + 4 <= octets.length; at += 4) {
@@ -893,31 +896,31 @@ final class Encodings {
         return text.toString();
     }
 
-    static String textBehindAnyMark(byte[] octets) {
-        java.nio.charset.Charset theMarkAnnounces;
+    String textBehindAnyMark(byte[] octets) {
+        Charset theMarkAnnounces;
         int width;
         if (startsWith(octets, 0xEF, 0xBB, 0xBF)) {
-            theMarkAnnounces = java.nio.charset.StandardCharsets.UTF_8;
+            theMarkAnnounces = StandardCharsets.UTF_8;
             width = 3;
         } else if (startsWith(octets, 0xFF, 0xFE, 0x00, 0x00)) {
-            theMarkAnnounces = java.nio.charset.Charset.forName("UTF-32LE");
+            theMarkAnnounces = Charset.forName("UTF-32LE");
             width = 4;
         } else if (startsWith(octets, 0x00, 0x00, 0xFE, 0xFF)) {
-            theMarkAnnounces = java.nio.charset.Charset.forName("UTF-32BE");
+            theMarkAnnounces = Charset.forName("UTF-32BE");
             width = 4;
         } else if (startsWith(octets, 0xFE, 0xFF)) {
-            theMarkAnnounces = java.nio.charset.StandardCharsets.UTF_16BE;
+            theMarkAnnounces = StandardCharsets.UTF_16BE;
             width = 2;
         } else if (startsWith(octets, 0xFF, 0xFE)) {
-            theMarkAnnounces = java.nio.charset.StandardCharsets.UTF_16LE;
+            theMarkAnnounces = StandardCharsets.UTF_16LE;
             width = 2;
         } else {
-            return new String(octets, java.nio.charset.StandardCharsets.UTF_8);
+            return new String(octets, StandardCharsets.UTF_8);
         }
         return new String(octets, width, octets.length - width, theMarkAnnounces);
     }
 
-    private static boolean startsWith(byte[] octets, int... expected) {
+    private boolean startsWith(byte[] octets, int... expected) {
         if (octets.length < expected.length) {
             return false;
         }
@@ -929,13 +932,12 @@ final class Encodings {
         return true;
     }
 
-    static java.nio.charset.Charset charsetNamed(String asked) {
-        String canonical = CODEPAGES.getOrDefault(
-                asked.toLowerCase(java.util.Locale.ROOT), asked);
+    public Optional<Charset> charsetNamed(String asked) {
+        String canonical = codepages.getOrDefault(asked.toLowerCase(Locale.ROOT), asked);
         try {
-            return java.nio.charset.Charset.forName(canonical);
+            return Optional.of(Charset.forName(canonical));
         } catch (IllegalArgumentException unknown) {
-            return null;
+            return Optional.empty();
         }
     }
 
@@ -969,22 +971,24 @@ final class Encodings {
             + "ISO-2022-JP:50220,50222;ISO-2022-KR:50225,ISO2022-KR;EUC-CN:51936;"
             + "EUC-KR:51949;GB18030:54936";
 
-    private static final java.util.Map<String, String> CODEPAGES = spellingsByName();
+    private final Map<String, String> codepages = spellingsByName();
 
-    private static java.util.Map<String, String> spellingsByName() {
-        java.util.Map<String, String> found = new java.util.HashMap<>();
+    private Map<String, String> spellingsByName() {
+        Map<String, String> found = new HashMap<>();
         for (String group : REBOL_CODEPAGES.split(";")) {
             String[] halves = group.split(":", 2);
             for (String spelling : halves[1].split(",")) {
-                found.put(spelling.toLowerCase(java.util.Locale.ROOT), halves[0]);
+                found.put(spelling.toLowerCase(Locale.ROOT), halves[0]);
             }
         }
-        return java.util.Map.copyOf(found);
+        return Map.copyOf(found);
     }
 
-    static final List<String> PNG_FILTERS = List.of("none", "sub", "up", "average", "paeth");
+    public static final List<String> PNG_FILTERS = List.of("sub", "up", "average", "paeth");
 
-    private static int paethPredictorBreakingTiesLeftThenAboveThenAboveLeft(
+    private static final int FIRST_PNG_FILTER = 1;
+
+    private int paethPredictorBreakingTiesLeftThenAboveThenAboveLeft(
             int left, int above, int aboveLeft) {
         int estimate = left + above - aboveLeft;
         int toLeft = Math.abs(estimate - left);
@@ -996,7 +1000,7 @@ final class Encodings {
         return toAbove <= toAboveLeft ? above : aboveLeft;
     }
 
-    static byte[] pngFiltered(byte[] data, int width, int filter, int bytesPerPixel) {
+    public byte[] pngFiltered(byte[] data, int width, int filter, int bytesPerPixel) {
         int rows = data.length / width;
         byte[] out = new byte[data.length];
         byte[] previous = zerosSoTheFirstLineEncodesAsItself(width);
@@ -1004,20 +1008,18 @@ final class Encodings {
             int from = row * width;
             applyOneLine(data, from, out, from, width, filter, bytesPerPixel,
                     previous, true);
-            previous = java.util.Arrays.copyOfRange(data, from, from + width);
+            previous = Arrays.copyOfRange(data, from, from + width);
         }
-        System.arraycopy(data, rows * width, out, rows * width,
-                data.length - rows * width);
         return out;
     }
 
-    static byte[] pngUnfiltered(
+    public byte[] pngUnfiltered(
             byte[] data, int width, int namedFilter, int bytesPerPixel) {
 
         boolean everyLineOpensWithItsOwnFilterByte = namedFilter < 0;
         int stride = everyLineOpensWithItsOwnFilterByte ? width + 1 : width;
         int rows = data.length / stride;
-        byte[] out = new byte[rows * width];
+        byte[] out = new byte[everyLineOpensWithItsOwnFilterByte ? data.length - rows : data.length];
         byte[] previous = zerosSoTheFirstLineEncodesAsItself(width);
         for (int row = 0; row < rows; row++) {
             int from = row * stride;
@@ -1029,19 +1031,22 @@ final class Encodings {
             int into = row * width;
             applyOneLine(data, from, out, into, width, filter, bytesPerPixel,
                     previous, false);
-            previous = java.util.Arrays.copyOfRange(out, into, into + width);
+            previous = Arrays.copyOfRange(out, into, into + width);
         }
         return out;
     }
 
-    private static byte[] zerosSoTheFirstLineEncodesAsItself(int width) {
+    private byte[] zerosSoTheFirstLineEncodesAsItself(int width) {
         return new byte[width];
     }
 
-    private static void applyOneLine(
+    private void applyOneLine(
             byte[] source, int from, byte[] out, int into, int width,
             int filter, int bytesPerPixel, byte[] previous, boolean filtering) {
 
+        if (filter < FIRST_PNG_FILTER || filter > PNG_FILTERS.size()) {
+            return;
+        }
         for (int at = 0; at < width; at++) {
             int here = source[from + at] & 0xFF;
             int left = at >= bytesPerPixel
@@ -1067,10 +1072,7 @@ final class Encodings {
         }
     }
 
-    static void swapEndian(byte[] octets, int howFar, int width) {
-        if (width != 2 && width != 4 && width != 8) {
-            throw new IllegalArgumentException("width " + width);
-        }
+    public void swapEndian(byte[] octets, int howFar, int width) {
         for (int at = 0; at + width <= Math.min(howFar, octets.length); at += width) {
             for (int each = 0; each < width / 2; each++) {
                 byte held = octets[at + each];
