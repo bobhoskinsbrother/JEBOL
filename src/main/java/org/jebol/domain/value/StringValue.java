@@ -82,6 +82,84 @@ public record StringValue(StringStorage storage, int index, Datatype datatype)
         return this;
     }
 
+    public StringValue frontRewritten(int howMany, UnaryOperator<String> change) {
+        return rewrittenFromHere(whole -> {
+            int taking = Math.min(howMany, whole.codePointCount(0, whole.length()));
+            int split = whole.offsetByCodePoints(0, taking);
+            return change.apply(whole.substring(0, split)) + whole.substring(split);
+        });
+    }
+
+    @Override
+    public Value trimmed(Trimming trimming) {
+        trimming.refuseContradictions();
+        return rewrittenFromHere(text -> trimmedText(text, trimming));
+    }
+
+    private String trimmedText(String text, Trimming trimming) {
+        if (trimming.ofTheGivenCharacters()) {
+            StringBuilder kept = new StringBuilder();
+            text.codePoints()
+                    .filter(letter -> !trimming.unwantedCodePoints().contains(letter))
+                    .forEach(kept::appendCodePoint);
+            return kept.toString();
+        }
+        if (trimming.everywhere()) {
+            return text.replaceAll("\\s", "");
+        }
+        if (trimming.intoOneLine()) {
+            return text.strip().replaceAll("\\s+", " ");
+        }
+        String indented = trimming.ofTheCommonIndent() ? withoutCommonIndent(text) : text;
+        if (trimming.atOneEndOnly()) {
+            return trimming.fromTheHead() ? indented.stripLeading() : indented.stripTrailing();
+        }
+        return trimming.ofTheCommonIndent() || trimming.atBothNamedEnds()
+                ? indented.strip()
+                : trimmedEachLine(indented);
+    }
+
+    private String withoutCommonIndent(String text) {
+        String[] lines = text.split("\n", -1);
+        int firstContentLine = 0;
+        while (firstContentLine < lines.length && lines[firstContentLine].isBlank()) {
+            firstContentLine++;
+        }
+        int indent = firstContentLine < lines.length
+                ? lines[firstContentLine].length()
+                        - lines[firstContentLine].stripLeading().length()
+                : 0;
+        StringBuilder trimmed = new StringBuilder();
+        for (int at = firstContentLine; at < lines.length; at++) {
+            String line = lines[at];
+            int take = Math.min(indent, line.length() - line.stripLeading().length());
+            trimmed.append(line.substring(take));
+            if (at + 1 < lines.length) {
+                trimmed.append('\n');
+            }
+        }
+        return trimmed.toString();
+    }
+
+    private String trimmedEachLine(String text) {
+        String afterLead = text.stripLeading();
+        String core = afterLead.stripTrailing();
+        boolean endedWithLineFeed =
+                afterLead.substring(core.length()).indexOf('\n') >= 0;
+        String[] lines = core.split("\n", -1);
+        StringBuilder joined = new StringBuilder();
+        for (int at = 0; at < lines.length; at++) {
+            if (at > 0) {
+                joined.append('\n');
+            }
+            joined.append(lines[at].strip());
+        }
+        if (endedWithLineFeed) {
+            joined.append('\n');
+        }
+        return joined.toString();
+    }
+
     public StringValue swapFirstItemWith(StringValue there) {
         if (!atTail() && !there.atTail()) {
             int mine = storage.at(index);

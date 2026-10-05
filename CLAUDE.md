@@ -170,7 +170,7 @@ nothing else in the build will ever notice.
 
 ## Running the suite
 
-`./gradlew check` is the gate. It takes about five minutes for 17,750 tests,
+`./gradlew check` is the gate. It takes about five minutes for 20,200 tests,
 and the floor is `Interpreter.create()` at 44ms: the corpus builds one per
 entry, so a thousand entries is a minute whatever else changes. It used to be
 86ms and twenty-two minutes, and where that went is worth knowing before

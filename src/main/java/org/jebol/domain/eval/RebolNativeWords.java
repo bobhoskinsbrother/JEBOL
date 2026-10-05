@@ -1054,207 +1054,6 @@ public final class RebolNativeWords {
         register(new GetNative());
     }
 
-    private static int headerStartsIn(String text) {
-        String lowered = text.toLowerCase(java.util.Locale.ROOT);
-        for (int at = lowered.indexOf("rebol"); at >= 0;
-                at = lowered.indexOf("rebol", at + 1)) {
-            if (!onlySpacesBefore(text, at) || !bracketFollows(text, at + "rebol".length())) {
-                continue;
-            }
-            return at;
-        }
-        return -1;
-    }
-
-    private static boolean onlySpacesBefore(String text, int at) {
-        for (int back = at - 1; back >= 0; back--) {
-            char letter = text.charAt(back);
-            if (letter == '\n') {
-                return true;
-            }
-            if (!Character.isWhitespace(letter) && letter != '\uFEFF') {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static boolean bracketFollows(String text, int at) {
-        int forward = at;
-        while (forward < text.length() && Character.isWhitespace(text.charAt(forward))) {
-            forward++;
-        }
-        return forward < text.length() && text.charAt(forward) == '[';
-    }
-
-    private static final Set<Datatype> THE_SERIES_TRIM_HAS_NO_ARM_FOR =
-            EnumSet.of(Datatype.IMAGE, Datatype.VECTOR);
-
-    private static void refuseTheSeriesTrimHasNoArmFor(Value series) {
-        if (THE_SERIES_TRIM_HAS_NO_ARM_FOR.contains(series.datatype())) {
-            throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    WordValue.of("trim").as(Datatype.SET_WORD),
-                    DatatypeValue.of(series.datatype()));
-        }
-    }
-
-    private static void refuseContradictoryTrim(Value series, Set<String> refinements) {
-        boolean oneEnd = refinements.contains("head") || refinements.contains("tail");
-        boolean everywhere = refinements.contains("all") || refinements.contains("with");
-        if (oneEnd && everywhere) {
-            throw Raised.of(EvaluationFailure.BAD_REFINES,
-                    "trim was told which end to work on and to work everywhere");
-        }
-        boolean aboutText = refinements.contains("with")
-                || refinements.contains("auto")
-                || refinements.contains("lines");
-        if (aboutText && !(series instanceof StringValue)) {
-            throw Raised.of(EvaluationFailure.BAD_REFINES,
-                    "trim/with, /auto and /lines are about text, and this is a "
-                            + series.datatype().literalSpelling());
-        }
-    }
-
-    private static Value trimmedBlock(BlockValue block, Set<String> refinements) {
-        List<Value> items = new ArrayList<>(block.remaining());
-        if (refinements.contains("all")) {
-            items.removeIf(NoneValue.class::isInstance);
-        } else {
-            boolean fromHead = !refinements.contains("tail");
-            boolean fromTail = !refinements.contains("head");
-            while (fromHead && !items.isEmpty() && items.getFirst() instanceof NoneValue) {
-                items.removeFirst();
-            }
-            while (fromTail && !items.isEmpty() && items.getLast() instanceof NoneValue) {
-                items.removeLast();
-            }
-        }
-        for (int at = block.storageLength(); at >= block.index(); at--) {
-            block.storage().removeAt(at);
-        }
-        for (int at = items.size(); at > 0; at--) {
-            block.storage().insertAt(block.index(), items.get(at - 1));
-        }
-        return block;
-    }
-
-    private static Value trimmedObject(Value subject) {
-        Context fields = subject instanceof ErrorValue raised
-                ? errorAsAContext(raised)
-                : subject.fieldsAsAContext().orElseThrow();
-        Context kept = Context.root();
-        for (ContextSlot slot : fields.slots()) {
-            if (slot.canonical().equals("self")
-                    || slot.value() instanceof NoneValue
-                    || slot.value() instanceof UnsetValue) {
-                continue;
-            }
-            kept.set(slot.spelling(), slot.value());
-        }
-        return new ObjectValue(kept);
-    }
-
-    private static Set<Integer> unwantedCodePoints(Value characters) {
-        return switch (characters) {
-            case CharacterValue character -> of(character.codepoint());
-            case IntegerValue whole -> of((int) whole.magnitude());
-            case StringValue text -> text.text().codePoints().boxed()
-                    .collect(java.util.stream.Collectors.toSet());
-            case BinaryValue bytes -> {
-                Set<Integer> octets = new java.util.HashSet<>();
-                for (byte octet : bytes.octetsFromHere()) {
-                    octets.add(octet & 0xFF);
-                }
-                yield octets;
-            }
-            default -> of();
-        };
-    }
-
-    private static Context errorAsAContext(ErrorValue raised) {
-        Context fields = Context.root();
-        for (String name : ErrorValue.FIELDS) {
-            fields.set(name, raised.field(name).orElseGet(NoneValue::none));
-        }
-        return fields;
-    }
-
-    private static Value trimmedBinary(BinaryValue bytes, Set<String> refinements) {
-        List<Integer> kept = new ArrayList<>();
-        for (int at = 0; at < bytes.lengthFromHere(); at++) {
-            kept.add(bytes.storage().at(bytes.index() + at));
-        }
-        if (refinements.contains("all")) {
-            kept.removeIf(octet -> octet == 0);
-        } else {
-            boolean neitherEndNamed =
-                    !refinements.contains("head") && !refinements.contains("tail");
-            boolean fromHead = refinements.contains("head") || neitherEndNamed;
-            boolean fromTail = refinements.contains("tail") || neitherEndNamed;
-            while (fromHead && !kept.isEmpty() && kept.getFirst() == 0) {
-                kept.removeFirst();
-            }
-            while (fromTail && !kept.isEmpty() && kept.getLast() == 0) {
-                kept.removeLast();
-            }
-        }
-        for (int at = bytes.storageLength(); at >= bytes.index(); at--) {
-            bytes.storage().removeAt(at);
-        }
-        for (int at = kept.size(); at > 0; at--) {
-            bytes.storage().insertAt(bytes.index(), kept.get(at - 1));
-        }
-        return bytes;
-    }
-
-    private static Set<Datatype> anyStringOrCharacter() {
-        Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_STRING.members());
-        accepted.add(Datatype.CHAR);
-        return copyOf(accepted);
-    }
-
-    private void defineCaseChange(
-            String name, java.util.function.UnaryOperator<String> change) {
-
-        define(name, List.of(
-                        Parameter.required("text", anyStringOrCharacter()),
-                        Parameter.belongingTo("part", "limit", of(Datatype.INTEGER))),
-                of("part"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (arguments.getFirst() instanceof CharacterValue letter) {
-                        return theOneCharacterChanged(letter, change);
-                    }
-                    StringValue text = (StringValue) arguments.getFirst();
-                    if (!refinements.contains("part")) {
-                        return text.rewrittenFromHere(change);
-                    }
-                    Value limit = argumentFor("part", List.of("part"), arguments, refinements, 1);
-                    long wanted = limit instanceof IntegerValue(long magnitude)
-                            ? magnitude
-                            : text.lengthFromHere();
-                    StringValue changingFrom =
-                            (StringValue) theRunReachingBackIfNegative(text, wanted);
-                    int changing = (int) Math.max(0, Math.min(Math.abs(wanted),
-                            changingFrom.lengthFromHere()));
-                    changingFrom.rewrittenFromHere(whole -> {
-                        String front = StringActions.theFirstCodePointsOf(whole, changing);
-                        return change.apply(front) + whole.substring(front.length());
-                    });
-                    return text;
-                });
-    }
-
-    private Value theOneCharacterChanged(
-            CharacterValue letter, java.util.function.UnaryOperator<String> change) {
-
-        String changed = change.apply(
-                new String(Character.toChars(letter.codepoint())));
-        return changed.codePointCount(0, changed.length()) == 1
-                ? CharacterValue.of(changed.codePointAt(0))
-                : letter;
-    }
-
-
 
     private void registerSeries() {
         register(new LengthAction(grantedServices));
@@ -1374,7 +1173,7 @@ public final class RebolNativeWords {
         if (!(value instanceof RebolSeries source)) {
             return numbersContributedTo(kind, value);
         }
-        RebolSeries run = theRunReachingBackIfNegative(source, limit);
+        RebolSeries run = source.reachingBackIfNegative(limit);
         long wanted = limit >= 0 ? limit : source.index() - run.index();
         if (run instanceof BinaryValue bytes) {
             return numbersSpeltByWithTheOddBytesDropped(kind, bytes,
@@ -1491,62 +1290,6 @@ public final class RebolNativeWords {
         return named;
     }
 
-
-    private static String withoutCommonIndent(String text) {
-        String[] lines = text.split("\n", -1);
-        int firstContentLine = 0;
-        while (firstContentLine < lines.length && lines[firstContentLine].isBlank()) {
-            firstContentLine++;
-        }
-        int indent = firstContentLine < lines.length
-                ? lines[firstContentLine].length()
-                        - lines[firstContentLine].stripLeading().length()
-                : 0;
-        StringBuilder trimmed = new StringBuilder();
-        for (int at = firstContentLine; at < lines.length; at++) {
-            String line = lines[at];
-            int take = Math.min(indent, line.length() - line.stripLeading().length());
-            trimmed.append(line.substring(take));
-            if (at + 1 < lines.length) {
-                trimmed.append('\n');
-            }
-        }
-        return trimmed.toString();
-    }
-
-    private static String trimmedEachLine(String text) {
-        String afterLead = text.stripLeading();
-        String core = afterLead.stripTrailing();
-        boolean endedWithLineFeed =
-                afterLead.substring(core.length()).indexOf('\n') >= 0;
-        String[] lines = core.split("\n", -1);
-        StringBuilder joined = new StringBuilder();
-        for (int at = 0; at < lines.length; at++) {
-            if (at > 0) {
-                joined.append('\n');
-            }
-            joined.append(lines[at].strip());
-        }
-        if (endedWithLineFeed) {
-            joined.append('\n');
-        }
-        return joined.toString();
-    }
-
-    private static Set<Datatype> alsoAccepting(
-            Set<Datatype> family, Datatype... alsoTaken) {
-
-        Set<Datatype> accepted = EnumSet.copyOf(family);
-        accepted.addAll(List.of(alsoTaken));
-        return Set.copyOf(accepted);
-    }
-
-    private static Set<Datatype> everySeriesAnd(Datatype... alsoTaken) {
-        return alsoAccepting(Typeset.SERIES.members(), alsoTaken);
-    }
-
-    private static final Set<Datatype> WHAT_TRIM_TAKES = everySeriesAnd(
-            Datatype.OBJECT, Datatype.ERROR, Datatype.MODULE);
 
     private static final Set<Datatype> WHAT_PARSE_TAKES = Typeset.SERIES.members();
 
@@ -2960,81 +2703,12 @@ public final class RebolNativeWords {
     }
 
     private void registerStrings() {
-        define("find-script", List.of(Parameter.required("script", of(Datatype.BINARY))),
-                (arguments, evaluator, context) -> {
-                    BinaryValue script = (BinaryValue) arguments.getFirst();
-                    int at = headerStartsIn(script.asText());
-                    return at < 0 ? NoneValue.none() : script.atIndex(script.index() + at);
-                });
-        define("split-lines", List.of(Parameter.required("value", of(Datatype.STRING))),
-                (arguments, evaluator, context) -> {
-                    String whole = ((StringValue) arguments.getFirst()).text();
-                    if (whole.isEmpty()) {
-                        return BlockValue.block(List.of());
-                    }
-                    return BlockValue.block(Arrays.stream(whole.split("\r?\n", -1))
-                            .<Value>map(StringValue::of)
-                            .toList());
-                });
-        define("wildcard?", List.of(Parameter.required("path", of(Datatype.FILE))),
-                (arguments, evaluator, context) -> LogicValue.of(
-                        ((StringValue) arguments.getFirst()).text().chars()
-                                .anyMatch(letter -> letter == '*' || letter == '?')));
-        defineCaseChange("uppercase", text -> text.toUpperCase(Locale.ROOT));
-        defineCaseChange("lowercase", text -> text.toLowerCase(Locale.ROOT));
-        define("trim", List.of(
-                        Parameter.required("series", WHAT_TRIM_TAKES),
-                        Parameter.belongingTo("with", "characters", of())),
-                of("head", "tail", "auto", "lines", "all", "with"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (arguments.getFirst() instanceof ObjectValue
-                            || arguments.getFirst() instanceof ModuleValue
-                            || arguments.getFirst() instanceof ErrorValue) {
-                        if (!refinements.isEmpty()) {
-                            throw Raised.of(EvaluationFailure.BAD_REFINES,
-                                    "trim on an object takes no refinements");
-                        }
-                        return trimmedObject(arguments.getFirst());
-                    }
-                    refuseTheSeriesTrimHasNoArmFor(arguments.getFirst());
-                    refuseContradictoryTrim(arguments.getFirst(), refinements);
-                    if (arguments.getFirst() instanceof BlockValue block) {
-                        return trimmedBlock(block, refinements);
-                    }
-                    if (arguments.getFirst() instanceof BinaryValue bytes) {
-                        return trimmedBinary(bytes, refinements);
-                    }
-                    boolean oneEndOnly =
-                            refinements.contains("head") != refinements.contains("tail");
-                    return ((StringValue) arguments.getFirst()).rewrittenFromHere(text -> {
-                        if (refinements.contains("with") && arguments.size() > 1) {
-                            Set<Integer> unwanted = unwantedCodePoints(arguments.get(1));
-                            StringBuilder kept = new StringBuilder();
-                            text.codePoints()
-                                    .filter(letter -> !unwanted.contains(letter))
-                                    .forEach(kept::appendCodePoint);
-                            return kept.toString();
-                        }
-                        if (refinements.contains("all")) {
-                            return text.replaceAll("\\s", "");
-                        }
-                        if (refinements.contains("lines")) {
-                            return text.strip().replaceAll("\\s+", " ");
-                        }
-                        String indented = refinements.contains("auto")
-                                ? withoutCommonIndent(text)
-                                : text;
-                        if (!oneEndOnly) {
-                            boolean bothEndsNamed = refinements.contains("head");
-                            return refinements.contains("auto") || bothEndsNamed
-                                    ? indented.strip()
-                                    : trimmedEachLine(indented);
-                        }
-                        return refinements.contains("head")
-                                ? indented.stripLeading()
-                                : indented.stripTrailing();
-                    });
-                });
+        register(new FindScriptNative());
+        register(new SplitLinesNative());
+        register(new WhetherWildcardNative());
+        register(new UppercaseNative());
+        register(new LowercaseNative());
+        register(new TrimAction());
     }
 
     private static final Set<Datatype> SHARES_ITS_BRANCH_WITH_MAKE = of(
@@ -4527,16 +4201,6 @@ public final class RebolNativeWords {
     }
 
     private static final double TOO_LARGE_FOR_A_WHOLE_NUMBER = 9.223372036854776E18;
-
-    private static RebolSeries theRunReachingBackIfNegative(
-            RebolSeries series, long wanted) {
-
-        if (wanted >= 0) {
-            return series;
-        }
-        int reaching = (int) Math.min(-wanted, series.index() - 1L);
-        return series.atIndex(series.index() - reaching);
-    }
 
     private static Optional<Long> howManyWanted(
             Value source, List<Value> arguments, Set<String> refinements, int where) {

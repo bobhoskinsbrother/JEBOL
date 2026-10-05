@@ -144,6 +144,32 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return octetsUpTo(storageLength() + 1);
     }
 
+    @Override
+    public Value trimmed(Trimming trimming) {
+        trimming.refuseWhatOnlyTextServes();
+        List<Integer> kept = new ArrayList<>();
+        for (int at = 0; at < lengthFromHere(); at++) {
+            kept.add(storage.at(index + at));
+        }
+        if (trimming.everywhere()) {
+            kept.removeIf(octet -> octet == 0);
+        } else {
+            while (trimming.fromTheHead() && !kept.isEmpty() && kept.getFirst() == 0) {
+                kept.removeFirst();
+            }
+            while (trimming.fromTheTail() && !kept.isEmpty() && kept.getLast() == 0) {
+                kept.removeLast();
+            }
+        }
+        for (int at = storageLength(); at >= index; at--) {
+            storage.removeAt(at);
+        }
+        for (int at = kept.size(); at > 0; at--) {
+            storage.insertAt(index, kept.get(at - 1));
+        }
+        return this;
+    }
+
     public byte[] bytesFromHere() {
         int howMany = lengthFromHere();
         byte[] bytes = new byte[howMany];

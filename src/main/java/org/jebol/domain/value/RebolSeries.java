@@ -28,6 +28,14 @@ public sealed interface RebolSeries extends Value
         return index() > tail ? atIndex(tail) : this;
     }
 
+    default RebolSeries reachingBackIfNegative(long wanted) {
+        if (wanted >= 0) {
+            return this;
+        }
+        int reaching = (int) Math.min(-wanted, index() - 1L);
+        return atIndex(index() - reaching);
+    }
+
     @Override
     default Value picked(int oneBasedPosition) {
         if (oneBasedPosition == 0) {

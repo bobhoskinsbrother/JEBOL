@@ -57,6 +57,12 @@ public record ObjectValue(Context context) implements Value {
     }
 
     @Override
+    public Value trimmed(Trimming trimming) {
+        trimming.refuseEveryRefinementOnFields();
+        return new ObjectValue(context.withoutTheFieldsHoldingNothing());
+    }
+
+    @Override
     public List<Value> items() {
         return context.boundWordsAndValues();
     }

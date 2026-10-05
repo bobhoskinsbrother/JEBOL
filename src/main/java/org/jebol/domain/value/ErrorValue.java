@@ -76,6 +76,12 @@ public record ErrorValue(
     }
 
     @Override
+    public Value trimmed(Trimming trimming) {
+        trimming.refuseEveryRefinementOnFields();
+        return new ObjectValue(fieldsAsAContext().orElseThrow().withoutTheFieldsHoldingNothing());
+    }
+
+    @Override
     public boolean declaresTheField(String field) {
         return FIELDS.contains(field);
     }

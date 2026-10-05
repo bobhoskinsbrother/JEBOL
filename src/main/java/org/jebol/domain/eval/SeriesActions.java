@@ -28,7 +28,7 @@ abstract class SeriesActions implements Actions {
 
     @Override
     public Value removed(long howMany) {
-        RebolSeries removingFrom = theRunReachingBackIfNegative(howMany);
+        RebolSeries removingFrom = held().reachingBackIfNegative(howMany);
         for (long dropped = 0; dropped < Math.abs(howMany)
                 && !removingFrom.atTail(); dropped++) {
             takeOneOutAt(removingFrom.index());
@@ -83,13 +83,5 @@ abstract class SeriesActions implements Actions {
             takeOneOutAt(held().index());
         }
         return held();
-    }
-
-    private RebolSeries theRunReachingBackIfNegative(long wanted) {
-        if (wanted >= 0) {
-            return held();
-        }
-        int reaching = (int) Math.min(-wanted, held().index() - 1L);
-        return held().atIndex(held().index() - reaching);
     }
 }

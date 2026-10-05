@@ -101,7 +101,15 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
     }
 
     public void putEachPairOnALine() {
-        for (int at = 1; at <= storageLength(); at += 2) {
+        startALineEvery(2);
+    }
+
+    public void putEachItemOnALine() {
+        startALineEvery(1);
+    }
+
+    private void startALineEvery(int stride) {
+        for (int at = 1; at <= storageLength(); at += stride) {
             storage.setLineBreakAt(at, true);
         }
     }
@@ -207,6 +215,29 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
     public List<Value> remaining() {
         return storage.snapshot().subList(
                 Math.min(index - 1, storage.length()), storage.length());
+    }
+
+    @Override
+    public Value trimmed(Trimming trimming) {
+        trimming.refuseWhatOnlyTextServes();
+        List<Value> items = new ArrayList<>(remaining());
+        if (trimming.everywhere()) {
+            items.removeIf(NoneValue.class::isInstance);
+        } else {
+            while (trimming.fromTheHead() && !items.isEmpty() && items.getFirst() instanceof NoneValue) {
+                items.removeFirst();
+            }
+            while (trimming.fromTheTail() && !items.isEmpty() && items.getLast() instanceof NoneValue) {
+                items.removeLast();
+            }
+        }
+        for (int at = storageLength(); at >= index; at--) {
+            storage.removeAt(at);
+        }
+        for (int at = items.size(); at > 0; at--) {
+            storage.insertAt(index, items.get(at - 1));
+        }
+        return this;
     }
 
     public List<WordValue> setWordsFromHere() {

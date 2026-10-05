@@ -198,6 +198,18 @@ public final class Context {
         return held;
     }
 
+    public Context withoutTheFieldsHoldingNothing() {
+        Context kept = Context.root();
+        for (ContextSlot slot : slots()) {
+            boolean holdsNothing = slot.value() instanceof NoneValue
+                    || slot.value() instanceof UnsetValue;
+            if (!slot.canonical().equals("self") && !holdsNothing) {
+                kept.set(slot.spelling(), slot.value());
+            }
+        }
+        return kept;
+    }
+
     public boolean holdsNothingButSelf() {
         return slots().stream().allMatch(slot -> slot.canonical().equals("self"));
     }

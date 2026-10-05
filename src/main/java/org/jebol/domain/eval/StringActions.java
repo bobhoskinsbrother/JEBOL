@@ -77,7 +77,7 @@ public final class StringActions extends SeriesActions {
         return held.atIndex(held.index() + added.length);
     }
 
-    static String contributedBy(Asked asked) {
+    private String contributedBy(Asked asked) {
         Value adding = asked.duplicated();
         String written = adding instanceof BlockValue added
                 && added.datatype() == Datatype.BLOCK
@@ -88,7 +88,7 @@ public final class StringActions extends SeriesActions {
                 .orElse(written);
     }
 
-    static String theFirstCodePointsOf(String written, int wanted) {
+    private String theFirstCodePointsOf(String written, int wanted) {
         int taking = Math.min(wanted, written.codePointCount(0, written.length()));
         return written.substring(0, written.offsetByCodePoints(0, taking));
     }

@@ -20,6 +20,12 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
     }
 
     @Override
+    public Value trimmed(Trimming trimming) {
+        trimming.refuseEveryRefinementOnFields();
+        return new ObjectValue(context.withoutTheFieldsHoldingNothing());
+    }
+
+    @Override
     public List<Value> items() {
         return context.boundWordsAndValues();
     }
