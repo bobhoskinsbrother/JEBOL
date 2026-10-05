@@ -59,19 +59,19 @@ public record Asked(
 
     public static Asked reading(
             Value subject, Value given, Set<String> refinementsAsked,
-            java.util.function.Function<String, Value> theArgumentFor,
+            Optional<Value> times, Optional<Value> part,
             Evaluator evaluator, Context context) {
 
-        Value times = theArgumentFor.apply("dup");
-        Value limit = theArgumentFor.apply("part");
+        Value limit = part.orElseGet(NoneValue::none);
         return new Asked(
                 subject,
                 given,
-                duplicated(given, times),
+                times.map(count -> duplicated(given, count)).orElse(given),
                 limit,
                 howMuchOf(given, limit),
                 howManyOctetsOf(given, limit),
-                refinementsAsked.contains("dup") && times instanceof IntegerValue(long magnitude)
+                refinementsAsked.contains("dup")
+                        && times.orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
                         ? Math.max(0, magnitude)
                         : 1,
                 refinementsAsked.contains("only"),
@@ -93,9 +93,6 @@ public record Asked(
     }
 
     private static Value duplicated(Value given, Value times) {
-        if (times == null) {
-            return given;
-        }
         BlockValue spread = given instanceof BlockValue block
                 && block.datatype() == Datatype.BLOCK
                 ? block
@@ -143,10 +140,5 @@ public record Asked(
             return Optional.of((long) (upTo.index() - from.index()));
         }
         return Optional.empty();
-    }
-
-    /** A stand-in when an arm asks about a limit with no value to measure against. */
-    public static Value nothingToMeasureAgainst() {
-        return NoneValue.none();
     }
 }

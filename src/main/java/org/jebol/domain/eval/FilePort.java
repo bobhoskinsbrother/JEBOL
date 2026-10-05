@@ -1,5 +1,12 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.ErrorCategory;
+import org.jebol.domain.value.ErrorValue;
+import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.Raised;
+import org.jebol.domain.value.StringValue;
+
 /**
  * Where a script's reading and writing goes.
  *
@@ -120,6 +127,8 @@ public interface FilePort {
 
         private static final long serialVersionUID = 1L;
 
+        private static final int OPEN_FAILED = 3;
+
         private final transient String errorId;
         private final transient String subject;
 
@@ -140,6 +149,14 @@ public interface FilePort {
 
         public String subject() {
             return subject;
+        }
+
+        public Raised raised() {
+            return new Raised(subject.isEmpty()
+                    ? ErrorValue.of(ErrorCategory.ACCESS, errorId, getMessage())
+                    : ErrorValue.about(ErrorCategory.ACCESS, errorId, getMessage(),
+                            StringValue.of(subject, Datatype.FILE),
+                            IntegerValue.of(OPEN_FAILED)));
         }
     }
 

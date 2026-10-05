@@ -141,6 +141,11 @@ public record PairValue(double x, double y) implements Value {
                 : new PairValue(x, replacement);
     }
 
+    @Override
+    public Value picked(int oneBasedPosition) {
+        return halfAt(oneBasedPosition).orElseGet(NoneValue::none);
+    }
+
     public Optional<Value> halfAt(int position) {
         return switch (position) {
             case 1 -> Optional.of(DecimalValue.of(x));

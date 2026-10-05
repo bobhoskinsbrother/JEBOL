@@ -43,6 +43,10 @@ public interface Actions {
         throw Raised.cannotUse(subject(), "remove");
     }
 
+    default Value removed(long howMany) {
+        throw Raised.cannotUse(subject(), "remove");
+    }
+
     default Value takenOne() {
         throw Raised.cannotUse(subject(), "take");
     }

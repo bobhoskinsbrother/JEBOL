@@ -70,6 +70,11 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
     }
 
     @Override
+    public boolean atTail() {
+        return context.holdsNothingButSelf();
+    }
+
+    @Override
     public String toString() {
         Value declared = headerField("name");
         return declared instanceof WordValue word

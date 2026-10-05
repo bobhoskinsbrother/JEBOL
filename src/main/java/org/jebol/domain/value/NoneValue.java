@@ -16,6 +16,11 @@ public record NoneValue() implements Value {
     }
 
     @Override
+    public boolean atTail() {
+        return true;
+    }
+
+    @Override
     public boolean isTruthy() {
         return false;
     }

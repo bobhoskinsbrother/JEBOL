@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 public record StringValue(StringStorage storage, int index, Datatype datatype)
         implements RebolSeries {
@@ -41,6 +42,53 @@ public record StringValue(StringStorage storage, int index, Datatype datatype)
     @Override
     public byte[] asOctets() {
         return text().getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Override
+    public Value itemAt(int positionFromTheHead) {
+        return CharacterValue.of(storage.at(positionFromTheHead));
+    }
+
+    @Override
+    public Value frontCopied(int howMany, boolean deeply, Set<Datatype> kinds) {
+        String whole = text();
+        int taking = Math.min(howMany, whole.codePointCount(0, whole.length()));
+        return StringValue.of(whole.substring(0, whole.offsetByCodePoints(0, taking)), datatype);
+    }
+
+    @Override
+    public RebolSeries reversedFront(int howMany) {
+        return rewrittenFromHere(whole -> new StringBuilder(whole.substring(0, howMany)).reverse()
+                + whole.substring(howMany));
+    }
+
+    @Override
+    public RebolSeries reversedFromHere() {
+        int[] forwards = text().codePoints().toArray();
+        for (int at = 0; at < forwards.length; at++) {
+            storage.set(index + at, forwards[forwards.length - 1 - at]);
+        }
+        return this;
+    }
+
+    public StringValue rewrittenFromHere(UnaryOperator<String> change) {
+        int[] replacement = change.apply(text()).codePoints().toArray();
+        for (int at = storageLength(); at >= index; at--) {
+            storage.removeAt(at);
+        }
+        for (int at = replacement.length; at > 0; at--) {
+            storage.insertAt(index, replacement[at - 1]);
+        }
+        return this;
+    }
+
+    public StringValue swapFirstItemWith(StringValue there) {
+        if (!atTail() && !there.atTail()) {
+            int mine = storage.at(index);
+            storage.set(index, there.storage.at(there.index));
+            there.storage.set(there.index, mine);
+        }
+        return this;
     }
 
     @Override

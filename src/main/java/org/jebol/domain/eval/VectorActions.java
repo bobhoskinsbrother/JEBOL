@@ -1,6 +1,5 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorStorage;
 import org.jebol.domain.value.VectorValue;
@@ -56,7 +55,7 @@ public final class VectorActions extends SeriesActions {
 
     @Override
     public Value insert(Asked asked) {
-        VectorValue held = (VectorValue) RebolNativeWords.clampedToTail(vector);
+        VectorValue held = (VectorValue) vector.clampedToTail();
         List<Value> numbers = numbersAddedBy(asked);
         for (int at = numbers.size(); at > 0; at--) {
             held.storage().insertAt(held.index(),

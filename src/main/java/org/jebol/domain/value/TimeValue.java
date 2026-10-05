@@ -19,6 +19,30 @@ public record TimeValue(long nanoseconds) implements Value {
     }
 
 
+    @Override
+    public Value pickedBy(Value selector) {
+        long seconds = Math.abs(nanoseconds) / NANOSECONDS_PER_SECOND;
+        long fraction = Math.abs(nanoseconds) % NANOSECONDS_PER_SECOND;
+        return switch (thePartNamedBy(selector)) {
+            case "hour" -> IntegerValue.of(seconds / 3600);
+            case "minute" -> IntegerValue.of(seconds / 60 % 60);
+            case "second" -> fraction == 0
+                    ? IntegerValue.of(seconds % 60)
+                    : DecimalValue.of(seconds % 60 + (double) fraction / NANOSECONDS_PER_SECOND);
+            default -> NoneValue.none();
+        };
+    }
+
+    private String thePartNamedBy(Value selector) {
+        return switch (selector) {
+            case WordValue asked -> asked.canonical();
+            case IntegerValue(long magnitude) when magnitude == 1 -> "hour";
+            case IntegerValue(long magnitude) when magnitude == 2 -> "minute";
+            case IntegerValue(long magnitude) when magnitude == 3 -> "second";
+            default -> "";
+        };
+    }
+
     public DecimalValue asSeconds() {
         return DecimalValue.of((double) nanoseconds / NANOSECONDS_PER_SECOND);
     }

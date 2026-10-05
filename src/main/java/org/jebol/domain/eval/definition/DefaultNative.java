@@ -8,9 +8,12 @@ import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public abstract class DefaultNative implements NativeDefinition {
 
@@ -73,6 +76,17 @@ public abstract class DefaultNative implements NativeDefinition {
 
     protected List<Parameter> acceptsAnyType(String... names) {
         return each(names, Typeset.ANY_TYPE.members());
+    }
+
+    protected Set<Datatype> aPartLimit() {
+        return Stream.concat(
+                        Typeset.NUMBER.membersAnd(Datatype.PAIR).stream(),
+                        Arrays.stream(Datatype.values()).filter(Datatype::isSeries))
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    protected Set<Datatype> aDuplicateCount() {
+        return Typeset.NUMBER.membersAnd(Datatype.PAIR);
     }
 
     protected List<Parameter> acceptsWhateverComesAlong(String... names) {

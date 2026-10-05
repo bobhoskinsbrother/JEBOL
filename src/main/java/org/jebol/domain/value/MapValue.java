@@ -38,6 +38,16 @@ public final class MapValue implements Value {
     }
 
     @Override
+    public boolean atTail() {
+        return pairCount() == 0;
+    }
+
+    @Override
+    public Value pickedBy(Value selector) {
+        return select(selector);
+    }
+
+    @Override
     public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
         MapValue theirs = other instanceof MapValue map ? map : MapValue.empty();
         return combinedWith(theirs, keeping.how(), mindingCase);
@@ -146,10 +156,6 @@ public final class MapValue implements Value {
     public boolean holds(Value key, boolean mindingCase) {
         return !(theFirstStoredKeyMatchingNotTheExactOne(key, mindingCase)
                 instanceof NoneValue);
-    }
-
-    public Value storedKeyLike(Value asked) {
-        return storedKeyLike(asked, false);
     }
 
     public Value storedKeyLike(Value asked, boolean mindingCase) {

@@ -133,6 +133,27 @@ public record TupleValue(int[] segments) implements Value {
         return Math.max(segments.length, MINIMUM_SHOWN_SEGMENTS);
     }
 
+    public TupleValue reversedFront(int howMany) {
+        if (howMany < 0) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Integer.toString(howMany));
+        }
+        int width = Math.min(howMany, segmentCount());
+        int[] octets = segments();
+        for (int at = 0; at < width / 2; at++) {
+            int held = octets[at];
+            octets[at] = octets[width - at - 1];
+            octets[width - at - 1] = held;
+        }
+        return TupleValue.of(octets);
+    }
+
+    @Override
+    public Value picked(int oneBasedPosition) {
+        return oneBasedPosition < 1 || oneBasedPosition > shownCount()
+                ? NoneValue.none()
+                : IntegerValue.of(octetAt(oneBasedPosition));
+    }
+
     /** An octet by position, counting from one, and zero past the kept ones. */
     public int octetAt(int oneBasedPosition) {
         return oneBasedPosition >= 1 && oneBasedPosition <= segments.length

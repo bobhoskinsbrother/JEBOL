@@ -15,18 +15,10 @@ import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorValue;
 import org.jebol.domain.value.WordValue;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class SelectAction extends DefaultNative {
-
-    private static final Set<Datatype> BOUNDS_A_PART = Stream.concat(
-                    Typeset.NUMBER.membersAnd(Datatype.PAIR).stream(),
-                    Arrays.stream(Datatype.values()).filter(Datatype::isSeries))
-            .collect(Collectors.toUnmodifiableSet());
 
     @Override
     public String name() {
@@ -37,7 +29,7 @@ public class SelectAction extends DefaultNative {
     public List<Parameter> parameters() {
         return List.of(Parameter.required("series"),
                 Parameter.required("value", Typeset.ANY_TYPE.members()),
-                Parameter.belongingTo("part", "range", BOUNDS_A_PART),
+                Parameter.belongingTo("part", "range", aPartLimit()),
                 Parameter.belongingTo("with", "wild", Set.of(Datatype.STRING)),
                 Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)));
     }

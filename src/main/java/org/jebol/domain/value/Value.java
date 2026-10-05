@@ -85,6 +85,21 @@ public sealed interface Value permits
         return Molder.form(this);
     }
 
+    default boolean atTail() {
+        throw Raised.cannotUse(this, "tail?");
+    }
+
+    default Value picked(int oneBasedPosition) {
+        throw Raised.cannotUse(this, "pick");
+    }
+
+    default Value pickedBy(Value selector) {
+        if (selector instanceof IntegerValue(long magnitude)) {
+            return picked((int) magnitude);
+        }
+        throw Raised.cannotUse(this, "pick");
+    }
+
     default Value reflected(WordValue field) {
         return NoneValue.none();
     }

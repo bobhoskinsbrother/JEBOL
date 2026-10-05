@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public record BlockValue(BlockStorage storage, int index, Datatype datatype)
@@ -45,6 +46,58 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
                 .toList());
         built.takeLineBreaksFrom(storage, index);
         return new BlockValue(built, 1, datatype);
+    }
+
+    @Override
+    public Value itemAt(int positionFromTheHead) {
+        return storage.at(positionFromTheHead);
+    }
+
+    @Override
+    public Value frontCopied(int howMany, boolean deeply, Set<Datatype> kinds) {
+        BlockStorage built = new BlockStorage(remaining().subList(0, howMany).stream()
+                .map(item -> deeply && kinds.contains(item.datatype())
+                        ? item.copied(true, kinds)
+                        : item)
+                .toList());
+        built.takeLineBreaksFrom(storage, index);
+        return new BlockValue(built, 1, datatype);
+    }
+
+    @Override
+    public RebolSeries reversedFront(int howMany) {
+        List<Value> items = new ArrayList<>(howMany);
+        List<Boolean> breaks = new ArrayList<>(howMany);
+        for (int at = 0; at < howMany; at++) {
+            items.add(storage.at(index + at));
+            breaks.add(storage.breaksLineAt(index + at));
+        }
+        for (int at = 0; at < howMany; at++) {
+            int from = howMany - 1 - at;
+            storage.set(index + at, items.get(from));
+            storage.setLineBreakAt(index + at, breaks.get(from));
+        }
+        return this;
+    }
+
+    public void removeTheFirstPairWhoseKey(Predicate<Value> matches) {
+        List<Value> items = remaining();
+        for (int at = 0; at + 1 < items.size(); at += 2) {
+            if (matches.test(items.get(at))) {
+                storage.removeAt(index + at);
+                storage.removeAt(index + at);
+                return;
+            }
+        }
+    }
+
+    public BlockValue swapFirstItemWith(BlockValue there) {
+        if (!atTail() && !there.atTail()) {
+            Value mine = storage.at(index);
+            storage.set(index, there.storage.at(there.index));
+            there.storage.set(there.index, mine);
+        }
+        return this;
     }
 
     public void putEachPairOnALine() {

@@ -1,5 +1,7 @@
 package org.jebol.domain.value;
 
+import java.util.Set;
+
 public sealed interface RebolSeries extends Value
         permits StringValue, BinaryValue, BlockValue, ImageValue, GobValue, VectorValue {
 
@@ -10,6 +12,34 @@ public sealed interface RebolSeries extends Value
     RebolSeries atIndex(int oneBasedIndex);
 
     boolean sharesStorageWith(RebolSeries other);
+
+    Value itemAt(int positionFromTheHead);
+
+    RebolSeries reversedFront(int howMany);
+
+    Value frontCopied(int howMany, boolean deeply, Set<Datatype> kinds);
+
+    default RebolSeries reversedFromHere() {
+        return reversedFront(lengthFromHere());
+    }
+
+    default RebolSeries clampedToTail() {
+        int tail = storageLength() + 1;
+        return index() > tail ? atIndex(tail) : this;
+    }
+
+    @Override
+    default Value picked(int oneBasedPosition) {
+        if (oneBasedPosition == 0) {
+            return NoneValue.none();
+        }
+        int counted = oneBasedPosition < 0 ? oneBasedPosition + 1 : oneBasedPosition;
+        int at = index() + counted - 1;
+        if (at < 1 || at > storageLength()) {
+            return NoneValue.none();
+        }
+        return itemAt(at);
+    }
 
     default int lengthFromHere() {
         return Math.max(0, storageLength() - index() + 1);
@@ -23,8 +53,29 @@ public sealed interface RebolSeries extends Value
         return index() == 1;
     }
 
+    @Override
     default boolean atTail() {
         return index() >= storageLength() + 1;
+    }
+
+    default RebolSeries atClamped(long wanted) {
+        return atIndex((int) Math.max(1, Math.min(wanted, storageLength() + 1L)));
+    }
+
+    default RebolSeries skipped(long steps) {
+        return atClamped(index() + steps);
+    }
+
+    default long positionNamedBy(Value given, boolean countingFromOne) {
+        return switch (given) {
+            case PairValue ignored -> throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    datatype().literalSpelling()
+                            + " has no width, so a pair names no position in it");
+            case IntegerValue number -> number.magnitude();
+            case DecimalValue number -> (long) number.quantity();
+            case LogicValue yesOrNo -> (yesOrNo.isTruthy() ? 1 : 2) - (countingFromOne ? 0 : 1);
+            default -> 1;
+        };
     }
 
     default RebolSeries head() {

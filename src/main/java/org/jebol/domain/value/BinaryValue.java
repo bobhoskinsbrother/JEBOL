@@ -27,6 +27,49 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
+    public Value itemAt(int positionFromTheHead) {
+        return IntegerValue.of(storage.at(positionFromTheHead));
+    }
+
+    @Override
+    public Value frontCopied(int howMany, boolean deeply, Set<Datatype> kinds) {
+        return copyOfTheFirst(howMany);
+    }
+
+    @Override
+    public RebolSeries reversedFront(int howMany) {
+        int[] front = new int[howMany];
+        for (int at = 0; at < howMany; at++) {
+            front[at] = storage.at(index + howMany - 1 - at);
+        }
+        for (int at = 0; at < howMany; at++) {
+            storage.set(index + at, front[at]);
+        }
+        return this;
+    }
+
+    @Override
+    public RebolSeries reversedFromHere() {
+        List<Integer> forwards = new ArrayList<>();
+        for (int at = index; at <= storageLength(); at++) {
+            forwards.add(storage.at(at));
+        }
+        for (int at = 0; at < forwards.size(); at++) {
+            storage.set(index + at, forwards.get(forwards.size() - 1 - at));
+        }
+        return this;
+    }
+
+    public BinaryValue swapFirstItemWith(BinaryValue there) {
+        if (!atTail() && !there.atTail()) {
+            int mine = storage.at(index);
+            storage.set(index, there.storage.at(there.index));
+            there.storage.set(there.index, mine);
+        }
+        return this;
+    }
+
+    @Override
     public void refuseANeedleItCannotHold(Value needle, String nativeName) {
         if (needle instanceof IntegerValue(long magnitude) && (magnitude < 0 || magnitude > 255)) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,

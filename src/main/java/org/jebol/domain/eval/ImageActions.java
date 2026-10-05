@@ -2,11 +2,8 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.ImageStorage;
 import org.jebol.domain.value.ImageValue;
-import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Value;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public final class ImageActions extends SeriesActions {
@@ -59,12 +56,12 @@ public final class ImageActions extends SeriesActions {
     @Override
     public Value append(Asked asked) {
         asked.refuseRefinementsThisDatatypeDoesNotServe("append");
-        return ImageSeries.appended(picture, asked.given(), asked.howManyTimes());
+        return picture.appended(asked.given(), asked.howManyTimes());
     }
 
     @Override
     public Value insert(Asked asked) {
         asked.refuseRefinementsThisDatatypeDoesNotServe("insert");
-        return ImageSeries.inserted(picture, asked.given(), asked.howManyTimes());
+        return picture.inserted(asked.given(), asked.howManyTimes());
     }
 }

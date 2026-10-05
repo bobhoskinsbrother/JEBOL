@@ -4,16 +4,17 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.jebol.application.Interpreter;
-import org.jebol.domain.eval.BootDeclarations;
 import org.jebol.domain.value.Datatype;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.lang.reflect.Constructor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,31 +47,32 @@ class EveryNativeDefinitionIsRegisteredTest {
             if (isAFamilyOfOnePerDatatype(definition)) {
                 return onePerDatatype(definition);
             }
-            if (readsTheBootDeclarations(definition)) {
-                return List.of((NativeDefinition) definition
-                        .getDeclaredConstructor(BootDeclarations.class)
-                        .newInstance(new BootDeclarations()));
+            Constructor<?> built = theConstructorToBuildWith(definition);
+            Object[] collaborators = new Object[built.getParameterCount()];
+            for (int at = 0; at < collaborators.length; at++) {
+                collaborators[at] = built.getParameterTypes()[at]
+                        .getDeclaredConstructor().newInstance();
             }
-            return List.of((NativeDefinition) definition.getDeclaredConstructor().newInstance());
+            return List.of((NativeDefinition) built.newInstance(collaborators));
         } catch (ReflectiveOperationException unbuildable) {
             throw new IllegalStateException(
                     each.getName() + " has no constructor taking nothing, a datatype or "
-                            + "the boot declarations, so nothing can register it", unbuildable);
+                            + "collaborators that build from nothing, so nothing can "
+                            + "register it", unbuildable);
         }
     }
 
     private boolean isAFamilyOfOnePerDatatype(Class<?> definition) {
-        return hasAConstructorTaking(definition, Datatype.class);
-    }
-
-    private boolean readsTheBootDeclarations(Class<?> definition) {
-        return hasAConstructorTaking(definition, BootDeclarations.class);
-    }
-
-    private boolean hasAConstructorTaking(Class<?> definition, Class<?> only) {
         return Arrays.stream(definition.getDeclaredConstructors())
                 .anyMatch(constructor -> Arrays.equals(
-                        constructor.getParameterTypes(), new Class<?>[] {only}));
+                        constructor.getParameterTypes(), new Class<?>[] {Datatype.class}));
+    }
+
+    private Constructor<?> theConstructorToBuildWith(Class<?> definition)
+            throws NoSuchMethodException {
+        return Arrays.stream(definition.getDeclaredConstructors())
+                .min(Comparator.comparingInt(Constructor::getParameterCount))
+                .orElseThrow(NoSuchMethodException::new);
     }
 
     private List<NativeDefinition> onePerDatatype(Class<?> definition)

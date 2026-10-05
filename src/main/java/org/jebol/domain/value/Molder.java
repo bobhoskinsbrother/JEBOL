@@ -798,7 +798,7 @@ public final class Molder {
             boolean forReading, int positionToName) {
         List<String> numbers = new ArrayList<>();
         for (int at = from; at <= vector.storageLength(); at++) {
-            numbers.add(render(vector.elementAt(at), forReading));
+            numbers.add(render(vector.itemAt(at), forReading));
         }
         if (!forReading) {
             return String.join(" ", numbers);

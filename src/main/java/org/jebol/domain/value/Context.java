@@ -198,6 +198,10 @@ public final class Context {
         return held;
     }
 
+    public boolean holdsNothingButSelf() {
+        return slots().stream().allMatch(slot -> slot.canonical().equals("self"));
+    }
+
     public Map<String, Value> fieldsExcludingSelf() {
         Map<String, Value> fields = new LinkedHashMap<>();
         slotsByCanonicalName.forEach((name, slot) -> {

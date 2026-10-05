@@ -26,6 +26,7 @@ abstract class SeriesActions implements Actions {
         return held().lengthFromHere();
     }
 
+    @Override
     public Value removed(long howMany) {
         RebolSeries removingFrom = theRunReachingBackIfNegative(howMany);
         for (long dropped = 0; dropped < Math.abs(howMany)

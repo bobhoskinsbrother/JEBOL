@@ -141,12 +141,12 @@ class SurfaceTypesFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("true counts one and false counts two, as the C has it")
-        void trueCountsOneAndFalseCountsTwo() {
+        @DisplayName("true names the first position and false the second, so SKIP steps nought or one")
+        void trueNamesTheFirstPositionAndFalseTheSecond() {
             assertThat(answerTo("""
-                    skip [1 2 3] true""")).isEqualTo("[2 3]");
+                    skip [1 2 3] true""")).isEqualTo("[1 2 3]");
             assertThat(answerTo("""
-                    skip [1 2 3] false""")).isEqualTo("[3]");
+                    skip [1 2 3] false""")).isEqualTo("[2 3]");
             assertThat(answerTo("""
                     at [1 2 3] true""")).isEqualTo("[1 2 3]");
             assertThat(answerTo("""

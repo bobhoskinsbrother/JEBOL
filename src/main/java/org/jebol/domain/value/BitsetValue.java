@@ -28,6 +28,11 @@ public final class BitsetValue implements Value {
     }
 
     @Override
+    public boolean atTail() {
+        return octets.length == 0;
+    }
+
+    @Override
     public Value copied(boolean deeply, java.util.Set<Datatype> kinds) {
         return duplicate();
     }

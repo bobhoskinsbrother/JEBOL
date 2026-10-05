@@ -113,6 +113,11 @@ public record ObjectValue(Context context) implements Value {
     }
 
     @Override
+    public boolean atTail() {
+        return context.holdsNothingButSelf();
+    }
+
+    @Override
     public String toString() {
         return "object with " + context.slotCount() + " fields";
     }

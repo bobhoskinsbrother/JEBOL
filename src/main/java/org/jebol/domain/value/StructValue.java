@@ -306,6 +306,23 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         return written;
     }
 
+    public StructValue changedBy(Value given) {
+        if (given instanceof BlockValue written) {
+            startedWith(written);
+            return this;
+        }
+        if (!(given instanceof BinaryValue octets)) {
+            throw Raised.of(EvaluationFailure.EXPECT_ARG,
+                    "change wanted a value, not a " + given.datatype().literalSpelling());
+        }
+        if (!acceptsRawBytes()) {
+            throw Raised.of(EvaluationFailure.PROTECTED,
+                    "this struct holds a REBOL value, and raw bytes would land on it");
+        }
+        changeFrom(octets.bytesFromHere());
+        return this;
+    }
+
     @Override
     public Value reflected(WordValue asked) {
         return switch (asked.canonical()) {

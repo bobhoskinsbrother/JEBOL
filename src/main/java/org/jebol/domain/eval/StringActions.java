@@ -7,7 +7,6 @@ import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
 
@@ -70,7 +69,7 @@ public final class StringActions extends SeriesActions {
 
     @Override
     public Value insert(Asked asked) {
-        StringValue held = (StringValue) RebolNativeWords.clampedToTail(text);
+        StringValue held = (StringValue) text.clampedToTail();
         int[] added = contributedBy(asked).codePoints().toArray();
         for (int at = 0; at < added.length; at++) {
             held.storage().insertAt(held.index() + at, added[at]);

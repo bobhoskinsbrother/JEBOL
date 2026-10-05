@@ -1,7 +1,6 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.eval.definition.*;
-import org.jebol.domain.value.sets.SetOperation;
 
 import org.jebol.domain.date.DateMaking;
 import org.jebol.domain.date.part.DatePart;
@@ -9,7 +8,6 @@ import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.ServiceRefusal;
 import org.jebol.domain.parse.Parser;
 import org.jebol.domain.read.Construction;
-import org.jebol.domain.read.SyntaxFailure;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.*;
@@ -60,7 +58,6 @@ public final class RebolNativeWords {
         registerInterpreterState();
         registerPorts();
         registerParse();
-        registerLayout();
         registerScreen();
         registerOutput();
     }
@@ -76,7 +73,7 @@ public final class RebolNativeWords {
         }
     }
 
-    private Set<HostService> grantedServices = of();
+    private final GrantedServices grantedServices = new GrantedServices();
 
     private char localFileSeparator = '/';
 
@@ -113,22 +110,12 @@ public final class RebolNativeWords {
 
     public static RebolNativeWords standard(Set<HostService> granted) {
         RebolNativeWords natives = standard();
-        natives.grantedServices = copyOf(granted);
+        natives.grantOnly(granted);
         return natives;
     }
 
     public void grantOnly(Set<HostService> granted) {
-        this.grantedServices = copyOf(granted);
-    }
-
-    private void requireService(HostService service) {
-        if (grantedServices.contains(service)) {
-            return;
-        }
-        throw Raised.of(EvaluationFailure.NO_SERVICE,
-                service.name().toLowerCase(java.util.Locale.ROOT)
-                        + " is " + ServiceRefusal.NOT_GRANTED.name()
-                                .toLowerCase(java.util.Locale.ROOT).replace('_', ' '));
+        grantedServices.grantOnly(granted);
     }
 
     private static final java.util.Set<String> FIELDS_THE_OPERATING_SYSTEM_ANSWERS =
@@ -152,7 +139,7 @@ public final class RebolNativeWords {
             process = magnitude1;
             signal = (int) magnitude;
         }
-        requireService(HostService.PROCESSES);
+        grantedServices.require(HostService.PROCESSES);
         return LogicValue.of(endProcess(process, signal));
     }
 
@@ -188,7 +175,7 @@ public final class RebolNativeWords {
     }
 
     private boolean liesOnTheDiskAsADirectory(Evaluator evaluator, String path) {
-        requireService(HostService.FILES);
+        grantedServices.require(HostService.FILES);
         return throughPort(() -> LogicValue.of(evaluator.files().isDirectory(path)))
                 .isTruthy();
     }
@@ -492,7 +479,7 @@ public final class RebolNativeWords {
                 of("year", "month", "day", "time", "zone", "date",
                         "weekday", "yearday", "precise", "utc"),
                 (arguments, evaluator, context, refinements) -> {
-                    requireService(HostService.CLOCK);
+                    grantedServices.require(HostService.CLOCK);
                     return whatTheClockSays(refinements);
                 });
 
@@ -508,14 +495,6 @@ public final class RebolNativeWords {
                                 ? NoneValue.none()
                                 : arguments.getFirst());
 
-        define("seventh", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> pick(arguments.getFirst(), 7));
-        define("eighth", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> pick(arguments.getFirst(), 8));
-        define("ninth", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> pick(arguments.getFirst(), 9));
-        define("tenth", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> pick(arguments.getFirst(), 10));
 
         define("trace", List.of(Parameter.required("mode",
                         of(Datatype.INTEGER, Datatype.LOGIC))),
@@ -757,20 +736,6 @@ public final class RebolNativeWords {
     private static final int MONTHS_A_YEAR = 12;
     private static final int LONGEST_MONTH = 31;
 
-
-    private static Value reversedOctets(TupleValue tuple, int howMany) {
-        if (howMany < 0) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Integer.toString(howMany));
-        }
-        int width = Math.min(howMany, tuple.segmentCount());
-        int[] octets = tuple.segments();
-        for (int at = 0; at < width / 2; at++) {
-            int held = octets[at];
-            octets[at] = octets[width - at - 1];
-            octets[width - at - 1] = held;
-        }
-        return TupleValue.of(octets);
-    }
 
     private Value randomisedOctets(TupleValue tuple) {
         int[] octets = tuple.segments();
@@ -1089,23 +1054,6 @@ public final class RebolNativeWords {
         register(new GetNative());
     }
 
-    private void defineStepper(String spelling, int step) {
-        define(spelling, List.of(Parameter.hardQuoted("word")),
-                (arguments, evaluator, context) -> {
-                    ContextSlot slot = ((WordValue) arguments.getFirst()).boundSlot();
-                    Value before = slot.value();
-                    slot.setValue(switch (before) {
-                        case IntegerValue whole -> IntegerValue.of(whole.magnitude() + step);
-                        case CharacterValue letter ->
-                                CharacterValue.of(letter.codepoint() + step);
-                        case RebolSeries series -> series.atIndex(
-                                clampToSeries(series, series.index() + step));
-                        default -> raiseCannotUse(before, spelling);
-                    });
-                    return before;
-                });
-    }
-
     private static int headerStartsIn(String text) {
         String lowered = text.toLowerCase(java.util.Locale.ROOT);
         for (int at = lowered.indexOf("rebol"); at >= 0;
@@ -1278,7 +1226,7 @@ public final class RebolNativeWords {
                     }
                     StringValue text = (StringValue) arguments.getFirst();
                     if (!refinements.contains("part")) {
-                        return rewrittenInPlace(text, change);
+                        return text.rewrittenFromHere(change);
                     }
                     Value limit = argumentFor("part", List.of("part"), arguments, refinements, 1);
                     long wanted = limit instanceof IntegerValue(long magnitude)
@@ -1288,8 +1236,8 @@ public final class RebolNativeWords {
                             (StringValue) theRunReachingBackIfNegative(text, wanted);
                     int changing = (int) Math.max(0, Math.min(Math.abs(wanted),
                             changingFrom.lengthFromHere()));
-                    rewrittenInPlace(changingFrom, whole -> {
-                        String front = theFirstCodePointsOf(whole, changing);
+                    changingFrom.rewrittenFromHere(whole -> {
+                        String front = StringActions.theFirstCodePointsOf(whole, changing);
                         return change.apply(front) + whole.substring(front.length());
                     });
                     return text;
@@ -1306,1184 +1254,61 @@ public final class RebolNativeWords {
                 : letter;
     }
 
-    private static Value rewrittenInPlace(
-            StringValue text, java.util.function.UnaryOperator<String> change) {
-
-        int[] replacement = change.apply(text.text()).codePoints().toArray();
-        int from = text.index();
-        for (int at = text.storageLength(); at >= from; at--) {
-            text.storage().removeAt(at);
-        }
-        for (int at = replacement.length; at > 0; at--) {
-            text.storage().insertAt(from, replacement[at - 1]);
-        }
-        return text;
-    }
 
 
     private void registerSeries() {
-        define("length?", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> evaluator.theRebolActorsAnswer(
-                        "length?", arguments, of())
-                .orElseGet(() -> switch (arguments.get(0)) {
-                    case NoneValue nothing -> nothing;
-                    case PortValue queued when theEventQueueOf(queued).isPresent() ->
-                            IntegerValue.of(theEventQueueOf(queued).orElseThrow()
-                                    .lengthFromHere());
-                    case PortValue unmeasurable
-                            when unmeasurable.schemeName().equals("clipboard") ->
-                            throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
-                                    WordValue.of("length?").as(Datatype.SET_WORD));
-                    case PortValue buffered
-                            when buffered.schemeName().equals("udp") ->
-                            IntegerValue.of(
-                                    buffered.fieldValue("data") instanceof RebolSeries held
-                                            ? held.lengthFromHere() : 0);
-                    case TupleValue tuple -> IntegerValue.of(tuple.shownCount());
-                    case WordValue word -> IntegerValue.of(
-                            word.spelling().codePointCount(0, word.spelling().length()));
-                    case Value subject when Actions.of(subject).isPresent() ->
-                            IntegerValue.of(Actions.of(subject).orElseThrow().length());
-                    case RebolSeries series -> IntegerValue.of(series.lengthFromHere());
-                    case ModuleValue module ->
-                            IntegerValue.of(module.context().fieldCount());
-                    case PortValue port when isAFilePort(port) ->
-                            lengthLeftInTheFile(port, evaluator);
-                    case PortValue port ->
-                            IntegerValue.of(port.context().fieldCount());
-                    case StructValue struct -> IntegerValue.of(struct.size());
-                    default -> raiseWrongArgument(arguments.get(0), "length?", "series");
-                }));
+        register(new LengthAction(grantedServices));
+        register(new FirstNative());
+        register(new SecondNative());
+        register(new ThirdNative());
+        register(new FourthNative());
+        register(new FifthNative());
+        register(new SixthNative());
+        register(new SeventhNative());
+        register(new EighthNative());
+        register(new NinthNative());
+        register(new TenthNative());
+        register(new PickAction());
+        register(new PickzNative());
+        register(new LastNative());
+        register(new FirstPlusNative());
+        register(new SwapAction());
+        register(new IncrementNative());
+        register(new DecrementNative());
+        register(new TruncateNative());
+        register(new AtzAction(grantedServices));
+        register(new IndexzAction(grantedServices));
+        register(new WhetherPastAction());
+        register(new WhetherHeadAction());
+        register(new WhetherTailAction(grantedServices));
+        register(new NextAction(grantedServices));
+        register(new HeadAction(grantedServices));
+        register(new TailAction(grantedServices));
+        register(new IndexAction(grantedServices));
 
-        define("first", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> pick(arguments.get(0), 1));
-        define("second", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> pick(arguments.get(0), 2));
-        define("third", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> pick(arguments.get(0), 3));
-        define("pick", List.of(Parameter.required("series"),
-                        Parameter.required("index")),
-                (arguments, evaluator, context) -> {
-                    Optional<Value> itsOwn =
-                            evaluator.theRebolActorsAnswer("pick", arguments, of());
-                    if (itsOwn.isPresent()) {
-                        return itsOwn.get();
-                    }
-                    Optional<BlockValue> queue = theEventQueueOf(arguments.getFirst());
-                    if (queue.isPresent()) {
-                        return pickFrom(queue.get(), arguments.get(1));
-                    }
-                    return arguments.get(1) instanceof LogicValue(boolean truth)
-                            && !(arguments.getFirst() instanceof BitsetValue)
-                            ? pick(arguments.get(0), truth ? 1 : 2)
-                            : pickFrom(arguments.get(0), arguments.get(1));
-                });
+        register(new AppendAction(grantedServices));
+        register(new InsertAction(grantedServices));
+        register(new ClearAction(grantedServices));
+        register(new RemoveAction());
+        register(new ChangeAction());
+        register(new ReverseAction());
+        register(new CopyAction());
+        register(new FindAction());
+        register(new SortAction());
+        register(new BackAction(grantedServices));
+        register(new SkipAction(grantedServices));
+        register(new AtAction(grantedServices));
 
-        define("atz", List.of(Parameter.required("series"),
-                        Parameter.required("position",
-                                of(Datatype.INTEGER, Datatype.PAIR))),
-                (arguments, evaluator, context) -> {
-                    if (arguments.getFirst() instanceof PortValue port
-                            && isAFilePort(port)) {
-                        return movedWithinTheFile(port, evaluator,
-                                (long) Arithmetic.asMagnitude(arguments.get(1)));
-                    }
-                    if (!(arguments.getFirst() instanceof RebolSeries series)) {
-                        return raiseWrongArgument(arguments.getFirst(), "atz", "series");
-                    }
-                    return series.atIndex(clampedPosition(series,
-                            positionAskedFor(series, arguments.get(1), false) + 1));
-                });
-        define("indexz?", List.of(Parameter.required("series", positionable())),
-                of("xy"),
-                (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
-                    case ImageValue picture when refinements.contains("xy") ->
-                            whereItStandsInThePicture(picture, 0);
-                    case PortValue port when isAFilePort(port) -> {
-                        refuseAClosedPosition(port);
-                        yield IntegerValue.of(SeekableFilePort.positionOf(port));
-                    }
-                    case RebolSeries series -> IntegerValue.of(series.index() - 1);
-                    default -> raiseCannotUse(arguments.get(0), "indexz?");
-                });
-        define("pickz", List.of(Parameter.required("series"),
-                        Parameter.required("index", of(Datatype.INTEGER))),
-                (arguments, evaluator, context) -> {
-                    if (arguments.getFirst() instanceof BitsetValue) {
-                        return pickFrom(arguments.getFirst(), arguments.get(1));
-                    }
-                    int wanted = (int) ((IntegerValue) arguments.get(1)).magnitude();
-                    return pick(arguments.get(0), wanted >= 0 ? wanted + 1 : wanted);
-                });
-
-        define("past?", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> arguments.get(0) instanceof RebolSeries series
-                        ? LogicValue.of(series.index() > series.storageLength() + 1)
-                        : raiseWrongArgument(arguments.get(0), "past?", "series"));
-
-        define("swap", List.of(Parameter.required("series"), Parameter.required("with")),
-                (arguments, evaluator, context) -> {
-                    if (arguments.get(0) instanceof GobValue gob) {
-                        return raiseCannotUse(gob, "swap");
-                    }
-                    if (arguments.get(0) instanceof StringValue here
-                            && arguments.get(1) instanceof StringValue there) {
-                        if (!here.atTail() && !there.atTail()) {
-                            int mine = here.storage().at(here.index());
-                            here.storage().set(here.index(), there.storage().at(there.index()));
-                            there.storage().set(there.index(), mine);
-                        }
-                        return here;
-                    }
-                    if (arguments.get(0) instanceof BinaryValue here
-                            && arguments.get(1) instanceof BinaryValue there) {
-                        if (!here.atTail() && !there.atTail()) {
-                            int mine = here.storage().at(here.index());
-                            here.storage().set(here.index(), there.storage().at(there.index()));
-                            there.storage().set(there.index(), mine);
-                        }
-                        return here;
-                    }
-                    if (!(arguments.get(0) instanceof BlockValue here)
-                            || !(arguments.get(1) instanceof BlockValue there)) {
-                        return raiseWrongArgument(arguments.get(0), "swap", "series");
-                    }
-                    if (!here.atTail() && !there.atTail()) {
-                        Value mine = here.storage().at(here.index());
-                        here.storage().set(here.index(), there.storage().at(there.index()));
-                        there.storage().set(there.index(), mine);
-                    }
-                    return here;
-                });
-
-        define("sixth", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> pick(arguments.get(0), 6));
-
-        define("first+", List.of(Parameter.softQuoted("word")),
-                (arguments, evaluator, context) -> {
-                    if (!(arguments.get(0) instanceof WordValue word)
-                            || !word.isBound()
-                            || !word.binding().knows(word.canonical())) {
-                        throw Raised.of(EvaluationFailure.INVALID_ARG, arguments.get(0));
-                    }
-                    ContextSlot slot = word.binding().slotFor(word.canonical());
-                    if (!(slot.value() instanceof RebolSeries series)) {
-                        throw Raised.of(EvaluationFailure.INVALID_ARG,
-                                WordValue.of(word.spelling()));
-                    }
-                    Value first = pick(series, 1);
-                    if (!series.atTail()) {
-                        slot.setValue(series.atIndex(series.index() + 1));
-                    }
-                    return first;
-                });
-
-        define("head?", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> arguments.get(0) instanceof RebolSeries series
-                        ? LogicValue.of(series.atHead())
-                        : raiseCannotUse(arguments.get(0), "head?"));
-        define("tail?", List.of(Parameter.required("series", WHAT_TAIL_TAKES)),
-                (arguments, evaluator, context) -> switch (arguments.get(0)) {
-                    case NoneValue ignored -> LogicValue.yes();
-                    case MapValue map -> LogicValue.of(map.pairCount() == 0);
-                    case TypesetValue kinds ->
-                            LogicValue.of(kinds.members().isEmpty());
-                    case BitsetValue members ->
-                            LogicValue.of(members.octets().length == 0);
-                    case ObjectValue object -> LogicValue.of(
-                            object.context().slots().stream()
-                                    .allMatch(slot -> slot.canonical().equals("self")));
-                    case ModuleValue module -> LogicValue.of(
-                            module.context().slots().stream()
-                                    .allMatch(slot -> slot.canonical().equals("self")));
-                    case PortValue port when isAFilePort(port) ->
-                            LogicValue.of(theFileIsAtItsEnd(port, evaluator));
-                    case RebolSeries series -> LogicValue.of(series.atTail());
-                    default -> raiseCannotUse(arguments.get(0), "tail?");
-                });
-        define("next", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> switch (arguments.getFirst()) {
-                    case PortValue port when isAFilePort(port) ->
-                            movedWithinTheFile(port, evaluator,
-                                    SeekableFilePort.positionOf(port) + 1);
-                    case RebolSeries series -> (Value) series.atIndex(Math.min(
-                            series.index() + 1, series.storageLength() + 1));
-                    default -> raiseCannotUse(arguments.get(0), "next");
-                });
-        define("head", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> switch (arguments.getFirst()) {
-                    case PortValue port when isAFilePort(port) ->
-                            movedWithinTheFile(port, evaluator, 0);
-                    case RebolSeries series -> (Value) series.head();
-                    default -> raiseCannotUse(arguments.get(0), "head");
-                });
-        define("tail", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> switch (arguments.getFirst()) {
-                    case PortValue port when isAFilePort(port) ->
-                            movedWithinTheFile(port, evaluator,
-                                    ((IntegerValue) wholeSizeOfTheFile(port, evaluator))
-                                            .magnitude());
-                    case RebolSeries series -> (Value) series.tail();
-                    default -> raiseCannotUse(arguments.get(0), "tail");
-                });
-        define("index?", List.of(Parameter.required("series", positionable())),
-                of("xy"),
-                (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
-                    case NoneValue nothing -> nothing;
-                    case ImageValue picture when refinements.contains("xy") ->
-                            whereItStandsInThePicture(picture, 1);
-                    case PortValue port when isAFilePort(port) -> {
-                        refuseAClosedPosition(port);
-                        yield IntegerValue.of(SeekableFilePort.positionOf(port) + 1);
-                    }
-                    case GobValue gob -> IntegerValue.of(gob.positionCountedAsUnsigned());
-                    case RebolSeries series -> IntegerValue.of(series.index());
-                    default -> raiseCannotUse(arguments.get(0), "index?");
-                });
-
-        define("append", List.of(Parameter.required("series"),
-                        Parameter.required("value", ANYTHING),
-                        Parameter.belongingTo("part", "range", PART_LIMIT),
-                        Parameter.belongingTo("dup", "count", DUP_COUNT)),
-                of("part", "only", "dup"),
-                (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
-                    case PortValue queued when theEventQueueOf(queued).isPresent() ->
-                            queuedOnThePort(queued, theEventQueueOf(queued).orElseThrow(),
-                                    arguments.get(1), true);
-                    case PortValue openFile when isAFilePort(openFile) ->
-                            appendedToTheFileBehind(
-                                    openFile, arguments.get(1), evaluator, refinements);
-                    case Value subject when Actions.of(subject).isPresent() ->
-                            Actions.of(subject).orElseThrow().append(askedOf(
-                                    subject, arguments, refinements, evaluator, context));
-                    default -> raiseCannotUse(arguments.get(0), "append");
-                });
-
-        define("last", List.of(Parameter.required("value", aSeriesATupleOrAGob())),
-                (arguments, evaluator, context) -> switch (arguments.get(0)) {
-                    case TupleValue parts ->
-                            IntegerValue.of(parts.octetAt(parts.segmentCount()));
-                    case RebolSeries series ->
-                            pick(series, series.lengthFromHere());
-                    default -> raiseCannotUse(arguments.get(0), "last");
-                });
-
-        define("back", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> switch (arguments.getFirst()) {
-                    case PortValue port when isAFilePort(port) ->
-                            movedWithinTheFile(port, evaluator,
-                                    SeekableFilePort.positionOf(port) - 1);
-                    case RebolSeries series ->
-                            (Value) series.atIndex(Math.max(1, series.index() - 1));
-                    default -> raiseCannotUse(arguments.get(0), "back");
-                });
-
-        defineStepper("++", 1);
-        defineStepper("--", -1);
-
-        define("truncate", List.of(Parameter.required("series"),
-                        Parameter.belongingTo("part", "count", PART_LIMIT)),
-                of("part"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (!(arguments.getFirst() instanceof RebolSeries series)) {
-                        return raiseCannotUse(arguments.getFirst(), "truncate");
-                    }
-                    Actions.of(series).orElseThrow().takeOutFrom(1, series.index() - 1);
-                    RebolSeries kept = series.atIndex(1);
-                    if (refinements.contains("part") && arguments.size() > 1) {
-                        long wanted = ((IntegerValue) arguments.get(1)).magnitude();
-                        Actions.of(kept).orElseThrow().takeOutFrom((int) wanted + 1,
-                                (int) (kept.lengthFromHere() - wanted));
-                    }
-                    return kept;
-                });
-
-        define("skip", List.of(
-                        Parameter.required("series"),
-                        Parameter.required("offset",
-                                Typeset.NUMBER.membersAnd(
-                                        Datatype.LOGIC, Datatype.PAIR))),
-                (arguments, evaluator, context) -> {
-                    if (arguments.getFirst() instanceof PortValue port
-                            && isAFilePort(port)) {
-                        return movedWithinTheFile(port, evaluator,
-                                SeekableFilePort.positionOf(port)
-                                        + (long) Arithmetic.asMagnitude(arguments.get(1)));
-                    }
-                    if (!(arguments.get(0) instanceof RebolSeries series)) {
-                        return raiseCannotUse(arguments.get(0), "skip");
-                    }
-                    long by = positionAskedFor(series, arguments.get(1), false);
-                    return series instanceof GobValue gob
-                            ? gob.atIndex((int) (gob.index() + by))
-                            : series.atIndex(clampToSeries(series, series.index() + by));
-                });
-
-        define("at", List.of(
-                        Parameter.required("series"),
-                        Parameter.required("index",
-                                Typeset.NUMBER.membersAnd(
-                                        Datatype.LOGIC, Datatype.PAIR))),
-                (arguments, evaluator, context) -> {
-                    if (arguments.getFirst() instanceof PortValue port
-                            && isAFilePort(port)) {
-                        return movedWithinTheFile(port, evaluator,
-                                (long) Arithmetic.asMagnitude(arguments.get(1)) - 1);
-                    }
-                    if (!(arguments.get(0) instanceof RebolSeries series)) {
-                        return raiseCannotUse(arguments.get(0), "at");
-                    }
-                    long wanted = positionAskedFor(series, arguments.get(1), true);
-                    return series.atIndex(clampToSeries(series, series.index() + wanted - 1));
-                });
-
-        define("copy", List.of(Parameter.required("value", copyable()),
-                        Parameter.belongingTo("part", "limit", of()),
-                        Parameter.belongingTo("types", "kinds",
-                                of(Datatype.TYPESET, Datatype.DATATYPE))),
-                of("part", "deep", "types"),
-                (arguments, evaluator, context, refinements) -> {
-                    Optional<Value> itsOwn = evaluator.theRebolActorsAnswer(
-                            "copy", List.of(arguments.getFirst()), refinements);
-                    if (itsOwn.isPresent()) {
-                        return itsOwn.get();
-                    }
-                    Value original = arguments.getFirst();
-                    boolean deeply = refinements.contains("deep");
-                    Set<Datatype> kinds = whichDatatypesToCopy(arguments, refinements);
-                    if (original instanceof StructValue struct) {
-                        if (!refinements.isEmpty()) {
-                            throw Raised.of(EvaluationFailure.BAD_REFINES,
-                                    "copy on a struct takes no refinements at all");
-                        }
-                        return struct.separateCopy();
-                    }
-                    if (!refinements.contains("part")) {
-                        return original.copied(deeply, kinds);
-                    }
-                    if (hasNoOrderToTakeTheFirstSoManyOf(original)) {
-                        throw Raised.of(EvaluationFailure.BAD_REFINES,
-                                "/part names the first so many of something with an "
-                                        + "order, and a "
-                                        + original.datatype().literalSpelling()
-                                        + " has none");
-                    }
-                    if (!(original instanceof RebolSeries series)) {
-                        return raiseCannotUse(original, "copy");
-                    }
-                    Value limit = argumentFor("part", List.of("part", "types"),
-                            arguments, refinements, 1);
-                    if (series instanceof ImageValue picture
-                            && limit instanceof PairValue(double x, double y)) {
-                        return ImageSeries.rectangleCopiedFrom(picture,
-                                (int) x, (int) y);
-                    }
-                    return copiedFront(series, limit, deeply, kinds);
-                });
-
-        define("find",
-                List.of(Parameter.required("series"),
-                        Parameter.required("value", ANYTHING),
-                        Parameter.belongingTo("part", "range", PART_LIMIT),
-                        Parameter.belongingTo("with", "wild", of(Datatype.STRING)),
-                        Parameter.belongingTo("skip", "size", of(Datatype.INTEGER))),
-                of("tail", "last", "only", "case", "any", "same", "part",
-                        "with", "skip", "reverse", "match"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (arguments.get(0) instanceof NoneValue) {
-                        return NoneValue.none();
-                    }
-                    if (arguments.getFirst().isAnyObject()) {
-                        return arguments.getFirst().declaresAFieldFindCanReachBy(arguments.get(1))
-                                ? LogicValue.of(true)
-                                : NoneValue.none();
-                    }
-                    if (arguments.getFirst() instanceof MapValue map) {
-                        return map.storedKeyLike(arguments.get(1),
-                                refinements.contains("case"));
-                    }
-                    if (arguments.get(0) instanceof BitsetValue bitset) {
-                        return LogicValue.of(new BitsetActions(bitset).holds(
-                                arguments.get(1),
-                                refinements.contains("any"),
-                                !refinements.contains("case")));
-                    }
-                    if (arguments.get(0) instanceof TypesetValue typeset) {
-                        return LogicValue.of(arguments.get(1) instanceof DatatypeValue(Datatype represents)
-                                && typeset.holds(represents));
-                    }
-                    if (arguments.get(0) instanceof GobValue searched) {
-                        if (!(arguments.get(1) instanceof GobValue wanted)) {
-                            return NoneValue.none();
-                        }
-                        int at = searched.storage().positionOf(wanted.storage());
-                        return at == 0 ? NoneValue.none() : searched.atIndex(at);
-                    }
-                    if (arguments.get(0) instanceof ImageValue picture) {
-                        return thePixelFoundIn(picture, arguments.get(1), refinements);
-                    }
-                    if (!(arguments.get(0) instanceof RebolSeries series)
-                            || series instanceof VectorValue) {
-                        return raiseCannotUse(arguments.get(0), "find");
-                    }
-                    SeriesSearch search = new SeriesSearch(series, arguments.get(1), refinements,
-                            Optional.ofNullable(argumentFor(
-                                    "part", SEARCH_ARGUMENTS, arguments, refinements, 2)),
-                            Optional.ofNullable(argumentFor(
-                                    "skip", SEARCH_ARGUMENTS, arguments, refinements, 2)),
-                            Optional.ofNullable(argumentFor(
-                                    "with", SEARCH_ARGUMENTS, arguments, refinements, 2)));
-                    series.refuseANeedleItCannotHold(arguments.get(1), "find");
-                    if (search.stridesForwardByLessThanOne()) {
-                        if (series instanceof BlockValue) {
-                            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                                    "find/skip needs a record width of at least "
-                                            + "one, not " + search.stride());
-                        }
-                        return NoneValue.none();
-                    }
-                    int found = search.position();
-                    if (found < 0 || (refinements.contains("match") && found != series.index())) {
-                        return NoneValue.none();
-                    }
-                    return series.atIndex(refinements.contains("tail")
-                            ? found + search.lengthMatchedAt(found)
-                            : found);
-                });
-
-        define("insert", List.of(Parameter.required("series"),
-                        Parameter.required("value", ANYTHING),
-                        Parameter.belongingTo("part", "range", PART_LIMIT),
-                        Parameter.belongingTo("dup", "count", DUP_COUNT)),
-                of("only", "part", "dup"),
-                (arguments, evaluator, context, refinements) -> switch (arguments.get(0)) {
-                    case PortValue queued when theEventQueueOf(queued).isPresent() ->
-                            queuedOnThePort(queued, theEventQueueOf(queued).orElseThrow(),
-                                    arguments.get(1), false);
-                    case Value subject when Actions.of(subject).isPresent() ->
-                            Actions.of(subject).orElseThrow().insert(askedOf(
-                                    subject, arguments, refinements, evaluator, context));
-                    default -> raiseCannotUse(arguments.get(0), "insert");
-                });
-
-        define("remove", List.of(Parameter.required("series"),
-                        Parameter.belongingTo("part", "count", REMOVE_RANGE),
-                        Parameter.belongingTo("key", "which", of())),
-                of("part", "key"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (arguments.get(0) instanceof NoneValue nothing) {
-                        return nothing;
-                    }
-                    Optional<Value> itsOwn =
-                            evaluator.theRebolActorsAnswer("remove", arguments, refinements);
-                    if (itsOwn.isPresent()) {
-                        return itsOwn.get();
-                    }
-                    if (theEventQueueOf(arguments.getFirst()).isPresent()) {
-                        throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
-                                WordValue.of("remove").as(Datatype.SET_WORD));
-                    }
-                    if (arguments.get(0) instanceof MapValue map) {
-                        if (refinements.contains("key")) {
-                            map.remove(arguments.get(1));
-                        }
-                        return map;
-                    }
-                    if (arguments.get(0) instanceof BitsetValue members) {
-                        members.requireChangeable();
-                        return new BitsetActions(members).removed(refinements,
-                                refinement -> argumentFor(refinement,
-                                        List.of("part", "key"),
-                                        arguments, refinements, 1));
-                    }
-                    if (!(arguments.get(0) instanceof RebolSeries series)) {
-                        return raiseWrongArgument(arguments.get(0), "remove", "series");
-                    }
-                    if (refinements.contains("key") && series instanceof BlockValue pairs) {
-                        removeKeyedPair(pairs, argumentFor(
-                                "key", List.of("part", "key"), arguments, refinements, 1));
-                        return series;
-                    }
-                    if (refinements.contains("key")) {
-                        throw Raised.of(EvaluationFailure.FEATURE_NA,
-                                "/key removes from a map or a bitset, not a series");
-                    }
-                    long howMany = howManyWanted(series, arguments, refinements, 1).orElse(1L);
-                    return ((SeriesActions) Actions.of(series).orElseThrow())
-                            .removed(howMany);
-                });
-
-        define("reverse", List.of(Parameter.required("series"),
-                        Parameter.belongingTo("part", "limit", of(Datatype.INTEGER))),
-                of("part"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (refinements.contains("part")
-                            && arguments.getFirst() instanceof RebolSeries series) {
-                        Value limit = argumentFor(
-                                "part", List.of("part"), arguments, refinements, 1);
-                        return reversedFrontInPlace(series, limit);
-                    }
-                    if (arguments.get(0) instanceof TupleValue tuple) {
-                        Value limit = refinements.contains("part")
-                                ? argumentFor("part", List.of("part"), arguments,
-                                        refinements, 1)
-                                : IntegerValue.of(tuple.segmentCount());
-                        return reversedOctets(tuple, (int) Arithmetic.asMagnitude(limit));
-                    }
-                    if (arguments.get(0) instanceof PairValue pair) {
-                        return pair.reversed();
-                    }
-                    if (arguments.get(0) instanceof GobValue gob) {
-                        gob.storage().turnRound();
-                        return gob;
-                    }
-                    if (arguments.get(0) instanceof StringValue text) {
-                        return reversedTextACharacterAtATime(text);
-                    }
-                    if (arguments.get(0) instanceof BinaryValue bytes) {
-                        return reversedBytes(bytes);
-                    }
-                    if (arguments.get(0) instanceof VectorValue vector) {
-                        return reversedFrontInPlace(vector, IntegerValue.of(
-                                vector.lengthFromHere()));
-                    }
-                    if (!(arguments.get(0) instanceof BlockValue block)) {
-                        return raiseWrongArgument(arguments.get(0), "reverse", "series");
-                    }
-                    List<MarkedItem> slots =
-                            theMarkedItemsOf(block, block.lengthFromHere());
-                    Collections.reverse(slots);
-                    writeBackMarkedItems(block, slots);
-                    return block;
-                });
-
-        define("change", List.of(Parameter.required("series"),
-                        Parameter.required("value", ANYTHING),
-                        Parameter.belongingTo("part", "range", PART_LIMIT),
-                        Parameter.belongingTo("dup", "count", DUP_COUNT)),
-                of("part", "only", "dup"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (arguments.get(0) instanceof StructValue struct) {
-                        refuseUnfinishedRefinements(refinements, "change");
-                        return structChangedBy(struct, arguments.get(1));
-                    }
-                    if (arguments.get(0) instanceof ImageValue picture) {
-                        return ImageSeries.changed(picture, arguments.get(1),
-                                howManyTimesOver(arguments, refinements),
-                                refinements.contains("only"),
-                                theShapeOfTheRectangle(arguments, refinements));
-                    }
-                    if (refinements.contains("part") && arguments.size() > 2
-                            && arguments.get(0) instanceof RebolSeries stranded) {
-                        Value replacement = arguments.get(1).copied(
-                                arguments.get(1) instanceof BlockValue);
-                        long taking = stranded.countUpTo(arguments.get(2));
-                        RebolSeries series = clampedToTail(stranded);
-                        if (taking < 0) {
-                            long back = Math.min(-taking, series.index() - 1L);
-                            series = series.atIndex((int) (series.index() - back));
-                            taking = back;
-                        }
-                        SeriesActions arms = (SeriesActions)
-                                Actions.of(series).orElseThrow();
-                        for (long gone = 0; gone < taking && !series.atTail(); gone++) {
-                            arms.takeOneOutAt(series.index());
-                        }
-                        int before = series.storageLength();
-                        insertInto(series, replacement);
-                        return series.atIndex(
-                                series.index() + series.storageLength() - before);
-                    }
-                    if (arguments.get(0) instanceof GobValue gob) {
-                        refuseUnfinishedRefinements(refinements, "change");
-                        GobPath.pokeWhichInsertsRatherThanReplaces(
-                                gob, gob.index(), arguments.get(1));
-                        return gob.atIndex(gob.index() + 1);
-                    }
-                    Value replacing = duplicated(
-                            arguments.get(1), arguments, refinements);
-                    if (arguments.get(0) instanceof BinaryValue bytes) {
-                        int[] octets = SeriesContents.octetsContributedBy(replacing);
-                        for (int at = 0; at < octets.length; at++) {
-                            int where = bytes.index() + at;
-                            if (where > bytes.storage().length()) {
-                                bytes.storage().append(octets[at]);
-                            } else {
-                                bytes.storage().set(where, octets[at]);
-                            }
-                        }
-                        return bytes.atIndex(bytes.index() + octets.length);
-                    }
-                    if (arguments.get(0) instanceof StringValue strandedText) {
-                        StringValue text = (StringValue) clampedToTail(strandedText);
-                        String replacement = replacing instanceof BlockValue several
-                                ? several.runTogether()
-                                : Molder.form(replacing);
-                        int[] letters = replacement.codePoints().toArray();
-                        int overwritten = Math.min(letters.length, text.lengthFromHere());
-                        for (int gone = 0; gone < overwritten; gone++) {
-                            text.storage().removeAt(text.index());
-                        }
-                        for (int at = 0; at < letters.length; at++) {
-                            text.storage().insertAt(text.index() + at, letters[at]);
-                        }
-                        return text.atIndex(text.index() + letters.length);
-                    }
-                    if (arguments.get(0) instanceof VectorValue strandedVector) {
-                        return changedElements(
-                                (VectorValue) clampedToTail(strandedVector),
-                                arguments, refinements);
-                    }
-                    if (!(arguments.get(0) instanceof BlockValue strandedBlock)) {
-                        return raiseCannotUse(arguments.get(0), "change");
-                    }
-                    BlockValue block = (BlockValue) clampedToTail(strandedBlock);
-                    BlockValue spread = !refinements.contains("only")
-                            && replacing instanceof BlockValue several
-                            && several.datatype() == Datatype.BLOCK
-                            ? several
-                            : null;
-                    List<Value> replacements = spread == null
-                            ? List.of(replacing)
-                            : spread.remaining();
-                    for (int at = 0; at < replacements.size(); at++) {
-                        int where = block.index() + at;
-                        if (where <= block.storageLength()) {
-                            block.storage().set(where, replacements.get(at));
-                        } else {
-                            block.storage().insertAt(where, replacements.get(at));
-                        }
-                        block.storage().setLineBreakAt(where, spread != null
-                                && spread.storage().breaksLineAt(spread.index() + at));
-                    }
-                    return block.atIndex(block.index() + replacements.size());
-                });
-
-        define("clear", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> switch (arguments.get(0)) {
-                    case NoneValue nothing -> nothing;
-                    case PortValue port when isAFilePort(port) ->
-                            truncatedAtThePosition(port, evaluator);
-                    case PortValue queued when theEventQueueOf(queued).isPresent() -> {
-                        BlockValue queue = theEventQueueOf(queued).orElseThrow();
-                        while (queue.storage().length() > 0) {
-                            queue.storage().removeAt(1);
-                        }
-                        yield queued;
-                    }
-                    case Value subject when Actions.of(subject).isPresent() ->
-                            Actions.of(subject).orElseThrow().cleared();
-                    case StructValue struct -> {
-                        struct.clear();
-                        yield struct;
-                    }
-                    default -> raiseCannotUse(arguments.get(0), "clear");
-                });
-
-        define("sort",
-                List.of(Parameter.required("series", Typeset.SERIES.members()),
-                        Parameter.belongingTo("skip", "size", of(Datatype.INTEGER)),
-                        Parameter.belongingTo("compare", "comparator", of()),
-                        Parameter.belongingTo("part", "count", PART_LIMIT)),
-                of("case", "compare", "skip", "reverse", "all", "part", "unstable"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (!(arguments.get(0) instanceof RebolSeries series)) {
-                        return raiseCannotUse(arguments.get(0), "sort");
-                    }
-                    List<String> declared = List.of("skip", "compare", "part");
-                    Value skipSize = argumentFor("skip", declared, arguments, refinements);
-                    Value partCount = argumentFor("part", declared, arguments, refinements);
-                    Value comparator = argumentFor("compare", declared, arguments, refinements);
-                    if (series instanceof VectorValue vector) {
-                        if (refinements.contains("skip") || refinements.contains("compare")) {
-                            throw Raised.of(EvaluationFailure.FEATURE_NA,
-                                    "sort/skip and sort/compare on a vector!");
-                        }
-                        return sortedElements(vector,
-                                partCount instanceof IntegerValue(long magnitude)
-                                        ? (int) Math.min(magnitude,
-                                                vector.lengthFromHere())
-                                        : vector.lengthFromHere(),
-                                refinements.contains("reverse"));
-                    }
-                    int howMany = partCount instanceof IntegerValue(long magnitude)
-                            ? (int) Math.min(magnitude, series.lengthFromHere())
-                            : series.lengthFromHere();
-                    howMany = Math.max(0, howMany);
-                    if (howMany <= 1) {
-                        return series;
-                    }
-                    int stride = skipSize instanceof IntegerValue(long magnitude)
-                            ? (int) magnitude
-                            : 1;
-                    if (refinements.contains("skip")
-                            && (stride < 1 || stride > howMany || howMany % stride != 0)) {
-                        throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                                "a record width of " + stride + " does not divide "
-                                        + howMany);
-                    }
-                    if (comparator instanceof IntegerValue(long magnitude)
-                            && (!refinements.contains("skip")
-                                    || magnitude < 1
-                                    || magnitude > stride)) {
-                        throw Raised.of(EvaluationFailure.INVALID_ARG,
-                                "there is no column " + Molder.mold(comparator)
-                                        + " to sort by");
-                    }
-                    if (refinements.contains("all")
-                            && !(comparator == null
-                                    || comparator.datatype().isAnyFunction())) {
-                        throw Raised.of(EvaluationFailure.BAD_REFINES,
-                                "sort/all compares whole records, so a column "
-                                        + "has nothing left to say");
-                    }
-                    return sorted(series, stride, comparator,
-                            refinements.contains("case"),
-                            refinements.contains("reverse"),
-                            refinements.contains("all"),
-                            howMany, evaluator,
-                            refinements.contains("unstable")
-                                    || series instanceof BinaryValue);
-                });
-
-        defineSetOperation("intersect");
-        defineSetOperation("union");
-        defineSetOperation("exclude");
-        define("unique", List.of(
-                        Parameter.required("set1", of(
-                                Datatype.BLOCK, Datatype.STRING, Datatype.BITSET,
-                                Datatype.TYPESET, Datatype.MAP)),
-                        Parameter.belongingTo("skip", "size", of(Datatype.INTEGER))),
-                of("case", "skip"),
-                (arguments, evaluator, context, refinements) -> {
-                    Value width = argumentFor("skip", List.of("skip"), arguments,
-                            refinements, 1);
-                    int stride = width instanceof IntegerValue(long magnitude)
-                            ? (int) Math.max(1, magnitude)
-                            : 1;
-                    return Combining.sets(
-                            arguments.getFirst(), arguments.getFirst(),
-                            SetOperation.named("union").orElseThrow(), refinements.contains("case"), stride);
-                });
-
-        define("fourth", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> pick(arguments.get(0), 4));
-        define("fifth", List.of(Parameter.required("series")),
-                (arguments, evaluator, context) -> pick(arguments.get(0), 5));
-
-        define("reduce", List.of(Parameter.required("block"),
-                        Parameter.belongingTo("into", "target", Typeset.ANY_BLOCK.members()),
-                        Parameter.belongingTo("only", "words", of())),
-                of("into", "only", "no-set"),
-                (arguments, evaluator, context, refinements) -> {
-                    Value source = arguments.getFirst();
-                    Value target = refinements.contains("into") && arguments.size() > 1
-                            ? argumentFor("into", List.of("into"), arguments, refinements, 1)
-                            : null;
-
-                    BlockValue reduced;
-                    if (source instanceof BlockValue toReduce
-                            && (toReduce.datatype() == Datatype.BLOCK
-                                    || toReduce.datatype() == Datatype.PAREN)) {
-                        if (refinements.contains("no-set")) {
-                            reduced = BlockValue.block(
-                                    evaluator.reducedLeavingSetWords(toReduce));
-                        } else if (refinements.contains("only")) {
-                            reduced = BlockValue.block(reducedOnlyWords(toReduce, evaluator,
-                                    argumentFor("only", List.of("into", "only"),
-                                            arguments, refinements, 1)));
-                        } else {
-                            reduced = evaluator.evaluateEachKeepingTheLineShape(
-                                    toReduce, evaluator.systemContext());
-                        }
-                    } else if (target == null) {
-                        return source;
-                    } else {
-                        reduced = BlockValue.block(List.of(source));
-                    }
-
-                    if (!(target instanceof BlockValue into)) {
-                        return reduced.as(
-                                source.datatype() == Datatype.PAREN
-                                        ? Datatype.PAREN
-                                        : Datatype.BLOCK);
-                    }
-                    List<Value> results = reduced.remaining();
-                    into.storage().spliceInAt(into.index(), results,
-                            reduced.storage(), reduced.index());
-                    return into.atIndex(into.index() + results.size());
-                });
-
-        define("compose", List.of(Parameter.required("block"),
-                        Parameter.belongingTo("into", "out", Typeset.ANY_BLOCK.members())),
-                of("only", "deep", "into"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (arguments.getFirst() instanceof MapValue template) {
-                        return composedMap(template, evaluator, context,
-                                refinements.contains("only"),
-                                refinements.contains("deep"));
-                    }
-                    BlockValue built =
-                            arguments.getFirst() instanceof BlockValue template
-                                    ? composed(template, evaluator, context,
-                                            refinements.contains("only"),
-                                            refinements.contains("deep"))
-                                    : BlockValue.block(List.of(arguments.getFirst()));
-                    if (!(arguments.getFirst() instanceof BlockValue)
-                            && (!refinements.contains("into") || arguments.size() < 2)) {
-                        return arguments.getFirst();
-                    }
-                    if (!refinements.contains("into") || arguments.size() < 2) {
-                        return built;
-                    }
-                    BlockValue target = (BlockValue) arguments.get(1);
-                    List<Value> items = built.remaining();
-                    target.storage().spliceInAt(target.index(), items,
-                            built.storage(), built.index());
-                    return target.atIndex(target.index() + items.size());
-                });
-
-        define("transcode",
-                List.of(Parameter.required("source"),
-                        Parameter.belongingTo("line", "count", of(Datatype.INTEGER)),
-                        Parameter.belongingTo("part", "length", of(Datatype.INTEGER))),
-                of("one", "error", "next", "part", "line", "only"),
-                (arguments, evaluator, context, refinements) ->
-                        SourceReading.asAskedFor(arguments, refinements)
-                                .answer(evaluator.construction()));
-
-        define("round",
-                List.of(Parameter.required("value"),
-                        Parameter.belongingTo("to", "multiple", of())),
-                of("to", "down", "even", "half-down", "floor", "ceiling",
-                        "half-ceiling"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (arguments.getFirst() instanceof TimeValue time) {
-                        return roundedTime(time, refinements.contains("to")
-                                ? arguments.get(arguments.size() - 1)
-                                : null, refinements);
-                    }
-                    if (arguments.get(0) instanceof PairValue(double x, double y)) {
-                        return PairValue.of(
-                                roundedHalfAway(x), roundedHalfAway(y));
-                    }
-                    double value = Comparison.asDouble(arguments.get(0));
-                    if (!refinements.contains("to")) {
-                        return roundedKeepingTheDatatype(
-                                arguments.get(0), roundedBy(value, refinements));
-                    }
-                    Value step = arguments.get(arguments.size() - 1);
-                    double multiple = Comparison.asDouble(step);
-                    if (multiple == 0) {
-                        if (step.datatype() == Datatype.INTEGER
-                                && arguments.get(0).datatype() == Datatype.INTEGER) {
-                            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
-                        }
-                        return roundedToTheScalesDatatype(step, value);
-                    }
-                    double rounded = roundedHalfAway(value / multiple) * multiple;
-                    return roundedToTheScalesDatatype(step, rounded);
-                });
-
+        register(new IntersectNative());
+        register(new UnionNative());
+        register(new ExcludeNative());
+        register(new UniqueNative());
+        register(new ReduceNative());
+        register(new ComposeNative());
+        register(new TranscodeNative());
+        register(new RoundAction());
     }
 
-    private static Value roundedTime(
-            TimeValue time, Value scale, Set<String> refinements) {
-
-        if (scale == null) {
-            return TimeValue.ofNanoseconds(Math.round(
-                    (double) time.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND)
-                    * TimeValue.NANOSECONDS_PER_SECOND);
-        }
-        if (scale instanceof TimeValue(long nanoseconds)) {
-            return TimeValue.ofNanoseconds(nanoseconds == 0
-                    ? time.nanoseconds()
-                    : Math.round((double) time.nanoseconds() / nanoseconds)
-                            * nanoseconds);
-        }
-        double stepSeconds = Comparison.asDouble(scale);
-        double seconds = (double) time.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND;
-        double rounded = stepSeconds == 0
-                ? seconds
-                : Math.round(seconds / stepSeconds) * stepSeconds;
-        return scale instanceof IntegerValue
-                ? IntegerValue.of(Math.round(rounded))
-                : DecimalValue.of(rounded);
-    }
-
-    private static Value roundedKeepingTheDatatype(Value subject, double rounded) {
-        return switch (subject) {
-            case MoneyValue amount -> amount.amounting(BigDecimal.valueOf(rounded));
-            case DecimalValue quantity when quantity.datatype() == Datatype.PERCENT ->
-                    DecimalValue.percent(rounded);
-            case IntegerValue whole -> IntegerValue.of((long) rounded);
-            default -> DecimalValue.of(rounded);
-        };
-    }
-
-    private static Value roundedToTheScalesDatatype(Value scale, double rounded) {
-        return switch (scale) {
-            case MoneyValue amount -> amount.amounting(BigDecimal.valueOf(rounded));
-            case IntegerValue whole -> IntegerValue.of((long) rounded);
-            case DecimalValue quantity when quantity.datatype() == Datatype.PERCENT ->
-                    DecimalValue.percent(toFifteenDigits(rounded));
-            default -> DecimalValue.of(toFifteenDigits(rounded));
-        };
-    }
-
-    private static double toFifteenDigits(double rounded) {
-        return new BigDecimal(rounded).round(new java.math.MathContext(15)).doubleValue();
-    }
-
-    private static BlockValue composed(
-            BlockValue template, Evaluator evaluator, Context context,
-            boolean keepingBlocksWhole, boolean goingDeep) {
-        BlockStorage built = new BlockStorage();
-        int reading = template.index();
-        for (Value item : template.remaining()) {
-            boolean asWritten = true;
-            if (!(item instanceof BlockValue paren) || paren.datatype() != Datatype.PAREN) {
-                if (goingDeep && item instanceof BlockValue nested
-                        && nested.datatype() == Datatype.BLOCK) {
-                    built.append(composed(
-                            nested, evaluator, context, keepingBlocksWhole, true));
-                } else if (goingDeep && item instanceof MapValue nested) {
-                    built.append(composedMap(
-                            nested, evaluator, context, keepingBlocksWhole, true));
-                } else {
-                    built.append(goingDeep ? aBlockShapeCopiedWhole(item) : item);
-                }
-            } else {
-                asWritten = false;
-                for (Value produced : evaluator.evaluateEachOrRaise(
-                        paren.as(Datatype.BLOCK), context)) {
-                    if (produced instanceof UnsetValue) {
-                        continue;
-                    }
-                    if (!keepingBlocksWhole && produced instanceof BlockValue spliced
-                            && spliced.datatype() == Datatype.BLOCK) {
-                        built.spliceInAt(built.length() + 1, spliced.remaining(),
-                                spliced.storage(), spliced.index());
-                    } else {
-                        built.append(produced);
-                    }
-                }
-            }
-            if (asWritten && template.storage().breaksLineAt(reading)) {
-                built.setLineBreakAt(built.length(), true);
-            }
-            reading++;
-        }
-        return new BlockValue(built, 1, Datatype.BLOCK);
-    }
-
-    private static Value aBlockShapeCopiedWhole(Value item) {
-        return item instanceof BlockValue shaped
-                ? new BlockValue(new BlockStorage(shaped.remaining()), 1, shaped.datatype())
-                : item;
-    }
-
-    private static MapValue composedMap(
-            MapValue template, Evaluator evaluator, Context context,
-            boolean keepingBlocksWhole, boolean goingDeep) {
-
-        return new MapActions(template).composedThrough(held -> {
-            if (held instanceof BlockValue paren
-                    && paren.datatype() == Datatype.PAREN) {
-                return evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
-            }
-            if (goingDeep && held instanceof BlockValue nested
-                    && nested.datatype() == Datatype.BLOCK) {
-                return composed(nested, evaluator, context, keepingBlocksWhole, true);
-            }
-            if (goingDeep && held instanceof MapValue nested) {
-                return composedMap(nested, evaluator, context, keepingBlocksWhole, true);
-            }
-            return held;
-        });
-    }
-
-    private static String textOfSource(Value source) {
-        return switch (source) {
-            case StringValue given -> given.text();
-            case BinaryValue given -> given.asStrictText();
-            default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "transcode reads text, not " + source.datatype().literalSpelling());
-        };
-    }
-
-    private record SourceReading(
-            String whole,
-            String readable,
-            long firstLine,
-            Transcoder.Extent extent,
-            boolean countingLines,
-            boolean handingBackFailures,
-            boolean answeringTheValueAlone,
-            boolean sourceWasBinary,
-            Value source) {
-
-        static SourceReading asAskedFor(List<Value> arguments, Set<String> refinements) {
-            String whole = textOfSource(arguments.getFirst());
-            return new SourceReading(
-                    whole,
-                    refinements.contains("part")
-                            ? boundedTo(whole, charactersPermittedIn(arguments, refinements))
-                            : whole,
-                    firstLineNumberIn(arguments, refinements),
-                    extentAskedFor(refinements),
-                    refinements.contains("line"),
-                    refinements.contains("error"),
-                    refinements.contains("one"),
-                    arguments.getFirst() instanceof BinaryValue,
-                    arguments.getFirst());
-        }
-
-        private static Transcoder.Extent extentAskedFor(Set<String> refinements) {
-            if (refinements.contains("only")) {
-                return Transcoder.Extent.THE_FIRST_VALUE_AT_EVERY_DEPTH;
-            }
-            if (refinements.contains("next") || refinements.contains("one")) {
-                return Transcoder.Extent.THE_FIRST_VALUE;
-            }
-            return Transcoder.Extent.THE_WHOLE_SOURCE;
-        }
-
-        private static String boundedTo(String whole, int charactersPermitted) {
-            return whole.substring(0, Math.min(whole.length(), charactersPermitted));
-        }
-
-        Value answer(Construction construction) {
-            Transcoder.Reading reading =
-                    Transcoder.read(readable, firstLine, extent, construction);
-            List<Value> values = valuesWithAnyFailureBesideThem(reading);
-            if (stopsBeforeTheEndOfTheSource() && values.isEmpty()) {
-                return handedBackOrRaised(pastEnd());
-            }
-            if (answeringTheValueAlone) {
-                return values.getFirst();
-            }
-            return BlockValue.block(stopsBeforeTheEndOfTheSource()
-                    ? withWhatWasLeftUnread(values, reading)
-                    : values);
-        }
-
-        private boolean stopsBeforeTheEndOfTheSource() {
-            return extent != Transcoder.Extent.THE_WHOLE_SOURCE || handingBackFailures;
-        }
-
-        private List<Value> valuesWithAnyFailureBesideThem(Transcoder.Reading reading) {
-            if (reading.whyItStopped().isEmpty()) {
-                return reading.valuesReadBeforeStopping();
-            }
-            ErrorValue failure =
-                    reading.whyItStopped().orElseThrow().error().orElseThrow();
-            if (!handingBackFailures) {
-                throw new Raised(failure);
-            }
-            List<Value> keptWithTheFailure =
-                    new ArrayList<>(reading.valuesReadBeforeStopping());
-            keptWithTheFailure.add(failure);
-            return keptWithTheFailure;
-        }
-
-        private List<Value> withWhatWasLeftUnread(
-                List<Value> values, Transcoder.Reading reading) {
-
-            List<Value> answer = new ArrayList<>(values);
-            String left = skippingCodePoints(whole, reading.endedAtCodePoint());
-            answer.add(switch (source) {
-                case BinaryValue bytes -> bytes.atIndex(bytes.index()
-                        + utf8LengthOf(whole) - utf8LengthOf(left));
-                case StringValue text ->
-                        text.atIndex(text.index() + whole.length() - left.length());
-                default -> remainderOf(left, sourceWasBinary);
-            });
-            if (countingLines) {
-                answer.add(IntegerValue.of(reading.lineEndedOn()));
-            }
-            return answer;
-        }
-
-        private static int utf8LengthOf(String text) {
-            return text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
-        }
-
-        private Value handedBackOrRaised(ErrorValue failure) {
-            if (handingBackFailures) {
-                return failure;
-            }
-            throw new Raised(failure);
-        }
-
-        private static ErrorValue pastEnd() {
-            return ErrorValue.of(SyntaxFailure.PAST_END.category(),
-                    SyntaxFailure.PAST_END.errorId(),
-                    SyntaxFailure.PAST_END.description());
-        }
-    }
-
-    private static final List<String> TRANSCODE_ARGUMENT_ORDER = List.of("line", "part");
-
-    private static final long THE_FIRST_LINE_OF_ANY_SOURCE = 1;
-
-    private static long firstLineNumberIn(List<Value> arguments, Set<String> refinements) {
-        if (!refinements.contains("line")) {
-            return THE_FIRST_LINE_OF_ANY_SOURCE;
-        }
-        long asked = transcodeArgument("line", arguments, refinements);
-        if (asked < THE_FIRST_LINE_OF_ANY_SOURCE) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    "a source's first line is line one or later, not " + asked);
-        }
-        return asked;
-    }
-
-    private static int charactersPermittedIn(
-            List<Value> arguments, Set<String> refinements) {
-
-        long asked = transcodeArgument("part", arguments, refinements);
-        if (asked < 0) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    "a read cannot be bounded to fewer than no characters, and "
-                            + asked + " is fewer");
-        }
-        return (int) Math.min(asked, Integer.MAX_VALUE);
-    }
-
-    private static long transcodeArgument(
-            String refinement, List<Value> arguments, Set<String> refinements) {
-
-        return (long) Arithmetic.asMagnitude(argumentFor(
-                refinement, TRANSCODE_ARGUMENT_ORDER, arguments, refinements, 1));
-    }
-
-
-    private static String skippingCodePoints(String whole, int howMany) {
-        int[] codepoints = whole.codePoints().toArray();
-        int taken = Math.min(howMany, codepoints.length);
-        return new String(codepoints, taken, codepoints.length - taken);
-    }
-
-    private static Value remainderOf(String left, boolean asBytes) {
-        if (!asBytes) {
-            return StringValue.of(left);
-        }
-        byte[] octets = left.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        int[] asNumbers = new int[octets.length];
-        for (int at = 0; at < octets.length; at++) {
-            asNumbers[at] = octets[at] & 0xFF;
-        }
-        return BinaryValue.of(asNumbers);
-    }
-
-    private static final List<String> SEARCH_ARGUMENTS = List.of("part", "with", "skip");
-
-    private static Value argumentFor(
-            String refinement, List<String> declaredOrder,
-            List<Value> arguments, Set<String> asked) {
-        return argumentFor(refinement, declaredOrder, arguments, asked, 1);
-    }
 
     private static Value argumentFor(
             String refinement, List<String> declaredOrder,
@@ -2502,194 +1327,6 @@ public final class RebolNativeWords {
             }
         }
         return null;
-    }
-
-    private static Value sorted(RebolSeries series, int stride, Value comparator,
-            boolean mindingCase, boolean reversed, boolean wholeRecord,
-            int howMany, Evaluator evaluator, boolean unstably) {
-        int step = Math.max(1, stride);
-        List<Value> items = series.items().subList(
-                0, Math.min(howMany, series.items().size()));
-        List<List<Value>> records = new ArrayList<>();
-        Map<List<Value>, Integer> whereEachRecordBegan = new IdentityHashMap<>();
-        for (int at = 0; at + step <= items.size(); at += step) {
-            List<Value> record = List.copyOf(items.subList(at, at + step));
-            whereEachRecordBegan.put(record, at);
-            records.add(record);
-        }
-        java.util.Comparator<List<Value>> ordering = (left, right) -> {
-            int order = wholeRecord && comparator == null
-                    ? compareWholeRecords(left, right, mindingCase)
-                    : compareRecords(
-                            left, right, comparator, mindingCase, wholeRecord, series, evaluator);
-            return reversed ? -order : order;
-        };
-        if (unstably) {
-            SymmetryPartitionSort.sort(records, ordering);
-        } else {
-            records = mergeSortedTakingFromTheLeftUnlessOutOfOrder(
-                    records, ordering);
-        }
-
-        if (series instanceof BlockValue block) {
-            putTheRecordsBackWithTheirMarks(block, records, whereEachRecordBegan, step);
-            return series;
-        }
-        List<Value> ordered = records.stream().flatMap(List::stream).toList();
-        for (int at = 0; at < ordered.size(); at++) {
-            if (series instanceof StringValue text
-                    && ordered.get(at) instanceof CharacterValue(int codepoint)) {
-                text.storage().set(text.index() + at, codepoint);
-            } else if (series instanceof BinaryValue(BinaryStorage storage, int index)
-                    && ordered.get(at) instanceof IntegerValue(long magnitude)) {
-                storage.set(index + at, (int) magnitude);
-            }
-        }
-        return series;
-    }
-
-    private static void putTheRecordsBackWithTheirMarks(
-            BlockValue block, List<List<Value>> records,
-            Map<List<Value>, Integer> whereEachRecordBegan, int step) {
-
-        List<Boolean> marksBefore = new ArrayList<>(records.size() * step);
-        for (int at = 0; at < records.size() * step; at++) {
-            marksBefore.add(block.storage().breaksLineAt(block.index() + at));
-        }
-        int landing = 0;
-        for (List<Value> record : records) {
-            int cameFrom = whereEachRecordBegan.get(record);
-            for (int within = 0; within < record.size(); within++) {
-                block.storage().set(block.index() + landing, record.get(within));
-                block.storage().setLineBreakAt(block.index() + landing,
-                        marksBefore.get(cameFrom + within));
-                landing++;
-            }
-        }
-    }
-
-    private static int compareRecords(List<Value> left, List<Value> right,
-            Value comparator, boolean mindingCase, boolean wholeRecord,
-            RebolSeries series, Evaluator evaluator) {
-
-        if (comparator instanceof IntegerValue column) {
-            return compareByColumns(left, right, List.of(column), mindingCase);
-        }
-        if (comparator instanceof BlockValue columns) {
-            return compareByColumns(left, right, columns.remaining(), mindingCase);
-        }
-        if (comparator == null) {
-            return Comparison.compareForSorting(left.getFirst(), right.getFirst(), mindingCase);
-        }
-        return wholeRecord
-                ? askComparatorTheOtherWayRound(comparator,
-                        lentRecordOf(series, left), lentRecordOf(series, right), evaluator)
-                : askComparatorTheOtherWayRound(comparator,
-                        lentElementOf(series, left.getFirst()),
-                        lentElementOf(series, right.getFirst()), evaluator);
-    }
-
-    private static Value lentRecordOf(RebolSeries series, List<Value> record) {
-        if (series instanceof BinaryValue) {
-            int[] octets = new int[record.size()];
-            for (int at = 0; at < record.size(); at++) {
-                octets[at] = (int) ((IntegerValue) record.get(at)).magnitude();
-            }
-            return BinaryValue.of(octets);
-        }
-        if (series instanceof StringValue) {
-            StringBuilder characters = new StringBuilder();
-            for (Value element : record) {
-                characters.appendCodePoint(((CharacterValue) element).codepoint());
-            }
-            return StringValue.of(characters.toString());
-        }
-        return lentRecord(record);
-    }
-
-    private static Value lentElementOf(RebolSeries series, Value element) {
-        return series instanceof BinaryValue && element instanceof IntegerValue(long magnitude)
-                ? CharacterValue.of((int) magnitude)
-                : element;
-    }
-
-    private static <T> List<T> mergeSortedTakingFromTheLeftUnlessOutOfOrder(
-            List<T> items, Comparator<T> order) {
-        if (items.size() < 2) {
-            return items;
-        }
-        int half = items.size() / 2;
-        List<T> front = mergeSortedTakingFromTheLeftUnlessOutOfOrder(
-                new ArrayList<>(items.subList(0, half)), order);
-        List<T> back = mergeSortedTakingFromTheLeftUnlessOutOfOrder(
-                new ArrayList<>(items.subList(half, items.size())), order);
-        List<T> merged = new ArrayList<>(items.size());
-        int here = 0;
-        int there = 0;
-        while (here < front.size() && there < back.size()) {
-            if (order.compare(front.get(here), back.get(there)) <= 0) {
-                merged.add(front.get(here));
-                here++;
-            } else {
-                merged.add(back.get(there));
-                there++;
-            }
-        }
-        merged.addAll(front.subList(here, front.size()));
-        merged.addAll(back.subList(there, back.size()));
-        return merged;
-    }
-
-    private static BlockValue lentRecord(List<Value> record) {
-        BlockValue lent = BlockValue.block(record);
-        lent.storage().protectFromChange(true);
-        return lent;
-    }
-
-    private static int compareWholeRecords(
-            List<Value> left, List<Value> right, boolean mindingCase) {
-
-        for (int at = 0; at < Math.min(left.size(), right.size()); at++) {
-            int order = Comparison.compareForSorting(left.get(at), right.get(at), mindingCase);
-            if (order != 0) {
-                return order;
-            }
-        }
-        return Integer.compare(left.size(), right.size());
-    }
-
-    private static int compareByColumns(List<Value> left, List<Value> right,
-            List<Value> columns, boolean mindingCase) {
-        for (Value asked : columns) {
-            if (!(asked instanceof IntegerValue(long magnitude))) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        "a column to sort by is a number, not "
-                                + asked.datatype().literalSpelling());
-            }
-            int at = (int) magnitude - 1;
-            if (at < 0 || at >= left.size() || at >= right.size()) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        "there is no column " + magnitude + " to sort by");
-            }
-            int ordering = Comparison.compareForSorting(left.get(at), right.get(at), mindingCase);
-            if (ordering != 0) {
-                return ordering;
-            }
-        }
-        return 0;
-    }
-
-    private static int askComparatorTheOtherWayRound(
-            Value comparator, Value left, Value right, Evaluator evaluator) {
-        Value answer = evaluator.applyFunction(comparator, List.of(right, left));
-        if (answer instanceof LogicValue(boolean truth1)) {
-            return truth1 ? 1 : -1;
-        }
-        if (Comparison.isNumeric(answer)) {
-            double amount = Comparison.asDouble(answer);
-            return amount > 0 ? 1 : amount == 0 ? 0 : -1;
-        }
-        return -1;
     }
 
     static List<Value> numbersContributedTo(VectorKind kind, Value value) {
@@ -2721,39 +1358,6 @@ public final class RebolNativeWords {
         return numbers;
     }
 
-    private static List<Value> numbersAddedBy(VectorKind kind, List<Value> arguments,
-            Set<String> refinements, boolean limitingTheSource) {
-
-        List<Value> once = limitingTheSource && refinements.contains("part")
-                ? numbersOfferedTo(kind, arguments.get(1),
-                        partCountFor(arguments, refinements))
-                : numbersContributedTo(kind, arguments.get(1));
-        Value times = argumentFor("dup", List.of("part", "dup"), arguments, refinements, 2);
-        long rounds = refinements.contains("dup") && times instanceof IntegerValue(long magnitude)
-                ? magnitude
-                : 1;
-        List<Value> added = new ArrayList<>();
-        for (long round = 0; round < rounds; round++) {
-            added.addAll(once);
-        }
-        return added;
-    }
-
-    private static VectorValue sortedElements(VectorValue vector, int howMany,
-            boolean backwards) {
-
-        int sorting = Math.max(0, howMany);
-        long[] front = new long[sorting];
-        for (int at = 0; at < sorting; at++) {
-            front[at] = vector.storage().at(vector.index() + at);
-        }
-        VectorQuery.sortAscending(vector.kind(), front);
-        for (int at = 0; at < sorting; at++) {
-            vector.storage().set(vector.index() + at,
-                    backwards ? front[sorting - 1 - at] : front[at]);
-        }
-        return vector;
-    }
 
     private VectorValue shuffledElements(VectorValue vector) {
         for (int remaining = vector.lengthFromHere(); remaining > 1; remaining--) {
@@ -2764,24 +1368,6 @@ public final class RebolNativeWords {
             vector.storage().set(last, held);
         }
         return vector;
-    }
-
-    private static Value changedElements(VectorValue vector, List<Value> arguments,
-            Set<String> refinements) {
-
-        List<Value> numbers = numbersAddedBy(vector.kind(), arguments, refinements, false);
-        int asked = refinements.contains("part")
-                ? partCountFor(arguments, refinements)
-                : numbers.size();
-        int removing = Math.max(0, Math.min(asked, vector.lengthFromHere()));
-        for (int gone = 0; gone < removing; gone++) {
-            vector.storage().removeAt(vector.index());
-        }
-        for (int at = numbers.size(); at > 0; at--) {
-            vector.storage().insertAt(vector.index(),
-                    VectorPath.storedFormOf(vector.kind(), numbers.get(at - 1)));
-        }
-        return vector.atIndex(vector.index() + numbers.size());
     }
 
     static List<Value> numbersOfferedTo(VectorKind kind, Value value, int limit) {
@@ -2798,12 +1384,6 @@ public final class RebolNativeWords {
         return offered.subList(0, (int) Math.min(wanted, offered.size()));
     }
 
-
-    private static double roundedHalfAway(double value) {
-        return java.math.BigDecimal.valueOf(value)
-                .setScale(0, java.math.RoundingMode.HALF_UP)
-                .doubleValue();
-    }
 
     static Value bitsetHoldsForAPath(BitsetValue members, Value selector) {
         return new BitsetActions(members).heldForAPath(selector);
@@ -2912,114 +1492,6 @@ public final class RebolNativeWords {
     }
 
 
-    static RebolSeries clampedToTail(RebolSeries series) {
-        int tail = series.storageLength() + 1;
-        return series.index() > tail ? series.atIndex(tail) : series;
-    }
-
-    private static Value insertInto(RebolSeries stranded, Value value) {
-        RebolSeries series = clampedToTail(stranded);
-        switch (series) {
-            case BlockValue block -> {
-                BlockValue added = value instanceof BlockValue given ? given : null;
-                block.storage().spliceInAt(block.index(),
-                        added == null ? List.of(value) : added.remaining(),
-                        added == null ? null : added.storage(),
-                        added == null ? 1 : added.index());
-            }
-            case StringValue text -> {
-                int[] added = Molder.form(value).codePoints().toArray();
-                for (int at = 0; at < added.length; at++) {
-                    text.storage().insertAt(text.index() + at, added[at]);
-                }
-            }
-            case ImageValue image -> insertPixels(image, value);
-            case GobValue gob -> new GobActions(gob)
-                    .givenTheChildrenOf(value, gob.positionWithinThePane());
-            case VectorValue vector -> {
-                List<Value> numbers = numbersContributedTo(vector.kind(), value);
-                for (int at = numbers.size(); at > 0; at--) {
-                    vector.storage().insertAt(vector.index(),
-                            VectorPath.storedFormOf(vector.kind(), numbers.get(at - 1)));
-                }
-            }
-            case BinaryValue bytes -> {
-                int[] octets = SeriesContents.octetsContributedBy(value);
-                for (int at = octets.length; at > 0; at--) {
-                    bytes.storage().insertAt(bytes.index(), octets[at - 1]);
-                }
-            }
-        }
-        return series.head();
-    }
-
-    private static int partCountFor(List<Value> arguments, Set<String> refinements) {
-        Value limit = argumentFor(
-                "part", List.of("part", "dup"), arguments, refinements, 2);
-        if (limit instanceof IntegerValue(long magnitude)) {
-            return (int) magnitude;
-        }
-        if (limit instanceof RebolSeries upTo
-                && arguments.get(1) instanceof RebolSeries from
-                && from.sharesStorageWith(upTo)) {
-            return Math.abs(upTo.index() - from.index());
-        }
-        return -1;
-    }
-
-    private static Value reversedTextACharacterAtATime(StringValue text) {
-        int[] forwards = text.text().codePoints().toArray();
-        for (int at = 0; at < forwards.length; at++) {
-            text.storage().set(text.index() + at, forwards[forwards.length - 1 - at]);
-        }
-        return text;
-    }
-
-    private static Value reversedBytes(BinaryValue bytes) {
-        List<Integer> forwards = new ArrayList<>();
-        for (int at = bytes.index(); at <= bytes.storageLength(); at++) {
-            forwards.add(bytes.storage().at(at));
-        }
-        for (int at = 0; at < forwards.size(); at++) {
-            bytes.storage().set(bytes.index() + at, forwards.get(forwards.size() - 1 - at));
-        }
-        return bytes;
-    }
-
-
-
-    private static Value duplicated(
-            Value value, List<Value> arguments, Set<String> refinements) {
-
-        Value times = argumentFor(
-                "dup", List.of("part", "dup"), arguments, refinements, 2);
-        if (times == null) {
-            return value;
-        }
-        BlockValue spread = value instanceof BlockValue block
-                && block.datatype() == Datatype.BLOCK
-                ? block
-                : null;
-        List<Value> pieces = spread == null ? List.of(value) : spread.remaining();
-        BlockStorage repeated = new BlockStorage();
-        for (long round = 0; round < wholeCountOf(times); round++) {
-            repeated.spliceInAt(repeated.length() + 1, pieces,
-                    spread == null ? null : spread.storage(),
-                    spread == null ? 1 : spread.index());
-        }
-        return new BlockValue(repeated, 1, Datatype.BLOCK);
-    }
-
-    private static long wholeCountOf(Value times) {
-        return switch (times) {
-            case IntegerValue count -> count.magnitude();
-            case DecimalValue fraction when fraction.datatype() != Datatype.PERCENT ->
-                    (long) Comparison.asDouble(fraction);
-            default -> throw Raised.of(EvaluationFailure.INVALID_TYPE,
-                    Molder.mold(times) + " is not a count of repetitions");
-        };
-    }
-
     private static String withoutCommonIndent(String text) {
         String[] lines = text.split("\n", -1);
         int firstContentLine = 0;
@@ -3061,13 +1533,6 @@ public final class RebolNativeWords {
         return joined.toString();
     }
 
-    private static Set<Datatype> aSeriesATupleOrAGob() {
-        Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
-        accepted.add(Datatype.TUPLE);
-        accepted.add(Datatype.GOB);
-        return copyOf(accepted);
-    }
-
     private static Set<Datatype> alsoAccepting(
             Set<Datatype> family, Datatype... alsoTaken) {
 
@@ -3080,209 +1545,18 @@ public final class RebolNativeWords {
         return alsoAccepting(Typeset.SERIES.members(), alsoTaken);
     }
 
-    private static final Set<Datatype> THE_BLOCK_AND_STRING_FAMILIES =
-            alsoAccepting(Typeset.ANY_BLOCK.members(),
-                    Typeset.ANY_STRING.members().toArray(Datatype[]::new));
-
-    private static final Set<Datatype> WHAT_TAIL_TAKES = everySeriesAnd(
-            Datatype.GOB, Datatype.PORT, Datatype.BITSET,
-            Datatype.TYPESET, Datatype.MAP);
-
     private static final Set<Datatype> WHAT_TRIM_TAKES = everySeriesAnd(
             Datatype.OBJECT, Datatype.ERROR, Datatype.MODULE);
 
     private static final Set<Datatype> WHAT_PARSE_TAKES = Typeset.SERIES.members();
 
-    private void defineSetOperation(String name) {
-        SetOperation how = SetOperation.named(name).orElseThrow();
-        define(name, List.of(
-                        Parameter.required("first", setOperandOr(Datatype.BLOCK)),
-                        Parameter.required("second", setOperandOr(Datatype.BLOCK)),
-                        Parameter.belongingTo("skip", "size", of(Datatype.INTEGER))),
-                of("case", "skip"),
-                (arguments, evaluator, context, refinements) -> {
-                    Value width = argumentFor("skip", List.of("skip"), arguments, refinements, 2);
-                    return Combining.sets(arguments.get(0), arguments.get(1), how,
-                            refinements.contains("case"), recordWidthOf(width));
-                });
-    }
-
-    private static int recordWidthOf(Value width) {
-        if (!(width instanceof IntegerValue wanted)) {
-            return 1;
-        }
-        if (wanted.magnitude() < 1) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(wanted));
-        }
-        return (int) wanted.magnitude();
-    }
-
-    private record MarkedItem(Value value, boolean breaksLine) {
-    }
-
-    private static List<MarkedItem> theMarkedItemsOf(BlockValue block, int howMany) {
-        List<MarkedItem> slots = new ArrayList<>(howMany);
-        for (int at = 0; at < howMany; at++) {
-            slots.add(new MarkedItem(
-                    block.storage().at(block.index() + at),
-                    block.storage().breaksLineAt(block.index() + at)));
-        }
-        return slots;
-    }
-
-    private static void writeBackMarkedItems(BlockValue block, List<MarkedItem> slots) {
-        for (int at = 0; at < slots.size(); at++) {
-            block.storage().set(block.index() + at, slots.get(at).value());
-            block.storage().setLineBreakAt(
-                    block.index() + at, slots.get(at).breaksLine());
-        }
-    }
 
     static BlockValue laidOutLike(BlockValue source, BlockStorage built) {
         built.takeLineBreaksFrom(source.storage(), source.index());
         return new BlockValue(built, 1, source.datatype());
     }
 
-    private static Set<Datatype> whichDatatypesToCopy(
-            List<Value> arguments, Set<String> refinements) {
 
-        if (!refinements.contains("types")) {
-            return refinements.contains("deep")
-                    ? Copying.WHAT_A_DEEP_COPY_COPIES
-                    : Copying.NOTHING_INSIDE;
-        }
-        Value kinds = arguments.getLast();
-        return switch (kinds) {
-            case DatatypeValue one -> EnumSet.of(one.represents());
-            case TypesetValue several -> EnumSet.copyOf(several.members());
-            default -> Copying.WHAT_A_DEEP_COPY_COPIES;
-        };
-    }
-
-    private static boolean hasNoOrderToTakeTheFirstSoManyOf(Value subject) {
-        return subject instanceof ObjectValue || subject instanceof ErrorValue
-                || subject instanceof ModuleValue || subject instanceof PortValue;
-    }
-
-
-    private static String theFirstCodePointsOf(String text, int wanted) {
-        int taking = Math.min(wanted, text.codePointCount(0, text.length()));
-        return text.substring(0, text.offsetByCodePoints(0, taking));
-    }
-
-    private static Value copiedFront(
-            RebolSeries series, Value limit, boolean deeply, Set<Datatype> kinds) {
-        long wanted = series.countUpTo(limit);
-        RebolSeries from = limit instanceof RebolSeries upTo
-                ? series.earlierOf(upTo)
-                : series;
-        if (wanted < 0) {
-            int behind = from.index() - 1;
-            int reaching = (int) Math.min(-wanted, behind);
-            from = from.atIndex(from.index() - reaching);
-            wanted = reaching;
-        }
-        int taking = (int) Math.max(0, Math.min(wanted, from.lengthFromHere()));
-        return switch (from) {
-            case BlockValue block -> laidOutLike(block, new BlockStorage(
-                    block.remaining().subList(0, taking).stream()
-                            .map(item -> deeply && kinds.contains(item.datatype())
-                                    ? item.copied(true, kinds)
-                                    : item)
-                            .toList()));
-            case StringValue text -> StringValue.of(
-                    theFirstCodePointsOf(text.text(), taking), text.datatype());
-            case BinaryValue bytes -> bytes.copyOfTheFirst(taking);
-            case ImageValue image -> image.copyOfTheFirstWholeRows(taking);
-            case GobValue gob -> raiseCannotUse(gob, "copy");
-            case VectorValue vector -> vector.copyOfTheFirst(taking);
-        };
-    }
-
-
-    private static Value reversedFrontInPlace(RebolSeries series, Value limit) {
-        int howMany = limit instanceof IntegerValue(long magnitude)
-                ? (int) Math.max(0, Math.min(magnitude, series.lengthFromHere()))
-                : series.lengthFromHere();
-        return switch (series) {
-            case BlockValue block -> {
-                List<MarkedItem> front = theMarkedItemsOf(block, howMany);
-                Collections.reverse(front);
-                writeBackMarkedItems(block, front);
-                yield block;
-            }
-            case GobValue gob -> raiseCannotUse(gob, "reverse/part");
-            case VectorValue vector -> {
-                for (int at = 0; at < howMany / 2; at++) {
-                    int near = vector.index() + at;
-                    int far = vector.index() + howMany - 1 - at;
-                    long held = vector.storage().at(near);
-                    vector.storage().set(near, vector.storage().at(far));
-                    vector.storage().set(far, held);
-                }
-                yield vector;
-            }
-            case ImageValue image -> {
-                for (int at = 0; at < howMany / 2; at++) {
-                    int[] near = image.pixelAt(at + 1);
-                    int[] far = image.pixelAt(howMany - at);
-                    writePixel(image, at + 1, far);
-                    writePixel(image, howMany - at, near);
-                }
-                yield image;
-            }
-            case StringValue text -> rewrittenInPlace(text, whole ->
-                    new StringBuilder(whole.substring(0, howMany)).reverse()
-                            + whole.substring(howMany));
-            case BinaryValue bytes -> {
-                int[] front = new int[howMany];
-                for (int at = 0; at < howMany; at++) {
-                    front[at] = bytes.storage().at(bytes.index() + howMany - 1 - at);
-                }
-                for (int at = 0; at < howMany; at++) {
-                    bytes.storage().set(bytes.index() + at, front[at]);
-                }
-                yield bytes;
-            }
-        };
-    }
-
-    private static void removeKeyedPair(BlockValue pairs, Value key) {
-        List<Value> items = pairs.remaining();
-        for (int at = 0; at + 1 < items.size(); at += 2) {
-            if (Comparison.identicallyEqual(items.get(at), key)) {
-                pairs.storage().removeAt(pairs.index() + at);
-                pairs.storage().removeAt(pairs.index() + at);
-                return;
-            }
-        }
-    }
-
-
-    private static List<Value> reducedOnlyWords(
-            BlockValue block, Evaluator evaluator, Value exceptions) {
-
-        Set<String> kept = exceptions instanceof BlockValue excepted
-                ? excepted.remaining().stream()
-                        .filter(WordValue.class::isInstance)
-                        .map(word -> ((WordValue) word).canonical())
-                        .collect(java.util.stream.Collectors.toSet())
-                : of();
-        List<Value> results = new ArrayList<>();
-        for (Value item : block.remaining()) {
-            if (item instanceof WordValue word && word.datatype() == Datatype.WORD
-                    && !kept.contains(word.canonical())) {
-                Value held = word.boundSlot().value();
-                if (held instanceof UnsetValue) {
-                    throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
-                }
-                results.add(held);
-            } else {
-                results.add(item);
-            }
-        }
-        return results;
-    }
 
     private static final List<String> CONSOLE_MEASUREMENTS =
             List.of("window-cols", "window-rows", "buffer-cols", "buffer-rows");
@@ -3295,63 +1569,11 @@ public final class RebolNativeWords {
                 : 0;
     }
 
-    private static boolean isAFilePort(PortValue port) {
-        return port.schemeName().equals("file") || port.schemeName().equals("dir");
-    }
-
-    private Value lengthLeftInTheFile(PortValue port, Evaluator evaluator) {
-        refuseAClosedPosition(port);
-        requireService(HostService.FILES);
-        return throughPort(() ->
-                SeekableFilePort.lengthLeft(evaluator.files(), port));
-    }
-
-    private static void refuseAClosedPosition(PortValue port) {
-        if (!port.isOpen()) {
-            throw Raised.of(EvaluationFailure.NOT_OPEN,
-                    SeekableFilePort.pathOf(port));
-        }
-    }
-
-    private Value wholeSizeOfTheFile(PortValue port, Evaluator evaluator) {
-        requireService(HostService.FILES);
-        return throughPort(() -> SeekableFilePort.wholeSize(evaluator.files(), port));
-    }
-
-    private boolean theFileIsAtItsEnd(PortValue port, Evaluator evaluator) {
-        refuseAClosedPosition(port);
-        requireService(HostService.FILES);
-        return ((LogicValue) throughPort(() -> LogicValue.of(
-                SeekableFilePort.atTail(evaluator.files(), port)))).truth();
-    }
-
-
-    private Value movedWithinTheFile(PortValue port, Evaluator evaluator, long to) {
-        refuseAClosedPosition(port);
-        requireService(HostService.FILES);
-        long size = ((IntegerValue) wholeSizeOfTheFile(port, evaluator)).magnitude();
-        SeekableFilePort.moveTo(port, Math.max(0, Math.min(to, size)));
-        return port;
-    }
-
-    private Value truncatedAtThePosition(PortValue port, Evaluator evaluator) {
-        refuseAClosedPosition(port);
-        refuseAPortOpenedOnlyToRead(port, EvaluationFailure.WRITE_ERROR);
-        requireService(HostService.FILES);
-        return throughPort(() -> {
-            String path = SeekableFilePort.pathOf(port);
-            byte[] whole = evaluator.files().readBytes(path);
-            long keeping = Math.min(SeekableFilePort.positionOf(port), whole.length);
-            evaluator.files().write(path, Arrays.copyOf(whole, (int) keeping));
-            return port;
-        });
-    }
-
     private Value readFromTheFileBehind(
             PortValue port, Evaluator evaluator,
             List<Value> arguments, Set<String> refinements) {
 
-        requireService(HostService.FILES);
+        grantedServices.require(HostService.FILES);
         String path = SeekableFilePort.pathOf(port);
         if (port.schemeName().equals("dir")) {
             return throughPort(() -> SeekableFilePort.namesIn(evaluator.files(), path));
@@ -3438,7 +1660,7 @@ public final class RebolNativeWords {
     }
 
     private boolean thereIsAnEnvironmentToWriteTo() {
-        return grantedServices.contains(HostService.ENVIRONMENT);
+        return grantedServices.allow(HostService.ENVIRONMENT);
     }
 
     private static boolean somethingIsThereFor(String path, FilePort files) {
@@ -3506,106 +1728,6 @@ public final class RebolNativeWords {
                 || !(mayRead(refinements) || refinements.contains("seek"));
     }
 
-    private static Asked askedOf(
-            Value subject, List<Value> arguments, Set<String> refinements,
-            Evaluator evaluator, Context context) {
-
-        return Asked.reading(subject, arguments.get(1), refinements,
-                refinement -> argumentFor(refinement,
-                        List.of("part", "dup"), arguments, refinements, 2),
-                evaluator, context);
-    }
-
-
-
-    private static int clampedPosition(RebolSeries series, long wanted) {
-        return (int) Math.max(1, Math.min(wanted, series.storageLength() + 1));
-    }
-
-    private static Value pickFrom(Value target, Value selector) {
-        return switch (target) {
-            case BitsetValue members -> new BitsetActions(members).heldForAPath(selector);
-            case MapValue map -> map.select(selector);
-            case DateValue date -> DatePart.readFrom(date, selector);
-            case TimeValue time -> pickTimePart(time, selector);
-            case GobValue gob -> GobPath.childOf(gob, selector.asPosition());
-            default -> selector instanceof IntegerValue(long magnitude)
-                    ? pick(target, (int) magnitude)
-                    : raiseCannotUse(target, "pick");
-        };
-    }
-
-    private static Value pickTimePart(TimeValue time, Value selector) {
-        long seconds = Math.abs(time.nanoseconds()) / TimeValue.NANOSECONDS_PER_SECOND;
-        long fraction = Math.abs(time.nanoseconds()) % TimeValue.NANOSECONDS_PER_SECOND;
-        String part = selector instanceof WordValue asked
-                ? asked.canonical()
-                : positionAsTimePartName(selector);
-        return switch (part) {
-            case "hour" -> IntegerValue.of(seconds / 3600);
-            case "minute" -> IntegerValue.of(seconds / 60 % 60);
-            case "second" -> fraction == 0
-                    ? IntegerValue.of(seconds % 60)
-                    : DecimalValue.of(
-                            seconds % 60 + (double) fraction / TimeValue.NANOSECONDS_PER_SECOND);
-            default -> NoneValue.none();
-        };
-    }
-
-    private static String positionAsTimePartName(Value selector) {
-        if (!(selector instanceof IntegerValue(long magnitude))) {
-            return "";
-        }
-        return switch ((int) magnitude) {
-            case 1 -> "hour";
-            case 2 -> "minute";
-            case 3 -> "second";
-            default -> "";
-        };
-    }
-
-    private static Value pick(Value target, int oneBasedIndex) {
-        if (target instanceof TupleValue tuple) {
-            return oneBasedIndex < 1 || oneBasedIndex > tuple.shownCount()
-                    ? NoneValue.none()
-                    : IntegerValue.of(tuple.octetAt(oneBasedIndex));
-        }
-        if (target instanceof PairValue pair) {
-            return pair.halfAt(oneBasedIndex).orElseGet(NoneValue::none);
-        }
-        if (target instanceof GobValue gob) {
-            return GobPath.childOf(gob, oneBasedIndex);
-        }
-        if (!(target instanceof RebolSeries series)) {
-            return raiseCannotUse(target, "pick");
-        }
-        if (oneBasedIndex == 0) {
-            return NoneValue.none();
-        }
-        int counted = oneBasedIndex < 0 ? oneBasedIndex + 1 : oneBasedIndex;
-        int at = series.index() + counted - 1;
-        if (at < 1 || at > series.storageLength()) {
-            return NoneValue.none();
-        }
-        return switch (series) {
-            case BlockValue block -> block.storage().at(at);
-            case StringValue string -> CharacterValue.of(string.storage().at(at));
-            case BinaryValue binary -> IntegerValue.of(binary.storage().at(at));
-            case ImageValue image -> ImagePath.read(image.head(), IntegerValue.of(at));
-            case GobValue gob -> GobPath.childOf(gob.head(), at);
-            case VectorValue vector -> vector.elementAt(at);
-        };
-    }
-
-
-    private static void refuseUnfinishedRefinements(Set<String> refinements, String what) {
-        for (String unfinished : List.of("part", "only", "dup")) {
-            if (refinements.contains(unfinished)) {
-                throw Raised.of(EvaluationFailure.FEATURE_NA,
-                        what + "/" + unfinished + " on a gob is not implemented");
-            }
-        }
-    }
 
     private static Value madeGob(Value from, UnaryOperator<Value> lookedUp) {
         if (from instanceof GobValue cloned) {
@@ -3783,7 +1905,7 @@ public final class RebolNativeWords {
         if (!(evaluator.hostPort("system") instanceof PortValue queue)) {
             return;
         }
-        theEventQueueOf(queue).ifPresent(onIt -> onIt.storage().insertAt(
+        queue.eventQueue().ifPresent(onIt -> onIt.storage().insertAt(
                 onIt.storage().length() + 1,
                 new EventValue(EventCatalogue.typeIndexOf(happened).orElseThrow(),
                         of(), EventValue.Model.PORT, 0, port)));
@@ -3859,71 +1981,6 @@ public final class RebolNativeWords {
         return BlockValue.block(List.of(reached, point));
     }
 
-    private static void writePixel(ImageValue image, int pixel, int[] channels) {
-        image.storage().setColourAt(pixel, channels[0], channels[1], channels[2]);
-        image.storage().setAlphaAt(pixel, channels[3]);
-    }
-
-    private static Value insertPixels(ImageValue image, Value value) {
-        List<int[]> pixels = new ArrayList<>();
-        if (value instanceof ImageValue added) {
-            for (int at = 1; at <= added.lengthFromHere(); at++) {
-                pixels.add(added.pixelAt(at));
-            }
-        } else if (value instanceof TupleValue colour) {
-            int[] parts = colour.segments();
-            pixels.add(new int[] {
-                    parts.length > 0 ? parts[0] : 0,
-                    parts.length > 1 ? parts[1] : 0,
-                    parts.length > 2 ? parts[2] : 0,
-                    parts.length > 3 ? parts[3] : 0xFF});
-        } else {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "an image takes a pixel or another image, not "
-                            + value.datatype().literalSpelling());
-        }
-        for (int at = 0; at < pixels.size(); at++) {
-            int[] channels = pixels.get(at);
-            image.storage().insertAt(image.index() + at,
-                    channels[0], channels[1], channels[2], channels[3]);
-        }
-        return image.atIndex(image.index() + pixels.size());
-    }
-
-
-    private static Set<Datatype> setOperandOr(Datatype... alsoAccepted) {
-        Set<Datatype> accepted = EnumSet.of(
-                Datatype.BITSET, Datatype.TYPESET, Datatype.STRING, Datatype.MAP);
-        accepted.addAll(List.of(alsoAccepted));
-        return copyOf(accepted);
-    }
-
-    private static double roundedBy(double value, Set<String> refinements) {
-        if (refinements.contains("down")) {
-            return value < 0 ? Math.ceil(value) : Math.floor(value);
-        }
-        if (refinements.contains("floor")) {
-            return Math.floor(value);
-        }
-        if (refinements.contains("ceiling")) {
-            return Math.ceil(value);
-        }
-        if (refinements.contains("even")) {
-            return Math.rint(value);
-        }
-        double fraction = Math.abs(value - (long) value);
-        if (refinements.contains("half-down") && fraction == 0.5) {
-            return value < 0 ? Math.ceil(value) : Math.floor(value);
-        }
-        if (refinements.contains("half-ceiling") && fraction == 0.5) {
-            return Math.ceil(value);
-        }
-        return roundedHalfAway(value);
-    }
-
-    private static int clampToSeries(RebolSeries series, long wanted) {
-        return (int) Math.max(1, Math.min(wanted, series.storageLength() + 1L));
-    }
 
     private static Value raiseCannotUse(Value value, String nativeName) {
         throw Raised.cannotUse(value, nativeName);
@@ -4390,15 +2447,6 @@ public final class RebolNativeWords {
                         ^ value.datatype().ordinal();
     }
 
-    private static Value whereItStandsInThePicture(ImageValue picture, int countingFrom) {
-        int across = picture.storage().wide();
-        if (across <= 0) {
-            return IntegerValue.of(picture.index() - 1 + countingFrom);
-        }
-        int stepsIn = picture.index() - 1;
-        return PairValue.of(stepsIn % across + countingFrom, stepsIn / across + countingFrom);
-    }
-
     private static Set<Datatype> anyStringOr(Datatype... alsoAccepted) {
         Set<Datatype> accepted = EnumSet.copyOf(Typeset.ANY_STRING.members());
         accepted.addAll(List.of(alsoAccepted));
@@ -4430,7 +2478,7 @@ public final class RebolNativeWords {
         define("to-real-file", List.of(Parameter.required("path",
                         of(Datatype.FILE, Datatype.STRING))),
                 (arguments, evaluator, context) -> {
-                    requireService(HostService.FILES);
+                    grantedServices.require(HostService.FILES);
                     return throughPort(() -> {
                         String resolved = evaluator.files().canonicalPathOf(
                                 ((StringValue) arguments.getFirst()).text());
@@ -4478,7 +2526,7 @@ public final class RebolNativeWords {
                     if (target instanceof NoneValue || !target.isTruthy()) {
                         return UnsetValue.unset();
                     }
-                    requireService(HostService.FILES);
+                    grantedServices.require(HostService.FILES);
                     String path = target instanceof StringValue address
                             ? address.text()
                             : "output.txt";
@@ -4525,7 +2573,7 @@ public final class RebolNativeWords {
 
         define("read-key", List.of(),
                 (arguments, evaluator, context) -> {
-                    requireService(HostService.CONSOLE);
+                    grantedServices.require(HostService.CONSOLE);
                     int code = evaluator.console().readKey();
                     runState.set("control?", LogicValue.of(false));
                     runState.set("shift?", LogicValue.of(false));
@@ -4958,8 +3006,7 @@ public final class RebolNativeWords {
                     }
                     boolean oneEndOnly =
                             refinements.contains("head") != refinements.contains("tail");
-                    return rewrittenInPlace(
-                            (StringValue) arguments.getFirst(), text -> {
+                    return ((StringValue) arguments.getFirst()).rewrittenFromHere(text -> {
                         if (refinements.contains("with") && arguments.size() > 1) {
                             Set<Integer> unwanted = unwantedCodePoints(arguments.get(1));
                             StringBuilder kept = new StringBuilder();
@@ -5087,8 +3134,7 @@ public final class RebolNativeWords {
                                 linesOfDroppingExactlyOneTrailingEmptyLine(
                                         text.text()));
                     }
-                    return rewrittenInPlace(
-                            text, RebolNativeWords::withOneLineFeedPerEnding);
+                    return text.rewrittenFromHere(RebolNativeWords::withOneLineFeedPerEnding);
                 });
         define("enline", List.of(Parameter.required("text",
                         of(Datatype.STRING, Datatype.BLOCK))),
@@ -5097,8 +3143,8 @@ public final class RebolNativeWords {
                         throw Raised.of(EvaluationFailure.NOT_DONE,
                                 "joining a block of lines is not written yet");
                     }
-                    return rewrittenInPlace((StringValue) arguments.getFirst(),
-                            RebolNativeWords::withOneLineFeedPerEnding);
+                    return ((StringValue) arguments.getFirst())
+                            .rewrittenFromHere(RebolNativeWords::withOneLineFeedPerEnding);
                 });
 
         define("as", List.of(
@@ -5273,24 +3319,6 @@ public final class RebolNativeWords {
                 Molder.mold(from));
     }
 
-    private static long positionAskedFor(RebolSeries series, Value given, boolean fromOne) {
-        if (given instanceof PairValue(double x, double y)) {
-            if (!(series instanceof ImageValue image)) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        series.datatype().literalSpelling()
-                                + " has no width, so a pair names no position in it");
-            }
-            return ((long) y - (fromOne ? 1 : 0)) * image.storage().wide()
-                    + (long) x;
-        }
-        return switch (given) {
-            case IntegerValue number -> number.magnitude();
-            case DecimalValue number -> (long) number.quantity();
-            case LogicValue yesOrNo -> yesOrNo.isTruthy() ? 1 : 2;
-            default -> 1;
-        };
-    }
-
     private static int colourByteOfRoundingNotTruncating(Value given) {
         double number = switch (given) {
             case IntegerValue whole -> whole.magnitude();
@@ -5424,7 +3452,6 @@ public final class RebolNativeWords {
     }
 
     private static final long MICROSECONDS_A_SECOND = 1_000_000L;
-    private static final long MICROSECONDS_A_DAY = 86_400L * MICROSECONDS_A_SECOND;
 
     private static Value timeFromParts(List<Value> parts) {
         if (parts.isEmpty() || parts.size() > 3
@@ -5458,22 +3485,6 @@ public final class RebolNativeWords {
         }
         long total = seconds * 1_000_000_000L + nanoseconds;
         return TimeValue.ofNanoseconds(negative ? -total : total);
-    }
-
-    private static Value structChangedBy(StructValue struct, Value given) {
-        if (given instanceof BlockValue written) {
-            struct.startedWith(written);
-            return struct;
-        }
-        if (!(given instanceof BinaryValue octets)) {
-            return raiseWrongArgument(given, "change", "value");
-        }
-        if (!struct.acceptsRawBytes()) {
-            throw Raised.of(EvaluationFailure.PROTECTED,
-                    "this struct holds a REBOL value, and raw bytes would land on it");
-        }
-        struct.changeFrom(octets.bytesFromHere());
-        return struct;
     }
 
     private StructSpec.LayoutRegistry structLayoutsKnown() {
@@ -6386,38 +4397,6 @@ public final class RebolNativeWords {
     }
 
 
-    private static Value thePixelFoundIn(
-            ImageValue picture, Value wanted, Set<String> refinements) {
-
-        if (!ImageSeries.couldBeAPixel(wanted)) {
-            return NoneValue.none();
-        }
-        int at = ImageSeries.positionOf(picture, wanted,
-                refinements.contains("match"), refinements.contains("only"));
-        if (at == 0) {
-            return NoneValue.none();
-        }
-        return picture.atIndex(refinements.contains("tail") ? at + 1 : at);
-    }
-
-    private static Value theShapeOfTheRectangle(
-            List<Value> arguments, Set<String> refinements) {
-
-        return refinements.contains("part")
-                ? argumentFor("part", List.of("part", "dup"), arguments, refinements, 2)
-                : NoneValue.none();
-    }
-
-    private static long howManyTimesOver(
-            List<Value> arguments, Set<String> refinements) {
-
-        Value times = argumentFor("dup", List.of("part", "dup"),
-                arguments, refinements, 2);
-        return refinements.contains("dup") && times instanceof IntegerValue(long magnitude)
-                ? Math.max(0, magnitude)
-                : 1;
-    }
-
     private static Value raiseBadMakeArg(Value value, String wanted) {
         throw Raised.badMakeArg(value, wanted);
     }
@@ -6548,11 +4527,6 @@ public final class RebolNativeWords {
     }
 
     private static final double TOO_LARGE_FOR_A_WHOLE_NUMBER = 9.223372036854776E18;
-
-    private static Optional<Long> howManyWanted(
-            List<Value> arguments, Set<String> refinements, int where) {
-        return howManyWanted(NoneValue.none(), arguments, refinements, where);
-    }
 
     private static RebolSeries theRunReachingBackIfNegative(
             RebolSeries series, long wanted) {
@@ -6733,7 +4707,7 @@ public final class RebolNativeWords {
                 (arguments, evaluator, context, refinements) -> {
                     if (arguments.getFirst() instanceof PortValue port) {
                         port.refuseASpecThatIsNotAnObject();
-                        return isAFilePort(port)
+                        return port.isAFile()
                                 ? readFromTheFileBehind(
                                         port, evaluator, arguments, refinements)
                                 : readFromPort(port, evaluator, arguments, refinements);
@@ -6745,7 +4719,7 @@ public final class RebolNativeWords {
                                 portOpenedFor(arguments.getFirst(), evaluator, context),
                                 evaluator, arguments, refinements);
                     }
-                    requireService(HostService.FILES);
+                    grantedServices.require(HostService.FILES);
                     return throughPort(() -> FileReading
                             .asAskedForAt(behindTheUrl.orElseGet(() ->
                                     ((StringValue) arguments.getFirst()).text()),
@@ -6775,7 +4749,7 @@ public final class RebolNativeWords {
                                 portOpenedFor(arguments.getFirst(), evaluator, context),
                                 arguments.get(1), evaluator, arguments, refinements);
                     }
-                    requireService(HostService.FILES);
+                    grantedServices.require(HostService.FILES);
                     return throughPort(() -> {
                         FileWriting.asAskedFor(arguments, refinements)
                                 .performThrough(evaluator.files());
@@ -6791,7 +4765,7 @@ public final class RebolNativeWords {
                     boolean resolvingDots = refinements.contains("full");
                     String from = "";
                     if (resolvingDots && !path.startsWith("/")) {
-                        requireService(HostService.WORKING_DIRECTORY);
+                        grantedServices.require(HostService.WORKING_DIRECTORY);
                         from = ((StringValue) throughPort(() -> StringValue.of(
                                 evaluator.files().workingDirectory()))).text();
                     }
@@ -6820,7 +4794,7 @@ public final class RebolNativeWords {
                                         Datatype.FILE, Datatype.NONE))),
                 of("wait", "console", "shell", "info", "input", "output", "error"),
                 (arguments, evaluator, context, refinements) -> {
-                    requireService(HostService.PROCESSES);
+                    grantedServices.require(HostService.PROCESSES);
                     ProgramCalling calling = ProgramCalling.asAskedFor(
                             arguments, refinements, evaluator, context);
                     return throughPort(() ->
@@ -6832,7 +4806,7 @@ public final class RebolNativeWords {
         define("get-env", List.of(Parameter.required("name",
                         of(Datatype.STRING, Datatype.WORD, Datatype.LIT_WORD))),
                 (arguments, evaluator, context) -> {
-                    requireService(HostService.ENVIRONMENT);
+                    grantedServices.require(HostService.ENVIRONMENT);
                     return throughPort(() -> {
                         String held = evaluator.environment()
                                 .valueOf(environmentNameIn(arguments.getFirst()));
@@ -6842,7 +4816,7 @@ public final class RebolNativeWords {
 
         define("list-env", List.of(),
                 (arguments, evaluator, context) -> {
-                    requireService(HostService.ENVIRONMENT);
+                    grantedServices.require(HostService.ENVIRONMENT);
                     return throughPort(() -> {
                         List<Value> pairs = new ArrayList<>();
                         evaluator.environment().all().entrySet().stream()
@@ -6861,7 +4835,7 @@ public final class RebolNativeWords {
                         Parameter.required("value",
                                 of(Datatype.STRING, Datatype.NONE))),
                 (arguments, evaluator, context) -> {
-                    requireService(HostService.ENVIRONMENT);
+                    grantedServices.require(HostService.ENVIRONMENT);
                     Value given = arguments.get(1);
                     return throughPort(() -> {
                         evaluator.environment().nameHolds(
@@ -6873,14 +4847,14 @@ public final class RebolNativeWords {
 
         define("what-dir", List.of(),
                 (arguments, evaluator, context) -> {
-                    requireService(HostService.WORKING_DIRECTORY);
+                    grantedServices.require(HostService.WORKING_DIRECTORY);
                     return throughPort(() -> StringValue.of(
                             evaluator.files().workingDirectory(), Datatype.FILE));
                 });
 
         define("change-dir", List.of(Parameter.required("path", of(Datatype.FILE))),
                 (arguments, evaluator, context) -> {
-                    requireService(HostService.WORKING_DIRECTORY);
+                    grantedServices.require(HostService.WORKING_DIRECTORY);
                     String asked = ((StringValue) arguments.getFirst()).text();
                     return throughPort(() -> {
                         evaluator.files().changeDirectory(asked);
@@ -6894,7 +4868,7 @@ public final class RebolNativeWords {
         define("create", List.of(Parameter.required("path",
                         of(Datatype.FILE, Datatype.URL))),
                 (arguments, evaluator, context) -> {
-                    requireService(HostService.FILES);
+                    grantedServices.require(HostService.FILES);
                     return throughPort(() -> {
                         String path = ((StringValue) arguments.getFirst()).text();
                         if (path.endsWith("/")) {
@@ -6915,7 +4889,7 @@ public final class RebolNativeWords {
                     if (behindTheUrl.isEmpty() && target.datatype() != Datatype.FILE) {
                         throw schemeRefusal("delete", "deletes through", target);
                     }
-                    requireService(HostService.FILES);
+                    grantedServices.require(HostService.FILES);
                     String path = behindTheUrl.orElseGet(
                             () -> ((StringValue) target).text());
                     Value itsPort = evaluator.applyFunction(
@@ -6941,13 +4915,13 @@ public final class RebolNativeWords {
                             throw schemeRefusal("rename", "renames", end);
                         }
                     }
-                    requireService(HostService.FILES);
+                    grantedServices.require(HostService.FILES);
                     return movedOrRefusedByTheName(evaluator, arguments);
                 });
 
         define("read-dir", List.of(Parameter.required("path", of(Datatype.FILE))),
                 (arguments, evaluator, context) -> {
-                    requireService(HostService.FILES);
+                    grantedServices.require(HostService.FILES);
                     return throughPort(() -> BlockValue.block(
                             evaluator.files().namesIn(
                                     ((StringValue) arguments.getFirst()).text()).stream()
@@ -7025,10 +4999,10 @@ public final class RebolNativeWords {
                         ChecksumPort.startEvenOnAnAlreadyOpenPort(
                                 port, ChecksumPort.methodOf(port));
                     }
-                    if (isAFilePort(port)) {
+                    if (port.isAFile()) {
                         openTheFileBehind(port, evaluator, refinements);
                     }
-                    theEventQueueOf(port);
+                    port.eventQueue();
                     markOpenWhateverTheActorLeftInState(port);
                     return port;
                 });
@@ -7130,7 +5104,7 @@ public final class RebolNativeWords {
         define("browse", List.of(Parameter.required("url",
                         of(Datatype.URL, Datatype.FILE, Datatype.NONE))),
                 (arguments, evaluator, context) -> {
-                    requireService(HostService.WINDOWS);
+                    grantedServices.require(HostService.WINDOWS);
                     return throughWindow(() -> {
                         if (!(arguments.getFirst() instanceof StringValue target)) {
                             return NoneValue.none();
@@ -7146,7 +5120,7 @@ public final class RebolNativeWords {
                         Parameter.belongingTo("filter", "list", of(Datatype.BLOCK))),
                 of("save", "multi", "file", "title", "filter"),
                 (arguments, evaluator, context, refinements) -> {
-                    requireService(HostService.WINDOWS);
+                    grantedServices.require(HostService.WINDOWS);
                     List<String> filters = filterPairsIn(arguments, refinements);
                     return throughWindow(() -> {
                         List<String> chosen = evaluator.windows().chooseFiles(
@@ -7173,7 +5147,7 @@ public final class RebolNativeWords {
                         Parameter.belongingTo("dir", "name", of(Datatype.FILE))),
                 of("title", "dir", "keep"),
                 (arguments, evaluator, context, refinements) -> {
-                    requireService(HostService.WINDOWS);
+                    grantedServices.require(HostService.WINDOWS);
                     return throughWindow(() -> evaluator.windows().chooseDirectory(
                                     textOfArgument(arguments, refinements,
                                             List.of("title", "dir"), "dir"),
@@ -7187,7 +5161,7 @@ public final class RebolNativeWords {
                         Parameter.belongingTo("default", "color", of(Datatype.TUPLE))),
                 of("default"),
                 (arguments, evaluator, context, refinements) -> {
-                    requireService(HostService.WINDOWS);
+                    grantedServices.require(HostService.WINDOWS);
                     return throughWindow(() -> {
                         Optional<int[]> suggested = refinements.contains("default")
                                         && arguments.getFirst() instanceof TupleValue given
@@ -7201,7 +5175,7 @@ public final class RebolNativeWords {
 
         define("request-password", List.of(),
                 (arguments, evaluator, context) -> {
-                    requireService(HostService.WINDOWS);
+                    grantedServices.require(HostService.WINDOWS);
                     return throughWindow(() -> evaluator.windows()
                             .askForPassword()
                             .<Value>map(StringValue::of)
@@ -7251,8 +5225,8 @@ public final class RebolNativeWords {
                     if (field instanceof NoneValue) {
                         return theNamesThatPortMayBeAskedFor(target, evaluator, context);
                     }
-                    if (target instanceof PortValue openFile && isAFilePort(openFile)) {
-                        requireService(HostService.FILES);
+                    if (target instanceof PortValue openFile && openFile.isAFile()) {
+                        grantedServices.require(HostService.FILES);
                         return throughPort(() -> queryAnswerFor(
                                 evaluator.files().informationAbout(
                                         SeekableFilePort.pathOf(openFile)),
@@ -7265,7 +5239,7 @@ public final class RebolNativeWords {
                         throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
                                 WordValue.of("query").as(Datatype.SET_WORD));
                     }
-                    requireService(HostService.FILES);
+                    grantedServices.require(HostService.FILES);
                     String path = behindTheUrl.orElseGet(
                             () -> ((StringValue) target).text());
                     if (path.isEmpty()) {
@@ -7574,7 +5548,7 @@ public final class RebolNativeWords {
     private Value whatTheOperatorLastCopied(PortValue port, Evaluator evaluator,
             List<Value> arguments, Set<String> refinements) {
 
-        requireService(HostService.CLIPBOARD);
+        grantedServices.require(HostService.CLIPBOARD);
         String copied = theClipboardsAnswer(evaluator);
         if (refinements.contains("part") && arguments.size() > 1
                 && arguments.get(1) instanceof IntegerValue(long wanted)) {
@@ -7625,7 +5599,7 @@ public final class RebolNativeWords {
     }
 
     private Value lineReadFromTheConsole(Evaluator evaluator) {
-        requireService(HostService.CONSOLE);
+        grantedServices.require(HostService.CONSOLE);
         return throughPort(() -> {
             String line = evaluator.console().readLine();
             return line == null ? NoneValue.none() : StringValue.of(line);
@@ -7653,7 +5627,7 @@ public final class RebolNativeWords {
     }
 
     private Value bytesReadFromTheConnection(PortValue port, Evaluator evaluator) {
-        requireService(HostService.NETWORK);
+        grantedServices.require(HostService.NETWORK);
         NetworkPort.Connection connection = connectionBehind(port);
         return throughNetwork(() -> {
             BinaryValue arrived = BinaryValue.ofBytes(connection.read());
@@ -7675,7 +5649,7 @@ public final class RebolNativeWords {
     }
 
     private Value addressesOfTheNameThePortNames(PortValue port, Evaluator evaluator) {
-        requireService(HostService.NETWORK);
+        grantedServices.require(HostService.NETWORK);
         String hostName = hostNamedBy(port);
         return throughNetwork(() -> {
             List<String> found = evaluator.network().addressesFor(hostName);
@@ -7785,12 +5759,6 @@ public final class RebolNativeWords {
     private static final Set<Datatype> COMPRESSIBLE =
             of(Datatype.BINARY, Datatype.STRING);
 
-    private static final Set<Datatype> REMOVE_RANGE = java.util.stream.Stream.concat(
-            PART_LIMIT.stream(), java.util.stream.Stream.of(Datatype.CHAR))
-            .collect(java.util.stream.Collectors.toUnmodifiableSet());
-
-    private static final Set<Datatype> DUP_COUNT =
-            Typeset.NUMBER.membersAnd(Datatype.PAIR);
 
     private static Value libraryFunction(Context context, String name) {
         if (!context.knows(name)) {
@@ -7995,7 +5963,7 @@ public final class RebolNativeWords {
             return Optional.empty();
         }
         PortValue routed = portOpenedFor(target, evaluator, context);
-        return isAFilePort(routed)
+        return routed.isAFile()
                 ? Optional.of(SeekableFilePort.pathOf(routed))
                 : Optional.empty();
     }
@@ -8058,14 +6026,18 @@ public final class RebolNativeWords {
             case "udp" -> oneDatagramSentFrom(port, data, evaluator);
             case "checksum" -> summedIntoThePort(port, data, arguments, refinements);
             case "crypt" -> encipheredIntoThePort(port, data);
-            case "file" -> writtenToTheFileBehind(
-                    port, data, evaluator, arguments, refinements);
+            case "file" -> new OpenFile(port, evaluator.files(), grantedServices).written(data,
+                    Optional.ofNullable(argumentFor("seek", FileWriting.ARGUMENT_ORDER,
+                            arguments, refinements, 2)),
+                    Optional.ofNullable(argumentFor("part", FileWriting.ARGUMENT_ORDER,
+                            arguments, refinements, 2)),
+                    refinements.contains("append"));
             default -> throw schemeRefusal("write", "writes", port);
         };
     }
 
     private Value putOnTheClipboard(PortValue port, Value data, Evaluator evaluator) {
-        requireService(HostService.CLIPBOARD);
+        grantedServices.require(HostService.CLIPBOARD);
         String text = switch (data) {
             case StringValue written -> written.text();
             case BinaryValue bytes -> new String(
@@ -8078,63 +6050,6 @@ public final class RebolNativeWords {
             throw Raised.of(EvaluationFailure.WRITE_ERROR, unreachable.getMessage());
         }
         return port;
-    }
-
-    private static void refuseAPortOpenedOnlyToRead(
-            PortValue port, EvaluationFailure failure) {
-
-        if (!SeekableFilePort.mayWriteThrough(port)) {
-            throw Raised.of(failure, StringValue.of(
-                    SeekableFilePort.pathOf(port), Datatype.FILE));
-        }
-    }
-
-    private Value appendedToTheFileBehind(
-            PortValue port, Value data, Evaluator evaluator, Set<String> refinements) {
-
-        if (refinements.contains("dup") || refinements.contains("only")) {
-            throw Raised.of(EvaluationFailure.BAD_REFINES,
-                    "append on a file port is a write, and takes no dup or only");
-        }
-        return writtenToTheFileBehind(
-                port, data, evaluator, List.of(), of("append"));
-    }
-
-    private Value writtenToTheFileBehind(
-            PortValue port, Value data, Evaluator evaluator,
-            List<Value> arguments, Set<String> refinements) {
-
-        requireService(HostService.FILES);
-        if (port.isOpen()) {
-            refuseAPortOpenedOnlyToRead(port, EvaluationFailure.READ_ONLY);
-        }
-        if (refinements.contains("append")) {
-            SeekableFilePort.moveTo(port, throughPort(
-                    () -> SeekableFilePort.wholeSize(evaluator.files(), port)) instanceof IntegerValue(
-                    long magnitude
-            ) ? magnitude : 0);
-        }
-        Value seek = refinements.contains("seek")
-                ? argumentFor("seek", FileWriting.ARGUMENT_ORDER,
-                        arguments, refinements, 2)
-                : null;
-        if (seek instanceof IntegerValue(long magnitude1)) {
-            SeekableFilePort.moveTo(port, magnitude1);
-        }
-        byte[] octets = data.asOctets();
-        Value part = refinements.contains("part")
-                ? argumentFor("part", FileWriting.ARGUMENT_ORDER,
-                        arguments, refinements, 2)
-                : null;
-        if (part instanceof IntegerValue(long magnitude)) {
-            octets = Arrays.copyOf(octets,
-                    (int) Math.max(0, Math.min(magnitude, octets.length)));
-        }
-        byte[] written = octets;
-        return throughPort(() -> {
-            SeekableFilePort.writeAt(evaluator.files(), port, written);
-            return StringValue.of(SeekableFilePort.pathOf(port), Datatype.FILE);
-        });
     }
 
     private Value summedIntoThePort(PortValue port, Value data,
@@ -8173,7 +6088,7 @@ public final class RebolNativeWords {
 
     private Value writtenToTheConsole(
             PortValue port, Value data, Evaluator evaluator) {
-        requireService(HostService.CONSOLE);
+        grantedServices.require(HostService.CONSOLE);
         evaluator.output().write(Molder.form(data));
         return port;
     }
@@ -8181,7 +6096,7 @@ public final class RebolNativeWords {
     private Value sentDownTheConnection(
             PortValue port, Value data, Evaluator evaluator) {
 
-        requireService(HostService.NETWORK);
+        grantedServices.require(HostService.NETWORK);
         NetworkPort.Connection connection = connectionBehind(port);
         return throughNetwork(() -> {
             connection.write(data.asOctets());
@@ -8194,27 +6109,6 @@ public final class RebolNativeWords {
         Set<Datatype> accepted = EnumSet.of(Datatype.DATATYPE);
         accepted.addAll(Typeset.ANY_BLOCK.members());
         accepted.addAll(Typeset.ANY_STRING.members());
-        return copyOf(accepted);
-    }
-
-    private static Set<Datatype> copyable() {
-        Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
-        accepted.addAll(Typeset.ANY_FUNCTION.members());
-        accepted.addAll(of(Datatype.ACTION, Datatype.CLOSURE,
-                Datatype.COMMAND, Datatype.REBCODE, Datatype.STRUCT));
-        accepted.add(Datatype.PORT);
-        accepted.add(Datatype.MAP);
-        accepted.add(Datatype.OBJECT);
-        accepted.add(Datatype.BITSET);
-        accepted.add(Datatype.ERROR);
-        return copyOf(accepted);
-    }
-
-    private static Set<Datatype> positionable() {
-        Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
-        accepted.add(Datatype.PORT);
-        accepted.add(Datatype.NONE);
-        accepted.add(Datatype.GOB);
         return copyOf(accepted);
     }
 
@@ -8243,10 +6137,10 @@ public final class RebolNativeWords {
     private void requireServiceForScheme(String scheme) {
         switch (scheme) {
             case "console" -> theSchemeReachesNothingOutside();
-            case "file", "dir" -> requireService(HostService.FILES);
-            case "tcp", "dns", "udp" -> requireService(HostService.NETWORK);
-            case "event" -> requireService(HostService.WINDOWS);
-            case "clipboard" -> requireService(HostService.CLIPBOARD);
+            case "file", "dir" -> grantedServices.require(HostService.FILES);
+            case "tcp", "dns", "udp" -> grantedServices.require(HostService.NETWORK);
+            case "event" -> grantedServices.require(HostService.WINDOWS);
+            case "clipboard" -> grantedServices.require(HostService.CLIPBOARD);
             case "system", "callback", "bundled" -> theSchemeReachesNothingOutside();
             case "checksum", "crypt" -> theSchemeReachesNothingOutside();
             default -> {
@@ -8596,7 +6490,7 @@ public final class RebolNativeWords {
     }
 
     private Value oneDatagramReadInto(PortValue port, Evaluator evaluator) {
-        requireService(HostService.NETWORK);
+        grantedServices.require(HostService.NETWORK);
         NetworkPort.Datagrams bound = datagramsBehind(port);
         return throughNetwork(() -> {
             BinaryValue arrived = BinaryValue.ofBytes(bound.receive());
@@ -8607,7 +6501,7 @@ public final class RebolNativeWords {
     }
 
     private Value oneDatagramSentFrom(PortValue port, Value data, Evaluator evaluator) {
-        requireService(HostService.NETWORK);
+        grantedServices.require(HostService.NETWORK);
         byte[] bytes = switch (data) {
             case StringValue written -> written.text().getBytes(StandardCharsets.UTF_8);
             case BinaryValue carried -> carried.octetsFromHere();
@@ -8653,33 +6547,6 @@ public final class RebolNativeWords {
         }
     }
 
-    private static final Set<String> THE_SCHEMES_THAT_ARE_QUEUES =
-            of("system", "event", "callback");
-
-    private static Optional<BlockValue> theEventQueueOf(Value value) {
-        if (!(value instanceof PortValue port)
-                || !THE_SCHEMES_THAT_ARE_QUEUES.contains(port.schemeName())) {
-            return Optional.empty();
-        }
-        if (!(port.fieldValue("state") instanceof BlockValue queue)) {
-            BlockValue made = BlockValue.block(List.of());
-            port.setField("state", made);
-            return Optional.of(made);
-        }
-        return Optional.of(queue);
-    }
-
-    private static Value queuedOnThePort(
-            PortValue port, BlockValue queue, Value happening, boolean atTheEnd) {
-
-        if (!(happening instanceof EventValue)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, happening);
-        }
-        queue.storage().insertAt(
-                atTheEnd ? queue.storage().length() + 1 : queue.index(), happening);
-        return port;
-    }
-
     private static void markOpenWhateverTheActorLeftInState(PortValue port) {
         if (!port.isOpen()) {
             port.markOpen(true);
@@ -8723,13 +6590,7 @@ public final class RebolNativeWords {
         try {
             return operation.get();
         } catch (FilePort.Denied denied) {
-            throw new Raised(denied.subject().isEmpty()
-                    ? ErrorValue.of(ErrorCategory.ACCESS,
-                            denied.errorId(), denied.getMessage())
-                    : ErrorValue.about(ErrorCategory.ACCESS,
-                            denied.errorId(), denied.getMessage(),
-                            StringValue.of(denied.subject(), Datatype.FILE),
-                            IntegerValue.of(OPEN_FAILED)));
+            throw denied.raised();
         }
     }
 
@@ -8794,15 +6655,11 @@ public final class RebolNativeWords {
 
     }
 
-    /** Deliberately empty: a real 3.22.1 has no LAYOUT either. Do not stub it. */
-    private void registerLayout() {
-    }
-
     private void registerScreen() {
         define("init-top-window",
                 List.of(Parameter.required("gob", of(Datatype.GOB))),
                 (arguments, evaluator, context) -> {
-                    requireService(HostService.WINDOWS);
+                    grantedServices.require(HostService.WINDOWS);
                     return theRootGobTakenBy(evaluator.screen(), arguments.getFirst());
                 });
 
@@ -8812,7 +6669,7 @@ public final class RebolNativeWords {
                         Parameter.belongingTo("display", "idx", of(Datatype.INTEGER))),
                 of("set", "display"),
                 (arguments, evaluator, context, refinements) -> {
-                    requireService(HostService.WINDOWS);
+                    grantedServices.require(HostService.WINDOWS);
                     return measurementOf(evaluator.screen(),
                             metricNamedBy(arguments.getFirst()),
                             displayAskedFor(arguments, refinements));
@@ -8822,7 +6679,7 @@ public final class RebolNativeWords {
                 List.of(Parameter.required("gob",
                         of(Datatype.GOB, Datatype.NONE, Datatype.BLOCK))),
                 (arguments, evaluator, context) -> {
-                    requireService(HostService.WINDOWS);
+                    grantedServices.require(HostService.WINDOWS);
                     return whatWasShown(evaluator.screen(), arguments.getFirst());
                 });
     }

@@ -6,10 +6,8 @@ import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public final class BinaryActions extends SeriesActions {
@@ -91,7 +89,7 @@ public final class BinaryActions extends SeriesActions {
 
     @Override
     public Value insert(Asked asked) {
-        BinaryValue held = (BinaryValue) RebolNativeWords.clampedToTail(bytes);
+        BinaryValue held = (BinaryValue) bytes.clampedToTail();
         int[] octets = octetsContributedBy(asked);
         for (int at = octets.length; at > 0; at--) {
             held.storage().insertAt(held.index(), octets[at - 1]);

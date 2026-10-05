@@ -141,7 +141,7 @@ public class RemoveEachNative extends LoopingNative {
     private Value itemAt(RebolSeries series, int at) {
         return switch (series) {
             case BinaryValue bytes -> IntegerValue.of(bytes.storage().at(at));
-            case VectorValue numbers -> numbers.elementAt(at);
+            case VectorValue numbers -> numbers.itemAt(at);
             default -> CharacterValue.of(((StringValue) series).storage().at(at));
         };
     }

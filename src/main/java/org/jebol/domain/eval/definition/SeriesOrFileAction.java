@@ -1,0 +1,38 @@
+package org.jebol.domain.eval.definition;
+
+import org.jebol.domain.eval.Evaluator;
+import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.eval.OpenFile;
+import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.Parameter;
+import org.jebol.domain.value.PortValue;
+import org.jebol.domain.value.Typeset;
+
+import java.util.List;
+import java.util.Set;
+
+public abstract class SeriesOrFileAction extends DefaultNative {
+
+    private final GrantedServices granted;
+
+    protected SeriesOrFileAction(GrantedServices granted) {
+        this.granted = granted;
+    }
+
+    @Override
+    public List<Parameter> parameters() {
+        return acceptsWhateverComesAlong("series");
+    }
+
+    protected OpenFile theFileBehind(PortValue port, Evaluator evaluator) {
+        return new OpenFile(port, evaluator.files(), granted);
+    }
+
+    protected Set<Datatype> somewhereToStand() {
+        return Typeset.SERIES.membersAnd(Datatype.PORT, Datatype.NONE, Datatype.GOB);
+    }
+
+    protected Set<Datatype> anOffset() {
+        return Typeset.NUMBER.membersAnd(Datatype.LOGIC, Datatype.PAIR);
+    }
+}

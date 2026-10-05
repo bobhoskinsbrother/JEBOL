@@ -25,6 +25,11 @@ public record TypesetValue(Optional<Typeset> family, Set<Datatype> members) impl
     }
 
     @Override
+    public boolean atTail() {
+        return members.isEmpty();
+    }
+
+    @Override
     public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
         if (!(other instanceof TypesetValue theirs)) {
             throw Raised.cannotUse(this, "a set operation");

@@ -77,14 +77,32 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
         return storage.kind();
     }
 
-    public Value elementAt(int oneBasedIndex) {
+    @Override
+    public Value itemAt(int oneBasedIndex) {
         return kind().read(storage.at(oneBasedIndex));
+    }
+
+    @Override
+    public Value frontCopied(int howMany, boolean deeply, Set<Datatype> kinds) {
+        return copyOfTheFirst(howMany);
+    }
+
+    @Override
+    public RebolSeries reversedFront(int howMany) {
+        for (int at = 0; at < howMany / 2; at++) {
+            int near = index + at;
+            int far = index + howMany - 1 - at;
+            long held = storage.at(near);
+            storage.set(near, storage.at(far));
+            storage.set(far, held);
+        }
+        return this;
     }
 
     public List<Value> remaining() {
         List<Value> found = new ArrayList<>();
         for (int at = index; at <= storage.length(); at++) {
-            found.add(elementAt(at));
+            found.add(itemAt(at));
         }
         return found;
     }
