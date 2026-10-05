@@ -9,17 +9,16 @@ import org.jebol.domain.value.Value;
 import java.util.List;
 import java.util.Set;
 
-import static org.jebol.domain.eval.RebolNativeWords.takesOnlyNumbers;
-
 public class SquareRootNative extends DefaultNative {
 
+    @Override
     public String name() {
         return "square-root";
     }
 
     @Override
     public List<Parameter> parameters() {
-        return takesOnlyNumbers("value");
+        return acceptsOnlyNumbers("value");
     }
 
     @Override

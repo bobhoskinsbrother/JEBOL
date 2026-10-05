@@ -3,6 +3,7 @@ package org.jebol.domain.value;
 import org.jebol.domain.value.sets.MembersKept;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -80,6 +81,44 @@ public record StringValue(StringStorage storage, int index, Datatype datatype)
             storage.insertAt(index, replacement[at - 1]);
         }
         return this;
+    }
+
+    public StringValue withOneLineFeedPerEnding() {
+        return rewrittenFromHere(this::oneLineFeedPerEnding);
+    }
+
+    private String oneLineFeedPerEnding(String text) {
+        StringBuilder standardised = new StringBuilder(text.length());
+        int at = 0;
+        while (at < text.length()) {
+            char here = text.charAt(at++);
+            if (here == '\n' || here == '\r') {
+                if (at < text.length() && text.charAt(at) == theOtherEnding(here)) {
+                    at++;
+                }
+                here = '\n';
+            }
+            standardised.append(here);
+        }
+        return standardised.toString();
+    }
+
+    private char theOtherEnding(char one) {
+        return one == '\n' ? '\r' : '\n';
+    }
+
+    public List<Value> linesDroppingOneTrailingEmptyLine() {
+        String text = text();
+        if (text.isEmpty()) {
+            return List.of();
+        }
+        String[] split = text.replace("\r\n", "\n").split("\n", -1);
+        int howMany = split[split.length - 1].isEmpty() ? split.length - 1 : split.length;
+        List<Value> lines = new ArrayList<>(howMany);
+        for (int at = 0; at < howMany; at++) {
+            lines.add(StringValue.of(split[at]));
+        }
+        return lines;
     }
 
     public StringValue frontRewritten(int howMany, UnaryOperator<String> change) {

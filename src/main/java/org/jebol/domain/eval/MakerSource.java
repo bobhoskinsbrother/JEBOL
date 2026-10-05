@@ -3,6 +3,7 @@ package org.jebol.domain.eval;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.EventValue;
 import org.jebol.domain.value.Maker;
 import org.jebol.domain.value.ObjectValue;
@@ -59,6 +60,11 @@ public interface MakerSource {
         @Override
         public Value makeEventFrom(EventValue prototype, Value spec) {
             throw Raised.cannotUse(spec, "make");
+        }
+
+        @Override
+        public Value convertedTo(DatatypeValue wanted, Value value) {
+            throw Raised.cannotUse(value, "to");
         }
     }
 }

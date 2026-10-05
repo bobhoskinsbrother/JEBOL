@@ -15,6 +15,18 @@ public record CharacterValue(int codepoint) implements Value {
         return this;
     }
 
+    @Override
+    public String writtenInHex(HexWidth width) {
+        return width.sixteenDigitsKeptToTheRight(codepoint, digitsItsMagnitudeNeeds());
+    }
+
+    private int digitsItsMagnitudeNeeds() {
+        return codepoint <= 0xFF ? 2
+                : codepoint <= 0xFFFF ? 4
+                : codepoint <= 0xFFFFFF ? 6
+                : 8;
+    }
+
 
     @Override
     public Value arithmetic(Value right, ArithmeticOperation operation) {

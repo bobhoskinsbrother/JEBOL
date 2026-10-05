@@ -6,6 +6,13 @@ import java.util.Optional;
 
 public record IntegerValue(long magnitude) implements Value, RebolNumber {
 
+    private static final int ALL_SIXTEEN_HEX_DIGITS = 16;
+
+    @Override
+    public String writtenInHex(HexWidth width) {
+        return width.sixteenDigitsKeptToTheRight(magnitude, ALL_SIXTEEN_HEX_DIGITS);
+    }
+
     @Override
     public long asPosition() {
         return magnitude;

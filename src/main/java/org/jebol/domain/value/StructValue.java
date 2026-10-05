@@ -169,13 +169,13 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
             data.write(at, given.octets(), inside.spec().size());
             return;
         }
-        throw StructLayoutRefused.becauseTheFieldIsWrong(
+        throw StructLayoutRefused.becauseTheFieldIsWrong(written,
                 "an inner struct takes a block or a struct of the same shape, not "
                         + written.datatype().literalSpelling());
     }
 
     private static StructLayoutRefused refusedBy(StructField field, Value written) {
-        return StructLayoutRefused.becauseTheFieldIsWrong(
+        return StructLayoutRefused.becauseTheFieldIsWrong(written,
                 "the field " + field.name() + " holds " + field.type().spelling()
                         + " and cannot take " + written.datatype().literalSpelling());
     }
@@ -198,7 +198,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         }
         if (!(written instanceof BlockValue given)
                 || given.remaining().size() != field.dimension()) {
-            throw StructLayoutRefused.becauseTheFieldIsWrong(
+            throw StructLayoutRefused.becauseTheFieldIsWrong(written,
                     "the field " + field.name() + " holds " + field.dimension()
                             + " values and takes a block of exactly that many");
         }
@@ -212,7 +212,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         if (!(field.type() instanceof StructFieldType.Numeric(VectorKind kind))
                 || given.lengthFromHere() != field.dimension()
                 || given.storage().kind().bytes() != kind.bytes()) {
-            throw StructLayoutRefused.becauseTheFieldIsWrong(
+            throw StructLayoutRefused.becauseTheFieldIsWrong(given,
                     "the field " + field.name() + " takes " + field.dimension()
                             + " values of its own width and this vector is not that");
         }
@@ -246,11 +246,11 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
                 && first.datatype() == Datatype.SET_WORD) {
             for (int at = 0; at + 1 < written.size(); at += 2) {
                 if (!(written.get(at) instanceof WordValue name)) {
-                    throw StructLayoutRefused.becauseTheFieldIsWrong(
+                    throw StructLayoutRefused.becauseTheFieldIsWrong(written.get(at),
                             "a named initialiser is a set-word and then a value");
                 }
                 writeField(spec.fieldCalled(name.spelling()).orElseThrow(
-                        () -> StructLayoutRefused.becauseTheFieldIsWrong(
+                        () -> StructLayoutRefused.becauseTheFieldIsWrong(name,
                                 "this struct has no field called " + name.spelling())),
                         written.get(at + 1));
             }

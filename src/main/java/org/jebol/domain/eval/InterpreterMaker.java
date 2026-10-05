@@ -4,7 +4,10 @@ import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.ContextSlot;
+import org.jebol.domain.value.Conversion;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DatatypeValue;
+import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.ErrorCatalogue;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
@@ -30,7 +33,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public final class InterpreterMaker implements Maker {
@@ -39,13 +41,57 @@ public final class InterpreterMaker implements Maker {
 
     private final Evaluator evaluator;
     private final Context context;
-    private final BiFunction<Datatype, Value, Value> anotherOfAKind;
+    private final MakingAndConverting makingAndConverting;
 
     public InterpreterMaker(Evaluator evaluator, Context context,
-            BiFunction<Datatype, Value, Value> anotherOfAKind) {
+            MakingAndConverting makingAndConverting) {
         this.evaluator = evaluator;
         this.context = context;
-        this.anotherOfAKind = anotherOfAKind;
+        this.makingAndConverting = makingAndConverting;
+    }
+
+    @Override
+    public Value convertedTo(DatatypeValue wanted, Value value) {
+        return switch (wanted.represents()) {
+            case EVENT -> EventPath.made(wanted, value,
+                    piece -> evaluator.simpleValueOf(piece, context));
+            case ERROR, FUNCTION, CLOSURE, STRUCT -> wanted.make(value, this);
+            case OBJECT -> anObjectConvertedFrom(value);
+            case MODULE -> aModuleConvertedFrom(value);
+            default -> makingAndConverting.converted(Conversion.TO, wanted, value);
+        };
+    }
+
+    private Value anObjectConvertedFrom(Value value) {
+        if (!(value instanceof ErrorValue raised)) {
+            throw Raised.badMakeArg(value, "object!");
+        }
+        if (raised.field("code").orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
+                && magnitude < ErrorCatalogue.LOWEST_CODE_AN_ENTRY_HAS) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, value);
+        }
+        Context fields = Context.childOf(Context.root());
+        for (String field : ErrorValue.FIELDS) {
+            fields.set(field, raised.field(field).orElseGet(NoneValue::none));
+        }
+        return new ObjectValue(fields);
+    }
+
+    private Value aModuleConvertedFrom(Value value) {
+        if (!(value instanceof BlockValue parts)
+                || parts.datatype() != Datatype.BLOCK
+                || parts.remaining().isEmpty()) {
+            throw Raised.badMakeArg(value, "module!");
+        }
+        List<Value> given = parts.remaining();
+        if (!(given.getFirst() instanceof ObjectValue header)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, given.getFirst());
+        }
+        if (given.size() < 2 || !(given.get(1) instanceof ObjectValue(Context fields))) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    given.size() < 2 ? given.getFirst() : given.get(1));
+        }
+        return new ModuleValue(fields, header);
     }
 
     @Override
@@ -63,7 +109,8 @@ public final class InterpreterMaker implements Maker {
 
     @Override
     public Value makeAnotherFrom(Datatype kind, Value spec) {
-        return anotherOfAKind.apply(kind, spec);
+        return makingAndConverting.made(DatatypeValue.of(kind), spec, evaluator, context,
+                value -> evaluator.simpleValueOf(value, context));
     }
 
     private Value makeObjectFrom(Value spec) {

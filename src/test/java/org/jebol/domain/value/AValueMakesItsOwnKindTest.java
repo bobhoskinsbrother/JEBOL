@@ -59,6 +59,12 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
+        public Value convertedTo(DatatypeValue wanted, Value value) {
+            asked.add("converted to " + wanted.represents().literalSpelling());
+            return WHAT_WAS_MADE;
+        }
+
+        @Override
         public Value makeEventFrom(EventValue prototype, Value spec) {
             asked.add("event like");
             return WHAT_WAS_MADE;

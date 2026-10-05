@@ -67,7 +67,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
                     || name.datatype() != Datatype.WORD
                     || at + 1 >= written.size()
                     || !(written.get(at + 1) instanceof BlockValue declared)) {
-                throw StructLayoutRefused.becauseTheShapeIsWrong(
+                throw StructLayoutRefused.becauseTheShapeIsWrong(written.get(at),
                         "a struct field is a word and then a block, and position "
                                 + (at + 1) + " is neither");
             }
@@ -83,7 +83,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
             }
         }
         if (fields.isEmpty()) {
-            throw StructLayoutRefused.becauseTheShapeIsWrong(
+            throw StructLayoutRefused.becauseTheShapeIsWrong(declaration,
                     "a struct with no fields is not allowed");
         }
         return new StructSpec(BlockValue.block(settled), List.copyOf(fields), offset);
@@ -103,24 +103,24 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
             int offset, LayoutRegistry registry) {
         List<Value> written = declared.remaining();
         if (written.isEmpty() || !(written.getFirst() instanceof WordValue typeWord)) {
-            throw StructLayoutRefused.becauseTheFieldIsWrong(
+            throw StructLayoutRefused.becauseTheFieldIsWrong(declared,
                     "the field " + name + " names no type");
         }
         int at = 1;
         StructFieldType type;
         if (typeWord.canonical().equals("struct!")) {
             type = new StructFieldType.Nested(
-                    layoutInsideOf(name, written, registry));
+                    layoutInsideOf(name, declared, registry));
             at = 2;
         } else {
-            type = scalarNamed(name, typeWord.canonical());
+            type = scalarNamed(name, declared, typeWord.canonical());
         }
         int dimension = 1;
         boolean declaredAsAnArray = false;
         if (at < written.size() && written.get(at) instanceof BlockValue howMany) {
             List<Value> counted = howMany.remaining();
             if (counted.size() != 1 || !(counted.getFirst() instanceof IntegerValue(long magnitude))) {
-                throw StructLayoutRefused.becauseTheFieldIsWrong(
+                throw StructLayoutRefused.becauseTheFieldIsWrong(declared,
                         "the field " + name + " says how many of itself there are "
                                 + "with something that is not a whole number");
             }
@@ -129,16 +129,17 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
             at++;
         }
         if (at != written.size()) {
-            throw StructLayoutRefused.becauseTheFieldIsWrong(
+            throw StructLayoutRefused.becauseTheFieldIsWrong(declared,
                     "the field " + name + " carries something after its type");
         }
         return new StructField(name, type, dimension, declaredAsAnArray, offset);
     }
 
-    private static StructSpec layoutInsideOf(String name, List<Value> written,
+    private static StructSpec layoutInsideOf(String name, BlockValue declared,
             LayoutRegistry registry) {
+        List<Value> written = declared.remaining();
         if (written.size() < 2) {
-            throw StructLayoutRefused.becauseTheFieldIsWrong(
+            throw StructLayoutRefused.becauseTheFieldIsWrong(declared,
                     "the field " + name + " says struct! and then says which one");
         }
         Value which = written.get(1);
@@ -147,21 +148,21 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
         }
         if (which instanceof WordValue registered) {
             return of(registry.apply(registered.spelling())
-                    .orElseThrow(() -> StructLayoutRefused.becauseTheFieldIsWrong(
+                    .orElseThrow(() -> StructLayoutRefused.becauseTheFieldIsWrong(registered,
                             "no struct is registered as " + registered.spelling())),
                     registry);
         }
-        throw StructLayoutRefused.becauseTheFieldIsWrong(
+        throw StructLayoutRefused.becauseTheFieldIsWrong(which,
                 "the field " + name + " names an inner struct by neither a layout "
                         + "nor a registered name");
     }
 
-    private static StructFieldType scalarNamed(String name, String typeWord) {
+    private static StructFieldType scalarNamed(String name, BlockValue declared, String typeWord) {
         return switch (typeWord) {
             case "word!" -> new StructFieldType.NamedWord();
             case "rebval!" -> new StructFieldType.LiveValue();
             default -> new StructFieldType.Numeric(VectorKind.named(typeWord)
-                    .orElseThrow(() -> StructLayoutRefused.becauseTheFieldIsWrong(
+                    .orElseThrow(() -> StructLayoutRefused.becauseTheFieldIsWrong(declared,
                             "the field " + name + " names the type " + typeWord
                                     + ", which no struct field can be")));
         };

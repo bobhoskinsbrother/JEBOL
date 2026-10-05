@@ -15,4 +15,6 @@ public interface Maker {
     Value makeStructFrom(StructValue prototype, Value spec);
 
     Value makeEventFrom(EventValue prototype, Value spec);
+
+    Value convertedTo(DatatypeValue wanted, Value value);
 }

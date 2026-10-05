@@ -35,6 +35,20 @@ public record TupleValue(int[] segments) implements Value {
 
     public static final int MAXIMUM_SEGMENTS = 12;
 
+    private static final int HEX_DIGITS_A_SEGMENT = 2;
+
+    @Override
+    public String writtenInHex(HexWidth width) {
+        StringBuilder hex = new StringBuilder();
+        for (int segment : segments) {
+            hex.append("%02X".formatted(segment));
+        }
+        for (int padded = segments.length; padded < MINIMUM_SHOWN_SEGMENTS; padded++) {
+            hex.append("00");
+        }
+        return width.keptFromTheLeft(hex.toString(), HEX_DIGITS_A_SEGMENT * segments.length);
+    }
+
     public TupleValue {
         if (segments == null) {
             throw new IllegalArgumentException("a tuple must have segments");

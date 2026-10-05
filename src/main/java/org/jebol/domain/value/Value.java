@@ -89,6 +89,10 @@ public sealed interface Value permits
         throw Raised.cannotUse(this, "tail?");
     }
 
+    default String writtenInHex(HexWidth width) {
+        throw Raised.cannotUse(this, "to-hex");
+    }
+
     default Value trimmed(Trimming trimming) {
         throw Raised.of(EvaluationFailure.CANNOT_USE,
                 WordValue.of("trim").as(Datatype.SET_WORD), DatatypeValue.of(datatype()));

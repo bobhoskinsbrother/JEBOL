@@ -20,20 +20,27 @@ public final class StructLayoutRefused extends RuntimeException {
 
     private final transient boolean malconstructed;
 
-    private StructLayoutRefused(String why, boolean malconstructed) {
+    private final transient Value offending;
+
+    private StructLayoutRefused(Value offending, String why, boolean malconstructed) {
         super(why);
+        this.offending = offending;
         this.malconstructed = malconstructed;
     }
 
-    public static StructLayoutRefused becauseTheShapeIsWrong(String why) {
-        return new StructLayoutRefused(why, true);
+    public static StructLayoutRefused becauseTheShapeIsWrong(Value offending, String why) {
+        return new StructLayoutRefused(offending, why, true);
     }
 
-    public static StructLayoutRefused becauseTheFieldIsWrong(String why) {
-        return new StructLayoutRefused(why, false);
+    public static StructLayoutRefused becauseTheFieldIsWrong(Value offending, String why) {
+        return new StructLayoutRefused(offending, why, false);
     }
 
     public boolean malconstructed() {
         return malconstructed;
+    }
+
+    public Value offending() {
+        return offending;
     }
 }

@@ -2,23 +2,18 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.eval.definition.*;
 
-import org.jebol.domain.date.DateMaking;
 import org.jebol.domain.date.part.DatePart;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.ServiceRefusal;
 import org.jebol.domain.parse.Parser;
 import org.jebol.domain.read.Construction;
-import org.jebol.domain.read.TranscodeResult;
-import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.*;
 
-import java.math.BigDecimal;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static java.util.Set.copyOf;
@@ -34,6 +29,8 @@ public final class RebolNativeWords {
     private final Context runState = Context.root();
     private Context systemInternals = Context.root();
     private final MapValue registeredStructLayouts = MapValue.empty();
+    private final MakingAndConverting makingAndConverting =
+            new MakingAndConverting(registeredStructLayouts);
 
 
     public void forgetStartupState() {
@@ -404,15 +401,6 @@ public final class RebolNativeWords {
         return parameters;
     }
 
-    public static List<Parameter> takesOnlyNumbers(String... names) {
-        Set<Datatype> numbers = Typeset.NUMBER.members();
-        List<Parameter> parameters = new ArrayList<>();
-        for (String name : names) {
-            parameters.add(Parameter.required(name, numbers));
-        }
-        return parameters;
-    }
-
     private void register(NativeDefinition function) {
         String name = function.name();
         definitions.put(name, new NativeValue(name, function.parameters(), function.refinements(), of()));
@@ -561,7 +549,7 @@ public final class RebolNativeWords {
                         case DecimalValue quantity -> DecimalValue.of(
                                 randomFraction() * quantity.quantity());
                         case BlockValue other when other.datatype() != Datatype.BLOCK ->
-                                raiseCannotUse(other, "random");
+                                throw Raised.cannotUse(other, "random");
                         case BlockValue block when refinements.contains("only") ->
                                 block.remaining().isEmpty()
                                         ? NoneValue.none()
@@ -589,7 +577,7 @@ public final class RebolNativeWords {
                         case LogicValue ignored ->
                                 LogicValue.of((randomness.next() & 1) == 1);
                         case VectorValue vector -> shuffledElements(vector);
-                        default -> raiseCannotUse(arguments.get(0), "random");
+                        default -> throw Raised.cannotUse(arguments.get(0), "random");
                     };
                 });
 
@@ -759,145 +747,6 @@ public final class RebolNativeWords {
         return randomLongUpTo(bound);
     }
 
-    private static Value aDurationOfSeconds(Value value) {
-        double seconds = Comparison.asDouble(value);
-        if (seconds < -MOST_SECONDS_A_DURATION_HOLDS
-                || seconds > MOST_SECONDS_A_DURATION_HOLDS) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, value);
-        }
-        return TimeValue.ofNanoseconds(TimeActions.wholeNanosecondsOf(value));
-    }
-
-    private static final double MOST_SECONDS_A_DURATION_HOLDS = 9_223_372_036.0;
-
-    private static Value aTaskMadeFrom(Value value) {
-        if (!(value instanceof BlockValue given) || given.datatype() != Datatype.BLOCK) {
-            return raiseBadMakeArg(value, "task!");
-        }
-        List<Value> written = given.remaining();
-        if (written.isEmpty() || !(written.getFirst() instanceof BlockValue spec)
-                || spec.datatype() != Datatype.BLOCK) {
-            return TaskValue.running(given);
-        }
-        if (written.size() < 2 || !(written.get(1) instanceof BlockValue body)
-                || body.datatype() != Datatype.BLOCK) {
-            return raiseBadMakeArg(value, "task!");
-        }
-        TaskValue task = TaskValue.running(body);
-        List<Value> fields = spec.remaining();
-        for (int at = 0; at + 1 < fields.size(); at++) {
-            if (fields.get(at) instanceof WordValue field
-                    && field.datatype() == Datatype.SET_WORD
-                    && task.context().holds(field.canonical())) {
-                task.context().set(field.canonical(), fields.get(at + 1));
-            }
-        }
-        return task;
-    }
-
-    private static Value aTimeMadeFrom(Value value) {
-        return switch (value) {
-            case TimeValue already -> already;
-            case StringValue written when value.datatype() == Datatype.STRING ->
-                    theTimeScannedFrom(written.text(), written);
-            case BlockValue parts when value.datatype() == Datatype.BLOCK
-                    || value.datatype() == Datatype.PAREN ->
-                    aTimeOfHoursMinutesAndSeconds(parts);
-            case Value number when number.datatype() == Datatype.INTEGER
-                    || number.datatype() == Datatype.DECIMAL ->
-                    aDurationOfSeconds(number);
-            default -> raiseBadMakeArg(value, "time!");
-        };
-    }
-
-    private static final long MOST_SECONDS_A_TIME_HOLDS = 9_223_372_036L;
-
-    private static Value aTimeOfHoursMinutesAndSeconds(BlockValue parts) {
-        List<Value> given = parts.remaining();
-        if (given.isEmpty() || given.size() > 3
-                || !(given.getFirst() instanceof IntegerValue(long magnitude1))) {
-            return raiseBadMakeArg(parts, "time!");
-        }
-        boolean negated = magnitude1 < 0;
-        long seconds = whatFitsInThirtyTwoBits(Math.abs(magnitude1), parts) * 3600L;
-        double fraction = 0.0;
-        for (int at = 1; at < given.size(); at++) {
-            if (seconds > MOST_SECONDS_A_TIME_HOLDS) {
-                return raiseBadMakeArg(parts, "time!");
-            }
-            Value part = given.get(at);
-            if (at == 2 && part.datatype() == Datatype.DECIMAL) {
-                fraction = ((DecimalValue) part).quantity();
-                if (seconds + (long) fraction + 1 > MOST_SECONDS_A_TIME_HOLDS) {
-                    return raiseBadMakeArg(parts, "time!");
-                }
-                break;
-            }
-            if (!(part instanceof IntegerValue(long magnitude)) || magnitude < 0) {
-                return raiseBadMakeArg(parts, "time!");
-            }
-            seconds += whatFitsInThirtyTwoBits(magnitude, parts)
-                    * (at == 1 ? 60L : 1L);
-        }
-        if (seconds > MOST_SECONDS_A_TIME_HOLDS) {
-            return raiseBadMakeArg(parts, "time!");
-        }
-        long nanoseconds = seconds * TimeValue.NANOSECONDS_PER_SECOND
-                + Math.round(fraction * TimeValue.NANOSECONDS_PER_SECOND);
-        return TimeValue.ofNanoseconds(negated ? -nanoseconds : nanoseconds);
-    }
-
-    private static long whatFitsInThirtyTwoBits(long magnitude, Value about) {
-        if (magnitude > Integer.MAX_VALUE) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, about);
-        }
-        return magnitude;
-    }
-
-    private static final int LONGEST_TIME_A_STRING_MAY_SPELL = 30;
-
-    private static Value theTimeScannedFrom(String text, Value given) {
-        String content = theRunOfCharactersBetweenTheSpacesOf(text);
-        Long nanoseconds = timeScannedFrom(content);
-        if (nanoseconds == null) {
-            return raiseBadMakeArg(given, "time!");
-        }
-        return TimeValue.ofNanoseconds(nanoseconds);
-    }
-
-    private static String theRunOfCharactersBetweenTheSpacesOf(String text) {
-        int from = 0;
-        while (from < text.length() && isSpaceOrTab(text.charAt(from))) {
-            from++;
-        }
-        int to = from;
-        while (to < text.length() && !isSpaceOrTab(text.charAt(to))) {
-            if (text.charAt(to) > ASCII_ENDS_AT) {
-                throw Raised.of(EvaluationFailure.INVALID_CHARS, text);
-            }
-            to++;
-        }
-        if (to == from) {
-            throw Raised.of(EvaluationFailure.TOO_SHORT, text);
-        }
-        if (to - from > LONGEST_TIME_A_STRING_MAY_SPELL) {
-            throw Raised.of(EvaluationFailure.TOO_LONG, text);
-        }
-        for (int after = to; after < text.length(); after++) {
-            if (!isSpaceOrTab(text.charAt(after))) {
-                throw Raised.of(EvaluationFailure.INVALID_CHARS, text);
-            }
-        }
-        return text.substring(from, to);
-    }
-
-    private static final char ASCII_ENDS_AT = 127;
-
-    private static Long timeScannedFrom(String content) {
-        ScanningATime scanning = new ScanningATime(content);
-        return scanning.readsATime() ? scanning.nanoseconds() : null;
-    }
-
     private void registerComparators() {
         register(new EqualNative());
         register(new NotEqualNative());
@@ -934,26 +783,12 @@ public final class RebolNativeWords {
         register(new CatchNative());
     }
 
-    private final Construction madeByThisInterpreter = new Construction() {
-        @Override
-        public Value madeOf(Datatype datatype, Value specification) {
-            return constructionOf(datatype, specification);
-        }
-
-        @Override
-        public Value functionMadeFrom(BlockValue spec, BlockValue body) {
-            return Binder.functionWithItsBodyBound(spec, body, Context.root());
-        }
-    };
-
     public Construction construction() {
-        return madeByThisInterpreter;
+        return makingAndConverting;
     }
 
     public Maker makerFor(Evaluator evaluator, Context where) {
-        return new InterpreterMaker(evaluator, where, (kind, spec) ->
-                makeOfDatatype(DatatypeValue.of(kind), spec, evaluator, where,
-                        value -> evaluator.simpleValueOf(value, where)));
+        return new InterpreterMaker(evaluator, where, makingAndConverting);
     }
 
     private void
@@ -1231,28 +1066,6 @@ public final class RebolNativeWords {
         return bytes;
     }
 
-    private void defineTabbing(String name, boolean toTabs) {
-        define(name, List.of(
-                        Parameter.required("text", anyStringOr(Datatype.BINARY)),
-                        Parameter.belongingTo("size", "width", of(Datatype.INTEGER))),
-                of("size"),
-                (arguments, evaluator, context, refinements) -> {
-                    int width = refinements.contains("size") && arguments.size() > 1
-                            ? (int) ((IntegerValue) arguments.get(1)).magnitude()
-                            : 4;
-                    Value given = arguments.getFirst();
-                    String text = given instanceof BinaryValue octets
-                            ? new String(octets.octetsFromHere(), StandardCharsets.ISO_8859_1)
-                            : ((StringValue) given).text();
-                    String tabbed = toTabs
-                            ? text.replace(" ".repeat(width), "\t")
-                            : text.replace("\t", " ".repeat(width));
-                    return given instanceof BinaryValue
-                            ? BinaryValue.ofBytes(tabbed.getBytes(StandardCharsets.ISO_8859_1))
-                            : StringValue.of(tabbed, textDatatypeOf(given));
-                });
-    }
-
     private List<Value> catalogueEntries() {
         return bootDeclarations.theRowsBelowTheHeaderOf(errorCatalogueSource);
     }
@@ -1292,13 +1105,6 @@ public final class RebolNativeWords {
 
 
     private static final Set<Datatype> WHAT_PARSE_TAKES = Typeset.SERIES.members();
-
-
-    static BlockValue laidOutLike(BlockValue source, BlockStorage built) {
-        built.takeLineBreaksFrom(source.storage(), source.index());
-        return new BlockValue(built, 1, source.datatype());
-    }
-
 
 
     private static final List<String> CONSOLE_MEASUREMENTS =
@@ -1359,8 +1165,8 @@ public final class RebolNativeWords {
             return read;
         }
         return refinements.contains("lines")
-                ? BlockValue.block(linesOfDroppingExactlyOneTrailingEmptyLine(
-                        text.orElseThrow()))
+                ? BlockValue.block(StringValue.of(text.orElseThrow())
+                        .linesDroppingOneTrailingEmptyLine())
                 : StringValue.of(text.orElseThrow());
     }
 
@@ -1471,48 +1277,6 @@ public final class RebolNativeWords {
                 || !(mayRead(refinements) || refinements.contains("seek"));
     }
 
-
-    private static Value madeGob(Value from, UnaryOperator<Value> lookedUp) {
-        if (from instanceof GobValue cloned) {
-            return new GobValue(cloned.storage().copyWithoutPane(), 1);
-        }
-        GobValue made = GobValue.empty();
-        if (from instanceof PairValue size) {
-            made.storage().size(size);
-            return made;
-        }
-        if (from instanceof BlockValue spec && spec.datatype() == Datatype.BLOCK) {
-            fillGobFromSpec(made, spec.remaining(), lookedUp);
-            return made;
-        }
-        throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
-                "a gob is made from a block, a gob or a pair, not "
-                        + from.datatype().literalSpelling());
-    }
-
-    private static void fillGobFromSpec(
-            GobValue gob, List<Value> spec, UnaryOperator<Value> lookedUp) {
-        for (int at = 0; at < spec.size(); at += 2) {
-            Value name = spec.get(at);
-            if (!(name instanceof WordValue field)
-                    || field.datatype() != Datatype.SET_WORD) {
-                throw Raised.of(EvaluationFailure.EXPECT_VAL,
-                        DatatypeValue.of(Datatype.SET_WORD),
-                        DatatypeValue.of(name.datatype()));
-            }
-            Value given = at + 1 < spec.size() ? spec.get(at + 1) : UnsetValue.unset();
-            if (given.datatype() == Datatype.UNSET
-                    || given.datatype() == Datatype.SET_WORD) {
-                throw Raised.of(EvaluationFailure.NEED_VALUE, field.spelling());
-            }
-            Value written = lookedUp.apply(given);
-            if (!GobPath.accepted(gob.storage(), field.canonical(), written)) {
-                throw Raised.of(EvaluationFailure.BAD_FIELD_SET,
-                        WordValue.of(field.spelling()),
-                        DatatypeValue.of(written.datatype()));
-            }
-        }
-    }
 
     private static final int DEEPEST_GOB_WALK = 1000;
 
@@ -1725,10 +1489,6 @@ public final class RebolNativeWords {
     }
 
 
-    private static Value raiseCannotUse(Value value, String nativeName) {
-        throw Raised.cannotUse(value, nativeName);
-    }
-
     private void registerEncodings() {
         define("enhex", List.of(
                         Parameter.required("value", anyStringOr(Datatype.BINARY)),
@@ -1914,14 +1674,14 @@ public final class RebolNativeWords {
                 of("to"),
                 (arguments, evaluator, context, refinements) -> {
                     byte[] octets = ((BinaryValue) arguments.getFirst()).octetsFromHere();
-                    java.nio.charset.Charset from = characterSetFor(arguments.get(1));
+                    Charset from = characterSetFor(arguments.get(1));
                     String text = Encodings.textDecodedAs(octets, from);
                     if (!refinements.contains("to")) {
                         return StringValue.of(text);
                     }
                     Value target = argumentFor("to", List.of("to"),
                             arguments, refinements, 2);
-                    java.nio.charset.Charset into = characterSetFor(target);
+                    Charset into = characterSetFor(target);
                     return java.nio.charset.StandardCharsets.UTF_8.equals(into)
                             ? StringValue.of(text)
                             : BinaryValue.ofBytes(text.getBytes(into));
@@ -2035,13 +1795,13 @@ public final class RebolNativeWords {
         return of(Datatype.WORD, Datatype.INTEGER, Datatype.TAG, Datatype.STRING);
     }
 
-    private static java.nio.charset.Charset characterSetFor(Value asked) {
+    private static Charset characterSetFor(Value asked) {
         String spelling = switch (asked) {
             case WordValue word -> word.canonical();
             case StringValue text -> text.text();
             default -> Molder.form(asked);
         };
-        java.nio.charset.Charset found = Encodings.charsetNamed(spelling);
+        Charset found = Encodings.charsetNamed(spelling);
         if (found == null) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, spelling);
         }
@@ -2711,286 +2471,15 @@ public final class RebolNativeWords {
         register(new TrimAction());
     }
 
-    private static final Set<Datatype> SHARES_ITS_BRANCH_WITH_MAKE = of(
-            Datatype.ERROR, Datatype.FUNCTION, Datatype.CLOSURE, Datatype.STRUCT);
-
-    private static Value objectConvertedFrom(Value value) {
-        if (!(value instanceof ErrorValue raised)) {
-            return raiseBadMakeArg(value, "object!");
-        }
-        if (raised.field("code").orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
-                && magnitude < ErrorCatalogue.LOWEST_CODE_AN_ENTRY_HAS) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, value);
-        }
-        Context fields = Context.childOf(Context.root());
-        for (String name : ErrorValue.FIELDS) {
-            fields.set(name, raised.field(name).orElseGet(NoneValue::none));
-        }
-        return new ObjectValue(fields);
-    }
-
-
-    private static Value moduleConvertedFrom(Value value) {
-        if (!(value instanceof BlockValue parts)
-                || parts.datatype() != Datatype.BLOCK
-                || parts.remaining().isEmpty()) {
-            return raiseBadMakeArg(value, "module!");
-        }
-        List<Value> given = parts.remaining();
-        if (!(given.getFirst() instanceof ObjectValue specification)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, given.getFirst());
-        }
-        if (given.size() < 2 || !(given.get(1) instanceof ObjectValue(Context context))) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    given.size() < 2 ? given.getFirst() : given.get(1));
-        }
-        return new ModuleValue(context, specification);
-    }
-
     private void registerConversion() {
-        define("to", takesAnything("type", "value"),
-                (arguments, evaluator, context) -> {
-                    DatatypeValue wanted = arguments.getFirst() instanceof DatatypeValue asked
-                            ? asked
-                            : DatatypeValue.of(arguments.getFirst().datatype());
-                    if (wanted.represents() == Datatype.EVENT) {
-                        return EventPath.made(wanted, arguments.get(1),
-                                value -> evaluator.simpleValueOf(value, context));
-                    }
-                    if (SHARES_ITS_BRANCH_WITH_MAKE.contains(wanted.represents())) {
-                        return wanted.make(arguments.get(1), makerFor(evaluator, context));
-                    }
-                    if (wanted.represents() == Datatype.OBJECT) {
-                        return objectConvertedFrom(arguments.get(1));
-                    }
-                    if (wanted.represents() == Datatype.MODULE) {
-                        return moduleConvertedFrom(arguments.get(1));
-                    }
-                    return converted(Conversion.TO, arguments.getFirst(), arguments.get(1),
-                            evaluator.construction());
-                });
-
-        define("as-pair", takesOnlyNumbers("x", "y"),
-                (arguments, evaluator, context) -> PairValue.of(
-                        Comparison.asDouble(arguments.get(0)), Comparison.asDouble(arguments.get(1))));
-
-        define("to-hex", List.of(
-                        Parameter.required("value", of(
-                                Datatype.INTEGER, Datatype.CHAR, Datatype.TUPLE)),
-                        Parameter.belongingTo("size", "width", of(Datatype.INTEGER))),
-                of("size"),
-                (arguments, evaluator, context, refinements) -> {
-                    OptionalLong width =
-                            refinements.contains("size") && arguments.size() > 1
-                            ? OptionalLong.of(
-                                    ((IntegerValue) arguments.get(1)).magnitude())
-                            : OptionalLong.empty();
-                    width.ifPresent(RebolNativeWords::refuseASizeItCannotWrite);
-                    return WordValue.of(switch (arguments.getFirst()) {
-                        case TupleValue tuple -> hexOfEachSegment(tuple, width);
-                        case CharacterValue character -> hexSizedToItsMagnitude(
-                                character.codepoint(), width);
-                        default -> hexSixteenWide(
-                                ((IntegerValue) arguments.getFirst()).magnitude(), width);
-                    }, Datatype.ISSUE);
-                });
-
-        defineTabbing("entab", true);
-        defineTabbing("detab", false);
-
-
-        define("deline", List.of(Parameter.required("text", Typeset.ANY_STRING.members())),
-                of("lines"),
-                (arguments, evaluator, context, refinements) -> {
-                    StringValue text = (StringValue) arguments.getFirst();
-                    if (refinements.contains("lines")) {
-                        return BlockValue.block(
-                                linesOfDroppingExactlyOneTrailingEmptyLine(
-                                        text.text()));
-                    }
-                    return text.rewrittenFromHere(RebolNativeWords::withOneLineFeedPerEnding);
-                });
-        define("enline", List.of(Parameter.required("text",
-                        of(Datatype.STRING, Datatype.BLOCK))),
-                (arguments, evaluator, context) -> {
-                    if (arguments.getFirst() instanceof BlockValue) {
-                        throw Raised.of(EvaluationFailure.NOT_DONE,
-                                "joining a block of lines is not written yet");
-                    }
-                    return ((StringValue) arguments.getFirst())
-                            .rewrittenFromHere(RebolNativeWords::withOneLineFeedPerEnding);
-                });
-
-        define("as", List.of(
-                        Parameter.required("type", asTypeOrExample()),
-                        Parameter.required("value")),
-                (arguments, evaluator, context) -> {
-                    Datatype wanted = arguments.get(0) instanceof DatatypeValue(Datatype represents)
-                            ? represents
-                            : arguments.get(0).datatype();
-                    Value value = arguments.get(1);
-                    if (value.datatype() == wanted) {
-                        return value;
-                    }
-                    if (value instanceof BlockValue block && wanted.isAnyBlock()) {
-                        return block.as(wanted);
-                    }
-                    if (value instanceof StringValue text && wanted.isAnyString()) {
-                        return text.as(wanted);
-                    }
-                    throw Raised.of(EvaluationFailure.NOT_SAME_CLASS,
-                            value.datatype().literalSpelling() + " and "
-                                    + wanted.literalSpelling() + " hold different things");
-                });
-
-    }
-
-    private static Value madeImage(Value from) {
-        if (from instanceof ImageValue original) {
-            return new ImageValue(original.storage().copy(), 1);
-        }
-        if (from instanceof PairValue(double x, double y)) {
-            return ImageValue.of(sideOfClampedBelowAndRefusedAbove(x),
-                    sideOfClampedBelowAndRefusedAbove(y));
-        }
-        if (from instanceof BlockValue parts && !parts.remaining().isEmpty()) {
-            return imageFromParts(parts);
-        }
-        return raiseMalconstruct(from);
-    }
-
-    private static int sideOfClampedBelowAndRefusedAbove(double given) {
-        int side = (int) given;
-        if (side > ImageStorage.LONGEST_SIDE) {
-            throw Raised.of(EvaluationFailure.SIZE_LIMIT,
-                    DatatypeValue.of(Datatype.IMAGE));
-        }
-        return Math.max(side, 0);
-    }
-
-    private static Value imageFromParts(BlockValue specification) {
-        List<Value> parts = specification.remaining();
-        if (!(parts.getFirst() instanceof PairValue(double x, double y))) {
-            return raiseMalconstruct(specification);
-        }
-        ImageValue made = ImageValue.of(
-                sideThatCanExist(x, specification),
-                sideThatCanExist(y, specification));
-        int at = 1;
-        if (at < parts.size() && parts.get(at) instanceof BinaryValue colours) {
-            fillColoursFrom(made, colours);
-            at++;
-            if (at < parts.size() && parts.get(at) instanceof BinaryValue alphas) {
-                fillAlphasFrom(made, alphas);
-                at++;
-            }
-            if (at < parts.size() && parts.get(at) instanceof IntegerValue start) {
-                made = made.standingAt(aPositionOfAtLeastOne(start));
-                at++;
-            }
-        } else if (at < parts.size() && parts.get(at) instanceof TupleValue colour) {
-            fillWith(made, colour);
-            at++;
-            if (at < parts.size() && parts.get(at) instanceof IntegerValue(long magnitude)) {
-                for (int pixel = 1; pixel <= made.storageLength(); pixel++) {
-                    made.storage().setAlphaAt(pixel, (int) magnitude & 0xFF);
-                }
-                at++;
-            }
-        }
-        return at == parts.size() ? made : raiseMalconstruct(specification);
-    }
-
-    private static int sideThatCanExist(double given, BlockValue specification) {
-        if (given < 0 || given > ImageStorage.LONGEST_SIDE) {
-            throw Raised.of(EvaluationFailure.MALCONSTRUCT,
-                    Molder.mold(specification));
-        }
-        return (int) given;
-    }
-
-    private static int aPositionOfAtLeastOne(IntegerValue start) {
-        if (start.magnitude() < 1) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, start);
-        }
-        return (int) Math.min(start.magnitude(), Integer.MAX_VALUE);
-    }
-
-    private static final int WIDEST_ROW_OF_ITS_OWN_LENGTH = 100;
-
-    private static final int WIDEST_HUNDRED_WIDE_PICTURE = 10000;
-
-    private static final int A_ROW_OF_A_BIG_PICTURE = 500;
-
-    private static final int BYTES_A_PIXEL = 4;
-
-    private static Value imageConvertedFrom(Value value) {
-        if (value instanceof ImageValue already) {
-            return new ImageValue(already.storage().copy(), 1);
-        }
-        if (!(value instanceof BinaryValue bytes)) {
-            throw Raised.of(EvaluationFailure.INVALID_TYPE, value.datatype().literalSpelling());
-        }
-        int pixels = bytes.lengthFromHere() / BYTES_A_PIXEL;
-        if (pixels == 0) {
-            return raiseBadMakeArg(value, "image!");
-        }
-        int across = pixels < WIDEST_ROW_OF_ITS_OWN_LENGTH
-                ? pixels
-                : pixels < WIDEST_HUNDRED_WIDE_PICTURE
-                        ? WIDEST_ROW_OF_ITS_OWN_LENGTH
-                        : A_ROW_OF_A_BIG_PICTURE;
-        int down = pixels / across;
-        if (across * down < pixels) {
-            down++;
-        }
-        ImageValue made = ImageValue.of(across, down);
-        for (int pixel = 1; pixel <= pixels; pixel++) {
-            int at = bytes.index() + (pixel - 1) * BYTES_A_PIXEL;
-            made.storage().setColourAt(pixel,
-                    bytes.storage().at(at),
-                    bytes.storage().at(at + 1),
-                    bytes.storage().at(at + 2));
-            made.storage().setAlphaAt(pixel, bytes.storage().at(at + 3));
-        }
-        return made;
-    }
-
-    private static void fillColoursFrom(ImageValue made, BinaryValue colours) {
-        int pixels = Math.min(made.storageLength(), colours.lengthFromHere() / 3);
-        for (int pixel = 1; pixel <= pixels; pixel++) {
-            int at = colours.index() + (pixel - 1) * 3;
-            made.storage().setColourAt(pixel,
-                    colours.storage().at(at),
-                    colours.storage().at(at + 1),
-                    colours.storage().at(at + 2));
-        }
-    }
-
-    private static void fillAlphasFrom(ImageValue made, BinaryValue alphas) {
-        int pixels = Math.min(made.storageLength(), alphas.lengthFromHere());
-        for (int pixel = 1; pixel <= pixels; pixel++) {
-            made.storage().setAlphaAt(pixel,
-                    alphas.storage().at(alphas.index() + pixel - 1));
-        }
-    }
-
-    private static void fillWith(ImageValue made, TupleValue colour) {
-        int[] parts = colour.segments();
-        for (int pixel = 1; pixel <= made.storageLength(); pixel++) {
-            made.storage().setColourAt(pixel,
-                    parts.length > 0 ? parts[0] : 0,
-                    parts.length > 1 ? parts[1] : 0,
-                    parts.length > 2 ? parts[2] : 0);
-            if (parts.length > 3) {
-                made.storage().setAlphaAt(pixel, parts[3]);
-            }
-        }
-    }
-
-    private static Value raiseMalconstruct(Value from) {
-        throw Raised.of(EvaluationFailure.MALCONSTRUCT,
-                Molder.mold(from));
+        register(new ToAction());
+        register(new AsPairNative());
+        register(new ToHexNative());
+        register(new EntabNative());
+        register(new DetabNative());
+        register(new DelineNative());
+        register(new EnlineNative());
+        register(new AsNative());
     }
 
     private static int colourByteOfRoundingNotTruncating(Value given) {
@@ -3038,966 +2527,6 @@ public final class RebolNativeWords {
         return image;
     }
 
-    private static Value madeVector(Value from, UnaryOperator<Value> lookedUp) {
-        if (from instanceof IntegerValue counted || from instanceof DecimalValue) {
-            long howMany = from instanceof IntegerValue(long magnitude)
-                    ? magnitude
-                    : (long) ((DecimalValue) from).quantity();
-            if (howMany < 0) {
-                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(from));
-            }
-            return VectorSpec.ofSize((int) howMany);
-        }
-        if (from instanceof BinaryValue bytes) {
-            return VectorSpec.ofOctets(bytes);
-        }
-        if (from instanceof VectorValue already) {
-            return already.copyOfTheFirst(already.lengthFromHere());
-        }
-        if (from instanceof BlockValue spec) {
-            return VectorSpec.readMakeSpec(spec.remaining(), lookedUp)
-                    .orElseThrow(() -> Raised.of(EvaluationFailure.BAD_MAKE_ARG,
-                            Datatype.VECTOR.literalSpelling()));
-        }
-        throw Raised.of(EvaluationFailure.BAD_MAKE_ARG, Datatype.VECTOR.literalSpelling());
-    }
-
-
-    private static Value dateReadFrom(StringValue written) {
-        return Transcoder.transcode(written.text()).values()
-                .map(BlockValue::remaining)
-                .filter(read -> read.size() == 1 && read.getFirst() instanceof DateValue)
-                .map(List::getFirst)
-                .orElseGet(() -> raiseBadMakeArg(written, "date!"));
-    }
-
-    private static Value blockTypeBuilt(
-            Conversion asking, Datatype wanted, Value from, Construction construction) {
-        if (from instanceof BlockValue given) {
-            return laidOutLike(given, new BlockStorage(given.remaining())).as(wanted);
-        }
-        if (from instanceof MapValue pairs) {
-            return pairs.pairsOnLines().as(wanted);
-        }
-        if (from.isAnyObject()) {
-            return from.fieldsAsAContext().orElseThrow().setWordsAndValuesOnLines().as(wanted);
-        }
-        if (from instanceof VectorValue numbers) {
-            return BlockValue.block(numbers.remaining()).as(wanted);
-        }
-        if (asking.builds()) {
-            if (from.datatype() == Datatype.INTEGER
-                    || from.datatype() == Datatype.DECIMAL) {
-                return BlockValue.block(List.of()).as(wanted);
-            }
-        } else if (wrapsIntoWhatTheCallerAskedFor(wanted)) {
-            return from instanceof TypesetValue kinds
-                    && (wanted == Datatype.BLOCK || wanted == Datatype.PAREN)
-                    ? BlockValue.block(kinds.members().stream()
-                            .sorted().<Value>map(DatatypeValue::of).toList()).as(wanted)
-                    : BlockValue.block(from).as(wanted);
-        }
-        if (from.datatype() == Datatype.STRING && from instanceof StringValue text) {
-            return sourceReadFromStoppingAtANoughtByte(text.text(), wanted, construction);
-        }
-        if (from instanceof BinaryValue octets) {
-            return sourceReadFromStoppingAtANoughtByte(
-                    textDecodedFrom(octets), wanted, construction);
-        }
-        if (from.datatype() == Datatype.PAIR) {
-            return BlockValue.block(List.of()).as(wanted);
-        }
-        throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(from));
-    }
-
-    private static boolean wrapsIntoWhatTheCallerAskedFor(Datatype wanted) {
-        return wanted == Datatype.BLOCK || wanted == Datatype.PAREN || wanted.isAnyPath();
-    }
-
-    private static Value sourceReadFromStoppingAtANoughtByte(
-            String source, Datatype wanted, Construction construction) {
-        int endsAt = source.indexOf('\0');
-        TranscodeResult read = Transcoder.transcode(
-                endsAt < 0 ? source : source.substring(0, endsAt), construction);
-        if (!read.succeeded()) {
-            throw new Raised(read.error().orElseThrow());
-        }
-        return read.values().orElseThrow().as(wanted);
-    }
-
-    private static final long MICROSECONDS_A_SECOND = 1_000_000L;
-
-    private static Value timeFromParts(List<Value> parts) {
-        if (parts.isEmpty() || parts.size() > 3
-                || !(parts.get(0) instanceof IntegerValue(long magnitude1))) {
-            return raiseBadMakeArg(BlockValue.block(parts), "time!");
-        }
-        boolean negative = magnitude1 < 0;
-        long seconds = Math.abs(magnitude1) * 3600;
-        long nanoseconds = 0;
-        if (parts.size() > 1) {
-            if (!(parts.get(1) instanceof IntegerValue(long magnitude))
-                    || magnitude < 0) {
-                return raiseBadMakeArg(BlockValue.block(parts), "time!");
-            }
-            seconds += magnitude * 60;
-        }
-        if (parts.size() > 2) {
-            switch (parts.get(2)) {
-                case IntegerValue whole when whole.magnitude() >= 0 ->
-                        seconds += whole.magnitude();
-                case DecimalValue fraction -> {
-                    seconds += (long) fraction.quantity();
-                    nanoseconds = Math.round(
-                            (fraction.quantity() - (long) fraction.quantity())
-                                    * 1_000_000_000L);
-                }
-                default -> {
-                    return raiseBadMakeArg(BlockValue.block(parts), "time!");
-                }
-            }
-        }
-        long total = seconds * 1_000_000_000L + nanoseconds;
-        return TimeValue.ofNanoseconds(negative ? -total : total);
-    }
-
-    private StructSpec.LayoutRegistry structLayoutsKnown() {
-        return name -> registeredStructLayouts.select(WordValue.of(name))
-                instanceof BlockValue layout
-                ? Optional.of(layout)
-                : Optional.empty();
-    }
-
-    private Value structMadeFrom(Value from) {
-        if (!(from instanceof BlockValue given)) {
-            return raiseBadMakeArg(from, "struct!");
-        }
-        List<Value> written = given.remaining();
-        boolean carriesInitialValues = written.size() == 2
-                && written.get(0) instanceof BlockValue
-                && written.get(1) instanceof BlockValue;
-        BlockValue layout = carriesInitialValues
-                ? (BlockValue) written.getFirst()
-                : given;
-        StructValue made = StructValue.of(
-                structLaidOutBy(layout, structLayoutsKnown()));
-        if (carriesInitialValues) {
-            made.startedWith(written.get(1));
-        }
-        return made;
-    }
-
-    private static StructSpec structLaidOutBy(
-            BlockValue layout, StructSpec.LayoutRegistry registry) {
-        try {
-            return StructSpec.of(layout, registry);
-        } catch (StructLayoutRefused refused) {
-            throw refused.malconstructed()
-                    ? Raised.of(EvaluationFailure.MALCONSTRUCT, Molder.mold(layout))
-                    : Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(layout));
-        }
-    }
-
-    private Value constructionOf(Datatype datatype, Value specification) {
-        if (datatype == Datatype.DATE
-                && !(specification instanceof BlockValue
-                        || specification instanceof DateValue)) {
-            return raiseBadMakeArg(specification, "date!");
-        }
-        return makeOfDatatype(DatatypeValue.of(datatype), specification,
-                null, Context.root(), UnaryOperator.identity());
-    }
-
-    private Value portMadeFrom(Value from, Evaluator evaluator, Context context) {
-        if (!CAN_NAME_A_SCHEME.contains(from.datatype())) {
-            throw Raised.of(EvaluationFailure.INVALID_SPEC, from);
-        }
-        Value built = evaluator.applyFunction(
-                context.systemFunctionNamed("make-port*"), List.of(from));
-        if (!(built instanceof PortValue port)) {
-            throw Raised.of(EvaluationFailure.INVALID_SPEC, from);
-        }
-        return port;
-    }
-
-    private static final Set<Datatype> CAN_NAME_A_SCHEME = of(
-            Datatype.FILE, Datatype.URL, Datatype.BLOCK,
-            Datatype.OBJECT, Datatype.WORD, Datatype.PORT);
-
-    private Value makeOfDatatype(
-            DatatypeValue wanted, Value from, Evaluator evaluator, Context context,
-            UnaryOperator<Value> lookedUp) {
-        if (wanted.represents() == Datatype.MAP) {
-            return mapMadeFrom(from);
-        }
-        if (wanted.represents() == Datatype.BITSET) {
-            return BitsetActions.madeFrom(from);
-        }
-        if (wanted.represents() == Datatype.PAIR) {
-            return asPair(from);
-        }
-        if (wanted.represents() == Datatype.STRUCT) {
-            return structMadeFrom(from);
-        }
-        if (wanted.represents() == Datatype.IMAGE) {
-            return madeImage(from);
-        }
-        if (wanted.represents() == Datatype.GOB) {
-            return madeGob(from, lookedUp);
-        }
-        if (wanted.represents() == Datatype.EVENT) {
-            return EventPath.made(wanted, from, lookedUp);
-        }
-        if (wanted.represents() == Datatype.VECTOR) {
-            refuseMoreRoomThanASeriesCounts(Datatype.VECTOR, from);
-            return whatTheHostHadRoomFor(() -> madeVector(from, lookedUp));
-        }
-        if (wanted.represents() == Datatype.PORT) {
-            return portMadeFrom(from, evaluator, context);
-        }
-        if (wanted.represents() == Datatype.DATE
-                && (from instanceof BlockValue || from instanceof DateValue)) {
-            return DateMaking.fromParts(from instanceof BlockValue parts
-                    ? parts.remaining()
-                    : List.of(from));
-        }
-        if (from instanceof BlockValue parts && wanted.represents() == Datatype.TIME) {
-            return timeFromParts(parts.remaining());
-        }
-        refuseToBuildSomethingOutOfNothing(wanted.represents(), from);
-        refuseRoomForLessThanNothing(wanted.represents(), from);
-        refuseMoreRoomThanASeriesCounts(wanted.represents(), from);
-        if (wanted.represents().isAnyBlock()) {
-            return whatTheHostHadRoomFor(() ->
-                    blockTypeBuilt(Conversion.MAKE, wanted.represents(), from, construction()));
-        }
-        if (wanted.represents().isSeries()
-                && (from.datatype() == Datatype.INTEGER
-                        || from.datatype() == Datatype.DECIMAL)) {
-            int asked = (int) Math.max(0,
-                    Math.min(Integer.MAX_VALUE, (long) Comparison.asDouble(from)));
-            return whatTheHostHadRoomFor(() ->
-                    wanted.represents() == Datatype.BINARY
-                            ? new BinaryValue(new BinaryStorage(asked), 1)
-                            : new StringValue(
-                                    StringStorage.withRoomFor(asked), 1,
-                                    wanted.represents()));
-        }
-        return converted(Conversion.MAKE, wanted, from, construction());
-    }
-
-
-    private static String withOneLineFeedPerEnding(String text) {
-        StringBuilder standardised = new StringBuilder(text.length());
-        int at = 0;
-        while (at < text.length()) {
-            char here = text.charAt(at++);
-            if (here == '\n' || here == '\r') {
-                if (at < text.length() && text.charAt(at) == theOtherEnding(here)) {
-                    at++;
-                }
-                here = '\n';
-            }
-            standardised.append(here);
-        }
-        return standardised.toString();
-    }
-
-    private static char theOtherEnding(char one) {
-        return one == '\n' ? '\r' : '\n';
-    }
-
-    private static List<Value> linesOfDroppingExactlyOneTrailingEmptyLine(String text) {
-        if (text.isEmpty()) {
-            return List.of();
-        }
-        String[] split = text.replace("\r\n", "\n").split("\n", -1);
-        int howMany = split.length > 0 && split[split.length - 1].isEmpty()
-                ? split.length - 1
-                : split.length;
-        List<Value> lines = new ArrayList<>(howMany);
-        for (int at = 0; at < howMany; at++) {
-            lines.add(StringValue.of(split[at]));
-        }
-        return lines;
-    }
-
-    private static Value addressBuiltFrom(BlockValue parts) {
-        List<Value> written = parts.remaining();
-        if (written.isEmpty()) {
-            return raiseBadMakeArg(parts, Datatype.EMAIL.literalSpelling());
-        }
-        String user = Molder.form(written.getFirst());
-        if (written.size() == 1) {
-            return StringValue.of(user, Datatype.EMAIL);
-        }
-        String host = written.subList(1, written.size()).stream()
-                .map(Molder::form)
-                .collect(Collectors.joining("."));
-        return StringValue.of(user + "@" + host, Datatype.EMAIL);
-    }
-
-    private static Value urlBuiltFrom(BlockValue parts) {
-        List<Value> written = parts.remaining();
-        if (written.isEmpty()) {
-            return raiseBadMakeArg(parts, Datatype.URL.literalSpelling());
-        }
-        String scheme = Molder.form(written.getFirst());
-        String rest = written.subList(1, written.size()).stream()
-                .map(Molder::form)
-                .collect(Collectors.joining("/"));
-        return StringValue.of(scheme + "://" + rest, Datatype.URL);
-    }
-
-    private static Value bytesOfEach(BlockValue block) {
-        List<Value> items = block.remaining();
-        int[] octets = new int[items.size()];
-        for (int at = 0; at < items.size(); at++) {
-            if (!(items.get(at) instanceof IntegerValue(long magnitude))) {
-                return raiseCannotUse(items.get(at), "to binary!");
-            }
-            octets[at] = (int) (magnitude & 0xFF);
-        }
-        return BinaryValue.of(octets);
-    }
-
-    private static void refuseToBuildSomethingOutOfNothing(Datatype wanted, Value from) {
-        if (from.datatype() != Datatype.NONE
-                || wanted == Datatype.UNSET
-                || wanted == Datatype.NONE
-                || wanted == Datatype.LOGIC
-                || wanted.isAnyBlock()) {
-            return;
-        }
-        raiseBadMakeArg(from, wanted.literalSpelling());
-    }
-
-    private static void refuseRoomForLessThanNothing(Datatype wanted, Value from) {
-        if (!wanted.isSeries()
-                || from.datatype() != Datatype.INTEGER
-                        && from.datatype() != Datatype.DECIMAL) {
-            return;
-        }
-        if (Comparison.asDouble(from) < 0) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, from.toString());
-        }
-    }
-
-    private static final int BYTES_A_SLOT_TAKES = 32;
-
-    private static void refuseMoreRoomThanASeriesCounts(Datatype wanted, Value from) {
-        if (!wanted.isSeries() && wanted != Datatype.MAP) {
-            return;
-        }
-        if (from.datatype() != Datatype.INTEGER && from.datatype() != Datatype.DECIMAL) {
-            return;
-        }
-        double asked = Comparison.asDouble(from);
-        if (asked > theMostItemsThatFitIn(wanted)) {
-            throw Raised.of(EvaluationFailure.NO_MEMORY);
-        }
-    }
-
-    private static long theMostItemsThatFitIn(Datatype wanted) {
-        return Integer.MAX_VALUE / bytesPerItemOf(wanted) - 1;
-    }
-
-    private static final int BYTES_A_VECTORS_NUMBER_TAKES = 4;
-
-    private static int bytesPerItemOf(Datatype wanted) {
-        if (wanted == Datatype.VECTOR) {
-            return BYTES_A_VECTORS_NUMBER_TAKES;
-        }
-        return wanted.isAnyBlock() || wanted == Datatype.MAP ? BYTES_A_SLOT_TAKES : 1;
-    }
-
-    private static Value whatTheHostHadRoomFor(java.util.function.Supplier<Value> allocating) {
-        try {
-            return allocating.get();
-        } catch (OutOfMemoryError nothingLeftToGive) {
-            throw Raised.of(EvaluationFailure.NO_MEMORY);
-        }
-    }
-
-    private static Value converted(
-            Conversion asking, Value type, Value value, Construction construction) {
-        DatatypeValue wanted = type instanceof DatatypeValue asked
-                ? asked
-                : DatatypeValue.of(type.datatype());
-        refuseToBuildSomethingOutOfNothing(wanted.represents(), value);
-        return switch (wanted.represents()) {
-            case UNSET -> UnsetValue.unset();
-            case NONE -> NoneValue.none();
-            case VECTOR -> switch (value) {
-                case VectorValue already -> already;
-                case BinaryValue octets -> VectorSpec.ofOctets(octets);
-                case BlockValue block -> VectorSpec.readMakeSpec(
-                                block.remaining(), java.util.function.UnaryOperator.identity())
-                        .<Value>map(made -> made)
-                        .orElseGet(() -> raiseCannotUse(value, "to vector!"));
-                default -> raiseCannotUse(value, "to vector!");
-            };
-            case INTEGER -> wholeNumberFrom(asking, value);
-            case DECIMAL, PERCENT -> decimalBuiltFrom(asking, wanted.represents(), value);
-            case STRING -> value instanceof BinaryValue octets
-                    ? StringValue.of(textDecodedFrom(octets))
-                    : StringValue.of(textForAString(value));
-            case EMAIL -> value instanceof BlockValue parts
-                    ? addressBuiltFrom(parts)
-                    : value instanceof BinaryValue octets
-                            ? StringValue.of(textDecodedFrom(octets), Datatype.EMAIL)
-                            : StringValue.of(textForAString(value), Datatype.EMAIL);
-            case URL -> value instanceof BlockValue parts
-                    ? urlBuiltFrom(parts)
-                    : value instanceof BinaryValue octets
-                            ? StringValue.of(textDecodedFrom(octets), Datatype.URL)
-                            : StringValue.of(textForAString(value), Datatype.URL);
-            case FILE, TAG, REF -> value instanceof BinaryValue octets
-                    ? StringValue.of(textDecodedFrom(octets), wanted.represents())
-                    : StringValue.of(textForAString(value), wanted.represents());
-            case BINARY -> binaryBuiltFrom(value);
-            case WORD, SET_WORD, GET_WORD, LIT_WORD, REFINEMENT, ISSUE ->
-                    wordFrom(value, wanted.represents());
-            case BLOCK, PAREN, HASH, PATH, SET_PATH, GET_PATH, LIT_PATH ->
-                    blockTypeBuilt(asking, wanted.represents(), value, construction);
-            case MAP -> {
-                if (value instanceof IntegerValue || value instanceof DecimalValue) {
-                    throw Raised.of(EvaluationFailure.INVALID_ARG,
-                            "to map! wants pairs, and a number is room for pairs "
-                                    + "rather than any: make map! reads it that way");
-                }
-                yield mapMadeFrom(value);
-            }
-            case DATE -> switch (value) {
-                case DateValue already -> already;
-                case IntegerValue seconds ->
-                        DateMaking.atTheTimestamp(seconds.magnitude() * MICROSECONDS_A_SECOND);
-                case DecimalValue seconds -> DateMaking.atTheTimestamp(
-                        (long) (seconds.quantity() * MICROSECONDS_A_SECOND));
-                case BlockValue parts -> DateMaking.fromParts(parts.remaining());
-                case StringValue written -> dateReadFrom(written);
-                default -> raiseBadMakeArg(value, "date!");
-            };
-            case CHAR -> asCharacter(value);
-            case PAIR -> asPair(value);
-            case MONEY -> asMoney(asking, value);
-            case PORT -> value instanceof ObjectValue(Context context)
-                    ? new PortValue(context)
-                    : raiseBadMakeArg(value, "port!");
-            case MODULE -> moduleFromHeaderAndWords(value);
-            case TASK -> asking.builds() ? aTaskMadeFrom(value) : raiseBadMakeArg(value, "task!");
-            case BITSET -> BitsetActions.madeFrom(value);
-            case TYPESET -> switch (value) {
-                case TypesetValue already -> already;
-                case BlockValue block when block.datatype() == Datatype.BLOCK ->
-                        TypesetValue.of(TypesetActions.datatypesNamedIn(block));
-                default -> raiseBadMakeArg(value, "typeset!");
-            };
-            case TIME -> aTimeMadeFrom(value);
-            case TUPLE -> tupleFrom(value);
-            case LOGIC -> LogicValue.of(countsAsTrue(asking, value));
-            case DATATYPE -> value instanceof WordValue word
-                    ? datatypeNamed(word, value)
-                    : raiseBadMakeArg(value, "datatype!");
-            case IMAGE -> imageConvertedFrom(value);
-            default -> raiseCannotUse(value, "to " + wanted.represents().literalSpelling());
-        };
-    }
-
-    private static boolean countsAsTrue(Conversion asking, Value value) {
-        return value.isTruthy() && !(asking.builds() && isNothingAtAll(value));
-    }
-
-    private static boolean isNothingAtAll(Value value) {
-        return switch (value) {
-            case IntegerValue whole -> whole.magnitude() == 0;
-            case DecimalValue number -> number.quantity() == 0.0;
-            case MoneyValue amount -> amount.amount().signum() == 0;
-            default -> false;
-        };
-    }
-
-    private static Value binaryBuiltFrom(Value value) {
-        return switch (value) {
-            case BinaryValue already -> already;
-            case StringValue text when text.datatype() != Datatype.ISSUE ->
-                    BinaryValue.ofBytes(text.text().getBytes(StandardCharsets.UTF_8));
-            case IntegerValue whole -> BinaryValue.ofBytes(
-                    java.nio.ByteBuffer.allocate(Long.BYTES)
-                            .putLong(whole.magnitude()).array());
-            case DecimalValue fractional when fractional.datatype() == Datatype.DECIMAL ->
-                    BinaryValue.ofBytes(java.nio.ByteBuffer.allocate(Long.BYTES)
-                            .putLong(Double.doubleToRawLongBits(
-                                    fractional.quantity())).array());
-            case MoneyValue amount -> BinaryValue.ofBytes(amount.toBytes());
-            case BlockValue block when block.datatype() == Datatype.BLOCK ->
-                    bytesOfEach(block);
-            case VectorValue vector -> BinaryValue.ofBytes(vector.octetsFromHere());
-            case StructValue struct -> BinaryValue.ofBytes(struct.octets());
-            case TupleValue segments -> BinaryValue.ofBytes(octetsOf(segments));
-            case BitsetValue members ->
-                    BinaryValue.ofBytes(new BitsetActions(members).asOctets());
-            case ImageValue picture -> BinaryValue.ofBytes(picture.everyPixel());
-            case CharacterValue letter -> BinaryValue.ofBytes(
-                    Character.toString(letter.codepoint())
-                            .getBytes(StandardCharsets.UTF_8));
-            default -> raiseInvalidArgument(value);
-        };
-    }
-
-    private static byte[] octetsOf(TupleValue segments) {
-        byte[] octets = new byte[segments.segmentCount()];
-        for (int at = 0; at < octets.length; at++) {
-            octets[at] = (byte) segments.octetAt(at + 1);
-        }
-        return octets;
-    }
-
-
-
-    private static Value raiseInvalidArgument(Value value) {
-        throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(value));
-    }
-
-    private static Value decimalBuiltFrom(
-            Conversion asking, Datatype wanted, Value value) {
-        return value.asDecimal(wanted, asking)
-                .orElseGet(() -> scannedIntoADecimal(wanted, value));
-    }
-
-    private static Value scannedIntoADecimal(Datatype wanted, Value value) {
-        return theQuantityScannedFrom(wanted, value)
-                .stream()
-                .mapToObj(quantity -> value.inHundredths(wanted, quantity))
-                .findFirst()
-                .orElseGet(() -> raiseBadMakeArg(value, wanted.literalSpelling()));
-    }
-
-    private static OptionalDouble theQuantityScannedFrom(Datatype wanted, Value value) {
-        if (value instanceof StringValue text && text.datatype() == Datatype.STRING) {
-            return decimalReadFrom(text, wanted);
-        }
-        if (value instanceof BlockValue parts) {
-            return OptionalDouble.of(mantissaTimesTenTo(parts, wanted));
-        }
-        return OptionalDouble.empty();
-    }
-
-    private static OptionalDouble decimalReadFrom(StringValue text, Datatype wanted) {
-        String qualified = qualifiedNumberIn(
-                text.text(), "a number", MOST_FRACTION_CHARACTERS);
-        return decimalScannedFrom(qualified, wanted == Datatype.PERCENT);
-    }
-
-    private static double mantissaTimesTenTo(BlockValue parts, Datatype wanted) {
-        List<Value> both = parts.remaining();
-        if (both.size() != 2) {
-            raiseBadMakeArg(parts, wanted.literalSpelling());
-        }
-        double scaled = numberInTheBlock(both.get(0), wanted);
-        double exponent = numberInTheBlock(both.get(1), wanted);
-        while (exponent >= 1) {
-            exponent--;
-            scaled *= 10.0;
-        }
-        while (exponent <= -1) {
-            exponent++;
-            scaled /= 10.0;
-        }
-        return scaled;
-    }
-
-    private static double numberInTheBlock(Value part, Datatype wanted) {
-        if (part instanceof IntegerValue(long magnitude)) {
-            return magnitude;
-        }
-        if (part instanceof DecimalValue number) {
-            return number.quantity();
-        }
-        raiseBadMakeArg(part, wanted.literalSpelling());
-        return 0;
-    }
-
-    private static Value wholeNumberFrom(Conversion asking, Value value) {
-        return switch (value) {
-            case IntegerValue whole -> whole;
-            case LogicValue truth -> asking.builds()
-                    ? IntegerValue.of(truth.truth() ? 1 : 0)
-                    : raiseBadMakeArg(value, "integer!");
-            case WordValue issue when issue.datatype() == Datatype.ISSUE ->
-                    hexNumberIn(issue);
-            case StringValue text -> parseInteger(text.text());
-            case CharacterValue character -> IntegerValue.of(character.codepoint());
-            case BinaryValue bytes ->
-                    IntegerValue.of(bytes.bitsOfTheLastEightOctets());
-            case DateValue moment ->
-                    IntegerValue.of(moment.wholeSecondsSinceTheEpoch());
-            case DecimalValue number -> wholeNumberWithinRange(number.quantity());
-            case MoneyValue amount -> IntegerValue.of(amount.amount().longValue());
-            case TimeValue clock -> IntegerValue.of(clock.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND);
-            default -> raiseBadMakeArg(value, "integer!");
-        };
-    }
-
-    private static Value wholeNumberWithinRange(double quantity) {
-        if (Double.isNaN(quantity)
-                || quantity < -TOO_LARGE_FOR_A_WHOLE_NUMBER
-                || quantity >= TOO_LARGE_FOR_A_WHOLE_NUMBER) {
-            throw Raised.of(EvaluationFailure.OVERFLOW,
-                    "no whole number is what " + quantity + " names");
-        }
-        return IntegerValue.of((long) quantity);
-    }
-
-    private static final int MOST_HEX_DIGITS = 16;
-
-    private static Value hexNumberIn(WordValue issue) {
-        String digits = issue.spelling();
-        if (digits.isEmpty() || digits.length() > MOST_HEX_DIGITS) {
-            return raiseBadMakeArg(issue, "integer!");
-        }
-        try {
-            return IntegerValue.of(Long.parseUnsignedLong(digits, 16));
-        } catch (NumberFormatException notHexAtAll) {
-            return raiseBadMakeArg(issue, "integer!");
-        }
-    }
-
-    private static Value wordFrom(Value value, Datatype kind) {
-        if (value instanceof WordValue word) {
-            return WordValue.of(word.spelling(), kind);
-        }
-        if (value instanceof LogicValue(boolean truth1)) {
-            return WordValue.of(Boolean.toString(truth1), kind);
-        }
-        if (value instanceof CharacterValue letter) {
-            return WordValue.of(theWordASingleCharacterSpells(letter), kind);
-        }
-        String spelling = switch (value) {
-            case StringValue text -> text.text();
-            case DatatypeValue asked -> asked.represents().literalSpelling();
-            default -> null;
-        };
-        if (spelling == null) {
-            return raiseWrongArgument(value, "to " + kind.literalSpelling(), "string");
-        }
-        return WordValue.of(spellingReadAs(spelling, kind), kind);
-    }
-
-    private static final String THE_PUNCTUATION_THAT_SPELLS_A_WORD_ALONE = "!%&*+-./<=>?^`|~";
-
-    private static final int THE_FIRST_CODE_POINT_THE_SCANNER_TAKES_FOR_A_LETTER = 128;
-
-    private static String theWordASingleCharacterSpells(CharacterValue letter) {
-        if (!spellsAWordAlone(letter.codepoint())) {
-            throw Raised.of(EvaluationFailure.BAD_CHAR, letter);
-        }
-        return Character.toString(letter.codepoint());
-    }
-
-    private static boolean spellsAWordAlone(int codepoint) {
-        return codepoint >= THE_FIRST_CODE_POINT_THE_SCANNER_TAKES_FOR_A_LETTER
-                || Character.isLetter(codepoint)
-                || THE_PUNCTUATION_THAT_SPELLS_A_WORD_ALONE.indexOf(codepoint) >= 0;
-    }
-
-    private static String spellingReadAs(String text, Datatype kind) {
-        int from = 0;
-        while (from < text.length() && isLexicalSpace(text.charAt(from))) {
-            from++;
-        }
-        int end = from;
-        while (end < text.length() && !isLexicalSpace(text.charAt(end))) {
-            end++;
-        }
-        String trimmed = text.substring(from, end);
-        if (trimmed.isEmpty()) {
-            throw Raised.of(EvaluationFailure.TOO_SHORT);
-        }
-        for (int after = end; after < text.length(); after++) {
-            if (!isSpaceOrTab(text.charAt(after))) {
-                throw Raised.of(EvaluationFailure.INVALID_CHARS);
-            }
-        }
-        List<Value> read;
-        try {
-            read = Transcoder.transcode(kind == Datatype.ISSUE ? "#" + trimmed : trimmed)
-                    .values()
-                    .map(BlockValue::remaining)
-                    .orElse(List.of());
-        } catch (RuntimeException unreadable) {
-            throw Raised.of(EvaluationFailure.INVALID_CHARS);
-        }
-        Datatype wanted = kind == Datatype.ISSUE ? Datatype.ISSUE : Datatype.WORD;
-        if (read.size() != 1 || !(read.getFirst() instanceof WordValue word)
-                || word.datatype() != wanted
-                || !word.spelling().equals(trimmed)) {
-            throw Raised.of(EvaluationFailure.INVALID_CHARS);
-        }
-        return word.spelling();
-    }
-
-    private static Value tupleFrom(Value value) {
-        return switch (value) {
-            case TupleValue already -> already;
-            case StringValue text -> tupleScannedFrom(text.text(), value);
-            case BlockValue segments -> tupleOfSegments(segments);
-            case BinaryValue octets -> tupleOfOctets(octets);
-            case WordValue issue when issue.datatype() == Datatype.ISSUE ->
-                    tupleOfHexPairs(issue.spelling(), value);
-            default -> raiseBadMakeArg(value, "tuple!");
-        };
-    }
-
-    private static Value tupleOfSegments(BlockValue segments) {
-        List<Value> items = segments.remaining();
-        if (items.size() > TupleValue.MAXIMUM_SEGMENTS) {
-            return raiseBadMakeArg(segments, "tuple!");
-        }
-        int[] octets = new int[items.size()];
-        for (int at = 0; at < items.size(); at++) {
-            octets[at] = octetOf(items.get(at), segments);
-        }
-        return TupleValue.of(octets);
-    }
-
-    private static int octetOf(Value item, Value whole) {
-        long number = switch (item) {
-            case IntegerValue whole64 -> whole64.magnitude();
-            case CharacterValue letter -> letter.codepoint();
-            case DecimalValue fractional -> Math.round(Math.abs(fractional.quantity()))
-                    * (fractional.quantity() < 0 ? -1 : 1);
-            default -> {
-                raiseBadMakeArg(whole, "tuple!");
-                yield 0;
-            }
-        };
-        if (number < 0 || number > 255) {
-            raiseBadMakeArg(whole, "tuple!");
-        }
-        return (int) number;
-    }
-
-    private static Value tupleOfOctets(BinaryValue octets) {
-        int width = Math.min(octets.lengthFromHere(), TupleValue.MAXIMUM_SEGMENTS);
-        int[] kept = new int[width];
-        for (int at = 0; at < width; at++) {
-            kept[at] = octets.storage().at(octets.index() + at) & 0xFF;
-        }
-        return TupleValue.of(kept);
-    }
-
-    private static Value tupleOfHexPairs(String digits, Value original) {
-        if (digits.length() % 2 != 0 || digits.length() / 2 > TupleValue.MAXIMUM_SEGMENTS) {
-            return raiseBadMakeArg(original, "tuple!");
-        }
-        int[] octets = new int[digits.length() / 2];
-        for (int at = 0; at < octets.length; at++) {
-            try {
-                octets[at] = Integer.parseInt(digits.substring(at * 2, at * 2 + 2), 16);
-            } catch (NumberFormatException notHexadecimal) {
-                return raiseBadMakeArg(original, "tuple!");
-            }
-        }
-        return TupleValue.of(octets);
-    }
-
-    private static Value tupleScannedFrom(String text, Value original) {
-        String[] parts = text.split("\\.", -1);
-        if (text.isEmpty() || parts.length > TupleValue.MAXIMUM_SEGMENTS) {
-            return raiseBadMakeArg(original, "tuple!");
-        }
-        int width = Math.max(parts.length, TupleValue.MINIMUM_SHOWN_SEGMENTS);
-        int[] octets = new int[width];
-        for (int at = 0; at < parts.length; at++) {
-            if (parts[at].isEmpty() && at == parts.length - 1) {
-                break;
-            }
-            int written;
-            try {
-                written = Integer.parseInt(parts[at].trim());
-            } catch (NumberFormatException notANumber) {
-                return raiseBadMakeArg(original, "tuple!");
-            }
-            if (written < 0 || written > 255) {
-                return raiseBadMakeArg(original, "tuple!");
-            }
-            octets[at] = written;
-        }
-        return TupleValue.of(octets);
-    }
-
-    private static Value datatypeNamed(WordValue word, Value original) {
-        for (Datatype candidate : Datatype.values()) {
-            if (candidate.literalSpelling().equalsIgnoreCase(word.spelling())) {
-                return DatatypeValue.of(candidate);
-            }
-        }
-        return raiseBadMakeArg(original, "datatype!");
-    }
-
-    private static Value asCharacter(Value value) {
-        if (value instanceof CharacterValue already) {
-            return already;
-        }
-        if (value instanceof StringValue text) {
-            if (text.text().isEmpty()) {
-                return raiseBadMakeArg(value, "char!");
-            }
-            return CharacterValue.of(text.text().codePointAt(0));
-        }
-        if (value instanceof BinaryValue octets) {
-            return characterLeadingThe(octets);
-        }
-        if (value instanceof WordValue issue && issue.datatype() == Datatype.ISSUE) {
-            return characterSpeltInHexBy(issue);
-        }
-        if (!(value instanceof IntegerValue || value instanceof DecimalValue)) {
-            return raiseBadMakeArg(value, "char!");
-        }
-        return characterAt(Comparison.asDouble(value));
-    }
-
-    private static Value characterAt(double codepoint) {
-        long asked = (long) codepoint;
-        if (asked < 0 || asked > CharacterValue.MAXIMUM_CODEPOINT
-                || isaLoneSurrogate(asked)) {
-            throw Raised.of(EvaluationFailure.INVALID_CHAR, IntegerValue.of(asked));
-        }
-        return CharacterValue.of((int) asked);
-    }
-
-    private static boolean isaLoneSurrogate(long asked) {
-        return asked <= Character.MAX_VALUE && Character.isSurrogate((char) asked);
-    }
-
-    private static Value characterLeadingThe(BinaryValue octets) {
-        byte[] bytes = octets.bytesFromHere();
-        if (bytes.length == 0) {
-            return raiseBadMakeArg(octets, "char!");
-        }
-        int lead = bytes[0] & 0xFF;
-        if (lead <= 0x80) {
-            return CharacterValue.of(lead);
-        }
-        int continuations = continuationBytesFollowing(lead);
-        if (continuations == 0 || bytes.length <= continuations) {
-            return raiseBadMakeArg(octets, "char!");
-        }
-        int codepoint = lead & (0x7F >> continuations);
-        for (int at = 1; at <= continuations; at++) {
-            int following = bytes[at] & 0xFF;
-            if ((following & 0xC0) != 0x80) {
-                return raiseBadMakeArg(octets, "char!");
-            }
-            codepoint = (codepoint << 6) | (following & 0x3F);
-        }
-        if (codepoint > Character.MAX_CODE_POINT) {
-            return raiseBadMakeArg(octets, "char!");
-        }
-        return CharacterValue.of(codepoint);
-    }
-
-    private static int continuationBytesFollowing(int lead) {
-        if ((lead & 0xE0) == 0xC0) {
-            return 1;
-        }
-        if ((lead & 0xF0) == 0xE0) {
-            return 2;
-        }
-        if ((lead & 0xF8) == 0xF0) {
-            return 3;
-        }
-        return 0;
-    }
-
-    private static Value characterSpeltInHexBy(WordValue issue) {
-        String spelling = issue.spelling();
-        if (spelling.isEmpty() || spelling.length() > MOST_HEX_DIGITS_SCANNED) {
-            return raiseBadMakeArg(issue, "char!");
-        }
-        long codepoint;
-        try {
-            codepoint = Long.parseLong(spelling, 16);
-        } catch (NumberFormatException notHexadecimal) {
-            return raiseBadMakeArg(issue, "char!");
-        }
-        if (codepoint < 0 || codepoint > Character.MAX_CODE_POINT) {
-            return raiseBadMakeArg(issue, "char!");
-        }
-        return CharacterValue.of((int) codepoint);
-    }
-
-    private static final int MOST_HEX_DIGITS_SCANNED = 16;
-
-    private static Value asPair(Value value) {
-        return switch (value) {
-            case PairValue pair -> pair;
-            case IntegerValue whole -> PairValue.square(whole.magnitude());
-            case DecimalValue quantity when quantity.datatype() != Datatype.PERCENT ->
-                    PairValue.square(quantity.quantity());
-            case StringValue text -> readPair(text.text());
-            case BlockValue block when block.datatype() == Datatype.BLOCK ->
-                    pairOf(block.remaining());
-            default -> raiseBadMakeArg(value, "pair!");
-        };
-    }
-
-    private static Value asMoney(Conversion asking, Value value) {
-        return MoneyActions.withinTheDeciRange(switch (value) {
-            case MoneyValue already -> already;
-            case IntegerValue whole -> MoneyValue.of(BigDecimal.valueOf(whole.magnitude()));
-            case DecimalValue quantity ->
-                    MoneyValue.of(BigDecimal.valueOf(quantity.quantity()));
-            case StringValue text -> readMoney(text.text());
-            case BinaryValue bytes -> MoneyValue.fromBytes(bytes.bytesFromHere());
-            case LogicValue truth -> asking.builds()
-                    ? MoneyValue.of(truth.truth() ? BigDecimal.ONE : BigDecimal.ZERO)
-                    : (MoneyValue) raiseBadMakeArg(value, "money!");
-            default -> (MoneyValue) raiseBadMakeArg(value, "money!");
-        });
-    }
-
-    private static MoneyValue readMoney(String text) {
-        String written = qualifiedNumberIn(text, "a money", MOST_FRACTION_CHARACTERS);
-        return amountWithoutTheCurrencyMark(written)
-                .flatMap(RebolNativeWords::numberRewrittenForTheJvm)
-                .map(plain -> MoneyValue.of(new BigDecimal(plain)))
-                .orElseGet(() -> (MoneyValue)
-                        raiseBadMakeArg(StringValue.of(text), "money!"));
-    }
-
-    private static Optional<String> amountWithoutTheCurrencyMark(String written) {
-        if (written.startsWith("$")) {
-            String amount = written.substring(1);
-            return amount.startsWith("-") || amount.startsWith("+")
-                    ? Optional.empty()
-                    : Optional.of(amount);
-        }
-        boolean signedThenMarked = written.length() > 1
-                && (written.charAt(0) == '-' || written.charAt(0) == '+')
-                && written.charAt(1) == '$';
-        return Optional.of(signedThenMarked
-                ? written.charAt(0) + written.substring(2)
-                : written);
-    }
-
-    private static Value pairOf(List<Value> halves) {
-        if (halves.size() != 2) {
-            return raiseBadMakeArg(BlockValue.block(halves), "pair!");
-        }
-        return PairValue.of(Comparison.asDouble(halves.get(0)), Comparison.asDouble(halves.get(1)));
-    }
-
-    private static Value readPair(String text) {
-        List<Value> read = Transcoder.transcode(text).values()
-                .map(BlockValue::remaining)
-                .orElse(List.of());
-        if (read.size() != 1 || !(read.get(0) instanceof PairValue pair)) {
-            return raiseBadMakeArg(StringValue.of(text), "pair!");
-        }
-        return pair;
-    }
 
     private static Value whatTheClockSays(Set<String> refinements) {
         boolean precise = refinements.contains("precise");
@@ -4052,155 +2581,6 @@ public final class RebolNativeWords {
                 java.util.Optional.of(offsetMinutes));
     }
 
-    private static boolean isANumberButNotAPercentageWhichIsNoRoomAtAll(Value given) {
-        return given instanceof IntegerValue
-                || (given instanceof DecimalValue
-                        && given.datatype() != Datatype.PERCENT);
-    }
-
-    private static Value mapMadeFrom(Value given) {
-        if (isANumberButNotAPercentageWhichIsNoRoomAtAll(given)) {
-            MapActions.refuseRoomForFewerThanNoPairs(given);
-            refuseMoreRoomThanASeriesCounts(Datatype.MAP, given);
-            return MapValue.empty();
-        }
-        List<Value> pairs = MapActions.pairsOffered(given);
-        return pairs == null
-                ? raiseBadMakeArg(given, "map!")
-                : MapActions.madeFrom(given, pairs);
-    }
-
-
-    private static Value raiseBadMakeArg(Value value, String wanted) {
-        throw Raised.badMakeArg(value, wanted);
-    }
-
-    private static Value raiseWrongArgument(Value value, String nativeName, String wanted) {
-        throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                nativeName + " wanted a " + wanted + ", not a "
-                        + value.datatype().literalSpelling());
-    }
-
-    private static String qualifiedNumberIn(String text, String reading, int mostCharacters) {
-        int start = 0;
-        while (start < text.length() && isLexicalSpace(text.charAt(start))) {
-            start++;
-        }
-        int past = start;
-        while (past < text.length() && !isLexicalSpace(text.charAt(past))) {
-            if (text.charAt(past) > MOST_LETTERS_ARE_ONE_BYTE) {
-                throw Raised.of(EvaluationFailure.INVALID_CHARS,
-                        "\"" + text + "\" holds a character a number may not");
-            }
-            past++;
-            if (past - start > mostCharacters) {
-                throw Raised.of(EvaluationFailure.TOO_LONG,
-                        "\"" + text + "\" is longer than a written number may be");
-            }
-        }
-        if (past == start) {
-            throw Raised.of(EvaluationFailure.TOO_SHORT,
-                    "there is nothing in \"" + text + "\" to read as " + reading);
-        }
-        for (int after = past; after < text.length(); after++) {
-            if (!isSpaceOrTab(text.charAt(after))) {
-                throw Raised.of(EvaluationFailure.INVALID_CHARS,
-                        "\"" + text + "\" has more than one value in it");
-            }
-        }
-        return text.substring(start, past);
-    }
-
-    private static final char MOST_LETTERS_ARE_ONE_BYTE = 127;
-
-    private static boolean isLexicalSpace(char letter) {
-        return (letter <= ' ' || letter == MOST_LETTERS_ARE_ONE_BYTE)
-                && letter != '\n' && letter != '\r';
-    }
-
-    private static boolean isSpaceOrTab(char letter) {
-        return letter == ' ' || letter == '\t';
-    }
-
-    private static final int MOST_WHOLE_NUMBER_CHARACTERS = 25;
-
-    private static final int MOST_FRACTION_CHARACTERS = 24;
-
-    private static final Pattern WRITTEN_DECIMAL = Pattern.compile(
-            "[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)(?:[eE][+-]?[0-9]*)?");
-
-    private static final Pattern EMPTY_EXPONENT = Pattern.compile("[eE][+-]?$");
-
-    private static OptionalDouble decimalScannedFrom(String written, boolean percentAllowed) {
-        String body = written;
-        if (body.endsWith("%")) {
-            if (!percentAllowed) {
-                return OptionalDouble.empty();
-            }
-            body = body.substring(0, body.length() - 1);
-        }
-        OptionalDouble endless = endlessNumberIn(body.replace("'", ""));
-        if (endless.isPresent()) {
-            return endless;
-        }
-        return numberRewrittenForTheJvm(body)
-                .map(plain -> OptionalDouble.of(Double.parseDouble(plain)))
-                .orElseGet(OptionalDouble::empty);
-    }
-
-    private static Optional<String> numberRewrittenForTheJvm(String written) {
-        String body = written.replace("'", "").replaceFirst(",", ".");
-        return WRITTEN_DECIMAL.matcher(body).matches()
-                ? Optional.of(EMPTY_EXPONENT.matcher(body).replaceFirst(""))
-                : Optional.empty();
-    }
-
-    private static OptionalDouble endlessNumberIn(String body) {
-        int hash = body.indexOf('#');
-        if (hash < 0) {
-            return OptionalDouble.empty();
-        }
-        boolean negative = body.charAt(0) == '-';
-        String afterTheHash = body.substring(hash + 1);
-        if (afterTheHash.equalsIgnoreCase("INF")) {
-            return OptionalDouble.of(negative
-                    ? Double.NEGATIVE_INFINITY
-                    : Double.POSITIVE_INFINITY);
-        }
-        return afterTheHash.equalsIgnoreCase("NAN")
-                ? OptionalDouble.of(Double.NaN)
-                : OptionalDouble.empty();
-    }
-
-    private static Value parseInteger(String text) {
-        String withoutSeparators = qualifiedNumberIn(
-                text, "an integer", MOST_WHOLE_NUMBER_CHARACTERS).replace("'", "");
-        try {
-            return IntegerValue.of(Long.parseLong(withoutSeparators));
-        } catch (NumberFormatException notAWholeNumber) {
-            return truncatedDecimal(withoutSeparators, text);
-        }
-    }
-
-    private static Value truncatedDecimal(String candidate, String original) {
-        if (candidate.indexOf('.') < 0) {
-            throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
-                    "cannot read \"" + original + "\" as an integer");
-        }
-        try {
-            double asNumber = Double.parseDouble(candidate);
-            if (!(Math.abs(asNumber) < TOO_LARGE_FOR_A_WHOLE_NUMBER)) {
-                throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
-                        "\"" + original + "\" is outside the range of a whole number");
-            }
-            return IntegerValue.of((long) asNumber);
-        } catch (NumberFormatException notANumberEither) {
-            throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
-                    "cannot read \"" + original + "\" as an integer");
-        }
-    }
-
-    private static final double TOO_LARGE_FOR_A_WHOLE_NUMBER = 9.223372036854776E18;
 
     private static Optional<Long> howManyWanted(
             Value source, List<Value> arguments, Set<String> refinements, int where) {
@@ -4228,52 +2608,6 @@ public final class RebolNativeWords {
             return Optional.of((long) (upTo.index() - from.index()));
         }
         return Optional.empty();
-    }
-
-    private static void refuseASizeItCannotWrite(long width) {
-        if (width <= 0 || width > 0xFFFFFFFFL) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, IntegerValue.of(width));
-        }
-    }
-
-    private static String hexOfEachSegment(TupleValue tuple, OptionalLong width) {
-        StringBuilder hex = new StringBuilder();
-        for (int segment : tuple.segments()) {
-            hex.append("%02X".formatted(segment));
-        }
-        for (int padded = tuple.segmentCount();
-                padded < TupleValue.MINIMUM_SHOWN_SEGMENTS; padded++) {
-            hex.append("00");
-        }
-        if (width.isEmpty()) {
-            return hex.toString();
-        }
-        long kept = Math.min(width.getAsLong(), 2L * tuple.segmentCount());
-        return hex.substring(0, (int) Math.min(kept, hex.length()));
-    }
-
-    private static String hexSizedToItsMagnitude(int codepoint, OptionalLong width) {
-        int digits = codepoint <= 0xFF ? 2
-                : codepoint <= 0xFFFF ? 4
-                : codepoint <= 0xFFFFFF ? 6
-                : 8;
-        return trimmedToWidth("%016X".formatted((long) codepoint),
-                width.isPresent() ? atMostSixteen(width.getAsLong()) : digits);
-    }
-
-    private static String hexSixteenWide(long magnitude, OptionalLong width) {
-        String hex = "%016X".formatted(magnitude);
-        return width.isEmpty()
-                ? hex
-                : trimmedToWidth(hex, atMostSixteen(width.getAsLong()));
-    }
-
-    private static int atMostSixteen(long width) {
-        return (int) Math.min(width, 16L);
-    }
-
-    private static String trimmedToWidth(String hex, int width) {
-        return hex.substring(Math.max(0, hex.length() - width));
     }
 
     private static byte[] boundedByAnyPart(
@@ -4351,12 +2685,6 @@ public final class RebolNativeWords {
         }
     }
 
-
-    private static String textForAString(Value value) {
-        return value instanceof StringValue already
-                ? already.text()
-                : value.runTogether();
-    }
 
     private void registerPorts() {
         define("read", List.of(
@@ -5325,89 +3653,6 @@ public final class RebolNativeWords {
     }
 
 
-    private static byte[] withSurrogatePairsJoined(byte[] bytes) {
-        byte[] joined = new byte[bytes.length];
-        int written = 0;
-        int at = 0;
-        while (at < bytes.length) {
-            int high = surrogateAt(bytes, at, 0xA0);
-            int low = high < 0 ? -1 : surrogateAt(bytes, at + 3, 0xB0);
-            if (low < 0) {
-                joined[written] = bytes[at];
-                written++;
-                at++;
-                continue;
-            }
-            written = fourBytesOf(joined, written,
-                    0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00));
-            at += 6;
-        }
-        return Arrays.copyOf(joined, written);
-    }
-
-    private static int surrogateAt(byte[] bytes, int at, int leadingHalf) {
-        if (at + 2 >= bytes.length || (bytes[at] & 0xFF) != 0xED) {
-            return -1;
-        }
-        int second = bytes[at + 1] & 0xFF;
-        int third = bytes[at + 2] & 0xFF;
-        if (second < leadingHalf || second >= leadingHalf + 0x10
-                || third < 0x80 || third > 0xBF) {
-            return -1;
-        }
-        return 0xD000 | (second & 0x3F) << 6 | third & 0x3F;
-    }
-
-    private static int fourBytesOf(byte[] joined, int written, int codepoint) {
-        joined[written] = (byte) (0xF0 | codepoint >> 18);
-        joined[written + 1] = (byte) (0x80 | codepoint >> 12 & 0x3F);
-        joined[written + 2] = (byte) (0x80 | codepoint >> 6 & 0x3F);
-        joined[written + 3] = (byte) (0x80 | codepoint & 0x3F);
-        return written + 4;
-    }
-
-    private static String textDecodedFrom(BinaryValue octets) {
-        byte[] bytes = octets.octetsFromHere();
-        int marked = octets.byteOrderMark();
-        if (marked != 0) {
-            return textBehindTheMark(bytes, marked);
-        }
-        java.nio.charset.CharsetDecoder strictly =
-                StandardCharsets.UTF_8.newDecoder()
-                        .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
-                        .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT);
-        bytes = withSurrogatePairsJoined(bytes);
-        java.nio.ByteBuffer reading = java.nio.ByteBuffer.wrap(bytes);
-        java.nio.CharBuffer written = java.nio.CharBuffer.allocate(bytes.length + 1);
-        java.nio.charset.CoderResult stopped = strictly.decode(reading, written, true);
-        if (stopped.isError()) {
-            throw Raised.of(EvaluationFailure.INVALID_UTF, BinaryValue.ofBytes(
-                    Arrays.copyOfRange(bytes, reading.position(), bytes.length)));
-        }
-        strictly.flush(written);
-        return written.flip().toString();
-    }
-
-    private static String textBehindTheMark(byte[] bytes, int marked) {
-        java.nio.charset.Charset theMarkAnnounces = switch (marked) {
-            case 8 -> StandardCharsets.UTF_8;
-            case 16 -> StandardCharsets.UTF_16BE;
-            case -16 -> StandardCharsets.UTF_16LE;
-            case 32 -> java.nio.charset.Charset.forName("UTF-32BE");
-            default -> java.nio.charset.Charset.forName("UTF-32LE");
-        };
-        int width = Math.abs(marked) == 8 ? 3 : Math.abs(marked) / 8;
-        try {
-            return theMarkAnnounces.newDecoder()
-                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
-                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
-                    .decode(java.nio.ByteBuffer.wrap(bytes, width, bytes.length - width))
-                    .toString();
-        } catch (java.nio.charset.CharacterCodingException notText) {
-            throw Raised.of(EvaluationFailure.INVALID_UTF, "binary");
-        }
-    }
-
     private static final Set<Datatype> PART_LIMIT = java.util.stream.Stream.concat(
             Typeset.NUMBER.membersAnd(Datatype.PAIR).stream(),
             Arrays.stream(Datatype.values()).filter(Datatype::isSeries))
@@ -5769,26 +4014,6 @@ public final class RebolNativeWords {
         });
     }
 
-    private static Set<Datatype> asTypeOrExample() {
-        Set<Datatype> accepted = EnumSet.of(Datatype.DATATYPE);
-        accepted.addAll(Typeset.ANY_BLOCK.members());
-        accepted.addAll(Typeset.ANY_STRING.members());
-        return copyOf(accepted);
-    }
-
-
-    private static Value moduleFromHeaderAndWords(Value value) {
-        if (!(value instanceof BlockValue parts)) {
-            return raiseBadMakeArg(value, "module!");
-        }
-        List<Value> given = parts.remaining();
-        if (given.size() < 2
-                || !(given.get(0) instanceof ObjectValue header)
-                || !(given.get(1) instanceof ObjectValue(Context context))) {
-            return raiseBadMakeArg(value, "module!");
-        }
-        return new ModuleValue(context, header);
-    }
 
     private static List<Value> withThePortInFront(
             PortValue port, List<Value> arguments) {
@@ -5932,8 +4157,8 @@ public final class RebolNativeWords {
 
         private static Optional<String> decodedUtfText(byte[] bytes) {
             try {
-                return Optional.of(withOneLineFeedPerEnding(
-                        strictlyDecodedByItsMark(bytes)));
+                return Optional.of(StringValue.of(strictlyDecodedByItsMark(bytes))
+                        .withOneLineFeedPerEnding().text());
             } catch (java.nio.charset.CharacterCodingException undecodable) {
                 return Optional.empty();
             }
@@ -5946,11 +4171,11 @@ public final class RebolNativeWords {
             }
             if (startsWith(bytes, 0xFF, 0xFE, 0x00, 0x00)) {
                 return strictlyDecoded(
-                        bytes, 4, java.nio.charset.Charset.forName("UTF-32LE"));
+                        bytes, 4, Charset.forName("UTF-32LE"));
             }
             if (startsWith(bytes, 0x00, 0x00, 0xFE, 0xFF)) {
                 return strictlyDecoded(
-                        bytes, 4, java.nio.charset.Charset.forName("UTF-32BE"));
+                        bytes, 4, Charset.forName("UTF-32BE"));
             }
             if (startsWith(bytes, 0xFE, 0xFF)) {
                 return strictlyDecoded(bytes, 2, StandardCharsets.UTF_16BE);
@@ -5962,7 +4187,7 @@ public final class RebolNativeWords {
         }
 
         private static String strictlyDecoded(
-                byte[] bytes, int from, java.nio.charset.Charset charset)
+                byte[] bytes, int from, Charset charset)
                 throws java.nio.charset.CharacterCodingException {
             return charset.newDecoder()
                     .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
