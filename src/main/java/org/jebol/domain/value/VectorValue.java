@@ -2,6 +2,7 @@ package org.jebol.domain.value;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public record VectorValue(VectorStorage storage, int index) implements RebolSeries {
 
@@ -27,6 +28,19 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
     @Override
     public List<Value> items() {
         return remaining();
+    }
+
+    @Override
+    public Value copied(boolean deeply, Set<Datatype> kinds) {
+        return copyOfTheFirst(lengthFromHere());
+    }
+
+    public VectorValue copyOfTheFirst(int howMany) {
+        VectorStorage made = new VectorStorage(kind(), 0);
+        for (int at = 0; at < howMany; at++) {
+            made.append(storage.at(index + at));
+        }
+        return new VectorValue(made, 1);
     }
 
     @Override

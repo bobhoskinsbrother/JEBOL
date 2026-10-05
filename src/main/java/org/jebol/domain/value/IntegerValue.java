@@ -1,14 +1,20 @@
 package org.jebol.domain.value;
 
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.util.Optional;
 
-/**
- * A 64-bit signed integer, as R3-Alpha's {@code integer!} is.
- *
- * <p>Zero is a value and therefore true. That catches everyone once.
- */
 public record IntegerValue(long magnitude) implements Value, RebolNumber {
+
+    @Override
+    public long asPosition() {
+        return magnitude;
+    }
+
+    @Override
+    public byte[] asOctets() {
+        return ByteBuffer.allocate(Long.BYTES).putLong(magnitude).array();
+    }
 
     @Override
     public Value absolute() {

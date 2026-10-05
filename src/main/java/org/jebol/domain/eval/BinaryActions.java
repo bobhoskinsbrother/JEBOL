@@ -2,7 +2,10 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.BinaryStorage;
 import org.jebol.domain.value.BinaryValue;
+import org.jebol.domain.value.CharacterValue;
+import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 
@@ -20,6 +23,36 @@ public final class BinaryActions extends SeriesActions {
     @Override
     BinaryValue held() {
         return bytes;
+    }
+
+    @Override
+    public Value poked(Value position, Value written) {
+        int at = pokedStoragePosition(position);
+        bytes.storage().set(at, octetPokedFrom(written));
+        return written;
+    }
+
+    private int octetPokedFrom(Value written) {
+        return switch (written) {
+            case IntegerValue number -> asAnOctet(number.magnitude());
+            case CharacterValue(int codepoint) when codepoint > 0xFF ->
+                    throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                            codepoint + " does not fit in a byte");
+            case CharacterValue(int codepoint) -> codepoint;
+            default -> throw Raised.cannotUse(bytes, "poke");
+        };
+    }
+
+    private int asAnOctet(long wanted) {
+        if (wanted < 0) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    wanted + " is not a byte: a binary holds 0 to 255");
+        }
+        if (wanted > 255) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                    wanted + " is not a byte: a binary holds 0 to 255");
+        }
+        return (int) wanted;
     }
 
     @Override

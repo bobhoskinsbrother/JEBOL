@@ -20,6 +20,12 @@ public final class MapActions implements Actions {
     }
 
     @Override
+    public Value poked(Value key, Value written) {
+        pairs.put(key, written, false);
+        return written;
+    }
+
+    @Override
     public Value cleared() {
         pairs.requireChangeable();
         pairs.clear();

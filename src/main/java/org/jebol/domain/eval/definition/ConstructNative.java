@@ -56,7 +56,7 @@ public class ConstructNative extends DefaultNative {
         };
     }
 
-    private static List<Value> itemsOf(Value body) {
+    private List<Value> itemsOf(Value body) {
         return switch (body) {
             case BlockValue block -> block.remaining();
             case StringValue text -> headerFieldsIn(text.text());
@@ -66,7 +66,7 @@ public class ConstructNative extends DefaultNative {
         };
     }
 
-    private static void constructInto(Context built, List<Value> items, boolean asWritten) {
+    private void constructInto(Context built, List<Value> items, boolean asWritten) {
         List<WordValue> waiting = new ArrayList<>();
         for (Value item : items) {
             if (item instanceof WordValue name && name.datatype() == Datatype.SET_WORD) {
@@ -91,7 +91,7 @@ public class ConstructNative extends DefaultNative {
         }
     }
 
-    private static Value namedConstant(Value value) {
+    private Value namedConstant(Value value) {
         if (!(value instanceof WordValue word) || word.datatype() != Datatype.WORD) {
             return value;
         }
@@ -103,7 +103,7 @@ public class ConstructNative extends DefaultNative {
         };
     }
 
-    private static List<Value> headerFieldsIn(String header) {
+    private List<Value> headerFieldsIn(String header) {
         List<Value> fields = new ArrayList<>();
         String[] lines = header.split("\n", -1);
         for (int at = 0; at < lines.length; at++) {
@@ -123,11 +123,11 @@ public class ConstructNative extends DefaultNative {
         return fields;
     }
 
-    private static String withoutACarriageReturn(String line) {
+    private String withoutACarriageReturn(String line) {
         return line.endsWith("\r") ? line.substring(0, line.length() - 1) : line;
     }
 
-    private static int colonAfterAName(String line) {
+    private int colonAfterAName(String line) {
         String name = line.stripLeading();
         if (name.isEmpty() || !Character.isLetter(name.charAt(0))) {
             return -1;
@@ -141,12 +141,12 @@ public class ConstructNative extends DefaultNative {
                 : -1;
     }
 
-    private static boolean isPartOfAName(char letter) {
+    private boolean isPartOfAName(char letter) {
         return Character.isLetterOrDigit(letter)
                 || letter == '.' || letter == '-' || letter == '_';
     }
 
-    private static boolean startsWithSpaceOrTab(String line) {
+    private boolean startsWithSpaceOrTab(String line) {
         return !line.isEmpty() && (line.charAt(0) == ' ' || line.charAt(0) == '\t');
     }
 }

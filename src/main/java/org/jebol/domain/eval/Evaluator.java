@@ -8,25 +8,13 @@ import org.jebol.domain.value.*;
 import java.util.*;
 import java.util.function.Predicate;
 
-/**
- * Walks a block, left to right, turning values into a result.
- *
- * <p>Evaluation state lives in {@link Frame} objects on the heap rather than
- * in JVM stack frames. That is what lets a runaway script be stopped with an
- * ordinary REBOL error instead of a {@code StackOverflowError}, and it is the
- * part of the design that cannot be retrofitted, so it is here from the
- * start.
- *
- * <p>The one rule that makes REBOL what it is: a value either stands for
- * itself or reaches forward and consumes the values after it. How far it
- * reaches is not known until the word is looked up, which is why nothing can
- * be arranged into a call tree in advance.
- */
 public final class Evaluator {
 
     public static final int DEFAULT_MAXIMUM_DEPTH = 10_000;
 
     public static final int DEFAULT_CHECK_EVERY = 1_000;
+
+    private static final int THE_IDENTITY_BEFORE_THE_FIRST_CIPHER = 2000;
 
     private final Map<String, RefinedCallable> behaviours;
     private final OutputPort output;
@@ -56,6 +44,7 @@ public final class Evaluator {
     private final Construction construction;
     private final MakerSource makerSource;
     private final ErrorWording wording;
+    private int lastCipherIdentity = THE_IDENTITY_BEFORE_THE_FIRST_CIPHER;
     private int stepsSinceLastCheck;
 
     private int framesOpen;
@@ -96,14 +85,6 @@ public final class Evaluator {
 
     private String lastWordCalledThrough = "";
 
-    /**
-     * Why the script should stop, or empty to carry on.
-     *
-     * <p>Exposed so a native that blocks can ask. WAIT is the only one: it
-     * sleeps, and a sleep that ignored the deadline would outlive the bounds
-     * the host set and break the promise that running too long arrives as an
-     * outcome rather than as a hung thread.
-     */
     public java.util.Optional<String> reasonToStop() {
         return interruption.reasonToStop();
     }
@@ -127,12 +108,6 @@ public final class Evaluator {
         limitsRecorded.putIfAbsent(limit, value);
     }
 
-    /**
-     * The name of the function being run, counting back from the innermost.
-     *
-     * <p>An offset past the outermost answers nothing, because a caller
-     * walking outwards has to be able to reach the end.
-     */
     public java.util.Optional<String> functionBeingRun(int offsetOutwards) {
         List<OpenCall> open = new ArrayList<>(functionsBeingRun);
         return offsetOutwards < 0 || offsetOutwards >= open.size()
@@ -171,12 +146,6 @@ public final class Evaluator {
         this.checkEvery = checkEvery;
     }
 
-    /**
-     * Registers a native after construction, which is how a host adds one of
-     * its own. Safe because an interpreter is owned by one thread; a host
-     * defining a function while a script runs is the same mistake as running
-     * two scripts at once.
-     */
     public void defineNative(String name, Callable behaviour) {
         behaviours.put(name, (arguments, evaluator, context, refinements) ->
                 behaviour.call(arguments, evaluator, context));
@@ -195,13 +164,6 @@ public final class Evaluator {
         };
     }
 
-    /**
-     * Sends a copy of everything written to a second place as well.
-     *
-     * <p>What ECHO is: "Copies console output to a file." The original port
-     * still receives everything, because echoing is a copy and not a
-     * redirection -- a script that echoes still prints.
-     */
     public void alsoWriteTo(OutputPort second) {
         this.alsoWritingTo = second;
     }
@@ -232,12 +194,6 @@ public final class Evaluator {
         this.clipboard = port;
     }
 
-    /**
-     * The modules bundled with this build, which BUNDLED reads through.
-     *
-     * <p>No grant guards it, unlike the filesystem and the network: nothing is
-     * reached, and a build cannot be asked for something it does not bundle.
-     */
     public BundledModules bundledModules() {
         return bundledModules;
     }
@@ -252,6 +208,60 @@ public final class Evaluator {
 
     public Maker makerIn(Context where) {
         return makerSource.makerFor(this, where);
+    }
+
+    public int nextCipherIdentity() {
+        return ++lastCipherIdentity;
+    }
+
+    public Optional<Value> theRebolActorsAnswer(String action,
+            List<Value> arguments, Set<String> refinements) {
+
+        if (!(arguments.getFirst() instanceof PortValue port)) {
+            return Optional.empty();
+        }
+        port.refuseASpecThatIsNotAnObject();
+        port.refuseAnActorThatIsNeitherAWordNorAnObject();
+        return port.actorWrittenInRebol().map(actor ->
+                askTheActor(actor, action, arguments, refinements));
+    }
+
+    public Value askTheActor(ObjectValue actor, String action,
+            List<Value> arguments, Set<String> refinements) {
+
+        Value theFunction = actor.context().holds(action)
+                ? actor.context().ownSlotFor(action).value()
+                : NoneValue.none();
+        if (!(theFunction instanceof FunctionValue able)) {
+            throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
+                    WordValue.of(action).as(Datatype.SET_WORD));
+        }
+        return applyFunction(able, laidOutAsTheActorDeclaresThem(able, arguments, refinements));
+    }
+
+    private List<Value> laidOutAsTheActorDeclaresThem(
+            FunctionValue able, List<Value> arguments, Set<String> refinements) {
+
+        List<Value> laidOut = new ArrayList<>();
+        int fromTheNative = 0;
+        boolean theseArgumentsWereSupplied = true;
+        for (Parameter parameter : able.parameters()) {
+            if (parameter.kind() == ParameterKind.REFINEMENT) {
+                boolean asked = refinements.contains(parameter.name());
+                laidOut.add(LogicValue.of(asked));
+                theseArgumentsWereSupplied = asked;
+                continue;
+            }
+            if (!theseArgumentsWereSupplied) {
+                laidOut.add(NoneValue.none());
+                continue;
+            }
+            laidOut.add(fromTheNative < arguments.size()
+                    ? arguments.get(fromTheNative)
+                    : NoneValue.none());
+            fromTheNative++;
+        }
+        return laidOut;
     }
 
     public Value simpleValueOf(Value given, Context where) {
@@ -349,14 +359,6 @@ public final class Evaluator {
         this.files = port;
     }
 
-    /**
-     * Calls a function value with arguments the caller already has.
-     *
-     * <p>For natives that take a function as an argument, such as
-     * {@code sort/compare}. Everything else reaches a function through the
-     * walk, which gathers its arguments from the block; here there is no
-     * block and the arguments are in hand.
-     */
     public Value applyFunction(Value callee, List<Value> arguments) {
         return switch (callee) {
             case FunctionValue function -> {
@@ -387,15 +389,6 @@ public final class Evaluator {
         };
     }
 
-    /**
-     * Runs a CATCH/WITH function handler on the caught value and its name.
-     *
-     * <p>The C type-checks the handler's first parameter against the value and
-     * its second against the name before calling, and fills any surplus
-     * parameter with none rather than unset. So a handler whose parameter
-     * refuses the caught value raises expect-arg, and a handler with more
-     * parameters than value-and-name sees the rest as none.
-     */
     public Value applyToCaught(Value handler, Value caught, Value carriedName) {
         if (!(handler instanceof FunctionValue function)) {
             return applyFunction(handler, List.of(caught, carriedName));
@@ -417,11 +410,6 @@ public final class Evaluator {
         return systemContext;
     }
 
-    /**
-     * Reads source text and evaluates it, which is what DO of a string does.
-     * A syntax error raises like any other failure, because from the script's
-     * point of view it is one.
-     */
     public Value evaluateSource(String source) {
         TranscodeResult read = Transcoder.transcode(source, construction);
         if (!read.succeeded()) {
@@ -431,22 +419,10 @@ public final class Evaluator {
         return walk(Binder.bindAndDefine(read.values().orElseThrow(), into), into, 1);
     }
 
-    /**
-     * Where words that arrive at run time are given their slots.
-     *
-     * <p>{@code system/contexts/user} in the C. Set by whoever built the
-     * interpreter; without it, source read at run time binds into the
-     * library, which works and puts a script's own names among the
-     * built-in ones.
-     */
     public void putRuntimeWordsIn(Context context) {
         this.runtimeContext = context;
     }
 
-    /**
-     * Evaluates a block and hands back its value, or the error that stopped
-     * it. Nothing escapes as a host exception.
-     */
     public Outcome evaluate(BlockValue code, Context context) {
         try {
             return new Outcome.Completed(unsignalled(() -> walk(code, context, 1)));
@@ -479,20 +455,10 @@ public final class Evaluator {
         }
     }
 
-    /**
-     * Evaluates a block and returns its value, letting an error propagate.
-     * For natives such as IF that evaluate a branch and have nothing useful
-     * to do with a failure except pass it on.
-     */
     public Value evaluateOrRaise(BlockValue code, Context context) {
         return walk(code, context, 1, null);
     }
 
-    /**
-     * Evaluates a block and returns every expression's value rather than only
-     * the last. This is REDUCE, and it is the contrast case to DO: the same
-     * walk, keeping what it would otherwise discard.
-     */
     public List<Value> evaluateEachOrRaise(BlockValue code, Context context) {
         List<Value> results = new ArrayList<>();
         walk(code, context, 1,
@@ -500,18 +466,6 @@ public final class Evaluator {
         return results;
     }
 
-    /**
-     * The same walk, keeping the line-break mark each result is entitled to.
-     *
-     * <p>A mark belongs to the value rather than to the position, so REDUCE
-     * keeps one exactly where the value it produced is the item as written.
-     * Everything else -- a word, a paren, a call -- hands back something
-     * worked out, and a worked-out value has no mark of its own.
-     *
-     * <p>Deciding it here rather than in REDUCE is what makes it decidable at
-     * all: by the time the results are a list, which source item each one came
-     * from is gone.
-     */
     public BlockValue evaluateEachKeepingTheLineShape(
             BlockValue code, Context context) {
 
@@ -544,15 +498,6 @@ public final class Evaluator {
                     Datatype.FUNCTION, Datatype.CLOSURE, Datatype.NATIVE,
                     Datatype.ACTION, Datatype.OP, Datatype.COMMAND);
 
-    /**
-     * Evaluates expressions in order until one satisfies {@code stopsHere},
-     * and returns it. Returns the last value if nothing did, or unset for an
-     * empty block.
-     *
-     * <p>This is what ANY and ALL are built from, and stopping matters: an
-     * expression after the deciding one is never evaluated, which is what
-     * lets {@code all [string? a string? b append a b]} guard the append.
-     */
     public Value evaluateUntilOrRaise(
             BlockValue code, Context context, Predicate<Value> stopsHere) {
         List<Value> stopped = new ArrayList<>(1);
@@ -566,32 +511,9 @@ public final class Evaluator {
         return stopped.isEmpty() ? last : stopped.get(0);
     }
 
-    /**
-     * One expression's value, and where it left off. REBOL's {@code do/next}.
-     *
-     * <p>Needed wherever a native has to evaluate part of a block and then
-     * decide what to do with the rest. CASE is the reason it exists:
-     * {@code case [size < 10 ["small"] ...]} cannot pair values off two at a
-     * time, because the condition is however many values the expression
-     * happens to be.
-     *
-     * @param value what the expression produced
-     * @param nextIndex the 1-based position after it
-     */
     public record Step(Value value, int nextIndex) {
     }
 
-    /**
-     * Evaluates the single expression starting at the block's position.
-     *
-     * <p>A RETURN, BREAK or THROW raised by that expression flies on rather
-     * than being turned into an error here. The caller is a native part way
-     * through a block that is itself part way through a function -- ALL, ANY
-     * and CASE -- so the frame that should catch the signal is still above
-     * this one on the stack. Disarming it here made {@code all [return 1]}
-     * answer "a return outside a function" from inside a function, which is
-     * what stopped the borrowed ENCODE at its first line.
-     */
     public Step evaluateNextOrRaise(BlockValue code, Context context) {
         if (code.atTail()) {
             return new Step(UnsetValue.unset(), code.index());
@@ -947,22 +869,13 @@ public final class Evaluator {
             throw Raised.of(EvaluationFailure.NEED_VALUE,
                     word.spelling() + ": has nothing after it to assign");
         }
-        refuseToWriteTheNameAnObjectAnswersToItselfBy(word);
+        word.refuseToBeWrittenWhenItNamesSelf();
         ContextSlot slot = word.binding().slotFor(word.canonical());
         if (slot.isProtected()) {
             throw Raised.of(EvaluationFailure.LOCKED_WORD, word.spelling());
         }
         frame.pendingCalls.push(PendingCall.assignment(slot));
         return StepOutcome.waiting();
-    }
-
-    private static final String THE_NAME_AN_OBJECT_ANSWERS_TO_ITSELF_BY = "self";
-
-    static void refuseToWriteTheNameAnObjectAnswersToItselfBy(Value written) {
-        if (written instanceof WordValue word
-                && word.canonical().equals(THE_NAME_AN_OBJECT_ANSWERS_TO_ITSELF_BY)) {
-            throw Raised.of(EvaluationFailure.SELF_PROTECTED);
-        }
     }
 
     private static boolean asksForReEvaluation(Value argument) {
@@ -974,24 +887,10 @@ public final class Evaluator {
         };
     }
 
-    /**
-     * What a word holds, without calling it.
-     *
-     * <p>{@code *D_RET = *Get_Var(value);} in DO. A function value is answered
-     * rather than called: DO marks it {@code OPTS_REVAL} and the evaluator
-     * takes its arguments from what follows the DO, which is a different thing
-     * from calling it here with none.
-     */
     public Value valueOfWordIn(WordValue word, Context context) {
         return resolve(word.isBound() ? word : word.boundTo(context)).value();
     }
 
-    /**
-     * What a path reads, without calling what it finds.
-     *
-     * <p>{@code Do_Path(&value, 0);} in DO, which is the same walk a path in a
-     * block takes.
-     */
     public Value valueOfPathIn(BlockValue path, Context context) {
         return select(path, context).value();
     }
@@ -1668,18 +1567,6 @@ public final class Evaluator {
                         + " from " + target.datatype().literalSpelling());
     }
 
-    /**
-     * A field of {@code system/ports}, or none.
-     *
-     * <p>Three of an event's seven models answer one of these for {@code e/port}:
-     * `*val = *Get_System(SYS_PORTS, PORTS_EVENT)` and the same for the callback
-     * and console ports. Read live rather than resolved once, because the host
-     * fills those fields after the boot and a script can read one before and after.
-     *
-     * <p>All three are none until a window system fills them, in a stock console
-     * 3.22.1 as much as here. Rebol's own event test guards its port case with
-     * `if system/ports/event [...]` for that reason.
-     */
     public Value hostPort(String scheme) {
         if (!systemContext.knows("system")) {
             return NoneValue.none();

@@ -2,14 +2,13 @@ package org.jebol.domain.value;
 
 import java.util.Optional;
 
-/**
- * A double, covering both {@code decimal!} and {@code percent!}.
- *
- * <p>The two share a representation and differ only in how they are printed,
- * which is why the datatype is carried rather than inferred.
- */
 public record DecimalValue(double quantity, Datatype datatype)
         implements Value, RebolNumber {
+
+    @Override
+    public long asPosition() {
+        return (long) quantity;
+    }
 
     @Override
     public Value absolute() {

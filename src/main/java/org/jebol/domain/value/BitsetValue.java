@@ -22,8 +22,14 @@ public final class BitsetValue implements Value {
         this.protectedFromChange = wanted;
     }
 
+    @Override
     public boolean isProtected() {
         return protectedFromChange;
+    }
+
+    @Override
+    public Value copied(boolean deeply, java.util.Set<Datatype> kinds) {
+        return duplicate();
     }
 
     public boolean isComplemented() {

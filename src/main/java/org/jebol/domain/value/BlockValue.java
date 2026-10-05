@@ -5,9 +5,14 @@ import org.jebol.domain.value.sets.MembersKept;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public record BlockValue(BlockStorage storage, int index, Datatype datatype)
         implements RebolSeries {
+
+    private static final Set<Datatype> DECLARES_A_PARAMETER = Set.of(
+            Datatype.WORD, Datatype.REFINEMENT, Datatype.LIT_WORD, Datatype.GET_WORD);
 
     public BlockValue {
         if (storage == null) {
@@ -31,6 +36,35 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
     @Override
     public List<Value> items() {
         return remaining();
+    }
+
+    @Override
+    public Value copied(boolean deeply, Set<Datatype> kinds) {
+        BlockStorage built = new BlockStorage(remaining().stream()
+                .map(item -> item.copiedAsAMember(deeply, kinds))
+                .toList());
+        built.takeLineBreaksFrom(storage, index);
+        return new BlockValue(built, 1, datatype);
+    }
+
+    public void putEachPairOnALine() {
+        for (int at = 1; at <= storageLength(); at += 2) {
+            storage.setLineBreakAt(at, true);
+        }
+    }
+
+    public BlockValue declaredParameters() {
+        return block(remaining().stream()
+                .filter(item -> item instanceof WordValue word
+                        && DECLARES_A_PARAMETER.contains(word.datatype()))
+                .toList());
+    }
+
+    @Override
+    public String runTogether() {
+        return remaining().stream()
+                .map(Value::runTogether)
+                .collect(Collectors.joining(datatype.isAnyPath() ? "/" : ""));
     }
 
     @Override

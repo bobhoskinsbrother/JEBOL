@@ -34,7 +34,7 @@ public class UnbindNative extends DefaultNative {
                 unbound(arguments.getFirst(), refinements.contains("deep"));
     }
 
-    private static Value unbound(Value value, boolean deeply) {
+    private Value unbound(Value value, boolean deeply) {
         if (value instanceof WordValue word) {
             return WordValue.of(word.spelling(), word.datatype());
         }
@@ -44,7 +44,7 @@ public class UnbindNative extends DefaultNative {
         return value;
     }
 
-    private static void loosenInPlace(BlockValue block, boolean deeply) {
+    private void loosenInPlace(BlockValue block, boolean deeply) {
         for (int at = block.index(); at <= block.storageLength(); at++) {
             Value item = block.storage().at(at);
             if (item instanceof WordValue word) {

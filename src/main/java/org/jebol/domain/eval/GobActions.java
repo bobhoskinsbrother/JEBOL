@@ -18,6 +18,12 @@ public final class GobActions extends SeriesActions {
     }
 
     @Override
+    public Value poked(Value position, Value written) {
+        GobPath.pokeWhichInsertsRatherThanReplaces(gob, (int) position.asPosition(), written);
+        return written;
+    }
+
+    @Override
     void takeOneOutAt(int oneBasedIndex) {
         gob.storage().removeChildren(oneBasedIndex, 1);
     }

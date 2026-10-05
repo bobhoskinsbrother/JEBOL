@@ -60,11 +60,11 @@ public class ApplyNative extends DefaultNative {
         };
     }
 
-    private static boolean isDo(Value callee) {
+    private boolean isDo(Value callee) {
         return callee instanceof NativeValue builtIn && builtIn.nativeName().equals("do");
     }
 
-    private static List<Value> exactlyAsManyAsItTakes(Value callee, List<Value> supplied) {
+    private List<Value> exactlyAsManyAsItTakes(Value callee, List<Value> supplied) {
         int wanted = (int) arityOf(callee);
         List<Value> exactly = new ArrayList<>(
                 supplied.subList(0, Math.min(wanted, supplied.size())));
@@ -74,7 +74,7 @@ public class ApplyNative extends DefaultNative {
         return exactly;
     }
 
-    private static long arityOf(Value callee) {
+    private long arityOf(Value callee) {
         return switch (callee) {
             case NativeValue built -> built.parameters().stream()
                     .filter(Parameter::consumesAnArgument)
@@ -86,7 +86,7 @@ public class ApplyNative extends DefaultNative {
         };
     }
 
-    private static Value appliedWithRefinements(
+    private Value appliedWithRefinements(
             NativeValue builtIn, List<Value> supplied, Evaluator evaluator) {
 
         Set<String> asked = new LinkedHashSet<>();
@@ -114,7 +114,7 @@ public class ApplyNative extends DefaultNative {
                 argumentsInDeclaredOrder(refined, asked, beforeAnyRefinement, belongingTo));
     }
 
-    private static List<Value> theWordsItTakes(NativeValue builtIn, Evaluator evaluator) {
+    private List<Value> theWordsItTakes(NativeValue builtIn, Evaluator evaluator) {
         Value reflect = evaluator.systemContext().valueAt("reflect");
         return evaluator.applyFunction(reflect, List.of(builtIn, WordValue.of("words")))
                 instanceof BlockValue words
@@ -122,7 +122,7 @@ public class ApplyNative extends DefaultNative {
                 : List.of();
     }
 
-    private static List<Value> argumentsInDeclaredOrder(NativeValue refined, Set<String> asked,
+    private List<Value> argumentsInDeclaredOrder(NativeValue refined, Set<String> asked,
             List<Value> beforeAnyRefinement, Map<String, List<Value>> belongingTo) {
 
         Deque<Value> plain = new ArrayDeque<>(beforeAnyRefinement);

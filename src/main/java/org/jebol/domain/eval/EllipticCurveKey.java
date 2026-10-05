@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-final class EllipticCurveKey implements AKeyThatCanBeReleased {
+public final class EllipticCurveKey implements AKeyThatCanBeReleased {
 
     private boolean handedBack;
 
@@ -90,7 +90,7 @@ final class EllipticCurveKey implements AKeyThatCanBeReleased {
         return computedHere != null;
     }
 
-    boolean startAgainOn(String wantedCurve) {
+    public boolean startAgainOn(String wantedCurve) {
         Optional<EllipticCurveKey> fresh = onCurve(wantedCurve);
         if (fresh.isEmpty()) {
             return false;
@@ -107,11 +107,11 @@ final class EllipticCurveKey implements AKeyThatCanBeReleased {
         return true;
     }
 
-    String curveName() {
+    public String curveName() {
         return curveName;
     }
 
-    static Optional<EllipticCurveKey> onCurve(String curveName) {
+    public static Optional<EllipticCurveKey> onCurve(String curveName) {
         Optional<WeierstrassCurve> carriedHere = WeierstrassCurve.named(curveName);
         if (carriedHere.isPresent()) {
             return Optional.of(madeOnACurveThisBuildComputes(curveName, carriedHere.get()));
@@ -167,7 +167,7 @@ final class EllipticCurveKey implements AKeyThatCanBeReleased {
         return ((ECPublicKey) pair.getPublic()).getParams();
     }
 
-    byte[] publishedPoint() {
+    public byte[] publishedPoint() {
         if (thisBuildDoesTheArithmetic()) {
             return theTwoCoordinatesOf(publicPoint.x(), publicPoint.y());
         }
@@ -215,7 +215,7 @@ final class EllipticCurveKey implements AKeyThatCanBeReleased {
         return new BigInteger(1, biggestFirst);
     }
 
-    Optional<byte[]> agreedWith(byte[] peersPoint) {
+    public Optional<byte[]> agreedWith(byte[] peersPoint) {
         if (handedBack) {
             return Optional.empty();
         }
@@ -265,7 +265,7 @@ final class EllipticCurveKey implements AKeyThatCanBeReleased {
         return Optional.of(agreeing.generateSecret());
     }
 
-    Optional<byte[]> signed(byte[] hash) {
+    public Optional<byte[]> signed(byte[] hash) {
         if (handedBack
                 || published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN) {
             return Optional.empty();
@@ -285,7 +285,7 @@ final class EllipticCurveKey implements AKeyThatCanBeReleased {
         }
     }
 
-    boolean verifies(byte[] hash, byte[] signature) {
+    public boolean verifies(byte[] hash, byte[] signature) {
         if (handedBack
                 || published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN) {
             return false;
@@ -306,7 +306,7 @@ final class EllipticCurveKey implements AKeyThatCanBeReleased {
         }
     }
 
-    static boolean aPublishedPointVerifies(
+    public static boolean aPublishedPointVerifies(
             byte[] point, String curveName, byte[] hash, byte[] signature) {
 
         Optional<WeierstrassCurve> carriedHere = WeierstrassCurve.named(curveName);
@@ -402,7 +402,7 @@ final class EllipticCurveKey implements AKeyThatCanBeReleased {
                 Arrays.copyOfRange(written, at + 2, at + 2 + length)));
     }
 
-    static List<String> curveNamesInTheCataloguesOrder() {
+    public static List<String> curveNamesInTheCataloguesOrder() {
         return List.of("secp192r1", "secp224r1", "secp256r1",
                 "secp384r1", "secp521r1", "secp192k1", "secp224k1", "secp256k1",
                 "bp256r1", "bp384r1", "bp512r1", "curve25519", "curve448");

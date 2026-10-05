@@ -1,6 +1,7 @@
 package org.jebol.domain.value;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * A function defined in REBOL, with the spec and body it was made from.
@@ -16,7 +17,7 @@ public record FunctionValue(
         List<String> localNames,
         Context closedOver,
         boolean closure,
-        Context declaredWords) implements Value {
+        Context declaredWords) implements Value, DeclaresParameters {
 
     public FunctionValue {
         if (spec == null || body == null || closedOver == null) {
@@ -60,6 +61,22 @@ public record FunctionValue(
 
     public int arity() {
         return (int) parameters.stream().filter(Parameter::consumesAnArgument).count();
+    }
+
+    @Override
+    public Value reflected(WordValue field) {
+        return switch (field.canonical()) {
+            case "spec" -> spec;
+            case "body" -> body.copied(true);
+            case "words" -> spec.declaredParameters();
+            case "types" -> typesets();
+            default -> NoneValue.none();
+        };
+    }
+
+    @Override
+    public Set<String> refinementsDeclaredApart() {
+        return Set.of();
     }
 
     @Override

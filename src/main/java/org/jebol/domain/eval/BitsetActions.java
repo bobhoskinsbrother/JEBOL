@@ -22,6 +22,13 @@ public final class BitsetActions implements Actions {
     }
 
     @Override
+    public Value poked(Value position, Value written) {
+        members.requireChangeable();
+        holdAllOf(position, written.isTruthy());
+        return members;
+    }
+
+    @Override
     public Value cleared() {
         members.requireChangeable();
         members.clear();

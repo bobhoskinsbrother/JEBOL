@@ -9,7 +9,7 @@ public record NativeValue(
         List<Parameter> parameters,
         Set<String> declaredRefinements,
         Set<String> askedRefinements,
-        Optional<BlockValue> ownSpec) implements Value {
+        Optional<BlockValue> ownSpec) implements Value, DeclaresParameters {
 
     public NativeValue(String nativeName, List<Parameter> parameters) {
         this(nativeName, parameters, Set.of(), Set.of(), Optional.empty());
@@ -21,6 +21,11 @@ public record NativeValue(
 
         this(nativeName, parameters, declaredRefinements, askedRefinements,
                 Optional.empty());
+    }
+
+    @Override
+    public Set<String> refinementsDeclaredApart() {
+        return declaredRefinements;
     }
 
     public NativeValue askedFor(Set<String> refinements) {

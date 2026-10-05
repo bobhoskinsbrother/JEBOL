@@ -13,6 +13,7 @@ import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -26,27 +27,27 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class WhatEachComparisonNativeDeclaresTest {
 
-    private static Value answerOf(NativeDefinition function, Value left, Value right) {
+    private Value answerOf(NativeDefinition function, Value left, Value right) {
         return function.behaviour().call(List.of(left, right), null, null, Set.of());
     }
 
-    private static Value one() {
+    private Value one() {
         return IntegerValue.of(1);
     }
 
-    private static Value two() {
+    private Value two() {
         return IntegerValue.of(2);
     }
 
-    private static Value zero() {
+    private Value zero() {
         return IntegerValue.of(0);
     }
 
-    private static Value oneAsADecimal() {
+    private Value oneAsADecimal() {
         return DecimalValue.of(1.0);
     }
 
-    static Stream<Arguments> theEqualityQuestions() {
+    private Stream<Arguments> theEqualityQuestions() {
         return Stream.of(
                 Arguments.of(new EqualNative(), "equal?"),
                 Arguments.of(new NotEqualNative(), "not-equal?"),
@@ -57,7 +58,7 @@ class WhatEachComparisonNativeDeclaresTest {
                 Arguments.of(new SameNative(), "same?"));
     }
 
-    static Stream<Arguments> theOrderQuestions() {
+    private Stream<Arguments> theOrderQuestions() {
         return Stream.of(
                 Arguments.of(new GreaterNative(), "greater?"),
                 Arguments.of(new GreaterOrEqualNative(), "greater-or-equal?"),
@@ -65,16 +66,25 @@ class WhatEachComparisonNativeDeclaresTest {
                 Arguments.of(new LesserOrEqualNative(), "lesser-or-equal?"));
     }
 
-    static Stream<Arguments> everyComparison() {
-        return Stream.concat(theEqualityQuestions(), theOrderQuestions());
-    }
-
     @Nested
     @DisplayName("every comparison declares the same shape")
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class TheirShape {
 
+        Stream<Arguments> eachComparison() {
+            return Stream.concat(theEqualityQuestions(), theOrderQuestions());
+        }
+
+        Stream<Arguments> eachEqualityQuestion() {
+            return theEqualityQuestions();
+        }
+
+        Stream<Arguments> eachOrderQuestion() {
+            return theOrderQuestions();
+        }
+
         @ParameterizedTest(name = "{1}")
-        @MethodSource("org.jebol.domain.eval.definition.WhatEachComparisonNativeDeclaresTest#everyComparison")
+        @MethodSource("eachComparison")
         @DisplayName("named as Rebol spells it, with value1 and value2 and no refinement")
         void twoValuesAndNoRefinement(NativeDefinition function, String name) {
             assertThat(function.name()).isEqualTo(name);
@@ -84,7 +94,7 @@ class WhatEachComparisonNativeDeclaresTest {
         }
 
         @ParameterizedTest(name = "{1}")
-        @MethodSource("org.jebol.domain.eval.definition.WhatEachComparisonNativeDeclaresTest#theEqualityQuestions")
+        @MethodSource("eachEqualityQuestion")
         @DisplayName("an equality question accepts every datatype there is")
         void anEqualityQuestionAcceptsAnyType(NativeDefinition function, String name) {
             assertThat(function.parameters()).allSatisfy(parameter ->
@@ -94,7 +104,7 @@ class WhatEachComparisonNativeDeclaresTest {
         }
 
         @ParameterizedTest(name = "{1}")
-        @MethodSource("org.jebol.domain.eval.definition.WhatEachComparisonNativeDeclaresTest#theOrderQuestions")
+        @MethodSource("eachOrderQuestion")
         @DisplayName("an order question takes a bare value, which leaves out unset")
         void anOrderQuestionTakesABareValue(NativeDefinition function, String name) {
             assertThat(function.parameters()).allSatisfy(parameter ->
@@ -104,9 +114,10 @@ class WhatEachComparisonNativeDeclaresTest {
 
     @Nested
     @DisplayName("the equality questions answer at their own strictness")
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class TheEqualityAnswers {
 
-        static Stream<Arguments> answersRebolGives() {
+        Stream<Arguments> answersRebolGives() {
             return Stream.of(
                     Arguments.of(new EqualNative(), one(), oneAsADecimal(), true),
                     Arguments.of(new EqualNative(), StringValue.of("abc"), StringValue.of("ABC"), true),
@@ -140,9 +151,10 @@ class WhatEachComparisonNativeDeclaresTest {
 
     @Nested
     @DisplayName("the order questions answer either side of the boundary and on it")
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class TheOrderAnswers {
 
-        static Stream<Arguments> answersRebolGives() {
+        Stream<Arguments> answersRebolGives() {
             return Stream.of(
                     Arguments.of(new GreaterNative(), two(), one(), true),
                     Arguments.of(new GreaterNative(), one(), one(), false),
@@ -158,6 +170,10 @@ class WhatEachComparisonNativeDeclaresTest {
                     Arguments.of(new LesserOrEqualNative(), zero(), one(), true));
         }
 
+        Stream<Arguments> eachOrderQuestion() {
+            return theOrderQuestions();
+        }
+
         @ParameterizedTest(name = "{0} {1} {2} is {3}")
         @MethodSource("answersRebolGives")
         void answersAsRebolDoes(NativeDefinition function, Value left, Value right,
@@ -166,7 +182,7 @@ class WhatEachComparisonNativeDeclaresTest {
         }
 
         @ParameterizedTest(name = "{1}")
-        @MethodSource("org.jebol.domain.eval.definition.WhatEachComparisonNativeDeclaresTest#theOrderQuestions")
+        @MethodSource("eachOrderQuestion")
         @DisplayName("a value that has no order is refused rather than answered false")
         void aValueWithNoOrderIsRefused(NativeDefinition function, String name) {
             assertThatThrownBy(() -> answerOf(function, NoneValue.none(), one()))
@@ -176,7 +192,7 @@ class WhatEachComparisonNativeDeclaresTest {
         }
 
         @ParameterizedTest(name = "{1}")
-        @MethodSource("org.jebol.domain.eval.definition.WhatEachComparisonNativeDeclaresTest#theOrderQuestions")
+        @MethodSource("eachOrderQuestion")
         @DisplayName("and so is a block set against a number")
         void aBlockAgainstANumberIsRefused(NativeDefinition function, String name) {
             assertThatThrownBy(() -> answerOf(function, BlockValue.block(List.of(one())), one()))
@@ -188,9 +204,10 @@ class WhatEachComparisonNativeDeclaresTest {
 
     @Nested
     @DisplayName("each negative question is exactly the opposite of its positive twin")
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class TheNegativeTwins {
 
-        static Stream<Arguments> eachTwinAndAPairOfValues() {
+        Stream<Arguments> eachTwinAndAPairOfValues() {
             List<List<Value>> pairs = List.of(
                     List.of(one(), one()),
                     List.of(one(), two()),
@@ -205,15 +222,7 @@ class WhatEachComparisonNativeDeclaresTest {
                     Arguments.of(twin.get(0), twin.get(1), pair.get(0), pair.get(1))));
         }
 
-        @ParameterizedTest(name = "{0} and {1} on {2} {3}")
-        @MethodSource("eachTwinAndAPairOfValues")
-        void theTwinsDisagree(NativeDefinition positive, NativeDefinition negative,
-                              Value left, Value right) {
-            assertThat(answerOf(negative, left, right))
-                    .isEqualTo(LogicValue.of(!answerOf(positive, left, right).isTruthy()));
-        }
-
-        static Stream<Arguments> eachOrderTwinAndAPairOfValues() {
+        Stream<Arguments> eachOrderTwinAndAPairOfValues() {
             List<List<Value>> pairs = List.of(
                     List.of(zero(), one()),
                     List.of(one(), one()),
@@ -224,6 +233,14 @@ class WhatEachComparisonNativeDeclaresTest {
                     List.of(new GreaterNative(), new LesserOrEqualNative()));
             return twins.stream().flatMap(twin -> pairs.stream().map(pair ->
                     Arguments.of(twin.get(0), twin.get(1), pair.get(0), pair.get(1))));
+        }
+
+        @ParameterizedTest(name = "{0} and {1} on {2} {3}")
+        @MethodSource("eachTwinAndAPairOfValues")
+        void theTwinsDisagree(NativeDefinition positive, NativeDefinition negative,
+                              Value left, Value right) {
+            assertThat(answerOf(negative, left, right))
+                    .isEqualTo(LogicValue.of(!answerOf(positive, left, right).isTruthy()));
         }
 
         @ParameterizedTest(name = "{0} and {1} on {2} {3}")

@@ -75,6 +75,34 @@ public record ErrorValue(
         return Optional.of(fields);
     }
 
+    @Override
+    public boolean declaresTheField(String field) {
+        return FIELDS.contains(field);
+    }
+
+    @Override
+    public Value reflected(WordValue field) {
+        return switch (field.canonical()) {
+            case "words" -> BlockValue.block(FIELDS.stream()
+                    .<Value>map(WordValue::of).toList());
+            case "values" -> BlockValue.block(FIELDS.stream()
+                    .map(name -> field(name).orElseGet(NoneValue::none))
+                    .toList());
+            default -> NoneValue.none();
+        };
+    }
+
+    @Override
+    public Value copied(boolean deeply, Set<Datatype> kinds) {
+        Map<String, Value> fields = new LinkedHashMap<>();
+        for (String name : FIELDS) {
+            field(name).ifPresent(held ->
+                    fields.put(name, held.copiedAsAMember(deeply, kinds)));
+        }
+        return new ErrorValue(category, errorId, message, subject, secondArgument,
+                thirdArgument, near, whereChain, fields, wording);
+    }
+
     public ErrorValue spokenBy(ErrorWording catalogue) {
         return new ErrorValue(category, errorId, message, subject,
                 secondArgument, thirdArgument, near, whereChain, writtenFields, catalogue);

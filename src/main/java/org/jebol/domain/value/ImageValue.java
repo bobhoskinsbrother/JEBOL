@@ -2,8 +2,11 @@ package org.jebol.domain.value;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public record ImageValue(ImageStorage storage, int index) implements RebolSeries {
+
+    private static final int PARTS_OF_A_PIXEL = 4;
 
     public ImageValue {
         if (storage == null) {
@@ -70,6 +73,37 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
 
     public int[] pixelAt(int offsetFromHere) {
         return storage.pixelAt(index + offsetFromHere - 1);
+    }
+
+    @Override
+    public Value copied(boolean deeply, Set<Datatype> kinds) {
+        return copyOfTheFirstWholeRows(lengthFromHere());
+    }
+
+    public ImageValue copyOfTheFirstWholeRows(int howMany) {
+        int taking = Math.max(0, Math.min(howMany, lengthFromHere()));
+        int wideEnoughForARow = Math.max(1, storage.wide());
+        int wide = Math.min(taking, wideEnoughForARow);
+        int high = wide == 0 ? 0
+                : taking <= wideEnoughForARow ? 1 : taking / wideEnoughForARow;
+        ImageStorage into = ImageStorage.of(wide, high);
+        for (int at = 1; at <= wide * high; at++) {
+            int[] channels = pixelAt(at);
+            into.setColourAt(at, channels[0], channels[1], channels[2]);
+            into.setAlphaAt(at, channels[3]);
+        }
+        return new ImageValue(into, 1);
+    }
+
+    public byte[] everyPixel() {
+        byte[] octets = new byte[storageLength() * PARTS_OF_A_PIXEL];
+        for (int pixel = 0; pixel < storageLength(); pixel++) {
+            int[] parts = pixelAt(pixel + 1);
+            for (int part = 0; part < PARTS_OF_A_PIXEL; part++) {
+                octets[pixel * PARTS_OF_A_PIXEL + part] = (byte) parts[part];
+            }
+        }
+        return octets;
     }
 
     public PairValue size() {

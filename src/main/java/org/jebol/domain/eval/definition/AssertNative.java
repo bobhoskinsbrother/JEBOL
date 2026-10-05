@@ -45,7 +45,7 @@ public class AssertNative extends DefaultNative {
         };
     }
 
-    private static Value everyTypeHeld(BlockValue pairs, Evaluator evaluator, Context context) {
+    private Value everyTypeHeld(BlockValue pairs, Evaluator evaluator, Context context) {
         List<Value> items = pairs.remaining();
         for (int at = 0; at < items.size(); at += 2) {
             Value subject = items.get(at);
@@ -60,7 +60,7 @@ public class AssertNative extends DefaultNative {
         return LogicValue.of(true);
     }
 
-    private static Value theValueNamedBy(Value subject, Evaluator evaluator, Context context) {
+    private Value theValueNamedBy(Value subject, Evaluator evaluator, Context context) {
         boolean namesAValue = subject instanceof WordValue word
                 && word.datatype() == Datatype.WORD
                 || subject instanceof BlockValue path && path.datatype() == Datatype.PATH;
@@ -70,7 +70,7 @@ public class AssertNative extends DefaultNative {
         return evaluator.evaluateOrRaise(BlockValue.block(List.of(subject)), context);
     }
 
-    private static Value everyConditionHeld(
+    private Value everyConditionHeld(
             BlockValue conditions, Evaluator evaluator, Context context) {
 
         BlockValue at = conditions;
@@ -85,7 +85,7 @@ public class AssertNative extends DefaultNative {
         return LogicValue.of(true);
     }
 
-    private static boolean isOfType(Value held, Value type, Context context) {
+    private boolean isOfType(Value held, Value type, Context context) {
         return switch (type) {
             case DatatypeValue wanted -> held.datatype() == wanted.represents();
             case TypesetValue set -> set.holds(held.datatype());

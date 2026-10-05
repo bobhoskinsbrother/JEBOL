@@ -76,7 +76,7 @@ public class CatchNative extends DefaultNative {
         };
     }
 
-    private static boolean letsTheThrowPass(
+    private boolean letsTheThrowPass(
             ThrownSignal thrown, List<Value> arguments, Set<String> refinements) {
 
         boolean catchesQuitOnly = refinements.contains("quit")
@@ -87,7 +87,7 @@ public class CatchNative extends DefaultNative {
                         && !answersTo(thrown, expectedNames(arguments, refinements)));
     }
 
-    private static Set<String> expectedNames(List<Value> arguments, Set<String> refinements) {
+    private Set<String> expectedNames(List<Value> arguments, Set<String> refinements) {
         if (!refinements.contains("name") || arguments.size() <= WHERE_THE_NAMES_ARRIVE) {
             return Set.of();
         }
@@ -102,7 +102,7 @@ public class CatchNative extends DefaultNative {
         };
     }
 
-    private static boolean answersTo(ThrownSignal thrown, Set<String> expected) {
+    private boolean answersTo(ThrownSignal thrown, Set<String> expected) {
         return thrown.name()
                 .map(expected::contains)
                 .orElseGet(expected::isEmpty);

@@ -20,6 +20,12 @@ public final class BlockActions extends SeriesActions {
     }
 
     @Override
+    public Value poked(Value position, Value written) {
+        block.storage().set(pokedStoragePosition(position), written);
+        return written;
+    }
+
+    @Override
     void takeOneOutAt(int oneBasedIndex) {
         block.storage().removeAt(oneBasedIndex);
     }

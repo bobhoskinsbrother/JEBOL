@@ -60,16 +60,14 @@ public class ResolveNative extends DefaultNative {
 
     private record WordsToResolve(int startAt, Set<String> spellings, boolean limited) {
 
-        static WordsToResolve everything() {
-            return new WordsToResolve(1, Set.of(), false);
-        }
+        static final WordsToResolve EVERYTHING = new WordsToResolve(1, Set.of(), false);
 
         boolean allows(String canonical) {
             return !limited || spellings.contains(canonical);
         }
     }
 
-    private static void resolveInto(
+    private void resolveInto(
             Context into, Context from, Set<String> refinements, Value onlyThese) {
 
         List<ContextSlot> targetSlots = into.slots();
@@ -98,7 +96,7 @@ public class ResolveNative extends DefaultNative {
         }
     }
 
-    private static Map<String, Value> theFieldsOtherThanSelfIn(Context from) {
+    private Map<String, Value> theFieldsOtherThanSelfIn(Context from) {
         Map<String, Value> available = new LinkedHashMap<>();
         for (ContextSlot slot : from.slots()) {
             if (!slot.canonical().equals("self")) {
@@ -108,11 +106,11 @@ public class ResolveNative extends DefaultNative {
         return available;
     }
 
-    private static WordsToResolve wordsToResolve(
+    private WordsToResolve wordsToResolve(
             List<ContextSlot> targetSlots, Set<String> refinements, Value onlyThese) {
 
         if (!refinements.contains("only")) {
-            return WordsToResolve.everything();
+            return WordsToResolve.EVERYTHING;
         }
         if (onlyThese instanceof IntegerValue(long magnitude)) {
             int startAt = Math.max(1, (int) magnitude);
@@ -134,6 +132,6 @@ public class ResolveNative extends DefaultNative {
                     .collect(Collectors.toUnmodifiableSet()),
                     true);
         }
-        return WordsToResolve.everything();
+        return WordsToResolve.EVERYTHING;
     }
 }

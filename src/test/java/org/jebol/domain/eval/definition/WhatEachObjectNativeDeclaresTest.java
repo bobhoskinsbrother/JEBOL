@@ -14,6 +14,7 @@ import org.jebol.domain.value.WordValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -24,24 +25,25 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class WhatEachObjectNativeDeclaresTest {
 
     private static final Set<String> NOTHING = Set.of();
 
     private static final Set<Datatype> A_BLOCK = Set.of(Datatype.BLOCK);
 
-    private static Value answerOf(NativeDefinition definition, Set<String> refinements,
+    private Value answerOf(NativeDefinition definition, Set<String> refinements,
             Value... arguments) {
         return definition.behaviour().call(List.of(arguments), null, null, refinements);
     }
 
-    private static Context holding(String name, Value value) {
+    private Context holding(String name, Value value) {
         Context fields = Context.root();
         fields.set(name, value);
         return fields;
     }
 
-    static Stream<Arguments> whatEachDeclares() {
+    Stream<Arguments> whatEachDeclares() {
         return Stream.of(
                 Arguments.of(new MakeAction(), "make",
                         List.of(Parameter.required("prototype", Typeset.ANY_TYPE.members()),

@@ -62,7 +62,7 @@ public class TryNative extends DefaultNative {
         };
     }
 
-    private static ErrorValue theErrorStandingFor(RuntimeException escaping) {
+    private ErrorValue theErrorStandingFor(RuntimeException escaping) {
         return switch (escaping) {
             case ThrownSignal thrown -> ErrorValue.about(ErrorCategory.THROW, "throw",
                     "a throw that nothing caught",
@@ -82,7 +82,7 @@ public class TryNative extends DefaultNative {
         };
     }
 
-    private static Value handled(
+    private Value handled(
             Value failure, Value handler, Evaluator evaluator, Context context) {
 
         return handler instanceof BlockValue block

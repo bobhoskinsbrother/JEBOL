@@ -89,7 +89,7 @@ final class ChecksumPort {
 
     private static RunningSumThatAReadDoesNotEnd inProgress(PortValue port) {
         if (!port.isOpen()
-                || !(port.fieldNamed("extra") instanceof HandleValue held)
+                || !(port.fieldValue("extra") instanceof HandleValue held)
                 || !HANDLE_TYPE.equals(held.typeName())
                 || !(held.payload() instanceof JavaObjectValue wrapped)
                 || !(wrapped.held().orElse(null) instanceof RunningSumThatAReadDoesNotEnd sum)) {
@@ -156,7 +156,7 @@ final class ChecksumPort {
     }
 
     static String methodOf(PortValue port) {
-        if (!(port.fieldNamed("spec") instanceof ObjectValue(Context context))
+        if (!(port.fieldValue("spec") instanceof ObjectValue(Context context))
                 || !context.holds("method")
                 || !(context.ownSlotFor("method").value()
                         instanceof WordValue method)) {

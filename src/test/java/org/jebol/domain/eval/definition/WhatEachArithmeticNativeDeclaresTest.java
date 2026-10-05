@@ -11,6 +11,7 @@ import org.jebol.domain.value.Value;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -29,20 +30,21 @@ class WhatEachArithmeticNativeDeclaresTest {
 
     private static final Set<String> IN_RADIANS = Set.of("radians");
 
-    private static Value answerOf(NativeDefinition function, Set<String> refinements,
+    private Value answerOf(NativeDefinition function, Set<String> refinements,
                                   Value... arguments) {
         return function.behaviour().call(List.of(arguments), null, null, refinements);
     }
 
-    private static double quantityOf(Value answered) {
+    private double quantityOf(Value answered) {
         return ((DecimalValue) answered).quantity();
     }
 
     @Nested
     @DisplayName("the trigonometric functions take an angle, in degrees unless asked")
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class TheTrigonometricOnes {
 
-        static Stream<Arguments> eachOne() {
+        Stream<Arguments> eachOne() {
             return Stream.of(
                     Arguments.of(new SineNative(), "sine", 0.0, 1.0),
                     Arguments.of(new CosineNative(), "cosine", 1.0, 0.0),
@@ -149,9 +151,10 @@ class WhatEachArithmeticNativeDeclaresTest {
 
     @Nested
     @DisplayName("absolute asks the value, so every datatype keeps its own")
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class AbsoluteKeepsTheDatatype {
 
-        static Stream<Arguments> eachMeasurableDatatype() {
+        Stream<Arguments> eachMeasurableDatatype() {
             return Stream.of(
                     Arguments.of(IntegerValue.of(-7), IntegerValue.of(7)),
                     Arguments.of(DecimalValue.of(-7.5), DecimalValue.of(7.5)),
@@ -209,7 +212,7 @@ class WhatEachArithmeticNativeDeclaresTest {
                     .isEqualTo(180.0);
         }
 
-        private static String theFirstParameterOf(NativeDefinition function) {
+        private String theFirstParameterOf(NativeDefinition function) {
             return function.parameters().stream()
                     .map(Parameter::name)
                     .findFirst()

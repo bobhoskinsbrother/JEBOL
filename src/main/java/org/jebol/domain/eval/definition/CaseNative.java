@@ -57,7 +57,7 @@ public class CaseNative extends DefaultNative {
         };
     }
 
-    private static BlockValue pastTheBranch(BlockValue afterCondition) {
+    private BlockValue pastTheBranch(BlockValue afterCondition) {
         return afterCondition.atTail()
                 ? afterCondition
                 : afterCondition.atIndex(afterCondition.index() + 1);

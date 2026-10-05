@@ -9,6 +9,7 @@ import org.jebol.domain.value.Value;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public abstract class DefaultNative implements NativeDefinition {
@@ -80,6 +81,35 @@ public abstract class DefaultNative implements NativeDefinition {
             parameters.add(Parameter.required(name));
         }
         return parameters;
+    }
+
+    protected Optional<Value> argumentOf(String refinement, int which,
+            List<Value> arguments, Set<String> asked) {
+
+        if (!asked.contains(refinement)) {
+            return Optional.empty();
+        }
+        int at = 0;
+        int seenOfThisRefinement = 0;
+        for (Parameter parameter : parameters()) {
+            if (!arrivesInThisCall(parameter, asked)) {
+                continue;
+            }
+            if (belongsTo(parameter, refinement) && seenOfThisRefinement++ == which) {
+                return at < arguments.size() ? Optional.of(arguments.get(at)) : Optional.empty();
+            }
+            at++;
+        }
+        return Optional.empty();
+    }
+
+    private boolean arrivesInThisCall(Parameter parameter, Set<String> asked) {
+        return parameter.consumesAnArgument()
+                && parameter.owningRefinement().map(asked::contains).orElse(true);
+    }
+
+    private boolean belongsTo(Parameter parameter, String refinement) {
+        return parameter.owningRefinement().filter(refinement::equals).isPresent();
     }
 
     protected Value refuseTheArgument(Value given, String wanted) {

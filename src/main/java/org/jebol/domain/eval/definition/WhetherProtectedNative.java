@@ -32,7 +32,7 @@ public class WhetherProtectedNative extends DefaultNative {
                 LogicValue.of(isProtected(arguments.getFirst()));
     }
 
-    private static boolean isProtected(Value value) {
+    private boolean isProtected(Value value) {
         return switch (value) {
             case BlockValue path when path.datatype().isAnyPath() ->
                     path.fieldThePathNames().map(ContextSlot::isProtected).orElse(false);

@@ -2,8 +2,10 @@ package org.jebol.domain.value;
 
 import org.jebol.domain.value.sets.MembersKept;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public sealed interface Value permits
         RebolNumber,
@@ -50,6 +52,63 @@ public sealed interface Value permits
     default List<Value> items() {
         throw Raised.of(EvaluationFailure.CANNOT_USE,
                 "cannot walk " + datatype().literalSpelling() + " value");
+    }
+
+    default void refuseToBeWrittenWhenItNamesSelf() {
+    }
+
+    default byte[] asOctets() {
+        return Molder.form(this).getBytes(StandardCharsets.UTF_8);
+    }
+
+    default Value copied(boolean deeply) {
+        return copied(deeply, Copying.WHAT_A_DEEP_COPY_COPIES);
+    }
+
+    default Value copied(boolean deeply, Set<Datatype> kinds) {
+        return this;
+    }
+
+    default Value copiedAsAMember(boolean deeply, Set<Datatype> kinds) {
+        if (!kinds.contains(datatype())) {
+            return this;
+        }
+        return copied(deeply, deeply ? kinds : Copying.NOTHING_INSIDE);
+    }
+
+    default long asPosition() {
+        throw Raised.of(EvaluationFailure.INVALID_ARG,
+                "a position is a number, not " + datatype().literalSpelling());
+    }
+
+    default String runTogether() {
+        return Molder.form(this);
+    }
+
+    default Value reflected(WordValue field) {
+        return NoneValue.none();
+    }
+
+    default boolean isAnyObject() {
+        return fieldsAsAContext().isPresent();
+    }
+
+    default Value fieldValue(String field) {
+        return fieldsAsAContext()
+                .filter(fields -> fields.holds(field))
+                .map(fields -> fields.ownSlotFor(field).value())
+                .orElseGet(NoneValue::none);
+    }
+
+    default boolean declaresTheField(String field) {
+        return fieldsAsAContext().map(fields -> fields.holds(field)).orElse(false);
+    }
+
+    default boolean declaresAFieldFindCanReachBy(Value wanted) {
+        return wanted instanceof WordValue word
+                && word.datatype() == Datatype.WORD
+                && !word.canonical().equals("self")
+                && declaresTheField(word.canonical());
     }
 
     default boolean isProtected() {

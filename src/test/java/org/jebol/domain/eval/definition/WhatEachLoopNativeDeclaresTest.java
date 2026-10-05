@@ -11,6 +11,7 @@ import org.jebol.domain.value.Value;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -22,24 +23,25 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class WhatEachLoopNativeDeclaresTest {
 
     private static final Set<String> NOTHING = Set.of();
 
     private static final Set<Datatype> A_BLOCK = Set.of(Datatype.BLOCK);
 
-    private static void call(NativeDefinition definition, Set<String> refinements,
+    private void call(NativeDefinition definition, Set<String> refinements,
             Value... arguments) {
         definition.behaviour().call(List.of(arguments), null, null, refinements);
     }
 
-    private static Set<Datatype> whatRepeatCountsBy() {
+    private Set<Datatype> whatRepeatCountsBy() {
         return Typeset.NUMBER.membersAnd(
                 Typeset.SERIES.membersAnd(Datatype.PAIR, Datatype.NONE)
                         .toArray(Datatype[]::new));
     }
 
-    static Stream<Arguments> whatEachDeclares() {
+    Stream<Arguments> whatEachDeclares() {
         return Stream.of(
                 Arguments.of(new LoopNative(), "loop",
                         List.of(Parameter.required("count", Typeset.NUMBER.members()),

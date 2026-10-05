@@ -40,7 +40,7 @@ public class ContextOfWordNative extends DefaultNative {
         };
     }
 
-    private static Value whatDoIsInLibrary(Context library) {
+    private Value whatDoIsInLibrary(Context library) {
         return library.knows("do") ? library.slotFor("do").value() : NoneValue.none();
     }
 }

@@ -220,6 +220,21 @@ public final class Context {
         return slots().stream().filter(slot -> !slot.canonical().equals("self")).flatMap(slot -> Stream.of(WordValue.of(slot.spelling(), Datatype.SET_WORD), slot.value())).toList();
     }
 
+    public BlockValue setWordsAndValuesOnLines() {
+        BlockValue block = BlockValue.block(setWordsAndValues());
+        block.putEachPairOnALine();
+        return block;
+    }
+
+    public BlockValue wordsExcludingSelf() {
+        return BlockValue.block(fieldsExcludingSelf().keySet().stream()
+                .<Value>map(WordValue::of).toList());
+    }
+
+    public BlockValue valuesExcludingSelf() {
+        return BlockValue.block(List.copyOf(fieldsExcludingSelf().values()));
+    }
+
     public List<ContextSlot> slots() {
         return slotsByCanonicalName.values().stream().filter(slot -> !slot.isHidden()).collect(Collectors.toCollection(ArrayList::new));
     }

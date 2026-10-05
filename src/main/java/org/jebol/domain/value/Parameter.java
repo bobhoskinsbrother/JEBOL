@@ -19,6 +19,9 @@ public record Parameter(
         Set<Datatype> acceptedTypes,
         Optional<String> owningRefinement) {
 
+    static final Set<Datatype> A_REFINEMENTS_SLOT =
+            EnumSet.of(Datatype.NONE, Datatype.LOGIC);
+
     public Parameter {
         if (name == null || name.isEmpty()) {
             throw new IllegalArgumentException("a parameter needs a name");
@@ -80,6 +83,7 @@ public record Parameter(
         return new Parameter(name, ParameterKind.REFINEMENT, Set.of(), Optional.empty());
     }
 
+
     /** Whether this parameter takes a value from the block being evaluated. */
     public boolean consumesAnArgument() {
         return kind == ParameterKind.NORMAL
@@ -93,5 +97,14 @@ public record Parameter(
         return acceptedTypes.isEmpty()
                 ? datatype != Datatype.UNSET
                 : acceptedTypes.contains(datatype);
+    }
+
+    TypesetValue typeset() {
+        if (kind == ParameterKind.REFINEMENT) {
+            return TypesetValue.of(A_REFINEMENTS_SLOT);
+        }
+        return TypesetValue.of(acceptedTypes.isEmpty()
+                ? Typeset.ANY_TYPE.members()
+                : acceptedTypes);
     }
 }

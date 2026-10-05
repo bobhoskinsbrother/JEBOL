@@ -2,8 +2,10 @@ package org.jebol.domain.value;
 
 import org.jebol.domain.value.sets.MembersKept;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public record StringValue(StringStorage storage, int index, Datatype datatype)
         implements RebolSeries {
@@ -29,6 +31,16 @@ public record StringValue(StringStorage storage, int index, Datatype datatype)
     @Override
     public boolean isProtected() {
         return storage.isProtected();
+    }
+
+    @Override
+    public Value copied(boolean deeply, Set<Datatype> kinds) {
+        return StringValue.of(text(), datatype);
+    }
+
+    @Override
+    public byte[] asOctets() {
+        return text().getBytes(StandardCharsets.UTF_8);
     }
 
     @Override

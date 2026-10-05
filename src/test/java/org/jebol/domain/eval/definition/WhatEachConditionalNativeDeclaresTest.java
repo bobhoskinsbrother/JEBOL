@@ -16,6 +16,7 @@ import org.jebol.domain.value.WordValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -28,6 +29,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class WhatEachConditionalNativeDeclaresTest {
 
     private static final Set<String> NOTHING = Set.of();
@@ -36,40 +38,40 @@ class WhatEachConditionalNativeDeclaresTest {
 
     private static final Set<Datatype> A_BLOCK = Set.of(Datatype.BLOCK);
 
-    private static Value answerOf(NativeDefinition definition, Set<String> refinements,
+    private Value answerOf(NativeDefinition definition, Set<String> refinements,
             Value... arguments) {
         return definition.behaviour().call(List.of(arguments), null, null, refinements);
     }
 
-    private static Value yes() {
+    private Value yes() {
         return LogicValue.of(true);
     }
 
-    private static Value no() {
+    private Value no() {
         return LogicValue.of(false);
     }
 
-    private static Value one() {
+    private Value one() {
         return IntegerValue.of(1);
     }
 
-    private static Value two() {
+    private Value two() {
         return IntegerValue.of(2);
     }
 
-    private static BlockValue aBlockHoldingOne() {
+    private BlockValue aBlockHoldingOne() {
         return BlockValue.block(List.of(IntegerValue.of(1)));
     }
 
-    private static BlockValue anEmptyBlock() {
+    private BlockValue anEmptyBlock() {
         return BlockValue.block(List.of());
     }
 
-    private static Parameter anyType(String name) {
+    private Parameter anyType(String name) {
         return Parameter.required(name, Typeset.ANY_TYPE.members());
     }
 
-    static Stream<Arguments> whatEachDeclares() {
+    Stream<Arguments> whatEachDeclares() {
         return Stream.of(
                 Arguments.of(new IfNative(), "if",
                         List.of(anyType("condition"), anyType("branch")), ONLY),
@@ -203,9 +205,10 @@ class WhatEachConditionalNativeDeclaresTest {
 
     @Nested
     @DisplayName("not is true only for false and none")
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
     class Not {
 
-        static Stream<Arguments> everyKindOfTruth() {
+        Stream<Arguments> everyKindOfTruth() {
             return Stream.of(
                     Arguments.of(no(), true),
                     Arguments.of(NoneValue.none(), true),

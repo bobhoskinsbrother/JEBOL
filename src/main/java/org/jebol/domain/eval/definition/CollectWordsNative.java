@@ -56,14 +56,14 @@ public class CollectWordsNative extends DefaultNative {
         };
     }
 
-    private static Value theIgnoredWords(List<Value> arguments, Set<String> refinements) {
+    private Value theIgnoredWords(List<Value> arguments, Set<String> refinements) {
         return refinements.contains("ignore")
                 && arguments.size() > WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES
                 ? arguments.get(WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES)
                 : NoneValue.none();
     }
 
-    private static Datatype theWordKindAsked(List<Value> arguments, Set<String> refinements) {
+    private Datatype theWordKindAsked(List<Value> arguments, Set<String> refinements) {
         int at = WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES
                 + (refinements.contains("ignore") ? 1 : 0);
         if (arguments.size() <= at
@@ -74,7 +74,7 @@ public class CollectWordsNative extends DefaultNative {
         return represents;
     }
 
-    private static Set<String> namesIn(Value source) {
+    private Set<String> namesIn(Value source) {
         return switch (source) {
             case BlockValue words -> words.remaining().stream()
                     .filter(WordValue.class::isInstance)

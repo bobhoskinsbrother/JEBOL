@@ -36,7 +36,7 @@ public final class ObjectActions implements Actions {
         if (object.context().isClosedToNewNames()) {
             throw Raised.of(EvaluationFailure.PROTECTED, nativeName);
         }
-        RebolNativeWords.refuseHiddenField(object, asked.given());
+        object.refuseHiddenFieldsIn(asked.given());
         if (asked.given() instanceof WordValue only) {
             RebolNativeWords.refuseTheSelfTheObjectAlreadyHas(object, only);
             object.context().set(only.canonical(), UnsetValue.unset());

@@ -66,7 +66,7 @@ public class DoNative extends DefaultNative {
         };
     }
 
-    private static Value oneStepThrough(
+    private Value oneStepThrough(
             Value value, WordValue var, Evaluator evaluator, Context context) {
 
         Optional<BlockValue> steppable = steppable(value, evaluator, context);
@@ -84,7 +84,7 @@ public class DoNative extends DefaultNative {
         return taken.value();
     }
 
-    private static Optional<BlockValue> steppable(
+    private Optional<BlockValue> steppable(
             Value value, Evaluator evaluator, Context context) {
 
         return switch (value) {
@@ -96,7 +96,7 @@ public class DoNative extends DefaultNative {
         };
     }
 
-    private static Value evaluated(Value value, Evaluator evaluator, Context context) {
+    private Value evaluated(Value value, Evaluator evaluator, Context context) {
         return switch (value) {
             case BlockValue block when block.datatype() == Datatype.BLOCK
                     || block.datatype() == Datatype.PAREN ->
@@ -124,7 +124,7 @@ public class DoNative extends DefaultNative {
         };
     }
 
-    private static Value evaluatedSource(String source, Evaluator evaluator) {
+    private Value evaluatedSource(String source, Evaluator evaluator) {
         try {
             return evaluator.evaluateSource(source);
         } catch (ReturnSignal returned) {
@@ -132,7 +132,7 @@ public class DoNative extends DefaultNative {
         }
     }
 
-    private static Value doneAsAScript(BinaryValue bytes, Evaluator evaluator) {
+    private Value doneAsAScript(BinaryValue bytes, Evaluator evaluator) {
         Value loadHeader = evaluator.systemContext().systemFunctionNamed("load-header");
         Value read = evaluator.applyFunction(loadHeader, List.of(bytes));
         if (read instanceof WordValue why) {
@@ -143,7 +143,7 @@ public class DoNative extends DefaultNative {
         return evaluatedSource(theBodyOf(parts), evaluator);
     }
 
-    private static void refuseAScriptThatNeedsANewerInterpreter(
+    private void refuseAScriptThatNeedsANewerInterpreter(
             Value header, Evaluator evaluator) {
 
         if (header instanceof ObjectValue(Context fields)
@@ -156,7 +156,7 @@ public class DoNative extends DefaultNative {
         }
     }
 
-    private static String theBodyOf(List<Value> parts) {
+    private String theBodyOf(List<Value> parts) {
         return parts.get(1) instanceof BinaryValue mark
                 && parts.get(2) instanceof BinaryValue remaining
                 && mark.sharesStorageWith(remaining)
@@ -164,17 +164,17 @@ public class DoNative extends DefaultNative {
                 : ((BinaryValue) parts.get(1)).asStrictText();
     }
 
-    private static boolean interpreterMeets(TupleValue wanted, Evaluator evaluator) {
+    private boolean interpreterMeets(TupleValue wanted, Evaluator evaluator) {
         return evaluator.systemContext().valueAt("system", "version") instanceof TupleValue own
                 && !Comparison.holds(wanted, own, Comparison.Strictness.GREATER);
     }
 
-    private static Value runAsAScript(StringValue address, Evaluator evaluator) {
+    private Value runAsAScript(StringValue address, Evaluator evaluator) {
         Value doStar = evaluator.systemContext().systemFunctionNamed("do*");
         return evaluator.applyFunction(doStar, List.of(address));
     }
 
-    private static BlockValue loadedForStepping(
+    private BlockValue loadedForStepping(
             String source, Evaluator evaluator, Context context) {
 
         TranscodeResult read = Transcoder.transcode(source, evaluator.construction());
@@ -184,12 +184,12 @@ public class DoNative extends DefaultNative {
         return Binder.bindAndDefine(read.values().orElseThrow(), context);
     }
 
-    private static Value raiseHalfAnExpression(Value assigning) {
+    private Value raiseHalfAnExpression(Value assigning) {
         throw Raised.of(EvaluationFailure.INVALID_ARG,
                 Molder.mold(assigning) + " assigns, and there is nothing here to assign");
     }
 
-    private static void recordTheScriptArguments(Evaluator evaluator, Value given) {
+    private void recordTheScriptArguments(Evaluator evaluator, Value given) {
         if (evaluator.systemContext().valueAt("system", "script")
                 instanceof ObjectValue(Context script)) {
             script.set("args", given);

@@ -22,6 +22,12 @@ public final class VectorActions extends SeriesActions {
     }
 
     @Override
+    public Value poked(Value position, Value written) {
+        VectorPath.write(vector, position, written);
+        return written;
+    }
+
+    @Override
     void takeOneOutAt(int oneBasedIndex) {
         vector.storage().removeAt(oneBasedIndex);
     }

@@ -306,6 +306,17 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         return written;
     }
 
+    @Override
+    public Value reflected(WordValue asked) {
+        return switch (asked.canonical()) {
+            case "spec" -> spec.declaration();
+            case "words", "keys" -> BlockValue.block(fieldNames());
+            case "values" -> BlockValue.block(fieldValues());
+            case "body" -> BlockValue.block(body());
+            default -> throw Raised.cannotUse(asked, "reflect struct!");
+        };
+    }
+
     /** COPY: the same layout over bytes of its own. */
     public StructValue separateCopy() {
         return new StructValue(spec, data.copyOf(offset, spec.size()), 0);

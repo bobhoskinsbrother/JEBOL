@@ -29,7 +29,7 @@ final class SeekableFilePort {
     private static final int WHETHER_IT_MAY_WRITE = 1;
 
     static long positionOf(PortValue port) {
-        return switch (port.fieldNamed(THE_POSITION_AND_WHETHER_IT_MAY_WRITE)) {
+        return switch (port.fieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE)) {
             case IntegerValue at -> at.magnitude();
             case BlockValue kept
                     when kept.remaining().get(THE_POSITION) instanceof IntegerValue(long magnitude) ->
@@ -43,7 +43,7 @@ final class SeekableFilePort {
     }
 
     static boolean mayWriteThrough(PortValue port) {
-        return !(port.fieldNamed(THE_POSITION_AND_WHETHER_IT_MAY_WRITE)
+        return !(port.fieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE)
                         instanceof BlockValue kept)
                 || kept.remaining().get(WHETHER_IT_MAY_WRITE).isTruthy();
     }
@@ -60,7 +60,7 @@ final class SeekableFilePort {
     }
 
     static String pathOf(PortValue port) {
-        if (!(port.fieldNamed("spec") instanceof ObjectValue(org.jebol.domain.value.Context context))) {
+        if (!(port.fieldValue("spec") instanceof ObjectValue(org.jebol.domain.value.Context context))) {
             return "";
         }
         for (String field : WHERE_A_FILE_KEEPS_ITS_PATH_BEFORE_WHERE_A_URL_DOES) {

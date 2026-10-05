@@ -35,7 +35,7 @@ public abstract class ObjectFromSpecNative extends DefaultNative {
                 objectMadeFrom((BlockValue) arguments.getFirst(), evaluator, context);
     }
 
-    protected static ObjectValue objectMadeFrom(
+    protected ObjectValue objectMadeFrom(
             BlockValue spec, Evaluator evaluator, Context enclosing) {
 
         Context fields = Context.childOf(enclosing);
@@ -47,7 +47,7 @@ public abstract class ObjectFromSpecNative extends DefaultNative {
         return built;
     }
 
-    private static Set<String> itsOwnFieldNames(Context fields) {
+    private Set<String> itsOwnFieldNames(Context fields) {
         return fields.slots().stream()
                 .map(ContextSlot::canonical)
                 .collect(Collectors.toSet());

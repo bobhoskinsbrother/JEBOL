@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class MapValue implements Value {
 
@@ -199,6 +200,22 @@ public final class MapValue implements Value {
         return List.copyOf(flat);
     }
 
+    public BlockValue pairsOnLines() {
+        BlockValue block = BlockValue.block(flattened());
+        block.putEachPairOnALine();
+        return block;
+    }
+
+    @Override
+    public Value reflected(WordValue field) {
+        return switch (field.canonical()) {
+            case "words" -> BlockValue.block(keys());
+            case "values" -> BlockValue.block(values());
+            case "body" -> pairsOnLines();
+            default -> NoneValue.none();
+        };
+    }
+
     @Override
     public List<Value> items() {
         List<Value> flat = new ArrayList<>();
@@ -216,6 +233,19 @@ public final class MapValue implements Value {
 
     public void protectFromChange(boolean refusing) {
         protectedFromChange = refusing;
+    }
+
+    @Override
+    public Value copied(boolean deeply, Set<Datatype> kinds) {
+        List<Value> flattened = flattened();
+        List<Value> copiedPairs = new ArrayList<>(flattened.size());
+        for (int at = 0; at < flattened.size(); at++) {
+            boolean isAValueRatherThanAKey = at % 2 == 1;
+            copiedPairs.add(isAValueRatherThanAKey
+                    ? flattened.get(at).copiedAsAMember(deeply, kinds)
+                    : flattened.get(at));
+        }
+        return MapValue.of(copiedPairs);
     }
 
     public MapValue copy() {

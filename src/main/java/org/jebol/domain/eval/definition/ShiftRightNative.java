@@ -1,6 +1,6 @@
 package org.jebol.domain.eval.definition;
 
-public class ShiftRightNative extends ShiftNative {
+public class ShiftRightNative extends ShiftingNative {
 
     @Override
     public String name() {

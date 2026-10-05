@@ -2,7 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.*;
 
-final class ImageOperations {
+public final class ImageOperations {
 
     private ImageOperations() {
     }
@@ -13,7 +13,7 @@ final class ImageOperations {
         return storage.wide() * storage.high();
     }
 
-    static void premultiply(ImageValue image) {
+    public static void premultiply(ImageValue image) {
         ImageStorage storage = image.storage();
         for (int pixel = 1;
                 pixel <= everyPixelOfTheRectangleAndNotTheSpareRow(storage);
@@ -30,7 +30,7 @@ final class ImageOperations {
         }
     }
 
-    static void blur(ImageValue image, int radius) {
+    public static void blur(ImageValue image, int radius) {
         ImageStorage storage = image.storage();
         if (radius <= 0 || storage.wide() == 0 || storage.high() == 0) {
             return;
@@ -189,7 +189,7 @@ final class ImageOperations {
 
     private static final int CHANNELS = 4;
 
-    static ImageValue resized(ImageValue image, int wide, int high) {
+    public static ImageValue resized(ImageValue image, int wide, int high) {
         ImageStorage from = image.storage();
         ImageStorage into = ImageStorage.of(wide, high);
         for (int row = 0; row < high; row++) {
@@ -209,7 +209,7 @@ final class ImageOperations {
                 + (column * from.wide() / wide) + 1);
     }
 
-    static double differenceBetween(ImageValue first, ImageValue second) {
+    public static double differenceBetween(ImageValue first, ImageValue second) {
         ImageStorage left = first.storage();
         ImageStorage right = second.storage();
         int wide = onlyTheOverlapIsCompared(left.wide(), right.wide());
@@ -221,7 +221,7 @@ final class ImageOperations {
         return Math.min(ours, theirs);
     }
 
-    static double differenceOverTheRectangle(ImageValue first, ImageValue second,
+    public static double differenceOverTheRectangle(ImageValue first, ImageValue second,
             int cornerX, int cornerY, int rectangleWide, int rectangleHigh) {
 
         ImageStorage left = first.storage();

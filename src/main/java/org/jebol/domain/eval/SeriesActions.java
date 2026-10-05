@@ -1,6 +1,8 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.NoneValue;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 
@@ -40,6 +42,7 @@ abstract class SeriesActions implements Actions {
         }
     }
 
+    @Override
     public Value takenSeveral(long wanted) {
         int from = Math.min(held().index(), held().storageLength() + 1);
         int howMany;
@@ -55,6 +58,7 @@ abstract class SeriesActions implements Actions {
         return ofTheSameKindHolding(taken);
     }
 
+    @Override
     public Value takenOne() {
         if (held().lengthFromHere() == 0) {
             return NoneValue.none();
@@ -62,6 +66,15 @@ abstract class SeriesActions implements Actions {
         Value taken = held().items().getFirst();
         takeOutFrom(held().index(), 1);
         return taken;
+    }
+
+    int pokedStoragePosition(Value position) {
+        long at = position.asPosition();
+        if (at < 1 || at > held().lengthFromHere()) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                    "poke at " + at + " on a series of " + held().lengthFromHere());
+        }
+        return held().index() + (int) at - 1;
     }
 
     Value clearedOneAtATime() {

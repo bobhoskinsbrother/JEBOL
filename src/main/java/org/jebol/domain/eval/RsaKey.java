@@ -10,7 +10,7 @@ import java.security.spec.RSAPrivateCrtKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.Optional;
 
-final class RsaKey {
+public final class RsaKey {
 
     private final PublicKey publicHalf;
     private final PrivateKey privateHalf;
@@ -20,7 +20,7 @@ final class RsaKey {
         this.privateHalf = privateHalf;
     }
 
-    boolean canDecryptAndSign() {
+    public boolean canDecryptAndSign() {
         return privateHalf != null;
     }
 
@@ -33,7 +33,7 @@ final class RsaKey {
         return new BigInteger(1, octets);
     }
 
-    static Optional<RsaKey> publicKeyFrom(byte[] modulus, byte[] publicExponent) {
+    public static Optional<RsaKey> publicKeyFrom(byte[] modulus, byte[] publicExponent) {
         try {
             BigInteger n = unsignedMostSignificantByteFirst(modulus);
             BigInteger e = unsignedMostSignificantByteFirst(publicExponent);
@@ -47,7 +47,7 @@ final class RsaKey {
         }
     }
 
-    static Optional<RsaKey> privateKeyFrom(byte[] modulus, byte[] publicExponent,
+    public static Optional<RsaKey> privateKeyFrom(byte[] modulus, byte[] publicExponent,
             byte[] privateExponent, byte[] firstPrime, byte[] secondPrime) {
         try {
             BigInteger n = unsignedMostSignificantByteFirst(modulus);
@@ -93,14 +93,14 @@ final class RsaKey {
                 : "RSA/ECB/PKCS1Padding";
     }
 
-    byte[] enciphered(byte[] data, boolean optimalPadding) throws Exception {
+    public byte[] enciphered(byte[] data, boolean optimalPadding) throws Exception {
         Cipher cipher = Cipher.getInstance(
                 cipherStatingTheDigestRatherThanLeavingItToAProvider(optimalPadding));
         cipher.init(Cipher.ENCRYPT_MODE, publicHalf);
         return cipher.doFinal(data);
     }
 
-    byte[] deciphered(byte[] data, boolean optimalPadding) throws Exception {
+    public byte[] deciphered(byte[] data, boolean optimalPadding) throws Exception {
         Cipher cipher = Cipher.getInstance(
                 cipherStatingTheDigestRatherThanLeavingItToAProvider(optimalPadding));
         cipher.init(Cipher.DECRYPT_MODE, privateHalf);
@@ -138,14 +138,14 @@ final class RsaKey {
         return java.security.MessageDigest.getInstance(algorithm).getDigestLength();
     }
 
-    byte[] signed(byte[] data, String digest, boolean probabilistic) throws Exception {
+    public byte[] signed(byte[] data, String digest, boolean probabilistic) throws Exception {
         Signature signing = signatureFor(digest, probabilistic);
         signing.initSign(privateHalf);
         signing.update(data);
         return signing.sign();
     }
 
-    boolean verifies(byte[] data, byte[] signature, String digest, boolean probabilistic) {
+    public boolean verifies(byte[] data, byte[] signature, String digest, boolean probabilistic) {
         try {
             Signature checking = signatureFor(digest, probabilistic);
             checking.initVerify(publicHalf);

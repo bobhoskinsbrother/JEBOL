@@ -8,7 +8,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.Optional;
 
-final class DiffieHellmanKey implements AKeyThatCanBeReleased {
+public final class DiffieHellmanKey implements AKeyThatCanBeReleased {
 
     private boolean handedBack;
 
@@ -35,7 +35,7 @@ final class DiffieHellmanKey implements AKeyThatCanBeReleased {
         this.widthInBytes = widthInBytes;
     }
 
-    static Optional<DiffieHellmanKey> generatedFor(byte[] generator, byte[] prime) {
+    public static Optional<DiffieHellmanKey> generatedFor(byte[] generator, byte[] prime) {
         try {
             BigInteger p = new BigInteger(1, prime);
             BigInteger g = new BigInteger(1, generator);
@@ -53,12 +53,12 @@ final class DiffieHellmanKey implements AKeyThatCanBeReleased {
         }
     }
 
-    byte[] publishedPaddedToTheWidthOfThePrime() {
+    public byte[] publishedPaddedToTheWidthOfThePrime() {
         return fixedWidth(((javax.crypto.interfaces.DHPublicKey) pair.getPublic())
                 .getY());
     }
 
-    Optional<byte[]> agreedWith(byte[] peersPublicValue) {
+    public Optional<byte[]> agreedWith(byte[] peersPublicValue) {
         if (handedBack) {
             return Optional.empty();
         }

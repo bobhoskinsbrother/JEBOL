@@ -56,7 +56,7 @@ public class NewLineNative extends DefaultNative {
         };
     }
 
-    private static OptionalInt theStride(List<Value> arguments, Set<String> refinements) {
+    private OptionalInt theStride(List<Value> arguments, Set<String> refinements) {
         if (refinements.contains("skip") && arguments.size() > WHERE_THE_SKIP_SIZE_ARRIVES
                 && arguments.get(WHERE_THE_SKIP_SIZE_ARRIVES) instanceof IntegerValue size) {
             if (size.magnitude() < 1) {

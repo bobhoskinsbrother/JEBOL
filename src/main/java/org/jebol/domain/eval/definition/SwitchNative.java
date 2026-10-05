@@ -67,13 +67,13 @@ public class SwitchNative extends DefaultNative {
         };
     }
 
-    private static boolean matches(Value choice, Value wanted, boolean caseSensitive) {
+    private boolean matches(Value choice, Value wanted, boolean caseSensitive) {
         return caseSensitive
                 ? choice.equals(wanted)
                 : Comparison.looselyEqual(choice, wanted);
     }
 
-    private static int theNextBlockFrom(List<Value> choices, int from) {
+    private int theNextBlockFrom(List<Value> choices, int from) {
         int at = from;
         while (at < choices.size() && !isExactlyABlock(choices.get(at))) {
             at++;
@@ -81,11 +81,11 @@ public class SwitchNative extends DefaultNative {
         return at;
     }
 
-    private static boolean isExactlyABlock(Value value) {
+    private boolean isExactlyABlock(Value value) {
         return value instanceof BlockValue && value.datatype() == Datatype.BLOCK;
     }
 
-    private static Value theFallbackAskedFor(List<Value> arguments, Set<String> refinements) {
+    private Value theFallbackAskedFor(List<Value> arguments, Set<String> refinements) {
         return refinements.contains("default") && arguments.size() > WHERE_THE_FALLBACK_ARRIVES
                 ? arguments.get(WHERE_THE_FALLBACK_ARRIVES)
                 : NoneValue.none();

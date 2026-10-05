@@ -43,6 +43,18 @@ public interface Actions {
         throw Raised.cannotUse(subject(), "remove");
     }
 
+    default Value takenOne() {
+        throw Raised.cannotUse(subject(), "take");
+    }
+
+    default Value takenSeveral(long wanted) {
+        throw Raised.cannotUse(subject(), "take");
+    }
+
+    default Value poked(Value position, Value written) {
+        throw Raised.cannotUse(subject(), "poke");
+    }
+
     default Value complemented() {
         throw Raised.of(EvaluationFailure.EXPECT_ARG,
                 "complement wanted a logic or integer, not a "

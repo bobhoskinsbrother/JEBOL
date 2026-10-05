@@ -6188,3 +6188,58 @@ escape into the library. Rebol's own JSON codec is a module holding parse
 rules named `exp` and `stack`; loaded flat, both silently replace the library
 functions of those names. A header with no exports publishes nothing, which is
 right for a codec whose only job is to register itself.
+
+## 215. More facts that used to sit beside the code
+
+Moved here from `PairValue`, `WordValue` and `Evaluator` when their comments
+came out.
+
+**A pair's halves are single-precision decimals.** `reb-c.h` declares `REBD32`
+as a C `float` and `sys-value.h` stores a pair's halves in two of them, so
+`first 1x2` is `1.0` and a half carries about seven significant digits.
+`2147483647` and `2147483648` are one pair half, which is why Rebol's suite
+asserts `2147483647x2147483647 / 2` equals `1073741823x1073741823`. A half
+above about 3.4e38 becomes infinite, so `as-pair 1e300 -1e300` molds as
+`1.#INFx-1.#INF`. A fraction is stored at single precision and read back at
+double, so `first 0.1x0.2` is 0.100000001490116, which molding hides again.
+JEBOL narrows once, on construction. A pair is not a series: `length?` refuses
+it and `to block!` wraps it.
+
+**A pair's path answers three names.** `PD_Pair` knows `x`, `y` and `area`.
+AREA is `fabsf(x * y)`, so the area of `-10x20` is 200.0, and it is derived
+rather than stored, so writing it is refused.
+
+**`same?` on two words asks about functions, not frames.** `VAL_WORD_FRAME`
+is the function's parameter list, bound once when the function is made, so a
+word in a body is the same word on every call. JEBOL binds a body to each
+call's frame, so it asks which function the two frames belong to. Rebol's
+ARRAY depends on it: it hands itself `'tag` as a token and checks
+`unless same? :tag 'tag`, and comparing frames made `array/initial [2 2] func
+[x y] [...]` build every row from the same pair of numbers. A closure's body is
+bound for real on each call, in the C as here, so two closures' words stay
+distinct.
+
+**CATCH/WITH type-checks its handler.** The C checks the handler's first
+parameter against the caught value and its second against the name before
+calling, and fills any surplus parameter with none rather than unset.
+
+**Run-time words go to `system/contexts/user`.** Without it, source read at
+run time binds into the library, which works and mixes a script's names with
+the built-in ones.
+
+**DO of a word or path answers rather than calls.** `*D_RET = *Get_Var(value);`
+in DO: a function value is answered, marked `OPTS_REVAL`, and the evaluator
+takes its arguments from what follows the DO. A path is `Do_Path(&value, 0)`,
+the same walk a path in a block takes.
+
+**One expression at a time lets signals fly on.** When ALL, ANY or CASE
+evaluate one expression of a block, a RETURN, BREAK or THROW from it must reach
+the frame above. Disarming it there made `all [return 1]` answer "a return
+outside a function" from inside a function, which stopped the borrowed ENCODE
+at its first line.
+
+**`system/ports` is read live.** Three of an event's seven models answer
+`e/port` from `*Get_System(SYS_PORTS, PORTS_EVENT)` and the same for the
+callback and console ports. All three are none until a window system fills
+them, in a stock 3.22.1 console too, which is why Rebol's event test guards
+its port case with `if system/ports/event [...]`.

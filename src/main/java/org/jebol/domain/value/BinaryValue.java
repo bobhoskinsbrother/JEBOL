@@ -6,12 +6,32 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 public record BinaryValue(BinaryStorage storage, int index) implements RebolSeries {
 
     @Override
     public boolean isProtected() {
         return storage.isProtected();
+    }
+
+    @Override
+    public Value copied(boolean deeply, Set<Datatype> kinds) {
+        return copyOfTheFirst(lengthFromHere());
+    }
+
+    @Override
+    public byte[] asOctets() {
+        return octetsFromHere();
+    }
+
+    @Override
+    public void refuseANeedleItCannotHold(Value needle, String nativeName) {
+        if (needle instanceof IntegerValue(long magnitude) && (magnitude < 0 || magnitude > 255)) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                    nativeName + " on a binary wanted a byte, not " + magnitude);
+        }
     }
 
     @Override
@@ -65,6 +85,14 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return new BinaryValue(BinaryStorage.of(octets), 1);
     }
 
+    public static BinaryValue ofBytes(byte[] bytes) {
+        int[] octets = new int[bytes.length];
+        for (int at = 0; at < bytes.length; at++) {
+            octets[at] = bytes[at] & 0xFF;
+        }
+        return of(octets);
+    }
+
     public String asText() {
         return new String(octetsFromHere(), StandardCharsets.UTF_8);
     }
@@ -88,6 +116,107 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
             copied.append(storage.at(index + at));
         }
         return new BinaryValue(copied, 1);
+    }
+
+    public int byteOrderMark() {
+        if (startsWith(0xEF, 0xBB, 0xBF)) {
+            return 8;
+        }
+        if (startsWith(0xFE, 0xFF)) {
+            return 16;
+        }
+        if (startsWith(0xFF, 0xFE)) {
+            return startsWith(0xFF, 0xFE, 0x00, 0x00) ? -32 : -16;
+        }
+        if (startsWith(0x00, 0x00, 0xFE, 0xFF)) {
+            return 32;
+        }
+        return 0;
+    }
+
+    private boolean startsWith(int... expected) {
+        if (lengthFromHere() < expected.length) {
+            return false;
+        }
+        for (int at = 0; at < expected.length; at++) {
+            if (octetAt(index + at) != expected[at]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public Optional<BinaryValue> theFirstMalformedUtf8() {
+        int end = storageLength() + 1;
+        int at = index;
+        while (at < end) {
+            int width = utf8SequenceWidth(octetAt(at));
+            if (width > 0 && at + width <= end && continuesCorrectly(at, width)) {
+                at += width;
+                continue;
+            }
+            if (isSurrogateHalfAt(at, end) && !isLowSurrogateAt(at)
+                    && isSurrogateHalfAt(at + 3, end) && isLowSurrogateAt(at + 3)) {
+                at += 6;
+                continue;
+            }
+            return Optional.of(atIndex(at));
+        }
+        return Optional.empty();
+    }
+
+    private int octetAt(int position) {
+        return storage.at(position) & 0xFF;
+    }
+
+    private int utf8SequenceWidth(int lead) {
+        if (lead < 0x80) {
+            return 1;
+        }
+        if (lead < 0xC2 || lead > 0xF4) {
+            return 0;
+        }
+        if (lead < 0xE0) {
+            return 2;
+        }
+        return lead < 0xF0 ? 3 : 4;
+    }
+
+    private boolean continuesCorrectly(int at, int width) {
+        int lead = octetAt(at);
+        if (width == 1) {
+            return true;
+        }
+        for (int step = 1; step < width; step++) {
+            int following = octetAt(at + step);
+            if (following < 0x80 || following > 0xBF) {
+                return false;
+            }
+        }
+        int second = octetAt(at + 1);
+        if (lead == 0xE0 && second < 0xA0) {
+            return false;
+        }
+        if (lead == 0xED && second > 0x9F) {
+            return false;
+        }
+        if (lead == 0xF0 && second < 0x90) {
+            return false;
+        }
+        return lead != 0xF4 || second <= 0x8F;
+    }
+
+    private boolean isSurrogateHalfAt(int at, int end) {
+        if (at + 3 > end || octetAt(at) != 0xED) {
+            return false;
+        }
+        int second = octetAt(at + 1);
+        int third = octetAt(at + 2);
+        return second >= 0xA0 && second <= 0xBF && third >= 0x80 && third <= 0xBF;
+    }
+
+    private boolean isLowSurrogateAt(int at) {
+        return octetAt(at + 1) >= 0xB0;
     }
 
     public String asStrictText() {
@@ -120,8 +249,8 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
-        return java.util.Optional.of(inHundredths(
+    public Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
+        return Optional.of(inHundredths(
                 wanted, Double.longBitsToDouble(bitsOfTheLastEightOctets())));
     }
 

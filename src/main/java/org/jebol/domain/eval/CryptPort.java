@@ -17,7 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-final class CryptPort {
+public final class CryptPort {
 
     static final String HANDLE_TYPE = "crypt";
 
@@ -248,7 +248,7 @@ final class CryptPort {
     }
 
     private static Working inProgress(PortValue port) {
-        if (port.fieldNamed("state") instanceof HandleValue held
+        if (port.fieldValue("state") instanceof HandleValue held
                 && HANDLE_TYPE.equals(held.typeName())
                 && held.payload() instanceof JavaObjectValue wrapped
                 && wrapped.held().orElse(null) instanceof Working working) {
@@ -259,6 +259,16 @@ final class CryptPort {
 
     static boolean isWorking(PortValue port) {
         return inProgress(port) != null;
+    }
+
+    public static void refuseWhenClosed(PortValue port) {
+        if (isWorking(port)) {
+            return;
+        }
+        throw Raised.of(EvaluationFailure.NOT_OPEN,
+                port.fieldValue("spec") instanceof ObjectValue spec
+                        ? spec.fieldValue("ref")
+                        : NoneValue.none());
     }
 
     static Value modify(PortValue port, String field, Value given) {
@@ -392,7 +402,7 @@ final class CryptPort {
         return gathered < block ? 0 : gathered;
     }
 
-    static void update(PortValue port) {
+    public static void update(PortValue port) {
         Working working = inProgress(port);
         if (working == null || working.wouldNotRun) {
             return;
@@ -419,7 +429,7 @@ final class CryptPort {
         return Arrays.copyOf(working.heldBack, working.works().blockOctets());
     }
 
-    static Value read(PortValue port) {
+    public static Value read(PortValue port) {
         Working working = inProgress(port);
         if (working == null || working.wouldNotRun || !working.somethingIsReady) {
             return NoneValue.none();

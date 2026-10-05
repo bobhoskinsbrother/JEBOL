@@ -24,6 +24,18 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
         return context.boundWordsAndValues();
     }
 
+    @Override
+    public Value reflected(WordValue field) {
+        return switch (field.canonical()) {
+            case "spec" -> header;
+            case "title" -> headerField("title");
+            case "body" -> context.setWordsAndValuesOnLines();
+            case "words" -> context.wordsExcludingSelf();
+            case "values" -> context.valuesExcludingSelf();
+            default -> NoneValue.none();
+        };
+    }
+
     public List<String> exportedNames() {
         if (!(headerField("exports") instanceof BlockValue exports)) {
             return List.of();
@@ -36,8 +48,7 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
     }
 
     public Value headerField(String name) {
-        Context fields = header.context();
-        return fields.holds(name) ? fields.ownSlotFor(name).value() : NoneValue.none();
+        return header.fieldValue(name);
     }
 
     @Override

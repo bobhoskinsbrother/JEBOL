@@ -51,7 +51,7 @@ public class InNative extends DefaultNative {
         };
     }
 
-    private static Context contextOf(Value value) {
+    private Context contextOf(Value value) {
         return switch (value) {
             case ObjectValue object -> object.context();
             case PortValue port -> port.context();
@@ -63,7 +63,7 @@ public class InNative extends DefaultNative {
         };
     }
 
-    private static Context theFieldsAnErrorHolds(ErrorValue raised) {
+    private Context theFieldsAnErrorHolds(ErrorValue raised) {
         Context fields = Context.root();
         for (String name : ErrorValue.FIELDS) {
             raised.field(name).ifPresent(value -> fields.set(name, value));

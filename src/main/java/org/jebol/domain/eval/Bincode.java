@@ -10,7 +10,7 @@ import java.util.function.BiConsumer;
 import java.util.function.LongSupplier;
 import java.util.function.UnaryOperator;
 
-final class Bincode {
+public final class Bincode {
 
     private Bincode() {
     }
@@ -98,7 +98,7 @@ final class Bincode {
         cursor.at = 0;
     }
 
-    static final class Cursor {
+    public static final class Cursor {
 
         private final List<Integer> octets;
         private int at;
@@ -109,34 +109,34 @@ final class Bincode {
 
         private Value reading = NoneValue.none();
 
-        Cursor(List<Integer> octets, int at) {
+        public Cursor(List<Integer> octets, int at) {
             this(octets, at, 0);
         }
 
-        Cursor(List<Integer> octets, int at, int bitsTaken) {
+        public Cursor(List<Integer> octets, int at, int bitsTaken) {
             this.octets = octets;
             this.at = at;
             this.bitsTaken = bitsTaken;
         }
 
-        List<Integer> octets() {
+        public List<Integer> octets() {
             return octets;
         }
 
-        int at() {
+        public int at() {
             return at;
         }
 
-        int bitsTaken() {
+        public int bitsTaken() {
             return bitsTaken;
         }
 
-        int cropped() {
+        public int cropped() {
             return cropped;
         }
     }
 
-    record Script(List<Value> items, UnaryOperator<Value> lookedUp) {
+    public record Script(List<Value> items, UnaryOperator<Value> lookedUp) {
 
         int size() {
             return items.size();
@@ -151,7 +151,7 @@ final class Bincode {
         }
     }
 
-    static void write(Cursor cursor, Script dialect,
+    public static void write(Cursor cursor, Script dialect,
             LongSupplier secondsSinceTheEpoch,
             BiConsumer<WordValue, Value> nameTheValue) {
 
@@ -220,7 +220,7 @@ final class Bincode {
         return step;
     }
 
-    static List<Value> read(Cursor cursor, Script dialect,
+    public static List<Value> read(Cursor cursor, Script dialect,
             BiConsumer<WordValue, Value> nameTheValue) {
         Produced read = new Produced(nameTheValue);
         for (int step = 0; step < dialect.size(); step++) {

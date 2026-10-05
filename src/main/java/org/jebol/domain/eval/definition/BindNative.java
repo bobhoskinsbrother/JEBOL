@@ -50,14 +50,14 @@ public class BindNative extends DefaultNative {
         };
     }
 
-    private static Optional<Context> theContextOf(Value target) {
+    private Optional<Context> theContextOf(Value target) {
         if (target instanceof WordValue word) {
             return word.isBound() ? Optional.of(word.binding()) : Optional.empty();
         }
         return target.fieldsAsAContext();
     }
 
-    private static Value wordBoundInto(WordValue word, Context target,
+    private Value wordBoundInto(WordValue word, Context target,
             boolean targetWasAWord, boolean addsWhatIsMissing) {
 
         if (addsWhatIsMissing) {
@@ -78,7 +78,7 @@ public class BindNative extends DefaultNative {
         return word.boundTo(target.holderOf(word.canonical()));
     }
 
-    private static Value blockBoundInto(BlockValue block, Context target,
+    private Value blockBoundInto(BlockValue block, Context target,
             Set<String> refinements, boolean addsWhatIsMissing) {
 
         boolean deeply = !refinements.contains("only");

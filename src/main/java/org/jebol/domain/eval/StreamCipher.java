@@ -1,6 +1,6 @@
 package org.jebol.domain.eval;
 
-final class StreamCipher {
+public final class StreamCipher {
 
     private static final int PERMUTATION_SIZE = 256;
 
@@ -11,7 +11,7 @@ final class StreamCipher {
     private StreamCipher() {
     }
 
-    static StreamCipher keyedWithAnEmptyKeyAcceptedAsAny(byte[] key) {
+    public static StreamCipher keyedWithAnEmptyKeyAcceptedAsAny(byte[] key) {
         StreamCipher cipher = new StreamCipher();
         for (int at = 0; at < PERMUTATION_SIZE; at++) {
             cipher.permutation[at] = at;
@@ -28,7 +28,7 @@ final class StreamCipher {
         return cipher;
     }
 
-    int nextKeystreamByteAdvancingThePermutation() {
+    public int nextKeystreamByteAdvancingThePermutation() {
         takenSoFar = (takenSoFar + 1) % PERMUTATION_SIZE;
         swappedSoFar = (swappedSoFar + permutation[takenSoFar]) % PERMUTATION_SIZE;
         swap(takenSoFar, swappedSoFar);

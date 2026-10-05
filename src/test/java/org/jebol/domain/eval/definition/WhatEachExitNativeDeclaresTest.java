@@ -12,6 +12,7 @@ import org.jebol.domain.value.WordValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -24,16 +25,17 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class WhatEachExitNativeDeclaresTest {
 
     private static final Set<String> NOTHING = Set.of();
 
-    private static void call(NativeDefinition definition, Set<String> refinements,
+    private void call(NativeDefinition definition, Set<String> refinements,
             Value... arguments) {
         definition.behaviour().call(List.of(arguments), null, null, refinements);
     }
 
-    static Stream<Arguments> whatEachDeclares() {
+    Stream<Arguments> whatEachDeclares() {
         return Stream.of(
                 Arguments.of(new ReturnNative(), "return",
                         List.of(Parameter.required("value", Typeset.ANY_TYPE.members())),

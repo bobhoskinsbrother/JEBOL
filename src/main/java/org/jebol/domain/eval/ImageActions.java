@@ -23,6 +23,12 @@ public final class ImageActions extends SeriesActions {
     }
 
     @Override
+    public Value poked(Value position, Value written) {
+        ImagePath.write(picture, (int) position.asPosition(), written);
+        return written;
+    }
+
+    @Override
     void takeOneOutAt(int oneBasedIndex) {
         picture.storage().removeFrom(oneBasedIndex, 1);
     }

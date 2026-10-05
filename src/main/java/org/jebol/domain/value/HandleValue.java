@@ -80,6 +80,17 @@ public record HandleValue(
         return kind == Kind.CONTEXT;
     }
 
+    @Override
+    public Value reflected(WordValue field) {
+        return switch (field.canonical()) {
+            case "words" -> BlockValue.block(WordValue.of("type"));
+            case "values" -> BlockValue.block(isContext()
+                    ? WordValue.of(typeName)
+                    : NoneValue.none());
+            default -> NoneValue.none();
+        };
+    }
+
     /**
      * Whether these are the same handle. {@code CT_Handle} with a positive mode.
      *

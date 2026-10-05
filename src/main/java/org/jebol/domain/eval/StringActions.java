@@ -3,7 +3,10 @@ package org.jebol.domain.eval;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Molder;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
@@ -22,6 +25,25 @@ public final class StringActions extends SeriesActions {
     @Override
     StringValue held() {
         return text;
+    }
+
+    @Override
+    public Value poked(Value position, Value written) {
+        text.storage().set(pokedStoragePosition(position), codepointPokedFrom(written));
+        return written;
+    }
+
+    private int codepointPokedFrom(Value written) {
+        return switch (written) {
+            case CharacterValue letter -> letter.codepoint();
+            case IntegerValue number
+                    when number.magnitude() >= 0
+                    && number.magnitude() <= CharacterValue.MAXIMUM_CODEPOINT ->
+                    (int) number.magnitude();
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
+                    "poke into a string takes a character or a codepoint, not a "
+                            + written.datatype().literalSpelling());
+        };
     }
 
     @Override
@@ -60,25 +82,11 @@ public final class StringActions extends SeriesActions {
         Value adding = asked.duplicated();
         String written = adding instanceof BlockValue added
                 && added.datatype() == Datatype.BLOCK
-                ? runTogether(added)
+                ? added.runTogether()
                 : Molder.form(adding);
         return asked.howMuchOfIt()
                 .map(count -> theFirstCodePointsOf(written, count.intValue()))
                 .orElse(written);
-    }
-
-    static String runTogether(Value value) {
-        if (value.datatype().isAnyPath() && value instanceof BlockValue path) {
-            return path.remaining().stream()
-                    .map(StringActions::runTogether)
-                    .collect(Collectors.joining("/"));
-        }
-        if (value instanceof BlockValue block) {
-            return block.remaining().stream()
-                    .map(StringActions::runTogether)
-                    .collect(Collectors.joining());
-        }
-        return Molder.form(value);
     }
 
     static String theFirstCodePointsOf(String written, int wanted) {

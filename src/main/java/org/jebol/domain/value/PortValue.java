@@ -22,27 +22,38 @@ public record PortValue(Context context) implements Value {
     }
 
     public String schemeName() {
-        if (!(fieldNamed("scheme") instanceof ObjectValue(Context context1))) {
-            return "";
-        }
-        return context1.holds("name")
-                && context1.ownSlotFor("name").value() instanceof WordValue word
+        return fieldValue("scheme").fieldValue("name") instanceof WordValue word
                 ? word.canonical()
                 : "";
-    }
-
-    public Value fieldNamed(String name) {
-        return context.holds(name)
-                ? context.ownSlotFor(name).value()
-                : NoneValue.none();
     }
 
     public void setField(String name, Value replacement) {
         context.set(name, replacement);
     }
 
+    public Optional<ObjectValue> actorWrittenInRebol() {
+        return fieldValue("actor") instanceof ObjectValue actor
+                ? Optional.of(actor)
+                : Optional.empty();
+    }
+
+    public void refuseASpecThatIsNotAnObject() {
+        if (!(fieldValue("spec") instanceof ObjectValue)) {
+            throw Raised.of(EvaluationFailure.INVALID_PORT);
+        }
+    }
+
+    public void refuseAnActorThatIsNeitherAWordNorAnObject() {
+        Value actor = fieldValue("actor");
+        if (actor instanceof ObjectValue || actor instanceof WordValue
+                || actor instanceof NoneValue) {
+            return;
+        }
+        throw Raised.of(EvaluationFailure.INVALID_ACTOR);
+    }
+
     public boolean isOpen() {
-        Value whatTheActorLeft = fieldNamed("state");
+        Value whatTheActorLeft = fieldValue("state");
         return !(whatTheActorLeft instanceof ObjectValue)
                 && whatTheActorLeft.isTruthy();
     }
