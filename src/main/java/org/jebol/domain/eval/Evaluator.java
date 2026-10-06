@@ -67,9 +67,9 @@ public final class Evaluator {
         return functionsCalled;
     }
 
-    record OpenCall(String name, FunctionValue function, Context locals) {
+    public record OpenCall(String name, FunctionValue function, Context locals) {
 
-        List<String> slotNames() {
+        public List<String> slotNames() {
             List<String> names = new ArrayList<>();
             function.parameters().forEach(parameter -> names.add(parameter.name()));
             names.addAll(function.localNames());
@@ -104,19 +104,44 @@ public final class Evaluator {
         return java.util.Optional.ofNullable(limitsRecorded.get(limit));
     }
 
-    void recordLimitAskedFor(UsageLimit limit, long value) {
+    public void recordLimitAskedFor(UsageLimit limit, long value) {
         limitsRecorded.putIfAbsent(limit, value);
     }
 
-    public java.util.Optional<String> functionBeingRun(int offsetOutwards) {
-        List<OpenCall> open = new ArrayList<>(functionsBeingRun);
-        return offsetOutwards < 0 || offsetOutwards >= open.size()
-                ? java.util.Optional.empty()
-                : java.util.Optional.of(open.get(offsetOutwards).name());
+    public List<OpenCall> callsInProgress() {
+        return List.copyOf(functionsBeingRun);
     }
 
-    List<OpenCall> callsInProgress() {
-        return List.copyOf(functionsBeingRun);
+    public List<String> everyCallOpenNamedInnermostFirst() {
+        return walksInProgress.isEmpty()
+                ? List.of()
+                : namesOfEveryCallOpen(walksInProgress.peek());
+    }
+
+    private static final String AN_APPLIED_FUNCTION = "-apply-";
+
+    private List<String> namesOfEveryCallOpen(Deque<Frame> innermostWalk) {
+        List<String> named = new ArrayList<>();
+        for (Deque<Frame> walk : everyWalkInnermostFirst(innermostWalk)) {
+            for (Frame open : walk) {
+                if (open.theCallNearAndWhereAreAbout != null) {
+                    open.theCallNearAndWhereAreAbout.nameInTheBacktrace().ifPresent(named::add);
+                }
+            }
+            if (!walk.isEmpty() && walk.peekLast().bodyOfAnAppliedFunction) {
+                named.add(AN_APPLIED_FUNCTION);
+            }
+        }
+        return named;
+    }
+
+    private List<Deque<Frame>> everyWalkInnermostFirst(Deque<Frame> innermostWalk) {
+        List<Deque<Frame>> walks = new ArrayList<>();
+        walks.add(innermostWalk);
+        walksInProgress.stream()
+                .filter(enclosing -> enclosing != innermostWalk)
+                .forEach(walks::add);
+        return walks;
     }
 
     public Evaluator(
@@ -374,7 +399,7 @@ public final class Evaluator {
                 theFrameThisCallTakesOverFrom(function).supersededBy(locals);
                 functionsBeingRun.push(new OpenCall("", function, locals));
                 try {
-                    yield evaluateOrRaise(running, locals);
+                    yield walk(running, locals, 1, null, THE_BODY_OF_AN_APPLIED_FUNCTION);
                 } catch (ReturnSignal returned) {
                     yield returned.value();
                 } finally {
@@ -566,9 +591,19 @@ public final class Evaluator {
     }
 
     private Value walk(BlockValue code, Context context, int depth, ResultSink sink) {
+        return walk(code, context, depth, sink, AN_ORDINARY_BLOCK);
+    }
+
+    private static final boolean AN_ORDINARY_BLOCK = false;
+
+    private static final boolean THE_BODY_OF_AN_APPLIED_FUNCTION = true;
+
+    private Value walk(BlockValue code, Context context, int depth, ResultSink sink,
+            boolean bodyOfAnAppliedFunction) {
         Deque<Frame> frames = new ArrayDeque<>();
         Frame root = new Frame(code, context, depth);
         root.sink = sink;
+        root.bodyOfAnAppliedFunction = bodyOfAnAppliedFunction;
         frames.push(root);
         int callsOpenBeforeTheWalk = functionsBeingRun.size();
         walksInProgress.push(frames);
@@ -641,16 +676,14 @@ public final class Evaluator {
         if (raised.error().whereChain().isPresent()) {
             return raised;
         }
-        List<Value> chain = new ArrayList<>();
+        List<Value> chain = namesOfEveryCallOpen(frames).stream()
+                .<Value>map(WordValue::of)
+                .toList();
         Value nearest = null;
         for (Frame open : everyCallOpenInnermostFirst(frames)) {
             List<PendingCall> deepestFirst = new ArrayList<>();
             if (open.theCallNearAndWhereAreAbout != null) {
                 deepestFirst.add(open.theCallNearAndWhereAreAbout);
-                if (open.theCallNearAndWhereAreAbout.calledThrough() != null) {
-                    chain.add(WordValue.of(
-                            open.theCallNearAndWhereAreAbout.calledThrough()));
-                }
             }
             deepestFirst.addAll(open.pendingCalls);
             for (PendingCall waiting : deepestFirst) {
@@ -776,7 +809,7 @@ public final class Evaluator {
                     PendingCall infix =
                             PendingCall.infix(operator.orElseThrow(), carrying);
                     infix.startedAt(wroteTheOperatorAt,
-                            nameWrittenAt(frame, wroteTheOperatorAt));
+                            nameWrittenAt(frame, wroteTheOperatorAt, AN_OPERATOR_TAKES_NO_REFINEMENT));
                     frame.pendingCalls.push(infix);
                     return;
                 }
@@ -912,7 +945,7 @@ public final class Evaluator {
             List<String> refinements, List<String> mentioned) {
         PendingCall call = PendingCall.prefix(callee, refinements, mentioned);
         call.startedAt(frame.startedThisValueAt,
-                nameWrittenAt(frame, frame.startedThisValueAt));
+                nameWrittenAt(frame, frame.startedThisValueAt, mentioned.size()));
         if (aCallNeedingNothingNeverReachesThePendingStack(call)) {
             frame.theCallNearAndWhereAreAbout = call;
             StepOutcome outcome = invoke(frame, call, frames);
@@ -939,7 +972,9 @@ public final class Evaluator {
         }
     }
 
-    private static String nameWrittenAt(Frame frame, int position) {
+    private static final int AN_OPERATOR_TAKES_NO_REFINEMENT = 0;
+
+    private String nameWrittenAt(Frame frame, int position, int refinementsWritten) {
         if (position < frame.code.index() || position > frame.code.storageLength()) {
             return null;
         }
@@ -947,9 +982,12 @@ public final class Evaluator {
         if (written instanceof WordValue word) {
             return word.spelling();
         }
-        if (written instanceof BlockValue path && path.datatype() == Datatype.PATH
-                && path.remaining().getFirst() instanceof WordValue first) {
-            return first.spelling();
+        if (written instanceof BlockValue path && path.datatype() == Datatype.PATH) {
+            int reachingTheFunction = path.remaining().size() - refinementsWritten - 1;
+            if (reachingTheFunction >= 0
+                    && path.remaining().get(reachingTheFunction) instanceof WordValue reached) {
+                return reached.spelling();
+            }
         }
         return null;
     }
@@ -976,7 +1014,8 @@ public final class Evaluator {
                 if (trace.isOn()) {
                     trace.call(built.nativeName(), built, call.argumentsInDeclaredOrder());
                 }
-                Value produced = runNative(built, call.argumentsInDeclaredOrder(), frame.context);
+                Value produced = runNative(built, call.argumentsInDeclaredOrder(), frame.context,
+                        EVERY_ARGUMENT_IS_CHECKED, call::enter);
                 if (trace.isOn()) {
                     trace.answered(built.nativeName(), produced);
                 }
@@ -987,15 +1026,15 @@ public final class Evaluator {
                         ? startCall(frame, frames, produced, List.of())
                         : StepOutcome.of(produced);
             }
-            case OperatorValue operator -> StepOutcome.of(
-                    invokeUnderlying(operator, call.argumentsInDeclaredOrder(), frame.context));
+            case OperatorValue operator -> StepOutcome.of(invokeUnderlying(
+                    operator, call.argumentsInDeclaredOrder(), frame.context, call::enter));
             case FunctionValue function -> {
                 nameOfTheCallBeingMade = lastWordCalledThrough;
                 if (trace.isOn()) {
                     trace.call(nameOfTheCallBeingMade == null
                             ? "?" : nameOfTheCallBeingMade, function, call.argumentsInDeclaredOrder());
                 }
-                yield runFunction(frames, function, call.argumentsInDeclaredOrder(), call.refinements());
+                yield runFunction(frames, function, call);
             }
             default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
                     call.callee().datatype().literalSpelling() + " is not callable");
@@ -1004,10 +1043,20 @@ public final class Evaluator {
 
     private Value invokeUnderlying(
             OperatorValue operator, List<Value> arguments, Context context) {
+        return invokeUnderlying(operator, arguments, context, NOBODY_IS_WAITING_TO_HEAR);
+    }
+
+    private static final Runnable NOBODY_IS_WAITING_TO_HEAR = () -> { };
+
+    private Value invokeUnderlying(OperatorValue operator, List<Value> arguments,
+            Context context, Runnable onceTheArgumentsPass) {
         return switch (operator.underlying()) {
-            case NativeValue built ->
-                    runNative(built, arguments, context, THE_LEFT_OPERAND_IS_NOT_CHECKED);
-            case FunctionValue function -> applyFunction(function, arguments);
+            case NativeValue built -> runNative(built, arguments, context,
+                    THE_LEFT_OPERAND_IS_NOT_CHECKED, onceTheArgumentsPass);
+            case FunctionValue function -> {
+                onceTheArgumentsPass.run();
+                yield applyFunction(function, arguments);
+            }
             default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
                     "operator " + operator.operatorName() + " has no runnable body");
         };
@@ -1024,12 +1073,18 @@ public final class Evaluator {
 
     private Value runNative(
             NativeValue built, List<Value> arguments, Context context, int checkedFrom) {
+        return runNative(built, arguments, context, checkedFrom, NOBODY_IS_WAITING_TO_HEAR);
+    }
+
+    private Value runNative(NativeValue built, List<Value> arguments, Context context,
+            int checkedFrom, Runnable onceTheArgumentsPass) {
         RefinedCallable behaviour = behaviours.get(built.nativeName());
         if (behaviour == null) {
             throw Raised.of(EvaluationFailure.CANNOT_USE,
                     "no behaviour registered for " + built.nativeName());
         }
         checkArgumentTypes(built, arguments, built.nativeName(), checkedFrom);
+        onceTheArgumentsPass.run();
         nativesCalled++;
         Value produced;
         try {
@@ -1046,14 +1101,12 @@ public final class Evaluator {
         return produced;
     }
 
-    private StepOutcome runFunction(
-            Deque<Frame> frames,
-            FunctionValue function,
-            List<Value> arguments,
-            List<String> refinements) {
-
+    private StepOutcome runFunction(Deque<Frame> frames, FunctionValue function, PendingCall call) {
+        List<Value> arguments = call.argumentsInDeclaredOrder();
+        List<String> refinements = call.refinements();
         checkArgumentTypes(function.parameters(),
                 new java.util.HashSet<>(refinements), arguments, "function");
+        call.enter();
         Context locals = Context.childOf(function.closedOver());
         if (!function.closure()) {
             locals.markAsCallFrameOf(function);
@@ -1629,6 +1682,7 @@ public final class Evaluator {
         private ResultSink sink;
         private boolean stopped;
         private boolean functionBody;
+        private boolean bodyOfAnAppliedFunction;
 
         private int expressionStartedAt = -1;
 

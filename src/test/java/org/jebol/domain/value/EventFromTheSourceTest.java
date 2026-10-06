@@ -395,7 +395,7 @@ class EventFromTheSourceTest {
         @DisplayName("an event has two arms and everything else is an operation it cannot do")
         void twoArmsAndNoMore() {
             assertThat(errorIdFrom("length? make event! []")).isEqualTo("expect-arg");
-            assertThat(errorIdFrom("append make event! [] 1")).isEqualTo("cannot-use");
+            assertThat(errorIdFrom("append make event! [] 1")).isEqualTo("expect-arg");
             assertThat(errorIdFrom("copy make event! []")).isEqualTo("expect-arg");
         }
 

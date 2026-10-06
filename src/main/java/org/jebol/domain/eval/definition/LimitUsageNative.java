@@ -1,0 +1,44 @@
+package org.jebol.domain.eval.definition;
+
+import org.jebol.domain.eval.Comparison;
+import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.UsageLimit;
+import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.Parameter;
+import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.UnsetValue;
+import org.jebol.domain.value.WordValue;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+public class LimitUsageNative extends DefaultNative {
+
+    private static final Map<String, UsageLimit> THE_LIMITS_A_FIELD_NAMES = Map.of(
+            "eval", UsageLimit.EVALUATIONS,
+            "memory", UsageLimit.MEMORY_BYTES);
+
+    @Override
+    public String name() {
+        return "limit-usage";
+    }
+
+    @Override
+    public List<Parameter> parameters() {
+        return List.of(
+                Parameter.required("field", Set.of(Datatype.WORD)),
+                Parameter.required("limit", Typeset.NUMBER.members()));
+    }
+
+    @Override
+    public RefinedCallable behaviour() {
+        return (arguments, evaluator, context, refinements) -> {
+            Optional.ofNullable(THE_LIMITS_A_FIELD_NAMES.get(((WordValue) arguments.getFirst()).canonical()))
+                    .ifPresent(limit -> evaluator.recordLimitAskedFor(limit,
+                            (long) Comparison.asDouble(arguments.get(1))));
+            return UnsetValue.unset();
+        };
+    }
+}

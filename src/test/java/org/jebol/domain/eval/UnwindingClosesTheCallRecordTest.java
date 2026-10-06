@@ -217,7 +217,8 @@ class UnwindingClosesTheCallRecordTest {
                     inside: 0
                     g: func [] [inside: stack/depth 0]
                     g
-                    all [before = 1  inside = 2  1 = stack/depth 0]"""))
+                    after: stack/depth 0
+                    all [before = 1  inside = 2  after = 1]"""))
                     .isEqualTo("#(true)");
         }
     }

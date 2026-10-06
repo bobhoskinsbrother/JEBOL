@@ -1,6 +1,6 @@
 package org.jebol.domain.eval;
 
-interface AKeyThatCanBeReleased {
+public interface AKeyThatCanBeReleased {
 
     void release();
 

@@ -87,7 +87,7 @@ class EveryNativeDefinitionIsRegisteredTest {
 
     private String whatTheInterpreterKnows(List<String> names) {
         String asked = "collect [foreach name [" + String.join(" ", names)
-                + "] [unless value? name [keep mold name]]]";
+                + "] [unless any [value? name find system/catalog/natives name] [keep mold name]]]";
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn(asked);
         return interpreter.display(interpreter.run(asked));

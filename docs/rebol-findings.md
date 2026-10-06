@@ -6285,3 +6285,39 @@ with rows counted at `width + 1` each.
 **SWAP-ENDIAN writes into a protected binary.** It never checks
 `IS_PROTECT_SERIES`, so `swap-endian protect #{0102}` answers `#{0201}`.
 JEBOL's storage refuses the write, and still does.
+
+## 217. STACK and an error's WHERE name the same calls
+
+Both walk the calls that are open, innermost first, and both count natives
+as well as functions: `try [stack 0]` is `[stack try]`, and `stack/depth 0`
+at the top is 1 because STACK is open itself.
+
+**A call is named only once it has been entered.** A call whose arguments
+fail the type check never runs, so `select try [append/only 1 2] 'where` is
+`[try]` and has no `append` in it. A call that is entered and then fails
+inside, as `/` does on a zero, is named: `[/ try]`.
+
+**A call no word made is `-unnamed-`.** `do reduce [:f]` reaches F without a
+word, so the chain reads `[/ -unnamed- do try]`.
+
+**A function a native runs is `-apply-`.** APPLY, and SORT/COMPARE calling
+its comparator, run the function through `Apply_Func`, which labels the frame
+`-apply-`: `[/ -apply- sort try]`.
+
+**A path names the function by the word that reached it.** `o/f/r` is named
+`f`, `o/p/g` is named `g`, and `h/r` is named `h`. The word is the path's
+element just before its refinements.
+
+**POKEZ goes straight to the datatype's POKE action.** `Do_Act` skips POKE's
+own type check, so `pokez 1.2.3 0 9` raises `cannot-use` from
+`Trap_Action`. That names the action by its set-word, so ARG1 is `poke:`.
+
+**VERSION answers text in both forms.** The plain form is the build's name
+and date. `/data` is a loadable line of fifteen words that `sys-start.reb`
+loads into `system/product`, `system/version`, `system/platform` and the
+eleven `system/build` fields. JEBOL fills the product, version and platform
+from its own system object and leaves the eleven build fields `none`.
+
+**The STACK figures that measure the C are not reproduced.** `stack/limit`
+is 16032 and `stack/size` counts slots on the C data stack. JEBOL answers its
+own evaluation limit and eight values a frame.

@@ -46,15 +46,17 @@ class InterpreterStateFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("/DATA answers a tuple, which is what a header can compare")
-        void theDataFormIsATuple() {
-            assertThat(answerTo("tuple? version/data")).isEqualTo(TRUE);
+        @DisplayName("/DATA answers text too, which Rebol's own start-up loads into fifteen fields")
+        void theDataFormLoadsIntoFifteenFields() {
+            assertThat(answerTo("string? version/data")).isEqualTo(TRUE);
+            assertThat(answerTo("length? load/as version/data 'unbound")).isEqualTo("15");
         }
 
         @Test
-        @DisplayName("and the tuple is the same version the text names")
+        @DisplayName("and its third field is the same version the text names")
         void theTwoFormsAgree() {
-            assertThat(answerTo("find version form version/data")).isNotEqualTo("_");
+            assertThat(answerTo("find version form third load/as version/data 'unbound"))
+                    .isNotEqualTo("_");
         }
     }
 
@@ -248,11 +250,11 @@ class InterpreterStateFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and none for a call no word made, rather than the word before it")
-        void wordIsNoneForANamelessCall() {
+        @DisplayName("and -unnamed- for a call no word made, rather than the word before it")
+        void wordIsUnnamedForANamelessCall() {
             assertThat(answerTo(
-                    "f: func [] [stack/word 1] g: func [] [do reduce [:f]] none? g"))
-                    .isEqualTo(TRUE);
+                    "f: func [] [stack/word 1] g: func [] [do reduce [:f]] form g"))
+                    .isEqualTo("\"-unnamed-\"");
         }
     }
 

@@ -6,19 +6,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-final class Codecs {
+public final class Codecs {
 
-    private final Encodings encodings;
+    private final Encodings encodings = new Encodings();
 
-    Codecs(Encodings encodings) {
-        this.encodings = encodings;
-    }
+    public enum Action { IDENTIFY, DECODE, ENCODE }
 
-    enum Action { IDENTIFY, DECODE, ENCODE }
+    public record Answer(Kind kind, Value value, int error) {
 
-    record Answer(Kind kind, Value value, int error) {
-
-        enum Kind { ERROR, CHECK, BINARY, TEXT, IMAGE, SOUND, BLOCK, STRING }
+        public enum Kind { ERROR, CHECK, BINARY, TEXT, IMAGE, SOUND, BLOCK, STRING }
 
         static Answer checkWhoseErrorCodeIsTheInvertedResult(int error) {
             return new Answer(Kind.CHECK, LogicValue.of(error == 0), error);
@@ -45,7 +41,7 @@ final class Codecs {
 
     static final List<String> REGISTERED = List.of("text", "markup", "qoi");
 
-    Answer run(String codec, Action action, Value data) {
+    public Answer run(String codec, Action action, Value data) {
         return switch (codec) {
             case "text" -> text(action, data);
             case "markup" -> markup(action, data);

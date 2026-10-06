@@ -4,6 +4,7 @@ import org.jebol.domain.value.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 final class PendingCall {
 
@@ -47,9 +48,25 @@ final class PendingCall {
         return startedAt;
     }
 
-    String calledThrough() {
-        return calledThrough;
+    private boolean entered;
+
+    void enter() {
+        entered = true;
     }
+
+    Optional<String> nameInTheBacktrace() {
+        if (!entered) {
+            return Optional.empty();
+        }
+        if (calledThrough != null) {
+            return Optional.of(calledThrough);
+        }
+        return callee != null && callee.datatype().isAnyFunction()
+                ? Optional.of(AN_UNNAMED_CALL)
+                : Optional.empty();
+    }
+
+    private static final String AN_UNNAMED_CALL = "-unnamed-";
 
     private static List<Parameter> declaredParametersOf(Value callee) {
         List<Parameter> declared = switch (callee) {
