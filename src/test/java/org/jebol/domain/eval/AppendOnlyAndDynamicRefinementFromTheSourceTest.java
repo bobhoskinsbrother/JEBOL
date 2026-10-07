@@ -121,11 +121,12 @@ class AppendOnlyAndDynamicRefinementFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("while a declined one asks for nothing and so is never refused")
+        @DisplayName("and a declined one the function has not got is refused as well, naming it as written")
         void adeclinedRefinementThatIsNotThere() {
             assertThat(answerTo("""
                     made-up: no
-                    (append/:made-up copy [] 1) = [1]""")).isEqualTo("#(true)");
+                    e: try [append/:made-up copy [] 1] reduce [e/id e/arg1 e/arg2]"""))
+                    .isEqualTo("[no-refine append :made-up]");
         }
 
         @Test

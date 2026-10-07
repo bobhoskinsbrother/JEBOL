@@ -4,7 +4,6 @@ import org.jebol.domain.eval.definition.*;
 
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.ServiceRefusal;
-import org.jebol.domain.parse.Parser;
 import org.jebol.domain.read.Construction;
 import org.jebol.domain.value.*;
 
@@ -1026,8 +1025,6 @@ public final class RebolNativeWords {
     }
 
 
-    private static final Set<Datatype> WHAT_PARSE_TAKES = Typeset.SERIES.members();
-
 
     private static final int CODEC_HANDLE_IDENTITY = 1000;
 
@@ -1210,20 +1207,7 @@ public final class RebolNativeWords {
     }
 
     private void registerParse() {
-        define("parse", List.of(Parameter.required("input", WHAT_PARSE_TAKES),
-                        Parameter.required("rule")),
-                of("case"),
-                (arguments, evaluator, context, refinements) -> switch (arguments.get(1)) {
-                    case BlockValue rule -> Parser.over(evaluator, context,
-                            arguments.get(0), refinements.contains("case"))
-                            .answerFor(rule);
-                    default -> {
-                        throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                                "parse needs a rule block, not "
-                                        + arguments.get(1).datatype().literalSpelling());
-                    }
-                });
-
+        register(new ParseNative());
     }
 
     private void registerScreen() {

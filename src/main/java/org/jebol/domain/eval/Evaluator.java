@@ -1229,37 +1229,45 @@ public final class Evaluator {
         }
         return startCall(
                 frame, frames,
-                refined(selection.value(), selection.refinements()),
+                refined(selection),
                 selection.refinements(), selection.mentioned());
     }
 
-    private Value refined(Value callee, List<String> refinements) {
-        if (refinements.isEmpty()) {
-            return callee;
-        }
+    private Value refined(Selection selection) {
+        Value callee = selection.value();
+        List<String> mentioned = selection.mentioned();
         if (callee instanceof FunctionValue written) {
-            for (String refinement : refinements) {
-                if (!declaresRefinement(written, refinement)) {
-                    throw Raised.of(EvaluationFailure.NO_REFINE,
-                            "this function has no /" + refinement + " refinement");
+            for (int index = 0; index < mentioned.size(); index++) {
+                if (!declaresRefinement(written, mentioned.get(index))) {
+                    throw noSuchRefinement(selection, index);
                 }
             }
             return callee;
         }
-        if (!(callee instanceof NativeValue built)) {
+        if (!(callee instanceof NativeValue built) || mentioned.isEmpty()) {
             return callee;
         }
-        for (String refinement : refinements) {
-            if (!built.declares(refinement)) {
-                String refinedName = built.nativeName() + "/" + String.join("/", refinements);
+        for (int index = 0; index < mentioned.size(); index++) {
+            if (!built.declares(mentioned.get(index))) {
+                String refinedName = built.nativeName() + "/"
+                        + String.join("/", selection.refinements());
                 if (systemContext.knows(refinedName)) {
                     return systemContext.slotFor(refinedName).value();
                 }
-                throw Raised.of(EvaluationFailure.NO_REFINE,
-                        built.nativeName() + " has no /" + refinement + " refinement");
+                throw noSuchRefinement(selection, index);
             }
         }
-        return built.askedFor(Set.copyOf(refinements));
+        return selection.refinements().isEmpty()
+                ? callee
+                : built.askedFor(Set.copyOf(selection.refinements()));
+    }
+
+    private Raised noSuchRefinement(Selection selection, int index) {
+        Value calledBy = selection.calledBy() instanceof WordValue word
+                ? word.as(Datatype.WORD)
+                : selection.calledBy();
+        return Raised.of(EvaluationFailure.NO_REFINE,
+                calledBy, selection.mentionedAsWritten().get(index));
     }
 
     private static boolean declaresRefinement(FunctionValue written, String refinement) {
@@ -1480,29 +1488,34 @@ public final class Evaluator {
             throw Raised.of(EvaluationFailure.INVALID_PATH, "an empty path selects nothing");
         }
         Slot current = selectFirst(segments.get(0), context);
+        Value calledBy = segments.get(0);
         List<String> refinements = new ArrayList<>();
         List<String> mentioned = new ArrayList<>();
+        List<WordValue> mentionedAsWritten = new ArrayList<>();
 
         for (int index = 1; index < segments.size(); index++) {
             Value segment = segments.get(index);
             if (current.value().datatype().isAnyFunction()) {
-                if (segment instanceof WordValue asked
-                        && asked.datatype() == Datatype.GET_WORD) {
-                    mentioned.add(asked.canonical());
-                    if (resolve(asked.isBound() ? asked : asked.boundTo(context))
-                            .value().isTruthy()) {
-                        refinements.add(asked.canonical());
-                    }
-                    continue;
+                WordValue refinement = refinementWordOf(segment);
+                mentioned.add(refinement.canonical());
+                mentionedAsWritten.add(refinement);
+                if (isSwitchedOn(refinement, context)) {
+                    refinements.add(refinement.canonical());
                 }
-                refinements.add(refinementNameOf(segment));
-                mentioned.add(refinementNameOf(segment));
                 continue;
             }
             refuseAPathIntoSomethingWithNoParts(asWritten, current.value(), index - 1);
             current = slotWithTheSegment(asWritten, current, segment, context);
+            calledBy = segment;
         }
-        return new Selection(current, List.copyOf(refinements), List.copyOf(mentioned));
+        return new Selection(current, calledBy, List.copyOf(refinements),
+                List.copyOf(mentioned), List.copyOf(mentionedAsWritten));
+    }
+
+    private boolean isSwitchedOn(WordValue refinement, Context context) {
+        return refinement.datatype() != Datatype.GET_WORD
+                || resolve(refinement.isBound() ? refinement : refinement.boundTo(context))
+                        .value().isTruthy();
     }
 
     private Slot slotWith(Slot holder, Value selector) {
@@ -1586,9 +1599,9 @@ public final class Evaluator {
                 : selector;
     }
 
-    private String refinementNameOf(Value segment) {
+    private WordValue refinementWordOf(Value segment) {
         if (segment instanceof WordValue word) {
-            return word.canonical();
+            return word;
         }
         throw Raised.of(EvaluationFailure.INVALID_PATH,
                 "a refinement must be a word, not " + segment.datatype().literalSpelling());
@@ -1735,7 +1748,8 @@ public final class Evaluator {
     private static final long NANOSECONDS_IN_A_SECOND = 1_000_000_000L;
 
     private record Selection(
-            Slot slot, List<String> refinements, List<String> mentioned) {
+            Slot slot, Value calledBy, List<String> refinements,
+            List<String> mentioned, List<WordValue> mentionedAsWritten) {
 
         Value value() {
             return slot.value();
