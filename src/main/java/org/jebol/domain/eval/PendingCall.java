@@ -66,12 +66,29 @@ final class PendingCall {
                 : Optional.empty();
     }
 
+    Optional<Parameter> theParameterBeingFilled() {
+        return callee != null && arguments.size() < consuming.size()
+                ? Optional.of(consuming.get(arguments.size()))
+                : Optional.empty();
+    }
+
+    Value theArgumentStillWanted() {
+        return arguments.size() < consuming.size()
+                ? consuming.get(arguments.size()).asWrittenInTheSpec()
+                : NoneValue.none();
+    }
+
+    String nameInAnArgumentError() {
+        return calledThrough != null ? calledThrough : AN_UNNAMED_CALL;
+    }
+
     private static final String AN_UNNAMED_CALL = "-unnamed-";
 
     private static List<Parameter> declaredParametersOf(Value callee) {
         List<Parameter> declared = switch (callee) {
             case NativeValue built -> built.parameters();
             case FunctionValue function -> function.parameters();
+            case OperatorValue operator -> declaredParametersOf(operator.underlying());
             case null, default -> List.of();
         };
         return declared.stream().filter(Parameter::consumesAnArgument).toList();

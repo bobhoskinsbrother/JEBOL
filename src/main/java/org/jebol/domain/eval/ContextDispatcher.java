@@ -18,7 +18,7 @@ final class ContextDispatcher implements Dispatcher {
     public void writeTo(Slot place, Value selector, Value written) {
         ContextSlot field = fieldNamedBy(place.value(), selector);
         if (field.isProtected()) {
-            throw Raised.of(EvaluationFailure.LOCKED_WORD, "the field is protected");
+            throw Raised.of(EvaluationFailure.LOCKED_WORD, (Value) WordValue.of(field.spelling()));
         }
         field.setValue(written);
     }

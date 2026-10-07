@@ -1,9 +1,13 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Arithmetic;
+import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.RebolSeries;
@@ -49,9 +53,18 @@ public class ReverseAction extends DefaultNative {
     }
 
     private int theFrontOf(RebolSeries series, Optional<Value> limit) {
-        return limit.filter(IntegerValue.class::isInstance)
-                .map(asked -> (int) Math.max(0, Math.min(
-                        ((IntegerValue) asked).magnitude(), series.lengthFromHere())))
+        return limit.map(asked -> Math.clamp(howManyCounted(series, asked), 0, series.lengthFromHere()))
                 .orElse(series.lengthFromHere());
+    }
+
+    private long howManyCounted(RebolSeries series, Value asked) {
+        return switch (asked) {
+            case IntegerValue(long magnitude) -> magnitude;
+            case DecimalValue fraction when fraction.datatype() != Datatype.PERCENT ->
+                    (long) Comparison.asDouble(fraction);
+            case RebolSeries upTo when upTo.datatype() == series.datatype()
+                    && upTo.sharesStorageWith(series) -> upTo.index() - series.index();
+            default -> throw Raised.of(EvaluationFailure.INVALID_PART, asked);
+        };
     }
 }

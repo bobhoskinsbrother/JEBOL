@@ -3,7 +3,9 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.Deci;
 import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.MoneyCoercion;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.MoneyValue;
@@ -53,6 +55,9 @@ public class RoundAction extends DefaultNative {
             if (subject instanceof PairValue(double x, double y)) {
                 return PairValue.of(roundedHalfAway(x), roundedHalfAway(y));
             }
+            if (subject instanceof MoneyValue || scale.filter(MoneyValue.class::isInstance).isPresent()) {
+                return roundedAsMoneyRounds(subject, scale, refinements);
+            }
             double value = Comparison.asDouble(subject);
             if (scale.isEmpty()) {
                 return roundedKeepingTheDatatype(subject, roundedBy(value, refinements));
@@ -60,6 +65,56 @@ public class RoundAction extends DefaultNative {
             return roundedToAMultiple(subject, value, scale.get());
         };
     }
+
+    private Value roundedAsMoneyRounds(Value subject, Optional<Value> scale, Set<String> refinements) {
+        Deci step = scale.map(this::aStepMoneyRoundsTo).orElse(Deci.ONE);
+        Deci rounded = roundedBy(MONEY.asDeci(subject), step, refinements);
+        if (subject instanceof MoneyValue && scale.isPresent()) {
+            return switch (scale.get()) {
+                case DecimalValue quantity when quantity.datatype() == Datatype.PERCENT ->
+                        DecimalValue.percent(rounded.toDouble());
+                case DecimalValue ignored -> DecimalValue.of(rounded.toDouble());
+                case IntegerValue ignored -> IntegerValue.of(rounded.toLong());
+                default -> new MoneyValue(rounded);
+            };
+        }
+        return new MoneyValue(rounded);
+    }
+
+    private Deci aStepMoneyRoundsTo(Value given) {
+        if (!(given instanceof MoneyValue || given instanceof IntegerValue || given instanceof DecimalValue)) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, given);
+        }
+        Deci step = MONEY.asDeci(given);
+        if (step.isZero()) {
+            throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
+        }
+        return step.absolute();
+    }
+
+    private Deci roundedBy(Deci number, Deci step, Set<String> refinements) {
+        if (refinements.contains("even")) {
+            return number.halfEvenTo(step);
+        }
+        if (refinements.contains("down")) {
+            return number.truncatedTo(step);
+        }
+        if (refinements.contains("half-down")) {
+            return number.halfTruncatedTo(step);
+        }
+        if (refinements.contains("floor")) {
+            return number.flooredTo(step);
+        }
+        if (refinements.contains("ceiling")) {
+            return number.ceiledTo(step);
+        }
+        if (refinements.contains("half-ceiling")) {
+            return number.halfCeiledTo(step);
+        }
+        return number.halfAwayTo(step);
+    }
+
+    private static final MoneyCoercion MONEY = new MoneyCoercion();
 
     private Value roundedToAMultiple(Value subject, double value, Value step) {
         double multiple = Comparison.asDouble(step);

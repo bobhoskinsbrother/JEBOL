@@ -50,8 +50,7 @@ public final class Molder {
      * refinement lost.
      */
     public static String flattened(Supplier<String> written) {
-        return writingOnOneLine(() -> written.get().replaceAll("\\n\\s*", " ")
-                .replace("[ ", "[").replace(" ]", "]"));
+        return writingOnOneLine(written);
     }
 
     private static final ThreadLocal<Boolean> WRITING_ON_ONE_LINE =
@@ -260,9 +259,9 @@ public final class Molder {
                     : WRITING_EVERYTHING_OUT.get()
                             ? "#(typeset! [" + namesInTheTypeset(typeset) + "])"
                             : "make typeset! [" + namesInTheTypeset(typeset) + "]";
-            case NativeValue native0 -> "#[native! " + native0.nativeName() + "]";
+            case NativeValue built -> renderNative(built);
             case FunctionValue function -> renderFunction(function, forReading);
-            case OperatorValue operator -> "#[op! " + operator.operatorName() + "]";
+            case OperatorValue operator -> renderOperator(operator);
             case MapValue map -> renderMap(map, forReading);
             case BitsetValue bitset -> "#(bitset! "
                     + (bitset.isComplemented() ? "not " : "")
@@ -403,11 +402,7 @@ public final class Molder {
     }
 
     private static String renderMoney(MoneyValue money) {
-        String sign = money.negative() ? "-" : "";
-        BigDecimal shown = money.amount().signum() == 0
-                ? BigDecimal.ZERO
-                : money.amount().abs();
-        return sign + money.currency().orElse("$") + shown.toPlainString();
+        return money.asDeci().written(money.currency().orElse("$"));
     }
 
     private static String renderMap(MapValue map, boolean forReading) {
@@ -490,7 +485,7 @@ public final class Molder {
                     ? constructedString(string)
                     : text;
             case TAG -> "<" + text + ">";
-            case REF -> spellsARefTheLexerWouldReadBack(text)
+            case REF -> !WRITING_EVERYTHING_OUT.get() && spellsARefTheLexerWouldReadBack(text)
                     ? "@" + text
                     : constructedString(string);
             default -> moldedText(text);
@@ -804,7 +799,7 @@ public final class Molder {
             return String.join(" ", numbers);
         }
         int outer = LINED_DEPTH.get();
-        boolean overALine = numbers.size() > NUMBERS_TO_A_LINE;
+        boolean overALine = numbers.size() > NUMBERS_TO_A_LINE && !WRITING_ON_ONE_LINE.get();
         StringBuilder out = new StringBuilder("#(")
                 .append(vector.kind().spelling()).append(" [");
         if (overALine) {
@@ -950,6 +945,19 @@ public final class Molder {
         return openedFor(Datatype.EVENT) + "[" + fields
                 + (onSeparateLines ? aLineIndentedAsDeepAsWeAre() : "")
                 + "]" + closedAfterATypeName();
+    }
+
+    private static String renderNative(NativeValue built) {
+        return built.ownSpec()
+                .map(spec -> openedFor(built.datatype()) + "[" + mold(spec.head()) + "]" + closedAfterATypeName())
+                .orElseGet(() -> "#[native! " + built.nativeName() + "]");
+    }
+
+    private static String renderOperator(OperatorValue operator) {
+        return operator.underlying() instanceof NativeValue built && built.ownSpec().isPresent()
+                ? openedFor(Datatype.OP) + "[" + mold(built.ownSpec().orElseThrow().head()) + "]"
+                        + closedAfterATypeName()
+                : "#[op! " + operator.operatorName() + "]";
     }
 
     private static String renderFunction(FunctionValue function, boolean forReading) {

@@ -35,7 +35,7 @@ public class SwapAction extends DefaultNative {
                         bytes.swapFirstItemWith(other);
                 case BlockValue block when there instanceof BlockValue other ->
                         block.swapFirstItemWith(other);
-                case Value anythingElse -> refuseTheArgument(anythingElse, "series");
+                case Value anythingElse -> refuseTheArgument(anythingElse, "series1");
             };
         };
     }

@@ -168,6 +168,10 @@ public final class MapValue implements Value {
 
     public void put(Value key, Value value, boolean mindingCase) {
         refuseChangeIfProtected();
+        putWhetherProtectedOrNot(key, value, mindingCase);
+    }
+
+    public void putWhetherProtectedOrNot(Value key, Value value, boolean mindingCase) {
         Value existing = theFirstStoredKeyMatchingNotTheExactOne(key, mindingCase);
         entries.put(existing instanceof NoneValue
                 ? copiedAndLockedIfItIsText(anyWordStoredAsTheSetWordItNames(key))

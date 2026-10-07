@@ -2,6 +2,7 @@ package org.jebol.domain.read;
 
 import org.jebol.domain.value.*;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -53,36 +54,13 @@ public sealed interface TranscodeResult {
      * and stops: a syntax error leaves no reliable place to resume, and a
      * second error guessed at from a bad position is worse than none.
      */
-    record Failure(
-            SyntaxFailure failure,
-            SourcePosition position,
-            Optional<OpenDelimiter> delimiterInvolved,
-            Optional<String> tokenKind,
-            Optional<String> fragment,
-            Optional<String> offendingText) implements TranscodeResult {
+    record Failure(SyntaxFailure failure, List<Value> arguments, Optional<String> near)
+            implements TranscodeResult {
 
         public Failure {
-            if (failure == null || position == null || delimiterInvolved == null
-                    || tokenKind == null || fragment == null || offendingText == null) {
-                throw new IllegalArgumentException("a failure needs a reason and a position");
+            if (failure == null || arguments == null || near == null) {
+                throw new IllegalArgumentException("a failure needs a reason, its arguments and where it was");
             }
-        }
-
-        Failure(
-                SyntaxFailure failure,
-                SourcePosition position,
-                Optional<OpenDelimiter> delimiterInvolved) {
-            this(failure, position, delimiterInvolved,
-                    Optional.empty(), Optional.empty(), Optional.empty());
-        }
-
-        Failure(
-                SyntaxFailure failure,
-                SourcePosition position,
-                Optional<OpenDelimiter> delimiterInvolved,
-                Optional<String> tokenKind,
-                Optional<String> fragment) {
-            this(failure, position, delimiterInvolved, tokenKind, fragment, Optional.empty());
         }
 
         @Override
@@ -97,31 +75,14 @@ public sealed interface TranscodeResult {
 
         @Override
         public Optional<ErrorValue> error() {
-            ErrorValue built = ErrorValue.of(
-                    failure.category(),
-                    failure.errorId(),
-                    failure.description() + " at " + position);
-            if (tokenKind.isPresent()) {
-                Value theKindOfTokenTheReaderWasBuilding =
-                        StringValue.of(tokenKind.orElseThrow());
-                Value whatItWasReadingOrWantedInstead =
-                        offendingText.<Value>map(StringValue::of).orElseGet(NoneValue::none);
-                built = ErrorValue.about(
-                        failure.category(),
-                        failure.errorId(),
-                        failure.description() + " at " + position,
-                        theKindOfTokenTheReaderWasBuilding,
-                        whatItWasReadingOrWantedInstead,
-                        NoneValue.none());
-            }
-            return Optional.of(fragment.isPresent()
-                    ? built.near(theLineAndFragmentWrittenAsRebolWritesThem())
-                    : built);
-        }
-
-        private StringValue theLineAndFragmentWrittenAsRebolWritesThem() {
-            return StringValue.of(
-                    "(line " + position.line() + ") " + fragment.orElseThrow());
+            ErrorValue built = switch (arguments.size()) {
+                case 0 -> ErrorValue.of(failure.category(), failure.errorId(), failure.description());
+                case 1 -> ErrorValue.about(failure.category(), failure.errorId(), failure.description(),
+                        arguments.getFirst());
+                default -> ErrorValue.about(failure.category(), failure.errorId(), failure.description(),
+                        arguments.get(0), arguments.get(1));
+            };
+            return Optional.of(near.map(written -> built.near(StringValue.of(written))).orElse(built));
         }
     }
 }

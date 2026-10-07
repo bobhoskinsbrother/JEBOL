@@ -37,7 +37,7 @@ or in none. Every number below was checked on 2026-09-26 by running it.
 | `scripts/error-parity.py` | **114 of Rebol's 142 error ids can be raised, and every one of the 28 that cannot has a written reason.** It also reports the 4 ids JEBOL raises that Rebol does not name -- all four are the host-grant system and the browser view, which R3 has no equivalent of -- and that no id is filed under a category the catalogue disagrees with |
 | `corpus/` | 1,167 entries -- published REBOL examples with their published answers, plus fourteen whole programs that must load and survive a round trip through MOLD |
 | `dial-draw.reb` against `DrawDialect` | 34 of the 35 drawing commands the table declares are painted; `effect` is a dialect of its own and is not |
-| the shipped jar | about 1,940 KB and no dependencies |
+| the shipped jar | about 2,510 KB and no dependencies |
 
 `./gradlew check` is 18,787 tests, 0 failed, 0 skipped. An unread suite file
 fails the build outright -- no list, no exception. `./gradlew browserCheck` is
@@ -287,7 +287,9 @@ engineering piece and the two capabilities that are half-built (7 to 9),
 then the two security goals (10 and 11) -- which are divergences from the C
 rather than gaps against it, because Rebol does not authenticate a server
 or check a fetched module either -- and the speed, tooling and comfort work
-last (12 to 14).
+last (12 to 14). Goal 15 lists what the command line still does differently
+from r3; it was found after the order was set, and two of its four points are
+decisions rather than divergences.
 
 **The first one is first because of what it unblocks, not its size.** It is
 the only goal that other goals are waiting on: two of the five schemes, six
@@ -331,7 +333,7 @@ Rebol writes in REBOL.
 
 **Anything beyond it is an optional extension and a dependency the caller
 chooses.** A real PDF capability means a real PDF library, and the shipped jar
-has no dependencies at all -- about 1,940 KB of which the borrowed library,
+has no dependencies at all -- about 2,510 KB of which the borrowed library,
 the bundled modules and the seven of Rebol's own boot files the build reads
 rather than transcribing -- `actions`, `errors`, `modes`, `natives`, `ops`,
 `sysobj` and `typespec` -- are most of it, and nothing on the classpath that
@@ -1752,6 +1754,40 @@ tokens -- what earns space is only what contradicts the prior: `if 0` is true,
 
 One thing to price before starting: error text becomes an interface. Reword it
 later and whatever was built on the old wording breaks.
+
+---
+
+### 15. What the command line still does differently from r3
+
+Scripts and `--do` now run through Rebol's own `sys/start`, as r3's host
+applies it, and a sweep of every command-line switch against `./r3-head`
+matches except for the four things below. Each was measured on 2026-10-07 and
+each is checkable against `./r3-head` in a second.
+
+1. **The bare console does not run `start`.** `jebol` with no arguments opens
+   JEBOL's own console: its own banner, the sandboxed bounds, and no user
+   context made by `start`. r3 runs `start` first, prints the fancy
+   `boot-banner`, and then hands over to `rebol-console` from
+   `repl-rebol-console.reb`. JEBOL also prints no ANSI colours where r3's
+   colour build prints `\e[1;31m>>\e[1;33m ` as its prompt and `\e[32m==` before
+   a result. Deciding this means deciding whether the plain console keeps its
+   sandbox, which is a design choice and not only a port.
+2. **SECURE is not enforced.** `start` calls `lib/secure` with r3's default
+   policy - ask on file access outside the data, home and script folders - and
+   JEBOL accepts the policy and enforces none of it. So `+s script.r3` runs in
+   JEBOL where r3 stops with `security violation: system/options/boot-level`,
+   and `file-checksum %nothing-here 'md5` answers `cannot-open` where r3
+   answers `security`. JEBOL's own grants (`HostService`) do a different job
+   and do not replace this.
+3. **`--trace` does not trace the boot.** r3 traces every step of `start` from
+   the moment the flag is read. This is the same work as the parity half of
+   goal 13, and should be done with it.
+4. **The product and build differ.** `lib/version` is `Rebol/core 3.22.5`
+   where r3 says `Rebol/Bulk 3.22.5 (2026-09-11 11:19:00 UTC)` followed by its
+   copyright lines, and `system/build` holds `none` in every field. That shows
+   in the first lines of `--help`, `--verbose` and the banner. JEBOL is not
+   r3's C build, so what it should claim here is a decision: the honest OS,
+   architecture and build date of the JVM it runs on, or r3's.
 
 ---
 

@@ -125,16 +125,6 @@ public record PairValue(double x, double y) implements Value {
         };
     }
 
-    public static boolean isWritableHalf(String name) {
-        return name.equals(FIRST_HALF) || name.equals(SECOND_HALF);
-    }
-
-    public PairValue withHalf(String name, double replacement) {
-        return name.equals(FIRST_HALF)
-                ? new PairValue(replacement, y)
-                : new PairValue(x, replacement);
-    }
-
     public PairValue withHalfAt(int position, double replacement) {
         return position == 1
                 ? new PairValue(replacement, y)

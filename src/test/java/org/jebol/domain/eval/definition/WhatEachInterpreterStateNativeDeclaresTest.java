@@ -44,7 +44,7 @@ class WhatEachInterpreterStateNativeDeclaresTest {
                 Arguments.of(new RecycleNative(), "recycle", Set.of("off", "on", "ballast", "torture", "pools")),
                 Arguments.of(new StatsNative(), "stats", Set.of("show", "profile", "timer", "evals", "dump-series")),
                 Arguments.of(new EchoNative(granted), "echo", Set.of()),
-                Arguments.of(new WhetherATerminalNative(), "tty?", Set.of()),
+                Arguments.of(new IsTerminalNative(), "tty?", Set.of()),
                 Arguments.of(new WaitNative(), "wait", Set.of("all", "only")),
                 Arguments.of(new ReadKeyNative(granted), "read-key", Set.of()),
                 Arguments.of(new HaltNative(), "halt", Set.of()),

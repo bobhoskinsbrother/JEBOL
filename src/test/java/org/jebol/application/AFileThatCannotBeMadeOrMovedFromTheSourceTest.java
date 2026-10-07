@@ -76,13 +76,15 @@ class AFileThatCannotBeMadeOrMovedFromTheSourceTest {
     }
 
     @Test
-    @DisplayName("and a rename that could be done moves the file and answers the new name")
+    @DisplayName("and a rename that could be done moves the file and answers the port of the old name")
     void aRenameThatCouldBeDoneMovesTheFile(@TempDir Path directory) throws IOException {
         Files.writeString(directory.resolve("before.txt"), "carried");
         Interpreter interpreter = reaching(directory);
 
-        assertThat(answerTo(interpreter, "rename %before.txt %after.txt"))
-                .isEqualTo("%after.txt");
+        assertThat(answerTo(interpreter, """
+                moved: rename %before.txt %after.txt
+                reduce [port? moved  moved/spec/ref]"""))
+                .isEqualTo("[#(true) %before.txt]");
         assertThat(Files.exists(directory.resolve("before.txt"))).isFalse();
         assertThat(Files.readString(directory.resolve("after.txt"))).isEqualTo("carried");
     }

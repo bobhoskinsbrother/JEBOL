@@ -43,7 +43,7 @@ final class TupleDispatcher implements Dispatcher {
             return TupleValue.of(shortened);
         }
         if (!(written instanceof IntegerValue) && !(written instanceof DecimalValue)) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH, Molder.mold(written));
+            throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         }
         long amount = written instanceof IntegerValue(long magnitude)
                 ? magnitude

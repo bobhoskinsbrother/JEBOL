@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 /**
  * One REBOL interpreter, embedded in a host application.
@@ -37,8 +38,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class Interpreter {
 
+    private static final String THE_RESULT_MARKER = "== ";
+
+    private static final int LONGEST_RESULT_THE_CONSOLE_PRINTS = 500;
+
+    private static final int LONGEST_ERROR_THE_CONSOLE_PRINTS = 640;
+
     private final Context systemContext;
-    private final Context userContext;
+    private Context userContext;
     private final Evaluator evaluator;
     private final Bounds bounds;
 
@@ -78,6 +85,7 @@ public final class Interpreter {
                 this::reasonToStop,
                 bounds.checkEvery());
         evaluator.putRuntimeWordsIn(userContext);
+        evaluator.symbols().useBootSymbols(theSourceIn("/org/jebol/boot-symbols.txt"));
         evaluator.useBundledModules(Interpreter::bundledModules);
         declareRebolSequentially();
         publishTheUserContext();
@@ -87,6 +95,7 @@ public final class Interpreter {
         registerTheSchemesRebolDeclares();
         natives.grantOnly(bounds.grantedServices());
         natives.forgetStartupState();
+        evaluator.symbols().startCountingWhatTheSessionReads();
     }
 
 
@@ -166,8 +175,7 @@ public final class Interpreter {
         run(bootStepNamed(name));
     }
 
-    /** One boot step as it was written, for a caller that has to fill it in. */
-    public static String bootStepNamed(String name) {
+    private static String bootStepNamed(String name) {
         return resourceText(BOOT + name).orElseThrow(() -> new IllegalStateException(
                 name + " is missing from the build"));
     }
@@ -551,11 +559,60 @@ public final class Interpreter {
      * given. Never throws for anything the script did.
      */
     public ScriptOutcome run(String source) {
+        return concludedWithinTheBounds(() -> evaluate(source));
+    }
+
+    public void tellTheSystem(String option, Value value) {
+        evaluator.setSystemOption(option, value);
+    }
+
+    public ScriptOutcome started() {
+        runTheBootStep("hand-over-to-start.reb");
+        leaveTheBannerForStartToBuild();
+        ScriptOutcome outcome =
+                concludedWithinTheBounds(() -> evaluator.appliedAsTheHostApplies("start"));
+        adoptTheUserContextStartMade();
+        return outcome;
+    }
+
+    private boolean startMadeTheUserContext;
+
+    private void adoptTheUserContextStartMade() {
+        if (pathInto("system", "contexts", "user") instanceof ObjectValue(Context made)
+                && made != userContext) {
+            userContext = made;
+            startMadeTheUserContext = true;
+        }
+    }
+
+    private void resolveFromLibWhenStartMadeTheUserContext(WordValue word, Context into) {
+        if (startMadeTheUserContext && into == userContext && systemContext.knows(word.canonical())) {
+            into.set(word.spelling(), systemContext.slotFor(word.canonical()).value());
+        }
+    }
+
+    private static final String THE_MEZZANINE_FILE_THAT_READS_WHAT_START_WROTE = "mezz-banner.reb";
+
+    private void leaveTheBannerForStartToBuild() {
+        if (!(systemInternals.valueAt(THE_MEZZANINE_START_RUNS) instanceof BlockValue protecting)) {
+            return;
+        }
+        theLibraryFileAt(MEZZANINE + THE_MEZZANINE_FILE_THAT_READS_WHAT_START_WROTE)
+                .ifPresent(banner -> {
+                    List<Value> runFirst = new ArrayList<>(banner.body().remaining());
+                    runFirst.addAll(protecting.remaining());
+                    systemInternals.set(THE_MEZZANINE_START_RUNS, BlockValue.block(runFirst));
+                });
+    }
+
+    private static final String THE_MEZZANINE_START_RUNS = "boot-mezz";
+
+    private ScriptOutcome concludedWithinTheBounds(Supplier<Outcome> evaluating) {
         cancellationRequested.set(false);
         long startedAt = System.nanoTime();
         deadlineNanos = startedAt + bounds.wallClockLimit().toNanos();
         try {
-            return conclude(evaluate(source), startedAt);
+            return conclude(evaluating.get(), startedAt);
         } catch (QuitRequested quit) {
             return new ScriptOutcome(
                     Conclusion.QUIT_EARLY,
@@ -606,7 +663,7 @@ public final class Interpreter {
         long startedAt = System.nanoTime();
         deadlineNanos = startedAt + bounds.wallClockLimit().toNanos();
         try {
-            TranscodeResult read = Transcoder.transcode(source, evaluator.construction());
+            TranscodeResult read = evaluator.read(source);
             if (!read.succeeded()) {
                 return new Step(
                         conclude(new Outcome.Raised(read.error().orElseThrow()), startedAt),
@@ -650,7 +707,7 @@ public final class Interpreter {
     }
 
     private Outcome evaluate(String source) {
-        TranscodeResult read = Transcoder.transcode(source, evaluator.construction());
+        TranscodeResult read = evaluator.read(source);
         if (!read.succeeded()) {
             return new Outcome.Raised(read.error().orElseThrow());
         }
@@ -665,7 +722,8 @@ public final class Interpreter {
             case Outcome.Completed completed ->
                     new ScriptOutcome(Conclusion.PRODUCED_A_VALUE, completed.result(), elapsed);
             case Outcome.Raised raised ->
-                    new ScriptOutcome(Conclusion.RAISED, raised.failure(), elapsed);
+                    new ScriptOutcome(Conclusion.RAISED,
+                            evaluator.spokenHere(raised.failure()), elapsed);
         };
     }
 
@@ -700,7 +758,7 @@ public final class Interpreter {
      * a word nobody defined reports "has no value" rather than "not defined".
      */
     public void defineFreshWordsIn(String source) {
-        TranscodeResult read = Transcoder.transcode(source, evaluator.construction());
+        TranscodeResult read = evaluator.read(source);
         read.values().ifPresent(this::defineWordsIn);
     }
 
@@ -714,6 +772,7 @@ public final class Interpreter {
                 case WordValue word -> {
                     if (!into.knows(word.canonical())) {
                         into.define(word.spelling());
+                        resolveFromLibWhenStartMadeTheUserContext(word, into);
                     }
                 }
                 case BlockValue nested -> defineWordsIn(nested, into);
@@ -886,6 +945,7 @@ public final class Interpreter {
         if (launcher.isEmpty()) {
             return;
         }
+        evaluator.files().showsAtItsOwnPath(launcher);
         String saying = "system/options/boot: %" + launcher;
         defineFreshWordsIn(saying);
         run(saying);
@@ -897,9 +957,36 @@ public final class Interpreter {
                 : "";
     }
 
+    public String whatTheConsolePrints(ScriptOutcome outcome) {
+        Value result = outcome.value();
+        evaluator.setSystemState("last-result", result);
+        if (outcome.conclusion() == Conclusion.HALTED || result.datatype() == Datatype.UNSET) {
+            return "";
+        }
+        if (result instanceof ErrorValue error) {
+            return cutShortAt(LONGEST_ERROR_THE_CONSOLE_PRINTS, error.formedAsRebolFormsIt()) + "\n";
+        }
+        if (!theConsoleShowsResultsOfTheType(result.datatype())) {
+            return "";
+        }
+        return THE_RESULT_MARKER + cutShortAt(LONGEST_RESULT_THE_CONSOLE_PRINTS, Molder.mold(result)) + "\n\n";
+    }
+
+    private boolean theConsoleShowsResultsOfTheType(Datatype type) {
+        return pathInto("system", "options", "result-types") instanceof TypesetValue shown
+                && shown.members().contains(type);
+    }
+
+    private String cutShortAt(int longest, String written) {
+        if (written.codePointCount(0, written.length()) <= longest) {
+            return written;
+        }
+        return written.substring(0, written.offsetByCodePoints(0, longest)) + "...";
+    }
+
     /** Reads source without evaluating it, leaving every word unbound. */
     public TranscodeResult read(String source) {
-        return Transcoder.transcode(source, evaluator.construction());
+        return evaluator.read(source);
     }
 
     /** What a console would show for an outcome. */

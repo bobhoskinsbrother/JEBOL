@@ -4,7 +4,6 @@ import org.jebol.domain.eval.Binder;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
@@ -27,7 +26,7 @@ public class WithNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator.evaluateOrRaise(
                 Binder.bindWhatTheTargetHoldsItself((BlockValue) arguments.get(1),
-                        ((ObjectValue) arguments.getFirst()).context()),
+                        arguments.getFirst().fieldsAsAContext().orElseThrow()),
                 context);
     }
 }

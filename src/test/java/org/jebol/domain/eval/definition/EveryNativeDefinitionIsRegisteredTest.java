@@ -47,19 +47,23 @@ class EveryNativeDefinitionIsRegisteredTest {
             if (isAFamilyOfOnePerDatatype(definition)) {
                 return onePerDatatype(definition);
             }
-            Constructor<?> built = theConstructorToBuildWith(definition);
-            Object[] collaborators = new Object[built.getParameterCount()];
-            for (int at = 0; at < collaborators.length; at++) {
-                collaborators[at] = built.getParameterTypes()[at]
-                        .getDeclaredConstructor().newInstance();
-            }
-            return List.of((NativeDefinition) built.newInstance(collaborators));
+            return List.of((NativeDefinition) builtFromItsSmallestConstructor(definition));
         } catch (ReflectiveOperationException unbuildable) {
             throw new IllegalStateException(
                     each.getName() + " has no constructor taking nothing, a datatype or "
-                            + "collaborators that build from nothing, so nothing can "
+                            + "collaborators that build in turn, so nothing can "
                             + "register it", unbuildable);
         }
+    }
+
+    private Object builtFromItsSmallestConstructor(Class<?> type) throws ReflectiveOperationException {
+        Constructor<?> built = theConstructorToBuildWith(type);
+        built.setAccessible(true);
+        Object[] collaborators = new Object[built.getParameterCount()];
+        for (int at = 0; at < collaborators.length; at++) {
+            collaborators[at] = builtFromItsSmallestConstructor(built.getParameterTypes()[at]);
+        }
+        return built.newInstance(collaborators);
     }
 
     private boolean isAFamilyOfOnePerDatatype(Class<?> definition) {

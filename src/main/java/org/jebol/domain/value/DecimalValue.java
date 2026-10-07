@@ -56,8 +56,7 @@ public record DecimalValue(double quantity, Datatype datatype)
 
     @Override
     public Optional<MoneyValue> asMoneyInTheCurrencyOf(MoneyValue other) {
-        return Optional.of(other.amounting(
-                MoneyActions.asBigDecimal(this)));
+        return Optional.of(new MoneyValue(new Deci(quantity)));
     }
 
     @Override

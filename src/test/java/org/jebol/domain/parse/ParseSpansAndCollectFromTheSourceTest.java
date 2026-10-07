@@ -282,7 +282,7 @@ class ParseSpansAndCollectFromTheSourceTest {
         @DisplayName("a word holding nothing is refused with parse-rule")
         void anUnsetWordIsRefused() {
             assertThat(answerTo("""
-                    unassigned-word: ()
+                    set/any 'unassigned-word ()
                     e: try [parse [1] [unassigned-word]] e/id = 'parse-rule"""))
                     .isEqualTo("#(true)");
         }

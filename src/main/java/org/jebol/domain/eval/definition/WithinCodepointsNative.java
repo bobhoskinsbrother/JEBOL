@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.CharacterValue;
+import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.StringValue;
@@ -21,9 +22,10 @@ public abstract class WithinCodepointsNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case CharacterValue character -> LogicValue.of(character.codepoint() <= highest());
+            case IntegerValue codepoint -> LogicValue.of(codepoint.magnitude() <= highest());
             case StringValue text -> LogicValue.of(text.text().codePoints()
                     .allMatch(codepoint -> codepoint <= highest()));
-            default -> refuseTheArgument(arguments.getFirst(), "string or character");
+            default -> refuseTheArgument(arguments.getFirst(), "value");
         };
     }
 }

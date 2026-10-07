@@ -281,10 +281,10 @@ class ProtectionRefinementsFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("an integer is refused")
+        @DisplayName("an integer is refused by the argument's type, before the refinement is looked at")
         void anIntegerIsRefused() {
             assertThat(answerTo("""
-                    e: try [protect/hide 5] e/id = 'bad-refines""")).isEqualTo("#(true)");
+                    e: try [protect/hide 5] e/id = 'expect-arg""")).isEqualTo("#(true)");
         }
 
         @Test

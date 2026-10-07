@@ -58,7 +58,7 @@ public final class InterpreterMaker implements Maker {
             case ERROR, FUNCTION, CLOSURE, STRUCT -> wanted.make(value, this);
             case OBJECT -> anObjectConvertedFrom(value);
             case MODULE -> aModuleConvertedFrom(value);
-            default -> makingAndConverting.converted(Conversion.TO, wanted, value);
+            default -> withItsWordsInterned(makingAndConverting.converted(Conversion.TO, wanted, value));
         };
     }
 
@@ -109,8 +109,13 @@ public final class InterpreterMaker implements Maker {
 
     @Override
     public Value makeAnotherFrom(Datatype kind, Value spec) {
-        return makingAndConverting.made(DatatypeValue.of(kind), spec, evaluator, context,
-                value -> evaluator.simpleValueOf(value, context));
+        return withItsWordsInterned(makingAndConverting.made(DatatypeValue.of(kind), spec, evaluator, context,
+                value -> evaluator.simpleValueOf(value, context)));
+    }
+
+    private Value withItsWordsInterned(Value made) {
+        evaluator.symbols().internWhatWasRead(List.of(made));
+        return made;
     }
 
     private Value makeObjectFrom(Value spec) {

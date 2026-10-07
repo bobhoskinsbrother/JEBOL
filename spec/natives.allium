@@ -5410,6 +5410,34 @@ rule MoneyArithmeticRaisesPastTheBound {
     ensures: ArithmeticFailed(failure: overflow)
 }
 
+-- Every sum, product, quotient, remainder, comparison, rounding and change of
+-- form a money takes part in is the one f-deci.c computes, digit for digit:
+-- a twenty-six digit significand, a power of ten from -128 to 127, and the
+-- truncation flags that decide each rounding.
+--
+-- Which is visible in ways an unbounded decimal never shows. A quotient is
+-- worked to twenty-six digits and keeps them, so `$10 / 4` is
+-- $2.5000000000000000000000000 where `$1 * 2.5` is $2.5. A decimal becomes the
+-- shortest digits that read back as it, so `to money! 1e20` is $1e20. The text
+-- form writes an exponent once the point would sit more than six places past
+-- the first digit or anywhere past the last, so `to money! 1e-20` is $1e-20 and
+-- `to money! 1e-7` is $0.0000001. Below a power of -128 the digits shift away
+-- with rounding, and below -154 nothing is left: `to money! 1e-160` is $0.
+rule MoneyArithmeticFollowsFDeci {
+    when: EvaluateArithmetic(operation, left, right)
+    requires: is_money(left) or is_money(right)
+    ensures: ArithmeticResult(amount: the_answer_f_deci_gives(operation, left, right))
+}
+
+-- INTEGER-DIVIDE reads whatever is not an integer as a decimal, and a money's
+-- first eight bytes read as a decimal are a vanishingly small number, so
+-- `$1 // 1` is 0 in r3 and here.
+rule IntegerDivideReadsAMoneysBitsAsADecimal {
+    when: EvaluateCall(integer_divide, dividend, divisor)
+    requires: is_money(dividend)
+    ensures: CallResult(value: the_bits_of_its_significand_read_as_a_decimal(dividend) truncated)
+}
+
 -- Seven datatypes make a money and everything else is refused. A binary is
 -- the ninety-six bit form, right-aligned in twelve bytes, so a shorter
 -- binary is padded from the left and `to money! #{0F}` is $15.
@@ -10554,6 +10582,17 @@ rule KeysOfAMapAnswersPlainWords {
     ensures: CallResult(value: every_key_of(subject) as plain words)
 }
 
+-- WORDS-OF an object or a module answers words bound to it, so SET and GET
+-- through one of them reach the field. SECURE's bulk form depends on it: it
+-- walks `words-of` its policy object and sets each word, and with unbound words
+-- every `secure allow` failed. A map's words stay unbound, and GET of one fails
+-- in r3 as in JEBOL.
+rule WordsOfAnObjectAreBoundToIt {
+    when: EvaluateCall(words_of, subject)
+    requires: is_object(subject) or is_module(subject)
+    ensures: CallResult(value: every_field_of(subject) as words bound to subject)
+}
+
 -- The body of a map is its pairs, keys as stored.
 --
 -- BODY-OF and `to block!` ask the same question and get the same answer, which
@@ -14361,6 +14400,20 @@ rule RegisterFilesAStructsLayoutUnderAName {
 
     ensures: the_structs_catalogue_holds(name) = the_layout_of(value)
     ensures: CallResult(value: value)
+}
+
+-- The catalogue is protected by the time any script runs -- PROTECT-SYSTEM
+-- protects system/catalog deeply, map and all, and a script's own PUT into it
+-- is refused -- and REGISTER files the layout anyway. Its C writes the map
+-- directly and never asks whether it is protected, so in r3 `register` works
+-- after boot while `put system/catalog/structs ...` fails.
+rule RegisterWritesTheProtectedCatalogue {
+    when: EvaluateCall(register, name, value)
+    requires: value.datatype = struct
+    requires: the_structs_catalogue_is_protected()
+    requires: not the_catalogue_already_holds(name)
+
+    ensures: the_structs_catalogue_holds(name) = the_layout_of(value)
 }
 
 -- Registering the same layout under the same name again is allowed and does

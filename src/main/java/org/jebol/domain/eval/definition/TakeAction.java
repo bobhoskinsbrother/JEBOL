@@ -17,6 +17,12 @@ import java.util.Set;
 
 public class TakeAction extends DefaultNative {
 
+    private final CryptPort cryptPort;
+
+    public TakeAction(CryptPort cryptPort) {
+        this.cryptPort = cryptPort;
+    }
+
     @Override
     public String name() {
         return "take";
@@ -38,9 +44,9 @@ public class TakeAction extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case NoneValue nothing -> nothing;
             case PortValue port when port.schemeName().equals("crypt") -> {
-                CryptPort.refuseWhenClosed(port);
-                CryptPort.update(port);
-                yield CryptPort.read(port);
+                cryptPort.refuseWhenClosed(port);
+                cryptPort.update(port);
+                yield cryptPort.read(port);
             }
             case RebolSeries series -> takenFrom(series, arguments, refinements);
             case Value anythingElse -> refuseTheDatatype(anythingElse);

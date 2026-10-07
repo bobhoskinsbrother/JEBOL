@@ -19,7 +19,7 @@ final class MapDispatcher implements Dispatcher {
     public void writeTo(Slot place, Value selector, Value written) {
         MapValue map = mapIn(place.value());
         if (map.isProtected()) {
-            throw Raised.of(EvaluationFailure.PROTECTED, "map is protected");
+            throw Raised.of(EvaluationFailure.PROTECTED);
         }
         MapSlot.write(map, selector, written);
     }

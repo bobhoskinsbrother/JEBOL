@@ -7,6 +7,8 @@ import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.StringValue;
 
+import java.util.Optional;
+
 /**
  * Where a script's reading and writing goes.
  *
@@ -56,6 +58,9 @@ public interface FilePort {
      * in here. Every other reader wants {@link #workingDirectory} instead.
      */
     String hostPathOf(String path);
+
+    default void showsAtItsOwnPath(String hostFile) {
+    }
 
     /**
      * Moves to another directory.
@@ -120,7 +125,7 @@ public interface FilePort {
      * of the boundary, so there is one place for the host to be asked and one
      * place for it to be wrong.
      */
-    java.util.Optional<FileInformation> informationAbout(String path);
+    Optional<FileInformation> informationAbout(String path);
 
     /** Why a port refused. Carries an error id the boundary reports. */
     final class Denied extends RuntimeException {
@@ -131,6 +136,7 @@ public interface FilePort {
 
         private final transient String errorId;
         private final transient String subject;
+        private final transient Optional<Integer> code;
 
         public Denied(String errorId, String because) {
             this(errorId, because, "");
@@ -138,9 +144,15 @@ public interface FilePort {
 
         /** The same, naming the path the refusal is about. */
         public Denied(String errorId, String because, String subject) {
+            this(errorId, because, subject, Optional.of(OPEN_FAILED));
+        }
+
+        /** The same, with the number the C reports beside the path, or none where it reports none. */
+        public Denied(String errorId, String because, String subject, Optional<Integer> code) {
             super(because, null, false, false);
             this.errorId = errorId;
             this.subject = subject;
+            this.code = code;
         }
 
         public String errorId() {
@@ -152,11 +164,14 @@ public interface FilePort {
         }
 
         public Raised raised() {
-            return new Raised(subject.isEmpty()
-                    ? ErrorValue.of(ErrorCategory.ACCESS, errorId, getMessage())
-                    : ErrorValue.about(ErrorCategory.ACCESS, errorId, getMessage(),
-                            StringValue.of(subject, Datatype.FILE),
-                            IntegerValue.of(OPEN_FAILED)));
+            if (subject.isEmpty()) {
+                return new Raised(ErrorValue.of(ErrorCategory.ACCESS, errorId, getMessage()));
+            }
+            StringValue path = StringValue.of(subject, Datatype.FILE);
+            return new Raised(code
+                    .map(number -> ErrorValue.about(ErrorCategory.ACCESS, errorId, getMessage(),
+                            path, IntegerValue.of(number)))
+                    .orElseGet(() -> ErrorValue.about(ErrorCategory.ACCESS, errorId, getMessage(), path)));
         }
     }
 

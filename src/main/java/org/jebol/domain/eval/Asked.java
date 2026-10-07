@@ -129,13 +129,13 @@ public record Asked(
             return Optional.of((long) Comparison.asDouble(fraction));
         }
         if (limit instanceof DecimalValue || limit instanceof PairValue) {
-            throw Raised.of(EvaluationFailure.INVALID_PART, Molder.mold(limit));
+            throw Raised.of(EvaluationFailure.INVALID_PART, limit);
         }
         if (limit instanceof RebolSeries upTo) {
             if (!(given instanceof RebolSeries from)
                     || from.datatype() != upTo.datatype()
                     || !from.sharesStorageWith(upTo)) {
-                throw Raised.of(EvaluationFailure.INVALID_PART, "part");
+                throw Raised.of(EvaluationFailure.INVALID_PART, limit);
             }
             return Optional.of((long) (upTo.index() - from.index()));
         }

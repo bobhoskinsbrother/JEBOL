@@ -40,7 +40,7 @@ class BitOperatorsEveryPairEndToEndTest {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
         Repl.runTheCommandLine(
-                new String[]{script.toString()}, output, directory.toString());
+                new String[]{script.toString()}, output, output, directory.toString());
         output.flush();
         return captured.toString(StandardCharsets.UTF_8);
     }

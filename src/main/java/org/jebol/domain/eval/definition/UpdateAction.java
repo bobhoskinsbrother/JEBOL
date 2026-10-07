@@ -1,0 +1,23 @@
+package org.jebol.domain.eval.definition;
+
+import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.eval.Ports;
+import org.jebol.domain.value.PortValue;
+import org.jebol.domain.value.Value;
+
+public class UpdateAction extends ActorFirstPortAction {
+
+    public UpdateAction(GrantedServices granted, Ports ports) {
+        super(granted, ports);
+    }
+
+    @Override
+    public String name() {
+        return "update";
+    }
+
+    @Override
+    Value answeredHere(PortValue port) {
+        return ports.updated(port);
+    }
+}

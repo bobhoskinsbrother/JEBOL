@@ -16,29 +16,31 @@ import java.util.function.Supplier;
 public final class OpenFile {
 
     private final PortValue port;
+    private final SeekableFilePort seekable;
     private final FilePort files;
     private final GrantedServices granted;
 
     public OpenFile(PortValue port, FilePort files, GrantedServices granted) {
         this.port = port;
+        this.seekable = new SeekableFilePort(port);
         this.files = files;
         this.granted = granted;
     }
 
     public long position() {
         refuseAClosedPosition();
-        return SeekableFilePort.positionOf(port);
+        return seekable.position();
     }
 
     public Value movedTo(long wanted) {
         refuseAClosedPosition();
         granted.require(HostService.FILES);
-        SeekableFilePort.moveTo(port, Math.max(0, Math.min(wanted, wholeSize())));
+        seekable.moveTo(Math.max(0, Math.min(wanted, wholeSize())));
         return port;
     }
 
     public Value movedBy(long steps) {
-        return movedTo(SeekableFilePort.positionOf(port) + steps);
+        return movedTo(seekable.position() + steps);
     }
 
     public Value movedToTheEnd() {
@@ -48,13 +50,13 @@ public final class OpenFile {
     public boolean atItsEnd() {
         refuseAClosedPosition();
         granted.require(HostService.FILES);
-        return answered(() -> SeekableFilePort.atTail(files, port));
+        return answered(() -> seekable.atTail(files));
     }
 
     public Value lengthLeft() {
         refuseAClosedPosition();
         granted.require(HostService.FILES);
-        return answered(() -> SeekableFilePort.lengthLeft(files, port));
+        return answered(() -> seekable.lengthLeft(files));
     }
 
     public Value written(Value data, Optional<Value> seek, Optional<Value> part,
@@ -64,18 +66,18 @@ public final class OpenFile {
             refuseWritingWhenOpenedOnlyToRead(EvaluationFailure.READ_ONLY);
         }
         if (appending) {
-            SeekableFilePort.moveTo(port, wholeSizeEvenWhenClosed());
+            seekable.moveTo(wholeSizeEvenWhenClosed());
         }
         seek.filter(IntegerValue.class::isInstance)
-                .ifPresent(at -> SeekableFilePort.moveTo(port, ((IntegerValue) at).magnitude()));
+                .ifPresent(at -> seekable.moveTo(((IntegerValue) at).magnitude()));
         byte[] octets = data.asOctets();
         byte[] kept = part.filter(IntegerValue.class::isInstance)
                 .map(limit -> Arrays.copyOf(octets, (int) Math.max(0,
                         Math.min(((IntegerValue) limit).magnitude(), octets.length))))
                 .orElse(octets);
         return answered(() -> {
-            SeekableFilePort.writeAt(files, port, kept);
-            return StringValue.of(SeekableFilePort.pathOf(port), Datatype.FILE);
+            seekable.writeAt(files, kept);
+            return StringValue.of(seekable.path(), Datatype.FILE);
         });
     }
 
@@ -88,35 +90,33 @@ public final class OpenFile {
         refuseWritingWhenOpenedOnlyToRead(EvaluationFailure.WRITE_ERROR);
         granted.require(HostService.FILES);
         return answered(() -> {
-            String path = SeekableFilePort.pathOf(port);
+            String path = seekable.path();
             byte[] whole = files.readBytes(path);
-            long keeping = Math.min(SeekableFilePort.positionOf(port), whole.length);
+            long keeping = Math.min(seekable.position(), whole.length);
             files.write(path, Arrays.copyOf(whole, (int) keeping));
             return port;
         });
     }
 
     private void refuseWritingWhenOpenedOnlyToRead(EvaluationFailure failure) {
-        if (!SeekableFilePort.mayWriteThrough(port)) {
-            throw Raised.of(failure,
-                    StringValue.of(SeekableFilePort.pathOf(port), Datatype.FILE));
+        if (!seekable.mayWriteThrough()) {
+            throw Raised.of(failure, StringValue.of(seekable.path(), Datatype.FILE));
         }
     }
 
     private long wholeSizeEvenWhenClosed() {
-        return answered(() -> SeekableFilePort.wholeSize(files, port))
+        return answered(() -> seekable.wholeSize(files))
                 instanceof IntegerValue(long magnitude) ? magnitude : 0;
     }
 
     private long wholeSize() {
         granted.require(HostService.FILES);
-        return ((IntegerValue) answered(() -> SeekableFilePort.wholeSize(files, port)))
-                .magnitude();
+        return ((IntegerValue) answered(() -> seekable.wholeSize(files))).magnitude();
     }
 
     private void refuseAClosedPosition() {
         if (!port.isOpen()) {
-            throw Raised.of(EvaluationFailure.NOT_OPEN, SeekableFilePort.pathOf(port));
+            throw Raised.of(EvaluationFailure.NOT_OPEN, seekable.path());
         }
     }
 

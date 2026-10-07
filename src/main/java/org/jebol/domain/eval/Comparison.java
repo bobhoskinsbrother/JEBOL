@@ -104,8 +104,7 @@ public final class Comparison {
 
     private static Raised refusal(Value left, Value right) {
         return Raised.of(EvaluationFailure.INVALID_COMPARE,
-                "cannot compare " + left.datatype().literalSpelling()
-                        + " with " + right.datatype().literalSpelling());
+                DatatypeValue.of(left.datatype()), DatatypeValue.of(right.datatype()));
     }
 
     private static boolean atOneDatatype(Value left, Value right, Strictness strictness) {
@@ -199,6 +198,9 @@ public final class Comparison {
             return !Double.isNaN(first.quantity())
                     && Double.compare(first.quantity(), second.quantity()) == 0;
         }
+        if (left instanceof MoneyValue first && right instanceof MoneyValue second) {
+            return first.asDeci().isEqualTo(second.asDeci());
+        }
         if (left instanceof PairValue && right instanceof PairValue) {
             return ordering(left, right) == 0;
         }
@@ -273,6 +275,9 @@ public final class Comparison {
             return Double.doubleToRawLongBits(first.quantity())
                     == Double.doubleToRawLongBits(second.quantity());
         }
+        if (left instanceof MoneyValue first && right instanceof MoneyValue second) {
+            return first.asDeci().isTheSameAs(second.asDeci());
+        }
         if (left instanceof ObjectValue(Context context1) && right instanceof ObjectValue(Context context)) {
             return context1 == context;
         }
@@ -323,6 +328,9 @@ public final class Comparison {
         if (left instanceof IntegerValue(long magnitude1) && right instanceof IntegerValue(long magnitude)) {
             return Long.compare(magnitude1, magnitude);
         }
+        if (MONEY.meetsMoney(left, right)) {
+            return MONEY.ordering(left, right);
+        }
         if (isNumeric(left) && isNumeric(right)) {
             double first = asDouble(left);
             double second = asDouble(right);
@@ -333,6 +341,8 @@ public final class Comparison {
         }
         return compareForSorting(left, right, false);
     }
+
+    private static final MoneyCoercion MONEY = new MoneyCoercion();
 
     private static int orderingOfBlocks(BlockValue left, BlockValue right) {
         List<Value> ours = left.remaining();
@@ -421,6 +431,9 @@ public final class Comparison {
         if (left instanceof TupleValue first && right instanceof TupleValue second) {
             return orderingOfTuples(first, second);
         }
+        if (MONEY.meetsMoney(left, right)) {
+            return MONEY.sortingOrder(left, right);
+        }
         if (isNumeric(left) && isNumeric(right)) {
             boolean leftIsNaN = Double.isNaN(asDouble(left));
             boolean rightIsNaN = Double.isNaN(asDouble(right));
@@ -466,7 +479,7 @@ public final class Comparison {
             case IntegerValue integer -> integer.magnitude();
             case TimeValue time -> time.asSeconds().quantity();
             case DecimalValue decimal -> decimal.quantity();
-            case MoneyValue money -> money.amount().doubleValue();
+            case MoneyValue money -> money.asDeci().toDouble();
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     value.datatype().literalSpelling() + " is not a number");
         };

@@ -34,7 +34,7 @@ public final class ObjectActions implements Actions {
 
     private Value gainingFields(Asked asked, String nativeName) {
         if (object.context().isClosedToNewNames()) {
-            throw Raised.of(EvaluationFailure.PROTECTED, nativeName);
+            throw Raised.of(EvaluationFailure.PROTECTED);
         }
         object.refuseHiddenFieldsIn(asked.given());
         if (asked.given() instanceof WordValue only) {

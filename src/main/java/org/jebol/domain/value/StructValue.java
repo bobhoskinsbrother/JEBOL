@@ -316,8 +316,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
                     "change wanted a value, not a " + given.datatype().literalSpelling());
         }
         if (!acceptsRawBytes()) {
-            throw Raised.of(EvaluationFailure.PROTECTED,
-                    "this struct holds a REBOL value, and raw bytes would land on it");
+            throw Raised.of(EvaluationFailure.PROTECTED);
         }
         changeFrom(octets.bytesFromHere());
         return this;

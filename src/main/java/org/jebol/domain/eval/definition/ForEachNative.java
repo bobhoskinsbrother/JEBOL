@@ -32,9 +32,10 @@ public class ForEachNative extends LoopingNative {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> forEachLoop(
-                evaluator, context, arguments.get(0), arguments.get(1),
-                (BlockValue) arguments.get(2));
+        return (arguments, evaluator, context, refinements) -> arguments.get(1) instanceof NoneValue
+                ? NoneValue.none()
+                : forEachLoop(evaluator, context, arguments.get(0), arguments.get(1),
+                        (BlockValue) arguments.get(2));
     }
 
     private Value forEachLoop(Evaluator evaluator, Context within,

@@ -101,20 +101,26 @@ class DirectoryRebolNativeWordsTest {
     }
 
     @Test
-    @DisplayName("READ-DIR gives the names, with a slash on each directory")
-    void readDirNamesEverything(@TempDir Path directory) throws Exception {
+    @DisplayName("READ of a directory gives the names, with a slash on each directory")
+    void readingADirectoryNamesEverything(@TempDir Path directory) throws Exception {
         Files.writeString(directory.resolve("one.txt"), "x");
         Files.createDirectory(directory.resolve("two"));
         Interpreter interpreter = reaching(directory, HostService.FILES);
-        assertThat(answerTo(interpreter, "(read-dir %.) = [%one.txt %two/]"))
-                .isEqualTo("#(true)");
+        assertThat(answerTo(interpreter, "sort read %./")).isEqualTo("[%one.txt %two/]");
     }
 
     @Test
-    @DisplayName("READ-DIR of an empty directory gives no names")
+    @DisplayName("READ of an empty directory gives no names")
     void theDegenerateDirectory(@TempDir Path directory) {
         Interpreter interpreter = reaching(directory, HostService.FILES);
-        assertThat(answerTo(interpreter, "empty? read-dir %.")).isEqualTo("#(true)");
+        assertThat(answerTo(interpreter, "read %./")).isEqualTo("[]");
+    }
+
+    @Test
+    @DisplayName("READ-DIR is not a word Rebol has")
+    void thereIsNoReadDir(@TempDir Path directory) {
+        Interpreter interpreter = reaching(directory, HostService.FILES);
+        assertThat(answerTo(interpreter, "value? 'read-dir")).isEqualTo("#(false)");
     }
 
     @Test

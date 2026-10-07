@@ -103,7 +103,7 @@ class TimeArithmeticFromTheSourceTest {
         @Test
         @DisplayName("and dividing works the rate out")
         void dividingWorksTheRateOut() {
-            assertThat(answerTo("4:0:0 / $100")).isEqualTo("$25");
+            assertThat(answerTo("4:0:0 / $100")).isEqualTo("$25.000000000000000000000000");
         }
 
         @Test

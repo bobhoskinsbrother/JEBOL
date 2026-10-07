@@ -66,7 +66,7 @@ public class PutAction extends DefaultNative {
     private void putIntoTheObject(ObjectValue object, WordValue field, Value written) {
         object.refuseHiddenFieldsIn(field);
         if (object.context().isClosedToNewNames()) {
-            throw Raised.of(EvaluationFailure.PROTECTED, name());
+            throw Raised.of(EvaluationFailure.PROTECTED);
         }
         object.context().set(field.spelling(), written);
     }

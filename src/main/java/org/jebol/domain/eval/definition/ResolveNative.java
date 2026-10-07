@@ -47,7 +47,7 @@ public class ResolveNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             Context into = arguments.getFirst().fieldsAsAContext().orElseThrow();
             if (into.isClosedToNewNames()) {
-                throw Raised.of(EvaluationFailure.PROTECTED, "resolve");
+                throw Raised.of(EvaluationFailure.PROTECTED);
             }
             Value onlyThese = refinements.contains("only") && arguments.size() > WHERE_ONLY_ARRIVES
                     ? arguments.get(WHERE_ONLY_ARRIVES)

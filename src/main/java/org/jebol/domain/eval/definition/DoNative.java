@@ -106,7 +106,7 @@ public class DoNative extends DefaultNative {
                     runAsAScript(address, evaluator);
             case StringValue text -> evaluatedSource(text.text(), evaluator);
             case BinaryValue bytes -> doneAsAScript(bytes, evaluator);
-            case ErrorValue built -> throw new Raised(built);
+            case ErrorValue built -> throw new Raised(built.raisedAsItStands());
             case WordValue word when word.datatype() == Datatype.WORD
                     || word.datatype() == Datatype.GET_WORD ->
                     evaluator.valueOfWordIn(word, context);
@@ -177,7 +177,7 @@ public class DoNative extends DefaultNative {
     private BlockValue loadedForStepping(
             String source, Evaluator evaluator, Context context) {
 
-        TranscodeResult read = Transcoder.transcode(source, evaluator.construction());
+        TranscodeResult read = evaluator.read(source);
         if (!read.succeeded()) {
             throw new Raised(read.error().orElseThrow());
         }

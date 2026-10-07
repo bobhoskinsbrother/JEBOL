@@ -76,9 +76,7 @@ public sealed interface RebolSeries extends Value
 
     default long positionNamedBy(Value given, boolean countingFromOne) {
         return switch (given) {
-            case PairValue ignored -> throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    datatype().literalSpelling()
-                            + " has no width, so a pair names no position in it");
+            case PairValue ignored -> throw Raised.of(EvaluationFailure.INVALID_ARG, given);
             case IntegerValue number -> number.magnitude();
             case DecimalValue number -> (long) number.quantity();
             case LogicValue yesOrNo -> (yesOrNo.isTruthy() ? 1 : 2) - (countingFromOne ? 0 : 1);
@@ -114,7 +112,7 @@ public sealed interface RebolSeries extends Value
             return (long) quantity;
         }
         if (!(howMuch instanceof RebolSeries upTo) || !sharesStorageWith(upTo)) {
-            throw Raised.of(EvaluationFailure.INVALID_PART, Molder.mold(howMuch));
+            throw Raised.of(EvaluationFailure.INVALID_PART, howMuch);
         }
         return Math.abs(upTo.index() - index());
     }

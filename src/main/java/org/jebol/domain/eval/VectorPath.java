@@ -46,7 +46,7 @@ public final class VectorPath {
         try {
             vector.storage().set(chosen, storedFormOf(vector.kind(), written));
         } catch (ProtectedFromChange locked) {
-            throw Raised.of(EvaluationFailure.PROTECTED, "vector! is protected");
+            throw Raised.of(EvaluationFailure.PROTECTED);
         }
     }
 

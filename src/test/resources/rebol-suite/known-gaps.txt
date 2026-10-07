@@ -1,26 +1,3 @@
-# The one checksum-test.r3 entry left is not a checksum defect, and no work on
-# CHECKSUM will retire it.
-#
-#   --assert binary? file-checksum system/options/boot 'md5
-#
-# `system/options/boot` is the launcher JEBOL writes for itself, and its job is
-# to be handed to the host shell rather than read through the sandbox. LAUNCH is
-# `reduce [system/options/boot script]`; Rebol's own call-test.r3 and
-# module-test.r3 re-launch through it a dozen times; and the launcher carries
-# `--root` so a child interpreter inherits the parent's confinement, which is
-# the rule ASecondInterpreterIsConfinedAsThisOneIs in spec/embed.allium. So it
-# has to be a real executable file on the host, outside whatever directory the
-# script can see. `BootProcessFromTheSourceTest` pins all three of those.
-#
-# This assertion asks to *read* it. With `--root /` it passes here exactly as it
-# does on ./r3-head; under the suite host it cannot, because the file is outside
-# the root on purpose. Making the field name something inside the root, or none,
-# would break LAUNCH and confinement propagation to retire one assertion.
-#
-# It stays here rather than in fails-on-rebol-too.txt because that file's rule is
-# that every line in it was run through ./r3-head and failed there. This one
-# passes there.
-#
 # Relative binding was built on 12 September 2026 and the five func-test
 # entries that needed it are gone. What it is, and what it cost:
 #
@@ -52,4 +29,3 @@
 #     it -- `// Include PATHS` is the C's own comment -- so binding one
 #     function's body reached into another's.
 #
-checksum-test.r3 / file-checksum / file-checksum with bigger file #254

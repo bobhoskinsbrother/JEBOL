@@ -4,9 +4,14 @@ import org.jebol.domain.eval.ProcessPort;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Starts a program with the JDK, and nothing else.
@@ -18,6 +23,9 @@ import java.util.Optional;
  */
 public final class JavaProcesses implements ProcessPort {
 
+    private static final Pattern THE_REASON_THE_SYSTEM_GAVE =
+            Pattern.compile("(?:\\(([^()]*)\\)|error=\\d+, (.+?))\\s*$");
+
     @Override
     public ProgramResult run(ProgramToStart program) {
         ProcessBuilder builder = builderFor(program);
@@ -26,7 +34,7 @@ public final class JavaProcesses implements ProcessPort {
             child = builder.start();
         } catch (IOException refused) {
             return new ProgramResult(0, Optional.empty(), Optional.empty(),
-                    Optional.empty(), Optional.of(refused.getMessage()));
+                    Optional.empty(), Optional.of(theOperatingSystemsOwnWords(refused)));
         }
         Thread feeding = Thread.startVirtualThread(
                 () -> writeAnySuppliedBytesAndCloseStdin(program, child));
@@ -37,9 +45,17 @@ public final class JavaProcesses implements ProcessPort {
         return waitedFor(program, child, feeding);
     }
 
-    private static ProgramResult waitedFor(
-            ProgramToStart program, Process child, Thread feeding) {
-        var errorsAside = new java.util.concurrent.atomic.AtomicReference<byte[]>();
+    private String theOperatingSystemsOwnWords(IOException refused) {
+        String whole = Optional.ofNullable(refused.getMessage()).orElse("");
+        Matcher said = THE_REASON_THE_SYSTEM_GAVE.matcher(whole);
+        if (!said.find()) {
+            return whole;
+        }
+        return Optional.ofNullable(said.group(1)).orElseGet(() -> said.group(2));
+    }
+
+    private ProgramResult waitedFor(ProgramToStart program, Process child, Thread feeding) {
+        AtomicReference<byte[]> errorsAside = new AtomicReference<>();
         Thread draining = Thread.startVirtualThread(() -> errorsAside.set(
                 captured(program.standardError(), child.getErrorStream())
                         .orElse(null)));
@@ -59,7 +75,7 @@ public final class JavaProcesses implements ProcessPort {
         }
     }
 
-    private static ProcessBuilder builderFor(ProgramToStart program) {
+    private ProcessBuilder builderFor(ProgramToStart program) {
         ProcessBuilder builder = new ProcessBuilder(
                 asShellCommand(program.command(), program.readByTheShell()));
         builder.redirectInput(inputOf(program));
@@ -73,7 +89,7 @@ public final class JavaProcesses implements ProcessPort {
         return builder;
     }
 
-    private static void startItWhereTheScriptIsStandingRatherThanWhereTheJvmWasLaunched(
+    private void startItWhereTheScriptIsStandingRatherThanWhereTheJvmWasLaunched(
             ProcessBuilder builder, ProgramToStart program) {
 
         program.workingDirectory()
@@ -82,7 +98,7 @@ public final class JavaProcesses implements ProcessPort {
                 .ifPresent(builder::directory);
     }
 
-    private static void replaceTheChildsEnvironmentWithTheOneAsked(
+    private void replaceTheChildsEnvironmentWithTheOneAsked(
             ProcessBuilder builder, ProgramToStart program) {
 
         if (nothingWasAskedFor(program)) {
@@ -92,11 +108,11 @@ public final class JavaProcesses implements ProcessPort {
         builder.environment().putAll(program.environment());
     }
 
-    private static boolean nothingWasAskedFor(ProgramToStart program) {
+    private boolean nothingWasAskedFor(ProgramToStart program) {
         return program.environment().isEmpty();
     }
 
-    private static ProcessBuilder.Redirect inputOf(ProgramToStart program) {
+    private ProcessBuilder.Redirect inputOf(ProgramToStart program) {
         return switch (program.standardInput()) {
             case THE_HOSTS_OWN -> ProcessBuilder.Redirect.INHERIT;
             case A_FILES_CONTENTS -> ProcessBuilder.Redirect.from(
@@ -105,8 +121,7 @@ public final class JavaProcesses implements ProcessPort {
         };
     }
 
-    private static ProcessBuilder.Redirect outputOf(
-            ProgramOutput route, Optional<String> file) {
+    private ProcessBuilder.Redirect outputOf(ProgramOutput route, Optional<String> file) {
         return switch (route) {
             case THE_HOSTS_OWN -> ProcessBuilder.Redirect.INHERIT;
             case INTO_A_FILE -> ProcessBuilder.Redirect.to(
@@ -116,8 +131,7 @@ public final class JavaProcesses implements ProcessPort {
         };
     }
 
-    private static void writeAnySuppliedBytesAndCloseStdin(
-            ProgramToStart program, Process child) {
+    private void writeAnySuppliedBytesAndCloseStdin(ProgramToStart program, Process child) {
         if (program.standardInput() != ProgramInput.SUPPLIED_BYTES
                 && program.standardInput() != ProgramInput.NOTHING_AT_ALL) {
             return;
@@ -130,8 +144,7 @@ public final class JavaProcesses implements ProcessPort {
         }
     }
 
-    private static Optional<byte[]> captured(
-            ProgramOutput route, java.io.InputStream from) {
+    private Optional<byte[]> captured(ProgramOutput route, InputStream from) {
         if (route != ProgramOutput.CAPTURED) {
             return Optional.empty();
         }
@@ -142,7 +155,7 @@ public final class JavaProcesses implements ProcessPort {
         }
     }
 
-    private static List<String> asShellCommand(List<String> command, boolean throughShell) {
+    private List<String> asShellCommand(List<String> command, boolean throughShell) {
         if (!throughShell) {
             return command;
         }
@@ -151,18 +164,18 @@ public final class JavaProcesses implements ProcessPort {
                 : theFirstEntryAsTheScriptForSh(command);
     }
 
-    private static List<String> theFirstEntryAsTheScriptForSh(List<String> command) {
+    private List<String> theFirstEntryAsTheScriptForSh(List<String> command) {
         List<String> withShell = new ArrayList<>(List.of("/bin/sh", "-c"));
         withShell.addAll(command);
         return withShell;
     }
 
-    private static List<String> theWholeLineForCmd(List<String> command) {
+    private List<String> theWholeLineForCmd(List<String> command) {
         return List.of("cmd.exe", "/c", String.join(" ", command));
     }
 
-    private static boolean runsOnWindows() {
+    private boolean runsOnWindows() {
         return System.getProperty("os.name", "")
-                .toLowerCase(java.util.Locale.ROOT).contains("win");
+                .toLowerCase(Locale.ROOT).contains("win");
     }
 }

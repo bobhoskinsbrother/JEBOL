@@ -82,13 +82,17 @@ public record PortValue(Context context) implements Value {
         }
     }
 
-    public void refuseAnActorThatIsNeitherAWordNorAnObject() {
+    public void refuseAnActorThatIsNeitherANativeNorAnObject() {
         Value actor = fieldValue("actor");
-        if (actor instanceof ObjectValue || actor instanceof WordValue
+        if (actor instanceof ObjectValue || actor instanceof NativeValue
                 || actor instanceof NoneValue) {
             return;
         }
         throw Raised.of(EvaluationFailure.INVALID_ACTOR);
+    }
+
+    public boolean hasNoActor() {
+        return fieldValue("actor") instanceof NoneValue;
     }
 
     public boolean isOpen() {

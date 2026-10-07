@@ -83,7 +83,9 @@ public final class Raised extends RuntimeException {
                 ErrorCategory.SCRIPT, "cannot-use",
                 "cannot use " + nativeName + " on "
                         + value.datatype().literalSpelling() + " value",
-                WordValue.of(nativeName),
+                ActionNames.holds(nativeName)
+                        ? WordValue.of(nativeName, Datatype.SET_WORD)
+                        : WordValue.of(nativeName),
                 DatatypeValue.of(value.datatype())));
     }
 

@@ -2,8 +2,6 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.*;
 
-import java.math.BigDecimal;
-
 public final class Arithmetic {
 
     public enum Division {
@@ -20,9 +18,17 @@ public final class Arithmetic {
     }
 
     public static Value wholeQuotient(Value dividend, Value divisor) {
-        long by = (long) Comparison.asDouble(divisor);
+        long by = asIntegerDivideReadsIt(divisor);
         requireNonZero(by);
-        return IntegerValue.of((long) Comparison.asDouble(dividend) / by);
+        return IntegerValue.of(asIntegerDivideReadsIt(dividend) / by);
+    }
+
+    private static long asIntegerDivideReadsIt(Value number) {
+        return switch (number) {
+            case IntegerValue(long magnitude) -> magnitude;
+            case MoneyValue money -> (long) Double.longBitsToDouble(money.asDeci().significand().longValue());
+            default -> (long) Comparison.asDouble(number);
+        };
     }
 
     public static Value rest(Value dividend, Value divisor, Division definition) {
@@ -60,7 +66,7 @@ public final class Arithmetic {
         return switch (dividend) {
             case CharacterValue ignored -> CharacterValue.of((int) magnitude);
             case TimeValue ignored -> TimeValue.ofNanoseconds((long) magnitude);
-            case MoneyValue ignored -> MoneyValue.of(new BigDecimal((long) magnitude));
+            case MoneyValue ignored -> new MoneyValue(new Deci(magnitude));
             case IntegerValue ignored -> IntegerValue.of((long) magnitude);
             default -> DecimalValue.of(magnitude);
         };

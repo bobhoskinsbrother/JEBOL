@@ -11,7 +11,6 @@ import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.MapValue;
-import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Parameter;
@@ -105,13 +104,11 @@ public class RemoveAction extends DefaultNative {
             case IntegerValue(long magnitude) -> magnitude;
             case DecimalValue fraction when fraction.datatype() != Datatype.PERCENT ->
                     (long) Comparison.asDouble(fraction);
-            case DecimalValue ignored -> throw Raised.of(
-                    EvaluationFailure.INVALID_PART, Molder.mold(count));
-            case PairValue ignored -> throw Raised.of(
-                    EvaluationFailure.INVALID_PART, Molder.mold(count));
+            case DecimalValue ignored -> throw Raised.of(EvaluationFailure.INVALID_PART, count);
+            case PairValue ignored -> throw Raised.of(EvaluationFailure.INVALID_PART, count);
             case RebolSeries upTo when series.datatype() == upTo.datatype()
                     && series.sharesStorageWith(upTo) -> upTo.index() - series.index();
-            case RebolSeries ignored -> throw Raised.of(EvaluationFailure.INVALID_PART, "part");
+            case RebolSeries ignored -> throw Raised.of(EvaluationFailure.INVALID_PART, count);
             default -> ONE_ITEM;
         };
     }

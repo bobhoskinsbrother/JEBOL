@@ -160,7 +160,7 @@ class ReplEndToEndTest {
 
         @Test
         void divisionByZeroIsReported() {
-            assertThat(session("divide 1 0")).contains("math error");
+            assertThat(session("divide 1 0")).contains("** Math error: attempt to divide by zero");
         }
 
         @Test
@@ -168,7 +168,7 @@ class ReplEndToEndTest {
         void theSessionCarriesOnAfterAnError() {
             String transcript = session("divide 1 0", "1 + 1");
 
-            assertThat(transcript).contains("math error");
+            assertThat(transcript).contains("** Math error: attempt to divide by zero");
             assertThat(transcript).contains("== 2");
         }
 
@@ -177,7 +177,7 @@ class ReplEndToEndTest {
         void undefinedWordIsReported() {
             String transcript = session("nosuchword", "2 + 2");
 
-            assertThat(transcript).contains("script error");
+            assertThat(transcript).contains("** Script error: nosuchword has no value");
             assertThat(transcript).contains("== 4");
         }
 
@@ -290,9 +290,8 @@ class ReplEndToEndTest {
         @Test
         @DisplayName("and asking to start counting from nothing is refused, not guessed at")
         void aStartOfZeroIsRefused() {
-            assertThat(session("transcode/line \"1 2\" 0"))
-                    .contains("a number outside the range this operation allows")
-                    .contains("line one or later, not 0");
+            assertThat(session("transcode/line {1 2} 0"))
+                    .contains("** Script error: value out of range: 0");
         }
     }
 
@@ -473,7 +472,7 @@ class ReplEndToEndTest {
                     "1 + 1");
 
             assertThat(transcript)
-                    .contains("a number outside the range this operation allows")
+                    .contains("** Script error: value out of range: -1")
                     .as("the mistake ends the expression, never the session")
                     .contains("== 2");
         }
@@ -485,13 +484,16 @@ class ReplEndToEndTest {
 
         private static Ran running(java.nio.file.Path directory, String... arguments) {
             ByteArrayOutputStream captured = new ByteArrayOutputStream();
-            PrintStream output =
-                    new PrintStream(captured, true, StandardCharsets.UTF_8);
-            int status = Repl.runTheCommandLine(arguments, output, directory.toString());
-            return new Ran(status, captured.toString(StandardCharsets.UTF_8));
+            ByteArrayOutputStream reported = new ByteArrayOutputStream();
+            int status = Repl.runTheCommandLine(arguments,
+                    new PrintStream(captured, true, StandardCharsets.UTF_8),
+                    new PrintStream(reported, true, StandardCharsets.UTF_8),
+                    directory.toString());
+            return new Ran(status, captured.toString(StandardCharsets.UTF_8),
+                    reported.toString(StandardCharsets.UTF_8));
         }
 
-        private record Ran(int exitStatus, String printed) {
+        private record Ran(int exitStatus, String printed, String reported) {
         }
 
         private static java.nio.file.Path scriptSaying(
@@ -576,10 +578,9 @@ class ReplEndToEndTest {
             Ran ran = running(directory, directory.resolve("boom.r3").toString());
 
             assertThat(ran.printed())
-                    .contains("before")
-                    .contains("zero")
                     .as("nothing after the failure runs")
-                    .doesNotContain("after");
+                    .isEqualTo("before\n");
+            assertThat(ran.reported()).contains("attempt to divide by zero");
             assertThat(ran.exitStatus()).isEqualTo(1);
         }
 
@@ -588,7 +589,7 @@ class ReplEndToEndTest {
         void amissingScriptIsAFailure(@TempDir java.nio.file.Path directory) {
             Ran ran = running(directory, directory.resolve("nope.r3").toString());
 
-            assertThat(ran.printed()).contains("nope.r3");
+            assertThat(ran.reported()).contains("nope.r3");
             assertThat(ran.exitStatus()).isEqualTo(1);
         }
 

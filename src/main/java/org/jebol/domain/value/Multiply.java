@@ -1,7 +1,5 @@
 package org.jebol.domain.value;
 
-import java.math.BigDecimal;
-
 public final class Multiply implements ArithmeticOperation {
 
     private static final int THE_LARGEST_AN_OCTET_HOLDS = 255;
@@ -22,8 +20,8 @@ public final class Multiply implements ArithmeticOperation {
     }
 
     @Override
-    public MoneyValue onAmounts(BigDecimal left, BigDecimal right) {
-        return MoneyValue.of(left.multiply(right, MoneyValue.ARITHMETIC));
+    public Deci onAmounts(Deci left, Deci right) {
+        return left.times(right);
     }
 
     @Override

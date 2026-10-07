@@ -1,6 +1,5 @@
 package org.jebol.domain.value;
 
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Optional;
@@ -84,8 +83,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
 
     @Override
     public Optional<MoneyValue> asMoneyInTheCurrencyOf(MoneyValue other) {
-        return Optional.of(other.amounting(
-                MoneyActions.asBigDecimal(this)));
+        return Optional.of(new MoneyValue(new Deci(magnitude)));
     }
 
     @Override

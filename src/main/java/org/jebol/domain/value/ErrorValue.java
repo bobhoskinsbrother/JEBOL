@@ -372,9 +372,8 @@ public record ErrorValue(
                 writtenFields, wording);
     }
 
-    /** Whether anything has already said where this came from. */
-    public boolean saysWhereItCameFrom() {
-        return near.isPresent() || whereChain.isPresent();
+    public ErrorValue raisedAsItStands() {
+        return whereChain.isPresent() ? this : raisedThrough(NoneValue.none());
     }
 
     @Override

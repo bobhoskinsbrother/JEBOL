@@ -45,7 +45,7 @@ public class BindNative extends DefaultNative {
                         word, target, targetGiven instanceof WordValue, addsWhatIsMissing);
                 case BlockValue block -> blockBoundInto(
                         block, target, refinements, addsWhatIsMissing);
-                default -> refuseTheArgument(arguments.getFirst(), "word or block");
+                default -> refuseTheArgument(arguments.getFirst(), "word");
             };
         };
     }

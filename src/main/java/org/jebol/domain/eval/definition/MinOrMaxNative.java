@@ -29,8 +29,9 @@ public abstract class MinOrMaxNative extends DefaultNative {
             return PairValue.of(
                     theHalfWanted(ourX, theirX), theHalfWanted(ourY, theirY));
         }
-        int order = Comparison.compareForSorting(left, right, false);
-        return (wantsTheLarger() ? order >= 0 : order <= 0) ? left : right;
+        boolean theFirstIsAtLeastTheSecond =
+                Comparison.holds(left, right, Comparison.Strictness.GREATER_OR_EQUAL);
+        return theFirstIsAtLeastTheSecond == wantsTheLarger() ? left : right;
     }
 
     private double theHalfWanted(double ours, double theirs) {

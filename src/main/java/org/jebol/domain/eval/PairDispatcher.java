@@ -23,24 +23,25 @@ final class PairDispatcher implements Dispatcher {
         place.setValue(withHalfWritten(pairIn(place.value()), selector, written));
     }
 
-    private static PairValue withHalfWritten(
-            PairValue pair, Value selector, Value written) {
-
+    PairValue withHalfWritten(PairValue pair, Value selector, Value written) {
+        int half = theHalfNamedBy(selector);
         double replacement = switch (written) {
             case IntegerValue whole -> whole.magnitude();
             case DecimalValue quantity -> quantity.quantity();
-            default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    "a pair half holds a number, not "
-                            + written.datatype().literalSpelling());
+            default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         };
+        return pair.withHalfAt(half, replacement);
+    }
+
+    private int theHalfNamedBy(Value selector) {
         return switch (selector) {
-            case WordValue name when PairValue.isWritableHalf(name.canonical()) ->
-                    pair.withHalf(name.canonical(), replacement);
+            case WordValue name when name.canonical().equals("x") -> 1;
+            case WordValue name when name.canonical().equals("y") -> 2;
+            case WordValue name when name.canonical().equals("area") ->
+                    throw Raised.of(EvaluationFailure.BAD_PATH_SET);
             case IntegerValue position when position.magnitude() == 1
-                    || position.magnitude() == 2 ->
-                    pair.withHalfAt((int) position.magnitude(), replacement);
-            default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    "a pair has an x half and a y half, and nothing else to write");
+                    || position.magnitude() == 2 -> (int) position.magnitude();
+            default -> throw Raised.of(EvaluationFailure.INVALID_PATH);
         };
     }
 

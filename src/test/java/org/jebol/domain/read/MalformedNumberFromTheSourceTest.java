@@ -129,7 +129,7 @@ class MalformedNumberFromTheSourceTest {
         @DisplayName("but the three bases that exist still read")
         void theThreeBases() {
             assertThat(answerTo("""
-                    2#{01} = #{40}""")).isEqualTo(TRUE);
+                    2#{01} = #{01}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
                     16#{FF} = #{FF}""")).isEqualTo(TRUE);
             assertThat(answerTo("""

@@ -22,14 +22,9 @@ import org.jebol.domain.value.ErrorCategory;
  */
 public enum SyntaxFailure {
     INVALID_LEXEME("invalid", "characters that begin no known literal"),
-    MISSING_CLOSE("missing", "end of input inside an open series"),
-    EXTRA_CLOSE("missing", "a closing delimiter with no opener"),
-    MISMATCHED_CLOSE("missing", "a bracket closing a parenthesis, or the reverse"),
-    UNTERMINATED_STRING("invalid", "end of input inside a string"),
-    INVALID_ESCAPE("invalid", "a caret escape naming no known character"),
-    INTEGER_OUT_OF_RANGE("invalid", "digits beyond the 64-bit range"),
-    INVALID_BINARY("invalid", "contents that are not a binary in the base given"),
+    MISSING_CLOSE("missing", "an open series closed by something else, or not at all"),
     MALCONSTRUCT("malconstruct", "a construct whose datatype cannot be built that way"),
+    OVERFLOW(ErrorCategory.MATH, "overflow", "a decimal too large to hold"),
     INVALID_ARG(ErrorCategory.SCRIPT, "invalid-arg",
             "a map literal whose keys and values do not pair up"),
     NESTED_PAST_THE_STACK(ErrorCategory.INTERNAL, "stack-overflow",

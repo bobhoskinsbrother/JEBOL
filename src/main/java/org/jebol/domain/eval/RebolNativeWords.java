@@ -2,14 +2,12 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.eval.definition.*;
 
-import org.jebol.domain.date.part.DatePart;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.ServiceRefusal;
 import org.jebol.domain.parse.Parser;
 import org.jebol.domain.read.Construction;
 import org.jebol.domain.value.*;
 
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
@@ -31,7 +29,6 @@ public final class RebolNativeWords {
     private final MakingAndConverting makingAndConverting =
             new MakingAndConverting(registeredStructLayouts);
     private final Encodings encodings = new Encodings();
-    private final ChecksumPort checksumPort = new ChecksumPort(encodings);
     private final VersionNative version = new VersionNative();
 
     public void forgetStartupState() {
@@ -73,10 +70,12 @@ public final class RebolNativeWords {
 
     private final GrantedServices grantedServices = new GrantedServices();
 
-    private char localFileSeparator = '/';
+    private final Ports ports = new Ports(grantedServices);
+
+    private final LocalFileSeparator localFileSeparator = new LocalFileSeparator();
 
     public void useFileSeparator(char separator) {
-        this.localFileSeparator = separator;
+        localFileSeparator.use(separator);
     }
 
     private String operatingSystemName = "JVM";
@@ -95,11 +94,8 @@ public final class RebolNativeWords {
         bootDeclarations.useDatatypeSpecs(source);
     }
 
-    private String modeTableSource = "";
-
     public void useModeTable(String source) {
-        this.modeTableSource = source;
-        this.consoleModes = null;
+        ports.useModeTable(source);
     }
 
     public void useFunctionDeclarations(String... sources) {
@@ -141,17 +137,6 @@ public final class RebolNativeWords {
         return LogicValue.of(endProcess(process, signal));
     }
 
-    private static Value movedOrRefusedByTheName(
-            Evaluator evaluator, List<Value> arguments) {
-        StringValue from = (StringValue) arguments.getFirst();
-        try {
-            evaluator.files().rename(from.text(), ((StringValue) arguments.get(1)).text());
-        } catch (FilePort.Denied refused) {
-            throw Raised.of(EvaluationFailure.NO_RENAME, from);
-        }
-        return arguments.get(1);
-    }
-
     private static boolean endProcess(long process, int signal) {
         Optional<ProcessHandle> found = ProcessHandle.of(process);
         if (found.isEmpty()) {
@@ -165,17 +150,6 @@ public final class RebolNativeWords {
             throw Raised.of(EvaluationFailure.PERMISSION_DENIED, String.valueOf(process));
         }
         return true;
-    }
-
-    private static boolean endsTheWayADirectoryIsWritten(String path) {
-        char last = path.charAt(path.length() - 1);
-        return last == '/' || last == '\\';
-    }
-
-    private boolean liesOnTheDiskAsADirectory(Evaluator evaluator, String path) {
-        grantedServices.require(HostService.FILES);
-        return throughPort(() -> LogicValue.of(evaluator.files().isDirectory(path)))
-                .isTruthy();
     }
 
     private static Value refuseExtensionPoint(String extensionPoint) {
@@ -209,7 +183,7 @@ public final class RebolNativeWords {
                 .sorted()
                 .<Value>map(WordValue::of).toList()));
 
-        catalog.set("ciphers", BlockValue.block(CryptPort.catalogue()));
+        catalog.set("ciphers", BlockValue.block(ports.cryptPort().catalogue()));
 
         catalog.set("filters", BlockValue.block(
                 ResizeNative.THE_FILTERS.stream().<Value>map(WordValue::of).toList()));
@@ -245,15 +219,7 @@ public final class RebolNativeWords {
                 "boot-level", "domain-name", "module-paths", "result-types"}) {
             options.set(field, NoneValue.none());
         }
-        Context bootFlags = Context.root();
-        for (String flag : new String[] {
-                "script", "args", "do", "import", "version", "debug", "secure",
-                "help", "vers", "quiet", "verbose", "secure-min", "secure-max",
-                "trace", "halt", "cgi", "boot-level", "no-window", "no-color",
-                "legacy-repl"}) {
-            bootFlags.set(flag, LogicValue.no());
-        }
-        options.set("flags", new ObjectValue(bootFlags));
+        options.set("flags", BlockValue.block(List.of(LogicValue.yes())));
         options.set("home", StringValue.of(
                 System.getProperty("user.home", "") + "/", Datatype.FILE));
         options.set("boot", NoneValue.none());
@@ -358,10 +324,17 @@ public final class RebolNativeWords {
         }
         context.set("system", systemObject(context));
 
-        definitions.forEach(context::set);
+        Map<String, NativeValue> carryingTheirSpecs = new LinkedHashMap<>();
+        definitions.forEach((name, built) -> carryingTheirSpecs.put(name, carryingItsSpec(built)));
+        carryingTheirSpecs.forEach(context::set);
         operatorTwins.forEach((operator, twin) ->
-                context.set(operator, new OperatorValue(operator, definitions.get(twin))));
+                context.set(operator, new OperatorValue(operator, carryingTheirSpecs.get(twin))));
         return context;
+    }
+
+    private NativeValue carryingItsSpec(NativeValue built) {
+        BlockValue spec = bootDeclarations.specOf(built);
+        return built.derivedWith(spec, new DeclaredArguments(spec).inPlaceOf(built.parameters()));
     }
 
     private void define(String name, List<Parameter> parameters, Callable behaviour) {
@@ -445,7 +418,7 @@ public final class RebolNativeWords {
         register(new ArctangentOfAPointNative());
         register(new ArctangentOfTwoSidesNative());
         register(new FractionNative());
-        register(new WhetherComplementedNative());
+        register(new IsComplementedNative());
         register(new ComplementAction());
         register(new ClampNative());
         register(new DistanceNative());
@@ -805,11 +778,11 @@ public final class RebolNativeWords {
         register(new HashNative());
         register(new CollectWordsNative());
         register(new NewLineNative());
-        register(new WhetherANewLineNative());
+        register(new IsNewLineNative());
         register(new ObjectNative());
         register(new WithNative());
-        register(new WhetherSelflessNative());
-        register(new WhetherProtectedNative());
+        register(new IsSelflessNative());
+        register(new IsProtectedNative());
         register(new UnbindNative());
         register(new BindNative());
     }
@@ -834,21 +807,21 @@ public final class RebolNativeWords {
 
     private void registerReflection() {
         register(new ShiftNative());
-        register(new WhetherOddAction());
-        register(new WhetherEvenAction());
+        register(new IsOddAction());
+        register(new IsEvenAction());
         register(new TypeOfNative());
         for (Datatype datatype : Datatype.values()) {
             register(new DatatypePredicateAction(datatype));
         }
-        register(new WhetherAnyTypeNative());
-        register(new WhetherCopyableNative());
-        register(new WhetherImmediateNative());
-        register(new WhetherInternalNative());
-        register(new WhetherTrueNative());
+        register(new IsAnyTypeNative());
+        register(new IsCopyableNative());
+        register(new IsImmediateNative());
+        register(new IsInternalNative());
+        register(new IsTrueNative());
         register(new DidNative());
-        register(new WhetherANumberNative());
-        register(new WhetherAsciiNative());
-        register(new WhetherLatin1Native());
+        register(new IsNumberNative());
+        register(new IsAsciiNative());
+        register(new IsLatin1Native());
         register(new FormOidNative());
         register(new BinaryNative());
         register(new RegisterNative());
@@ -868,10 +841,10 @@ public final class RebolNativeWords {
         register(new Rc4Native());
         register(new UtfNative());
         register(new InvalidUtfNative());
-        register(new WhetherNegativeNative());
-        register(new WhetherPositiveNative());
-        register(new WhetherZeroNative());
-        register(new WhetherAValueNative());
+        register(new IsNegativeNative());
+        register(new IsPositiveNative());
+        register(new IsZeroNative());
+        register(new IsValueNative());
         register(new UnsetNative());
         register(new ProtectNative());
         register(new UnprotectNative());
@@ -880,7 +853,7 @@ public final class RebolNativeWords {
 
     private void registerSetting() {
         register(new SetNative());
-        register(new TakeAction());
+        register(new TakeAction(ports.cryptPort()));
         register(new AjoinNative());
         register(new PokeAction());
         register(new DifferenceNative());
@@ -913,9 +886,9 @@ public final class RebolNativeWords {
         register(new TruncateNative());
         register(new AtzAction(grantedServices));
         register(new IndexzAction(grantedServices));
-        register(new WhetherPastAction());
-        register(new WhetherHeadAction());
-        register(new WhetherTailAction(grantedServices));
+        register(new IsPastAction());
+        register(new IsHeadAction());
+        register(new IsTailAction(grantedServices));
         register(new NextAction(grantedServices));
         register(new HeadAction(grantedServices));
         register(new TailAction(grantedServices));
@@ -944,25 +917,6 @@ public final class RebolNativeWords {
         register(new RoundAction());
     }
 
-
-    private static Value argumentFor(
-            String refinement, List<String> declaredOrder,
-            List<Value> arguments, Set<String> asked, int firstRefinementArgument) {
-
-        if (!asked.contains(refinement)) {
-            return null;
-        }
-        int at = firstRefinementArgument;
-        for (String earlier : declaredOrder) {
-            if (earlier.equals(refinement)) {
-                return at < arguments.size() ? arguments.get(at) : null;
-            }
-            if (asked.contains(earlier)) {
-                at++;
-            }
-        }
-        return null;
-    }
 
     static List<Value> numbersContributedTo(VectorKind kind, Value value) {
         if (value instanceof VectorValue source) {
@@ -1071,204 +1025,9 @@ public final class RebolNativeWords {
         return bootDeclarations.theRowsBelowTheHeaderOf(errorCatalogueSource);
     }
 
-    private SequencedSet<String> consoleModes;
-
-    private static final String THE_CONSOLE_MODE_HEADING = "*console-modes*";
-
-    private SequencedSet<String> consoleModes() {
-        if (consoleModes == null) {
-            consoleModes = theConsoleModesInTheModeTable();
-        }
-        return consoleModes;
-    }
-
-    private SequencedSet<String> theConsoleModesInTheModeTable() {
-        List<Value> rows = bootDeclarations.theRowsBelowTheHeaderOf(modeTableSource);
-        for (int at = 0; at + 1 < rows.size(); at++) {
-            if (rows.get(at) instanceof WordValue name
-                    && name.canonical().equals(THE_CONSOLE_MODE_HEADING)
-                    && rows.get(at + 1) instanceof BlockValue listed) {
-                return theWordsIn(listed);
-            }
-        }
-        return new LinkedHashSet<>();
-    }
-
-    private static SequencedSet<String> theWordsIn(BlockValue listed) {
-        SequencedSet<String> named = new LinkedHashSet<>();
-        for (Value each : listed.remaining()) {
-            if (each instanceof WordValue word) {
-                named.add(word.canonical());
-            }
-        }
-        return named;
-    }
-
 
     private static final Set<Datatype> WHAT_PARSE_TAKES = Typeset.SERIES.members();
 
-
-    private static final List<String> CONSOLE_MEASUREMENTS =
-            List.of("window-cols", "window-rows", "buffer-cols", "buffer-rows");
-
-    private static final int COLUMNS_A_TERMINAL_IS_ASSUMED_TO_HAVE = 80;
-
-    private static int measureOfTheConsole(String measurement) {
-        return measurement.equals("window-cols")
-                ? COLUMNS_A_TERMINAL_IS_ASSUMED_TO_HAVE
-                : 0;
-    }
-
-    private Value readFromTheFileBehind(
-            PortValue port, Evaluator evaluator,
-            List<Value> arguments, Set<String> refinements) {
-
-        grantedServices.require(HostService.FILES);
-        String path = SeekableFilePort.pathOf(port);
-        if (port.schemeName().equals("dir")) {
-            return throughPort(() -> SeekableFilePort.namesIn(evaluator.files(), path));
-        }
-        boolean wasClosed = !port.isOpen();
-        if (wasClosed) {
-            port.markOpen(true);
-            SeekableFilePort.moveTo(port, 0);
-        }
-        Value seek = refinements.contains("seek")
-                ? argumentFor("seek", List.of("part", "seek"), arguments, refinements, 1)
-                : null;
-        if (seek instanceof IntegerValue(long magnitude2)) {
-            SeekableFilePort.moveTo(port, magnitude2);
-        }
-        Value part = refinements.contains("part")
-                ? argumentFor("part", List.of("part", "seek"), arguments, refinements, 1)
-                : null;
-        if (part instanceof IntegerValue(long magnitude1)
-                && magnitude1 < 0
-                && -magnitude1 > SeekableFilePort.positionOf(port)) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, part);
-        }
-        Value read = throughPort(() -> SeekableFilePort.readFrom(
-                evaluator.files(), port,
-                part instanceof IntegerValue(long magnitude) ? magnitude : null));
-        if (wasClosed) {
-            port.markOpen(false);
-        }
-        return asTextWhereAskedFor(read, refinements);
-    }
-
-    private static Value asTextWhereAskedFor(Value read, Set<String> refinements) {
-        if (!(read instanceof BinaryValue bytes)
-                || !(refinements.contains("string") || refinements.contains("lines"))) {
-            return read;
-        }
-        Optional<String> text = FileReading.decodedUtfText(bytes.octetsFromHere());
-        if (text.isEmpty()) {
-            return read;
-        }
-        return refinements.contains("lines")
-                ? BlockValue.block(StringValue.of(text.orElseThrow())
-                        .linesDroppingOneTrailingEmptyLine())
-                : StringValue.of(text.orElseThrow());
-    }
-
-    private void openTheFileBehind(
-            PortValue port, Evaluator evaluator, Set<String> refinements) {
-
-        String path = SeekableFilePort.pathOf(port);
-        if (port.schemeName().equals("dir")) {
-            if (!((LogicValue) throughPort(() -> LogicValue.of(
-                    somethingIsThereFor(path, evaluator.files())))).truth()) {
-                throw Raised.of(EvaluationFailure.CANNOT_OPEN,
-                        StringValue.of(path, Datatype.FILE));
-            }
-            SeekableFilePort.moveTo(port, 0);
-            return;
-        }
-        refuseANewFileNobodyMayWriteTo(refinements, path);
-        boolean alreadyThere = ((LogicValue) throughPort(() ->
-                LogicValue.of(evaluator.files().exists(path)))).truth();
-        if (!mayWrite(refinements)) {
-            if (!alreadyThere) {
-                throw Raised.of(EvaluationFailure.CANNOT_OPEN,
-                        StringValue.of(path, Datatype.FILE));
-            }
-        } else if (!alreadyThere || emptiesWhatIsThere(refinements)) {
-            throughPort(() -> {
-                evaluator.files().write(path, new byte[0]);
-                return NoneValue.none();
-            });
-        }
-        SeekableFilePort.openedAt(port, 0, mayWrite(refinements));
-    }
-
-    private void sayWhereTheInterpreterIsStanding(Evaluator evaluator) {
-        if (!thereIsAnEnvironmentToWriteTo()) {
-            return;
-        }
-        evaluator.environment().nameHolds(
-                "PWD", evaluator.files().workingDirectory());
-    }
-
-    private boolean thereIsAnEnvironmentToWriteTo() {
-        return grantedServices.allow(HostService.ENVIRONMENT);
-    }
-
-    private static boolean somethingIsThereFor(String path, FilePort files) {
-        if (!FileReading.holdsAWildcard(path)) {
-            return files.exists(path);
-        }
-        int lastSeparator = path.lastIndexOf('/');
-        String directory = path.substring(0, lastSeparator + 1);
-        String pattern = path.substring(lastSeparator + 1);
-        if (FileReading.holdsAWildcard(directory)) {
-            return false;
-        }
-        try {
-            return files.namesIn(directory.isEmpty() ? "." : directory).stream()
-                    .anyMatch(listed -> Wildcards.STARS_AND_QUESTION_MARKS.matchTheWholeOf(
-                            FileReading.withoutItsSlash(listed), pattern));
-        } catch (RuntimeException nothingThere) {
-            return false;
-        }
-    }
-
-    private static void refuseANewFileNobodyMayWriteTo(
-            Set<String> refinements, String path) {
-        if (refinements.contains("new") && !mayWrite(refinements)) {
-            throw Raised.of(EvaluationFailure.BAD_FILE_MODE,
-                    StringValue.of(path, Datatype.FILE));
-        }
-    }
-
-    private static boolean mayWrite(Set<String> refinements) {
-        return refinements.contains("write") || namesNeitherWay(refinements);
-    }
-
-    private static boolean mayRead(Set<String> refinements) {
-        return refinements.contains("read") || namesNeitherWay(refinements);
-    }
-
-    private static boolean namesNeitherWay(Set<String> refinements) {
-        return !refinements.contains("read") && !refinements.contains("write");
-    }
-
-    private static boolean emptiesWhatIsThere(Set<String> refinements) {
-        return refinements.contains("new")
-                || !(mayRead(refinements) || refinements.contains("seek"));
-    }
-
-
-    private static void queueWhatHappenedTo(
-            PortValue port, String happened, Evaluator evaluator) {
-
-        if (!(evaluator.hostPort("system") instanceof PortValue queue)) {
-            return;
-        }
-        queue.eventQueue().ifPresent(onIt -> onIt.storage().insertAt(
-                onIt.storage().length() + 1,
-                new EventValue(EventCatalogue.typeIndexOf(happened).orElseThrow(),
-                        of(), EventValue.Model.PORT, 0, port)));
-    }
 
     private static final int CODEC_HANDLE_IDENTITY = 1000;
 
@@ -1290,12 +1049,6 @@ public final class RebolNativeWords {
     }
 
 
-    private static String environmentNameIn(Value asked) {
-        return asked instanceof WordValue word
-                ? word.spelling()
-                : ((StringValue) asked).text();
-    }
-
     private void registerInterpreterState() {
         register(version);
         register(new PokezNative());
@@ -1303,7 +1056,7 @@ public final class RebolNativeWords {
         register(new RecycleNative());
         register(new StatsNative());
         register(new EchoNative(grantedServices));
-        register(new WhetherATerminalNative());
+        register(new IsTerminalNative());
         register(new WaitNative());
         register(new ReadKeyNative(grantedServices));
         register(new HaltNative());
@@ -1328,48 +1081,10 @@ public final class RebolNativeWords {
     }
 
 
-    private static final Set<String> SCHEMES_THIS_BUILD_SERVES =
-            of("console", "tcp", "dns", "event", "checksum", "file", "dir",
-                    "crypt");
-
-    private static void startTheCipherBehindBlankingTheKeyInTheSpec(PortValue port) {
-        if (CryptPort.isWorking(port)) {
-            throw Raised.of(EvaluationFailure.ALREADY_OPEN,
-                    port.fieldValue("spec") instanceof ObjectValue spec
-                            ? spec.fieldValue("ref")
-                            : NoneValue.none());
-        }
-        if (!(port.fieldValue("spec") instanceof ObjectValue spec)) {
-            throw Raised.of(EvaluationFailure.INVALID_SPEC, port);
-        }
-        String algorithm = spec.fieldValue("algorithm") instanceof WordValue word
-                ? word.canonical()
-                : "";
-        if (!CryptPort.serves(algorithm)) {
-            throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
-        }
-        CryptPort.start(port, algorithm,
-                spec.fieldValue("direction") instanceof WordValue wanted
-                        && wanted.canonical().equals("decrypt"),
-                octetsInSpec(spec, "key"), octetsInSpec(spec, "init-vector"));
-        spec.context().set("key", NoneValue.none());
-        spec.context().set("init-vector", NoneValue.none());
-    }
-
-    private static byte[] octetsInSpec(ObjectValue spec, String field) {
-        return switch (spec.fieldValue(field)) {
-            case BinaryValue octets -> octets.octetsFromHere();
-            case StringValue text -> text.text()
-                    .getBytes(java.nio.charset.StandardCharsets.UTF_8);
-            default -> new byte[0];
-        };
-    }
-
-
     private void registerStrings() {
         register(new FindScriptNative());
         register(new SplitLinesNative());
-        register(new WhetherWildcardNative());
+        register(new IsWildcardNative());
         register(new UppercaseNative());
         register(new LowercaseNative());
         register(new TrimAction());
@@ -1441,10 +1156,6 @@ public final class RebolNativeWords {
     }
 
 
-    private static boolean isExactlyAString(Value value) {
-        return value instanceof StringValue && value.datatype() == Datatype.STRING;
-    }
-
     static void refuseTheObjectsOwnSelfBeforeAnyFieldIsAdded(
             ObjectValue object, List<Value> pairs) {
         for (int at = 0; at + 1 < pairs.size(); at += 2) {
@@ -1460,1767 +1171,35 @@ public final class RebolNativeWords {
 
 
     private void registerPorts() {
-        define("read", List.of(
-                        Parameter.required("source",
-                                of(Datatype.FILE, Datatype.PORT, Datatype.URL,
-                                        Datatype.BLOCK, Datatype.WORD)),
-                        Parameter.belongingTo("part", "length",
-                                Typeset.NUMBER.members()),
-                        Parameter.belongingTo("seek", "index",
-                                Typeset.NUMBER.members())),
-                of("part", "seek", "string", "binary", "lines", "all"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (arguments.getFirst() instanceof PortValue port) {
-                        port.refuseASpecThatIsNotAnObject();
-                        return port.isAFile()
-                                ? readFromTheFileBehind(
-                                        port, evaluator, arguments, refinements)
-                                : readFromPort(port, evaluator, arguments, refinements);
-                    }
-                    Optional<String> behindTheUrl =
-                            theFileNamedByAUrl(arguments.getFirst(), evaluator, context);
-                    if (behindTheUrl.isEmpty() && routesToAScheme(arguments.getFirst())) {
-                        return readFromPort(
-                                portOpenedFor(arguments.getFirst(), evaluator, context),
-                                evaluator, arguments, refinements);
-                    }
-                    grantedServices.require(HostService.FILES);
-                    return throughPort(() -> FileReading
-                            .asAskedForAt(behindTheUrl.orElseGet(() ->
-                                    ((StringValue) arguments.getFirst()).text()),
-                                    arguments, refinements)
-                            .answerThrough(evaluator.files()));
-                });
-
-        define("write", List.of(
-                        Parameter.required("destination",
-                                of(Datatype.FILE, Datatype.PORT, Datatype.URL,
-                                        Datatype.BLOCK, Datatype.WORD)),
-                        Parameter.required("data"),
-                        Parameter.belongingTo("part", "length",
-                                Typeset.NUMBER.members()),
-                        Parameter.belongingTo("seek", "index",
-                                Typeset.NUMBER.members()),
-                        Parameter.belongingTo("allow", "access", of(Datatype.BLOCK))),
-                of("part", "seek", "append", "allow", "lines", "binary", "all"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (arguments.getFirst() instanceof PortValue port) {
-                        port.refuseASpecThatIsNotAnObject();
-                        return writeToPort(port, arguments.get(1), evaluator,
-                                arguments, refinements);
-                    }
-                    if (routesToAScheme(arguments.getFirst())) {
-                        return writeToPort(
-                                portOpenedFor(arguments.getFirst(), evaluator, context),
-                                arguments.get(1), evaluator, arguments, refinements);
-                    }
-                    grantedServices.require(HostService.FILES);
-                    return throughPort(() -> {
-                        FileWriting.asAskedFor(arguments, refinements)
-                                .performThrough(evaluator.files());
-                        return arguments.getFirst();
-                    });
-                });
-
-        define("to-local-file", List.of(Parameter.required("path",
-                        of(Datatype.FILE, Datatype.STRING))),
-                of("full"),
-                (arguments, evaluator, context, refinements) -> {
-                    String path = ((StringValue) arguments.getFirst()).text();
-                    boolean resolvingDots = refinements.contains("full");
-                    String from = "";
-                    if (resolvingDots && !path.startsWith("/")) {
-                        grantedServices.require(HostService.WORKING_DIRECTORY);
-                        from = ((StringValue) throughPort(() -> StringValue.of(
-                                evaluator.files().workingDirectory()))).text();
-                    }
-                    return StringValue.of(
-                            localPathOf(from + path, resolvingDots, localFileSeparator));
-                });
-
-        define("to-rebol-file", List.of(Parameter.required("path",
-                        of(Datatype.FILE, Datatype.STRING))),
-                (arguments, evaluator, context) -> StringValue.of(
-                        oneSlashPerRunOfSeparators(
-                                ((StringValue) arguments.getFirst()).text()),
-                        Datatype.FILE));
-
-        define("call", List.of(
-                        Parameter.required("command",
-                                Typeset.ANY_STRING.membersAnd(Datatype.BLOCK)),
-                        Parameter.belongingTo("input", "in",
-                                of(Datatype.STRING, Datatype.BINARY,
-                                        Datatype.FILE, Datatype.NONE)),
-                        Parameter.belongingTo("output", "out",
-                                of(Datatype.STRING, Datatype.BINARY,
-                                        Datatype.FILE, Datatype.NONE)),
-                        Parameter.belongingTo("error", "err",
-                                of(Datatype.STRING, Datatype.BINARY,
-                                        Datatype.FILE, Datatype.NONE))),
-                of("wait", "console", "shell", "info", "input", "output", "error"),
-                (arguments, evaluator, context, refinements) -> {
-                    grantedServices.require(HostService.PROCESSES);
-                    ProgramCalling calling = ProgramCalling.asAskedFor(
-                            arguments, refinements, evaluator, context);
-                    return throughPort(() ->
-                            calling.answerThrough(evaluator.processes(), evaluator));
-                });
-
-
-
-        define("get-env", List.of(Parameter.required("name",
-                        of(Datatype.STRING, Datatype.WORD, Datatype.LIT_WORD))),
-                (arguments, evaluator, context) -> {
-                    grantedServices.require(HostService.ENVIRONMENT);
-                    return throughPort(() -> {
-                        String held = evaluator.environment()
-                                .valueOf(environmentNameIn(arguments.getFirst()));
-                        return held == null ? NoneValue.none() : StringValue.of(held);
-                    });
-                });
-
-        define("list-env", List.of(),
-                (arguments, evaluator, context) -> {
-                    grantedServices.require(HostService.ENVIRONMENT);
-                    return throughPort(() -> {
-                        List<Value> pairs = new ArrayList<>();
-                        evaluator.environment().all().entrySet().stream()
-                                .sorted(java.util.Map.Entry.comparingByKey())
-                                .forEach(one -> {
-                                    pairs.add(StringValue.of(one.getKey()));
-                                    pairs.add(StringValue.of(one.getValue()));
-                                });
-                        return MapValue.of(pairs);
-                    });
-                });
-
-        define("set-env", List.of(
-                        Parameter.required("name",
-                                of(Datatype.STRING, Datatype.WORD, Datatype.LIT_WORD)),
-                        Parameter.required("value",
-                                of(Datatype.STRING, Datatype.NONE))),
-                (arguments, evaluator, context) -> {
-                    grantedServices.require(HostService.ENVIRONMENT);
-                    Value given = arguments.get(1);
-                    return throughPort(() -> {
-                        evaluator.environment().nameHolds(
-                                environmentNameIn(arguments.getFirst()),
-                                given instanceof StringValue held ? held.text() : null);
-                        return given;
-                    });
-                });
-
-        define("what-dir", List.of(),
-                (arguments, evaluator, context) -> {
-                    grantedServices.require(HostService.WORKING_DIRECTORY);
-                    return throughPort(() -> StringValue.of(
-                            evaluator.files().workingDirectory(), Datatype.FILE));
-                });
-
-        define("change-dir", List.of(Parameter.required("path", of(Datatype.FILE))),
-                (arguments, evaluator, context) -> {
-                    grantedServices.require(HostService.WORKING_DIRECTORY);
-                    String asked = ((StringValue) arguments.getFirst()).text();
-                    return throughPort(() -> {
-                        evaluator.files().changeDirectory(asked);
-                        sayWhereTheInterpreterIsStanding(evaluator);
-                        return StringValue.of(
-                                evaluator.files().workingDirectory(), Datatype.FILE);
-                    });
-                });
-
-
-        define("create", List.of(Parameter.required("path",
-                        of(Datatype.FILE, Datatype.URL))),
-                (arguments, evaluator, context) -> {
-                    grantedServices.require(HostService.FILES);
-                    return throughPort(() -> {
-                        String path = ((StringValue) arguments.getFirst()).text();
-                        if (path.endsWith("/")) {
-                            evaluator.files().makeDirectory(path, false);
-                        } else {
-                            evaluator.files().write(path, new byte[0]);
-                        }
-                        return arguments.getFirst();
-                    });
-                });
-
-        define("delete", List.of(Parameter.required("path",
-                        of(Datatype.FILE, Datatype.URL))),
-                (arguments, evaluator, context) -> {
-                    Value target = arguments.getFirst();
-                    Optional<String> behindTheUrl =
-                            theFileNamedByAUrl(target, evaluator, context);
-                    if (behindTheUrl.isEmpty() && target.datatype() != Datatype.FILE) {
-                        throw schemeRefusal("delete", "deletes through", target);
-                    }
-                    grantedServices.require(HostService.FILES);
-                    String path = behindTheUrl.orElseGet(
-                            () -> ((StringValue) target).text());
-                    Value itsPort = evaluator.applyFunction(
-                            context.systemFunctionNamed("make-port*"), List.of(target));
-                    try {
-                        if (!evaluator.files().delete(path)) {
-                            return LogicValue.of(false);
-                        }
-                    } catch (FilePort.Denied refused) {
-                        throw Raised.of(EvaluationFailure.NO_DELETE, target);
-                    }
-                    return itsPort;
-                });
-
-        define("rename", List.of(
-                        Parameter.required("from", of(Datatype.FILE, Datatype.BLOCK,
-                                Datatype.PORT, Datatype.URL)),
-                        Parameter.required("to", of(Datatype.FILE, Datatype.BLOCK,
-                                Datatype.PORT, Datatype.URL))),
-                (arguments, evaluator, context) -> {
-                    for (Value end : List.of(arguments.getFirst(), arguments.get(1))) {
-                        if (end.datatype() != Datatype.FILE) {
-                            throw schemeRefusal("rename", "renames", end);
-                        }
-                    }
-                    grantedServices.require(HostService.FILES);
-                    return movedOrRefusedByTheName(evaluator, arguments);
-                });
-
-        define("read-dir", List.of(Parameter.required("path", of(Datatype.FILE))),
-                (arguments, evaluator, context) -> {
-                    grantedServices.require(HostService.FILES);
-                    return throughPort(() -> BlockValue.block(
-                            evaluator.files().namesIn(
-                                    ((StringValue) arguments.getFirst()).text()).stream()
-                                    .<Value>map(name -> StringValue.of(name, Datatype.FILE))
-                                    .toList()));
-                });
-
-
-        define("dir?", List.of(Parameter.required("target",
-                        of(Datatype.FILE, Datatype.URL, Datatype.NONE))),
-                of("check"),
-                (arguments, evaluator, context, refinements) -> {
-                    Value target = arguments.getFirst();
-                    if (!(target instanceof StringValue address)
-                            || address.text().isEmpty()) {
-                        return LogicValue.of(false);
-                    }
-                    if (refinements.contains("check")
-                            && target.datatype() == Datatype.FILE
-                            && liesOnTheDiskAsADirectory(evaluator, address.text())) {
-                        return LogicValue.of(true);
-                    }
-                    return LogicValue.of(endsTheWayADirectoryIsWritten(address.text()));
-                });
-
-        define("set-scheme", List.of(
-                        Parameter.required("scheme", of(Datatype.OBJECT))),
-                (arguments, evaluator, context) -> {
-                    ObjectValue scheme = (ObjectValue) arguments.getFirst();
-                    Value given = scheme.context().holds("name")
-                            ? scheme.context().ownSlotFor("name").value()
-                            : NoneValue.none();
-                    if (!(given instanceof WordValue name)
-                            || !SCHEMES_THIS_BUILD_SERVES.contains(name.canonical())) {
-                        return NoneValue.none();
-                    }
-                    scheme.context().set("actor", WordValue.of(name.canonical()));
-                    return LogicValue.of(true);
-                });
-
-        define("port?", takes("value"),
-                (arguments, evaluator, context) -> LogicValue.of(
-                        arguments.getFirst() instanceof PortValue));
-
-        define("open", List.of(Parameter.required("spec"),
-                        Parameter.belongingTo("allow", "access", of(Datatype.BLOCK))),
-                of("new", "read", "write", "seek", "allow"),
-                (arguments, evaluator, context, refinements) -> {
-                    Value built = arguments.getFirst() instanceof PortValue already
-                            ? already
-                            : evaluator.applyFunction(
-                                    context.systemFunctionNamed("make-port*"),
-                                    List.of(arguments.getFirst()));
-                    if (!(built instanceof PortValue port)) {
-                        throw Raised.of(EvaluationFailure.INVALID_ARG,
-                                "nothing knows how to open that");
-                    }
-                    port.refuseAnActorThatIsNeitherAWordNorAnObject();
-                    Optional<ObjectValue> written = port.actorWrittenInRebol();
-                    if (written.isPresent()) {
-                        return evaluator.askTheActor(written.get(), "open",
-                                List.of(port), refinements);
-                    }
-                    requireServiceForScheme(port.schemeName());
-                    if (port.schemeName().equals("tcp")) {
-                        connectTheTcpPort(port, evaluator);
-                    }
-                    if (port.schemeName().equals("udp")) {
-                        bindTheDatagramPort(port, evaluator);
-                    }
-                    if (port.schemeName().equals("crypt")) {
-                        startTheCipherBehindBlankingTheKeyInTheSpec(port);
-                    }
-                    if (port.schemeName().equals("checksum")) {
-                        checksumPort.startEvenOnAnAlreadyOpenPort(
-                                port, checksumPort.methodOf(port));
-                    }
-                    if (port.isAFile()) {
-                        openTheFileBehind(port, evaluator, refinements);
-                    }
-                    port.eventQueue();
-                    markOpenWhateverTheActorLeftInState(port);
-                    return port;
-                });
-
-        define("update", List.of(Parameter.required("port", of(Datatype.PORT))),
-                (arguments, evaluator, context) -> {
-                    Optional<Value> itsOwn =
-                            evaluator.theRebolActorsAnswer("update", arguments, of());
-                    if (itsOwn.isPresent()) {
-                        return itsOwn.get();
-                    }
-                    PortValue port = (PortValue) arguments.getFirst();
-                    if (port.schemeName().equals("checksum")) {
-                        checksumPort.digestSoFarLeftInTheDataFieldAsWell(port);
-                        return port;
-                    }
-                    if (port.schemeName().equals("crypt")) {
-                        CryptPort.refuseWhenClosed(port);
-                        CryptPort.update(port);
-                        return port;
-                    }
-                    return NoneValue.none();
-                });
-
-        define("flush", List.of(Parameter.required("port", of(Datatype.PORT))),
-                (arguments, evaluator, context) -> {
-                    evaluator.output().flush();
-                    return arguments.getFirst();
-                });
-
-        define("open?", List.of(Parameter.required("port", of(Datatype.PORT))),
-                (arguments, evaluator, context) -> {
-                    Optional<Value> itsOwn =
-                            evaluator.theRebolActorsAnswer("open?", arguments, of());
-                    if (itsOwn.isPresent()) {
-                        return itsOwn.get();
-                    }
-                    PortValue port = (PortValue) arguments.getFirst();
-                    if (port.schemeName().equals("crypt")) {
-                        CryptPort.refuseWhenClosed(port);
-                    }
-                    return LogicValue.of(port.isOpen());
-                });
-
-        define("close", List.of(Parameter.required("port", of(Datatype.PORT))),
-                (arguments, evaluator, context) -> {
-                    Optional<Value> itsOwn =
-                            evaluator.theRebolActorsAnswer("close", arguments, of());
-                    if (itsOwn.isPresent()) {
-                        return itsOwn.get();
-                    }
-                    PortValue port = (PortValue) arguments.getFirst();
-                    if (port.schemeName().equals("crypt")) {
-                        CryptPort.refuseWhenClosed(port);
-                        CryptPort.stop(port);
-                    }
-                    handBackTheConnectionBehind(port);
-                    port.markOpen(false);
-                    if (port.schemeName().equals("checksum")) {
-                        checksumPort.stop(port);
-                    }
-                    return port;
-                });
-
-        define("modify", List.of(
-                        Parameter.required("target", of(Datatype.PORT, Datatype.FILE)),
-                        Parameter.required("field", of(Datatype.WORD, Datatype.NONE)),
-                        Parameter.required("value")),
-                (arguments, evaluator, context) -> {
-                    Optional<Value> itsOwn =
-                            evaluator.theRebolActorsAnswer("modify", arguments, of());
-                    if (itsOwn.isPresent()) {
-                        return itsOwn.get();
-                    }
-                    if (arguments.getFirst() instanceof PortValue aPort
-                            && aPort.schemeName().equals("crypt")) {
-                        CryptPort.refuseWhenClosed(aPort);
-                        if (!(arguments.get(1) instanceof WordValue setting)) {
-                            return aPort;
-                        }
-                        return CryptPort.modify(aPort, setting.canonical(),
-                                arguments.get(2));
-                    }
-                    Value asked = arguments.get(1);
-                    if (!(asked instanceof WordValue mode)
-                            || !consoleModes().contains(mode.canonical())) {
-                        throw Raised.of(EvaluationFailure.BAD_FILE_MODE, asked);
-                    }
-                    if (!(arguments.get(2) instanceof LogicValue)) {
-                        throw Raised.of(EvaluationFailure.INVALID_VALUE_FOR,
-                                arguments.get(2), mode);
-                    }
-                    if (arguments.getFirst() instanceof PortValue port) {
-                        port.setField(mode.canonical(), arguments.get(2));
-                    }
-                    return arguments.get(2);
-                });
-
-        define("browse", List.of(Parameter.required("url",
-                        of(Datatype.URL, Datatype.FILE, Datatype.NONE))),
-                (arguments, evaluator, context) -> {
-                    grantedServices.require(HostService.WINDOWS);
-                    return throughWindow(() -> {
-                        if (!(arguments.getFirst() instanceof StringValue target)) {
-                            return NoneValue.none();
-                        }
-                        evaluator.windows().browse(target.text());
-                        return NoneValue.none();
-                    });
-                });
-
-        define("request-file", List.of(
-                        Parameter.belongingTo("file", "name", of(Datatype.FILE)),
-                        Parameter.belongingTo("title", "text", of(Datatype.STRING)),
-                        Parameter.belongingTo("filter", "list", of(Datatype.BLOCK))),
-                of("save", "multi", "file", "title", "filter"),
-                (arguments, evaluator, context, refinements) -> {
-                    grantedServices.require(HostService.WINDOWS);
-                    List<String> filters = filterPairsIn(arguments, refinements);
-                    return throughWindow(() -> {
-                        List<String> chosen = evaluator.windows().chooseFiles(
-                                refinements.contains("save"),
-                                refinements.contains("multi"),
-                                textOfArgument(arguments, refinements,
-                                        List.of("file", "title", "filter"), "file"),
-                                textOfArgument(arguments, refinements,
-                                        List.of("file", "title", "filter"), "title"),
-                                filters);
-                        if (refinements.contains("multi")) {
-                            return BlockValue.block(chosen.stream()
-                                    .<Value>map(one -> StringValue.of(one, Datatype.FILE))
-                                    .toList());
-                        }
-                        return chosen.isEmpty()
-                                ? NoneValue.none()
-                                : StringValue.of(chosen.getFirst(), Datatype.FILE);
-                    });
-                });
-
-        define("request-dir", List.of(
-                        Parameter.belongingTo("title", "text", of(Datatype.STRING)),
-                        Parameter.belongingTo("dir", "name", of(Datatype.FILE))),
-                of("title", "dir", "keep"),
-                (arguments, evaluator, context, refinements) -> {
-                    grantedServices.require(HostService.WINDOWS);
-                    return throughWindow(() -> evaluator.windows().chooseDirectory(
-                                    textOfArgument(arguments, refinements,
-                                            List.of("title", "dir"), "dir"),
-                                    textOfArgument(arguments, refinements,
-                                            List.of("title", "dir"), "title"))
-                            .<Value>map(where -> StringValue.of(where, Datatype.FILE))
-                            .orElseGet(NoneValue::none));
-                });
-
-        define("request-color", List.of(
-                        Parameter.belongingTo("default", "color", of(Datatype.TUPLE))),
-                of("default"),
-                (arguments, evaluator, context, refinements) -> {
-                    grantedServices.require(HostService.WINDOWS);
-                    return throughWindow(() -> {
-                        Optional<int[]> suggested = refinements.contains("default")
-                                        && arguments.getFirst() instanceof TupleValue given
-                                ? Optional.of(given.segments())
-                                : Optional.empty();
-                        return evaluator.windows().chooseColour(suggested)
-                                .<Value>map(TupleValue::of)
-                                .orElseGet(NoneValue::none);
-                    });
-                });
-
-        define("request-password", List.of(),
-                (arguments, evaluator, context) -> {
-                    grantedServices.require(HostService.WINDOWS);
-                    return throughWindow(() -> evaluator.windows()
-                            .askForPassword()
-                            .<Value>map(StringValue::of)
-                            .orElseGet(NoneValue::none));
-                });
-
-        define("query", List.of(
-                        Parameter.required("target", of(Datatype.FILE, Datatype.DATE,
-                                Datatype.HANDLE, Datatype.PORT, Datatype.URL,
-                                Datatype.BLOCK, Datatype.WORD, Datatype.VECTOR)),
-                        Parameter.required("field",
-                                of(Datatype.WORD, Datatype.BLOCK,
-                                        Datatype.NONE, Datatype.DATATYPE))),
-                of("mode"),
-                (arguments, evaluator, context, refinements) -> {
-                    Optional<Value> itsOwn = evaluator.theRebolActorsAnswer(
-                            "query", arguments, refinements);
-                    if (itsOwn.isPresent()) {
-                        return itsOwn.get();
-                    }
-                    Value target = arguments.getFirst();
-                    Value field = arguments.get(1);
-                    if (target instanceof VectorValue vector) {
-                        return queriedVector(vector, field, evaluator);
-                    }
-                    if (target instanceof DateValue date) {
-                        return questionedByField(field, evaluator,
-                                DatePart.partNames(),
-                                part -> DatePart.readFrom(date, WordValue.of(part)));
-                    }
-                    if (target instanceof HandleValue handle) {
-                        return questionedByField(field, evaluator,
-                                List.of("type"),
-                                part -> WordValue.of(handle.typeName()));
-                    }
-                    if (target instanceof PortValue console
-                            && console.schemeName().equals("console")) {
-                        if (field instanceof WordValue asked
-                                && !asked.canonical().equals("words")
-                                && !CONSOLE_MEASUREMENTS.contains(asked.canonical())) {
-                            throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
-                        }
-                        return questionedByField(field, evaluator,
-                                CONSOLE_MEASUREMENTS,
-                                part -> IntegerValue.of(measureOfTheConsole(part)));
-                    }
-                    if (field instanceof NoneValue) {
-                        return theNamesThatPortMayBeAskedFor(target, evaluator, context);
-                    }
-                    if (target instanceof PortValue openFile && openFile.isAFile()) {
-                        grantedServices.require(HostService.FILES);
-                        return throughPort(() -> queryAnswerFor(
-                                evaluator.files().informationAbout(
-                                        SeekableFilePort.pathOf(openFile)),
-                                field, evaluator));
-                    }
-                    Optional<String> behindTheUrl =
-                            theFileNamedByAUrl(target, evaluator, context);
-                    if (behindTheUrl.isEmpty()
-                            && (target instanceof PortValue || routesToAScheme(target))) {
-                        throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
-                                WordValue.of("query").as(Datatype.SET_WORD));
-                    }
-                    grantedServices.require(HostService.FILES);
-                    String path = behindTheUrl.orElseGet(
-                            () -> ((StringValue) target).text());
-                    if (path.isEmpty()) {
-                        return NoneValue.none();
-                    }
-                    return throughPort(() -> queryAnswerFor(
-                            evaluator.files().informationAbout(path), field,
-                            evaluator));
-                });
+        register(new ReadAction(grantedServices, ports));
+        register(new WriteAction(grantedServices, ports));
+        register(new ToLocalFileNative(grantedServices, localFileSeparator));
+        register(new ToRebolFileNative());
+        register(new CallNative(grantedServices));
+        register(new GetEnvNative(grantedServices));
+        register(new ListEnvNative(grantedServices));
+        register(new SetEnvNative(grantedServices));
+        register(new WhatDirNative(grantedServices));
+        register(new ChangeDirNative(grantedServices));
+        register(new CreateAction(grantedServices, ports));
+        register(new DeleteAction(grantedServices, ports));
+        register(new RenameAction(grantedServices, ports));
+        register(new IsDirectoryNative(grantedServices));
+        register(new SetSchemeNative());
+        register(new OpenAction(grantedServices, ports));
+        register(new UpdateAction(grantedServices, ports));
+        register(new FlushAction());
+        register(new IsOpenAction(grantedServices, ports));
+        register(new CloseAction(grantedServices, ports));
+        register(new ModifyAction(grantedServices, ports));
+        register(new BrowseNative(grantedServices));
+        register(new RequestFileNative(grantedServices));
+        register(new RequestDirNative(grantedServices));
+        register(new RequestColorNative(grantedServices));
+        register(new RequestPasswordNative(grantedServices));
+        register(new QueryAction(grantedServices, ports));
     }
 
-    private static Value queryAnswerFor(
-            java.util.Optional<FileInformation> found, Value field,
-            Evaluator evaluator) {
-
-        if (found.isEmpty()) {
-            return NoneValue.none();
-        }
-        FileInformation about = found.get();
-        if (field instanceof BlockValue wanted) {
-            List<Value> answer = new ArrayList<>();
-            for (Value item : wanted.remaining()) {
-                if (!(item instanceof WordValue asked)) {
-                    throw Raised.of(EvaluationFailure.INVALID_ARG,
-                            "a query field is a word, not "
-                                    + item.datatype().literalSpelling());
-                }
-                if (asked.datatype() != Datatype.GET_WORD) {
-                    answer.add(asked.as(Datatype.SET_WORD));
-                }
-                answer.add(queryFieldOf(about, asked));
-            }
-            return BlockValue.block(answer);
-        }
-        if (field instanceof WordValue asked) {
-            return queryFieldOf(about, asked);
-        }
-        return everythingKnownAbout(about);
-    }
-
-    private static Value queryFieldOf(FileInformation about, WordValue asked) {
-        return switch (asked.canonical()) {
-            case "size" -> about.size().<Value>map(IntegerValue::of).orElseGet(NoneValue::none);
-            case "type" -> WordValue.of(about.isDirectory() ? "dir" : "file");
-            case "date", "modified" -> asDateValue(about.modified());
-            case "accessed" -> asDateValue(about.accessed());
-            case "created" -> asDateValue(about.created());
-            case "name" -> StringValue.of(about.name(), Datatype.FILE);
-            default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    asked.spelling() + " is not a field a file has");
-        };
-    }
-
-    private Value theNamesThatPortMayBeAskedFor(
-            Value target, Evaluator evaluator, Context context) {
-
-        Value built = target instanceof PortValue already
-                ? already
-                : evaluator.applyFunction(
-                        context.systemFunctionNamed("make-port*"), List.of(target));
-        Value described = built instanceof PortValue(Context context1)
-                ? context1.valueAt("scheme", "info")
-                : NoneValue.none();
-        if (!(described instanceof ObjectValue(Context context1))) {
-            return BlockValue.block(List.of());
-        }
-        return BlockValue.block(context1.slots().stream()
-                .filter(slot -> !slot.canonical().equals("self"))
-                .<Value>map(slot -> WordValue.of(slot.spelling()))
-                .toList());
-    }
-
-    private static Value everythingKnownAbout(FileInformation about) {
-        Context fields = Context.root();
-        fields.set("name", StringValue.of(about.name(), Datatype.FILE));
-        fields.set("size", about.size().<Value>map(IntegerValue::of).orElseGet(NoneValue::none));
-        fields.set("type", WordValue.of(about.isDirectory() ? "dir" : "file"));
-        fields.set("date", asDateValue(about.modified()));
-        fields.set("modified", asDateValue(about.modified()));
-        fields.set("accessed", asDateValue(about.accessed()));
-        fields.set("created", asDateValue(about.created()));
-        return new ObjectValue(fields);
-    }
-
-    private static Value asDateValue(java.util.Optional<java.time.Instant> moment) {
-        return moment.<Value>map(when -> {
-            java.time.LocalDateTime local = java.time.LocalDateTime.ofInstant(
-                    when, java.time.ZoneOffset.UTC);
-            return DateValue.of(local.getYear(), local.getMonthValue(), local.getDayOfMonth(),
-                    TimeValue.of(local.getHour(), local.getMinute(), local.getSecond(), 0));
-        }).orElseGet(NoneValue::none);
-    }
-
-    private record ProgramCalling(
-            List<String> command,
-            boolean readByTheShell,
-            boolean attachedToTheHostsConsole,
-            boolean waits,
-            boolean answersAnObject,
-            Optional<Value> input,
-            Optional<Value> output,
-            Optional<Value> errors) {
-
-        private static final List<String> ARGUMENT_ORDER =
-                List.of("input", "output", "error");
-
-        static ProgramCalling asAskedFor(
-                List<Value> arguments, Set<String> refinements,
-                Evaluator evaluator, Context context) {
-
-            Optional<Value> input = redirection("input", arguments, refinements);
-            Optional<Value> output = redirection("output", arguments, refinements);
-            Optional<Value> errors = redirection("error", arguments, refinements);
-            boolean aSeriesIsAtOneEnd =
-                    isASeries(input) || isASeries(output) || isASeries(errors);
-            return new ProgramCalling(
-                    commandWordsOf(arguments.getFirst(), evaluator, context),
-                    refinements.contains("shell"),
-                    refinements.contains("console"),
-                    refinements.contains("wait") || aSeriesIsAtOneEnd,
-                    refinements.contains("info"),
-                    input, output, errors);
-        }
-
-        private static Optional<Value> redirection(
-                String refinement, List<Value> arguments, Set<String> refinements) {
-            return Optional.ofNullable(
-                    argumentFor(refinement, ARGUMENT_ORDER, arguments, refinements, 1));
-        }
-
-        private static boolean isASeries(Optional<Value> redirection) {
-            return redirection
-                    .filter(value -> value instanceof BinaryValue
-                            || value.datatype() == Datatype.STRING)
-                    .isPresent();
-        }
-
-        private static List<String> commandWordsOf(
-                Value command, Evaluator evaluator, Context context) {
-            if (!(command instanceof BlockValue block)
-                    || command.datatype() != Datatype.BLOCK) {
-                return List.of(((StringValue) command).text());
-            }
-            List<Value> items = block.remaining();
-            if (items.isEmpty()) {
-                throw Raised.of(EvaluationFailure.TOO_SHORT,
-                        "a command needs at least the program's name");
-            }
-            return items.stream()
-                    .map(item -> commandWordOf(item, evaluator, context))
-                    .toList();
-        }
-
-        private static String commandWordOf(
-                Value item, Evaluator evaluator, Context context) {
-            Value resolved = item;
-            if (item instanceof WordValue word
-                    && word.datatype() == Datatype.GET_WORD) {
-                resolved = word.boundSlot().value();
-            } else if (item instanceof BlockValue path
-                    && path.datatype() == Datatype.GET_PATH) {
-                resolved = evaluator.evaluateOrRaise(
-                        BlockValue.block(List.of(path)), context);
-            }
-            return switch (resolved) {
-                case StringValue text -> text.text();
-                case WordValue word when word.datatype() == Datatype.WORD ->
-                        word.spelling();
-                default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        Molder.mold(resolved) + " names nothing a command line can hold");
-            };
-        }
-
-        Value answerThrough(ProcessPort port, Evaluator evaluator) {
-            ProcessPort.ProgramResult result = port.run(toStart(evaluator));
-            output.ifPresent(buffer -> result.capturedOutput()
-                    .ifPresent(bytes -> appendedInto(buffer, bytes)));
-            errors.ifPresent(buffer -> result.capturedError()
-                    .ifPresent(bytes -> appendedInto(buffer, bytes)));
-            if (answersAnObject) {
-                return informationObject(result, evaluator);
-            }
-            if (result.refusalMessage().isPresent()) {
-                throw Raised.of(EvaluationFailure.CALL_FAIL,
-                        result.refusalMessage().orElseThrow());
-            }
-            if (waits && result.exitCode().isEmpty()) {
-                throw Raised.of(EvaluationFailure.CALL_FAIL,
-                        "the host waited for the program and answered no exit code");
-            }
-            return IntegerValue.of(waits
-                    ? result.exitCode().orElseThrow()
-                    : result.processNumber());
-        }
-
-        private ProcessPort.ProgramToStart toStart(Evaluator evaluator) {
-            return new ProcessPort.ProgramToStart(
-                    command, readByTheShell, attachedToTheHostsConsole, waits,
-                    inputKindOf(input), pipedBytesOf(input), fileOf(input, evaluator),
-                    outputKindOf(output), fileOf(output, evaluator),
-                    outputKindOf(errors), fileOf(errors, evaluator),
-                    whatTheChildInherits(evaluator),
-                    whereTheChildStarts(evaluator));
-        }
-
-        private static Optional<String> whereTheChildStarts(Evaluator evaluator) {
-            try {
-                return Optional.of(evaluator.files()
-                        .hostPathOf(evaluator.files().workingDirectory()));
-            } catch (FilePort.Denied noFilesystem) {
-                return Optional.empty();
-            }
-        }
-
-        private static java.util.Map<String, String> whatTheChildInherits(
-                Evaluator evaluator) {
-
-            try {
-                return evaluator.environment().all();
-            } catch (FilePort.Denied noEnvironment) {
-                return java.util.Map.of();
-            }
-        }
-
-        private static ProcessPort.ProgramInput inputKindOf(Optional<Value> redirection) {
-            if (redirection.isEmpty()) {
-                return ProcessPort.ProgramInput.THE_HOSTS_OWN;
-            }
-            return switch (redirection.orElseThrow()) {
-                case BinaryValue piped -> ProcessPort.ProgramInput.SUPPLIED_BYTES;
-                case StringValue text when text.datatype() == Datatype.STRING ->
-                        ProcessPort.ProgramInput.SUPPLIED_BYTES;
-                case StringValue address -> ProcessPort.ProgramInput.A_FILES_CONTENTS;
-                default -> ProcessPort.ProgramInput.NOTHING_AT_ALL;
-            };
-        }
-
-        private static ProcessPort.ProgramOutput outputKindOf(Optional<Value> redirection) {
-            if (redirection.isEmpty()) {
-                return ProcessPort.ProgramOutput.THE_HOSTS_OWN;
-            }
-            return switch (redirection.orElseThrow()) {
-                case BinaryValue captured -> ProcessPort.ProgramOutput.CAPTURED;
-                case StringValue text when text.datatype() == Datatype.STRING ->
-                        ProcessPort.ProgramOutput.CAPTURED;
-                case StringValue address -> ProcessPort.ProgramOutput.INTO_A_FILE;
-                default -> ProcessPort.ProgramOutput.DISCARDED;
-            };
-        }
-
-        private static Optional<byte[]> pipedBytesOf(Optional<Value> redirection) {
-            return redirection.map(value -> switch (value) {
-                case BinaryValue binary -> binary.octetsFromHere();
-                case StringValue text when text.datatype() == Datatype.STRING ->
-                        text.text().getBytes(StandardCharsets.UTF_8);
-                default -> null;
-            });
-        }
-
-        private static Optional<String> fileOf(
-                Optional<Value> redirection, Evaluator evaluator) {
-            return redirection
-                    .filter(value -> value.datatype() == Datatype.FILE)
-                    .map(value -> whereReadWouldResolveIt(
-                            ((StringValue) value).text(), evaluator));
-        }
-
-        private static String whereReadWouldResolveIt(String path, Evaluator evaluator) {
-            try {
-                return evaluator.files().hostPathOf(path);
-            } catch (FilePort.Denied noDirectoryToAsk) {
-                return path;
-            }
-        }
-
-        private static void appendedInto(Value buffer, byte[] bytes) {
-            switch (buffer) {
-                case BinaryValue binary -> {
-                    for (byte octet : bytes) {
-                        binary.storage().append(octet & 0xFF);
-                    }
-                }
-                case StringValue text when text.datatype() == Datatype.STRING ->
-                        new String(bytes, StandardCharsets.UTF_8)
-                                .codePoints().forEach(text.storage()::append);
-                default -> { }
-            }
-        }
-
-        private Value informationObject(
-                ProcessPort.ProgramResult result, Evaluator evaluator) {
-            Context fields = Context.childOf(evaluator.systemContext());
-            ObjectValue built = new ObjectValue(fields);
-            fields.set("self", built);
-            fields.set("id", IntegerValue.of(result.processNumber()));
-            if (waits && result.exitCode().isPresent()) {
-                fields.set("exit-code",
-                        IntegerValue.of(result.exitCode().orElseThrow()));
-            }
-            result.refusalMessage().ifPresent(message ->
-                    fields.set("error", StringValue.of(message)));
-            return built;
-        }
-    }
-
-    private Value whatTheOperatorLastCopied(PortValue port, Evaluator evaluator,
-            List<Value> arguments, Set<String> refinements) {
-
-        grantedServices.require(HostService.CLIPBOARD);
-        String copied = theClipboardsAnswer(evaluator);
-        if (refinements.contains("part") && arguments.size() > 1
-                && arguments.get(1) instanceof IntegerValue(long wanted)) {
-            copied = copied.substring(0, (int) Math.min(
-                    Math.max(wanted, 0), copied.length()));
-        }
-        port.setField("data", StringValue.of(copied));
-        if (refinements.contains("lines")) {
-            return BlockValue.block(copied.lines()
-                    .<Value>map(StringValue::of).toList());
-        }
-        return StringValue.of(copied);
-    }
-
-    private static String theClipboardsAnswer(Evaluator evaluator) {
-        try {
-            return evaluator.clipboard().read();
-        } catch (ClipboardPort.Unreachable unreachable) {
-            throw Raised.of(EvaluationFailure.READ_ERROR, unreachable.getMessage());
-        }
-    }
-
-    private Value readFromPort(PortValue port, Evaluator evaluator,
-            List<Value> arguments, Set<String> refinements) {
-
-        Optional<Value> itsOwn = evaluator.theRebolActorsAnswer(
-                "read", withThePortInFront(port, arguments), refinements);
-        if (itsOwn.isPresent()) {
-            return itsOwn.get();
-        }
-        return switch (port.schemeName()) {
-            case "console" -> lineReadFromTheConsole(evaluator);
-            case "clipboard" ->
-                    whatTheOperatorLastCopied(port, evaluator, arguments, refinements);
-            case "bundled" -> theSourceOfABundledModule(port, evaluator);
-            case "tcp" -> bytesReadFromTheConnection(port, evaluator);
-            case "udp" -> oneDatagramReadInto(port, evaluator);
-            case "dns" -> addressesOfTheNameThePortNames(port, evaluator);
-            case "checksum" ->
-                    checksumPort.digestSoFarLeftInTheDataFieldAsWell(port);
-            case "crypt" -> {
-                CryptPort.refuseWhenClosed(port);
-                yield CryptPort.read(port);
-            }
-            default -> throw Raised.of(EvaluationFailure.NO_SERVICE,
-                    "nothing here reads the " + port.schemeName() + " scheme");
-        };
-    }
-
-    private Value lineReadFromTheConsole(Evaluator evaluator) {
-        grantedServices.require(HostService.CONSOLE);
-        return throughPort(() -> {
-            String line = evaluator.console().readLine();
-            return line == null ? NoneValue.none() : StringValue.of(line);
-        });
-    }
-
-    private Value theSourceOfABundledModule(PortValue port, Evaluator evaluator) {
-        return theNameABundledUrlAsksFor(port)
-                .flatMap(name -> evaluator.bundledModules().sourceOf(name))
-                .map(source -> (Value) BinaryValue.ofBytes(source))
-                .orElseThrow(() -> Raised.of(EvaluationFailure.CANNOT_OPEN,
-                        port.fieldValue("spec") instanceof ObjectValue spec
-                                ? spec.fieldValue("ref")
-                                : NoneValue.none()));
-    }
-
-    private static Optional<String> theNameABundledUrlAsksFor(PortValue port) {
-        if (!(port.fieldValue("spec") instanceof ObjectValue spec)
-                || !(spec.fieldValue("host") instanceof StringValue host)
-                || !(spec.fieldValue("path") instanceof NoneValue)
-                || !(spec.fieldValue("target") instanceof NoneValue)) {
-            return Optional.empty();
-        }
-        return host.text().isEmpty() ? Optional.empty() : Optional.of(host.text());
-    }
-
-    private Value bytesReadFromTheConnection(PortValue port, Evaluator evaluator) {
-        grantedServices.require(HostService.NETWORK);
-        NetworkPort.Connection connection = connectionBehind(port);
-        return throughNetwork(() -> {
-            BinaryValue arrived = BinaryValue.ofBytes(connection.read());
-            addToThePortsData(port, arrived);
-            queueWhatHappenedTo(port,
-                    arrived.lengthFromHere() == 0 ? "close" : "read", evaluator);
-            return arrived;
-        });
-    }
-
-    private static void addToThePortsData(PortValue port, BinaryValue arrived) {
-        if (!(port.fieldValue("data") instanceof BinaryValue held)) {
-            port.setField("data", arrived);
-            return;
-        }
-        for (int at = arrived.index(); at <= arrived.storageLength(); at++) {
-            held.storage().append(arrived.storage().at(at));
-        }
-    }
-
-    private Value addressesOfTheNameThePortNames(PortValue port, Evaluator evaluator) {
-        grantedServices.require(HostService.NETWORK);
-        String hostName = hostNamedBy(port);
-        return throughNetwork(() -> {
-            List<String> found = evaluator.network().addressesFor(hostName);
-            return found.isEmpty()
-                    ? NoneValue.none()
-                    : BlockValue.block(found.stream()
-                            .<Value>map(StringValue::of).toList());
-        });
-    }
-
-
-    private static String oneSlashPerRunOfSeparators(String path) {
-        StringBuilder built = new StringBuilder(path.length());
-        boolean afterASeparator = false;
-        for (int at = 0; at < path.length(); at++) {
-            char letter = path.charAt(at);
-            if (letter != '/' && letter != '\\') {
-                built.append(letter);
-                afterASeparator = false;
-            } else if (!afterASeparator) {
-                built.append('/');
-                afterASeparator = true;
-            }
-        }
-        return built.toString();
-    }
-
-    private static String localPathOf(String path, boolean resolvingDots, char separator) {
-        StringBuilder built = new StringBuilder();
-        int at = 0;
-        while (at < path.length()) {
-            if (resolvingDots) {
-                at = pastAnyDots(path, at, built, separator);
-            }
-            while (at < path.length()) {
-                char letter = path.charAt(at);
-                at++;
-                if (letter == '/') {
-                    if (built.isEmpty()
-                            || built.charAt(built.length() - 1) != separator) {
-                        built.append(separator);
-                    }
-                    break;
-                }
-                built.append(letter);
-            }
-        }
-        return built.toString();
-    }
-
-    private static int pastAnyDots(
-            String path, int at, StringBuilder built, char separator) {
-        if (at >= path.length() || path.charAt(at) != '.') {
-            return at;
-        }
-        boolean twoDots = at + 1 < path.length() && path.charAt(at + 1) == '.';
-        int after = at + (twoDots ? 2 : 1);
-        boolean wholeSegment = after >= path.length() || path.charAt(after) == '/';
-        if (!wholeSegment) {
-            return at;
-        }
-        if (twoDots) {
-            backOutOneDirectory(built, separator);
-        }
-        return after;
-    }
-
-    private static void backOutOneDirectory(StringBuilder built, char separator) {
-        int length = built.length() > 2 ? built.length() - 2 : 0;
-        while (length > 0 && built.charAt(length) != separator) {
-            length--;
-        }
-        built.setLength(length);
-        built.append(separator);
-    }
-
-    private Value queriedVector(VectorValue vector, Value field, Evaluator evaluator) {
-        if (field instanceof NoneValue) {
-            return BlockValue.block(
-                    VectorQuery.FIELDS.stream().<Value>map(WordValue::of).toList());
-        }
-        if (field instanceof WordValue only) {
-            return VectorQuery.field(vector, only.canonical())
-                    .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG, only));
-        }
-        if (field instanceof BlockValue asked) {
-            List<Value> answer = new ArrayList<>();
-            for (Value item : asked.remaining()) {
-                if (!(item instanceof WordValue each)) {
-                    throw Raised.of(EvaluationFailure.INVALID_ARG, item);
-                }
-                if (each.datatype() != Datatype.GET_WORD) {
-                    answer.add(each.as(Datatype.SET_WORD));
-                }
-                answer.add(VectorQuery.field(vector, each.canonical()).orElseThrow(
-                        () -> Raised.of(EvaluationFailure.INVALID_ARG, each)));
-            }
-            return BlockValue.block(answer);
-        }
-        Context fields = Context.childOf(evaluator.systemContext());
-        ObjectValue described = new ObjectValue(fields);
-        fields.set("self", described);
-        for (String name : VectorQuery.FIELDS) {
-            fields.set(name, VectorQuery.field(vector, name).orElseGet(NoneValue::none));
-        }
-        return described;
-    }
-
-    private Value questionedByField(
-            Value field, Evaluator evaluator, List<String> partNames,
-            Function<String, Value> partOf) {
-        return switch (field) {
-            case WordValue only when only.canonical().equals("words") ->
-                    namesAsWords(partNames);
-            case WordValue only -> oneKnownPart(only, partNames, partOf);
-            case BlockValue asked -> {
-                List<Value> answer = new ArrayList<>();
-                for (Value item : asked.remaining()) {
-                    if (!(item instanceof WordValue each)) {
-                        throw Raised.of(EvaluationFailure.INVALID_ARG,
-                                Molder.mold(item) + " names no part");
-                    }
-                    if (each.datatype() != Datatype.GET_WORD) {
-                        answer.add(each.as(Datatype.SET_WORD));
-                    }
-                    answer.add(oneKnownPart(each, partNames, partOf));
-                }
-                yield BlockValue.block(answer);
-            }
-            case NoneValue names -> namesAsWords(partNames);
-            default -> {
-                Context fields = Context.childOf(evaluator.systemContext());
-                ObjectValue built = new ObjectValue(fields);
-                fields.set("self", built);
-                for (String part : partNames) {
-                    fields.set(part, partOf.apply(part));
-                }
-                yield built;
-            }
-        };
-    }
-
-    private static Value namesAsWords(List<String> partNames) {
-        return BlockValue.block(
-                partNames.stream().<Value>map(WordValue::of).toList());
-    }
-
-    private static Value oneKnownPart(WordValue asked, List<String> partNames,
-            Function<String, Value> partOf) {
-        if (!partNames.contains(asked.canonical())) {
-            throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    "query has no " + asked.canonical() + " to answer here");
-        }
-        return partOf.apply(asked.canonical());
-    }
-
-    private static boolean routesToAScheme(Value source) {
-        return source.datatype() == Datatype.URL
-                || source.datatype() == Datatype.BLOCK
-                || source instanceof WordValue;
-    }
-
-    private PortValue portOpenedFor(Value address, Evaluator evaluator, Context context) {
-        Value built = evaluator.applyFunction(
-                context.systemFunctionNamed("make-port*"), List.of(address));
-        if (!(built instanceof PortValue port)) {
-            throw schemeRefusal("write", "writes", address);
-        }
-        if (port.actorWrittenInRebol().isPresent()) {
-            return port;
-        }
-        requireServiceForScheme(port.schemeName());
-        port.markOpen(true);
-        if (port.schemeName().equals("checksum")) {
-            checksumPort.startEvenOnAnAlreadyOpenPort(
-                    port, checksumPort.methodOf(port));
-        }
-        return port;
-    }
-
-    private Optional<String> theFileNamedByAUrl(
-            Value target, Evaluator evaluator, Context context) {
-
-        if (target.datatype() != Datatype.URL) {
-            return Optional.empty();
-        }
-        PortValue routed = portOpenedFor(target, evaluator, context);
-        return routed.isAFile()
-                ? Optional.of(SeekableFilePort.pathOf(routed))
-                : Optional.empty();
-    }
-
-    private static final Set<String> THE_SCHEMES_THIS_BUILD_SERVES_ITSELF = of(
-            "console", "clipboard", "file", "dir", "tcp", "dns", "event",
-            "system", "callback", "bundled", "checksum", "crypt");
-
-    private static Raised schemeRefusal(String verb, String verbs, Value routed) {
-        if (THE_SCHEMES_THIS_BUILD_SERVES_ITSELF.contains(theSchemeWordOf(routed))) {
-            return Raised.of(EvaluationFailure.NO_PORT_ACTION,
-                    WordValue.of(verb).as(Datatype.SET_WORD));
-        }
-        return Raised.of(EvaluationFailure.NO_SERVICE,
-                "nothing here " + verbs + " " + schemeNameOf(routed));
-    }
-
-    private static String theSchemeWordOf(Value routed) {
-        return switch (routed) {
-            case WordValue word -> word.canonical();
-            case PortValue port -> port.schemeName();
-            case StringValue written -> written.text().split(":", 2)[0];
-            default -> "";
-        };
-    }
-
-    private static String schemeNameOf(Value routed) {
-        return switch (routed) {
-            case WordValue word -> "the " + word.canonical() + " scheme";
-            case BlockValue specification -> Molder.mold(specification);
-            case PortValue port -> "the " + port.schemeName() + " scheme";
-            default -> "the " + ((StringValue) routed).text().split(":", 2)[0]
-                    + " scheme";
-        };
-    }
-
-    private Value encipheredIntoThePort(PortValue port, Value data) {
-        CryptPort.refuseWhenClosed(port);
-        if (!(data instanceof BinaryValue octets)) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA,
-                    port.fieldValue("spec") instanceof ObjectValue spec
-                            ? spec.fieldValue("ref")
-                            : NoneValue.none());
-        }
-        CryptPort.write(port, octets.octetsFromHere());
-        return port;
-    }
-
-    private Value writeToPort(PortValue port, Value data, Evaluator evaluator,
-            List<Value> arguments, Set<String> refinements) {
-        Optional<Value> itsOwn = evaluator.theRebolActorsAnswer(
-                "write", List.of(port, data), refinements);
-        if (itsOwn.isPresent()) {
-            return itsOwn.get();
-        }
-        return switch (port.schemeName()) {
-            case "console" -> writtenToTheConsole(port, data, evaluator);
-            case "clipboard" -> putOnTheClipboard(port, data, evaluator);
-            case "tcp" -> sentDownTheConnection(port, data, evaluator);
-            case "udp" -> oneDatagramSentFrom(port, data, evaluator);
-            case "checksum" -> summedIntoThePort(port, data, arguments, refinements);
-            case "crypt" -> encipheredIntoThePort(port, data);
-            case "file" -> new OpenFile(port, evaluator.files(), grantedServices).written(data,
-                    Optional.ofNullable(argumentFor("seek", FileWriting.ARGUMENT_ORDER,
-                            arguments, refinements, 2)),
-                    Optional.ofNullable(argumentFor("part", FileWriting.ARGUMENT_ORDER,
-                            arguments, refinements, 2)),
-                    refinements.contains("append"));
-            default -> throw schemeRefusal("write", "writes", port);
-        };
-    }
-
-    private Value putOnTheClipboard(PortValue port, Value data, Evaluator evaluator) {
-        grantedServices.require(HostService.CLIPBOARD);
-        String text = switch (data) {
-            case StringValue written -> written.text();
-            case BinaryValue bytes -> new String(
-                    bytes.octetsFromHere(), StandardCharsets.UTF_8);
-            default -> throw Raised.of(EvaluationFailure.INVALID_PORT_ARG, data);
-        };
-        try {
-            evaluator.clipboard().write(text);
-        } catch (ClipboardPort.Unreachable unreachable) {
-            throw Raised.of(EvaluationFailure.WRITE_ERROR, unreachable.getMessage());
-        }
-        return port;
-    }
-
-    private Value summedIntoThePort(PortValue port, Value data,
-            List<Value> arguments, Set<String> refinements) {
-        if (!(data instanceof BinaryValue || data instanceof StringValue)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(data));
-        }
-        if (!port.isOpen()) {
-            port.markOpen(true);
-            checksumPort.startEvenOnAnAlreadyOpenPort(
-                    port, checksumPort.methodOf(port));
-        }
-        RebolSeries written = (RebolSeries) data;
-        byte[] whole = written.head().asOctets();
-        long from = checksumPort.seekedFrom(whole, written.index() - 1,
-                wholeNumberAsked("seek", arguments, refinements).orElse(0L));
-        wholeNumberAsked("part", arguments, refinements).ifPresentOrElse(
-                wanted -> checksumPort.addPart(port, whole, from, wanted),
-                () -> checksumPort.add(port, whole, from));
-        return port;
-    }
-
-    private static final List<String> WRITE_OPTIONAL_ARGUMENTS =
-            List.of("part", "seek", "allow");
-
-    private Optional<Long> wholeNumberAsked(
-            String refinement, List<Value> arguments, Set<String> refinements) {
-        if (!refinements.contains(refinement)) {
-            return Optional.empty();
-        }
-        Value asked = argumentFor(refinement, WRITE_OPTIONAL_ARGUMENTS,
-                arguments, refinements, 2);
-        return Comparison.isNumeric(asked)
-                ? Optional.of((long) Comparison.asDouble(asked))
-                : Optional.empty();
-    }
-
-    private Value writtenToTheConsole(
-            PortValue port, Value data, Evaluator evaluator) {
-        grantedServices.require(HostService.CONSOLE);
-        evaluator.output().write(Molder.form(data));
-        return port;
-    }
-
-    private Value sentDownTheConnection(
-            PortValue port, Value data, Evaluator evaluator) {
-
-        grantedServices.require(HostService.NETWORK);
-        NetworkPort.Connection connection = connectionBehind(port);
-        return throughNetwork(() -> {
-            connection.write(data.asOctets());
-            queueWhatHappenedTo(port, "wrote", evaluator);
-            return port;
-        });
-    }
-
-
-    private static List<Value> withThePortInFront(
-            PortValue port, List<Value> arguments) {
-
-        List<Value> asTheActorTakesThem = new ArrayList<>(arguments);
-        asTheActorTakesThem.set(0, port);
-        return asTheActorTakesThem;
-    }
-
-    private void requireServiceForScheme(String scheme) {
-        switch (scheme) {
-            case "console" -> theSchemeReachesNothingOutside();
-            case "file", "dir" -> grantedServices.require(HostService.FILES);
-            case "tcp", "dns", "udp" -> grantedServices.require(HostService.NETWORK);
-            case "event" -> grantedServices.require(HostService.WINDOWS);
-            case "clipboard" -> grantedServices.require(HostService.CLIPBOARD);
-            case "system", "callback", "bundled" -> theSchemeReachesNothingOutside();
-            case "checksum", "crypt" -> theSchemeReachesNothingOutside();
-            default -> {
-                throw Raised.of(EvaluationFailure.NO_SERVICE,
-                        scheme.isEmpty()
-                                ? "that port has no scheme"
-                                : "nothing here serves the " + scheme + " scheme");
-            }
-        }
-    }
-
-    private static void theSchemeReachesNothingOutside() {
-    }
-
-    private record FileReading(
-            String path,
-            Optional<Long> bound,
-            Optional<Long> position,
-            boolean answersText,
-            boolean answersLines) {
-
-        private static final List<String> ARGUMENT_ORDER = List.of("part", "seek");
-
-        static FileReading asAskedForAt(
-                String path, List<Value> arguments, Set<String> refinements) {
-
-            return new FileReading(
-                    path,
-                    numberFor("part", arguments, refinements),
-                    refusingANegative(numberFor("seek", arguments, refinements)),
-                    refinements.contains("string"),
-                    refinements.contains("lines"));
-        }
-
-        private static Optional<Long> numberFor(
-                String refinement, List<Value> arguments, Set<String> refinements) {
-            Value asked = argumentFor(refinement, ARGUMENT_ORDER, arguments, refinements, 1);
-            return asked == null
-                    ? Optional.empty()
-                    : Optional.of((long) Arithmetic.asMagnitude(asked));
-        }
-
-        private static Optional<Long> refusingANegative(Optional<Long> asked) {
-            if (asked.isPresent() && asked.orElseThrow() < 0) {
-                throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                        "a read cannot start before the beginning, and "
-                                + asked.orElseThrow() + " is before it");
-            }
-            return asked;
-        }
-
-        Value answerThrough(FilePort files) {
-            if (holdsAWildcard(path)) {
-                return namesMatchingThePattern(files);
-            }
-            if (path.endsWith("/") || files.isDirectory(path)) {
-                return namesWithin(files);
-            }
-            byte[] chosen = theBytesAskedFor(files.readBytes(path));
-            if (answersLines || answersText) {
-                Optional<String> text = decodedUtfText(chosen);
-                if (text.isPresent()) {
-                    return answersLines
-                            ? linesOf(text.orElseThrow())
-                            : StringValue.of(text.orElseThrow());
-                }
-            }
-            return new BinaryValue(new BinaryStorage(chosen), 1);
-        }
-
-        private Value namesWithin(FilePort files) {
-            return BlockValue.block(files.namesIn(path).stream()
-                    .<Value>map(name -> StringValue.of(name, Datatype.FILE))
-                    .toList());
-        }
-
-        private Value namesMatchingThePattern(FilePort files) {
-            int lastSeparator = path.lastIndexOf('/');
-            String directory = path.substring(0, lastSeparator + 1);
-            String pattern = path.substring(lastSeparator + 1);
-            if (holdsAWildcard(directory)) {
-                return BlockValue.block(List.of());
-            }
-            List<String> names;
-            try {
-                names = files.namesIn(directory.isEmpty() ? "." : directory);
-            } catch (RuntimeException nothingThere) {
-                return BlockValue.block(List.of());
-            }
-            return BlockValue.block(names.stream()
-                    .filter(listed -> Wildcards.STARS_AND_QUESTION_MARKS.matchTheWholeOf(
-                            withoutItsSlash(listed), pattern))
-                    .<Value>map(name -> StringValue.of(name, Datatype.FILE))
-                    .toList());
-        }
-
-        private static String withoutItsSlash(String name) {
-            return name.endsWith("/") ? name.substring(0, name.length() - 1) : name;
-        }
-
-
-        private static boolean holdsAWildcard(String path) {
-            return path.indexOf('*') >= 0 || path.indexOf('?') >= 0;
-        }
-
-
-        private byte[] theBytesAskedFor(byte[] whole) {
-            int from = (int) Math.min(position.orElse(0L), whole.length);
-            if (bound.isEmpty()) {
-                return Arrays.copyOfRange(whole, from, whole.length);
-            }
-            long asked = bound.orElseThrow();
-            if (asked >= 0) {
-                int to = (int) Math.min(from + asked, whole.length);
-                return Arrays.copyOfRange(whole, from, to);
-            }
-            long backwards = -asked;
-            if (backwards > from) {
-                throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                        "a backwards read of " + backwards
-                                + " reaches before the file's start");
-            }
-            return Arrays.copyOfRange(whole, (int) (from - backwards), from);
-        }
-
-        private static Optional<String> decodedUtfText(byte[] bytes) {
-            try {
-                return Optional.of(StringValue.of(strictlyDecodedByItsMark(bytes))
-                        .withOneLineFeedPerEnding().text());
-            } catch (java.nio.charset.CharacterCodingException undecodable) {
-                return Optional.empty();
-            }
-        }
-
-        private static String strictlyDecodedByItsMark(byte[] bytes)
-                throws java.nio.charset.CharacterCodingException {
-            if (startsWith(bytes, 0xEF, 0xBB, 0xBF)) {
-                return strictlyDecoded(bytes, 3, StandardCharsets.UTF_8);
-            }
-            if (startsWith(bytes, 0xFF, 0xFE, 0x00, 0x00)) {
-                return strictlyDecoded(
-                        bytes, 4, Charset.forName("UTF-32LE"));
-            }
-            if (startsWith(bytes, 0x00, 0x00, 0xFE, 0xFF)) {
-                return strictlyDecoded(
-                        bytes, 4, Charset.forName("UTF-32BE"));
-            }
-            if (startsWith(bytes, 0xFE, 0xFF)) {
-                return strictlyDecoded(bytes, 2, StandardCharsets.UTF_16BE);
-            }
-            if (startsWith(bytes, 0xFF, 0xFE)) {
-                return strictlyDecoded(bytes, 2, StandardCharsets.UTF_16LE);
-            }
-            return strictlyDecoded(bytes, 0, StandardCharsets.UTF_8);
-        }
-
-        private static String strictlyDecoded(
-                byte[] bytes, int from, Charset charset)
-                throws java.nio.charset.CharacterCodingException {
-            return charset.newDecoder()
-                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
-                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
-                    .decode(java.nio.ByteBuffer.wrap(bytes, from, bytes.length - from))
-                    .toString();
-        }
-
-        private static boolean startsWith(byte[] bytes, int... mark) {
-            if (bytes.length < mark.length) {
-                return false;
-            }
-            for (int at = 0; at < mark.length; at++) {
-                if ((bytes[at] & 0xFF) != mark[at]) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private static Value linesOf(String text) {
-            List<Value> lines = new ArrayList<>();
-            StringBuilder line = new StringBuilder();
-            for (int at = 0; at < text.length(); at++) {
-                char letter = text.charAt(at);
-                if (letter == '\n' || letter == '\r') {
-                    lines.add(StringValue.of(line.toString()));
-                    line.setLength(0);
-                } else {
-                    line.append(letter);
-                }
-            }
-            if (!line.isEmpty()) {
-                lines.add(StringValue.of(line.toString()));
-            }
-            return BlockValue.block(lines);
-        }
-    }
-
-    private record FileWriting(
-            String path,
-            Value data,
-            Optional<Long> bound,
-            Optional<Long> position,
-            boolean atTheEnd,
-            boolean oneValuePerLine) {
-
-        private static final List<String> ARGUMENT_ORDER = List.of("part", "seek", "allow");
-
-        static FileWriting asAskedFor(List<Value> arguments, Set<String> refinements) {
-            return new FileWriting(
-                    ((StringValue) arguments.getFirst()).text(),
-                    arguments.get(1),
-                    refusingANegative("bounded to", numberFor("part", arguments, refinements)),
-                    refusingANegative("written at", numberFor("seek", arguments, refinements)),
-                    refinements.contains("append"),
-                    refinements.contains("lines"));
-        }
-
-        private static Optional<Long> numberFor(
-                String refinement, List<Value> arguments, Set<String> refinements) {
-            Value asked = argumentFor(refinement, ARGUMENT_ORDER, arguments, refinements, 2);
-            return asked == null
-                    ? Optional.empty()
-                    : Optional.of((long) Arithmetic.asMagnitude(asked));
-        }
-
-        private static Optional<Long> refusingANegative(String what, Optional<Long> asked) {
-            if (asked.isPresent() && asked.orElseThrow() < 0) {
-                throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                        "a write cannot be " + what + " a place before the start, and "
-                                + asked.orElseThrow() + " is one");
-            }
-            return asked;
-        }
-
-        void performThrough(FilePort files) {
-            byte[] bytes = bytesToWrite();
-            if (position.isPresent()) {
-                files.writeAt(path, clippedToTheFileSize(files), bytes);
-            } else if (atTheEnd) {
-                files.appendTo(path, bytes);
-            } else {
-                files.write(path, bytes);
-            }
-        }
-
-        private long clippedToTheFileSize(FilePort files) {
-            long size = files.informationAbout(path)
-                    .flatMap(FileInformation::size)
-                    .orElse(0L);
-            return Math.min(position.orElseThrow(), size);
-        }
-
-        private byte[] bytesToWrite() {
-            if (data instanceof BinaryValue binary) {
-                return withTheLineFeedByteLinesAsks(
-                        boundedOctets(binary.octetsFromHere()));
-            }
-            if (data instanceof CharacterValue(int codepoint)) {
-                return utf8(Character.toString(codepoint));
-            }
-            if (data instanceof BlockValue block && oneValuePerLine) {
-                return utf8(eachValueFormedOnItsOwnLine(block));
-            }
-            return utf8(withTheLineFeedLinesAsks(boundedText(asTextToWrite())));
-        }
-
-        private String asTextToWrite() {
-            return isExactlyAString(data)
-                    ? ((StringValue) data).text()
-                    : Molder.mold(data);
-        }
-
-        private String eachValueFormedOnItsOwnLine(BlockValue block) {
-            return block.remaining().stream()
-                    .map(each -> Molder.form(each) + "\n")
-                    .collect(Collectors.joining());
-        }
-
-        private String withTheLineFeedLinesAsks(String text) {
-            return oneValuePerLine ? text + "\n" : text;
-        }
-
-        private byte[] withTheLineFeedByteLinesAsks(byte[] octets) {
-            if (!oneValuePerLine) {
-                return octets;
-            }
-            byte[] fed = Arrays.copyOf(octets, octets.length + 1);
-            fed[octets.length] = '\n';
-            return fed;
-        }
-
-        private String boundedText(String text) {
-            if (bound.isEmpty()) {
-                return text;
-            }
-            int codePoints = text.codePointCount(0, text.length());
-            int kept = (int) Math.min(bound.orElseThrow(), codePoints);
-            return text.substring(0, text.offsetByCodePoints(0, kept));
-        }
-
-        private byte[] boundedOctets(byte[] octets) {
-            if (bound.isEmpty() || bound.orElseThrow() >= octets.length) {
-                return octets;
-            }
-            return Arrays.copyOf(octets, (int) (long) bound.orElseThrow());
-        }
-
-        private static byte[] utf8(String text) {
-            return text.getBytes(StandardCharsets.UTF_8);
-        }
-    }
-
-    private static final int OPEN_FAILED = 3;
-
-    private static final int WHATEVER_NUMBER_THE_MACHINE_HAS_FREE = 0;
-
-    private void bindTheDatagramPort(PortValue port, Evaluator evaluator) {
-        int number = theSpecNamesSomewhereToSendTo(port)
-                ? WHATEVER_NUMBER_THE_MACHINE_HAS_FREE
-                : portNumberOf(port);
-        throughNetwork(() -> {
-            NetworkPort.Datagrams bound = evaluator.network().bindTo(number);
-            port.setField("state", JavaObjectValue.of(bound));
-            return port;
-        });
-    }
-
-    private static boolean theSpecNamesSomewhereToSendTo(PortValue port) {
-        return !theHostToSendTo(port).isEmpty();
-    }
-
-    private static String theHostToSendTo(PortValue port) {
-        if (port.fieldValue("spec") instanceof ObjectValue(Context context)
-                && context.holds("host")
-                && context.ownSlotFor("host").value() instanceof StringValue host) {
-            return host.text();
-        }
-        return "";
-    }
-
-    private static NetworkPort.Datagrams datagramsBehind(PortValue port) {
-        if (port.fieldValue("state") instanceof JavaObjectValue carried
-                && carried.held().orElse(null) instanceof NetworkPort.Datagrams bound) {
-            return bound;
-        }
-        throw Raised.of(EvaluationFailure.NOT_OPEN, port.schemeName());
-    }
-
-    private Value oneDatagramReadInto(PortValue port, Evaluator evaluator) {
-        grantedServices.require(HostService.NETWORK);
-        NetworkPort.Datagrams bound = datagramsBehind(port);
-        return throughNetwork(() -> {
-            BinaryValue arrived = BinaryValue.ofBytes(bound.receive());
-            addToThePortsData(port, arrived);
-            queueWhatHappenedTo(port, "read", evaluator);
-            return port;
-        });
-    }
-
-    private Value oneDatagramSentFrom(PortValue port, Value data, Evaluator evaluator) {
-        grantedServices.require(HostService.NETWORK);
-        byte[] bytes = switch (data) {
-            case StringValue written -> written.text().getBytes(StandardCharsets.UTF_8);
-            case BinaryValue carried -> carried.octetsFromHere();
-            default -> throw Raised.of(EvaluationFailure.INVALID_PORT_ARG, data);
-        };
-        NetworkPort.Datagrams bound = datagramsBehind(port);
-        return throughNetwork(() -> {
-            bound.sendTo(theHostToSendTo(port), portNumberOf(port), bytes);
-            port.setField("data", NoneValue.none());
-            queueWhatHappenedTo(port, "wrote", evaluator);
-            return port;
-        });
-    }
-
-    private void connectTheTcpPort(PortValue port, Evaluator evaluator) {
-        String host = hostNamedBy(port);
-        int number = portNumberOf(port);
-        throughNetwork(() -> {
-            NetworkPort.Connection made = evaluator.network().connectTo(host, number);
-            port.setField("state", JavaObjectValue.of(made));
-            queueWhatHappenedTo(port, "connect", evaluator);
-            return port;
-        });
-    }
-
-    private static int portNumberOf(PortValue port) {
-        if (port.fieldValue("spec") instanceof ObjectValue(Context context)
-                && context.holds("port")
-                && context.ownSlotFor("port").value() instanceof IntegerValue(long magnitude)) {
-            return (int) magnitude;
-        }
-        return NetworkPort.wellKnownPortFor(port.schemeName()).orElse(0);
-    }
-
-    private static Value throughNetwork(Supplier<Value> operation) {
-        try {
-            return operation.get();
-        } catch (NetworkPort.Refused refused) {
-            throw new Raised(ErrorValue.about(ErrorCategory.ACCESS,
-                    refused.errorId(), refused.getMessage(),
-                    StringValue.of(refused.subject()),
-                    IntegerValue.of(OPEN_FAILED)));
-        }
-    }
-
-    private static void markOpenWhateverTheActorLeftInState(PortValue port) {
-        if (!port.isOpen()) {
-            port.markOpen(true);
-        }
-    }
-
-    private static void handBackTheConnectionBehind(PortValue port) {
-        if (port.fieldValue("state") instanceof JavaObjectValue carried
-                && carried.held().orElse(null) instanceof NetworkPort.Connection open) {
-            open.close();
-        }
-    }
-
-    private static NetworkPort.Connection connectionBehind(PortValue port) {
-        if (port.fieldValue("state") instanceof JavaObjectValue carried
-                && carried.held().orElse(null) instanceof NetworkPort.Connection open) {
-            return open;
-        }
-        throw Raised.of(EvaluationFailure.NOT_OPEN, port.schemeName());
-    }
-
-    private static String hostNamedBy(PortValue port) {
-        if (port.fieldValue("spec") instanceof ObjectValue(Context context)) {
-            if (context.holds("host")
-                    && context.ownSlotFor("host").value()
-                            instanceof StringValue host) {
-                return host.text();
-            }
-            if (context.holds("ref")
-                    && context.ownSlotFor("ref").value()
-                            instanceof StringValue reference) {
-                String written = reference.text();
-                int afterScheme = written.indexOf("://");
-                return afterScheme < 0 ? written : written.substring(afterScheme + 3);
-            }
-        }
-        return "";
-    }
-
-    private static Value throughPort(Supplier<Value> operation) {
-        try {
-            return operation.get();
-        } catch (FilePort.Denied denied) {
-            throw denied.raised();
-        }
-    }
-
-    private static Value throughWindow(Supplier<Value> operation) {
-        try {
-            return operation.get();
-        } catch (WindowPort.Denied denied) {
-            throw refusedByTheHost(denied.errorId(), denied.getMessage());
-        }
-    }
 
     private static Raised refusedByTheHost(String errorId, String because) {
         String reason = because + ", which is "
@@ -3228,34 +1207,6 @@ public final class RebolNativeWords {
                         .toLowerCase(java.util.Locale.ROOT).replace('_', ' ');
         return new Raised(ErrorValue.about(
                 ErrorCategory.ACCESS, errorId, reason, StringValue.of(reason)));
-    }
-
-    private static Optional<String> textOfArgument(
-            List<Value> arguments, Set<String> refinements,
-            List<String> declaredOrder, String refinement) {
-
-        return argumentFor(refinement, declaredOrder, arguments, refinements, 0)
-                instanceof StringValue text
-                ? Optional.of(text.text())
-                : Optional.empty();
-    }
-
-    private static List<String> filterPairsIn(
-            List<Value> arguments, Set<String> refinements) {
-        if (!refinements.contains("filter")) {
-            return List.of();
-        }
-        BlockValue listed = (BlockValue) arguments.stream()
-                .filter(BlockValue.class::isInstance)
-                .findFirst()
-                .orElseThrow();
-        List<Value> items = listed.remaining();
-        if (items.size() % 2 != 0) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "a filter list pairs a name with a pattern, and "
-                            + items.size() + " items do not pair up");
-        }
-        return items.stream().map(Molder::form).toList();
     }
 
     private void registerParse() {

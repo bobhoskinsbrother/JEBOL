@@ -1,9 +1,6 @@
 package org.jebol.domain.value;
 
-import org.jebol.domain.eval.Arithmetic;
 import org.jebol.domain.eval.Comparison;
-
-import java.math.BigDecimal;
 
 public final class TimeActions {
 
@@ -62,13 +59,12 @@ public final class TimeActions {
     }
 
     private Value billedAt(MoneyValue rate, ArithmeticOperation operation) {
-        BigDecimal hours = BigDecimal.valueOf(
-                (double) span.nanoseconds() / (double) TimeValue.NANOSECONDS_PER_HOUR);
+        Deci hours = new MoneyActions.HoursBilled(span).asDeci();
         if (operation.multiplies()) {
-            return MoneyActions.amountCombined(hours, rate.amount(), operation);
+            return new MoneyValue(hours.times(rate.asDeci()));
         }
         if (operation.divides()) {
-            return MoneyActions.amountCombined(rate.amount(), hours, operation);
+            return new MoneyValue(rate.asDeci().dividedBy(hours));
         }
         throw notRelatedToATime(operation);
     }

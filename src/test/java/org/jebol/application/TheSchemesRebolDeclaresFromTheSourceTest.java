@@ -128,16 +128,11 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
             assertThat(answerTo("port? open callback://")).isEqualTo("#(true)");
         }
 
-        @ParameterizedTest(name = "{0}")
-        @ValueSource(strings = {"serial://usb/9600"})
-        void openingASchemeWithNoDeviceNamesIt(String url) {
-            String scheme = url.split(":")[0];
-            assertThat(answerTo("failure: try [open " + url + "] failure/id"))
-                    .isEqualTo("no-service");
-            assertThat(answerTo(
-                    "failure: try [open " + url + "] find form failure/arg1 \""
-                            + scheme + "\""))
-                    .isNotEqualTo("_");
+        @Test
+        @DisplayName("the serial scheme opens to nothing, which is what a real 3.22.5 answers")
+        void openingTheSerialSchemeAnswersNothing() {
+            assertThat(answerTo("""
+                    none? try [open serial://usb/9600]""")).isEqualTo("#(true)");
         }
 
         @ParameterizedTest(name = "{0}")
@@ -201,7 +196,7 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
         @DisplayName("and DO-CALLBACK, which is the only thing that would drive it")
         void doCallbackIsRefused() {
             assertThat(answerTo("""
-                    failure: try [do-callback []] failure/id"""))
+                    failure: try [do-callback make event! []] failure/id"""))
                     .isEqualTo("no-service");
         }
 

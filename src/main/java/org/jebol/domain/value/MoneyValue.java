@@ -2,8 +2,6 @@ package org.jebol.domain.value;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.math.MathContext;
-import java.math.RoundingMode;
 import java.util.Optional;
 
 /**
@@ -12,7 +10,7 @@ import java.util.Optional;
  * <p>R3-Alpha's {@code money!} carries 26 significant digits and is
  * deliberately not normalised, so {@code $1.50} keeps its trailing zero.
  * {@link BigDecimal} preserves scale, which is what not normalising means,
- * and {@link #ARITHMETIC} gives the same width for operations that need one.
+ * and {@link Deci} does the arithmetic on it as Rebol's {@code f-deci.c} does.
  *
  * <p>Note that {@code BigDecimal.equals} is scale-sensitive while
  * {@code compareTo} is not. Which of those REBOL's {@code =} and {@code ==}
@@ -24,6 +22,15 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
 
     public MoneyValue(BigDecimal amount, Optional<String> currency) {
         this(amount, currency, amount != null && amount.signum() < 0);
+    }
+
+    public MoneyValue(Deci amount) {
+        this(new BigDecimal(amount.negative() ? amount.significand().negate() : amount.significand(),
+                -amount.exponent()), Optional.empty(), amount.negative());
+    }
+
+    public Deci asDeci() {
+        return new Deci(significand(), exponent(), negative);
     }
 
     public MoneyValue signed(boolean wanted) {
@@ -51,10 +58,6 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
         return new MoneyActions(this).heldBetween(
                 (MoneyValue) lowest, (MoneyValue) highest);
     }
-
-
-    /** 26 significant digits, matching R3-Alpha's width. */
-    public static final MathContext ARITHMETIC = new MathContext(26, RoundingMode.HALF_EVEN);
 
     private static final int MAXIMUM_CURRENCY_LENGTH = 3;
 
@@ -114,10 +117,14 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
      */
     public static final int BINARY_WIDTH = 12;
 
-    private static final BigInteger SIGNIFICAND_LIMIT = BigInteger.TEN.pow(26);
+    private static final long THE_HIGHEST_WORD_OF_THE_LARGEST_SIGNIFICAND = 5421010L;
 
-    private static final int SMALLEST_EXPONENT = -128;
-    private static final int LARGEST_EXPONENT = 127;
+    private static final long THE_MIDDLE_WORD_OF_THE_LARGEST_SIGNIFICAND = 3704098002L;
+
+    private static final long THE_LOWEST_WORD_OF_THE_LARGEST_SIGNIFICAND = 3825205247L;
+
+    private static final long A_WORD = 0xFFFFFFFFL;
+
 
     /**
      * The whole number the digits spell, without the point.
@@ -135,21 +142,6 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
      */
     public int exponent() {
         return -amount.scale();
-    }
-
-    /**
-     * Whether this amount is one a {@code deci} can hold.
-     *
-     * <p>Two ways to leave the range and both raise overflow: more than
-     * twenty-six significant digits, or a power of ten outside a signed
-     * byte. An implementation on an unbounded decimal passes every assertion
-     * about amounts inside the bound and quietly answers a number Rebol
-     * refuses, which is why this is asked rather than assumed.
-     */
-    public boolean isWithinTheDeciRange() {
-        return significand().compareTo(SIGNIFICAND_LIMIT) < 0
-                && exponent() >= SMALLEST_EXPONENT
-                && exponent() <= LARGEST_EXPONENT;
     }
 
     /**
@@ -178,6 +170,17 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
         significandBytes[0] = (byte) (twelve[1] & 0x7F);
         System.arraycopy(twelve, 2, significandBytes, 1, BINARY_WIDTH - 2);
         BigInteger significand = new BigInteger(1, significandBytes);
+        long highest = significand.shiftRight(64).longValue() & A_WORD;
+        long middle = significand.shiftRight(32).longValue() & A_WORD;
+        long lowest = significand.longValue() & A_WORD;
+        boolean refusedByBinaryToDeci = highest >= THE_HIGHEST_WORD_OF_THE_LARGEST_SIGNIFICAND
+                && (middle >= THE_MIDDLE_WORD_OF_THE_LARGEST_SIGNIFICAND
+                        ? lowest > THE_LOWEST_WORD_OF_THE_LARGEST_SIGNIFICAND
+                                || middle > THE_MIDDLE_WORD_OF_THE_LARGEST_SIGNIFICAND
+                        : highest > THE_HIGHEST_WORD_OF_THE_LARGEST_SIGNIFICAND);
+        if (refusedByBinaryToDeci) {
+            throw Raised.of(EvaluationFailure.OVERFLOW);
+        }
 
         BigDecimal amount = new BigDecimal(
                 negative ? significand.negate() : significand, -exponent);
@@ -222,8 +225,7 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
 
     @Override
     public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
-        return java.util.Optional.of(
-                asItStands(wanted, amount.doubleValue()));
+        return java.util.Optional.of(asItStands(wanted, asDeci().toDouble()));
     }
 
     @Override

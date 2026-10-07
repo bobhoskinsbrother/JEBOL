@@ -1,0 +1,23 @@
+package org.jebol.domain.eval.definition;
+
+import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.eval.Ports;
+import org.jebol.domain.value.PortValue;
+import org.jebol.domain.value.Value;
+
+public class CloseAction extends ActorFirstPortAction {
+
+    public CloseAction(GrantedServices granted, Ports ports) {
+        super(granted, ports);
+    }
+
+    @Override
+    public String name() {
+        return "close";
+    }
+
+    @Override
+    Value answeredHere(PortValue port) {
+        return ports.closed(port);
+    }
+}

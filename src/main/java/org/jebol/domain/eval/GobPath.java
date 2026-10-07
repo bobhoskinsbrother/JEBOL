@@ -72,9 +72,7 @@ final class GobPath {
 
     static void write(GobValue gob, WordValue asked, Value written) {
         if (!accepted(gob.storage(), asked.canonical(), written)) {
-            throw Raised.of(EvaluationFailure.BAD_FIELD_SET,
-                    asked.spelling() + " will not hold "
-                            + written.datatype().literalSpelling());
+            throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         }
     }
 

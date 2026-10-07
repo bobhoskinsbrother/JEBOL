@@ -175,7 +175,7 @@ class SurfaceTypesFromTheSourceTest {
             assertThat(errorIdOf("""
                     write http://example.com {x}""")).isEqualTo("no-service");
             assertThat(errorIdOf("""
-                    rename http://a http://b""")).isEqualTo("no-service");
+                    rename http://a http://b""")).isEqualTo("no-port-action");
         }
 
         @Test
@@ -269,10 +269,10 @@ class SurfaceTypesFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a part no date has is refused")
-        void aPartNoDateHasIsRefused() {
-            assertThat(errorIdOf("""
-                    query 1-Jan-2000 'nonsense""")).isEqualTo("cannot-use");
+        @DisplayName("a part no date has answers nothing at all, as a real 3.22.5 does")
+        void aPartNoDateHasAnswersUnset() {
+            assertThat(answerTo("""
+                    type? query 1-Jan-2000 'nonsense""")).isEqualTo("#(unset!)");
         }
 
         @Test

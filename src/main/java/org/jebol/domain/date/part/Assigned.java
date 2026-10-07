@@ -2,15 +2,16 @@ package org.jebol.domain.date.part;
 
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
+import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.WordValue;
 
-record Assigned(Value value) {
+record Assigned(Value value, WordValue part) {
 
     boolean isNothing() {
         return value instanceof NoneValue;
@@ -57,8 +58,7 @@ record Assigned(Value value) {
                     (int) aBareNumberMeansHours.quantity() * 60;
             case TimeValue clock -> (int) (clock.nanoseconds()
                     / (60L * TimeValue.NANOSECONDS_PER_SECOND));
-            default -> throw Raised.of(
-                    EvaluationFailure.BAD_FIELD_SET, Molder.mold(value));
+            default -> throw refusal();
         });
     }
 
@@ -73,6 +73,6 @@ record Assigned(Value value) {
     }
 
     Raised refusal() {
-        return Raised.of(EvaluationFailure.BAD_FIELD_SET, value);
+        return Raised.of(EvaluationFailure.BAD_FIELD_SET, part, DatatypeValue.of(value.datatype()));
     }
 }

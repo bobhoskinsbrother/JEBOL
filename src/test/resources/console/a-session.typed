@@ -1,0 +1,22 @@
+1 + 2
+1 / 0
+divide 1 0
+nosuchword
+1 + ]
+e: try [1 / 0]
+make error! "boom"
+cause-error 'math 'zero-divide [1]
+print "hi"
+:print
+make module! [[Title: "t"] [a: 1]]
+make object! [a: 1]
+[1 2
+3]
+append/dup copy "" "x" 600
+system/state/last-result
+transcode/line "1 2" 0
+z: compress "Hello Hello Hello" 'zlib
+decompress/size z 'zlib 5
+halt
+none
+2 + 2

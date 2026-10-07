@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.BootDeclarations;
+import org.jebol.domain.eval.CryptPort;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
@@ -90,7 +91,7 @@ class WhatEachSettingNativeDeclaresTest {
                         Set.of("any", "only", "some")),
                 Arguments.of(new GetNative(), "get",
                         List.of(Parameter.required("word")), Set.of("any")),
-                Arguments.of(new TakeAction(), "take",
+                Arguments.of(new TakeAction(new CryptPort()), "take",
                         List.of(Parameter.required("series"),
                                 Parameter.belongingTo("part", "count", Set.of())),
                         Set.of("part", "last", "deep", "all")),
@@ -292,14 +293,14 @@ class WhatEachSettingNativeDeclaresTest {
         void takeFromABlock() {
             BlockValue block = BlockValue.block(List.of(IntegerValue.of(1), IntegerValue.of(2)));
 
-            assertThat(answerOf(new TakeAction(), block)).isEqualTo(IntegerValue.of(1));
+            assertThat(answerOf(new TakeAction(new CryptPort()), block)).isEqualTo(IntegerValue.of(1));
             assertThat(block.remaining()).containsExactly(IntegerValue.of(2));
         }
 
         @Test
         @DisplayName("take of none is none")
         void takeFromNone() {
-            assertThat(answerOf(new TakeAction(), NoneValue.none()))
+            assertThat(answerOf(new TakeAction(new CryptPort()), NoneValue.none()))
                     .isEqualTo(NoneValue.none());
         }
 

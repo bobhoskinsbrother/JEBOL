@@ -1,8 +1,8 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Arithmetic;
+import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.read.Construction;
 import org.jebol.domain.read.SyntaxFailure;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.BinaryValue;
@@ -51,7 +51,7 @@ public class TranscodeNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                answer(readingAskedFor(arguments, refinements), evaluator.construction());
+                answer(readingAskedFor(arguments, refinements), evaluator);
     }
 
     private Reading readingAskedFor(List<Value> arguments, Set<String> refinements) {
@@ -69,10 +69,19 @@ public class TranscodeNative extends DefaultNative {
                 source);
     }
 
-    private Value answer(Reading asked, Construction construction) {
+    private Value answer(Reading asked, Evaluator evaluator) {
         Transcoder.Reading reading = Transcoder.read(
-                asked.readable(), asked.firstLine(), asked.extent(), construction);
-        List<Value> values = valuesWithAnyFailureBesideThem(asked, reading);
+                asked.readable(), asked.firstLine(), asked.extent(), evaluator.construction(),
+                asked.handingBackFailures()
+                        ? Transcoder.Errors.STAND_IN_FOR_THE_VALUE
+                        : Transcoder.Errors.STOP_THE_READ);
+        evaluator.symbols().internWhatWasRead(reading.valuesReadBeforeStopping());
+        reading.whyItStopped().ifPresent(failure -> {
+            throw new Raised(failure.error().orElseThrow());
+        });
+        List<Value> values = reading.valuesReadBeforeStopping().stream()
+                .map(value -> madeWhereTheCallIs(value, evaluator))
+                .toList();
         if (stopsBeforeTheEndOfTheSource(asked) && values.isEmpty()) {
             return handedBackOrRaised(asked, pastEnd());
         }
@@ -84,23 +93,27 @@ public class TranscodeNative extends DefaultNative {
                 : values);
     }
 
+    private Value madeWhereTheCallIs(Value read, Evaluator evaluator) {
+        switch (read) {
+            case ErrorValue error -> {
+                error.subject().ifPresent(inside -> madeWhereTheCallIs(inside, evaluator));
+                return evaluator.madeWhereTheCallIs(error);
+            }
+            case BlockValue block -> {
+                for (int at = 1; at <= block.storageLength(); at++) {
+                    block.storage().set(at, madeWhereTheCallIs(block.storage().at(at), evaluator));
+                }
+                return block;
+            }
+            default -> {
+                return read;
+            }
+        }
+    }
+
     private boolean stopsBeforeTheEndOfTheSource(Reading asked) {
         return asked.extent() != Transcoder.Extent.THE_WHOLE_SOURCE
                 || asked.handingBackFailures();
-    }
-
-    private List<Value> valuesWithAnyFailureBesideThem(
-            Reading asked, Transcoder.Reading reading) {
-        if (reading.whyItStopped().isEmpty()) {
-            return reading.valuesReadBeforeStopping();
-        }
-        ErrorValue failure = reading.whyItStopped().orElseThrow().error().orElseThrow();
-        if (!asked.handingBackFailures()) {
-            throw new Raised(failure);
-        }
-        List<Value> keptWithTheFailure = new ArrayList<>(reading.valuesReadBeforeStopping());
-        keptWithTheFailure.add(failure);
-        return keptWithTheFailure;
     }
 
     private List<Value> withWhatWasLeftUnread(
@@ -158,8 +171,7 @@ public class TranscodeNative extends DefaultNative {
         }
         long asked = (long) Arithmetic.asMagnitude(line.get());
         if (asked < THE_FIRST_LINE_OF_ANY_SOURCE) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    "a source's first line is line one or later, not " + asked);
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, line.get());
         }
         return asked;
     }
@@ -167,9 +179,7 @@ public class TranscodeNative extends DefaultNative {
     private int charactersPermittedBy(Value part) {
         long asked = (long) Arithmetic.asMagnitude(part);
         if (asked < 0) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    "a read cannot be bounded to fewer than no characters, and "
-                            + asked + " is fewer");
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, part);
         }
         return (int) Math.min(asked, Integer.MAX_VALUE);
     }

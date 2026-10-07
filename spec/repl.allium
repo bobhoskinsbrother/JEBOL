@@ -107,6 +107,14 @@ entity Submission {
     }
 }
 
+config {
+    -- RL_Print_TOS in a-lib.c: a value is molded to at most this many
+    -- characters before the console cuts it and adds an ellipsis.
+    longest_result_shown: Integer = 500
+    -- And an error is formed to at most this many.
+    longest_error_shown: Integer = 640
+}
+
 ------------------------------------------------------------
 -- Rules
 ------------------------------------------------------------
@@ -152,6 +160,12 @@ rule SubmissionExtendsContextForFreshWords {
 -- order. An unterminated block is not an error; it is a request for the
 -- next line, which is what lets a function definition be typed across
 -- several of them.
+--
+-- What the console prints is what R3's own console prints, RL_Print_TOS in
+-- a-lib.c: an error -- raised, or merely the value an expression produced --
+-- is FORMed and cut at 640 characters; any other value is printed only when
+-- its type is in system/options/result-types, molded and cut at 500, after
+-- `== ` and before a blank line. A HALT prints nothing.
 rule SubmissionResolves {
     when: submission: Submission.created
     requires: submission.status = submitted
@@ -160,21 +174,58 @@ rule SubmissionResolves {
         if is_incomplete_source(submission.source_text):
             submission.status = incomplete
             submission.outcome = still_reading
+        else if evaluation_halted(submission.source_text):
+            submission.status = evaluated
+            submission.outcome = shown_nothing
+            submission.result = unset_value()
+            submission.displayed = ""
         else if evaluation_raised(submission.source_text):
             submission.status = failed
             submission.outcome = reported_error
             submission.error_value = raised_error_of(submission.source_text)
-            submission.displayed = format_error(raised_error_of(submission.source_text))
+            submission.displayed = formed_error_cut_at(raised_error_of(submission.source_text), config.longest_error_shown)
         else if result_is_unset(submission.source_text):
             submission.status = evaluated
             submission.outcome = shown_nothing
             submission.result = unset_value()
             submission.displayed = ""
+        else if result_is_an_error(submission.source_text):
+            submission.status = evaluated
+            submission.outcome = reported_error
+            submission.result = result_of(submission.source_text)
+            submission.displayed = formed_error_cut_at(result_of(submission.source_text), config.longest_error_shown)
+        else if not result_types_include(type_of(result_of(submission.source_text))):
+            submission.status = evaluated
+            submission.outcome = shown_nothing
+            submission.result = result_of(submission.source_text)
+            submission.displayed = ""
         else:
             submission.status = evaluated
             submission.outcome = printed
             submission.result = result_of(submission.source_text)
-            submission.displayed = mold(result_of(submission.source_text))
+            submission.displayed = mold_cut_at(result_of(submission.source_text), config.longest_result_shown)
+}
+
+-- Whatever came back, printed or not, is what system/state/last-result
+-- holds afterwards, as RL_Print_TOS stores it.
+rule SubmissionIsRemembered {
+    when: submission: Submission.status transitions_to evaluated
+    ensures: system_state_last_result() = submission.result
+}
+
+-- The console waits for more input the way R3's host does, Host_Repl in
+-- host-main.c: by counting the brackets, parens and braces each line opens
+-- and closes, skipping those inside strings and comments, and showing the
+-- innermost one still open in the prompt. It does not ask the reader. Input
+-- that ends while something is open is dropped rather than evaluated.
+rule TheConsoleCountsWhatIsOpen {
+    when: submission: Submission.created
+    requires: openings_left_unclosed(submission.source_text) > 0
+
+    ensures:
+        submission.status = incomplete
+        submission.outcome = still_reading
+        the_continuation_prompt() = innermost_opening_left_unclosed(submission.source_text)
 }
 
 rule BatchRunBegins {
@@ -219,9 +270,14 @@ rule BatchRunExtendsContextForFreshWords {
 -- Zero for a quit carrying a none rather than one is worth being deliberate
 -- about: `quit` and `quit/return 0` mean the same thing to the caller, and a
 -- script that stops early on purpose has not failed.
+--
+-- A HALT leaves with fifteen, as R3's host does. An error is reported on the
+-- error stream, formed as the console forms it, before the process leaves
+-- with one.
 rule BatchRunConcludesWithWhatQuitCarried {
     when: run: BatchRun.evaluation_settled
     requires: run.status = running
+    requires: not threw_past_every_catch(run)
 
     ensures:
         run.status = finished
@@ -230,10 +286,27 @@ rule BatchRunConcludesWithWhatQuitCarried {
                 the_whole_number_quit_carried(run)
             else if quit_was_asked_for(run):
                 0
+            else if evaluation_halted(run):
+                15
             else if evaluation_raised(run):
                 1
             else:
                 0
+        if evaluation_raised(run):
+            the_error_stream_receives(formed_error_cut_at(raised_error_of(run.source_text), config.longest_error_shown))
+}
+
+-- A throw, BREAK or RETURN that no CATCH or loop took ends the run without
+-- reaching the QUIT that R3's start function puts after --do, so the console
+-- opens, exactly as it does in R3. Nothing is reported: to R3's host it was
+-- not an error.
+rule BatchRunThatThrowsOpensTheConsole {
+    when: run: BatchRun.evaluation_settled
+    requires: run.status = running
+    requires: threw_past_every_catch(run)
+
+    ensures:
+        Session.created(user_context: run.user_context, is_open: true)
 }
 
 -- An error ends the expression, never the session. A console that exited
@@ -257,12 +330,12 @@ invariant UnsetShowsNothing {
 }
 
 -- What the console prints is what MOLD prints, so anything shown can be
--- typed back in. A console that pretty-printed into something unreadable
--- would break the property the whole language rests on.
+-- typed back in -- up to the 500 characters R3's console shows, after which
+-- it is cut and marked with an ellipsis.
 invariant DisplayedValuesAreMolded {
     for submission in Submissions:
         submission.outcome = printed
-            implies submission.displayed = mold(submission.result)
+            implies submission.displayed = mold_cut_at(submission.result, config.longest_result_shown)
 }
 
 -- An incomplete line produces no result and no error. It has not been
@@ -309,7 +382,12 @@ rule AScriptRunBegins {
 
 -- A script leaves the same number behind a batch run does, and for the same
 -- reason: what QUIT carried is the whole of what a caller can act on. A whole
--- number is that number, an error is one, and anything else finished.
+-- number is that number, a HALT is fifteen, an error is one and is reported on
+-- the error stream, and anything else finished.
+--
+-- Unlike a batch run, a script that throws past every catch simply finishes:
+-- R3's start function has nothing after the script to skip, so it leaves with
+-- nought and says nothing.
 rule AScriptRunConcludesWithWhatQuitCarried {
     when: run: ScriptRun.created
     requires: run.status = running
@@ -317,7 +395,11 @@ rule AScriptRunConcludesWithWhatQuitCarried {
 
     ensures:
         run.status = finished
-        run.exit_status = the_status_the_batch_rule_gives()
+        run.exit_status =
+            if threw_past_every_catch_in(run):
+                0
+            else:
+                the_status_the_batch_rule_gives()
 }
 
 -- A script runs in its own directory, not in the one the shell was in.
@@ -400,6 +482,9 @@ rule AScriptIsDecodedRatherThanReadAsText {
 -- that was meant to run has not, nothing said so, and whoever called it is
 -- now looking at a prompt they did not ask for. That is what JEBOL did with
 -- any path it was given.
+--
+-- The report names the script as it was written, on the error stream, with
+-- the lower-case "access error" R3's host writes.
 rule AScriptThatIsNotThereIsAFailure {
     when: run: ScriptRun.created
     requires: not the_path_names_something_readable(run.path)
@@ -407,6 +492,122 @@ rule AScriptThatIsNotThereIsAFailure {
     ensures:
         run.status = finished
         run.exit_status = 1
+        the_error_stream_receives(script_not_found_naming(run.path))
+}
+
+-- The command line is read the way R3's host reads it, OS_Parse_Args in
+-- host-args.c, so that the same words given to r3 and to JEBOL ask for the same
+-- thing.
+--
+-- Options come first and the first word that is not one is the script; every
+-- word after it is the script's, untouched, even one that looks like an option.
+-- `--` ends the options without naming a script. An option that takes a value
+-- takes the next word, unless that word's second character is a dash, in which
+-- case the option is set and the word is left to be read as what it is. An
+-- option that takes a value and has no next word, and any option nobody knows,
+-- asks for the usage text instead.
+--
+-- `--root`, `--data` and `--screen=` are JEBOL's own and are taken off before
+-- R3's reading starts, because to R3 they would be unknown options asking for
+-- help.
+entity CommandLine {
+    words: List<String>
+    flags: Set<String>         -- spelled as system/catalog/boot-flags spells them
+    script: String?            -- as it was written
+    arguments: List<String>    -- the --args value first, if given, then the rest
+}
+
+rule TheCommandLineIsReadAsRebolsHostReadsIt {
+    when: Start(words)
+    ensures: CommandLine.created(
+        words: words,
+        flags: the_flags_os_parse_args_sets(words),
+        script: the_script_os_parse_args_finds(words),
+        arguments: the_arguments_os_parse_args_leaves(words)
+    )
+}
+
+-- What was asked is handed to the system object as Init_Main_Args in b-init.c
+-- hands it: system/options/flags is a block of the flags given, in boot-flags
+-- order, ending in a true so that `flags/verbose` reads as a logic; quiet and
+-- no-color are set by their flags; the script is a file as it was written;
+-- do-arg, debug, version and import are text; secure and boot-level are words;
+-- and path is the directory the command was given in.
+rule TheSystemIsToldWhatWasAsked {
+    when: line: CommandLine.created
+    requires: anything_was_asked(line)
+
+    ensures:
+        system_options_flags() = the_flag_words_in_boot_flags_order(line.flags) + [true]
+        system_options_script() = file_as_written(line.script)
+        system_options_args() = line.arguments
+        system_options_path() = the_directory_the_command_was_given_in()
+}
+
+-- What R3 does after that is not the host's to do. Its host applies sys/start,
+-- Rebol's own function in sys-start.reb, and that is what runs --do, loads the
+-- script, works out the data and modules folders, makes the user's context and
+-- prints the banner. JEBOL applies the same function the same way, which is why
+-- an error raised by a script reports `-apply-` as the outermost call, exactly
+-- as r3 does.
+--
+-- A boot level below mods given with --boot stops short of start altogether, as
+-- Init_Mezz does.
+rule RebolsOwnStartRunsTheRest {
+    when: line: CommandLine.created
+    requires: anything_was_asked(line)
+    requires: not boot_level_below_mods(line)
+
+    ensures: sys_start_applied_as_the_host_applies_it()
+}
+
+-- After start the host decides, as main in host-main.c decides. A QUIT leaves
+-- with what it carried. Otherwise start reports a halt as minus fifteen, an
+-- error as minus one, having put the error on the error stream, and anything
+-- else as nought. Unless --cgi was given, the console opens when there was no
+-- script, when start reported trouble, or when --halt asked for it -- except
+-- that trouble without --halt leaves with the number negated, saying it is
+-- closing first unless system/options/quiet is set. Everything else leaves
+-- with nought.
+rule TheHostDecidesAfterStart {
+    when: line: CommandLine.started
+    requires: not quit_was_asked_for_during_start()
+
+    let reported =
+        if start_halted(): -15
+        else if start_raised_an_error(): -1
+        else: 0
+
+    ensures:
+        if not (cgi in line.flags)
+                and (not names_a_script(line) or reported < 0 or halt in line.flags):
+            if reported < 0 and not (halt in line.flags):
+                process_leaves_with(-reported)
+            else:
+                Session.created(user_context: the_user_context_start_made(), is_open: true)
+        else:
+            process_leaves_with(0)
+}
+
+-- The console start leaves open works in the user context start made, and a
+-- word new to it takes the value lib gives that word, as intern does. So a
+-- word a script set is still set at the prompt that follows it.
+rule TheConsoleAfterStartUsesTheContextStartMade {
+    when: submission: Submission.created
+    requires: submission.session.user_context = the_user_context_start_made()
+
+    ensures:
+        for word in words_new_to(submission.session.user_context, submission.source_text):
+            word.value = lib_value_of(word)
+}
+
+-- `--data` is what one JEBOL tells another it starts, and it reaches start the
+-- way R3 is told where its data lives: as REBOL_HOME.
+rule TheDataSwitchIsRebolHome {
+    when: line: CommandLine.created
+    requires: the_command_line_named_a_data_directory()
+
+    ensures: environment_variable("REBOL_HOME") = the_data_directory_named()
 }
 
 actor ConsoleUser {
@@ -417,16 +618,11 @@ actor ConsoleUser {
 -- Open Questions
 ------------------------------------------------------------
 
--- Resolved: the reader decides. The console offers the text to TRANSCODE
--- and treats an unclosed series and an unterminated string as a request for
--- more input, and every other failure as a mistake. Counting delimiters gets
--- a brace inside a braced string wrong, and a braced string is exactly the
--- thing that spans lines.
---
--- It asks the reader which failure it was, not which id the script would
--- see. Those are different questions now: an unterminated string and a bad
--- escape both report `invalid` to a script, because that is the id a real
--- 3.22.5 gives, and only the first of them means another line would help.
+-- Resolved, and reversed: the console counts what is open, as R3's host does,
+-- rather than asking the reader. It was once decided the other way, on the
+-- grounds that counting gets a brace inside a braced string wrong; R3's host
+-- counts braces inside a braced string as nesting, so a console that agrees
+-- with R3 counts too. See TheConsoleCountsWhatIsOpen.
 
 -- Resolved: the console prints == before a value, as R3-Alpha does.
 

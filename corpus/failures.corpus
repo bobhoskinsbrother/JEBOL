@@ -164,7 +164,7 @@ loop "three" [1]
 --- requires control
 --- code
 foreach item 42 [item]
---- error script cannot-use
+--- error script expect-arg
 
 # --- Assignment that cannot happen ---------------------------
 

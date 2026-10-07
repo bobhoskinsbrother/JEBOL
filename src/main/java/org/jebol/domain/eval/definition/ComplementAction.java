@@ -40,8 +40,7 @@ public class ComplementAction extends DefaultNative {
                     case TupleValue tuple -> new TupleActions().complemented(tuple);
                     case Value subject when Actions.of(subject).isPresent() ->
                             Actions.of(subject).orElseThrow().complemented();
-                    default -> refuseTheArgument(
-                            arguments.getFirst(), "logic or integer");
+                    default -> refuseTheArgument(arguments.getFirst(), "value");
                 };
     }
 }

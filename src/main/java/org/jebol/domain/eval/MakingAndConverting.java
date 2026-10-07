@@ -6,7 +6,6 @@ import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.*;
 
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -61,6 +60,8 @@ public final class MakingAndConverting implements Construction {
     private static final int MOST_WHOLE_NUMBER_CHARACTERS = 25;
 
     private static final int MOST_FRACTION_CHARACTERS = 24;
+
+    private static final int MOST_MONEY_CHARACTERS = 36;
 
     private static final Pattern WRITTEN_DECIMAL = Pattern.compile(
             "[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)(?:[eE][+-]?[0-9]*)?");
@@ -303,13 +304,12 @@ public final class MakingAndConverting implements Construction {
             Value given = at + 1 < spec.size() ? spec.get(at + 1) : UnsetValue.unset();
             if (given.datatype() == Datatype.UNSET
                     || given.datatype() == Datatype.SET_WORD) {
-                throw Raised.of(EvaluationFailure.NEED_VALUE, field.spelling());
+                throw Raised.of(EvaluationFailure.NEED_VALUE, field);
             }
             Value written = lookedUp.apply(given);
             if (!GobPath.accepted(gob.storage(), field.canonical(), written)) {
                 throw Raised.of(EvaluationFailure.BAD_FIELD_SET,
-                        WordValue.of(field.spelling()),
-                        DatatypeValue.of(written.datatype()));
+                        field, DatatypeValue.of(written.datatype()));
             }
         }
     }
@@ -817,7 +817,7 @@ public final class MakingAndConverting implements Construction {
             case BinaryValue bytes -> IntegerValue.of(bytes.bitsOfTheLastEightOctets());
             case DateValue moment -> IntegerValue.of(moment.wholeSecondsSinceTheEpoch());
             case DecimalValue number -> wholeNumberWithinRange(number.quantity());
-            case MoneyValue amount -> IntegerValue.of(amount.amount().longValue());
+            case MoneyValue amount -> IntegerValue.of(amount.asDeci().toLong());
             case TimeValue clock ->
                     IntegerValue.of(clock.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND);
             default -> throw Raised.badMakeArg(value, "integer!");
@@ -1123,39 +1123,22 @@ public final class MakingAndConverting implements Construction {
     }
 
     private Value asMoney(Conversion asking, Value value) {
-        return MoneyActions.withinTheDeciRange(switch (value) {
+        return switch (value) {
             case MoneyValue already -> already;
-            case IntegerValue whole -> MoneyValue.of(BigDecimal.valueOf(whole.magnitude()));
-            case DecimalValue quantity -> MoneyValue.of(BigDecimal.valueOf(quantity.quantity()));
-            case StringValue text -> readMoney(text.text());
+            case IntegerValue whole -> new MoneyValue(new Deci(whole.magnitude()));
+            case DecimalValue quantity -> new MoneyValue(new Deci(quantity.quantity()));
+            case StringValue text -> readMoney(text);
             case BinaryValue bytes -> MoneyValue.fromBytes(bytes.bytesFromHere());
-            case LogicValue truth when asking.builds() ->
-                    MoneyValue.of(truth.truth() ? BigDecimal.ONE : BigDecimal.ZERO);
+            case LogicValue truth when asking.builds() -> new MoneyValue(new Deci(truth.truth() ? 1 : 0));
             default -> throw Raised.badMakeArg(value, "money!");
-        });
+        };
     }
 
-    private MoneyValue readMoney(String text) {
-        String written = qualifiedNumberIn(text, "a money", MOST_FRACTION_CHARACTERS);
-        return amountWithoutTheCurrencyMark(written)
-                .flatMap(this::numberRewrittenForTheJvm)
-                .map(plain -> MoneyValue.of(new BigDecimal(plain)))
-                .orElseThrow(() -> Raised.badMakeArg(StringValue.of(text), "money!"));
-    }
-
-    private Optional<String> amountWithoutTheCurrencyMark(String written) {
-        if (written.startsWith("$")) {
-            String amount = written.substring(1);
-            return amount.startsWith("-") || amount.startsWith("+")
-                    ? Optional.empty()
-                    : Optional.of(amount);
-        }
-        boolean signedThenMarked = written.length() > 1
-                && (written.charAt(0) == '-' || written.charAt(0) == '+')
-                && written.charAt(1) == '$';
-        return Optional.of(signedThenMarked
-                ? written.charAt(0) + written.substring(2)
-                : written);
+    private MoneyValue readMoney(StringValue text) {
+        String written = qualifiedNumberIn(text.text(), "a money", MOST_MONEY_CHARACTERS);
+        return new DeciReading(written).theWholeOf()
+                .map(MoneyValue::new)
+                .orElseThrow(() -> Raised.badMakeArg(text, "money!"));
     }
 
     private boolean isANumberButNotAPercentageWhichIsNoRoomAtAll(Value given) {
@@ -1206,9 +1189,11 @@ public final class MakingAndConverting implements Construction {
         return text.substring(start, past);
     }
 
+    private static final char END_OF_FILE = 0;
+
     private boolean isLexicalSpace(char letter) {
         return (letter <= ' ' || letter == MOST_LETTERS_ARE_ONE_BYTE)
-                && letter != '\n' && letter != '\r';
+                && letter != '\n' && letter != '\r' && letter != END_OF_FILE;
     }
 
     private boolean isSpaceOrTab(char letter) {

@@ -1,13 +1,5 @@
 package org.jebol.domain.value;
 
-import java.math.BigDecimal;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Stream;
-
-import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.toUnmodifiableMap;
-
 public interface ArithmeticOperation extends ValueOperation {
 
     @Override
@@ -19,7 +11,7 @@ public interface ArithmeticOperation extends ValueOperation {
 
     Value onFractions(double left, double right, boolean infinitiesAllowed);
 
-    MoneyValue onAmounts(BigDecimal left, BigDecimal right);
+    Deci onAmounts(Deci left, Deci right);
 
     long onCodepoints(long codepoint, long other);
 

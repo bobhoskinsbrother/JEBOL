@@ -15,6 +15,7 @@ import org.jebol.domain.value.OperatorValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorValue;
 import org.jebol.domain.value.WordValue;
@@ -49,6 +50,7 @@ public class ReflectAction extends DefaultNative {
 
     private Value reflected(Value subject, WordValue field) {
         return switch (subject) {
+            case UnsetValue nothing -> throw Raised.cannotUse(nothing, name());
             case VectorValue vector -> reflectedFrom(vector, field);
             case DatatypeValue(Datatype represents) -> declarations.specOf(represents)
                     .map(described -> reflectedFrom(described, field.canonical()))

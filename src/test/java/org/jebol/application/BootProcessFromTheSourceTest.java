@@ -114,8 +114,8 @@ class BootProcessFromTheSourceTest {
     }
 
     @Test
-    @DisplayName("and where the host moved nothing, neither of them has a modules directory")
-    void whereTheHostMovedNothingNeitherHasAModulesDirectory() {
+    @DisplayName("and where the host moved nothing it has no modules directory, while the child makes one as r3 does at start")
+    void whereTheHostMovedNothingOnlyTheChildHasAModulesDirectory() {
         Interpreter interpreter = interpreterWithAHost();
         String asking = "none? system/options/modules";
         interpreter.defineFreshWordsIn(asking);
@@ -123,6 +123,6 @@ class BootProcessFromTheSourceTest {
         assertThat(interpreter.display(interpreter.run(asking))).isEqualTo("#(true)");
         assertThat(doesTheChildSay(interpreter, """
                 Rebol []
-                probe none? system/options/modules""", "#(true)^/")).isEqualTo(AGREED);
+                probe none? system/options/modules""", "#(false)^/")).isEqualTo(AGREED);
     }
 }

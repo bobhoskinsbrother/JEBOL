@@ -1,11 +1,14 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DatatypeValue;
+import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.WordValue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -126,10 +129,15 @@ public abstract class DefaultNative implements NativeDefinition {
         return parameter.owningRefinement().filter(refinement::equals).isPresent();
     }
 
-    protected Value refuseTheArgument(Value given, String wanted) {
-        throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                name() + " wanted a " + wanted + ", not a "
-                        + given.datatype().literalSpelling());
+    protected Value refuseTheArgument(Value given, String declaredArgument) {
+        throw new Raised(ErrorValue.about(
+                EvaluationFailure.EXPECT_ARG.category(),
+                EvaluationFailure.EXPECT_ARG.errorId(),
+                name() + " does not allow " + given.datatype().literalSpelling()
+                        + " for its " + declaredArgument + " argument",
+                WordValue.of(name()),
+                WordValue.of(declaredArgument),
+                DatatypeValue.of(given.datatype())));
     }
 
     protected Value refuseTheDatatype(Value given) {

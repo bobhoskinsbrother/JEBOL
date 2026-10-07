@@ -32,7 +32,7 @@ class WhatEachStringNativeDeclaresTest {
         return Stream.of(
                 Arguments.of(new FindScriptNative(), "find-script", Set.of()),
                 Arguments.of(new SplitLinesNative(), "split-lines", Set.of()),
-                Arguments.of(new WhetherWildcardNative(), "wildcard?", Set.of()),
+                Arguments.of(new IsWildcardNative(), "wildcard?", Set.of()),
                 Arguments.of(new UppercaseNative(), "uppercase", Set.of("part")),
                 Arguments.of(new LowercaseNative(), "lowercase", Set.of("part")),
                 Arguments.of(new TrimAction(), "trim",

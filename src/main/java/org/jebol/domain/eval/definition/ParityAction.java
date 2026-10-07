@@ -45,7 +45,7 @@ public abstract class ParityAction extends DefaultNative {
 
     private long roundedWholeOf(Value value) {
         return switch (value) {
-            case MoneyValue amount -> amount.amount().longValue();
+            case MoneyValue amount -> (int) amount.asDeci().toLong();
             case CharacterValue(int codepoint) -> codepoint;
             case TimeValue(long nanoseconds) -> nanoseconds / 1_000_000_000L;
             case DateValue date -> date.day();

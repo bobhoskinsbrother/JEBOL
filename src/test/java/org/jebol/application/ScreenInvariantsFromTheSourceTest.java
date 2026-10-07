@@ -51,7 +51,7 @@ class ScreenInvariantsFromTheSourceTest {
 
             assertThat(interpreter.display(interpreter.run("""
                     not-gobs: copy []
-                    foreach g system/view/screen-gob [unless gob? g [append not-gobs g]]
+                    foreach g system/view/screen-gob/pane [unless gob? g [append not-gobs g]]
                     mold not-gobs"""))).isEqualTo("\"[]\"");
             assertThat(screen.whatIsStandingOpen()).hasSize(2);
         }

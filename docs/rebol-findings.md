@@ -6321,3 +6321,150 @@ from its own system object and leaves the eleven build fields `none`.
 **The STACK figures that measure the C are not reproduced.** `stack/limit`
 is 16032 and `stack/size` counts slots on the C data stack. JEBOL answers its
 own evaluation limit and eight values a frame.
+
+## 218. The port natives, swept against r3-head
+
+**The file verbs make a port first and answer with it.** `T_Port` turns the
+target into a port with `As_Port` before any actor sees it. So CREATE, DELETE
+and RENAME answer the port, not the file they were given. RENAME answers the
+port of the old name: `r/spec/ref` is `%a.txt` after `rename %a.txt %b.txt`.
+An unknown scheme is `no-scheme` from `make-port*`, as in `create ftp://a`.
+A scheme with no file actor is `no-port-action` naming the verb as a
+set-word, such as `delete:`. DELETE answers `false` when nothing was there.
+
+**RENAME refuses a destination that is not a file with `no-rename`.** It names
+the source, as in `rename %a.txt http://a`.
+
+**There is no READ-DIR.** `read %d/` lists a directory, with a slash on each
+directory's name.
+
+**A negative /PART or /SEEK is `out-of-range`, naming the number.** That holds
+for READ and WRITE alike.
+
+**QUERY answers each kind of target by its own fields, and refuses an
+unknown one differently for each.**
+
+| Target | A word it has not got | Inside a block |
+| --- | --- | --- |
+| a file | `invalid-arg`, naming the word | `invalid-arg` |
+| a date | unset | `none` |
+| a vector | `cannot-use`, naming the word and `#(vector!)` | `invalid-arg` |
+| a handle | `cannot-use`, naming the word and `#(handle!)` | `invalid-arg` |
+| the console | `invalid-arg`, naming the word | `invalid-arg` |
+
+A date, a vector and a handle answer `'words` with their field names. The
+console does not: `words` is an unknown field there.
+
+**A file's NAME is the whole path, and its dates are local with their
+zone.** `Ret_Query_File` fills `name` with the full path. It fills the dates
+from the file system in the machine's own zone, nanoseconds included. The
+object form leaves `date` as `none` and fills only `modified`, `accessed` and
+`created`.
+
+**The console's width is 80 only when asked for alone.**
+`Set_Console_Mode_Value` puts in `DEFAULT_WINDOW_COLS` when the host reports
+zero, but the object form copies the raw request. So `query port
+'window-cols` is 80 while `query port object!` says 0. The C writes the 80
+back into the request, so a later object form says 80 too. JEBOL does not
+keep that, and its object form always says 0. The console's fields are
+`buffer-cols buffer-rows window-cols window-rows length`, in that order.
+
+**MODIFY on a file takes only the nine permission words, and changes
+nothing.** `owner-read` through `world-execute` are accepted and any other
+word is `invalid-arg`. `Set_Mode_Value` is a stub, so a `file!` value answers
+`none` and an open file port answers `true`, and nothing on disk changes.
+
+**SET-SCHEME reads by position, not by name.** `Obj_Value` takes the first
+field as the name and the fifth as the actor, whatever they are called. An
+object with fewer than five fields answers `none`. It answers `true` for the
+schemes this build registers a native actor for: `console tcp dns event
+checksum file dir crypt clipboard udp midi system callback`. `serial` and
+`audio` are registered in the source but answer `none` from r3-head.
+
+**The actor SET-SCHEME makes is a `native!` nothing can call.** Its spec is
+`[_ internal]`, and `internal` takes only `end!`, so a call is `no-arg` or
+`expect-arg` and never runs. It is written straight into the frame, so a
+protected `actor` field is overwritten all the same. Each scheme's actor is
+its own value: the file and dir actors are not equal.
+
+**`Do_Port_Action` decides by the actor alone.** A `none` actor answers
+`none` for every verb. A native goes to the C. An object goes to the REBOL
+actor. Anything else, a word included, is `invalid-actor`.
+
+**A native molds as the spec Rebol declares for it.** `mold :if` is
+`make native! [` plus `mold spec-of :if` plus `]`, line breaks and all.
+Actions mold as `make action!`, operators as `make op!` with their prefix
+twin's spec, and `mold/all` writes `#(native! [...])`.
+
+**MOLD/FLAT never touches the inside of a string.** A braced string keeps
+its line breaks, and a vector of more than ten numbers stays on one line.
+
+**An argument error names what Rebol's declaration names.** `no-arg` and
+`expect-arg` carry the word the call was written with, then the argument as
+Rebol's own `natives.reb` and `actions.reb` spell it: `if`'s second argument
+is `true-branch`, `pick`'s first is `aggregate`. An operator is named by its
+own word, so `1 +` is `no-arg + value2`. A set-word with nothing after it is
+`need-value` naming the set-word alone.
+
+**UPDATE belongs to some actors and not others.** Console, dns, clipboard,
+tcp, udp, event, system and callback answer `none`. Checksum and crypt do
+their own work. A file or directory port is `no-port-action` naming
+`update:`.
+
+**Opening TCP does not raise when the connection fails.** OPEN answers a port
+that is not open. The failure arrives as an `error` event, and the HTTP
+scheme's own awake turns that into `no-connect` naming the URL, with no
+second argument.
+
+**CHANGE-DIR's second argument is the negated errno.** `-2` is for a path
+that is not there, and `-20` is for a file where a directory was wanted.
+CREATE's `no-create` has no second argument at all.
+
+**CALL's failure is the operating system's own words.** `call-fail` carries
+"No such file or directory", not the JVM's longer message. An empty command
+block is a bare `too-short`.
+
+**A type error names the call as written.** `expect-arg` names the word the
+function or native was called through, such as `exists?`, `f` for `o/f`,
+`g` for `g: :exists?`, or `ap` for `ap: :append`. A call no word made is
+`-unnamed-`. APPLY is `-apply-`, and it checks the types too.
+
+**A native takes the arguments its spec declares, checked as they arrive.**
+The C builds every native's frame from its boot spec, so the names, the
+types and the quoting all come from `natives.reb` and `actions.reb`. JEBOL
+binds each native with those declared parameters, keeping only the order its
+Java behaviour reads them in. Each argument is checked the moment it is
+gathered, as `Do_Args` does, so `register 1` is `expect-arg register 'name`
+before anything notices the missing second argument. A quoted argument is
+named as the spec writes it, `'name`.
+
+**What that let in, and what it answers.**
+
+| Call | Answer |
+| --- | --- |
+| `ascii? 127`, `ascii? -1` | `true`, an integer is a codepoint |
+| `ascii? 128` | `false` |
+| `foreach x none []` | `none` |
+| `atz [1 2 3] true` / `false` | `[2 3]` / `[3]`, a logic counts as AT's plus one |
+| `reverse/part [1 2 3] 2.9` | `[2 1 3]`, a decimal is truncated |
+| `reverse/part [1 2 3] 50%` | `invalid-part 50%` |
+| `checksum/part ... none` | the whole input |
+| `with system/ports/output [1]` | `1`, a port's fields are its context |
+| `reflect () 'spec` | `cannot-use reflect:` |
+
+**`Trap_Action` names an action by its set-word.** `first 1` is
+`cannot-use pick:`, because FIRST reaches PICK's action and the action's
+error names it so.
+
+**`invalid-part` carries the offending value**, such as `"x"` or `[x]`, not
+the refinement's name.
+
+**A file port's path is its `ref`.** The C's file actor reads `spec/ref`: a
+`file!` is the path itself, and a `url!` sends it to `spec/path`. Anything
+else is `invalid-spec` naming the ref, so `create [scheme: 'file path:
+%zz.txt]` is refused.
+
+**Still different: `hash` and `compress`.** `hash` gives different numbers
+from r3 for every value, not only the newly accepted unset. `compress/part`
+and `compress/level` produce different bytes from r3 for short inputs. Both
+are ports of their own still to do.

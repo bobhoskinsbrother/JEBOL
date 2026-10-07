@@ -1,7 +1,5 @@
 package org.jebol.domain.value;
 
-import java.math.BigDecimal;
-
 public final class Remainder implements ArithmeticOperation {
 
     @Override
@@ -21,9 +19,8 @@ public final class Remainder implements ArithmeticOperation {
     }
 
     @Override
-    public MoneyValue onAmounts(BigDecimal left, BigDecimal right) {
-        Overflowing.refuseAZeroDivisor(right.doubleValue());
-        return MoneyValue.of(left.remainder(right, MoneyValue.ARITHMETIC));
+    public Deci onAmounts(Deci left, Deci right) {
+        return left.remainderAfterDividingBy(right);
     }
 
     @Override

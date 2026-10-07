@@ -79,6 +79,8 @@ public final class Evaluator {
 
     private final Deque<OpenCall> functionsBeingRun = new ArrayDeque<>();
 
+    private final SymbolTable symbols = new SymbolTable();
+
     private final Deque<Deque<Frame>> walksInProgress = new ArrayDeque<>();
 
     private String nameOfTheCallBeingMade = "";
@@ -246,7 +248,10 @@ public final class Evaluator {
             return Optional.empty();
         }
         port.refuseASpecThatIsNotAnObject();
-        port.refuseAnActorThatIsNeitherAWordNorAnObject();
+        port.refuseAnActorThatIsNeitherANativeNorAnObject();
+        if (port.hasNoActor()) {
+            return Optional.of(NoneValue.none());
+        }
         return port.actorWrittenInRebol().map(actor ->
                 askTheActor(actor, action, arguments, refinements));
     }
@@ -328,6 +333,28 @@ public final class Evaluator {
         }
     }
 
+    public void setSystemOption(String field, Value value) {
+        if (systemContext.valueAt("system", "options") instanceof ObjectValue(Context options)) {
+            options.set(field, value);
+        }
+    }
+
+    public Outcome appliedAsTheHostApplies(String systemFunction) {
+        try {
+            return new Outcome.Completed(unsignalled(() -> applyFunction(
+                    systemContext.systemFunctionNamed(systemFunction), List.of())));
+        } catch (Raised raised) {
+            return new Outcome.Raised(raised.error());
+        }
+    }
+
+    public ErrorValue madeWhereTheCallIs(ErrorValue error) {
+        if (walksInProgress.isEmpty()) {
+            return spokenHere(error);
+        }
+        return sayingWhereItCameFrom(new Raised(error), walksInProgress.peek()).error();
+    }
+
     public ErrorValue spokenHere(ErrorValue error) {
         return error.wording().equals(wording) ? error : error.spokenBy(wording);
     }
@@ -387,11 +414,12 @@ public final class Evaluator {
     public Value applyFunction(Value callee, List<Value> arguments) {
         return switch (callee) {
             case FunctionValue function -> {
+                List<Parameter> parameters = function.parameters();
+                checkArgumentTypes(parameters, arguments, AN_APPLIED_FUNCTION);
                 Context locals = Context.childOf(function.closedOver());
                 if (!function.closure()) {
                     locals.markAsCallFrameOf(function);
                 }
-                List<Parameter> parameters = function.parameters();
                 function.localNames().forEach(
                         name -> locals.set(name, NoneValue.none()));
                 bindArgumentsPositionally(locals, parameters, arguments);
@@ -435,8 +463,18 @@ public final class Evaluator {
         return systemContext;
     }
 
-    public Value evaluateSource(String source) {
+    public SymbolTable symbols() {
+        return symbols;
+    }
+
+    public TranscodeResult read(String source) {
         TranscodeResult read = Transcoder.transcode(source, construction);
+        read.values().ifPresent(values -> symbols.internWhatWasRead(values.remaining()));
+        return read;
+    }
+
+    public Value evaluateSource(String source) {
+        TranscodeResult read = read(source);
         if (!read.succeeded()) {
             throw new Raised(read.error().orElseThrow());
         }
@@ -628,12 +666,14 @@ public final class Evaluator {
 
             if (frame.stopped || frame.atEnd()) {
                 if (!frame.stopped && !frame.pendingCalls.isEmpty()) {
-                    if (frame.pendingCalls.peek().takesTheNextValueAsWritten()) {
+                    PendingCall gathering = frame.pendingCalls.peek();
+                    if (gathering.takesTheNextValueAsWritten()) {
                         deliver(frame, UnsetValue.unset(), frames);
                         continue;
                     }
                     throw Raised.of(EvaluationFailure.NO_ARG,
-                            "the block ended while a call was still gathering arguments");
+                            WordValue.of(gathering.nameInAnArgumentError()),
+                            gathering.theArgumentStillWanted());
                 }
                 Value finished = frame.lastResult;
                 if (frame.functionBody && !functionsBeingRun.isEmpty()) {
@@ -681,15 +721,9 @@ public final class Evaluator {
                 .toList();
         Value nearest = null;
         for (Frame open : everyCallOpenInnermostFirst(frames)) {
-            List<PendingCall> deepestFirst = new ArrayList<>();
-            if (open.theCallNearAndWhereAreAbout != null) {
-                deepestFirst.add(open.theCallNearAndWhereAreAbout);
-            }
-            deepestFirst.addAll(open.pendingCalls);
-            for (PendingCall waiting : deepestFirst) {
-                if (nearest == null && waiting.startedAt() >= 0) {
-                    nearest = open.code.atIndex(waiting.startedAt());
-                }
+            PendingCall running = open.theCallNearAndWhereAreAbout;
+            if (nearest == null && running != null && running.startedAt() >= 0) {
+                nearest = open.code.atIndex(running.startedAt());
             }
         }
         ErrorValue said = raised.error();
@@ -824,6 +858,7 @@ public final class Evaluator {
                 }
                 return;
             }
+            refuseWhatTheParameterBeingFilledWouldNot(waiting, carrying);
             waiting.accept(carrying);
             if (!waiting.isSatisfied()) {
                 return;
@@ -838,6 +873,11 @@ public final class Evaluator {
             frame.theCallNearAndWhereAreAbout = null;
             carrying = invoked.value();
         }
+    }
+
+    private void refuseWhatTheParameterBeingFilledWouldNot(PendingCall waiting, Value arriving) {
+        waiting.theParameterBeingFilled().ifPresent(parameter -> checkArgumentTypes(
+                List.of(parameter), List.of(arriving), waiting.nameInAnArgumentError()));
     }
 
     private static boolean itIsStillRunningHavingPushedABody(StepOutcome outcome) {
@@ -899,14 +939,10 @@ public final class Evaluator {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
         }
         if (frame.atEnd()) {
-            throw Raised.of(EvaluationFailure.NEED_VALUE,
-                    word.spelling() + ": has nothing after it to assign");
+            throw Raised.of(EvaluationFailure.NEED_VALUE, word);
         }
         word.refuseToBeWrittenWhenItNamesSelf();
         ContextSlot slot = word.binding().slotFor(word.canonical());
-        if (slot.isProtected()) {
-            throw Raised.of(EvaluationFailure.LOCKED_WORD, word.spelling());
-        }
         frame.pendingCalls.push(PendingCall.assignment(slot));
         return StepOutcome.waiting();
     }
@@ -994,15 +1030,19 @@ public final class Evaluator {
 
     private StepOutcome invoke(Frame frame, PendingCall call, Deque<Frame> frames) {
         if (call.isAssignment()) {
+            if (call.slot() != null && call.argumentsInDeclaredOrder().get(0).datatype() == Datatype.UNSET) {
+                throw Raised.of(EvaluationFailure.NEED_VALUE,
+                        WordValue.of(call.slot().spelling(), Datatype.SET_WORD));
+            }
             if (call.slot() != null && call.slot().isProtected()) {
-                throw Raised.of(EvaluationFailure.LOCKED_WORD, "the field is protected");
+                throw Raised.of(EvaluationFailure.LOCKED_WORD,
+                        (Value) WordValue.of(call.slot().spelling(), Datatype.SET_WORD));
             }
             if (call.destination() != null) {
                 try {
                     call.destination().accept(call.argumentsInDeclaredOrder().get(0));
                 } catch (ProtectedFromChange refused) {
-                    throw Raised.of(EvaluationFailure.PROTECTED,
-                            "the value is protected");
+                    throw Raised.of(EvaluationFailure.PROTECTED);
                 }
                 return StepOutcome.of(call.argumentsInDeclaredOrder().get(0));
             }
@@ -1015,7 +1055,7 @@ public final class Evaluator {
                     trace.call(built.nativeName(), built, call.argumentsInDeclaredOrder());
                 }
                 Value produced = runNative(built, call.argumentsInDeclaredOrder(), frame.context,
-                        EVERY_ARGUMENT_IS_CHECKED, call::enter);
+                        EVERY_ARGUMENT_IS_CHECKED, call.nameInAnArgumentError(), call::enter);
                 if (trace.isOn()) {
                     trace.answered(built.nativeName(), produced);
                 }
@@ -1027,7 +1067,8 @@ public final class Evaluator {
                         : StepOutcome.of(produced);
             }
             case OperatorValue operator -> StepOutcome.of(invokeUnderlying(
-                    operator, call.argumentsInDeclaredOrder(), frame.context, call::enter));
+                    operator, call.argumentsInDeclaredOrder(), frame.context,
+                    call.nameInAnArgumentError(), call::enter));
             case FunctionValue function -> {
                 nameOfTheCallBeingMade = lastWordCalledThrough;
                 if (trace.isOn()) {
@@ -1043,16 +1084,16 @@ public final class Evaluator {
 
     private Value invokeUnderlying(
             OperatorValue operator, List<Value> arguments, Context context) {
-        return invokeUnderlying(operator, arguments, context, NOBODY_IS_WAITING_TO_HEAR);
+        return invokeUnderlying(operator, arguments, context, AN_APPLIED_FUNCTION, NOBODY_IS_WAITING_TO_HEAR);
     }
 
     private static final Runnable NOBODY_IS_WAITING_TO_HEAR = () -> { };
 
     private Value invokeUnderlying(OperatorValue operator, List<Value> arguments,
-            Context context, Runnable onceTheArgumentsPass) {
+            Context context, String calledAs, Runnable onceTheArgumentsPass) {
         return switch (operator.underlying()) {
             case NativeValue built -> runNative(built, arguments, context,
-                    THE_LEFT_OPERAND_IS_NOT_CHECKED, onceTheArgumentsPass);
+                    THE_LEFT_OPERAND_IS_NOT_CHECKED, calledAs, onceTheArgumentsPass);
             case FunctionValue function -> {
                 onceTheArgumentsPass.run();
                 yield applyFunction(function, arguments);
@@ -1068,29 +1109,25 @@ public final class Evaluator {
 
     private Value runNative(
             NativeValue built, List<Value> arguments, Context context) {
-        return runNative(built, arguments, context, EVERY_ARGUMENT_IS_CHECKED);
-    }
-
-    private Value runNative(
-            NativeValue built, List<Value> arguments, Context context, int checkedFrom) {
-        return runNative(built, arguments, context, checkedFrom, NOBODY_IS_WAITING_TO_HEAR);
+        return runNative(built, arguments, context, EVERY_ARGUMENT_IS_CHECKED,
+                AN_APPLIED_FUNCTION, NOBODY_IS_WAITING_TO_HEAR);
     }
 
     private Value runNative(NativeValue built, List<Value> arguments, Context context,
-            int checkedFrom, Runnable onceTheArgumentsPass) {
+            int checkedFrom, String calledAs, Runnable onceTheArgumentsPass) {
+        checkArgumentTypes(built, arguments, calledAs, checkedFrom);
         RefinedCallable behaviour = behaviours.get(built.nativeName());
         if (behaviour == null) {
             throw Raised.of(EvaluationFailure.CANNOT_USE,
                     "no behaviour registered for " + built.nativeName());
         }
-        checkArgumentTypes(built, arguments, built.nativeName(), checkedFrom);
         onceTheArgumentsPass.run();
         nativesCalled++;
         Value produced;
         try {
             produced = behaviour.call(arguments, this, context, built.askedRefinements());
         } catch (ProtectedFromChange refused) {
-            throw Raised.of(EvaluationFailure.PROTECTED, built.nativeName());
+            throw Raised.of(EvaluationFailure.PROTECTED);
         } catch (SlotIsProtected refused) {
             throw Raised.of(EvaluationFailure.LOCKED_WORD, refused.spelling());
         }
@@ -1105,7 +1142,7 @@ public final class Evaluator {
         List<Value> arguments = call.argumentsInDeclaredOrder();
         List<String> refinements = call.refinements();
         checkArgumentTypes(function.parameters(),
-                new java.util.HashSet<>(refinements), arguments, "function");
+                new java.util.HashSet<>(refinements), arguments, call.nameInAnArgumentError());
         call.enter();
         Context locals = Context.childOf(function.closedOver());
         if (!function.closure()) {
@@ -1138,11 +1175,6 @@ public final class Evaluator {
 
         push(frames, theBodyThisCallRuns(function, locals), locals, function);
         return StepOutcome.waiting();
-    }
-
-    private void checkArgumentTypes(
-            NativeValue built, List<Value> arguments, String calleeName) {
-        checkArgumentTypes(built, arguments, calleeName, EVERY_ARGUMENT_IS_CHECKED);
     }
 
     private void checkArgumentTypes(
@@ -1183,7 +1215,7 @@ public final class Evaluator {
                                 + argument.datatype().literalSpelling()
                                 + " for its " + parameter.name() + " argument",
                         WordValue.of(calleeName),
-                        WordValue.of(parameter.name()),
+                        parameter.asWrittenInTheSpec(),
                         DatatypeValue.of(argument.datatype())));
             }
         }
@@ -1238,8 +1270,7 @@ public final class Evaluator {
 
     private StepOutcome evaluateSetPath(Frame frame, BlockValue path) {
         if (frame.atEnd()) {
-            throw Raised.of(EvaluationFailure.NEED_VALUE,
-                    "a set-path has nothing after it to assign");
+            throw Raised.of(EvaluationFailure.NEED_VALUE, path);
         }
         frame.pendingCalls.push(PendingCall.assignmentInto(
                 written -> writeThroughPath(frame, path, written)));
@@ -1261,18 +1292,27 @@ public final class Evaluator {
     }
 
     private void writeThroughPath(Frame frame, BlockValue path, Value written) {
+        if (written.datatype() == Datatype.UNSET) {
+            throw Raised.of(EvaluationFailure.NEED_VALUE, path);
+        }
         List<Value> segments = path.remaining();
         BlockValue allButLast = BlockValue.path(
                 segments.subList(0, segments.size() - 1), Datatype.PATH);
-        if (segments.size() == 1) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH,
-                    "a one-segment path has nothing to assign through");
+        Slot place = select(allButLast, path, frame.context).slot();
+        refuseAPathIntoSomethingWithNoParts(path, place.value(), segments.size() - 2);
+        try {
+            writeThroughTheLastSegment(frame, path, place, written);
+        } catch (Raised refused) {
+            throw refusedAt(refused, path, segments.getLast());
         }
-        Slot place = select(allButLast, frame.context).slot();
+    }
+
+    private void writeThroughTheLastSegment(
+            Frame frame, BlockValue path, Slot place, Value written) {
+
+        List<Value> segments = path.remaining();
         Value target = place.value();
         Value lastSegment = segments.get(segments.size() - 1);
-        refuseAPathIntoSomethingWithNoParts(path, target);
-
         refuseSelfAsAnInvalidPathRatherThanAGuardedSlot(lastSegment);
 
         if (segments.size() == 3 && lastSegment instanceof IntegerValue(long magnitude1)
@@ -1298,8 +1338,8 @@ public final class Evaluator {
                 && select(BlockValue.path(segments.subList(0, 1), Datatype.PATH),
                         frame.context).value() instanceof GobValue holdingPair
                 && GobPath.field(holdingPair, pairField) instanceof PairValue half) {
-            GobPath.write(holdingPair, pairField,
-                    withHalfWritten(half, lastSegment, written));
+            GobPath.write(holdingPair, pairField, new PairDispatcher().withHalfWritten(
+                    half, selectorFor(lastSegment, frame.context), written));
             return;
         }
         Optional<Dispatcher> dispatched = pathDispatch.forDatatype(target.datatype());
@@ -1346,6 +1386,16 @@ public final class Evaluator {
             StructPath.write(struct, selectorFor(lastSegment, frame.context), written);
             return;
         }
+        if (target instanceof TimeValue time) {
+            place.setValue(new WritingIntoATime().written(
+                    time, selectorFor(lastSegment, frame.context), written));
+            return;
+        }
+        if ((target instanceof StringValue || target instanceof BinaryValue)
+                && selectorFor(lastSegment, frame.context) instanceof IntegerValue counted) {
+            new WritingIntoText((RebolSeries) target).write(counted, written);
+            return;
+        }
         if (target instanceof RebolSeries series
                 && selectorFor(lastSegment, frame.context) instanceof IntegerValue(long magnitude)) {
             SeriesSlot.write(series,
@@ -1361,8 +1411,7 @@ public final class Evaluator {
             };
             if (bit != null) {
                 if (set.isProtected()) {
-                    throw Raised.of(EvaluationFailure.PROTECTED,
-                            "bitset! is protected");
+                    throw Raised.of(EvaluationFailure.PROTECTED);
                 }
                 set.hold(bit, written.isTruthy());
                 return;
@@ -1382,27 +1431,11 @@ public final class Evaluator {
             writeEmailPart(address, half.canonical(), written);
             return;
         }
-        throw Raised.of(EvaluationFailure.INVALID_PATH,
-                "cannot assign through " + target.datatype().literalSpelling());
-    }
-
-    private static PairValue withHalfWritten(PairValue pair, Value segment, Value written) {
-        double replacement = switch (written) {
-            case IntegerValue whole -> whole.magnitude();
-            case DecimalValue quantity -> quantity.quantity();
-            default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    "a pair half holds a number, not "
-                            + written.datatype().literalSpelling());
-        };
-        return switch (segment) {
-            case WordValue name when PairValue.isWritableHalf(name.canonical()) ->
-                    pair.withHalf(name.canonical(), replacement);
-            case IntegerValue position when position.magnitude() == 1
-                    || position.magnitude() == 2 ->
-                    pair.withHalfAt((int) position.magnitude(), replacement);
-            default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET,
-                    "a pair has an x half and a y half, and nothing else to write");
-        };
+        if ((target instanceof StringValue || target instanceof BinaryValue)
+                && selectorFor(lastSegment, frame.context) instanceof WordValue) {
+            throw Raised.of(EvaluationFailure.BAD_PATH_SET);
+        }
+        throw Raised.of(EvaluationFailure.INVALID_PATH);
     }
 
     private static long countedFromTheSeriesPosition(long index) {
@@ -1410,6 +1443,38 @@ public final class Evaluator {
     }
 
     private Selection select(BlockValue path, Context context) {
+        return select(path, path, context);
+    }
+
+    private Slot slotWithTheSegment(
+            BlockValue asWritten, Slot holder, Value segment, Context context) {
+
+        Value selector = selectorFor(segment, context);
+        try {
+            return slotWith(holder, selector);
+        } catch (Raised refused) {
+            throw refusedAt(refused, asWritten, segment);
+        }
+    }
+
+    private Raised refusedAt(Raised refused, BlockValue asWritten, Value segment) {
+        String refusal = refused.error().errorId();
+        if (refusal.equals(EvaluationFailure.OUT_OF_RANGE.errorId())
+                && refused.error().subject().isEmpty()) {
+            return Raised.of(EvaluationFailure.OUT_OF_RANGE, segment);
+        }
+        for (EvaluationFailure saidOfTheWholePath : SAID_OF_THE_WHOLE_PATH) {
+            if (refusal.equals(saidOfTheWholePath.errorId())) {
+                return Raised.of(saidOfTheWholePath, asWritten, segment);
+            }
+        }
+        return refused;
+    }
+
+    private static final List<EvaluationFailure> SAID_OF_THE_WHOLE_PATH =
+            List.of(EvaluationFailure.INVALID_PATH, EvaluationFailure.BAD_PATH_SET);
+
+    private Selection select(BlockValue path, BlockValue asWritten, Context context) {
         List<Value> segments = path.remaining();
         if (segments.isEmpty()) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, "an empty path selects nothing");
@@ -1434,8 +1499,8 @@ public final class Evaluator {
                 mentioned.add(refinementNameOf(segment));
                 continue;
             }
-            refuseAPathIntoSomethingWithNoParts(path, current.value());
-            current = slotWith(current, selectorFor(segment, context));
+            refuseAPathIntoSomethingWithNoParts(asWritten, current.value(), index - 1);
+            current = slotWithTheSegment(asWritten, current, segment, context);
         }
         return new Selection(current, List.copyOf(refinements), List.copyOf(mentioned));
     }
@@ -1467,14 +1532,21 @@ public final class Evaluator {
                 + (int) countedFromTheSeriesPosition(position.magnitude()) - 1;
     }
 
-    private static void refuseAPathIntoSomethingWithNoParts(
-            BlockValue path, Value current) {
+    private void refuseAPathIntoSomethingWithNoParts(
+            BlockValue asWritten, Value current, int reachedThroughSegment) {
 
-        if (HAVE_NO_PARTS_TO_SELECT.contains(current.datatype())) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_TYPE,
-                    path, DatatypeValue.of(current.datatype()));
+        if (!HAVE_NO_PARTS_TO_SELECT.contains(current.datatype())) {
+            return;
         }
+        if (reachedThroughSegment == THE_VARIABLE_THE_PATH_STARTS_FROM) {
+            throw Raised.of(EvaluationFailure.BAD_PATH_TYPE,
+                    asWritten, DatatypeValue.of(current.datatype()));
+        }
+        throw Raised.of(EvaluationFailure.INVALID_PATH,
+                asWritten, asWritten.remaining().get(reachedThroughSegment));
     }
+
+    private static final int THE_VARIABLE_THE_PATH_STARTS_FROM = 0;
 
     private static final java.util.Set<Datatype> HAVE_NO_PARTS_TO_SELECT =
             Typeset.ANY_WORD.membersAnd(

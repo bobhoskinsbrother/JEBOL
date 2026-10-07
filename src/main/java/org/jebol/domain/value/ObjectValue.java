@@ -84,7 +84,7 @@ public record ObjectValue(Context context) implements Value {
         return switch (field.canonical()) {
             case "body" -> context.setWordsAndValuesOnLines();
             case "words" -> BlockValue.block(fieldsOtherThanSelf()
-                    .<Value>map(slot -> WordValue.of(slot.spelling()))
+                    .<Value>map(slot -> WordValue.of(slot.spelling()).boundTo(context))
                     .toList());
             case "values" -> BlockValue.block(fieldsOtherThanSelf()
                     .map(ContextSlot::value)

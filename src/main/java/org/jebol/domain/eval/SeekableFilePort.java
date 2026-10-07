@@ -1,34 +1,40 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.BinaryStorage;
+import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.PortValue;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-final class SeekableFilePort {
-
-    private SeekableFilePort() {
-    }
+public final class SeekableFilePort {
 
     private static final String THE_POSITION_AND_WHETHER_IT_MAY_WRITE = "state";
 
-    private static final String[] WHERE_A_FILE_KEEPS_ITS_PATH_BEFORE_WHERE_A_URL_DOES =
-            {"path", "ref"};
+    private static final String WHAT_THE_PORT_WAS_MADE_FROM = "ref";
+
+    private static final String WHERE_A_URL_LEAVES_ITS_PATH = "path";
 
     private static final int THE_POSITION = 0;
 
     private static final int WHETHER_IT_MAY_WRITE = 1;
 
-    static long positionOf(PortValue port) {
+    private final PortValue port;
+
+    public SeekableFilePort(PortValue port) {
+        this.port = port;
+    }
+
+    public long position() {
         return switch (port.fieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE)) {
             case IntegerValue at -> at.magnitude();
             case BlockValue kept
@@ -38,102 +44,90 @@ final class SeekableFilePort {
         };
     }
 
-    static void moveTo(PortValue port, long position) {
-        rememberOnThePort(port, Math.max(0, position), mayWriteThrough(port));
+    public void moveTo(long position) {
+        rememberOnThePort(Math.max(0, position), mayWriteThrough());
     }
 
-    static boolean mayWriteThrough(PortValue port) {
-        return !(port.fieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE)
-                        instanceof BlockValue kept)
+    public boolean mayWriteThrough() {
+        return !(port.fieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE) instanceof BlockValue kept)
                 || kept.remaining().get(WHETHER_IT_MAY_WRITE).isTruthy();
     }
 
-    static void openedAt(PortValue port, long position, boolean mayWrite) {
-        rememberOnThePort(port, position, mayWrite);
+    public void openedAt(long position, boolean mayWrite) {
+        rememberOnThePort(position, mayWrite);
     }
 
-    private static void rememberOnThePort(
-            PortValue port, long position, boolean mayWrite) {
-
+    private void rememberOnThePort(long position, boolean mayWrite) {
         port.setField(THE_POSITION_AND_WHETHER_IT_MAY_WRITE, BlockValue.block(
                 List.of(IntegerValue.of(position), LogicValue.of(mayWrite))));
     }
 
-    static String pathOf(PortValue port) {
-        if (!(port.fieldValue("spec") instanceof ObjectValue(org.jebol.domain.value.Context context))) {
+    public String path() {
+        if (!(port.fieldValue("spec") instanceof ObjectValue spec)) {
             return "";
         }
-        for (String field : WHERE_A_FILE_KEEPS_ITS_PATH_BEFORE_WHERE_A_URL_DOES) {
-            if (context.holds(field)
-                    && context.ownSlotFor(field).value()
-                            instanceof StringValue path) {
-                return path.text();
-            }
+        if (!spec.context().holds(WHAT_THE_PORT_WAS_MADE_FROM)) {
+            throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
         }
-        return "";
+        Value made = spec.context().ownSlotFor(WHAT_THE_PORT_WAS_MADE_FROM).value();
+        if (made.datatype() == Datatype.URL) {
+            return spec.fieldValue(WHERE_A_URL_LEAVES_ITS_PATH) instanceof StringValue path ? path.text() : "";
+        }
+        if (made.datatype() != Datatype.FILE) {
+            throw Raised.of(EvaluationFailure.INVALID_SPEC, made);
+        }
+        return ((StringValue) made).text();
     }
 
-    static long sizeOf(FilePort files, String path) {
-        return files.informationAbout(path)
+    private long sizeIn(FilePort files) {
+        return files.informationAbout(path())
                 .flatMap(FileInformation::size)
                 .orElse(0L);
     }
 
-    static Value readFrom(FilePort files, PortValue port, Long howMany) {
-        String path = pathOf(port);
-        long size = sizeOf(files, path);
-        long at = Math.min(positionOf(port), size);
-        long wanted = howMany == null ? size - at : howMany;
+    public Value readFrom(FilePort files, Optional<Long> howMany) {
+        long size = sizeIn(files);
+        long at = Math.min(position(), size);
+        long wanted = howMany.orElse(size - at);
         if (wanted < 0) {
             wanted = Math.max(0, Math.min(-wanted, at));
             at -= wanted;
         }
         long taken = Math.max(0, Math.min(wanted, size - at));
-        byte[] whole = files.readBytes(path);
+        byte[] whole = files.readBytes(path());
         int[] part = new int[(int) taken];
         for (int step = 0; step < taken; step++) {
             part[step] = whole[(int) at + step] & 0xFF;
         }
-        moveTo(port, at + taken);
+        moveTo(at + taken);
         return new BinaryValue(BinaryStorage.of(part), 1);
     }
 
-    static void writeAt(FilePort files, PortValue port, byte[] contents) {
-        String path = pathOf(port);
-        long at = positionOf(port);
-        files.writeAt(path, at, contents);
-        moveTo(port, at + contents.length);
+    public void writeAt(FilePort files, byte[] contents) {
+        long at = position();
+        files.writeAt(path(), at, contents);
+        moveTo(at + contents.length);
     }
 
-    static Value lengthLeft(FilePort files, PortValue port) {
-        String path = pathOf(port);
-        if (namesARunOfNamesRatherThanBytes(port)) {
-            return IntegerValue.of(files.namesIn(path).size());
+    public Value lengthLeft(FilePort files) {
+        if (namesARunOfNamesRatherThanBytes()) {
+            return IntegerValue.of(files.namesIn(path()).size());
         }
-        return IntegerValue.of(Math.max(0, sizeOf(files, path) - positionOf(port)));
+        return IntegerValue.of(Math.max(0, sizeIn(files) - position()));
     }
 
-    static Value wholeSize(FilePort files, PortValue port) {
-        return IntegerValue.of(sizeOf(files, pathOf(port)));
+    public Value wholeSize(FilePort files) {
+        return IntegerValue.of(sizeIn(files));
     }
 
-    static boolean atTail(FilePort files, PortValue port) {
-        String path = pathOf(port);
-        if (namesARunOfNamesRatherThanBytes(port)) {
-            return files.namesIn(path).isEmpty();
+    public boolean atTail(FilePort files) {
+        if (namesARunOfNamesRatherThanBytes()) {
+            return files.namesIn(path()).isEmpty();
         }
-        return positionOf(port) >= sizeOf(files, path);
+        return position() >= sizeIn(files);
     }
 
-    private static boolean namesARunOfNamesRatherThanBytes(PortValue port) {
+    private boolean namesARunOfNamesRatherThanBytes() {
         return port.schemeName().equals("dir");
-    }
-
-    static Value namesIn(FilePort files, String path) {
-        List<Value> names = new ArrayList<>();
-        for (String name : files.namesIn(path)) {
-            names.add(StringValue.of(name, Datatype.FILE));
-        }
-        return BlockValue.block(names);
     }
 }

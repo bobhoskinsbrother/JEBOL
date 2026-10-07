@@ -1,0 +1,59 @@
+>> == 3
+
+>> 
+** Math error: attempt to divide by zero
+** Where: /
+** Near: / 0
+
+>> 
+** Math error: attempt to divide by zero
+** Where: divide
+** Near: divide 1 0
+
+>> 
+** Script error: nosuchword has no value
+
+>> 
+** Syntax error: missing "[" at "end-of-block"
+** Near: (line 1) 1 + ]
+
+>> 
+** Math error: attempt to divide by zero
+** Where: / try
+** Near: / 0
+
+>> 
+** User error: "boom"
+
+>> 
+** math error: attempt to divide by zero
+
+>> hi
+>> >> >> == make object! [
+    a: 1
+]
+
+>>  [ == [1 2
+3]
+
+>> == {xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...
+
+>> == {xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...
+
+>> 
+** Script error: value out of range: 0
+** Where: transcode
+** Near: transcode/line "1 2" 0
+
+>> == #{78DAF348CDC9C957F0409000360E061D}
+
+>> 
+** Script error: invalid compressed data - problem: 3
+** Where: decompress
+** Near: decompress/size z 'zlib 5
+
+>> >> == _
+
+>> == 4
+
+>> 

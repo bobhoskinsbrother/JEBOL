@@ -14,6 +14,8 @@ import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorValue;
 import org.jebol.domain.value.WordValue;
 
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -115,22 +117,30 @@ public abstract class ProtectingNative extends DefaultNative {
 
     private void setProtection(
             Value target, boolean protectedNow, boolean deeply, boolean onlyTheWords) {
+        setProtection(target, protectedNow, deeply, onlyTheWords,
+                Collections.newSetFromMap(new IdentityHashMap<>()));
+    }
+
+    private void setProtection(Value target, boolean protectedNow, boolean deeply,
+            boolean onlyTheWords, Set<Object> reached) {
 
         switch (target) {
             case BlockValue block -> {
+                if (!reached.add(block.storage())) {
+                    return;
+                }
                 block.storage().protectFromChange(protectedNow);
                 if (deeply) {
                     block.remaining().stream()
-                            .filter(item -> item instanceof RebolSeries
-                                    || item instanceof ObjectValue)
-                            .forEach(item -> setProtection(item, protectedNow, true, false));
+                            .filter(this::isReachedByADeepProtection)
+                            .forEach(item -> setProtection(item, protectedNow, true, false, reached));
                 }
             }
             case StringValue text -> text.storage().protectFromChange(protectedNow);
             case BinaryValue bytes -> bytes.storage().protectFromChange(protectedNow);
             case MapValue map -> map.protectFromChange(protectedNow);
             case ObjectValue object -> setTheProtectionOf(
-                    object, protectedNow, deeply, onlyTheWords);
+                    object, protectedNow, deeply, onlyTheWords, reached);
             case WordValue word -> {
                 if (protectedNow) {
                     word.boundSlot().protectFromAssignment();
@@ -138,7 +148,7 @@ public abstract class ProtectingNative extends DefaultNative {
                     word.boundSlot().allowAssignment();
                 }
                 if (deeply && carriesProtection(word.boundSlot().value())) {
-                    setProtection(word.boundSlot().value(), protectedNow, true, onlyTheWords);
+                    setProtection(word.boundSlot().value(), protectedNow, true, onlyTheWords, reached);
                 }
             }
             case BitsetValue members -> members.protectFromChange(protectedNow);
@@ -148,8 +158,11 @@ public abstract class ProtectingNative extends DefaultNative {
     }
 
     private void setTheProtectionOf(ObjectValue object, boolean protectedNow,
-            boolean deeply, boolean onlyTheWords) {
+            boolean deeply, boolean onlyTheWords, Set<Object> reached) {
 
+        if (!reached.add(object.context())) {
+            return;
+        }
         if (!onlyTheWords) {
             object.context().closeToNewNames(protectedNow);
         }
@@ -159,12 +172,16 @@ public abstract class ProtectingNative extends DefaultNative {
             } else {
                 slot.allowAssignment();
             }
-            if (deeply && !slot.canonical().equals("self")
-                    && (slot.value() instanceof RebolSeries
-                            || slot.value() instanceof ObjectValue)) {
-                setProtection(slot.value(), protectedNow, true, false);
+            if (deeply && !slot.canonical().equals("self") && isReachedByADeepProtection(slot.value())) {
+                setProtection(slot.value(), protectedNow, true, false, reached);
             }
         });
+    }
+
+    private boolean isReachedByADeepProtection(Value value) {
+        return value instanceof BlockValue || value instanceof StringValue || value instanceof BinaryValue
+                || value instanceof MapValue || value instanceof ObjectValue
+                || value instanceof BitsetValue || value instanceof VectorValue;
     }
 
     private boolean carriesProtection(Value value) {

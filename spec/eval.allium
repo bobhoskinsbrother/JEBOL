@@ -605,6 +605,21 @@ rule LitPathEvaluates {
         step.consumed = 1
 }
 
+-- What a set-word or a set-path would store must be a value. When the
+-- expression after it produced UNSET -- `x: ()`, `x: f` for an F that returns
+-- nothing, `o/a: ()` -- the store is refused with need-value naming the
+-- set-word or set-path as written, as r3 refuses it. SET/ANY is the way to
+-- give a word nothing on purpose.
+rule AnAssignmentOfNothingIsRefused {
+    when: step: EvaluationStep.status transitions_to supplied
+    requires: supplies_an_assignment(step)
+    requires: step.result.datatype = unset
+
+    ensures:
+        step.supplies_assignment.status = raised
+        step.supplies_assignment.failure = need_value
+}
+
 -- A set-word evaluates what follows it and stores the result. A set-word
 -- at the end of a block is an error rather than an assignment of UNSET,
 -- because writing `x:` and nothing else is a mistake, not an instruction
@@ -1044,6 +1059,71 @@ rule WritingThroughAPathToAProtectedFieldIsRefused {
     ensures:
         selection.step.status = raised
         selection.step.failure = locked_word
+}
+
+-- When a datatype refuses a segment, the error names the path as it was
+-- written and the segment as it was written, whichever kind of value refused.
+--
+-- The C decides this in one place. Each `PD_X` handler only answers what went
+-- wrong -- a selector it does not know, a write it will not take, a position
+-- outside the series -- and `Next_Path` raises: `invalid-path` with the whole
+-- path and the segment, `bad-path-set` with the same two, and `out-of-range`
+-- with the segment alone. So `o/b/c: 1` where o has no b is
+-- `invalid-path o/b/c: b`, naming the set-path rather than the part walked so
+-- far, and `g/size: "x"` is `bad-path-set g/size: size`.
+--
+-- A value the path cannot go into raises `bad-path-type` only when it is what
+-- the path's first word holds. Further along, `Next_Path` has already moved on
+-- and the failure is `invalid-path` naming the segment that produced it, so
+-- `o/b/c` where o/b is none is `invalid-path o/b/c b`.
+--
+-- An integer that falls outside a block in the middle of a set-path is a
+-- refused selector, not a none, because the handler is told a write is under
+-- way: `o/a/9/x: 1` on a one-item block is `invalid-path o/a/9/x: 9`.
+rule AFailedPathNamesThePathAndTheSegment {
+    when: selection: PathEvaluation.status transitions_to raised
+    requires: selection.failure in {invalid_path, bad_path_set}
+
+    ensures:
+        selection.error.arg1 = selection.path
+        selection.error.arg2 = the_segment_as_written_where_it_failed(selection)
+}
+
+rule APathPastAValueWithNoPartsNamesWhereItWent {
+    when: selection: PathEvaluation.status transitions_to raised
+    requires: the_value_reached_has_no_parts(selection)
+
+    ensures:
+        if reached_through_the_first_word(selection):
+            selection.failure = bad_path_type
+        else:
+            selection.failure = invalid_path
+}
+
+-- A position in a string or binary is written as PD_String writes it. Nought
+-- writes nothing; a negative position counts back from where the series
+-- stands; a position outside the series is out-of-range. What is written may
+-- be a character, a whole number naming a codepoint, or a string or binary
+-- whose first item is taken; a binary refuses a number above 255 as out of
+-- range, and anything else is refused.
+rule WritingAPositionInTextFollowsPdString {
+    when: selection: PathEvaluation.status transitions_to selected
+    requires: selection.path.datatype = set_path
+    requires: target_is_a_string_or_binary(selection)
+
+    ensures: the_write_follows_pd_string(selection)
+}
+
+-- A time's hour, minute or second is written as PD_Time writes it: the time
+-- is split, the part replaced by a whole number at least nought -- or nought
+-- for none -- and joined again without its sign. A second given as a decimal
+-- keeps its fraction. Anything but a number or none is bad-path-set.
+rule WritingAPartOfATimeFollowsPdTime {
+    when: selection: PathEvaluation.status transitions_to selected
+    requires: selection.path.datatype = set_path
+    requires: target_is_a_time(selection)
+
+    ensures: the_write_follows_pd_time(selection)
 }
 
 -- The mistake this corrects matched only a plain word as a valid last

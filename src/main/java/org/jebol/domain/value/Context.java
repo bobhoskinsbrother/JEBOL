@@ -244,7 +244,7 @@ public final class Context {
 
     public BlockValue wordsExcludingSelf() {
         return BlockValue.block(fieldsExcludingSelf().keySet().stream()
-                .<Value>map(WordValue::of).toList());
+                .<Value>map(spelling -> WordValue.of(spelling).boundTo(this)).toList());
     }
 
     public BlockValue valuesExcludingSelf() {

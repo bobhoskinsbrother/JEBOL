@@ -54,7 +54,7 @@ public class RegisterNative extends DefaultNative {
             }
             return given;
         }
-        catalogue.put(filedAs, given.spec().declaration());
+        catalogue.putWhetherProtectedOrNot(filedAs, given.spec().declaration(), false);
         return given;
     }
 }

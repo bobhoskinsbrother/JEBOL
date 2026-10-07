@@ -81,12 +81,12 @@ class FileLiteralFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and a tab in a name is spellable only through the quoted form")
-        void aQuotedNameHoldsATab() {
+        @DisplayName("and a caret in a quoted name reads the character after it twice, as r3's Scan_Item does")
+        void aQuotedNameReadsTheCaretsCharacterTwice() {
             assertThat(answerTo("""
-                    (second load {%"a^^-b"}) = to char! 9""")).isEqualTo(TRUE);
+                    (load {%"a^^-b"}) = to file! {a--b}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
-                    length? load {%"a^^-b"}""")).isEqualTo("3");
+                    length? load {%"a^^-b"}""")).isEqualTo("4");
         }
     }
 
@@ -170,12 +170,12 @@ class FileLiteralFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and a control character is refused, but whitespace ends the name first")
-        void aControlCharacterIsRefused() {
+        @DisplayName("and a tab or a control character ends the name, as a space does")
+        void aControlCharacterEndsTheName() {
             assertThat(answerTo("""
                     mold load {%a^-b}""")).isEqualTo("\"[%a b]\"");
-            assertThat(errorIdFromLoading("""
-                    {%a^(01)b}""")).isEqualTo("invalid");
+            assertThat(answerTo("""
+                    mold load {%a^(01)b}""")).isEqualTo("\"[%a b]\"");
         }
     }
 }

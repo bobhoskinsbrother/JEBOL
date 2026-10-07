@@ -50,7 +50,7 @@ public enum DatePart implements DateField {
 
     public DateValue writtenOn(DateValue date, Value given) {
         if (field instanceof WritableDateField writable) {
-            return writable.writtenOn(date, new Assigned(given));
+            return writable.writtenOn(date, new Assigned(given, WordValue.of(spelling())));
         }
         throw Raised.of(EvaluationFailure.BAD_PATH_SET, spelling());
     }

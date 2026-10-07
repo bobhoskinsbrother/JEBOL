@@ -1,5 +1,7 @@
 package org.jebol.domain.eval.definition;
 
+import org.jebol.application.Interpreter;
+
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
@@ -91,7 +93,7 @@ class WhatEachObjectNativeDeclaresTest {
                                 Parameter.required("value"),
                                 Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER))),
                         Set.of("all", "skip")),
-                Arguments.of(new WhetherANewLineNative(), "new-line?",
+                Arguments.of(new IsNewLineNative(), "new-line?",
                         List.of(Parameter.required("position",
                                 Set.of(Datatype.BLOCK, Datatype.PAREN))),
                         NOTHING),
@@ -101,9 +103,9 @@ class WhatEachObjectNativeDeclaresTest {
                         List.of(Parameter.required("context", Set.of(Datatype.OBJECT)),
                                 Parameter.required("body", A_BLOCK)),
                         NOTHING),
-                Arguments.of(new WhetherSelflessNative(), "selfless?",
+                Arguments.of(new IsSelflessNative(), "selfless?",
                         List.of(Parameter.required("context")), NOTHING),
-                Arguments.of(new WhetherProtectedNative(), "protected?",
+                Arguments.of(new IsProtectedNative(), "protected?",
                         List.of(Parameter.required("value")), NOTHING),
                 Arguments.of(new UnbindNative(), "unbind",
                         List.of(Parameter.required("word",
@@ -151,22 +153,22 @@ class WhatEachObjectNativeDeclaresTest {
             Context withSelf = Context.root();
             withSelf.set("self", NoneValue.none());
 
-            assertThat(answerOf(new WhetherSelflessNative(), NOTHING,
+            assertThat(answerOf(new IsSelflessNative(), NOTHING,
                     new ObjectValue(holding("a", IntegerValue.of(1)))))
                     .isEqualTo(LogicValue.of(true));
-            assertThat(answerOf(new WhetherSelflessNative(), NOTHING, new ObjectValue(withSelf)))
+            assertThat(answerOf(new IsSelflessNative(), NOTHING, new ObjectValue(withSelf)))
                     .isEqualTo(LogicValue.of(false));
-            assertThat(answerOf(new WhetherSelflessNative(), NOTHING, IntegerValue.of(1)))
+            assertThat(answerOf(new IsSelflessNative(), NOTHING, IntegerValue.of(1)))
                     .isEqualTo(LogicValue.of(true));
         }
 
         @Test
         @DisplayName("protected? is false of a fresh block and of a number")
         void protectedIsFalseOfTheUnprotected() {
-            assertThat(answerOf(new WhetherProtectedNative(), NOTHING,
+            assertThat(answerOf(new IsProtectedNative(), NOTHING,
                     BlockValue.block(List.of(IntegerValue.of(1)))))
                     .isEqualTo(LogicValue.of(false));
-            assertThat(answerOf(new WhetherProtectedNative(), NOTHING, IntegerValue.of(1)))
+            assertThat(answerOf(new IsProtectedNative(), NOTHING, IntegerValue.of(1)))
                     .isEqualTo(LogicValue.of(false));
         }
 
@@ -176,11 +178,11 @@ class WhatEachObjectNativeDeclaresTest {
             BlockValue block = BlockValue.block(List.of(IntegerValue.of(1), IntegerValue.of(2)));
 
             answerOf(new NewLineNative(), NOTHING, block, LogicValue.of(true));
-            assertThat(answerOf(new WhetherANewLineNative(), NOTHING, block))
+            assertThat(answerOf(new IsNewLineNative(), NOTHING, block))
                     .isEqualTo(LogicValue.of(true));
 
             answerOf(new NewLineNative(), NOTHING, block, LogicValue.of(false));
-            assertThat(answerOf(new WhetherANewLineNative(), NOTHING, block))
+            assertThat(answerOf(new IsNewLineNative(), NOTHING, block))
                     .isEqualTo(LogicValue.of(false));
         }
 
@@ -232,10 +234,11 @@ class WhatEachObjectNativeDeclaresTest {
         }
 
         @Test
-        @DisplayName("hash gives two equal values the same answer")
+        @DisplayName("hash gives two equal values the same answer, reading words through the symbol table")
         void hashOfEqualValues() {
-            assertThat(answerOf(new HashNative(), NOTHING, IntegerValue.of(7)))
-                    .isEqualTo(answerOf(new HashNative(), NOTHING, IntegerValue.of(7)));
+            Interpreter interpreter = Interpreter.create();
+            assertThat(interpreter.display(interpreter.run("""
+                    equal? hash 7 hash 7"""))).isEqualTo("#(true)");
         }
     }
 }

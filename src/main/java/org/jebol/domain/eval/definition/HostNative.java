@@ -14,7 +14,7 @@ public abstract class HostNative extends DefaultNative {
         this.granted = granted;
     }
 
-    protected Value throughTheFilePort(Supplier<Value> operation) {
+    protected Value throughTheFileSystem(Supplier<Value> operation) {
         try {
             return operation.get();
         } catch (FilePort.Denied denied) {

@@ -4,6 +4,7 @@ import org.jebol.domain.eval.Arithmetic;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.RebolSeries;
@@ -40,10 +41,14 @@ public class AtzAction extends SeriesOrFileAction {
             return switch (arguments.getFirst()) {
                 case PortValue port when port.isAFile() -> theFileBehind(port, evaluator)
                         .movedTo((long) Arithmetic.asMagnitude(position));
-                case RebolSeries series -> series.atClamped(
-                        series.positionNamedBy(position, COUNTING_FROM_NOUGHT) + THE_HEAD_IS_ONE);
+                case RebolSeries series -> series.atClamped(whereItStands(series, position));
                 case Value anythingElse -> refuseTheArgument(anythingElse, "series");
             };
         };
+    }
+
+    private long whereItStands(RebolSeries series, Value position) {
+        boolean aLogicCountsAsAtDoes = position instanceof LogicValue;
+        return series.positionNamedBy(position, aLogicCountsAsAtDoes || COUNTING_FROM_NOUGHT) + THE_HEAD_IS_ONE;
     }
 }

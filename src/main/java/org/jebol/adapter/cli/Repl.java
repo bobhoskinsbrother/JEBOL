@@ -11,16 +11,23 @@ import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.read.SyntaxFailure;
-import org.jebol.domain.read.TranscodeResult;
+import org.jebol.domain.value.ErrorCategory;
+import org.jebol.domain.value.ErrorValue;
+import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.LogicValue;
+import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.Value;
+import org.jebol.domain.value.WordValue;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /**
  * The console: read a line, evaluate it, print the result, repeat.
@@ -34,18 +41,28 @@ import java.util.List;
 public final class Repl {
 
     private static final String PROMPT = ">> ";
-    private static final String CONTINUATION = "   ";
+    private static final String CONTINUATION_AROUND_THE_BRACKET = " ";
 
-    private static final String SECURITY_SWITCH_THERE_IS_NOTHING_HERE_TO_TURN_OFF = "-s";
-    private static final String EVALUATE_THIS_AND_LEAVE = "--do";
     private static final Path THE_WHOLE_MACHINE = Path.of("/");
-    private static final String A_BYTE_ORDER_MARK = "﻿";
 
     static final int KEEP_THE_PROCESS = -1;
+
+    private static final int WHAT_A_HALT_REPORTS = -15;
+
+    private static final int WHAT_AN_ERROR_REPORTS = -1;
+
+    private static final int WHAT_A_FINISHED_START_REPORTS = 0;
+
+    private static final Set<String> LEVELS_THAT_STOP_SHORT_OF_START = Set.of("base", "sys");
+
+    private static final String SAYING_IT_IS_CLOSING_UNLESS_QUIET =
+            "unless system/options/quiet [print {^[[mClosing in 3s!} wait 3]";
 
     static final String THE_ROOT_SWITCH = "--root";
 
     static final String THE_DATA_SWITCH = "--data";
+
+    private static final String WHERE_REBOL_IS_TOLD_ITS_DATA_LIVES = "REBOL_HOME";
 
     private final Interpreter interpreter;
     private final BufferedReader input;
@@ -58,7 +75,7 @@ public final class Repl {
     }
 
     static void main(String[] arguments) {
-        int status = runTheCommandLine(arguments, System.out,
+        int status = runTheCommandLine(arguments, System.out, System.err,
                 System.getProperty("user.dir", "."));
         if (status != KEEP_THE_PROCESS) {
             System.exit(status);
@@ -66,33 +83,31 @@ public final class Repl {
     }
 
     static int runTheCommandLine(
-            String[] arguments, PrintStream out, String startedIn) {
+            String[] arguments, PrintStream out, PrintStream errors, String startedIn) {
 
-        Path root = theRootAskedFor(arguments);
-        String[] rest = withoutTheSwitchesThatSayNothing(
-                ChosenScreen.withoutTheSwitch(arguments));
-        boolean namesAScript = rest.length >= 1 && !rest[0].startsWith("-");
-        Interpreter interpreter = anInterpreterFor(arguments, out, namesAScript, root);
-        if (rest.length >= 2 && rest[0].equals(EVALUATE_THIS_AND_LEAVE)) {
-            interpreter.defineFreshWordsIn(rest[1]);
-            return exitCodeOf(interpreter.run(rest[1]));
-        }
-        if (namesAScript) {
-            return new ScriptOnTheCommandLine(rest, startedIn, root)
-                    .runThrough(interpreter, out);
-        }
-        BufferedReader in = new BufferedReader(
-                new InputStreamReader(System.in, StandardCharsets.UTF_8));
-        new Repl(interpreter, in, out).run();
-        return KEEP_THE_PROCESS;
+        return runTheCommandLine(arguments, new BufferedReader(
+                new InputStreamReader(System.in, StandardCharsets.UTF_8)), out, errors, startedIn);
     }
 
-    private static String[] withoutTheSwitchesThatSayNothing(String[] arguments) {
+    static int runTheCommandLine(String[] arguments, BufferedReader typed,
+            PrintStream out, PrintStream errors, String startedIn) {
+
+        Path root = theRootAskedFor(arguments);
+        RebolArguments asked = new RebolArguments(List.of(
+                withoutTheSwitchesOnlyJebolTakes(ChosenScreen.withoutTheSwitch(arguments))));
+        boolean anythingWasAsked = asked.script().isPresent() || !asked.flags().isEmpty();
+        Interpreter interpreter = anInterpreterFor(arguments, out, anythingWasAsked, root);
+        if (!anythingWasAsked) {
+            new Repl(interpreter, typed, out).run();
+            return KEEP_THE_PROCESS;
+        }
+        return new TheCommandLine(asked, startedIn, root)
+                .runThrough(interpreter, typed, out, errors);
+    }
+
+    private static String[] withoutTheSwitchesOnlyJebolTakes(String[] arguments) {
         List<String> kept = new ArrayList<>();
         for (int at = 0; at < arguments.length; at++) {
-            if (arguments[at].equals(SECURITY_SWITCH_THERE_IS_NOTHING_HERE_TO_TURN_OFF)) {
-                continue;
-            }
             if (arguments[at].equals(THE_ROOT_SWITCH)
                     || arguments[at].equals(THE_DATA_SWITCH)) {
                 at++;
@@ -128,12 +143,13 @@ public final class Repl {
                 Interpreter.writingTo(new StreamOutput(out), bounds);
         giveItTheImageCodecWhichReachesNothingAndIsNotAGrant(interpreter);
         if (forAScript) {
+            ProcessEnvironment environment = new ProcessEnvironment();
             interpreter.useFileSystem(FileSystemPort.rootedAt(root));
-            interpreter.useEnvironment(new ProcessEnvironment());
+            interpreter.useEnvironment(environment);
             interpreter.useProcesses(new JavaProcesses());
             interpreter.useClipboard(new JavaClipboard());
             interpreter.useNetwork(new JavaSockets());
-            putTheApplicationDataWhereTheParentKeepsIt(interpreter, arguments);
+            putTheApplicationDataWhereTheParentKeepsIt(interpreter, environment, arguments);
         }
         if (ChosenScreen.wasAskedFor(arguments)) {
             ChosenScreen.attachTo(interpreter, arguments, out);
@@ -142,15 +158,14 @@ public final class Repl {
     }
 
     private static void putTheApplicationDataWhereTheParentKeepsIt(
-            Interpreter interpreter, String[] arguments) {
+            Interpreter interpreter, ProcessEnvironment environment, String[] arguments) {
 
         String written = whatFollows(THE_DATA_SWITCH, arguments);
         if (written.isEmpty()) {
             return;
         }
-        String saying = "system/options/data: %" + written;
-        interpreter.defineFreshWordsIn(saying);
-        interpreter.run(saying);
+        environment.nameHolds(WHERE_REBOL_IS_TOLD_ITS_DATA_LIVES, written);
+        interpreter.tellTheSystem("data", StringValue.of(written, Datatype.FILE));
         interpreter.followTheApplicationDataDirectory();
     }
 
@@ -168,135 +183,182 @@ public final class Repl {
         return everything;
     }
 
-    private record ScriptOnTheCommandLine(
-            String[] arguments, String startedIn, Path root) {
+    private record TheCommandLine(RebolArguments asked, String startedIn, Path root) {
 
-        private int runThrough(Interpreter interpreter, PrintStream out) {
-            Path script = theScriptNamed();
-            String source;
-            try {
-                source = withoutAnyByteOrderMark(Files.readAllBytes(script));
-            } catch (IOException unreadable) {
-                out.println("** access error: script not found: %" + script);
-                return 1;
+        private int runThrough(Interpreter interpreter, BufferedReader typed,
+                PrintStream out, PrintStream errors) {
+            tellItWhatWasAsked(interpreter);
+            int reported = WHAT_A_FINISHED_START_REPORTS;
+            if (!theBootStopsShortOfStart()) {
+                ScriptOutcome outcome = interpreter.started();
+                if (outcome.conclusion() == Conclusion.QUIT_EARLY) {
+                    return whatQuitCarried(outcome);
+                }
+                reported = whatStartReports(interpreter, outcome, errors);
             }
-            tellItWhereItIs(interpreter, script);
-            interpreter.defineFreshWordsIn(source);
-            ScriptOutcome outcome = interpreter.run(source);
-            if (!outcome.succeeded() && outcome.conclusion() != Conclusion.QUIT_EARLY) {
-                out.println(outcome.display());
+            if (asked.has(RebolArguments.Flag.CGI) || !theConsoleFollows(reported)) {
+                return 0;
             }
-            return exitCodeOf(outcome);
+            if (reported < 0 && !asked.has(RebolArguments.Flag.HALT)) {
+                interpreter.run(SAYING_IT_IS_CLOSING_UNLESS_QUIET);
+                return -reported;
+            }
+            new Repl(interpreter, typed, out).readEvaluatePrint();
+            return KEEP_THE_PROCESS;
         }
 
-        private void tellItWhereItIs(Interpreter interpreter, Path script) {
-            String saying = Interpreter.bootStepNamed("script-position.reb").formatted(
-                    asTheScriptSeesIt(script),
-                    dirized(asTheScriptSeesIt(Path.of(startedIn))),
-                    theArgumentsAfterTheScript(),
-                    dirized(asTheScriptSeesIt(script.getParent())));
-            interpreter.defineFreshWordsIn(saying);
-            interpreter.run(saying);
+        private boolean theBootStopsShortOfStart() {
+            return asked.valueOf(RebolArguments.Flag.BOOT)
+                    .map(level -> LEVELS_THAT_STOP_SHORT_OF_START.contains(level.toLowerCase(Locale.ROOT)))
+                    .orElse(false);
+        }
+
+        private boolean theConsoleFollows(int reported) {
+            return asked.script().isEmpty() || reported < 0 || asked.has(RebolArguments.Flag.HALT);
+        }
+
+        private int whatStartReports(
+                Interpreter interpreter, ScriptOutcome outcome, PrintStream errors) {
+
+            if (outcome.conclusion() == Conclusion.HALTED) {
+                return WHAT_A_HALT_REPORTS;
+            }
+            if (threwPastEveryCatch(outcome) || outcome.succeeded()) {
+                return WHAT_A_FINISHED_START_REPORTS;
+            }
+            errors.print(interpreter.whatTheConsolePrints(outcome));
+            return WHAT_AN_ERROR_REPORTS;
+        }
+
+        private void tellItWhatWasAsked(Interpreter interpreter) {
+            tellItWhereItStarted(interpreter);
+            interpreter.tellTheSystem("flags", theFlagsGiven());
+            if (asked.has(RebolArguments.Flag.QUIET)) {
+                interpreter.tellTheSystem("quiet", LogicValue.yes());
+            }
+            if (asked.has(RebolArguments.Flag.NO_COLOR)) {
+                interpreter.tellTheSystem("no-color", LogicValue.yes());
+            }
+            asked.script().ifPresent(script ->
+                    interpreter.tellTheSystem("script", StringValue.of(script, Datatype.FILE)));
+            asked.valueOf(RebolArguments.Flag.BOOT).ifPresent(level ->
+                    interpreter.tellTheSystem("boot-level", WordValue.of(level)));
+            interpreter.tellTheSystem("args", theArgumentsForTheScript());
+            tellAsText(interpreter, "do-arg", RebolArguments.Flag.DO);
+            tellAsText(interpreter, "debug", RebolArguments.Flag.DEBUG);
+            tellAsText(interpreter, "version", RebolArguments.Flag.VERSION);
+            tellAsText(interpreter, "import", RebolArguments.Flag.IMPORT);
+            asked.valueOf(RebolArguments.Flag.SECURE).ifPresent(policy ->
+                    interpreter.tellTheSystem("secure", WordValue.of(policy)));
+        }
+
+        private void tellAsText(Interpreter interpreter, String option, RebolArguments.Flag flag) {
+            asked.valueOf(flag).ifPresent(text ->
+                    interpreter.tellTheSystem(option, StringValue.of(text)));
+        }
+
+        private void tellItWhereItStarted(Interpreter interpreter) {
+            interpreter.tellTheSystem("path", StringValue.of(
+                    dirized(asTheScriptSeesIt(Path.of(startedIn))), Datatype.FILE));
+            interpreter.run("change-dir system/options/path");
+        }
+
+        private BlockValue theArgumentsForTheScript() {
+            List<Value> given = new ArrayList<>();
+            asked.argumentsForTheScript().forEach(each -> given.add(StringValue.of(each)));
+            return BlockValue.block(given);
+        }
+
+        private BlockValue theFlagsGiven() {
+            List<Value> given = new ArrayList<>();
+            asked.flags().forEach(flag -> given.add(WordValue.of(flag.spelling())));
+            given.add(LogicValue.yes());
+            return BlockValue.block(given);
         }
 
         private String asTheScriptSeesIt(Path host) {
-            Path absolute = host.toAbsolutePath().normalize();
-            if (!absolute.startsWith(root)) {
+            Path absolute = theRealPathOf(host);
+            Path realRoot = theRealPathOf(root);
+            if (!absolute.startsWith(realRoot)) {
                 return theRootItself();
             }
-            String inside = root.relativize(absolute).toString().replace('\\', '/');
+            String inside = realRoot.relativize(absolute).toString().replace('\\', '/');
             return inside.isEmpty() ? theRootItself() : "/" + inside;
+        }
+
+        private Path theRealPathOf(Path host) {
+            try {
+                return host.toRealPath();
+            } catch (IOException notThere) {
+                return host.toAbsolutePath().normalize();
+            }
         }
 
         private static String theRootItself() {
             return "/";
         }
 
-        private static String withoutAnyByteOrderMark(byte[] bytes) {
-            String text = new String(bytes, StandardCharsets.UTF_8);
-            return text.startsWith(A_BYTE_ORDER_MARK) ? text.substring(1) : text;
-        }
-
-        private Path theScriptNamed() {
-            Path written = Path.of(arguments[0]);
-            Path resolved = written.isAbsolute()
-                    ? root.resolve(THE_WHOLE_MACHINE.relativize(written))
-                    : written;
-            return resolved.toAbsolutePath().normalize();
-        }
-
         private static String dirized(String path) {
             return path.endsWith("/") ? path : path + "/";
         }
-
-        private String theArgumentsAfterTheScript() {
-            StringBuilder written = new StringBuilder("[");
-            for (int at = 1; at < arguments.length; at++) {
-                written.append('{').append(arguments[at]).append('}');
-            }
-            return written.append(']').toString();
-        }
     }
 
-    private static int exitCodeOf(ScriptOutcome outcome) {
-        if (outcome.conclusion() == Conclusion.QUIT_EARLY) {
-            return outcome.value() instanceof IntegerValue(long magnitude)
-                    ? (int) magnitude
-                    : 0;
-        }
-        return outcome.succeeded() ? 0 : 1;
+    private static boolean threwPastEveryCatch(ScriptOutcome outcome) {
+        return outcome.conclusion() == Conclusion.RAISED
+                && outcome.value() instanceof ErrorValue error
+                && error.category() == ErrorCategory.THROW;
+    }
+
+    private static int whatQuitCarried(ScriptOutcome outcome) {
+        return outcome.value() instanceof IntegerValue(long magnitude) ? (int) magnitude : 0;
     }
 
     /** Runs until the input ends or the user asks to stop. */
     public void run() {
         output.println("JEBOL -- REBOL 3 on the JVM. Type quit to leave.");
+        readEvaluatePrint();
+    }
+
+    private void readEvaluatePrint() {
         StringBuilder pending = new StringBuilder();
+        ConsoleContinuation continuation = new ConsoleContinuation();
 
         while (true) {
-            output.print(pending.isEmpty() ? PROMPT : CONTINUATION);
+            output.print(continuation.waitingForMore()
+                    ? CONTINUATION_AROUND_THE_BRACKET + continuation.whatIsStillOpen()
+                            + CONTINUATION_AROUND_THE_BRACKET
+                    : PROMPT);
             output.flush();
 
             String line = readLine();
             if (line == null) {
-                output.println();
-                return;
-            }
-            if (pending.isEmpty() && isQuit(line)) {
-                return;
-            }
-
-            pending.append(line).append('\n');
-            String source = pending.toString();
-
-            if (theReaderWantsMoreRatherThanHavingFoundAMistake(source)) {
+                if (!continuation.waitingForMore()) {
+                    return;
+                }
+                continuation.inputTaken();
+                pending.setLength(0);
                 continue;
             }
+            String terminated = line + "\n";
+            continuation.read(terminated);
+            pending.append(terminated);
+            if (continuation.waitingForMore()) {
+                continue;
+            }
+            String source = pending.toString();
             pending.setLength(0);
-            show(source);
+            continuation.inputTaken();
+            ScriptOutcome outcome = evaluated(source);
+            if (outcome.conclusion() == Conclusion.QUIT_EARLY) {
+                return;
+            }
+            output.print(interpreter.whatTheConsolePrints(outcome));
         }
     }
 
-    private void show(String source) {
+    private ScriptOutcome evaluated(String source) {
         interpreter.defineFreshWordsIn(source);
-        ScriptOutcome outcome = interpreter.run(source);
-        String displayed = interpreter.display(outcome);
-        if (!displayed.isEmpty()) {
-            output.println(outcome.succeeded() ? "== " + displayed : displayed);
-        }
-    }
-
-    private static final java.util.Set<SyntaxFailure> THE_FAILURES_ANOTHER_LINE_MENDS =
-            java.util.Set.of(
-                    SyntaxFailure.MISSING_CLOSE, SyntaxFailure.UNTERMINATED_STRING);
-
-    private boolean theReaderWantsMoreRatherThanHavingFoundAMistake(String source) {
-        return interpreter.read(source) instanceof TranscodeResult.Failure unfinished
-                && THE_FAILURES_ANOTHER_LINE_MENDS.contains(unfinished.failure());
-    }
-
-    private static boolean isQuit(String line) {
-        String trimmed = line.trim();
-        return trimmed.equals("quit") || trimmed.equals("q");
+        return interpreter.run(source);
     }
 
     private String readLine() {

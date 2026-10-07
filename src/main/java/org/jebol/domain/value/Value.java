@@ -147,8 +147,7 @@ public sealed interface Value permits
 
     default void requireChangeable() {
         if (isProtected()) {
-            throw Raised.of(EvaluationFailure.PROTECTED,
-                    datatype().literalSpelling() + " is protected");
+            throw Raised.of(EvaluationFailure.PROTECTED);
         }
     }
 

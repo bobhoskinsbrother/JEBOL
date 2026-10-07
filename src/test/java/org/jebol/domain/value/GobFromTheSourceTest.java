@@ -220,7 +220,7 @@ class GobFromTheSourceTest {
             assertThat(errorIdFrom("change make gob! [] make gob! []"))
                     .isEqualTo("past-end");
             assertThat(errorIdFrom("g: make gob! [] g/parent: make gob! []"))
-                    .isEqualTo("bad-field-set");
+                    .isEqualTo("bad-path-set");
         }
 
         @Test

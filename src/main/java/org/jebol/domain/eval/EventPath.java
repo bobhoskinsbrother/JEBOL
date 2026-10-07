@@ -198,10 +198,7 @@ final class EventPath {
             java.util.Optional<EventValue> after = written(built, field, written);
             if (after.isEmpty()) {
                 throw Raised.of(EvaluationFailure.BAD_FIELD_SET,
-                        name instanceof WordValue asked
-                                ? WordValue.of(asked.spelling())
-                                : name,
-                        DatatypeValue.of(written.datatype()));
+                        name, DatatypeValue.of(written.datatype()));
             }
             built = after.orElseThrow();
         }

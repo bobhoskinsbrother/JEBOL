@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.eval.brotli.Brotli;
+import org.jebol.domain.eval.deflate.DeflateCompressor;
 import org.jebol.domain.value.BitsetValue;
 
 import javax.crypto.Mac;
@@ -22,7 +23,6 @@ import java.util.zip.Adler32;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 import java.util.zip.DataFormatException;
-import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
 public final class Encodings {
@@ -678,9 +678,9 @@ public final class Encodings {
 
     public byte[] compressed(byte[] octets, String method, int level) {
         return switch (method) {
-            case "gzip" -> gzipped(octets, level);
-            case "zlib" -> deflated(octets, level, false);
-            case "deflate" -> deflated(octets, level, true);
+            case "gzip" -> new DeflateCompressor(level).gzip(octets);
+            case "zlib" -> new DeflateCompressor(level).zlib(octets);
+            case "deflate" -> new DeflateCompressor(level).deflate(octets);
             case "crush" -> Crush.compressed(octets, level);
             case "lzw" -> Lzw.compressed(octets, level);
             case "lzma" -> Lzma.compressed(octets, level);
@@ -714,55 +714,8 @@ public final class Encodings {
 
     private static final int GZIP_MAGIC_FIRST = 0x1F;
     private static final int GZIP_MAGIC_SECOND = 0x8B;
-    private static final int GZIP_DEFLATE = 8;
-    private static final int GZIP_NO_FLAGS = 0;
-    private static final int GZIP_TIME_UNAVAILABLE_LENGTH = 4;
-    private static final int GZIP_FASTEST = 0x04;
-    private static final int GZIP_SLOWEST = 0x02;
-    private static final int GZIP_UNREMARKABLE_EFFORT = 0;
-    private static final int GZIP_OPERATING_SYSTEM_UNKNOWN = 0xFF;
     private static final int GZIP_HEADER_LENGTH = 10;
     private static final int GZIP_TRAILER_LENGTH = 8;
-
-    private byte[] gzipped(byte[] octets, int level) {
-        Octets into = new Octets();
-        into.write(GZIP_MAGIC_FIRST);
-        into.write(GZIP_MAGIC_SECOND);
-        into.write(GZIP_DEFLATE);
-        into.write(GZIP_NO_FLAGS);
-        for (int each = 0; each < GZIP_TIME_UNAVAILABLE_LENGTH; each++) {
-            into.write(0);
-        }
-        into.write(howHardTheCompressorWasAskedToTry(level));
-        into.write(GZIP_OPERATING_SYSTEM_UNKNOWN);
-        byte[] deflated = deflated(octets, level, true);
-        into.write(deflated, 0, deflated.length);
-        CRC32 checked = new CRC32();
-        checked.update(octets, 0, octets.length);
-        writeLittleEndian(into, checked.getValue());
-        writeLittleEndian(into, octets.length);
-        return into.toArray();
-    }
-
-    private int howHardTheCompressorWasAskedToTry(int level) {
-        int asked = effortAskedFor(level);
-        if (asked < 2) {
-            return GZIP_FASTEST;
-        }
-        return asked >= 8 ? GZIP_SLOWEST : GZIP_UNREMARKABLE_EFFORT;
-    }
-
-    int effortAskedFor(int level) {
-        return level < 0 || level > SLOWEST_DEFLATE ? SLOWEST_DEFLATE : level;
-    }
-
-    private static final int SLOWEST_DEFLATE = 9;
-
-    private void writeLittleEndian(Octets into, long quantity) {
-        for (int each = 0; each < 4; each++) {
-            into.write((int) ((quantity >> (each * 8)) & 0xFF));
-        }
-    }
 
     private byte[] ungzipped(byte[] octets) {
         if (octets.length < GZIP_HEADER_LENGTH + GZIP_TRAILER_LENGTH
@@ -798,23 +751,6 @@ public final class Encodings {
             at++;
         }
         return at + 1;
-    }
-
-    private byte[] deflated(byte[] octets, int level, boolean raw) {
-        Deflater deflater =
-                new Deflater(effortAskedFor(level), raw);
-        try {
-            deflater.setInput(octets);
-            deflater.finish();
-            Octets into = new Octets();
-            byte[] page = new byte[8192];
-            while (!deflater.finished()) {
-                into.write(page, 0, deflater.deflate(page));
-            }
-            return into.toArray();
-        } finally {
-            deflater.end();
-        }
     }
 
     private byte[] inflated(byte[] octets, boolean raw) {

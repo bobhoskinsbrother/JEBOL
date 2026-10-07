@@ -10,6 +10,9 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * A filesystem a script may reach, rooted at one directory.
@@ -21,10 +24,16 @@ import java.util.Deque;
  */
 public final class FileSystemPort implements FilePort {
 
+    private static final int NO_SUCH_ENTRY = 2;
+
+    private static final int NOT_A_DIRECTORY = 20;
+
     private final Path root;
     private final boolean writable;
 
     private Path whereARelativePathCountsFromNow;
+
+    private final Set<String> hostFilesSeenAtTheirOwnPath = new HashSet<>();
 
     private FileSystemPort(Path root, boolean writable) {
         this.root = root.toAbsolutePath().normalize();
@@ -59,11 +68,17 @@ public final class FileSystemPort implements FilePort {
     }
 
     @Override
+    public void showsAtItsOwnPath(String hostFile) {
+        hostFilesSeenAtTheirOwnPath.add(hostFile);
+    }
+
+    @Override
     public void changeDirectory(String path) {
         Path target = within(path);
         if (!Files.isDirectory(target)) {
             throw new Denied("cannot-open", path + " is not a directory",
-                    asADirectoryNameFromTheRoot(target));
+                    asADirectoryNameFromTheRoot(target),
+                    Optional.of(Files.exists(target) ? -NOT_A_DIRECTORY : -NO_SUCH_ENTRY));
         }
         whereARelativePathCountsFromNow = target;
     }
@@ -73,7 +88,7 @@ public final class FileSystemPort implements FilePort {
         requireWritable();
         Path target = within(path);
         if (Files.exists(target) && !Files.isDirectory(target)) {
-            throw new Denied("no-create", "cannot make a directory at " + path, path);
+            throw new Denied("no-create", "cannot make a directory at " + path, path, Optional.empty());
         }
         try {
             if (andItsParents) {
@@ -136,6 +151,9 @@ public final class FileSystemPort implements FilePort {
     public String canonicalPathOf(String path) {
         if (path.isEmpty()) {
             return null;
+        }
+        if (hostFilesSeenAtTheirOwnPath.contains(path)) {
+            return path;
         }
         try {
             java.nio.file.Path real = within(path).toRealPath();
@@ -262,6 +280,9 @@ public final class FileSystemPort implements FilePort {
     }
 
     private Path within(String path) {
+        if (hostFilesSeenAtTheirOwnPath.contains(path)) {
+            return Path.of(path);
+        }
         try {
             Deque<String> segments = new ArrayDeque<>();
             if (!path.startsWith("/")) {

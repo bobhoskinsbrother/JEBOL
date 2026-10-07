@@ -59,6 +59,14 @@ public final class ContextSlot implements Slot {
         this.value = replacement;
     }
 
+    public void setBeneathAnyProtection(Value replacement) {
+        if (replacement == null) {
+            throw new IllegalArgumentException(
+                    "a slot holds unset, never null: use UnsetValue.unset()");
+        }
+        this.value = replacement;
+    }
+
     public boolean isProtected() {
         return protectedFromAssignment;
     }

@@ -5,6 +5,8 @@ final class Numbers {
     private Numbers() {
     }
 
+    private static final MoneyCoercion MONEY = new MoneyCoercion();
+
     private static final java.util.Set<Datatype> ANY_NUMBER_WHICH_EXCLUDES_A_TIME =
             Typeset.NUMBER.membersAnd(Datatype.MONEY);
 
@@ -25,6 +27,9 @@ final class Numbers {
     }
 
     static boolean areEqual(Value one, Value other, Sameness how) {
+        if (MONEY.meetsMoney(one, other)) {
+            return MONEY.asDeci(one).isEqualTo(MONEY.asDeci(other));
+        }
         double ours = quantityOf(one);
         double theirs = quantityOf(other);
         if (Double.isNaN(ours) || Double.isNaN(theirs)) {
@@ -47,7 +52,7 @@ final class Numbers {
             case IntegerValue(long magnitude) -> magnitude;
             case TimeValue time -> time.asSeconds().quantity();
             case DecimalValue(double quantity, Datatype ignored) -> quantity;
-            case MoneyValue money -> money.amount().doubleValue();
+            case MoneyValue money -> money.asDeci().toDouble();
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     value.datatype().literalSpelling() + " is not a number");
         };

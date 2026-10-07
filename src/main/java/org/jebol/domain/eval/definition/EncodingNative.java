@@ -9,6 +9,7 @@ import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Molder;
+import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.StringValue;
@@ -50,6 +51,7 @@ public abstract class EncodingNative extends DefaultNative {
 
     protected Optional<Long> howManyWanted(Value source, List<Value> arguments, Set<String> refinements) {
         return argumentOf("part", 0, arguments, refinements)
+                .filter(count -> !(count instanceof NoneValue))
                 .map(count -> unitsCountedBy(source, count));
     }
 

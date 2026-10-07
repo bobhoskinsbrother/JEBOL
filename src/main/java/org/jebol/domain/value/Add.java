@@ -1,7 +1,5 @@
 package org.jebol.domain.value;
 
-import java.math.BigDecimal;
-
 public final class Add implements ArithmeticOperation {
 
     @Override
@@ -20,8 +18,8 @@ public final class Add implements ArithmeticOperation {
     }
 
     @Override
-    public MoneyValue onAmounts(BigDecimal left, BigDecimal right) {
-        return MoneyValue.of(left.add(right));
+    public Deci onAmounts(Deci left, Deci right) {
+        return left.plus(right);
     }
 
     @Override

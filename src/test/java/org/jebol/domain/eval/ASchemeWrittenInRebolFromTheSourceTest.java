@@ -171,6 +171,6 @@ class ASchemeWrittenInRebolFromTheSourceTest {
     void aBuiltInActorStillNeedsItsServiceGranted() {
         assertThat(answerTo("""
                 e: try [open %somewhere.txt] e/id""")).isEqualTo("no-service");
-        assertThat(answerTo("type? system/schemes/file/actor")).isEqualTo("#(word!)");
+        assertThat(answerTo("type? :system/schemes/file/actor")).isEqualTo("#(native!)");
     }
 }

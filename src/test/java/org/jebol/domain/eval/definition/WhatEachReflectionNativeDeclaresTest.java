@@ -81,29 +81,29 @@ class WhatEachReflectionNativeDeclaresTest {
                         List.of(Parameter.required("value", AN_INTEGER),
                                 Parameter.required("places", AN_INTEGER)),
                         Set.of("logical")),
-                Arguments.of(new WhetherOddAction(), "odd?",
+                Arguments.of(new IsOddAction(), "odd?",
                         List.of(Parameter.required("number")), NOTHING),
-                Arguments.of(new WhetherEvenAction(), "even?",
+                Arguments.of(new IsEvenAction(), "even?",
                         List.of(Parameter.required("number")), NOTHING),
                 Arguments.of(new TypeOfNative(), "type?",
                         List.of(Parameter.required("value", ANY_TYPE)), Set.of("word")),
-                Arguments.of(new WhetherAnyTypeNative(), "any-type?",
+                Arguments.of(new IsAnyTypeNative(), "any-type?",
                         List.of(Parameter.required("value", ANY_TYPE)), NOTHING),
-                Arguments.of(new WhetherCopyableNative(), "copyable?",
+                Arguments.of(new IsCopyableNative(), "copyable?",
                         List.of(Parameter.required("value", ANY_TYPE)), NOTHING),
-                Arguments.of(new WhetherImmediateNative(), "immediate?",
+                Arguments.of(new IsImmediateNative(), "immediate?",
                         List.of(Parameter.required("value", ANY_TYPE)), NOTHING),
-                Arguments.of(new WhetherInternalNative(), "internal?",
+                Arguments.of(new IsInternalNative(), "internal?",
                         List.of(Parameter.required("value", ANY_TYPE)), NOTHING),
-                Arguments.of(new WhetherTrueNative(), "true?",
+                Arguments.of(new IsTrueNative(), "true?",
                         List.of(Parameter.required("value", ANY_TYPE)), NOTHING),
                 Arguments.of(new DidNative(), "did",
                         List.of(Parameter.required("value", ANY_TYPE)), NOTHING),
-                Arguments.of(new WhetherANumberNative(), "number?",
+                Arguments.of(new IsNumberNative(), "number?",
                         List.of(Parameter.required("value", anythingAtAll())), NOTHING),
-                Arguments.of(new WhetherAsciiNative(), "ascii?",
+                Arguments.of(new IsAsciiNative(), "ascii?",
                         List.of(Parameter.required("value")), NOTHING),
-                Arguments.of(new WhetherLatin1Native(), "latin1?",
+                Arguments.of(new IsLatin1Native(), "latin1?",
                         List.of(Parameter.required("value")), NOTHING),
                 Arguments.of(new FormOidNative(), "form-oid",
                         List.of(Parameter.required("oid", A_BINARY)), NOTHING),
@@ -203,13 +203,13 @@ class WhatEachReflectionNativeDeclaresTest {
                         List.of(Parameter.required("data", A_BINARY),
                                 Parameter.belongingTo("utf", "num", AN_INTEGER)),
                         Set.of("utf")),
-                Arguments.of(new WhetherNegativeNative(), "negative?",
+                Arguments.of(new IsNegativeNative(), "negative?",
                         List.of(Parameter.required("value", everyKindOfNumber())), NOTHING),
-                Arguments.of(new WhetherPositiveNative(), "positive?",
+                Arguments.of(new IsPositiveNative(), "positive?",
                         List.of(Parameter.required("value", everyKindOfNumber())), NOTHING),
-                Arguments.of(new WhetherZeroNative(), "zero?",
+                Arguments.of(new IsZeroNative(), "zero?",
                         List.of(Parameter.required("value", ANY_TYPE)), NOTHING),
-                Arguments.of(new WhetherAValueNative(), "value?",
+                Arguments.of(new IsValueNative(), "value?",
                         List.of(Parameter.required("word", A_WORD)), NOTHING),
                 Arguments.of(new UnsetNative(), "unset",
                         List.of(Parameter.required("word",
@@ -305,11 +305,11 @@ class WhatEachReflectionNativeDeclaresTest {
         @Test
         @DisplayName("odd? and even? round a decimal and ask both halves of a pair")
         void oddAndEven() {
-            assertThat(answerOf(new WhetherOddAction(), IntegerValue.of(3)))
+            assertThat(answerOf(new IsOddAction(), IntegerValue.of(3)))
                     .isEqualTo(LogicValue.of(true));
-            assertThat(answerOf(new WhetherOddAction(), PairValue.of(2, 3)))
+            assertThat(answerOf(new IsOddAction(), PairValue.of(2, 3)))
                     .isEqualTo(LogicValue.of(false));
-            assertThat(answerOf(new WhetherEvenAction(), DecimalValue.of(2.5)))
+            assertThat(answerOf(new IsEvenAction(), DecimalValue.of(2.5)))
                     .isEqualTo(LogicValue.of(false));
         }
 
@@ -336,42 +336,42 @@ class WhatEachReflectionNativeDeclaresTest {
         @Test
         @DisplayName("zero? knows the zero of a pair and of a character")
         void zero() {
-            assertThat(answerOf(new WhetherZeroNative(), PairValue.of(0, 0)))
+            assertThat(answerOf(new IsZeroNative(), PairValue.of(0, 0)))
                     .isEqualTo(LogicValue.of(true));
-            assertThat(answerOf(new WhetherZeroNative(), CharacterValue.of(0)))
+            assertThat(answerOf(new IsZeroNative(), CharacterValue.of(0)))
                     .isEqualTo(LogicValue.of(true));
-            assertThat(answerOf(new WhetherZeroNative(), IntegerValue.of(1)))
+            assertThat(answerOf(new IsZeroNative(), IntegerValue.of(1)))
                     .isEqualTo(LogicValue.of(false));
         }
 
         @Test
         @DisplayName("negative? and positive? need both halves of a pair")
         void negativeAndPositive() {
-            assertThat(answerOf(new WhetherNegativeNative(), PairValue.of(-1, -1)))
+            assertThat(answerOf(new IsNegativeNative(), PairValue.of(-1, -1)))
                     .isEqualTo(LogicValue.of(true));
-            assertThat(answerOf(new WhetherPositiveNative(), PairValue.of(1, -1)))
+            assertThat(answerOf(new IsPositiveNative(), PairValue.of(1, -1)))
                     .isEqualTo(LogicValue.of(false));
         }
 
         @Test
         @DisplayName("ascii? stops at 127 and latin1? at 255")
         void codepointRanges() {
-            assertThat(answerOf(new WhetherAsciiNative(), StringValue.of("abc")))
+            assertThat(answerOf(new IsAsciiNative(), StringValue.of("abc")))
                     .isEqualTo(LogicValue.of(true));
-            assertThat(answerOf(new WhetherAsciiNative(), CharacterValue.of(0x7F)))
+            assertThat(answerOf(new IsAsciiNative(), CharacterValue.of(0x7F)))
                     .isEqualTo(LogicValue.of(true));
-            assertThat(answerOf(new WhetherAsciiNative(), CharacterValue.of(0x80)))
+            assertThat(answerOf(new IsAsciiNative(), CharacterValue.of(0x80)))
                     .isEqualTo(LogicValue.of(false));
-            assertThat(answerOf(new WhetherLatin1Native(), CharacterValue.of(0xFF)))
+            assertThat(answerOf(new IsLatin1Native(), CharacterValue.of(0xFF)))
                     .isEqualTo(LogicValue.of(true));
-            assertThat(answerOf(new WhetherLatin1Native(), CharacterValue.of(0x100)))
+            assertThat(answerOf(new IsLatin1Native(), CharacterValue.of(0x100)))
                     .isEqualTo(LogicValue.of(false));
         }
 
         @Test
         @DisplayName("true? and did are false only of none and a false logic")
         void truth() {
-            assertThat(answerOf(new WhetherTrueNative(), NoneValue.none()))
+            assertThat(answerOf(new IsTrueNative(), NoneValue.none()))
                     .isEqualTo(LogicValue.of(false));
             assertThat(answerOf(new DidNative(), IntegerValue.of(0)))
                     .isEqualTo(LogicValue.of(true));
@@ -380,10 +380,10 @@ class WhatEachReflectionNativeDeclaresTest {
         @Test
         @DisplayName("number? is true of money and false of unset")
         void number() {
-            assertThat(answerOf(new WhetherANumberNative(),
+            assertThat(answerOf(new IsNumberNative(),
                     MoneyValue.of(BigDecimal.ONE)))
                     .isEqualTo(LogicValue.of(true));
-            assertThat(answerOf(new WhetherANumberNative(), UnsetValue.unset()))
+            assertThat(answerOf(new IsNumberNative(), UnsetValue.unset()))
                     .isEqualTo(LogicValue.of(false));
         }
     }
