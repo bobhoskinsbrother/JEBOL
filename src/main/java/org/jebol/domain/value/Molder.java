@@ -886,16 +886,14 @@ public final class Molder {
         String items = block.remaining().stream()
                 .map(item -> render(item, forReading))
                 .collect(Collectors.joining(" "));
-        if (!forReading && block.datatype() == Datatype.BLOCK) {
+        if (!forReading && moldsInBrackets(block.datatype())) {
             return items;
         }
         return switch (block.datatype()) {
-            case PAREN -> "(" + items + ")";
             case PATH -> joinPath(block, "", "");
-            case SET_PATH -> joinPath(block, "", ":");
-            case GET_PATH -> joinPath(block, ":", "");
-            case LIT_PATH -> joinPath(block, "'", "");
-            case HASH -> "make hash! [" + items + "]";
+            case SET_PATH -> joinPath(block, "", forReading ? ":" : "");
+            case GET_PATH -> joinPath(block, forReading ? ":" : "", "");
+            case LIT_PATH -> joinPath(block, forReading ? "'" : "", "");
             default -> "[" + items + "]";
         };
     }

@@ -6492,3 +6492,62 @@ unset, following the Windows host. Nothing in the library reads the answer.
 **SHOW answers its argument.** Both hosts return `RXR_VALUE` without
 touching the slot, so a gob, `none` and a block all come back unchanged, and
 only a gob reaches `OS_Show_Gob`.
+
+## 220. The output natives, swept against r3-head
+
+MOLD, FORM, PRINT, PRIN and QUIT were swept against r3-head: about three
+hundred expressions across every refinement, the `/part` limit at each
+boundary, `system/options/binary-base`, and the refusals. The declarations
+already agreed. Seven answers did not, and two of them were left different on
+purpose.
+
+**PRINT and PRIN reduce a block! and nothing else.** REBNATIVE(print) asks
+`IS_BLOCK` before `Reduce_Block`. JEBOL reduced anything stored as a block, so
+`print 'a/b` evaluated the path and failed on `a`, `print quote (1 + 2)`
+wrote `3`, and a hash was evaluated as code.
+
+**FORM drops the parens of a paren, at any depth, as it drops a block's
+brackets.** The form branch of `Mold_Value` sends a paren to
+`Form_Block_Series` the way it sends a block, so `form [1 ()]` is `"1 "` and
+`print [quote (1 2)]` writes `1 2`. A hash forms as its items too.
+
+**FORM leaves off a path's colon or quote.** `Mold_Block` writes them only
+`if (molded)`, so `form first [a/b:]` is `"a/b"` while MOLD keeps `a/b:`.
+
+**MOLD/PART clamps its limit.** Above `MAX_U32` it becomes `MAX_U32`, at or
+below zero it becomes zero. JEBOL narrowed the limit to a 32-bit integer
+first, so `mold/part "abc" 9223372036854775807` became minus one and the JVM
+threw out of `substring`, ending the console.
+
+**QUIT carrying none carries unset.** `Halt_Code` replaces a none with unset
+(`SET_UNSET(TASK_THIS_VALUE); // for (do {quit}) == unset!`), so
+`catch/quit [quit/return none]` is unset, as a bare QUIT is. The exit status
+is still zero.
+
+**A refinement's argument is refused at the door.** The arrival check passed
+no asked refinements, so a refinement's own parameter was filtered out and
+checked only once the call had started. That located the error at the call
+being refused: `** Near: mold/part "abc" 2.5` under an error r3 prints with
+no location, and `near: [mold/part ...]` inside a TRY where r3 names the TRY.
+The arrival check must still skip a refinement switched off by a word:
+`append/:part/:only/:dup` in REPEND hands `none` to `/part` whenever the
+caller left it off, and checking that `none` broke every REPEND in the
+library, module loading included, on the first attempt at this fix.
+
+**MAKE-ERROR was JEBOL's own word.** Rebol has none, nothing in JEBOL or the
+borrowed library called it, and it is gone.
+
+**Left different: PRIN cuts output short in r3.** `Prin_Value` hands
+`Mold_Print_Value` a limit of 0, which its comment says means "full size",
+but `MOLD_HAS_LIMIT` compares against `NO_LIMIT` ((REBCNT)-1), so zero is a
+real limit. Six checkpoints then stop early: `Mold_Block_Series` (line 775),
+the object molder (1130), the string molder (302, 340), binary (437), image
+(`t-image.c` 569) and vector (`t-vector.c` 1786). So `prin 'a/b` writes
+nothing, `prin make object! [a: 1 b: [2 3]]` writes `a: 1 b: [`, and errors,
+function specs, images, bitsets and vectors are cut. PRINT passes `NO_LIMIT`
+and is whole. JEBOL's PRIN writes the whole FORM, as PRINT does.
+
+**Left different: FORM of a block that holds itself.** `Form_Block_Series`
+has no recursion check, so r3 forms the block into itself until an internal
+stack-overflow error. JEBOL writes `[...]` where the block comes round again,
+as MOLD's check in `Mold_Block_Series` does.

@@ -876,8 +876,14 @@ public final class Evaluator {
     }
 
     private void refuseWhatTheParameterBeingFilledWouldNot(PendingCall waiting, Value arriving) {
-        waiting.theParameterBeingFilled().ifPresent(parameter -> checkArgumentTypes(
-                List.of(parameter), List.of(arriving), waiting.nameInAnArgumentError()));
+        waiting.theParameterBeingFilled()
+                .filter(parameter -> isSwitchedOnFor(waiting, parameter))
+                .ifPresent(parameter -> refuseUnlessAccepted(
+                        parameter, arriving, waiting.nameInAnArgumentError()));
+    }
+
+    private boolean isSwitchedOnFor(PendingCall waiting, Parameter parameter) {
+        return parameter.owningRefinement().map(waiting.refinements()::contains).orElse(true);
     }
 
     private static boolean itIsStillRunningHavingPushedABody(StepOutcome outcome) {
@@ -1205,19 +1211,21 @@ public final class Evaluator {
                 .toList();
         for (int index = checkedFrom;
                 index < arguments.size() && index < consuming.size(); index++) {
-            Parameter parameter = consuming.get(index);
-            Value argument = arguments.get(index);
-            if (!parameter.accepts(argument.datatype())) {
-                throw new Raised(ErrorValue.about(
-                        EvaluationFailure.EXPECT_ARG.category(),
-                        EvaluationFailure.EXPECT_ARG.errorId(),
-                        calleeName + " does not allow "
-                                + argument.datatype().literalSpelling()
-                                + " for its " + parameter.name() + " argument",
-                        WordValue.of(calleeName),
-                        parameter.asWrittenInTheSpec(),
-                        DatatypeValue.of(argument.datatype())));
-            }
+            refuseUnlessAccepted(consuming.get(index), arguments.get(index), calleeName);
+        }
+    }
+
+    private void refuseUnlessAccepted(Parameter parameter, Value argument, String calleeName) {
+        if (!parameter.accepts(argument.datatype())) {
+            throw new Raised(ErrorValue.about(
+                    EvaluationFailure.EXPECT_ARG.category(),
+                    EvaluationFailure.EXPECT_ARG.errorId(),
+                    calleeName + " does not allow "
+                            + argument.datatype().literalSpelling()
+                            + " for its " + parameter.name() + " argument",
+                    WordValue.of(calleeName),
+                    parameter.asWrittenInTheSpec(),
+                    DatatypeValue.of(argument.datatype())));
         }
     }
 

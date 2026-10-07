@@ -6205,6 +6205,31 @@ rule TheWhereChainRecordsEveryCallAndNotOnlyTheDefinedOnes {
     ensures: a_native_that_evaluates_a_block_is_among_them()
 }
 
+-- An argument refused for its type is refused before the call it was meant
+-- for begins, so the error is located at whatever call was already running:
+-- at the top of a console line it carries no NEAR and no WHERE at all, and
+-- inside `try [mold/part "abc" 2.5]` its NEAR is the TRY call and its WHERE
+-- starts at TRY. A refinement's own argument is refused the same way as any
+-- other -- `mold/part "abc" 2.5` and `parse "a" "a"` print alike.
+--
+-- A refinement switched off by a word is the exception: its argument is
+-- still gathered but never checked, so `part: false append/:part [1] 2 none`
+-- is `[1 2]`. REPEND and REMOLD pass none this way on every call that leaves
+-- the refinement off.
+--
+-- The C checks each argument in Do_Args as it is gathered, before the
+-- function's frame is pushed, so the function never appears in the location
+-- of its own refusal. JEBOL used to check a refinement's arguments only once
+-- the call had started, which put `** Near: mold/part "abc" 2.5` under an
+-- error r3 prints without one.
+rule ARefusedArgumentIsLocatedAtTheCallAlreadyRunning {
+    when: an_argument_is_refused_for_its_type(request)
+
+    ensures: request.error_value.near = the_near_of_the_call_already_running(request)
+    ensures: request.error_value.where = the_calls_already_running(innermost_first)
+    ensures: not the_refusing_call_is_among(request.error_value.where)
+}
+
 -- NEAR is the code around the failure, molded, and cut at sixty characters
 -- with three dots after it. `Mold_Simple_Block(mold, VAL_BLK_DATA(value),
 -- 60)` stops as soon as the text passes the limit and then trims to exactly
@@ -8419,6 +8444,118 @@ rule AnEmptyTagUnderAllMoldsAsAConstruct {
     requires: subject.length = 0
 
     ensures: MoldResult(text: the_construct_form_naming(tag, ""))
+}
+
+-- MOLD/PART cuts the molded text at the limit, and a limit outside what a
+-- string can hold is clamped rather than wrapped. At or below zero the answer
+-- is empty; past the length of the text the answer is the whole text.
+--
+-- The C clamps in REBNATIVE(mold): a limit above MAX_U32 becomes MAX_U32, one
+-- at or below zero becomes zero, and the copy stops at the series' tail. So
+-- `mold/part "abc" 9223372036854775807` is the whole `{"abc"}`, and the
+-- largest negative integer is `""`. Narrowing the limit to a smaller integer
+-- before clamping it turns the largest integer into minus one, which is a
+-- crash rather than an answer.
+rule MoldPartClampsItsLimit {
+    when: EvaluateMold(subject)
+    requires: refinement_asked(part)
+
+    ensures: MoldResult(text: the_first_characters_of(
+        what_mold_writes_without_part(subject),
+        if the_limit <= 0: 0
+        else: min(the_limit, length_of(what_mold_writes_without_part(subject)))))
+}
+
+-- FORM of a paren drops its parens, at any depth, as FORM of a block drops
+-- its brackets. `form quote (1 2)` is "1 2", `form [(1 2) [3]]` is "1 2 3",
+-- and `form [1 ()]` is "1 " -- the empty paren contributes nothing, and the
+-- space before it is still written. A hash is the same: `form make hash!
+-- [a 1]` is "a 1", with no `make hash! [`.
+--
+-- The C reaches the paren through Mold_Value with molded false, and the form
+-- branch for a paren calls Form_Block_Series the way the block branch does.
+-- Only MOLD writes the parens, because only MOLD has to read back.
+rule FormingAParenDropsItsParens {
+    when: EvaluateCall(form, subject)
+    requires: is_paren(subject) or is_hash(subject)
+        or holds_a_paren_or_hash_at_any_depth(subject)
+
+    ensures: for enclosed in the_parens_and_hashes_within(subject):
+        what_form_writes_for(enclosed) = what_form_writes_for(the_items_of(enclosed))
+}
+
+-- FORM of a set-path, a get-path or a lit-path leaves off its colon or its
+-- quote: `form first [a/b:]`, `form first [:a/b]` and `form quote 'a/b` are
+-- all "a/b". MOLD keeps them, because only MOLD has to read back. Mold_Block
+-- writes the mark only `if (molded)`, and molds the segments either way.
+rule FormingAPathLeavesOffItsMark {
+    when: EvaluateCall(form, subject)
+    requires: is_set_path(subject) or is_get_path(subject) or is_lit_path(subject)
+
+    ensures: CallResult(value: what_form_writes_for(the_plain_path_of(subject)))
+}
+
+-- FORM of a block that holds itself writes `[...]` where the block comes
+-- round again, as MOLD does: `b: [1 2] append/only b b form b` is
+-- "1 2 [...]".
+--
+-- r3-head overflows its stack instead. Form_Block_Series has no recursion
+-- check, where Mold_Block_Series has one, so the C forms the block into
+-- itself until an internal stack-overflow error stops it. JEBOL does not copy
+-- a crash; it writes what MOLD's own check writes.
+rule FormingABlockThatHoldsItselfWritesDots {
+    when: EvaluateCall(form, subject)
+    requires: holds_itself_at_any_depth(subject)
+
+    ensures: CallResult(value: the_form_with_each_return_written_as("[...]", subject))
+}
+
+-- PRINT and PRIN reduce a block and nothing else, then write what FORM gives
+-- for the result; PRINT adds a line break and PRIN does not.
+--
+-- "A block" is the block! datatype alone. A path, a paren, a hash or any
+-- other value is formed as it stands and never evaluated: `print 'a/b` writes
+-- "a/b" whether or not `a` has a value, and `print quote (1 + 2)` writes
+-- "1 + 2". REBNATIVE(print) asks IS_BLOCK before Reduce_Block, and IS_BLOCK is
+-- the one datatype, not the family.
+--
+-- Reducing first and forming the result is also what decides how the items
+-- are joined: `print [quote (1 2)]` writes "1 2", the paren formed as
+-- FormingAParenDropsItsParens says, not "(1 2)".
+rule PrintReducesOnlyABlockThenFormsIt {
+    when: EvaluateCall(verb, subject)
+    requires: verb in {print, prin}
+
+    ensures: text_written =
+        if is_block(subject): form(reduce(subject))
+        else: form(subject)
+    ensures: if verb = print: a_line_break_follows(text_written)
+    ensures: CallResult(value: unset_value())
+
+    @guidance
+        -- r3-head's PRIN does not do this for every value. Prin_Value hands
+        -- Mold_Print_Value a limit of zero, which its own comment says means
+        -- "full size", but MOLD_HAS_LIMIT compares against NO_LIMIT, so zero
+        -- is a real limit and six checkpoints in the molder stop early:
+        -- `prin 'a/b` writes nothing and `prin make object! [a: 1 b: [2 3]]`
+        -- writes "a: 1 b: [". JEBOL writes the whole FORM, as PRINT does, and
+        -- the difference is recorded in docs/rebol-findings.md.
+}
+
+-- QUIT carrying none carries unset instead, whether the none came from
+-- leaving /RETURN off or from `quit/return none`. Halt_Code tests IS_NONE on
+-- the value it is handed and stores unset in its place, so
+-- `catch/quit [quit/return none]` is unset, the same as `catch/quit [quit]`.
+--
+-- Any other value travels unchanged: false, zero and an empty block are not
+-- none. Unset itself is refused before QUIT runs, because VALUE declares no
+-- type and so takes anything except unset.
+rule AQuitCarryingNoneCarriesUnset {
+    when: EvaluateCall(quit, carried)
+
+    ensures: QuitRequested(value:
+        if carried = none or not refinement_asked(return): unset_value()
+        else: carried)
 }
 
 -- A block whose positions carry line breaks molds one item to a line, four

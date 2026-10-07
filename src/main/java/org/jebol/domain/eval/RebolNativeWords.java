@@ -9,8 +9,6 @@ import org.jebol.domain.value.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static java.util.Set.of;
 
@@ -110,7 +108,7 @@ public final class RebolNativeWords {
         grantedServices.grantOnly(granted);
     }
 
-    private static final java.util.Set<String> FIELDS_THE_OPERATING_SYSTEM_ANSWERS =
+    private static final Set<String> FIELDS_THE_OPERATING_SYSTEM_ANSWERS =
             Set.of("uid", "euid", "gid", "egid", "pid");
 
     private static final int TERMINATE = 15;
@@ -1207,72 +1205,11 @@ public final class RebolNativeWords {
         register(new ShowNative(grantedServices));
     }
 
-    private static String forOutput(Value value, Evaluator evaluator) {
-        if (!(value instanceof BlockValue block)) {
-            return Molder.form(value);
-        }
-        return evaluator.evaluateEachOrRaise(block, evaluator.systemContext()).stream()
-                .map(Molder::form)
-                .collect(Collectors.joining(" "));
-    }
-
-    private static int binaryBaseNamedBy(Evaluator evaluator) {
-        return evaluator.systemContext().slotFor("system").value() instanceof ObjectValue(Context context1)
-                && context1.slotFor("options").value() instanceof ObjectValue(Context context)
-                && context.slotFor("binary-base").value() instanceof IntegerValue(long magnitude)
-                ? (int) magnitude
-                : 16;
-    }
-
     private void registerOutput() {
-        define("mold", List.of(Parameter.required("value", ANYTHING),
-                        Parameter.belongingTo("part", "limit", of(Datatype.INTEGER))),
-                of("all", "only", "flat", "part"),
-                (arguments, evaluator, context, refinements) -> {
-                    Function<Value, String> written =
-                            refinements.contains("only")
-                                    && arguments.getFirst() instanceof BlockValue block
-                                    && block.datatype() == Datatype.BLOCK
-                            ? value -> Molder.moldOnly((BlockValue) value)
-                            : refinements.contains("all")
-                                    ? Molder::moldAll
-                                    : Molder::mold;
-                    Function<Value, String> inTheSystemBase = value ->
-                            Molder.writingBinariesInBase(binaryBaseNamedBy(evaluator),
-                                    () -> written.apply(value));
-                    Function<Value, String> how = refinements.contains("flat")
-                            ? value -> Molder.flattened(
-                                    () -> inTheSystemBase.apply(value))
-                            : inTheSystemBase;
-                    if (refinements.contains("part") && arguments.size() > 1
-                            && arguments.get(1) instanceof IntegerValue(long magnitude)) {
-                        return StringValue.of(Molder.moldWithin(arguments.getFirst(),
-                                (int) Math.max(0, magnitude), how));
-                    }
-                    return StringValue.of(how.apply(arguments.getFirst()));
-                });
-        define("form", takesAnything("value"),
-                (arguments, evaluator, context) -> StringValue.of(Molder.form(arguments.get(0))));
-
-        define("quit", List.of(Parameter.belongingTo("return", "value", of())),
-                of("now", "return"),
-                (arguments, evaluator, context, refinements) -> {
-                    throw new QuitRequested(refinements.contains("return")
-                            ? arguments.getFirst()
-                            : UnsetValue.unset());
-                });
-        define("print", takesAnything("value"),
-                (arguments, evaluator, context) -> {
-                    evaluator.output().writeLine(forOutput(arguments.get(0), evaluator));
-                    return UnsetValue.unset();
-                });
-        define("prin", takesAnything("value"),
-                (arguments, evaluator, context) -> {
-                    evaluator.output().write(forOutput(arguments.get(0), evaluator));
-                    return UnsetValue.unset();
-                });
-        define("make-error", takes("id", "message"),
-                (arguments, evaluator, context) -> ErrorValue.script(
-                        Molder.form(arguments.get(0)), Molder.form(arguments.get(1))));
+        register(new MoldNative());
+        register(new FormNative());
+        register(new QuitNative());
+        register(new PrintNative());
+        register(new PrinNative());
     }
 }

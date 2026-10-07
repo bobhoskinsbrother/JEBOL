@@ -27,7 +27,7 @@ public final class QuitRequested extends RuntimeException {
         this.answer = answer;
     }
 
-    /** What the script asked to hand back. None unless QUIT/RETURN said otherwise. */
+    /** What the script asked to hand back. Unset unless QUIT/RETURN gave something other than none. */
     public Value answer() {
         return answer;
     }

@@ -46,12 +46,12 @@ class QuitEndsTheRunTest {
     }
 
     @Test
-    @DisplayName("QUIT/RETURN none is a quit that carries none on purpose")
+    @DisplayName("QUIT/RETURN none is still a quit, and carries unset as a bare QUIT does")
     void quitReturnNoneIsStillAQuit() {
         ScriptOutcome outcome = quitting("quit/return none");
 
         assertThat(outcome.conclusion()).isEqualTo(Conclusion.QUIT_EARLY);
-        assertThat(outcome.value().datatype().literalSpelling()).isEqualTo("none!");
+        assertThat(outcome.value().datatype().literalSpelling()).isEqualTo("unset!");
     }
 
     @Test

@@ -651,9 +651,10 @@ rule QuitEndsTheRunWithoutEndingTheHost {
         run.result = quit_value_of(run)
 
     @guidance
-        -- Without /RETURN the value is none, matching REBOL. The
-        -- refinement chooses the value; it does not choose whether there
-        -- is one.
+        -- Without /RETURN, or with /RETURN NONE, the value is unset, as
+        -- Halt_Code makes it (AQuitCarryingNoneCarriesUnset in
+        -- natives.allium). The refinement chooses the value; it does not
+        -- choose whether there is one.
 }
 
 -- A run that passes its deadline is stopped whether or not it was going to

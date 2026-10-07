@@ -177,6 +177,8 @@ class ConsoleAsRebolPrintsItEndToEndTest {
                 throw 9        | 0
                 halt           | 15
                 quit/return 4  | 4
+                quit/return none | 0
+                quit           | 0
                 """)
         void endsQuietlyWithTheStatusRebolGives(String line, int status) throws IOException {
             Ran ran = runningAScriptSaying(line);
@@ -230,6 +232,7 @@ class ConsoleAsRebolPrintsItEndToEndTest {
         @CsvSource(delimiter = '|', textBlock = """
                 halt           | 15
                 quit/return 4  | 4
+                quit/return none | 0
                 """)
         void doEndsQuietlyWithTheStatusRebolGives(String line, int status) {
             Ran ran = running("--do", "print 1 " + line + " print 2");
