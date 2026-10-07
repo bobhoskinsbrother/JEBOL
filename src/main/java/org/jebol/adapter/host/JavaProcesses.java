@@ -5,10 +5,12 @@ import org.jebol.domain.eval.ProcessPort;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,6 +24,8 @@ import java.util.regex.Pattern;
  * that does not want that must not grant this service.
  */
 public final class JavaProcesses implements ProcessPort {
+
+    private static final Pattern THE_WHOLE_NUMBER_ID_PRINTS = Pattern.compile("\\d+");
 
     private static final Pattern THE_REASON_THE_SYSTEM_GAVE =
             Pattern.compile("(?:\\(([^()]*)\\)|error=\\d+, (.+?))\\s*$");
@@ -177,5 +181,40 @@ public final class JavaProcesses implements ProcessPort {
     private boolean runsOnWindows() {
         return System.getProperty("os.name", "")
                 .toLowerCase(Locale.ROOT).contains("win");
+    }
+
+    @Override
+    public OptionalLong identity(WhoTheProcessRunsAs asked) {
+        List<String> question = switch (asked) {
+            case REAL_USER -> List.of("id", "-ru");
+            case EFFECTIVE_USER -> List.of("id", "-u");
+            case REAL_GROUP -> List.of("id", "-rg");
+            case EFFECTIVE_GROUP -> List.of("id", "-g");
+        };
+        try {
+            return whatIdAnswers(new ProcessBuilder(question)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .start());
+        } catch (IOException noIdOnThisMachine) {
+            return OptionalLong.empty();
+        }
+    }
+
+    private OptionalLong whatIdAnswers(Process asking) throws IOException {
+        String answered = new String(asking.getInputStream().readAllBytes(),
+                StandardCharsets.US_ASCII).strip();
+        if (!waitedForCleanly(asking) || !THE_WHOLE_NUMBER_ID_PRINTS.matcher(answered).matches()) {
+            return OptionalLong.empty();
+        }
+        return OptionalLong.of(Long.parseLong(answered));
+    }
+
+    private boolean waitedForCleanly(Process asking) {
+        try {
+            return asking.waitFor() == 0;
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
     }
 }

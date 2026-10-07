@@ -2,6 +2,7 @@ package org.jebol.domain.eval;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalLong;
 
 /**
  * Starting another program.
@@ -63,6 +64,12 @@ public interface ProcessPort {
             Optional<String> refusalMessage) { }
 
     ProgramResult run(ProgramToStart program);
+
+    enum WhoTheProcessRunsAs { REAL_USER, EFFECTIVE_USER, REAL_GROUP, EFFECTIVE_GROUP }
+
+    default OptionalLong identity(WhoTheProcessRunsAs asked) {
+        return OptionalLong.empty();
+    }
 
     static ProcessPort none() {
         return program -> {

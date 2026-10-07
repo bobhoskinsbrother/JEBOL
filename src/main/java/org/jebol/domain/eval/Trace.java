@@ -5,9 +5,9 @@ import org.jebol.domain.value.*;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-final class Trace {
+public final class Trace {
 
-    static final int EVERYTHING = 100_000;
+    public static final int EVERYTHING = 100_000;
 
     private static final int DEEPEST_INDENT = 10;
 
@@ -24,7 +24,7 @@ final class Trace {
 
     private OutputPort output;
 
-    void writeTo(OutputPort port) {
+    public void writeTo(OutputPort port) {
         this.output = port;
     }
 
@@ -32,7 +32,7 @@ final class Trace {
         return level > 0;
     }
 
-    void level(int wanted, boolean functionsOnly) {
+    public void level(int wanted, boolean functionsOnly) {
         this.level = Math.max(0, wanted);
         this.callsOnly = level > 0 && functionsOnly;
         this.depthWhenTraceBegan = theZeroTheIndentationCountsFrom();
@@ -45,14 +45,14 @@ final class Trace {
         return depthNow;
     }
 
-    void keepRatherThanPrint(boolean keeping) {
+    public void keepRatherThanPrint(boolean keeping) {
         this.keepingRatherThanPrinting = keeping;
         if (!keeping) {
             keptLines.clear();
         }
     }
 
-    void showTheLastAndStopTracing(int lines) {
+    public void showTheLastAndStopTracing(int lines) {
         level = 0;
         callsOnly = false;
         if (output == null) {

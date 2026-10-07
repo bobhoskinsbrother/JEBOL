@@ -1,6 +1,7 @@
 package org.jebol.domain.value;
 
 import java.util.Optional;
+import java.util.function.ToLongFunction;
 
 /**
  * A single Unicode scalar value.
@@ -9,6 +10,29 @@ import java.util.Optional;
  * UTF-16 code unit and half of an astral character is not a character.
  */
 public record CharacterValue(int codepoint) implements Value {
+
+    private static final int FIRST_SURROGATE = 0xD800;
+    private static final int LAST_SURROGATE = 0xDFFF;
+
+    @Override
+    public Value randomised(RandomDraw draw) {
+        return codepoint == 0 ? this : CharacterValue.of(aValidCodepointDrawnBy(draw));
+    }
+
+    private int aValidCodepointDrawnBy(RandomDraw draw) {
+        while (true) {
+            int picked = 1 + draw.below(codepoint);
+            boolean surrogate = picked >= FIRST_SURROGATE && picked <= LAST_SURROGATE;
+            if (!surrogate && picked <= MAXIMUM_CODEPOINT) {
+                return picked;
+            }
+        }
+    }
+
+    @Override
+    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+        return codepoint;
+    }
 
     @Override
     public Value absolute() {

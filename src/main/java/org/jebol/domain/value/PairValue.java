@@ -2,8 +2,30 @@ package org.jebol.domain.value;
 
 import java.util.Optional;
 import java.util.function.DoublePredicate;
+import java.util.function.ToLongFunction;
 
 public record PairValue(double x, double y) implements Value {
+
+    private static final int BITS_IN_A_HALF = 32;
+
+    @Override
+    public Value randomised(RandomDraw draw) {
+        return PairValue.of(halfRandomised(x, draw), halfRandomised(y, draw));
+    }
+
+    private double halfRandomised(double half, RandomDraw draw) {
+        long bound = (long) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, half));
+        return bound == 0 ? 0 : draw.upTo(bound);
+    }
+
+    @Override
+    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+        return (bitsOfTheHalf(y) << BITS_IN_A_HALF) | bitsOfTheHalf(x);
+    }
+
+    private long bitsOfTheHalf(double half) {
+        return Integer.toUnsignedLong(Float.floatToRawIntBits((float) half));
+    }
 
     public boolean bothHalves(DoublePredicate asked) {
         return asked.test(x) && asked.test(y);

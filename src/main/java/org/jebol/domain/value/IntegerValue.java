@@ -3,8 +3,19 @@ package org.jebol.domain.value;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.function.ToLongFunction;
 
 public record IntegerValue(long magnitude) implements Value, RebolNumber {
+
+    @Override
+    public Value randomised(RandomDraw draw) {
+        return IntegerValue.of(draw.upTo(magnitude));
+    }
+
+    @Override
+    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+        return magnitude;
+    }
 
     private static final int ALL_SIXTEEN_HEX_DIGITS = 16;
 

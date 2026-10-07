@@ -1,9 +1,20 @@
 package org.jebol.domain.value;
 
 import java.util.Optional;
+import java.util.function.ToLongFunction;
 
 public record DecimalValue(double quantity, Datatype datatype)
         implements Value, RebolNumber {
+
+    @Override
+    public Value randomised(RandomDraw draw) {
+        return new DecimalValue(draw.fraction() * quantity, datatype);
+    }
+
+    @Override
+    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+        return Double.doubleToRawLongBits(quantity);
+    }
 
     @Override
     public long asPosition() {

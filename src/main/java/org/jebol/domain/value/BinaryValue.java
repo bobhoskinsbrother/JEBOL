@@ -8,8 +8,36 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.ToLongFunction;
 
 public record BinaryValue(BinaryStorage storage, int index) implements RebolSeries {
+
+    @Override
+    public Value randomised(RandomDraw draw) {
+        List<Integer> octets = new ArrayList<>();
+        for (int at = index; at <= storageLength(); at++) {
+            octets.add(storage.at(at));
+        }
+        draw.shuffle(octets);
+        for (int at = 0; at < octets.size(); at++) {
+            storage.set(index + at, octets.get(at));
+        }
+        return this;
+    }
+
+    @Override
+    public Value pickedAtRandom(RandomDraw draw) {
+        byte[] octets = octetsFromHere();
+        if (octets.length == 0) {
+            return NoneValue.none();
+        }
+        return IntegerValue.of(octets[new CharacterBoundary().drawnIn(octets, draw)] & 0xFF);
+    }
+
+    @Override
+    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+        return checksumOfTheOctets.applyAsLong(octetsFromHere());
+    }
 
     @Override
     public boolean isProtected() {

@@ -357,6 +357,7 @@ surface Console {
         Submit(session, source_text) when operator.is_open
         RunAndLeave(user_context, source_text)
         RunTheNamedScript(path, arguments)
+        Start(words)
 
     exposes:
         SubmissionOutcome

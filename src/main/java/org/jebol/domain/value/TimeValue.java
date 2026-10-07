@@ -1,8 +1,19 @@
 package org.jebol.domain.value;
 
 import java.util.Optional;
+import java.util.function.ToLongFunction;
 
 public record TimeValue(long nanoseconds) implements Value {
+
+    @Override
+    public Value randomised(RandomDraw draw) {
+        return TimeValue.ofNanoseconds(draw.upTo(nanoseconds));
+    }
+
+    @Override
+    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+        return nanoseconds;
+    }
 
     @Override
     public Value absolute() {

@@ -3,8 +3,31 @@ package org.jebol.domain.value;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.ToLongFunction;
 
 public record VectorValue(VectorStorage storage, int index) implements RebolSeries {
+
+    @Override
+    public Value randomised(RandomDraw draw) {
+        for (int remaining = lengthFromHere(); remaining > 1; remaining--) {
+            int chosen = index + draw.below(remaining);
+            int last = index + remaining - 1;
+            long held = storage.at(chosen);
+            storage.set(chosen, storage.at(last));
+            storage.set(last, held);
+        }
+        return this;
+    }
+
+    @Override
+    public Value pickedAtRandom(RandomDraw draw) {
+        throw Raised.of(EvaluationFailure.BAD_REFINES);
+    }
+
+    @Override
+    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+        throw Raised.of(EvaluationFailure.BAD_REFINES);
+    }
 
     public VectorValue {
         if (storage == null) {

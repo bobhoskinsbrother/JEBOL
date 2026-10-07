@@ -7,10 +7,40 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 
 public record BlockValue(BlockStorage storage, int index, Datatype datatype)
         implements RebolSeries {
+
+    @Override
+    public Value randomised(RandomDraw draw) {
+        refuseRandomUnlessAPlainBlock();
+        List<Value> items = new ArrayList<>(remaining());
+        draw.shuffle(items);
+        for (int at = 0; at < items.size(); at++) {
+            storage.set(index + at, items.get(at));
+        }
+        return this;
+    }
+
+    @Override
+    public Value pickedAtRandom(RandomDraw draw) {
+        refuseRandomUnlessAPlainBlock();
+        List<Value> items = remaining();
+        return items.isEmpty() ? NoneValue.none() : items.get(draw.below(items.size()));
+    }
+
+    private void refuseRandomUnlessAPlainBlock() {
+        if (datatype != Datatype.BLOCK) {
+            throw Raised.cannotUse(this, "random");
+        }
+    }
+
+    @Override
+    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+        throw Raised.of(EvaluationFailure.BAD_REFINES);
+    }
 
     private static final Set<Datatype> DECLARES_A_PARAMETER = Set.of(
             Datatype.WORD, Datatype.REFINEMENT, Datatype.LIT_WORD, Datatype.GET_WORD);

@@ -636,7 +636,7 @@ public final class Encodings {
         return running.getValue();
     }
 
-    long checksumSeedOf(byte[] octets) {
+    public long checksumSeedOf(byte[] octets) {
         return crc24Of(octets);
     }
 

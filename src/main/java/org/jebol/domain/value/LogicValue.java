@@ -1,7 +1,21 @@
 package org.jebol.domain.value;
 
+import java.util.function.ToLongFunction;
+
 /** {@code true} or {@code false}. The only value whose truth is its content. */
 public record LogicValue(boolean truth) implements Value {
+
+    private static final long THE_SEED_FALSE_GIVES = 1L;
+
+    @Override
+    public Value randomised(RandomDraw draw) {
+        return LogicValue.of((draw.next() & 1) == 1);
+    }
+
+    @Override
+    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+        return truth ? System.nanoTime() : THE_SEED_FALSE_GIVES;
+    }
 
     @Override
     public Value arithmetic(Value right, ArithmeticOperation operation) {

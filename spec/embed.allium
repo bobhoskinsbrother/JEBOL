@@ -317,11 +317,14 @@ rule RefusedServiceRaises {
         run.refused_service = service
 }
 
--- Four things exist to call code written in C, thus no host can offer
+-- Three things exist to call code written in C, thus no host can offer
 -- them and no grant can turn them on. They are refused before the grant
--- is even looked at, and the reason says so.
+-- is even looked at, and before their arguments are looked at beyond
+-- their declared datatypes, and the reason says so.
 --
--- The four are LOAD-EXTENSION, DO-CALLBACK, DO-COMMANDS and ACCESS-OS. A
+-- The three are LOAD-EXTENSION, DO-CALLBACK and DO-COMMANDS. ACCESS-OS
+-- was once the fourth; it loads no C of its own and asks the host, as
+-- natives.allium says. A
 -- JVM can be made to do all of them, and the result stops being portable,
 -- which is the one thing JEBOL is for -- so this is the refusal that never
 -- changes, where the other two are a host's decision on the day.

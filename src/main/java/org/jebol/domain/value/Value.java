@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.ToLongFunction;
 
 public sealed interface Value permits
         RebolNumber,
@@ -165,6 +166,18 @@ public sealed interface Value permits
 
     default Value negated() {
         return IntegerValue.of(0).arithmetic(this, new Subtract());
+    }
+
+    default Value randomised(RandomDraw draw) {
+        throw Raised.cannotUse(this, "random");
+    }
+
+    default Value pickedAtRandom(RandomDraw draw) {
+        return randomised(draw);
+    }
+
+    default long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+        throw Raised.cannotUse(this, "random");
     }
 
     default Value heldBetween(Value lowest, Value highest) {

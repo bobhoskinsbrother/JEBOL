@@ -1,6 +1,7 @@
 package org.jebol.domain.value;
 
 import java.util.Arrays;
+import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -185,6 +186,32 @@ public record TupleValue(int[] segments) implements Value {
     @Override
     public int[] segments() {
         return segments.clone();
+    }
+
+    private static final int THE_BITS_OF_AN_OCTET = 0xFF;
+
+    @Override
+    public Value randomised(RandomDraw draw) {
+        int[] octets = segments();
+        for (int at = 0; at < octets.length; at++) {
+            if (octets[at] != 0) {
+                octets[at] = draw.belowWithoutNarrowing(octets[at] + 1) & THE_BITS_OF_AN_OCTET;
+            }
+        }
+        return TupleValue.of(octets);
+    }
+
+    @Override
+    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+        return checksumOfTheOctets.applyAsLong(shownOctets());
+    }
+
+    private byte[] shownOctets() {
+        byte[] octets = new byte[shownCount()];
+        for (int at = 0; at < octets.length; at++) {
+            octets[at] = (byte) octetAt(at + 1);
+        }
+        return octets;
     }
 
     @Override

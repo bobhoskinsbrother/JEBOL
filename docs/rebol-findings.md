@@ -6551,3 +6551,66 @@ and is whole. JEBOL's PRIN writes the whole FORM, as PRINT does.
 has no recursion check, so r3 forms the block into itself until an internal
 stack-overflow error. JEBOL writes `[...]` where the block comes round again,
 as MOLD's check in `Mold_Block_Series` does.
+
+## 221. The last ten natives, swept against r3-head
+
+NOW, ALSO, COMMENT, TO-VALUE, TRACE, LOAD-EXTENSION, DO-CALLBACK, DO-COMMANDS,
+ACCESS-OS and RANDOM were swept against r3-head: a hundred and seventy
+expressions, every refinement, RANDOM of each datatype after `random/seed 1`,
+each kind of seed, `/secure` on each datatype, and the refusals. The
+declarations already agreed, because
+`boot/natives.reb` governs them at run time, but DO-CALLBACK and DO-COMMANDS
+had been declared in Java with no datatypes. Seven answers differed, and two
+were left different on purpose.
+
+**RANDOM of a percent answers a percent.** ACTION(random) in `t-decimal.c`
+writes the drawn decimal into the value it was handed, so the datatype stays.
+JEBOL answered a decimal: `random 1%` was 0.00068454436335908277 where r3
+shows 0.068454436335908277%.
+
+**RANDOM's refusals carry no argument.** `overflow` past two to the
+sixty-second, `bad-refines` for `/seed` of a block or vector and for `/only`
+of a vector, all raised by Trap0 in the C. JEBOL put a sentence of its own
+into ARG1. `/seed` of a value with no seed is `cannot-use` naming `random:`
+and the datatype, as RANDOM of it is.
+
+**NOW's `bad-refines` carries no argument** for the same reason:
+`Assert_Max_Refines` is a Trap0.
+
+**ACCESS-OS reads the user and group ids from the host.** UID, EUID, GID and
+EGID were `not-here` always. The JVM has no call for the effective ids, so
+`JavaProcesses` asks `id -ru`, `id -u`, `id -rg` and `id -g`; a host given no
+process port, or a machine with no `id`, still says `not-here`, which is what
+r3 answers on Windows.
+
+**ACCESS-OS checks a pair to end a process element by element.** A block of
+two whose process is not an integer names that element, then the signal; a
+block of any other length names the block. JEBOL named the whole block every
+time. `permission-denied` names nothing, as Trap0 raises it.
+
+**Left different: ACCESS-OS/SET of UID, EUID, GID or EGID is `not-here`.**
+r3 calls setuid and answers `permission-denied` unless it runs as root. A JVM
+cannot change who it runs as, and doing it for one interpreter would do it for
+every interpreter in the host, so JEBOL answers what r3 answers on a host
+without the call. A value that is not an integer is still `invalid-arg` first.
+
+**Left different: the three extension points.** LOAD-EXTENSION of a file is
+`no-extension` in r3 once `dlopen` fails, of a binary without `/dispatch` is
+`invalid-arg`, DO-COMMANDS of a block is `expect-val command!` at its first
+non-command, and DO-CALLBACK of an event that carries no callback is none.
+JEBOL refuses all three as `no-service`, never portable, once the declared
+datatypes pass, as `spec/embed.allium` says. ACCESS-OS was listed there as a
+fourth; it loads no C of its own and the list is three.
+
+**RANDOM/SECURE was ignored.** It is not the operating system's randomness.
+`Random_Int` in `f-random.c` lays each number the generator draws out as
+eight bytes, low byte first, pads them to twenty with the low byte, and reads
+the first eight bytes of their SHA-1 digest back as the number. So after
+`random/seed 1`, `random/secure 100` is 46 every time. The secure number
+spans sixty-four bits and may be negative: `Random_Range` then skips the
+two-to-the-sixty-second overflow check, `Random_Dec` scales by two to the
+minus sixty-four, and a tuple's octet is the signed remainder cast to a byte,
+so `random/seed 1 random/secure 1.2.3` is 1.255.3.
+
+**Differs by nature, not by defect:** `access-os 'pid` is each process's own
+number.

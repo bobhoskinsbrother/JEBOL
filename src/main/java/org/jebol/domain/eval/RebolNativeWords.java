@@ -3,18 +3,15 @@ package org.jebol.domain.eval;
 import org.jebol.domain.eval.definition.*;
 
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.host.ServiceRefusal;
 import org.jebol.domain.read.Construction;
 import org.jebol.domain.value.*;
 
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static java.util.Set.of;
 
 public final class RebolNativeWords {
 
-    private final RebolRandom randomness = new RebolRandom();
     private final BootDeclarations bootDeclarations = new BootDeclarations();
     private final Map<String, RefinedCallable> behaviours = new LinkedHashMap<>();
     private final Map<String, NativeValue> definitions = new LinkedHashMap<>();
@@ -108,52 +105,6 @@ public final class RebolNativeWords {
         grantedServices.grantOnly(granted);
     }
 
-    private static final Set<String> FIELDS_THE_OPERATING_SYSTEM_ANSWERS =
-            Set.of("uid", "euid", "gid", "egid", "pid");
-
-    private static final int TERMINATE = 15;
-
-    private Value signalled(Value asked) {
-        long process;
-        int signal;
-        if (asked instanceof IntegerValue(long magnitude2)) {
-            process = magnitude2;
-            signal = TERMINATE;
-        } else {
-            List<Value> pair = ((BlockValue) asked).remaining();
-            if (pair.size() != 2
-                    || !(pair.get(0) instanceof IntegerValue(long magnitude1))
-                    || !(pair.get(1) instanceof IntegerValue(long magnitude))) {
-                throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(asked));
-            }
-            process = magnitude1;
-            signal = (int) magnitude;
-        }
-        grantedServices.require(HostService.PROCESSES);
-        return LogicValue.of(endProcess(process, signal));
-    }
-
-    private static boolean endProcess(long process, int signal) {
-        Optional<ProcessHandle> found = ProcessHandle.of(process);
-        if (found.isEmpty()) {
-            throw Raised.of(EvaluationFailure.PROCESS_NOT_FOUND, IntegerValue.of(process));
-        }
-        ProcessHandle running = found.get();
-        boolean ended = signal == TERMINATE
-                ? running.destroy()
-                : running.destroyForcibly();
-        if (!ended) {
-            throw Raised.of(EvaluationFailure.PERMISSION_DENIED, String.valueOf(process));
-        }
-        return true;
-    }
-
-    private static Value refuseExtensionPoint(String extensionPoint) {
-        throw Raised.of(EvaluationFailure.NO_SERVICE,
-                extensionPoint + " calls code written in C, which is "
-                        + ServiceRefusal.NEVER_PORTABLE.name()
-                                .toLowerCase(java.util.Locale.ROOT).replace('_', ' '));
-    }
 
     public static RebolNativeWords standard() {
         return new RebolNativeWords();
@@ -333,42 +284,12 @@ public final class RebolNativeWords {
         return built.derivedWith(spec, new DeclaredArguments(spec).inPlaceOf(built.parameters()));
     }
 
-    private void define(String name, List<Parameter> parameters, Callable behaviour) {
-        define(name, parameters, of(),
-                (arguments, evaluator, context, refinements) ->
-                        behaviour.call(arguments, evaluator, context));
-    }
-
-    private void define(String name, List<Parameter> parameters,
-            Set<String> refinements, RefinedCallable behaviour) {
-        definitions.put(name, new NativeValue(name, parameters, refinements, of()));
-        behaviours.put(name, behaviour);
-    }
-
     private void registerOperator(String spelling, String prefixTwin) {
         if (!definitions.containsKey(prefixTwin)) {
             throw new IllegalStateException(
                     "operator " + spelling + " has no prefix twin called " + prefixTwin);
         }
         operatorTwins.put(spelling, prefixTwin);
-    }
-
-    private static List<Parameter> takes(String... names) {
-        List<Parameter> parameters = new ArrayList<>();
-        for (String name : names) {
-            parameters.add(Parameter.required(name));
-        }
-        return parameters;
-    }
-
-    private static final Set<Datatype> ANYTHING = Typeset.ANY_TYPE.members();
-
-    private static List<Parameter> takesAnything(String... names) {
-        List<Parameter> parameters = new ArrayList<>();
-        for (String name : names) {
-            parameters.add(Parameter.required(name, ANYTHING));
-        }
-        return parameters;
     }
 
     private void register(NativeDefinition function) {
@@ -433,288 +354,16 @@ public final class RebolNativeWords {
     }
 
     private void registerTheRemainingNatives() {
-        define("now", List.of(),
-                of("year", "month", "day", "time", "zone", "date",
-                        "weekday", "yearday", "precise", "utc"),
-                (arguments, evaluator, context, refinements) -> {
-                    grantedServices.require(HostService.CLOCK);
-                    return whatTheClockSays(refinements);
-                });
-
-        define("also", takesAnything("value1", "value2"),
-                (arguments, evaluator, context) -> arguments.getFirst());
-
-        define("comment", List.of(Parameter.required("value")),
-                (arguments, evaluator, context) -> UnsetValue.unset());
-
-        define("to-value", takesAnything("value"),
-                (arguments, evaluator, context) ->
-                        arguments.getFirst() instanceof UnsetValue
-                                ? NoneValue.none()
-                                : arguments.getFirst());
-
-
-        define("trace", List.of(Parameter.required("mode",
-                        of(Datatype.INTEGER, Datatype.LOGIC))),
-                of("back", "function"),
-                (arguments, evaluator, context, refinements) -> {
-                    Value mode = arguments.getFirst();
-                    Trace tracing = evaluator.tracing();
-                    tracing.writeTo(evaluator.output());
-                    if (refinements.contains("back")) {
-                        if (mode instanceof IntegerValue(long magnitude)) {
-                            tracing.showTheLastAndStopTracing(
-                                    (int) magnitude);
-                            return UnsetValue.unset();
-                        }
-                        tracing.keepRatherThanPrint(mode.isTruthy());
-                    } else {
-                        tracing.keepRatherThanPrint(false);
-                    }
-                    int wanted = mode instanceof IntegerValue(long magnitude)
-                            ? (int) magnitude
-                            : (mode.isTruthy() ? Trace.EVERYTHING : 0);
-                    tracing.level(wanted, refinements.contains("function"));
-                    return UnsetValue.unset();
-                });
-
-        define("load-extension", List.of(
-                        Parameter.required("name", of(Datatype.FILE, Datatype.BINARY)),
-                        Parameter.belongingTo("dispatch", "function", of(Datatype.HANDLE))),
-                of("dispatch"),
-                (arguments, evaluator, context, refinements) ->
-                        refuseExtensionPoint("load-extension"));
-        define("do-callback", takes("callback"),
-                (arguments, evaluator, context) -> refuseExtensionPoint("do-callback"));
-        define("do-commands", takes("commands"),
-                (arguments, evaluator, context) -> refuseExtensionPoint("do-commands"));
-        define("access-os", List.of(
-                        Parameter.required("field", of(Datatype.WORD)),
-                        Parameter.belongingTo("set", "value",
-                                of(Datatype.INTEGER, Datatype.BLOCK))),
-                of("set"),
-                (arguments, evaluator, context, refinements) -> {
-                    WordValue field = (WordValue) arguments.getFirst();
-                    if (!FIELDS_THE_OPERATING_SYSTEM_ANSWERS.contains(field.canonical())) {
-                        throw Raised.of(EvaluationFailure.INVALID_ARG, field.spelling());
-                    }
-                    if (!"pid".equals(field.canonical())) {
-                        throw Raised.of(EvaluationFailure.NOT_HERE, field.spelling());
-                    }
-                    if (!refinements.contains("set")) {
-                        return IntegerValue.of(ProcessHandle.current().pid());
-                    }
-                    return signalled(arguments.get(1));
-                });
-
-        define("random", List.of(Parameter.required("value")),
-                of("seed", "only", "secure"),
-                (arguments, evaluator, context, refinements) -> {
-                    if (refinements.contains("seed")) {
-                        return seededBy(arguments.get(0));
-                    }
-                    return switch (arguments.get(0)) {
-                        case IntegerValue whole -> IntegerValue.of(
-                                randomLongUpTo(whole.magnitude()));
-                        case DecimalValue quantity -> DecimalValue.of(
-                                randomFraction() * quantity.quantity());
-                        case BlockValue other when other.datatype() != Datatype.BLOCK ->
-                                throw Raised.cannotUse(other, "random");
-                        case BlockValue block when refinements.contains("only") ->
-                                block.remaining().isEmpty()
-                                        ? NoneValue.none()
-                                        : block.remaining().get(randomness.below(
-                                                block.remaining().size()));
-                        case BlockValue block -> shuffled(block);
-                        case StringValue text when refinements.contains("only") ->
-                                oneCharacterPickedAtRandomByByteNotByCharacter(
-                                        text);
-                        case StringValue text -> shuffledTextInPlace(text);
-                        case BinaryValue bytes when refinements.contains("only") ->
-                                oneOctetPickedAtRandom(bytes);
-                        case BinaryValue bytes -> shuffledBytes(bytes);
-                        case VectorValue ignored when refinements.contains("only") ->
-                                raiseRefinementAVectorHasNoUseFor();
-                        case TupleValue tuple -> randomisedOctets(tuple);
-                        case PairValue point -> randomisedHalves(point);
-                        case CharacterValue letter -> letter.codepoint() == 0
-                                ? letter
-                                : CharacterValue.of(aValidCodepointUpTo(
-                                        letter.codepoint()));
-                        case TimeValue span -> TimeValue.ofNanoseconds(
-                                randomLongUpTo(span.nanoseconds()));
-                        case DateValue when -> randomisedDate(when);
-                        case LogicValue ignored ->
-                                LogicValue.of((randomness.next() & 1) == 1);
-                        case VectorValue vector -> shuffledElements(vector);
-                        default -> throw Raised.cannotUse(arguments.get(0), "random");
-                    };
-                });
-
-    }
-
-    private int aValidCodepointUpTo(int limit) {
-        while (true) {
-            int picked = 1 + randomness.below(limit);
-            boolean surrogate = picked >= 0xD800 && picked <= 0xDFFF;
-            if (!surrogate && picked <= CharacterValue.MAXIMUM_CODEPOINT) {
-                return picked;
-            }
-        }
-    }
-
-    private Value seededBy(Value chosen) {
-        randomness.seed(switch (chosen) {
-            case IntegerValue whole -> whole.magnitude();
-            case DecimalValue quantity -> Double.doubleToRawLongBits(quantity.quantity());
-            case CharacterValue letter -> letter.codepoint();
-            case StringValue text ->
-                    encodings.checksumSeedOf(text.text().getBytes(StandardCharsets.UTF_8));
-            case BinaryValue bytes -> encodings.checksumSeedOf(bytes.octetsFromHere());
-            case TupleValue tuple -> encodings.checksumSeedOf(shownOctetsOf(tuple));
-            case TimeValue span -> span.nanoseconds();
-            case DateValue day -> seedPackedFrom(day);
-            case PairValue point -> halvesSideBySide(point);
-            case LogicValue truth -> truth.truth() ? System.nanoTime() : 1L;
-            case BlockValue ignored -> raiseRefinementNoArmAccepts();
-            case VectorValue ignored -> raiseRefinementNoArmAccepts();
-            default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    "random/seed has nothing to make a seed out of a "
-                            + chosen.datatype().literalSpelling());
-        });
-        return UnsetValue.unset();
-    }
-
-    private static byte[] shownOctetsOf(TupleValue tuple) {
-        byte[] octets = new byte[tuple.shownCount()];
-        for (int at = 0; at < octets.length; at++) {
-            octets[at] = (byte) tuple.octetAt(at + 1);
-        }
-        return octets;
-    }
-
-    private static long seedPackedFrom(DateValue day) {
-        long dayOfYear = day.day() + dayCountBeforeMonth(day.year(), day.month());
-        long nanoseconds = day.timeOfDay().map(TimeValue::nanoseconds).orElse(0L);
-        return ((long) day.year() << 48) + (dayOfYear << 32) + nanoseconds;
-    }
-
-    private static long dayCountBeforeMonth(int year, int month) {
-        long days = 0;
-        for (int earlier = 1; earlier < month; earlier++) {
-            days += java.time.YearMonth.of(year, earlier).lengthOfMonth();
-        }
-        return days;
-    }
-
-    private static long halvesSideBySide(PairValue point) {
-        long lower = Integer.toUnsignedLong(Float.floatToRawIntBits((float) point.x()));
-        long upper = Integer.toUnsignedLong(Float.floatToRawIntBits((float) point.y()));
-        return (upper << 32) | lower;
-    }
-
-    private static long raiseRefinementNoArmAccepts() {
-        throw Raised.of(EvaluationFailure.BAD_REFINES,
-                "random/seed makes no seed out of this");
-    }
-
-    private static Value raiseRefinementAVectorHasNoUseFor() {
-        throw Raised.of(EvaluationFailure.BAD_REFINES,
-                "random/only does not pick one element out of a vector");
-    }
-
-    private Value oneCharacterPickedAtRandomByByteNotByCharacter(StringValue text) {
-        byte[] octets = text.text().getBytes(StandardCharsets.UTF_8);
-        if (octets.length == 0) {
-            return NoneValue.none();
-        }
-        int at = steppedBackToACharacterBoundary(octets, randomness.below(octets.length));
-        return CharacterValue.of(
-                new String(octets, at, octets.length - at, StandardCharsets.UTF_8)
-                        .codePointAt(0));
-    }
-
-    private Value oneOctetPickedAtRandom(BinaryValue bytes) {
-        byte[] octets = bytes.octetsFromHere();
-        if (octets.length == 0) {
-            return NoneValue.none();
-        }
-        int at = steppedBackToACharacterBoundary(octets, randomness.below(octets.length));
-        return IntegerValue.of(octets[at] & 0xFF);
-    }
-
-    private static int steppedBackToACharacterBoundary(byte[] octets, int landedOn) {
-        int at = landedOn;
-        while (at > 0 && (octets[at] & 0xC0) == 0x80) {
-            at--;
-        }
-        return at;
-    }
-
-    private long randomLongUpTo(long limit) {
-        if (limit == 0) {
-            return 0;
-        }
-        long span = Math.abs(limit);
-        if (Long.compareUnsigned(span, GENERATOR_RANGE) > 0) {
-            throw Raised.of(EvaluationFailure.OVERFLOW,
-                    "random cannot draw evenly from a number larger than "
-                            + "two to the sixty-second");
-        }
-        long lastExactMultiple =
-                GENERATOR_RANGE - Long.remainderUnsigned(GENERATOR_RANGE, span) - 1;
-        long drawn;
-        do {
-            drawn = randomness.next();
-        } while (Long.compareUnsigned(drawn, lastExactMultiple) > 0);
-        long picked = 1 + Long.remainderUnsigned(drawn, span);
-        return limit < 0 ? -picked : picked;
-    }
-
-    private double randomFraction() {
-        return (double) randomness.next() / (double) GENERATOR_RANGE;
-    }
-
-    private static final long GENERATOR_RANGE = 1L << 62;
-
-    private Value randomisedDate(DateValue when) {
-        java.time.LocalDate drawn = java.time.LocalDate
-                .of((int) randomLongUpTo(when.year()), 1, 1)
-                .plusMonths(randomLongUpTo(MONTHS_A_YEAR))
-                .plusDays(randomLongUpTo(LONGEST_MONTH));
-        return when.timeOfDay().isEmpty()
-                ? DateValue.of(drawn.getYear(), drawn.getMonthValue(), drawn.getDayOfMonth())
-                : new DateValue(drawn.getYear(), drawn.getMonthValue(),
-                        drawn.getDayOfMonth(),
-                        java.util.Optional.of(TimeValue.ofNanoseconds(
-                                randomLongUpTo(TimeValue.NANOSECONDS_PER_DAY))),
-                        when.zoneMinutes());
-    }
-
-    private static final int MONTHS_A_YEAR = 12;
-    private static final int LONGEST_MONTH = 31;
-
-
-    private Value randomisedOctets(TupleValue tuple) {
-        int[] octets = tuple.segments();
-        for (int at = 0; at < octets.length; at++) {
-            if (octets[at] != 0) {
-                octets[at] = randomness.belowWithoutNarrowing(octets[at] + 1);
-            }
-        }
-        return TupleValue.of(octets);
-    }
-
-    private Value randomisedHalves(PairValue point) {
-        return PairValue.of(randomisedHalf(point.x()), randomisedHalf(point.y()));
-    }
-
-    private double randomisedHalf(double half) {
-        long bound = (long) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, half));
-        if (bound == 0) {
-            return 0;
-        }
-        return randomLongUpTo(bound);
+        register(new NowNative(grantedServices));
+        register(new AlsoNative());
+        register(new CommentNative());
+        register(new ToValueNative());
+        register(new TraceNative());
+        register(new LoadExtensionNative());
+        register(new DoCallbackNative());
+        register(new DoCommandsNative());
+        register(new AccessOsNative(grantedServices));
+        register(new RandomAction(encodings));
     }
 
     private void registerComparators() {
@@ -761,8 +410,7 @@ public final class RebolNativeWords {
         return new InterpreterMaker(evaluator, where, makingAndConverting);
     }
 
-    private void
-    registerObjects() {
+    private void registerObjects() {
         register(new MakeAction());
         register(new ConstructNative());
         register(new ContextOfWordNative());
@@ -944,17 +592,6 @@ public final class RebolNativeWords {
     }
 
 
-    private VectorValue shuffledElements(VectorValue vector) {
-        for (int remaining = vector.lengthFromHere(); remaining > 1; remaining--) {
-            int chosen = vector.index() + randomness.below(remaining);
-            int last = vector.index() + remaining - 1;
-            long held = vector.storage().at(chosen);
-            vector.storage().set(chosen, vector.storage().at(last));
-            vector.storage().set(last, held);
-        }
-        return vector;
-    }
-
     static List<Value> numbersOfferedTo(VectorKind kind, Value value, int limit) {
         if (!(value instanceof RebolSeries source)) {
             return numbersContributedTo(kind, value);
@@ -972,49 +609,6 @@ public final class RebolNativeWords {
 
     static Value bitsetHoldsForAPath(BitsetValue members, Value selector) {
         return new BitsetActions(members).heldForAPath(selector);
-    }
-
-    private <T> void shuffleTheWayTheCDoes(List<T> items) {
-        for (int remaining = items.size(); remaining > 1;) {
-            int chosen = randomness.below(remaining);
-            remaining--;
-            T held = items.get(chosen);
-            items.set(chosen, items.get(remaining));
-            items.set(remaining, held);
-        }
-    }
-
-    private Value shuffled(BlockValue block) {
-        List<Value> items = new ArrayList<>(block.remaining());
-        shuffleTheWayTheCDoes(items);
-        for (int at = 0; at < items.size(); at++) {
-            block.storage().set(block.index() + at, items.get(at));
-        }
-        return block;
-    }
-
-    private Value shuffledTextInPlace(StringValue text) {
-        List<Integer> letters = new ArrayList<>();
-        for (int at = text.index(); at <= text.storageLength(); at++) {
-            letters.add(text.storage().at(at));
-        }
-        shuffleTheWayTheCDoes(letters);
-        for (int at = 0; at < letters.size(); at++) {
-            text.storage().set(text.index() + at, letters.get(at));
-        }
-        return text;
-    }
-
-    private Value shuffledBytes(BinaryValue bytes) {
-        List<Integer> octets = new ArrayList<>();
-        for (int at = bytes.index(); at <= bytes.storageLength(); at++) {
-            octets.add(bytes.storage().at(at));
-        }
-        shuffleTheWayTheCDoes(octets);
-        for (int at = 0; at < octets.size(); at++) {
-            bytes.storage().set(bytes.index() + at, octets.get(at));
-        }
-        return bytes;
     }
 
     private List<Value> catalogueEntries() {
@@ -1096,58 +690,6 @@ public final class RebolNativeWords {
     }
 
 
-    private static Value whatTheClockSays(Set<String> refinements) {
-        boolean precise = refinements.contains("precise");
-        long asked = refinements.size() - (precise ? 1 : 0);
-        if (asked > 1) {
-            throw Raised.of(EvaluationFailure.BAD_REFINES,
-                    "now answers one part of the clock at a time, and was asked for "
-                            + asked);
-        }
-        java.time.ZonedDateTime here = java.time.ZonedDateTime.now();
-        if (!precise) {
-            here = here.withNano(0);
-        }
-        if (refinements.contains("utc")) {
-            java.time.ZonedDateTime there =
-                    here.withZoneSameInstant(java.time.ZoneOffset.UTC);
-            return dateWithZone(there, 0);
-        }
-        int offsetMinutes = here.getOffset().getTotalSeconds() / 60;
-        if (refinements.contains("date")) {
-            return DateValue.of(here.getYear(), here.getMonthValue(), here.getDayOfMonth());
-        }
-        if (refinements.contains("time")) {
-            return TimeValue.ofNanoseconds(here.toLocalTime().toNanoOfDay());
-        }
-        if (refinements.contains("zone")) {
-            return TimeValue.ofNanoseconds(offsetMinutes * 60L * TimeValue.NANOSECONDS_PER_SECOND);
-        }
-        if (refinements.contains("weekday")) {
-            return IntegerValue.of(here.getDayOfWeek().getValue());
-        }
-        if (refinements.contains("yearday")) {
-            return IntegerValue.of(here.getDayOfYear());
-        }
-        if (refinements.contains("year")) {
-            return IntegerValue.of(here.getYear());
-        }
-        if (refinements.contains("month")) {
-            return IntegerValue.of(here.getMonthValue());
-        }
-        if (refinements.contains("day")) {
-            return IntegerValue.of(here.getDayOfMonth());
-        }
-        return dateWithZone(here, offsetMinutes);
-    }
-
-    private static DateValue dateWithZone(java.time.ZonedDateTime moment, int offsetMinutes) {
-        return new DateValue(moment.getYear(), moment.getMonthValue(),
-                moment.getDayOfMonth(),
-                java.util.Optional.of(
-                        TimeValue.ofNanoseconds(moment.toLocalTime().toNanoOfDay())),
-                java.util.Optional.of(offsetMinutes));
-    }
 
 
     static void refuseTheObjectsOwnSelfBeforeAnyFieldIsAdded(

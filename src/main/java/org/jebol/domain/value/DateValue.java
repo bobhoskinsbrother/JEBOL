@@ -1,6 +1,7 @@
 package org.jebol.domain.value;
 
 import java.util.Optional;
+import java.util.function.ToLongFunction;
 
 /**
  * A date, optionally with a time and a zone, written {@code 15-May-2000} or
@@ -100,6 +101,32 @@ public record DateValue(
 
     public java.time.LocalDate asLocalDate() {
         return java.time.LocalDate.of(year, month, day);
+    }
+
+    private static final int MONTHS_A_YEAR = 12;
+    private static final int LONGEST_MONTH = 31;
+    private static final int WHERE_THE_YEAR_IS_PACKED = 48;
+    private static final int WHERE_THE_DAY_OF_THE_YEAR_IS_PACKED = 32;
+
+    @Override
+    public Value randomised(RandomDraw draw) {
+        java.time.LocalDate drawn = java.time.LocalDate
+                .of((int) draw.upTo(year), 1, 1)
+                .plusMonths(draw.upTo(MONTHS_A_YEAR))
+                .plusDays(draw.upTo(LONGEST_MONTH));
+        return timeOfDay.isEmpty()
+                ? DateValue.of(drawn.getYear(), drawn.getMonthValue(), drawn.getDayOfMonth())
+                : new DateValue(drawn.getYear(), drawn.getMonthValue(), drawn.getDayOfMonth(),
+                        Optional.of(TimeValue.ofNanoseconds(
+                                draw.upTo(TimeValue.NANOSECONDS_PER_DAY))),
+                        zoneMinutes);
+    }
+
+    @Override
+    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+        return ((long) year << WHERE_THE_YEAR_IS_PACKED)
+                + ((long) asLocalDate().getDayOfYear() << WHERE_THE_DAY_OF_THE_YEAR_IS_PACKED)
+                + nanosecondsOnTheClock();
     }
 
     public TimeValue clock() {

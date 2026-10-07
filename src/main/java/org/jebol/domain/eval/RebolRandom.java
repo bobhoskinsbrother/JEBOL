@@ -1,6 +1,9 @@
 package org.jebol.domain.eval;
 
-final class RebolRandom {
+import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.Raised;
+
+public final class RebolRandom extends RandomDrawing {
 
     private static final int LONG_LAG = 100;
     private static final int SHORT_LAG = 37;
@@ -15,11 +18,12 @@ final class RebolRandom {
     private int cursor = -1;
     private boolean everSeeded;
 
-    private static long modDiff(long left, long right) {
+    private long modDiff(long left, long right) {
         return (left - right) & (MODULUS - 1);
     }
 
-    long next() {
+    @Override
+    public long next() {
         if (cursor >= 1 && cursor < LONG_LAG) {
             return drawn[cursor++];
         }
@@ -35,7 +39,7 @@ final class RebolRandom {
         return drawn[0];
     }
 
-    void seed(long chosen) {
+    public void seed(long chosen) {
         long[] preparing = new long[LONG_LAG + LONG_LAG - 1];
         long spread = (chosen + 2) & (MODULUS - 2);
         for (int at = 0; at < LONG_LAG; at++) {
@@ -98,11 +102,30 @@ final class RebolRandom {
         }
     }
 
-    int below(int limit) {
-        return limit <= 0 ? 0 : (int) (Integer.toUnsignedLong((int) next()) % limit);
+    @Override
+    public long upTo(long limit) {
+        if (limit == 0) {
+            return 0;
+        }
+        long span = Math.abs(limit);
+        if (Long.compareUnsigned(span, MODULUS) > 0) {
+            throw Raised.of(EvaluationFailure.OVERFLOW);
+        }
+        long lastExactMultiple = MODULUS - Long.remainderUnsigned(MODULUS, span) - 1;
+        long drawn;
+        do {
+            drawn = next();
+        } while (Long.compareUnsigned(drawn, lastExactMultiple) > 0);
+        long picked = 1 + Long.remainderUnsigned(drawn, span);
+        return limit < 0 ? -picked : picked;
     }
 
-    int belowWithoutNarrowing(int limit) {
-        return limit <= 0 ? 0 : (int) Long.remainderUnsigned(next(), limit);
+    @Override
+    public double fraction() {
+        return (double) next() / (double) MODULUS;
+    }
+
+    public RandomDrawing secured() {
+        return new SecureDrawing(this);
     }
 }

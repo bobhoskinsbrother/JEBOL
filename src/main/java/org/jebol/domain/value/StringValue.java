@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 
 public record StringValue(StringStorage storage, int index, Datatype datatype)
@@ -24,6 +25,35 @@ public record StringValue(StringStorage storage, int index, Datatype datatype)
             throw new IllegalArgumentException(
                     "index " + index + " is outside 1.." + (storage.length() + 1));
         }
+    }
+
+    @Override
+    public Value randomised(RandomDraw draw) {
+        List<Integer> letters = new ArrayList<>();
+        for (int at = index; at <= storageLength(); at++) {
+            letters.add(storage.at(at));
+        }
+        draw.shuffle(letters);
+        for (int at = 0; at < letters.size(); at++) {
+            storage.set(index + at, letters.get(at));
+        }
+        return this;
+    }
+
+    @Override
+    public Value pickedAtRandom(RandomDraw draw) {
+        byte[] octets = text().getBytes(StandardCharsets.UTF_8);
+        if (octets.length == 0) {
+            return NoneValue.none();
+        }
+        int at = new CharacterBoundary().drawnIn(octets, draw);
+        return CharacterValue.of(
+                new String(octets, at, octets.length - at, StandardCharsets.UTF_8).codePointAt(0));
+    }
+
+    @Override
+    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
+        return checksumOfTheOctets.applyAsLong(text().getBytes(StandardCharsets.UTF_8));
     }
 
     public static StringValue of(String text) {

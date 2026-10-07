@@ -614,6 +614,60 @@ rule RandomOfAPairRandomisesEachHalf {
     ensures: RandomResult(is_pair: true, x_is_finite: true, y_is_finite: true)
 }
 
+-- RANDOM of a percent answers a percent, and RANDOM of a decimal a decimal.
+-- `random/seed 1 random 100%` is 6.8454436335908281%, the same digits
+-- `random/seed 1 random 1.0` gives scaled by a hundred, because a percent is
+-- the decimal it shows divided by a hundred and the fraction drawn is the
+-- same. ACTION(random) in t-decimal.c writes the drawn decimal back into the
+-- value it was handed, so the datatype is the one that came in.
+--
+-- JEBOL used to answer a decimal for both, so `random 1%` was
+-- 0.00068454436335908277 where r3 shows 0.068454436335908277%.
+rule RandomOfAPercentStaysAPercent {
+    when: EvaluateRandom(subject)
+    requires: is_percent(subject)
+    ensures: RandomResult(is_percent: true)
+}
+
+-- RANDOM/SECURE draws from the same generator as RANDOM, and passes each
+-- number it draws through SHA-1 before using it. It is not the operating
+-- system's randomness: after `random/seed 1`, `random/secure 100` is 46 every
+-- time, where `random 100` is 75.
+--
+-- Random_Int in f-random.c lays the drawn number out as its eight bytes, low
+-- byte first, pads them to twenty with copies of the low byte, hashes those,
+-- and reads the first eight bytes of the digest back the same way. So a
+-- secure number spans all sixty-four bits and may be negative, and three
+-- things follow from that:
+--
+-- * Random_Range does not refuse a limit past two to the sixty-second, so
+--   `random/secure 9223372036854775807` answers rather than overflowing;
+-- * Random_Dec scales by two to the minus sixty-four rather than minus
+--   sixty-two, reading a negative draw as its unsigned value;
+-- * a tuple's octet is the signed remainder cast to a byte, so a negative
+--   draw can answer 255 for an octet whose limit was 2:
+--   `random/seed 1 random/secure 1.2.3` is 1.255.3.
+rule RandomSecureHashesEachDraw {
+    when: EvaluateRandom(subject)
+    requires: refinement_asked(secure)
+    ensures: RandomResult(drawn_from: the_sha1_of_each_number_the_generator_draws)
+}
+
+-- RANDOM's own refusals carry nothing beyond their id, as the C raises them.
+-- A limit past two to the sixty-second is `overflow` with no argument;
+-- /SEED of a block or a vector, and /ONLY of a vector, are `bad-refines`
+-- with no argument; and /SEED of a value it cannot make a seed out of is
+-- `cannot-use` naming RANDOM and the datatype, as RANDOM of that value is.
+--
+-- JEBOL used to put a sentence of its own into ARG1 for each of these, so a
+-- script reading `e/arg1` saw prose where r3 shows none.
+rule RandomsRefusalsCarryWhatTheCCarries {
+    when: EvaluateRandom(subject)
+    requires: the_call_is_refused(subject)
+    ensures: CallFails(error: the_id_the_c_raises(subject),
+        about: the_arguments_the_c_raises_with(subject))
+}
+
 -- Two pairs are equal when both halves are. They are ordered on the first
 -- half alone, and the second half is looked at only to break a tie, so
 -- 1x2 < 2x1 is true: the x halves settle it before the y halves are
@@ -4565,7 +4619,66 @@ rule EndingAProcessTheOperatorMayNotSignalIsRefusedAsPermission {
     requires: a_process_is_running_under(number)
     requires: not the_host_could_end_it(number)
 
-    ensures: CallFails(error: permission_denied, about: number)
+    ensures: CallFails(error: permission_denied)
+}
+
+-- A pair of numbers to end a process with must be exactly two, and each must
+-- be an integer. A block of any other length is `invalid-arg` naming the
+-- block; a block of two is `invalid-arg` naming the first element that is
+-- not an integer, the process before the signal. So `access-os/set 'pid
+-- [1 x]` names `x`, and `[a b]` names `a`, never the whole block.
+rule APairToEndAProcessWithIsCheckedElementByElement {
+    when: EvaluateCall(access_os, pid, given)
+    requires: asked_for(set)
+    requires: is_block(given)
+
+    ensures:
+        if given.count != 2: CallFails(error: invalid_arg, about: given)
+        else if not is_integer(given.first): CallFails(error: invalid_arg, about: given.first)
+        else if not is_integer(given.second): CallFails(error: invalid_arg, about: given.second)
+}
+
+-- ACCESS-OS reads five fields and refuses every other word with
+-- `invalid-arg` naming it. PID is the interpreter's own process number. UID,
+-- EUID, GID and EGID are the real and effective user and group the process
+-- runs as, read from the host.
+--
+-- A host that cannot say is `not-here` naming the field, as n-io.c raises
+-- for OS_ENA, which is what r3 answers for these four on Windows. A host
+-- given no way to start a program cannot say, because reading the four is
+-- asking the machine rather than the JVM.
+rule AccessOsReadsTheProcessesIdentityFromTheHost {
+    when: EvaluateCall(access_os, field)
+    requires: not asked_for(set)
+
+    ensures:
+        if field not in {uid, euid, gid, egid, pid}: CallFails(error: invalid_arg, about: field)
+        else if field = pid: CallResult(value: the_process_number)
+        else if the_host_can_read(field): CallResult(value: the_hosts_number_for(field))
+        else: CallFails(error: not_here, about: field)
+
+    @guidance
+        -- The JVM has no call for the effective user or group, so the
+        -- host asks `id`, which every POSIX system has: `id -ru`, `id -u`,
+        -- `id -rg` and `id -g`.
+}
+
+-- ACCESS-OS/SET of UID, EUID, GID or EGID takes an integer and refuses any
+-- other value with `invalid-arg` naming it, before anything is asked of the
+-- host. With an integer it is `not-here` naming the field.
+--
+-- r3 on a POSIX machine calls setuid and answers permission-denied unless it
+-- runs as root. A JVM cannot change who it runs as, and changing it would
+-- change it for every interpreter the host holds, so JEBOL answers what r3
+-- answers on a host without the call. Recorded in docs/rebol-findings.md.
+rule AccessOsCannotChangeWhoTheProcessRunsAs {
+    when: EvaluateCall(access_os, field, given)
+    requires: asked_for(set)
+    requires: field in {uid, euid, gid, egid}
+
+    ensures:
+        if not is_integer(given): CallFails(error: invalid_arg, about: given)
+        else: CallFails(error: not_here, about: field)
 }
 
 -- A string or a binary on /input is piped to the child, and then its input
@@ -11189,10 +11302,13 @@ rule TheWeekBeginsOnMonday {
 -- now/year/month`. The parts are alternatives rather than a set to pick from,
 -- and /PRECISE is the one refinement that says how to read the clock rather
 -- than which part to answer.
+--
+-- The error carries no argument. Assert_Max_Refines raises Trap0, so `e/arg1`
+-- of `try [now/year/month]` is none.
 rule OnlyOneQuestionAtATime {
     when: EvaluateCall(now)
     requires: count_of(refinements_asked) > how_many_are_allowed
-    ensures: CallFails(error: bad_refines, about: now)
+    ensures: CallFails(error: bad_refines)
 }
 
 -- === A character's two measurements ==========
