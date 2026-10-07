@@ -10,7 +10,6 @@ import org.jebol.domain.value.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static java.util.Set.of;
@@ -1198,118 +1197,14 @@ public final class RebolNativeWords {
     }
 
 
-    private static Raised refusedByTheHost(String errorId, String because) {
-        String reason = because + ", which is "
-                + ServiceRefusal.NOT_PRESENT.name()
-                        .toLowerCase(java.util.Locale.ROOT).replace('_', ' ');
-        return new Raised(ErrorValue.about(
-                ErrorCategory.ACCESS, errorId, reason, StringValue.of(reason)));
-    }
-
     private void registerParse() {
         register(new ParseNative());
     }
 
     private void registerScreen() {
-        define("init-top-window",
-                List.of(Parameter.required("gob", of(Datatype.GOB))),
-                (arguments, evaluator, context) -> {
-                    grantedServices.require(HostService.WINDOWS);
-                    return theRootGobTakenBy(evaluator.screen(), arguments.getFirst());
-                });
-
-        define("gui-metric",
-                List.of(Parameter.required("keyword", of(Datatype.WORD)),
-                        Parameter.belongingTo("set", "val", ANYTHING),
-                        Parameter.belongingTo("display", "idx", of(Datatype.INTEGER))),
-                of("set", "display"),
-                (arguments, evaluator, context, refinements) -> {
-                    grantedServices.require(HostService.WINDOWS);
-                    return measurementOf(evaluator.screen(),
-                            metricNamedBy(arguments.getFirst()),
-                            displayAskedFor(arguments, refinements));
-                });
-
-        define("show",
-                List.of(Parameter.required("gob",
-                        of(Datatype.GOB, Datatype.NONE, Datatype.BLOCK))),
-                (arguments, evaluator, context) -> {
-                    grantedServices.require(HostService.WINDOWS);
-                    return whatWasShown(evaluator.screen(), arguments.getFirst());
-                });
-    }
-
-    private static Value theRootGobTakenBy(ScreenPort screen, Value given) {
-        if (!(given instanceof GobValue root)) {
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "init-top-window takes a gob, not "
-                            + given.datatype().literalSpelling());
-        }
-        ScreenPort.takeAsTheRoot(screen, root);
-        return NoneValue.none();
-    }
-
-    private static Value measurementOf(
-            ScreenPort screen, ScreenMetric metric, int display) {
-
-        if (metric.isACount()) {
-            return IntegerValue.of(screen.displayCount());
-        }
-        if (screen.hasADisplay() && !servesDisplay(screen, display)) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "there is no display " + display);
-        }
-        if (!screen.hasADisplay()) {
-            return PairValue.of(0, 0);
-        }
-        return screen.measure(metric, display);
-    }
-
-    private static boolean servesDisplay(ScreenPort screen, int display) {
-        return display >= 0 && display < screen.displayCount();
-    }
-
-    private static ScreenMetric metricNamedBy(Value asked) {
-        if (!(asked instanceof WordValue word)
-                || word.datatype() != Datatype.WORD) {
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "gui-metric takes a word, not "
-                            + asked.datatype().literalSpelling());
-        }
-        return ScreenMetric.named(word.canonical()).orElseThrow(() ->
-                Raised.of(EvaluationFailure.INVALID_ARG,
-                        "no host serves the metric " + word.canonical()));
-    }
-
-    private static int displayAskedFor(List<Value> arguments, Set<String> refinements) {
-        if (!refinements.contains("display")) {
-            return 0;
-        }
-        Value written = arguments.getLast();
-        if (!(written instanceof IntegerValue(long magnitude))) {
-            throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    "a display is numbered with an integer, not "
-                            + written.datatype().literalSpelling());
-        }
-        return (int) magnitude;
-    }
-
-    private static Value whatWasShown(ScreenPort screen, Value given) {
-        if (given instanceof GobValue gob) {
-            throughScreen(() -> {
-                screen.show(gob);
-                return NoneValue.none();
-            });
-        }
-        return given;
-    }
-
-    private static Value throughScreen(Supplier<Value> operation) {
-        try {
-            return operation.get();
-        } catch (ScreenPort.Denied denied) {
-            throw refusedByTheHost(denied.errorId(), denied.getMessage());
-        }
+        register(new InitTopWindowNative(grantedServices));
+        register(new GuiMetricNative(grantedServices));
+        register(new ShowNative(grantedServices));
     }
 
     private static String forOutput(Value value, Evaluator evaluator) {

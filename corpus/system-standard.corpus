@@ -157,9 +157,10 @@ object? make system/standard/enum [name: 'colours]
 --- note file in its load order because the graphics target is a
 --- note renderer of its own, so the file runs and writes this field.
 --- note
---- note It is a partial load either way: view-funcs.reb still stops
---- note further down on init-top-window, a native from the window
---- note host extension that no build here has.
+--- note JEBOL loads the whole file: init-top-window, a command from the
+--- note window host extension that r3-head is built without, is a JEBOL
+--- note native, and with no screen it takes the root gob and sizes it at
+--- note nothing rather than stopping the load.
 --- origin view-funcs.reb line 18; divergence confirmed against R3 3.22.1
 --- code
 object? system/standard/font

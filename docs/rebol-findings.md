@@ -6468,3 +6468,27 @@ else is `invalid-spec` naming the ref, so `create [scheme: 'file path:
 from r3 for every value, not only the newly accepted unset. `compress/part`
 and `compress/level` produce different bytes from r3 for short inputs. Both
 are ports of their own still to do.
+
+## 219. The screen commands cannot be swept against r3-head, and INIT-TOP-WINDOW answers unset
+
+**r3-head has no view host.** `make/rebol3.nest` builds `host-files-view`
+on Windows only (`include-view: [ ; currently only on Windows!`), so a macOS
+r3-head answers `#(unset!)` for `:show`, `:gui-metric` and
+`:init-top-window`. The authority for these three is the C instead:
+`boot/window.reb` for what each takes, and `os/win32/host-window.c` and
+`os/posix/host-window.c` for what each does.
+
+**The declarations agree.** `init-top-window` takes `gob [gob!]`, `show`
+takes `gob [gob! none! block!]`, and `gui-metric` takes `keyword [word!]`,
+`/set val` with no type and `/display idx [integer!]`. The C reads the
+display index from frame slot 5 whether or not `/set` is also given.
+
+**INIT-TOP-WINDOW answers unset.** The Windows host breaks out of the
+command's case and returns `RXR_UNSET` at the foot of `RXD_Window`. The posix
+host's copy has that return commented out and falls off the end of the
+function, so it has no defined answer. JEBOL answered `none`; it now answers
+unset, following the Windows host. Nothing in the library reads the answer.
+
+**SHOW answers its argument.** Both hosts return `RXR_VALUE` without
+touching the slot, so a gob, `none` and a block all come back unchanged, and
+only a gob reaches `OS_Show_Gob`.

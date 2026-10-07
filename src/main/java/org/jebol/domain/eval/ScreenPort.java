@@ -92,11 +92,11 @@ public interface ScreenPort {
      * {@code screen/size - window/size / 2}, so a root left at nothing puts
      * every centred window in the same place.
      */
-    static void takeAsTheRoot(ScreenPort screen, GobValue root) {
-        screen.takeTheRootGob(root);
+    default void takeAsTheRoot(GobValue root) {
+        takeTheRootGob(root);
         root.storage().detachFromParent();
-        root.storage().size(screen.hasADisplay()
-                ? screen.measure(ScreenMetric.SCREEN_SIZE, 0)
+        root.storage().size(hasADisplay()
+                ? measure(ScreenMetric.SCREEN_SIZE, 0)
                 : PairValue.of(0, 0));
     }
 

@@ -5,7 +5,6 @@ import org.jebol.domain.host.HostService;
 import org.jebol.domain.read.LibraryFile;
 import org.jebol.domain.read.LibraryFileHeader;
 import org.jebol.domain.read.TranscodeResult;
-import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.*;
 
 import java.io.File;
@@ -881,7 +880,7 @@ public final class Interpreter {
 
     private void handOverTheRootGobTo(ScreenPort port) {
         if (pathInto("system", "view", "screen-gob") instanceof GobValue root) {
-            ScreenPort.takeAsTheRoot(port, root);
+            port.takeAsTheRoot(root);
         }
     }
 

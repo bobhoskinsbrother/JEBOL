@@ -29,7 +29,7 @@ public abstract class WindowNative extends HostNative {
         }
     }
 
-    private Raised refusedByTheHost(String errorId, String because) {
+    protected Raised refusedByTheHost(String errorId, String because) {
         String reason = because + ", which is "
                 + ServiceRefusal.NOT_PRESENT.name().toLowerCase(Locale.ROOT).replace('_', ' ');
         return new Raised(ErrorValue.about(ErrorCategory.ACCESS, errorId, reason, StringValue.of(reason)));

@@ -220,6 +220,21 @@ rule TheRootGobOfAScreenThatIsNotThereIsSizedAtNothing {
         gob.size = zero_pair()
 }
 
+-- INIT-TOP-WINDOW answers unset, with a screen or without one.
+--
+-- The Windows host, the only one Rebol's build compiles a view into, breaks
+-- out of the command's case and returns RXR_UNSET at the foot of the
+-- dispatcher. The posix host's copy has that return commented out and falls
+-- off the end of the function, so it has no answer to agree with and the
+-- Windows host is the reading taken. Nothing in the library reads the
+-- answer: INIT-VIEW-SYSTEM calls the command for its effect and moves on.
+rule TakingTheRootGobAnswersUnset {
+    when: script_initialises_the_top_window(run, gob)
+    requires: windows_are_granted(run)
+
+    ensures: InitTopWindowResult(value: unset_value())
+}
+
 ------------------------------------------------------------
 -- Asking about the screen
 ------------------------------------------------------------

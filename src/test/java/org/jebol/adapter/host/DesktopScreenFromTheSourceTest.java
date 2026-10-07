@@ -201,7 +201,7 @@ class DesktopScreenFromTheSourceTest {
         void takingTheRootIsAccepted() {
             DesktopScreen screen = DesktopScreen.onThisMachine();
 
-            ScreenPort.takeAsTheRoot(screen, GobValue.empty());
+            screen.takeAsTheRoot(GobValue.empty());
 
             assertThat(screen.takeQueuedEvents()).isEmpty();
         }
