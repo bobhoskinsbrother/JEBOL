@@ -5,7 +5,7 @@ import org.jebol.domain.value.*;
 
 import java.util.List;
 
-public abstract class ParityAction extends DefaultNative {
+public abstract class ParityAction extends DefaultNative implements ActionValue {
 
     private static final double WHERE_A_DECIMAL_STOPS_COUNTING_IN_ONES = 9007199254740992.0;
 

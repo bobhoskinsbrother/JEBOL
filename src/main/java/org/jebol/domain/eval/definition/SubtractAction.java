@@ -2,13 +2,14 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Arithmetic;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.ActionValue;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
 import java.util.Set;
 
-public class SubtractAction extends DefaultNative {
+public class SubtractAction extends DefaultNative implements ActionValue {
 
     public String nativeName() {
         return "subtract";

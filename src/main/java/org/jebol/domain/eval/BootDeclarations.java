@@ -2,7 +2,6 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
-import org.jebol.domain.value.ActionNames;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.NativeValue;
@@ -71,10 +70,11 @@ public final class BootDeclarations {
         if (declared != null) {
             return declared;
         }
-        if (ActionNames.testsADatatype(built.nativeName())) {
-            return THE_SPEC_EVERY_DATATYPE_TEST_HAS;
-        }
         return specBlockOf(built.parameters());
+    }
+
+    public BlockValue theSpecEveryDatatypeTestHas() {
+        return THE_SPEC_EVERY_DATATYPE_TEST_HAS;
     }
 
     private Map<String, DatatypeSpec> datatypeSpecs() {

@@ -7,7 +7,7 @@ import org.jebol.domain.value.*;
 import java.util.List;
 import java.util.Set;
 
-public class PokeAction extends DefaultNative {
+public class PokeAction extends DefaultNative implements ActionValue {
 
     @Override
     public String nativeName() {
@@ -28,7 +28,7 @@ public class PokeAction extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> evaluator
                 .theRebolActorsAnswer("poke", arguments, Set.of())
                 .orElseGet(() -> Actions.of(arguments.getFirst())
-                        .orElseThrow(() -> Raised.cannotUse(arguments.getFirst(), nativeName()))
+                        .orElseThrow(() -> Raised.cannotUse(arguments.getFirst(), this))
                         .poked(arguments.get(1), arguments.get(2)));
     }
 }

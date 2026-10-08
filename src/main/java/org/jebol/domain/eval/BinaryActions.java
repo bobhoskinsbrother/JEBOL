@@ -37,7 +37,7 @@ public final class BinaryActions extends SeriesActions {
                     throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                             codepoint + " does not fit in a byte");
             case CharacterValue(int codepoint) -> codepoint;
-            default -> throw Raised.cannotUse(bytes, "poke");
+            default -> throw Raised.cannotUseTheAction(bytes, "poke");
         };
     }
 

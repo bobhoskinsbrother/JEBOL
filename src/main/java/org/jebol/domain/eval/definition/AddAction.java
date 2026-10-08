@@ -2,13 +2,14 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Add;
+import org.jebol.domain.value.ActionValue;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-public class AddAction extends DefaultNative {
+public class AddAction extends DefaultNative implements ActionValue {
     @Override
     public String nativeName() {
         return "add";

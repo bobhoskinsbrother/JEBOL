@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public class ReverseAction extends DefaultNative {
+public class ReverseAction extends DefaultNative implements ActionValue {
 
     @Override
     public String nativeName() {

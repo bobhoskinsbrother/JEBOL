@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class TrimAction extends DefaultNative {
+public class TrimAction extends DefaultNative implements ActionValue {
 
     private static final int AN_OCTET = 0xFF;
 

@@ -4,6 +4,7 @@ import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.RandomDrawing;
 import org.jebol.domain.eval.RebolRandom;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.ActionValue;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.UnsetValue;
@@ -12,7 +13,7 @@ import org.jebol.domain.value.Value;
 import java.util.List;
 import java.util.Set;
 
-public class RandomAction extends DefaultNative {
+public class RandomAction extends DefaultNative implements ActionValue {
 
     private final RebolRandom randomness = new RebolRandom();
     private final RandomDrawing secureRandomness = randomness.secured();

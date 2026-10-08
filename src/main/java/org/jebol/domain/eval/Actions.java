@@ -24,39 +24,39 @@ public interface Actions {
     Value subject();
 
     default Value append(Asked asked) {
-        throw Raised.cannotUse(asked.subject(), "append");
+        throw Raised.cannotUseTheAction(asked.subject(), "append");
     }
 
     default Value insert(Asked asked) {
-        throw Raised.cannotUse(asked.subject(), "insert");
+        throw Raised.cannotUseTheAction(asked.subject(), "insert");
     }
 
     default Value cleared() {
-        throw Raised.cannotUse(subject(), "clear");
+        throw Raised.cannotUseTheAction(subject(), "clear");
     }
 
     default int length() {
-        throw Raised.cannotUse(subject(), "length?");
+        throw Raised.cannotUseTheAction(subject(), "length?");
     }
 
     default void takeOutFrom(int oneBasedIndex, int howMany) {
-        throw Raised.cannotUse(subject(), "remove");
+        throw Raised.cannotUseTheAction(subject(), "remove");
     }
 
     default Value removed(long howMany) {
-        throw Raised.cannotUse(subject(), "remove");
+        throw Raised.cannotUseTheAction(subject(), "remove");
     }
 
     default Value takenOne() {
-        throw Raised.cannotUse(subject(), "take");
+        throw Raised.cannotUseTheAction(subject(), "take");
     }
 
     default Value takenSeveral(long wanted) {
-        throw Raised.cannotUse(subject(), "take");
+        throw Raised.cannotUseTheAction(subject(), "take");
     }
 
     default Value poked(Value position, Value written) {
-        throw Raised.cannotUse(subject(), "poke");
+        throw Raised.cannotUseTheAction(subject(), "poke");
     }
 
     default Value complemented() {

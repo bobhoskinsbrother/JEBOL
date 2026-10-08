@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.Set;
 
 public sealed interface NativeValue extends DeclaresParameters
-        permits DefaultNative, AskedNative, RespecifiedNative {
+        permits DefaultNative, ActionValue, AskedNative, RespecifiedNative {
 
     String nativeName();
 
@@ -48,6 +48,6 @@ public sealed interface NativeValue extends DeclaresParameters
 
     @Override
     default Datatype datatype() {
-        return ActionNames.holds(nativeName()) ? Datatype.ACTION : Datatype.NATIVE;
+        return Datatype.NATIVE;
     }
 }

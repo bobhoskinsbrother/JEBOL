@@ -6778,6 +6778,32 @@ surface BuiltInFunctions {
 -- script asks it what datatypes exist rather than being told, and
 -- Rebol's own library reaches for it in six of its files.
 
+-- system/catalog/actions lists the sixty actions of actions.reb, in the
+-- order actions.reb declares them. system/catalog/natives lists the natives
+-- in the order Rebol's build collects them: the 175 of natives.reb in their
+-- order, then the natives declared only in C, file by file, `version` first
+-- and `form-oid` last. r3-head lists 234.
+--
+-- Neither lists the datatype predicates. `integer?`, `block?` and the rest
+-- are actions -- `type? :integer?` is action! -- but they are made from the
+-- datatype table rather than declared, so neither catalogue names them.
+-- Neither lists what this build has and r3-head does not: the typeset
+-- predicates `any-type?`, `copyable?`, `immediate?` and `internal?`, the
+-- window commands `show`, `gui-metric` and `init-top-window`, `xtest`, and
+-- `request-color`, which r3-head defines as a function of its library.
+--
+-- JEBOL used to list every one of those as a native, and sorted the natives
+-- alphabetically, so system/catalog/natives held 302 words where r3 holds
+-- 234 and in another order.
+rule TheCatalogueListsWhatRebolDeclaresInItsOrder {
+    when: ReadThroughPath(system, catalog)
+
+    ensures: the_actions_listed = the_actions_of_actions_reb_in_their_order
+    ensures: the_natives_listed = the_natives_rebol_declares_in_the_order_its_build_collects_them
+    ensures: not any_datatype_predicate_is_listed
+    ensures: not anything_r3_head_lacks_is_listed
+}
+
 -- Resolved against a real R3: USE makes a context holding the words it
 -- is given, binds the block to it, and evaluates it there. A word named
 -- in the USE shadows an outer one of the same name and the outer one is

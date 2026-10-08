@@ -8,7 +8,7 @@ import org.jebol.domain.value.*;
 import java.util.List;
 import java.util.Set;
 
-public abstract class SeriesOrFileAction extends DefaultNative {
+public abstract class SeriesOrFileAction extends DefaultNative implements ActionValue {
 
     private final GrantedServices granted;
 

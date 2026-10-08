@@ -79,13 +79,25 @@ public final class Raised extends RuntimeException {
      * that offended as ARG2, so a script reads either without parsing prose.
      */
     public static Raised cannotUse(Value value, String nativeName) {
+        return cannotUse(value, nativeName, WordValue.of(nativeName));
+    }
+
+    public static Raised cannotUseTheAction(Value value, String actionName) {
+        return cannotUse(value, actionName, WordValue.of(actionName, Datatype.SET_WORD));
+    }
+
+    public static Raised cannotUse(Value value, NativeValue refusing) {
+        return refusing instanceof ActionValue
+                ? cannotUseTheAction(value, refusing.nativeName())
+                : cannotUse(value, refusing.nativeName());
+    }
+
+    private static Raised cannotUse(Value value, String spelling, WordValue named) {
         return new Raised(ErrorValue.about(
                 ErrorCategory.SCRIPT, "cannot-use",
-                "cannot use " + nativeName + " on "
+                "cannot use " + spelling + " on "
                         + value.datatype().literalSpelling() + " value",
-                ActionNames.holds(nativeName)
-                        ? WordValue.of(nativeName, Datatype.SET_WORD)
-                        : WordValue.of(nativeName),
+                named,
                 DatatypeValue.of(value.datatype())));
     }
 

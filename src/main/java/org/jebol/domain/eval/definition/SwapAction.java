@@ -5,7 +5,7 @@ import org.jebol.domain.value.*;
 
 import java.util.List;
 
-public class SwapAction extends DefaultNative {
+public class SwapAction extends DefaultNative implements ActionValue {
 
     @Override
     public String nativeName() {

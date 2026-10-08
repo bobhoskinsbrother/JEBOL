@@ -190,7 +190,7 @@ public final class InterpreterMaker implements Maker {
         }
         Value replacementBody = parts.size() > 1 ? parts.get(1) : NoneValue.none();
         if (prototype instanceof NativeValue && replacementBody instanceof BlockValue) {
-            throw Raised.cannotUse(spec, "make");
+            throw Raised.cannotUseTheAction(spec, "make");
         }
         if (!(prototype instanceof FunctionValue written)) {
             return prototype instanceof NativeValue built && !keepingTheSpecification

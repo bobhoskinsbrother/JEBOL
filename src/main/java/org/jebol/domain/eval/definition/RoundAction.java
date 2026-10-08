@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public class RoundAction extends DefaultNative {
+public class RoundAction extends DefaultNative implements ActionValue {
 
     private static final int DIGITS_A_DECIMAL_KEEPS = 15;
 

@@ -9,14 +9,14 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 
-class RemainingNativesAsARealRebolAnswersThemEndToEndTest {
+class CatalogueAsRebolListsItEndToEndTest {
 
     @TempDir
     Path directory;
 
     @TestFactory
-    @DisplayName("each now, also, comment, to-value, trace, extension, access-os and random row prints what a real 3.22.5 printed")
+    @DisplayName("system/catalog lists the natives and actions a real 3.22.5 lists, in its order")
     Stream<DynamicTest> eachRowPrintsWhatRebolPrinted() throws IOException {
-        return new RecordedRebolScript("remaining-natives", directory).eachRowPrintsWhatRebolPrinted();
+        return new RecordedRebolScript("catalogue", directory).eachRowPrintsWhatRebolPrinted();
     }
 }

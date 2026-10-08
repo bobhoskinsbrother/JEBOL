@@ -29,42 +29,42 @@ public interface MakerSource {
 
         @Override
         public Value make(Datatype kind, Value spec) {
-            throw Raised.cannotUse(spec, "make");
+            throw Raised.cannotUseTheAction(spec, "make");
         }
 
         @Override
         public Value makeAnotherFrom(Datatype kind, Value spec) {
-            throw Raised.cannotUse(spec, "make");
+            throw Raised.cannotUseTheAction(spec, "make");
         }
 
         @Override
         public Value makeObjectFrom(ObjectValue prototype, Value spec) {
-            throw Raised.cannotUse(spec, "make");
+            throw Raised.cannotUseTheAction(spec, "make");
         }
 
         @Override
         public Value makeFunctionFrom(Value function, BlockValue spec) {
-            throw Raised.cannotUse(spec, "make");
+            throw Raised.cannotUseTheAction(spec, "make");
         }
 
         @Override
         public Value makeErrorFrom(Value spec) {
-            throw Raised.cannotUse(spec, "make");
+            throw Raised.cannotUseTheAction(spec, "make");
         }
 
         @Override
         public Value makeStructFrom(StructValue prototype, Value spec) {
-            throw Raised.cannotUse(spec, "make");
+            throw Raised.cannotUseTheAction(spec, "make");
         }
 
         @Override
         public Value makeEventFrom(EventValue prototype, Value spec) {
-            throw Raised.cannotUse(spec, "make");
+            throw Raised.cannotUseTheAction(spec, "make");
         }
 
         @Override
         public Value convertedTo(DatatypeValue wanted, Value value) {
-            throw Raised.cannotUse(value, "to");
+            throw Raised.cannotUseTheAction(value, "to");
         }
     }
 }

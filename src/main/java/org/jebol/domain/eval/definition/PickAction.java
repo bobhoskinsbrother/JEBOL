@@ -1,6 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.ActionValue;
 import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
@@ -10,7 +11,7 @@ import org.jebol.domain.value.Value;
 import java.util.List;
 import java.util.Set;
 
-public class PickAction extends PickingNative {
+public class PickAction extends PickingNative implements ActionValue {
 
     private static final int WHAT_TRUE_PICKS = 1;
 

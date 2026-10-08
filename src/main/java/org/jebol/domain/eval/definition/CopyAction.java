@@ -7,7 +7,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-public class CopyAction extends DefaultNative {
+public class CopyAction extends DefaultNative implements ActionValue {
 
     @Override
     public String nativeName() {

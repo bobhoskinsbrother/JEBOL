@@ -9,7 +9,7 @@ import org.jebol.domain.value.*;
 import java.util.List;
 import java.util.Set;
 
-public class ReflectAction extends DefaultNative {
+public class ReflectAction extends DefaultNative implements ActionValue {
 
     private final BootDeclarations declarations;
 
@@ -36,7 +36,7 @@ public class ReflectAction extends DefaultNative {
 
     private Value reflected(Value subject, WordValue field) {
         return switch (subject) {
-            case UnsetValue nothing -> throw Raised.cannotUse(nothing, nativeName());
+            case UnsetValue nothing -> throw Raised.cannotUse(nothing, this);
             case VectorValue vector -> reflectedFrom(vector, field);
             case DatatypeValue(Datatype represents) -> declarations.specOf(represents)
                     .map(described -> reflectedFrom(described, field.canonical()))

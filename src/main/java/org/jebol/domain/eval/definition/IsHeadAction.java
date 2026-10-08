@@ -5,7 +5,7 @@ import org.jebol.domain.value.*;
 
 import java.util.List;
 
-public class IsHeadAction extends DefaultNative {
+public class IsHeadAction extends DefaultNative implements ActionValue {
 
     @Override
     public String nativeName() {

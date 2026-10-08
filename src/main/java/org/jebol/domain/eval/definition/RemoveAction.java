@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public class RemoveAction extends DefaultNative {
+public class RemoveAction extends DefaultNative implements ActionValue {
 
     private static final long ONE_ITEM = 1;
 

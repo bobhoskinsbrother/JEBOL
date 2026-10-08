@@ -156,7 +156,7 @@ public abstract non-sealed class DefaultNative implements NativeValue {
     }
 
     protected Value refuseTheDatatype(Value given) {
-        throw Raised.cannotUse(given, nativeName());
+        throw Raised.cannotUse(given, this);
     }
 
     private List<Parameter> each(String[] names, Set<Datatype> allowed) {

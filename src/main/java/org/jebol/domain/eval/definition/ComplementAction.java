@@ -7,7 +7,7 @@ import org.jebol.domain.value.*;
 import java.util.List;
 import java.util.Set;
 
-public class ComplementAction extends DefaultNative {
+public class ComplementAction extends DefaultNative implements ActionValue {
 
     @Override
     public String nativeName() {

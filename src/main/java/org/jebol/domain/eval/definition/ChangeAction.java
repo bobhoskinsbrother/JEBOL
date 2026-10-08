@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.SeriesChange;
+import org.jebol.domain.value.ActionValue;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Typeset;
@@ -9,7 +10,7 @@ import org.jebol.domain.value.Typeset;
 import java.util.List;
 import java.util.Set;
 
-public class ChangeAction extends DefaultNative {
+public class ChangeAction extends DefaultNative implements ActionValue {
 
     @Override
     public String nativeName() {

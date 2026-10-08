@@ -7,6 +7,7 @@ import org.jebol.domain.read.Construction;
 import org.jebol.domain.value.*;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 
 public final class RebolNativeWords {
@@ -15,7 +16,10 @@ public final class RebolNativeWords {
     private String operatingSystemName = "JVM";
     private Context systemInternals = Context.root();
     private final BootDeclarations bootDeclarations = new BootDeclarations();
-    private final Map<String, DefaultNative> definitions = new LinkedHashMap<>();
+    private final Map<String, DefaultNative> actions = new LinkedHashMap<>();
+    private final Map<String, DefaultNative> natives = new LinkedHashMap<>();
+    private final Map<String, DefaultNative> datatypePredicates = new LinkedHashMap<>();
+    private final Map<String, DefaultNative> additionsToRebol = new LinkedHashMap<>();
     private final Map<String, String> operatorTwins = new LinkedHashMap<>();
     private final Map<String, String> aliases = new LinkedHashMap<>();
     private final Context runState = Context.root();
@@ -27,32 +31,13 @@ public final class RebolNativeWords {
     private final Ports ports = new Ports(grantedServices);
     private final LocalFileSeparator localFileSeparator = new LocalFileSeparator();
 
-    private static final List<String> ACTION_NAMES = ActionNames.inDeclarationOrder();
     private static final int CODEC_HANDLE_IDENTITY = 1000;
 
     private RebolNativeWords() {
-        registerBinaryMathAndLogicActions();
-        registerUnaryActions();
-        registerSeriesNavigationActions();
-        registerSeriesExtractionActions();
-        registerSeriesSearchActions();
-        registerMakingCopyingAndModifyingActions();
-        registerPortActions();
+        registerActions();
+        registerNatives();
         registerDatatypePredicates();
-        registerControlNatives();
-        registerLoopNatives();
-        registerDataNatives();
-        registerSetNatives();
-        registerStringNatives();
-        registerDialectNatives();
-        registerMathNatives();
-        registerInputAndOutputNatives();
-        registerSystemNatives();
-        registerCryptographyNatives();
-        registerImageNatives();
-        registerSeriesNatives();
-        registerExtensionNatives();
-        registerScreenCommands();
+        registerExtensions();
     }
 
     public static RebolNativeWords standard() {
@@ -131,10 +116,14 @@ public final class RebolNativeWords {
         }
         context.register("system", systemObject(context));
 
-        definitions.values().forEach(this::declareItsSpec);
-        definitions.forEach(context::register);
-        operatorTwins.forEach((operator, twin) -> context.register(operator, new OperatorValue(operator, definitions.get(twin))));
-        aliases.forEach((alias, originalName) -> context.register(alias, definitions.get(originalName)));
+        Stream.of(actions, natives, additionsToRebol)
+                .flatMap(registered -> registered.values().stream())
+                .forEach(definition -> declare(definition, bootDeclarations.specOf(definition)));
+        datatypePredicates.values()
+                .forEach(predicate -> declare(predicate, bootDeclarations.theSpecEveryDatatypeTestHas()));
+        everyDefinition().forEach(definition -> context.register(definition.nativeName(), definition));
+        operatorTwins.forEach((operator, twin) -> context.register(operator, new OperatorValue(operator, definitionCalled(twin))));
+        aliases.forEach((alias, originalName) -> context.register(alias, definitionCalled(originalName)));
         return context;
     }
 
@@ -146,384 +135,331 @@ public final class RebolNativeWords {
         return new InterpreterMaker(evaluator, where, makingAndConverting);
     }
 
-    private void registerBinaryMathAndLogicActions() {
-        register(new AddAction());
-        register(new SubtractAction());
-        register(new MultiplyAction());
-        register(new DivideAction());
-        register(new RemainderAction());
-        register(new PowerAction());
-        register(new BitwiseAndAction());
-        register(new BitwiseOrAction());
-        register(new BitwiseXorAction());
-    }
-
-    private void registerUnaryActions() {
-        register(new NegateAction());
-        register(new ComplementAction());
-        register(new AbsoluteAction());
+    private void registerActions() {
+        registerAction(new AddAction());
+        registerAction(new SubtractAction());
+        registerAction(new MultiplyAction());
+        registerAction(new DivideAction());
+        registerAction(new RemainderAction());
+        registerAction(new PowerAction());
+        registerAction(new BitwiseAndAction());
+        registerAction(new BitwiseOrAction());
+        registerAction(new BitwiseXorAction());
+        registerAction(new NegateAction());
+        registerAction(new ComplementAction());
+        registerAction(new AbsoluteAction());
         alias("abs", "absolute");
-        register(new RoundAction());
-        register(new RandomAction(encodings));
-        register(new IsOddAction());
-        register(new IsEvenAction());
+        registerAction(new RoundAction());
+        registerAction(new RandomAction(encodings));
+        registerAction(new IsOddAction());
+        registerAction(new IsEvenAction());
+        registerAction(new HeadAction(grantedServices));
+        registerAction(new TailAction(grantedServices));
+        registerAction(new IsHeadAction());
+        registerAction(new IsTailAction(grantedServices));
+        registerAction(new IsPastAction());
+        registerAction(new NextAction(grantedServices));
+        registerAction(new BackAction(grantedServices));
+        registerAction(new SkipAction(grantedServices));
+        registerAction(new AtAction(grantedServices));
+        registerAction(new AtzAction(grantedServices));
+        registerAction(new IndexAction(grantedServices));
+        registerAction(new IndexzAction(grantedServices));
+        registerAction(new LengthAction(grantedServices));
+        registerAction(new PickAction());
+        registerAction(new FindAction());
+        registerAction(new SelectAction());
+        registerAction(new ReflectAction(bootDeclarations));
+        registerAction(new MakeAction());
+        registerAction(new ToAction());
+        registerAction(new CopyAction());
+        registerAction(new TakeAction(ports.cryptPort()));
+        registerAction(new PutAction());
+        registerAction(new InsertAction(grantedServices));
+        registerAction(new AppendAction(grantedServices));
+        registerAction(new RemoveAction());
+        registerAction(new ChangeAction());
+        registerAction(new PokeAction());
+        registerAction(new ClearAction(grantedServices));
+        registerAction(new TrimAction());
+        registerAction(new SwapAction());
+        registerAction(new ReverseAction());
+        registerAction(new SortAction());
+        registerAction(new CreateAction(grantedServices, ports));
+        registerAction(new DeleteAction(grantedServices, ports));
+        registerAction(new OpenAction(grantedServices, ports));
+        registerAction(new CloseAction(grantedServices, ports));
+        registerAction(new ReadAction(grantedServices, ports));
+        registerAction(new WriteAction(grantedServices, ports));
+        registerAction(new IsOpenAction(grantedServices, ports));
+        registerAction(new QueryAction(grantedServices, ports));
+        registerAction(new ModifyAction(grantedServices, ports));
+        registerAction(new UpdateAction(grantedServices, ports));
+        registerAction(new RenameAction(grantedServices, ports));
+        registerAction(new FlushAction());
     }
 
-    private void registerSeriesNavigationActions() {
-        register(new HeadAction(grantedServices));
-        register(new TailAction(grantedServices));
-        register(new IsHeadAction());
-        register(new IsTailAction(grantedServices));
-        register(new IsPastAction());
-        register(new NextAction(grantedServices));
-        register(new BackAction(grantedServices));
-        register(new SkipAction(grantedServices));
-        register(new AtAction(grantedServices));
-        register(new AtzAction(grantedServices));
-        register(new IndexAction(grantedServices));
-        register(new IndexzAction(grantedServices));
-        register(new LengthAction(grantedServices));
-    }
-
-    private void registerSeriesExtractionActions() {
-        register(new PickAction());
-    }
-
-    private void registerSeriesSearchActions() {
-        register(new FindAction());
-        register(new SelectAction());
-        register(new ReflectAction(bootDeclarations));
-    }
-
-    private void registerMakingCopyingAndModifyingActions() {
-        register(new MakeAction());
-        register(new ToAction());
-        register(new CopyAction());
-        register(new TakeAction(ports.cryptPort()));
-        register(new PutAction());
-        register(new InsertAction(grantedServices));
-        register(new AppendAction(grantedServices));
-        register(new RemoveAction());
-        register(new ChangeAction());
-        register(new PokeAction());
-        register(new ClearAction(grantedServices));
-        register(new TrimAction());
-        register(new SwapAction());
-        register(new ReverseAction());
-        register(new SortAction());
-    }
-
-    private void registerPortActions() {
-        register(new CreateAction(grantedServices, ports));
-        register(new DeleteAction(grantedServices, ports));
-        register(new OpenAction(grantedServices, ports));
-        register(new CloseAction(grantedServices, ports));
-        register(new ReadAction(grantedServices, ports));
-        register(new WriteAction(grantedServices, ports));
-        register(new IsOpenAction(grantedServices, ports));
-        register(new QueryAction(grantedServices, ports));
-        register(new ModifyAction(grantedServices, ports));
-        register(new UpdateAction(grantedServices, ports));
-        register(new RenameAction(grantedServices, ports));
-        register(new FlushAction());
+    private void registerNatives() {
+        registerNative(new AjoinNative());
+        registerNative(new AlsoNative());
+        registerNative(new AllNative());
+        registerNative(new AnyNative());
+        registerNative(new ApplyNative());
+        registerNative(new AssertNative());
+        registerNative(new AttemptNative());
+        registerNative(new BreakNative());
+        registerNative(new CaseNative());
+        registerNative(new CatchNative());
+        registerNative(new CommentNative());
+        registerNative(new ComposeNative());
+        registerNative(new ObjectNative());
+        alias("context", "object");
+        registerNative(new ContinueNative());
+        registerNative(new DoNative());
+        registerNative(new EitherNative());
+        registerNative(new ExitNative());
+        registerNative(new FindScriptNative());
+        registerNative(new ForNative());
+        registerNative(new ForAllNative());
+        registerNative(new ForeverNative());
+        registerNative(new ForEachNative());
+        registerNative(new ForSkipNative());
+        registerNative(new HaltNative());
+        registerNative(new IfNative());
+        registerNative(new LoopNative());
+        registerNative(new MapEachNative());
+        registerNative(new QuitNative());
+        registerNative(new ProtectNative());
+        registerNative(new UnprotectNative());
+        registerNative(new IsProtectedNative());
+        registerNative(new RecycleNative());
+        registerNative(new ReleaseNative());
+        registerNative(new ReduceNative());
+        registerNative(new RepeatNative());
+        registerNative(new RemoveEachNative());
+        registerNative(new ReturnNative());
+        registerNative(new SwitchNative());
+        registerNative(new ThrowNative());
+        registerNative(new TraceNative());
+        registerNative(new TryNative());
+        registerNative(new UnlessNative());
+        registerNative(new UntilNative());
+        registerNative(new WhileNative());
+        registerNative(new AsNative());
+        registerNative(new BindNative());
+        registerNative(new UnbindNative());
+        registerNative(new ContextOfWordNative());
+        registerNative(new ConstructNative());
+        registerNative(new DebaseNative(encodings));
+        registerNative(new EnbaseNative(encodings));
+        registerNative(new DecloakNative(encodings));
+        registerNative(new EncloakNative(encodings));
+        registerNative(new DelineNative());
+        registerNative(new EnlineNative());
+        registerNative(new DetabNative());
+        registerNative(new EntabNative());
+        registerNative(new DifferenceNative());
+        registerNative(new ExcludeNative());
+        registerNative(new IntersectNative());
+        registerNative(new UnionNative());
+        registerNative(new UniqueNative());
+        registerNative(new LowercaseNative());
+        registerNative(new UppercaseNative());
+        registerNative(new DehexNative(encodings));
+        registerNative(new EnhexNative(encodings));
+        registerNative(new GetNative());
+        registerNative(new InNative());
+        registerNative(new ParseNative());
+        registerNative(new SetNative());
+        registerNative(new ToHexNative());
+        registerNative(new TypeOfNative());
+        registerNative(new UnsetNative());
+        registerNative(new UtfNative());
+        registerNative(new InvalidUtfNative());
+        registerNative(new IsValueNative());
+        registerNative(new ToValueNative());
+        registerNative(new SplitLinesNative());
+        registerNative(new PrintNative());
+        registerNative(new PrinNative());
+        registerNative(new MoldNative());
+        registerNative(new FormNative());
+        registerNative(new NewLineNative());
+        registerNative(new IsNewLineNative());
+        registerNative(new ToLocalFileNative(grantedServices, localFileSeparator));
+        registerNative(new ToRebolFileNative());
+        registerNative(new TranscodeNative());
+        registerNative(new EchoNative(grantedServices));
+        registerNative(new NowNative(grantedServices));
+        registerNative(new WaitNative());
+        registerNative(new WakeUpNative());
+        registerNative(new WhatDirNative(grantedServices));
+        registerNative(new ChangeDirNative(grantedServices));
+        registerNative(new FirstNative());
+        registerNative(new SecondNative());
+        registerNative(new ThirdNative());
+        registerNative(new FourthNative());
+        registerNative(new FifthNative());
+        registerNative(new SixthNative());
+        registerNative(new SeventhNative());
+        registerNative(new EighthNative());
+        registerNative(new NinthNative());
+        registerNative(new TenthNative());
+        registerNative(new LastNative());
+        registerNative(new CosineNative());
+        registerNative(new SineNative());
+        registerNative(new TangentNative());
+        registerNative(new ArccosineNative());
+        registerNative(new ArcsineNative());
+        registerNative(new ArctangentNative());
+        registerNative(new ExponentialNative());
+        registerNative(new CommonLogarithmNative());
+        registerNative(new BinaryLogarithmNative());
+        registerNative(new NaturalLogarithmNative());
+        registerNative(new NotNative());
+        registerNative(new SquareRootNative());
+        registerNative(new ShiftNative());
+        registerNative(new IncrementNative());
+        registerNative(new DecrementNative());
+        registerNative(new FirstPlusNative());
+        registerNative(new StackNative());
+        registerNative(new ResolveNative());
+        registerNative(new GetEnvNative(grantedServices));
+        registerNative(new SetEnvNative(grantedServices));
+        registerNative(new ListEnvNative(grantedServices));
+        registerNative(new CallNative(grantedServices));
+        registerNative(new BrowseNative(grantedServices));
+        registerNative(new EvokeNative());
+        registerNative(new RequestFileNative(grantedServices));
+        registerNative(new RequestDirNative(grantedServices));
+        registerNative(new RequestPasswordNative(grantedServices));
+        registerNative(new IsAsciiNative());
+        registerNative(new IsLatin1Native());
+        registerNative(new StatsNative());
+        registerNative(new DoCodecNative());
+        registerNative(new SetSchemeNative());
+        registerNative(new LoadExtensionNative());
+        registerNative(new DoCommandsNative());
+        registerNative(new DsNative());
+        registerNative(new DumpNative());
+        registerNative(new CheckNative());
+        registerNative(new DoCallbackNative());
+        registerNative(new LimitUsageNative());
+        registerNative(new IsSelflessNative());
+        registerNative(new MapEventNative());
+        registerNative(new MapGobOffsetNative());
+        registerNative(new AsPairNative());
+        registerNative(new AsColorNative());
+        registerNative(new EqualNative());
+        registerNative(new NotEqualNative());
+        registerNative(new EquivNative());
+        registerNative(new NotEquivNative());
+        registerNative(new StrictEqualNative());
+        registerNative(new StrictNotEqualNative());
+        registerNative(new SameNative());
+        registerNative(new GreaterNative());
+        registerNative(new GreaterOrEqualNative());
+        registerNative(new LesserNative());
+        registerNative(new LesserOrEqualNative());
+        registerNative(new MinimumNative());
+        registerNative(new MaximumNative());
+        registerNative(new IsNegativeNative());
+        registerNative(new IsPositiveNative());
+        registerNative(new IsZeroNative());
+        registerNative(version);
+        registerNative(new PickzNative());
+        registerNative(new PokezNative());
+        registerNative(new SwapEndianNative(encodings));
+        registerNative(new DidNative());
+        alias("true?", "did");
+        registerNative(new CollectWordsNative());
+        registerNative(new WithNative());
+        registerNative(new TruncateNative());
+        registerNative(new HashNative());
+        registerNative(new ToRealFileNative(grantedServices));
+        registerNative(new IsDirectoryNative(grantedServices));
+        registerNative(new IsWildcardNative());
+        registerNative(new AccessOsNative(grantedServices));
+        registerNative(new IsTerminalNative());
+        registerNative(new ReadKeyNative(grantedServices));
+        registerNative(new ArctangentOfAPointNative());
+        registerNative(new CosNative());
+        registerNative(new SinNative());
+        registerNative(new TanNative());
+        registerNative(new AtanNative());
+        registerNative(new AsinNative());
+        registerNative(new AcosNative());
+        registerNative(new ArctangentOfTwoSidesNative());
+        registerNative(new SqrtNative());
+        registerNative(new IsNumberNative());
+        registerNative(new ModNative());
+        registerNative(new ModuloNative());
+        registerNative(new ShiftLeftNative());
+        registerNative(new ShiftRightNative());
+        registerNative(new ToRadiansNative());
+        registerNative(new ToDegreesNative());
+        registerNative(new GreatestCommonDivisorNative());
+        registerNative(new LowestCommonMultipleNative());
+        registerNative(new FractionNative());
+        registerNative(new PrimeNative());
+        registerNative(new LerpNative());
+        registerNative(new ClampNative());
+        registerNative(new IntegerDivideNative());
+        registerNative(new DistanceNative());
+        registerNative(new FactorialNative());
+        registerNative(new ChecksumNative(encodings));
+        registerNative(new RegisterNative());
+        registerNative(new IsComplementedNative());
+        registerNative(new CompressNative(encodings));
+        registerNative(new DecompressNative(encodings));
+        registerNative(new Rc4Native());
+        registerNative(new RsaInitNative());
+        registerNative(new RsaNative());
+        registerNative(new DhInitNative());
+        registerNative(new DhNative());
+        registerNative(new EcdhNative());
+        registerNative(new GenerateNative());
+        registerNative(new EcdsaNative());
+        registerNative(new BinaryNative());
+        registerNative(new IconvNative(encodings));
+        registerNative(new HsvToRgbNative());
+        registerNative(new RgbToHsvNative());
+        registerNative(new ColorDistanceNative());
+        registerNative(new ImageDiffNative());
+        registerNative(new TintNative());
+        registerNative(new LuminosityNative());
+        registerNative(new GrayscaleNative());
+        registerNative(new ResizeNative());
+        registerNative(new PremultiplyNative());
+        registerNative(new BlurNative());
+        registerNative(new ImageNative());
+        registerNative(new FilterNative(encodings));
+        registerNative(new UnfilterNative(encodings));
+        registerNative(new DelectNative());
+        registerNative(new FormOidNative());
     }
 
     private void registerDatatypePredicates() {
         for (Datatype datatype : Datatype.values()) {
-            register(new DatatypePredicateAction(datatype));
+            DatatypePredicateAction predicate = new DatatypePredicateAction(datatype);
+            datatypePredicates.put(predicate.nativeName(), predicate);
         }
-        register(new IsAnyTypeNative());
-        register(new IsCopyableNative());
-        register(new IsImmediateNative());
-        register(new IsInternalNative());
     }
 
-    private void registerControlNatives() {
-        register(new IfNative());
-        register(new EitherNative());
-        register(new UnlessNative());
-        register(new SwitchNative());
-        register(new CaseNative());
-        register(new AnyNative());
-        register(new AllNative());
-        register(new DoNative());
-        register(new ReduceNative());
-        register(new ComposeNative());
-        register(new ApplyNative());
-        register(new AlsoNative());
-        register(new CommentNative());
-        register(new AttemptNative());
-        register(new TryNative());
-        register(new CatchNative());
-        register(new ThrowNative());
-        register(new ReturnNative());
-        register(new ExitNative());
-        register(new BreakNative());
-        register(new ContinueNative());
-        register(new ProtectNative());
-        register(new UnprotectNative());
-        register(new IsProtectedNative());
-        register(new DidNative());
-        alias("true?", "did");
-        register(new ObjectNative());
-        alias("context", "object");
-        register(new TraceNative());
-    }
-
-    private void registerLoopNatives() {
-        register(new LoopNative());
-        register(new RepeatNative());
-        register(new WhileNative());
-        register(new UntilNative());
-        register(new ForeverNative());
-        register(new ForNative());
-        register(new ForEachNative());
-        register(new ForAllNative());
-        register(new ForSkipNative());
-        register(new MapEachNative());
-        register(new RemoveEachNative());
-    }
-
-    private void registerDataNatives() {
-        register(new SetNative());
-        register(new GetNative());
-        register(new UnsetNative());
-        register(new IsValueNative());
-        register(new ToValueNative());
-        register(new TypeOfNative());
-        register(new AsNative());
-        register(new AsPairNative());
-        register(new AsColorNative());
-        register(new BindNative());
-        register(new UnbindNative());
-        register(new InNative());
-        register(new ContextOfWordNative());
-        register(new ResolveNative());
-        register(new CollectWordsNative());
-        register(new WithNative());
-        register(new AssertNative());
-        register(new NotNative());
-        register(new HashNative());
-        register(new IsAsciiNative());
-        register(new IsLatin1Native());
-        register(new DumpNative());
-        register(new MapEventNative());
-        register(new MapGobOffsetNative());
-        register(new TruncateNative());
-    }
-
-    private void registerSetNatives() {
-        register(new DifferenceNative());
-        register(new ExcludeNative());
-        register(new IntersectNative());
-        register(new UnionNative());
-        register(new UniqueNative());
-    }
-
-    private void registerStringNatives() {
-        register(new AjoinNative());
-        register(new ConstructNative());
-        register(new FindScriptNative());
-        register(new SplitLinesNative());
-        register(new UppercaseNative());
-        register(new LowercaseNative());
-        register(new ToHexNative());
-        register(new EntabNative());
-        register(new DetabNative());
-        register(new DelineNative());
-        register(new EnlineNative());
-        register(new UtfNative());
-        register(new InvalidUtfNative());
-        register(new EnhexNative(encodings));
-        register(new DehexNative(encodings));
-        register(new EnbaseNative(encodings));
-        register(new DebaseNative(encodings));
-        register(new EncloakNative(encodings));
-        register(new DecloakNative(encodings));
-        register(new ChecksumNative(encodings));
-        register(new CompressNative(encodings));
-        register(new DecompressNative(encodings));
-        register(new IconvNative(encodings));
-        register(new FormOidNative());
-    }
-
-    private void registerDialectNatives() {
-        register(new ParseNative());
-        register(new TranscodeNative());
-        register(new DelectNative());
-        register(new BinaryNative());
-    }
-
-    private void registerMathNatives() {
-        register(new SineNative());
-        register(new CosineNative());
-        register(new TangentNative());
-        register(new ArcsineNative());
-        register(new ArccosineNative());
-        register(new ArctangentNative());
-        register(new ArctangentOfAPointNative());
-        register(new ArctangentOfTwoSidesNative());
-        register(new SinNative());
-        register(new CosNative());
-        register(new TanNative());
-        register(new AsinNative());
-        register(new AcosNative());
-        register(new AtanNative());
-        register(new ToDegreesNative());
-        register(new ToRadiansNative());
-        register(new SquareRootNative());
-        register(new SqrtNative());
-        register(new ExponentialNative());
-        register(new NaturalLogarithmNative());
-        register(new CommonLogarithmNative());
-        register(new BinaryLogarithmNative());
-        register(new IntegerDivideNative());
-        register(new ModNative());
-        register(new ModuloNative());
-        register(new GreatestCommonDivisorNative());
-        register(new LowestCommonMultipleNative());
-        register(new PrimeNative());
-        register(new FactorialNative());
-        register(new FractionNative());
-        register(new ClampNative());
-        register(new LerpNative());
-        register(new DistanceNative());
-        register(new ShiftNative());
-        register(new ShiftLeftNative());
-        register(new ShiftRightNative());
-        register(new IsComplementedNative());
-        register(new IsNumberNative());
-        register(new IsNegativeNative());
-        register(new IsPositiveNative());
-        register(new IsZeroNative());
-        register(new MaximumNative());
-        register(new MinimumNative());
-        register(new EqualNative());
-        register(new NotEqualNative());
-        register(new EquivNative());
-        register(new NotEquivNative());
-        register(new StrictEqualNative());
-        register(new StrictNotEqualNative());
-        register(new SameNative());
-        register(new GreaterNative());
-        register(new GreaterOrEqualNative());
-        register(new LesserNative());
-        register(new LesserOrEqualNative());
-    }
-
-    private void registerInputAndOutputNatives() {
-        register(new PrintNative());
-        register(new PrinNative());
-        register(new MoldNative());
-        register(new FormNative());
-        register(new NewLineNative());
-        register(new IsNewLineNative());
-        register(new EchoNative(grantedServices));
-        register(new IsTerminalNative());
-        register(new ReadKeyNative(grantedServices));
-        register(new WaitNative());
-        register(new WakeUpNative());
-        register(new NowNative(grantedServices));
-        register(new ToLocalFileNative(grantedServices, localFileSeparator));
-        register(new ToRebolFileNative());
-        register(new ToRealFileNative(grantedServices));
-        register(new WhatDirNative(grantedServices));
-        register(new ChangeDirNative(grantedServices));
-        register(new IsDirectoryNative(grantedServices));
-        register(new IsWildcardNative());
-        register(new GetEnvNative(grantedServices));
-        register(new SetEnvNative(grantedServices));
-        register(new ListEnvNative(grantedServices));
-        register(new CallNative(grantedServices));
-        register(new BrowseNative(grantedServices));
-        register(new AccessOsNative(grantedServices));
-        register(new RequestFileNative(grantedServices));
-        register(new RequestDirNative(grantedServices));
-        register(new RequestPasswordNative(grantedServices));
-        register(new RequestColorNative(grantedServices));
-        register(new SetSchemeNative());
-    }
-
-    private void registerSystemNatives() {
-        register(version);
-        register(new QuitNative());
-        register(new HaltNative());
-        register(new RecycleNative());
-        register(new ReleaseNative());
-        register(new StatsNative());
-        register(new StackNative());
-        register(new CheckNative());
-        register(new DsNative());
-        register(new EvokeNative());
-        register(new LimitUsageNative());
-        register(new IsSelflessNative());
-        register(new DoCodecNative());
-        register(new RegisterNative());
-    }
-
-    private void registerCryptographyNatives() {
-        register(new Rc4Native());
-        register(new RsaInitNative());
-        register(new RsaNative());
-        register(new DhInitNative());
-        register(new DhNative());
-        register(new EcdhNative());
-        register(new EcdsaNative());
-        register(new GenerateNative());
-    }
-
-    private void registerImageNatives() {
-        register(new ImageNative());
-        register(new ImageDiffNative());
-        register(new ResizeNative());
-        register(new BlurNative());
-        register(new PremultiplyNative());
-        register(new TintNative());
-        register(new GrayscaleNative());
-        register(new LuminosityNative());
-        register(new ColorDistanceNative());
-        register(new HsvToRgbNative());
-        register(new RgbToHsvNative());
-        register(new FilterNative(encodings));
-        register(new UnfilterNative(encodings));
-    }
-
-    private void registerSeriesNatives() {
-        register(new FirstNative());
-        register(new SecondNative());
-        register(new ThirdNative());
-        register(new FourthNative());
-        register(new FifthNative());
-        register(new SixthNative());
-        register(new SeventhNative());
-        register(new EighthNative());
-        register(new NinthNative());
-        register(new TenthNative());
-        register(new LastNative());
-        register(new FirstPlusNative());
-        register(new IncrementNative());
-        register(new DecrementNative());
-        register(new PickzNative());
-        register(new PokezNative());
-        register(new SwapEndianNative(encodings));
-    }
-
-    private void registerExtensionNatives() {
-        register(new LoadExtensionNative());
-        register(new DoCommandsNative());
-        register(new DoCallbackNative());
-        register(new XtestNative());
-    }
-
-    private void registerScreenCommands() {
-        register(new InitTopWindowNative(grantedServices));
-        register(new ShowNative(grantedServices));
-        register(new GuiMetricNative(grantedServices));
+    private void registerExtensions() {
+        registerAddition(new IsAnyTypeNative());
+        registerAddition(new IsCopyableNative());
+        registerAddition(new IsImmediateNative());
+        registerAddition(new IsInternalNative());
+        registerAddition(new RequestColorNative(grantedServices));
+        registerAddition(new XtestNative());
+        registerAddition(new InitTopWindowNative(grantedServices));
+        registerAddition(new ShowNative(grantedServices));
+        registerAddition(new GuiMetricNative(grantedServices));
     }
 
     private ObjectValue systemObject(Context systemContext) {
         Context system = Context.root();
-        system.register("catalog", catalog(definitions));
+        system.register("catalog", catalog());
         system.register("options", options());
         system.register("state", state());
         system.register("version", version.numbered());
@@ -608,12 +544,12 @@ public final class RebolNativeWords {
         return valueFor(errors);
     }
 
-    private Value catalog(Map<String, DefaultNative> definitions) {
+    private Value catalog() {
         Context catalog = Context.root();
         catalog.register("datatypes", BlockValue.block(Arrays.stream(Datatype.values()).map(datatype -> (Value) DatatypeValue.of(datatype)).toList()));
         catalog.register("structs", registeredStructLayouts);
-        catalog.register("actions", actions(definitions));
-        catalog.register("natives", definitions(definitions));
+        catalog.register("actions", wordsInRegistrationOrder(actions));
+        catalog.register("natives", wordsInRegistrationOrder(natives));
         catalog.register("ciphers", BlockValue.block(ports.cryptPort().catalogue()));
         catalog.register("filters", BlockValue.block(ResizeNative.THE_FILTERS.stream().<Value>map(WordValue::of).toList()));
         catalog.register("elliptic-curves", BlockValue.block(EllipticCurveKey.curveNamesInTheCataloguesOrder().stream().<Value>map(WordValue::of).toList()));
@@ -625,39 +561,58 @@ public final class RebolNativeWords {
         return valueFor(catalog);
     }
 
-    private BlockValue definitions(Map<String, DefaultNative> definitions) {
-        return BlockValue.block(definitions.keySet().stream().filter(spelling -> !ACTION_NAMES.contains(spelling)).sorted().<Value>map(WordValue::of).toList());
-    }
-
-    private BlockValue actions(Map<String, DefaultNative> definitions) {
-        return BlockValue.block(ACTION_NAMES.stream().filter(definitions::containsKey).<Value>map(WordValue::of).toList());
+    private BlockValue wordsInRegistrationOrder(Map<String, DefaultNative> registered) {
+        return BlockValue.block(registered.keySet().stream().<Value>map(WordValue::of).toList());
     }
 
     private Value valueFor(Context context) {
         return new ObjectValue(context);
     }
 
-    private void declareItsSpec(DefaultNative built) {
-        BlockValue spec = bootDeclarations.specOf(built);
+    private void declare(DefaultNative built, BlockValue spec) {
         built.declaredBy(spec, new DeclaredArguments(spec).inPlaceOf(built.parametersAsWritten()));
     }
 
     private void registerOperator(String spelling, String prefixTwin) {
-        if (!definitions.containsKey(prefixTwin)) {
+        if (isUnregistered(prefixTwin)) {
             throw new IllegalStateException("operator " + spelling + " has no prefix twin called " + prefixTwin);
         }
         operatorTwins.put(spelling, prefixTwin);
     }
 
     private void alias(String alias, String originalName) {
-        if (!definitions.containsKey(originalName)) {
+        if (isUnregistered(originalName)) {
             throw new IllegalStateException(alias + " is an alias of " + originalName + ", which is not registered");
         }
         aliases.put(alias, originalName);
     }
 
-    private void register(DefaultNative function) {
-        definitions.put(function.nativeName(), function);
+    private void registerAction(DefaultNative action) {
+        actions.put(action.nativeName(), action);
+    }
+
+    private void registerNative(DefaultNative builtIn) {
+        natives.put(builtIn.nativeName(), builtIn);
+    }
+
+    private void registerAddition(DefaultNative addition) {
+        additionsToRebol.put(addition.nativeName(), addition);
+    }
+
+    private Stream<DefaultNative> everyDefinition() {
+        return Stream.of(actions, natives, datatypePredicates, additionsToRebol)
+                .flatMap(registered -> registered.values().stream());
+    }
+
+    private boolean isUnregistered(String spelling) {
+        return everyDefinition().noneMatch(definition -> definition.nativeName().equals(spelling));
+    }
+
+    private DefaultNative definitionCalled(String spelling) {
+        return everyDefinition()
+                .filter(definition -> definition.nativeName().equals(spelling))
+                .findFirst()
+                .orElseThrow();
     }
 
     private List<Value> catalogueEntries() {

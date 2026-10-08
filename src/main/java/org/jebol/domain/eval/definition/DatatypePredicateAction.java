@@ -2,13 +2,14 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.ActionValue;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
 
-public class DatatypePredicateAction extends DefaultNative {
+public class DatatypePredicateAction extends DefaultNative implements ActionValue {
 
     private final Datatype asked;
 

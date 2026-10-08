@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public class SortAction extends DefaultNative {
+public class SortAction extends DefaultNative implements ActionValue {
 
     private static final int EACH_ITEM_ON_ITS_OWN = 1;
 

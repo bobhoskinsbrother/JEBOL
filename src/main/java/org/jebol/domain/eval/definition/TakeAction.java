@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public class TakeAction extends DefaultNative {
+public class TakeAction extends DefaultNative implements ActionValue {
 
     private final CryptPort cryptPort;
 

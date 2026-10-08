@@ -15,6 +15,11 @@ public record RespecifiedNative(NativeValue original, BlockValue spec, List<Para
     }
 
     @Override
+    public Datatype datatype() {
+        return original.datatype();
+    }
+
+    @Override
     public Set<String> refinementsDeclaredApart() {
         return original.refinementsDeclaredApart();
     }

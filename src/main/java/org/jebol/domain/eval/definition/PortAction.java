@@ -3,12 +3,13 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.PortRequest;
 import org.jebol.domain.eval.Ports;
+import org.jebol.domain.value.ActionValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
 import java.util.Set;
 
-public abstract class PortAction extends HostNative {
+public abstract class PortAction extends HostNative implements ActionValue {
 
     protected final Ports ports;
 

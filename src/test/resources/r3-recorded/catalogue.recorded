@@ -1,0 +1,14 @@
+234
+{[ajoin also all any apply assert attempt break case catch comment compose object continue do either exit find-script for forall forever foreach forskip halt if loop map-each quit protect unprotect protected? recycle release reduce repeat remove-each return switch throw trace try unless until while as bind unbind context? construct debase enbase decloak encloak deline enline detab entab difference exclude intersect union unique lowercase uppercase dehex enhex get in parse set to-hex type? unset utf? invalid-utf? value? to-value split-lines print prin mold form new-line new-line? to-local-file to-rebol-file transcode echo now wait wake-up what-dir change-dir first second third fourth fifth sixth seventh eighth ninth tenth last cosine sine tangent arccosine arcsine arctangent exp log-10 log-2 log-e not square-root shift ++ -- first+ stack resolve get-env set-env list-env call browse evoke request-file request-dir request-password ascii? latin1? stats do-codec set-scheme load-extension do-commands ds dump check do-callback limit-usage selfless? map-event map-gob-offset as-pair as-color equal? not-equal? equiv? not-equiv? strict-equal? strict-not-equal? same? greater? greater-or-equal? lesser? lesser-or-equal? minimum maximum negative? positive? zero? version pickz pokez swap-endian did collect-words with truncate hash to-real-file dir? wildcard? access-os tty? read-key arctangent2 cos sin tan atan asin acos atan2 sqrt number? mod modulo shift-left shift-right to-radians to-degrees gcd lcm fraction prime? lerp clamp integer-divide distance factorial checksum register complement? compress decompress rc4 rsa-init rsa dh-init dh ecdh generate ecdsa binary iconv hsv-to-rgb rgb-to-hsv color-distance image-diff tint luminosity grayscale resize premultiply blur image filter unfilter delect form-oid]}
+60
+{[add subtract multiply divide remainder power and~ or~ xor~ negate complement absolute round random odd? even? head tail head? tail? past? next back skip at atz index? indexz? length? pick find select reflect make to copy take put insert append remove change poke clear trim swap reverse sort create delete open close read write open? query modify update rename flush]}
+#(true)
+#(true)
+#(true)
+#(true)
+#(true)
+#(action!)
+#(action!)
+#(native!)
+#(native!)
+#(action!)

@@ -33,7 +33,7 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
 
     private void refuseRandomUnlessAPlainBlock() {
         if (datatype != Datatype.BLOCK) {
-            throw Raised.cannotUse(this, "random");
+            throw Raised.cannotUseTheAction(this, "random");
         }
     }
 

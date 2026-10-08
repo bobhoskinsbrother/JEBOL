@@ -7,7 +7,7 @@ import org.jebol.domain.value.*;
 import java.util.List;
 import java.util.Set;
 
-public class PutAction extends DefaultNative {
+public class PutAction extends DefaultNative implements ActionValue {
 
     private static final int NOT_FOUND = -1;
 

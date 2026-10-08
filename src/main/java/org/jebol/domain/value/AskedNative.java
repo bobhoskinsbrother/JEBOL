@@ -14,6 +14,11 @@ public record AskedNative(NativeValue asked, Set<String> askedRefinements) imple
     }
 
     @Override
+    public Datatype datatype() {
+        return asked.datatype();
+    }
+
+    @Override
     public List<Parameter> parameters() {
         return asked.parameters();
     }

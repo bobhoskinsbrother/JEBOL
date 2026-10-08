@@ -1,13 +1,14 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.ActionValue;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-public class MakeAction extends DefaultNative {
+public class MakeAction extends DefaultNative implements ActionValue {
 
     @Override
     public String nativeName() {

@@ -86,7 +86,7 @@ public sealed interface Value permits
     }
 
     default boolean atTail() {
-        throw Raised.cannotUse(this, "tail?");
+        throw Raised.cannotUseTheAction(this, "tail?");
     }
 
     default String writtenInHex(HexWidth width) {
@@ -99,14 +99,14 @@ public sealed interface Value permits
     }
 
     default Value picked(int oneBasedPosition) {
-        throw Raised.cannotUse(this, "pick");
+        throw Raised.cannotUseTheAction(this, "pick");
     }
 
     default Value pickedBy(Value selector) {
         if (selector instanceof IntegerValue(long magnitude)) {
             return picked((int) magnitude);
         }
-        throw Raised.cannotUse(this, "pick");
+        throw Raised.cannotUseTheAction(this, "pick");
     }
 
     default Value reflected(WordValue field) {
@@ -156,11 +156,11 @@ public sealed interface Value permits
     }
 
     default Value arithmetic(Value right, ArithmeticOperation operation) {
-        throw Raised.cannotUse(this, operation.spelling());
+        throw Raised.cannotUseTheAction(this, operation.spelling());
     }
 
     default Value absolute() {
-        throw Raised.cannotUse(this, "absolute");
+        throw Raised.cannotUseTheAction(this, "absolute");
     }
 
     default Value negated() {
@@ -177,7 +177,7 @@ public sealed interface Value permits
     }
 
     default Value randomised(RandomDraw draw) {
-        throw Raised.cannotUse(this, "random");
+        throw Raised.cannotUseTheAction(this, "random");
     }
 
     default Value pickedAtRandom(RandomDraw draw) {
@@ -185,7 +185,7 @@ public sealed interface Value permits
     }
 
     default long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
-        throw Raised.cannotUse(this, "random");
+        throw Raised.cannotUseTheAction(this, "random");
     }
 
     default Value heldBetween(Value lowest, Value highest) {
