@@ -302,7 +302,7 @@ public final class CryptPort {
             Set.of("tag-length", "aad-length");
 
     private boolean anAlgorithmWasSet(Working working, Value given) {
-        if (!(given instanceof WordValue asked) || !serves(asked.canonical())) {
+        if (!(given instanceof AnyWordValue asked) || !serves(asked.canonical())) {
             return false;
         }
         working.algorithm = asked.canonical();
@@ -310,7 +310,7 @@ public final class CryptPort {
     }
 
     private boolean aDirectionWasSet(Working working, Value given) {
-        if (!(given instanceof WordValue asked)) {
+        if (!(given instanceof AnyWordValue asked)) {
             return false;
         }
         if (asked.canonical().equals("encrypt")) {

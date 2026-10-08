@@ -19,7 +19,8 @@ import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorKind;
 import org.jebol.domain.value.VectorSpec;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.SetWordValue;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -64,7 +65,7 @@ final class ConstructedValues {
     }
 
     private Value construct(List<Value> contents) {
-        if (contents.isEmpty() || !(contents.getFirst() instanceof WordValue leading)) {
+        if (contents.isEmpty() || !(contents.getFirst() instanceof AnyWordValue leading)) {
             throw new CannotConstruct();
         }
         if (contents.size() == 1) {
@@ -92,14 +93,14 @@ final class ConstructedValues {
         return builtFrom(represents, contents.subList(1, contents.size()));
     }
 
-    private boolean namesAVector(WordValue leading, int howManyParts) {
+    private boolean namesAVector(AnyWordValue leading, int howManyParts) {
         if ("vector!".equals(leading.canonical())) {
             return howManyParts > 1;
         }
         return VectorKind.named(leading.spelling()).isPresent();
     }
 
-    private Value datatypeNamed(WordValue word) {
+    private Value datatypeNamed(AnyWordValue word) {
         if (!word.spelling().endsWith("!")) {
             throw new CannotConstruct();
         }
@@ -141,7 +142,7 @@ final class ConstructedValues {
             throw new CannotConstruct();
         }
         if (datatype == Datatype.BITSET && contents.size() == 2
-                && contents.getFirst() instanceof WordValue complementing
+                && contents.getFirst() instanceof AnyWordValue complementing
                 && complementing.canonical().equals("not")
                 && contents.get(1) instanceof BinaryValue octets) {
             return BitsetValue.of(bytesOf(octets)).complemented();
@@ -235,7 +236,7 @@ final class ConstructedValues {
         Context built = Context.root();
         List<Value> items = fields.remaining();
         for (int at = 0; at < items.size(); at++) {
-            if (!(items.get(at) instanceof WordValue name) || name.datatype() != Datatype.SET_WORD) {
+            if (!(items.get(at) instanceof SetWordValue name)) {
                 throw new CannotConstruct();
             }
             at++;

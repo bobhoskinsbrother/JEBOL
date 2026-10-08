@@ -181,7 +181,7 @@ class WhatEachObjectNativeDeclaresTest {
             Value unbound = answerOf(new UnbindNative(), NOTHING,
                     WordValue.of("a").boundTo(holding("a", IntegerValue.of(1))));
 
-            assertThat(((WordValue) unbound).isBound()).isFalse();
+            assertThat(((AnyWordValue) unbound).isBound()).isFalse();
         }
 
         @Test
@@ -191,7 +191,7 @@ class WhatEachObjectNativeDeclaresTest {
 
             Value found = answerOf(new InNative(), NOTHING,
                     new ObjectValue(fields), WordValue.of("a"));
-            assertThat(((WordValue) found).binding()).isSameAs(fields);
+            assertThat(((AnyWordValue) found).binding()).isSameAs(fields);
             assertThat(answerOf(new InNative(), NOTHING,
                     new ObjectValue(fields), WordValue.of("b")))
                     .isEqualTo(NoneValue.none());
@@ -201,9 +201,8 @@ class WhatEachObjectNativeDeclaresTest {
         @DisplayName("collect-words/set/deep lists the set-words, once each")
         void collectWords() {
             BlockValue body = BlockValue.block(List.of(
-                    WordValue.of("a", Datatype.SET_WORD), WordValue.of("b"),
-                    BlockValue.block(List.of(WordValue.of("A", Datatype.SET_WORD),
-                            WordValue.of("c", Datatype.SET_WORD)))));
+                    SetWordValue.of("a"), WordValue.of("b"),
+                    BlockValue.block(List.of(SetWordValue.of("A"), SetWordValue.of("c")))));
 
             Value collected = answerOf(new CollectWordsNative(), Set.of("deep", "set"), body);
 

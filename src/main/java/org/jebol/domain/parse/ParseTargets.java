@@ -4,9 +4,10 @@ import java.util.Set;
 
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.SetWordValue;
 import org.jebol.domain.value.WordValue;
 
 public final class ParseTargets {
@@ -24,27 +25,24 @@ public final class ParseTargets {
     private ParseTargets() {
     }
 
-    public static WordValue refuseAnythingSetAndCopyCannotWriteInto(Value written) {
-        WordValue word = refuseAnythingButAWordOrASetWord(written);
+    public static AnyWordValue refuseAnythingSetAndCopyCannotWriteInto(Value written) {
+        AnyWordValue word = refuseAnythingButAWordOrASetWord(written);
         if (THE_WORDS_THE_DIALECT_RESERVES.contains(word.canonical())) {
             throw Raised.of(EvaluationFailure.PARSE_COMMAND, word);
         }
         return word;
     }
 
-    public static WordValue refuseAnythingButAWordOrASetWord(Value written) {
-        if (written instanceof WordValue word
-                && (word.datatype() == Datatype.WORD
-                        || word.datatype() == Datatype.SET_WORD)) {
+    public static AnyWordValue refuseAnythingButAWordOrASetWord(Value written) {
+        if (written instanceof AnyWordValue word
+                && (word instanceof WordValue || word instanceof SetWordValue)) {
             return word;
         }
         throw somewhereThatIsNotAVariable(written);
     }
 
-    public static WordValue refuseAnythingButAWordOrAGetWord(Value read) {
-        if (read instanceof WordValue word
-                && (word.datatype() == Datatype.WORD
-                        || word.datatype() == Datatype.GET_WORD)) {
+    public static AnyWordValue refuseAnythingButAWordOrAGetWord(Value read) {
+        if (read instanceof AnyWordValue word && word.fetchesItsValue()) {
             return word;
         }
         throw somewhereThatIsNotAVariable(read);

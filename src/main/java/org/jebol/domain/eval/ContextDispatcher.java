@@ -24,7 +24,7 @@ final class ContextDispatcher implements Dispatcher {
     }
 
     private static ContextSlot fieldNamedBy(Value target, Value selector) {
-        if (!(selector instanceof WordValue asked)) {
+        if (!(selector instanceof AnyWordValue asked)) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
                     "a field is named by a word, not "
                             + selector.datatype().literalSpelling());

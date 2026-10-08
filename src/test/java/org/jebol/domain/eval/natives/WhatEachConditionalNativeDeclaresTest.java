@@ -230,15 +230,15 @@ class WhatEachConditionalNativeDeclaresTest {
         @Test
         @DisplayName("a quoted word comes back as a plain word")
         void aQuotedWord() {
-            assertThat(answerOf(new DoNative(), NOTHING, WordValue.of("x", Datatype.LIT_WORD)))
-                    .isEqualTo(WordValue.of("x", Datatype.WORD));
+            assertThat(answerOf(new DoNative(), NOTHING, LitWordValue.of("x")))
+                    .isEqualTo(WordValue.of("x"));
         }
 
         @Test
         @DisplayName("a set-word on its own is invalid-arg, since there is nothing to assign")
         void aSetWordOnItsOwn() {
             assertThatThrownBy(() -> answerOf(new DoNative(), NOTHING,
-                    WordValue.of("x", Datatype.SET_WORD)))
+                    SetWordValue.of("x")))
                     .isInstanceOf(Raised.class)
                     .extracting(raised -> ((Raised) raised).error().errorId())
                     .isEqualTo("invalid-arg");

@@ -94,7 +94,7 @@ public final class Layout {
         Face current = null;
 
         for (Value item : layout.remaining()) {
-            if (item instanceof WordValue word && isFaceKind(word.canonical())) {
+            if (item instanceof AnyWordValue word && isFaceKind(word.canonical())) {
                 current = new Face(word.canonical());
                 faces.add(current);
                 continue;
@@ -111,7 +111,7 @@ public final class Layout {
             Value item,
             java.util.function.Function<String, java.util.Optional<Value>> lookUp) {
 
-        if (!(item instanceof WordValue word) || word.datatype() != org.jebol.domain.value.Datatype.WORD) {
+        if (!(item instanceof AnyWordValue word) || word.datatype() != org.jebol.domain.value.Datatype.WORD) {
             return item;
         }
         if (COLOURS.containsKey(word.canonical())) {
@@ -128,7 +128,7 @@ public final class Layout {
                 face.style("height", Molder.moldHalf(size.y()) + "px");
             }
             case TupleValue colour -> face.style("background-color", asRgb(colour));
-            case WordValue word -> colourNamed(word.canonical())
+            case AnyWordValue word -> colourNamed(word.canonical())
                     .ifPresent(rgb -> face.style("background-color", rgb));
             case IntegerValue ignored -> {
             }

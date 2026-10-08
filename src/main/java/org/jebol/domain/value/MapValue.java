@@ -90,8 +90,8 @@ public final class MapValue implements Value {
     }
 
     private static Value anyWordStoredAsTheSetWordItNames(Value written) {
-        return written instanceof WordValue word && word.datatype() != Datatype.SET_WORD
-                ? word.as(Datatype.SET_WORD)
+        return written instanceof AnyWordValue word && !(word instanceof SetWordValue)
+                ? word.asSetWord()
                 : written;
     }
 
@@ -105,8 +105,8 @@ public final class MapValue implements Value {
     }
 
     private static Value keyHandedBackAsAWordNotASetWord(Value stored) {
-        return stored instanceof WordValue word && word.datatype() == Datatype.SET_WORD
-                ? word.as(Datatype.WORD)
+        return stored instanceof SetWordValue word
+                ? word.asWord()
                 : stored;
     }
 
@@ -127,7 +127,7 @@ public final class MapValue implements Value {
             return one.datatype() == other.datatype()
                     && one.text().equalsIgnoreCase(other.text());
         }
-        if (held instanceof WordValue one && wanted instanceof WordValue other) {
+        if (held instanceof AnyWordValue one && wanted instanceof AnyWordValue other) {
             return one.datatype() == other.datatype()
                     && one.canonical().equals(other.canonical());
         }
@@ -217,7 +217,7 @@ public final class MapValue implements Value {
     }
 
     @Override
-    public Value reflected(WordValue field) {
+    public Value reflected(AnyWordValue field) {
         return switch (field.canonical()) {
             case "words" -> BlockValue.block(keys());
             case "values" -> BlockValue.block(values());

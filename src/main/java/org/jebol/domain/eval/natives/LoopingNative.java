@@ -38,9 +38,9 @@ public abstract class LoopingNative extends DefaultNative {
         return tested.isTruthy();
     }
 
-    protected List<WordValue> loopNamesIn(Value target) {
+    protected List<AnyWordValue> loopNamesIn(Value target) {
         if (!(target instanceof BlockValue block)) {
-            if (target instanceof WordValue single) {
+            if (target instanceof AnyWordValue single) {
                 return List.of(single);
             }
             throw Raised.of(EvaluationFailure.EXPECT_ARG,
@@ -50,9 +50,9 @@ public abstract class LoopingNative extends DefaultNative {
         if (block.lengthFromHere() == 0) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, block);
         }
-        List<WordValue> names = new ArrayList<>(block.lengthFromHere());
+        List<AnyWordValue> names = new ArrayList<>(block.lengthFromHere());
         for (Value item : block.remaining()) {
-            if (!(item instanceof WordValue name)) {
+            if (!(item instanceof AnyWordValue name)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
                         nativeName() + " walks with words, and " + Molder.mold(item)
                                 + " is not one");
@@ -62,19 +62,19 @@ public abstract class LoopingNative extends DefaultNative {
         return List.copyOf(names);
     }
 
-    protected List<WordValue> namesThatTakeAValue(List<WordValue> names) {
+    protected List<AnyWordValue> namesThatTakeAValue(List<AnyWordValue> names) {
         return names.stream()
-                .filter(name -> name.datatype() != Datatype.SET_WORD)
+                .filter(name -> !(name instanceof SetWordValue))
                 .toList();
     }
 
     protected int setLoopNamesFillingWithNonePastTheEnd(
-            Context locals, List<WordValue> names, List<Value> items,
+            Context locals, List<AnyWordValue> names, List<Value> items,
             int at, Value walked) {
 
         int reached = at;
-        for (WordValue name : names) {
-            if (name.datatype() == Datatype.SET_WORD) {
+        for (AnyWordValue name : names) {
+            if (name instanceof SetWordValue) {
                 locals.register(name.spelling(), positionWithin(walked, reached));
                 continue;
             }

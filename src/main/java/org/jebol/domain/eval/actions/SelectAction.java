@@ -10,7 +10,7 @@ import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorValue;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
 import java.util.Set;
@@ -55,7 +55,7 @@ public class SelectAction extends SeriesSearchAction {
         if (!object.declaresAFieldFindCanReachBy(wanted)) {
             return NoneValue.none();
         }
-        return object.fieldValue(((WordValue) wanted).canonical());
+        return object.fieldValue(((AnyWordValue) wanted).canonical());
     }
 
     private Value theItemAfterTheMatch(

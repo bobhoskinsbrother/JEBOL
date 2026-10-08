@@ -72,7 +72,7 @@ public final class BlockStorage extends ProtectableStorage {
      * {@code Unbind_Block} -- so no series is being changed and a protected
      * block unbinds as any other does.
      */
-    public void rebindAt(int oneBasedIndex, WordValue word) {
+    public void rebindAt(int oneBasedIndex, AnyWordValue word) {
         items.set(oneBasedIndex - 1, word);
     }
 

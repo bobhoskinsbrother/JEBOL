@@ -85,11 +85,11 @@ public class CatchNative extends DefaultNative {
             return Set.of();
         }
         return switch (arguments.get(WHERE_THE_NAMES_ARRIVE)) {
-            case WordValue single -> Set.of(single.canonical());
+            case AnyWordValue single -> Set.of(single.canonical());
             case BlockValue several -> several.remaining().stream()
-                    .filter(WordValue.class::isInstance)
-                    .map(WordValue.class::cast)
-                    .map(WordValue::canonical)
+                    .filter(AnyWordValue.class::isInstance)
+                    .map(AnyWordValue.class::cast)
+                    .map(AnyWordValue::canonical)
                     .collect(Collectors.toSet());
             default -> Set.of();
         };

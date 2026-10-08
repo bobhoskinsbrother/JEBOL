@@ -16,7 +16,7 @@ import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
 
@@ -41,14 +41,14 @@ public class ForNative extends LoopingNative {
         return (arguments, evaluator, context, refinements) -> steppedLoop(
                 evaluator,
                 context,
-                (WordValue) arguments.get(0),
+                (AnyWordValue) arguments.get(0),
                 arguments.get(1),
                 arguments.get(2),
                 arguments.get(3),
                 (BlockValue) arguments.get(4));
     }
 
-    private Value steppedLoop(Evaluator evaluator, Context within, WordValue counter,
+    private Value steppedLoop(Evaluator evaluator, Context within, AnyWordValue counter,
             Value start, Value end, Value step, BlockValue body) {
 
         if (Comparison.asDouble(step) == 0.0) {
@@ -76,7 +76,7 @@ public class ForNative extends LoopingNative {
     }
 
     private Value steppedOverWholeNumbers(Evaluator evaluator, Context locals,
-            WordValue counter, long from, long to, long stepBy, BlockValue body) {
+                                          AnyWordValue counter, long from, long to, long stepBy, BlockValue body) {
 
         return answerOfTheLoop(() -> {
             Value last = NoneValue.none();
@@ -100,7 +100,7 @@ public class ForNative extends LoopingNative {
     }
 
     private Value steppedOverRealNumbers(Evaluator evaluator, Context locals,
-            WordValue counter, double from, double to, double stepBy, BlockValue body) {
+                                         AnyWordValue counter, double from, double to, double stepBy, BlockValue body) {
 
         return answerOfTheLoop(() -> {
             Value last = NoneValue.none();
@@ -112,7 +112,7 @@ public class ForNative extends LoopingNative {
         });
     }
 
-    private Value steppedOverSeries(Evaluator evaluator, Context locals, WordValue counter,
+    private Value steppedOverSeries(Evaluator evaluator, Context locals, AnyWordValue counter,
             RebolSeries series, Value end, Value step, BlockValue body) {
 
         int tail = series.storageLength() + 1;

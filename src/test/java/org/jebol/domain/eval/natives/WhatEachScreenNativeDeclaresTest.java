@@ -114,7 +114,7 @@ class WhatEachScreenNativeDeclaresTest {
                 .orElseThrow();
     }
 
-    private WordValue metric(String spelling) {
+    private AnyWordValue metric(String spelling) {
         return WordValue.of(spelling);
     }
 

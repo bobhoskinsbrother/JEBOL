@@ -11,7 +11,7 @@ import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -62,7 +62,7 @@ public class IconvNative extends EncodingNative {
 
     private Charset characterSetFor(Value asked) {
         String spelling = switch (asked) {
-            case WordValue word -> word.canonical();
+            case AnyWordValue word -> word.canonical();
             case AnyStringValue text -> text.text();
             default -> Molder.form(asked);
         };

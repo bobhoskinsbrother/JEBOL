@@ -11,6 +11,7 @@ import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.WordValue;
 
 import java.util.List;
@@ -41,8 +42,8 @@ public class ForEachNative extends LoopingNative {
     private Value forEachLoop(Evaluator evaluator, Context within,
             Value target, Value series, BlockValue body) {
 
-        List<WordValue> names = loopNamesIn(target);
-        List<WordValue> taking = namesThatTakeAValue(names);
+        List<AnyWordValue> names = loopNamesIn(target);
+        List<AnyWordValue> taking = namesThatTakeAValue(names);
         MapActions.refuseMoreNamesThanAPairHas(series, taking);
         Supplier<List<Value>> itemsAsTheyStandNow = () -> keysOnly(series, taking.size());
 

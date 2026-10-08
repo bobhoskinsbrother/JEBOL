@@ -21,7 +21,7 @@ import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorValue;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,7 +65,7 @@ public class RemoveEachNative extends LoopingNative {
             Set<String> refinements, Evaluator evaluator, Context within) {
 
         Context locals = Context.loopFrameOf(within);
-        List<WordValue> names = loopNamesIn(arguments.get(0));
+        List<AnyWordValue> names = loopNamesIn(arguments.get(0));
         names.forEach(name -> locals.register(name.spelling()));
         BlockValue bound = Binder.bind((BlockValue) arguments.get(2), locals);
         List<Value> items = series.remaining();
@@ -115,7 +115,7 @@ public class RemoveEachNative extends LoopingNative {
 
         series.refuseChangeIfProtected();
         Context locals = Context.loopFrameOf(within);
-        WordValue word = (WordValue) arguments.getFirst();
+        AnyWordValue word = (AnyWordValue) arguments.getFirst();
         locals.register(word.spelling());
         BlockValue body = Binder.bind((BlockValue) arguments.get(2), locals);
         List<Value> kept = new ArrayList<>();
@@ -162,7 +162,7 @@ public class RemoveEachNative extends LoopingNative {
             Set<String> refinements, Evaluator evaluator, Context within) {
 
         map.requireChangeable();
-        List<WordValue> names = loopNamesIn(arguments.getFirst());
+        List<AnyWordValue> names = loopNamesIn(arguments.getFirst());
         MapActions.refuseMoreNamesThanAPairHas(map, namesThatTakeAValue(names));
         Context locals = Context.loopFrameOf(within);
         names.forEach(name -> locals.register(name.spelling()));

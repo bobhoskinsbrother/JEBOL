@@ -62,7 +62,7 @@ public abstract class ProtectingNative extends DefaultNative {
         }
         List<Value> items = switch (target) {
             case BlockValue block when !block.datatype().isAnyPath() -> block.remaining();
-            case WordValue only -> List.of(only);
+            case AnyWordValue only -> List.of(only);
             default -> List.of();
         };
         for (Value item : items) {
@@ -96,7 +96,7 @@ public abstract class ProtectingNative extends DefaultNative {
         if (item instanceof BlockValue path && path.datatype().isAnyPath()) {
             return path.fieldThePathNames();
         }
-        if (item instanceof WordValue word && word.isBound()
+        if (item instanceof AnyWordValue word && word.isBound()
                 && word.binding().knows(word.canonical())) {
             return Optional.of(word.binding().slotFor(word.canonical()));
         }
@@ -129,7 +129,7 @@ public abstract class ProtectingNative extends DefaultNative {
             case MapValue map -> map.protectFromChange(protectedNow);
             case ObjectValue object -> setTheProtectionOf(
                     object, protectedNow, deeply, onlyTheWords, reached);
-            case WordValue word -> {
+            case AnyWordValue word -> {
                 if (protectedNow) {
                     word.boundSlot().protectFromAssignment();
                 } else {

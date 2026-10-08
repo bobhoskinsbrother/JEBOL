@@ -23,11 +23,11 @@ public class RegisterNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            if (!(arguments.getFirst() instanceof WordValue name)) {
+            if (!(arguments.getFirst() instanceof AnyWordValue name)) {
                 return refuseTheArgument(arguments.getFirst(), "name");
             }
             StructValue given = (StructValue) arguments.get(1);
-            if (name.datatype() == Datatype.SET_WORD) {
+            if (name instanceof SetWordValue) {
                 name.boundSlot().setValue(given);
             }
             return filedUnder(WordValue.of(name.spelling()), given, theCatalogueIn(evaluator));
@@ -38,7 +38,7 @@ public class RegisterNative extends DefaultNative {
         return (MapValue) evaluator.systemContext().valueAt("system", "catalog", "structs");
     }
 
-    private Value filedUnder(WordValue filedAs, StructValue given, MapValue catalogue) {
+    private Value filedUnder(AnyWordValue filedAs, StructValue given, MapValue catalogue) {
         Value alreadyThere = catalogue.select(filedAs);
         if (alreadyThere instanceof BlockValue held) {
             if (!held.equals(given.spec().declaration())) {

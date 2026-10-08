@@ -302,7 +302,7 @@ public final class Interpreter {
     private static void declareTheSetWordsOf(
             BlockValue body, Context into, AnAssignmentMayLand mayLand) {
 
-        for (WordValue word : body.setWordsFromHere()) {
+        for (AnyWordValue word : body.setWordsFromHere()) {
             if (!alreadyAnsweredFor(into, word.canonical(), mayLand)) {
                 into.register(word.spelling());
             }
@@ -584,7 +584,7 @@ public final class Interpreter {
         }
     }
 
-    private void resolveFromLibWhenStartMadeTheUserContext(WordValue word, Context into) {
+    private void resolveFromLibWhenStartMadeTheUserContext(AnyWordValue word, Context into) {
         if (startMadeTheUserContext && into == userContext && systemContext.knows(word.canonical())) {
             into.register(word.spelling(), systemContext.slotFor(word.canonical()).value());
         }
@@ -768,7 +768,7 @@ public final class Interpreter {
     private void defineWordsIn(BlockValue block, Context into) {
         for (Value item : block.remaining()) {
             switch (item) {
-                case WordValue word -> {
+                case AnyWordValue word -> {
                     if (!into.knows(word.canonical())) {
                         into.register(word.spelling());
                         resolveFromLibWhenStartMadeTheUserContext(word, into);

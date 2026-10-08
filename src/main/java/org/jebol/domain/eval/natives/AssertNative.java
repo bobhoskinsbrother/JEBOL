@@ -50,7 +50,7 @@ public class AssertNative extends DefaultNative {
     }
 
     private Value theValueNamedBy(Value subject, Evaluator evaluator, Context context) {
-        boolean namesAValue = subject instanceof WordValue word
+        boolean namesAValue = subject instanceof AnyWordValue word
                 && word.datatype() == Datatype.WORD
                 || subject instanceof BlockValue path && path.datatype() == Datatype.PATH;
         if (!namesAValue) {
@@ -78,7 +78,7 @@ public class AssertNative extends DefaultNative {
         return switch (type) {
             case DatatypeValue wanted -> held.datatype() == wanted.represents();
             case TypesetValue set -> set.holds(held.datatype());
-            case WordValue word -> {
+            case AnyWordValue word -> {
                 Value resolved = context.knows(word.canonical())
                         ? context.slotFor(word.canonical()).value()
                         : NoneValue.none();

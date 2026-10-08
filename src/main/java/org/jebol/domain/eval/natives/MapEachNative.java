@@ -7,7 +7,7 @@ import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +30,7 @@ public class MapEachNative extends LoopingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Context locals = Context.loopFrameOf(context);
-            List<WordValue> names = loopNamesIn(arguments.get(0));
+            List<AnyWordValue> names = loopNamesIn(arguments.get(0));
             names.forEach(name -> locals.register(name.spelling()));
             BlockValue bound = Binder.bind((BlockValue) arguments.get(2), locals);
             List<Value> items = arguments.get(1).items();

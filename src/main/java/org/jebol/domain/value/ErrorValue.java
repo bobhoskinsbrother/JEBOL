@@ -87,7 +87,7 @@ public record ErrorValue(
     }
 
     @Override
-    public Value reflected(WordValue field) {
+    public Value reflected(AnyWordValue field) {
         return switch (field.canonical()) {
             case "words" -> BlockValue.block(FIELDS.stream()
                     .<Value>map(WordValue::of).toList());
@@ -250,7 +250,7 @@ public record ErrorValue(
     }
 
     private String theTypeWordAsThisErrorReportsIt() {
-        if (writtenFields.get("type") instanceof WordValue written) {
+        if (writtenFields.get("type") instanceof AnyWordValue written) {
             return written.spelling();
         }
         String spelling = category.spelling();
@@ -302,7 +302,7 @@ public record ErrorValue(
     }
 
     private String theFieldItNamesOrTheItemItself(Value item) {
-        if (item instanceof WordValue word && word.datatype().isAnyWord()) {
+        if (item instanceof AnyWordValue word && word.datatype().isAnyWord()) {
             Optional<Value> held = field(word.canonical());
             if (held.isPresent()) {
                 return Molder.mold(held.get());

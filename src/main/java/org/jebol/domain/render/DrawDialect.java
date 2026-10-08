@@ -83,7 +83,7 @@ public final class DrawDialect {
                 if (read.isEmpty()) {
                     return;
                 }
-                if (read.getFirst() instanceof WordValue command) {
+                if (read.getFirst() instanceof AnyWordValue command) {
                     obey(command.canonical(), read.subList(1, read.size()));
                 }
                 if (standing.index() <= left.index()) {

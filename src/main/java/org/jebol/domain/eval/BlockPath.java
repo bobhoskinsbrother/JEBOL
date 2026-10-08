@@ -20,9 +20,9 @@ final class BlockPath {
             case IntegerValue position -> positionFrom(position.magnitude(), block.index());
             case DecimalValue fraction ->
                     positionFrom((long) fraction.quantity(), block.index());
-            case WordValue name -> afterTheFirstMatchFromWhereTheBlockStands(
+            case AnyWordValue name -> afterTheFirstMatchFromWhereTheBlockStands(
                     block, item ->
-                    item instanceof WordValue held
+                    item instanceof AnyWordValue held
                             && held.canonical().equals(name.canonical()));
             default -> afterTheFirstMatchFromWhereTheBlockStands(
                     block, item ->

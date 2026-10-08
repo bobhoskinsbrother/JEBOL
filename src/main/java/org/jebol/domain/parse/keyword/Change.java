@@ -6,7 +6,7 @@ import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
 
@@ -98,14 +98,14 @@ final class Change extends DeclaredKeyword {
     }
 
     private static boolean saysToPutTheBlockInWhole(List<Value> rules, int slot) {
-        return rules.get(slot) instanceof WordValue modifier
+        return rules.get(slot) instanceof AnyWordValue modifier
                 && modifier.datatype() == Datatype.WORD
                 && modifier.canonical().equals(WHOLE)
                 && slot + 1 < rules.size();
     }
 
     private static void refuseTheModifierBeforeTheRule(Value rule) {
-        if (rule instanceof WordValue misplaced
+        if (rule instanceof AnyWordValue misplaced
                 && misplaced.datatype() == Datatype.WORD
                 && misplaced.canonical().equals(WHOLE)) {
             throw Raised.of(EvaluationFailure.PARSE_RULE,

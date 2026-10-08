@@ -11,6 +11,7 @@ import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.WordValue;
 
 import java.util.List;
@@ -44,7 +45,7 @@ public class EcdhNative extends CipherNative {
             refuseMoreThanOneThingAtOnce(refinements);
             if (refinements.contains("init")) {
                 return curveKeyMadeOn(arguments.getFirst(),
-                        ((WordValue) arguments.get(1)).canonical(), evaluator);
+                        ((AnyWordValue) arguments.get(1)).canonical(), evaluator);
             }
             Optional<EllipticCurveKey> key = keyHeldBy(
                     arguments.getFirst(), ECDH_HANDLE_TYPE, EllipticCurveKey.class)

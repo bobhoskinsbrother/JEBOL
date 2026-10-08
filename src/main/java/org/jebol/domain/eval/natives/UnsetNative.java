@@ -26,7 +26,7 @@ public class UnsetNative extends DefaultNative {
                 case NoneValue nothing -> {
                     return nothing;
                 }
-                case WordValue word -> unsetEach(List.of(word));
+                case AnyWordValue word -> unsetEach(List.of(word));
                 case BlockValue words -> unsetEach(words.remaining());
                 default -> { }
             }
@@ -37,8 +37,8 @@ public class UnsetNative extends DefaultNative {
     private void unsetEach(List<Value> names) {
         names.forEach(Value::refuseToBeWrittenWhenItNamesSelf);
         names.stream()
-                .filter(WordValue.class::isInstance)
-                .map(WordValue.class::cast)
+                .filter(AnyWordValue.class::isInstance)
+                .map(AnyWordValue.class::cast)
                 .forEach(word -> word.boundSlot().setValue(UnsetValue.unset()));
     }
 }

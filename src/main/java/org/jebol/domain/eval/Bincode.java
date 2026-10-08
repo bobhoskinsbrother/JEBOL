@@ -153,11 +153,10 @@ public final class Bincode {
 
     public static void write(Cursor cursor, Script dialect,
             LongSupplier secondsSinceTheEpoch,
-            BiConsumer<WordValue, Value> nameTheValue) {
+            BiConsumer<AnyWordValue, Value> nameTheValue) {
 
         for (int step = 0; step < dialect.size(); step++) {
-            if (dialect.asWritten(step) instanceof WordValue naming
-                    && naming.datatype() == Datatype.SET_WORD) {
+            if (dialect.asWritten(step) instanceof SetWordValue naming) {
                 nameTheValue.accept(naming, IntegerValue.of(cursor.at + 1));
                 continue;
             }
@@ -221,11 +220,10 @@ public final class Bincode {
     }
 
     public static List<Value> read(Cursor cursor, Script dialect,
-            BiConsumer<WordValue, Value> nameTheValue) {
+            BiConsumer<AnyWordValue, Value> nameTheValue) {
         Produced read = new Produced(nameTheValue);
         for (int step = 0; step < dialect.size(); step++) {
-            if (dialect.asWritten(step) instanceof WordValue naming
-                    && naming.datatype() == Datatype.SET_WORD) {
+            if (dialect.asWritten(step) instanceof SetWordValue naming) {
                 read.willName(naming);
                 continue;
             }
@@ -252,21 +250,21 @@ public final class Bincode {
 
         private final List<Value> values = new ArrayList<>();
 
-        private final BiConsumer<WordValue, Value> nameTheValue;
+        private final BiConsumer<AnyWordValue, Value> nameTheValue;
 
-        private final List<WordValue> waiting = new ArrayList<>();
+        private final List<AnyWordValue> waiting = new ArrayList<>();
 
-        private Produced(BiConsumer<WordValue, Value> nameTheValue) {
+        private Produced(BiConsumer<AnyWordValue, Value> nameTheValue) {
             this.nameTheValue = nameTheValue;
         }
 
-        private void willName(WordValue word) {
+        private void willName(AnyWordValue word) {
             waiting.add(word);
         }
 
         private void add(Value value) {
             values.add(value);
-            for (WordValue word : waiting) {
+            for (AnyWordValue word : waiting) {
                 nameTheValue.accept(word, value);
             }
             waiting.clear();
@@ -849,7 +847,7 @@ public final class Bincode {
 
     private static String codeReadAt(Script dialect, int step) {
         Value item = dialect.asWritten(step);
-        if (!(item instanceof WordValue word) || !knows(word.canonical())) {
+        if (!(item instanceof AnyWordValue word) || !knows(word.canonical())) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, item);
         }
         return word.canonical();
@@ -857,7 +855,7 @@ public final class Bincode {
 
     private static String codeAt(Script dialect, int step) {
         Value item = dialect.valueAt(step);
-        if (!(item instanceof WordValue word)) {
+        if (!(item instanceof AnyWordValue word)) {
             throw Raised.of(EvaluationFailure.DIALECT,
                     WordValue.of("bincode"), item);
         }

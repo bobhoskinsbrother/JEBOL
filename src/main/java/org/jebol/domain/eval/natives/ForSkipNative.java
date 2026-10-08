@@ -5,7 +5,7 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
 import java.util.Set;
@@ -28,7 +28,7 @@ public class ForSkipNative extends SteppingThroughNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> walkBySteps(
                 evaluator,
-                (WordValue) arguments.get(0),
+                (AnyWordValue) arguments.get(0),
                 (int) Comparison.asDouble(arguments.get(1)),
                 (BlockValue) arguments.get(2));
     }

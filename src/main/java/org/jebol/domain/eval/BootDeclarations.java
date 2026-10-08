@@ -10,6 +10,11 @@ import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.GetWordValue;
+import org.jebol.domain.value.LitWordValue;
+import org.jebol.domain.value.RefinementValue;
+import org.jebol.domain.value.SetWordValue;
 import org.jebol.domain.value.WordValue;
 
 import java.util.ArrayList;
@@ -109,14 +114,14 @@ public final class BootDeclarations {
         Map<String, DatatypeSpec> read = new LinkedHashMap<>();
         List<Value> values = theRowsBelowTheHeaderOf(source);
         for (int at = 0; at + 1 < values.size(); at++) {
-            if (!(values.get(at) instanceof WordValue declaring)
+            if (!(values.get(at) instanceof AnyWordValue declaring)
                     || !(values.get(at + 1) instanceof BlockValue row)) {
                 continue;
             }
             List<Value> said = row.remaining();
             if (said.size() >= 2
                     && said.get(0) instanceof AnyStringValue title
-                    && said.get(1) instanceof WordValue category) {
+                    && said.get(1) instanceof AnyWordValue category) {
                 read.put(declaring.canonical(),
                         new DatatypeSpec(title.text(), category.canonical()));
             }
@@ -133,9 +138,9 @@ public final class BootDeclarations {
             TranscodeResult read = Transcoder.transcode(functionDeclarationSource);
             List<Value> values = read.values().map(BlockValue::remaining).orElse(List.of());
             for (int at = 0; at + 2 < values.size(); at++) {
-                if (values.get(at) instanceof WordValue declaring
+                if (values.get(at) instanceof AnyWordValue declaring
                         && declaring.datatype() == Datatype.SET_WORD
-                        && values.get(at + 1) instanceof WordValue kind
+                        && values.get(at + 1) instanceof AnyWordValue kind
                         && (kind.canonical().equals("native")
                                 || kind.canonical().equals("action"))
                         && values.get(at + 2) instanceof BlockValue spec
@@ -154,14 +159,10 @@ public final class BootDeclarations {
         List<Value> spec = new ArrayList<>();
         for (Parameter parameter : parameters) {
             switch (parameter.kind()) {
-                case REFINEMENT -> spec.add(
-                        WordValue.of(parameter.name(), Datatype.REFINEMENT));
-                case HARD_QUOTED -> spec.add(
-                        WordValue.of(parameter.name(), Datatype.GET_WORD));
-                case SOFT_QUOTED -> spec.add(
-                        WordValue.of(parameter.name(), Datatype.LIT_WORD));
-                case RETURN_TYPE -> spec.add(
-                        WordValue.of("return", Datatype.SET_WORD));
+                case REFINEMENT -> spec.add(RefinementValue.of(parameter.name()));
+                case HARD_QUOTED -> spec.add(GetWordValue.of(parameter.name()));
+                case SOFT_QUOTED -> spec.add(LitWordValue.of(parameter.name()));
+                case RETURN_TYPE -> spec.add(SetWordValue.of("return"));
                 default -> spec.add(WordValue.of(parameter.name()));
             }
             if (!parameter.acceptedTypes().isEmpty()

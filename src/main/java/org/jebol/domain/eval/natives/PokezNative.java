@@ -29,7 +29,7 @@ public class PokezNative extends DefaultNative {
             Value series = arguments.getFirst();
             if (series instanceof TupleValue unchangeable) {
                 throw Raised.of(EvaluationFailure.CANNOT_USE,
-                        WordValue.of(THE_ACTION_IT_WRAPS, Datatype.SET_WORD),
+                        SetWordValue.of(THE_ACTION_IT_WRAPS),
                         DatatypeValue.of(unchangeable.datatype()));
             }
             long index = ((IntegerValue) arguments.get(1)).magnitude();

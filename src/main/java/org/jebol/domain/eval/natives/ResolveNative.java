@@ -113,10 +113,8 @@ public class ResolveNative extends DefaultNative {
         }
         if (onlyThese instanceof BlockValue only) {
             return new WordsToResolve(1, only.remaining().stream()
-                    .filter(word -> word instanceof WordValue spelled
-                            && (spelled.datatype() == Datatype.WORD
-                                    || spelled.datatype() == Datatype.SET_WORD))
-                    .map(word -> ((WordValue) word).canonical())
+                    .filter(word -> word instanceof WordValue || word instanceof SetWordValue)
+                    .map(word -> ((AnyWordValue) word).canonical())
                     .collect(Collectors.toUnmodifiableSet()),
                     true);
         }

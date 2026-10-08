@@ -115,13 +115,13 @@ public final class SystemObject {
         Context errors = Context.root();
         List<Value> catalogued = declarations.errorCatalogueRows();
         for (int at = 0; at + 1 < catalogued.size(); at += 2) {
-            if (!(catalogued.get(at) instanceof WordValue category) || category.datatype() != Datatype.SET_WORD || !(catalogued.get(at + 1) instanceof BlockValue body)) {
+            if (!(catalogued.get(at) instanceof SetWordValue category) || !(catalogued.get(at + 1) instanceof BlockValue body)) {
                 continue;
             }
             Context inside = Context.root();
             List<Value> fields = body.remaining();
             for (int pair = 0; pair + 1 < fields.size(); pair += 2) {
-                if (fields.get(pair) instanceof WordValue name && name.datatype() == Datatype.SET_WORD) {
+                if (fields.get(pair) instanceof SetWordValue name) {
                     inside.register(name.spelling(), fields.get(pair + 1));
                 }
             }

@@ -79,7 +79,7 @@ public class ResizeNative extends DefaultNative {
     }
 
     private void refuseAFilterTheCatalogueHasNot(Value asked) {
-        boolean known = asked instanceof WordValue word
+        boolean known = asked instanceof AnyWordValue word
                 && THE_FILTERS.stream().anyMatch(word.canonical()::equalsIgnoreCase);
         if (!known) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);

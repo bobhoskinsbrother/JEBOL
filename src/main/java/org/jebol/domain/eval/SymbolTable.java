@@ -4,7 +4,7 @@ import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.MapValue;
 import org.jebol.domain.value.UnicodeCases;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,7 +53,7 @@ public final class SymbolTable {
 
     private void internEveryWordIn(Value read) {
         switch (read) {
-            case WordValue word -> canonOf(word.spelling());
+            case AnyWordValue word -> canonOf(word.spelling());
             case BlockValue block -> block.remaining().forEach(this::internEveryWordIn);
             case MapValue map -> map.items().forEach(this::internEveryWordIn);
             default -> nothingInItIsAWord();

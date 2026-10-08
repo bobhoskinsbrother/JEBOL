@@ -17,7 +17,7 @@ class APathNamesAFieldTest {
         return fields;
     }
 
-    private static WordValue boundIn(String spelling, Context context) {
+    private static AnyWordValue boundIn(String spelling, Context context) {
         return WordValue.of(spelling).boundTo(context);
     }
 

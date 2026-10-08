@@ -147,7 +147,7 @@ final class ChecksumPort {
     String methodOf(PortValue port) {
         if (!(port.fieldValue("spec") instanceof ObjectValue(Context context))
                 || !context.holds("method")
-                || !(context.ownSlotFor("method").value() instanceof WordValue method)) {
+                || !(context.ownSlotFor("method").value() instanceof AnyWordValue method)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, "checksum");
         }
         return method.canonical();

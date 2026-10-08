@@ -40,7 +40,7 @@ public record TaskValue(Context context, BlockValue body) implements Value {
     }
 
     @Override
-    public Value reflected(WordValue field) {
+    public Value reflected(AnyWordValue field) {
         return switch (field.canonical()) {
             case "body" -> context.setWordsAndValuesOnLines();
             case "words" -> context.wordsExcludingSelf();

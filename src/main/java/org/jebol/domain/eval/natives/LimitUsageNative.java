@@ -31,7 +31,7 @@ public class LimitUsageNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            Optional.ofNullable(THE_LIMITS_A_FIELD_NAMES.get(((WordValue) arguments.getFirst()).canonical()))
+            Optional.ofNullable(THE_LIMITS_A_FIELD_NAMES.get(((AnyWordValue) arguments.getFirst()).canonical()))
                     .ifPresent(limit -> evaluator.recordLimitAskedFor(limit,
                             (long) Comparison.asDouble(arguments.get(1))));
             return UnsetValue.unset();

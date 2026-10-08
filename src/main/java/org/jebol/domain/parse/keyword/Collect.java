@@ -3,8 +3,8 @@ package org.jebol.domain.parse.keyword;
 import org.jebol.domain.parse.ParseTargets;
 import org.jebol.domain.parse.ParseWalk;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.WordValue;
 
 import java.util.ArrayList;
@@ -47,13 +47,12 @@ final class Collect extends SameForABlockAndAString {
                 : (goes.ruleAt() - at) + walk.ruleSpan(rules, goes.ruleAt());
     }
 
-    private record WhereItGoes(WordValue assignedTo, WordValue insertedInto,
-            WordValue appendedTo, int ruleAt) {
+    private record WhereItGoes(AnyWordValue assignedTo, AnyWordValue insertedInto,
+                               AnyWordValue appendedTo, int ruleAt) {
     }
 
     private static WhereItGoes whereTheGatheringGoes(List<Value> rules, int at) {
-        if (!(rules.get(at + 1) instanceof WordValue keyword)
-                || keyword.datatype() != Datatype.WORD) {
+        if (!(rules.get(at + 1) instanceof WordValue keyword)) {
             return new WhereItGoes(null, null, null, at + 1);
         }
         Value name = at + 2 < rules.size() ? rules.get(at + 2) : null;

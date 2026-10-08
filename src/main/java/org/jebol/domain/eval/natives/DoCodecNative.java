@@ -29,17 +29,17 @@ public class DoCodecNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> ranCodec(
-                (HandleValue) arguments.get(0), (WordValue) arguments.get(1), arguments.get(2));
+                (HandleValue) arguments.get(0), (AnyWordValue) arguments.get(1), arguments.get(2));
     }
 
-    private Value ranCodec(HandleValue handle, WordValue action, Value data) {
+    private Value ranCodec(HandleValue handle, AnyWordValue action, Value data) {
         if (!handle.typeName().equals(A_CODEC)) {
             throw Raised.of(EvaluationFailure.INVALID_HANDLE,
                     "a codec was wanted, not a " + handle.typeName() + " handle");
         }
         Codecs.Action asked = theActionAskedBy(action);
         refuseDataTheActionCannotTake(asked, data);
-        Codecs.Answer answered = codecs.run(((WordValue) handle.payload()).canonical(), asked, data);
+        Codecs.Answer answered = codecs.run(((AnyWordValue) handle.payload()).canonical(), asked, data);
         if (answered.error() != 0 && answered.kind() != Codecs.Answer.Kind.CHECK) {
             throw Raised.of(EvaluationFailure.BAD_MEDIA,
                     action.spelling() + " is not something this codec does");
@@ -47,7 +47,7 @@ public class DoCodecNative extends DefaultNative {
         return answered.value();
     }
 
-    private Codecs.Action theActionAskedBy(WordValue action) {
+    private Codecs.Action theActionAskedBy(AnyWordValue action) {
         return switch (action.canonical()) {
             case "identify" -> Codecs.Action.IDENTIFY;
             case "decode" -> Codecs.Action.DECODE;

@@ -89,7 +89,7 @@ public class ApplyNative extends DefaultNative {
         for (Value word : theWordsItTakes(builtIn, evaluator)) {
             Value next = at < supplied.size() ? supplied.get(at) : NoneValue.none();
             at++;
-            if (word instanceof WordValue marker && marker.datatype() == Datatype.REFINEMENT) {
+            if (word instanceof RefinementValue marker) {
                 reading = Optional.of(marker.canonical());
                 belongingTo.putIfAbsent(marker.canonical(), new ArrayList<>());
                 if (next.isTruthy()) {

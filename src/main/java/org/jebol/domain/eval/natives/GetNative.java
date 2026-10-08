@@ -29,12 +29,12 @@ public class GetNative extends DefaultNative {
             case BlockValue path when path.datatype() == Datatype.PATH ->
                     evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
             case ObjectValue object -> object.context().valuesExcludingSelf();
-            case WordValue word -> heldBy(word, refinements.contains("any"));
+            case AnyWordValue word -> heldBy(word, refinements.contains("any"));
             case Value anythingElse -> anythingElse;
         };
     }
 
-    private Value heldBy(WordValue word, boolean unsetIsAnAnswer) {
+    private Value heldBy(AnyWordValue word, boolean unsetIsAnAnswer) {
         Value held = word.boundSlot().value();
         if (held instanceof UnsetValue && !unsetIsAnAnswer) {
             throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling() + " has no value");

@@ -63,7 +63,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
         List<Value> settled = new ArrayList<>();
         int offset = 0;
         while (at < written.size()) {
-            if (!(written.get(at) instanceof WordValue name)
+            if (!(written.get(at) instanceof AnyWordValue name)
                     || name.datatype() != Datatype.WORD
                     || at + 1 >= written.size()
                     || !(written.get(at + 1) instanceof BlockValue declared)) {
@@ -102,7 +102,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
     private static StructField fieldNamed(String name, BlockValue declared,
             int offset, LayoutRegistry registry) {
         List<Value> written = declared.remaining();
-        if (written.isEmpty() || !(written.getFirst() instanceof WordValue typeWord)) {
+        if (written.isEmpty() || !(written.getFirst() instanceof AnyWordValue typeWord)) {
             throw StructLayoutRefused.becauseTheFieldIsWrong(declared,
                     "the field " + name + " names no type");
         }
@@ -146,7 +146,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
         if (which instanceof BlockValue inline) {
             return of(inline, registry);
         }
-        if (which instanceof WordValue registered) {
+        if (which instanceof AnyWordValue registered) {
             return of(registry.apply(registered.spelling())
                     .orElseThrow(() -> StructLayoutRefused.becauseTheFieldIsWrong(registered,
                             "no struct is registered as " + registered.spelling())),

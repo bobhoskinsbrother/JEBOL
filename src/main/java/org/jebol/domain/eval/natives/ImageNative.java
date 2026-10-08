@@ -52,8 +52,8 @@ public class ImageNative extends DefaultNative {
             Set<String> refinements) {
 
         Optional<Value> asked = argumentOf("as", 0, arguments, refinements);
-        String type = asked.filter(WordValue.class::isInstance)
-                .map(word -> ((WordValue) word).canonical())
+        String type = asked.filter(AnyWordValue.class::isInstance)
+                .map(word -> ((AnyWordValue) word).canonical())
                 .orElse("");
         boolean theHostKnowsIt = evaluator.images().knows(type);
         if (asked.isPresent() && !theHostKnowsIt) {

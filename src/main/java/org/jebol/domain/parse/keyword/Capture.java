@@ -3,9 +3,10 @@ package org.jebol.domain.parse.keyword;
 import org.jebol.domain.parse.ParseWalk;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.GetWordValue;
+import org.jebol.domain.value.SetWordValue;
 
 import java.util.List;
 
@@ -20,7 +21,7 @@ final class Capture extends DeclaredKeyword {
 
     @Override
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
-        WordValue word = walk.theWordToWriteInto(rules, at);
+        AnyWordValue word = walk.theWordToWriteInto(rules, at);
         if (at + 2 >= rules.size()) {
             return ParseWalk.NO_MATCH;
         }
@@ -37,7 +38,7 @@ final class Capture extends DeclaredKeyword {
 
     @Override
     public int applyToString(ParseWalk walk, List<Value> rules, int at) {
-        WordValue target = walk.theWordToWriteInto(rules, at);
+        AnyWordValue target = walk.theWordToWriteInto(rules, at);
         if (at + 2 >= rules.size()) {
             return ParseWalk.NO_MATCH;
         }
@@ -57,8 +58,7 @@ final class Capture extends DeclaredKeyword {
             ParseWalk walk, List<Value> rules, int from) {
 
         int ruleAt = from;
-        while (rules.get(ruleAt) instanceof WordValue mark
-                && mark.datatype() == Datatype.SET_WORD) {
+        while (rules.get(ruleAt) instanceof SetWordValue mark) {
             walk.assign(mark, walk.inputPositionedHere());
             ruleAt++;
             if (ruleAt >= rules.size()) {
@@ -66,8 +66,7 @@ final class Capture extends DeclaredKeyword {
                         "a capture has no rule after its marks to apply to");
             }
         }
-        if (rules.get(ruleAt) instanceof WordValue asRule
-                && asRule.datatype() == Datatype.GET_WORD) {
+        if (rules.get(ruleAt) instanceof GetWordValue asRule) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, asRule);
         }
         return ruleAt;

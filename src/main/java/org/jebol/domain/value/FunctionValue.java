@@ -57,7 +57,7 @@ public record FunctionValue(
     }
 
     @Override
-    public Value reflected(WordValue field) {
+    public Value reflected(AnyWordValue field) {
         return switch (field.canonical()) {
             case "spec" -> spec;
             case "body" -> body.copied(true);

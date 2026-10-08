@@ -155,7 +155,7 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
 
     public BlockValue declaredParameters() {
         return block(remaining().stream()
-                .filter(item -> item instanceof WordValue word
+                .filter(item -> item instanceof AnyWordValue word
                         && DECLARES_A_PARAMETER.contains(word.datatype()))
                 .toList());
     }
@@ -278,11 +278,10 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
         return this;
     }
 
-    public List<WordValue> setWordsFromHere() {
+    public List<AnyWordValue> setWordsFromHere() {
         return remaining().stream()
-                .filter(WordValue.class::isInstance)
-                .map(WordValue.class::cast)
-                .filter(word -> word.datatype() == Datatype.SET_WORD)
+                .filter(SetWordValue.class::isInstance)
+                .map(AnyWordValue.class::cast)
                 .toList();
     }
 
@@ -300,23 +299,23 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
                 }
                 continue;
             }
-            if (item instanceof WordValue word
-                    && (!settersOnly || word.datatype() == Datatype.SET_WORD)
+            if (item instanceof AnyWordValue word
+                    && (!settersOnly || word instanceof SetWordValue)
                     && isNotYetAmong(found, word)) {
                 found.add(WordValue.of(word.spelling()));
             }
         }
     }
 
-    private static boolean isNotYetAmong(List<Value> found, WordValue word) {
-        return found.stream().noneMatch(seen -> seen instanceof WordValue already
+    private static boolean isNotYetAmong(List<Value> found, AnyWordValue word) {
+        return found.stream().noneMatch(seen -> seen instanceof AnyWordValue already
                 && already.canonical().equals(word.canonical()));
     }
 
     public Optional<ContextSlot> fieldThePathNames() {
         List<Value> segments = remaining();
         if (!datatype.isAnyPath() || segments.size() < 2
-                || !(segments.getFirst() instanceof WordValue start)
+                || !(segments.getFirst() instanceof AnyWordValue start)
                 || !start.isBound() || !start.binding().knows(start.canonical())) {
             return Optional.empty();
         }
@@ -333,7 +332,7 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
 
     private static Optional<ContextSlot> theFieldNamed(Value holder, Value name) {
         return holder instanceof ObjectValue(Context context)
-                && name instanceof WordValue word
+                && name instanceof AnyWordValue word
                 && context.holds(word.canonical())
                 ? Optional.of(context.ownSlotFor(word.canonical()))
                 : Optional.empty();

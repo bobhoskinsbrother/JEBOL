@@ -14,7 +14,7 @@ import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
 import java.util.Set;
@@ -41,7 +41,7 @@ public class RepeatNative extends LoopingNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            WordValue counter = (WordValue) arguments.get(0);
+            AnyWordValue counter = (AnyWordValue) arguments.get(0);
             BlockValue body = (BlockValue) arguments.get(2);
             return switch (arguments.get(1)) {
                 case PairValue grid -> repeatedOverGrid(evaluator, context, counter, grid, body);
@@ -56,7 +56,7 @@ public class RepeatNative extends LoopingNative {
         };
     }
 
-    private Value countedLoop(Evaluator evaluator, Context within, WordValue counter,
+    private Value countedLoop(Evaluator evaluator, Context within, AnyWordValue counter,
             BlockValue body, LongFunction<Value> valueAt, long passes) {
 
         Context locals = Context.loopFrameOf(within);
@@ -72,7 +72,7 @@ public class RepeatNative extends LoopingNative {
         });
     }
 
-    private Value repeatedOverGrid(Evaluator evaluator, Context within, WordValue counter,
+    private Value repeatedOverGrid(Evaluator evaluator, Context within, AnyWordValue counter,
             PairValue grid, BlockValue body) {
 
         Context locals = Context.loopFrameOf(within);

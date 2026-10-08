@@ -147,7 +147,7 @@ public final class MapActions implements Actions {
         return MapValue.of(built);
     }
 
-    public static void refuseMoreNamesThanAPairHas(Value series, List<WordValue> names) {
+    public static void refuseMoreNamesThanAPairHas(Value series, List<AnyWordValue> names) {
         if (names.size() > 2
                 && (series instanceof MapValue || series instanceof ObjectValue)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG,

@@ -81,7 +81,7 @@ public record HandleValue(
     }
 
     @Override
-    public Value reflected(WordValue field) {
+    public Value reflected(AnyWordValue field) {
         return switch (field.canonical()) {
             case "words" -> BlockValue.block(WordValue.of("type"));
             case "values" -> BlockValue.block(isContext()

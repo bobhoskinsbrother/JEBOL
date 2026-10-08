@@ -32,7 +32,7 @@ public class ToHexNative extends DefaultNative {
             HexWidth width = new HexWidth(argumentOf("size", 0, arguments, refinements)
                     .map(asked -> OptionalLong.of(((IntegerValue) asked).magnitude()))
                     .orElseGet(OptionalLong::empty));
-            return WordValue.of(arguments.getFirst().writtenInHex(width), Datatype.ISSUE);
+            return IssueValue.of(arguments.getFirst().writtenInHex(width));
         };
     }
 }

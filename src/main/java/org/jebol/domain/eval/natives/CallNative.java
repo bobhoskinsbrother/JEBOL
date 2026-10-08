@@ -14,6 +14,7 @@ import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.GetWordValue;
 import org.jebol.domain.value.WordValue;
 
 import java.util.List;
@@ -71,14 +72,14 @@ public class CallNative extends HostNative {
 
     private String commandWordOf(Value item, Evaluator evaluator, Context context) {
         Value resolved = item;
-        if (item instanceof WordValue word && word.datatype() == Datatype.GET_WORD) {
+        if (item instanceof GetWordValue word) {
             resolved = word.boundSlot().value();
         } else if (item instanceof BlockValue path && path.datatype() == Datatype.GET_PATH) {
             resolved = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
         }
         return switch (resolved) {
             case AnyStringValue text -> text.text();
-            case WordValue word when word.datatype() == Datatype.WORD -> word.spelling();
+            case WordValue word -> word.spelling();
             default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
                     Molder.mold(resolved) + " names nothing a command line can hold");
         };

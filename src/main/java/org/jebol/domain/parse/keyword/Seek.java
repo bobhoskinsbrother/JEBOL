@@ -6,11 +6,13 @@ import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.GetWordValue;
+import org.jebol.domain.value.SetWordValue;
 import org.jebol.domain.value.WordValue;
 
 import java.util.List;
@@ -65,7 +67,7 @@ final class Seek extends DeclaredKeyword {
     }
 
     private static boolean namesTheTail(Value wanted) {
-        return wanted instanceof WordValue word && word.canonical().equals("end");
+        return wanted instanceof AnyWordValue word && word.canonical().equals("end");
     }
 
     private int moveToThePlaceItNames(ParseWalk walk, IntegerValue where) {
@@ -79,11 +81,9 @@ final class Seek extends DeclaredKeyword {
 
     private static void refuseWhatIsNeitherAPlaceNorSomethingToLookFor(Value wanted) {
         boolean refused = wanted instanceof DecimalValue
-                || (wanted instanceof WordValue marker
-                        && (marker.datatype() == Datatype.GET_WORD
-                                || marker.datatype() == Datatype.SET_WORD))
+                || wanted instanceof GetWordValue
+                || wanted instanceof SetWordValue
                 || (wanted instanceof WordValue keyword
-                        && keyword.datatype() == Datatype.WORD
                         && ParseTargets.THE_WORDS_THE_DIALECT_RESERVES
                                 .contains(keyword.canonical()));
         if (refused) {

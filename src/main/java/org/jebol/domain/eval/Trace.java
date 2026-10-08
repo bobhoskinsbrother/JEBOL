@@ -80,9 +80,7 @@ public final class Trace {
         written.append(String.format("%-2d", position))
                 .append(": ")
                 .append(molded(value));
-        if (value instanceof WordValue word
-                && (word.datatype() == Datatype.WORD
-                        || word.datatype() == Datatype.GET_WORD)) {
+        if (value instanceof AnyWordValue word && word.fetchesItsValue()) {
             written.append(whatTheWordHolds(word, context));
         }
         emit(written.toString());
@@ -131,7 +129,7 @@ public final class Trace {
         this.depthNow = depth;
     }
 
-    private String whatTheWordHolds(WordValue word, Context context) {
+    private String whatTheWordHolds(AnyWordValue word, Context context) {
         if (!word.isBound() && !context.knows(word.canonical())) {
             return "";
         }

@@ -8,7 +8,7 @@ import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +37,7 @@ public abstract class PngFilterNative extends EncodingNative {
     protected int theFilterNamedBy(Value asked) {
         return switch (asked) {
             case IntegerValue(long magnitude) -> Math.clamp((int) magnitude, NO_FILTER, theLastFilter());
-            case WordValue word when Encodings.PNG_FILTERS.contains(word.canonical()) ->
+            case AnyWordValue word when Encodings.PNG_FILTERS.contains(word.canonical()) ->
                     Encodings.PNG_FILTERS.indexOf(word.canonical()) + FIRST_NAMED_FILTER;
             default -> throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         };

@@ -105,7 +105,7 @@ public final class Parser implements ParseWalk {
         List<Value> current = new ArrayList<>();
 
         for (Value rule : rules) {
-            if (rule instanceof WordValue word && word.spelling().equals("|")) {
+            if (rule instanceof AnyWordValue word && word.spelling().equals("|")) {
                 alternatives.add(List.copyOf(current));
                 current.clear();
                 continue;
@@ -149,8 +149,8 @@ public final class Parser implements ParseWalk {
             int counts = countIn(rules, at + 1) != null ? 2 : 1;
             return counts + ruleSpan(rules, at + counts);
         }
-        if (rules.get(at) instanceof WordValue word && word.datatype() == Datatype.WORD) {
-            if (word.canonical().equals("collect") && at + 2 < rules.size() && rules.get(at + 1) instanceof WordValue keyword && keyword.datatype() == Datatype.WORD && ParseTargets.THE_WORDS_THAT_NAME_WHERE_COLLECT_PUTS_IT.contains(keyword.canonical()) && rules.get(at + 2) instanceof WordValue) {
+        if (rules.get(at) instanceof WordValue word) {
+            if (word.canonical().equals("collect") && at + 2 < rules.size() && rules.get(at + 1) instanceof WordValue keyword && ParseTargets.THE_WORDS_THAT_NAME_WHERE_COLLECT_PUTS_IT.contains(keyword.canonical()) && rules.get(at + 2) instanceof AnyWordValue) {
                 return 3 + ruleSpan(rules, at + 3);
             }
             return ParseKeyword.named(word.canonical()).map(keyword -> slotsTakenBy(keyword, rules, at)).orElse(1);
@@ -170,10 +170,10 @@ public final class Parser implements ParseWalk {
         if (rules.get(at) instanceof IntegerValue(long magnitude)) {
             return (int) magnitude;
         }
-        return rules.get(at) instanceof WordValue word && word.datatype() == Datatype.WORD ? countBehind(word) : null;
+        return rules.get(at) instanceof WordValue word ? countBehind(word) : null;
     }
 
-    Integer countBehind(WordValue word) {
+    Integer countBehind(AnyWordValue word) {
         Context target = word.isBound() ? word.binding() : context;
         return target.knows(word.canonical()) && target.slotFor(word.canonical()).value() instanceof IntegerValue(
                 long magnitude
@@ -182,14 +182,14 @@ public final class Parser implements ParseWalk {
 
     @Override
     public Value whatTheWordHolds(Value wanted) {
-        if (!(wanted instanceof WordValue word) || word.datatype() != Datatype.WORD) {
+        if (!(wanted instanceof WordValue word)) {
             return wanted;
         }
         Context target = word.isBound() ? word.binding() : context;
         return target.knows(word.canonical()) ? target.slotFor(word.canonical()).value() : wanted;
     }
 
-    boolean matchNamedRule(WordValue word) {
+    boolean matchNamedRule(AnyWordValue word) {
         Context target = word.isBound() ? word.binding() : context;
         if (!target.knows(word.canonical())) {
             return false;
@@ -225,7 +225,7 @@ public final class Parser implements ParseWalk {
     }
 
     private static boolean isTheWordNot(List<Value> rules, int at) {
-        return at < rules.size() && rules.get(at) instanceof WordValue word && word.datatype() == Datatype.WORD && ParseKeyword.named(word.canonical()).filter(THE_WORD_NOT::equals).isPresent();
+        return at < rules.size() && rules.get(at) instanceof WordValue word && ParseKeyword.named(word.canonical()).filter(THE_WORD_NOT::equals).isPresent();
     }
 
     @Override
@@ -316,7 +316,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public void assign(WordValue word, Value value) {
+    public void assign(AnyWordValue word, Value value) {
         if (walkingABlock) {
             assignOverABlock(word, value);
         } else {
@@ -331,7 +331,7 @@ public final class Parser implements ParseWalk {
 
     @Override
     public Integer sameStorageOffset(Value item) {
-        if (source == null || !(item instanceof WordValue word) || (word.datatype() != Datatype.WORD && word.datatype() != Datatype.GET_WORD) || (word.datatype() == Datatype.WORD && ParseTargets.THE_WORDS_THE_DIALECT_RESERVES.contains(word.canonical()))) {
+        if (source == null || !(item instanceof AnyWordValue word) || !word.fetchesItsValue() || (word instanceof WordValue && ParseTargets.THE_WORDS_THE_DIALECT_RESERVES.contains(word.canonical()))) {
             return null;
         }
         Context holder = word.isBound() ? word.binding() : context;
@@ -374,7 +374,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public void deliverTheCollectedTo(WordValue target, List<Value> mine, boolean appending) {
+    public void deliverTheCollectedTo(AnyWordValue target, List<Value> mine, boolean appending) {
         if (walkingABlock) {
             Value existing = valueOf(target);
             refuseATargetThatCannotHoldWhatThisParseYieldsOverABlock(existing);
@@ -514,7 +514,7 @@ public final class Parser implements ParseWalk {
         return input.get(position);
     }
 
-    private int seekToMark(WordValue back) {
+    private int seekToMark(AnyWordValue back) {
         Context holder = back.isBound() ? back.binding() : context;
         Value held = holder.knows(back.canonical()) ? holder.slotFor(back.canonical()).value() : NoneValue.none();
         ParseTargets.refuseAnInputThatIsNotASeries(back, held);
@@ -538,14 +538,14 @@ public final class Parser implements ParseWalk {
         if (rule instanceof IntegerValue) {
             return matchCountedRule(rules, at);
         }
-        if (rule instanceof WordValue mark && mark.datatype() == Datatype.SET_WORD) {
+        if (rule instanceof SetWordValue mark) {
             assignOverABlock(mark, source == null ? BlockValue.block(input.subList(position, input.size())) : source.atIndex(source.index() + position));
             return 1;
         }
-        if (rule instanceof WordValue back && back.datatype() == Datatype.GET_WORD) {
+        if (rule instanceof GetWordValue back) {
             return seekToMark(back);
         }
-        if (rule instanceof WordValue word && word.datatype() == Datatype.WORD) {
+        if (rule instanceof WordValue word) {
             OptionalInt consumed = matchKeyword(word.canonical(), rules, at);
             if (consumed.isPresent()) {
                 return consumed.getAsInt();
@@ -606,10 +606,10 @@ public final class Parser implements ParseWalk {
         if (written instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
             return evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
         }
-        if (written instanceof WordValue word) {
-            return switch (word.datatype()) {
-                case LIT_WORD -> word.as(Datatype.WORD);
-                case WORD -> evaluator.evaluateOrRaise(BlockValue.block(List.of(word)), context);
+        if (written instanceof AnyWordValue word) {
+            return switch (word) {
+                case LitWordValue quoted -> quoted.asWord();
+                case WordValue plain -> evaluator.evaluateOrRaise(BlockValue.block(List.of(plain)), context);
                 default -> word;
             };
         }
@@ -640,7 +640,7 @@ public final class Parser implements ParseWalk {
 
 
     @Override
-    public WordValue theWordToWriteInto(List<Value> rules, int at) {
+    public AnyWordValue theWordToWriteInto(List<Value> rules, int at) {
         return ParseTargets.refuseAnythingSetAndCopyCannotWriteInto(at + 1 < rules.size() ? rules.get(at + 1) : null);
     }
 
@@ -653,12 +653,12 @@ public final class Parser implements ParseWalk {
         return taken.isEmpty() ? NoneValue.none() : taken.getFirst();
     }
 
-    private Value valueOf(WordValue word) {
+    private Value valueOf(AnyWordValue word) {
         Context target = word.isBound() ? word.binding() : context;
         return target.knows(word.canonical()) ? target.slotFor(word.canonical()).value() : NoneValue.none();
     }
 
-    private void assignOverABlock(WordValue word, Value value) {
+    private void assignOverABlock(AnyWordValue word, Value value) {
         Context target = word.isBound() ? word.binding() : context;
         if (!target.knows(word.canonical())) {
             target.register(word.spelling());
@@ -686,8 +686,8 @@ public final class Parser implements ParseWalk {
                     !atEnd() && current() instanceof CharacterValue(int codepoint) && members.holds(codepoint) && advanceOne();
             case DatatypeValue wanted -> matchesDatatype(wanted.represents());
             case TypesetValue wanted -> !atEnd() && wanted.holds(current().datatype()) && advanceOne();
-            case WordValue word when word.datatype() == Datatype.LIT_WORD -> matchesLiteral(word.as(Datatype.WORD));
-            case WordValue word when word.datatype() == Datatype.WORD -> switch (word.canonical()) {
+            case LitWordValue quoted -> matchesLiteral(quoted.asWord());
+            case WordValue word -> switch (word.canonical()) {
                 case "end" -> atEnd();
                 case "skip" -> advanceOne();
                 default -> matchNamedRule(word);
@@ -741,7 +741,7 @@ public final class Parser implements ParseWalk {
         if (left instanceof AnyStringValue leftText && right instanceof AnyStringValue rightText) {
             return leftText.datatype() == rightText.datatype() && leftText.equalsIgnoringCase(rightText);
         }
-        if (left instanceof WordValue leftWord && right instanceof WordValue rightWord) {
+        if (left instanceof AnyWordValue leftWord && right instanceof AnyWordValue rightWord) {
             return leftWord.namesSameAs(rightWord);
         }
         return left.equals(right);
@@ -800,10 +800,10 @@ public final class Parser implements ParseWalk {
         if (replacement instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
             return evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
         }
-        if (replacement instanceof WordValue word && word.datatype() == Datatype.LIT_WORD) {
-            return word.as(Datatype.WORD);
+        if (replacement instanceof LitWordValue word) {
+            return word.asWord();
         }
-        if (replacement instanceof WordValue word && word.datatype() == Datatype.WORD) {
+        if (replacement instanceof WordValue word) {
             Context holder = word.isBound() ? word.binding() : context;
             if (!holder.knows(word.canonical()) || holder.slotFor(word.canonical()).value() instanceof UnsetValue) {
                 throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
@@ -816,11 +816,11 @@ public final class Parser implements ParseWalk {
 
     int matchOneOverAString(List<Value> rules, int at) {
         Value rule = rules.get(at);
-        if (rule instanceof WordValue mark && mark.datatype() == Datatype.SET_WORD) {
+        if (rule instanceof SetWordValue mark) {
             assignOverAString(mark, source.atIndex(source.index() + position));
             return 1;
         }
-        if (rule instanceof WordValue back && back.datatype() == Datatype.GET_WORD) {
+        if (rule instanceof GetWordValue back) {
             Context holder = back.isBound() ? back.binding() : context;
             ParseTargets.refuseAnInputThatIsNotASeries(back, whatTheSlotHolds(holder, back));
             if (holder.slotFor(back.canonical()).value() instanceof AnyStringValue marked) {
@@ -837,7 +837,7 @@ public final class Parser implements ParseWalk {
             }
             return NO_MATCH;
         }
-        if (rule instanceof WordValue word && word.datatype() == Datatype.WORD) {
+        if (rule instanceof WordValue word) {
             Optional<ParseKeyword> keyword = ParseKeyword.named(word.canonical());
             if (keyword.isPresent()) {
                 return applyKeyword(keyword.get(), rules, at);
@@ -871,7 +871,7 @@ public final class Parser implements ParseWalk {
         return NO_MATCH;
     }
 
-    private static Value whatTheSlotHolds(Context holder, WordValue word) {
+    private static Value whatTheSlotHolds(Context holder, AnyWordValue word) {
         return holder.knows(word.canonical()) ? holder.slotFor(word.canonical()).value() : NoneValue.none();
     }
 
@@ -936,7 +936,7 @@ public final class Parser implements ParseWalk {
         }
     }
 
-    private void deliver(WordValue word, List<Value> gathered, boolean past) {
+    private void deliver(AnyWordValue word, List<Value> gathered, boolean past) {
         Context holder = word.isBound() ? word.binding() : context;
         Value target = whatTheSlotHolds(holder, word);
         refuseATargetThatCannotHoldWhatThisParseYieldsOverAString(target);
@@ -977,7 +977,7 @@ public final class Parser implements ParseWalk {
         }
     }
 
-    private void assignOverAString(WordValue word, Value value) {
+    private void assignOverAString(AnyWordValue word, Value value) {
         Context target = word.isBound() ? word.binding() : context;
         target.register(word.canonical(), value);
     }

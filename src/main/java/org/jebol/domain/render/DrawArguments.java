@@ -5,7 +5,7 @@ import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
 import java.util.Optional;
@@ -47,7 +47,7 @@ final class DrawArguments {
     }
 
     Optional<String> wordAt(List<Value> arguments, int slot) {
-        return slot < arguments.size() && arguments.get(slot) instanceof WordValue word
+        return slot < arguments.size() && arguments.get(slot) instanceof AnyWordValue word
                 ? Optional.of(word.canonical())
                 : Optional.empty();
     }

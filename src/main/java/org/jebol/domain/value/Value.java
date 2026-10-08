@@ -24,7 +24,7 @@ public sealed interface Value permits
         TimeValue,
         DateValue,
         RebolSeries,
-        WordValue,
+        AnyWordValue,
         DatatypeValue,
         TypesetValue,
         DeclaresParameters,
@@ -95,7 +95,7 @@ public sealed interface Value permits
 
     default Value trimmed(Trimming trimming) {
         throw Raised.of(EvaluationFailure.CANNOT_USE,
-                WordValue.of("trim").as(Datatype.SET_WORD), DatatypeValue.of(datatype()));
+                SetWordValue.of("trim"), DatatypeValue.of(datatype()));
     }
 
     default Value picked(int oneBasedPosition) {
@@ -109,7 +109,7 @@ public sealed interface Value permits
         throw Raised.cannotUseTheAction(this, "pick");
     }
 
-    default Value reflected(WordValue field) {
+    default Value reflected(AnyWordValue field) {
         return NoneValue.none();
     }
 
@@ -129,7 +129,7 @@ public sealed interface Value permits
     }
 
     default boolean declaresAFieldFindCanReachBy(Value wanted) {
-        return wanted instanceof WordValue word
+        return wanted instanceof AnyWordValue word
                 && word.datatype() == Datatype.WORD
                 && !word.canonical().equals("self")
                 && declaresTheField(word.canonical());

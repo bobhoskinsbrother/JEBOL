@@ -19,13 +19,13 @@ class ABlockListsTheWordsWrittenInItTest {
     }
 
     private static List<String> spellingsOf(List<Value> words) {
-        return words.stream().map(word -> ((WordValue) word).spelling()).toList();
+        return words.stream().map(word -> ((AnyWordValue) word).spelling()).toList();
     }
 
     private static BlockValue aBlockWithANestedOne() {
-        return block(WordValue.of("a"), WordValue.of("b", Datatype.SET_WORD),
+        return block(WordValue.of("a"), SetWordValue.of("b"),
                 IntegerValue.of(1),
-                block(WordValue.of("c"), WordValue.of("d", Datatype.SET_WORD)));
+                block(WordValue.of("c"), SetWordValue.of("d")));
     }
 
     @Test
@@ -60,19 +60,19 @@ class ABlockListsTheWordsWrittenInItTest {
     void eachComesBackPlain() {
         Context somewhere = Context.root();
         somewhere.register("a", IntegerValue.of(1));
-        BlockValue written = block(WordValue.of("a", Datatype.SET_WORD).boundTo(somewhere),
-                WordValue.of("b", Datatype.GET_WORD), WordValue.of("c", Datatype.LIT_WORD));
+        BlockValue written = block(SetWordValue.of("a").boundTo(somewhere),
+                GetWordValue.of("b"), LitWordValue.of("c"));
 
         assertThat(written.wordsWritten(DEEPLY, EVERY_WORD)).allSatisfy(word -> {
             assertThat(word.datatype()).isEqualTo(Datatype.WORD);
-            assertThat(((WordValue) word).isBound()).isFalse();
+            assertThat(((AnyWordValue) word).isBound()).isFalse();
         });
     }
 
     @Test
     @DisplayName("a word written twice, in any case, comes back once, as first spelled")
     void aWordWrittenTwice() {
-        BlockValue written = block(WordValue.of("Total"), WordValue.of("total", Datatype.SET_WORD),
+        BlockValue written = block(WordValue.of("Total"), SetWordValue.of("total"),
                 block(WordValue.of("TOTAL")));
 
         assertThat(spellingsOf(written.wordsWritten(DEEPLY, EVERY_WORD))).containsExactly("Total");

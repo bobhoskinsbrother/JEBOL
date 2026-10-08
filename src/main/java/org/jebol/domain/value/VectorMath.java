@@ -86,8 +86,8 @@ public final class VectorMath {
     private static void refuseBitwiseOnDecimals(VectorKind kind, ValueOperation operation) {
         if (kind.measures() && operation.isBitwise()) {
             throw Raised.of(EvaluationFailure.NOT_RELATED,
-                    org.jebol.domain.value.WordValue.of(operation.spelling()),
-                    org.jebol.domain.value.WordValue.of(kind.spelling()));
+                    WordValue.of(operation.spelling()),
+                    WordValue.of(kind.spelling()));
         }
     }
 

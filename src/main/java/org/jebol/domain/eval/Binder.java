@@ -34,7 +34,7 @@ public final class Binder {
 
     public static Value clonedAndRebound(Value value, Set<Context> from, Context into) {
         return switch (value) {
-            case WordValue word -> word.isBound() && from.contains(word.binding())
+            case AnyWordValue word -> word.isBound() && from.contains(word.binding())
                     ? word.boundTo(into)
                     : word;
             case BlockValue block -> {
@@ -87,7 +87,7 @@ public final class Binder {
         for (int at = 0; at < block.lengthFromHere(); at++) {
             int where = block.index() + at;
             Value bound = bindValue(block.storage().at(where), context);
-            if (bound instanceof WordValue word) {
+            if (bound instanceof AnyWordValue word) {
                 block.storage().rebindAt(where, word);
             } else {
                 block.storage().set(where, bound);
@@ -108,7 +108,7 @@ public final class Binder {
         for (int at = 0; at < block.lengthFromHere(); at++) {
             int where = block.index() + at;
             Value item = block.storage().at(where);
-            if (item instanceof WordValue word) {
+            if (item instanceof AnyWordValue word) {
                 if (target.holds(word.canonical())) {
                     block.storage().rebindAt(where, word.boundTo(target));
                 }
@@ -145,9 +145,9 @@ public final class Binder {
 
     private static Value boundIfTheTargetHoldsIt(Value value, Context target) {
         return switch (value) {
-            case WordValue word when target.holds(word.canonical()) ->
+            case AnyWordValue word when target.holds(word.canonical()) ->
                     word.boundTo(target);
-            case WordValue word -> word;
+            case AnyWordValue word -> word;
             case BlockValue nested -> bindWhatTheTargetHoldsItself(nested, target);
             case MapValue map -> {
                 for (Value key : map.keys()) {
@@ -184,7 +184,7 @@ public final class Binder {
         }
         for (int at = block.index(); at <= block.storageLength(); at++) {
             switch (block.storage().at(at)) {
-                case WordValue word when names.contains(word.canonical()) ->
+                case AnyWordValue word when names.contains(word.canonical()) ->
                         block.storage().rebindAt(at, word.boundTo(context));
                 case BlockValue nested ->
                         bindEachInPlace(nested, context, names, alreadyWalked);
@@ -211,9 +211,9 @@ public final class Binder {
 
     private static Value rebindOneThatNamedIt(Value value, Context from, Context to) {
         return switch (value) {
-            case WordValue word when word.isBound() && word.binding() == from ->
+            case AnyWordValue word when word.isBound() && word.binding() == from ->
                     word.boundTo(to);
-            case WordValue word -> word;
+            case AnyWordValue word -> word;
             case BlockValue nested -> rebindWhatNamedTheFunction(nested, from, to);
             case MapValue map -> {
                 for (Value key : map.keys()) {
@@ -228,7 +228,7 @@ public final class Binder {
     private static Value boundIfDeclared(Value held, Context context,
             Set<String> names, Set<Object> alreadyWalked) {
 
-        if (held instanceof WordValue word && names.contains(word.canonical())) {
+        if (held instanceof AnyWordValue word && names.contains(word.canonical())) {
             return word.boundTo(context);
         }
         if (held instanceof BlockValue nested) {
@@ -241,11 +241,11 @@ public final class Binder {
             Value value, Context context, Set<String> names) {
 
         return switch (value) {
-            case WordValue word when names.contains(word.canonical()) ->
+            case AnyWordValue word when names.contains(word.canonical()) ->
                     word.boundTo(context.knows(word.canonical())
                             ? context.holderOf(word.canonical())
                             : context);
-            case WordValue word -> word;
+            case AnyWordValue word -> word;
             case BlockValue nested -> bindOnly(nested, context, names);
             case MapValue map -> {
                 for (Value key : map.keys()) {
@@ -259,7 +259,7 @@ public final class Binder {
 
     private static Value bindValue(Value value, Context context) {
         return switch (value) {
-            case WordValue word -> context.knows(word.canonical())
+            case AnyWordValue word -> context.knows(word.canonical())
                     ? word.boundTo(context.holderOf(word.canonical()))
                     : word;
             case BlockValue block -> bind(block, context);
@@ -282,7 +282,7 @@ public final class Binder {
 
     private static void defineWordsIn(Value value, Context context) {
         switch (value) {
-            case WordValue word -> {
+            case AnyWordValue word -> {
                 if (!context.knows(word.canonical())) {
                     context.register(word.spelling());
                 }

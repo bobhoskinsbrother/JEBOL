@@ -12,7 +12,7 @@ import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
 import java.util.Set;
@@ -94,8 +94,8 @@ public class RsaNative extends CipherNative {
 
     private String digestNamedIn(List<Value> arguments, Set<String> refinements) {
         return argumentOf("hash", 0, arguments, refinements)
-                .filter(WordValue.class::isInstance)
-                .map(digest -> ((WordValue) digest).canonical())
+                .filter(AnyWordValue.class::isInstance)
+                .map(digest -> ((AnyWordValue) digest).canonical())
                 .orElse(THE_DIGEST_WHEN_NONE_IS_NAMED);
     }
 

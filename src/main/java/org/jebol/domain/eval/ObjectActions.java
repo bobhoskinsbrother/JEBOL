@@ -37,7 +37,7 @@ public final class ObjectActions implements Actions {
             throw Raised.of(EvaluationFailure.PROTECTED);
         }
         object.refuseHiddenFieldsIn(asked.given());
-        if (asked.given() instanceof WordValue only) {
+        if (asked.given() instanceof AnyWordValue only) {
             if (object.context().holds("self")) {
                 only.refuseToBeWrittenWhenItNamesSelf();
             }
@@ -53,7 +53,7 @@ public final class ObjectActions implements Actions {
             }
         }
         for (int at = 0; at + 1 < pairs.size(); at += 2) {
-            if (pairs.get(at) instanceof WordValue field) {
+            if (pairs.get(at) instanceof AnyWordValue field) {
                 object.context().register(field.canonical(), pairs.get(at + 1));
             }
         }

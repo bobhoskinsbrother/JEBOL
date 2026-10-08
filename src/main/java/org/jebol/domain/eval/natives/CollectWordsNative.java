@@ -36,10 +36,10 @@ public class CollectWordsNative extends DefaultNative {
                     refinements.contains("deep"), refinements.contains("set"));
             Value ignoring = theIgnoredWords(arguments, refinements);
             Set<String> known = namesIn(ignoring);
-            found.removeIf(word -> known.contains(((WordValue) word).canonical()));
+            found.removeIf(word -> known.contains(((AnyWordValue) word).canonical()));
             if (refinements.contains("as")) {
                 Datatype wanted = theWordKindAsked(arguments, refinements);
-                found.replaceAll(word -> ((WordValue) word).as(wanted));
+                found.replaceAll(word -> ((AnyWordValue) word).as(wanted));
             }
             return BlockValue.block(found);
         };
@@ -66,9 +66,9 @@ public class CollectWordsNative extends DefaultNative {
     private Set<String> namesIn(Value source) {
         return switch (source) {
             case BlockValue words -> words.remaining().stream()
-                    .filter(WordValue.class::isInstance)
-                    .map(WordValue.class::cast)
-                    .map(WordValue::canonical)
+                    .filter(AnyWordValue.class::isInstance)
+                    .map(AnyWordValue.class::cast)
+                    .map(AnyWordValue::canonical)
                     .collect(Collectors.toSet());
             case ObjectValue object -> object.context().slots().stream()
                     .map(ContextSlot::canonical)

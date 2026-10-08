@@ -249,7 +249,7 @@ public final class Molder {
             case VectorValue vector -> writtenAsAVector(
                     vector, vector.index(), forReading, 1);
             case BlockValue block -> renderBlock(block, forReading);
-            case WordValue word -> forReading ? word.toString() : word.spelling();
+            case AnyWordValue word -> forReading ? word.mold() : word.form();
             case DatatypeValue datatype -> forReading
                     ? "#(" + datatype.represents().literalSpelling() + ")"
                     : datatype.represents().literalSpelling();
@@ -830,7 +830,7 @@ public final class Molder {
     private static boolean wouldNotReadBackAsAPath(BlockValue path, List<Value> segments) {
         return segments.isEmpty()
                 || path.storageLength() <= 1
-                || segments.getFirst().datatype() != Datatype.WORD;
+                || !(segments.getFirst() instanceof WordValue);
     }
 
     private static String renderEvent(EventValue event, boolean forReading) {
@@ -839,16 +839,14 @@ public final class Molder {
         String fields = oneLevelIn(() -> {
             StringBuilder written = new StringBuilder();
             for (int at = 0; at < spec.size(); at++) {
-                boolean opensAField = spec.get(at) instanceof WordValue name
-                        && name.datatype() == Datatype.SET_WORD;
+                boolean opensAField = spec.get(at) instanceof SetWordValue;
                 if (onSeparateLines && opensAField) {
                     written.append(aLineIndentedAsDeepAsWeAre());
                 } else if (at > 0) {
                     written.append(' ');
                 }
                 Value shown = spec.get(at);
-                boolean quoted = shown instanceof WordValue word
-                        && word.datatype() == Datatype.WORD;
+                boolean quoted = shown instanceof WordValue;
                 written.append(quoted ? "'" : "").append(render(shown, forReading));
             }
             return written.toString();
@@ -895,7 +893,7 @@ public final class Molder {
             ThreadLocal.withInitial(LinkedHashSet::new);
 
     private static String renderField(Value value, boolean forReading) {
-        return value instanceof WordValue word && word.datatype() == Datatype.WORD
+        return value instanceof AnyWordValue word && word.datatype() == Datatype.WORD
                 && !WRITING_EVERYTHING_OUT.get()
                 ? "'" + render(value, forReading)
                 : render(value, forReading);

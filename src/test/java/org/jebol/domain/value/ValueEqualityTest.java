@@ -118,7 +118,7 @@ class ValueEqualityTest {
         @Test
         @DisplayName("words compare without regard to case, and print as written")
         void wordsCompareIgnoringCase() {
-            WordValue asWritten = WordValue.of("Print");
+            AnyWordValue asWritten = WordValue.of("Print");
             assertThat(asWritten.spelling()).isEqualTo("Print");
             assertThat(asWritten.canonical()).isEqualTo("print");
             assertThat(asWritten.namesSameAs(WordValue.of("PRINT"))).isTrue();
@@ -127,8 +127,8 @@ class ValueEqualityTest {
         @Test
         @DisplayName("a word and a set-word name the same thing in different shapes")
         void shapeDoesNotChangeWhatAWordNames() {
-            WordValue plain = WordValue.of("total");
-            WordValue assigning = WordValue.of("total", Datatype.SET_WORD);
+            AnyWordValue plain = WordValue.of("total");
+            AnyWordValue assigning = SetWordValue.of("total");
 
             assertThat(plain.namesSameAs(assigning)).isTrue();
             assertThat((Value) plain).isNotEqualTo(assigning);

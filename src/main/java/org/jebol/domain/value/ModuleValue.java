@@ -31,7 +31,7 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
     }
 
     @Override
-    public Value reflected(WordValue field) {
+    public Value reflected(AnyWordValue field) {
         return switch (field.canonical()) {
             case "spec" -> header;
             case "title" -> headerField("title");
@@ -47,9 +47,9 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
             return List.of();
         }
         return exports.remaining().stream()
-                .filter(WordValue.class::isInstance)
-                .map(WordValue.class::cast)
-                .map(WordValue::canonical)
+                .filter(AnyWordValue.class::isInstance)
+                .map(AnyWordValue.class::cast)
+                .map(AnyWordValue::canonical)
                 .toList();
     }
 
@@ -83,7 +83,7 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
     @Override
     public String toString() {
         Value declared = headerField("name");
-        return declared instanceof WordValue word
+        return declared instanceof AnyWordValue word
                 ? "module " + word.canonical()
                 : "module with " + context.slotCount() + " words";
     }

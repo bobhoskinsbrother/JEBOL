@@ -83,7 +83,7 @@ public final class Raised extends RuntimeException {
     }
 
     public static Raised cannotUseTheAction(Value value, String actionName) {
-        return cannotUse(value, actionName, WordValue.of(actionName, Datatype.SET_WORD));
+        return cannotUse(value, actionName, SetWordValue.of(actionName));
     }
 
     public static Raised cannotUse(Value value, NativeValue refusing) {
@@ -92,7 +92,7 @@ public final class Raised extends RuntimeException {
                 : cannotUse(value, refusing.nativeName());
     }
 
-    private static Raised cannotUse(Value value, String spelling, WordValue named) {
+    private static Raised cannotUse(Value value, String spelling, AnyWordValue named) {
         return new Raised(ErrorValue.about(
                 ErrorCategory.SCRIPT, "cannot-use",
                 "cannot use " + spelling + " on "

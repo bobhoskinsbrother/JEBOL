@@ -32,7 +32,7 @@ public class ThrowNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             if (refinements.contains("name") && arguments.size() > WHERE_THE_NAME_ARRIVES) {
                 throw new ThrownSignal(arguments.getFirst(),
-                        ((WordValue) arguments.get(WHERE_THE_NAME_ARRIVES)).canonical());
+                        ((AnyWordValue) arguments.get(WHERE_THE_NAME_ARRIVES)).canonical());
             }
             throw new ThrownSignal(arguments.getFirst());
         };

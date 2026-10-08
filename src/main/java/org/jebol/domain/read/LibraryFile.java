@@ -3,7 +3,7 @@ package org.jebol.domain.read;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
 
@@ -24,7 +24,7 @@ public record LibraryFile(LibraryFileHeader header, BlockValue body) {
     private static boolean startsWithARebolHeader(BlockValue transcoded) {
         List<Value> items = transcoded.remaining();
         return items.size() >= 2
-                && items.get(0) instanceof WordValue opening
+                && items.get(0) instanceof AnyWordValue opening
                 && opening.datatype() == Datatype.WORD
                 && REBOL.equals(opening.canonical())
                 && items.get(1) instanceof BlockValue;

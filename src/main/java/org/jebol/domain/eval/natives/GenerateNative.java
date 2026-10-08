@@ -22,7 +22,7 @@ public class GenerateNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            WordValue curveNamed = (WordValue) arguments.getFirst();
+            AnyWordValue curveNamed = (AnyWordValue) arguments.getFirst();
             if (!EllipticCurveKey.curveNamesInTheCataloguesOrder()
                     .contains(curveNamed.canonical())) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, curveNamed.spelling());

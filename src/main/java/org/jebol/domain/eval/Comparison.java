@@ -268,7 +268,7 @@ public final class Comparison {
         if (left instanceof RebolSeries first && right instanceof RebolSeries second) {
             return first.sharesStorageWith(second) && first.index() == second.index();
         }
-        if (left instanceof WordValue first && right instanceof WordValue second) {
+        if (left instanceof AnyWordValue first && right instanceof AnyWordValue second) {
             return first.isSameAs(second);
         }
         if (left instanceof DecimalValue first && right instanceof DecimalValue second) {

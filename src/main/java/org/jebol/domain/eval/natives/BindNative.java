@@ -35,8 +35,8 @@ public class BindNative extends DefaultNative {
                                     + targetGiven.datatype().literalSpelling()));
             boolean addsWhatIsMissing = refinements.contains("new") || refinements.contains("set");
             return switch (arguments.getFirst()) {
-                case WordValue word -> wordBoundInto(
-                        word, target, targetGiven instanceof WordValue, addsWhatIsMissing);
+                case AnyWordValue word -> wordBoundInto(
+                        word, target, targetGiven instanceof AnyWordValue, addsWhatIsMissing);
                 case BlockValue block -> blockBoundInto(
                         block, target, refinements, addsWhatIsMissing);
                 default -> refuseTheArgument(arguments.getFirst(), "word");
@@ -45,14 +45,14 @@ public class BindNative extends DefaultNative {
     }
 
     private Optional<Context> theContextOf(Value target) {
-        if (target instanceof WordValue word) {
+        if (target instanceof AnyWordValue word) {
             return word.isBound() ? Optional.of(word.binding()) : Optional.empty();
         }
         return target.fieldsAsAContext();
     }
 
-    private Value wordBoundInto(WordValue word, Context target,
-            boolean targetWasAWord, boolean addsWhatIsMissing) {
+    private Value wordBoundInto(AnyWordValue word, Context target,
+                                boolean targetWasAWord, boolean addsWhatIsMissing) {
 
         if (addsWhatIsMissing) {
             target.register(word.canonical());
@@ -78,7 +78,7 @@ public class BindNative extends DefaultNative {
         boolean deeply = !refinements.contains("only");
         if (addsWhatIsMissing) {
             block.wordsWritten(deeply, refinements.contains("set"))
-                    .forEach(word -> target.register(((WordValue) word).canonical()));
+                    .forEach(word -> target.register(((AnyWordValue) word).canonical()));
         }
         return refinements.contains("copy")
                 ? Binder.bindACopyOfWhatTheTargetHoldsItself(block, target, deeply)

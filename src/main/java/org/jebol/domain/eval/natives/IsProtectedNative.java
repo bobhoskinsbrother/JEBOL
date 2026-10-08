@@ -33,7 +33,7 @@ public class IsProtectedNative extends DefaultNative {
             case MapValue map -> map.isProtected();
             case ObjectValue object -> object.context().slots().stream()
                     .anyMatch(ContextSlot::isProtected);
-            case WordValue word -> word.isBound()
+            case AnyWordValue word -> word.isBound()
                     && word.binding().knows(word.canonical())
                     && word.binding().slotFor(word.canonical()).isProtected();
             default -> false;

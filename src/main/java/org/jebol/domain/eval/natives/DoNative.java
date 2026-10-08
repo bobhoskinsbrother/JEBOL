@@ -42,7 +42,7 @@ public class DoNative extends DefaultNative {
                         evaluator, arguments.get(WHERE_THE_SCRIPT_ARGUMENTS_ARRIVE));
             }
             if (refinements.contains("next") && arguments.size() > 1
-                    && arguments.getLast() instanceof WordValue var) {
+                    && arguments.getLast() instanceof AnyWordValue var) {
                 return oneStepThrough(arguments.getFirst(), var, evaluator, context);
             }
             return evaluated(arguments.getFirst(), evaluator, context);
@@ -50,7 +50,7 @@ public class DoNative extends DefaultNative {
     }
 
     private Value oneStepThrough(
-            Value value, WordValue var, Evaluator evaluator, Context context) {
+            Value value, AnyWordValue var, Evaluator evaluator, Context context) {
 
         Optional<BlockValue> steppable = steppable(value, evaluator, context);
         if (steppable.isEmpty()) {
@@ -89,16 +89,14 @@ public class DoNative extends DefaultNative {
             case AnyStringValue text -> evaluatedSource(text.text(), evaluator);
             case BinaryValue bytes -> doneAsAScript(bytes, evaluator);
             case ErrorValue built -> throw new Raised(built.raisedAsItStands());
-            case WordValue word when word.datatype() == Datatype.WORD
-                    || word.datatype() == Datatype.GET_WORD ->
+            case AnyWordValue word when word.fetchesItsValue() ->
                     evaluator.valueOfWordIn(word, context);
-            case WordValue quoted when quoted.datatype() == Datatype.LIT_WORD ->
-                    quoted.as(Datatype.WORD);
+            case LitWordValue quoted -> quoted.asWord();
             case BlockValue quoted when quoted.datatype() == Datatype.LIT_PATH ->
                     quoted.as(Datatype.PATH);
             case BlockValue path when path.datatype() == Datatype.PATH ->
                     evaluator.valueOfPathIn(path, context);
-            case WordValue assigning when assigning.datatype() == Datatype.SET_WORD ->
+            case SetWordValue assigning ->
                     raiseHalfAnExpression(assigning);
             case BlockValue assigning when assigning.datatype() == Datatype.SET_PATH ->
                     raiseHalfAnExpression(assigning);
@@ -117,7 +115,7 @@ public class DoNative extends DefaultNative {
     private Value doneAsAScript(BinaryValue bytes, Evaluator evaluator) {
         Value loadHeader = evaluator.systemContext().systemFunctionNamed("load-header");
         Value read = evaluator.applyFunction(loadHeader, List.of(bytes));
-        if (read instanceof WordValue why) {
+        if (read instanceof AnyWordValue why) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, why.spelling());
         }
         List<Value> parts = ((BlockValue) read).remaining();

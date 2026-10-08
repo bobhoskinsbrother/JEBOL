@@ -132,10 +132,9 @@ final class PendingCall {
     }
 
     private static boolean optsIntoEvaluation(Value upcoming) {
-        return switch (upcoming.datatype()) {
-            case PAREN, GET_WORD, GET_PATH -> true;
-            default -> false;
-        };
+        return upcoming instanceof GetWordValue
+                || upcoming.datatype() == Datatype.PAREN
+                || upcoming.datatype() == Datatype.GET_PATH;
     }
 
     static PendingCall prefix(Value callee, List<String> refinements, List<String> mentioned) {

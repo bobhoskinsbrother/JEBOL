@@ -11,7 +11,7 @@ final class GobPath {
     }
 
     static Value read(GobValue gob, Value selector) {
-        if (selector instanceof WordValue asked) {
+        if (selector instanceof AnyWordValue asked) {
             return field(gob, asked);
         }
         if (!(selector instanceof IntegerValue(long magnitude))) {
@@ -35,7 +35,7 @@ final class GobPath {
         return at < 1 || at > gob.storage().length();
     }
 
-    static Value field(GobValue gob, WordValue asked) {
+    static Value field(GobValue gob, AnyWordValue asked) {
         GobStorage storage = gob.storage();
         return switch (asked.canonical()) {
             case "offset" -> storage.offset();
@@ -70,7 +70,7 @@ final class GobPath {
         return BlockValue.block(words);
     }
 
-    static void write(GobValue gob, WordValue asked, Value written) {
+    static void write(GobValue gob, AnyWordValue asked, Value written) {
         if (!accepted(gob.storage(), asked.canonical(), written)) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         }
@@ -234,14 +234,14 @@ final class GobPath {
     }
 
     private static boolean writtenFlags(GobStorage storage, Value written) {
-        if (written instanceof WordValue aLoneWordAddsToWhatIsThere) {
+        if (written instanceof AnyWordValue aLoneWordAddsToWhatIsThere) {
             raiseUnlessTheWordIsNoFlag(storage, aLoneWordAddsToWhatIsThere);
             return true;
         }
         if (written instanceof BlockValue aBlockStartsFromNothing) {
             storage.lowerEveryFlag();
             for (Value item : aBlockStartsFromNothing.remaining()) {
-                if (item instanceof WordValue word) {
+                if (item instanceof AnyWordValue word) {
                     raiseUnlessTheWordIsNoFlag(storage, word);
                 }
             }
@@ -251,7 +251,7 @@ final class GobPath {
     }
 
     private static void raiseUnlessTheWordIsNoFlag(
-            GobStorage storage, WordValue word) {
+            GobStorage storage, AnyWordValue word) {
         GobStorage.Flag flag = GobStorage.Flag.named(word.canonical());
         if (flag != null) {
             storage.raise(flag);

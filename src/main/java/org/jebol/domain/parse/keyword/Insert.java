@@ -4,7 +4,7 @@ import org.jebol.domain.parse.ParseWalk;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
 
@@ -45,7 +45,7 @@ final class Insert extends DeclaredKeyword {
     }
 
     private static boolean saysToPutTheBlockInWhole(List<Value> rules, int valueAt) {
-        return rules.get(valueAt) instanceof WordValue modifier
+        return rules.get(valueAt) instanceof AnyWordValue modifier
                 && modifier.datatype() == Datatype.WORD
                 && modifier.canonical().equals(WHOLE)
                 && valueAt + 1 < rules.size();

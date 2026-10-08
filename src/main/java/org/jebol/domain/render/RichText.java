@@ -4,7 +4,7 @@ import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +32,7 @@ final class RichText {
                 case AnyStringValue said -> runs.add(
                         new Run(said.text(), colour, size, bold, italic));
                 case TupleValue parts -> colour = Colour.ofTuple(parts);
-                case WordValue command -> {
+                case AnyWordValue command -> {
                     boolean turningItOn =
                             command.datatype() != org.jebol.domain.value.Datatype.REFINEMENT;
                     switch (command.canonical()) {

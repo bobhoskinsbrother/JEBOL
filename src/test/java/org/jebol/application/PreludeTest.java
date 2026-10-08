@@ -1,9 +1,8 @@
 package org.jebol.application;
 
 import org.jebol.domain.read.Transcoder;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.SetWordValue;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +30,7 @@ class PreludeTest {
             String text = new String(source.readAllBytes(), StandardCharsets.UTF_8);
             Set<String> set = new TreeSet<>();
             for (Value each : Transcoder.transcode(text).values().orElseThrow().remaining()) {
-                if (each instanceof WordValue word && word.datatype() == Datatype.SET_WORD) {
+                if (each instanceof SetWordValue word) {
                     set.add(word.canonical());
                 }
             }

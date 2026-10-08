@@ -71,7 +71,7 @@ class ValuePropertiesTest {
 
     @Property
     void aWordAlwaysComparesByItsLowercasedSpelling(@ForAll("wordSpellings") String spelling) {
-        WordValue word = WordValue.of(spelling);
+        AnyWordValue word = WordValue.of(spelling);
 
         assertThat(word.canonical()).isEqualTo(spelling.toLowerCase(Locale.ROOT));
         assertThat(word.spelling()).as("case is preserved for printing").isEqualTo(spelling);
@@ -82,7 +82,7 @@ class ValuePropertiesTest {
     @Property
     void changingAWordsShapeNeverChangesWhatItNames(
             @ForAll("wordSpellings") String spelling) {
-        WordValue plain = WordValue.of(spelling);
+        AnyWordValue plain = WordValue.of(spelling);
 
         for (Datatype shape : List.of(Datatype.SET_WORD, Datatype.GET_WORD,
                 Datatype.LIT_WORD, Datatype.REFINEMENT, Datatype.ISSUE)) {
@@ -131,7 +131,7 @@ class ValuePropertiesTest {
     void moldingAWordAlwaysReadsBackEqual(@ForAll("wordSpellings") String spelling) {
         for (Datatype shape : List.of(Datatype.WORD, Datatype.SET_WORD,
                 Datatype.GET_WORD, Datatype.LIT_WORD, Datatype.REFINEMENT)) {
-            assertReadsBackEqual(WordValue.of(spelling, shape));
+            assertReadsBackEqual(AnyWordValue.ofTheDatatype(spelling, shape));
         }
     }
 

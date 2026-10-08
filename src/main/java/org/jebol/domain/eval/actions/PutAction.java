@@ -41,7 +41,7 @@ public class PutAction extends DefaultNative implements ActionValue {
         Value written = arguments.get(2);
         switch (arguments.getFirst()) {
             case MapValue map -> map.put(key, written, refinements.contains("case"));
-            case ObjectValue object when key instanceof WordValue field ->
+            case ObjectValue object when key instanceof AnyWordValue field ->
                     putIntoTheObject(object, field, written);
             case ObjectValue ignored -> throw Raised.of(EvaluationFailure.INVALID_ARG,
                     Molder.mold(key) + " is not a word an object can hold a field under");
@@ -52,7 +52,7 @@ public class PutAction extends DefaultNative implements ActionValue {
         return written;
     }
 
-    private void putIntoTheObject(ObjectValue object, WordValue field, Value written) {
+    private void putIntoTheObject(ObjectValue object, AnyWordValue field, Value written) {
         object.refuseHiddenFieldsIn(field);
         if (object.context().isClosedToNewNames()) {
             throw Raised.of(EvaluationFailure.PROTECTED);

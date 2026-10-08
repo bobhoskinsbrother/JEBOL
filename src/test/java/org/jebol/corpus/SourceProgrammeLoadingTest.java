@@ -42,7 +42,7 @@ class SourceProgrammeLoadingTest {
         assertThat(values).as("%s produced no values", programme.getFileName()).isNotEmpty();
         assertThat(values.get(0))
                 .as("%s should begin with the word REBOL", programme.getFileName())
-                .isInstanceOfSatisfying(WordValue.class, word ->
+                .isInstanceOfSatisfying(AnyWordValue.class, word ->
                         assertThat(word.canonical()).isEqualTo("rebol"));
         assertThat(values.get(1))
                 .as("%s should follow its header word with a block", programme.getFileName())
@@ -109,7 +109,7 @@ class SourceProgrammeLoadingTest {
 
     private static List<String> boundWordsIn(Value value) {
         return switch (value) {
-            case WordValue word -> word.isBound() ? List.of(word.spelling()) : List.of();
+            case AnyWordValue word -> word.isBound() ? List.of(word.spelling()) : List.of();
             case BlockValue block -> block.remaining().stream()
                     .flatMap(item -> boundWordsIn(item).stream())
                     .toList();

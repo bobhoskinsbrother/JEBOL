@@ -27,6 +27,8 @@ import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorValue;
+import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.GetWordValue;
 import org.jebol.domain.value.WordValue;
 
 import java.time.Instant;
@@ -140,9 +142,9 @@ public class QueryAction extends PortAction {
 
         abstract Optional<Value> fieldNamed(String asked);
 
-        abstract Value unknownAlone(WordValue asked);
+        abstract Value unknownAlone(AnyWordValue asked);
 
-        Value unknownInABlock(WordValue asked) {
+        Value unknownInABlock(AnyWordValue asked) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
 
@@ -152,9 +154,9 @@ public class QueryAction extends PortAction {
 
         Value answering(Value field, Evaluator evaluator) {
             return switch (field) {
-                case WordValue asked when asked.canonical().equals(THE_NAMES_THEMSELVES)
+                case AnyWordValue asked when asked.canonical().equals(THE_NAMES_THEMSELVES)
                         && answersItsNames() -> theNames();
-                case WordValue asked -> fieldNamed(asked.canonical()).orElseGet(() -> unknownAlone(asked));
+                case AnyWordValue asked -> fieldNamed(asked.canonical()).orElseGet(() -> unknownAlone(asked));
                 case BlockValue several -> eachOf(several);
                 case NoneValue nothing -> theNames();
                 default -> everyFieldAsAnObject(evaluator);
@@ -168,11 +170,11 @@ public class QueryAction extends PortAction {
         private Value eachOf(BlockValue several) {
             List<Value> answer = new ArrayList<>();
             for (Value item : several.remaining()) {
-                if (!(item instanceof WordValue asked)) {
+                if (!(item instanceof AnyWordValue asked)) {
                     throw Raised.of(EvaluationFailure.INVALID_ARG, item);
                 }
-                if (asked.datatype() != Datatype.GET_WORD) {
-                    answer.add(asked.as(Datatype.SET_WORD));
+                if (!(asked instanceof GetWordValue)) {
+                    answer.add(asked.asSetWord());
                 }
                 answer.add(fieldNamed(asked.canonical()).orElseGet(() -> unknownInABlock(asked)));
             }
@@ -196,7 +198,7 @@ public class QueryAction extends PortAction {
             return fieldNamed(part).orElseGet(NoneValue::none);
         }
 
-        Raised cannotUse(WordValue asked, Datatype datatype) {
+        Raised cannotUse(AnyWordValue asked, Datatype datatype) {
             return Raised.of(EvaluationFailure.CANNOT_USE, asked, DatatypeValue.of(datatype));
         }
     }
@@ -228,7 +230,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        Value unknownAlone(WordValue asked) {
+        Value unknownAlone(AnyWordValue asked) {
             throw cannotUse(asked, Datatype.VECTOR);
         }
     }
@@ -254,12 +256,12 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        Value unknownAlone(WordValue asked) {
+        Value unknownAlone(AnyWordValue asked) {
             return UnsetValue.unset();
         }
 
         @Override
-        Value unknownInABlock(WordValue asked) {
+        Value unknownInABlock(AnyWordValue asked) {
             return NoneValue.none();
         }
 
@@ -288,7 +290,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        Value unknownAlone(WordValue asked) {
+        Value unknownAlone(AnyWordValue asked) {
             throw cannotUse(asked, Datatype.HANDLE);
         }
 
@@ -323,7 +325,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        Value unknownAlone(WordValue asked) {
+        Value unknownAlone(AnyWordValue asked) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
     }
@@ -357,7 +359,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        Value unknownAlone(WordValue asked) {
+        Value unknownAlone(AnyWordValue asked) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
 

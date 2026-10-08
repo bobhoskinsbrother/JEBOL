@@ -11,7 +11,7 @@ final class PairDispatcher implements Dispatcher {
         PairValue pair = pairIn(target);
         Optional<Value> half = switch (selector) {
             case IntegerValue position -> pair.halfAt((int) position.magnitude());
-            case WordValue name -> pair.half(name.canonical());
+            case AnyWordValue name -> pair.half(name.canonical());
             default -> Optional.empty();
         };
         return half.orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
@@ -35,9 +35,9 @@ final class PairDispatcher implements Dispatcher {
 
     private int theHalfNamedBy(Value selector) {
         return switch (selector) {
-            case WordValue name when name.canonical().equals("x") -> 1;
-            case WordValue name when name.canonical().equals("y") -> 2;
-            case WordValue name when name.canonical().equals("area") ->
+            case AnyWordValue name when name.canonical().equals("x") -> 1;
+            case AnyWordValue name when name.canonical().equals("y") -> 2;
+            case AnyWordValue name when name.canonical().equals("area") ->
                     throw Raised.of(EvaluationFailure.BAD_PATH_SET);
             case IntegerValue position when position.magnitude() == 1
                     || position.magnitude() == 2 -> (int) position.magnitude();

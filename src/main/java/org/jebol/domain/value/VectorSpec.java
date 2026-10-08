@@ -35,11 +35,11 @@ public final class VectorSpec {
      */
     public static Optional<VectorValue> readConstruction(List<Value> parts) {
         List<Value> rest = parts;
-        if (!rest.isEmpty() && rest.getFirst() instanceof WordValue leading
+        if (!rest.isEmpty() && rest.getFirst() instanceof AnyWordValue leading
                 && "vector!".equals(leading.canonical())) {
             rest = rest.subList(1, rest.size());
         }
-        if (rest.isEmpty() || !(rest.getFirst() instanceof WordValue word)) {
+        if (rest.isEmpty() || !(rest.getFirst() instanceof AnyWordValue word)) {
             return Optional.empty();
         }
         Optional<VectorKind> kind = VectorKind.named(word.spelling());
@@ -69,7 +69,7 @@ public final class VectorSpec {
                     ? THE_WIDEST_WHOLE_NUMBER
                     : THE_WIDEST_DECIMAL, parts.size(), BlockValue.block(parts), 1);
         }
-        if (!(leading instanceof WordValue word)) {
+        if (!(leading instanceof AnyWordValue word)) {
             return Optional.empty();
         }
         Optional<VectorKind> byName = VectorKind.named(word.spelling());
@@ -84,7 +84,7 @@ public final class VectorSpec {
 
         int at = 0;
         Boolean unsigned = null;
-        if (parts.get(at) instanceof WordValue sign) {
+        if (parts.get(at) instanceof AnyWordValue sign) {
             if ("unsigned".equals(sign.canonical())) {
                 unsigned = true;
                 at++;
@@ -93,7 +93,7 @@ public final class VectorSpec {
                 at++;
             }
         }
-        if (at >= parts.size() || !(parts.get(at) instanceof WordValue word)) {
+        if (at >= parts.size() || !(parts.get(at) instanceof AnyWordValue word)) {
             return Optional.empty();
         }
         boolean wantsDecimals;
@@ -163,7 +163,7 @@ public final class VectorSpec {
             return null;
         }
         Value written = parts.get(at);
-        return written instanceof WordValue word && word.datatype() == Datatype.GET_WORD
+        return written instanceof AnyWordValue word && word.datatype() == Datatype.GET_WORD
                 ? resolveGetWord.apply(written)
                 : written;
     }

@@ -6,6 +6,7 @@ import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.WordValue;
 
 import java.util.Arrays;
@@ -72,7 +73,7 @@ public enum DatePart implements DateField {
     }
 
     private static Optional<DatePart> named(Value selector) {
-        if (selector instanceof WordValue asked) {
+        if (selector instanceof AnyWordValue asked) {
             return Arrays.stream(values())
                     .filter(part -> part.spelling().equals(asked.canonical()))
                     .findFirst();
@@ -91,6 +92,6 @@ public enum DatePart implements DateField {
 
     private static Raised noPartGoesByThatName(Value selector) {
         return Raised.of(EvaluationFailure.INVALID_PATH,
-                selector instanceof WordValue word ? word.spelling() : "date");
+                selector instanceof AnyWordValue word ? word.spelling() : "date");
     }
 }

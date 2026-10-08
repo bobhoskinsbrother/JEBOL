@@ -56,9 +56,9 @@ public class ConstructNative extends DefaultNative {
     }
 
     private void constructInto(Context built, List<Value> items, boolean asWritten) {
-        List<WordValue> waiting = new ArrayList<>();
+        List<AnyWordValue> waiting = new ArrayList<>();
         for (Value item : items) {
-            if (item instanceof WordValue name && name.datatype() == Datatype.SET_WORD) {
+            if (item instanceof SetWordValue name) {
                 waiting.add(name);
                 continue;
             }
@@ -66,12 +66,12 @@ public class ConstructNative extends DefaultNative {
             if (!asWritten && held instanceof UnsetValue) {
                 held = NoneValue.none();
             }
-            for (WordValue name : waiting) {
+            for (AnyWordValue name : waiting) {
                 built.register(name.spelling(), held);
             }
             waiting.clear();
         }
-        for (WordValue name : waiting) {
+        for (AnyWordValue name : waiting) {
             if (!asWritten) {
                 built.register(name.spelling(), NoneValue.none());
             } else if (!built.knows(name.canonical())) {
@@ -81,7 +81,7 @@ public class ConstructNative extends DefaultNative {
     }
 
     private Value namedConstant(Value value) {
-        if (!(value instanceof WordValue word) || word.datatype() != Datatype.WORD) {
+        if (!(value instanceof WordValue word)) {
             return value;
         }
         return switch (word.canonical()) {
@@ -106,7 +106,7 @@ public class ConstructNative extends DefaultNative {
                 at++;
                 value.append(' ').append(withoutACarriageReturn(lines[at]).stripLeading());
             }
-            fields.add(WordValue.of(line.substring(0, colon).strip(), Datatype.SET_WORD));
+            fields.add(SetWordValue.of(line.substring(0, colon).strip()));
             fields.add(StringValue.of(value.toString()));
         }
         return fields;

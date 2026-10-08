@@ -12,6 +12,7 @@ import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.WordValue;
 
 import java.util.List;
@@ -51,7 +52,7 @@ public class ChecksumNative extends EncodingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value data = arguments.getFirst();
-            WordValue method = (WordValue) arguments.get(1);
+            AnyWordValue method = (AnyWordValue) arguments.get(1);
             if (data instanceof FileValue) {
                 return theContentsOfThatFileSummed(data, method, evaluator, refinements);
             }
@@ -60,7 +61,7 @@ public class ChecksumNative extends EncodingNative {
         };
     }
 
-    private Value summed(Value data, byte[] octets, WordValue method,
+    private Value summed(Value data, byte[] octets, AnyWordValue method,
             List<Value> arguments, Set<String> refinements) {
 
         String asked = method.canonical();
@@ -106,7 +107,7 @@ public class ChecksumNative extends EncodingNative {
     }
 
     private Value theContentsOfThatFileSummed(
-            Value file, WordValue method, Evaluator evaluator, Set<String> refinements) {
+            Value file, AnyWordValue method, Evaluator evaluator, Set<String> refinements) {
 
         if (!Encodings.DIGESTS.containsKey(method.canonical())) {
             throw Raised.of(EvaluationFailure.FEATURE_NA);

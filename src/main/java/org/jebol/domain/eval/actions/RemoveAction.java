@@ -50,7 +50,7 @@ public class RemoveAction extends DefaultNative implements ActionValue {
         return switch (subject) {
             case PortValue queue when queue.eventQueue().isPresent() ->
                     throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
-                            WordValue.of(nativeName()).as(Datatype.SET_WORD));
+                            SetWordValue.of(nativeName()));
             case MapValue map -> {
                 key.ifPresent(map::remove);
                 yield map;

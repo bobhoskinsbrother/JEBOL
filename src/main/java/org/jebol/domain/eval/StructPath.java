@@ -32,7 +32,7 @@ public final class StructPath {
     }
 
     private static StructSpec.StructField fieldChosenBy(StructValue struct, Value selector) {
-        if (!(selector instanceof WordValue asked)) {
+        if (!(selector instanceof AnyWordValue asked)) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, Molder.mold(selector));
         }
         return struct.fieldCalled(asked.spelling())

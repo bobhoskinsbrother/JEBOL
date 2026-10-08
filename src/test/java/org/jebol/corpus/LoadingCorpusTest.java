@@ -4,7 +4,7 @@ import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -84,7 +84,7 @@ class LoadingCorpusTest {
 
     private static boolean unboundnessOf(Value value) {
         return switch (value) {
-            case WordValue word -> !word.isBound();
+            case AnyWordValue word -> !word.isBound();
             case BlockValue block -> block.remaining().stream()
                     .allMatch(LoadingCorpusTest::unboundnessOf);
             default -> true;

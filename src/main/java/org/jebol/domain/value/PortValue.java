@@ -26,7 +26,7 @@ public record PortValue(Context context) implements Value {
     }
 
     public String schemeName() {
-        return fieldValue("scheme").fieldValue("name") instanceof WordValue word
+        return fieldValue("scheme").fieldValue("name") instanceof AnyWordValue word
                 ? word.canonical()
                 : "";
     }

@@ -55,7 +55,7 @@ public class GuiMetricNative extends ScreenNative {
     }
 
     private ScreenMetric metricNamedBy(Value asked) {
-        if (!(asked instanceof WordValue word) || word.datatype() != Datatype.WORD) {
+        if (!(asked instanceof WordValue word)) {
             throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     "gui-metric takes a word, not " + asked.datatype().literalSpelling());
         }

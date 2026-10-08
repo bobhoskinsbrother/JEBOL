@@ -140,8 +140,7 @@ public enum Datatype {
     }
 
     public boolean isSeries() {
-        return isAnyString() || isAnyBlock()
-                || this == BINARY || this == IMAGE || this == VECTOR;
+        return isAnyString() || isAnyBlock() || this == BINARY || this == IMAGE || this == VECTOR;
     }
 
     public boolean isNumber() {

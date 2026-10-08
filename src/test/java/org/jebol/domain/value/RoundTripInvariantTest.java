@@ -50,9 +50,9 @@ class RoundTripInvariantTest {
             Context second = Context.root();
             second.register("shared", IntegerValue.of(2));
 
-            WordValue unbound = WordValue.of("shared");
-            WordValue inFirst = unbound.boundTo(first);
-            WordValue inSecond = unbound.boundTo(second);
+            AnyWordValue unbound = WordValue.of("shared");
+            AnyWordValue inFirst = unbound.boundTo(first);
+            AnyWordValue inSecond = unbound.boundTo(second);
 
             assertThat(inFirst).as("equal? ignores binding").isEqualTo(inSecond);
             assertThat(inFirst).as("and ignores whether there is one at all").isEqualTo(unbound);
@@ -64,8 +64,8 @@ class RoundTripInvariantTest {
             Context context = Context.root();
             context.register("shared", IntegerValue.of(1));
 
-            WordValue unbound = WordValue.of("shared");
-            WordValue bound = unbound.boundTo(context);
+            AnyWordValue unbound = WordValue.of("shared");
+            AnyWordValue bound = unbound.boundTo(context);
 
             assertThat(bound.isSameAs(unbound)).isFalse();
             assertThat(bound.isSameAs(unbound.boundTo(context))).isTrue();
@@ -82,7 +82,7 @@ class RoundTripInvariantTest {
         @DisplayName("and a word is still not a set-word")
         void shapeStillCounts() {
             assertThat((Value) WordValue.of("total"))
-                    .isNotEqualTo(WordValue.of("total", Datatype.SET_WORD));
+                    .isNotEqualTo(SetWordValue.of("total"));
         }
     }
 

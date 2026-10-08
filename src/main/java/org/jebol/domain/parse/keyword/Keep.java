@@ -6,7 +6,7 @@ import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
 
@@ -103,7 +103,7 @@ final class Keep extends DeclaredKeyword {
             return ParseWalk.NO_MATCH;
         }
         Value captured = walk.sliceBetween(before, walk.position());
-        if (rules.get(at + 1) instanceof WordValue name) {
+        if (rules.get(at + 1) instanceof AnyWordValue name) {
             walk.assign(name, captured);
         }
         walk.keep(captured);
@@ -122,7 +122,7 @@ final class Keep extends DeclaredKeyword {
     }
 
     private static boolean isTheWord(Value kept, String spelling) {
-        return kept instanceof WordValue word
+        return kept instanceof AnyWordValue word
                 && word.datatype() == Datatype.WORD
                 && word.canonical().equals(spelling);
     }

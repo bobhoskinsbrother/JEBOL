@@ -13,13 +13,13 @@ final class ShapeSubDialect {
         List<Value> written = steps.remaining();
         int at = 0;
         while (at < written.size()) {
-            if (!(written.get(at) instanceof WordValue command)) {
+            if (!(written.get(at) instanceof AnyWordValue command)) {
                 at++;
                 continue;
             }
             int ends = whereTheNextStepStarts(written, at + 1);
             walk.obey(command.canonical(),
-                    command.datatype() == Datatype.LIT_WORD,
+                    command instanceof LitWordValue,
                     written.subList(at + 1, ends));
             at = ends;
         }
@@ -28,7 +28,7 @@ final class ShapeSubDialect {
 
     private int whereTheNextStepStarts(List<Value> written, int from) {
         int ahead = from;
-        while (ahead < written.size() && !(written.get(ahead) instanceof WordValue)) {
+        while (ahead < written.size() && !(written.get(ahead) instanceof AnyWordValue)) {
             ahead++;
         }
         return ahead;

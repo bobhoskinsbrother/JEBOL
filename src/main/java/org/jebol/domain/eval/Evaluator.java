@@ -255,7 +255,7 @@ public final class Evaluator {
                 : NoneValue.none();
         if (!(theFunction instanceof FunctionValue able)) {
             throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
-                    WordValue.of(action).as(Datatype.SET_WORD));
+                    SetWordValue.of(action));
         }
         return applyFunction(able, laidOutAsTheActorDeclaresThem(able, arguments, refinements));
     }
@@ -286,9 +286,7 @@ public final class Evaluator {
     }
 
     public Value simpleValueOf(Value given, Context where) {
-        if (given instanceof WordValue word
-                && (word.datatype() == Datatype.WORD
-                        || word.datatype() == Datatype.GET_WORD)) {
+        if (given instanceof AnyWordValue word && word.fetchesItsValue()) {
             return valueOfWordIn(word, where);
         }
         if (given instanceof BlockValue path
@@ -304,7 +302,7 @@ public final class Evaluator {
         BlockValue at = block;
         while (!at.atTail()) {
             Value here = at.first();
-            if (here.datatype() == Datatype.SET_WORD || here.datatype() == Datatype.SET_PATH) {
+            if (here instanceof SetWordValue || here.datatype() == Datatype.SET_PATH) {
                 results.add(here);
                 at = at.atIndex(at.index() + 1);
                 if (at.atTail()) {
@@ -521,7 +519,7 @@ public final class Evaluator {
 
     public ObjectValue evaluatedInto(ObjectValue built, BlockValue body) {
         Context fields = built.context();
-        body.setWordsFromHere().stream().map(WordValue::spelling).forEach(fields::register);
+        body.setWordsFromHere().stream().map(AnyWordValue::spelling).forEach(fields::register);
         evaluateOrRaise(Binder.bindOnly(body, fields, fields.ownFieldNames()), fields);
         return built;
     }
@@ -812,21 +810,24 @@ public final class Evaluator {
         frame.theCallNearAndWhereAreAbout = null;
         frame.advance();
 
-        return switch (input.datatype()) {
-            case WORD -> evaluateWord(frame, frames, (WordValue) input);
-            case GET_WORD -> StepOutcome.of(evaluateGetWord((WordValue) input));
-            case LIT_WORD -> StepOutcome.of(((WordValue) input).as(Datatype.WORD));
-            case LIT_PATH -> StepOutcome.of(((BlockValue) input).as(Datatype.PATH));
-            case SET_WORD -> evaluateSetWord(frame, (WordValue) input);
-            case PAREN -> {
-                push(frames, ((BlockValue) input).as(Datatype.BLOCK), frame.context);
+        return switch (input) {
+            case WordValue word -> evaluateWord(frame, frames, word);
+            case GetWordValue word -> StepOutcome.of(evaluateGetWord(word));
+            case LitWordValue quoted -> StepOutcome.of(quoted.asWord());
+            case SetWordValue assigning -> evaluateSetWord(frame, assigning);
+            case BlockValue quoted when quoted.datatype() == Datatype.LIT_PATH ->
+                    StepOutcome.of(quoted.as(Datatype.PATH));
+            case BlockValue paren when paren.datatype() == Datatype.PAREN -> {
+                push(frames, paren.as(Datatype.BLOCK), frame.context);
                 yield StepOutcome.waiting();
             }
-            case GET_PATH -> StepOutcome.of(
-                    select(((BlockValue) input).as(Datatype.PATH), frame.context).value());
-            case PATH -> evaluatePath(frame, frames, (BlockValue) input);
-            case SET_PATH -> evaluateSetPath(frame, (BlockValue) input);
-            case ERROR -> throw new Raised((ErrorValue) input);
+            case BlockValue path when path.datatype() == Datatype.GET_PATH -> StepOutcome.of(
+                    select(path.as(Datatype.PATH), frame.context).value());
+            case BlockValue path when path.datatype() == Datatype.PATH ->
+                    evaluatePath(frame, frames, path);
+            case BlockValue path when path.datatype() == Datatype.SET_PATH ->
+                    evaluateSetPath(frame, path);
+            case ErrorValue raised -> throw new Raised(raised);
             default -> input.datatype().isAnyFunction()
                             && input.datatype() != Datatype.OP
                     ? calledWithoutAName(frame, frames, input)
@@ -898,7 +899,7 @@ public final class Evaluator {
         if (frame.atEnd()) {
             return Optional.empty();
         }
-        if (!(frame.current() instanceof WordValue word) || word.datatype() != Datatype.WORD) {
+        if (!(frame.current() instanceof WordValue word)) {
             return Optional.empty();
         }
         if (!word.isBound() || !word.binding().knows(word.canonical())) {
@@ -917,7 +918,7 @@ public final class Evaluator {
     }
 
     private StepOutcome evaluateWord(
-            Frame frame, Deque<Frame> frames, WordValue word) {
+            Frame frame, Deque<Frame> frames, AnyWordValue word) {
         ContextSlot slot = resolve(word);
         Value bound = slot.value();
         if (bound.datatype() == Datatype.UNSET) {
@@ -940,11 +941,11 @@ public final class Evaluator {
         return startCall(frame, frames, bound, List.of());
     }
 
-    private Value evaluateGetWord(WordValue word) {
+    private Value evaluateGetWord(AnyWordValue word) {
         return resolve(word).value();
     }
 
-    private StepOutcome evaluateSetWord(Frame frame, WordValue word) {
+    private StepOutcome evaluateSetWord(Frame frame, AnyWordValue word) {
         if (!word.isBound() || !word.binding().knows(word.canonical())) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
         }
@@ -959,14 +960,13 @@ public final class Evaluator {
 
     private static boolean asksForReEvaluation(Value argument) {
         return switch (argument) {
-            case WordValue word -> word.datatype() == Datatype.WORD
-                    || word.datatype() == Datatype.GET_WORD;
+            case AnyWordValue word -> word.fetchesItsValue();
             case BlockValue path -> path.datatype() == Datatype.PATH;
             default -> argument.datatype().isAnyFunction();
         };
     }
 
-    public Value valueOfWordIn(WordValue word, Context context) {
+    public Value valueOfWordIn(AnyWordValue word, Context context) {
         return resolve(word.isBound() ? word : word.boundTo(context)).value();
     }
 
@@ -974,7 +974,7 @@ public final class Evaluator {
         return select(path, context).value();
     }
 
-    private ContextSlot resolve(WordValue word) {
+    private ContextSlot resolve(AnyWordValue word) {
         if (!word.isBound() || !word.binding().knows(word.canonical())) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
         }
@@ -1011,7 +1011,7 @@ public final class Evaluator {
 
     private static void refuseSelfAsAnInvalidPathRatherThanAGuardedSlot(
             Value lastSegment) {
-        if (lastSegment instanceof WordValue word
+        if (lastSegment instanceof AnyWordValue word
                 && word.canonical().equals("self")) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
                     "self is what a context calls itself and cannot be assigned");
@@ -1025,13 +1025,13 @@ public final class Evaluator {
             return null;
         }
         Value written = frame.code.storage().at(position);
-        if (written instanceof WordValue word) {
+        if (written instanceof AnyWordValue word) {
             return word.spelling();
         }
         if (written instanceof BlockValue path && path.datatype() == Datatype.PATH) {
             int reachingTheFunction = path.remaining().size() - refinementsWritten - 1;
             if (reachingTheFunction >= 0
-                    && path.remaining().get(reachingTheFunction) instanceof WordValue reached) {
+                    && path.remaining().get(reachingTheFunction) instanceof AnyWordValue reached) {
                 return reached.spelling();
             }
         }
@@ -1042,11 +1042,11 @@ public final class Evaluator {
         if (call.isAssignment()) {
             if (call.slot() != null && call.argumentsInDeclaredOrder().get(0).datatype() == Datatype.UNSET) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE,
-                        WordValue.of(call.slot().spelling(), Datatype.SET_WORD));
+                        SetWordValue.of(call.slot().spelling()));
             }
             if (call.slot() != null && call.slot().isProtected()) {
                 throw Raised.of(EvaluationFailure.LOCKED_WORD,
-                        (Value) WordValue.of(call.slot().spelling(), Datatype.SET_WORD));
+                        (Value) SetWordValue.of(call.slot().spelling()));
             }
             if (call.destination() != null) {
                 try {
@@ -1271,8 +1271,8 @@ public final class Evaluator {
     }
 
     private Raised noSuchRefinement(Selection selection, int index) {
-        Value calledBy = selection.calledBy() instanceof WordValue word
-                ? word.as(Datatype.WORD)
+        Value calledBy = selection.calledBy() instanceof AnyWordValue word
+                ? word.asWord()
                 : selection.calledBy();
         return Raised.of(EvaluationFailure.NO_REFINE,
                 calledBy, selection.mentionedAsWritten().get(index));
@@ -1340,17 +1340,17 @@ public final class Evaluator {
             return;
         }
 
-        if (target instanceof EventValue event && lastSegment instanceof WordValue field) {
+        if (target instanceof EventValue event && lastSegment instanceof AnyWordValue field) {
             place.setValue(EventPath.written(event, field.canonical(), written)
                     .orElseThrow(() -> Raised.of(
                             EvaluationFailure.BAD_PATH_SET, field.spelling())));
             return;
         }
-        if (target instanceof GobValue gob && lastSegment instanceof WordValue field) {
+        if (target instanceof GobValue gob && lastSegment instanceof AnyWordValue field) {
             GobPath.write(gob, field, written);
             return;
         }
-        if (segments.size() == 3 && segments.get(1) instanceof WordValue pairField
+        if (segments.size() == 3 && segments.get(1) instanceof AnyWordValue pairField
                 && select(BlockValue.path(segments.subList(0, 1), Datatype.PATH),
                         frame.context).value() instanceof GobValue holdingPair
                 && GobPath.field(holdingPair, pairField) instanceof PairValue half) {
@@ -1433,7 +1433,7 @@ public final class Evaluator {
                 return;
             }
         }
-        if (target instanceof ErrorValue raised && lastSegment instanceof WordValue field) {
+        if (target instanceof ErrorValue raised && lastSegment instanceof AnyWordValue field) {
             if (!ErrorValue.FIELDS.contains(field.canonical())) {
                 throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
             }
@@ -1441,13 +1441,13 @@ public final class Evaluator {
             return;
         }
         if (target instanceof EmailValue address
-                && selectorFor(lastSegment, frame.context) instanceof WordValue half
+                && selectorFor(lastSegment, frame.context) instanceof AnyWordValue half
                 && (half.canonical().equals("user") || half.canonical().equals("host"))) {
             writeEmailPart(address, half, written);
             return;
         }
         if ((target instanceof AnyStringValue || target instanceof BinaryValue)
-                && selectorFor(lastSegment, frame.context) instanceof WordValue) {
+                && selectorFor(lastSegment, frame.context) instanceof AnyWordValue) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         }
         throw Raised.of(EvaluationFailure.INVALID_PATH);
@@ -1498,12 +1498,12 @@ public final class Evaluator {
         Value calledBy = segments.get(0);
         List<String> refinements = new ArrayList<>();
         List<String> mentioned = new ArrayList<>();
-        List<WordValue> mentionedAsWritten = new ArrayList<>();
+        List<AnyWordValue> mentionedAsWritten = new ArrayList<>();
 
         for (int index = 1; index < segments.size(); index++) {
             Value segment = segments.get(index);
             if (current.value().datatype().isAnyFunction()) {
-                WordValue refinement = refinementWordOf(segment);
+                AnyWordValue refinement = refinementWordOf(segment);
                 mentioned.add(refinement.canonical());
                 mentionedAsWritten.add(refinement);
                 if (isSwitchedOn(refinement, context)) {
@@ -1519,7 +1519,7 @@ public final class Evaluator {
                 List.copyOf(mentioned), List.copyOf(mentionedAsWritten));
     }
 
-    private boolean isSwitchedOn(WordValue refinement, Context context) {
+    private boolean isSwitchedOn(AnyWordValue refinement, Context context) {
         return refinement.datatype() != Datatype.GET_WORD
                 || resolve(refinement.isBound() ? refinement : refinement.boundTo(context))
                         .value().isTruthy();
@@ -1575,8 +1575,8 @@ public final class Evaluator {
                     Datatype.MONEY, Datatype.DATATYPE, Datatype.TYPESET);
 
     private Slot selectFirst(Value segment, Context context) {
-        if (segment instanceof WordValue word) {
-            WordValue bound = word.isBound() ? word : word.boundTo(context);
+        if (segment instanceof AnyWordValue word) {
+            AnyWordValue bound = word.isBound() ? word : word.boundTo(context);
             ContextSlot slot = resolve(bound);
             if (slot.value().datatype() == Datatype.UNSET) {
                 throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
@@ -1591,7 +1591,7 @@ public final class Evaluator {
     }
 
     private Value resolvedSegment(Value segment, Context context) {
-        if (segment instanceof WordValue word && word.datatype() == Datatype.GET_WORD) {
+        if (segment instanceof GetWordValue word) {
             return resolve(word.isBound() ? word : word.boundTo(context)).value();
         }
         if (segment instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
@@ -1606,8 +1606,8 @@ public final class Evaluator {
                 : selector;
     }
 
-    private WordValue refinementWordOf(Value segment) {
-        if (segment instanceof WordValue word) {
+    private AnyWordValue refinementWordOf(Value segment) {
+        if (segment instanceof AnyWordValue word) {
             return word;
         }
         throw Raised.of(EvaluationFailure.INVALID_PATH,
@@ -1625,14 +1625,14 @@ public final class Evaluator {
         if (target instanceof BitsetValue set && selector instanceof CharacterValue(int codepoint1)) {
             return LogicValue.of(set.holds(codepoint1));
         }
-        if (target instanceof ErrorValue raised && selector instanceof WordValue field) {
+        if (target instanceof ErrorValue raised && selector instanceof AnyWordValue field) {
             return raised.field(field.canonical()).orElseThrow(() ->
                     Raised.of(EvaluationFailure.INVALID_PATH, field.spelling()));
         }
         if (target instanceof AnyStringValue path && path.isALocation()) {
             return joinedOntoPath(path, selector);
         }
-        if (target instanceof AnyStringValue text && selector instanceof WordValue field) {
+        if (target instanceof AnyStringValue text && selector instanceof AnyWordValue field) {
             return switch (field.canonical()) {
                 case "length" -> IntegerValue.of(text.lengthFromHere());
                 case "size" -> IntegerValue.of(
@@ -1654,7 +1654,7 @@ public final class Evaluator {
             return GobPath.read(gob, selector);
         }
         if (target instanceof HandleValue handle) {
-            if (!(selector instanceof WordValue field)) {
+            if (!(selector instanceof AnyWordValue field)) {
                 throw Raised.of(EvaluationFailure.INVALID_PATH,
                         "a handle is selected by name, not by "
                                 + selector.datatype().literalSpelling());
@@ -1695,7 +1695,7 @@ public final class Evaluator {
             return bitsetHoldsForAPath(members, selector);
         }
         if (target instanceof CharacterValue(int codepoint)
-                && selector instanceof WordValue asked) {
+                && selector instanceof AnyWordValue asked) {
             switch (asked.canonical()) {
                 case "width" -> {
                     return IntegerValue.of(
@@ -1737,7 +1737,7 @@ public final class Evaluator {
         long fraction = Math.abs(time.nanoseconds()) % NANOSECONDS_IN_A_SECOND;
         int which = switch (selector) {
             case IntegerValue position -> (int) position.magnitude();
-            case WordValue field -> switch (field.canonical()) {
+            case AnyWordValue field -> switch (field.canonical()) {
                 case "hour" -> 1;
                 case "minute" -> 2;
                 case "second" -> 3;
@@ -1761,7 +1761,7 @@ public final class Evaluator {
 
     private record Selection(
             Slot slot, Value calledBy, List<String> refinements,
-            List<String> mentioned, List<WordValue> mentionedAsWritten) {
+            List<String> mentioned, List<AnyWordValue> mentionedAsWritten) {
 
         Value value() {
             return slot.value();
@@ -1826,14 +1826,14 @@ public final class Evaluator {
         return TerminalWidth.of(text.codePoints().toArray());
     }
 
-    private static EmailValue theEmailNamedBy(AnyStringValue text, WordValue half) {
+    private static EmailValue theEmailNamedBy(AnyStringValue text, AnyWordValue half) {
         if (!(text instanceof EmailValue email)) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, half.canonical());
         }
         return email;
     }
 
-    private static void writeEmailPart(EmailValue address, WordValue half, Value written) {
+    private static void writeEmailPart(EmailValue address, AnyWordValue half, Value written) {
         String replacement = Molder.form(written);
         if (half.canonical().equals("host")) {
             address.hostRewrittenAs(replacement);

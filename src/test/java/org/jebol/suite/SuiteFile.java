@@ -60,7 +60,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
     private static final String RED_ONLY = "--red--";
 
     private static boolean isHarnessWord(Value value) {
-        return value instanceof WordValue word && switch (word.spelling()) {
+        return value instanceof AnyWordValue word && switch (word.spelling()) {
             case START_FILE, END_FILE, START_GROUP, END_GROUP, TEST, ASSERT,
                     RED_ONLY -> true;
             default -> word.spelling().startsWith("--assertf");
@@ -166,8 +166,8 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                 return false;
             }
             Value other = after.get(here++);
-            if (one instanceof WordValue word && ASSERT.equals(word.spelling())) {
-                if (!(other instanceof WordValue numbered)
+            if (one instanceof AnyWordValue word && ASSERT.equals(word.spelling())) {
+                if (!(other instanceof AnyWordValue numbered)
                         || !NUMBERED_ASSERT.equals(numbered.spelling())
                         || here >= after.size()
                         || !(after.get(here++) instanceof IntegerValue(long magnitude))
@@ -196,7 +196,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         for (Value value : values) {
             if (value instanceof BlockValue block) {
                 found += assertionsNestedIn(block.remaining());
-            } else if (value instanceof WordValue word && ASSERT.equals(word.spelling())) {
+            } else if (value instanceof AnyWordValue word && ASSERT.equals(word.spelling())) {
                 found++;
             }
         }
@@ -272,7 +272,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
 
         while (at < values.size()) {
             Value current = values.get(at);
-            if (!(current instanceof WordValue word) || !isHarnessWord(current)) {
+            if (!(current instanceof AnyWordValue word) || !isHarnessWord(current)) {
                 List<Value> run = valuesUntilNextHarnessWord(values, at);
                 ordinal = addSetupSteps(reader, found, file, group, test, ordinal,
                         source, values, spans, at, run.size());
@@ -325,7 +325,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
 
     private static int skipScriptHeader(List<Value> values) {
         if (values.size() >= 2
-                && values.get(0) instanceof WordValue word
+                && values.get(0) instanceof AnyWordValue word
                 && word.canonical().equals("rebol")
                 && values.get(1) instanceof BlockValue) {
             return 2;
@@ -363,7 +363,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         }
         List<Integer> starts = new ArrayList<>();
         for (int at = from; at < from + count; at++) {
-            if (at == from || values.get(at) instanceof WordValue
+            if (at == from || values.get(at) instanceof AnyWordValue
                     && beginsALine(source, beginningOf(spans, at))) {
                 starts.add(at);
             }

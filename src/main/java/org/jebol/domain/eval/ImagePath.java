@@ -8,7 +8,7 @@ final class ImagePath {
     }
 
     static Value read(ImageValue image, Value selector) {
-        if (selector instanceof WordValue field) {
+        if (selector instanceof AnyWordValue field) {
             return aboutTheImage(image, field);
         }
         int pixel = pixelNamedBy(image, selector);
@@ -41,7 +41,7 @@ final class ImagePath {
     }
 
     static void writeThroughPath(ImageValue image, Value selector, Value written) {
-        if (selector instanceof WordValue field) {
+        if (selector instanceof AnyWordValue field) {
             writeTheWholePicture(image, field, written);
             return;
         }
@@ -54,7 +54,7 @@ final class ImagePath {
     }
 
     private static void writeTheWholePicture(
-            ImageValue image, WordValue field, Value written) {
+            ImageValue image, AnyWordValue field, Value written) {
 
         switch (field.canonical()) {
             case "size" -> reshapeTo(image, written);
@@ -257,7 +257,7 @@ final class ImagePath {
         return (int) octet;
     }
 
-    private static Value aboutTheImage(ImageValue image, WordValue field) {
+    private static Value aboutTheImage(ImageValue image, AnyWordValue field) {
         return switch (field.canonical()) {
             case "size" -> image.size();
             case "width" -> IntegerValue.of(image.storage().wide());

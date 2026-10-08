@@ -71,7 +71,7 @@ public final class Delect {
 
             @Override
             public boolean accepts(Value value) {
-                return value instanceof WordValue written
+                return value instanceof AnyWordValue written
                         && written.datatype() == Datatype.WORD
                         && written.canonical().equals(word);
             }
@@ -139,9 +139,9 @@ public final class Delect {
 
         boolean readOneCommand() {
             Value next = input.storage().at(at);
-            boolean asALitWord = next.datatype() == Datatype.LIT_WORD;
-            int command = next instanceof WordValue word
-                            && (word.datatype() == Datatype.WORD || asALitWord)
+            boolean asALitWord = next instanceof LitWordValue;
+            int command = next instanceof AnyWordValue word
+                            && (word instanceof WordValue || asALitWord)
                     ? indexOfCommand(word)
                     : 0;
 
@@ -156,9 +156,8 @@ public final class Delect {
             int ahead = at;
             while (ahead <= input.storage().length()) {
                 Value item = input.storage().at(ahead);
-                if (item instanceof WordValue word
-                        && (word.datatype() == Datatype.WORD
-                                || word.datatype() == Datatype.LIT_WORD)
+                if (item instanceof AnyWordValue word
+                        && (word instanceof WordValue || word instanceof LitWordValue)
                         && startsTheNextCommandRatherThanBeingAKeyword(word)) {
                     break;
                 }
@@ -167,7 +166,7 @@ public final class Delect {
             return ahead - at;
         }
 
-        private boolean startsTheNextCommandRatherThanBeingAKeyword(WordValue word) {
+        private boolean startsTheNextCommandRatherThanBeingAKeyword(AnyWordValue word) {
             return indexOfCommand(word) > 1;
         }
 
@@ -189,8 +188,9 @@ public final class Delect {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, input);
             }
             List<Slot> slots = slotsDeclaredBy(declared, where);
-            output.storage().append(WordValue.of(field.spelling(),
-                    asALitWord ? Datatype.LIT_WORD : Datatype.WORD));
+            output.storage().append(asALitWord
+                    ? LitWordValue.of(field.spelling())
+                    : WordValue.of(field.spelling()));
 
             Placing placing = new Placing(slots);
             boolean readEverything = true;
@@ -233,12 +233,11 @@ public final class Delect {
             }
             Value written = input.storage().at(position);
             return switch (written) {
-                case WordValue word when word.datatype() == Datatype.WORD ->
+                case WordValue word ->
                         aWordTheDialectKnowsIsLeftAlone(word)
                                 ? Optional.of(word)
                                 : whateverTheWordHoldsByItsOwnBindingFirst(word);
-                case WordValue word when word.datatype() == Datatype.LIT_WORD ->
-                        Optional.of(WordValue.of(word.spelling(), Datatype.WORD));
+                case LitWordValue quoted -> Optional.of(WordValue.of(quoted.spelling()));
                 case BlockValue block when block.datatype() == Datatype.PAREN
                         || block.datatype() == Datatype.PATH ->
                         evaluated(block);
@@ -246,11 +245,11 @@ public final class Delect {
             };
         }
 
-        private boolean aWordTheDialectKnowsIsLeftAlone(WordValue word) {
+        private boolean aWordTheDialectKnowsIsLeftAlone(AnyWordValue word) {
             return indexOfCommand(word) != 0;
         }
 
-        private Optional<Value> whateverTheWordHoldsByItsOwnBindingFirst(WordValue word) {
+        private Optional<Value> whateverTheWordHoldsByItsOwnBindingFirst(AnyWordValue word) {
             if (!word.binding().isUnbound() && word.binding().holds(word.canonical())) {
                 return Optional.of(word.binding().slotFor(word.canonical()).value());
             }
@@ -275,7 +274,7 @@ public final class Delect {
             return evaluator == null;
         }
 
-        private int indexOfCommand(WordValue word) {
+        private int indexOfCommand(AnyWordValue word) {
             for (int position = 0; position < fields.size(); position++) {
                 if (fields.get(position).canonical().equals(word.canonical())) {
                     return fields.get(position).value() instanceof NoneValue
@@ -296,7 +295,7 @@ public final class Delect {
         List<Value> written = declared.remaining();
         for (int at = 0; at < written.size(); at++) {
             Value item = written.get(at);
-            boolean repeats = item instanceof WordValue star
+            boolean repeats = item instanceof AnyWordValue star
                     && star.canonical().equals("*");
             if (repeats && at + 1 < written.size()) {
                 at++;
@@ -316,7 +315,7 @@ public final class Delect {
                     ? new Slot.Repeating(types.get())
                     : new Slot.Plain(types.get()));
         }
-        return written instanceof WordValue word
+        return written instanceof AnyWordValue word
                 ? Optional.of(new Slot.Named(word.canonical()))
                 : Optional.empty();
     }
@@ -330,7 +329,7 @@ public final class Delect {
         if (written instanceof TypesetValue family) {
             return Optional.of(family.members());
         }
-        if (!(written instanceof WordValue word)) {
+        if (!(written instanceof AnyWordValue word)) {
             return Optional.empty();
         }
         Optional<Datatype> one = Datatype.named(word.spelling());
@@ -341,7 +340,7 @@ public final class Delect {
     }
 
     private static Optional<java.util.Set<Datatype>> whateverTheWordNames(
-            WordValue word, Context where) {
+            AnyWordValue word, Context where) {
 
         if (where.holds(word.canonical())
                 && where.slotFor(word.canonical()).value()

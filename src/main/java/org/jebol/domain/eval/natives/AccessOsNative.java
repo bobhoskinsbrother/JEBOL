@@ -52,7 +52,7 @@ public class AccessOsNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            WordValue field = (WordValue) arguments.getFirst();
+            AnyWordValue field = (AnyWordValue) arguments.getFirst();
             Optional<Value> setTo = argumentOf("set", 0, arguments, refinements);
             if (THE_PROCESS_NUMBER.equals(field.canonical())) {
                 return setTo.map(this::signalled)
@@ -66,14 +66,14 @@ public class AccessOsNative extends DefaultNative {
         };
     }
 
-    private Value whoTheHostSaysTheProcessRunsAs(WordValue field, WhoTheProcessRunsAs asked,
-            Evaluator evaluator) {
+    private Value whoTheHostSaysTheProcessRunsAs(AnyWordValue field, WhoTheProcessRunsAs asked,
+                                                 Evaluator evaluator) {
         long answered = evaluator.processes().identity(asked)
                 .orElseThrow(() -> Raised.of(EvaluationFailure.NOT_HERE, field));
         return IntegerValue.of(answered);
     }
 
-    private Value refuseToChangeWhoTheProcessRunsAs(WordValue field, Value given) {
+    private Value refuseToChangeWhoTheProcessRunsAs(AnyWordValue field, Value given) {
         if (!(given instanceof IntegerValue)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, given);
         }

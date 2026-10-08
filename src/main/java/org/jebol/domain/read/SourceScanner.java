@@ -15,6 +15,12 @@ import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.TagValue;
 import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.GetWordValue;
+import org.jebol.domain.value.IssueValue;
+import org.jebol.domain.value.LitWordValue;
+import org.jebol.domain.value.RefinementValue;
+import org.jebol.domain.value.SetWordValue;
 import org.jebol.domain.value.WordValue;
 
 import java.nio.charset.StandardCharsets;
@@ -1471,7 +1477,7 @@ final class SourceScanner {
         if (token == TOKEN_LIT) {
             kind = Datatype.LIT_PATH;
             parts.set(0, asPlainWord(parts.getFirst()));
-        } else if (parts.getFirst() instanceof WordValue first && first.datatype() == Datatype.GET_WORD) {
+        } else if (parts.getFirst() instanceof GetWordValue first) {
             if (at(end) == ':') {
                 throw invalid(TOKEN_PATH, bp, end);
             }
@@ -1487,7 +1493,7 @@ final class SourceScanner {
     }
 
     private Value asPlainWord(Value segment) {
-        return segment instanceof WordValue word ? WordValue.of(word.spelling()) : segment;
+        return segment instanceof AnyWordValue word ? WordValue.of(word.spelling()) : segment;
     }
 
     private Value dateAfterAnInteger(int bp, int to) {
@@ -1534,13 +1540,13 @@ final class SourceScanner {
                 return wordValue(token, bp, ep, len, modeChar);
             }
             case TOKEN_REFINE -> {
-                return WordValue.of(textOf(bp + 1, len - 1), Datatype.REFINEMENT);
+                return RefinementValue.of(textOf(bp + 1, len - 1));
             }
             case TOKEN_ISSUE -> {
                 if (!isAnIssue(bp + 1, len - 1)) {
                     throw invalid(token, bp, ep);
                 }
-                return WordValue.of(textOf(bp + 1, len - 1), Datatype.ISSUE);
+                return IssueValue.of(textOf(bp + 1, len - 1));
             }
             case TOKEN_BLOCK, TOKEN_PAREN -> {
                 ScannedBlock inner = scanBlock(token == TOKEN_BLOCK ? ']' : ')');
@@ -1667,13 +1673,13 @@ final class SourceScanner {
             throw invalid(kind, bp - 1, to);
         }
         segmentEnd = to;
-        Datatype type = switch (kind) {
-            case TOKEN_SET -> Datatype.SET_WORD;
-            case TOKEN_GET -> Datatype.GET_WORD;
-            case TOKEN_LIT -> Datatype.LIT_WORD;
-            default -> Datatype.WORD;
+        String spelling = textOf(bp, len);
+        return switch (kind) {
+            case TOKEN_SET -> SetWordValue.of(spelling);
+            case TOKEN_GET -> GetWordValue.of(spelling);
+            case TOKEN_LIT -> LitWordValue.of(spelling);
+            default -> WordValue.of(spelling);
         };
-        return WordValue.of(textOf(bp, len), type);
     }
 
     private boolean isAnIssue(int from, int length) {

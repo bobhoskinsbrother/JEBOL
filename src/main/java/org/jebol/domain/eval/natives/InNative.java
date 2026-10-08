@@ -33,7 +33,7 @@ public class InNative extends DefaultNative {
             if (arguments.get(1) instanceof BlockValue body) {
                 return Binder.bindInPlace(body, frame);
             }
-            WordValue word = (WordValue) arguments.get(1);
+            AnyWordValue word = (AnyWordValue) arguments.get(1);
             return frame.holds(word.canonical()) ? word.boundTo(frame) : NoneValue.none();
         };
     }
@@ -61,11 +61,11 @@ public class InNative extends DefaultNative {
     private Value firstHolderIn(
             BlockValue searched, Value wanted, Evaluator evaluator, Context context) {
 
-        if (!(wanted instanceof WordValue word)) {
+        if (!(wanted instanceof AnyWordValue word)) {
             return refuseTheArgument(wanted, "word");
         }
         for (Value item : searched.remaining()) {
-            Value resolved = item instanceof WordValue bound && bound.isBound()
+            Value resolved = item instanceof AnyWordValue bound && bound.isBound()
                     ? evaluator.evaluateOrRaise(BlockValue.block(List.of(bound)), context)
                     : item;
             if (resolved instanceof ObjectValue(Context holder)

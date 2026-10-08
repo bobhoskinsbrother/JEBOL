@@ -67,7 +67,7 @@ public class BinaryNative extends DefaultNative {
     }
 
     private Value fetchedIfItAsksToBe(Value item, Evaluator evaluator, Context context) {
-        boolean fetches = item instanceof WordValue word
+        boolean fetches = item instanceof AnyWordValue word
                         && word.datatype() == Datatype.GET_WORD
                 || item instanceof BlockValue path
                         && path.datatype() == Datatype.GET_PATH;
@@ -209,7 +209,7 @@ public class BinaryNative extends DefaultNative {
                 : 0;
     }
 
-    private void nameTheValueRead(WordValue word, Value read) {
+    private void nameTheValueRead(AnyWordValue word, Value read) {
         if (!word.isBound() || !word.binding().knows(word.canonical())) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
         }

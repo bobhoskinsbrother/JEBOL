@@ -20,7 +20,7 @@ public final class VectorPath {
     }
 
     public static Value read(VectorValue vector, Value selector) {
-        if (selector instanceof WordValue asked) {
+        if (selector instanceof AnyWordValue asked) {
             return VectorQuery.field(vector, asked.canonical())
                     .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
                             asked.spelling()));

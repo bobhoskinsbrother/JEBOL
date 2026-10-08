@@ -6191,7 +6191,7 @@ right for a codec whose only job is to register itself.
 
 ## 215. More facts that used to sit beside the code
 
-Moved here from `PairValue`, `WordValue` and `Evaluator` when their comments
+Moved here from `PairValue`, `AnyWordValue` and `Evaluator` when their comments
 came out.
 
 **A pair's halves are single-precision decimals.** `reb-c.h` declares `REBD32`

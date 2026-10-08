@@ -180,7 +180,7 @@ public record EventValue(
     }
 
     private static void setWord(List<Value> spec, String field, Value value) {
-        spec.add(WordValue.of(field, Datatype.SET_WORD));
+        spec.add(SetWordValue.of(field));
         spec.add(value);
     }
 

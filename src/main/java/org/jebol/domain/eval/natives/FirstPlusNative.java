@@ -23,7 +23,7 @@ public class FirstPlusNative extends DefaultNative {
             ContextSlot slot = theSlotNamedBy(arguments.getFirst());
             if (!(slot.value() instanceof RebolSeries series)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        WordValue.of(((WordValue) arguments.getFirst()).spelling()));
+                        WordValue.of(((AnyWordValue) arguments.getFirst()).spelling()));
             }
             Value first = series.picked(1);
             if (!series.atTail()) {
@@ -34,7 +34,7 @@ public class FirstPlusNative extends DefaultNative {
     }
 
     private ContextSlot theSlotNamedBy(Value given) {
-        if (!(given instanceof WordValue word)
+        if (!(given instanceof AnyWordValue word)
                 || !word.isBound()
                 || !word.binding().knows(word.canonical())) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, given);

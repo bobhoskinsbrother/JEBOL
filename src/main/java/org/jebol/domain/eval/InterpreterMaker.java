@@ -27,6 +27,8 @@ import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.StructValue;
 import org.jebol.domain.value.Value;
+import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.SetWordValue;
 import org.jebol.domain.value.WordValue;
 
 import java.util.LinkedHashMap;
@@ -213,7 +215,7 @@ public final class InterpreterMaker implements Maker {
     }
 
     private boolean isTheStarThatMeansKeepIt(Value first) {
-        return first instanceof WordValue star && star.canonical().equals("*");
+        return first instanceof AnyWordValue star && star.canonical().equals("*");
     }
 
     private Value makeOperatorFrom(Value spec) {
@@ -278,18 +280,17 @@ public final class InterpreterMaker implements Maker {
         Optional<Value> second = Optional.empty();
         Optional<Value> third = Optional.empty();
         for (int at = 0; at + 1 < items.size(); at += 2) {
-            if (!(items.get(at) instanceof WordValue name)
-                    || name.datatype() != Datatype.SET_WORD) {
+            if (!(items.get(at) instanceof SetWordValue name)) {
                 continue;
             }
-            String said = items.get(at + 1) instanceof WordValue spelled
+            String said = items.get(at + 1) instanceof AnyWordValue spelled
                     ? spelled.canonical()
                     : Molder.form(items.get(at + 1));
             Value asWritten = items.get(at + 1);
             switch (name.canonical()) {
                 case "type" -> {
                     namedAType = true;
-                    typeWordAsSpelled = asWritten instanceof WordValue spelled
+                    typeWordAsSpelled = asWritten instanceof AnyWordValue spelled
                             ? spelled.spelling()
                             : said;
                     category = ErrorCategory.named(said).orElseThrow(() ->

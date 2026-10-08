@@ -8,7 +8,7 @@ import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
 import java.util.Optional;
@@ -42,7 +42,7 @@ public class EcdsaNative extends CipherNative {
                     && arguments.getFirst() instanceof BinaryValue published) {
                 return trueOrNone(EllipticCurveKey.aPublishedPointVerifies(
                         published.octetsFromHere(),
-                        ((WordValue) argumentOf("curve", 0, arguments, refinements)
+                        ((AnyWordValue) argumentOf("curve", 0, arguments, refinements)
                                 .orElseThrow()).canonical(),
                         hash,
                         ((BinaryValue) arguments.get(2)).octetsFromHere()));

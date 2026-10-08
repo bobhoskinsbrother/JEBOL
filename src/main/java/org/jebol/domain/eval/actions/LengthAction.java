@@ -4,7 +4,6 @@ import org.jebol.domain.eval.Actions;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.ModuleValue;
@@ -15,7 +14,8 @@ import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.StructValue;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.SetWordValue;
 
 import java.util.Set;
 
@@ -42,7 +42,7 @@ public class LengthAction extends SeriesOrFileAction {
             case NoneValue nothing -> nothing;
             case PortValue port -> lengthOfThePort(port, evaluator);
             case TupleValue tuple -> IntegerValue.of(tuple.shownCount());
-            case WordValue word -> IntegerValue.of(
+            case AnyWordValue word -> IntegerValue.of(
                     word.spelling().codePointCount(0, word.spelling().length()));
             case Value kind when Actions.of(kind).isPresent() ->
                     IntegerValue.of(Actions.of(kind).orElseThrow().length());
@@ -59,7 +59,7 @@ public class LengthAction extends SeriesOrFileAction {
         }
         return switch (port.schemeName()) {
             case "clipboard" -> throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
-                    WordValue.of(nativeName()).as(Datatype.SET_WORD));
+                    SetWordValue.of(nativeName()));
             case "udp" -> IntegerValue.of(port.fieldValue("data") instanceof RebolSeries held
                     ? held.lengthFromHere()
                     : 0);

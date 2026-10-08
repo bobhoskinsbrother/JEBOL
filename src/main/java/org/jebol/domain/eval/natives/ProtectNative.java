@@ -6,7 +6,7 @@ import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.Set;
 
@@ -28,7 +28,7 @@ public class ProtectNative extends ProtectingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value target = arguments.getFirst();
-            if (refinements.contains("hide") && target instanceof WordValue word) {
+            if (refinements.contains("hide") && target instanceof AnyWordValue word) {
                 word.boundSlot().hide(true);
                 return target;
             }
@@ -54,8 +54,8 @@ public class ProtectNative extends ProtectingNative {
 
     private void hideEachWordIn(BlockValue names) {
         names.remaining().stream()
-                .filter(WordValue.class::isInstance)
-                .map(WordValue.class::cast)
+                .filter(AnyWordValue.class::isInstance)
+                .map(AnyWordValue.class::cast)
                 .forEach(word -> word.boundSlot().hide(true));
     }
 }

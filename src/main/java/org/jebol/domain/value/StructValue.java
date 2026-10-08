@@ -139,7 +139,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         switch (field.type()) {
             case StructFieldType.LiveValue ignored -> data.putLiveValueAt(at, written);
             case StructFieldType.NamedWord ignored -> {
-                if (!(written instanceof WordValue word) || word.datatype() != Datatype.WORD) {
+                if (!(written instanceof WordValue word)) {
                     throw refusedBy(field, written);
                 }
                 data.putLiveValueAt(at, word);
@@ -242,10 +242,9 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
 
     public void initialiseFrom(BlockValue given) {
         List<Value> written = given.remaining();
-        if (!written.isEmpty() && written.getFirst() instanceof WordValue first
-                && first.datatype() == Datatype.SET_WORD) {
+        if (!written.isEmpty() && written.getFirst() instanceof SetWordValue) {
             for (int at = 0; at + 1 < written.size(); at += 2) {
-                if (!(written.get(at) instanceof WordValue name)) {
+                if (!(written.get(at) instanceof AnyWordValue name)) {
                     throw StructLayoutRefused.becauseTheFieldIsWrong(written.get(at),
                             "a named initialiser is a set-word and then a value");
                 }
@@ -300,7 +299,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
     public List<Value> body() {
         List<Value> written = new ArrayList<>();
         for (StructField field : spec.fields()) {
-            written.add(WordValue.of(field.name(), Datatype.SET_WORD));
+            written.add(SetWordValue.of(field.name()));
             written.add(reflectedValueOf(field));
         }
         return written;
@@ -323,7 +322,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
     }
 
     @Override
-    public Value reflected(WordValue asked) {
+    public Value reflected(AnyWordValue asked) {
         return switch (asked.canonical()) {
             case "spec" -> spec.declaration();
             case "words", "keys" -> BlockValue.block(fieldNames());

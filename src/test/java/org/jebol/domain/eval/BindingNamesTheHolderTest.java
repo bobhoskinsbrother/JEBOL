@@ -3,6 +3,7 @@ package org.jebol.domain.eval;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.WordValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,10 +16,10 @@ class BindingNamesTheHolderTest {
 
     private static final String WORD = "counted";
 
-    private static WordValue bindOneWord(String spelling, Context into) {
+    private static AnyWordValue bindOneWord(String spelling, Context into) {
         var block = org.jebol.domain.value.BlockValue.block(
                 java.util.List.of(WordValue.of(spelling)));
-        return (WordValue) Binder.bind(block, into).remaining().getFirst();
+        return (AnyWordValue) Binder.bind(block, into).remaining().getFirst();
     }
 
     @Test
@@ -93,7 +94,7 @@ class BindingNamesTheHolderTest {
         var inner = (org.jebol.domain.value.BlockValue)
                 Binder.bind(nested, target).remaining().getFirst();
 
-        assertThat(((WordValue) inner.remaining().getFirst()).binding())
+        assertThat(((AnyWordValue) inner.remaining().getFirst()).binding())
                 .as("binding walks into blocks and must answer the same there")
                 .isSameAs(outer);
     }

@@ -185,7 +185,7 @@ public final class BitsetActions implements Actions {
     private static Value fromBlock(BlockValue written) {
         List<Value> items = written.remaining();
         boolean complemented = !items.isEmpty()
-                && items.getFirst() instanceof WordValue word
+                && items.getFirst() instanceof AnyWordValue word
                 && word.canonical().equals("not");
         BlockValue rest = complemented ? written.atIndex(written.index() + 1) : written;
         BitsetValue set = BitsetValue.of(octetsNamedBy(rest.remaining(), written));
@@ -196,7 +196,7 @@ public final class BitsetActions implements Actions {
         byte[] octets = new byte[0];
         for (int at = 0; at < specs.size(); at++) {
             Value spec = specs.get(at);
-            if (spec instanceof WordValue word && word.canonical().equals("bits")) {
+            if (spec instanceof AnyWordValue word && word.canonical().equals("bits")) {
                 if (at + 1 >= specs.size()
                         || !(specs.get(at + 1) instanceof BinaryValue held)) {
                     throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(whole));
@@ -213,7 +213,7 @@ public final class BitsetActions implements Actions {
                 int from = bitAsked(codePointOf(spec));
                 int to = from;
                 if (at + 1 < specs.size()
-                        && specs.get(at + 1) instanceof WordValue dash
+                        && specs.get(at + 1) instanceof AnyWordValue dash
                         && dash.spelling().equals("-")) {
                     to = bitAsked(codePointOf(farEndOfTheRun(spec, specs, at + 2)));
                     at += 2;
@@ -266,7 +266,7 @@ public final class BitsetActions implements Actions {
         List<Integer> points = new ArrayList<>();
         for (int at = 0; at < items.size(); at++) {
             boolean isRange = at + 2 < items.size()
-                    && items.get(at + 1) instanceof WordValue dash
+                    && items.get(at + 1) instanceof AnyWordValue dash
                     && dash.spelling().equals("-");
             if (isRange) {
                 int from = codePointOf(items.get(at));

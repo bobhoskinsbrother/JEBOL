@@ -43,8 +43,7 @@ public record LibraryFileHeader(
         List<String> exported = List.of();
         List<Value> items = fields.remaining();
         for (int at = 0; at + 1 < items.size(); at++) {
-            if (!(items.get(at) instanceof WordValue field)
-                    || field.datatype() != Datatype.SET_WORD) {
+            if (!(items.get(at) instanceof SetWordValue field)) {
                 continue;
             }
             Value given = items.get(at + 1);
@@ -65,7 +64,7 @@ public record LibraryFileHeader(
 
     private static String plainTextOf(Value given) {
         return switch (given) {
-            case WordValue word -> word.canonical();
+            case AnyWordValue word -> word.canonical();
             case AnyStringValue text -> text.text().toLowerCase(Locale.ROOT);
             default -> "";
         };
@@ -78,8 +77,7 @@ public record LibraryFileHeader(
         return listed.remaining().stream()
                 .filter(WordValue.class::isInstance)
                 .map(WordValue.class::cast)
-                .filter(word -> word.datatype() == Datatype.WORD)
-                .map(WordValue::canonical)
+                .map(AnyWordValue::canonical)
                 .toList();
     }
 }

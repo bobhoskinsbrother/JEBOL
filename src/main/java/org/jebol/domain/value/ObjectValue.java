@@ -80,7 +80,7 @@ public record ObjectValue(Context context) implements Value {
     }
 
     @Override
-    public Value reflected(WordValue field) {
+    public Value reflected(AnyWordValue field) {
         return switch (field.canonical()) {
             case "body" -> context.setWordsAndValuesOnLines();
             case "words" -> BlockValue.block(fieldsOtherThanSelf()
@@ -98,7 +98,7 @@ public record ObjectValue(Context context) implements Value {
                 ? pairs.remaining()
                 : List.of(target);
         for (Value each : written) {
-            if (each instanceof WordValue word && hidesTheDeclaredField(word)) {
+            if (each instanceof AnyWordValue word && hidesTheDeclaredField(word)) {
                 throw Raised.of(EvaluationFailure.HIDDEN, word.spelling());
             }
         }
@@ -108,7 +108,7 @@ public record ObjectValue(Context context) implements Value {
         return context.slots().stream().filter(slot -> !slot.canonical().equals("self"));
     }
 
-    private boolean hidesTheDeclaredField(WordValue word) {
+    private boolean hidesTheDeclaredField(AnyWordValue word) {
         return context.everySlot().stream().anyMatch(
                 slot -> slot.isHidden() && slot.canonical().equals(word.canonical()));
     }

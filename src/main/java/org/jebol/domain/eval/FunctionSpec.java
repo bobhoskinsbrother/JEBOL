@@ -29,16 +29,13 @@ final class FunctionSpec {
             if (isADatatypeTestsOwnTypeNumber(item)) {
                 continue;
             }
-            if (!(item instanceof WordValue word)
-                    || !(word.datatype() == Datatype.WORD
-                        || word.datatype() == Datatype.GET_WORD
-                        || word.datatype() == Datatype.LIT_WORD
-                        || word.datatype() == Datatype.REFINEMENT
-                        || isTheOneSetWordASpecMayHold(word, items, index))) {
+            if (!(item instanceof AnyWordValue word)
+                    || word instanceof IssueValue
+                    || word instanceof SetWordValue && !isTheOneSetWordASpecMayHold(word, items, index)) {
                 throw refusingTheWholeSpecRatherThanThePartThatWasWrong(spec);
             }
             refuseADuplicateNamingItAsItWasWritten(word, alreadyNamed);
-            if (word.datatype() == Datatype.REFINEMENT) {
+            if (word instanceof RefinementValue) {
                 currentRefinement = word.canonical();
                 parameters.add(Parameter.refinement(word.spelling()));
                 continue;
@@ -46,12 +43,12 @@ final class FunctionSpec {
             if (LOCALS_REFINEMENT.equals(currentRefinement)) {
                 continue;
             }
-            if (word.datatype() == Datatype.SET_WORD) {
+            if (word instanceof SetWordValue) {
                 continue;
             }
             parameters.add(new Parameter(
                     word.spelling(),
-                    kindOf(word),
+                    word.kindOfParameterItDeclares(),
                     acceptedTypesAfter(items, index),
                     Optional.ofNullable(currentRefinement)));
         }
@@ -67,11 +64,11 @@ final class FunctionSpec {
         boolean collecting = false;
 
         for (Value item : spec.remaining()) {
-            if (item instanceof WordValue word && word.datatype() == Datatype.REFINEMENT) {
+            if (item instanceof RefinementValue word) {
                 collecting = word.canonical().equals(LOCALS_REFINEMENT);
                 continue;
             }
-            if (collecting && item instanceof WordValue word) {
+            if (collecting && item instanceof AnyWordValue word) {
                 locals.add(word.spelling());
             }
         }
@@ -79,16 +76,16 @@ final class FunctionSpec {
     }
 
     private static boolean isTheOneSetWordASpecMayHold(
-            WordValue word, List<Value> items, int index) {
+            AnyWordValue word, List<Value> items, int index) {
 
-        return word.datatype() == Datatype.SET_WORD
+        return word instanceof SetWordValue
                 && word.canonical().equals("return")
                 && index + 1 < items.size()
                 && items.get(index + 1) instanceof BlockValue;
     }
 
     private static void refuseADuplicateNamingItAsItWasWritten(
-            WordValue word, Set<String> alreadyNamed) {
+            AnyWordValue word, Set<String> alreadyNamed) {
         if (!alreadyNamed.add(word.canonical())) {
             throw new Raised(org.jebol.domain.value.ErrorValue.about(
                     org.jebol.domain.value.ErrorCategory.SCRIPT,
@@ -107,20 +104,11 @@ final class FunctionSpec {
                 spec.head()));
     }
 
-    private static ParameterKind kindOf(WordValue word) {
-        return switch (word.datatype()) {
-            case LIT_WORD -> ParameterKind.SOFT_QUOTED;
-            case GET_WORD -> ParameterKind.HARD_QUOTED;
-            default -> ParameterKind.NORMAL;
-        };
-    }
-
     private static Set<Datatype> acceptedTypesAfter(List<Value> items, int index) {
         if (index + 1 >= items.size() || !(items.get(index + 1) instanceof BlockValue types)) {
             return Set.of();
         }
-        boolean describesTheReturn = items.get(index) instanceof WordValue word
-                && word.datatype() == Datatype.SET_WORD
+        boolean describesTheReturn = items.get(index) instanceof SetWordValue word
                 && word.canonical().equals("return");
         Set<Datatype> accepted = EnumSet.noneOf(Datatype.class);
         for (Value declared : types.remaining()) {
@@ -139,7 +127,7 @@ final class FunctionSpec {
     }
 
     private static Value resolveTypeName(Value declared) {
-        if (!(declared instanceof WordValue word) || !word.spelling().endsWith("!")) {
+        if (!(declared instanceof AnyWordValue word) || !word.spelling().endsWith("!")) {
             return declared;
         }
         String withoutMark = word.spelling().substring(0, word.spelling().length() - 1);

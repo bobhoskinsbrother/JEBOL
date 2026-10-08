@@ -7,7 +7,7 @@ import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 final class WritingIntoATime {
 
@@ -52,9 +52,9 @@ final class WritingIntoATime {
 
     private int thePartNamedBy(Value selector) {
         return switch (selector) {
-            case WordValue name when name.canonical().equals("hour") -> THE_HOUR;
-            case WordValue name when name.canonical().equals("minute") -> THE_MINUTE;
-            case WordValue name when name.canonical().equals("second") -> THE_SECOND;
+            case AnyWordValue name when name.canonical().equals("hour") -> THE_HOUR;
+            case AnyWordValue name when name.canonical().equals("minute") -> THE_MINUTE;
+            case AnyWordValue name when name.canonical().equals("second") -> THE_SECOND;
             case IntegerValue(long position) -> (int) position - 1;
             default -> throw Raised.of(EvaluationFailure.INVALID_PATH);
         };

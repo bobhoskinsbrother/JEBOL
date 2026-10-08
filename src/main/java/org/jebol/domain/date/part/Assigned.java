@@ -9,9 +9,9 @@ import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
-record Assigned(Value value, WordValue part) {
+record Assigned(Value value, AnyWordValue part) {
 
     boolean isNothing() {
         return value instanceof NoneValue;

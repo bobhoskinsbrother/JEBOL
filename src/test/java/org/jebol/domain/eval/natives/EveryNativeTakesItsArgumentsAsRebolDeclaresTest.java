@@ -6,7 +6,7 @@ import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.NativeValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -53,7 +53,7 @@ class EveryNativeTakesItsArgumentsAsRebolDeclaresTest {
         List<String> disagreeing = new ArrayList<>();
         BlockValue every = (BlockValue) answerTo("append copy system/catalog/natives system/catalog/actions");
         for (Value each : every.remaining()) {
-            String spelling = ((WordValue) each).spelling();
+            String spelling = ((AnyWordValue) each).spelling();
             if (!(answerTo(":" + spelling) instanceof NativeValue built)) {
                 continue;
             }

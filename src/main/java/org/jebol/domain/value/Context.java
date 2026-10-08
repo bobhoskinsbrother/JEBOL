@@ -233,7 +233,7 @@ public final class Context {
     }
 
     public List<Value> setWordsAndValues() {
-        return slots().stream().filter(slot -> !slot.canonical().equals("self")).flatMap(slot -> Stream.of(WordValue.of(slot.spelling(), Datatype.SET_WORD), slot.value())).toList();
+        return slots().stream().filter(slot -> !slot.canonical().equals("self")).flatMap(slot -> Stream.of(SetWordValue.of(slot.spelling()), slot.value())).toList();
     }
 
     public BlockValue setWordsAndValuesOnLines() {

@@ -84,10 +84,10 @@ public record Parameter(
     }
 
 
-    public WordValue asWrittenInTheSpec() {
+    public AnyWordValue asWrittenInTheSpec() {
         return switch (kind) {
-            case SOFT_QUOTED -> WordValue.of(name, Datatype.LIT_WORD);
-            case HARD_QUOTED -> WordValue.of(name, Datatype.GET_WORD);
+            case SOFT_QUOTED -> LitWordValue.of(name);
+            case HARD_QUOTED -> GetWordValue.of(name);
             default -> WordValue.of(name);
         };
     }

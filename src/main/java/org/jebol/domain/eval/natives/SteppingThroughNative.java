@@ -9,11 +9,11 @@ import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 public abstract class SteppingThroughNative extends LoopingNative {
 
-    protected Value walkBySteps(Evaluator evaluator, WordValue word, int step, BlockValue body) {
+    protected Value walkBySteps(Evaluator evaluator, AnyWordValue word, int step, BlockValue body) {
         ContextSlot slot = word.boundSlot();
         if (slot.value() instanceof NoneValue nothing) {
             return nothing;

@@ -39,7 +39,7 @@ public class SetNative extends DefaultNative {
                 throw Raised.of(EvaluationFailure.NEED_VALUE, target);
             }
             return switch (target) {
-                case WordValue word -> {
+                case AnyWordValue word -> {
                     word.boundSlot().setValue(supplied);
                     yield supplied;
                 }
@@ -80,7 +80,7 @@ public class SetNative extends DefaultNative {
             if (onlySome && assigned instanceof NoneValue) {
                 continue;
             }
-            ((WordValue) words.get(index)).boundSlot().setValue(assigned);
+            ((AnyWordValue) words.get(index)).boundSlot().setValue(assigned);
         }
         return supplied;
     }
@@ -106,7 +106,7 @@ public class SetNative extends DefaultNative {
     }
 
     private void refuseUnassignable(Value word, EvaluationFailure failure) {
-        if (word.datatype() == Datatype.ISSUE || word.datatype() == Datatype.REFINEMENT) {
+        if (word instanceof IssueValue || word instanceof RefinementValue) {
             throw Raised.of(failure,
                     "set cannot assign to a " + word.datatype().literalSpelling());
         }
@@ -114,19 +114,19 @@ public class SetNative extends DefaultNative {
 
     private Value writtenThroughPath(BlockValue path, Value supplied) {
         List<Value> segments = path.remaining();
-        if (segments.size() < 2 || !(segments.getFirst() instanceof WordValue head)) {
+        if (segments.size() < 2 || !(segments.getFirst() instanceof AnyWordValue head)) {
             return refuseTheDatatype(path);
         }
         Value holder = head.boundSlot().value();
         for (int at = 1; at < segments.size() - 1; at++) {
-            if (!(segments.get(at) instanceof WordValue field)
+            if (!(segments.get(at) instanceof AnyWordValue field)
                     || !(holder instanceof ObjectValue(Context fields))
                     || !fields.holds(field.canonical())) {
                 return refuseTheDatatype(path);
             }
             holder = fields.slotFor(field.canonical()).value();
         }
-        if (!(segments.getLast() instanceof WordValue field)
+        if (!(segments.getLast() instanceof AnyWordValue field)
                 || !(holder instanceof ObjectValue(Context fields))) {
             return refuseTheDatatype(path);
         }

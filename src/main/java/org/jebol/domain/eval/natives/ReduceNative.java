@@ -72,13 +72,13 @@ public class ReduceNative extends DefaultNative {
         Set<String> kept = exceptions
                 .filter(BlockValue.class::isInstance)
                 .map(excepted -> ((BlockValue) excepted).remaining().stream()
-                        .filter(WordValue.class::isInstance)
-                        .map(word -> ((WordValue) word).canonical())
+                        .filter(AnyWordValue.class::isInstance)
+                        .map(word -> ((AnyWordValue) word).canonical())
                         .collect(Collectors.toSet()))
                 .orElse(Set.of());
         List<Value> results = new ArrayList<>();
         for (Value item : block.remaining()) {
-            if (item instanceof WordValue word && word.datatype() == Datatype.WORD
+            if (item instanceof AnyWordValue word && word.datatype() == Datatype.WORD
                     && !kept.contains(word.canonical())) {
                 Value held = word.boundSlot().value();
                 if (held instanceof UnsetValue) {

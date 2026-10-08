@@ -46,7 +46,7 @@ public record TimeValue(long nanoseconds) implements Value {
 
     private String thePartNamedBy(Value selector) {
         return switch (selector) {
-            case WordValue asked -> asked.canonical();
+            case AnyWordValue asked -> asked.canonical();
             case IntegerValue(long magnitude) when magnitude == 1 -> "hour";
             case IntegerValue(long magnitude) when magnitude == 2 -> "minute";
             case IntegerValue(long magnitude) when magnitude == 3 -> "second";

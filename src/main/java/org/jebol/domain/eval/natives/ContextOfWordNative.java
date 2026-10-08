@@ -20,7 +20,7 @@ public class ContextOfWordNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            WordValue word = (WordValue) arguments.getFirst();
+            AnyWordValue word = (AnyWordValue) arguments.getFirst();
             Context binding = word.binding();
             if (!word.isBound() || binding.isALoopFrame()) {
                 return NoneValue.none();

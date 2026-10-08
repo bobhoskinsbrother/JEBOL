@@ -31,10 +31,10 @@ public class ReflectAction extends DefaultNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                reflected(arguments.getFirst(), (WordValue) arguments.get(1));
+                reflected(arguments.getFirst(), (AnyWordValue) arguments.get(1));
     }
 
-    private Value reflected(Value subject, WordValue field) {
+    private Value reflected(Value subject, AnyWordValue field) {
         return switch (subject) {
             case UnsetValue nothing -> throw Raised.cannotUse(nothing, this);
             case VectorValue vector -> reflectedFrom(vector, field);
@@ -47,7 +47,7 @@ public class ReflectAction extends DefaultNative implements ActionValue {
         };
     }
 
-    private Value reflectedFrom(VectorValue vector, WordValue field) {
+    private Value reflectedFrom(VectorValue vector, AnyWordValue field) {
         return field.canonical().equals("spec")
                 ? VectorQuery.specOf(vector)
                 : VectorQuery.field(vector, field.canonical()).orElseThrow(
@@ -79,7 +79,7 @@ public class ReflectAction extends DefaultNative implements ActionValue {
         };
     }
 
-    private Value reflectedFromBehind(OperatorValue operator, WordValue field) {
+    private Value reflectedFromBehind(OperatorValue operator, AnyWordValue field) {
         return switch (operator.underlying()) {
             case NativeValue behind -> reflectedFrom(behind, field.canonical());
             case Value behind -> behind.reflected(field);

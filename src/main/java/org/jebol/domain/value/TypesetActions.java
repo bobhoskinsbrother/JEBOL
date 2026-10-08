@@ -58,7 +58,7 @@ public final class TypesetActions {
             found.addAll(typeset.members());
             return true;
         }
-        if (!(item instanceof WordValue word)) {
+        if (!(item instanceof AnyWordValue word)) {
             return false;
         }
         String spelling = word.spelling();

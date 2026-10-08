@@ -16,7 +16,7 @@ import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.UnicodeCases;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -63,7 +63,7 @@ public final class ValueHash {
 
     private int hashed(Value value) {
         return switch (value) {
-            case WordValue word -> symbols.canonOf(word.spelling());
+            case AnyWordValue word -> symbols.canonOf(word.spelling());
             case AnyStringValue text -> ofText(text) ^ typeNumberOf(text);
             case BinaryValue bytes -> murmur(bytes.octetsFromHere());
             case BlockValue block -> ofBlock(block);

@@ -12,7 +12,7 @@ final class EventPath {
     static Value read(EventValue event, Value selector, Value guiPort,
             Value callbackPort, Value consolePort) {
 
-        if (!(selector instanceof WordValue asked)) {
+        if (!(selector instanceof AnyWordValue asked)) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
                     "an event's fields are named, and "
                             + selector.datatype().literalSpelling() + " is not a name");
@@ -100,9 +100,8 @@ final class EventPath {
     private static java.util.Optional<EventValue> writtenType(
             EventValue event, Value value) {
 
-        if (!(value instanceof WordValue eventType)
-                || !(eventType.datatype() == Datatype.WORD
-                        || eventType.datatype() == Datatype.LIT_WORD)) {
+        if (!(value instanceof AnyWordValue eventType)
+                || !(eventType instanceof WordValue || eventType instanceof LitWordValue)) {
             return java.util.Optional.empty();
         }
         return java.util.Optional.of(event.withType(
@@ -160,9 +159,8 @@ final class EventPath {
                     theModelAndTypeChangeBeforeTheValueIsLookedAt.withData(
                             codepoint, EventValue.Flag.HAS_CODE));
         }
-        if (value instanceof WordValue keyWord
-                && (keyWord.datatype() == Datatype.WORD
-                        || keyWord.datatype() == Datatype.LIT_WORD)) {
+        if (value instanceof AnyWordValue keyWord
+                && (keyWord instanceof WordValue || keyWord instanceof LitWordValue)) {
             java.util.Optional<Integer> at =
                     EventCatalogue.keyIndexOf(keyWord.canonical());
             return at.map(position ->
@@ -194,7 +192,7 @@ final class EventPath {
             Value written = given.datatype() == Datatype.UNSET
                     ? NoneValue.none()
                     : simpleValueOf.apply(given);
-            String field = name instanceof WordValue asked ? asked.canonical() : "";
+            String field = name instanceof AnyWordValue asked ? asked.canonical() : "";
             java.util.Optional<EventValue> after = written(built, field, written);
             if (after.isEmpty()) {
                 throw Raised.of(EvaluationFailure.BAD_FIELD_SET,

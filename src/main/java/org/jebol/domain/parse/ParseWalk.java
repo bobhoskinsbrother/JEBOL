@@ -3,7 +3,7 @@ package org.jebol.domain.parse;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
 
 import java.util.List;
 import java.util.Optional;
@@ -60,9 +60,9 @@ public interface ParseWalk {
 
     Value replacementFor(Value replacement);
 
-    WordValue theWordToWriteInto(List<Value> rules, int at);
+    AnyWordValue theWordToWriteInto(List<Value> rules, int at);
 
-    void assign(WordValue word, Value value);
+    void assign(AnyWordValue word, Value value);
 
     Integer sameStorageOffset(Value item);
 
@@ -98,5 +98,5 @@ public interface ParseWalk {
 
     void keepEachBetween(int from, int to);
 
-    void deliverTheCollectedTo(WordValue target, List<Value> mine, boolean appending);
+    void deliverTheCollectedTo(AnyWordValue target, List<Value> mine, boolean appending);
 }

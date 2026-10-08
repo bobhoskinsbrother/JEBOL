@@ -218,7 +218,7 @@ public final class MakingAndConverting implements Construction {
             case TIME -> aTimeMadeFrom(value);
             case TUPLE -> tupleFrom(value);
             case LOGIC -> LogicValue.of(countsAsTrue(asking, value));
-            case DATATYPE -> value instanceof WordValue word
+            case DATATYPE -> value instanceof AnyWordValue word
                     ? datatypeNamed(word, value)
                     : badMakeArg(value, "datatype!");
             case IMAGE -> imageConvertedFrom(value);
@@ -295,15 +295,13 @@ public final class MakingAndConverting implements Construction {
     private void fillGobFromSpec(GobValue gob, List<Value> spec, UnaryOperator<Value> lookedUp) {
         for (int at = 0; at < spec.size(); at += 2) {
             Value name = spec.get(at);
-            if (!(name instanceof WordValue field)
-                    || field.datatype() != Datatype.SET_WORD) {
+            if (!(name instanceof SetWordValue field)) {
                 throw Raised.of(EvaluationFailure.EXPECT_VAL,
                         DatatypeValue.of(Datatype.SET_WORD),
                         DatatypeValue.of(name.datatype()));
             }
             Value given = at + 1 < spec.size() ? spec.get(at + 1) : UnsetValue.unset();
-            if (given.datatype() == Datatype.UNSET
-                    || given.datatype() == Datatype.SET_WORD) {
+            if (given.datatype() == Datatype.UNSET || given instanceof SetWordValue) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE, field);
             }
             Value written = lookedUp.apply(given);
@@ -811,7 +809,7 @@ public final class MakingAndConverting implements Construction {
             case LogicValue truth -> asking.builds()
                     ? IntegerValue.of(truth.truth() ? 1 : 0)
                     : badMakeArg(value, "integer!");
-            case WordValue issue when issue.datatype() == Datatype.ISSUE -> hexNumberIn(issue);
+            case IssueValue issue -> hexNumberIn(issue);
             case AnyStringValue text -> wholeNumberReadFrom(text);
             case CharacterValue character -> IntegerValue.of(character.codepoint());
             case BinaryValue bytes -> IntegerValue.of(bytes.bitsOfTheLastEightOctets());
@@ -834,7 +832,7 @@ public final class MakingAndConverting implements Construction {
         return IntegerValue.of((long) quantity);
     }
 
-    private Value hexNumberIn(WordValue issue) {
+    private Value hexNumberIn(AnyWordValue issue) {
         String digits = issue.spelling();
         if (digits.isEmpty() || digits.length() > MOST_HEX_DIGITS) {
             throw Raised.badMakeArg(issue, "integer!");
@@ -848,12 +846,12 @@ public final class MakingAndConverting implements Construction {
 
     private Value wordFrom(Value value, Datatype kind) {
         return switch (value) {
-            case WordValue word -> WordValue.of(word.spelling(), kind);
-            case LogicValue(boolean truth) -> WordValue.of(Boolean.toString(truth), kind);
-            case CharacterValue letter -> WordValue.of(theWordASingleCharacterSpells(letter), kind);
-            case AnyStringValue text -> WordValue.of(spellingReadAs(text.text(), kind), kind);
+            case AnyWordValue word -> AnyWordValue.ofTheDatatype(word.spelling(), kind);
+            case LogicValue(boolean truth) -> AnyWordValue.ofTheDatatype(Boolean.toString(truth), kind);
+            case CharacterValue letter -> AnyWordValue.ofTheDatatype(theWordASingleCharacterSpells(letter), kind);
+            case AnyStringValue text -> AnyWordValue.ofTheDatatype(spellingReadAs(text.text(), kind), kind);
             case DatatypeValue asked ->
-                    WordValue.of(spellingReadAs(asked.represents().literalSpelling(), kind), kind);
+                    AnyWordValue.ofTheDatatype(spellingReadAs(asked.represents().literalSpelling(), kind), kind);
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     "to " + kind.literalSpelling() + " wanted a string, not a "
                             + value.datatype().literalSpelling());
@@ -901,7 +899,7 @@ public final class MakingAndConverting implements Construction {
             throw Raised.of(EvaluationFailure.INVALID_CHARS);
         }
         Datatype wanted = kind == Datatype.ISSUE ? Datatype.ISSUE : Datatype.WORD;
-        if (read.size() != 1 || !(read.getFirst() instanceof WordValue word)
+        if (read.size() != 1 || !(read.getFirst() instanceof AnyWordValue word)
                 || word.datatype() != wanted
                 || !word.spelling().equals(trimmed)) {
             throw Raised.of(EvaluationFailure.INVALID_CHARS);
@@ -915,7 +913,7 @@ public final class MakingAndConverting implements Construction {
             case AnyStringValue text -> tupleScannedFrom(text.text(), value);
             case BlockValue segments -> tupleOfSegments(segments);
             case BinaryValue octets -> tupleOfOctets(octets);
-            case WordValue issue when issue.datatype() == Datatype.ISSUE ->
+            case IssueValue issue ->
                     tupleOfHexPairs(issue.spelling(), value);
             default -> throw Raised.badMakeArg(value, "tuple!");
         };
@@ -996,7 +994,7 @@ public final class MakingAndConverting implements Construction {
         return TupleValue.of(octets);
     }
 
-    private Value datatypeNamed(WordValue word, Value original) {
+    private Value datatypeNamed(AnyWordValue word, Value original) {
         for (Datatype candidate : Datatype.values()) {
             if (candidate.literalSpelling().equalsIgnoreCase(word.spelling())) {
                 return DatatypeValue.of(candidate);
@@ -1012,7 +1010,7 @@ public final class MakingAndConverting implements Construction {
                     throw Raised.badMakeArg(value, "char!");
             case AnyStringValue text -> CharacterValue.of(text.text().codePointAt(0));
             case BinaryValue octets -> characterLeadingThe(octets);
-            case WordValue issue when issue.datatype() == Datatype.ISSUE ->
+            case IssueValue issue ->
                     characterSpeltInHexBy(issue);
             case IntegerValue whole -> characterAt(whole.magnitude());
             case DecimalValue number -> characterAt((long) number.quantity());
@@ -1075,7 +1073,7 @@ public final class MakingAndConverting implements Construction {
         return 0;
     }
 
-    private Value characterSpeltInHexBy(WordValue issue) {
+    private Value characterSpeltInHexBy(AnyWordValue issue) {
         String spelling = issue.spelling();
         if (spelling.isEmpty() || spelling.length() > MOST_HEX_DIGITS_SCANNED) {
             throw Raised.badMakeArg(issue, "char!");
@@ -1301,7 +1299,7 @@ public final class MakingAndConverting implements Construction {
         TaskValue task = TaskValue.running(body);
         List<Value> fields = spec.remaining();
         for (int at = 0; at + 1 < fields.size(); at++) {
-            if (fields.get(at) instanceof WordValue field
+            if (fields.get(at) instanceof AnyWordValue field
                     && field.datatype() == Datatype.SET_WORD
                     && task.context().holds(field.canonical())) {
                 task.context().register(field.canonical(), fields.get(at + 1));

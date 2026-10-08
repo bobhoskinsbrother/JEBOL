@@ -28,7 +28,8 @@ import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.SetWordValue;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -84,7 +85,7 @@ public final class Ports {
     private SequencedSet<String> theConsoleModesInTheModeTable() {
         List<Value> rows = declarations.theRowsBelowTheHeaderOf(modeTableSource);
         for (int at = 0; at + 1 < rows.size(); at++) {
-            if (rows.get(at) instanceof WordValue heading
+            if (rows.get(at) instanceof AnyWordValue heading
                     && heading.canonical().equals(THE_CONSOLE_MODE_HEADING)
                     && rows.get(at + 1) instanceof BlockValue listed) {
                 return theWordsIn(listed);
@@ -96,7 +97,7 @@ public final class Ports {
     private SequencedSet<String> theWordsIn(BlockValue listed) {
         SequencedSet<String> named = new LinkedHashSet<>();
         for (Value each : listed.remaining()) {
-            if (each instanceof WordValue word) {
+            if (each instanceof AnyWordValue word) {
                 named.add(word.canonical());
             }
         }
@@ -110,7 +111,7 @@ public final class Ports {
     public boolean routesToAScheme(Value source) {
         return source.datatype() == Datatype.URL
                 || source.datatype() == Datatype.BLOCK
-                || source instanceof WordValue;
+                || source instanceof AnyWordValue;
     }
 
     public PortValue portMadeFor(Value target, Evaluator evaluator, Context context) {
@@ -148,7 +149,7 @@ public final class Ports {
     }
 
     public Raised noActionFor(String verb) {
-        return Raised.of(EvaluationFailure.NO_PORT_ACTION, WordValue.of(verb).as(Datatype.SET_WORD));
+        return Raised.of(EvaluationFailure.NO_PORT_ACTION, SetWordValue.of(verb));
     }
 
     public void requireServiceForScheme(String scheme) {
@@ -524,14 +525,14 @@ public final class Ports {
         if (!(port.fieldValue("spec") instanceof ObjectValue spec)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, port);
         }
-        String algorithm = spec.fieldValue("algorithm") instanceof WordValue word
+        String algorithm = spec.fieldValue("algorithm") instanceof AnyWordValue word
                 ? word.canonical()
                 : "";
         if (!cryptPort.serves(algorithm)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
         }
         cryptPort.start(port, algorithm,
-                spec.fieldValue("direction") instanceof WordValue wanted
+                spec.fieldValue("direction") instanceof AnyWordValue wanted
                         && wanted.canonical().equals("decrypt"),
                 octetsInSpec(spec, "key"), octetsInSpec(spec, "init-vector"));
         spec.context().register("key", NoneValue.none());

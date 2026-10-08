@@ -272,17 +272,17 @@ public final class GobStorage {
      */
     public List<Value> moldingSpec() {
         List<Value> spec = new ArrayList<>();
-        spec.add(WordValue.of("offset", Datatype.SET_WORD));
+        spec.add(SetWordValue.of("offset"));
         spec.add(offset);
-        spec.add(WordValue.of("size", Datatype.SET_WORD));
+        spec.add(SetWordValue.of("size"));
         spec.add(size);
         if (alpha < OPAQUE) {
-            spec.add(WordValue.of("alpha", Datatype.SET_WORD));
+            spec.add(SetWordValue.of("alpha"));
             spec.add(IntegerValue.of(OPAQUE - alpha));
         }
         String contentField = moldedContentName();
         if (!contentField.isEmpty()) {
-            spec.add(WordValue.of(contentField, Datatype.SET_WORD));
+            spec.add(SetWordValue.of(contentField));
             spec.add(content);
         }
         return spec;
