@@ -66,7 +66,7 @@ public class RemoveEachNative extends LoopingNative {
 
         Context locals = Context.loopFrameOf(within);
         List<WordValue> names = loopNamesIn(arguments.get(0));
-        names.forEach(name -> locals.define(name.spelling()));
+        names.forEach(name -> locals.register(name.spelling()));
         BlockValue bound = Binder.bind((BlockValue) arguments.get(2), locals);
         List<Value> items = series.remaining();
         List<Value> kept = new ArrayList<>();
@@ -116,13 +116,13 @@ public class RemoveEachNative extends LoopingNative {
         series.refuseChangeIfProtected();
         Context locals = Context.loopFrameOf(within);
         WordValue word = (WordValue) arguments.getFirst();
-        locals.define(word.spelling());
+        locals.register(word.spelling());
         BlockValue body = Binder.bind((BlockValue) arguments.get(2), locals);
         List<Value> kept = new ArrayList<>();
         int taken = 0;
         for (int at = series.index(); at <= series.storageLength(); at++) {
             Value item = itemAt(series, at);
-            locals.set(word.spelling(), item);
+            locals.register(word.spelling(), item);
             if (evaluator.evaluateOrRaise(body, locals).isTruthy()) {
                 taken++;
             } else {
@@ -165,7 +165,7 @@ public class RemoveEachNative extends LoopingNative {
         List<WordValue> names = loopNamesIn(arguments.getFirst());
         MapActions.refuseMoreNamesThanAPairHas(map, namesThatTakeAValue(names));
         Context locals = Context.loopFrameOf(within);
-        names.forEach(name -> locals.define(name.spelling()));
+        names.forEach(name -> locals.register(name.spelling()));
         BlockValue body = Binder.bind((BlockValue) arguments.get(2), locals);
         List<Value> pairs = map.items();
         List<Value> takeOut = new ArrayList<>();

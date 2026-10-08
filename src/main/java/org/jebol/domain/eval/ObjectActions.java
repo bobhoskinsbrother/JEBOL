@@ -38,17 +38,23 @@ public final class ObjectActions implements Actions {
         }
         object.refuseHiddenFieldsIn(asked.given());
         if (asked.given() instanceof WordValue only) {
-            RebolNativeWords.refuseTheSelfTheObjectAlreadyHas(object, only);
-            object.context().set(only.canonical(), UnsetValue.unset());
+            if (object.context().holds("self")) {
+                only.refuseToBeWrittenWhenItNamesSelf();
+            }
+            object.context().register(only.canonical(), UnsetValue.unset());
             return object;
         }
         List<Value> pairs = asked.duplicated() instanceof BlockValue added
                 ? asked.theWantedItemsOf(added)
                 : List.of(asked.given());
-        RebolNativeWords.refuseTheObjectsOwnSelfBeforeAnyFieldIsAdded(object, pairs);
+        for (int at1 = 0; at1 + 1 < pairs.size(); at1 += 2) {
+            if (object.context().holds("self")) {
+                pairs.get(at1).refuseToBeWrittenWhenItNamesSelf();
+            }
+        }
         for (int at = 0; at + 1 < pairs.size(); at += 2) {
             if (pairs.get(at) instanceof WordValue field) {
-                object.context().set(field.canonical(), pairs.get(at + 1));
+                object.context().register(field.canonical(), pairs.get(at + 1));
             }
         }
         return object;

@@ -16,7 +16,7 @@ public final class Binder {
     public static FunctionValue withItsBodyBound(FunctionValue made) {
         made.declaredWords().markAsCallFrameOf(made);
         Set<String> declared = theNamesDeclaredBy(made);
-        declared.forEach(made.declaredWords()::define);
+        declared.forEach(made.declaredWords()::register);
         bindEachInPlace(made.body(), made.declaredWords(), declared);
         return made;
     }
@@ -284,7 +284,7 @@ public final class Binder {
         switch (value) {
             case WordValue word -> {
                 if (!context.knows(word.canonical())) {
-                    context.define(word.spelling());
+                    context.register(word.spelling());
                 }
             }
             case BlockValue nested -> {

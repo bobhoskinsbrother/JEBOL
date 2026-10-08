@@ -46,7 +46,7 @@ public class ReadKeyNative extends HostNative {
 
     private void noModifierKeyIsHeld(Evaluator evaluator) {
         if (evaluator.systemContext().valueAt("system", "state") instanceof ObjectValue state) {
-            THE_MODIFIER_KEYS.forEach(key -> state.context().set(key, LogicValue.of(false)));
+            THE_MODIFIER_KEYS.forEach(key -> state.context().register(key, LogicValue.of(false)));
         }
     }
 }

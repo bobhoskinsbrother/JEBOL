@@ -59,7 +59,7 @@ public class ForNative extends LoopingNative {
         rejectCharacterBound(end);
 
         Context locals = Context.loopFrameOf(within);
-        locals.define(counter.spelling());
+        locals.register(counter.spelling());
         BlockValue bound = Binder.bind(body, locals);
 
         if (start instanceof RebolSeries series) {
@@ -82,7 +82,7 @@ public class ForNative extends LoopingNative {
             Value last = NoneValue.none();
             long at = from;
             while (stepBy > 0 ? at <= to : at >= to) {
-                locals.set(counter.spelling(), IntegerValue.of(at));
+                locals.register(counter.spelling(), IntegerValue.of(at));
                 last = oneRoundCatchingContinue(evaluator, body, locals);
                 at = steppedOrOverflowed(at, stepBy);
             }
@@ -105,7 +105,7 @@ public class ForNative extends LoopingNative {
         return answerOfTheLoop(() -> {
             Value last = NoneValue.none();
             for (double at = from; stepBy > 0 ? at <= to : at >= to; at += stepBy) {
-                locals.set(counter.spelling(), DecimalValue.of(at));
+                locals.register(counter.spelling(), DecimalValue.of(at));
                 last = oneRoundCatchingContinue(evaluator, body, locals);
             }
             return last;
@@ -122,7 +122,7 @@ public class ForNative extends LoopingNative {
             Value last = NoneValue.none();
             int at = series.index();
             while (stepBy > 0 ? at <= endIndex : at >= endIndex) {
-                locals.set(counter.spelling(), series.atIndex(at));
+                locals.register(counter.spelling(), series.atIndex(at));
                 last = oneRoundCatchingContinue(evaluator, body, locals);
                 int landedAt = locals.slotFor(counter.canonical()).value()
                         instanceof RebolSeries moved ? moved.index() : at;

@@ -79,8 +79,8 @@ public class ReflectAction extends DefaultNative {
 
     private Context titleAndType(DatatypeSpec described) {
         Context fields = Context.root();
-        fields.set("title", StringValue.of(described.title()));
-        fields.set("type", WordValue.of(described.category()));
+        fields.register("title", StringValue.of(described.title()));
+        fields.register("type", WordValue.of(described.category()));
         return fields;
     }
 

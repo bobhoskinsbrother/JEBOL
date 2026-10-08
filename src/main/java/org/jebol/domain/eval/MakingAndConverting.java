@@ -101,26 +101,26 @@ public final class MakingAndConverting implements Construction {
     }
 
     public Value made(
-            DatatypeValue wanted, Value from, Evaluator evaluator, Context context,
+            DatatypeValue wanted, Value source, Evaluator evaluator, Context context,
             UnaryOperator<Value> lookedUp) {
         return switch (wanted.represents()) {
-            case MAP -> mapMadeFrom(from);
-            case BITSET -> BitsetActions.madeFrom(from);
-            case PAIR -> asPair(from);
-            case STRUCT -> structMadeFrom(from);
-            case IMAGE -> madeImage(from);
-            case GOB -> madeGob(from, lookedUp);
-            case EVENT -> EventPath.made(wanted, from, lookedUp);
+            case MAP -> mapFrom(source);
+            case BITSET -> BitsetActions.madeFrom(source);
+            case PAIR -> asPair(source);
+            case STRUCT -> structMadeFrom(source);
+            case IMAGE -> madeImage(source);
+            case GOB -> madeGob(source, lookedUp);
+            case EVENT -> EventPath.made(wanted, source, lookedUp);
             case VECTOR -> {
-                refuseMoreRoomThanASeriesCounts(Datatype.VECTOR, from);
-                yield whatTheHostHadRoomFor(() -> madeVector(from, lookedUp));
+                refuseMoreRoomThanASeriesCounts(Datatype.VECTOR, source);
+                yield whatTheHostHadRoomFor(() -> madeVector(source, lookedUp));
             }
-            case PORT -> portMadeFrom(from, evaluator, context);
-            case DATE -> aDateMadeFrom(wanted, from);
-            case TIME -> from instanceof BlockValue parts
+            case PORT -> portMadeFrom(source, evaluator, context);
+            case DATE -> aDateMadeFrom(wanted, source);
+            case TIME -> source instanceof BlockValue parts
                     ? timeFromParts(parts.remaining())
-                    : madeOtherwise(wanted, from);
-            default -> madeOtherwise(wanted, from);
+                    : madeOtherwise(wanted, source);
+            default -> madeOtherwise(wanted, source);
         };
     }
 
@@ -188,7 +188,7 @@ public final class MakingAndConverting implements Construction {
                 if (value instanceof IntegerValue || value instanceof DecimalValue) {
                     throw Raised.of(EvaluationFailure.INVALID_ARG, value);
                 }
-                yield mapMadeFrom(value);
+                yield mapFrom(value);
             }
             case DATE -> switch (value) {
                 case DateValue already -> already;
@@ -1141,22 +1141,29 @@ public final class MakingAndConverting implements Construction {
                 .orElseThrow(() -> Raised.badMakeArg(text, "money!"));
     }
 
-    private boolean isANumberButNotAPercentageWhichIsNoRoomAtAll(Value given) {
+    private boolean isANumberNotPercentage(Value given) {
         return given instanceof IntegerValue
                 || (given instanceof DecimalValue && given.datatype() != Datatype.PERCENT);
     }
 
-    private Value mapMadeFrom(Value given) {
-        if (isANumberButNotAPercentageWhichIsNoRoomAtAll(given)) {
-            MapActions.refuseRoomForFewerThanNoPairs(given);
-            refuseMoreRoomThanASeriesCounts(Datatype.MAP, given);
+    private Value mapFrom(Value source) {
+        if (isANumberNotPercentage(source)) {
+            throwWhenLessThanNoPairs(source);
+            refuseMoreRoomThanASeriesCounts(Datatype.MAP, source);
             return MapValue.empty();
         }
-        List<Value> pairs = MapActions.pairsOffered(given);
+        List<Value> pairs = MapActions.pairsOffered(source);
         if (pairs == null) {
-            throw Raised.badMakeArg(given, "map!");
+            throw Raised.badMakeArg(source, "map!");
         }
-        return MapActions.madeFrom(given, pairs);
+        return MapActions.madeFrom(source, pairs);
+    }
+
+    private void throwWhenLessThanNoPairs(Value given) {
+        if (Comparison.asDouble(given) < 0) {
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                    "a map cannot have room for " + Molder.form(given) + " pairs");
+        }
     }
 
     private String qualifiedNumberIn(String text, String reading, int mostCharacters) {
@@ -1297,7 +1304,7 @@ public final class MakingAndConverting implements Construction {
             if (fields.get(at) instanceof WordValue field
                     && field.datatype() == Datatype.SET_WORD
                     && task.context().holds(field.canonical())) {
-                task.context().set(field.canonical(), fields.get(at + 1));
+                task.context().register(field.canonical(), fields.get(at + 1));
             }
         }
         return task;

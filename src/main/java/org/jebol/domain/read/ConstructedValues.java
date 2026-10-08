@@ -239,7 +239,7 @@ final class ConstructedValues {
                 throw new CannotConstruct();
             }
             at++;
-            built.set(name.spelling(), at < items.size() ? items.get(at) : NoneValue.none());
+            built.register(name.spelling(), at < items.size() ? items.get(at) : NoneValue.none());
         }
         return new ObjectValue(built);
     }

@@ -49,7 +49,7 @@ public class ConstructNative extends DefaultNative {
                     && arguments.size() > WHERE_THE_PROTOTYPE_ARRIVES
                     && arguments.get(WHERE_THE_PROTOTYPE_ARRIVES)
                             instanceof ObjectValue(Context prototype)) {
-                prototype.fieldsExcludingSelf().forEach(built::set);
+                prototype.fieldsExcludingSelf().forEach(built::register);
             }
             constructInto(built, itemsOf(arguments.getFirst()), refinements.contains("only"));
             return new ObjectValue(built);
@@ -78,15 +78,15 @@ public class ConstructNative extends DefaultNative {
                 held = NoneValue.none();
             }
             for (WordValue name : waiting) {
-                built.set(name.spelling(), held);
+                built.register(name.spelling(), held);
             }
             waiting.clear();
         }
         for (WordValue name : waiting) {
             if (!asWritten) {
-                built.set(name.spelling(), NoneValue.none());
+                built.register(name.spelling(), NoneValue.none());
             } else if (!built.knows(name.canonical())) {
-                built.define(name.spelling());
+                built.register(name.spelling());
             }
         }
     }

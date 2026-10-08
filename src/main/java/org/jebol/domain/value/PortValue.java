@@ -67,7 +67,7 @@ public record PortValue(Context context) implements Value {
     }
 
     public void setField(String name, Value replacement) {
-        context.set(name, replacement);
+        context.register(name, replacement);
     }
 
     public Optional<ObjectValue> actorWrittenInRebol() {

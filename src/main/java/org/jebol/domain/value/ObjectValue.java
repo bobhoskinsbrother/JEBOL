@@ -71,10 +71,10 @@ public record ObjectValue(Context context) implements Value {
     public Value copied(boolean deeply, Set<Datatype> kinds) {
         Context fields = Context.root();
         ObjectValue duplicate = new ObjectValue(fields);
-        fields.set("self", duplicate);
+        fields.register("self", duplicate);
         context.slots().stream()
                 .filter(slot -> !slot.canonical().equals("self"))
-                .forEach(slot -> fields.set(slot.spelling(),
+                .forEach(slot -> fields.register(slot.spelling(),
                         slot.value().copiedAsAMember(deeply, kinds)));
         return duplicate;
     }

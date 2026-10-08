@@ -113,11 +113,11 @@ public class BinaryNative extends DefaultNative {
 
     private ObjectValue theDialectContextFor(BinaryValue buffer) {
         Context made = Context.root();
-        made.set("type", WordValue.of("bincode"));
-        made.set("buffer", buffer);
-        made.set("buffer-write", buffer);
-        made.set("r-mask", IntegerValue.of(0));
-        made.set("w-mask", IntegerValue.of(0));
+        made.register("type", WordValue.of("bincode"));
+        made.register("buffer", buffer);
+        made.register("buffer-write", buffer);
+        made.register("r-mask", IntegerValue.of(0));
+        made.register("w-mask", IntegerValue.of(0));
         return new ObjectValue(made);
     }
 
@@ -125,8 +125,8 @@ public class BinaryNative extends DefaultNative {
         BinaryValue fresh = replacement instanceof BinaryValue given
                 ? BinaryValue.ofBytes(given.octetsFromHere())
                 : BinaryValue.of();
-        held.context().set("buffer", fresh);
-        held.context().set("buffer-write", fresh);
+        held.context().register("buffer", fresh);
+        held.context().register("buffer-write", fresh);
     }
 
     private void laidBackInto(BinaryValue given, BinaryValue written) {
@@ -161,8 +161,8 @@ public class BinaryNative extends DefaultNative {
                 () -> Instant.now().getEpochSecond(), this::nameTheValueRead);
         BinaryValue written = BinaryValue.of(
                 cursor.octets().stream().mapToInt(Integer::intValue).toArray());
-        held.context().set("buffer", written.atIndex(cursorNamed(held, "buffer").index()));
-        held.context().set("buffer-write", written.atIndex(cursor.at() + 1));
+        held.context().register("buffer", written.atIndex(cursorNamed(held, "buffer").index()));
+        held.context().register("buffer-write", written.atIndex(cursor.at() + 1));
     }
 
     private Value readThroughTheDialect(ObjectValue held, Value asked,
@@ -182,11 +182,11 @@ public class BinaryNative extends DefaultNative {
         }
         List<Value> read = Bincode.read(cursor, new Bincode.Script(codes, lookedUp),
                 this::nameTheValueRead);
-        held.context().set("r-mask", IntegerValue.of(cursor.bitsTaken()));
+        held.context().register("r-mask", IntegerValue.of(cursor.bitsTaken()));
         if (cursor.cropped() > 0) {
             shortenedFromTheFront(held, cursor);
         } else {
-            held.context().set("buffer", reading.atIndex(cursor.at() + 1));
+            held.context().register("buffer", reading.atIndex(cursor.at() + 1));
         }
         return into.map(target -> laidInto(target, read))
                 .orElseGet(() -> shapedLikeTheAsking(theBlockItself, read));
@@ -203,7 +203,7 @@ public class BinaryNative extends DefaultNative {
                 new Bincode.Script(List.of(WordValue.of("bytes"), howMany),
                         UnaryOperator.identity()),
                 this::nameTheValueRead);
-        held.context().set("buffer", reading.atIndex(cursor.at() + 1));
+        held.context().register("buffer", reading.atIndex(cursor.at() + 1));
         return read.getFirst();
     }
 
@@ -211,8 +211,8 @@ public class BinaryNative extends DefaultNative {
         int writingWas = cursorNamed(held, "buffer-write").index();
         BinaryValue shortened = BinaryValue.of(
                 cursor.octets().stream().mapToInt(Integer::intValue).toArray());
-        held.context().set("buffer", shortened.atIndex(cursor.at() + 1));
-        held.context().set("buffer-write",
+        held.context().register("buffer", shortened.atIndex(cursor.at() + 1));
+        held.context().register("buffer-write",
                 shortened.atIndex(Math.max(1, writingWas - cursor.cropped())));
     }
 

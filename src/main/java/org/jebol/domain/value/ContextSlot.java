@@ -1,14 +1,5 @@
 package org.jebol.domain.value;
 
-/**
- * One named binding inside a {@link Context}.
- *
- * <p>Mutable, because assignment through a set-word changes what a name holds
- * without producing a new context. Starts {@code unset} rather than
- * {@code none}: a name that exists but has not been assigned is precisely
- * what {@code unset!} means, and the evaluator reports that differently from
- * a name that was never bound at all.
- */
 public final class ContextSlot implements Slot {
 
     private final Context context;

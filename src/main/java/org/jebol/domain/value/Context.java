@@ -142,12 +142,12 @@ public final class Context {
         throw new IllegalStateException("no slot for \"" + canonicalName + "\"; ask knows() first");
     }
 
-    public ContextSlot define(String spelling) {
+    public ContextSlot register(String spelling) {
         if (unbound) {
             throw new IllegalStateException("the unbound context cannot be extended");
         }
         if (supersededBy != null) {
-            return frameThatResolvesForThisOne().define(spelling);
+            return frameThatResolvesForThisOne().register(spelling);
         }
         String canonical = canonicalise(spelling);
         ContextSlot existing = slotsByCanonicalName.get(canonical);
@@ -159,8 +159,8 @@ public final class Context {
         return created;
     }
 
-    public ContextSlot set(String spelling, Value value) {
-        ContextSlot slot = define(spelling);
+    public ContextSlot register(String spelling, Value value) {
+        ContextSlot slot = register(spelling);
         slot.setValue(value);
         return slot;
     }
@@ -204,7 +204,7 @@ public final class Context {
             boolean holdsNothing = slot.value() instanceof NoneValue
                     || slot.value() instanceof UnsetValue;
             if (!slot.canonical().equals("self") && !holdsNothing) {
-                kept.set(slot.spelling(), slot.value());
+                kept.register(slot.spelling(), slot.value());
             }
         }
         return kept;

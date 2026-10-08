@@ -66,7 +66,7 @@ public class InNative extends DefaultNative {
     private Context theFieldsAnErrorHolds(ErrorValue raised) {
         Context fields = Context.root();
         for (String name : ErrorValue.FIELDS) {
-            raised.field(name).ifPresent(value -> fields.set(name, value));
+            raised.field(name).ifPresent(value -> fields.register(name, value));
         }
         return fields;
     }

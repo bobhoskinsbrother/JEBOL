@@ -41,7 +41,7 @@ class WhatEachObjectNativeDeclaresTest {
 
     private Context holding(String name, Value value) {
         Context fields = Context.root();
-        fields.set(name, value);
+        fields.register(name, value);
         return fields;
     }
 
@@ -65,8 +65,6 @@ class WhatEachObjectNativeDeclaresTest {
                                 Parameter.belongingTo("only", "from",
                                         Set.of(Datatype.BLOCK, Datatype.INTEGER))),
                         Set.of("only", "all", "extend")),
-                Arguments.of(new ContextNative(), "context",
-                        List.of(Parameter.required("body", A_BLOCK)), Set.of("only")),
                 Arguments.of(new InNative(), "in",
                         List.of(Parameter.required("object",
                                         Typeset.ANY_OBJECT.membersAnd(Datatype.BLOCK)),
@@ -151,7 +149,7 @@ class WhatEachObjectNativeDeclaresTest {
         @DisplayName("selfless? is true of an object with no self, and of anything not an object")
         void selfless() {
             Context withSelf = Context.root();
-            withSelf.set("self", NoneValue.none());
+            withSelf.register("self", NoneValue.none());
 
             assertThat(answerOf(new IsSelflessNative(), NOTHING,
                     new ObjectValue(holding("a", IntegerValue.of(1)))))
@@ -239,6 +237,15 @@ class WhatEachObjectNativeDeclaresTest {
             Interpreter interpreter = Interpreter.create();
             assertThat(interpreter.display(interpreter.run("""
                     equal? hash 7 hash 7"""))).isEqualTo("#(true)");
+        }
+
+        @Test
+        @DisplayName("context, abs and true? are the library's names for object, absolute and did, as in r3")
+        void theLibraryNamesTheAliases() {
+            Interpreter interpreter = Interpreter.create();
+            assertThat(interpreter.display(interpreter.run("""
+                    reduce [same? :context :object same? :abs :absolute same? :true? :did true? none]"""
+            ))).isEqualTo("[#(true) #(true) #(true) #(false)]");
         }
     }
 }

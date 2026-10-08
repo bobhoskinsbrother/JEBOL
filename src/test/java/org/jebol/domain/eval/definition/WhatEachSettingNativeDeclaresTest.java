@@ -79,7 +79,7 @@ class WhatEachSettingNativeDeclaresTest {
 
     private Context holding(String name, Value value) {
         Context fields = Context.root();
-        fields.set(name, value);
+        fields.register(name, value);
         return fields;
     }
 
@@ -169,7 +169,7 @@ class WhatEachSettingNativeDeclaresTest {
         @DisplayName("set of a block of words spreads a block of values, padding with none")
         void setABlockOfWords() {
             Context fields = holding("a", NoneValue.none());
-            fields.set("b", IntegerValue.of(9));
+            fields.register("b", IntegerValue.of(9));
 
             answerOf(new SetNative(),
                     BlockValue.block(List.of(WordValue.of("a").boundTo(fields),
@@ -184,7 +184,7 @@ class WhatEachSettingNativeDeclaresTest {
         @DisplayName("get reads a word, and refuses unset unless asked /any")
         void getAWord() {
             Context fields = holding("a", IntegerValue.of(3));
-            fields.set("u", UnsetValue.unset());
+            fields.register("u", UnsetValue.unset());
 
             assertThat(answerOf(new GetNative(), WordValue.of("a").boundTo(fields)))
                     .isEqualTo(IntegerValue.of(3));

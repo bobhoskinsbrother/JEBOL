@@ -13,7 +13,7 @@ class APathNamesAFieldTest {
 
     private static Context holding(String name, Value value) {
         Context fields = Context.root();
-        fields.set(name, value);
+        fields.register(name, value);
         return fields;
     }
 

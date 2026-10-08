@@ -70,7 +70,7 @@ public record ErrorValue(
     public Optional<Context> fieldsAsAContext() {
         Context fields = Context.root();
         for (String name : FIELDS) {
-            fields.set(name, field(name).orElseGet(NoneValue::none));
+            fields.register(name, field(name).orElseGet(NoneValue::none));
         }
         return Optional.of(fields);
     }

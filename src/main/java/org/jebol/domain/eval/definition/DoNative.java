@@ -7,7 +7,6 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.ReturnSignal;
 import org.jebol.domain.read.SyntaxFailure;
 import org.jebol.domain.read.TranscodeResult;
-import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
@@ -192,7 +191,7 @@ public class DoNative extends DefaultNative {
     private void recordTheScriptArguments(Evaluator evaluator, Value given) {
         if (evaluator.systemContext().valueAt("system", "script")
                 instanceof ObjectValue(Context script)) {
-            script.set("args", given);
+            script.register("args", given);
         }
     }
 }

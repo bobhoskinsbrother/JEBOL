@@ -35,7 +35,7 @@ class RoundTripInvariantTest {
         @DisplayName("a bound block round-trips")
         void boundBlockSurvives() {
             Context context = Context.root();
-            context.set("known", IntegerValue.of(1));
+            context.register("known", IntegerValue.of(1));
 
             BlockValue bound = Binder.bind(read("known unknown [known]"), context);
 
@@ -46,9 +46,9 @@ class RoundTripInvariantTest {
         @DisplayName("because equality asks what a word says, not which word it is")
         void equalityIgnoresBinding() {
             Context first = Context.root();
-            first.set("shared", IntegerValue.of(1));
+            first.register("shared", IntegerValue.of(1));
             Context second = Context.root();
-            second.set("shared", IntegerValue.of(2));
+            second.register("shared", IntegerValue.of(2));
 
             WordValue unbound = WordValue.of("shared");
             WordValue inFirst = unbound.boundTo(first);
@@ -62,7 +62,7 @@ class RoundTripInvariantTest {
         @DisplayName("and same? is the question that does count binding")
         void samenessCountsBinding() {
             Context context = Context.root();
-            context.set("shared", IntegerValue.of(1));
+            context.register("shared", IntegerValue.of(1));
 
             WordValue unbound = WordValue.of("shared");
             WordValue bound = unbound.boundTo(context);

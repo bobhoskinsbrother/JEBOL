@@ -182,9 +182,9 @@ public class QueryAction extends PortAction {
         Value everyFieldAsAnObject(Evaluator evaluator) {
             Context fields = Context.childOf(evaluator.systemContext());
             ObjectValue described = new ObjectValue(fields);
-            fields.set("self", described);
+            fields.register("self", described);
             for (String part : names()) {
-                fields.set(part, fieldInTheObject(part));
+                fields.register(part, fieldInTheObject(part));
             }
             return described;
         }
@@ -315,7 +315,7 @@ public class QueryAction extends PortAction {
         Value everyFieldAsAnObject(Evaluator evaluator) {
             Context fields = Context.root();
             for (String part : names()) {
-                fields.set(part, fieldInTheObject(part));
+                fields.register(part, fieldInTheObject(part));
             }
             return new ObjectValue(fields);
         }
@@ -368,7 +368,7 @@ public class QueryAction extends PortAction {
         Value everyFieldAsAnObject(Evaluator evaluator) {
             Context fields = Context.root();
             for (String part : names()) {
-                fields.set(part, fieldInTheObject(part));
+                fields.register(part, fieldInTheObject(part));
             }
             return new ObjectValue(fields);
         }

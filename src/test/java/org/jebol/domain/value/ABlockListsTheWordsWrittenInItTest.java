@@ -59,7 +59,7 @@ class ABlockListsTheWordsWrittenInItTest {
     @DisplayName("each word comes back as a plain word, unbound, whatever kind it was written as")
     void eachComesBackPlain() {
         Context somewhere = Context.root();
-        somewhere.set("a", IntegerValue.of(1));
+        somewhere.register("a", IntegerValue.of(1));
         BlockValue written = block(WordValue.of("a", Datatype.SET_WORD).boundTo(somewhere),
                 WordValue.of("b", Datatype.GET_WORD), WordValue.of("c", Datatype.LIT_WORD));
 

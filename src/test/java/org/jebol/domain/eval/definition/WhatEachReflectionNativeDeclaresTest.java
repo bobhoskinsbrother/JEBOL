@@ -95,8 +95,6 @@ class WhatEachReflectionNativeDeclaresTest {
                         List.of(Parameter.required("value", ANY_TYPE)), NOTHING),
                 Arguments.of(new IsInternalNative(), "internal?",
                         List.of(Parameter.required("value", ANY_TYPE)), NOTHING),
-                Arguments.of(new IsTrueNative(), "true?",
-                        List.of(Parameter.required("value", ANY_TYPE)), NOTHING),
                 Arguments.of(new DidNative(), "did",
                         List.of(Parameter.required("value", ANY_TYPE)), NOTHING),
                 Arguments.of(new IsNumberNative(), "number?",
@@ -369,9 +367,11 @@ class WhatEachReflectionNativeDeclaresTest {
         }
 
         @Test
-        @DisplayName("true? and did are false only of none and a false logic")
+        @DisplayName("did is false only of none and a false logic")
         void truth() {
-            assertThat(answerOf(new IsTrueNative(), NoneValue.none()))
+            assertThat(answerOf(new DidNative(), NoneValue.none()))
+                    .isEqualTo(LogicValue.of(false));
+            assertThat(answerOf(new DidNative(), LogicValue.of(false)))
                     .isEqualTo(LogicValue.of(false));
             assertThat(answerOf(new DidNative(), IntegerValue.of(0)))
                     .isEqualTo(LogicValue.of(true));

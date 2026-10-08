@@ -529,8 +529,8 @@ public final class Ports {
                 spec.fieldValue("direction") instanceof WordValue wanted
                         && wanted.canonical().equals("decrypt"),
                 octetsInSpec(spec, "key"), octetsInSpec(spec, "init-vector"));
-        spec.context().set("key", NoneValue.none());
-        spec.context().set("init-vector", NoneValue.none());
+        spec.context().register("key", NoneValue.none());
+        spec.context().register("init-vector", NoneValue.none());
     }
 
     private byte[] octetsInSpec(ObjectValue spec, String field) {

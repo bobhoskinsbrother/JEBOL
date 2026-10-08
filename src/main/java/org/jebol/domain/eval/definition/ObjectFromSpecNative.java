@@ -40,8 +40,8 @@ public abstract class ObjectFromSpecNative extends DefaultNative {
 
         Context fields = Context.childOf(enclosing);
         ObjectValue built = new ObjectValue(fields);
-        fields.set("self", built);
-        spec.setWordsFromHere().stream().map(WordValue::spelling).forEach(fields::define);
+        fields.register("self", built);
+        spec.setWordsFromHere().stream().map(WordValue::spelling).forEach(fields::register);
         evaluator.evaluateOrRaise(
                 Binder.bindOnly(spec, fields, itsOwnFieldNames(fields)), fields);
         return built;

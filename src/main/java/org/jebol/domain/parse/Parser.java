@@ -661,9 +661,9 @@ public final class Parser implements ParseWalk {
     private void assignOverABlock(WordValue word, Value value) {
         Context target = word.isBound() ? word.binding() : context;
         if (!target.knows(word.canonical())) {
-            target.define(word.spelling());
+            target.register(word.spelling());
         }
-        ContextSlot slot = target.knows(word.canonical()) ? target.slotFor(word.canonical()) : target.define(word.spelling());
+        ContextSlot slot = target.knows(word.canonical()) ? target.slotFor(word.canonical()) : target.register(word.spelling());
         slot.setValue(value);
     }
 
@@ -979,7 +979,7 @@ public final class Parser implements ParseWalk {
 
     private void assignOverAString(WordValue word, Value value) {
         Context target = word.isBound() ? word.binding() : context;
-        target.set(word.canonical(), value);
+        target.register(word.canonical(), value);
     }
 
     private int matchRepeat(List<Value> rules, int at) {

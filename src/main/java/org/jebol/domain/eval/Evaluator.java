@@ -329,13 +329,13 @@ public final class Evaluator {
 
     public void setSystemState(String field, Value value) {
         if (systemContext.valueAt("system", "state") instanceof ObjectValue(Context state)) {
-            state.set(field, value);
+            state.register(field, value);
         }
     }
 
     public void setSystemOption(String field, Value value) {
         if (systemContext.valueAt("system", "options") instanceof ObjectValue(Context options)) {
-            options.set(field, value);
+            options.register(field, value);
         }
     }
 
@@ -421,7 +421,7 @@ public final class Evaluator {
                     locals.markAsCallFrameOf(function);
                 }
                 function.localNames().forEach(
-                        name -> locals.set(name, NoneValue.none()));
+                        name -> locals.register(name, NoneValue.none()));
                 bindArgumentsPositionally(locals, parameters, arguments);
                 BlockValue running = theBodyThisCallRuns(function, locals);
                 theFrameThisCallTakesOverFrom(function).supersededBy(locals);
@@ -1161,23 +1161,23 @@ public final class Evaluator {
                         .map(refinements::contains).orElse(true))
                 .toList();
         for (int index = 0; index < consuming.size() && index < arguments.size(); index++) {
-            locals.set(consuming.get(index).name(), arguments.get(index));
+            locals.register(consuming.get(index).name(), arguments.get(index));
         }
 
         function.parameters().stream()
                 .filter(parameter -> parameter.owningRefinement().isPresent())
                 .filter(parameter -> !consuming.contains(parameter))
-                .forEach(parameter -> locals.set(parameter.name(), NoneValue.none()));
+                .forEach(parameter -> locals.register(parameter.name(), NoneValue.none()));
 
         function.parameters().stream()
                 .filter(parameter -> parameter.kind() == ParameterKind.REFINEMENT)
-                .forEach(parameter -> locals.set(
+                .forEach(parameter -> locals.register(
                         parameter.name(),
                         refinements.contains(parameter.name().toLowerCase(Locale.ROOT))
                                 ? LogicValue.yes()
                                 : NoneValue.none()));
 
-        function.localNames().forEach(name -> locals.set(name, NoneValue.none()));
+        function.localNames().forEach(name -> locals.register(name, NoneValue.none()));
 
         push(frames, theBodyThisCallRuns(function, locals), locals, function);
         return StepOutcome.waiting();
@@ -1692,7 +1692,7 @@ public final class Evaluator {
             };
         }
         if (target instanceof BitsetValue members) {
-            return RebolNativeWords.bitsetHoldsForAPath(members, selector);
+            return bitsetHoldsForAPath(members, selector);
         }
         if (target instanceof CharacterValue(int codepoint)
                 && selector instanceof WordValue asked) {
@@ -1711,6 +1711,10 @@ public final class Evaluator {
         throw Raised.of(EvaluationFailure.INVALID_PATH,
                 "cannot select " + selector.datatype().literalSpelling()
                         + " from " + target.datatype().literalSpelling());
+    }
+
+    private Value bitsetHoldsForAPath(BitsetValue members, Value selector) {
+        return new BitsetActions(members).heldForAPath(selector);
     }
 
     public Value hostPort(String scheme) {
@@ -1867,11 +1871,11 @@ public final class Evaluator {
                     ? arguments.get(at)
                     : UnsetValue.unset();
             if (parameter.kind() != ParameterKind.REFINEMENT) {
-                frame.set(parameter.name(), supplied);
+                frame.register(parameter.name(), supplied);
                 continue;
             }
             boolean asked = supplied.datatype() != Datatype.UNSET && supplied.isTruthy();
-            frame.set(parameter.name(),
+            frame.register(parameter.name(),
                     asked ? LogicValue.of(true) : NoneValue.none());
             if (asked) {
                 continue;
@@ -1879,7 +1883,7 @@ public final class Evaluator {
             while (at + 1 < parameters.size()
                     && parameters.get(at + 1).kind() != ParameterKind.REFINEMENT) {
                 at++;
-                frame.set(parameters.get(at).name(), NoneValue.none());
+                frame.register(parameters.get(at).name(), NoneValue.none());
             }
         }
     }

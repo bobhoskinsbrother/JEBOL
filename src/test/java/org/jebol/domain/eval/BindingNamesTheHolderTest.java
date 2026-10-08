@@ -26,7 +26,7 @@ class BindingNamesTheHolderTest {
     void aSlotInTheTargetBindsToTheTarget() {
         Context outer = Context.root();
         Context target = Context.childOf(outer);
-        target.set(WORD, IntegerValue.of(1));
+        target.register(WORD, IntegerValue.of(1));
 
         assertThat(bindOneWord(WORD, target).binding())
                 .as("the target holds the slot, so it is the holder")
@@ -37,7 +37,7 @@ class BindingNamesTheHolderTest {
     @DisplayName("a word only the parent holds binds to the parent, not the target")
     void aSlotOneContextUpBindsToThatContext() {
         Context outer = Context.root();
-        outer.set(WORD, IntegerValue.of(1));
+        outer.register(WORD, IntegerValue.of(1));
         Context target = Context.childOf(outer);
 
         assertThat(bindOneWord(WORD, target).binding())
@@ -49,7 +49,7 @@ class BindingNamesTheHolderTest {
     @DisplayName("a word several contexts up binds to whichever one holds it")
     void aSlotSeveralContextsUpBindsToItsHolder() {
         Context outermost = Context.root();
-        outermost.set(WORD, IntegerValue.of(1));
+        outermost.register(WORD, IntegerValue.of(1));
         Context target = Context.childOf(Context.childOf(Context.childOf(outermost)));
 
         assertThat(bindOneWord(WORD, target).binding())
@@ -61,9 +61,9 @@ class BindingNamesTheHolderTest {
     @DisplayName("a word held in both places binds to the nearer one")
     void theNearestHolderWins() {
         Context outer = Context.root();
-        outer.set(WORD, IntegerValue.of(1));
+        outer.register(WORD, IntegerValue.of(1));
         Context target = Context.childOf(outer);
-        target.set(WORD, IntegerValue.of(2));
+        target.register(WORD, IntegerValue.of(2));
 
         assertThat(bindOneWord(WORD, target).binding())
                 .as("shadowing still works: the nearest slot is the one meant")
@@ -84,7 +84,7 @@ class BindingNamesTheHolderTest {
     @DisplayName("a word inside a nested block binds to its holder too")
     void nestedBlocksFollowTheSameRule() {
         Context outer = Context.root();
-        outer.set(WORD, IntegerValue.of(1));
+        outer.register(WORD, IntegerValue.of(1));
         Context target = Context.childOf(outer);
 
         var nested = org.jebol.domain.value.BlockValue.block(java.util.List.of(

@@ -16,7 +16,7 @@ class AWordFindsItsOwnSlotTest {
     @DisplayName("a word bound where it is held finds the slot holding its value")
     void aWordBoundWhereItIsHeld() {
         Context context = Context.root();
-        context.set("x", IntegerValue.of(1));
+        context.register("x", IntegerValue.of(1));
 
         assertThat(WordValue.of("x").boundTo(context).boundSlot().value())
                 .isEqualTo(IntegerValue.of(1));
@@ -26,7 +26,7 @@ class AWordFindsItsOwnSlotTest {
     @DisplayName("a word bound beneath where it is held finds the slot above")
     void aWordBoundBeneathWhereItIsHeld() {
         Context above = Context.root();
-        above.set("x", IntegerValue.of(1));
+        above.register("x", IntegerValue.of(1));
         Context beneath = Context.childOf(above);
 
         assertThat(WordValue.of("x").boundTo(beneath).boundSlot().value())
@@ -37,7 +37,7 @@ class AWordFindsItsOwnSlotTest {
     @DisplayName("the case a word is spelled in does not matter")
     void spellingCaseDoesNotMatter() {
         Context context = Context.root();
-        context.set("Foo", IntegerValue.of(1));
+        context.register("Foo", IntegerValue.of(1));
 
         assertThat(WordValue.of("FOO").boundTo(context).boundSlot().value())
                 .isEqualTo(IntegerValue.of(1));
@@ -47,7 +47,7 @@ class AWordFindsItsOwnSlotTest {
     @DisplayName("the slot is the live one, so writing through it is seen by the context")
     void theSlotIsTheLiveOne() {
         Context context = Context.root();
-        context.set("x", IntegerValue.of(1));
+        context.register("x", IntegerValue.of(1));
 
         WordValue.of("x").boundTo(context).boundSlot().setValue(IntegerValue.of(2));
 
@@ -67,7 +67,7 @@ class AWordFindsItsOwnSlotTest {
     @DisplayName("a word bound to a context that does not know it is refused the same way")
     void aWordItsContextDoesNotKnowIsRefused() {
         Context context = Context.root();
-        context.set("y", IntegerValue.of(1));
+        context.register("y", IntegerValue.of(1));
 
         assertThatThrownBy(() -> WordValue.of("x").boundTo(context).boundSlot())
                 .isInstanceOf(Raised.class)

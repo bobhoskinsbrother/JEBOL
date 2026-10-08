@@ -68,7 +68,7 @@ public class PutAction extends DefaultNative {
         if (object.context().isClosedToNewNames()) {
             throw Raised.of(EvaluationFailure.PROTECTED);
         }
-        object.context().set(field.spelling(), written);
+        object.context().register(field.spelling(), written);
     }
 
     private void putIntoTheBlock(

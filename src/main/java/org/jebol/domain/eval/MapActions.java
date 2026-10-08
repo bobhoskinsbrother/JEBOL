@@ -138,13 +138,6 @@ public final class MapActions implements Actions {
         };
     }
 
-    public static void refuseRoomForFewerThanNoPairs(Value given) {
-        if (Comparison.asDouble(given) < 0) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    "a map cannot have room for " + Molder.form(given) + " pairs");
-        }
-    }
-
     public MapValue composedThrough(java.util.function.UnaryOperator<Value> compose) {
         List<Value> built = new ArrayList<>();
         for (Value key : pairs.keys()) {

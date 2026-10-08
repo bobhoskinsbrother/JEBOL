@@ -132,7 +132,7 @@ public final class Interpreter {
                         "the system object boot step is missing from the build"))
                 .body();
         Context whereTheStepsOwnWordsLand = Context.childOf(systemContext);
-        whereTheStepsOwnWordsLand.set(THE_DECLARATION, withoutTheFilesLineBreaks(
+        whereTheStepsOwnWordsLand.register(THE_DECLARATION, withoutTheFilesLineBreaks(
                 Binder.bind(body, whereTheDeclarationsOwnWordsLand)));
         declareTheSetWordsOf(step, whereTheStepsOwnWordsLand,
                 AnAssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
@@ -304,7 +304,7 @@ public final class Interpreter {
 
         for (WordValue word : body.setWordsFromHere()) {
             if (!alreadyAnsweredFor(into, word.canonical(), mayLand)) {
-                into.define(word.spelling());
+                into.register(word.spelling());
             }
         }
     }
@@ -327,7 +327,7 @@ public final class Interpreter {
         Context own = Context.childOf(systemContext);
         for (String exported : header.exportedNames()) {
             if (!own.holds(exported)) {
-                own.define(exported);
+                own.register(exported);
             }
         }
         declareTheSetWordsOf(body, own,
@@ -338,7 +338,7 @@ public final class Interpreter {
         }
         for (String exported : header.exportedNames()) {
             if (own.holds(exported)) {
-                systemContext.set(exported, own.ownSlotFor(exported).value());
+                systemContext.register(exported, own.ownSlotFor(exported).value());
             }
         }
         registerTheModule(header, own);
@@ -352,11 +352,11 @@ public final class Interpreter {
             return;
         }
         Context spec = Context.root();
-        spec.set("name", WordValue.of(name));
-        spec.set("type", WordValue.of("module"));
-        spec.set("exports", BlockValue.block(header.exportedNames().stream()
+        spec.register("name", WordValue.of(name));
+        spec.register("type", WordValue.of("module"));
+        spec.register("exports", BlockValue.block(header.exportedNames().stream()
                 .<Value>map(WordValue::of).toList()));
-        context.set(name, new ModuleValue(own, new ObjectValue(spec)));
+        context.register(name, new ModuleValue(own, new ObjectValue(spec)));
     }
 
     private Value pathInto(String... names) {
@@ -379,14 +379,14 @@ public final class Interpreter {
                         instanceof ObjectValue system
                 && system.context().holds("contexts")
                 && system.context().ownSlotFor("contexts").value() instanceof ObjectValue(Context context)) {
-            context.set("user", new ObjectValue(userContext));
+            context.register("user", new ObjectValue(userContext));
             openTheUserContextWithRebolAndItself(system);
         }
     }
 
     private void openTheUserContextWithRebolAndItself(ObjectValue system) {
-        userContext.set("REBOL", system);
-        userContext.set("lib-local", new ObjectValue(userContext));
+        userContext.register("REBOL", system);
+        userContext.register("lib-local", new ObjectValue(userContext));
     }
 
     /**
@@ -586,7 +586,7 @@ public final class Interpreter {
 
     private void resolveFromLibWhenStartMadeTheUserContext(WordValue word, Context into) {
         if (startMadeTheUserContext && into == userContext && systemContext.knows(word.canonical())) {
-            into.set(word.spelling(), systemContext.slotFor(word.canonical()).value());
+            into.register(word.spelling(), systemContext.slotFor(word.canonical()).value());
         }
     }
 
@@ -600,7 +600,7 @@ public final class Interpreter {
                 .ifPresent(banner -> {
                     List<Value> runFirst = new ArrayList<>(banner.body().remaining());
                     runFirst.addAll(protecting.remaining());
-                    systemInternals.set(THE_MEZZANINE_START_RUNS, BlockValue.block(runFirst));
+                    systemInternals.register(THE_MEZZANINE_START_RUNS, BlockValue.block(runFirst));
                 });
     }
 
@@ -770,7 +770,7 @@ public final class Interpreter {
             switch (item) {
                 case WordValue word -> {
                     if (!into.knows(word.canonical())) {
-                        into.define(word.spelling());
+                        into.register(word.spelling());
                         resolveFromLibWhenStartMadeTheUserContext(word, into);
                     }
                 }
@@ -791,12 +791,12 @@ public final class Interpreter {
      * would make interop useless for what people want it for.
      */
     public void define(String name, Object supplied) {
-        userContext.set(name, HostValues.fromHost(supplied));
+        userContext.register(name, HostValues.fromHost(supplied));
     }
 
     /** Hands the script a host null, which is not REBOL's none. */
     public void defineNull(String name, Class<?> type) {
-        userContext.set(name, JavaObjectValue.hostNull(type.getName()));
+        userContext.register(name, JavaObjectValue.hostNull(type.getName()));
     }
 
     /**
@@ -813,7 +813,7 @@ public final class Interpreter {
         for (int position = 1; position <= arity; position++) {
             parameters.add(Parameter.required("argument" + position));
         }
-        userContext.set(name, new NativeValue(name, parameters));
+        userContext.register(name, new NativeValue(name, parameters));
         evaluator.defineNative(name, (arguments, ignored, context) ->
                 runHostFunction(name, function, arguments));
     }

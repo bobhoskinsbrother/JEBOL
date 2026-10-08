@@ -72,7 +72,7 @@ public final class InterpreterMaker implements Maker {
         }
         Context fields = Context.childOf(Context.root());
         for (String field : ErrorValue.FIELDS) {
-            fields.set(field, raised.field(field).orElseGet(NoneValue::none));
+            fields.register(field, raised.field(field).orElseGet(NoneValue::none));
         }
         return new ObjectValue(fields);
     }
@@ -135,14 +135,14 @@ public final class InterpreterMaker implements Maker {
 
     private ObjectValue aFreshObject() {
         ObjectValue built = new ObjectValue(Context.childOf(context));
-        built.context().set("self", built);
+        built.context().register("self", built);
         return built;
     }
 
     private ObjectValue aCopyOf(ObjectValue prototype) {
         ObjectValue built = aFreshObject();
         Context fields = built.context();
-        fieldsOtherThanSelfIn(prototype.context()).forEach(slot -> fields.set(
+        fieldsOtherThanSelfIn(prototype.context()).forEach(slot -> fields.register(
                 slot.spelling(), Binder.clonedAndRebound(
                         slot.value(), Set.of(prototype.context()), fields)));
         return built;
@@ -150,7 +150,7 @@ public final class InterpreterMaker implements Maker {
 
     private ObjectValue evaluatedInto(ObjectValue built, BlockValue body) {
         Context fields = built.context();
-        declaredFieldsIn(body).forEach(fields::define);
+        declaredFieldsIn(body).forEach(fields::register);
         evaluator.evaluateOrRaise(
                 Binder.bindOnly(body, fields, itsOwnFieldNames(fields)), fields);
         return built;
@@ -159,14 +159,14 @@ public final class InterpreterMaker implements Maker {
     private Value mergedObject(ObjectValue prototype, ObjectValue other) {
         Context fields = Context.childOf(context);
         fieldsOtherThanSelfIn(prototype.context())
-                .forEach(slot -> fields.set(slot.spelling(), slot.value()));
+                .forEach(slot -> fields.register(slot.spelling(), slot.value()));
         fieldsOtherThanSelfIn(other.context())
-                .forEach(slot -> fields.set(slot.spelling(), slot.value()));
+                .forEach(slot -> fields.register(slot.spelling(), slot.value()));
 
         ObjectValue merged = new ObjectValue(fields);
-        fields.set("self", merged);
+        fields.register("self", merged);
         Set<Context> sources = Set.of(prototype.context(), other.context());
-        fieldsOtherThanSelfIn(fields).forEach(slot -> fields.set(slot.spelling(),
+        fieldsOtherThanSelfIn(fields).forEach(slot -> fields.register(slot.spelling(),
                 Binder.clonedAndRebound(slot.value(), sources, fields)));
         return merged;
     }

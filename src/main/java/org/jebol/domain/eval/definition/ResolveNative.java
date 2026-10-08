@@ -90,7 +90,7 @@ public class ResolveNative extends DefaultNative {
         if (refinements.contains("extend")) {
             available.forEach((name, value) -> {
                 if (!into.holds(name) && writable.allows(name)) {
-                    into.set(name, value);
+                    into.register(name, value);
                 }
             });
         }

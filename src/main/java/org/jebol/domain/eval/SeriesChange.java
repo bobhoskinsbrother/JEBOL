@@ -1,23 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BlockStorage;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.GobValue;
-import org.jebol.domain.value.ImageValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.StructValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.VectorValue;
+import org.jebol.domain.value.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -172,7 +155,7 @@ public final class SeriesChange {
             case GobValue gob -> new GobActions(gob)
                     .givenTheChildrenOf(value, gob.positionWithinThePane());
             case VectorValue vector -> {
-                List<Value> numbers = RebolNativeWords.numbersContributedTo(vector.kind(), value);
+                List<Value> numbers = numbersContributedTo(vector.kind(), value);
                 for (int at = numbers.size(); at > 0; at--) {
                     vector.storage().insertAt(vector.index(),
                             VectorPath.storedFormOf(vector.kind(), numbers.get(at - 1)));
@@ -186,6 +169,36 @@ public final class SeriesChange {
             }
         }
     }
+
+    private List<Value> numbersContributedTo(VectorKind kind, Value value) {
+        if (value instanceof VectorValue source) {
+            return source.remaining();
+        }
+        if (value instanceof BlockValue block) {
+            return block.remaining();
+        }
+        if (value instanceof BinaryValue bytes) {
+            return numbersSpeltByWithTheOddBytesDropped(kind, bytes, bytes.lengthFromHere());
+        }
+        return List.of(value);
+    }
+
+    private List<Value> numbersSpeltByWithTheOddBytesDropped(VectorKind kind, BinaryValue bytes, int taking) {
+
+        int wholeNumbers = Math.max(0, taking) / kind.bytes();
+        if (wholeNumbers == 0) {
+            throw Raised.of(EvaluationFailure.INVALID_DATA, bytes);
+        }
+        byte[] octets = bytes.octetsFromHere();
+        List<Value> numbers = new ArrayList<>();
+        for (int number = 0; number < wholeNumbers; number++) {
+            numbers.add(kind.read(kind.fromOctets(octets, number * kind.bytes())));
+        }
+        return numbers;
+    }
+
+
+
 
     private void pixelsInserted(ImageValue image, Value value) {
         List<int[]> pixels = new ArrayList<>();
@@ -213,7 +226,7 @@ public final class SeriesChange {
     }
 
     private List<Value> numbersAdded(VectorValue vector) {
-        List<Value> once = RebolNativeWords.numbersContributedTo(vector.kind(), replacement);
+        List<Value> once = numbersContributedTo(vector.kind(), replacement);
         long rounds = refinements.contains("dup")
                 && dup.orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
                 ? magnitude

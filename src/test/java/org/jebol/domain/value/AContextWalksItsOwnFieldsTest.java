@@ -17,7 +17,7 @@ class AContextWalksItsOwnFieldsTest {
 
     private static Context holding(String name, Value value) {
         Context context = Context.root();
-        context.set(name, value);
+        context.register(name, value);
         return context;
     }
 
@@ -93,7 +93,7 @@ class AContextWalksItsOwnFieldsTest {
         void aFieldDoesNotLeakOutward() {
             Context enclosing = holding("leak", IntegerValue.of(1));
             Context inside = Context.childOf(enclosing);
-            inside.set("version", TupleValue.of(3, 22, 5));
+            inside.register("version", TupleValue.of(3, 22, 5));
             Context context = holding("system", new ObjectValue(inside));
 
             assertThat(context.valueAt("system", "leak")).isEqualTo(NoneValue.none());

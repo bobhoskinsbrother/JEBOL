@@ -35,7 +35,7 @@ public record TaskValue(Context context, BlockValue body) implements Value {
     /** A task whose header holds nothing, which is what an empty spec gives. */
     public static TaskValue running(BlockValue body) {
         Context header = Context.root();
-        THE_FIELDS_A_TASK_HAS.forEach(name -> header.set(name, NoneValue.none()));
+        THE_FIELDS_A_TASK_HAS.forEach(name -> header.register(name, NoneValue.none()));
         return new TaskValue(header, body);
     }
 

@@ -85,10 +85,10 @@ public abstract class LoopingNative extends DefaultNative {
         int reached = at;
         for (WordValue name : names) {
             if (name.datatype() == Datatype.SET_WORD) {
-                locals.set(name.spelling(), positionWithin(walked, reached));
+                locals.register(name.spelling(), positionWithin(walked, reached));
                 continue;
             }
-            locals.set(name.spelling(),
+            locals.register(name.spelling(),
                     reached < items.size() ? items.get(reached) : NoneValue.none());
             reached++;
         }

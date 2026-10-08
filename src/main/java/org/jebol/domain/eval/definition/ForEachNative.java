@@ -47,7 +47,7 @@ public class ForEachNative extends LoopingNative {
         Supplier<List<Value>> itemsAsTheyStandNow = () -> keysOnly(series, taking.size());
 
         Context locals = Context.loopFrameOf(within);
-        names.forEach(name -> locals.define(name.spelling()));
+        names.forEach(name -> locals.register(name.spelling()));
         BlockValue bound = Binder.bind(body, locals);
 
         return answerOfTheLoop(() -> {

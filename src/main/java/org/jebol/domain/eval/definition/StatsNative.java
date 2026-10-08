@@ -72,7 +72,7 @@ public class StatsNative extends DefaultNative {
 
     private void setIfPresent(Context fields, String field, Value written) {
         if (fields.holds(field)) {
-            fields.set(field, written);
+            fields.register(field, written);
         }
     }
 }

@@ -61,7 +61,7 @@ public class BindNative extends DefaultNative {
             boolean targetWasAWord, boolean addsWhatIsMissing) {
 
         if (addsWhatIsMissing) {
-            target.define(word.canonical());
+            target.register(word.canonical());
         }
         if (!targetWasAWord) {
             if (!target.holds(word.canonical())) {
@@ -84,7 +84,7 @@ public class BindNative extends DefaultNative {
         boolean deeply = !refinements.contains("only");
         if (addsWhatIsMissing) {
             block.wordsWritten(deeply, refinements.contains("set"))
-                    .forEach(word -> target.define(((WordValue) word).canonical()));
+                    .forEach(word -> target.register(((WordValue) word).canonical()));
         }
         return refinements.contains("copy")
                 ? Binder.bindACopyOfWhatTheTargetHoldsItself(block, target, deeply)
