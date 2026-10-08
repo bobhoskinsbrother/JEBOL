@@ -59,7 +59,7 @@ class LimitUsageFromTheSourceTest {
 
         private static Evaluator anEvaluator() {
             RebolNativeWords natives = RebolNativeWords.standard(Set.of());
-            return new Evaluator(natives.asContext(), line -> { });
+            return new Evaluator(natives.boot().lib(), line -> { });
         }
 
         @Test

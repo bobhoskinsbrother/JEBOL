@@ -71,8 +71,9 @@ public final class Interpreter {
                 theSourceIn("/org/jebol/natives.reb"),
                 theSourceIn("/org/jebol/gen-natives.reb"));
         this.bounds = bounds;
-        this.systemContext = natives.asContext();
-        this.systemInternals = natives.systemInternals();
+        SystemObject system = natives.boot();
+        this.systemContext = system.lib();
+        this.systemInternals = system.internals();
         this.userContext = Context.childOf(systemContext);
         this.evaluator = new Evaluator(
                 systemContext,
@@ -92,7 +93,7 @@ public final class Interpreter {
         nameTheLauncherOnlyOnceTheLibraryHasLoaded();
         registerTheSchemesRebolDeclares();
         natives.grantOnly(bounds.grantedServices());
-        natives.forgetStartupState();
+        system.forgetStartupState();
         evaluator.symbols().startCountingWhatTheSessionReads();
     }
 

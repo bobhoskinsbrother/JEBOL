@@ -14732,10 +14732,11 @@ rule RegisterWithASetWordAlsoAssignsTheStruct {
 -- ABS, CONTEXT and TRUE? are aliases of ABSOLUTE, OBJECT and DID. Each alias
 -- holds the very same function as its original name, so `same? :abs
 -- :absolute` is true, and `type? :abs` is action! because ABSOLUTE is an
--- action. The aliases are there from the start, before Rebol's own library
--- runs. The library then sets them again, to the same functions: `abs:
--- :absolute` in base-constants.reb, `context: :object` in mezz-func.reb, and
--- `true?: :did` in base-defs.reb.
+-- action. Rebol's own library is what makes them: `abs: :absolute` in
+-- base-constants.reb, `context: :object` in mezz-func.reb, and `true?: :did`
+-- in base-defs.reb. Before the library runs the three words do not exist,
+-- as in r3, where they sit among the library's words rather than the
+-- natives'.
 --
 -- They are not functions of their own. Each used to be a class of its own,
 -- which the library overwrote at startup, so it never ran.

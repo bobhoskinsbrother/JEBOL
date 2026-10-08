@@ -1,7 +1,6 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.Interpreter;
-import org.jebol.domain.value.Context;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.DisplayName;
@@ -10,11 +9,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AnAliasHoldsTheOriginalNamesFunctionTest {
 
-    @ParameterizedTest(name = "{0} holds the very function {1} holds, before the library runs")
+    @ParameterizedTest(name = "once the library has run, :{0} is the very function :{1} is")
     @CsvSource({"abs, absolute", "context, object", "true?, did"})
-    void theAliasIsThereFromTheStart(String alias, String originalName) {
-        Context natives = RebolNativeWords.standard().asContext();
-        assertThat(natives.valueAt(alias)).isSameAs(natives.valueAt(originalName));
+    void theLibraryMakesTheAliasTheSameFunction(String alias, String originalName) {
+        Interpreter interpreter = Interpreter.create();
+        assertThat(interpreter.display(interpreter.run("same? :" + alias + " :" + originalName))).isEqualTo("#(true)");
     }
 
     @ParameterizedTest(name = "type? :{0} is {1}, as in r3")

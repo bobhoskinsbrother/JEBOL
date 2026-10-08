@@ -18,7 +18,7 @@ class SurfaceReportTest {
     @DisplayName("every function JEBOL has, with its arguments and refinements")
     void theSurfaceIsPrinted() {
         TreeMap<String, String> byName = new TreeMap<>();
-        for (ContextSlot slot : RebolNativeWords.standard().asContext().slots()) {
+        for (ContextSlot slot : RebolNativeWords.standard().boot().lib().slots()) {
             describe(slot.value()).ifPresent(
                     shape -> byName.put(slot.canonical(), slot.canonical() + " |" + shape));
         }

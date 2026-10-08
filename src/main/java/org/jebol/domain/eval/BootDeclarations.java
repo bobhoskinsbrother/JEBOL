@@ -36,6 +36,10 @@ public final class BootDeclarations {
 
     private Map<String, BlockValue> declaredSpecs;
 
+    private String operatorTableSource = "";
+
+    private String errorCatalogueSource = "";
+
     public List<Value> theRowsBelowTheHeaderOf(String source) {
         try {
             List<Value> values =
@@ -56,6 +60,22 @@ public final class BootDeclarations {
     public void useFunctionDeclarations(String source) {
         this.functionDeclarationSource = source;
         this.declaredSpecs = null;
+    }
+
+    public void useOperatorTable(String source) {
+        this.operatorTableSource = source;
+    }
+
+    public void useErrorCatalogue(String source) {
+        this.errorCatalogueSource = source;
+    }
+
+    public List<Value> operatorRows() {
+        return theRowsBelowTheHeaderOf(operatorTableSource);
+    }
+
+    public List<Value> errorCatalogueRows() {
+        return theRowsBelowTheHeaderOf(errorCatalogueSource);
     }
 
     public Optional<DatatypeSpec> specOf(Datatype datatype) {
