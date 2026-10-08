@@ -129,15 +129,14 @@ public final class Molder {
                         + constructBodyOf(series) + " "
                         + standsWithinNeverPastTheEndForABlockOrAPath(series) + ")";
             }
-            if (value instanceof StringValue tag && tag.datatype() == Datatype.TAG
-                    && tag.storageLength() == 0) {
+            if (value instanceof TagValue tag && tag.storageLength() == 0) {
                 return "#(tag! " + moldedText("") + ")";
             }
             return render(value, true);
         });
     }
 
-    private static final ThreadLocal<Boolean> WRITING_EVERYTHING_OUT =
+    static final ThreadLocal<Boolean> WRITING_EVERYTHING_OUT =
             ThreadLocal.withInitial(() -> false);
 
     private static String writingEverythingOut(Supplier<String> written) {
@@ -152,7 +151,7 @@ public final class Molder {
 
     private static String constructBodyOf(RebolSeries series) {
         return switch (series) {
-            case StringValue text -> moldedText(text.head().text());
+            case AnyStringValue text -> moldedText(text.head().text());
             case BlockValue block -> "[" + block.head().remaining().stream()
                     .map(Molder::mold).collect(Collectors.joining(" ")) + "]";
             default -> mold(series.head());
@@ -243,7 +242,7 @@ public final class Molder {
             case DateValue date -> WRITING_EVERYTHING_OUT.get()
                     ? date.isoForm()
                     : date.toString();
-            case StringValue string -> renderString(string, forReading);
+            case AnyStringValue string -> forReading ? string.mold() : string.form();
             case BinaryValue binary -> renderBinary(binary, forReading);
             case ImageValue image -> renderImage(image, forReading);
             case GobValue gob -> renderGob(gob, forReading);
@@ -474,95 +473,9 @@ public final class Molder {
         return open == 0;
     }
 
-    private static String renderString(StringValue string, boolean forReading) {
-        String text = string.text();
-        if (!forReading) {
-            return string.datatype() == Datatype.TAG ? "<" + text + ">" : text;
-        }
-        return switch (string.datatype()) {
-            case FILE -> moldedFile(text);
-            case URL, EMAIL -> wouldNotReadBackAsItself(string)
-                    ? constructedString(string)
-                    : text;
-            case TAG -> "<" + text + ">";
-            case REF -> !WRITING_EVERYTHING_OUT.get() && spellsARefTheLexerWouldReadBack(text)
-                    ? "@" + text
-                    : constructedString(string);
-            default -> moldedText(text);
-        };
-    }
-
-    private static boolean wouldNotReadBackAsItself(StringValue string) {
-        char required = string.datatype() == Datatype.EMAIL ? '@' : ':';
-        String remaining = string.text();
-        String whole = string.head().text();
-        if (remaining.isEmpty() || whole.isEmpty() || remaining.charAt(0) == '%') {
-            return true;
-        }
-        int found = -1;
-        for (int at = 0; at < remaining.length(); at++) {
-            char letter = remaining.charAt(at);
-            if (letter <= 0x20 || letter == 0x7F
-                    || "()[]{}\";".indexOf(letter) >= 0
-                    || (letter == '/' && required == '@')) {
-                return true;
-            }
-            if (letter == required) {
-                if (at == 0) {
-                    return true;
-                }
-                if (found >= 0 && (required == '@' || at == 1)) {
-                    return true;
-                }
-                if (found < 0) {
-                    found = at;
-                }
-            }
-        }
-        return found < 0 || found == remaining.length() - 1;
-    }
-
-    private static final String LEXER_DELIMITERS = "()[]{}\"/;";
-
-    private static final char OPENS_AN_EMAIL_INSTEAD = '@';
-
-    private static boolean spellsARefTheLexerWouldReadBack(String text) {
-        return text.codePoints().noneMatch(codepoint ->
-                codepoint == OPENS_AN_EMAIL_INSTEAD
-                        || !Character.isLetterOrDigit(codepoint)
-                                && (codepoint < 21
-                                        || Character.isWhitespace(codepoint)
-                                        || codepoint < 0x80 && LEXER_DELIMITERS
-                                                .indexOf(codepoint) >= 0));
-    }
-
-    private static String constructedString(StringValue string) {
-        String whole = string.head().text();
-        return "#(" + string.datatype().literalSpelling() + " " + moldedText(whole)
-                + (string.index() > 1 ? " " + string.index() : "") + ")";
-    }
-
     private static final int LONGEST_QUOTED = 50;
 
-    private static final String FILE_DELIMITERS = ";\"()[]{}<>\\^%:";
-
-    private static String moldedFile(String text) {
-        if (text.isEmpty()) {
-            return "%\"\"";
-        }
-        StringBuilder written = new StringBuilder("%");
-        text.codePoints().forEach(codepoint -> {
-            if (codepoint <= 0x20 || codepoint == 0x7F
-                    || FILE_DELIMITERS.indexOf(codepoint) >= 0) {
-                written.append("%").append("%02X".formatted(codepoint));
-            } else {
-                written.appendCodePoint(codepoint);
-            }
-        });
-        return written.toString();
-    }
-
-    private static String moldedText(String text) {
+    static String moldedText(String text) {
         String deciding = asFarAsTheLimitLooks(text);
         long newlines = deciding.chars().filter(each -> each == '\n').count();
         boolean quoted = deciding.indexOf('"') < 0

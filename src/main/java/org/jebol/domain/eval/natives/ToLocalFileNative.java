@@ -6,6 +6,7 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Parameter;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.StringValue;
 
 import java.util.List;
@@ -42,12 +43,12 @@ public class ToLocalFileNative extends HostNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            String path = ((StringValue) arguments.getFirst()).text();
+            String path = ((AnyStringValue) arguments.getFirst()).text();
             boolean resolvingDots = refinements.contains("full");
             String from = "";
             if (resolvingDots && !path.startsWith("/")) {
                 granted.require(HostService.WORKING_DIRECTORY);
-                from = ((StringValue) throughTheFileSystem(() ->
+                from = ((AnyStringValue) throughTheFileSystem(() ->
                         StringValue.of(evaluator.files().workingDirectory()))).text();
             }
             return StringValue.of(localPathOf(from + path, resolvingDots, localSeparator.separator()));

@@ -36,7 +36,7 @@ public class AjoinNative extends DefaultNative {
             String separator = argumentOf("with", 0, arguments, refinements)
                     .map(Molder::form)
                     .orElse("");
-            return StringValue.of(all.stream()
+            return AnyStringValue.ofTheDatatype(all.stream()
                     .filter(piece -> refinements.contains("all") || holdsSomething(piece))
                     .map(Value::runTogether)
                     .collect(Collectors.joining(separator)), kindOf(all));

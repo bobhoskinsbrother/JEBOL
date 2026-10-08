@@ -26,7 +26,7 @@ public class DelineNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            StringValue text = (StringValue) arguments.getFirst();
+            AnyStringValue text = (AnyStringValue) arguments.getFirst();
             return refinements.contains("lines")
                     ? BlockValue.block(text.linesDroppingOneTrailingEmptyLine())
                     : text.withOneLineFeedPerEnding();

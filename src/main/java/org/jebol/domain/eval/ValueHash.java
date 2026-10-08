@@ -11,7 +11,7 @@ import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.MoneyValue;
 import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.UnicodeCases;
@@ -64,7 +64,7 @@ public final class ValueHash {
     private int hashed(Value value) {
         return switch (value) {
             case WordValue word -> symbols.canonOf(word.spelling());
-            case StringValue text when text.datatype() != Datatype.BINARY -> ofText(text) ^ typeNumberOf(text);
+            case AnyStringValue text -> ofText(text) ^ typeNumberOf(text);
             case BinaryValue bytes -> murmur(bytes.octetsFromHere());
             case BlockValue block -> ofBlock(block);
             case LogicValue logic -> LOGIC_BASE + (logic.truth() ? 1 : 0);
@@ -87,7 +87,7 @@ public final class ValueHash {
         return value.datatype().ordinal();
     }
 
-    private int ofText(StringValue text) {
+    private int ofText(AnyStringValue text) {
         byte[] heldAsUtf8 = text.text().getBytes(StandardCharsets.UTF_8);
         int hash = 0;
         for (byte each : heldAsUtf8) {

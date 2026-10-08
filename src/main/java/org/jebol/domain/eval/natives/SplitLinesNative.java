@@ -26,13 +26,13 @@ public class SplitLinesNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            BlockValue lines = BlockValue.block(linesOf((StringValue) arguments.getFirst()));
+            BlockValue lines = BlockValue.block(linesOf((AnyStringValue) arguments.getFirst()));
             lines.putEachItemOnALine();
             return lines;
         };
     }
 
-    private List<Value> linesOf(StringValue text) {
+    private List<Value> linesOf(AnyStringValue text) {
         List<Value> lines = new ArrayList<>();
         int stopsAtTheLengthFromHereCountedFromTheHead = text.lengthFromHere();
         int start = text.index() - 1;
@@ -56,16 +56,16 @@ public class SplitLinesNative extends DefaultNative {
         return letter == LINE_FEED || letter == CARRIAGE_RETURN;
     }
 
-    private int pastALineFeedFollowing(StringValue text, int ending, int at) {
+    private int pastALineFeedFollowing(AnyStringValue text, int ending, int at) {
         boolean aLineFeedFollows = at < text.storageLength() && codePointAfter(text, at) == LINE_FEED;
         return ending == CARRIAGE_RETURN && aLineFeedFollows ? at + 1 : at;
     }
 
-    private int codePointAfter(StringValue text, int charactersFromTheHead) {
+    private int codePointAfter(AnyStringValue text, int charactersFromTheHead) {
         return text.storage().at(charactersFromTheHead + 1);
     }
 
-    private Value lineBetween(StringValue text, int from, int to) {
+    private Value lineBetween(AnyStringValue text, int from, int to) {
         StringBuilder line = new StringBuilder();
         for (int at = from; at < to; at++) {
             line.appendCodePoint(codePointAfter(text, at));

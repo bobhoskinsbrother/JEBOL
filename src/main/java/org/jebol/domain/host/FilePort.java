@@ -1,11 +1,10 @@
 package org.jebol.domain.host;
 
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.FileValue;
 
 import java.util.Optional;
 
@@ -167,7 +166,7 @@ public interface FilePort {
             if (subject.isEmpty()) {
                 return new Raised(ErrorValue.of(ErrorCategory.ACCESS, errorId, getMessage()));
             }
-            StringValue path = StringValue.of(subject, Datatype.FILE);
+            FileValue path = FileValue.of(subject);
             return new Raised(code
                     .map(number -> ErrorValue.about(ErrorCategory.ACCESS, errorId, getMessage(),
                             path, IntegerValue.of(number)))

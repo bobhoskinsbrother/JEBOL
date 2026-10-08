@@ -2,6 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Parameter;
@@ -56,6 +57,6 @@ public class EnhexNative extends PercentEncodingNative {
     }
 
     private boolean aLocationKeepsItsSeparators(Value value) {
-        return value.datatype() == Datatype.FILE || value.datatype() == Datatype.URL;
+        return value instanceof AnyStringValue text && text.isALocation();
     }
 }

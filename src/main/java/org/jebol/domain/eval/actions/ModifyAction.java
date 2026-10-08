@@ -5,6 +5,7 @@ import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
@@ -54,7 +55,7 @@ public class ModifyAction extends PortAction {
                     ? ports.cryptPort().modify(port, setting.canonical(), given)
                     : port;
         }
-        if (target.datatype() == Datatype.FILE || target instanceof PortValue port && port.isAFile()) {
+        if (target instanceof FileValue || target instanceof PortValue port && port.isAFile()) {
             return aFileModified(target, field);
         }
         return aConsoleModeSet(target, field, given);

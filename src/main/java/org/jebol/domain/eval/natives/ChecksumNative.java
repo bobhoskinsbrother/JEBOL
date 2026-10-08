@@ -7,6 +7,7 @@ import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
@@ -51,7 +52,7 @@ public class ChecksumNative extends EncodingNative {
         return (arguments, evaluator, context, refinements) -> {
             Value data = arguments.getFirst();
             WordValue method = (WordValue) arguments.get(1);
-            if (data.datatype() == Datatype.FILE) {
+            if (data instanceof FileValue) {
                 return theContentsOfThatFileSummed(data, method, evaluator, refinements);
             }
             return summed(data, octetsWithinAnyPart(data, arguments, refinements), method,

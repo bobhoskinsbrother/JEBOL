@@ -14,9 +14,9 @@ import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.LogicValue;
+import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
@@ -165,7 +165,7 @@ public final class Repl {
             return;
         }
         environment.nameHolds(WHERE_REBOL_IS_TOLD_ITS_DATA_LIVES, written);
-        interpreter.tellTheSystem("data", StringValue.of(written, Datatype.FILE));
+        interpreter.tellTheSystem("data", FileValue.of(written));
         interpreter.followTheApplicationDataDirectory();
     }
 
@@ -240,7 +240,7 @@ public final class Repl {
                 interpreter.tellTheSystem("no-color", LogicValue.yes());
             }
             asked.script().ifPresent(script ->
-                    interpreter.tellTheSystem("script", StringValue.of(script, Datatype.FILE)));
+                    interpreter.tellTheSystem("script", FileValue.of(script)));
             asked.valueOf(RebolArguments.Flag.BOOT).ifPresent(level ->
                     interpreter.tellTheSystem("boot-level", WordValue.of(level)));
             interpreter.tellTheSystem("args", theArgumentsForTheScript());
@@ -258,8 +258,8 @@ public final class Repl {
         }
 
         private void tellItWhereItStarted(Interpreter interpreter) {
-            interpreter.tellTheSystem("path", StringValue.of(
-                    dirized(asTheScriptSeesIt(Path.of(startedIn))), Datatype.FILE));
+            interpreter.tellTheSystem("path", FileValue.of(
+                    dirized(asTheScriptSeesIt(Path.of(startedIn)))));
             interpreter.run("change-dir system/options/path");
         }
 

@@ -9,6 +9,7 @@ import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorValue;
@@ -80,7 +81,7 @@ public final class SeriesSorting {
         }
         List<Value> ordered = records.stream().flatMap(List::stream).toList();
         for (int at = 0; at < ordered.size(); at++) {
-            if (series instanceof StringValue text
+            if (series instanceof AnyStringValue text
                     && ordered.get(at) instanceof CharacterValue(int codepoint)) {
                 text.storage().set(text.index() + at, codepoint);
             } else if (series instanceof BinaryValue(BinaryStorage storage, int index)
@@ -136,7 +137,7 @@ public final class SeriesSorting {
             }
             return BinaryValue.of(octets);
         }
-        if (series instanceof StringValue) {
+        if (series instanceof AnyStringValue) {
             StringBuilder characters = new StringBuilder();
             for (Value element : record) {
                 characters.appendCodePoint(((CharacterValue) element).codepoint());

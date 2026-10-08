@@ -1,7 +1,7 @@
 package org.jebol.domain.render;
 
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
@@ -29,7 +29,7 @@ final class RichText {
 
         for (Value item : block.remaining()) {
             switch (item) {
-                case StringValue said -> runs.add(
+                case AnyStringValue said -> runs.add(
                         new Run(said.text(), colour, size, bold, italic));
                 case TupleValue parts -> colour = Colour.ofTuple(parts);
                 case WordValue command -> {

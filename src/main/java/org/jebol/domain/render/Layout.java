@@ -122,7 +122,7 @@ public final class Layout {
 
     private static void decorateByDatatypeSoNothingHasToBeNamed(Face face, Value item) {
         switch (item) {
-            case StringValue text -> face.setCaption(text.text());
+            case AnyStringValue text -> face.setCaption(text.text());
             case PairValue size -> {
                 face.style("width", Molder.moldHalf(size.x()) + "px");
                 face.style("height", Molder.moldHalf(size.y()) + "px");

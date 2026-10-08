@@ -124,7 +124,7 @@ public abstract class ProtectingNative extends DefaultNative {
                             .forEach(item -> setProtection(item, protectedNow, true, false, reached));
                 }
             }
-            case StringValue text -> text.storage().protectFromChange(protectedNow);
+            case AnyStringValue text -> text.storage().protectFromChange(protectedNow);
             case BinaryValue bytes -> bytes.storage().protectFromChange(protectedNow);
             case MapValue map -> map.protectFromChange(protectedNow);
             case ObjectValue object -> setTheProtectionOf(
@@ -167,7 +167,7 @@ public abstract class ProtectingNative extends DefaultNative {
     }
 
     private boolean isReachedByADeepProtection(Value value) {
-        return value instanceof BlockValue || value instanceof StringValue || value instanceof BinaryValue
+        return value instanceof BlockValue || value instanceof AnyStringValue || value instanceof BinaryValue
                 || value instanceof MapValue || value instanceof ObjectValue
                 || value instanceof BitsetValue || value instanceof VectorValue;
     }

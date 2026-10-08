@@ -12,7 +12,7 @@ import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.UnsetValue;
@@ -172,7 +172,7 @@ final class ConstructedValues {
                     ? BitsetValue.of(bytesOf(octets))
                     : requireDatatype(only, Datatype.BITSET);
             case STRING, FILE, URL, EMAIL, TAG, REF -> switch (only) {
-                case StringValue text -> text.as(datatype);
+                case AnyStringValue text -> text.as(datatype);
                 case BinaryValue _ -> madeByTheEvaluator(datatype, contents);
                 default -> requireDatatype(only, datatype);
             };

@@ -5,11 +5,12 @@ import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.ProcessPort;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.Raised;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
 
@@ -45,7 +46,7 @@ final class ProgramCalling {
 
     private boolean isASeries(Optional<Value> redirection) {
         return redirection
-                .filter(value -> value instanceof BinaryValue || value.datatype() == Datatype.STRING)
+                .filter(value -> value instanceof BinaryValue || value instanceof StringValue)
                 .isPresent();
     }
 
@@ -98,9 +99,8 @@ final class ProgramCalling {
         }
         return switch (redirection.orElseThrow()) {
             case BinaryValue piped -> ProcessPort.ProgramInput.SUPPLIED_BYTES;
-            case StringValue text when text.datatype() == Datatype.STRING ->
-                    ProcessPort.ProgramInput.SUPPLIED_BYTES;
-            case StringValue address -> ProcessPort.ProgramInput.A_FILES_CONTENTS;
+            case StringValue typed -> ProcessPort.ProgramInput.SUPPLIED_BYTES;
+            case AnyStringValue address -> ProcessPort.ProgramInput.A_FILES_CONTENTS;
             default -> ProcessPort.ProgramInput.NOTHING_AT_ALL;
         };
     }
@@ -111,9 +111,8 @@ final class ProgramCalling {
         }
         return switch (redirection.orElseThrow()) {
             case BinaryValue captured -> ProcessPort.ProgramOutput.CAPTURED;
-            case StringValue text when text.datatype() == Datatype.STRING ->
-                    ProcessPort.ProgramOutput.CAPTURED;
-            case StringValue address -> ProcessPort.ProgramOutput.INTO_A_FILE;
+            case StringValue typed -> ProcessPort.ProgramOutput.CAPTURED;
+            case AnyStringValue address -> ProcessPort.ProgramOutput.INTO_A_FILE;
             default -> ProcessPort.ProgramOutput.DISCARDED;
         };
     }
@@ -121,7 +120,7 @@ final class ProgramCalling {
     private Optional<byte[]> pipedBytesOf(Optional<Value> redirection) {
         return redirection.flatMap(value -> switch (value) {
             case BinaryValue binary -> Optional.of(binary.octetsFromHere());
-            case StringValue text when text.datatype() == Datatype.STRING ->
+            case StringValue text ->
                     Optional.of(text.text().getBytes(StandardCharsets.UTF_8));
             default -> Optional.empty();
         });
@@ -129,8 +128,8 @@ final class ProgramCalling {
 
     private Optional<String> fileOf(Optional<Value> redirection, Evaluator evaluator) {
         return redirection
-                .filter(value -> value.datatype() == Datatype.FILE)
-                .map(value -> whereReadWouldResolveIt(((StringValue) value).text(), evaluator));
+                .filter(FileValue.class::isInstance)
+                .map(value -> whereReadWouldResolveIt(((FileValue) value).text(), evaluator));
     }
 
     private String whereReadWouldResolveIt(String path, Evaluator evaluator) {
@@ -148,7 +147,7 @@ final class ProgramCalling {
                     binary.storage().append(octet & 0xFF);
                 }
             }
-            case StringValue text when text.datatype() == Datatype.STRING ->
+            case StringValue text ->
                     new String(bytes, StandardCharsets.UTF_8).codePoints().forEach(text.storage()::append);
             default -> theBufferIsNeitherAStringNorABinary();
         }

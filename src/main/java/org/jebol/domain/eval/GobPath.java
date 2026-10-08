@@ -149,7 +149,7 @@ final class GobPath {
             storage.content(GobStorage.Content.TEXT, block);
             return true;
         }
-        if (written instanceof StringValue text && text.datatype() == Datatype.STRING) {
+        if (written instanceof StringValue text) {
             storage.content(GobStorage.Content.STRING, text);
             return true;
         }
@@ -222,7 +222,7 @@ final class GobPath {
             case IntegerValue ignored -> GobStorage.Held.INTEGER;
             case BlockValue block when block.datatype() == Datatype.BLOCK ->
                     GobStorage.Held.BLOCK;
-            case StringValue text when text.datatype() == Datatype.STRING ->
+            case StringValue ignored ->
                     GobStorage.Held.STRING;
             default -> GobStorage.Held.NONE;
         };

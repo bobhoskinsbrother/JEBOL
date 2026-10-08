@@ -1384,7 +1384,7 @@ public final class Evaluator {
             SeriesSlot.write(block, at, written);
             return;
         }
-        if (target instanceof StringValue joining && joinsItsPathSegments(joining)) {
+        if (target instanceof AnyStringValue joining && joining.isALocation()) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     "a path on a " + joining.datatype().literalSpelling()
                             + " names another one rather than a place to write");
@@ -1407,7 +1407,7 @@ public final class Evaluator {
                     time, selectorFor(lastSegment, frame.context), written));
             return;
         }
-        if ((target instanceof StringValue || target instanceof BinaryValue)
+        if ((target instanceof AnyStringValue || target instanceof BinaryValue)
                 && selectorFor(lastSegment, frame.context) instanceof IntegerValue counted) {
             new WritingIntoText((RebolSeries) target).write(counted, written);
             return;
@@ -1440,14 +1440,13 @@ public final class Evaluator {
             raised.write(field.canonical(), written);
             return;
         }
-        if (target instanceof StringValue address
-                && address.datatype() == Datatype.EMAIL
+        if (target instanceof EmailValue address
                 && selectorFor(lastSegment, frame.context) instanceof WordValue half
                 && (half.canonical().equals("user") || half.canonical().equals("host"))) {
-            writeEmailPart(address, half.canonical(), written);
+            writeEmailPart(address, half, written);
             return;
         }
-        if ((target instanceof StringValue || target instanceof BinaryValue)
+        if ((target instanceof AnyStringValue || target instanceof BinaryValue)
                 && selectorFor(lastSegment, frame.context) instanceof WordValue) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         }
@@ -1630,16 +1629,17 @@ public final class Evaluator {
             return raised.field(field.canonical()).orElseThrow(() ->
                     Raised.of(EvaluationFailure.INVALID_PATH, field.spelling()));
         }
-        if (target instanceof StringValue path && joinsItsPathSegments(path)) {
+        if (target instanceof AnyStringValue path && path.isALocation()) {
             return joinedOntoPath(path, selector);
         }
-        if (target instanceof StringValue text && selector instanceof WordValue field) {
+        if (target instanceof AnyStringValue text && selector instanceof WordValue field) {
             return switch (field.canonical()) {
                 case "length" -> IntegerValue.of(text.lengthFromHere());
                 case "size" -> IntegerValue.of(
                         text.text().getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
                 case "width" -> IntegerValue.of(terminalWidthOf(text.text()));
-                case "user", "host" -> emailPartOf(text, field.canonical());
+                case "user" -> theEmailNamedBy(text, field).user();
+                case "host" -> theEmailNamedBy(text, field).host();
                 default -> throw Raised.of(
                         EvaluationFailure.INVALID_PATH, field.spelling());
             };
@@ -1680,7 +1680,7 @@ public final class Evaluator {
                 return NoneValue.none();
             }
             return switch (series) {
-                case StringValue text -> CharacterValue.of(
+                case AnyStringValue text -> CharacterValue.of(
                         text.storage().at(text.index() + (int) index - 1));
                 case BinaryValue bytes -> IntegerValue.of(
                         bytes.storage().at(bytes.index() + (int) index - 1));
@@ -1808,58 +1808,38 @@ public final class Evaluator {
         private PendingCall theCallNearAndWhereAreAbout;
     }
 
-    private static boolean joinsItsPathSegments(StringValue text) {
-        return text.datatype() == Datatype.FILE || text.datatype() == Datatype.URL;
-    }
-
-    private static Value joinedOntoPath(StringValue path, Value segment) {
+    private static Value joinedOntoPath(AnyStringValue path, Value segment) {
         StringBuilder built = new StringBuilder(path.text());
         if (built.isEmpty() || built.charAt(built.length() - 1) != '/') {
             built.append('/');
         }
-        String added = segment instanceof StringValue text
+        String added = segment instanceof AnyStringValue text
                 ? text.text()
                 : Molder.mold(segment);
         built.append(added.startsWith("/") || added.startsWith("\\")
                 ? added.substring(1)
                 : added);
-        return StringValue.of(built.toString(), path.datatype());
+        return path.holding(built.toString());
     }
 
     private static int terminalWidthOf(String text) {
         return TerminalWidth.of(text.codePoints().toArray());
     }
 
-    private static Value emailPartOf(StringValue text, String half) {
-        if (text.datatype() != Datatype.EMAIL) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH, half);
+    private static EmailValue theEmailNamedBy(AnyStringValue text, WordValue half) {
+        if (!(text instanceof EmailValue email)) {
+            throw Raised.of(EvaluationFailure.INVALID_PATH, half.canonical());
         }
-        String whole = text.head().text();
-        int at = whole.indexOf('@');
-        if (half.equals("host")) {
-            return at < 0
-                    ? NoneValue.none()
-                    : StringValue.of(whole.substring(at + 1));
-        }
-        return StringValue.of(at < 0 ? whole : whole.substring(0, at));
+        return email;
     }
 
-    private static void writeEmailPart(StringValue text, String half, Value written) {
-        if (text.datatype() != Datatype.EMAIL) {
-            throw Raised.of(EvaluationFailure.BAD_PATH_SET, half);
-        }
-        String whole = text.text();
-        int at = whole.indexOf('@');
+    private static void writeEmailPart(EmailValue address, WordValue half, Value written) {
         String replacement = Molder.form(written);
-        String rebuilt = half.equals("host")
-                ? (at < 0 ? whole + "@" + replacement
-                        : whole.substring(0, at + 1) + replacement)
-                : replacement + (at < 0 ? "" : whole.substring(at));
-        StringStorage storage = text.storage();
-        while (storage.length() > 0) {
-            storage.removeAt(1);
+        if (half.canonical().equals("host")) {
+            address.hostRewrittenAs(replacement);
+        } else {
+            address.userRewrittenAs(replacement);
         }
-        rebuilt.codePoints().forEach(storage::append);
     }
 
     private static void bindArgumentsPositionally(

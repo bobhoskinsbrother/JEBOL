@@ -6,9 +6,9 @@ import org.jebol.domain.eval.Wildcards;
 import org.jebol.domain.value.BinaryStorage;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
+import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
 
@@ -79,7 +79,7 @@ final class FileReading {
 
     private Value asFiles(List<String> names) {
         return BlockValue.block(names.stream()
-                .<Value>map(name -> StringValue.of(name, Datatype.FILE))
+                .<Value>map(FileValue::of)
                 .toList());
     }
 

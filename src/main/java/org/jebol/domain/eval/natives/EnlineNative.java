@@ -20,7 +20,7 @@ public class EnlineNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
-            case StringValue text -> text.withOneLineFeedPerEnding();
+            case AnyStringValue text -> text.withOneLineFeedPerEnding();
             case Value lines -> throw Raised.of(EvaluationFailure.NOT_DONE);
         };
     }

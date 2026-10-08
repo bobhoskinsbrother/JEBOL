@@ -188,10 +188,9 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
     @Override
     public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
         return switch (other) {
-            case StringValue ignored -> StringValue.textOf(
-                    keeping.from(StringValue.charactersOf(this),
-                            StringValue.charactersOf(other)),
-                    Datatype.STRING);
+            case AnyStringValue ignored -> StringValue.of(AnyStringValue.textOf(
+                    keeping.from(AnyStringValue.charactersOf(this),
+                            AnyStringValue.charactersOf(other))));
             case MapValue theirs -> MapValue.empty()
                     .combinedWith(theirs, keeping.how(), mindingCase);
             case BlockValue theirs -> BlockValue.block(

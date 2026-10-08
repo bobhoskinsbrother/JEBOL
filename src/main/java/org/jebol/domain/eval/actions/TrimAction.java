@@ -42,7 +42,7 @@ public class TrimAction extends DefaultNative implements ActionValue {
         return switch (characters) {
             case CharacterValue character -> Set.of(character.codepoint());
             case IntegerValue whole -> Set.of((int) whole.magnitude());
-            case StringValue text -> text.text().codePoints().boxed().collect(Collectors.toSet());
+            case AnyStringValue text -> text.text().codePoints().boxed().collect(Collectors.toSet());
             case BinaryValue bytes -> octetsOf(bytes);
             default -> Set.of();
         };

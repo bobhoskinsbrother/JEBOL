@@ -8,10 +8,10 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -48,7 +48,7 @@ public class RenameAction extends PortAction {
         if (!from.isAFile()) {
             throw ports.noActionFor(nativeName());
         }
-        if (!(destination instanceof StringValue to) || to.datatype() != Datatype.FILE) {
+        if (!(destination instanceof FileValue to)) {
             throw Raised.of(EvaluationFailure.NO_RENAME, asked);
         }
         granted.require(HostService.FILES);

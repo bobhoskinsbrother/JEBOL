@@ -7,7 +7,7 @@ import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -15,14 +15,14 @@ import java.util.stream.Collectors;
 
 public final class StringActions extends SeriesActions {
 
-    private final StringValue text;
+    private final AnyStringValue text;
 
-    public StringActions(StringValue text) {
+    public StringActions(AnyStringValue text) {
         this.text = text;
     }
 
     @Override
-    StringValue held() {
+    AnyStringValue held() {
         return text;
     }
 
@@ -52,8 +52,8 @@ public final class StringActions extends SeriesActions {
 
     @Override
     Value ofTheSameKindHolding(List<Value> items) {
-        return StringValue.of(items.stream()
-                .map(Molder::form).collect(Collectors.joining()), text.datatype());
+        return text.holding(items.stream()
+                .map(Molder::form).collect(Collectors.joining()));
     }
 
     @Override
@@ -69,7 +69,7 @@ public final class StringActions extends SeriesActions {
 
     @Override
     public Value insert(Asked asked) {
-        StringValue held = (StringValue) text.clampedToTail();
+        AnyStringValue held = (AnyStringValue) text.clampedToTail();
         int[] added = contributedBy(asked).codePoints().toArray();
         for (int at = 0; at < added.length; at++) {
             held.storage().insertAt(held.index() + at, added[at]);

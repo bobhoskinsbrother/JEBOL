@@ -167,7 +167,7 @@ public record PaintList(List<PaintInstruction> instructions) {
     private static java.util.Optional<PaintInstruction> written(
             Value held, Placement where) {
 
-        String text = held instanceof StringValue said
+        String text = held instanceof AnyStringValue said
                 ? said.text()
                 : Molder.form(held);
         if (text.isEmpty()) {

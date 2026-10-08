@@ -17,7 +17,7 @@ import org.jebol.domain.value.MapValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorValue;
@@ -142,7 +142,7 @@ public class RemoveEachNative extends LoopingNative {
         return switch (series) {
             case BinaryValue bytes -> IntegerValue.of(bytes.storage().at(at));
             case VectorValue numbers -> numbers.itemAt(at);
-            default -> CharacterValue.of(((StringValue) series).storage().at(at));
+            default -> CharacterValue.of(((AnyStringValue) series).storage().at(at));
         };
     }
 
@@ -152,7 +152,7 @@ public class RemoveEachNative extends LoopingNative {
                     bytes.storage().insertAt(at, (int) ((IntegerValue) item).magnitude());
             case VectorValue numbers ->
                     numbers.storage().insertAt(at, ((IntegerValue) item).magnitude());
-            case StringValue text ->
+            case AnyStringValue text ->
                     text.storage().insertAt(at, ((CharacterValue) item).codepoint());
             default -> throw Raised.of(EvaluationFailure.CANNOT_USE, "remove-each");
         }

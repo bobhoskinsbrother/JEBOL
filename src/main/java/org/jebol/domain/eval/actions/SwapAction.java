@@ -24,7 +24,7 @@ public class SwapAction extends DefaultNative implements ActionValue {
             Value there = arguments.get(1);
             return switch (here) {
                 case GobValue gob -> refuseTheDatatype(gob);
-                case StringValue text when there instanceof StringValue other ->
+                case AnyStringValue text when there instanceof AnyStringValue other ->
                         text.swapFirstItemWith(other);
                 case BinaryValue bytes when there instanceof BinaryValue other ->
                         bytes.swapFirstItemWith(other);

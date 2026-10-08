@@ -99,7 +99,7 @@ class RoundTripInvariantTest {
 
         @Test
         void repositionedStringSurvives() {
-            StringValue whole = StringValue.of("hello world");
+            AnyStringValue whole = StringValue.of("hello world");
             BlockValue holding = BlockValue.block(whole.atIndex(7));
 
             assertRoundTrips(holding, "a string positioned partway through");
@@ -122,7 +122,7 @@ class RoundTripInvariantTest {
         @Test
         void mutatedStringSurvives() {
             BlockValue block = read("\"ab\"");
-            StringValue text = (StringValue) block.remaining().get(0);
+            AnyStringValue text = (AnyStringValue) block.remaining().get(0);
             text.storage().append('c');
 
             assertRoundTrips(block, "a string appended to after reading");

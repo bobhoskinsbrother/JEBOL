@@ -42,7 +42,7 @@ public final class Raised extends RuntimeException {
                 failure.category(), failure.errorId(),
                 failure.description() + ": " + detail,
                 detail.isEmpty()
-                        ? org.jebol.domain.value.StringValue.of(detail)
+                        ? StringValue.of(detail)
                         : WordValue.of(detail)));
     }
 

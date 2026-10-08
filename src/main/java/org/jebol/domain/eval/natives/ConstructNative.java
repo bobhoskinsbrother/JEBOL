@@ -48,7 +48,7 @@ public class ConstructNative extends DefaultNative {
     private List<Value> itemsOf(Value body) {
         return switch (body) {
             case BlockValue block -> block.remaining();
-            case StringValue text -> headerFieldsIn(text.text());
+            case AnyStringValue text -> headerFieldsIn(text.text());
             case BinaryValue bytes -> headerFieldsIn(
                     new String(bytes.octetsFromHere(), StandardCharsets.UTF_8));
             default -> List.of();

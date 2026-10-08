@@ -10,7 +10,7 @@ import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -54,10 +54,10 @@ public class RequestFileNative extends WindowNative {
                         filters);
                 if (refinements.contains("multi")) {
                     return BlockValue.block(chosen.stream()
-                            .<Value>map(one -> StringValue.of(one, Datatype.FILE))
+                            .<Value>map(FileValue::of)
                             .toList());
                 }
-                return chosen.isEmpty() ? NoneValue.none() : StringValue.of(chosen.getFirst(), Datatype.FILE);
+                return chosen.isEmpty() ? NoneValue.none() : FileValue.of(chosen.getFirst());
             });
         };
     }

@@ -98,7 +98,7 @@ class SeriesPositionTest {
 
         @Test
         void anEmptyStringBehavesTheSame() {
-            StringValue empty = StringValue.of("");
+            AnyStringValue empty = StringValue.of("");
             assertThat(empty.atHead()).isTrue();
             assertThat(empty.atTail()).isTrue();
             assertThat(empty.text()).isEmpty();
@@ -185,7 +185,7 @@ class SeriesPositionTest {
         @Test
         @DisplayName("an astral character counts as one, not two")
         void astralCharacterIsOneElement() {
-            StringValue withEmoji = StringValue.of("a😀b");
+            AnyStringValue withEmoji = StringValue.of("a😀b");
 
             assertThat(withEmoji.storageLength())
                     .as("three characters, even though Java's String.length() says four")
@@ -195,7 +195,7 @@ class SeriesPositionTest {
         @Test
         @DisplayName("the second character is the whole emoji, not half of it")
         void secondCharacterIsWhole() {
-            StringValue withEmoji = StringValue.of("a😀b");
+            AnyStringValue withEmoji = StringValue.of("a😀b");
 
             assertThat(withEmoji.atIndex(2).first().codepoint()).isEqualTo(0x1F600);
         }
@@ -219,7 +219,7 @@ class SeriesPositionTest {
 
         @Test
         void aStringValueRejectsABlockDatatype() {
-            assertThatThrownBy(() -> new StringValue(StringStorage.of(""), 1, Datatype.BLOCK))
+            assertThatThrownBy(() -> AnyStringValue.ofTheDatatype(StringStorage.of(""), 1, Datatype.BLOCK))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("any-string!");
         }

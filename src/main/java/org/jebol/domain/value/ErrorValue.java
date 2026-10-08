@@ -61,7 +61,7 @@ public record ErrorValue(
 
     @Override
     public Value make(Value spec, Maker maker) {
-        return spec instanceof StringValue
+        return spec instanceof AnyStringValue
                 ? maker.makeErrorFrom(spec)
                 : maker.makeAnotherFrom(datatype(), spec);
     }
@@ -312,7 +312,7 @@ public record ErrorValue(
     }
 
     private static String theLocationShown(Value where) {
-        if (where instanceof StringValue text && where.datatype() == Datatype.STRING) {
+        if (where instanceof StringValue text) {
             return text.text();
         }
         if (!(where instanceof BlockValue fragment)) {

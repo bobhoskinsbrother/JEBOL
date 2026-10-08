@@ -35,8 +35,7 @@ public abstract class TabbingNative extends DefaultNative {
                 case BinaryValue octets -> BinaryValue.ofBytes(tabbed(
                         new String(octets.octetsFromHere(), StandardCharsets.ISO_8859_1),
                         aTabsWorthOfSpaces).getBytes(StandardCharsets.ISO_8859_1));
-                case StringValue text -> StringValue.of(
-                        tabbed(text.text(), aTabsWorthOfSpaces), text.datatype());
+                case AnyStringValue text -> text.holding(tabbed(text.text(), aTabsWorthOfSpaces));
                 case Value anythingElse -> refuseTheDatatype(anythingElse);
             };
         };

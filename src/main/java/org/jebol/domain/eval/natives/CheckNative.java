@@ -29,7 +29,7 @@ public class CheckNative extends DefaultNative {
 
     private boolean theWholeSeriesCarriesAZero(Value series) {
         return switch (series) {
-            case StringValue text -> text.head().text().indexOf(0) >= 0;
+            case AnyStringValue text -> text.head().text().indexOf(0) >= 0;
             case BinaryValue octets -> anyOfThemIsZero(octets.head().octetsFromHere());
             default -> false;
         };

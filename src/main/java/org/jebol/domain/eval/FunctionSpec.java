@@ -20,7 +20,7 @@ final class FunctionSpec {
         for (int index = 0; index < items.size(); index++) {
             Value item = items.get(index);
 
-            if (item instanceof StringValue) {
+            if (item instanceof AnyStringValue) {
                 continue;
             }
             if (item instanceof BlockValue) {
@@ -124,7 +124,7 @@ final class FunctionSpec {
                 && word.canonical().equals("return");
         Set<Datatype> accepted = EnumSet.noneOf(Datatype.class);
         for (Value declared : types.remaining()) {
-            if (describesTheReturn && declared instanceof StringValue) {
+            if (describesTheReturn && declared instanceof AnyStringValue) {
                 continue;
             }
             switch (resolveTypeName(declared)) {

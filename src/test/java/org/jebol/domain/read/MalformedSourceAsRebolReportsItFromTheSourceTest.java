@@ -1,7 +1,7 @@
 package org.jebol.domain.read;
 
 import org.jebol.application.Interpreter;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -20,7 +20,7 @@ class MalformedSourceAsRebolReportsItFromTheSourceTest {
                 """.formatted(written);
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn(asked);
-        return ((StringValue) interpreter.run(asked).value()).text();
+        return ((AnyStringValue) interpreter.run(asked).value()).text();
     }
 
     @ParameterizedTest(name = "{0} loads as {1}")

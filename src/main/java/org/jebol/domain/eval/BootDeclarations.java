@@ -6,6 +6,7 @@ import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.NativeValue;
 import org.jebol.domain.value.Parameter;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
@@ -114,7 +115,7 @@ public final class BootDeclarations {
             }
             List<Value> said = row.remaining();
             if (said.size() >= 2
-                    && said.get(0) instanceof StringValue title
+                    && said.get(0) instanceof AnyStringValue title
                     && said.get(1) instanceof WordValue category) {
                 read.put(declaring.canonical(),
                         new DatatypeSpec(title.text(), category.canonical()));

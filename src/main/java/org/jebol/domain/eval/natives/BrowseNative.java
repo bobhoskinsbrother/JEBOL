@@ -6,7 +6,7 @@ import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 
 import java.util.List;
 import java.util.Set;
@@ -32,7 +32,7 @@ public class BrowseNative extends WindowNative {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
             return throughTheWindows(() -> {
-                if (arguments.getFirst() instanceof StringValue target) {
+                if (arguments.getFirst() instanceof AnyStringValue target) {
                     evaluator.windows().browse(target.text());
                 }
                 return NoneValue.none();

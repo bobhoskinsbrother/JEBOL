@@ -63,7 +63,7 @@ class LibrarySourceIsolationTest {
         @DisplayName("nor does changing a string")
         void changingAString() {
             for (int reading = 0; reading < 3; reading++) {
-                StringValue text = (StringValue) readingOf("/probe/strings.reb")
+                AnyStringValue text = (AnyStringValue) readingOf("/probe/strings.reb")
                         .remaining().get(3);
                 assertThat(text.text()).isEqualTo("text");
                 text.storage().append('!');
@@ -95,7 +95,7 @@ class LibrarySourceIsolationTest {
                             one.remaining().get(at), other.remaining().get(at)));
                 }
             }
-            if (left instanceof StringValue one && right instanceof StringValue other
+            if (left instanceof AnyStringValue one && right instanceof AnyStringValue other
                     && one.storage() == other.storage()) {
                 shared.add("string");
             }

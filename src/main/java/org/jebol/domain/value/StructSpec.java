@@ -53,7 +53,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
     public static StructSpec of(BlockValue declaration, LayoutRegistry registry) {
         List<Value> written = declaration.remaining();
         int at = 0;
-        while (at < written.size() && written.get(at) instanceof StringValue) {
+        while (at < written.size() && written.get(at) instanceof AnyStringValue) {
             at++;
         }
         if (at < written.size() && written.get(at) instanceof BlockValue) {
@@ -78,7 +78,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
                     declared, field));
             offset += field.width();
             at += 2;
-            while (at < written.size() && written.get(at) instanceof StringValue) {
+            while (at < written.size() && written.get(at) instanceof AnyStringValue) {
                 at++;
             }
         }

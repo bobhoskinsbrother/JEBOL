@@ -2,7 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
@@ -19,6 +19,6 @@ public abstract class EnvironmentNative extends HostNative {
     }
 
     protected String theVariableNamedBy(Value asked) {
-        return asked instanceof WordValue word ? word.spelling() : ((StringValue) asked).text();
+        return asked instanceof WordValue word ? word.spelling() : ((AnyStringValue) asked).text();
     }
 }

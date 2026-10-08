@@ -6,6 +6,7 @@ import org.jebol.domain.host.ServiceRefusal;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.Raised;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
 
@@ -37,7 +38,7 @@ public abstract class WindowNative extends HostNative {
 
     protected Optional<String> textGivenFor(String refinement, List<Value> arguments, Set<String> refinements) {
         return argumentOf(refinement, 0, arguments, refinements)
-                .filter(StringValue.class::isInstance)
-                .map(given -> ((StringValue) given).text());
+                .filter(AnyStringValue.class::isInstance)
+                .map(given -> ((AnyStringValue) given).text());
     }
 }

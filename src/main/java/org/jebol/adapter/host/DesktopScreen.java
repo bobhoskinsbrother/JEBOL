@@ -5,7 +5,7 @@ import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Value;
 
 import javax.swing.*;
@@ -214,7 +214,7 @@ public final class DesktopScreen extends GobScreen {
     private static String titleOf(GobValue gob) {
         Value text = gob.storage().contentIfKind(
                 org.jebol.domain.value.GobStorage.Content.STRING);
-        return text instanceof StringValue title && !title.text().isEmpty()
+        return text instanceof AnyStringValue title && !title.text().isEmpty()
                 ? title.text()
                 : "REBOL: untitled";
     }

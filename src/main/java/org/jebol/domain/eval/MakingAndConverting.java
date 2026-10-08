@@ -148,7 +148,7 @@ public final class MakingAndConverting implements Construction {
             return whatTheHostHadRoomFor(() ->
                     wanted.represents() == Datatype.BINARY
                             ? new BinaryValue(new BinaryStorage(asked), 1)
-                            : new StringValue(
+                            : AnyStringValue.ofTheDatatype(
                                     StringStorage.withRoomFor(asked), 1,
                                     wanted.represents()));
         }
@@ -174,11 +174,11 @@ public final class MakingAndConverting implements Construction {
             case STRING -> StringValue.of(textOf(value));
             case EMAIL -> value instanceof BlockValue parts
                     ? addressBuiltFrom(parts)
-                    : StringValue.of(textOf(value), Datatype.EMAIL);
+                    : EmailValue.of(textOf(value));
             case URL -> value instanceof BlockValue parts
                     ? urlBuiltFrom(parts)
-                    : StringValue.of(textOf(value), Datatype.URL);
-            case FILE, TAG, REF -> StringValue.of(textOf(value), wanted.represents());
+                    : UrlValue.of(textOf(value));
+            case FILE, TAG, REF -> AnyStringValue.ofTheDatatype(textOf(value), wanted.represents());
             case BINARY -> binaryBuiltFrom(value);
             case WORD, SET_WORD, GET_WORD, LIT_WORD, REFINEMENT, ISSUE ->
                     wordFrom(value, wanted.represents());
@@ -197,7 +197,7 @@ public final class MakingAndConverting implements Construction {
                 case DecimalValue seconds -> DateMaking.atTheTimestamp(
                         (long) (seconds.quantity() * MICROSECONDS_A_SECOND));
                 case BlockValue parts -> DateMaking.fromParts(parts.remaining());
-                case StringValue written -> dateReadFrom(written);
+                case AnyStringValue written -> dateReadFrom(written);
                 default -> throw Raised.badMakeArg(value, "date!");
             };
             case CHAR -> asCharacter(value);
@@ -250,7 +250,7 @@ public final class MakingAndConverting implements Construction {
     public Value aTimeMadeFrom(Value value) {
         return switch (value) {
             case TimeValue already -> already;
-            case StringValue written when value.datatype() == Datatype.STRING ->
+            case StringValue written ->
                     theTimeScannedFrom(written.text(), written);
             case BlockValue parts when value.datatype() == Datatype.BLOCK
                     || value.datatype() == Datatype.PAREN ->
@@ -287,7 +287,7 @@ public final class MakingAndConverting implements Construction {
     private String textOf(Value value) {
         return switch (value) {
             case BinaryValue octets -> textDecodedFrom(octets);
-            case StringValue already -> already.text();
+            case AnyStringValue already -> already.text();
             default -> value.runTogether();
         };
     }
@@ -489,7 +489,7 @@ public final class MakingAndConverting implements Construction {
         throw Raised.of(EvaluationFailure.BAD_MAKE_ARG, Datatype.VECTOR.literalSpelling());
     }
 
-    private Value dateReadFrom(StringValue written) {
+    private Value dateReadFrom(AnyStringValue written) {
         return Transcoder.transcode(written.text()).values()
                 .map(BlockValue::remaining)
                 .filter(read -> read.size() == 1 && read.getFirst() instanceof DateValue)
@@ -523,7 +523,7 @@ public final class MakingAndConverting implements Construction {
                             .sorted().<Value>map(DatatypeValue::of).toList()).as(wanted)
                     : BlockValue.block(from).as(wanted);
         }
-        if (from.datatype() == Datatype.STRING && from instanceof StringValue text) {
+        if (from instanceof StringValue text) {
             return sourceReadFromStoppingAtANoughtByte(text.text(), wanted);
         }
         if (from instanceof BinaryValue octets) {
@@ -619,12 +619,12 @@ public final class MakingAndConverting implements Construction {
         }
         String user = Molder.form(written.getFirst());
         if (written.size() == 1) {
-            return StringValue.of(user, Datatype.EMAIL);
+            return EmailValue.of(user);
         }
         String host = written.subList(1, written.size()).stream()
                 .map(Molder::form)
                 .collect(Collectors.joining("."));
-        return StringValue.of(user + "@" + host, Datatype.EMAIL);
+        return EmailValue.of(user + "@" + host);
     }
 
     private Value urlBuiltFrom(BlockValue parts) {
@@ -636,7 +636,7 @@ public final class MakingAndConverting implements Construction {
         String rest = written.subList(1, written.size()).stream()
                 .map(Molder::form)
                 .collect(Collectors.joining("/"));
-        return StringValue.of(scheme + "://" + rest, Datatype.URL);
+        return UrlValue.of(scheme + "://" + rest);
     }
 
     private Value bytesOfEach(BlockValue block) {
@@ -726,7 +726,7 @@ public final class MakingAndConverting implements Construction {
     private Value binaryBuiltFrom(Value value) {
         return switch (value) {
             case BinaryValue already -> already;
-            case StringValue text when text.datatype() != Datatype.ISSUE ->
+            case AnyStringValue text ->
                     BinaryValue.ofBytes(text.text().getBytes(StandardCharsets.UTF_8));
             case IntegerValue whole -> BinaryValue.ofBytes(
                     ByteBuffer.allocate(Long.BYTES).putLong(whole.magnitude()).array());
@@ -768,7 +768,7 @@ public final class MakingAndConverting implements Construction {
     }
 
     private OptionalDouble theQuantityScannedFrom(Datatype wanted, Value value) {
-        if (value instanceof StringValue text && text.datatype() == Datatype.STRING) {
+        if (value instanceof StringValue text) {
             return decimalScannedFrom(
                     qualifiedNumberIn(text.text(), "a number", MOST_FRACTION_CHARACTERS),
                     wanted == Datatype.PERCENT);
@@ -812,7 +812,7 @@ public final class MakingAndConverting implements Construction {
                     ? IntegerValue.of(truth.truth() ? 1 : 0)
                     : badMakeArg(value, "integer!");
             case WordValue issue when issue.datatype() == Datatype.ISSUE -> hexNumberIn(issue);
-            case StringValue text -> wholeNumberReadFrom(text);
+            case AnyStringValue text -> wholeNumberReadFrom(text);
             case CharacterValue character -> IntegerValue.of(character.codepoint());
             case BinaryValue bytes -> IntegerValue.of(bytes.bitsOfTheLastEightOctets());
             case DateValue moment -> IntegerValue.of(moment.wholeSecondsSinceTheEpoch());
@@ -851,7 +851,7 @@ public final class MakingAndConverting implements Construction {
             case WordValue word -> WordValue.of(word.spelling(), kind);
             case LogicValue(boolean truth) -> WordValue.of(Boolean.toString(truth), kind);
             case CharacterValue letter -> WordValue.of(theWordASingleCharacterSpells(letter), kind);
-            case StringValue text -> WordValue.of(spellingReadAs(text.text(), kind), kind);
+            case AnyStringValue text -> WordValue.of(spellingReadAs(text.text(), kind), kind);
             case DatatypeValue asked ->
                     WordValue.of(spellingReadAs(asked.represents().literalSpelling(), kind), kind);
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
@@ -912,7 +912,7 @@ public final class MakingAndConverting implements Construction {
     private Value tupleFrom(Value value) {
         return switch (value) {
             case TupleValue already -> already;
-            case StringValue text -> tupleScannedFrom(text.text(), value);
+            case AnyStringValue text -> tupleScannedFrom(text.text(), value);
             case BlockValue segments -> tupleOfSegments(segments);
             case BinaryValue octets -> tupleOfOctets(octets);
             case WordValue issue when issue.datatype() == Datatype.ISSUE ->
@@ -1008,9 +1008,9 @@ public final class MakingAndConverting implements Construction {
     private Value asCharacter(Value value) {
         return switch (value) {
             case CharacterValue already -> already;
-            case StringValue text when text.text().isEmpty() ->
+            case AnyStringValue text when text.text().isEmpty() ->
                     throw Raised.badMakeArg(value, "char!");
-            case StringValue text -> CharacterValue.of(text.text().codePointAt(0));
+            case AnyStringValue text -> CharacterValue.of(text.text().codePointAt(0));
             case BinaryValue octets -> characterLeadingThe(octets);
             case WordValue issue when issue.datatype() == Datatype.ISSUE ->
                     characterSpeltInHexBy(issue);
@@ -1098,7 +1098,7 @@ public final class MakingAndConverting implements Construction {
             case IntegerValue whole -> PairValue.square(whole.magnitude());
             case DecimalValue quantity when quantity.datatype() != Datatype.PERCENT ->
                     PairValue.square(quantity.quantity());
-            case StringValue text -> readPair(text.text());
+            case AnyStringValue text -> readPair(text.text());
             case BlockValue block when block.datatype() == Datatype.BLOCK ->
                     pairOf(block.remaining());
             default -> throw Raised.badMakeArg(value, "pair!");
@@ -1127,14 +1127,14 @@ public final class MakingAndConverting implements Construction {
             case MoneyValue already -> already;
             case IntegerValue whole -> new MoneyValue(new Deci(whole.magnitude()));
             case DecimalValue quantity -> new MoneyValue(new Deci(quantity.quantity()));
-            case StringValue text -> readMoney(text);
+            case AnyStringValue text -> readMoney(text);
             case BinaryValue bytes -> MoneyValue.fromBytes(bytes.bytesFromHere());
             case LogicValue truth when asking.builds() -> new MoneyValue(new Deci(truth.truth() ? 1 : 0));
             default -> throw Raised.badMakeArg(value, "money!");
         };
     }
 
-    private MoneyValue readMoney(StringValue text) {
+    private MoneyValue readMoney(AnyStringValue text) {
         String written = qualifiedNumberIn(text.text(), "a money", MOST_MONEY_CHARACTERS);
         return new DeciReading(written).theWholeOf()
                 .map(MoneyValue::new)
@@ -1246,7 +1246,7 @@ public final class MakingAndConverting implements Construction {
                 : OptionalDouble.empty();
     }
 
-    private Value wholeNumberReadFrom(StringValue text) {
+    private Value wholeNumberReadFrom(AnyStringValue text) {
         String withoutSeparators = qualifiedNumberIn(
                 text.text(), "an integer", MOST_WHOLE_NUMBER_CHARACTERS).replace("'", "");
         try {
@@ -1256,7 +1256,7 @@ public final class MakingAndConverting implements Construction {
         }
     }
 
-    private Value truncatedDecimal(String candidate, StringValue original) {
+    private Value truncatedDecimal(String candidate, AnyStringValue original) {
         if (candidate.indexOf('.') < 0) {
             throw Raised.badMakeArg(original, "integer!");
         }

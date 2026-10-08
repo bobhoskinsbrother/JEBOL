@@ -1,9 +1,8 @@
 package org.jebol.domain.eval.ports;
 
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.FileValue;
 
 import java.util.Set;
 
@@ -11,7 +10,7 @@ record OpeningAFile(Set<String> refinements) {
 
     void refuseANewFileNobodyMayWriteTo(String path) {
         if (refinements.contains("new") && !mayWrite()) {
-            throw Raised.of(EvaluationFailure.BAD_FILE_MODE, StringValue.of(path, Datatype.FILE));
+            throw Raised.of(EvaluationFailure.BAD_FILE_MODE, FileValue.of(path));
         }
     }
 

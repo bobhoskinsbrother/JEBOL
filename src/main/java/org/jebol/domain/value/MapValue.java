@@ -96,10 +96,10 @@ public final class MapValue implements Value {
     }
 
     private static Value copiedAndLockedIfItIsText(Value key) {
-        if (!(key instanceof StringValue text)) {
+        if (!(key instanceof AnyStringValue text)) {
             return key;
         }
-        StringValue own = StringValue.of(text.text(), text.datatype());
+        AnyStringValue own = text.holding(text.text());
         own.storage().protectFromChange(true);
         return own;
     }
@@ -123,7 +123,7 @@ public final class MapValue implements Value {
     }
 
     private static boolean alikeApartFromCase(Value held, Value wanted) {
-        if (held instanceof StringValue one && wanted instanceof StringValue other) {
+        if (held instanceof AnyStringValue one && wanted instanceof AnyStringValue other) {
             return one.datatype() == other.datatype()
                     && one.text().equalsIgnoreCase(other.text());
         }

@@ -8,7 +8,7 @@ import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Value;
 
 import java.nio.charset.StandardCharsets;
@@ -59,7 +59,7 @@ public abstract class CloakNative extends EncodingNative {
             case IntegerValue(long magnitude) ->
                     encodings.hashedKey(Long.toString(magnitude).getBytes(StandardCharsets.UTF_8));
             case BinaryValue octets -> hashedUnless(asItStands, octets.octetsFromHere());
-            default -> hashedUnless(asItStands, ((StringValue) key).text().getBytes(StandardCharsets.UTF_8));
+            default -> hashedUnless(asItStands, ((AnyStringValue) key).text().getBytes(StandardCharsets.UTF_8));
         };
     }
 

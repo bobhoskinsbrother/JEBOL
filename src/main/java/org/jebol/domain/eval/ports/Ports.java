@@ -23,7 +23,10 @@ import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
+import org.jebol.domain.value.AnyStringValue;
+import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
@@ -133,7 +136,7 @@ public final class Ports {
     }
 
     public Optional<String> theFileNamedByAUrl(Value target, Evaluator evaluator, Context context) {
-        if (target.datatype() != Datatype.URL) {
+        if (!(target instanceof UrlValue)) {
             return Optional.empty();
         }
         PortValue routed = portOpenedFor(target, evaluator, context);
@@ -241,7 +244,7 @@ public final class Ports {
 
     private Optional<String> theNameABundledUrlAsksFor(PortValue port) {
         if (!(port.fieldValue("spec") instanceof ObjectValue spec)
-                || !(spec.fieldValue("host") instanceof StringValue host)
+                || !(spec.fieldValue("host") instanceof AnyStringValue host)
                 || !(spec.fieldValue("path") instanceof NoneValue)
                 || !(spec.fieldValue("target") instanceof NoneValue)) {
             return Optional.empty();
@@ -319,7 +322,7 @@ public final class Ports {
 
     private Value namesIn(FilePort files, String path) {
         return BlockValue.block(files.namesIn(path).stream()
-                .<Value>map(name -> StringValue.of(name, Datatype.FILE))
+                .<Value>map(FileValue::of)
                 .toList());
     }
 
@@ -345,7 +348,7 @@ public final class Ports {
     public Value writeTheFile(Value destination, Value data, Evaluator evaluator, PortRequest asked) {
         granted.require(HostService.FILES);
         return throughTheFileSystem(() -> {
-            new FileWriting(((StringValue) destination).text(), data, asked)
+            new FileWriting(((AnyStringValue) destination).text(), data, asked)
                     .performThrough(evaluator.files());
             return destination;
         });
@@ -379,7 +382,7 @@ public final class Ports {
     private Value putOnTheClipboard(PortValue port, Value data, Evaluator evaluator) {
         granted.require(HostService.CLIPBOARD);
         String text = switch (data) {
-            case StringValue written -> written.text();
+            case AnyStringValue written -> written.text();
             case BinaryValue bytes -> new String(bytes.octetsFromHere(), StandardCharsets.UTF_8);
             default -> throw Raised.of(EvaluationFailure.INVALID_PORT_ARG, data);
         };
@@ -402,7 +405,7 @@ public final class Ports {
     }
 
     private Value summedIntoThePort(PortValue port, Value data, PortRequest asked) {
-        if (!(data instanceof BinaryValue || data instanceof StringValue)) {
+        if (!(data instanceof BinaryValue || data instanceof AnyStringValue)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(data));
         }
         if (!port.isOpen()) {
@@ -477,7 +480,7 @@ public final class Ports {
             if (!throughTheFileSystem(() -> LogicValue.of(
                     somethingIsThereFor(path, evaluator.files()))).isTruthy()) {
                 throw Raised.of(EvaluationFailure.CANNOT_OPEN,
-                        StringValue.of(path, Datatype.FILE), IntegerValue.of(OPEN_FAILED));
+                        FileValue.of(path), IntegerValue.of(OPEN_FAILED));
             }
             seekable.moveTo(0);
             return;
@@ -488,7 +491,7 @@ public final class Ports {
                 LogicValue.of(evaluator.files().exists(path))).isTruthy();
         if (!asked.mayWrite()) {
             if (!alreadyThere) {
-                throw Raised.of(EvaluationFailure.CANNOT_OPEN, StringValue.of(path, Datatype.FILE));
+                throw Raised.of(EvaluationFailure.CANNOT_OPEN, FileValue.of(path));
             }
         } else if (!alreadyThere || asked.emptiesWhatIsThere()) {
             throughTheFileSystem(() -> {
@@ -538,7 +541,7 @@ public final class Ports {
     private byte[] octetsInSpec(ObjectValue spec, String field) {
         return switch (spec.fieldValue(field)) {
             case BinaryValue octets -> octets.octetsFromHere();
-            case StringValue text -> text.text().getBytes(StandardCharsets.UTF_8);
+            case AnyStringValue text -> text.text().getBytes(StandardCharsets.UTF_8);
             default -> new byte[0];
         };
     }
@@ -593,7 +596,7 @@ public final class Ports {
     private String theHostToSendTo(PortValue port) {
         if (port.fieldValue("spec") instanceof ObjectValue(Context context)
                 && context.holds("host")
-                && context.ownSlotFor("host").value() instanceof StringValue host) {
+                && context.ownSlotFor("host").value() instanceof AnyStringValue host) {
             return host.text();
         }
         return "";
@@ -621,7 +624,7 @@ public final class Ports {
     private Value oneDatagramSentFrom(PortValue port, Value data, Evaluator evaluator) {
         granted.require(HostService.NETWORK);
         byte[] bytes = switch (data) {
-            case StringValue written -> written.text().getBytes(StandardCharsets.UTF_8);
+            case AnyStringValue written -> written.text().getBytes(StandardCharsets.UTF_8);
             case BinaryValue carried -> carried.octetsFromHere();
             default -> throw Raised.of(EvaluationFailure.INVALID_PORT_ARG, data);
         };
@@ -671,10 +674,10 @@ public final class Ports {
 
     private String hostNamedBy(PortValue port) {
         if (port.fieldValue("spec") instanceof ObjectValue(Context context)) {
-            if (context.holds("host") && context.ownSlotFor("host").value() instanceof StringValue host) {
+            if (context.holds("host") && context.ownSlotFor("host").value() instanceof AnyStringValue host) {
                 return host.text();
             }
-            if (context.holds("ref") && context.ownSlotFor("ref").value() instanceof StringValue reference) {
+            if (context.holds("ref") && context.ownSlotFor("ref").value() instanceof AnyStringValue reference) {
                 String written = reference.text();
                 int afterScheme = written.indexOf("://");
                 return afterScheme < 0 ? written : written.substring(afterScheme + 3);

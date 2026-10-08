@@ -6,7 +6,8 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
+import org.jebol.domain.value.FileValue;
 
 import java.util.List;
 import java.util.Set;
@@ -33,11 +34,11 @@ public class ChangeDirNative extends HostNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WORKING_DIRECTORY);
-            String asked = ((StringValue) arguments.getFirst()).text();
+            String asked = ((AnyStringValue) arguments.getFirst()).text();
             return throughTheFileSystem(() -> {
                 evaluator.files().changeDirectory(asked);
                 sayWhereTheInterpreterIsStanding(evaluator);
-                return StringValue.of(evaluator.files().workingDirectory(), Datatype.FILE);
+                return FileValue.of(evaluator.files().workingDirectory());
             });
         };
     }

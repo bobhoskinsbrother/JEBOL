@@ -37,7 +37,7 @@ public class AsNative extends DefaultNative {
             return switch (arguments.get(1)) {
                 case Value same when same.datatype() == wanted -> same;
                 case BlockValue block when wanted.isAnyBlock() -> block.as(wanted);
-                case StringValue text when wanted.isAnyString() -> text.as(wanted);
+                case AnyStringValue text when wanted.isAnyString() -> text.as(wanted);
                 case Value other -> throw Raised.of(EvaluationFailure.NOT_SAME_CLASS,
                         DatatypeValue.of(other.datatype()), DatatypeValue.of(wanted));
             };

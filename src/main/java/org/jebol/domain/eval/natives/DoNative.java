@@ -73,7 +73,7 @@ public class DoNative extends DefaultNative {
         return switch (value) {
             case BlockValue block when block.datatype() == Datatype.BLOCK
                     || block.datatype() == Datatype.PAREN -> Optional.of(block);
-            case StringValue text when text.datatype() == Datatype.STRING ->
+            case StringValue text ->
                     Optional.of(loadedForStepping(text.text(), evaluator, context));
             default -> Optional.empty();
         };
@@ -84,10 +84,9 @@ public class DoNative extends DefaultNative {
             case BlockValue block when block.datatype() == Datatype.BLOCK
                     || block.datatype() == Datatype.PAREN ->
                     evaluator.evaluateOrRaise(block, context);
-            case StringValue address when address.datatype() == Datatype.FILE
-                    || address.datatype() == Datatype.URL ->
+            case AnyStringValue address when address.isALocation() ->
                     runAsAScript(address, evaluator);
-            case StringValue text -> evaluatedSource(text.text(), evaluator);
+            case AnyStringValue text -> evaluatedSource(text.text(), evaluator);
             case BinaryValue bytes -> doneAsAScript(bytes, evaluator);
             case ErrorValue built -> throw new Raised(built.raisedAsItStands());
             case WordValue word when word.datatype() == Datatype.WORD
@@ -152,7 +151,7 @@ public class DoNative extends DefaultNative {
                 && !Comparison.holds(wanted, own, Comparison.Strictness.GREATER);
     }
 
-    private Value runAsAScript(StringValue address, Evaluator evaluator) {
+    private Value runAsAScript(AnyStringValue address, Evaluator evaluator) {
         Value doStar = evaluator.systemContext().systemFunctionNamed("do*");
         return evaluator.applyFunction(doStar, List.of(address));
     }

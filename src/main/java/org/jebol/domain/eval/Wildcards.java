@@ -1,6 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Value;
 
 import java.util.Optional;
@@ -10,8 +10,8 @@ public record Wildcards(char anyRun, char oneCharacter) {
     public static final Wildcards STARS_AND_QUESTION_MARKS = new Wildcards('*', '?');
 
     public Wildcards orThoseChosenBy(Optional<Value> given) {
-        return given.filter(StringValue.class::isInstance)
-                .map(chosen -> chosenFrom(((StringValue) chosen).text()))
+        return given.filter(AnyStringValue.class::isInstance)
+                .map(chosen -> chosenFrom(((AnyStringValue) chosen).text()))
                 .orElse(this);
     }
 

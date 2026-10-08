@@ -33,7 +33,7 @@ public abstract class EncodingNative extends DefaultNative {
     protected String textOf(Value value) {
         return switch (value) {
             case BinaryValue bytes -> new String(bytes.octetsFromHere(), StandardCharsets.UTF_8);
-            case StringValue written -> written.text();
+            case AnyStringValue written -> written.text();
             default -> Molder.form(value);
         };
     }

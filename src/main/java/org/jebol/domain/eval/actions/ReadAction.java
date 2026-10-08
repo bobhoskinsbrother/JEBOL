@@ -7,7 +7,7 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.PortValue;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
 
@@ -57,7 +57,7 @@ public class ReadAction extends PortAction {
                         evaluator, arguments, asked);
             }
             return ports.readTheFile(
-                    behindTheUrl.orElseGet(() -> ((StringValue) source).text()), evaluator, asked);
+                    behindTheUrl.orElseGet(() -> ((AnyStringValue) source).text()), evaluator, asked);
         };
     }
 }

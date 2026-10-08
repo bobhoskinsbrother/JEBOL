@@ -184,11 +184,11 @@ public final class Bincode {
     }
 
     private static boolean carriesItsOwnBytes(Value item) {
-        return item.datatype() == Datatype.BINARY
-                || item.datatype() == Datatype.STRING
-                || item.datatype() == Datatype.FILE
-                || item.datatype() == Datatype.URL
-                || item.datatype() == Datatype.EMAIL;
+        return item instanceof BinaryValue
+                || item instanceof StringValue
+                || item instanceof FileValue
+                || item instanceof UrlValue
+                || item instanceof EmailValue;
     }
 
     private static int writeOtherThanANumber(Cursor cursor, Script dialect,
@@ -775,7 +775,7 @@ public final class Bincode {
         if (given instanceof BinaryValue bytes) {
             return bytes.octetsFromHere();
         }
-        if (given instanceof StringValue text && carriesItsOwnBytes(given)) {
+        if (given instanceof AnyStringValue text && carriesItsOwnBytes(given)) {
             return text.text().getBytes(StandardCharsets.UTF_8);
         }
         throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));

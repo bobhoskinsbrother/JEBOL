@@ -285,7 +285,7 @@ public final class Parser implements ParseWalk {
     private Parser(Evaluator evaluator, Context context, Value given) {
         this.evaluator = evaluator;
         this.context = context;
-        this.walkingABlock = !(given instanceof StringValue || given instanceof BinaryValue);
+        this.walkingABlock = !(given instanceof AnyStringValue || given instanceof BinaryValue);
         this.parsing = given.datatype();
         if (walkingABlock) {
             BlockValue block = given instanceof BlockValue whole ? whole : null;
@@ -738,7 +738,7 @@ public final class Parser implements ParseWalk {
     }
 
     private static boolean looselyEqual(Value left, Value right) {
-        if (left instanceof StringValue leftText && right instanceof StringValue rightText) {
+        if (left instanceof AnyStringValue leftText && right instanceof AnyStringValue rightText) {
             return leftText.datatype() == rightText.datatype() && leftText.equalsIgnoringCase(rightText);
         }
         if (left instanceof WordValue leftWord && right instanceof WordValue rightWord) {
@@ -766,7 +766,7 @@ public final class Parser implements ParseWalk {
 
     private void removeFromSource(int oneBasedIndex) {
         switch (source) {
-            case StringValue text0 -> text0.storage().removeAt(oneBasedIndex);
+            case AnyStringValue text0 -> text0.storage().removeAt(oneBasedIndex);
             case BinaryValue bytes -> bytes.storage().removeAt(oneBasedIndex);
             default -> {
             }
@@ -775,7 +775,7 @@ public final class Parser implements ParseWalk {
 
     private void insertIntoSource(int oneBasedIndex, int item) {
         switch (source) {
-            case StringValue text0 -> text0.storage().insertAt(oneBasedIndex, item);
+            case AnyStringValue text0 -> text0.storage().insertAt(oneBasedIndex, item);
             case BinaryValue bytes -> bytes.storage().insertAt(oneBasedIndex, item);
             default -> {
             }
@@ -783,7 +783,7 @@ public final class Parser implements ParseWalk {
     }
 
     private static int[] codePointsOfSeries(RebolSeries series) {
-        if (series instanceof StringValue text) {
+        if (series instanceof AnyStringValue text) {
             return text.text().codePoints().toArray();
         }
         BinaryValue bytes = (BinaryValue) series;
@@ -823,7 +823,7 @@ public final class Parser implements ParseWalk {
         if (rule instanceof WordValue back && back.datatype() == Datatype.GET_WORD) {
             Context holder = back.isBound() ? back.binding() : context;
             ParseTargets.refuseAnInputThatIsNotASeries(back, whatTheSlotHolds(holder, back));
-            if (holder.slotFor(back.canonical()).value() instanceof StringValue marked) {
+            if (holder.slotFor(back.canonical()).value() instanceof AnyStringValue marked) {
                 if (!marked.sharesStorageWith(source)) {
                     adoptInput(marked);
                     return 1;
@@ -864,7 +864,7 @@ public final class Parser implements ParseWalk {
     private int switchTheInputToWhatThisNames(BlockValue path) {
         Value held = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
         ParseTargets.refuseAnInputThatIsNotASeries(path, held);
-        if (held instanceof StringValue marked) {
+        if (held instanceof AnyStringValue marked) {
             adoptInput(marked);
             return 1;
         }
@@ -918,7 +918,7 @@ public final class Parser implements ParseWalk {
     public Value textSliceBetween(int from, int to) {
         String taken = textBetween(from, to);
         if (!walkingBytes) {
-            return StringValue.of(taken, source.datatype());
+            return AnyStringValue.ofTheDatatype(taken, source.datatype());
         }
         int[] octets = new int[taken.length()];
         for (int at = 0; at < octets.length; at++) {
@@ -947,7 +947,7 @@ public final class Parser implements ParseWalk {
                     existing.storage().insertAt(where, gathered.get(added - 1));
                 }
             }
-            case StringValue existing -> {
+            case AnyStringValue existing -> {
                 StringBuilder text = new StringBuilder();
                 gathered.forEach(item -> text.append(Molder.form(item)));
                 int[] codePoints = text.toString().codePoints().toArray();
@@ -1074,10 +1074,10 @@ public final class Parser implements ParseWalk {
     }
 
     static String textOf(Value value) {
-        if (value.datatype() == Datatype.TAG) {
+        if (value instanceof TagValue) {
             return Molder.mold(value);
         }
-        if (value instanceof StringValue text) {
+        if (value instanceof AnyStringValue text) {
             return text.text();
         }
         if (value instanceof BinaryValue bytes) {

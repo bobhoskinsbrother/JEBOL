@@ -44,7 +44,7 @@ public final class SeriesChange {
         Value replacing = dup.<Value>map(replacement::repeatedInABlock).orElse(replacement);
         return switch (subject) {
             case BinaryValue bytes -> overwritten(bytes, replacing);
-            case StringValue text -> overwritten((StringValue) text.clampedToTail(), replacing);
+            case AnyStringValue text -> overwritten((AnyStringValue) text.clampedToTail(), replacing);
             case VectorValue vector -> overwritten((VectorValue) vector.clampedToTail());
             case BlockValue block -> overwritten((BlockValue) block.clampedToTail(), replacing);
             case Value anythingElse -> throw Raised.cannotUseTheAction(anythingElse, "change");
@@ -82,7 +82,7 @@ public final class SeriesChange {
         return bytes.atIndex(bytes.index() + octets.length);
     }
 
-    private Value overwritten(StringValue text, Value replacing) {
+    private Value overwritten(AnyStringValue text, Value replacing) {
         String written = replacing instanceof BlockValue several
                 ? several.runTogether()
                 : Molder.form(replacing);
@@ -145,7 +145,7 @@ public final class SeriesChange {
                     block.storage().spliceInAt(block.index(), List.of(value), null, 1);
                 }
             }
-            case StringValue text -> {
+            case AnyStringValue text -> {
                 int[] added = Molder.form(value).codePoints().toArray();
                 for (int at = 0; at < added.length; at++) {
                     text.storage().insertAt(text.index() + at, added[at]);

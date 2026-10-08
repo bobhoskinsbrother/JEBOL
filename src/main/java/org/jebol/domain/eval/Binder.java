@@ -44,7 +44,7 @@ public final class Binder {
                 }
                 yield BlockValue.block(items).as(block.datatype());
             }
-            case StringValue text -> StringValue.of(text.text(), text.datatype());
+            case AnyStringValue text -> text.holding(text.text());
             case BinaryValue bytes -> bytes.copyOfTheFirst(bytes.lengthFromHere());
             case MapValue map -> {
                 MapValue cloned = map.copy();

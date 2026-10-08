@@ -5,14 +5,15 @@ import org.jebol.domain.host.FilePort;
 import org.jebol.domain.value.BinaryStorage;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
+import org.jebol.domain.value.FileValue;
+import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -72,13 +73,13 @@ public final class SeekableFilePort {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
         }
         Value made = spec.context().ownSlotFor(WHAT_THE_PORT_WAS_MADE_FROM).value();
-        if (made.datatype() == Datatype.URL) {
-            return spec.fieldValue(WHERE_A_URL_LEAVES_ITS_PATH) instanceof StringValue path ? path.text() : "";
+        if (made instanceof UrlValue) {
+            return spec.fieldValue(WHERE_A_URL_LEAVES_ITS_PATH) instanceof AnyStringValue path ? path.text() : "";
         }
-        if (made.datatype() != Datatype.FILE) {
+        if (!(made instanceof FileValue file)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, made);
         }
-        return ((StringValue) made).text();
+        return file.text();
     }
 
     private long sizeIn(FilePort files) {

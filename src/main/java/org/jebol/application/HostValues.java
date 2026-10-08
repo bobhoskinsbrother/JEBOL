@@ -59,7 +59,7 @@ public final class HostValues {
             case DecimalValue decimal -> decimal.quantity();
             case MoneyValue money -> money.amount();
             case LogicValue logic -> logic.truth();
-            case StringValue text -> text.text();
+            case AnyStringValue text -> text.text();
             case BlockValue block -> {
                 List<Object> items = new ArrayList<>(block.lengthFromHere());
                 block.remaining().forEach(item -> items.add(toHost(item)));

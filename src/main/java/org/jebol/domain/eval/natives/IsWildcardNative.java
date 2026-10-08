@@ -21,7 +21,7 @@ public class IsWildcardNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> LogicValue.of(
-                ((StringValue) arguments.getFirst()).text().chars()
+                ((AnyStringValue) arguments.getFirst()).text().chars()
                         .anyMatch(letter -> letter == '*' || letter == '?'));
     }
 }

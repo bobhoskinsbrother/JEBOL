@@ -4,7 +4,8 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
+import org.jebol.domain.value.FileValue;
 
 import java.util.List;
 import java.util.Set;
@@ -25,9 +26,8 @@ public class ToRebolFileNative extends DefaultNative {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> StringValue.of(
-                oneSlashPerRunOfSeparators(((StringValue) arguments.getFirst()).text()),
-                Datatype.FILE);
+        return (arguments, evaluator, context, refinements) -> FileValue.of(
+                oneSlashPerRunOfSeparators(((AnyStringValue) arguments.getFirst()).text()));
     }
 
     private String oneSlashPerRunOfSeparators(String path) {

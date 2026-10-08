@@ -3,12 +3,11 @@ package org.jebol.domain.eval.ports;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.Value;
 
 import java.util.Arrays;
@@ -79,7 +78,7 @@ public final class OpenFile {
                 .orElse(octets);
         return answered(() -> {
             seekable.writeAt(files, kept);
-            return StringValue.of(seekable.path(), Datatype.FILE);
+            return FileValue.of(seekable.path());
         });
     }
 
@@ -102,7 +101,7 @@ public final class OpenFile {
 
     private void refuseWritingWhenOpenedOnlyToRead(EvaluationFailure failure) {
         if (!seekable.mayWriteThrough()) {
-            throw Raised.of(failure, StringValue.of(seekable.path(), Datatype.FILE));
+            throw Raised.of(failure, FileValue.of(seekable.path()));
         }
     }
 

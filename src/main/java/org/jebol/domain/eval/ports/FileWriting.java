@@ -10,7 +10,7 @@ import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Value;
 
 import java.nio.charset.StandardCharsets;
@@ -76,7 +76,7 @@ final class FileWriting {
     }
 
     private String asTextToWrite() {
-        return data instanceof StringValue text && text.datatype() == Datatype.STRING
+        return data instanceof AnyStringValue text && text.datatype() == Datatype.STRING
                 ? text.text()
                 : Molder.mold(data);
     }

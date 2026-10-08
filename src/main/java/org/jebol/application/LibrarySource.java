@@ -43,7 +43,7 @@ final class LibrarySource {
     private static Value freshCopyOf(Value value) {
         return switch (value) {
             case BlockValue block -> copiedBlock(block);
-            case StringValue text -> StringValue.of(text.text(), text.datatype());
+            case AnyStringValue text -> text.holding(text.text());
             case BinaryValue octets -> new BinaryValue(
                     new BinaryStorage(octets.octetsFromHere()), 1);
             default -> aScalarWithNothingBehindItToShare(value);
@@ -68,7 +68,7 @@ final class LibrarySource {
         return switch (value) {
             case BlockValue block -> block.remaining().stream()
                     .allMatch(LibrarySource::everySeriesCanBeCopied);
-            case StringValue text -> true;
+            case AnyStringValue text -> true;
             case BinaryValue octets -> true;
             case IntegerValue whole -> true;
             case DecimalValue fraction -> true;

@@ -3,7 +3,7 @@ package org.jebol.domain.value;
 import java.util.Set;
 
 public sealed interface RebolSeries extends Value
-        permits StringValue, BinaryValue, BlockValue, ImageValue, GobValue, VectorValue {
+        permits AnyStringValue, BinaryValue, BlockValue, ImageValue, GobValue, VectorValue {
 
     int index();
 

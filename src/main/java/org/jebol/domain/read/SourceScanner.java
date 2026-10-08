@@ -8,7 +8,12 @@ import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.MapValue;
 import org.jebol.domain.value.NoneValue;
+import org.jebol.domain.value.EmailValue;
+import org.jebol.domain.value.FileValue;
+import org.jebol.domain.value.RefValue;
 import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.TagValue;
+import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
@@ -1608,13 +1613,13 @@ final class SourceScanner {
                 return email(bp, len).orElseThrow(() -> invalid(token, bp, ep));
             }
             case TOKEN_REF -> {
-                return StringValue.of(textOf(bp + 1, len - 1), Datatype.REF);
+                return RefValue.of(textOf(bp + 1, len - 1));
             }
             case TOKEN_URL -> {
-                return StringValue.of(textOf(bp, len), Datatype.URL);
+                return UrlValue.of(textOf(bp, len));
             }
             case TOKEN_TAG -> {
-                return StringValue.of(textOf(bp + 1, len - 2), Datatype.TAG);
+                return TagValue.of(textOf(bp + 1, len - 2));
             }
             case TOKEN_CONSTRUCT -> {
                 return constructed();
@@ -1918,7 +1923,7 @@ final class SourceScanner {
             refused = REFUSED_IN_A_QUOTED_FILE;
         }
         return item(cp, cp + len, terminator, refused)
-                .map(text -> StringValue.of(text, Datatype.FILE));
+                .map(FileValue::of);
     }
 
     private Optional<String> item(int from, int until, int terminator, String refused) {
@@ -2000,7 +2005,7 @@ final class SourceScanner {
         if (!seenAnAtSign) {
             return Optional.empty();
         }
-        return Optional.of(StringValue.of(written.toString(StandardCharsets.UTF_8), Datatype.EMAIL));
+        return Optional.of(EmailValue.of(written.toString(StandardCharsets.UTF_8)));
     }
 
     private BlockValue withItsLineStarts(BlockValue block, Set<Integer> starts) {

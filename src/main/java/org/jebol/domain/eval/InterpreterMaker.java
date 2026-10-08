@@ -24,7 +24,7 @@ import org.jebol.domain.value.OperatorValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.ParameterKind;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.StructValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
@@ -33,7 +33,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class InterpreterMaker implements Maker {
 
@@ -259,7 +258,7 @@ public final class InterpreterMaker implements Maker {
                     evaluator.evaluatedInto(evaluator.freshObjectWithin(context), body).context().setWordsAndValues());
         }
         if (!(spec instanceof BlockValue fields)) {
-            if (!(spec instanceof StringValue written)) {
+            if (!(spec instanceof AnyStringValue written)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
             }
             return evaluator.spokenHere(new ErrorValue(ErrorCategory.USER, "message",

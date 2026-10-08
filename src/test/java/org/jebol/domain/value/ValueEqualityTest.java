@@ -28,7 +28,7 @@ class ValueEqualityTest {
         @Test
         @DisplayName("equality is from the position, not from the head")
         void equalityStartsAtThePosition() {
-            StringValue fromThird = StringValue.of("xxhello").atIndex(3);
+            AnyStringValue fromThird = StringValue.of("xxhello").atIndex(3);
             assertThat(fromThird).isEqualTo(StringValue.of("hello"));
         }
 
@@ -75,8 +75,7 @@ class ValueEqualityTest {
         @Test
         @DisplayName("a file! and a string! with the same text are not ==")
         void sameTextDifferentDatatypeIsNotEqual() {
-            assertThat(StringValue.of("readme", Datatype.FILE))
-                    .isNotEqualTo(StringValue.of("readme", Datatype.STRING));
+            assertThat(FileValue.of("readme")).isNotEqualTo(StringValue.of("readme"));
         }
 
         @Test
@@ -112,7 +111,7 @@ class ValueEqualityTest {
         @DisplayName("loose equality ignores which string datatype each side is")
         void looseEqualityIgnoresTheDatatype() {
             assertThat(StringValue.of("REBOL")
-                    .equalsIgnoringCase(StringValue.of("rebol", Datatype.FILE)))
+                    .equalsIgnoringCase(FileValue.of("rebol")))
                     .isTrue();
         }
 

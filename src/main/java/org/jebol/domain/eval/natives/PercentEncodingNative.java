@@ -3,7 +3,7 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Value;
 
 import java.nio.charset.StandardCharsets;
@@ -25,8 +25,8 @@ public abstract class PercentEncodingNative extends EncodingNative {
     }
 
     protected Value asTheSameKindAs(Value original, byte[] octets) {
-        return original instanceof BinaryValue
-                ? BinaryValue.ofBytes(octets)
-                : StringValue.of(new String(octets, StandardCharsets.UTF_8), original.datatype());
+        return original instanceof AnyStringValue text
+                ? text.holding(new String(octets, StandardCharsets.UTF_8))
+                : BinaryValue.ofBytes(octets);
     }
 }

@@ -11,7 +11,7 @@ import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
@@ -60,7 +60,7 @@ public class CallNative extends HostNative {
 
     private List<String> commandWordsOf(Value command, Evaluator evaluator, Context context) {
         if (!(command instanceof BlockValue block) || command.datatype() != Datatype.BLOCK) {
-            return List.of(((StringValue) command).text());
+            return List.of(((AnyStringValue) command).text());
         }
         List<Value> items = block.remaining();
         if (items.isEmpty()) {
@@ -77,7 +77,7 @@ public class CallNative extends HostNative {
             resolved = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
         }
         return switch (resolved) {
-            case StringValue text -> text.text();
+            case AnyStringValue text -> text.text();
             case WordValue word when word.datatype() == Datatype.WORD -> word.spelling();
             default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
                     Molder.mold(resolved) + " names nothing a command line can hold");

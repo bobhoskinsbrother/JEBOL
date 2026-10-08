@@ -946,7 +946,7 @@ public final class Interpreter {
     }
 
     private String theDataDirectoryThisScriptSees() {
-        return pathInto("system", "options", "data") instanceof StringValue written
+        return pathInto("system", "options", "data") instanceof AnyStringValue written
                 ? written.text()
                 : "";
     }

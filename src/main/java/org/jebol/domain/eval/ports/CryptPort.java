@@ -335,7 +335,7 @@ public final class CryptPort {
             into.accept(octets.octetsFromHere());
             return true;
         }
-        if (given instanceof StringValue text) {
+        if (given instanceof AnyStringValue text) {
             into.accept(text.text().getBytes(java.nio.charset.StandardCharsets.UTF_8));
             return true;
         }

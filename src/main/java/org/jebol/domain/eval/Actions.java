@@ -11,7 +11,7 @@ public interface Actions {
             case BitsetValue members -> Optional.of(new BitsetActions(members));
             case MapValue pairs -> Optional.of(new MapActions(pairs));
             case BinaryValue bytes -> Optional.of(new BinaryActions(bytes));
-            case StringValue text -> Optional.of(new StringActions(text));
+            case AnyStringValue text -> Optional.of(new StringActions(text));
             case BlockValue block -> Optional.of(new BlockActions(block));
             case ObjectValue object -> Optional.of(new ObjectActions(object));
             case GobValue gob -> Optional.of(new GobActions(gob));

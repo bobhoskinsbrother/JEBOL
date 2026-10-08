@@ -115,7 +115,7 @@ public class TranscodeNative extends DefaultNative {
         answer.add(switch (asked.source()) {
             case BinaryValue bytes -> bytes.atIndex(bytes.index()
                     + utf8LengthOf(whole) - utf8LengthOf(left));
-            case StringValue text -> text.atIndex(text.index() + whole.length() - left.length());
+            case AnyStringValue text -> text.atIndex(text.index() + whole.length() - left.length());
             default -> StringValue.of(left);
         });
         if (asked.countingLines()) {
@@ -139,7 +139,7 @@ public class TranscodeNative extends DefaultNative {
 
     private String textOf(Value source) {
         return switch (source) {
-            case StringValue given -> given.text();
+            case AnyStringValue given -> given.text();
             case BinaryValue given -> given.asStrictText();
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     "transcode reads text, not " + source.datatype().literalSpelling());

@@ -5,7 +5,7 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -36,7 +36,7 @@ public class SetEnvNative extends EnvironmentNative {
             Value given = arguments.get(1);
             String variable = theVariableNamedBy(arguments.getFirst());
             return throughTheFileSystem(() -> {
-                if (given instanceof StringValue held) {
+                if (given instanceof AnyStringValue held) {
                     evaluator.environment().nameHolds(variable, held.text());
                 } else {
                     evaluator.environment().nameHolds(variable, null);

@@ -7,7 +7,7 @@ import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -38,7 +38,7 @@ public class IsDirectoryNative extends HostNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value target = arguments.getFirst();
-            if (!(target instanceof StringValue address) || address.text().isEmpty()) {
+            if (!(target instanceof AnyStringValue address) || address.text().isEmpty()) {
                 return LogicValue.of(false);
             }
             if (refinements.contains("check")

@@ -148,8 +148,7 @@ public final class Codecs {
                 at = source.length();
                 break;
             }
-            parts.add(StringValue.of(
-                    source.substring(opened + 1, closed), Datatype.TAG));
+            parts.add(TagValue.of(source.substring(opened + 1, closed)));
             textFrom = closed + 1;
             at = textFrom;
         }

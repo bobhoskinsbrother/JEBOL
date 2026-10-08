@@ -6,7 +6,8 @@ import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
+import org.jebol.domain.value.FileValue;
 
 import java.util.List;
 import java.util.Set;
@@ -33,10 +34,10 @@ public class ToRealFileNative extends HostNative {
             granted.require(HostService.FILES);
             return throughTheFileSystem(() -> {
                 String resolved = evaluator.files().canonicalPathOf(
-                        ((StringValue) arguments.getFirst()).text());
+                        ((AnyStringValue) arguments.getFirst()).text());
                 return resolved == null
                         ? NoneValue.none()
-                        : StringValue.of(resolved, Datatype.FILE);
+                        : FileValue.of(resolved);
             });
         };
     }

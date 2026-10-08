@@ -6,13 +6,11 @@ import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.HandleValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
 
@@ -67,7 +65,7 @@ public final class SeriesSearch {
     }
 
     public int lengthMatchedAt(int found) {
-        if (series instanceof StringValue patterned && refinements.contains("any")) {
+        if (series instanceof AnyStringValue patterned && refinements.contains("any")) {
             int from = found - 1;
             int reached = wildcards.patternEnd(patterned.head().text(), from, end(),
                     Molder.form(wanted), refinements.contains("case"));
@@ -80,7 +78,7 @@ public final class SeriesSearch {
             return run.lengthFromHere();
         }
         if (series instanceof BinaryValue
-                && (wanted instanceof CharacterValue || wanted instanceof StringValue)) {
+                && (wanted instanceof CharacterValue || wanted instanceof AnyStringValue)) {
             return theBytesThatSpell().size();
         }
         if (series instanceof BlockValue
@@ -89,7 +87,7 @@ public final class SeriesSearch {
                 && !refinements.contains("only")) {
             return run.remaining().size();
         }
-        return series instanceof StringValue && !refinements.contains("only")
+        return series instanceof AnyStringValue && !refinements.contains("only")
                 ? theCharactersIn(Molder.form(wanted))
                 : 1;
     }
@@ -142,7 +140,7 @@ public final class SeriesSearch {
     }
 
     private boolean matchesHere(List<Value> items, int at, int end) {
-        if (series instanceof StringValue text && refinements.contains("any")) {
+        if (series instanceof AnyStringValue text && refinements.contains("any")) {
             return wildcards.patternEnd(text.head().text(), at, end, Molder.form(wanted),
                     refinements.contains("case")) >= 0;
         }
@@ -158,13 +156,13 @@ public final class SeriesSearch {
             return runMatchesAt(items, at, run.remaining(), refinements.contains("same"));
         }
         if (refinements.contains("same")
-                && !(series instanceof StringValue)
+                && !(series instanceof AnyStringValue)
                 && !(series instanceof BinaryValue)) {
             return refinements.contains("only")
                     ? Comparison.isSameValue(items.get(at), wanted)
                     : sameRunAt(items, at);
         }
-        if (series instanceof StringValue || series instanceof BinaryValue) {
+        if (series instanceof AnyStringValue || series instanceof BinaryValue) {
             return textRunMatchesAt(items, at);
         }
         if (wanted instanceof BitsetValue members) {
@@ -198,7 +196,7 @@ public final class SeriesSearch {
         }
         String text = wanted instanceof CharacterValue(int codepoint)
                 ? new String(Character.toChars(codepoint))
-                : ((StringValue) wanted).text();
+                : ((AnyStringValue) wanted).text();
         List<Value> octets = new ArrayList<>();
         for (byte octet : text.getBytes(StandardCharsets.UTF_8)) {
             octets.add(IntegerValue.of(octet & 0xFF));
@@ -211,7 +209,7 @@ public final class SeriesSearch {
             return bytes.items();
         }
         if (series instanceof BinaryValue
-                && (wanted instanceof CharacterValue || wanted instanceof StringValue)) {
+                && (wanted instanceof CharacterValue || wanted instanceof AnyStringValue)) {
             return theBytesThatSpell();
         }
         if (wanted instanceof CharacterValue letter) {
@@ -267,7 +265,7 @@ public final class SeriesSearch {
     }
 
     private boolean matchesAtRecord(List<Value> items, int at, int end) {
-        if (series instanceof StringValue text && refinements.contains("any")) {
+        if (series instanceof AnyStringValue text && refinements.contains("any")) {
             return wildcards.patternEnd(text.head().text(), at, end, Molder.form(wanted),
                     refinements.contains("case")) >= 0;
         }
@@ -280,14 +278,14 @@ public final class SeriesSearch {
                 && !refinements.contains("only")) {
             return runMatchesAt(items, at, run.remaining(), refinements.contains("same"));
         }
-        if (wanted instanceof StringValue needle && !refinements.contains("only")) {
+        if (wanted instanceof AnyStringValue needle && !refinements.contains("only")) {
             return theTextRunMatchesIgnoringCaseAt(items, at, needle);
         }
         return matches(items.get(at), wanted, refinements.contains("case"));
     }
 
     private boolean theTextRunMatchesIgnoringCaseAt(
-            List<Value> items, int at, StringValue needle) {
+            List<Value> items, int at, AnyStringValue needle) {
         int[] sought = (needle.datatype() == Datatype.STRING
                 ? needle.text()
                 : Molder.form(needle)).codePoints().toArray();

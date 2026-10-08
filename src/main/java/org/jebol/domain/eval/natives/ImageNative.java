@@ -86,7 +86,7 @@ public class ImageNative extends DefaultNative {
         try {
             encoded = source instanceof BinaryValue bytes
                     ? bytes.octetsFromHere()
-                    : evaluator.files().readBytes(((StringValue) source).text());
+                    : evaluator.files().readBytes(((AnyStringValue) source).text());
         } catch (FilePort.Denied unreadable) {
             return Optional.empty();
         }
@@ -120,8 +120,7 @@ public class ImageNative extends DefaultNative {
         if (written == null) {
             throw Raised.of(EvaluationFailure.NO_CODEC, IntegerValue.of(0));
         }
-        if (destination instanceof StringValue address
-                && destination.datatype() == Datatype.FILE) {
+        if (destination instanceof FileValue address) {
             evaluator.files().write(address.text(), written);
             return destination;
         }

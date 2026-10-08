@@ -6,7 +6,7 @@ import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -42,7 +42,7 @@ public class RequestDirNative extends WindowNative {
             return throughTheWindows(() -> evaluator.windows().chooseDirectory(
                             textGivenFor("dir", arguments, refinements),
                             textGivenFor("title", arguments, refinements))
-                    .<Value>map(where -> StringValue.of(where, Datatype.FILE))
+                    .<Value>map(FileValue::of)
                     .orElseGet(NoneValue::none));
         };
     }

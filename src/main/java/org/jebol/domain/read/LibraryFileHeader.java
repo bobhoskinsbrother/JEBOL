@@ -66,7 +66,7 @@ public record LibraryFileHeader(
     private static String plainTextOf(Value given) {
         return switch (given) {
             case WordValue word -> word.canonical();
-            case StringValue text -> text.text().toLowerCase(Locale.ROOT);
+            case AnyStringValue text -> text.text().toLowerCase(Locale.ROOT);
             default -> "";
         };
     }

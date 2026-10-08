@@ -22,7 +22,7 @@ import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
@@ -95,8 +95,8 @@ public class QueryAction extends PortAction {
     }
 
     private Value aFileOrARoutedPortAsked(Value target, Value field, Evaluator evaluator, Context context) {
-        if (target.datatype() == Datatype.FILE) {
-            return aFileAsked(((StringValue) target).text(), field, evaluator);
+        if (target instanceof FileValue file) {
+            return aFileAsked(file.text(), field, evaluator);
         }
         PortValue port = ports.portMadeFor(target, evaluator, context);
         return evaluator.theRebolActorsAnswer(nativeName(), List.of(port, field), Set.of())
@@ -346,7 +346,7 @@ public class QueryAction extends PortAction {
         @Override
         Optional<Value> fieldNamed(String asked) {
             return switch (asked) {
-                case "name" -> Optional.of(StringValue.of(wholePath, Datatype.FILE));
+                case "name" -> Optional.of(FileValue.of(wholePath));
                 case "size" -> Optional.of(about.size().<Value>map(IntegerValue::of).orElseGet(NoneValue::none));
                 case "type" -> Optional.of(WordValue.of(about.isDirectory() ? "dir" : "file"));
                 case "date", "modified" -> Optional.of(asDateValue(about.modified()));

@@ -6,7 +6,7 @@ import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Value;
 
 final class WritingIntoText {
@@ -37,7 +37,7 @@ final class WritingIntoText {
         text.requireChangeable();
         switch (text) {
             case BinaryValue octets -> octets.storage().set(oneBased, replacement & GREATEST_OCTET);
-            case StringValue characters -> characters.storage().set(oneBased, replacement);
+            case AnyStringValue characters -> characters.storage().set(oneBased, replacement);
             default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         }
     }
@@ -52,7 +52,7 @@ final class WritingIntoText {
             case IntegerValue(long wanted) when text instanceof BinaryValue
                     && wanted > GREATEST_OCTET -> throw Raised.of(EvaluationFailure.OUT_OF_RANGE, written);
             case IntegerValue(long wanted) -> (int) wanted;
-            case RebolSeries other when other instanceof StringValue || other instanceof BinaryValue ->
+            case RebolSeries other when other instanceof AnyStringValue || other instanceof BinaryValue ->
                     theFirstCodepointOf(other);
             default -> throw Raised.of(EvaluationFailure.INVALID_PATH);
         };
@@ -64,7 +64,7 @@ final class WritingIntoText {
         }
         return switch (source) {
             case BinaryValue octets -> octets.storage().at(octets.index());
-            case StringValue characters -> characters.storage().at(characters.index());
+            case AnyStringValue characters -> characters.storage().at(characters.index());
             default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         };
     }

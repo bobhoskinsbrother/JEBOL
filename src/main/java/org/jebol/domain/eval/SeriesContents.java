@@ -84,7 +84,7 @@ public final class SeriesContents {
                     into.add(source.storage().at(source.index() + at) & 0xFF);
                 }
             }
-            case StringValue text ->
+            case AnyStringValue text ->
                     addUtf8(theFirstCountedInCodePoints(howMany, text.text()), into);
             case CharacterValue letter ->
                     addUtf8(Character.toString(letter.codepoint()), into);

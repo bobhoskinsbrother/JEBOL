@@ -27,9 +27,9 @@ public abstract class CaseChangeNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case CharacterValue letter -> CharacterValue.of(changed(letter.codepoint()));
-            case StringValue text when refinements.contains("part") -> partChanged(text,
+            case AnyStringValue text when refinements.contains("part") -> partChanged(text,
                     argumentOf("part", 0, arguments, refinements).orElseThrow());
-            case StringValue text -> text.rewrittenFromHere(this::changedText);
+            case AnyStringValue text -> text.rewrittenFromHere(this::changedText);
             case Value anythingElse -> refuseTheDatatype(anythingElse);
         };
     }
@@ -40,9 +40,9 @@ public abstract class CaseChangeNative extends DefaultNative {
         return changed.toString();
     }
 
-    private Value partChanged(StringValue text, Value limit) {
+    private Value partChanged(AnyStringValue text, Value limit) {
         long wanted = howManyAskedOf(text, limit);
-        StringValue changingFrom = (StringValue) text.reachingBackIfNegative(wanted);
+        AnyStringValue changingFrom = (AnyStringValue) text.reachingBackIfNegative(wanted);
         int changing = wanted < 0
                 ? text.index() - changingFrom.index()
                 : (int) Math.min(wanted, text.lengthFromHere());
@@ -50,12 +50,12 @@ public abstract class CaseChangeNative extends DefaultNative {
         return text;
     }
 
-    private long howManyAskedOf(StringValue text, Value limit) {
+    private long howManyAskedOf(AnyStringValue text, Value limit) {
         return switch (limit) {
             case IntegerValue whole -> whole.magnitude();
             case DecimalValue fraction when fraction.datatype() == Datatype.DECIMAL ->
                     (long) fraction.quantity();
-            case StringValue upTo when upTo.sharesStorageWith(text) -> upTo.index() - text.index();
+            case AnyStringValue upTo when upTo.sharesStorageWith(text) -> upTo.index() - text.index();
             default -> throw Raised.of(EvaluationFailure.INVALID_PART, limit);
         };
     }

@@ -104,10 +104,10 @@ public final class SystemObject {
             options.register(field, NoneValue.none());
         }
         options.register("flags", BlockValue.block(List.of(LogicValue.yes())));
-        options.register("home", StringValue.of(System.getProperty("user.home", "") + "/", Datatype.FILE));
+        options.register("home", FileValue.of(System.getProperty("user.home", "") + "/"));
         options.register("boot", NoneValue.none());
-        options.register("path", StringValue.of(System.getProperty("user.dir", "") + "/", Datatype.FILE));
-        options.register("data", StringValue.of(System.getProperty("user.home", "") + "/.jebol/", Datatype.FILE));
+        options.register("path", FileValue.of(System.getProperty("user.dir", "") + "/"));
+        options.register("data", FileValue.of(System.getProperty("user.home", "") + "/.jebol/"));
         return new ObjectValue(options);
     }
 
@@ -142,7 +142,7 @@ public final class SystemObject {
         catalog.register("handles", BlockValue.block(List.of(WordValue.of(CipherNative.RC4_HANDLE_TYPE), WordValue.of(CipherNative.DHM_HANDLE_TYPE), WordValue.of(CipherNative.RSA_HANDLE_TYPE), WordValue.of(CipherNative.ECDH_HANDLE_TYPE), WordValue.of("codec"))));
         catalog.register("checksums", BlockValue.block(encodings.checksumMethods().stream().<Value>map(WordValue::of).toList()));
         catalog.register("compressions", BlockValue.block(Encodings.COMPRESSIONS.stream().<Value>map(WordValue::of).toList()));
-        catalog.register("file-types", BlockValue.block(List.of(StringValue.of(".txt", Datatype.FILE), WordValue.of("text"), StringValue.of(".html", Datatype.FILE), WordValue.of("markup"), StringValue.of(".htm", Datatype.FILE), WordValue.of("markup"), StringValue.of(".qoi", Datatype.FILE), WordValue.of("qoi"))));
+        catalog.register("file-types", BlockValue.block(List.of(FileValue.of(".txt"), WordValue.of("text"), FileValue.of(".html"), WordValue.of("markup"), FileValue.of(".htm"), WordValue.of("markup"), FileValue.of(".qoi"), WordValue.of("qoi"))));
         catalog.register("errors", errors());
         return new ObjectValue(catalog);
     }

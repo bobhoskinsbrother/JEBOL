@@ -114,7 +114,7 @@ public final class BitsetActions implements Actions {
         boolean allowed = range instanceof BlockValue
                 || range instanceof BinaryValue
                 || range instanceof CharacterValue
-                || (range instanceof StringValue && range.datatype() == Datatype.STRING);
+                || range instanceof StringValue;
         if (!allowed) {
             throw Raised.of(EvaluationFailure.INVALID_ARG,
                     Molder.mold(range) + " names no range of members");
@@ -158,7 +158,7 @@ public final class BitsetActions implements Actions {
 
     public static Value madeFrom(Value source) {
         return switch (source) {
-            case StringValue text ->
+            case AnyStringValue text ->
                     BitsetValue.ofCharacters(text.text().codePoints().toArray());
             case CharacterValue character -> BitsetValue.ofCharacters(character.codepoint());
             case IntegerValue room -> BitsetValue.of(
@@ -175,7 +175,7 @@ public final class BitsetActions implements Actions {
         if (source instanceof IntegerValue(long magnitude)) {
             return BitsetValue.of(withBitSet(new byte[0], bitAsked(magnitude)));
         }
-        if (!(source instanceof CharacterValue || source instanceof StringValue
+        if (!(source instanceof CharacterValue || source instanceof AnyStringValue
                 || source instanceof BinaryValue || source instanceof BlockValue)) {
             throw Raised.of(EvaluationFailure.INVALID_TYPE, Molder.mold(source));
         }
@@ -205,7 +205,7 @@ public final class BitsetActions implements Actions {
                 at++;
             } else if (spec instanceof BinaryValue held) {
                 octets = withOctetsSet(octets, held.octetsFromHere());
-            } else if (spec instanceof StringValue text) {
+            } else if (spec instanceof AnyStringValue text) {
                 for (int point : text.text().codePoints().toArray()) {
                     octets = withBitSet(octets, point);
                 }
@@ -240,7 +240,7 @@ public final class BitsetActions implements Actions {
     }
 
     private static int[] codePointsAskedAboutBy(Value asked) {
-        if (asked instanceof StringValue text) {
+        if (asked instanceof AnyStringValue text) {
             return text.text().codePoints().toArray();
         }
         if (asked instanceof BinaryValue octets) {
@@ -280,7 +280,7 @@ public final class BitsetActions implements Actions {
             if (items.get(at) instanceof CharacterValue
                     || items.get(at) instanceof IntegerValue) {
                 points.add(codePointOf(items.get(at)));
-            } else if (items.get(at) instanceof StringValue text) {
+            } else if (items.get(at) instanceof AnyStringValue text) {
                 text.text().codePoints().forEach(points::add);
             }
         }
