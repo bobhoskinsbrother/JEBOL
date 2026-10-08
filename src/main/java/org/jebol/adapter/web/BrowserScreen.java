@@ -2,6 +2,7 @@ package org.jebol.adapter.web;
 
 import org.jebol.domain.eval.ScreenEvent;
 import org.jebol.domain.eval.ScreenEventKind;
+import org.jebol.domain.eval.ScreenEventQueue;
 import org.jebol.domain.eval.ScreenMetric;
 import org.jebol.domain.eval.ScreenPort;
 import org.jebol.domain.render.PaintList;
@@ -9,9 +10,7 @@ import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Value;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
 
 /**
@@ -37,7 +36,7 @@ public final class BrowserScreen implements ScreenPort {
     }
 
     private final Viewer viewer;
-    private final Deque<ScreenEvent> queued = new ArrayDeque<>();
+    private final ScreenEventQueue queued = new ScreenEventQueue();
     private final List<GobValue> showing = new ArrayList<>();
 
     private GobValue root;
@@ -151,14 +150,12 @@ public final class BrowserScreen implements ScreenPort {
     }
 
     /** Something the person looking at the page did, queued and not acted on. */
-    public synchronized void theBrowserReports(ScreenEventKind kind, GobValue window) {
-        queued.add(new ScreenEvent(kind, window));
+    public void theBrowserReports(ScreenEventKind kind, GobValue window) {
+        queued.add(kind, window);
     }
 
     @Override
-    public synchronized List<ScreenEvent> takeQueuedEvents() {
-        List<ScreenEvent> taken = List.copyOf(queued);
-        queued.clear();
-        return taken;
+    public List<ScreenEvent> takeQueuedEvents() {
+        return queued.takeAll();
     }
 }

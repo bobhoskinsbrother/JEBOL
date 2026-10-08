@@ -49,6 +49,8 @@ public final class Ports {
 
     private final CryptPort cryptPort = new CryptPort();
 
+    private final FileSystemCalls fileSystem = new FileSystemCalls();
+
     private final BootDeclarations declarations = new BootDeclarations();
 
     private String modeTableSource = "";
@@ -95,11 +97,7 @@ public final class Ports {
     }
 
     public Value throughTheFileSystem(Supplier<Value> operation) {
-        try {
-            return operation.get();
-        } catch (FilePort.Denied denied) {
-            throw denied.raised();
-        }
+        return fileSystem.answeredOrRaised(operation);
     }
 
     public boolean routesToAScheme(Value source) {

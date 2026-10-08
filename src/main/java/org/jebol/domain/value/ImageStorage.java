@@ -29,7 +29,7 @@ package org.jebol.domain.value;
  * why {@link #hasAlpha()} walks the pixels rather than reading a flag. The C does
  * the same, and its comment about the flag it used to keep is still there.
  */
-public final class ImageStorage {
+public final class ImageStorage extends ProtectableStorage {
 
     /** {@code if (w > 0xFFFF || h > 0xFFFF)} refuses. */
     public static final int LONGEST_SIDE = 0xFFFF;
@@ -43,7 +43,6 @@ public final class ImageStorage {
     private int length;
     private int wide;
     private int high;
-    private boolean isProtected;
 
     private ImageStorage(byte[] pixels, int wide, int high, int length) {
         this.pixels = pixels;
@@ -155,14 +154,6 @@ public final class ImageStorage {
         resetHeightOnlyAfterSomethingChangedThePixelCount();
     }
 
-    public boolean isProtected() {
-        return isProtected;
-    }
-
-    public void protectFromChange(boolean protectedNow) {
-        this.isProtected = protectedNow;
-    }
-
     /**
      * One byte of one pixel, both counted from one.
      *
@@ -215,12 +206,6 @@ public final class ImageStorage {
             }
         }
         return false;
-    }
-
-    private void refuseIfProtected() {
-        if (isProtected) {
-            throw new ProtectedFromChange();
-        }
     }
 
     @Override

@@ -122,7 +122,7 @@ public final class InterpreterMaker implements Maker {
         if (spec instanceof NoneValue) {
             throw Raised.badMakeArg(spec, "object!");
         }
-        return evaluatedInto(aFreshObject(),
+        return evaluator.evaluatedInto(evaluator.freshObjectWithin(context),
                 spec instanceof BlockValue body ? body : BlockValue.block(List.of()));
     }
 
@@ -130,29 +130,15 @@ public final class InterpreterMaker implements Maker {
     public Value makeObjectFrom(ObjectValue prototype, Value spec) {
         return spec instanceof ObjectValue other
                 ? mergedObject(prototype, other)
-                : evaluatedInto(aCopyOf(prototype), (BlockValue) spec);
-    }
-
-    private ObjectValue aFreshObject() {
-        ObjectValue built = new ObjectValue(Context.childOf(context));
-        built.context().register("self", built);
-        return built;
+                : evaluator.evaluatedInto(aCopyOf(prototype), (BlockValue) spec);
     }
 
     private ObjectValue aCopyOf(ObjectValue prototype) {
-        ObjectValue built = aFreshObject();
+        ObjectValue built = evaluator.freshObjectWithin(context);
         Context fields = built.context();
         fieldsOtherThanSelfIn(prototype.context()).forEach(slot -> fields.register(
                 slot.spelling(), Binder.clonedAndRebound(
                         slot.value(), Set.of(prototype.context()), fields)));
-        return built;
-    }
-
-    private ObjectValue evaluatedInto(ObjectValue built, BlockValue body) {
-        Context fields = built.context();
-        declaredFieldsIn(body).forEach(fields::register);
-        evaluator.evaluateOrRaise(
-                Binder.bindOnly(body, fields, itsOwnFieldNames(fields)), fields);
         return built;
     }
 
@@ -177,17 +163,6 @@ public final class InterpreterMaker implements Maker {
                 .toList();
     }
 
-    private List<String> declaredFieldsIn(BlockValue body) {
-        return body.setWordsFromHere().stream()
-                .map(WordValue::spelling)
-                .toList();
-    }
-
-    private Set<String> itsOwnFieldNames(Context fields) {
-        return fields.slots().stream()
-                .map(ContextSlot::canonical)
-                .collect(Collectors.toSet());
-    }
 
     private FunctionValue makeFunctionFrom(Value spec) {
         if (!(spec instanceof BlockValue parts)) {
@@ -281,7 +256,7 @@ public final class InterpreterMaker implements Maker {
             spec = BlockValue.block(fields.setWordsAndValues());
         } else if (spec instanceof BlockValue body && body.datatype() == Datatype.BLOCK) {
             spec = BlockValue.block(
-                    evaluatedInto(aFreshObject(), body).context().setWordsAndValues());
+                    evaluator.evaluatedInto(evaluator.freshObjectWithin(context), body).context().setWordsAndValues());
         }
         if (!(spec instanceof BlockValue fields)) {
             if (!(spec instanceof StringValue written)) {

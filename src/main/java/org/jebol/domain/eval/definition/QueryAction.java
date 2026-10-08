@@ -180,11 +180,14 @@ public class QueryAction extends PortAction {
         }
 
         Value everyFieldAsAnObject(Evaluator evaluator) {
-            Context fields = Context.childOf(evaluator.systemContext());
-            ObjectValue described = new ObjectValue(fields);
-            fields.register("self", described);
+            ObjectValue described = new ObjectValue(Context.childOf(evaluator.systemContext()));
+            described.context().register("self", described);
+            return withEveryFieldIn(described);
+        }
+
+        ObjectValue withEveryFieldIn(ObjectValue described) {
             for (String part : names()) {
-                fields.register(part, fieldInTheObject(part));
+                described.context().register(part, fieldInTheObject(part));
             }
             return described;
         }
@@ -195,6 +198,14 @@ public class QueryAction extends PortAction {
 
         Raised cannotUse(WordValue asked, Datatype datatype) {
             return Raised.of(EvaluationFailure.CANNOT_USE, asked, DatatypeValue.of(datatype));
+        }
+    }
+
+    private abstract static class TheFieldsOfAnObjectWithoutASelf extends TheFields {
+
+        @Override
+        Value everyFieldAsAnObject(Evaluator evaluator) {
+            return withEveryFieldIn(new ObjectValue(Context.root()));
         }
     }
 
@@ -287,7 +298,7 @@ public class QueryAction extends PortAction {
         }
     }
 
-    private static final class TheMeasurementsOfTheConsole extends TheFields {
+    private static final class TheMeasurementsOfTheConsole extends TheFieldsOfAnObjectWithoutASelf {
 
         private static final int A_MEASURE_THE_HOST_DOES_NOT_REPORT = 0;
 
@@ -312,21 +323,12 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        Value everyFieldAsAnObject(Evaluator evaluator) {
-            Context fields = Context.root();
-            for (String part : names()) {
-                fields.register(part, fieldInTheObject(part));
-            }
-            return new ObjectValue(fields);
-        }
-
-        @Override
         Value unknownAlone(WordValue asked) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
     }
 
-    private static final class TheFieldsOfAFile extends TheFields {
+    private static final class TheFieldsOfAFile extends TheFieldsOfAnObjectWithoutASelf {
 
         private final FileInformation about;
         private final String wholePath;
@@ -362,15 +364,6 @@ public class QueryAction extends PortAction {
         @Override
         Value fieldInTheObject(String part) {
             return part.equals("date") ? NoneValue.none() : super.fieldInTheObject(part);
-        }
-
-        @Override
-        Value everyFieldAsAnObject(Evaluator evaluator) {
-            Context fields = Context.root();
-            for (String part : names()) {
-                fields.register(part, fieldInTheObject(part));
-            }
-            return new ObjectValue(fields);
         }
 
         private Value asDateValue(Optional<Instant> moment) {

@@ -522,6 +522,19 @@ public final class Evaluator {
         return walk(code, context, 1, null);
     }
 
+    public ObjectValue freshObjectWithin(Context enclosing) {
+        ObjectValue built = new ObjectValue(Context.childOf(enclosing));
+        built.context().register("self", built);
+        return built;
+    }
+
+    public ObjectValue evaluatedInto(ObjectValue built, BlockValue body) {
+        Context fields = built.context();
+        body.setWordsFromHere().stream().map(WordValue::spelling).forEach(fields::register);
+        evaluateOrRaise(Binder.bindOnly(body, fields, fields.ownFieldNames()), fields);
+        return built;
+    }
+
     public List<Value> evaluateEachOrRaise(BlockValue code, Context context) {
         List<Value> results = new ArrayList<>();
         walk(code, context, 1,

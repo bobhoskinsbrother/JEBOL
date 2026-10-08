@@ -13,10 +13,8 @@ import org.jebol.domain.value.ImageValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.MapValue;
 import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorValue;
@@ -24,20 +22,11 @@ import org.jebol.domain.value.VectorValue;
 import java.util.List;
 import java.util.Set;
 
-public class FindAction extends DefaultNative {
+public class FindAction extends SeriesSearchAction {
 
     @Override
     public String name() {
         return "find";
-    }
-
-    @Override
-    public List<Parameter> parameters() {
-        return List.of(Parameter.required("series"),
-                Parameter.required("value", Typeset.ANY_TYPE.members()),
-                Parameter.belongingTo("part", "range", aPartLimit()),
-                Parameter.belongingTo("with", "wild", Set.of(Datatype.STRING)),
-                Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)));
     }
 
     @Override

@@ -32,12 +32,4 @@ final class BrotliMatch {
     static long penaltyForRecentDistance(int shortCode) {
         return 39 + ((0x1CA10 >> (shortCode & 0xE)) & 0xE);
     }
-
-    static int matchingBytes(byte[] data, int firstAt, int secondAt, int limit) {
-        int matched = 0;
-        while (matched < limit && data[firstAt + matched] == data[secondAt + matched]) {
-            matched++;
-        }
-        return matched;
-    }
 }

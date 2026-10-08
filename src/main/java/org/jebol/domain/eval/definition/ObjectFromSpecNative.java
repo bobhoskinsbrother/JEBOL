@@ -38,18 +38,7 @@ public abstract class ObjectFromSpecNative extends DefaultNative {
     protected ObjectValue objectMadeFrom(
             BlockValue spec, Evaluator evaluator, Context enclosing) {
 
-        Context fields = Context.childOf(enclosing);
-        ObjectValue built = new ObjectValue(fields);
-        fields.register("self", built);
-        spec.setWordsFromHere().stream().map(WordValue::spelling).forEach(fields::register);
-        evaluator.evaluateOrRaise(
-                Binder.bindOnly(spec, fields, itsOwnFieldNames(fields)), fields);
-        return built;
+        return evaluator.evaluatedInto(evaluator.freshObjectWithin(enclosing), spec);
     }
 
-    private Set<String> itsOwnFieldNames(Context fields) {
-        return fields.slots().stream()
-                .map(ContextSlot::canonical)
-                .collect(Collectors.toSet());
-    }
 }

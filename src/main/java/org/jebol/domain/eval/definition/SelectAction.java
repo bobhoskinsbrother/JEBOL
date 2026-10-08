@@ -3,14 +3,11 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.SeriesSearch;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.MapValue;
 import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorValue;
 import org.jebol.domain.value.WordValue;
@@ -18,20 +15,11 @@ import org.jebol.domain.value.WordValue;
 import java.util.List;
 import java.util.Set;
 
-public class SelectAction extends DefaultNative {
+public class SelectAction extends SeriesSearchAction {
 
     @Override
     public String name() {
         return "select";
-    }
-
-    @Override
-    public List<Parameter> parameters() {
-        return List.of(Parameter.required("series"),
-                Parameter.required("value", Typeset.ANY_TYPE.members()),
-                Parameter.belongingTo("part", "range", aPartLimit()),
-                Parameter.belongingTo("with", "wild", Set.of(Datatype.STRING)),
-                Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)));
     }
 
     @Override

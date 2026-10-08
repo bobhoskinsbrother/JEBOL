@@ -121,13 +121,22 @@ public record BlockValue(BlockStorage storage, int index, Datatype datatype)
         }
     }
 
-    public BlockValue swapFirstItemWith(BlockValue there) {
-        if (!atTail() && !there.atTail()) {
-            Value mine = storage.at(index);
-            storage.set(index, there.storage.at(there.index));
-            there.storage.set(there.index, mine);
+    @Override
+    public void putItemAt(int positionFromTheHead, Value item) {
+        storage.set(positionFromTheHead, item);
+    }
+
+    @Override
+    public BlockValue repeatedInABlock(Value times) {
+        if (datatype != Datatype.BLOCK) {
+            return RebolSeries.super.repeatedInABlock(times);
         }
-        return this;
+        long count = times.asCountOfRepetitions();
+        BlockStorage repeated = new BlockStorage();
+        for (long round = 0; round < count; round++) {
+            repeated.spliceInAt(repeated.length() + 1, remaining(), storage, index);
+        }
+        return new BlockValue(repeated, 1, Datatype.BLOCK);
     }
 
     public void putEachPairOnALine() {

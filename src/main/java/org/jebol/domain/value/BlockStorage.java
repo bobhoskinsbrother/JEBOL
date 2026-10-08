@@ -10,7 +10,7 @@ import java.util.*;
  * them see its mutations. So this deliberately does not override
  * {@code equals}.
  */
-public final class BlockStorage {
+public final class BlockStorage extends ProtectableStorage {
 
     private final List<Value> items;
 
@@ -47,22 +47,6 @@ public final class BlockStorage {
 
     public static BlockStorage of(Value... initialItems) {
         return new BlockStorage(List.of(initialItems));
-    }
-
-    private boolean isProtected;
-
-    private void refuseIfProtected() {
-        if (isProtected) {
-            throw new ProtectedFromChange();
-        }
-    }
-
-    public boolean isProtected() {
-        return isProtected;
-    }
-
-    public void protectFromChange(boolean protectedNow) {
-        this.isProtected = protectedNow;
     }
 
     public int length() {

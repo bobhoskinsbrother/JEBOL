@@ -64,56 +64,12 @@ public final class VectorActions extends SeriesActions {
 
     private List<Value> numbersAddedBy(Asked asked) {
         List<Value> once = asked.refinementsAsked().contains("part")
-                ? numbersOfferedTo(vector.kind(), asked.given(),
-                        asked.howManyOctetsWanted())
-                : numbersContributedTo(vector.kind(), asked.given());
+                ? vector.kind().numbersOfferedBy(asked.given(), asked.howManyOctetsWanted())
+                : vector.kind().numbersContributedBy(asked.given());
         List<Value> added = new ArrayList<>();
         for (long round = 0; round < asked.howManyTimes(); round++) {
             added.addAll(once);
         }
         return added;
     }
-
-    private List<Value> numbersContributedTo(VectorKind kind, Value value) {
-        if (value instanceof VectorValue source) {
-            return source.remaining();
-        }
-        if (value instanceof BlockValue block) {
-            return block.remaining();
-        }
-        if (value instanceof BinaryValue bytes) {
-            return numbersSpeltByWithTheOddBytesDropped(kind, bytes, bytes.lengthFromHere());
-        }
-        return List.of(value);
-    }
-
-    private List<Value> numbersSpeltByWithTheOddBytesDropped(VectorKind kind, BinaryValue bytes, int taking) {
-
-        int wholeNumbers = Math.max(0, taking) / kind.bytes();
-        if (wholeNumbers == 0) {
-            throw Raised.of(EvaluationFailure.INVALID_DATA, bytes);
-        }
-        byte[] octets = bytes.octetsFromHere();
-        List<Value> numbers = new ArrayList<>();
-        for (int number = 0; number < wholeNumbers; number++) {
-            numbers.add(kind.read(kind.fromOctets(octets, number * kind.bytes())));
-        }
-        return numbers;
-    }
-
-
-    private List<Value> numbersOfferedTo(VectorKind kind, Value value, int limit) {
-        if (!(value instanceof RebolSeries source)) {
-            return numbersContributedTo(kind, value);
-        }
-        RebolSeries run = source.reachingBackIfNegative(limit);
-        long wanted = limit >= 0 ? limit : source.index() - run.index();
-        if (run instanceof BinaryValue bytes) {
-            return numbersSpeltByWithTheOddBytesDropped(kind, bytes, (int) Math.min(wanted, bytes.lengthFromHere()));
-        }
-        List<Value> offered = numbersContributedTo(kind, run);
-        return offered.subList(0, (int) Math.min(wanted, offered.size()));
-    }
-
-
 }

@@ -114,6 +114,7 @@ final class BrotliEncoder {
 
         private final byte[] input;
         private final BrotliBits writer;
+        private final BrotliMatchingBytes matchingBytes = new BrotliMatchingBytes();
 
         private final int[] commandDepth = new int[128];
         private final int[] commandBits = new int[128];
@@ -394,12 +395,7 @@ final class BrotliEncoder {
         }
 
         private int matchLength(int one, int other, int limit) {
-            int matched = 0;
-            while (matched < limit
-                    && input[one + matched] == input[other + matched]) {
-                matched++;
-            }
-            return matched;
+            return matchingBytes.counted(input, one, other, limit);
         }
 
         private void storeMetaBlockHeader(int length, boolean stored) {

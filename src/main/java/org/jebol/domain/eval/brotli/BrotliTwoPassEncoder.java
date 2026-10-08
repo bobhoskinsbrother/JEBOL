@@ -42,6 +42,7 @@ final class BrotliTwoPassEncoder {
 
         private final byte[] input;
         private final BrotliBits writer;
+        private final BrotliMatchingBytes matchingBytes = new BrotliMatchingBytes();
         private final BrotliCodes.Tree tree = new BrotliCodes.Tree();
 
         private final int[] literalDepth = new int[256];
@@ -151,12 +152,7 @@ final class BrotliTwoPassEncoder {
         }
 
         private int matchLength(int one, int other, int limit) {
-            int matched = 0;
-            while (matched < limit
-                    && input[one + matched] == input[other + matched]) {
-                matched++;
-            }
-            return matched;
+            return matchingBytes.counted(input, one, other, limit);
         }
 
         private void createCommands(int baseAt, int from, int blockSize, int fragmentEnd) {

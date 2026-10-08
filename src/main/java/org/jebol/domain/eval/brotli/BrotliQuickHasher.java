@@ -9,6 +9,7 @@ final class BrotliQuickHasher implements BrotliHasher {
 
     private static final int TOO_SMALL_TO_CLEAR_WHOLESALE_SHIFT = 5;
 
+    private final BrotliMatchingBytes matchingBytes = new BrotliMatchingBytes();
     private final int bucketBits;
     private final int sweep;
     private final int bucketMask;
@@ -127,7 +128,7 @@ final class BrotliQuickHasher implements BrotliHasher {
         if (cachedBackward > 0 && cachedBackward <= at) {
             int previous = (at - cachedBackward) & mask;
             if (compareCharacter == (data[previous + bestLength] & 0xFF)) {
-                int length = BrotliMatch.matchingBytes(data, previous, here, maxLength);
+                int length = matchingBytes.counted(data, previous, here, maxLength);
                 if (length >= SHORTEST_MATCH_WORTH_TAKING) {
                     long score = BrotliMatch.scoreUsingLastDistance(length);
                     if (bestScore < score) {
@@ -156,7 +157,7 @@ final class BrotliQuickHasher implements BrotliHasher {
                     || backward == 0 || backward > maxBackward) {
                 return;
             }
-            int length = BrotliMatch.matchingBytes(data, previous, here, maxLength);
+            int length = matchingBytes.counted(data, previous, here, maxLength);
             if (length >= SHORTEST_MATCH_WORTH_TAKING) {
                 long score = BrotliMatch.scoreFor(length, backward);
                 if (bestScore < score) {
@@ -180,7 +181,7 @@ final class BrotliQuickHasher implements BrotliHasher {
                         || backward == 0 || backward > maxBackward) {
                     continue;
                 }
-                int length = BrotliMatch.matchingBytes(data, previous, here, maxLength);
+                int length = matchingBytes.counted(data, previous, here, maxLength);
                 if (length >= SHORTEST_MATCH_WORTH_TAKING) {
                     long score = BrotliMatch.scoreFor(length, backward);
                     if (bestScore < score) {

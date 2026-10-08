@@ -255,6 +255,10 @@ public final class Context {
         return slotsByCanonicalName.values().stream().filter(slot -> !slot.isHidden()).collect(Collectors.toCollection(ArrayList::new));
     }
 
+    public Set<String> ownFieldNames() {
+        return slots().stream().map(ContextSlot::canonical).collect(Collectors.toSet());
+    }
+
     public List<ContextSlot> everySlot() {
         return new ArrayList<>(slotsByCanonicalName.values());
     }

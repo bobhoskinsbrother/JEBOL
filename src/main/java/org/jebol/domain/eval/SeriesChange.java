@@ -41,7 +41,7 @@ public final class SeriesChange {
             GobPath.pokeWhichInsertsRatherThanReplaces(gob, gob.index(), replacement);
             return gob.atIndex(gob.index() + 1);
         }
-        Value replacing = dup.map(this::repeated).orElse(replacement);
+        Value replacing = dup.<Value>map(replacement::repeatedInABlock).orElse(replacement);
         return switch (subject) {
             case BinaryValue bytes -> overwritten(bytes, replacing);
             case StringValue text -> overwritten((StringValue) text.clampedToTail(), replacing);
@@ -155,7 +155,7 @@ public final class SeriesChange {
             case GobValue gob -> new GobActions(gob)
                     .givenTheChildrenOf(value, gob.positionWithinThePane());
             case VectorValue vector -> {
-                List<Value> numbers = numbersContributedTo(vector.kind(), value);
+                List<Value> numbers = vector.kind().numbersContributedBy(value);
                 for (int at = numbers.size(); at > 0; at--) {
                     vector.storage().insertAt(vector.index(),
                             VectorPath.storedFormOf(vector.kind(), numbers.get(at - 1)));
@@ -169,36 +169,6 @@ public final class SeriesChange {
             }
         }
     }
-
-    private List<Value> numbersContributedTo(VectorKind kind, Value value) {
-        if (value instanceof VectorValue source) {
-            return source.remaining();
-        }
-        if (value instanceof BlockValue block) {
-            return block.remaining();
-        }
-        if (value instanceof BinaryValue bytes) {
-            return numbersSpeltByWithTheOddBytesDropped(kind, bytes, bytes.lengthFromHere());
-        }
-        return List.of(value);
-    }
-
-    private List<Value> numbersSpeltByWithTheOddBytesDropped(VectorKind kind, BinaryValue bytes, int taking) {
-
-        int wholeNumbers = Math.max(0, taking) / kind.bytes();
-        if (wholeNumbers == 0) {
-            throw Raised.of(EvaluationFailure.INVALID_DATA, bytes);
-        }
-        byte[] octets = bytes.octetsFromHere();
-        List<Value> numbers = new ArrayList<>();
-        for (int number = 0; number < wholeNumbers; number++) {
-            numbers.add(kind.read(kind.fromOctets(octets, number * kind.bytes())));
-        }
-        return numbers;
-    }
-
-
-
 
     private void pixelsInserted(ImageValue image, Value value) {
         List<int[]> pixels = new ArrayList<>();
@@ -226,7 +196,7 @@ public final class SeriesChange {
     }
 
     private List<Value> numbersAdded(VectorValue vector) {
-        List<Value> once = numbersContributedTo(vector.kind(), replacement);
+        List<Value> once = vector.kind().numbersContributedBy(replacement);
         long rounds = refinements.contains("dup")
                 && dup.orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
                 ? magnitude
@@ -256,31 +226,6 @@ public final class SeriesChange {
                 && dup.orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
                 ? Math.max(0, magnitude)
                 : 1;
-    }
-
-    private Value repeated(Value times) {
-        BlockValue spread = replacement instanceof BlockValue block
-                && block.datatype() == Datatype.BLOCK
-                ? block
-                : null;
-        List<Value> pieces = spread == null ? List.of(replacement) : spread.remaining();
-        BlockStorage repeated = new BlockStorage();
-        for (long round = 0; round < wholeCountOf(times); round++) {
-            repeated.spliceInAt(repeated.length() + 1, pieces,
-                    spread == null ? null : spread.storage(),
-                    spread == null ? 1 : spread.index());
-        }
-        return new BlockValue(repeated, 1, Datatype.BLOCK);
-    }
-
-    private long wholeCountOf(Value times) {
-        return switch (times) {
-            case IntegerValue count -> count.magnitude();
-            case DecimalValue fraction when fraction.datatype() != Datatype.PERCENT ->
-                    (long) Comparison.asDouble(fraction);
-            default -> throw Raised.of(EvaluationFailure.INVALID_TYPE,
-                    Molder.mold(times) + " is not a count of repetitions");
-        };
     }
 
     private void refuseWhatAGobOrAStructDoesNotServe() {

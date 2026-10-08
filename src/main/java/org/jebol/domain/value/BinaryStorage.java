@@ -3,7 +3,7 @@ package org.jebol.domain.value;
 import java.util.Arrays;
 
 /** The mutable buffer behind a {@code binary!} value. Octets, unsigned. */
-public final class BinaryStorage {
+public final class BinaryStorage extends ProtectableStorage {
 
     private static final int INITIAL_CAPACITY = 16;
 
@@ -33,22 +33,6 @@ public final class BinaryStorage {
             initial[position] = requireOctet(octets[position]);
         }
         return new BinaryStorage(initial);
-    }
-
-    private boolean isProtected;
-
-    private void refuseIfProtected() {
-        if (isProtected) {
-            throw new ProtectedFromChange();
-        }
-    }
-
-    public boolean isProtected() {
-        return isProtected;
-    }
-
-    public void protectFromChange(boolean protectedNow) {
-        this.isProtected = protectedNow;
     }
 
     public int length() {

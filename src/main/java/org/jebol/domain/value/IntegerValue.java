@@ -13,6 +13,11 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     }
 
     @Override
+    public long asCountOfRepetitions() {
+        return magnitude;
+    }
+
+    @Override
     public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
         return magnitude;
     }

@@ -168,6 +168,15 @@ public sealed interface Value permits
         return IntegerValue.of(0).arithmetic(this, new Subtract());
     }
 
+    default long asCountOfRepetitions() {
+        throw Raised.of(EvaluationFailure.INVALID_TYPE,
+                Molder.mold(this) + " is not a count of repetitions");
+    }
+
+    default BlockValue repeatedInABlock(Value times) {
+        return BlockValue.block(List.of(this)).repeatedInABlock(times);
+    }
+
     default Value randomised(RandomDraw draw) {
         throw Raised.cannotUse(this, "random");
     }

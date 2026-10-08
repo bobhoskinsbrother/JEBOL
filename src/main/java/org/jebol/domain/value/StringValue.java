@@ -229,13 +229,9 @@ public record StringValue(StringStorage storage, int index, Datatype datatype)
         return joined.toString();
     }
 
-    public StringValue swapFirstItemWith(StringValue there) {
-        if (!atTail() && !there.atTail()) {
-            int mine = storage.at(index);
-            storage.set(index, there.storage.at(there.index));
-            there.storage.set(there.index, mine);
-        }
-        return this;
+    @Override
+    public void putItemAt(int positionFromTheHead, Value item) {
+        storage.set(positionFromTheHead, ((CharacterValue) item).codepoint());
     }
 
     @Override

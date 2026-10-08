@@ -66,7 +66,7 @@ public record Asked(
         return new Asked(
                 subject,
                 given,
-                times.map(count -> duplicated(given, count)).orElse(given),
+                times.<Value>map(given::repeatedInABlock).orElse(given),
                 limit,
                 howMuchOf(given, limit),
                 howManyOctetsOf(given, limit),
@@ -90,31 +90,6 @@ public record Asked(
             return Math.abs(upTo.index() - from.index());
         }
         return SeriesContents.EVERY_ONE;
-    }
-
-    private static Value duplicated(Value given, Value times) {
-        BlockValue spread = given instanceof BlockValue block
-                && block.datatype() == Datatype.BLOCK
-                ? block
-                : null;
-        List<Value> pieces = spread == null ? List.of(given) : spread.remaining();
-        BlockStorage repeated = new BlockStorage();
-        for (long round = 0; round < wholeCountOf(times); round++) {
-            repeated.spliceInAt(repeated.length() + 1, pieces,
-                    spread == null ? null : spread.storage(),
-                    spread == null ? 1 : spread.index());
-        }
-        return new BlockValue(repeated, 1, Datatype.BLOCK);
-    }
-
-    private static long wholeCountOf(Value times) {
-        return switch (times) {
-            case IntegerValue count -> count.magnitude();
-            case DecimalValue fraction when fraction.datatype() != Datatype.PERCENT ->
-                    (long) Comparison.asDouble(fraction);
-            default -> throw Raised.of(EvaluationFailure.INVALID_TYPE,
-                    Molder.mold(times) + " is not a count of repetitions");
-        };
     }
 
     private static Optional<Long> howMuchOf(Value given, Value limit) {

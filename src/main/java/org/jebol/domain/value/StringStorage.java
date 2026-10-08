@@ -7,7 +7,7 @@ package org.jebol.domain.value;
  * {@link BlockStorage}: two buffers holding the same text are still two
  * buffers.
  */
-public final class StringStorage {
+public final class StringStorage extends ProtectableStorage {
 
     private final CodepointBuffer buffer;
 
@@ -37,22 +37,6 @@ public final class StringStorage {
 
     public static StringStorage of(String text) {
         return new StringStorage(text);
-    }
-
-    private boolean isProtected;
-
-    private void refuseIfProtected() {
-        if (isProtected) {
-            throw new ProtectedFromChange();
-        }
-    }
-
-    public boolean isProtected() {
-        return isProtected;
-    }
-
-    public void protectFromChange(boolean protectedNow) {
-        this.isProtected = protectedNow;
     }
 
     public int length() {

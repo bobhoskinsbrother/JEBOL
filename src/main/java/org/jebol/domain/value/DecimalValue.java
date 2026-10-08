@@ -12,6 +12,14 @@ public record DecimalValue(double quantity, Datatype datatype)
     }
 
     @Override
+    public long asCountOfRepetitions() {
+        if (datatype == Datatype.PERCENT) {
+            return RebolNumber.super.asCountOfRepetitions();
+        }
+        return (long) quantity;
+    }
+
+    @Override
     public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
         return Double.doubleToRawLongBits(quantity);
     }

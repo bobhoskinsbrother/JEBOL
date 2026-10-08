@@ -88,13 +88,9 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return this;
     }
 
-    public BinaryValue swapFirstItemWith(BinaryValue there) {
-        if (!atTail() && !there.atTail()) {
-            int mine = storage.at(index);
-            storage.set(index, there.storage.at(there.index));
-            there.storage.set(there.index, mine);
-        }
-        return this;
+    @Override
+    public void putItemAt(int positionFromTheHead, Value item) {
+        storage.set(positionFromTheHead, (int) ((IntegerValue) item).magnitude());
     }
 
     @Override

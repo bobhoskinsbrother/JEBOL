@@ -1,5 +1,7 @@
 package org.jebol.domain.value;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -210,5 +212,40 @@ public enum VectorKind {
             gathered |= Byte.toUnsignedLong(octets[at + step]) << (8 * step);
         }
         return measuring ? gathered : store(gathered);
+    }
+
+    public List<Value> numbersContributedBy(Value value) {
+        return switch (value) {
+            case VectorValue source -> source.remaining();
+            case BlockValue block -> block.remaining();
+            case BinaryValue bytes -> numbersSpeltByWithTheOddBytesDropped(bytes, bytes.lengthFromHere());
+            default -> List.of(value);
+        };
+    }
+
+    public List<Value> numbersOfferedBy(Value value, int limit) {
+        if (!(value instanceof RebolSeries source)) {
+            return numbersContributedBy(value);
+        }
+        RebolSeries run = source.reachingBackIfNegative(limit);
+        long wanted = limit >= 0 ? limit : source.index() - run.index();
+        if (run instanceof BinaryValue bytes) {
+            return numbersSpeltByWithTheOddBytesDropped(bytes, (int) Math.min(wanted, bytes.lengthFromHere()));
+        }
+        List<Value> offered = numbersContributedBy(run);
+        return offered.subList(0, (int) Math.min(wanted, offered.size()));
+    }
+
+    private List<Value> numbersSpeltByWithTheOddBytesDropped(BinaryValue bytes, int taking) {
+        int wholeNumbers = Math.max(0, taking) / bytes();
+        if (wholeNumbers == 0) {
+            throw Raised.of(EvaluationFailure.INVALID_DATA, bytes);
+        }
+        byte[] octets = bytes.octetsFromHere();
+        List<Value> numbers = new ArrayList<>();
+        for (int number = 0; number < wholeNumbers; number++) {
+            numbers.add(read(fromOctets(octets, number * bytes())));
+        }
+        return numbers;
     }
 }

@@ -10,14 +10,13 @@ import java.util.Arrays;
  * what makes a vector a vector: the width is decided once for the whole
  * buffer, so nothing here needs to ask what kind a particular element is.
  */
-public final class VectorStorage {
+public final class VectorStorage extends ProtectableStorage {
 
     private static final int INITIAL_CAPACITY = 8;
 
     private final VectorKind kind;
     private long[] elements;
     private int length;
-    private boolean isProtected;
 
     private final SeriesMemory.Reservation reserved;
 
@@ -46,19 +45,6 @@ public final class VectorStorage {
         return length;
     }
 
-    public boolean isProtected() {
-        return isProtected;
-    }
-
-    public void protectFromChange(boolean protectedNow) {
-        this.isProtected = protectedNow;
-    }
-
-    private void refuseIfProtected() {
-        if (isProtected) {
-            throw new ProtectedFromChange();
-        }
-    }
 
     /** The stored bits of the element at a 1-based position. */
     public long at(int oneBasedIndex) {

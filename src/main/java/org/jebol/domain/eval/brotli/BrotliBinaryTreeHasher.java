@@ -12,6 +12,7 @@ final class BrotliBinaryTreeHasher {
 
     static final int MOST_MATCHES_AT_ONE_POSITION = 128;
 
+    private final BrotliMatchingBytes matchingBytes = new BrotliMatchingBytes();
     private final int windowMask;
 
     private final int nowhereWhichReadsAsNegativeSoEveryCompareMustAllowForIt;
@@ -83,7 +84,7 @@ final class BrotliBinaryTreeHasher {
                 break;
             }
             int alreadyAgreed = Math.min(bestLeft, bestRight);
-            int length = alreadyAgreed + BrotliMatch.matchingBytes(data,
+            int length = alreadyAgreed + matchingBytes.counted(data,
                     previous + alreadyAgreed, here + alreadyAgreed,
                     maxLength - alreadyAgreed);
             if (into != null && length > bestLengthSoFar[0]) {
@@ -134,7 +135,7 @@ final class BrotliBinaryTreeHasher {
             if (data[here] != data[previous] || data[here + 1] != data[previous + 1]) {
                 continue;
             }
-            int length = BrotliMatch.matchingBytes(data, previous, here, maxLength);
+            int length = matchingBytes.counted(data, previous, here, maxLength);
             if (length > bestLength[0]) {
                 bestLength[0] = length;
                 into.addCopy(written++, backward, length);

@@ -2,6 +2,7 @@ package org.jebol.adapter.host;
 
 import org.jebol.domain.eval.ScreenEvent;
 import org.jebol.domain.eval.ScreenEventKind;
+import org.jebol.domain.eval.ScreenEventQueue;
 import org.jebol.domain.eval.ScreenMetric;
 import org.jebol.domain.eval.ScreenPort;
 import org.jebol.domain.value.GobValue;
@@ -28,7 +29,7 @@ public final class DesktopScreen implements ScreenPort {
 
     private final boolean present;
     private final Map<GobValue, JFrame> windows = new IdentityHashMap<>();
-    private final Deque<ScreenEvent> queued = new ArrayDeque<>();
+    private final ScreenEventQueue queued = new ScreenEventQueue();
 
     private GobValue root;
     private org.jebol.domain.value.ObjectValue drawDialect;
@@ -348,15 +349,13 @@ public final class DesktopScreen implements ScreenPort {
         });
     }
 
-    private synchronized void queue(ScreenEventKind kind, GobValue window) {
-        queued.add(new ScreenEvent(kind, window));
+    private void queue(ScreenEventKind kind, GobValue window) {
+        queued.add(kind, window);
     }
 
     @Override
-    public synchronized List<ScreenEvent> takeQueuedEvents() {
-        List<ScreenEvent> taken = List.copyOf(queued);
-        queued.clear();
-        return taken;
+    public List<ScreenEvent> takeQueuedEvents() {
+        return queued.takeAll();
     }
 
     private static void onTheToolkitThreadAndWaitedFor(Runnable work) {

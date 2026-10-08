@@ -16,6 +16,7 @@ final class BrotliPricedParse {
             0, 0, 0, 0, -1, 1, -2, 2, -3, 3, -1, 1, -2, 2, -3, 3,
     };
 
+    private final BrotliMatchingBytes matchingBytes = new BrotliMatchingBytes();
     private final int howManyBytes;
     private final int[] length;
     private final int[] distance;
@@ -249,7 +250,7 @@ final class BrotliPricedParse {
                         || continuation != (data[previous + bestLength] & 0xFF)) {
                     continue;
                 }
-                int length = BrotliMatch.matchingBytes(data, previous, hereMasked,
+                int length = matchingBytes.counted(data, previous, hereMasked,
                         mostLeft);
                 float distanceCost = baseCost + model.distanceCost(code);
                 for (int copyLength = bestLength + 1; copyLength <= length;

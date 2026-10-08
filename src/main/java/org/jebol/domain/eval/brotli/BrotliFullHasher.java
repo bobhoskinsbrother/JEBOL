@@ -10,6 +10,7 @@ final class BrotliFullHasher implements BrotliHasher {
 
     private static final int TOO_SMALL_TO_CLEAR_WHOLESALE_SHIFT = 6;
 
+    private final BrotliMatchingBytes matchingBytes = new BrotliMatchingBytes();
     private final int hashShift;
     private final int bucketCount;
     private final int blockBits;
@@ -151,7 +152,7 @@ final class BrotliFullHasher implements BrotliHasher {
                     || data[here + bestLength] != data[previous + bestLength]) {
                 continue;
             }
-            int length = BrotliMatch.matchingBytes(data, previous, here, maxLength);
+            int length = matchingBytes.counted(data, previous, here, maxLength);
             if (length >= 3 || (length == 2 && which < 2)) {
                 long score = BrotliMatch.scoreUsingLastDistance(length);
                 if (bestScore < score) {
@@ -195,10 +196,10 @@ final class BrotliFullHasher implements BrotliHasher {
                 if (!fourBytesAgree(data, here, previous)) {
                     continue;
                 }
-                length = BrotliMatch.matchingBytes(data, previous + 4, here + 4,
+                length = matchingBytes.counted(data, previous + 4, here + 4,
                         maxLength - 4) + 4;
             } else {
-                length = BrotliMatch.matchingBytes(data, previous, here, maxLength);
+                length = matchingBytes.counted(data, previous, here, maxLength);
                 if (length < SHORTEST_MATCH_FROM_THE_TABLE) {
                     continue;
                 }

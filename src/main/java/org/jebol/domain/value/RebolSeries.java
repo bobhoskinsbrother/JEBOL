@@ -23,6 +23,19 @@ public sealed interface RebolSeries extends Value
         return reversedFront(lengthFromHere());
     }
 
+    default RebolSeries swapFirstItemWith(RebolSeries there) {
+        if (!atTail() && !there.atTail()) {
+            Value mine = itemAt(index());
+            putItemAt(index(), there.itemAt(there.index()));
+            there.putItemAt(there.index(), mine);
+        }
+        return this;
+    }
+
+    default void putItemAt(int positionFromTheHead, Value item) {
+        throw Raised.cannotUse(this, "swap");
+    }
+
     default RebolSeries clampedToTail() {
         int tail = storageLength() + 1;
         return index() > tail ? atIndex(tail) : this;
