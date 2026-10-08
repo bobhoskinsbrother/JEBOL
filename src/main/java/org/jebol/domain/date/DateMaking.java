@@ -7,7 +7,7 @@ import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.DateValue;
-import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.AnyDecimalValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.Value;
@@ -101,7 +101,7 @@ public final class DateMaking {
         if (!(written.get(0) instanceof IntegerValue(long magnitude1))
                 || !(written.get(1) instanceof IntegerValue(long magnitude))
                 || !(written.get(2) instanceof IntegerValue
-                        || written.get(2) instanceof DecimalValue)) {
+                        || written.get(2) instanceof AnyDecimalValue)) {
             throw refuse(whole);
         }
         double second = Comparison.asDouble(written.get(2));

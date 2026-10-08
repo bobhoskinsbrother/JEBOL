@@ -3,7 +3,7 @@ package org.jebol.domain.parse.keyword;
 import org.jebol.domain.parse.ParseWalk;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 
@@ -17,7 +17,7 @@ final class Into extends DeclaredKeyword {
 
     @Override
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
-        if (!(walk.whatTheWordHolds(rules.get(at + 1)) instanceof BlockValue innerRule)) {
+        if (!(walk.whatTheWordHolds(rules.get(at + 1)) instanceof AnyBlockValue innerRule)) {
             throw Raised.of(EvaluationFailure.PARSE_RULE,
                     "into needs a block of rules to apply");
         }

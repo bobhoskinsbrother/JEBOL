@@ -9,16 +9,16 @@ final class BlockPath {
     private BlockPath() {
     }
 
-    static Value read(BlockValue block, Value selector) {
+    static Value read(AnyBlockValue block, Value selector) {
         return positionOf(block, selector)
                 .map(at -> block.storage().at(at))
                 .orElseGet(NoneValue::none);
     }
 
-    static Optional<Integer> positionOf(BlockValue block, Value selector) {
+    static Optional<Integer> positionOf(AnyBlockValue block, Value selector) {
         int at = switch (selector) {
             case IntegerValue position -> positionFrom(position.magnitude(), block.index());
-            case DecimalValue fraction ->
+            case AnyDecimalValue fraction ->
                     positionFrom((long) fraction.quantity(), block.index());
             case AnyWordValue name -> afterTheFirstMatchFromWhereTheBlockStands(
                     block, item ->
@@ -34,7 +34,7 @@ final class BlockPath {
     static boolean isNowhereAtAllSoAWriteQuietlyDoesNothing(Value selector) {
         return switch (selector) {
             case IntegerValue position -> position.magnitude() == 0;
-            case DecimalValue fraction -> (long) fraction.quantity() == 0;
+            case AnyDecimalValue fraction -> (long) fraction.quantity() == 0;
             default -> false;
         };
     }
@@ -48,7 +48,7 @@ final class BlockPath {
     }
 
     private static int afterTheFirstMatchFromWhereTheBlockStands(
-            BlockValue block, java.util.function.Predicate<Value> matches) {
+            AnyBlockValue block, java.util.function.Predicate<Value> matches) {
 
         for (int at = block.index(); at <= block.storageLength(); at++) {
             if (matches.test(block.storage().at(at))) {

@@ -87,7 +87,7 @@ final class PendingCall {
     private static List<Parameter> declaredParametersOf(Value callee) {
         List<Parameter> declared = switch (callee) {
             case NativeValue built -> built.parameters();
-            case FunctionValue function -> function.parameters();
+            case DefinedFunctionValue function -> function.parameters();
             case OperatorValue operator -> declaredParametersOf(operator.underlying());
             case null, default -> List.of();
         };
@@ -133,8 +133,8 @@ final class PendingCall {
 
     private static boolean optsIntoEvaluation(Value upcoming) {
         return upcoming instanceof GetWordValue
-                || upcoming.datatype() == Datatype.PAREN
-                || upcoming.datatype() == Datatype.GET_PATH;
+                || upcoming instanceof ParenValue
+                || upcoming instanceof GetPathValue;
     }
 
     static PendingCall prefix(Value callee, List<String> refinements, List<String> mentioned) {
@@ -174,7 +174,7 @@ final class PendingCall {
 
     private static int arityOf(Value callee, List<String> mentioned) {
         return switch (callee) {
-            case FunctionValue function ->
+            case DefinedFunctionValue function ->
                     argumentsWrittenGrantedOrNotFor(function.parameters(), mentioned);
             case NativeValue built ->
                     argumentsWrittenGrantedOrNotFor(built.parameters(), mentioned);

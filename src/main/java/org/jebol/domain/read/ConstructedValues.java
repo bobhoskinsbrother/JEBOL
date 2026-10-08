@@ -2,6 +2,7 @@ package org.jebol.domain.read;
 
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.BitsetValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
@@ -178,19 +179,17 @@ final class ConstructedValues {
                 default -> requireDatatype(only, datatype);
             };
             case BLOCK, PAREN, PATH, SET_PATH, GET_PATH, LIT_PATH, HASH ->
-                    only instanceof BlockValue items ? items.as(datatype) : requireDatatype(only, datatype);
+                    only instanceof AnyBlockValue items ? items.as(datatype) : requireDatatype(only, datatype);
             case FUNCTION, CLOSURE -> functionFrom(only);
             default -> madeByTheEvaluator(datatype, contents);
         };
     }
 
     private Value functionFrom(Value only) {
-        if (!(only instanceof BlockValue definition)
+        if (!(only instanceof AnyBlockValue definition)
                 || definition.remaining().size() != 2
                 || !(definition.remaining().get(0) instanceof BlockValue spec)
-                || !(definition.remaining().get(1) instanceof BlockValue body)
-                || spec.datatype() != Datatype.BLOCK
-                || body.datatype() != Datatype.BLOCK) {
+                || !(definition.remaining().get(1) instanceof BlockValue body)) {
             throw new CannotConstruct();
         }
         try {
@@ -230,7 +229,7 @@ final class ConstructedValues {
     }
 
     private Value objectFrom(Value contents) {
-        if (!(contents instanceof BlockValue fields)) {
+        if (!(contents instanceof AnyBlockValue fields)) {
             throw new CannotConstruct();
         }
         Context built = Context.root();

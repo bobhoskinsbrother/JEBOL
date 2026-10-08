@@ -71,7 +71,7 @@ public final class GobActions extends SeriesActions {
     private static List<Value> theChildrenOffered(Value value) {
         return switch (value) {
             case GobValue only -> List.of(only);
-            case BlockValue block when block.datatype() == Datatype.BLOCK ->
+            case BlockValue block ->
                     block.remaining();
             default -> throw Raised.of(EvaluationFailure.EXPECT_VAL,
                     "a pane holds gobs, not " + value.datatype().literalSpelling());

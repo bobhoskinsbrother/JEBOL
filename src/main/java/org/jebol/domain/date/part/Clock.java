@@ -1,7 +1,7 @@
 package org.jebol.domain.date.part;
 
 import org.jebol.domain.value.DateValue;
-import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.AnyDecimalValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.TimeValue;
@@ -26,7 +26,7 @@ final class Clock implements WritableDateField {
             case TimeValue clock -> date.atTheTime(clock);
             case DateValue other -> date.atTheTime(other.clock());
             case IntegerValue _ -> date.atTheTime(given.asAClock());
-            case DecimalValue _ -> date.atTheTime(given.asAClock());
+            case AnyDecimalValue _ -> date.atTheTime(given.asAClock());
             default -> throw given.refusal();
         };
     }

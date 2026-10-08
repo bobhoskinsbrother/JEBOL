@@ -87,7 +87,7 @@ public final class MakingAndConverting implements Construction {
     @Override
     public Value madeOf(Datatype datatype, Value specification) {
         if (datatype == Datatype.DATE
-                && !(specification instanceof BlockValue
+                && !(specification instanceof AnyBlockValue
                         || specification instanceof DateValue)) {
             throw Raised.badMakeArg(specification, "date!");
         }
@@ -96,7 +96,7 @@ public final class MakingAndConverting implements Construction {
     }
 
     @Override
-    public Value functionMadeFrom(BlockValue spec, BlockValue body) {
+    public Value functionMadeFrom(AnyBlockValue spec, AnyBlockValue body) {
         return Binder.functionWithItsBodyBound(spec, body, Context.root());
     }
 
@@ -117,7 +117,7 @@ public final class MakingAndConverting implements Construction {
             }
             case PORT -> portMadeFrom(source, evaluator, context);
             case DATE -> aDateMadeFrom(wanted, source);
-            case TIME -> source instanceof BlockValue parts
+            case TIME -> source instanceof AnyBlockValue parts
                     ? timeFromParts(parts.remaining())
                     : madeOtherwise(wanted, source);
             default -> madeOtherwise(wanted, source);
@@ -126,7 +126,7 @@ public final class MakingAndConverting implements Construction {
 
     private Value aDateMadeFrom(DatatypeValue wanted, Value from) {
         return switch (from) {
-            case BlockValue parts -> DateMaking.fromParts(parts.remaining());
+            case AnyBlockValue parts -> DateMaking.fromParts(parts.remaining());
             case DateValue already -> DateMaking.fromParts(List.of(already));
             default -> madeOtherwise(wanted, from);
         };
@@ -141,8 +141,7 @@ public final class MakingAndConverting implements Construction {
                     blockTypeBuilt(Conversion.MAKE, wanted.represents(), from));
         }
         if (wanted.represents().isSeries()
-                && (from.datatype() == Datatype.INTEGER
-                        || from.datatype() == Datatype.DECIMAL)) {
+                && (from instanceof IntegerValue || from instanceof DecimalValue)) {
             int asked = (int) Math.max(0,
                     Math.min(Integer.MAX_VALUE, (long) Comparison.asDouble(from)));
             return whatTheHostHadRoomFor(() ->
@@ -163,7 +162,7 @@ public final class MakingAndConverting implements Construction {
             case VECTOR -> switch (value) {
                 case VectorValue already -> already;
                 case BinaryValue octets -> VectorSpec.ofOctets(octets);
-                case BlockValue block -> VectorSpec.readMakeSpec(
+                case AnyBlockValue block -> VectorSpec.readMakeSpec(
                                 block.remaining(), UnaryOperator.identity())
                         .<Value>map(made -> made)
                         .orElseThrow(() -> Raised.cannotUse(value, "to vector!"));
@@ -172,10 +171,10 @@ public final class MakingAndConverting implements Construction {
             case INTEGER -> wholeNumberFrom(asking, value);
             case DECIMAL, PERCENT -> decimalBuiltFrom(asking, wanted.represents(), value);
             case STRING -> StringValue.of(textOf(value));
-            case EMAIL -> value instanceof BlockValue parts
+            case EMAIL -> value instanceof AnyBlockValue parts
                     ? addressBuiltFrom(parts)
                     : EmailValue.of(textOf(value));
-            case URL -> value instanceof BlockValue parts
+            case URL -> value instanceof AnyBlockValue parts
                     ? urlBuiltFrom(parts)
                     : UrlValue.of(textOf(value));
             case FILE, TAG, REF -> AnyStringValue.ofTheDatatype(textOf(value), wanted.represents());
@@ -185,7 +184,7 @@ public final class MakingAndConverting implements Construction {
             case BLOCK, PAREN, HASH, PATH, SET_PATH, GET_PATH, LIT_PATH ->
                     blockTypeBuilt(asking, wanted.represents(), value);
             case MAP -> {
-                if (value instanceof IntegerValue || value instanceof DecimalValue) {
+                if (value instanceof IntegerValue || value instanceof AnyDecimalValue) {
                     throw Raised.of(EvaluationFailure.INVALID_ARG, value);
                 }
                 yield mapFrom(value);
@@ -194,9 +193,9 @@ public final class MakingAndConverting implements Construction {
                 case DateValue already -> already;
                 case IntegerValue seconds ->
                         DateMaking.atTheTimestamp(seconds.magnitude() * MICROSECONDS_A_SECOND);
-                case DecimalValue seconds -> DateMaking.atTheTimestamp(
+                case AnyDecimalValue seconds -> DateMaking.atTheTimestamp(
                         (long) (seconds.quantity() * MICROSECONDS_A_SECOND));
-                case BlockValue parts -> DateMaking.fromParts(parts.remaining());
+                case AnyBlockValue parts -> DateMaking.fromParts(parts.remaining());
                 case AnyStringValue written -> dateReadFrom(written);
                 default -> throw Raised.badMakeArg(value, "date!");
             };
@@ -211,7 +210,7 @@ public final class MakingAndConverting implements Construction {
             case BITSET -> BitsetActions.madeFrom(value);
             case TYPESET -> switch (value) {
                 case TypesetValue already -> already;
-                case BlockValue block when block.datatype() == Datatype.BLOCK ->
+                case BlockValue block ->
                         TypesetValue.of(TypesetActions.datatypesNamedIn(block));
                 default -> throw Raised.badMakeArg(value, "typeset!");
             };
@@ -252,12 +251,10 @@ public final class MakingAndConverting implements Construction {
             case TimeValue already -> already;
             case StringValue written ->
                     theTimeScannedFrom(written.text(), written);
-            case BlockValue parts when value.datatype() == Datatype.BLOCK
-                    || value.datatype() == Datatype.PAREN ->
-                    aTimeOfHoursMinutesAndSeconds(parts);
-            case Value number when number.datatype() == Datatype.INTEGER
-                    || number.datatype() == Datatype.DECIMAL ->
-                    aDurationOfSeconds(number);
+            case BlockValue parts -> aTimeOfHoursMinutesAndSeconds(parts);
+            case ParenValue parts -> aTimeOfHoursMinutesAndSeconds(parts);
+            case IntegerValue number -> aDurationOfSeconds(number);
+            case DecimalValue number -> aDurationOfSeconds(number);
             default -> throw Raised.badMakeArg(value, "time!");
         };
     }
@@ -271,7 +268,7 @@ public final class MakingAndConverting implements Construction {
             made.storage().size(size);
             return made;
         }
-        if (from instanceof BlockValue spec && spec.datatype() == Datatype.BLOCK) {
+        if (from instanceof BlockValue spec) {
             fillGobFromSpec(made, spec.remaining(), lookedUp);
             return made;
         }
@@ -332,7 +329,7 @@ public final class MakingAndConverting implements Construction {
             return ImageValue.of(sideOfClampedBelowAndRefusedAbove(x),
                     sideOfClampedBelowAndRefusedAbove(y));
         }
-        if (from instanceof BlockValue parts && !parts.remaining().isEmpty()) {
+        if (from instanceof AnyBlockValue parts && !parts.remaining().isEmpty()) {
             return imageFromParts(parts);
         }
         throw malconstructed(from);
@@ -346,7 +343,7 @@ public final class MakingAndConverting implements Construction {
         return Math.max(side, 0);
     }
 
-    private Value imageFromParts(BlockValue specification) {
+    private Value imageFromParts(AnyBlockValue specification) {
         List<Value> parts = specification.remaining();
         if (!(parts.getFirst() instanceof PairValue(double x, double y))) {
             throw malconstructed(specification);
@@ -382,7 +379,7 @@ public final class MakingAndConverting implements Construction {
         return made;
     }
 
-    private int sideThatCanExist(double given, BlockValue specification) {
+    private int sideThatCanExist(double given, AnyBlockValue specification) {
         if (given < 0 || given > ImageStorage.LONGEST_SIDE) {
             throw malconstructed(specification);
         }
@@ -464,10 +461,10 @@ public final class MakingAndConverting implements Construction {
     }
 
     private Value madeVector(Value from, UnaryOperator<Value> lookedUp) {
-        if (from instanceof IntegerValue || from instanceof DecimalValue) {
+        if (from instanceof IntegerValue || from instanceof AnyDecimalValue) {
             long howMany = from instanceof IntegerValue(long magnitude)
                     ? magnitude
-                    : (long) ((DecimalValue) from).quantity();
+                    : (long) ((AnyDecimalValue) from).quantity();
             if (howMany < 0) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(from));
             }
@@ -479,7 +476,7 @@ public final class MakingAndConverting implements Construction {
         if (from instanceof VectorValue already) {
             return already.copyOfTheFirst(already.lengthFromHere());
         }
-        if (from instanceof BlockValue spec) {
+        if (from instanceof AnyBlockValue spec) {
             return VectorSpec.readMakeSpec(spec.remaining(), lookedUp)
                     .orElseThrow(() -> Raised.of(EvaluationFailure.BAD_MAKE_ARG,
                             Datatype.VECTOR.literalSpelling()));
@@ -489,17 +486,17 @@ public final class MakingAndConverting implements Construction {
 
     private Value dateReadFrom(AnyStringValue written) {
         return Transcoder.transcode(written.text()).values()
-                .map(BlockValue::remaining)
+                .map(AnyBlockValue::remaining)
                 .filter(read -> read.size() == 1 && read.getFirst() instanceof DateValue)
                 .map(List::getFirst)
                 .orElseThrow(() -> Raised.badMakeArg(written, "date!"));
     }
 
     private Value blockTypeBuilt(Conversion asking, Datatype wanted, Value from) {
-        if (from instanceof BlockValue given) {
+        if (from instanceof AnyBlockValue given) {
             BlockStorage built = new BlockStorage(given.remaining());
             built.takeLineBreaksFrom(given.storage(), given.index());
-            return new BlockValue(built, 1, given.datatype()).as(wanted);
+            return AnyBlockValue.ofTheDatatype(built, 1, wanted);
         }
         if (from instanceof MapValue pairs) {
             return pairs.pairsOnLines().as(wanted);
@@ -511,7 +508,7 @@ public final class MakingAndConverting implements Construction {
             return BlockValue.block(numbers.remaining()).as(wanted);
         }
         if (asking.builds()) {
-            if (from.datatype() == Datatype.INTEGER || from.datatype() == Datatype.DECIMAL) {
+            if (from instanceof IntegerValue || from instanceof DecimalValue) {
                 return BlockValue.block(List.of()).as(wanted);
             }
         } else if (wrapsIntoWhatTheCallerAskedFor(wanted)) {
@@ -565,7 +562,7 @@ public final class MakingAndConverting implements Construction {
             switch (parts.get(2)) {
                 case IntegerValue whole when whole.magnitude() >= 0 ->
                         seconds += whole.magnitude();
-                case DecimalValue fraction -> {
+                case AnyDecimalValue fraction -> {
                     seconds += (long) fraction.quantity();
                     nanoseconds = Math.round(
                             (fraction.quantity() - (long) fraction.quantity()) * 1_000_000_000L);
@@ -579,20 +576,20 @@ public final class MakingAndConverting implements Construction {
 
     private StructSpec.LayoutRegistry structLayoutsKnown() {
         return layoutName -> registeredStructLayouts.select(WordValue.of(layoutName))
-                instanceof BlockValue layout
+                instanceof AnyBlockValue layout
                 ? Optional.of(layout)
                 : Optional.empty();
     }
 
     private Value structMadeFrom(Value from) {
-        if (!(from instanceof BlockValue given)) {
+        if (!(from instanceof AnyBlockValue given)) {
             throw Raised.badMakeArg(from, "struct!");
         }
         List<Value> written = given.remaining();
         boolean carriesInitialValues = written.size() == 2
-                && written.get(0) instanceof BlockValue
-                && written.get(1) instanceof BlockValue;
-        BlockValue layout = carriesInitialValues ? (BlockValue) written.getFirst() : given;
+                && written.get(0) instanceof AnyBlockValue
+                && written.get(1) instanceof AnyBlockValue;
+        AnyBlockValue layout = carriesInitialValues ? (AnyBlockValue) written.getFirst() : given;
         StructValue made = StructValue.of(structLaidOutBy(layout));
         if (carriesInitialValues) {
             made.startedWith(written.get(1));
@@ -600,7 +597,7 @@ public final class MakingAndConverting implements Construction {
         return made;
     }
 
-    private StructSpec structLaidOutBy(BlockValue layout) {
+    private StructSpec structLaidOutBy(AnyBlockValue layout) {
         try {
             return StructSpec.of(layout, structLayoutsKnown());
         } catch (StructLayoutRefused refused) {
@@ -610,7 +607,7 @@ public final class MakingAndConverting implements Construction {
         }
     }
 
-    private Value addressBuiltFrom(BlockValue parts) {
+    private Value addressBuiltFrom(AnyBlockValue parts) {
         List<Value> written = parts.remaining();
         if (written.isEmpty()) {
             throw Raised.badMakeArg(parts, Datatype.EMAIL.literalSpelling());
@@ -625,7 +622,7 @@ public final class MakingAndConverting implements Construction {
         return EmailValue.of(user + "@" + host);
     }
 
-    private Value urlBuiltFrom(BlockValue parts) {
+    private Value urlBuiltFrom(AnyBlockValue parts) {
         List<Value> written = parts.remaining();
         if (written.isEmpty()) {
             throw Raised.badMakeArg(parts, Datatype.URL.literalSpelling());
@@ -637,7 +634,7 @@ public final class MakingAndConverting implements Construction {
         return UrlValue.of(scheme + "://" + rest);
     }
 
-    private Value bytesOfEach(BlockValue block) {
+    private Value bytesOfEach(AnyBlockValue block) {
         List<Value> items = block.remaining();
         int[] octets = new int[items.size()];
         for (int at = 0; at < items.size(); at++) {
@@ -669,7 +666,7 @@ public final class MakingAndConverting implements Construction {
 
     private void refuseRoomForLessThanNothing(Datatype wanted, Value from) {
         if (!wanted.isSeries()
-                || from.datatype() != Datatype.INTEGER && from.datatype() != Datatype.DECIMAL) {
+                || !(from instanceof IntegerValue || from instanceof DecimalValue)) {
             return;
         }
         if (Comparison.asDouble(from) < 0) {
@@ -681,7 +678,7 @@ public final class MakingAndConverting implements Construction {
         if (!wanted.isSeries() && wanted != Datatype.MAP) {
             return;
         }
-        if (from.datatype() != Datatype.INTEGER && from.datatype() != Datatype.DECIMAL) {
+        if (!(from instanceof IntegerValue || from instanceof DecimalValue)) {
             return;
         }
         if (Comparison.asDouble(from) > theMostItemsThatFitIn(wanted)) {
@@ -715,7 +712,7 @@ public final class MakingAndConverting implements Construction {
     private boolean isNothingAtAll(Value value) {
         return switch (value) {
             case IntegerValue whole -> whole.magnitude() == 0;
-            case DecimalValue number -> number.quantity() == 0.0;
+            case AnyDecimalValue number -> number.quantity() == 0.0;
             case MoneyValue amount -> amount.amount().signum() == 0;
             default -> false;
         };
@@ -728,11 +725,11 @@ public final class MakingAndConverting implements Construction {
                     BinaryValue.ofBytes(text.text().getBytes(StandardCharsets.UTF_8));
             case IntegerValue whole -> BinaryValue.ofBytes(
                     ByteBuffer.allocate(Long.BYTES).putLong(whole.magnitude()).array());
-            case DecimalValue fractional when fractional.datatype() == Datatype.DECIMAL ->
+            case DecimalValue fractional ->
                     BinaryValue.ofBytes(ByteBuffer.allocate(Long.BYTES)
                             .putLong(Double.doubleToRawLongBits(fractional.quantity())).array());
             case MoneyValue amount -> BinaryValue.ofBytes(amount.toBytes());
-            case BlockValue block when block.datatype() == Datatype.BLOCK -> bytesOfEach(block);
+            case BlockValue block -> bytesOfEach(block);
             case VectorValue vector -> BinaryValue.ofBytes(vector.octetsFromHere());
             case StructValue struct -> BinaryValue.ofBytes(struct.octets());
             case TupleValue segments -> BinaryValue.ofBytes(octetsOf(segments));
@@ -771,13 +768,13 @@ public final class MakingAndConverting implements Construction {
                     qualifiedNumberIn(text.text(), "a number", MOST_FRACTION_CHARACTERS),
                     wanted == Datatype.PERCENT);
         }
-        if (value instanceof BlockValue parts) {
+        if (value instanceof AnyBlockValue parts) {
             return OptionalDouble.of(mantissaTimesTenTo(parts, wanted));
         }
         return OptionalDouble.empty();
     }
 
-    private double mantissaTimesTenTo(BlockValue parts, Datatype wanted) {
+    private double mantissaTimesTenTo(AnyBlockValue parts, Datatype wanted) {
         List<Value> both = parts.remaining();
         if (both.size() != 2) {
             throw Raised.badMakeArg(parts, wanted.literalSpelling());
@@ -798,7 +795,7 @@ public final class MakingAndConverting implements Construction {
     private double numberInTheBlock(Value part, Datatype wanted) {
         return switch (part) {
             case IntegerValue(long magnitude) -> magnitude;
-            case DecimalValue number -> number.quantity();
+            case AnyDecimalValue number -> number.quantity();
             default -> throw Raised.badMakeArg(part, wanted.literalSpelling());
         };
     }
@@ -814,7 +811,7 @@ public final class MakingAndConverting implements Construction {
             case CharacterValue character -> IntegerValue.of(character.codepoint());
             case BinaryValue bytes -> IntegerValue.of(bytes.bitsOfTheLastEightOctets());
             case DateValue moment -> IntegerValue.of(moment.wholeSecondsSinceTheEpoch());
-            case DecimalValue number -> wholeNumberWithinRange(number.quantity());
+            case AnyDecimalValue number -> wholeNumberWithinRange(number.quantity());
             case MoneyValue amount -> IntegerValue.of(amount.asDeci().toLong());
             case TimeValue clock ->
                     IntegerValue.of(clock.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND);
@@ -893,7 +890,7 @@ public final class MakingAndConverting implements Construction {
         try {
             read = Transcoder.transcode(kind == Datatype.ISSUE ? "#" + trimmed : trimmed)
                     .values()
-                    .map(BlockValue::remaining)
+                    .map(AnyBlockValue::remaining)
                     .orElse(List.of());
         } catch (RuntimeException unreadable) {
             throw Raised.of(EvaluationFailure.INVALID_CHARS);
@@ -911,7 +908,7 @@ public final class MakingAndConverting implements Construction {
         return switch (value) {
             case TupleValue already -> already;
             case AnyStringValue text -> tupleScannedFrom(text.text(), value);
-            case BlockValue segments -> tupleOfSegments(segments);
+            case AnyBlockValue segments -> tupleOfSegments(segments);
             case BinaryValue octets -> tupleOfOctets(octets);
             case IssueValue issue ->
                     tupleOfHexPairs(issue.spelling(), value);
@@ -919,7 +916,7 @@ public final class MakingAndConverting implements Construction {
         };
     }
 
-    private Value tupleOfSegments(BlockValue segments) {
+    private Value tupleOfSegments(AnyBlockValue segments) {
         List<Value> items = segments.remaining();
         if (items.size() > TupleValue.MAXIMUM_SEGMENTS) {
             throw Raised.badMakeArg(segments, "tuple!");
@@ -935,7 +932,7 @@ public final class MakingAndConverting implements Construction {
         long number = switch (item) {
             case IntegerValue wholeNumber -> wholeNumber.magnitude();
             case CharacterValue letter -> letter.codepoint();
-            case DecimalValue fractional -> Math.round(Math.abs(fractional.quantity()))
+            case AnyDecimalValue fractional -> Math.round(Math.abs(fractional.quantity()))
                     * (fractional.quantity() < 0 ? -1 : 1);
             default -> throw Raised.badMakeArg(whole, "tuple!");
         };
@@ -1013,7 +1010,7 @@ public final class MakingAndConverting implements Construction {
             case IssueValue issue ->
                     characterSpeltInHexBy(issue);
             case IntegerValue whole -> characterAt(whole.magnitude());
-            case DecimalValue number -> characterAt((long) number.quantity());
+            case AnyDecimalValue number -> characterAt((long) number.quantity());
             default -> throw Raised.badMakeArg(value, "char!");
         };
     }
@@ -1094,10 +1091,10 @@ public final class MakingAndConverting implements Construction {
         return switch (value) {
             case PairValue pair -> pair;
             case IntegerValue whole -> PairValue.square(whole.magnitude());
-            case DecimalValue quantity when quantity.datatype() != Datatype.PERCENT ->
+            case DecimalValue quantity ->
                     PairValue.square(quantity.quantity());
             case AnyStringValue text -> readPair(text.text());
-            case BlockValue block when block.datatype() == Datatype.BLOCK ->
+            case BlockValue block ->
                     pairOf(block.remaining());
             default -> throw Raised.badMakeArg(value, "pair!");
         };
@@ -1112,7 +1109,7 @@ public final class MakingAndConverting implements Construction {
 
     private Value readPair(String text) {
         List<Value> read = Transcoder.transcode(text).values()
-                .map(BlockValue::remaining)
+                .map(AnyBlockValue::remaining)
                 .orElse(List.of());
         if (read.size() != 1 || !(read.getFirst() instanceof PairValue pair)) {
             throw Raised.badMakeArg(StringValue.of(text), "pair!");
@@ -1124,7 +1121,7 @@ public final class MakingAndConverting implements Construction {
         return switch (value) {
             case MoneyValue already -> already;
             case IntegerValue whole -> new MoneyValue(new Deci(whole.magnitude()));
-            case DecimalValue quantity -> new MoneyValue(new Deci(quantity.quantity()));
+            case AnyDecimalValue quantity -> new MoneyValue(new Deci(quantity.quantity()));
             case AnyStringValue text -> readMoney(text);
             case BinaryValue bytes -> MoneyValue.fromBytes(bytes.bytesFromHere());
             case LogicValue truth when asking.builds() -> new MoneyValue(new Deci(truth.truth() ? 1 : 0));
@@ -1141,7 +1138,7 @@ public final class MakingAndConverting implements Construction {
 
     private boolean isANumberNotPercentage(Value given) {
         return given instanceof IntegerValue
-                || (given instanceof DecimalValue && given.datatype() != Datatype.PERCENT);
+                || given instanceof DecimalValue;
     }
 
     private Value mapFrom(Value source) {
@@ -1271,7 +1268,7 @@ public final class MakingAndConverting implements Construction {
     }
 
     private Value moduleFromHeaderAndWords(Value value) {
-        if (!(value instanceof BlockValue parts)) {
+        if (!(value instanceof AnyBlockValue parts)) {
             throw Raised.badMakeArg(value, "module!");
         }
         List<Value> given = parts.remaining();
@@ -1284,23 +1281,20 @@ public final class MakingAndConverting implements Construction {
     }
 
     private Value aTaskMadeFrom(Value value) {
-        if (!(value instanceof BlockValue given) || given.datatype() != Datatype.BLOCK) {
+        if (!(value instanceof BlockValue given)) {
             throw Raised.badMakeArg(value, "task!");
         }
         List<Value> written = given.remaining();
-        if (written.isEmpty() || !(written.getFirst() instanceof BlockValue spec)
-                || spec.datatype() != Datatype.BLOCK) {
+        if (written.isEmpty() || !(written.getFirst() instanceof BlockValue spec)) {
             return TaskValue.running(given);
         }
-        if (written.size() < 2 || !(written.get(1) instanceof BlockValue body)
-                || body.datatype() != Datatype.BLOCK) {
+        if (written.size() < 2 || !(written.get(1) instanceof BlockValue body)) {
             throw Raised.badMakeArg(value, "task!");
         }
         TaskValue task = TaskValue.running(body);
         List<Value> fields = spec.remaining();
         for (int at = 0; at + 1 < fields.size(); at++) {
-            if (fields.get(at) instanceof AnyWordValue field
-                    && field.datatype() == Datatype.SET_WORD
+            if (fields.get(at) instanceof SetWordValue field
                     && task.context().holds(field.canonical())) {
                 task.context().register(field.canonical(), fields.get(at + 1));
             }
@@ -1316,7 +1310,7 @@ public final class MakingAndConverting implements Construction {
         return TimeValue.ofNanoseconds(TimeActions.wholeNanosecondsOf(value));
     }
 
-    private Value aTimeOfHoursMinutesAndSeconds(BlockValue parts) {
+    private Value aTimeOfHoursMinutesAndSeconds(AnyBlockValue parts) {
         List<Value> given = parts.remaining();
         if (given.isEmpty() || given.size() > 3
                 || !(given.getFirst() instanceof IntegerValue(long hours))) {
@@ -1330,8 +1324,8 @@ public final class MakingAndConverting implements Construction {
                 throw Raised.badMakeArg(parts, "time!");
             }
             Value part = given.get(at);
-            if (at == 2 && part.datatype() == Datatype.DECIMAL) {
-                fraction = ((DecimalValue) part).quantity();
+            if (at == 2 && part instanceof DecimalValue) {
+                fraction = ((AnyDecimalValue) part).quantity();
                 if (seconds + (long) fraction + 1 > MOST_SECONDS_A_TIME_HOLDS) {
                     throw Raised.badMakeArg(parts, "time!");
                 }

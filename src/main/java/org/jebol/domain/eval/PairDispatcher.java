@@ -27,7 +27,7 @@ final class PairDispatcher implements Dispatcher {
         int half = theHalfNamedBy(selector);
         double replacement = switch (written) {
             case IntegerValue whole -> whole.magnitude();
-            case DecimalValue quantity -> quantity.quantity();
+            case AnyDecimalValue quantity -> quantity.quantity();
             default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         };
         return pair.withHalfAt(half, replacement);

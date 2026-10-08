@@ -7,7 +7,7 @@ import java.util.List;
 
 final class ShapeSubDialect {
 
-    List<PathStep> pathFrom(BlockValue steps) {
+    List<PathStep> pathFrom(AnyBlockValue steps) {
         WhereARelativeStepIsMeasuredFrom walk =
                 new WhereARelativeStepIsMeasuredFrom();
         List<Value> written = steps.remaining();

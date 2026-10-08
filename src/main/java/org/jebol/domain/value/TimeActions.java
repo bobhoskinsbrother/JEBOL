@@ -17,11 +17,10 @@ public final class TimeActions {
         if (right instanceof MoneyValue rate) {
             return billedAt(rate, operation);
         }
-        if (right instanceof DecimalValue portion
-                && portion.datatype() == Datatype.PERCENT) {
+        if (right instanceof PercentValue portion) {
             return scaledBy(portion, operation);
         }
-        if (!(right instanceof IntegerValue) && !(right instanceof DecimalValue)) {
+        if (!(right instanceof IntegerValue) && !(right instanceof AnyDecimalValue)) {
             throw notRelatedToATime(operation);
         }
         if (operation.keepsTheSignOfTheDividend()) {
@@ -69,7 +68,7 @@ public final class TimeActions {
         throw notRelatedToATime(operation);
     }
 
-    private Value scaledBy(DecimalValue portion, ArithmeticOperation operation) {
+    private Value scaledBy(AnyDecimalValue portion, ArithmeticOperation operation) {
         if (!operation.multiplies()) {
             throw notRelatedToATime(operation);
         }

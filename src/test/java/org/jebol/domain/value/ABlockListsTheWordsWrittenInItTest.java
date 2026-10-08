@@ -14,7 +14,7 @@ class ABlockListsTheWordsWrittenInItTest {
     private static final boolean SETTERS_ONLY = true;
     private static final boolean EVERY_WORD = false;
 
-    private static BlockValue block(Value... items) {
+    private static AnyBlockValue block(Value... items) {
         return BlockValue.block(List.of(items));
     }
 
@@ -22,7 +22,7 @@ class ABlockListsTheWordsWrittenInItTest {
         return words.stream().map(word -> ((AnyWordValue) word).spelling()).toList();
     }
 
-    private static BlockValue aBlockWithANestedOne() {
+    private static AnyBlockValue aBlockWithANestedOne() {
         return block(WordValue.of("a"), SetWordValue.of("b"),
                 IntegerValue.of(1),
                 block(WordValue.of("c"), SetWordValue.of("d")));
@@ -60,7 +60,7 @@ class ABlockListsTheWordsWrittenInItTest {
     void eachComesBackPlain() {
         Context somewhere = Context.root();
         somewhere.register("a", IntegerValue.of(1));
-        BlockValue written = block(SetWordValue.of("a").boundTo(somewhere),
+        AnyBlockValue written = block(SetWordValue.of("a").boundTo(somewhere),
                 GetWordValue.of("b"), LitWordValue.of("c"));
 
         assertThat(written.wordsWritten(DEEPLY, EVERY_WORD)).allSatisfy(word -> {
@@ -72,7 +72,7 @@ class ABlockListsTheWordsWrittenInItTest {
     @Test
     @DisplayName("a word written twice, in any case, comes back once, as first spelled")
     void aWordWrittenTwice() {
-        BlockValue written = block(WordValue.of("Total"), SetWordValue.of("total"),
+        AnyBlockValue written = block(WordValue.of("Total"), SetWordValue.of("total"),
                 block(WordValue.of("TOTAL")));
 
         assertThat(spellingsOf(written.wordsWritten(DEEPLY, EVERY_WORD))).containsExactly("Total");
@@ -81,7 +81,7 @@ class ABlockListsTheWordsWrittenInItTest {
     @Test
     @DisplayName("values that are not words are not listed")
     void valuesThatAreNotWords() {
-        BlockValue written = block(IntegerValue.of(1), StringValue.of("a"), NoneValue.none());
+        AnyBlockValue written = block(IntegerValue.of(1), StringValue.of("a"), NoneValue.none());
 
         assertThat(written.wordsWritten(DEEPLY, EVERY_WORD)).isEmpty();
     }

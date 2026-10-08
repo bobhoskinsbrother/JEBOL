@@ -4,13 +4,12 @@ import org.jebol.domain.eval.Arithmetic;
 import org.jebol.domain.host.FileInformation;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.AnyStringValue;
+import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Value;
 
 import java.nio.charset.StandardCharsets;
@@ -69,19 +68,19 @@ final class FileWriting {
         if (data instanceof CharacterValue(int codepoint)) {
             return utf8(Character.toString(codepoint));
         }
-        if (data instanceof BlockValue block && oneValuePerLine) {
+        if (data instanceof AnyBlockValue block && oneValuePerLine) {
             return utf8(eachValueFormedOnItsOwnLine(block));
         }
         return utf8(withTheLineFeedLinesAsks(boundedText(asTextToWrite())));
     }
 
     private String asTextToWrite() {
-        return data instanceof AnyStringValue text && text.datatype() == Datatype.STRING
+        return data instanceof StringValue text
                 ? text.text()
                 : Molder.mold(data);
     }
 
-    private String eachValueFormedOnItsOwnLine(BlockValue block) {
+    private String eachValueFormedOnItsOwnLine(AnyBlockValue block) {
         return block.remaining().stream()
                 .map(each -> Molder.form(each) + "\n")
                 .collect(Collectors.joining());

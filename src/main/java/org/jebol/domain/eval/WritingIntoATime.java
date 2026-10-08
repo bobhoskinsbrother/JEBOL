@@ -1,6 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.AnyDecimalValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.NoneValue;
@@ -35,7 +35,7 @@ final class WritingIntoATime {
             case THE_HOUR -> hours = whole;
             case THE_MINUTE -> minutes = whole;
             case THE_SECOND -> {
-                if (written instanceof DecimalValue fractional) {
+                if (written instanceof AnyDecimalValue fractional) {
                     seconds = (long) fractional.quantity();
                     fraction = (long) ((fractional.quantity() - seconds) * NANOSECONDS_IN_A_SECOND);
                 } else {
@@ -63,7 +63,7 @@ final class WritingIntoATime {
     private long theWholeNumberIn(Value written) {
         return switch (written) {
             case IntegerValue(long magnitude) -> notNegativeWithinThirtyTwoBits(magnitude, written);
-            case DecimalValue fractional -> notNegativeWithinThirtyTwoBits(
+            case AnyDecimalValue fractional -> notNegativeWithinThirtyTwoBits(
                     withinThirtyTwoBits(fractional.quantity(), written), written);
             case NoneValue _ -> 0;
             default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET);

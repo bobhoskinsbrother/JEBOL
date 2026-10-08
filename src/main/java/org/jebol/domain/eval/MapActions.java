@@ -51,7 +51,7 @@ public final class MapActions implements Actions {
         pairs.requireChangeable();
         refuseWhatIsNotAWholeBlockOfPairs(
                 asked.given(), asked.refinementsAsked().contains("dup"), nativeName);
-        return given(theWantedPairsOf((BlockValue) asked.given(), asked));
+        return given(theWantedPairsOf((AnyBlockValue) asked.given(), asked));
     }
 
     public MapValue combinedWith(Value other, SetOperation how, boolean mindingCase) {
@@ -75,7 +75,7 @@ public final class MapActions implements Actions {
         return kept;
     }
 
-    static List<Value> theWantedPairsOf(BlockValue block, Asked asked) {
+    static List<Value> theWantedPairsOf(AnyBlockValue block, Asked asked) {
         List<Value> whole = block.head().remaining();
         int here = block.index() - 1;
         long asking = asked.howMuchOfIt().orElse((long) (whole.size() - here));
@@ -101,7 +101,7 @@ public final class MapActions implements Actions {
     public static void refuseWhatIsNotAWholeBlockOfPairs(
             Value given, boolean duplicating, String nativeName) {
 
-        if (!(given instanceof BlockValue block) || block.datatype() != Datatype.BLOCK) {
+        if (!(given instanceof BlockValue block)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG,
                     nativeName + " puts pairs into a map, and needs a block of them, "
                             + "not a " + given.datatype().literalSpelling());
@@ -132,8 +132,8 @@ public final class MapActions implements Actions {
                         accept.accept(slot.value());
                     })
                     .toList();
-            case BlockValue block when block.datatype() == Datatype.BLOCK
-                    || block.datatype() == Datatype.PAREN -> block.remaining();
+            case BlockValue block -> block.remaining();
+            case ParenValue paren -> paren.remaining();
             default -> null;
         };
     }

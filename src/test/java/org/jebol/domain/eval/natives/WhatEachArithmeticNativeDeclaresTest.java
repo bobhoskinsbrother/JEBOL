@@ -30,7 +30,7 @@ class WhatEachArithmeticNativeDeclaresTest {
     }
 
     private double quantityOf(Value answered) {
-        return ((DecimalValue) answered).quantity();
+        return ((AnyDecimalValue) answered).quantity();
     }
 
     @Nested
@@ -152,7 +152,7 @@ class WhatEachArithmeticNativeDeclaresTest {
             return Stream.of(
                     Arguments.of(IntegerValue.of(-7), IntegerValue.of(7)),
                     Arguments.of(DecimalValue.of(-7.5), DecimalValue.of(7.5)),
-                    Arguments.of(DecimalValue.percent(-2.0), DecimalValue.percent(2.0)),
+                    Arguments.of(PercentValue.of(-2.0), PercentValue.of(2.0)),
                     Arguments.of(PairValue.of(-1, -2), PairValue.of(1, 2)),
                     Arguments.of(new TimeValue(-7L), new TimeValue(7L)),
                     Arguments.of(new MoneyValue(BigDecimal.valueOf(-7), Optional.empty()),
@@ -171,7 +171,7 @@ class WhatEachArithmeticNativeDeclaresTest {
         @DisplayName("a percent stays a percent rather than dropping to a decimal")
         void aPercentStaysAPercent() {
             assertThat(answerOf(new AbsoluteAction(), NOTHING,
-                    DecimalValue.percent(-2.0)).datatype())
+                    PercentValue.of(-2.0)).datatype())
                     .isEqualTo(Datatype.PERCENT);
         }
     }

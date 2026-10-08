@@ -4,7 +4,7 @@ import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.DateValue;
-import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.AnyDecimalValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.TimeValue;
@@ -20,14 +20,14 @@ record Assigned(Value value, AnyWordValue part) {
     int asWholeNumber() {
         return switch (value) {
             case IntegerValue number -> Math.toIntExact(number.magnitude());
-            case DecimalValue number -> (int) number.quantity();
+            case AnyDecimalValue number -> (int) number.quantity();
             case NoneValue _ -> 0;
             default -> throw refusal();
         };
     }
 
     long asSecondsInNanoseconds() {
-        return value instanceof DecimalValue fraction
+        return value instanceof AnyDecimalValue fraction
                 ? (long) (fraction.quantity() * TimeValue.NANOSECONDS_PER_SECOND)
                 : (long) asWholeNumber() * TimeValue.NANOSECONDS_PER_SECOND;
     }
@@ -44,7 +44,7 @@ record Assigned(Value value, AnyWordValue part) {
     }
 
     double asAJulianDayCount() {
-        if (value instanceof DecimalValue counted) {
+        if (value instanceof AnyDecimalValue counted) {
             return counted.quantity();
         }
         throw refusal();
@@ -54,7 +54,7 @@ record Assigned(Value value, AnyWordValue part) {
         return withinReach(switch (value) {
             case IntegerValue aBareNumberMeansHours ->
                     Math.toIntExact(aBareNumberMeansHours.magnitude()) * 60;
-            case DecimalValue aBareNumberMeansHours ->
+            case AnyDecimalValue aBareNumberMeansHours ->
                     (int) aBareNumberMeansHours.quantity() * 60;
             case TimeValue clock -> (int) (clock.nanoseconds()
                     / (60L * TimeValue.NANOSECONDS_PER_SECOND));

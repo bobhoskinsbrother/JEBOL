@@ -26,7 +26,7 @@ public class IsNumberNative extends DefaultNative {
 
     private boolean isANumber(Value value) {
         return switch (value) {
-            case DecimalValue quantity -> !Double.isNaN(quantity.quantity());
+            case AnyDecimalValue quantity -> !Double.isNaN(quantity.quantity());
             case IntegerValue whole -> true;
             case MoneyValue amount -> true;
             default -> false;

@@ -26,9 +26,9 @@ import java.util.Optional;
 public final class View {
 
     private final Interpreter interpreter;
-    private final Map<String, BlockValue> actions = new LinkedHashMap<>();
+    private final Map<String, AnyBlockValue> actions = new LinkedHashMap<>();
 
-    private BlockValue description = BlockValue.block();
+    private AnyBlockValue description = BlockValue.block();
     private List<Face> faces = List.of();
 
     private View(Interpreter interpreter) {
@@ -43,10 +43,8 @@ public final class View {
                 interpreter, source);
 
         if (outcome.conclusion() == Conclusion.PRODUCED_A_VALUE
-                && outcome.value() instanceof BlockValue block) {
-            view.description = block.datatype() == Datatype.BLOCK
-                    ? block
-                    : block.as(Datatype.BLOCK);
+                && outcome.value() instanceof AnyBlockValue block) {
+            view.description = block.asBlock();
         }
         view.rebuild();
         return view;
@@ -71,7 +69,7 @@ public final class View {
 
     /** Runs the block belonging to a handle. */
     public ScriptOutcome raise(String handle) {
-        BlockValue action = actions.get(handle);
+        AnyBlockValue action = actions.get(handle);
         if (action == null) {
             return aBrowserOutOfStepWithThisView(handle);
         }
@@ -113,7 +111,7 @@ public final class View {
         for (Face face : faces) {
             if (face.action().isPresent()) {
                 stillThere.add(handleFor(at));
-                actions.put(handleFor(at), (BlockValue) face.action().orElseThrow());
+                actions.put(handleFor(at), (AnyBlockValue) face.action().orElseThrow());
             }
             at++;
         }

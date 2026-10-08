@@ -31,12 +31,12 @@ public record PortValue(Context context) implements Value {
                 : "";
     }
 
-    public Optional<BlockValue> eventQueue() {
+    public Optional<AnyBlockValue> eventQueue() {
         if (!THE_SCHEMES_THAT_ARE_QUEUES.contains(schemeName())) {
             return Optional.empty();
         }
-        if (!(fieldValue("state") instanceof BlockValue queue)) {
-            BlockValue made = BlockValue.block(List.of());
+        if (!(fieldValue("state") instanceof AnyBlockValue queue)) {
+            AnyBlockValue made = BlockValue.block(List.of());
             setField("state", made);
             return Optional.of(made);
         }
@@ -47,7 +47,7 @@ public record PortValue(Context context) implements Value {
         if (!(happening instanceof EventValue)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, happening);
         }
-        BlockValue queue = eventQueue().orElseThrow();
+        AnyBlockValue queue = eventQueue().orElseThrow();
         queue.storage().insertAt(
                 atTheEnd ? queue.storage().length() + 1 : queue.index(), happening);
         return this;

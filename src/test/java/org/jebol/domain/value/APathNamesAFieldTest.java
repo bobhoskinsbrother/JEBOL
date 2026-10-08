@@ -21,8 +21,8 @@ class APathNamesAFieldTest {
         return WordValue.of(spelling).boundTo(context);
     }
 
-    private static BlockValue path(Value... segments) {
-        return BlockValue.block(List.of(segments)).as(Datatype.PATH);
+    private static AnyBlockValue path(Value... segments) {
+        return PathValue.of(List.of(segments));
     }
 
     private static Context aScriptHoldingAnObject() {
@@ -34,7 +34,7 @@ class APathNamesAFieldTest {
     @DisplayName("every kind of path names the field it ends on")
     void everyKindOfPath(Datatype kind) {
         Context script = aScriptHoldingAnObject();
-        BlockValue named = BlockValue.block(List.of(
+        AnyBlockValue named = BlockValue.block(List.of(
                 boundIn("account", script), WordValue.of("balance"))).as(kind);
 
         assertThat(named.fieldThePathNames()).hasValueSatisfying(slot ->
@@ -129,7 +129,7 @@ class APathNamesAFieldTest {
     @Test
     @DisplayName("a block that is not a path names no field, whatever it holds")
     void aBlockThatIsNotAPath() {
-        BlockValue block = BlockValue.block(List.of(
+        AnyBlockValue block = BlockValue.block(List.of(
                 boundIn("account", aScriptHoldingAnObject()), WordValue.of("balance")));
 
         assertThat(block.fieldThePathNames()).isEmpty();

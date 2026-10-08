@@ -2,6 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Binder;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Parameter;
@@ -32,7 +33,7 @@ public class MapEachNative extends LoopingNative {
             Context locals = Context.loopFrameOf(context);
             List<AnyWordValue> names = loopNamesIn(arguments.get(0));
             names.forEach(name -> locals.register(name.spelling()));
-            BlockValue bound = Binder.bind((BlockValue) arguments.get(2), locals);
+            AnyBlockValue bound = Binder.bind((AnyBlockValue) arguments.get(2), locals);
             List<Value> items = arguments.get(1).items();
             List<Value> gathered = new ArrayList<>();
             int at = 0;

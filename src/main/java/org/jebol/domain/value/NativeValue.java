@@ -17,7 +17,7 @@ public sealed interface NativeValue extends DeclaresParameters
         return Set.of();
     }
 
-    default Optional<BlockValue> ownSpec() {
+    default Optional<AnyBlockValue> ownSpec() {
         return Optional.empty();
     }
 
@@ -25,7 +25,7 @@ public sealed interface NativeValue extends DeclaresParameters
         return new AskedNative(this, Set.copyOf(refinements));
     }
 
-    default NativeValue derivedWith(BlockValue spec, List<Parameter> declared) {
+    default NativeValue derivedWith(AnyBlockValue spec, List<Parameter> declared) {
         return new RespecifiedNative(this, spec, List.copyOf(declared));
     }
 

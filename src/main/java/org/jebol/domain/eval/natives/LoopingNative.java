@@ -23,7 +23,7 @@ public abstract class LoopingNative extends DefaultNative {
     }
 
     protected Value oneRoundCatchingContinue(
-            Evaluator evaluator, BlockValue body, Context where) {
+            Evaluator evaluator, AnyBlockValue body, Context where) {
         try {
             return evaluator.evaluateOrRaise(body, where);
         } catch (ContinueSignal skipped) {
@@ -39,7 +39,7 @@ public abstract class LoopingNative extends DefaultNative {
     }
 
     protected List<AnyWordValue> loopNamesIn(Value target) {
-        if (!(target instanceof BlockValue block)) {
+        if (!(target instanceof AnyBlockValue block)) {
             if (target instanceof AnyWordValue single) {
                 return List.of(single);
             }

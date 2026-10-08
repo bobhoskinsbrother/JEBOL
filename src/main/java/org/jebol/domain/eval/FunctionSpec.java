@@ -11,7 +11,7 @@ final class FunctionSpec {
     private FunctionSpec() {
     }
 
-    static List<Parameter> parametersIn(BlockValue spec) {
+    static List<Parameter> parametersIn(AnyBlockValue spec) {
         List<Parameter> parameters = new ArrayList<>();
         String currentRefinement = null;
         List<Value> items = spec.remaining();
@@ -23,7 +23,7 @@ final class FunctionSpec {
             if (item instanceof AnyStringValue) {
                 continue;
             }
-            if (item instanceof BlockValue) {
+            if (item instanceof AnyBlockValue) {
                 continue;
             }
             if (isADatatypeTestsOwnTypeNumber(item)) {
@@ -59,7 +59,7 @@ final class FunctionSpec {
         return item instanceof IntegerValue;
     }
 
-    static List<String> localNamesIn(BlockValue spec) {
+    static List<String> localNamesIn(AnyBlockValue spec) {
         List<String> locals = new ArrayList<>();
         boolean collecting = false;
 
@@ -81,7 +81,7 @@ final class FunctionSpec {
         return word instanceof SetWordValue
                 && word.canonical().equals("return")
                 && index + 1 < items.size()
-                && items.get(index + 1) instanceof BlockValue;
+                && items.get(index + 1) instanceof AnyBlockValue;
     }
 
     private static void refuseADuplicateNamingItAsItWasWritten(
@@ -96,7 +96,7 @@ final class FunctionSpec {
     }
 
     private static Raised refusingTheWholeSpecRatherThanThePartThatWasWrong(
-            BlockValue spec) {
+            AnyBlockValue spec) {
         return new Raised(org.jebol.domain.value.ErrorValue.about(
                 org.jebol.domain.value.ErrorCategory.SCRIPT,
                 EvaluationFailure.BAD_FUNC_DEF.errorId(),
@@ -105,7 +105,7 @@ final class FunctionSpec {
     }
 
     private static Set<Datatype> acceptedTypesAfter(List<Value> items, int index) {
-        if (index + 1 >= items.size() || !(items.get(index + 1) instanceof BlockValue types)) {
+        if (index + 1 >= items.size() || !(items.get(index + 1) instanceof AnyBlockValue types)) {
             return Set.of();
         }
         boolean describesTheReturn = items.get(index) instanceof SetWordValue word

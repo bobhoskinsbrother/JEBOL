@@ -35,7 +35,7 @@ public abstract sealed class AnyWordValue implements Value
         return spelling;
     }
 
-    public boolean fetchesItsValue() {
+    public boolean looksUpItsDeclaration() {
         return false;
     }
 

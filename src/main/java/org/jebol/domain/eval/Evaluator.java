@@ -67,7 +67,7 @@ public final class Evaluator {
         return functionsCalled;
     }
 
-    public record OpenCall(String name, FunctionValue function, Context locals) {
+    public record OpenCall(String name, DefinedFunctionValue function, Context locals) {
 
         public List<String> slotNames() {
             List<String> names = new ArrayList<>();
@@ -253,7 +253,7 @@ public final class Evaluator {
         Value theFunction = actor.context().holds(action)
                 ? actor.context().ownSlotFor(action).value()
                 : NoneValue.none();
-        if (!(theFunction instanceof FunctionValue able)) {
+        if (!(theFunction instanceof DefinedFunctionValue able)) {
             throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
                     SetWordValue.of(action));
         }
@@ -261,7 +261,7 @@ public final class Evaluator {
     }
 
     private List<Value> laidOutAsTheActorDeclaresThem(
-            FunctionValue able, List<Value> arguments, Set<String> refinements) {
+            DefinedFunctionValue able, List<Value> arguments, Set<String> refinements) {
 
         List<Value> laidOut = new ArrayList<>();
         int fromTheNative = 0;
@@ -286,23 +286,21 @@ public final class Evaluator {
     }
 
     public Value simpleValueOf(Value given, Context where) {
-        if (given instanceof AnyWordValue word && word.fetchesItsValue()) {
+        if (given instanceof AnyWordValue word && word.looksUpItsDeclaration()) {
             return valueOfWordIn(word, where);
         }
-        if (given instanceof BlockValue path
-                && (path.datatype() == Datatype.PATH
-                        || path.datatype() == Datatype.GET_PATH)) {
+        if (given instanceof AnyBlockValue path && path.looksUpItsDeclaration()) {
             return valueOfPathIn(path, where);
         }
         return given;
     }
 
-    public List<Value> reducedLeavingSetWords(BlockValue block) {
+    public List<Value> reducedLeavingSetWords(AnyBlockValue block) {
         List<Value> results = new ArrayList<>();
-        BlockValue at = block;
+        AnyBlockValue at = block;
         while (!at.atTail()) {
             Value here = at.first();
-            if (here instanceof SetWordValue || here.datatype() == Datatype.SET_PATH) {
+            if (here instanceof SetWordValue || here instanceof SetPathValue) {
                 results.add(here);
                 at = at.atIndex(at.index() + 1);
                 if (at.atTail()) {
@@ -402,17 +400,14 @@ public final class Evaluator {
 
     public Value applyFunction(Value callee, List<Value> arguments) {
         return switch (callee) {
-            case FunctionValue function -> {
+            case DefinedFunctionValue function -> {
                 List<Parameter> parameters = function.parameters();
                 checkArgumentTypes(parameters, arguments, AN_APPLIED_FUNCTION);
-                Context locals = Context.childOf(function.closedOver());
-                if (!function.closure()) {
-                    locals.markAsCallFrameOf(function);
-                }
+                Context locals = function.aFreshCallFrame();
                 function.localNames().forEach(
                         name -> locals.register(name, NoneValue.none()));
                 bindArgumentsPositionally(locals, parameters, arguments);
-                BlockValue running = theBodyThisCallRuns(function, locals);
+                AnyBlockValue running = theBodyThisCallRuns(function, locals);
                 theFrameThisCallTakesOverFrom(function).supersededBy(locals);
                 functionsBeingRun.push(new OpenCall("", function, locals));
                 try {
@@ -432,7 +427,7 @@ public final class Evaluator {
     }
 
     public Value applyToCaught(Value handler, Value caught, Value carriedName) {
-        if (!(handler instanceof FunctionValue function)) {
+        if (!(handler instanceof DefinedFunctionValue function)) {
             return applyFunction(handler, List.of(caught, carriedName));
         }
         List<Value> valueAndName = List.of(caught, carriedName);
@@ -475,7 +470,7 @@ public final class Evaluator {
         this.runtimeContext = context;
     }
 
-    public Outcome evaluate(BlockValue code, Context context) {
+    public Outcome evaluate(AnyBlockValue code, Context context) {
         try {
             return new Outcome.Completed(unsignalled(() -> walk(code, context, 1)));
         } catch (Raised raised) {
@@ -507,7 +502,7 @@ public final class Evaluator {
         }
     }
 
-    public Value evaluateOrRaise(BlockValue code, Context context) {
+    public Value evaluateOrRaise(AnyBlockValue code, Context context) {
         return walk(code, context, 1, null);
     }
 
@@ -517,22 +512,22 @@ public final class Evaluator {
         return built;
     }
 
-    public ObjectValue evaluatedInto(ObjectValue built, BlockValue body) {
+    public ObjectValue evaluatedInto(ObjectValue built, AnyBlockValue body) {
         Context fields = built.context();
         body.setWordsFromHere().stream().map(AnyWordValue::spelling).forEach(fields::register);
         evaluateOrRaise(Binder.bindOnly(body, fields, fields.ownFieldNames()), fields);
         return built;
     }
 
-    public List<Value> evaluateEachOrRaise(BlockValue code, Context context) {
+    public List<Value> evaluateEachOrRaise(AnyBlockValue code, Context context) {
         List<Value> results = new ArrayList<>();
         walk(code, context, 1,
                 (produced, startedAt, stoppedBefore) -> results.add(produced));
         return results;
     }
 
-    public BlockValue evaluateEachKeepingTheLineShape(
-            BlockValue code, Context context) {
+    public AnyBlockValue evaluateEachKeepingTheLineShape(
+            AnyBlockValue code, Context context) {
 
         BlockStorage built = new BlockStorage();
         walk(code, context, 1, (produced, startedAt, stoppedBefore) -> {
@@ -543,11 +538,11 @@ public final class Evaluator {
             }
             return true;
         });
-        return new BlockValue(built, 1, Datatype.BLOCK);
+        return BlockValue.over(built);
     }
 
     private static boolean theItemAsWritten(
-            BlockValue code, int startedAt, int stoppedBefore) {
+            AnyBlockValue code, int startedAt, int stoppedBefore) {
 
         return stoppedBefore == startedAt + 1
                 && startedAt >= 1
@@ -564,7 +559,7 @@ public final class Evaluator {
                     Datatype.ACTION, Datatype.OP, Datatype.COMMAND);
 
     public Value evaluateUntilOrRaise(
-            BlockValue code, Context context, Predicate<Value> stopsHere) {
+            AnyBlockValue code, Context context, Predicate<Value> stopsHere) {
         List<Value> stopped = new ArrayList<>(1);
         Value last = walk(code, context, 1, (produced, startedAt, stoppedBefore) -> {
             if (stopsHere.test(produced)) {
@@ -579,7 +574,7 @@ public final class Evaluator {
     public record Step(Value value, int nextIndex) {
     }
 
-    public Step evaluateNextOrRaise(BlockValue code, Context context) {
+    public Step evaluateNextOrRaise(AnyBlockValue code, Context context) {
         if (code.atTail()) {
             return new Step(UnsetValue.unset(), code.index());
         }
@@ -597,7 +592,7 @@ public final class Evaluator {
         return new Step(produced, frame.position);
     }
 
-    private Value walk(BlockValue code, Context context, int depth) {
+    private Value walk(AnyBlockValue code, Context context, int depth) {
         return walk(code, context, depth, null);
     }
 
@@ -630,7 +625,7 @@ public final class Evaluator {
         boolean accept(Value produced, int startedAt, int stoppedBefore);
     }
 
-    private Value walk(BlockValue code, Context context, int depth, ResultSink sink) {
+    private Value walk(AnyBlockValue code, Context context, int depth, ResultSink sink) {
         return walk(code, context, depth, sink, AN_ORDINARY_BLOCK);
     }
 
@@ -638,8 +633,8 @@ public final class Evaluator {
 
     private static final boolean THE_BODY_OF_AN_APPLIED_FUNCTION = true;
 
-    private Value walk(BlockValue code, Context context, int depth, ResultSink sink,
-            boolean bodyOfAnAppliedFunction) {
+    private Value walk(AnyBlockValue code, Context context, int depth, ResultSink sink,
+                       boolean bodyOfAnAppliedFunction) {
         Deque<Frame> frames = new ArrayDeque<>();
         Frame root = new Frame(code, context, depth);
         root.sink = sink;
@@ -753,12 +748,12 @@ public final class Evaluator {
         return open;
     }
 
-    private void push(Deque<Frame> frames, BlockValue code, Context context) {
+    private void push(Deque<Frame> frames, AnyBlockValue code, Context context) {
         push(frames, code, context, null);
     }
 
     private void push(
-            Deque<Frame> frames, BlockValue code, Context context, FunctionValue being) {
+            Deque<Frame> frames, AnyBlockValue code, Context context, DefinedFunctionValue being) {
         Frame parent = frames.peek();
         if (parent.depth >= maximumDepth) {
             throw Raised.of(EvaluationFailure.STACK_OVERFLOW);
@@ -776,7 +771,7 @@ public final class Evaluator {
         }
     }
 
-    private java.util.Optional<Context> openFrameOf(FunctionValue function) {
+    private java.util.Optional<Context> openFrameOf(DefinedFunctionValue function) {
         return functionsBeingRun.stream()
                 .filter(call -> call.function() == function)
                 .map(OpenCall::locals)
@@ -788,17 +783,18 @@ public final class Evaluator {
         theFrameThisCallTakesOverFrom(ending.function()).supersededBy(null);
     }
 
-    private Context theFrameThisCallTakesOverFrom(FunctionValue function) {
+    private Context theFrameThisCallTakesOverFrom(DefinedFunctionValue function) {
         return openFrameOf(function).orElseGet(function::declaredWords);
     }
 
-    private static BlockValue theBodyThisCallRuns(
-            FunctionValue function, Context locals) {
+    private static AnyBlockValue theBodyThisCallRuns(
+            DefinedFunctionValue function, Context locals) {
 
-        return function.closure()
-                ? Binder.rebindWhatNamedTheFunction(
-                        function.body(), function.declaredWords(), locals)
-                : function.body();
+        return switch (function) {
+            case ClosureValue closure -> Binder.rebindWhatNamedTheFunction(
+                    closure.body(), closure.declaredWords(), locals);
+            case FunctionValue plain -> plain.body();
+        };
     }
 
     private StepOutcome takeOneStep(Frame frame, Deque<Frame> frames) {
@@ -815,18 +811,14 @@ public final class Evaluator {
             case GetWordValue word -> StepOutcome.of(evaluateGetWord(word));
             case LitWordValue quoted -> StepOutcome.of(quoted.asWord());
             case SetWordValue assigning -> evaluateSetWord(frame, assigning);
-            case BlockValue quoted when quoted.datatype() == Datatype.LIT_PATH ->
-                    StepOutcome.of(quoted.as(Datatype.PATH));
-            case BlockValue paren when paren.datatype() == Datatype.PAREN -> {
-                push(frames, paren.as(Datatype.BLOCK), frame.context);
+            case LitPathValue quoted -> StepOutcome.of(quoted.asPath());
+            case ParenValue paren -> {
+                push(frames, paren.asBlock(), frame.context);
                 yield StepOutcome.waiting();
             }
-            case BlockValue path when path.datatype() == Datatype.GET_PATH -> StepOutcome.of(
-                    select(path.as(Datatype.PATH), frame.context).value());
-            case BlockValue path when path.datatype() == Datatype.PATH ->
-                    evaluatePath(frame, frames, path);
-            case BlockValue path when path.datatype() == Datatype.SET_PATH ->
-                    evaluateSetPath(frame, path);
+            case GetPathValue path -> StepOutcome.of(select(path.asPath(), frame.context).value());
+            case PathValue path -> evaluatePath(frame, frames, path);
+            case SetPathValue path -> evaluateSetPath(frame, path);
             case ErrorValue raised -> throw new Raised(raised);
             default -> input.datatype().isAnyFunction()
                             && input.datatype() != Datatype.OP
@@ -960,8 +952,8 @@ public final class Evaluator {
 
     private static boolean asksForReEvaluation(Value argument) {
         return switch (argument) {
-            case AnyWordValue word -> word.fetchesItsValue();
-            case BlockValue path -> path.datatype() == Datatype.PATH;
+            case AnyWordValue word -> word.looksUpItsDeclaration();
+            case AnyBlockValue path -> path instanceof PathValue;
             default -> argument.datatype().isAnyFunction();
         };
     }
@@ -970,7 +962,7 @@ public final class Evaluator {
         return resolve(word.isBound() ? word : word.boundTo(context)).value();
     }
 
-    public Value valueOfPathIn(BlockValue path, Context context) {
+    public Value valueOfPathIn(AnyBlockValue path, Context context) {
         return select(path, context).value();
     }
 
@@ -1028,7 +1020,7 @@ public final class Evaluator {
         if (written instanceof AnyWordValue word) {
             return word.spelling();
         }
-        if (written instanceof BlockValue path && path.datatype() == Datatype.PATH) {
+        if (written instanceof PathValue path) {
             int reachingTheFunction = path.remaining().size() - refinementsWritten - 1;
             if (reachingTheFunction >= 0
                     && path.remaining().get(reachingTheFunction) instanceof AnyWordValue reached) {
@@ -1079,7 +1071,7 @@ public final class Evaluator {
             case OperatorValue operator -> StepOutcome.of(invokeUnderlying(
                     operator, call.argumentsInDeclaredOrder(), frame.context,
                     call.nameInAnArgumentError(), call::enter));
-            case FunctionValue function -> {
+            case DefinedFunctionValue function -> {
                 nameOfTheCallBeingMade = lastWordCalledThrough;
                 if (trace.isOn()) {
                     trace.call(nameOfTheCallBeingMade == null
@@ -1104,7 +1096,7 @@ public final class Evaluator {
         return switch (operator.underlying()) {
             case NativeValue built -> runNative(built, arguments, context,
                     THE_LEFT_OPERAND_IS_NOT_CHECKED, calledAs, onceTheArgumentsPass);
-            case FunctionValue function -> {
+            case DefinedFunctionValue function -> {
                 onceTheArgumentsPass.run();
                 yield applyFunction(function, arguments);
             }
@@ -1144,16 +1136,13 @@ public final class Evaluator {
         return produced;
     }
 
-    private StepOutcome runFunction(Deque<Frame> frames, FunctionValue function, PendingCall call) {
+    private StepOutcome runFunction(Deque<Frame> frames, DefinedFunctionValue function, PendingCall call) {
         List<Value> arguments = call.argumentsInDeclaredOrder();
         List<String> refinements = call.refinements();
         checkArgumentTypes(function.parameters(),
                 new java.util.HashSet<>(refinements), arguments, call.nameInAnArgumentError());
         call.enter();
-        Context locals = Context.childOf(function.closedOver());
-        if (!function.closure()) {
-            locals.markAsCallFrameOf(function);
-        }
+        Context locals = function.aFreshCallFrame();
 
         List<Parameter> consuming = function.parameters().stream()
                 .filter(Parameter::consumesAnArgument)
@@ -1230,7 +1219,7 @@ public final class Evaluator {
     }
 
     private StepOutcome evaluatePath(
-            Frame frame, Deque<Frame> frames, BlockValue path) {
+            Frame frame, Deque<Frame> frames, AnyBlockValue path) {
         Selection selection = select(path, frame.context);
         if (!selection.value().datatype().isAnyFunction()) {
             return StepOutcome.of(selection.value());
@@ -1244,7 +1233,7 @@ public final class Evaluator {
     private Value refined(Selection selection) {
         Value callee = selection.value();
         List<String> mentioned = selection.mentioned();
-        if (callee instanceof FunctionValue written) {
+        if (callee instanceof DefinedFunctionValue written) {
             for (int index = 0; index < mentioned.size(); index++) {
                 if (!declaresRefinement(written, mentioned.get(index))) {
                     throw noSuchRefinement(selection, index);
@@ -1278,13 +1267,13 @@ public final class Evaluator {
                 calledBy, selection.mentionedAsWritten().get(index));
     }
 
-    private static boolean declaresRefinement(FunctionValue written, String refinement) {
+    private static boolean declaresRefinement(DefinedFunctionValue written, String refinement) {
         return written.parameters().stream()
                 .anyMatch(parameter -> parameter.kind() == ParameterKind.REFINEMENT
                         && parameter.name().equalsIgnoreCase(refinement));
     }
 
-    private StepOutcome evaluateSetPath(Frame frame, BlockValue path) {
+    private StepOutcome evaluateSetPath(Frame frame, AnyBlockValue path) {
         if (frame.atEnd()) {
             throw Raised.of(EvaluationFailure.NEED_VALUE, path);
         }
@@ -1294,7 +1283,7 @@ public final class Evaluator {
     }
 
     private void writeIntoOneStructOfAnArray(
-            BlockValue elements, IntegerValue which, StructValue given) {
+            AnyBlockValue elements, IntegerValue which, StructValue given) {
         List<Value> each = elements.remaining();
         int chosen = (int) which.magnitude();
         if (chosen < 1 || chosen > each.size()
@@ -1307,13 +1296,12 @@ public final class Evaluator {
         slot.changeFrom(given.octets());
     }
 
-    private void writeThroughPath(Frame frame, BlockValue path, Value written) {
+    private void writeThroughPath(Frame frame, AnyBlockValue path, Value written) {
         if (written.datatype() == Datatype.UNSET) {
             throw Raised.of(EvaluationFailure.NEED_VALUE, path);
         }
         List<Value> segments = path.remaining();
-        BlockValue allButLast = BlockValue.path(
-                segments.subList(0, segments.size() - 1), Datatype.PATH);
+        AnyBlockValue allButLast = PathValue.of(segments.subList(0, segments.size() - 1));
         Slot place = select(allButLast, path, frame.context).slot();
         refuseAPathIntoSomethingWithNoParts(path, place.value(), segments.size() - 2);
         try {
@@ -1324,7 +1312,7 @@ public final class Evaluator {
     }
 
     private void writeThroughTheLastSegment(
-            Frame frame, BlockValue path, Slot place, Value written) {
+            Frame frame, AnyBlockValue path, Slot place, Value written) {
 
         List<Value> segments = path.remaining();
         Value target = place.value();
@@ -1332,7 +1320,7 @@ public final class Evaluator {
         refuseSelfAsAnInvalidPathRatherThanAGuardedSlot(lastSegment);
 
         if (segments.size() == 3 && lastSegment instanceof IntegerValue(long magnitude1)
-                && select(BlockValue.path(segments.subList(0, 1), Datatype.PATH),
+                && select(PathValue.of(segments.subList(0, 1)),
                         frame.context).value() instanceof ImageValue image) {
             Value pixelSegment = selectorFor(segments.get(1), frame.context);
             ImagePath.writeOneChannel(
@@ -1351,7 +1339,7 @@ public final class Evaluator {
             return;
         }
         if (segments.size() == 3 && segments.get(1) instanceof AnyWordValue pairField
-                && select(BlockValue.path(segments.subList(0, 1), Datatype.PATH),
+                && select(PathValue.of(segments.subList(0, 1)),
                         frame.context).value() instanceof GobValue holdingPair
                 && GobPath.field(holdingPair, pairField) instanceof PairValue half) {
             GobPath.write(holdingPair, pairField, new PairDispatcher().withHalfWritten(
@@ -1364,16 +1352,15 @@ public final class Evaluator {
                     place, selectorFor(lastSegment, frame.context), written);
             return;
         }
-        if (segments.size() >= 3 && target instanceof BlockValue elements
+        if (segments.size() >= 3 && target instanceof AnyBlockValue elements
                 && written instanceof StructValue given
                 && lastSegment instanceof IntegerValue which
-                && select(BlockValue.path(
-                        segments.subList(0, segments.size() - 2), Datatype.PATH),
+                && select(PathValue.of(segments.subList(0, segments.size() - 2)),
                         frame.context).value() instanceof StructValue) {
             writeIntoOneStructOfAnArray(elements, which, given);
             return;
         }
-        if (target instanceof BlockValue block) {
+        if (target instanceof AnyBlockValue block) {
             Value selector = selectorFor(lastSegment, frame.context);
             if (BlockPath.isNowhereAtAllSoAWriteQuietlyDoesNothing(selector)) {
                 return;
@@ -1457,12 +1444,12 @@ public final class Evaluator {
         return index < 0 ? index + 1 : index;
     }
 
-    private Selection select(BlockValue path, Context context) {
+    private Selection select(AnyBlockValue path, Context context) {
         return select(path, path, context);
     }
 
     private Slot slotWithTheSegment(
-            BlockValue asWritten, Slot holder, Value segment, Context context) {
+            AnyBlockValue asWritten, Slot holder, Value segment, Context context) {
 
         Value selector = selectorFor(segment, context);
         try {
@@ -1472,7 +1459,7 @@ public final class Evaluator {
         }
     }
 
-    private Raised refusedAt(Raised refused, BlockValue asWritten, Value segment) {
+    private Raised refusedAt(Raised refused, AnyBlockValue asWritten, Value segment) {
         String refusal = refused.error().errorId();
         if (refusal.equals(EvaluationFailure.OUT_OF_RANGE.errorId())
                 && refused.error().subject().isEmpty()) {
@@ -1489,7 +1476,7 @@ public final class Evaluator {
     private static final List<EvaluationFailure> SAID_OF_THE_WHOLE_PATH =
             List.of(EvaluationFailure.INVALID_PATH, EvaluationFailure.BAD_PATH_SET);
 
-    private Selection select(BlockValue path, BlockValue asWritten, Context context) {
+    private Selection select(AnyBlockValue path, AnyBlockValue asWritten, Context context) {
         List<Value> segments = path.remaining();
         if (segments.isEmpty()) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, "an empty path selects nothing");
@@ -1520,7 +1507,7 @@ public final class Evaluator {
     }
 
     private boolean isSwitchedOn(AnyWordValue refinement, Context context) {
-        return refinement.datatype() != Datatype.GET_WORD
+        return !(refinement instanceof GetWordValue)
                 || resolve(refinement.isBound() ? refinement : refinement.boundTo(context))
                         .value().isTruthy();
     }
@@ -1553,7 +1540,7 @@ public final class Evaluator {
     }
 
     private void refuseAPathIntoSomethingWithNoParts(
-            BlockValue asWritten, Value current, int reachedThroughSegment) {
+            AnyBlockValue asWritten, Value current, int reachedThroughSegment) {
 
         if (!HAVE_NO_PARTS_TO_SELECT.contains(current.datatype())) {
             return;
@@ -1594,14 +1581,14 @@ public final class Evaluator {
         if (segment instanceof GetWordValue word) {
             return resolve(word.isBound() ? word : word.boundTo(context)).value();
         }
-        if (segment instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
-            return evaluateOrRaise(Binder.bind(paren.as(Datatype.BLOCK), context), context);
+        if (segment instanceof ParenValue paren) {
+            return evaluateOrRaise(Binder.bind(paren.asBlock(), context), context);
         }
         return segment;
     }
 
     private static Value withAnyFractionTruncated(Value selector) {
-        return selector instanceof DecimalValue fractional
+        return selector instanceof AnyDecimalValue fractional
                 ? IntegerValue.of((long) fractional.quantity())
                 : selector;
     }
@@ -1644,7 +1631,7 @@ public final class Evaluator {
                         EvaluationFailure.INVALID_PATH, field.spelling());
             };
         }
-        if (target instanceof BlockValue block) {
+        if (target instanceof AnyBlockValue block) {
             return BlockPath.read(block, selector);
         }
         if (target instanceof ImageValue image) {
@@ -1684,7 +1671,7 @@ public final class Evaluator {
                         text.storage().at(text.index() + (int) index - 1));
                 case BinaryValue bytes -> IntegerValue.of(
                         bytes.storage().at(bytes.index() + (int) index - 1));
-                case BlockValue block -> block.storage().at(
+                case AnyBlockValue block -> block.storage().at(
                         block.index() + (int) index - 1);
                 case ImageValue pixels -> ImagePath.read(pixels, selector);
                 case GobValue gob -> GobPath.read(gob, selector);
@@ -1770,7 +1757,7 @@ public final class Evaluator {
 
     private static final class Frame {
 
-        private final BlockValue code;
+        private final AnyBlockValue code;
         private final Context context;
         private final int depth;
         private final Deque<PendingCall> pendingCalls = new ArrayDeque<>();
@@ -1784,7 +1771,7 @@ public final class Evaluator {
 
         private int expressionStartedAt = -1;
 
-        Frame(BlockValue code, Context context, int depth) {
+        Frame(AnyBlockValue code, Context context, int depth) {
             this.code = code;
             this.context = context;
             this.depth = depth;
@@ -1868,7 +1855,7 @@ public final class Evaluator {
         }
     }
 
-    private static java.util.Set<String> namesOwnedBy(FunctionValue function) {
+    private static java.util.Set<String> namesOwnedBy(DefinedFunctionValue function) {
         java.util.Set<String> owned = new java.util.HashSet<>();
         function.parameters().forEach(
                 parameter -> owned.add(parameter.name().toLowerCase(Locale.ROOT)));

@@ -33,8 +33,8 @@ public class DelectNative extends DefaultNative {
             arguments.get(2).requireChangeable();
             return Delect.read(
                     (ObjectValue) arguments.getFirst(),
-                    (BlockValue) arguments.get(1),
-                    (BlockValue) arguments.get(2),
+                    (AnyBlockValue) arguments.get(1),
+                    (AnyBlockValue) arguments.get(2),
                     refinements.contains("all"),
                     evaluator, context);
         };

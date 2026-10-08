@@ -1,6 +1,6 @@
 package org.jebol.domain.value;
 
-public sealed interface RebolNumber extends Value permits IntegerValue, DecimalValue {
+public sealed interface RebolNumber extends Value permits IntegerValue, AnyDecimalValue {
 
     Value combinedWithANumber(Value right, ArithmeticOperation operation);
 
@@ -12,7 +12,7 @@ public sealed interface RebolNumber extends Value permits IntegerValue, DecimalV
     default Value arithmetic(Value right, ArithmeticOperation operation) {
         return switch (right) {
             case IntegerValue ignored -> combinedWithANumber(right, operation);
-            case DecimalValue ignored -> combinedWithANumber(right, operation);
+            case AnyDecimalValue ignored -> combinedWithANumber(right, operation);
             case CharacterValue ignored -> combinedWithANumber(right, operation);
             case MoneyValue amount -> asMoneyInTheCurrencyOf(amount).orElseThrow()
                     .arithmetic(amount, operation);

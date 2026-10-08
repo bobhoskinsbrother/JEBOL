@@ -47,11 +47,11 @@ class WhatEachConditionalNativeDeclaresTest {
         return IntegerValue.of(2);
     }
 
-    private BlockValue aBlockHoldingOne() {
+    private AnyBlockValue aBlockHoldingOne() {
         return BlockValue.block(List.of(IntegerValue.of(1)));
     }
 
-    private BlockValue anEmptyBlock() {
+    private AnyBlockValue anEmptyBlock() {
         return BlockValue.block(List.of());
     }
 
@@ -158,7 +158,7 @@ class WhatEachConditionalNativeDeclaresTest {
         @Test
         @DisplayName("with /only a block branch comes back unevaluated")
         void onlyHandsTheBlockBack() {
-            BlockValue branch = aBlockHoldingOne();
+            AnyBlockValue branch = aBlockHoldingOne();
             assertThat(answerOf(new IfNative(), ONLY, yes(), branch)).isSameAs(branch);
             assertThat(answerOf(new UnlessNative(), ONLY, no(), branch)).isSameAs(branch);
         }
@@ -182,8 +182,8 @@ class WhatEachConditionalNativeDeclaresTest {
         @Test
         @DisplayName("with /only the chosen block comes back unevaluated")
         void onlyHandsTheChosenBlockBack() {
-            BlockValue first = aBlockHoldingOne();
-            BlockValue second = anEmptyBlock();
+            AnyBlockValue first = aBlockHoldingOne();
+            AnyBlockValue second = anEmptyBlock();
             assertThat(answerOf(new EitherNative(), ONLY, yes(), first, second))
                     .isSameAs(first);
             assertThat(answerOf(new EitherNative(), ONLY, no(), first, second))
@@ -275,7 +275,7 @@ class WhatEachConditionalNativeDeclaresTest {
         @Test
         @DisplayName("switch with no match and no /default is none")
         void switchWithNoMatch() {
-            BlockValue cases = BlockValue.block(List.of(one(), aBlockHoldingOne()));
+            AnyBlockValue cases = BlockValue.block(List.of(one(), aBlockHoldingOne()));
             assertThat(answerOf(new SwitchNative(), NOTHING, IntegerValue.of(9), cases))
                     .isEqualTo(NoneValue.none());
         }
@@ -283,7 +283,7 @@ class WhatEachConditionalNativeDeclaresTest {
         @Test
         @DisplayName("switch with a match but no block after it is none")
         void switchWithAMatchAndNoBranch() {
-            BlockValue cases = BlockValue.block(List.of(one()));
+            AnyBlockValue cases = BlockValue.block(List.of(one()));
             assertThat(answerOf(new SwitchNative(), NOTHING, one(), cases))
                     .isEqualTo(NoneValue.none());
         }

@@ -29,7 +29,7 @@ public class ParseNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.get(1)) {
-            case BlockValue rules -> Parser.over(
+            case AnyBlockValue rules -> Parser.over(
                             evaluator, context, arguments.getFirst(), refinements.contains("case"))
                     .answerFor(rules);
             case Value other -> refuseTheArgument(other, "rules");

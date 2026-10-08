@@ -111,7 +111,7 @@ public class ResolveNative extends DefaultNative {
                             .collect(Collectors.toUnmodifiableSet()),
                     true);
         }
-        if (onlyThese instanceof BlockValue only) {
+        if (onlyThese instanceof AnyBlockValue only) {
             return new WordsToResolve(1, only.remaining().stream()
                     .filter(word -> word instanceof WordValue || word instanceof SetWordValue)
                     .map(word -> ((AnyWordValue) word).canonical())

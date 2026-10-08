@@ -52,12 +52,12 @@ public class DoNative extends DefaultNative {
     private Value oneStepThrough(
             Value value, AnyWordValue var, Evaluator evaluator, Context context) {
 
-        Optional<BlockValue> steppable = steppable(value, evaluator, context);
+        Optional<AnyBlockValue> steppable = steppable(value, evaluator, context);
         if (steppable.isEmpty()) {
             var.boundSlot().setValue(NoneValue.none());
             return value;
         }
-        BlockValue stepping = steppable.get();
+        AnyBlockValue stepping = steppable.get();
         if (stepping.atTail()) {
             var.boundSlot().setValue(stepping);
             return UnsetValue.unset();
@@ -67,12 +67,12 @@ public class DoNative extends DefaultNative {
         return taken.value();
     }
 
-    private Optional<BlockValue> steppable(
+    private Optional<AnyBlockValue> steppable(
             Value value, Evaluator evaluator, Context context) {
 
         return switch (value) {
-            case BlockValue block when block.datatype() == Datatype.BLOCK
-                    || block.datatype() == Datatype.PAREN -> Optional.of(block);
+            case BlockValue block -> Optional.of(block);
+            case ParenValue paren -> Optional.of(paren);
             case StringValue text ->
                     Optional.of(loadedForStepping(text.text(), evaluator, context));
             default -> Optional.empty();
@@ -81,24 +81,21 @@ public class DoNative extends DefaultNative {
 
     private Value evaluated(Value value, Evaluator evaluator, Context context) {
         return switch (value) {
-            case BlockValue block when block.datatype() == Datatype.BLOCK
-                    || block.datatype() == Datatype.PAREN ->
-                    evaluator.evaluateOrRaise(block, context);
+            case BlockValue block -> evaluator.evaluateOrRaise(block, context);
+            case ParenValue paren -> evaluator.evaluateOrRaise(paren, context);
             case AnyStringValue address when address.isALocation() ->
                     runAsAScript(address, evaluator);
             case AnyStringValue text -> evaluatedSource(text.text(), evaluator);
             case BinaryValue bytes -> doneAsAScript(bytes, evaluator);
             case ErrorValue built -> throw new Raised(built.raisedAsItStands());
-            case AnyWordValue word when word.fetchesItsValue() ->
+            case AnyWordValue word when word.looksUpItsDeclaration() ->
                     evaluator.valueOfWordIn(word, context);
             case LitWordValue quoted -> quoted.asWord();
-            case BlockValue quoted when quoted.datatype() == Datatype.LIT_PATH ->
-                    quoted.as(Datatype.PATH);
-            case BlockValue path when path.datatype() == Datatype.PATH ->
-                    evaluator.valueOfPathIn(path, context);
+            case LitPathValue quoted -> quoted.asPath();
+            case PathValue path -> evaluator.valueOfPathIn(path, context);
             case SetWordValue assigning ->
                     raiseHalfAnExpression(assigning);
-            case BlockValue assigning when assigning.datatype() == Datatype.SET_PATH ->
+            case SetPathValue assigning ->
                     raiseHalfAnExpression(assigning);
             default -> value;
         };
@@ -118,7 +115,7 @@ public class DoNative extends DefaultNative {
         if (read instanceof AnyWordValue why) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, why.spelling());
         }
-        List<Value> parts = ((BlockValue) read).remaining();
+        List<Value> parts = ((AnyBlockValue) read).remaining();
         refuseAScriptThatNeedsANewerInterpreter(parts.getFirst(), evaluator);
         return evaluatedSource(theBodyOf(parts), evaluator);
     }
@@ -154,7 +151,7 @@ public class DoNative extends DefaultNative {
         return evaluator.applyFunction(doStar, List.of(address));
     }
 
-    private BlockValue loadedForStepping(
+    private AnyBlockValue loadedForStepping(
             String source, Evaluator evaluator, Context context) {
 
         TranscodeResult read = evaluator.read(source);

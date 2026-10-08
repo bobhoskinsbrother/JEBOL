@@ -1,8 +1,8 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Value;
@@ -33,8 +33,7 @@ public class ProtectNative extends ProtectingNative {
                 return target;
             }
             if (refinements.contains("hide") && refinements.contains("words")
-                    && target instanceof BlockValue names
-                    && names.datatype() == Datatype.BLOCK) {
+                    && target instanceof BlockValue names) {
                 hideEachWordIn(names);
                 return target;
             }
@@ -47,12 +46,12 @@ public class ProtectNative extends ProtectingNative {
     }
 
     private boolean namesAField(Value target, Set<String> refinements) {
-        return target instanceof BlockValue path
+        return target instanceof AnyBlockValue path
                 && path.datatype().isAnyPath()
                 && !refinements.contains("values");
     }
 
-    private void hideEachWordIn(BlockValue names) {
+    private void hideEachWordIn(AnyBlockValue names) {
         names.remaining().stream()
                 .filter(AnyWordValue.class::isInstance)
                 .map(AnyWordValue.class::cast)

@@ -1,5 +1,6 @@
 package org.jebol.domain.read;
 
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.NoneValue;
@@ -88,8 +89,8 @@ public final class Transcoder {
             int lineEndedOn,
             Set<Integer> positionsThatBeginALine) {
 
-        public BlockValue asABlock() {
-            BlockValue block = BlockValue.block(valuesReadBeforeStopping);
+        public AnyBlockValue asABlock() {
+            AnyBlockValue block = BlockValue.block(valuesReadBeforeStopping);
             for (int position : positionsThatBeginALine) {
                 block.storage().setLineBreakAt(position, true);
             }
@@ -153,7 +154,7 @@ public final class Transcoder {
         }
 
         @Override
-        public Value functionMadeFrom(BlockValue spec, BlockValue body) {
+        public Value functionMadeFrom(AnyBlockValue spec, AnyBlockValue body) {
             return NoneValue.none();
         }
     }

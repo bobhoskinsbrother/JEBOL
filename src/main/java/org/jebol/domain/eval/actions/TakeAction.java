@@ -93,7 +93,7 @@ public class TakeAction extends DefaultNative implements ActionValue {
 
     private Value deepenedIfAsked(Value taken, Set<String> refinements) {
         return refinements.contains("deep") && !(taken instanceof ObjectValue)
-                ? taken.copied(taken instanceof BlockValue)
+                ? taken.copied(taken instanceof AnyBlockValue)
                 : taken;
     }
 }

@@ -4,9 +4,8 @@ import org.jebol.domain.parse.ParseWalk;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.WordValue;
 
 import java.util.List;
 
@@ -79,7 +78,6 @@ final class Change extends DeclaredKeyword {
         int lastRuleAt = wholeBlock ? replacementSlot + 1 : replacementSlot;
         Value replacement = walk.theValueToInsert(rules.get(lastRuleAt));
         List<Value> putting = !wholeBlock && replacement instanceof BlockValue spread
-                && spread.datatype() == Datatype.BLOCK
                 ? spread.remaining()
                 : List.of(replacement);
         walk.removeBetween(begin, howMany);
@@ -98,15 +96,13 @@ final class Change extends DeclaredKeyword {
     }
 
     private static boolean saysToPutTheBlockInWhole(List<Value> rules, int slot) {
-        return rules.get(slot) instanceof AnyWordValue modifier
-                && modifier.datatype() == Datatype.WORD
+        return rules.get(slot) instanceof WordValue modifier
                 && modifier.canonical().equals(WHOLE)
                 && slot + 1 < rules.size();
     }
 
     private static void refuseTheModifierBeforeTheRule(Value rule) {
-        if (rule instanceof AnyWordValue misplaced
-                && misplaced.datatype() == Datatype.WORD
+        if (rule instanceof WordValue misplaced
                 && misplaced.canonical().equals(WHOLE)) {
             throw Raised.of(EvaluationFailure.PARSE_RULE,
                     "only says how to put the replacement in, so it goes "

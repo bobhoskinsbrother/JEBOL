@@ -19,13 +19,13 @@ public sealed interface TranscodeResult {
     boolean succeeded();
 
     /** The values read, present only on success. */
-    Optional<BlockValue> values();
+    Optional<AnyBlockValue> values();
 
     /** The failure, present only on failure. */
     Optional<ErrorValue> error();
 
     /** Every value in the source, at the head of a fresh block. */
-    record Success(BlockValue block) implements TranscodeResult {
+    record Success(AnyBlockValue block) implements TranscodeResult {
 
         public Success {
             if (block == null) {
@@ -39,7 +39,7 @@ public sealed interface TranscodeResult {
         }
 
         @Override
-        public Optional<BlockValue> values() {
+        public Optional<AnyBlockValue> values() {
             return Optional.of(block);
         }
 
@@ -69,7 +69,7 @@ public sealed interface TranscodeResult {
         }
 
         @Override
-        public Optional<BlockValue> values() {
+        public Optional<AnyBlockValue> values() {
             return Optional.empty();
         }
 

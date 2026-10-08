@@ -3,7 +3,7 @@ package org.jebol.domain.value;
 import java.util.Set;
 
 public sealed interface RebolSeries extends Value
-        permits AnyStringValue, BinaryValue, BlockValue, ImageValue, GobValue, VectorValue {
+        permits AnyStringValue, BinaryValue, AnyBlockValue, ImageValue, GobValue, VectorValue {
 
     int index();
 
@@ -91,7 +91,7 @@ public sealed interface RebolSeries extends Value
         return switch (given) {
             case PairValue ignored -> throw Raised.of(EvaluationFailure.INVALID_ARG, given);
             case IntegerValue number -> number.magnitude();
-            case DecimalValue number -> (long) number.quantity();
+            case AnyDecimalValue number -> (long) number.quantity();
             case LogicValue yesOrNo -> (yesOrNo.isTruthy() ? 1 : 2) - (countingFromOne ? 0 : 1);
             default -> 1;
         };
@@ -120,9 +120,8 @@ public sealed interface RebolSeries extends Value
             }
             return count.magnitude();
         }
-        if (howMuch instanceof DecimalValue(double quantity, Datatype datatype)
-                && datatype != Datatype.PERCENT) {
-            return (long) quantity;
+        if (howMuch instanceof DecimalValue count) {
+            return (long) count.quantity();
         }
         if (!(howMuch instanceof RebolSeries upTo) || !sharesStorageWith(upTo)) {
             throw Raised.of(EvaluationFailure.INVALID_PART, howMuch);

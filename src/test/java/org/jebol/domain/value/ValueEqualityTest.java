@@ -82,7 +82,7 @@ class ValueEqualityTest {
         @DisplayName("a block! and a paren! with the same items are not ==")
         void blockAndParenAreDifferent() {
             BlockValue asBlock = BlockValue.block(IntegerValue.of(1));
-            assertThat(asBlock.as(Datatype.PAREN)).isNotEqualTo(asBlock);
+            assertThat(ParenValue.of(asBlock.remaining())).isNotEqualTo(asBlock);
         }
 
         @Test

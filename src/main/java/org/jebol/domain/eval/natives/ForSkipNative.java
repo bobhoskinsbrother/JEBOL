@@ -2,7 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.AnyWordValue;
@@ -30,6 +30,6 @@ public class ForSkipNative extends SteppingThroughNative {
                 evaluator,
                 (AnyWordValue) arguments.get(0),
                 (int) Comparison.asDouble(arguments.get(1)),
-                (BlockValue) arguments.get(2));
+                (AnyBlockValue) arguments.get(2));
     }
 }

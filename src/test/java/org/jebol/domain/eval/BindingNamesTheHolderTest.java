@@ -1,10 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.Interpreter;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.AnyWordValue;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +14,7 @@ class BindingNamesTheHolderTest {
     private static final String WORD = "counted";
 
     private static AnyWordValue bindOneWord(String spelling, Context into) {
-        var block = org.jebol.domain.value.BlockValue.block(
+        var block = BlockValue.block(
                 java.util.List.of(WordValue.of(spelling)));
         return (AnyWordValue) Binder.bind(block, into).remaining().getFirst();
     }
@@ -88,10 +85,10 @@ class BindingNamesTheHolderTest {
         outer.register(WORD, IntegerValue.of(1));
         Context target = Context.childOf(outer);
 
-        var nested = org.jebol.domain.value.BlockValue.block(java.util.List.of(
-                org.jebol.domain.value.BlockValue.block(
+        var nested = BlockValue.block(java.util.List.of(
+                BlockValue.block(
                         java.util.List.of(WordValue.of(WORD)))));
-        var inner = (org.jebol.domain.value.BlockValue)
+        var inner = (AnyBlockValue)
                 Binder.bind(nested, target).remaining().getFirst();
 
         assertThat(((AnyWordValue) inner.remaining().getFirst()).binding())

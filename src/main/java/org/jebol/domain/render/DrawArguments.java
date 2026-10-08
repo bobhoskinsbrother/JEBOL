@@ -1,6 +1,6 @@
 package org.jebol.domain.render;
 
-import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.AnyDecimalValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.TupleValue;
@@ -40,7 +40,7 @@ final class DrawArguments {
             return Optional.empty();
         }
         return switch (arguments.get(slot)) {
-            case DecimalValue fraction -> Optional.of(fraction.quantity());
+            case AnyDecimalValue fraction -> Optional.of(fraction.quantity());
             case IntegerValue whole -> Optional.of((double) whole.magnitude());
             default -> Optional.empty();
         };
@@ -54,7 +54,7 @@ final class DrawArguments {
 
     double numberIn(List<Value> arguments, double whenAbsent) {
         for (Value each : arguments) {
-            if (each instanceof DecimalValue fraction) {
+            if (each instanceof AnyDecimalValue fraction) {
                 return fraction.quantity();
             }
             if (each instanceof IntegerValue(long magnitude)) {
@@ -66,14 +66,14 @@ final class DrawArguments {
 
     List<Double> everyNumberIn(List<Value> arguments) {
         return arguments.stream()
-                .filter(one -> one instanceof DecimalValue || one instanceof IntegerValue)
+                .filter(one -> one instanceof AnyDecimalValue || one instanceof IntegerValue)
                 .map(this::asNumber)
                 .toList();
     }
 
     double asNumber(Value value) {
         return switch (value) {
-            case DecimalValue fraction -> fraction.quantity();
+            case AnyDecimalValue fraction -> fraction.quantity();
             case IntegerValue whole -> whole.magnitude();
             default -> 0;
         };

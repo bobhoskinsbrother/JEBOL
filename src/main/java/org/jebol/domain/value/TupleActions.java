@@ -44,8 +44,7 @@ public final class TupleActions {
         int width = theirs == null
                 ? ours.segmentCount()
                 : Math.max(ours.segmentCount(), theirs.segmentCount());
-        boolean fractional = right.datatype() == Datatype.DECIMAL
-                || right.datatype() == Datatype.PERCENT;
+        boolean fractional = right instanceof AnyDecimalValue;
         double amount = theirs == null ? Comparison.asDouble(right) : 0;
 
         int[] answer = new int[width];
@@ -58,7 +57,7 @@ public final class TupleActions {
     }
 
     private boolean aPlainNumber(Value right) {
-        return right instanceof IntegerValue || right instanceof DecimalValue;
+        return right instanceof IntegerValue || right instanceof AnyDecimalValue;
     }
 
     private void refuseATimeBesideATuple(Value left, Value right) {

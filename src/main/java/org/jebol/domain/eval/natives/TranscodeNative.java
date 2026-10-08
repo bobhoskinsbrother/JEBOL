@@ -90,7 +90,7 @@ public class TranscodeNative extends DefaultNative {
                 error.subject().ifPresent(inside -> madeWhereTheCallIs(inside, evaluator));
                 return evaluator.madeWhereTheCallIs(error);
             }
-            case BlockValue block -> {
+            case AnyBlockValue block -> {
                 for (int at = 1; at <= block.storageLength(); at++) {
                     block.storage().set(at, madeWhereTheCallIs(block.storage().at(at), evaluator));
                 }

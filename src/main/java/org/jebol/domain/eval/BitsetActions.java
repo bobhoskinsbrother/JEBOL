@@ -111,7 +111,7 @@ public final class BitsetActions implements Actions {
     }
 
     private static void refuseWhatNamesNoRange(Value range) {
-        boolean allowed = range instanceof BlockValue
+        boolean allowed = range instanceof AnyBlockValue
                 || range instanceof BinaryValue
                 || range instanceof CharacterValue
                 || range instanceof StringValue;
@@ -165,7 +165,7 @@ public final class BitsetActions implements Actions {
                     new byte[(bitAsked(room.magnitude()) + 7) / 8]);
             case BinaryValue octets -> BitsetValue.of(octets.octetsFromHere());
             case BitsetValue existing -> existing.duplicate();
-            case BlockValue members -> fromBlock(members);
+            case AnyBlockValue members -> fromBlock(members);
             default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
                     Molder.mold(source) + " names no characters a set could hold");
         };
@@ -176,23 +176,23 @@ public final class BitsetActions implements Actions {
             return BitsetValue.of(withBitSet(new byte[0], bitAsked(magnitude)));
         }
         if (!(source instanceof CharacterValue || source instanceof AnyStringValue
-                || source instanceof BinaryValue || source instanceof BlockValue)) {
+                || source instanceof BinaryValue || source instanceof AnyBlockValue)) {
             throw Raised.of(EvaluationFailure.INVALID_TYPE, Molder.mold(source));
         }
         return (BitsetValue) madeFrom(source);
     }
 
-    private static Value fromBlock(BlockValue written) {
+    private static Value fromBlock(AnyBlockValue written) {
         List<Value> items = written.remaining();
         boolean complemented = !items.isEmpty()
                 && items.getFirst() instanceof AnyWordValue word
                 && word.canonical().equals("not");
-        BlockValue rest = complemented ? written.atIndex(written.index() + 1) : written;
+        AnyBlockValue rest = complemented ? written.atIndex(written.index() + 1) : written;
         BitsetValue set = BitsetValue.of(octetsNamedBy(rest.remaining(), written));
         return complemented ? set.complemented() : set;
     }
 
-    private static byte[] octetsNamedBy(List<Value> specs, BlockValue whole) {
+    private static byte[] octetsNamedBy(List<Value> specs, AnyBlockValue whole) {
         byte[] octets = new byte[0];
         for (int at = 0; at < specs.size(); at++) {
             Value spec = specs.get(at);
@@ -251,7 +251,7 @@ public final class BitsetActions implements Actions {
             }
             return points;
         }
-        if (asked instanceof BlockValue specs) {
+        if (asked instanceof AnyBlockValue specs) {
             int[] points = codePointsIn(specs);
             for (int point : points) {
                 bitAsked(point);
@@ -261,7 +261,7 @@ public final class BitsetActions implements Actions {
         throw Raised.of(EvaluationFailure.INVALID_TYPE, Molder.mold(asked));
     }
 
-    private static int[] codePointsIn(BlockValue written) {
+    private static int[] codePointsIn(AnyBlockValue written) {
         List<Value> items = written.remaining();
         List<Integer> points = new ArrayList<>();
         for (int at = 0; at < items.size(); at++) {

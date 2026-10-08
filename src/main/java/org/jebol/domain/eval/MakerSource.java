@@ -1,6 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DatatypeValue;
@@ -43,7 +43,7 @@ public interface MakerSource {
         }
 
         @Override
-        public Value makeFunctionFrom(Value function, BlockValue spec) {
+        public Value makeFunctionFrom(Value function, AnyBlockValue spec) {
             throw Raised.cannotUseTheAction(spec, "make");
         }
 

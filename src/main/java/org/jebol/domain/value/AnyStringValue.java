@@ -309,7 +309,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
 
     static List<Value> charactersOf(Value value) {
         if (!(value instanceof AnyStringValue text)) {
-            return value instanceof BlockValue block ? block.remaining() : List.of(value);
+            return value instanceof AnyBlockValue block ? block.remaining() : List.of(value);
         }
         return text.text().codePoints().<Value>mapToObj(CharacterValue::of).toList();
     }

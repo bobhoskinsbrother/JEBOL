@@ -14,7 +14,7 @@ public sealed interface Value permits
         NoneValue,
         LogicValue,
         IntegerValue,
-        DecimalValue,
+        AnyDecimalValue,
         MoneyValue,
         CharacterValue,
         PairValue,
@@ -129,8 +129,7 @@ public sealed interface Value permits
     }
 
     default boolean declaresAFieldFindCanReachBy(Value wanted) {
-        return wanted instanceof AnyWordValue word
-                && word.datatype() == Datatype.WORD
+        return wanted instanceof WordValue word
                 && !word.canonical().equals("self")
                 && declaresTheField(word.canonical());
     }
@@ -172,7 +171,7 @@ public sealed interface Value permits
                 Molder.mold(this) + " is not a count of repetitions");
     }
 
-    default BlockValue repeatedInABlock(Value times) {
+    default AnyBlockValue repeatedInABlock(Value times) {
         return BlockValue.block(List.of(this)).repeatedInABlock(times);
     }
 
@@ -232,7 +231,7 @@ public sealed interface Value permits
         return Optional.empty();
     }
 
-    default Optional<DecimalValue> asDecimalNumber() {
+    default Optional<AnyDecimalValue> asDecimalNumber() {
         return Optional.empty();
     }
 
@@ -250,13 +249,13 @@ public sealed interface Value permits
 
     default Value asItStands(Datatype wanted, double quantity) {
         return wanted == Datatype.PERCENT
-                ? DecimalValue.percent(quantity)
+                ? PercentValue.of(quantity)
                 : DecimalValue.of(quantity);
     }
 
     default Value inHundredths(Datatype wanted, double quantity) {
         return wanted == Datatype.PERCENT
-                ? DecimalValue.percent(quantity / 100.0)
+                ? PercentValue.of(quantity / 100.0)
                 : DecimalValue.of(quantity);
     }
 }

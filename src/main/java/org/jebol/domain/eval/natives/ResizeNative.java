@@ -60,10 +60,9 @@ public class ResizeNative extends DefaultNative {
             if (high == 0) {
                 high = scaledFrom(wide, wasHigh, wasWide);
             }
-        } else if (asked instanceof DecimalValue(double quantity, Datatype datatype)
-                && datatype == Datatype.PERCENT) {
-            wide = (int) Math.round(wasWide * quantity);
-            high = (int) Math.round(wasHigh * quantity);
+        } else if (asked instanceof PercentValue scale) {
+            wide = (int) Math.round(wasWide * scale.quantity());
+            high = (int) Math.round(wasHigh * scale.quantity());
         } else {
             wide = (int) Math.round(Arithmetic.asMagnitude(asked));
             high = scaledFrom(wide, wasHigh, wasWide);

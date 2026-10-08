@@ -20,7 +20,7 @@ import java.util.function.Function;
  * resolver: the catalogue lives in the SYSTEM object and the value layer must
  * not reach for it.
  */
-public record StructSpec(BlockValue declaration, List<StructField> fields, int size) {
+public record StructSpec(AnyBlockValue declaration, List<StructField> fields, int size) {
 
     /**
      * One field: what it holds, how many of them, and where they start.
@@ -42,7 +42,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
     }
 
     /** Where a {@code [struct! name]} field finds the layout it names. */
-    public interface LayoutRegistry extends Function<String, Optional<BlockValue>> {
+    public interface LayoutRegistry extends Function<String, Optional<AnyBlockValue>> {
     }
 
     /**
@@ -50,23 +50,22 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
      *
      * @throws StructLayoutRefused when the block declares no struct
      */
-    public static StructSpec of(BlockValue declaration, LayoutRegistry registry) {
+    public static StructSpec of(AnyBlockValue declaration, LayoutRegistry registry) {
         List<Value> written = declaration.remaining();
         int at = 0;
         while (at < written.size() && written.get(at) instanceof AnyStringValue) {
             at++;
         }
-        if (at < written.size() && written.get(at) instanceof BlockValue) {
+        if (at < written.size() && written.get(at) instanceof AnyBlockValue) {
             at++;
         }
         List<StructField> fields = new ArrayList<>();
         List<Value> settled = new ArrayList<>();
         int offset = 0;
         while (at < written.size()) {
-            if (!(written.get(at) instanceof AnyWordValue name)
-                    || name.datatype() != Datatype.WORD
+            if (!(written.get(at) instanceof WordValue name)
                     || at + 1 >= written.size()
-                    || !(written.get(at + 1) instanceof BlockValue declared)) {
+                    || !(written.get(at + 1) instanceof AnyBlockValue declared)) {
                 throw StructLayoutRefused.becauseTheShapeIsWrong(written.get(at),
                         "a struct field is a word and then a block, and position "
                                 + (at + 1) + " is neither");
@@ -89,8 +88,8 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
         return new StructSpec(BlockValue.block(settled), List.copyOf(fields), offset);
     }
 
-    private static BlockValue withTheTypeNameSettledButAnInnerStructLeftAsWritten(
-            BlockValue declared, StructField field) {
+    private static AnyBlockValue withTheTypeNameSettledButAnInnerStructLeftAsWritten(
+            AnyBlockValue declared, StructField field) {
         if (field.type() instanceof StructFieldType.Nested) {
             return declared;
         }
@@ -99,7 +98,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
         return BlockValue.block(written);
     }
 
-    private static StructField fieldNamed(String name, BlockValue declared,
+    private static StructField fieldNamed(String name, AnyBlockValue declared,
             int offset, LayoutRegistry registry) {
         List<Value> written = declared.remaining();
         if (written.isEmpty() || !(written.getFirst() instanceof AnyWordValue typeWord)) {
@@ -117,7 +116,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
         }
         int dimension = 1;
         boolean declaredAsAnArray = false;
-        if (at < written.size() && written.get(at) instanceof BlockValue howMany) {
+        if (at < written.size() && written.get(at) instanceof AnyBlockValue howMany) {
             List<Value> counted = howMany.remaining();
             if (counted.size() != 1 || !(counted.getFirst() instanceof IntegerValue(long magnitude))) {
                 throw StructLayoutRefused.becauseTheFieldIsWrong(declared,
@@ -135,7 +134,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
         return new StructField(name, type, dimension, declaredAsAnArray, offset);
     }
 
-    private static StructSpec layoutInsideOf(String name, BlockValue declared,
+    private static StructSpec layoutInsideOf(String name, AnyBlockValue declared,
             LayoutRegistry registry) {
         List<Value> written = declared.remaining();
         if (written.size() < 2) {
@@ -143,7 +142,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
                     "the field " + name + " says struct! and then says which one");
         }
         Value which = written.get(1);
-        if (which instanceof BlockValue inline) {
+        if (which instanceof AnyBlockValue inline) {
             return of(inline, registry);
         }
         if (which instanceof AnyWordValue registered) {
@@ -157,7 +156,7 @@ public record StructSpec(BlockValue declaration, List<StructField> fields, int s
                         + "nor a registered name");
     }
 
-    private static StructFieldType scalarNamed(String name, BlockValue declared, String typeWord) {
+    private static StructFieldType scalarNamed(String name, AnyBlockValue declared, String typeWord) {
         return switch (typeWord) {
             case "word!" -> new StructFieldType.NamedWord();
             case "rebval!" -> new StructFieldType.LiveValue();

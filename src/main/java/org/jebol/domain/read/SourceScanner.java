@@ -1,10 +1,14 @@
 package org.jebol.domain.read;
 
 import org.jebol.domain.value.BinaryValue;
+import org.jebol.domain.value.AnyBlockValue;
+import org.jebol.domain.value.AnyPathValue;
 import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.ParenValue;
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.AnyDecimalValue;
+import org.jebol.domain.value.PercentValue;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.MapValue;
 import org.jebol.domain.value.NoneValue;
@@ -1489,7 +1493,7 @@ final class SourceScanner {
         } else {
             kind = Datatype.PATH;
         }
-        return BlockValue.path(parts, kind);
+        return AnyPathValue.path(parts, kind);
     }
 
     private Value asPlainWord(Value segment) {
@@ -1555,9 +1559,9 @@ final class SourceScanner {
                     exitingAfterThisValue = true;
                     return inner.values().getLast();
                 }
-                BlockValue block = token == TOKEN_BLOCK
+                AnyBlockValue block = token == TOKEN_BLOCK
                         ? BlockValue.block(inner.values())
-                        : BlockValue.paren(inner.values());
+                        : ParenValue.of(inner.values());
                 return withItsLineStarts(block, inner.lineStarts());
             }
             case TOKEN_INTEGER -> {
@@ -1572,7 +1576,7 @@ final class SourceScanner {
                 }
                 Value read = scanned.decimal(bp, len).orElseThrow(() -> invalid(token, bp, ep));
                 if (at(bp + len - 1) == '%') {
-                    return DecimalValue.percent(((DecimalValue) read).quantity() / 100.0);
+                    return PercentValue.of(((AnyDecimalValue) read).quantity() / 100.0);
                 }
                 return read;
             }
@@ -2014,7 +2018,7 @@ final class SourceScanner {
         return Optional.of(EmailValue.of(written.toString(StandardCharsets.UTF_8)));
     }
 
-    private BlockValue withItsLineStarts(BlockValue block, Set<Integer> starts) {
+    private AnyBlockValue withItsLineStarts(AnyBlockValue block, Set<Integer> starts) {
         for (int position : starts) {
             block.storage().setLineBreakAt(position, true);
         }

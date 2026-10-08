@@ -32,9 +32,8 @@ public class AsColorNative extends DefaultNative {
     private int aChannelRoundingNotTruncating(Value given) {
         double number = switch (given) {
             case IntegerValue whole -> whole.magnitude();
-            case DecimalValue fraction -> fraction.datatype() == Datatype.PERCENT
-                    ? fraction.quantity() * THE_BRIGHTEST_CHANNEL + A_HALF_THAT_ROUNDS_UP
-                    : fraction.quantity() + A_HALF_THAT_ROUNDS_UP;
+            case PercentValue portion -> portion.quantity() * THE_BRIGHTEST_CHANNEL + A_HALF_THAT_ROUNDS_UP;
+            case DecimalValue fraction -> fraction.quantity() + A_HALF_THAT_ROUNDS_UP;
             default -> 0;
         };
         return Math.clamp((int) number, 0, THE_BRIGHTEST_CHANNEL);

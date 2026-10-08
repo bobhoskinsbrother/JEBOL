@@ -37,7 +37,7 @@ public class CatchNative extends DefaultNative {
             Value handled;
             Value carriedName = NoneValue.none();
             try {
-                return evaluator.evaluateOrRaise((BlockValue) arguments.getFirst(), context);
+                return evaluator.evaluateOrRaise((AnyBlockValue) arguments.getFirst(), context);
             } catch (ThrownSignal thrown) {
                 if (letsTheThrowPass(thrown, arguments, refinements)) {
                     throw thrown;
@@ -60,7 +60,7 @@ public class CatchNative extends DefaultNative {
             if (!refinements.contains("with")) {
                 return handled;
             }
-            if (arguments.getLast() instanceof BlockValue block) {
+            if (arguments.getLast() instanceof AnyBlockValue block) {
                 Value answered = evaluator.evaluateOrRaise(block, context);
                 evaluator.setSystemState("last-result", answered);
                 return answered;
@@ -86,7 +86,7 @@ public class CatchNative extends DefaultNative {
         }
         return switch (arguments.get(WHERE_THE_NAMES_ARRIVE)) {
             case AnyWordValue single -> Set.of(single.canonical());
-            case BlockValue several -> several.remaining().stream()
+            case AnyBlockValue several -> several.remaining().stream()
                     .filter(AnyWordValue.class::isInstance)
                     .map(AnyWordValue.class::cast)
                     .map(AnyWordValue::canonical)

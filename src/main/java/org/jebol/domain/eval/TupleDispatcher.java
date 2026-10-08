@@ -42,12 +42,12 @@ final class TupleDispatcher implements Dispatcher {
             }
             return TupleValue.of(shortened);
         }
-        if (!(written instanceof IntegerValue) && !(written instanceof DecimalValue)) {
+        if (!(written instanceof IntegerValue) && !(written instanceof AnyDecimalValue)) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         }
         long amount = written instanceof IntegerValue(long magnitude)
                 ? magnitude
-                : (long) ((DecimalValue) written).quantity();
+                : (long) ((AnyDecimalValue) written).quantity();
         int[] octets = tuple.octetsToTwelve();
         octets[position - 1] = (int) Math.max(0, Math.min(255, amount));
         int kept = position > tuple.shownCount() ? position : tuple.segmentCount();

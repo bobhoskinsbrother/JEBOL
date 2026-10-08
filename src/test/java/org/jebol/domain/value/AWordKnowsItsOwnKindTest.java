@@ -143,19 +143,19 @@ class AWordKnowsItsOwnKindTest {
     class WhatItMeans {
 
         @Test
-        @DisplayName("a word and a get-word fetch the value they name")
-        void aWordAndAGetWordFetch() {
-            assertThat(WordValue.of("a").fetchesItsValue()).isTrue();
-            assertThat(GetWordValue.of("a").fetchesItsValue()).isTrue();
+        @DisplayName("a word and a get-word look up their declaration")
+        void aWordAndAGetWordLookUpTheirDeclaration() {
+            assertThat(WordValue.of("a").looksUpItsDeclaration()).isTrue();
+            assertThat(GetWordValue.of("a").looksUpItsDeclaration()).isTrue();
         }
 
         @Test
-        @DisplayName("no other kind fetches")
-        void nothingElseFetches() {
-            assertThat(SetWordValue.of("a").fetchesItsValue()).isFalse();
-            assertThat(LitWordValue.of("a").fetchesItsValue()).isFalse();
-            assertThat(RefinementValue.of("a").fetchesItsValue()).isFalse();
-            assertThat(IssueValue.of("a").fetchesItsValue()).isFalse();
+        @DisplayName("no other kind looks up its declaration")
+        void nothingElseLooksUpItsDeclaration() {
+            assertThat(SetWordValue.of("a").looksUpItsDeclaration()).isFalse();
+            assertThat(LitWordValue.of("a").looksUpItsDeclaration()).isFalse();
+            assertThat(RefinementValue.of("a").looksUpItsDeclaration()).isFalse();
+            assertThat(IssueValue.of("a").looksUpItsDeclaration()).isFalse();
         }
 
         @Test

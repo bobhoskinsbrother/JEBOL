@@ -37,7 +37,7 @@ public class BindNative extends DefaultNative {
             return switch (arguments.getFirst()) {
                 case AnyWordValue word -> wordBoundInto(
                         word, target, targetGiven instanceof AnyWordValue, addsWhatIsMissing);
-                case BlockValue block -> blockBoundInto(
+                case AnyBlockValue block -> blockBoundInto(
                         block, target, refinements, addsWhatIsMissing);
                 default -> refuseTheArgument(arguments.getFirst(), "word");
             };
@@ -72,8 +72,8 @@ public class BindNative extends DefaultNative {
         return word.boundTo(target.holderOf(word.canonical()));
     }
 
-    private Value blockBoundInto(BlockValue block, Context target,
-            Set<String> refinements, boolean addsWhatIsMissing) {
+    private Value blockBoundInto(AnyBlockValue block, Context target,
+                                 Set<String> refinements, boolean addsWhatIsMissing) {
 
         boolean deeply = !refinements.contains("only");
         if (addsWhatIsMissing) {

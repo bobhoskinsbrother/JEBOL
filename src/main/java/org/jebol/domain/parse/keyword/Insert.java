@@ -2,9 +2,9 @@ package org.jebol.domain.parse.keyword;
 
 import org.jebol.domain.parse.ParseWalk;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.ParenValue;
 import org.jebol.domain.value.Value;
-import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.WordValue;
 
 import java.util.List;
 
@@ -25,7 +25,6 @@ final class Insert extends DeclaredKeyword {
         }
         Value added = walk.theValueToInsert(rules.get(valueAt));
         List<Value> putting = !wholeBlock && added instanceof BlockValue spread
-                && spread.datatype() == Datatype.BLOCK
                 ? spread.remaining()
                 : List.of(added);
         walk.putItemsIntoTheBlockAt(walk.position(), putting);
@@ -36,7 +35,7 @@ final class Insert extends DeclaredKeyword {
     @Override
     public int applyToString(ParseWalk walk, List<Value> rules, int at) {
         Value added = rules.get(at + 1);
-        if (added instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
+        if (added instanceof ParenValue paren) {
             added = walk.evaluateParen(paren);
         }
         int laidIn = walk.putValueIntoTheTextAt(walk.position(), added);
@@ -45,8 +44,7 @@ final class Insert extends DeclaredKeyword {
     }
 
     private static boolean saysToPutTheBlockInWhole(List<Value> rules, int valueAt) {
-        return rules.get(valueAt) instanceof AnyWordValue modifier
-                && modifier.datatype() == Datatype.WORD
+        return rules.get(valueAt) instanceof WordValue modifier
                 && modifier.canonical().equals(WHOLE)
                 && valueAt + 1 < rules.size();
     }

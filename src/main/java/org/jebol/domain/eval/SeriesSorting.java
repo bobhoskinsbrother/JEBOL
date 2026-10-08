@@ -2,6 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.BinaryStorage;
 import org.jebol.domain.value.BinaryValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.EvaluationFailure;
@@ -75,7 +76,7 @@ public final class SeriesSorting {
         } else {
             records = mergeSortedTakingFromTheLeftUnlessOutOfOrder(records, ordering);
         }
-        if (series instanceof BlockValue block) {
+        if (series instanceof AnyBlockValue block) {
             putTheRecordsBackWithTheirMarks(block, records, whereEachRecordBegan, step);
             return series;
         }
@@ -92,8 +93,8 @@ public final class SeriesSorting {
         return series;
     }
 
-    private void putTheRecordsBackWithTheirMarks(BlockValue block, List<List<Value>> records,
-            Map<List<Value>, Integer> whereEachRecordBegan, int step) {
+    private void putTheRecordsBackWithTheirMarks(AnyBlockValue block, List<List<Value>> records,
+                                                 Map<List<Value>, Integer> whereEachRecordBegan, int step) {
         List<Boolean> marksBefore = new ArrayList<>(records.size() * step);
         for (int at = 0; at < records.size() * step; at++) {
             marksBefore.add(block.storage().breaksLineAt(block.index() + at));
@@ -118,7 +119,7 @@ public final class SeriesSorting {
         if (asked instanceof IntegerValue column) {
             return compareByColumns(left, right, List.of(column));
         }
-        if (asked instanceof BlockValue columns) {
+        if (asked instanceof AnyBlockValue columns) {
             return compareByColumns(left, right, columns.remaining());
         }
         return wholeRecord
@@ -144,7 +145,7 @@ public final class SeriesSorting {
             }
             return StringValue.of(characters.toString());
         }
-        BlockValue lent = BlockValue.block(record);
+        AnyBlockValue lent = BlockValue.block(record);
         lent.storage().protectFromChange(true);
         return lent;
     }

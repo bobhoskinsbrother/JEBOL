@@ -4,9 +4,10 @@ import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.ScreenEvent;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.AnyDecimalValue;
 import org.jebol.domain.value.EventCatalogue;
 import org.jebol.domain.value.EventValue;
 import org.jebol.domain.value.GobValue;
@@ -59,7 +60,7 @@ public class WaitNative extends PortWakingNative {
             if (asked instanceof PortValue port && port.schemeName().equals("event")) {
                 return waitedOnTheScreen(port, evaluator);
             }
-            List<Value> waitedOn = asked instanceof BlockValue block
+            List<Value> waitedOn = asked instanceof AnyBlockValue block
                     ? evaluator.evaluateEachOrRaise(block, context)
                     : List.of(asked);
             if (whicheverPortWoke(waitedOn, evaluator) instanceof PortValue woken) {
@@ -74,7 +75,7 @@ public class WaitNative extends PortWakingNative {
     private Optional<Long> howLongToWaitAmong(List<Value> waitedOn) {
         return waitedOn.stream()
                 .filter(each -> each instanceof IntegerValue
-                        || each instanceof DecimalValue
+                        || each instanceof AnyDecimalValue
                         || each instanceof TimeValue)
                 .findFirst()
                 .map(this::millisecondsIn);
@@ -91,7 +92,7 @@ public class WaitNative extends PortWakingNative {
                 || !queue.fieldValue("awake").datatype().isAnyFunction()) {
             return NoneValue.none();
         }
-        BlockValue ports = BlockValue.block(new ArrayList<>(waitedOn));
+        AnyBlockValue ports = BlockValue.block(new ArrayList<>(waitedOn));
         while (true) {
             Value said = evaluator.applyFunction(queue.fieldValue("awake"), List.of(queue, ports));
             if (said instanceof LogicValue(boolean truth) && truth) {
@@ -105,7 +106,7 @@ public class WaitNative extends PortWakingNative {
     }
 
     private Value theFirstWokenAmongEmptyingTheWakeList(List<Value> waitedOn, PortValue queue) {
-        List<Value> woken = theWakeListOf(queue).map(BlockValue::remaining).orElse(List.of());
+        List<Value> woken = theWakeListOf(queue).map(AnyBlockValue::remaining).orElse(List.of());
         Value answer = waitedOn.stream()
                 .filter(one -> one instanceof PortValue && woken.contains(one))
                 .findFirst()
@@ -114,13 +115,13 @@ public class WaitNative extends PortWakingNative {
         return answer;
     }
 
-    private Optional<BlockValue> theWakeListOf(PortValue queue) {
-        return queue.fieldValue("data") instanceof BlockValue list
+    private Optional<AnyBlockValue> theWakeListOf(PortValue queue) {
+        return queue.fieldValue("data") instanceof AnyBlockValue list
                 ? Optional.of(list)
                 : Optional.empty();
     }
 
-    private void emptied(BlockValue list) {
+    private void emptied(AnyBlockValue list) {
         while (list.storage().length() > 0) {
             list.storage().removeAt(1);
         }

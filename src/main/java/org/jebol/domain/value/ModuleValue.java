@@ -43,7 +43,7 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
     }
 
     public List<String> exportedNames() {
-        if (!(headerField("exports") instanceof BlockValue exports)) {
+        if (!(headerField("exports") instanceof AnyBlockValue exports)) {
             return List.of();
         }
         return exports.remaining().stream()

@@ -42,7 +42,7 @@ public final class ParseTargets {
     }
 
     public static AnyWordValue refuseAnythingButAWordOrAGetWord(Value read) {
-        if (read instanceof AnyWordValue word && word.fetchesItsValue()) {
+        if (read instanceof AnyWordValue word && word.looksUpItsDeclaration()) {
             return word;
         }
         throw somewhereThatIsNotAVariable(read);

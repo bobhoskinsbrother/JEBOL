@@ -3,6 +3,7 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
@@ -64,7 +65,7 @@ public class RequestFileNative extends WindowNative {
 
     private List<String> filterPairsIn(List<Value> arguments, Set<String> refinements) {
         return argumentOf("filter", 0, arguments, refinements)
-                .map(listed -> ((BlockValue) listed).remaining())
+                .map(listed -> ((AnyBlockValue) listed).remaining())
                 .map(this::pairedUp)
                 .orElse(List.of());
     }

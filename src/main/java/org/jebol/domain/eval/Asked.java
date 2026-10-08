@@ -31,7 +31,7 @@ public record Asked(
                 .orElse(items);
     }
 
-    public List<Value> theWantedItemsOf(BlockValue added) {
+    public List<Value> theWantedItemsOf(AnyBlockValue added) {
         return howMuchOf(added, limitAsked)
                 .map(count -> {
                     List<Value> whole = added.head().remaining();
@@ -99,11 +99,10 @@ public record Asked(
             }
             return Optional.of(magnitude);
         }
-        if (limit instanceof DecimalValue fraction
-                && fraction.datatype() != Datatype.PERCENT) {
+        if (limit instanceof DecimalValue fraction) {
             return Optional.of((long) Comparison.asDouble(fraction));
         }
-        if (limit instanceof DecimalValue || limit instanceof PairValue) {
+        if (limit instanceof AnyDecimalValue || limit instanceof PairValue) {
             throw Raised.of(EvaluationFailure.INVALID_PART, limit);
         }
         if (limit instanceof RebolSeries upTo) {

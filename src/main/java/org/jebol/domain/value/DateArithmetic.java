@@ -47,9 +47,9 @@ public final class DateArithmetic {
                 ? !operation.multiplies()
                 : operation.subtractsOneFromTheOther();
         if (!movesADate
-                || span.datatype() != Datatype.INTEGER
-                && span.datatype() != Datatype.DECIMAL
-                && span.datatype() != Datatype.TIME) {
+                || !(span instanceof IntegerValue
+                        || span instanceof DecimalValue
+                        || span instanceof TimeValue)) {
             throw Raised.cannotUse(moment, "date arithmetic");
         }
     }
@@ -74,7 +74,7 @@ public final class DateArithmetic {
     private static double quantityOf(Value span) {
         return switch (span) {
             case IntegerValue(long magnitude) -> magnitude;
-            case DecimalValue(double quantity, Datatype ignored) -> quantity;
+            case AnyDecimalValue fraction -> fraction.quantity();
             default -> throw Raised.cannotUse(span, "date arithmetic");
         };
     }

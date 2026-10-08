@@ -194,7 +194,7 @@ public final class Comparison {
         if (left.datatype() != right.datatype()) {
             return false;
         }
-        if (left instanceof DecimalValue first && right instanceof DecimalValue second) {
+        if (left instanceof AnyDecimalValue first && right instanceof AnyDecimalValue second) {
             return !Double.isNaN(first.quantity())
                     && Double.compare(first.quantity(), second.quantity()) == 0;
         }
@@ -213,7 +213,7 @@ public final class Comparison {
         if (left instanceof ObjectValue first && right instanceof ObjectValue second) {
             return strictFields(first, second);
         }
-        if (left instanceof BlockValue first && right instanceof BlockValue second) {
+        if (left instanceof AnyBlockValue first && right instanceof AnyBlockValue second) {
             List<Value> ours = first.remaining();
             List<Value> theirs = second.remaining();
             if (ours.size() != theirs.size()) {
@@ -241,7 +241,7 @@ public final class Comparison {
         if (left.datatype() != right.datatype()) {
             return false;
         }
-        if (left instanceof DecimalValue first && right instanceof DecimalValue second) {
+        if (left instanceof AnyDecimalValue first && right instanceof AnyDecimalValue second) {
             return bothAreNotANumber(first, second)
                     || nearlyTheSameNumber(first.quantity(), second.quantity(),
                             STEPS_ALLOWED_INSIDE_A_SERIES);
@@ -249,7 +249,7 @@ public final class Comparison {
         return strictlyEqual(left, right);
     }
 
-    private static boolean bothAreNotANumber(DecimalValue first, DecimalValue second) {
+    private static boolean bothAreNotANumber(AnyDecimalValue first, AnyDecimalValue second) {
         return Double.isNaN(first.quantity()) && Double.isNaN(second.quantity());
     }
 
@@ -271,7 +271,7 @@ public final class Comparison {
         if (left instanceof AnyWordValue first && right instanceof AnyWordValue second) {
             return first.isSameAs(second);
         }
-        if (left instanceof DecimalValue first && right instanceof DecimalValue second) {
+        if (left instanceof AnyDecimalValue first && right instanceof AnyDecimalValue second) {
             return Double.doubleToRawLongBits(first.quantity())
                     == Double.doubleToRawLongBits(second.quantity());
         }
@@ -319,7 +319,7 @@ public final class Comparison {
         if (left instanceof TupleValue leftTuple && right instanceof TupleValue rightTuple) {
             return orderingOfTuples(leftTuple, rightTuple);
         }
-        if (left instanceof BlockValue leftBlock && right instanceof BlockValue rightBlock) {
+        if (left instanceof AnyBlockValue leftBlock && right instanceof AnyBlockValue rightBlock) {
             return orderingOfBlocks(leftBlock, rightBlock);
         }
         if (left instanceof CharacterValue) {
@@ -344,7 +344,7 @@ public final class Comparison {
 
     private static final MoneyCoercion MONEY = new MoneyCoercion();
 
-    private static int orderingOfBlocks(BlockValue left, BlockValue right) {
+    private static int orderingOfBlocks(AnyBlockValue left, AnyBlockValue right) {
         List<Value> ours = left.remaining();
         List<Value> theirs = right.remaining();
         for (int at = 0; at < ours.size(); at++) {
@@ -370,7 +370,7 @@ public final class Comparison {
                 || !ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(right.datatype())) {
             return compareForSorting(left, right, false);
         }
-        if (left instanceof DecimalValue || right instanceof DecimalValue) {
+        if (left instanceof AnyDecimalValue || right instanceof AnyDecimalValue) {
             double first = asDouble(left);
             double second = asDouble(right);
             return nearlyTheSameNumber(first, second, STEPS_ALLOWED_INSIDE_A_SERIES)
@@ -478,7 +478,7 @@ public final class Comparison {
         return switch (value) {
             case IntegerValue integer -> integer.magnitude();
             case TimeValue time -> time.asSeconds().quantity();
-            case DecimalValue decimal -> decimal.quantity();
+            case AnyDecimalValue decimal -> decimal.quantity();
             case MoneyValue money -> money.asDeci().toDouble();
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     value.datatype().literalSpelling() + " is not a number");

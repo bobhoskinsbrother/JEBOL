@@ -28,7 +28,7 @@ public abstract class ProtectingNative extends DefaultNative {
     private boolean protectFieldNamedBy(
             Value target, boolean protectedNow, Set<String> refinements) {
 
-        if (!(target instanceof BlockValue path) || !path.datatype().isAnyPath()) {
+        if (!(target instanceof AnyBlockValue path) || !path.datatype().isAnyPath()) {
             return false;
         }
         if (refinements.contains("values")) {
@@ -61,7 +61,7 @@ public abstract class ProtectingNative extends DefaultNative {
             return;
         }
         List<Value> items = switch (target) {
-            case BlockValue block when !block.datatype().isAnyPath() -> block.remaining();
+            case AnyBlockValue block when !block.datatype().isAnyPath() -> block.remaining();
             case AnyWordValue only -> List.of(only);
             default -> List.of();
         };
@@ -93,7 +93,7 @@ public abstract class ProtectingNative extends DefaultNative {
     }
 
     private Optional<ContextSlot> slotNamedInAList(Value item) {
-        if (item instanceof BlockValue path && path.datatype().isAnyPath()) {
+        if (item instanceof AnyBlockValue path && path.datatype().isAnyPath()) {
             return path.fieldThePathNames();
         }
         if (item instanceof AnyWordValue word && word.isBound()
@@ -113,7 +113,7 @@ public abstract class ProtectingNative extends DefaultNative {
             boolean onlyTheWords, Set<Object> reached) {
 
         switch (target) {
-            case BlockValue block -> {
+            case AnyBlockValue block -> {
                 if (!reached.add(block.storage())) {
                     return;
                 }
@@ -167,7 +167,7 @@ public abstract class ProtectingNative extends DefaultNative {
     }
 
     private boolean isReachedByADeepProtection(Value value) {
-        return value instanceof BlockValue || value instanceof AnyStringValue || value instanceof BinaryValue
+        return value instanceof AnyBlockValue || value instanceof AnyStringValue || value instanceof BinaryValue
                 || value instanceof MapValue || value instanceof ObjectValue
                 || value instanceof BitsetValue || value instanceof VectorValue;
     }

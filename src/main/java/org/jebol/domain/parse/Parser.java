@@ -30,7 +30,7 @@ public final class Parser implements ParseWalk {
     Deque<List<Value>> collectionsOpenInnermostLast = new ArrayDeque<>();
     List<Value> gathered;
 
-    public Value answerFor(BlockValue rule) {
+    public Value answerFor(AnyBlockValue rule) {
         boolean matched;
         try {
             matched = matchSequence(rule.remaining());
@@ -43,7 +43,7 @@ public final class Parser implements ParseWalk {
         return LogicValue.of(matched && atEnd());
     }
 
-    public boolean matchesTheWholeOf(BlockValue rule) {
+    public boolean matchesTheWholeOf(AnyBlockValue rule) {
         return matchSequence(rule.remaining()) && atEnd();
     }
 
@@ -198,7 +198,7 @@ public final class Parser implements ParseWalk {
         if (held instanceof UnsetValue || held.datatype().isAnyFunction()) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, word);
         }
-        return held instanceof BlockValue rule && rule.datatype() == Datatype.BLOCK ? matchSequence(rule.remaining()) : matchValue(held);
+        return held instanceof BlockValue rule ? matchSequence(rule.remaining()) : matchValue(held);
     }
 
     @Override
@@ -288,7 +288,7 @@ public final class Parser implements ParseWalk {
         this.walkingABlock = !(given instanceof AnyStringValue || given instanceof BinaryValue);
         this.parsing = given.datatype();
         if (walkingABlock) {
-            BlockValue block = given instanceof BlockValue whole ? whole : null;
+            AnyBlockValue block = given instanceof AnyBlockValue whole ? whole : null;
             this.source = block;
             this.input = new ArrayList<>(block != null ? block.remaining() : List.of(given));
         } else {
@@ -331,7 +331,7 @@ public final class Parser implements ParseWalk {
 
     @Override
     public Integer sameStorageOffset(Value item) {
-        if (source == null || !(item instanceof AnyWordValue word) || !word.fetchesItsValue() || (word instanceof WordValue && ParseTargets.THE_WORDS_THE_DIALECT_RESERVES.contains(word.canonical()))) {
+        if (source == null || !(item instanceof AnyWordValue word) || !word.looksUpItsDeclaration() || (word instanceof WordValue && ParseTargets.THE_WORDS_THE_DIALECT_RESERVES.contains(word.canonical()))) {
             return null;
         }
         Context holder = word.isBound() ? word.binding() : context;
@@ -378,7 +378,7 @@ public final class Parser implements ParseWalk {
         if (walkingABlock) {
             Value existing = valueOf(target);
             refuseATargetThatCannotHoldWhatThisParseYieldsOverABlock(existing);
-            if (existing instanceof BlockValue block) {
+            if (existing instanceof AnyBlockValue block) {
                 int where = appending ? block.storageLength() + 1 : block.index();
                 for (int added = mine.size(); added > 0; added--) {
                     block.storage().insertAt(where, mine.get(added - 1));
@@ -454,8 +454,8 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public Value evaluateParen(BlockValue paren) {
-        return evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
+    public Value evaluateParen(AnyBlockValue paren) {
+        return evaluator.evaluateOrRaise(paren.asBlock(), context);
     }
 
     @Override
@@ -468,8 +468,8 @@ public final class Parser implements ParseWalk {
         return walkingABlock ? sliceOfTheInputKeepingItsOwnDatatype(List.copyOf(input.subList(from, to))) : textSliceBetween(from, to);
     }
 
-    private BlockValue theBlockBeingWalked() {
-        return (BlockValue) source;
+    private AnyBlockValue theBlockBeingWalked() {
+        return (AnyBlockValue) source;
     }
 
     @Override
@@ -518,7 +518,7 @@ public final class Parser implements ParseWalk {
         Context holder = back.isBound() ? back.binding() : context;
         Value held = holder.knows(back.canonical()) ? holder.slotFor(back.canonical()).value() : NoneValue.none();
         ParseTargets.refuseAnInputThatIsNotASeries(back, held);
-        if (!(held instanceof BlockValue marked)) {
+        if (!(held instanceof AnyBlockValue marked)) {
             return NO_MATCH;
         }
         if (!marked.sharesStorageWith(source)) {
@@ -558,11 +558,11 @@ public final class Parser implements ParseWalk {
         if (rule instanceof UnsetValue || rule.datatype().isAnyFunction()) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, rule);
         }
-        if (rule instanceof BlockValue path && path.datatype() == Datatype.PATH) {
+        if (rule instanceof PathValue path) {
             Value resolved = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
             return matchValueOverABlock(resolved) ? 1 : NO_MATCH;
         }
-        if (rule instanceof BlockValue path && path.datatype() == Datatype.GET_PATH) {
+        if (rule instanceof GetPathValue path) {
             ParseTargets.refuseAnInputThatIsNotASeries(path, evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context));
             return NO_MATCH;
         }
@@ -603,8 +603,8 @@ public final class Parser implements ParseWalk {
 
     @Override
     public Value theValueToInsert(Value written) {
-        if (written instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
-            return evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
+        if (written instanceof ParenValue paren) {
+            return evaluator.evaluateOrRaise(paren.asBlock(), context);
         }
         if (written instanceof AnyWordValue word) {
             return switch (word) {
@@ -613,7 +613,7 @@ public final class Parser implements ParseWalk {
                 default -> word;
             };
         }
-        if (written instanceof BlockValue path && path.datatype() == Datatype.PATH) {
+        if (written instanceof PathValue path) {
             return evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
         }
         return written;
@@ -645,8 +645,8 @@ public final class Parser implements ParseWalk {
     }
 
     Value sliceOfTheInputKeepingItsOwnDatatype(List<Value> taken) {
-        BlockValue slice = BlockValue.block(taken);
-        return source instanceof BlockValue whole ? slice.as(whole.datatype()) : slice;
+        AnyBlockValue slice = BlockValue.block(taken);
+        return source instanceof AnyBlockValue whole ? slice.as(whole.datatype()) : slice;
     }
 
     Value firstOf(List<Value> taken) {
@@ -676,12 +676,12 @@ public final class Parser implements ParseWalk {
 
     boolean matchValueOverABlock(Value rule) {
         return switch (rule) {
-            case BlockValue nested when nested.datatype() == Datatype.PAREN -> {
-                evaluator.evaluateOrRaise(nested.as(Datatype.BLOCK), context);
+            case ParenValue nested -> {
+                evaluator.evaluateOrRaise(nested.asBlock(), context);
                 refreshInputFromSource();
                 yield true;
             }
-            case BlockValue nested when nested.datatype() == Datatype.BLOCK -> matchSequence(nested.remaining());
+            case BlockValue nested -> matchSequence(nested.remaining());
             case BitsetValue members ->
                     !atEnd() && current() instanceof CharacterValue(int codepoint) && members.holds(codepoint) && advanceOne();
             case DatatypeValue wanted -> matchesDatatype(wanted.represents());
@@ -692,13 +692,13 @@ public final class Parser implements ParseWalk {
                 case "skip" -> advanceOne();
                 default -> matchNamedRule(word);
             };
-            case BlockValue path when path.datatype() == Datatype.LIT_PATH -> matchesLiteral(path.as(Datatype.PATH));
+            case LitPathValue path -> matchesLiteral(path.asPath());
             default -> matchesLiteral(rule);
         };
     }
 
 
-    private boolean samePath(BlockValue here, BlockValue wanted) {
+    private boolean samePath(AnyBlockValue here, AnyBlockValue wanted) {
         List<Value> ours = here.remaining();
         List<Value> theirs = wanted.remaining();
         if (ours.size() != theirs.size()) {
@@ -729,7 +729,7 @@ public final class Parser implements ParseWalk {
         if (wanted instanceof IntegerValue count && !(current() instanceof IntegerValue)) {
             return false;
         }
-        boolean fits = wanted instanceof BlockValue path && path.datatype() == Datatype.PATH && current() instanceof BlockValue here && here.datatype() == Datatype.PATH ? samePath(here, path) : mindingCase ? current().equals(wanted) : looselyEqual(current(), wanted);
+        boolean fits = wanted instanceof PathValue path && current() instanceof PathValue here ? samePath(here, path) : mindingCase ? current().equals(wanted) : looselyEqual(current(), wanted);
         if (!fits) {
             return false;
         }
@@ -797,8 +797,8 @@ public final class Parser implements ParseWalk {
 
     @Override
     public Value replacementFor(Value replacement) {
-        if (replacement instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
-            return evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
+        if (replacement instanceof ParenValue paren) {
+            return evaluator.evaluateOrRaise(paren.asBlock(), context);
         }
         if (replacement instanceof LitWordValue word) {
             return word.asWord();
@@ -850,18 +850,18 @@ public final class Parser implements ParseWalk {
         if (rule instanceof UnsetValue || rule.datatype().isAnyFunction()) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, rule);
         }
-        if (rule instanceof BlockValue path && path.datatype() == Datatype.PATH) {
+        if (rule instanceof PathValue path) {
             Value resolved = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
             return matchValueOverAString(resolved) ? 1 : -1;
         }
-        if (rule instanceof BlockValue path && path.datatype() == Datatype.GET_PATH) {
+        if (rule instanceof GetPathValue path) {
             return switchTheInputToWhatThisNames(path);
         }
         return matchValueOverAString(rule) ? 1 : -1;
     }
 
 
-    private int switchTheInputToWhatThisNames(BlockValue path) {
+    private int switchTheInputToWhatThisNames(AnyBlockValue path) {
         Value held = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
         ParseTargets.refuseAnInputThatIsNotASeries(path, held);
         if (held instanceof AnyStringValue marked) {
@@ -941,7 +941,7 @@ public final class Parser implements ParseWalk {
         Value target = whatTheSlotHolds(holder, word);
         refuseATargetThatCannotHoldWhatThisParseYieldsOverAString(target);
         switch (target) {
-            case BlockValue existing -> {
+            case AnyBlockValue existing -> {
                 int where = past ? existing.storageLength() + 1 : existing.index();
                 for (int added = gathered.size(); added > 0; added--) {
                     existing.storage().insertAt(where, gathered.get(added - 1));
@@ -1014,13 +1014,13 @@ public final class Parser implements ParseWalk {
         if (rule instanceof NoneValue) {
             return true;
         }
-        if (rule instanceof BlockValue nested && nested.datatype() == Datatype.PAREN) {
-            evaluator.evaluateOrRaise(nested.as(Datatype.BLOCK), context);
+        if (rule instanceof ParenValue nested) {
+            evaluator.evaluateOrRaise(nested.asBlock(), context);
             codePoints = codePointsOfSeries(source);
             position = Math.min(position, codePoints.length);
             return true;
         }
-        if (rule instanceof BlockValue nested) {
+        if (rule instanceof AnyBlockValue nested) {
             return matchSequence(nested.remaining());
         }
         if (rule instanceof BitsetValue members) {

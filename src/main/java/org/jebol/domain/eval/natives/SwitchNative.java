@@ -32,7 +32,7 @@ public class SwitchNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value wanted = arguments.get(0);
-            List<Value> choices = ((BlockValue) arguments.get(1)).remaining();
+            List<Value> choices = ((AnyBlockValue) arguments.get(1)).remaining();
             boolean caseSensitive = refinements.contains("case");
             boolean runsThemAll = refinements.contains("all");
             boolean matchedSomething = false;
@@ -48,7 +48,7 @@ public class SwitchNative extends DefaultNative {
                 }
                 matchedSomething = true;
                 lastBranchTaken = evaluator.evaluateOrRaise(
-                        (BlockValue) choices.get(branchAt), context);
+                        (AnyBlockValue) choices.get(branchAt), context);
                 if (!runsThemAll) {
                     return lastBranchTaken;
                 }
@@ -57,7 +57,7 @@ public class SwitchNative extends DefaultNative {
             if (matchedSomething) {
                 return lastBranchTaken;
             }
-            return theFallbackAskedFor(arguments, refinements) instanceof BlockValue fallback
+            return theFallbackAskedFor(arguments, refinements) instanceof AnyBlockValue fallback
                     ? evaluator.evaluateOrRaise(fallback, context)
                     : NoneValue.none();
         };
@@ -78,7 +78,7 @@ public class SwitchNative extends DefaultNative {
     }
 
     private boolean isExactlyABlock(Value value) {
-        return value instanceof BlockValue && value.datatype() == Datatype.BLOCK;
+        return value instanceof BlockValue;
     }
 
     private Value theFallbackAskedFor(List<Value> arguments, Set<String> refinements) {

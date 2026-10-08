@@ -281,7 +281,7 @@ class WhatEachSettingNativeDeclaresTest {
         @Test
         @DisplayName("take removes the first item and answers it")
         void takeFromABlock() {
-            BlockValue block = BlockValue.block(List.of(IntegerValue.of(1), IntegerValue.of(2)));
+            AnyBlockValue block = BlockValue.block(List.of(IntegerValue.of(1), IntegerValue.of(2)));
 
             assertThat(answerOf(new TakeAction(new CryptPort()), block)).isEqualTo(IntegerValue.of(1));
             assertThat(block.remaining()).containsExactly(IntegerValue.of(2));
@@ -302,7 +302,7 @@ class WhatEachSettingNativeDeclaresTest {
             Value words = answerOf(new ReflectAction(new BootDeclarations()),
                     object, WordValue.of("words"));
 
-            assertThat(((BlockValue) words).remaining()).containsExactly(WordValue.of("a"));
+            assertThat(((AnyBlockValue) words).remaining()).containsExactly(WordValue.of("a"));
         }
 
         @Test
@@ -312,7 +312,7 @@ class WhatEachSettingNativeDeclaresTest {
                     BlockValue.block(List.of(IntegerValue.of(1), IntegerValue.of(2))),
                     BlockValue.block(List.of(IntegerValue.of(2), IntegerValue.of(3))));
 
-            assertThat(((BlockValue) kept).remaining())
+            assertThat(((AnyBlockValue) kept).remaining())
                     .containsExactly(IntegerValue.of(1), IntegerValue.of(3));
         }
     }

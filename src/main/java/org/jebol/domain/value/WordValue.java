@@ -26,7 +26,7 @@ public final class WordValue extends AnyWordValue {
     }
 
     @Override
-    public boolean fetchesItsValue() {
+    public boolean looksUpItsDeclaration() {
         return true;
     }
 }

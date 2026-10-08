@@ -145,7 +145,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
                 data.putLiveValueAt(at, word);
             }
             case StructFieldType.Numeric number -> {
-                if (!(written instanceof IntegerValue) && !(written instanceof DecimalValue)) {
+                if (!(written instanceof IntegerValue) && !(written instanceof AnyDecimalValue)) {
                     throw refusedBy(field, written);
                 }
                 data.writeNumberAt(at, number.kind(), narrowedFor(number.kind(), written));
@@ -160,7 +160,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
 
     private void writeInnerStruct(StructFieldType.Nested inside, int at, Value written) {
         StructValue there = new StructValue(inside.spec(), data, at);
-        if (written instanceof BlockValue initial) {
+        if (written instanceof AnyBlockValue initial) {
             there.initialiseFrom(initial);
             return;
         }
@@ -196,7 +196,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
             writeWholeArrayFrom(field, given);
             return;
         }
-        if (!(written instanceof BlockValue given)
+        if (!(written instanceof AnyBlockValue given)
                 || given.remaining().size() != field.dimension()) {
             throw StructLayoutRefused.becauseTheFieldIsWrong(written,
                     "the field " + field.name() + " holds " + field.dimension()
@@ -232,7 +232,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
             changeFrom(octets.bytesFromHere());
             return;
         }
-        BlockValue written = (BlockValue) given;
+        AnyBlockValue written = (AnyBlockValue) given;
         try {
             initialiseFrom(written);
         } catch (StructLayoutRefused refused) {
@@ -240,7 +240,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         }
     }
 
-    public void initialiseFrom(BlockValue given) {
+    public void initialiseFrom(AnyBlockValue given) {
         List<Value> written = given.remaining();
         if (!written.isEmpty() && written.getFirst() instanceof SetWordValue) {
             for (int at = 0; at + 1 < written.size(); at += 2) {
@@ -306,7 +306,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
     }
 
     public StructValue changedBy(Value given) {
-        if (given instanceof BlockValue written) {
+        if (given instanceof AnyBlockValue written) {
             startedWith(written);
             return this;
         }

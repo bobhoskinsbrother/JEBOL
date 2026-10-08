@@ -3,10 +3,10 @@ package org.jebol.domain.parse.keyword;
 import org.jebol.domain.parse.ParseWalk;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.ParenValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.WordValue;
 
 import java.util.List;
 
@@ -23,7 +23,7 @@ final class Keep extends DeclaredKeyword {
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
         refuseAKeepWithNoCollectAroundIt(walk);
         Value kept = rules.get(at + 1);
-        if (kept instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
+        if (kept instanceof ParenValue paren) {
             walk.keep(walk.evaluateParen(paren));
             return 2;
         }
@@ -40,7 +40,7 @@ final class Keep extends DeclaredKeyword {
     public int applyToString(ParseWalk walk, List<Value> rules, int at) {
         refuseAKeepWithNoCollectAroundIt(walk);
         Value kept = rules.get(at + 1);
-        if (kept instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
+        if (kept instanceof ParenValue paren) {
             walk.keep(walk.evaluateParen(paren));
             return 2;
         }
@@ -77,8 +77,7 @@ final class Keep extends DeclaredKeyword {
             ParseWalk walk, List<Value> rules, int at) {
 
         if (at + 2 < rules.size()
-                && rules.get(at + 2) instanceof BlockValue expression
-                && expression.datatype() == Datatype.PAREN) {
+                && rules.get(at + 2) instanceof ParenValue expression) {
             walk.keep(walk.evaluateParen(expression));
             return 3;
         }
@@ -122,8 +121,7 @@ final class Keep extends DeclaredKeyword {
     }
 
     private static boolean isTheWord(Value kept, String spelling) {
-        return kept instanceof AnyWordValue word
-                && word.datatype() == Datatype.WORD
+        return kept instanceof WordValue word
                 && word.canonical().equals(spelling);
     }
 }

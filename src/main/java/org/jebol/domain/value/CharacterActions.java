@@ -30,7 +30,7 @@ public final class CharacterActions {
         return switch (right) {
             case CharacterValue another -> another.codepoint();
             case IntegerValue whole -> whole.magnitude();
-            case DecimalValue fraction when fraction.datatype() == Datatype.DECIMAL ->
+            case DecimalValue fraction ->
                     (long) fraction.quantity();
             default -> throw Raised.notRelated(letter, right);
         };

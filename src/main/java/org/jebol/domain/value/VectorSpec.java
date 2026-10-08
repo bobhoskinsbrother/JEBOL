@@ -63,7 +63,7 @@ public final class VectorSpec {
             return Optional.of(emptyOf(WHEN_NOTHING_SAYS_OTHERWISE));
         }
         Value leading = parts.getFirst();
-        if (leading instanceof IntegerValue || leading instanceof DecimalValue) {
+        if (leading instanceof IntegerValue || leading instanceof AnyDecimalValue) {
             return filledLeavingZerosAndIgnoringTheExtra(
                     leading instanceof IntegerValue
                     ? THE_WIDEST_WHOLE_NUMBER
@@ -135,7 +135,7 @@ public final class VectorSpec {
             howMany = (int) magnitude1;
             looking = lookedUp(parts, ++at, resolveGetWord);
         }
-        if (looking instanceof BlockValue || looking instanceof BinaryValue) {
+        if (looking instanceof AnyBlockValue || looking instanceof BinaryValue) {
             int offered = countOffered(kind, looking);
             if (howMany == 0) {
                 howMany = offered;
@@ -146,7 +146,7 @@ public final class VectorSpec {
         if (looking instanceof IntegerValue(long magnitude)) {
             position = (int) Math.max(1, magnitude);
             looking = lookedUp(parts, ++at, resolveGetWord);
-        } else if (looking instanceof DecimalValue where) {
+        } else if (looking instanceof AnyDecimalValue where) {
             position = (int) Math.max(1, (long) where.quantity());
             looking = lookedUp(parts, ++at, resolveGetWord);
         }
@@ -163,13 +163,13 @@ public final class VectorSpec {
             return null;
         }
         Value written = parts.get(at);
-        return written instanceof AnyWordValue word && word.datatype() == Datatype.GET_WORD
+        return written instanceof GetWordValue
                 ? resolveGetWord.apply(written)
                 : written;
     }
 
     private static int countOffered(VectorKind kind, Value data) {
-        if (data instanceof BlockValue block) {
+        if (data instanceof AnyBlockValue block) {
             return block.lengthFromHere();
         }
         return ((BinaryValue) data).lengthFromHere() / kind.bytes();
@@ -180,7 +180,7 @@ public final class VectorSpec {
             int position) {
 
         VectorStorage storage = new VectorStorage(kind, howMany);
-        if (data instanceof BlockValue block) {
+        if (data instanceof AnyBlockValue block) {
             List<Value> numbers = block.remaining();
             for (int at = 0; at < Math.min(numbers.size(), howMany); at++) {
                 try {

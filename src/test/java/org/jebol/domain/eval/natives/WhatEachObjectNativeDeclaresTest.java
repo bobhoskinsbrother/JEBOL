@@ -164,7 +164,7 @@ class WhatEachObjectNativeDeclaresTest {
         @Test
         @DisplayName("new-line marks a line break that new-line? then sees, and clears it again")
         void newLineAndItsQuestion() {
-            BlockValue block = BlockValue.block(List.of(IntegerValue.of(1), IntegerValue.of(2)));
+            AnyBlockValue block = BlockValue.block(List.of(IntegerValue.of(1), IntegerValue.of(2)));
 
             answerOf(new NewLineNative(), NOTHING, block, LogicValue.of(true));
             assertThat(answerOf(new IsNewLineNative(), NOTHING, block))
@@ -200,25 +200,25 @@ class WhatEachObjectNativeDeclaresTest {
         @Test
         @DisplayName("collect-words/set/deep lists the set-words, once each")
         void collectWords() {
-            BlockValue body = BlockValue.block(List.of(
+            AnyBlockValue body = BlockValue.block(List.of(
                     SetWordValue.of("a"), WordValue.of("b"),
                     BlockValue.block(List.of(SetWordValue.of("A"), SetWordValue.of("c")))));
 
             Value collected = answerOf(new CollectWordsNative(), Set.of("deep", "set"), body);
 
-            assertThat(((BlockValue) collected).remaining())
+            assertThat(((AnyBlockValue) collected).remaining())
                     .containsExactly(WordValue.of("a"), WordValue.of("c"));
         }
 
         @Test
         @DisplayName("collect-words/ignore leaves out the words it is told to")
         void collectWordsIgnoring() {
-            BlockValue body = BlockValue.block(List.of(WordValue.of("a"), WordValue.of("b")));
+            AnyBlockValue body = BlockValue.block(List.of(WordValue.of("a"), WordValue.of("b")));
 
             Value collected = answerOf(new CollectWordsNative(), Set.of("ignore"), body,
                     BlockValue.block(List.of(WordValue.of("a"))));
 
-            assertThat(((BlockValue) collected).remaining()).containsExactly(WordValue.of("b"));
+            assertThat(((AnyBlockValue) collected).remaining()).containsExactly(WordValue.of("b"));
         }
 
         @Test

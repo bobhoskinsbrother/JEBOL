@@ -78,7 +78,7 @@ public final class Layout {
     }
 
     /** The faces a layout block describes, in the order it describes them. */
-    public static List<Face> facesIn(BlockValue layout) {
+    public static List<Face> facesIn(AnyBlockValue layout) {
         return facesIn(layout, word -> java.util.Optional.empty());
     }
 
@@ -88,7 +88,7 @@ public final class Layout {
      * own.
      */
     public static List<Face> facesIn(
-            BlockValue layout, java.util.function.Function<String, java.util.Optional<Value>> lookUp) {
+            AnyBlockValue layout, java.util.function.Function<String, java.util.Optional<Value>> lookUp) {
 
         List<Face> faces = new ArrayList<>();
         Face current = null;
@@ -133,7 +133,7 @@ public final class Layout {
             case IntegerValue ignored -> {
             }
             case CharacterValue character -> face.setCaption(character.toString());
-            case BlockValue block -> {
+            case AnyBlockValue block -> {
                 if (face.action().isEmpty()) {
                     face.setAction(block);
                 }

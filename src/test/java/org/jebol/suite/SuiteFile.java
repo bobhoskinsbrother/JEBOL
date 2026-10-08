@@ -151,8 +151,8 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
     private static boolean saysTheSameThing(
             Interpreter reader, String written, String numbered, int firstOrdinal) {
 
-        BlockValue before = reader.read(written).values().orElse(null);
-        BlockValue after = reader.read(numbered).values().orElse(null);
+        AnyBlockValue before = reader.read(written).values().orElse(null);
+        AnyBlockValue after = reader.read(numbered).values().orElse(null);
         return before != null && after != null
                 && sameValues(before.remaining(), after.remaining(), new int[] {firstOrdinal});
     }
@@ -176,8 +176,8 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                 }
                 continue;
             }
-            if (one instanceof BlockValue nested) {
-                if (!(other instanceof BlockValue alsoNested)
+            if (one instanceof AnyBlockValue nested) {
+                if (!(other instanceof AnyBlockValue alsoNested)
                         || nested.datatype() != alsoNested.datatype()
                         || !sameValues(nested.remaining(), alsoNested.remaining(), next)) {
                     return false;
@@ -194,7 +194,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
     private static int assertionsNestedIn(List<Value> values) {
         int found = 0;
         for (Value value : values) {
-            if (value instanceof BlockValue block) {
+            if (value instanceof AnyBlockValue block) {
                 found += assertionsNestedIn(block.remaining());
             } else if (value instanceof AnyWordValue word && ASSERT.equals(word.spelling())) {
                 found++;
@@ -327,7 +327,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         if (values.size() >= 2
                 && values.get(0) instanceof AnyWordValue word
                 && word.canonical().equals("rebol")
-                && values.get(1) instanceof BlockValue) {
+                && values.get(1) instanceof AnyBlockValue) {
             return 2;
         }
         return 0;

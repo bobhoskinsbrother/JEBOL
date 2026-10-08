@@ -14,7 +14,7 @@ final class LibrarySource {
     private LibrarySource() {
     }
 
-    private static final Map<String, BlockValue> READINGS = new ConcurrentHashMap<>();
+    private static final Map<String, AnyBlockValue> READINGS = new ConcurrentHashMap<>();
 
     private static final Map<String, Boolean> NAMES_HOLDING_SOMETHING_UNCOPYABLE =
             new ConcurrentHashMap<>();
@@ -23,26 +23,26 @@ final class LibrarySource {
         if (NAMES_HOLDING_SOMETHING_UNCOPYABLE.containsKey(name)) {
             return Transcoder.transcode(source);
         }
-        BlockValue held = READINGS.get(name);
+        AnyBlockValue held = READINGS.get(name);
         if (held != null) {
-            return new TranscodeResult.Success((BlockValue) freshCopyOf(held));
+            return new TranscodeResult.Success((AnyBlockValue) freshCopyOf(held));
         }
         TranscodeResult read = Transcoder.transcode(source);
         if (read.values().isEmpty()) {
             return read;
         }
-        BlockValue values = read.values().orElseThrow();
+        AnyBlockValue values = read.values().orElseThrow();
         if (!everySeriesCanBeCopied(values)) {
             NAMES_HOLDING_SOMETHING_UNCOPYABLE.put(name, true);
             return read;
         }
         READINGS.put(name, values);
-        return new TranscodeResult.Success((BlockValue) freshCopyOf(values));
+        return new TranscodeResult.Success((AnyBlockValue) freshCopyOf(values));
     }
 
     private static Value freshCopyOf(Value value) {
         return switch (value) {
-            case BlockValue block -> copiedBlock(block);
+            case AnyBlockValue block -> copiedBlock(block);
             case AnyStringValue text -> text.holding(text.text());
             case BinaryValue octets -> new BinaryValue(
                     new BinaryStorage(octets.octetsFromHere()), 1);
@@ -54,24 +54,24 @@ final class LibrarySource {
         return value;
     }
 
-    private static BlockValue copiedBlock(BlockValue block) {
+    private static AnyBlockValue copiedBlock(AnyBlockValue block) {
         List<Value> items = new ArrayList<>(block.lengthFromHere());
         for (Value item : block.remaining()) {
             items.add(freshCopyOf(item));
         }
         BlockStorage storage = new BlockStorage(items);
         storage.takeLineBreaksFrom(block.storage(), block.index());
-        return new BlockValue(storage, 1, block.datatype());
+        return block.holding(storage);
     }
 
     private static boolean everySeriesCanBeCopied(Value value) {
         return switch (value) {
-            case BlockValue block -> block.remaining().stream()
+            case AnyBlockValue block -> block.remaining().stream()
                     .allMatch(LibrarySource::everySeriesCanBeCopied);
             case AnyStringValue text -> true;
             case BinaryValue octets -> true;
             case IntegerValue whole -> true;
-            case DecimalValue fraction -> true;
+            case AnyDecimalValue fraction -> true;
             case MoneyValue money -> true;
             case CharacterValue letter -> true;
             case LogicValue truth -> true;

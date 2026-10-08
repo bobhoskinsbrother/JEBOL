@@ -46,7 +46,7 @@ class SourceProgrammeLoadingTest {
                         assertThat(word.canonical()).isEqualTo("rebol"));
         assertThat(values.get(1))
                 .as("%s should follow its header word with a block", programme.getFileName())
-                .isInstanceOfSatisfying(BlockValue.class, block ->
+                .isInstanceOfSatisfying(AnyBlockValue.class, block ->
                         assertThat(block.datatype()).isEqualTo(Datatype.BLOCK));
     }
 
@@ -99,9 +99,9 @@ class SourceProgrammeLoadingTest {
         return values.stream().filter(value -> value.datatype() == datatype).count();
     }
 
-    private static List<Value> flatten(BlockValue block) {
+    private static List<Value> flatten(AnyBlockValue block) {
         return block.remaining().stream()
-                .flatMap(value -> value instanceof BlockValue nested
+                .flatMap(value -> value instanceof AnyBlockValue nested
                         ? Stream.concat(Stream.of(value), flatten(nested).stream())
                         : Stream.of(value))
                 .toList();
@@ -110,7 +110,7 @@ class SourceProgrammeLoadingTest {
     private static List<String> boundWordsIn(Value value) {
         return switch (value) {
             case AnyWordValue word -> word.isBound() ? List.of(word.spelling()) : List.of();
-            case BlockValue block -> block.remaining().stream()
+            case AnyBlockValue block -> block.remaining().stream()
                     .flatMap(item -> boundWordsIn(item).stream())
                     .toList();
             default -> List.of();
@@ -119,7 +119,7 @@ class SourceProgrammeLoadingTest {
 
     private static long seriesAwayFromHead(Value value) {
         long here = value instanceof RebolSeries series && !series.atHead() ? 1 : 0;
-        if (value instanceof BlockValue block) {
+        if (value instanceof AnyBlockValue block) {
             return here + block.remaining().stream()
                     .mapToLong(SourceProgrammeLoadingTest::seriesAwayFromHead)
                     .sum();

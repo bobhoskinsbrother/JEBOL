@@ -1,6 +1,6 @@
 package org.jebol.domain.read;
 
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -14,7 +14,7 @@ class LibraryFileHeaderRecognitionTest {
     }
 
     private static String moldedBodyOf(String source) {
-        BlockValue body = fileFrom(source).body();
+        AnyBlockValue body = fileFrom(source).body();
         return body.remaining().toString();
     }
 

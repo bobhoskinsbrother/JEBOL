@@ -21,7 +21,7 @@ public class IsNewLineNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            BlockValue block = (BlockValue) arguments.getFirst();
+            AnyBlockValue block = (AnyBlockValue) arguments.getFirst();
             return LogicValue.of(block.storage().breaksLineAt(block.index()));
         };
     }

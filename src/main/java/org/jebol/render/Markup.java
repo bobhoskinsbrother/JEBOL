@@ -4,8 +4,7 @@ import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.render.Html;
 import org.jebol.domain.render.Layout;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.AnyBlockValue;
 
 import java.util.List;
 
@@ -20,11 +19,10 @@ public final class Markup {
         interpreter.defineFreshWordsIn(source);
         ScriptOutcome outcome = interpreter.run(source);
 
-        if (!outcome.succeeded() || !(outcome.value() instanceof BlockValue block)) {
+        if (!outcome.succeeded() || !(outcome.value() instanceof AnyBlockValue block)) {
             return anEmptyPageRatherThanAnInventedOne();
         }
-        return Html.render(Layout.facesIn(
-                block.datatype() == Datatype.BLOCK ? block : block.as(Datatype.BLOCK)));
+        return Html.render(Layout.facesIn(block.asBlock()));
     }
 
     private static String anEmptyPageRatherThanAnInventedOne() {

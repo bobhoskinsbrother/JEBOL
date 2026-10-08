@@ -1,6 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.ParameterKind;
 
@@ -14,7 +14,7 @@ final class DeclaredArguments {
 
     private final Map<Optional<String>, List<Parameter>> byRefinement = new HashMap<>();
 
-    DeclaredArguments(BlockValue spec) {
+    DeclaredArguments(AnyBlockValue spec) {
         for (Parameter declared : FunctionSpec.parametersIn(spec)) {
             if (declared.consumesAnArgument()) {
                 byRefinement.computeIfAbsent(declared.owningRefinement(), none -> new ArrayList<>())

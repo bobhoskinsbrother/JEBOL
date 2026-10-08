@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Evaluator;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.ContextSlot;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
@@ -13,7 +13,7 @@ import org.jebol.domain.value.AnyWordValue;
 
 public abstract class SteppingThroughNative extends LoopingNative {
 
-    protected Value walkBySteps(Evaluator evaluator, AnyWordValue word, int step, BlockValue body) {
+    protected Value walkBySteps(Evaluator evaluator, AnyWordValue word, int step, AnyBlockValue body) {
         ContextSlot slot = word.boundSlot();
         if (slot.value() instanceof NoneValue nothing) {
             return nothing;
@@ -36,7 +36,7 @@ public abstract class SteppingThroughNative extends LoopingNative {
     }
 
     private Value walkedFrom(Evaluator evaluator, ContextSlot slot, Datatype walkingA,
-            int step, BlockValue body) {
+            int step, AnyBlockValue body) {
 
         Value last = NoneValue.none();
         while (slot.value() instanceof RebolSeries here

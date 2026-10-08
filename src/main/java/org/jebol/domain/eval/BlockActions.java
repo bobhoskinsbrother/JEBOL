@@ -1,21 +1,21 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
 
 public final class BlockActions extends SeriesActions {
 
-    private final BlockValue block;
+    private final AnyBlockValue block;
 
-    public BlockActions(BlockValue block) {
+    public BlockActions(AnyBlockValue block) {
         this.block = block;
     }
 
     @Override
-    BlockValue held() {
+    AnyBlockValue held() {
         return block;
     }
 
@@ -42,7 +42,7 @@ public final class BlockActions extends SeriesActions {
 
     @Override
     public Value append(Asked asked) {
-        if (asked.duplicated() instanceof BlockValue added
+        if (asked.duplicated() instanceof AnyBlockValue added
                 && splicesRatherThanGoesInWhole(added, asked)) {
             block.storage().spliceInAt(
                     block.storage().length() + 1,
@@ -56,8 +56,8 @@ public final class BlockActions extends SeriesActions {
 
     @Override
     public Value insert(Asked asked) {
-        BlockValue held = (BlockValue) block.clampedToTail();
-        if (asked.duplicated() instanceof BlockValue added
+        AnyBlockValue held = (AnyBlockValue) block.clampedToTail();
+        if (asked.duplicated() instanceof AnyBlockValue added
                 && splicesRatherThanGoesInWhole(added, asked)) {
             List<Value> items = asked.theWantedItemsOf(added);
             held.storage().spliceInAt(held.index(), items,
@@ -68,7 +68,7 @@ public final class BlockActions extends SeriesActions {
         return held.atIndex(held.index() + 1);
     }
 
-    private static boolean splicesRatherThanGoesInWhole(BlockValue added, Asked asked) {
-        return added.datatype() == Datatype.BLOCK && !asked.wholeRatherThanSpliced();
+    private static boolean splicesRatherThanGoesInWhole(AnyBlockValue added, Asked asked) {
+        return added instanceof BlockValue && !asked.wholeRatherThanSpliced();
     }
 }

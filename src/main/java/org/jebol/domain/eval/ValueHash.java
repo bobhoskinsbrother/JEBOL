@@ -1,9 +1,8 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.DecimalValue;
@@ -66,10 +65,10 @@ public final class ValueHash {
             case AnyWordValue word -> symbols.canonOf(word.spelling());
             case AnyStringValue text -> ofText(text) ^ typeNumberOf(text);
             case BinaryValue bytes -> murmur(bytes.octetsFromHere());
-            case BlockValue block -> ofBlock(block);
+            case AnyBlockValue block -> ofBlock(block);
             case LogicValue logic -> LOGIC_BASE + (logic.truth() ? 1 : 0);
             case IntegerValue whole -> ofSixtyFourBits(whole.magnitude());
-            case DecimalValue decimal when decimal.datatype() == Datatype.DECIMAL ->
+            case DecimalValue decimal ->
                     ofSixtyFourBits(Double.doubleToRawLongBits(decimal.quantity()));
             case CharacterValue character -> ofCharacter(character.codepoint());
             case MoneyValue money -> ofMoney(money);
@@ -96,7 +95,7 @@ public final class ValueHash {
         return finalMix(hash ^ heldAsUtf8.length);
     }
 
-    private int ofBlock(BlockValue block) {
+    private int ofBlock(AnyBlockValue block) {
         int hash = blockMix(0, typeNumberOf(block));
         int length = 0;
         for (Value item : block.remaining()) {

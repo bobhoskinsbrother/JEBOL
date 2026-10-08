@@ -80,7 +80,7 @@ public final class Trace {
         written.append(String.format("%-2d", position))
                 .append(": ")
                 .append(molded(value));
-        if (value instanceof AnyWordValue word && word.fetchesItsValue()) {
+        if (value instanceof AnyWordValue word && word.looksUpItsDeclaration()) {
             written.append(whatTheWordHolds(word, context));
         }
         emit(written.toString());

@@ -8,7 +8,7 @@ public interface Maker {
 
     Value makeObjectFrom(ObjectValue prototype, Value spec);
 
-    Value makeFunctionFrom(Value function, BlockValue spec);
+    Value makeFunctionFrom(Value function, AnyBlockValue spec);
 
     Value makeErrorFrom(Value spec);
 

@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.application.Interpreter;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.NativeValue;
 import org.jebol.domain.value.Parameter;
@@ -51,7 +51,7 @@ class EveryNativeTakesItsArgumentsAsRebolDeclaresTest {
 
     private List<String> everyNativeWhoseParametersDisagree() {
         List<String> disagreeing = new ArrayList<>();
-        BlockValue every = (BlockValue) answerTo("append copy system/catalog/natives system/catalog/actions");
+        AnyBlockValue every = (AnyBlockValue) answerTo("append copy system/catalog/natives system/catalog/actions");
         for (Value each : every.remaining()) {
             String spelling = ((AnyWordValue) each).spelling();
             if (!(answerTo(":" + spelling) instanceof NativeValue built)) {

@@ -54,12 +54,12 @@ public record TimeValue(long nanoseconds) implements Value {
         };
     }
 
-    public DecimalValue asSeconds() {
+    public AnyDecimalValue asSeconds() {
         return DecimalValue.of((double) nanoseconds / NANOSECONDS_PER_SECOND);
     }
 
     @Override
-    public Optional<DecimalValue> asDecimalNumber() {
+    public Optional<AnyDecimalValue> asDecimalNumber() {
         return Optional.of(asSeconds());
     }
 

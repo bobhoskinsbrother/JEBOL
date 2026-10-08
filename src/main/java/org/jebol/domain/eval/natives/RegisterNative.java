@@ -40,7 +40,7 @@ public class RegisterNative extends DefaultNative {
 
     private Value filedUnder(AnyWordValue filedAs, StructValue given, MapValue catalogue) {
         Value alreadyThere = catalogue.select(filedAs);
-        if (alreadyThere instanceof BlockValue held) {
+        if (alreadyThere instanceof AnyBlockValue held) {
             if (!held.equals(given.spec().declaration())) {
                 throw Raised.of(EvaluationFailure.ALREADY_USED, filedAs.spelling());
             }

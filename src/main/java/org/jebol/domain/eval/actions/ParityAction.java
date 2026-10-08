@@ -38,7 +38,7 @@ public abstract class ParityAction extends DefaultNative implements ActionValue 
             case CharacterValue(int codepoint) -> codepoint;
             case TimeValue(long nanoseconds) -> nanoseconds / 1_000_000_000L;
             case DateValue date -> date.day();
-            case DecimalValue fractional -> roundedHalfAwayFromZero(fractional.quantity());
+            case AnyDecimalValue fractional -> roundedHalfAwayFromZero(fractional.quantity());
             case IntegerValue(long magnitude) -> magnitude;
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     nativeName() + " takes a whole number, not "

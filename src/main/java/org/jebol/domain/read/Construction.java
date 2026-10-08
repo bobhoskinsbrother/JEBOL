@@ -1,6 +1,6 @@
 package org.jebol.domain.read;
 
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Value;
 
@@ -8,7 +8,7 @@ public interface Construction {
 
     Value madeOf(Datatype datatype, Value specification);
 
-    Value functionMadeFrom(BlockValue spec, BlockValue body);
+    Value functionMadeFrom(AnyBlockValue spec, AnyBlockValue body);
 
     static Construction refused() {
         return Refused.INSTANCE;
@@ -28,7 +28,7 @@ public interface Construction {
         }
 
         @Override
-        public Value functionMadeFrom(BlockValue spec, BlockValue body) {
+        public Value functionMadeFrom(AnyBlockValue spec, AnyBlockValue body) {
             throw new IllegalStateException("nothing here makes a function");
         }
     }

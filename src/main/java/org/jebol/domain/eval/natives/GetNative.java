@@ -26,7 +26,7 @@ public class GetNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
-            case BlockValue path when path.datatype() == Datatype.PATH ->
+            case PathValue path ->
                     evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
             case ObjectValue object -> object.context().valuesExcludingSelf();
             case AnyWordValue word -> heldBy(word, refinements.contains("any"));

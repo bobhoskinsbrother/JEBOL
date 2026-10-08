@@ -25,7 +25,7 @@ public final class Delect {
      * and none at the end so the loop has something to stop on.
      */
     public static Value read(
-            ObjectValue dialect, BlockValue input, BlockValue output,
+            ObjectValue dialect, AnyBlockValue input, AnyBlockValue output,
             boolean readsWholeBlock, Evaluator evaluator, Context where) {
 
         if (output.storage().isProtected()) {
@@ -71,15 +71,14 @@ public final class Delect {
 
             @Override
             public boolean accepts(Value value) {
-                return value instanceof AnyWordValue written
-                        && written.datatype() == Datatype.WORD
+                return value instanceof WordValue written
                         && written.canonical().equals(word);
             }
         }
     }
 
     private static boolean convertsInto(java.util.Set<Datatype> types, Value value) {
-        return types.contains(Datatype.INTEGER) && value instanceof DecimalValue
+        return types.contains(Datatype.INTEGER) && value instanceof AnyDecimalValue
                 || types.contains(Datatype.DECIMAL) && value instanceof IntegerValue;
     }
 
@@ -87,7 +86,7 @@ public final class Delect {
         if (types.contains(value.datatype())) {
             return value;
         }
-        if (types.contains(Datatype.INTEGER) && value instanceof DecimalValue fraction) {
+        if (types.contains(Datatype.INTEGER) && value instanceof AnyDecimalValue fraction) {
             return IntegerValue.of(cutDownRatherThanRounded(fraction));
         }
         if (types.contains(Datatype.DECIMAL) && value instanceof IntegerValue(long magnitude)) {
@@ -96,22 +95,22 @@ public final class Delect {
         return value;
     }
 
-    private static long cutDownRatherThanRounded(DecimalValue fraction) {
+    private static long cutDownRatherThanRounded(AnyDecimalValue fraction) {
         return (long) fraction.quantity();
     }
 
     private static final class Run {
 
         private final List<ContextSlot> fields;
-        private final BlockValue input;
-        private final BlockValue output;
+        private final AnyBlockValue input;
+        private final AnyBlockValue output;
         private final Evaluator evaluator;
         private final Context where;
 
         private int at;
 
-        Run(ObjectValue dialect, BlockValue input, BlockValue output,
-                Evaluator evaluator, Context where) {
+        Run(ObjectValue dialect, AnyBlockValue input, AnyBlockValue output,
+            Evaluator evaluator, Context where) {
 
             this.fields = dialect.context().slots().stream()
                     .filter(slot -> !slot.canonical().equals("self"))
@@ -184,7 +183,7 @@ public final class Delect {
 
         private boolean readNamedCommand(int command, boolean asALitWord, int howMany) {
             ContextSlot field = fields.get(command - 1);
-            if (!(field.value() instanceof BlockValue declared)) {
+            if (!(field.value() instanceof AnyBlockValue declared)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, input);
             }
             List<Slot> slots = slotsDeclaredBy(declared, where);
@@ -238,9 +237,8 @@ public final class Delect {
                                 ? Optional.of(word)
                                 : whateverTheWordHoldsByItsOwnBindingFirst(word);
                 case LitWordValue quoted -> Optional.of(WordValue.of(quoted.spelling()));
-                case BlockValue block when block.datatype() == Datatype.PAREN
-                        || block.datatype() == Datatype.PATH ->
-                        evaluated(block);
+                case ParenValue paren -> evaluated(paren);
+                case PathValue path -> evaluated(path);
                 default -> Optional.of(written);
             };
         }
@@ -258,7 +256,7 @@ public final class Delect {
                     : Optional.empty();
         }
 
-        private Optional<Value> evaluated(BlockValue block) {
+        private Optional<Value> evaluated(AnyBlockValue block) {
             if (thereIsNoEvaluatorBecauseAGobIsBeingFlattened()) {
                 return Optional.empty();
             }
@@ -290,7 +288,7 @@ public final class Delect {
         }
     }
 
-    private static List<Slot> slotsDeclaredBy(BlockValue declared, Context where) {
+    private static List<Slot> slotsDeclaredBy(AnyBlockValue declared, Context where) {
         List<Slot> slots = new ArrayList<>();
         List<Value> written = declared.remaining();
         for (int at = 0; at < written.size(); at++) {

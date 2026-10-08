@@ -2,6 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.NativeValue;
@@ -28,7 +29,7 @@ public final class BootDeclarations {
 
     private static final int A_HEADER_IS_THE_WORD_REBOL_AND_ITS_BLOCK = 2;
 
-    private static final BlockValue THE_SPEC_EVERY_DATATYPE_TEST_HAS =
+    private static final AnyBlockValue THE_SPEC_EVERY_DATATYPE_TEST_HAS =
             BlockValue.block(List.of(
                     StringValue.of("Returns TRUE if it is this type."),
                     WordValue.of("value"),
@@ -40,7 +41,7 @@ public final class BootDeclarations {
 
     private String functionDeclarationSource = "";
 
-    private Map<String, BlockValue> declaredSpecs;
+    private Map<String, AnyBlockValue> declaredSpecs;
 
     private String operatorTableSource = "";
 
@@ -88,18 +89,18 @@ public final class BootDeclarations {
         return Optional.ofNullable(datatypeSpecs().get(datatype.spelling()));
     }
 
-    public BlockValue specOf(NativeValue built) {
+    public AnyBlockValue specOf(NativeValue built) {
         if (built.ownSpec().isPresent()) {
             return built.ownSpec().orElseThrow();
         }
-        BlockValue declared = declaredSpecs().get(built.nativeName());
+        AnyBlockValue declared = declaredSpecs().get(built.nativeName());
         if (declared != null) {
             return declared;
         }
         return specBlockOf(built.parameters());
     }
 
-    public BlockValue theSpecEveryDatatypeTestHas() {
+    public AnyBlockValue theSpecEveryDatatypeTestHas() {
         return THE_SPEC_EVERY_DATATYPE_TEST_HAS;
     }
 
@@ -115,7 +116,7 @@ public final class BootDeclarations {
         List<Value> values = theRowsBelowTheHeaderOf(source);
         for (int at = 0; at + 1 < values.size(); at++) {
             if (!(values.get(at) instanceof AnyWordValue declaring)
-                    || !(values.get(at + 1) instanceof BlockValue row)) {
+                    || !(values.get(at + 1) instanceof AnyBlockValue row)) {
                 continue;
             }
             List<Value> said = row.remaining();
@@ -129,22 +130,20 @@ public final class BootDeclarations {
         return read;
     }
 
-    private Map<String, BlockValue> declaredSpecs() {
+    private Map<String, AnyBlockValue> declaredSpecs() {
         if (declaredSpecs != null) {
             return declaredSpecs;
         }
-        Map<String, BlockValue> found = new LinkedHashMap<>();
+        Map<String, AnyBlockValue> found = new LinkedHashMap<>();
         try {
             TranscodeResult read = Transcoder.transcode(functionDeclarationSource);
-            List<Value> values = read.values().map(BlockValue::remaining).orElse(List.of());
+            List<Value> values = read.values().map(AnyBlockValue::remaining).orElse(List.of());
             for (int at = 0; at + 2 < values.size(); at++) {
-                if (values.get(at) instanceof AnyWordValue declaring
-                        && declaring.datatype() == Datatype.SET_WORD
+                if (values.get(at) instanceof SetWordValue declaring
                         && values.get(at + 1) instanceof AnyWordValue kind
                         && (kind.canonical().equals("native")
                                 || kind.canonical().equals("action"))
-                        && values.get(at + 2) instanceof BlockValue spec
-                        && spec.datatype() == Datatype.BLOCK) {
+                        && values.get(at + 2) instanceof BlockValue spec) {
                     found.putIfAbsent(declaring.canonical(), spec);
                 }
             }
@@ -155,7 +154,7 @@ public final class BootDeclarations {
         return declaredSpecs;
     }
 
-    private BlockValue specBlockOf(List<Parameter> parameters) {
+    private AnyBlockValue specBlockOf(List<Parameter> parameters) {
         List<Value> spec = new ArrayList<>();
         for (Parameter parameter : parameters) {
             switch (parameter.kind()) {

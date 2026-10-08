@@ -27,11 +27,11 @@ public class CaseNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            BlockValue at = (BlockValue) arguments.getFirst();
+            AnyBlockValue at = (AnyBlockValue) arguments.getFirst();
             boolean runsThemAll = refinements.contains("all");
             while (!at.atTail()) {
                 Evaluator.Step condition = evaluator.evaluateNextOrRaise(at, context);
-                BlockValue afterCondition = at.atIndex(condition.nextIndex());
+                AnyBlockValue afterCondition = at.atIndex(condition.nextIndex());
                 if (!condition.value().isTruthy()) {
                     at = pastTheBranch(afterCondition);
                     continue;
@@ -40,7 +40,7 @@ public class CaseNative extends DefaultNative {
                     return LogicValue.of(true);
                 }
                 Evaluator.Step branch = evaluator.evaluateNextOrRaise(afterCondition, context);
-                Value taken = branch.value() instanceof BlockValue block
+                Value taken = branch.value() instanceof AnyBlockValue block
                         ? evaluator.evaluateOrRaise(block, context)
                         : branch.value();
                 at = afterCondition.atIndex(branch.nextIndex());
@@ -52,7 +52,7 @@ public class CaseNative extends DefaultNative {
         };
     }
 
-    private BlockValue pastTheBranch(BlockValue afterCondition) {
+    private AnyBlockValue pastTheBranch(AnyBlockValue afterCondition) {
         return afterCondition.atTail()
                 ? afterCondition
                 : afterCondition.atIndex(afterCondition.index() + 1);

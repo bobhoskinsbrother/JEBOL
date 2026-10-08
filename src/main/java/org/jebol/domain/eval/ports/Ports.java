@@ -6,9 +6,9 @@ import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.NetworkPort;
 import org.jebol.domain.value.BinaryValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.EvaluationFailure;
@@ -87,14 +87,14 @@ public final class Ports {
         for (int at = 0; at + 1 < rows.size(); at++) {
             if (rows.get(at) instanceof AnyWordValue heading
                     && heading.canonical().equals(THE_CONSOLE_MODE_HEADING)
-                    && rows.get(at + 1) instanceof BlockValue listed) {
+                    && rows.get(at + 1) instanceof AnyBlockValue listed) {
                 return theWordsIn(listed);
             }
         }
         return new LinkedHashSet<>();
     }
 
-    private SequencedSet<String> theWordsIn(BlockValue listed) {
+    private SequencedSet<String> theWordsIn(AnyBlockValue listed) {
         SequencedSet<String> named = new LinkedHashSet<>();
         for (Value each : listed.remaining()) {
             if (each instanceof AnyWordValue word) {
@@ -109,8 +109,8 @@ public final class Ports {
     }
 
     public boolean routesToAScheme(Value source) {
-        return source.datatype() == Datatype.URL
-                || source.datatype() == Datatype.BLOCK
+        return source instanceof UrlValue
+                || source instanceof BlockValue
                 || source instanceof AnyWordValue;
     }
 

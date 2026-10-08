@@ -5,8 +5,8 @@ import org.jebol.domain.parse.ParseWalk;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.AnyBlockValue;
+import org.jebol.domain.value.AnyDecimalValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Value;
@@ -61,7 +61,7 @@ final class Seek extends DeclaredKeyword {
         }
         refuseWhatIsNeitherAPlaceNorSomethingToLookFor(wanted);
         Value looked = walk.whatTheWordHolds(wanted);
-        return looked instanceof BlockValue || looked instanceof BitsetValue
+        return looked instanceof AnyBlockValue || looked instanceof BitsetValue
                 ? theFirstPlaceTheRuleMatches(walk, looked)
                 : theFirstPlaceTheTextAppears(walk, looked);
     }
@@ -80,7 +80,7 @@ final class Seek extends DeclaredKeyword {
     }
 
     private static void refuseWhatIsNeitherAPlaceNorSomethingToLookFor(Value wanted) {
-        boolean refused = wanted instanceof DecimalValue
+        boolean refused = wanted instanceof AnyDecimalValue
                 || wanted instanceof GetWordValue
                 || wanted instanceof SetWordValue
                 || (wanted instanceof WordValue keyword

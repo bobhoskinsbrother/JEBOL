@@ -42,11 +42,11 @@ public final class LibContext {
         return lib;
     }
 
-    public BlockValue actionsInOrder() {
+    public AnyBlockValue actionsInOrder() {
         return BlockValue.block(actionsInOrder);
     }
 
-    public BlockValue nativesInOrder() {
+    public AnyBlockValue nativesInOrder() {
         return BlockValue.block(nativesInOrder);
     }
 
@@ -428,7 +428,7 @@ public final class LibContext {
         lib.register(built.nativeName(), built);
     }
 
-    private void declare(DefaultNative built, BlockValue spec) {
+    private void declare(DefaultNative built, AnyBlockValue spec) {
         built.declaredBy(spec, new DeclaredArguments(spec).inPlaceOf(built.parametersAsWritten()));
     }
 

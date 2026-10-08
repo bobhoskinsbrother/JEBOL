@@ -32,7 +32,7 @@ public class AjoinNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             List<Value> all = evaluator.evaluateEachOrRaise(
-                    (BlockValue) arguments.getFirst(), context);
+                    (AnyBlockValue) arguments.getFirst(), context);
             String separator = argumentOf("with", 0, arguments, refinements)
                     .map(Molder::form)
                     .orElse("");

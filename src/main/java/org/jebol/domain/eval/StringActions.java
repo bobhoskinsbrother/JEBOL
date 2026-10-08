@@ -2,7 +2,6 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Molder;
@@ -80,7 +79,6 @@ public final class StringActions extends SeriesActions {
     private String contributedBy(Asked asked) {
         Value adding = asked.duplicated();
         String written = adding instanceof BlockValue added
-                && added.datatype() == Datatype.BLOCK
                 ? added.runTogether()
                 : Molder.form(adding);
         return asked.howMuchOfIt()

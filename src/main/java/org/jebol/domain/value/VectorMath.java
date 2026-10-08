@@ -40,7 +40,7 @@ public final class VectorMath {
 
         VectorKind kind = vector.kind();
         refuseBitwiseOnDecimals(kind, operation);
-        double asDecimal = number instanceof DecimalValue fraction
+        double asDecimal = number instanceof AnyDecimalValue fraction
                 ? fraction.quantity()
                 : ((IntegerValue) number).magnitude();
         long asWholeNumber = (long) asDecimal;

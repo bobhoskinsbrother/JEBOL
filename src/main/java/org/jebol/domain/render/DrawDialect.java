@@ -27,7 +27,7 @@ public final class DrawDialect {
      * as empty: a block of gradients and images reads whole and paints none.
      */
     public List<PaintInstruction> instructionsFor(
-            BlockValue drawBlock, ObjectValue dialect,
+            AnyBlockValue drawBlock, ObjectValue dialect,
             Placement where, double wide, double high) {
 
         Reading reading = new Reading(dialect, where, wide, high);
@@ -66,7 +66,7 @@ public final class DrawDialect {
             return List.copyOf(painted);
         }
 
-        void walk(BlockValue block) {
+        void walk(AnyBlockValue block) {
             try {
                 readEveryCommandOfOneAtATime(block);
             } catch (Raised
@@ -74,11 +74,11 @@ public final class DrawDialect {
             }
         }
 
-        private void readEveryCommandOfOneAtATime(BlockValue block) {
-            BlockValue left = block;
-            BlockValue answer = BlockValue.block();
+        private void readEveryCommandOfOneAtATime(AnyBlockValue block) {
+            AnyBlockValue left = block;
+            AnyBlockValue answer = BlockValue.block();
             while (Delect.read(dialect, left, answer, false, null, Context.unbound())
-                    instanceof BlockValue standing) {
+                    instanceof AnyBlockValue standing) {
                 List<Value> read = answer.remaining();
                 if (read.isEmpty()) {
                     return;
@@ -339,7 +339,7 @@ public final class DrawDialect {
 
         private List<Colour> everyColourIn(List<Value> arguments, int slot) {
             if (slot >= arguments.size()
-                    || !(arguments.get(slot) instanceof BlockValue given)) {
+                    || !(arguments.get(slot) instanceof AnyBlockValue given)) {
                 return List.of();
             }
             return given.remaining().stream()
@@ -439,7 +439,7 @@ public final class DrawDialect {
 
         private void writeTheText(List<Value> arguments) {
             if (THE_TEXT_BLOCK >= arguments.size()
-                    || !(arguments.get(THE_TEXT_BLOCK) instanceof BlockValue written)
+                    || !(arguments.get(THE_TEXT_BLOCK) instanceof AnyBlockValue written)
                     || state.strokeColour().isEmpty()) {
                 return;
             }
@@ -514,7 +514,7 @@ public final class DrawDialect {
 
         private void matrixFrom(List<Value> arguments) {
             if (arguments.isEmpty()
-                    || !(arguments.getFirst() instanceof BlockValue six)) {
+                    || !(arguments.getFirst() instanceof AnyBlockValue six)) {
                 return;
             }
             List<Value> numbers = six.remaining();
@@ -529,7 +529,7 @@ public final class DrawDialect {
 
         private void drawnWithEverythingPutBackAfterwards(List<Value> arguments) {
             if (arguments.isEmpty()
-                    || !(arguments.getFirst() instanceof BlockValue inside)) {
+                    || !(arguments.getFirst() instanceof AnyBlockValue inside)) {
                 return;
             }
             PaintState stateBefore = state;
@@ -689,7 +689,7 @@ public final class DrawDialect {
         }
 
         private List<PathStep> aHandWrittenPath(List<Value> arguments) {
-            return arguments.isEmpty() || !(arguments.getFirst() instanceof BlockValue steps)
+            return arguments.isEmpty() || !(arguments.getFirst() instanceof AnyBlockValue steps)
                     ? List.of()
                     : shapes.pathFrom(steps);
         }

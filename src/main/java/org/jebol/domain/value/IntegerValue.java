@@ -93,7 +93,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     }
 
     @Override
-    public Optional<DecimalValue> asDecimalNumber() {
+    public Optional<AnyDecimalValue> asDecimalNumber() {
         return Optional.of(DecimalValue.of(magnitude));
     }
 
@@ -105,7 +105,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     @Override
     public Optional<Value[]> broughtTogetherWith(Value other) {
         return switch (other) {
-            case DecimalValue ignored -> theyMeetAsDecimals(other);
+            case AnyDecimalValue ignored -> theyMeetAsDecimals(other);
             case TimeValue ignored -> theyMeetAsDecimals(other);
             case MoneyValue theirs -> both(asMoneyInTheCurrencyOf(theirs).orElseThrow(), theirs);
             case CharacterValue letter ->

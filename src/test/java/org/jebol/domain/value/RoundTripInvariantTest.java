@@ -13,14 +13,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class RoundTripInvariantTest {
 
-    private static BlockValue read(String source) {
+    private static AnyBlockValue read(String source) {
         TranscodeResult result = Transcoder.transcode(source);
         assertThat(result.succeeded()).as("could not read: %s", source).isTrue();
         return result.values().orElseThrow();
     }
 
-    private static void assertRoundTrips(BlockValue original, String description) {
-        BlockValue reread = read(Molder.moldOnly(original));
+    private static void assertRoundTrips(AnyBlockValue original, String description) {
+        AnyBlockValue reread = read(Molder.moldOnly(original));
         assertThat(reread.remaining())
                 .as("%s did not survive: molded as [%s]",
                         description, Molder.moldOnly(original))
@@ -37,7 +37,7 @@ class RoundTripInvariantTest {
             Context context = Context.root();
             context.register("known", IntegerValue.of(1));
 
-            BlockValue bound = Binder.bind(read("known unknown [known]"), context);
+            AnyBlockValue bound = Binder.bind(read("known unknown [known]"), context);
 
             assertRoundTrips(bound, "a block bound to a context");
         }
@@ -93,14 +93,14 @@ class RoundTripInvariantTest {
         @Test
         @DisplayName("a block read from partway through round-trips")
         void repositionedBlockSurvives() {
-            BlockValue whole = read("a b c d");
+            AnyBlockValue whole = read("a b c d");
             assertRoundTrips(whole.atIndex(3), "a block positioned at its third item");
         }
 
         @Test
         void repositionedStringSurvives() {
             AnyStringValue whole = StringValue.of("hello world");
-            BlockValue holding = BlockValue.block(whole.atIndex(7));
+            AnyBlockValue holding = BlockValue.block(whole.atIndex(7));
 
             assertRoundTrips(holding, "a string positioned partway through");
         }
@@ -112,8 +112,8 @@ class RoundTripInvariantTest {
 
         @Test
         void appendedBlockSurvives() {
-            BlockValue block = read("[a b]");
-            BlockValue inner = (BlockValue) block.remaining().get(0);
+            AnyBlockValue block = read("[a b]");
+            AnyBlockValue inner = (AnyBlockValue) block.remaining().get(0);
             inner.storage().append(WordValue.of("c"));
 
             assertRoundTrips(block, "a block appended to after reading");
@@ -121,7 +121,7 @@ class RoundTripInvariantTest {
 
         @Test
         void mutatedStringSurvives() {
-            BlockValue block = read("\"ab\"");
+            AnyBlockValue block = read("\"ab\"");
             AnyStringValue text = (AnyStringValue) block.remaining().get(0);
             text.storage().append('c');
 

@@ -12,7 +12,7 @@ final class Numbers {
 
     static boolean isANumber(Value value) {
         return value instanceof IntegerValue
-                || value instanceof DecimalValue
+                || value instanceof AnyDecimalValue
                 || value instanceof MoneyValue
                 || value instanceof TimeValue;
     }
@@ -35,7 +35,7 @@ final class Numbers {
         if (Double.isNaN(ours) || Double.isNaN(theirs)) {
             return Double.isNaN(ours) && Double.isNaN(theirs) && how.stepsAllowed() > 0;
         }
-        if (one instanceof DecimalValue || other instanceof DecimalValue) {
+        if (one instanceof AnyDecimalValue || other instanceof AnyDecimalValue) {
             return withinTheAllowedSteps(ours, theirs, how.stepsAllowed());
         }
         return ours == theirs;
@@ -51,7 +51,7 @@ final class Numbers {
         return switch (value) {
             case IntegerValue(long magnitude) -> magnitude;
             case TimeValue time -> time.asSeconds().quantity();
-            case DecimalValue(double quantity, Datatype ignored) -> quantity;
+            case AnyDecimalValue fraction -> fraction.quantity();
             case MoneyValue money -> money.asDeci().toDouble();
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     value.datatype().literalSpelling() + " is not a number");

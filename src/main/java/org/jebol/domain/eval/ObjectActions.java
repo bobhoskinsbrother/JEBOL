@@ -44,7 +44,7 @@ public final class ObjectActions implements Actions {
             object.context().register(only.canonical(), UnsetValue.unset());
             return object;
         }
-        List<Value> pairs = asked.duplicated() instanceof BlockValue added
+        List<Value> pairs = asked.duplicated() instanceof AnyBlockValue added
                 ? asked.theWantedItemsOf(added)
                 : List.of(asked.given());
         for (int at1 = 0; at1 + 1 < pairs.size(); at1 += 2) {

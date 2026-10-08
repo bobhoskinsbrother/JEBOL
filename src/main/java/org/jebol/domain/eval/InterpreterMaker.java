@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.value.BinaryValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.ContextSlot;
@@ -13,6 +14,7 @@ import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.EventValue;
+import org.jebol.domain.value.DefinedFunctionValue;
 import org.jebol.domain.value.FunctionValue;
 import org.jebol.domain.value.Maker;
 import org.jebol.domain.value.ModuleValue;
@@ -79,9 +81,7 @@ public final class InterpreterMaker implements Maker {
     }
 
     private Value aModuleConvertedFrom(Value value) {
-        if (!(value instanceof BlockValue parts)
-                || parts.datatype() != Datatype.BLOCK
-                || parts.remaining().isEmpty()) {
+        if (!(value instanceof BlockValue parts) || parts.remaining().isEmpty()) {
             throw Raised.badMakeArg(value, "module!");
         }
         List<Value> given = parts.remaining();
@@ -124,14 +124,14 @@ public final class InterpreterMaker implements Maker {
             throw Raised.badMakeArg(spec, "object!");
         }
         return evaluator.evaluatedInto(evaluator.freshObjectWithin(context),
-                spec instanceof BlockValue body ? body : BlockValue.block(List.of()));
+                spec instanceof AnyBlockValue body ? body : BlockValue.block(List.of()));
     }
 
     @Override
     public Value makeObjectFrom(ObjectValue prototype, Value spec) {
         return spec instanceof ObjectValue other
                 ? mergedObject(prototype, other)
-                : evaluator.evaluatedInto(aCopyOf(prototype), (BlockValue) spec);
+                : evaluator.evaluatedInto(aCopyOf(prototype), (AnyBlockValue) spec);
     }
 
     private ObjectValue aCopyOf(ObjectValue prototype) {
@@ -166,50 +166,50 @@ public final class InterpreterMaker implements Maker {
 
 
     private FunctionValue makeFunctionFrom(Value spec) {
-        if (!(spec instanceof BlockValue parts)) {
+        if (!(spec instanceof AnyBlockValue parts)) {
             throw Raised.badMakeArg(spec, "function!");
         }
         List<Value> items = parts.remaining();
         if (items.size() < 2
-                || !(items.get(0) instanceof BlockValue functionSpec)
-                || !(items.get(1) instanceof BlockValue body)) {
+                || !(items.get(0) instanceof AnyBlockValue functionSpec)
+                || !(items.get(1) instanceof AnyBlockValue body)) {
             throw Raised.badMakeArg(spec, "function!");
         }
         return Binder.functionWithItsBodyBound(functionSpec, body, context);
     }
 
     @Override
-    public Value makeFunctionFrom(Value prototype, BlockValue spec) {
+    public Value makeFunctionFrom(Value prototype, AnyBlockValue spec) {
         List<Value> parts = spec.remaining();
         if (parts.isEmpty()) {
             return prototype;
         }
         Value first = parts.getFirst();
         boolean keepingTheSpecification = isTheStarThatMeansKeepIt(first);
-        if (!keepingTheSpecification && !(first instanceof BlockValue)) {
+        if (!keepingTheSpecification && !(first instanceof AnyBlockValue)) {
             throw Raised.cannotUse(spec, "make on a function");
         }
         Value replacementBody = parts.size() > 1 ? parts.get(1) : NoneValue.none();
-        if (prototype instanceof NativeValue && replacementBody instanceof BlockValue) {
+        if (prototype instanceof NativeValue && replacementBody instanceof AnyBlockValue) {
             throw Raised.cannotUseTheAction(spec, "make");
         }
-        if (!(prototype instanceof FunctionValue written)) {
+        if (!(prototype instanceof DefinedFunctionValue written)) {
             return prototype instanceof NativeValue built && !keepingTheSpecification
-                    ? built.derivedWith((BlockValue) first,
-                            FunctionSpec.parametersIn((BlockValue) first))
+                    ? built.derivedWith((AnyBlockValue) first,
+                            FunctionSpec.parametersIn((AnyBlockValue) first))
                     : prototype;
         }
-        BlockValue functionSpec = keepingTheSpecification
+        AnyBlockValue functionSpec = keepingTheSpecification
                 ? asABlock(written.spec())
-                : (BlockValue) first;
-        BlockValue body = replacementBody instanceof BlockValue replacement
+                : (AnyBlockValue) first;
+        AnyBlockValue body = replacementBody instanceof AnyBlockValue replacement
                 ? replacement
                 : asABlock(written.body());
         return Binder.functionWithItsBodyBound(functionSpec, body, written.closedOver());
     }
 
-    private BlockValue asABlock(Value half) {
-        return half instanceof BlockValue block
+    private AnyBlockValue asABlock(Value half) {
+        return half instanceof AnyBlockValue block
                 ? block
                 : BlockValue.block(List.of());
     }
@@ -219,7 +219,7 @@ public final class InterpreterMaker implements Maker {
     }
 
     private Value makeOperatorFrom(Value spec) {
-        Value dispatching = spec instanceof BlockValue
+        Value dispatching = spec instanceof AnyBlockValue
                 ? makeFunctionFrom(spec)
                 : spec;
         if (!dispatching.datatype().isAnyFunction()
@@ -231,7 +231,7 @@ public final class InterpreterMaker implements Maker {
 
     private int howManyArgumentsBeforeAnyRefinement(Value dispatching) {
         List<Parameter> declared = switch (dispatching) {
-            case FunctionValue function -> function.parameters();
+            case DefinedFunctionValue function -> function.parameters();
             case NativeValue built -> built.parameters();
             case OperatorValue operator ->
                     List.of(Parameter.required("a"), Parameter.required("b"));
@@ -255,11 +255,11 @@ public final class InterpreterMaker implements Maker {
         boolean fromAnObject = spec instanceof ObjectValue;
         if (spec instanceof ObjectValue(Context fields)) {
             spec = BlockValue.block(fields.setWordsAndValues());
-        } else if (spec instanceof BlockValue body && body.datatype() == Datatype.BLOCK) {
+        } else if (spec instanceof BlockValue body) {
             spec = BlockValue.block(
                     evaluator.evaluatedInto(evaluator.freshObjectWithin(context), body).context().setWordsAndValues());
         }
-        if (!(spec instanceof BlockValue fields)) {
+        if (!(spec instanceof AnyBlockValue fields)) {
             if (!(spec instanceof AnyStringValue written)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
             }
@@ -334,7 +334,7 @@ public final class InterpreterMaker implements Maker {
     }
 
     private Value makeModuleFrom(Value spec) {
-        if (!(spec instanceof BlockValue given)) {
+        if (!(spec instanceof AnyBlockValue given)) {
             throw Raised.badMakeArg(spec, "module!");
         }
         Value built = evaluator.applyFunction(
@@ -356,7 +356,7 @@ public final class InterpreterMaker implements Maker {
             made.changeFrom(bytes);
             return made;
         }
-        if (!(spec instanceof BlockValue written)) {
+        if (!(spec instanceof AnyBlockValue written)) {
             throw Raised.badMakeArg(spec, "struct!");
         }
         made.startedWith(BlockValue.block(evaluator.reducedLeavingSetWords(written)));

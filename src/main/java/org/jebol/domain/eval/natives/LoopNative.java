@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
@@ -27,7 +27,7 @@ public class LoopNative extends LoopingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             long passes = ((IntegerValue) arguments.get(0)).magnitude();
-            BlockValue body = (BlockValue) arguments.get(1);
+            AnyBlockValue body = (AnyBlockValue) arguments.get(1);
             return answerOfTheLoop(() -> {
                 Value last = NoneValue.none();
                 for (long pass = 0; pass < passes; pass++) {

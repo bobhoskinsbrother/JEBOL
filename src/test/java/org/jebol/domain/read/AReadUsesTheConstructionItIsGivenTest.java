@@ -1,7 +1,7 @@
 package org.jebol.domain.read;
 
 import org.jebol.application.Interpreter;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Value;
@@ -37,7 +37,7 @@ class AReadUsesTheConstructionItIsGivenTest {
         }
 
         @Override
-        public Value functionMadeFrom(BlockValue spec, BlockValue body) {
+        public Value functionMadeFrom(AnyBlockValue spec, AnyBlockValue body) {
             return WHAT_THE_FUNCTION_BUILDER_MADE;
         }
     }
@@ -50,7 +50,7 @@ class AReadUsesTheConstructionItIsGivenTest {
         }
 
         @Override
-        public Value functionMadeFrom(BlockValue spec, BlockValue body) {
+        public Value functionMadeFrom(AnyBlockValue spec, AnyBlockValue body) {
             throw new IllegalArgumentException("refused");
         }
     }
@@ -130,7 +130,7 @@ class AReadUsesTheConstructionItIsGivenTest {
             List<Value> read = valuesOf(Transcoder.transcode(
                     "[" + A_STRUCT_LITERAL + "]", construction));
 
-            assertThat(((BlockValue) read.getFirst()).remaining())
+            assertThat(((AnyBlockValue) read.getFirst()).remaining())
                     .containsExactly(WHAT_THE_CONSTRUCTION_MADE);
             assertThat(construction.asked).containsExactly(Datatype.STRUCT);
         }

@@ -1,6 +1,6 @@
 package org.jebol.domain.render;
 
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Value;
@@ -20,7 +20,7 @@ final class RichText {
     record Run(String text, Colour colour, double size, boolean bold, boolean italic) {
     }
 
-    static List<Run> runsIn(BlockValue block, Colour penColour) {
+    static List<Run> runsIn(AnyBlockValue block, Colour penColour) {
         List<Run> runs = new ArrayList<>();
         Colour colour = penColour;
         double size = PaintInstruction.Writing.THE_ORDINARY_SIZE;

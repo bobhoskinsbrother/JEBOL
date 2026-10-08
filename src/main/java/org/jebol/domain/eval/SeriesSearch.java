@@ -2,7 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DatatypeValue;
@@ -11,6 +11,8 @@ import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.AnyStringValue;
+import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
 
@@ -81,9 +83,8 @@ public final class SeriesSearch {
                 && (wanted instanceof CharacterValue || wanted instanceof AnyStringValue)) {
             return theBytesThatSpell().size();
         }
-        if (series instanceof BlockValue
+        if (series instanceof AnyBlockValue
                 && wanted instanceof BlockValue run
-                && run.datatype() == Datatype.BLOCK
                 && !refinements.contains("only")) {
             return run.remaining().size();
         }
@@ -125,8 +126,8 @@ public final class SeriesSearch {
         if (refinements.contains("only")) {
             return 1;
         }
-        if (series instanceof BlockValue) {
-            return wanted instanceof BlockValue run && run.datatype() == Datatype.BLOCK
+        if (series instanceof AnyBlockValue) {
+            return wanted instanceof BlockValue run
                     ? run.remaining().size()
                     : 1;
         }
@@ -151,7 +152,6 @@ public final class SeriesSearch {
                     : ((TypesetValue) wanted).holds(items.get(at).datatype());
         }
         if (wanted instanceof BlockValue run
-                && run.datatype() == Datatype.BLOCK
                 && !refinements.contains("only")) {
             return runMatchesAt(items, at, run.remaining(), refinements.contains("same"));
         }
@@ -243,7 +243,6 @@ public final class SeriesSearch {
 
     private boolean sameRunAt(List<Value> items, int at) {
         List<Value> run = wanted instanceof BlockValue block
-                && block.datatype() == Datatype.BLOCK
                 ? block.remaining()
                 : List.of(wanted);
         return runMatchesAt(items, at, run, true);
@@ -274,7 +273,6 @@ public final class SeriesSearch {
                     && members.holds(codepoint);
         }
         if (wanted instanceof BlockValue run
-                && run.datatype() == Datatype.BLOCK
                 && !refinements.contains("only")) {
             return runMatchesAt(items, at, run.remaining(), refinements.contains("same"));
         }
@@ -286,7 +284,7 @@ public final class SeriesSearch {
 
     private boolean theTextRunMatchesIgnoringCaseAt(
             List<Value> items, int at, AnyStringValue needle) {
-        int[] sought = (needle.datatype() == Datatype.STRING
+        int[] sought = (needle instanceof StringValue
                 ? needle.text()
                 : Molder.form(needle)).codePoints().toArray();
         if (at + sought.length > items.size()) {

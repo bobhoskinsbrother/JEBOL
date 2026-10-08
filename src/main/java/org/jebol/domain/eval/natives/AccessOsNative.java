@@ -84,7 +84,7 @@ public class AccessOsNative extends DefaultNative {
         if (asked instanceof IntegerValue(long process)) {
             return ended(process, TERMINATE);
         }
-        List<Value> pair = ((BlockValue) asked).remaining();
+        List<Value> pair = ((AnyBlockValue) asked).remaining();
         if (pair.size() != A_PROCESS_AND_A_SIGNAL) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }

@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SeriesPositionTest {
 
-    private static BlockValue threeItems() {
+    private static AnyBlockValue threeItems() {
         return BlockValue.block(
                 IntegerValue.of(1), IntegerValue.of(2), IntegerValue.of(3));
     }
@@ -46,7 +46,7 @@ class SeriesPositionTest {
         @Test
         @DisplayName("3 is the last element: the IN point at the upper end")
         void lastElementIsLength() {
-            BlockValue last = threeItems().atIndex(3);
+            AnyBlockValue last = threeItems().atIndex(3);
             assertThat(last.atTail()).isFalse();
             assertThat(last.first()).isEqualTo(IntegerValue.of(3));
         }
@@ -54,7 +54,7 @@ class SeriesPositionTest {
         @Test
         @DisplayName("4 is the tail: legal to hold, one past the last element")
         void tailIsLengthPlusOne() {
-            BlockValue tail = threeItems().atIndex(4);
+            AnyBlockValue tail = threeItems().atIndex(4);
             assertThat(tail.atTail()).isTrue();
             assertThat(tail.lengthFromHere()).isZero();
         }
@@ -83,7 +83,7 @@ class SeriesPositionTest {
         @Test
         @DisplayName("head and tail are the same position")
         void headIsAlsoTheTail() {
-            BlockValue empty = BlockValue.block();
+            AnyBlockValue empty = BlockValue.block();
             assertThat(empty.atHead()).isTrue();
             assertThat(empty.atTail()).isTrue();
             assertThat(empty.storageLength()).isZero();
@@ -130,8 +130,8 @@ class SeriesPositionTest {
         @Test
         @DisplayName("a mutation through one value is visible through another")
         void mutationIsVisibleThroughEveryAlias() {
-            BlockValue atHead = threeItems();
-            BlockValue atSecond = atHead.atIndex(2);
+            AnyBlockValue atHead = threeItems();
+            AnyBlockValue atSecond = atHead.atIndex(2);
 
             atHead.storage().set(2, StringValue.of("changed"));
 
@@ -141,8 +141,8 @@ class SeriesPositionTest {
         @Test
         @DisplayName("appending through one alias lengthens the other")
         void appendingIsVisibleThroughEveryAlias() {
-            BlockValue atHead = threeItems();
-            BlockValue atSecond = atHead.atIndex(2);
+            AnyBlockValue atHead = threeItems();
+            AnyBlockValue atSecond = atHead.atIndex(2);
 
             atHead.storage().append(IntegerValue.of(4));
 
@@ -153,9 +153,9 @@ class SeriesPositionTest {
         @Test
         @DisplayName("same? is about storage, equal? is about contents")
         void sharingStorageIsNotTheSameAsBeingEqual() {
-            BlockValue original = threeItems();
-            BlockValue repositioned = original.atIndex(2);
-            BlockValue separateButIdentical = threeItems();
+            AnyBlockValue original = threeItems();
+            AnyBlockValue repositioned = original.atIndex(2);
+            AnyBlockValue separateButIdentical = threeItems();
 
             assertThat(original.sharesStorageWith(repositioned)).isTrue();
             assertThat(original.sharesStorageWith(separateButIdentical)).isFalse();
@@ -171,7 +171,7 @@ class SeriesPositionTest {
         @Test
         @DisplayName("repositioning does not copy")
         void repositioningKeepsTheSameStorage() {
-            BlockValue original = threeItems();
+            AnyBlockValue original = threeItems();
             assertThat(original.atIndex(3).storage()).isSameAs(original.storage());
             assertThat(original.head().storage()).isSameAs(original.storage());
             assertThat(original.tail().storage()).isSameAs(original.storage());
@@ -212,7 +212,7 @@ class SeriesPositionTest {
 
         @Test
         void aBlockValueRejectsAStringDatatype() {
-            assertThatThrownBy(() -> new BlockValue(BlockStorage.of(), 1, Datatype.STRING))
+            assertThatThrownBy(() -> AnyBlockValue.ofTheDatatype(BlockStorage.of(), 1, Datatype.STRING))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("any-block!");
         }
@@ -226,14 +226,14 @@ class SeriesPositionTest {
 
         @Test
         void aPathFactoryRejectsANonPathDatatype() {
-            assertThatThrownBy(() -> BlockValue.path(List.of(), Datatype.BLOCK))
+            assertThatThrownBy(() -> AnyPathValue.path(List.of(), Datatype.BLOCK))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("any-path!");
         }
 
         @Test
         void storageIsRequired() {
-            assertThatThrownBy(() -> new BlockValue(null, 1, Datatype.BLOCK))
+            assertThatThrownBy(() -> AnyBlockValue.ofTheDatatype(null, 1, Datatype.BLOCK))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("storage");
         }

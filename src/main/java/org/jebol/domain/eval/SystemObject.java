@@ -115,7 +115,7 @@ public final class SystemObject {
         Context errors = Context.root();
         List<Value> catalogued = declarations.errorCatalogueRows();
         for (int at = 0; at + 1 < catalogued.size(); at += 2) {
-            if (!(catalogued.get(at) instanceof SetWordValue category) || !(catalogued.get(at + 1) instanceof BlockValue body)) {
+            if (!(catalogued.get(at) instanceof SetWordValue category) || !(catalogued.get(at + 1) instanceof AnyBlockValue body)) {
                 continue;
             }
             Context inside = Context.root();

@@ -33,11 +33,11 @@ public class ImageDiffNative extends DefaultNative {
             ImageValue first = (ImageValue) arguments.get(0);
             ImageValue second = (ImageValue) arguments.get(1);
             if (!refinements.contains("part")) {
-                return DecimalValue.percent(ImageOperations.differenceBetween(first, second));
+                return PercentValue.of(ImageOperations.differenceBetween(first, second));
             }
             PairValue corner = (PairValue) arguments.get(2);
             PairValue size = (PairValue) arguments.get(3);
-            return DecimalValue.percent(ImageOperations.differenceOverTheRectangle(
+            return PercentValue.of(ImageOperations.differenceOverTheRectangle(
                     first, second, (int) corner.x(), (int) corner.y(),
                     (int) size.x(), (int) size.y()));
         };

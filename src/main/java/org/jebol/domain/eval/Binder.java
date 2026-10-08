@@ -13,7 +13,7 @@ public final class Binder {
     private Binder() {
     }
 
-    public static FunctionValue withItsBodyBound(FunctionValue made) {
+    public static <Kind extends DefinedFunctionValue> Kind withItsBodyBound(Kind made) {
         made.declaredWords().markAsCallFrameOf(made);
         Set<String> declared = theNamesDeclaredBy(made);
         declared.forEach(made.declaredWords()::register);
@@ -22,7 +22,7 @@ public final class Binder {
     }
 
     public static FunctionValue functionWithItsBodyBound(
-            BlockValue spec, BlockValue body, Context closedOver) {
+            AnyBlockValue spec, AnyBlockValue body, Context closedOver) {
 
         return withItsBodyBound(new FunctionValue(
                 spec,
@@ -37,7 +37,7 @@ public final class Binder {
             case AnyWordValue word -> word.isBound() && from.contains(word.binding())
                     ? word.boundTo(into)
                     : word;
-            case BlockValue block -> {
+            case AnyBlockValue block -> {
                 List<Value> items = new ArrayList<>();
                 for (Value item : block.remaining()) {
                     items.add(clonedAndRebound(item, from, into));
@@ -53,15 +53,13 @@ public final class Binder {
                 }
                 yield cloned;
             }
-            case FunctionValue function -> withItsBodyBound(new FunctionValue(
-                    function.spec(),
-                    (BlockValue) clonedAndRebound(function.body(), from, into),
-                    function.parameters(), function.localNames(), into));
+            case DefinedFunctionValue function -> withItsBodyBound(function.sameKindRunning(
+                    (AnyBlockValue) clonedAndRebound(function.body(), from, into), into));
             default -> value;
         };
     }
 
-    private static Set<String> theNamesDeclaredBy(FunctionValue function) {
+    private static Set<String> theNamesDeclaredBy(DefinedFunctionValue function) {
         Set<String> declared = new HashSet<>();
         function.parameters().forEach(
                 parameter -> declared.add(Context.canonicalise(parameter.name())));
@@ -70,7 +68,7 @@ public final class Binder {
         return declared;
     }
 
-    public static BlockValue bind(BlockValue block, Context context) {
+    public static AnyBlockValue bind(AnyBlockValue block, Context context) {
         List<Value> bound = new ArrayList<>(block.lengthFromHere());
         for (Value item : block.remaining()) {
             bound.add(bindValue(item, context));
@@ -78,12 +76,12 @@ public final class Binder {
         return laidOutLike(block, new BlockStorage(bound));
     }
 
-    private static BlockValue laidOutLike(BlockValue older, BlockStorage bound) {
+    private static AnyBlockValue laidOutLike(AnyBlockValue older, BlockStorage bound) {
         bound.takeLineBreaksFrom(older.storage(), older.index());
-        return new BlockValue(bound, 1, older.datatype());
+        return older.holding(bound);
     }
 
-    public static BlockValue bindInPlace(BlockValue block, Context context) {
+    public static AnyBlockValue bindInPlace(AnyBlockValue block, Context context) {
         for (int at = 0; at < block.lengthFromHere(); at++) {
             int where = block.index() + at;
             Value bound = bindValue(block.storage().at(where), context);
@@ -96,14 +94,14 @@ public final class Binder {
         return block;
     }
 
-    public static BlockValue bindWhatTheTargetHoldsItself(
-            BlockValue block, Context target) {
+    public static AnyBlockValue bindWhatTheTargetHoldsItself(
+            AnyBlockValue block, Context target) {
 
         return bindWhatTheTargetHoldsItself(block, target, ALL_THE_WAY_DOWN);
     }
 
-    public static BlockValue bindWhatTheTargetHoldsItself(
-            BlockValue block, Context target, boolean deeply) {
+    public static AnyBlockValue bindWhatTheTargetHoldsItself(
+            AnyBlockValue block, Context target, boolean deeply) {
 
         for (int at = 0; at < block.lengthFromHere(); at++) {
             int where = block.index() + at;
@@ -123,22 +121,22 @@ public final class Binder {
 
     public static final boolean THE_TOP_LEVEL_ONLY = false;
 
-    public static BlockValue bindACopyOfWhatTheTargetHoldsItself(
-            BlockValue block, Context target) {
+    public static AnyBlockValue bindACopyOfWhatTheTargetHoldsItself(
+            AnyBlockValue block, Context target) {
 
         return bindACopyOfWhatTheTargetHoldsItself(block, target, ALL_THE_WAY_DOWN);
     }
 
-    public static BlockValue bindACopyOfWhatTheTargetHoldsItself(
-            BlockValue block, Context target, boolean deeply) {
+    public static AnyBlockValue bindACopyOfWhatTheTargetHoldsItself(
+            AnyBlockValue block, Context target, boolean deeply) {
 
         return bindWhatTheTargetHoldsItself(aDeepCopyOf(block), target, deeply);
     }
 
-    private static BlockValue aDeepCopyOf(BlockValue block) {
+    private static AnyBlockValue aDeepCopyOf(AnyBlockValue block) {
         List<Value> copied = new ArrayList<>(block.lengthFromHere());
         for (Value item : block.remaining()) {
-            copied.add(item instanceof BlockValue nested ? aDeepCopyOf(nested) : item);
+            copied.add(item instanceof AnyBlockValue nested ? aDeepCopyOf(nested) : item);
         }
         return laidOutLike(block, new BlockStorage(copied));
     }
@@ -148,7 +146,7 @@ public final class Binder {
             case AnyWordValue word when target.holds(word.canonical()) ->
                     word.boundTo(target);
             case AnyWordValue word -> word;
-            case BlockValue nested -> bindWhatTheTargetHoldsItself(nested, target);
+            case AnyBlockValue nested -> bindWhatTheTargetHoldsItself(nested, target);
             case MapValue map -> {
                 for (Value key : map.keys()) {
                     map.put(key, boundIfTheTargetHoldsIt(map.select(key), target));
@@ -159,8 +157,8 @@ public final class Binder {
         };
     }
 
-    public static BlockValue bindOnly(
-            BlockValue block, Context context, Set<String> names) {
+    public static AnyBlockValue bindOnly(
+            AnyBlockValue block, Context context, Set<String> names) {
 
         List<Value> bound = new ArrayList<>(block.lengthFromHere());
         for (Value item : block.remaining()) {
@@ -170,14 +168,14 @@ public final class Binder {
     }
 
     public static void bindEachInPlace(
-            BlockValue block, Context context, Set<String> names) {
+            AnyBlockValue block, Context context, Set<String> names) {
 
         bindEachInPlace(block, context, names,
                 java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
     }
 
-    private static void bindEachInPlace(BlockValue block, Context context,
-            Set<String> names, Set<Object> alreadyWalked) {
+    private static void bindEachInPlace(AnyBlockValue block, Context context,
+                                        Set<String> names, Set<Object> alreadyWalked) {
 
         if (!alreadyWalked.add(block.storage())) {
             return;
@@ -186,7 +184,7 @@ public final class Binder {
             switch (block.storage().at(at)) {
                 case AnyWordValue word when names.contains(word.canonical()) ->
                         block.storage().rebindAt(at, word.boundTo(context));
-                case BlockValue nested ->
+                case AnyBlockValue nested ->
                         bindEachInPlace(nested, context, names, alreadyWalked);
                 case MapValue map -> {
                     for (Value key : map.keys()) {
@@ -199,8 +197,8 @@ public final class Binder {
         }
     }
 
-    public static BlockValue rebindWhatNamedTheFunction(
-            BlockValue block, Context from, Context to) {
+    public static AnyBlockValue rebindWhatNamedTheFunction(
+            AnyBlockValue block, Context from, Context to) {
 
         List<Value> bound = new ArrayList<>(block.lengthFromHere());
         for (Value item : block.remaining()) {
@@ -214,7 +212,7 @@ public final class Binder {
             case AnyWordValue word when word.isBound() && word.binding() == from ->
                     word.boundTo(to);
             case AnyWordValue word -> word;
-            case BlockValue nested -> rebindWhatNamedTheFunction(nested, from, to);
+            case AnyBlockValue nested -> rebindWhatNamedTheFunction(nested, from, to);
             case MapValue map -> {
                 for (Value key : map.keys()) {
                     map.put(key, rebindOneThatNamedIt(map.select(key), from, to));
@@ -231,7 +229,7 @@ public final class Binder {
         if (held instanceof AnyWordValue word && names.contains(word.canonical())) {
             return word.boundTo(context);
         }
-        if (held instanceof BlockValue nested) {
+        if (held instanceof AnyBlockValue nested) {
             bindEachInPlace(nested, context, names, alreadyWalked);
         }
         return held;
@@ -246,7 +244,7 @@ public final class Binder {
                             ? context.holderOf(word.canonical())
                             : context);
             case AnyWordValue word -> word;
-            case BlockValue nested -> bindOnly(nested, context, names);
+            case AnyBlockValue nested -> bindOnly(nested, context, names);
             case MapValue map -> {
                 for (Value key : map.keys()) {
                     map.put(key, bindValueOnly(map.select(key), context, names));
@@ -262,7 +260,7 @@ public final class Binder {
             case AnyWordValue word -> context.knows(word.canonical())
                     ? word.boundTo(context.holderOf(word.canonical()))
                     : word;
-            case BlockValue block -> bind(block, context);
+            case AnyBlockValue block -> bind(block, context);
             case MapValue map -> {
                 for (Value key : map.keys()) {
                     map.put(key, bindValue(map.select(key), context));
@@ -273,7 +271,7 @@ public final class Binder {
         };
     }
 
-    public static BlockValue bindAndDefine(BlockValue block, Context context) {
+    public static AnyBlockValue bindAndDefine(AnyBlockValue block, Context context) {
         for (Value item : block.remaining()) {
             defineWordsIn(item, context);
         }
@@ -287,7 +285,7 @@ public final class Binder {
                     context.register(word.spelling());
                 }
             }
-            case BlockValue nested -> {
+            case AnyBlockValue nested -> {
                 for (Value item : nested.remaining()) {
                     defineWordsIn(item, context);
                 }

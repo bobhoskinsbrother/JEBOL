@@ -128,7 +128,7 @@ public record PaintList(List<PaintInstruction> instructions) {
 
         if (drawDialect == null
                 || !(gob.contentIfKind(GobStorage.Content.DRAW)
-                        instanceof BlockValue block)) {
+                        instanceof AnyBlockValue block)) {
             return List.of();
         }
         return new DrawDialect().instructionsFor(block, drawDialect, where, wide, high);

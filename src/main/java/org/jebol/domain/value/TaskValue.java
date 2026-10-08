@@ -17,7 +17,7 @@ import java.util.List;
  * a script can read off a task -- its fields, its molded form, whether DO
  * answers it -- is here; whether anything runs is in spec/natives.allium.
  */
-public record TaskValue(Context context, BlockValue body) implements Value {
+public record TaskValue(Context context, AnyBlockValue body) implements Value {
 
     /** The five names a task's header always has, in the order it has them. */
     public static final List<String> THE_FIELDS_A_TASK_HAS =
@@ -33,7 +33,7 @@ public record TaskValue(Context context, BlockValue body) implements Value {
     }
 
     /** A task whose header holds nothing, which is what an empty spec gives. */
-    public static TaskValue running(BlockValue body) {
+    public static TaskValue running(AnyBlockValue body) {
         Context header = Context.root();
         THE_FIELDS_A_TASK_HAS.forEach(name -> header.register(name, NoneValue.none()));
         return new TaskValue(header, body);

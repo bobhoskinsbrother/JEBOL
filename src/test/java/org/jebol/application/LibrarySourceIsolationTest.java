@@ -25,7 +25,7 @@ class LibrarySourceIsolationTest {
                 c: #{0102}
                 d: [[["deep" #{0304}]]]""";
 
-        private static BlockValue readingOf(String name) {
+        private static AnyBlockValue readingOf(String name) {
             TranscodeResult read = LibrarySource.reading(name, SOURCE);
             return read.values().orElseThrow();
         }
@@ -34,7 +34,7 @@ class LibrarySourceIsolationTest {
         @DisplayName("appending to a block does not reach the next reading")
         void appendingToABlock() {
             for (int reading = 0; reading < 3; reading++) {
-                BlockValue held = (BlockValue) readingOf("/probe/blocks.reb")
+                AnyBlockValue held = (AnyBlockValue) readingOf("/probe/blocks.reb")
                         .remaining().get(1);
                 assertThat(held.storage().length())
                         .as("reading %d is the file, whatever the last one did", reading)
@@ -50,9 +50,9 @@ class LibrarySourceIsolationTest {
         @DisplayName("nor does appending to a block inside that block")
         void appendingToANestedBlock() {
             for (int reading = 0; reading < 3; reading++) {
-                BlockValue outer = (BlockValue) readingOf("/probe/nested.reb")
+                AnyBlockValue outer = (AnyBlockValue) readingOf("/probe/nested.reb")
                         .remaining().get(1);
-                BlockValue inner = (BlockValue) outer.remaining().get(2);
+                AnyBlockValue inner = (AnyBlockValue) outer.remaining().get(2);
                 assertThat(inner.storage().length()).isEqualTo(2);
                 inner.storage().append(IntegerValue.of(99));
                 assertThat(inner.storage().length()).isEqualTo(3);
@@ -75,8 +75,8 @@ class LibrarySourceIsolationTest {
         @DisplayName("and every series in the reading is a different object")
         void nothingIsShared() {
             readingOf("/probe/identity.reb");
-            BlockValue first = readingOf("/probe/identity.reb");
-            BlockValue second = readingOf("/probe/identity.reb");
+            AnyBlockValue first = readingOf("/probe/identity.reb");
+            AnyBlockValue second = readingOf("/probe/identity.reb");
             assertThat(sharedStorageBetween(first, second))
                     .as("series shared between two readings of the same file")
                     .isEmpty();
@@ -86,7 +86,7 @@ class LibrarySourceIsolationTest {
                 Value left, Value right) {
 
             java.util.List<String> shared = new java.util.ArrayList<>();
-            if (left instanceof BlockValue one && right instanceof BlockValue other) {
+            if (left instanceof AnyBlockValue one && right instanceof AnyBlockValue other) {
                 if (one.storage() == other.storage()) {
                     shared.add("block");
                 }

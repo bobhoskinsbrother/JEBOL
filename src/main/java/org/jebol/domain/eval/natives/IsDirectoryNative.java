@@ -8,6 +8,7 @@ import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.AnyStringValue;
+import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -42,7 +43,7 @@ public class IsDirectoryNative extends HostNative {
                 return LogicValue.of(false);
             }
             if (refinements.contains("check")
-                    && target.datatype() == Datatype.FILE
+                    && target instanceof FileValue
                     && liesOnTheDiskAsADirectory(evaluator, address.text())) {
                 return LogicValue.of(true);
             }

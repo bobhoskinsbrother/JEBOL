@@ -7,7 +7,7 @@ import org.jebol.domain.eval.LoopSignal;
 import org.jebol.domain.eval.MapActions;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
@@ -53,7 +53,7 @@ public class RemoveEachNative extends LoopingNative {
         return (arguments, evaluator, context, refinements) -> switch (arguments.get(1)) {
             case MapValue map ->
                     removedEachPairFrom(map, arguments, refinements, evaluator, context);
-            case BlockValue block ->
+            case AnyBlockValue block ->
                     removedEachFromABlock(block, arguments, refinements, evaluator, context);
             case RebolSeries other -> removedEachFromDecidingForwardsThenRewriting(
                     other, arguments, refinements, evaluator, context);
@@ -61,13 +61,13 @@ public class RemoveEachNative extends LoopingNative {
         };
     }
 
-    private Value removedEachFromABlock(BlockValue series, List<Value> arguments,
-            Set<String> refinements, Evaluator evaluator, Context within) {
+    private Value removedEachFromABlock(AnyBlockValue series, List<Value> arguments,
+                                        Set<String> refinements, Evaluator evaluator, Context within) {
 
         Context locals = Context.loopFrameOf(within);
         List<AnyWordValue> names = loopNamesIn(arguments.get(0));
         names.forEach(name -> locals.register(name.spelling()));
-        BlockValue bound = Binder.bind((BlockValue) arguments.get(2), locals);
+        AnyBlockValue bound = Binder.bind((AnyBlockValue) arguments.get(2), locals);
         List<Value> items = series.remaining();
         List<Value> kept = new ArrayList<>();
         int taken = 0;
@@ -99,7 +99,7 @@ public class RemoveEachNative extends LoopingNative {
         return refinements.contains("count") ? IntegerValue.of(taken) : series;
     }
 
-    private void replaceTheRestWith(BlockValue series, List<Value> kept) {
+    private void replaceTheRestWith(AnyBlockValue series, List<Value> kept) {
         int had = series.lengthFromHere();
         for (int removed = 0; removed < had; removed++) {
             series.storage().removeAt(series.index());
@@ -117,7 +117,7 @@ public class RemoveEachNative extends LoopingNative {
         Context locals = Context.loopFrameOf(within);
         AnyWordValue word = (AnyWordValue) arguments.getFirst();
         locals.register(word.spelling());
-        BlockValue body = Binder.bind((BlockValue) arguments.get(2), locals);
+        AnyBlockValue body = Binder.bind((AnyBlockValue) arguments.get(2), locals);
         List<Value> kept = new ArrayList<>();
         int taken = 0;
         for (int at = series.index(); at <= series.storageLength(); at++) {
@@ -166,7 +166,7 @@ public class RemoveEachNative extends LoopingNative {
         MapActions.refuseMoreNamesThanAPairHas(map, namesThatTakeAValue(names));
         Context locals = Context.loopFrameOf(within);
         names.forEach(name -> locals.register(name.spelling()));
-        BlockValue body = Binder.bind((BlockValue) arguments.get(2), locals);
+        AnyBlockValue body = Binder.bind((AnyBlockValue) arguments.get(2), locals);
         List<Value> pairs = map.items();
         List<Value> takeOut = new ArrayList<>();
         for (int at = 0; at < pairs.size(); at += 2) {

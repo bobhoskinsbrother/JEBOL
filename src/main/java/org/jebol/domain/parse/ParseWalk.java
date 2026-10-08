@@ -1,6 +1,6 @@
 package org.jebol.domain.parse;
 
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
@@ -48,11 +48,11 @@ public interface ParseWalk {
 
     ParseWalk walkingOver(RebolSeries nested);
 
-    boolean matchesTheWholeOf(BlockValue rule);
+    boolean matchesTheWholeOf(AnyBlockValue rule);
 
-    Value answerFor(BlockValue rule);
+    Value answerFor(AnyBlockValue rule);
 
-    Value evaluateParen(BlockValue paren);
+    Value evaluateParen(AnyBlockValue paren);
 
     Value whatTheWordHolds(Value wanted);
 

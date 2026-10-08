@@ -34,7 +34,7 @@ public record AskedNative(NativeValue asked, Set<String> askedRefinements) imple
     }
 
     @Override
-    public Optional<BlockValue> ownSpec() {
+    public Optional<AnyBlockValue> ownSpec() {
         return asked.ownSpec();
     }
 
@@ -44,7 +44,7 @@ public record AskedNative(NativeValue asked, Set<String> askedRefinements) imple
     }
 
     @Override
-    public NativeValue derivedWith(BlockValue spec, List<Parameter> declared) {
+    public NativeValue derivedWith(AnyBlockValue spec, List<Parameter> declared) {
         return asked.derivedWith(spec, declared).askedFor(askedRefinements);
     }
 }

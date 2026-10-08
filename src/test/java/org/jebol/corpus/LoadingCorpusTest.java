@@ -2,7 +2,7 @@ package org.jebol.corpus;
 
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
 import org.junit.jupiter.api.DisplayName;
@@ -64,9 +64,9 @@ class LoadingCorpusTest {
                     assertThat(first.succeeded())
                             .as("%s read differently on a second attempt", entry.id())
                             .isEqualTo(second.succeeded());
-                    assertThat(first.values().map(BlockValue::remaining))
+                    assertThat(first.values().map(AnyBlockValue::remaining))
                             .as("%s produced different values on a second attempt", entry.id())
-                            .isEqualTo(second.values().map(BlockValue::remaining));
+                            .isEqualTo(second.values().map(AnyBlockValue::remaining));
                 });
     }
 
@@ -85,7 +85,7 @@ class LoadingCorpusTest {
     private static boolean unboundnessOf(Value value) {
         return switch (value) {
             case AnyWordValue word -> !word.isBound();
-            case BlockValue block -> block.remaining().stream()
+            case AnyBlockValue block -> block.remaining().stream()
                     .allMatch(LoadingCorpusTest::unboundnessOf);
             default -> true;
         };

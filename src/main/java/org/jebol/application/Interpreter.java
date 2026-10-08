@@ -120,14 +120,14 @@ public final class Interpreter {
     private static final String THE_SYSTEM_OBJECT_DECLARATION = "/org/jebol/sysobj.reb";
 
     private void declareRebolSequentially() {
-        BlockValue body = theLibraryFileAt(THE_SYSTEM_OBJECT_DECLARATION)
+        AnyBlockValue body = theLibraryFileAt(THE_SYSTEM_OBJECT_DECLARATION)
                 .orElseThrow(() -> new IllegalStateException(
                         "Rebol's system object declaration is missing from the build"))
                 .body();
         Context whereTheDeclarationsOwnWordsLand = Context.childOf(systemContext);
         declareTheSetWordsOf(body, whereTheDeclarationsOwnWordsLand,
                 AnAssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
-        BlockValue step = theLibraryFileAt(BOOT + "system-object.reb")
+        AnyBlockValue step = theLibraryFileAt(BOOT + "system-object.reb")
                 .orElseThrow(() -> new IllegalStateException(
                         "the system object boot step is missing from the build"))
                 .body();
@@ -146,12 +146,12 @@ public final class Interpreter {
         }
     }
 
-    private static BlockValue withoutTheFilesLineBreaks(BlockValue block) {
+    private static AnyBlockValue withoutTheFilesLineBreaks(AnyBlockValue block) {
         for (int at = block.index(); at <= block.storageLength(); at++) {
             block.storage().setLineBreakAt(at, false);
         }
         for (Value each : block.remaining()) {
-            if (each instanceof BlockValue nested) {
+            if (each instanceof AnyBlockValue nested) {
                 withoutTheFilesLineBreaks(nested);
             }
         }
@@ -190,7 +190,7 @@ public final class Interpreter {
 
     private static final String PRELUDE = "/org/jebol/prelude.reb";
 
-    private BlockValue thePrelude() {
+    private AnyBlockValue thePrelude() {
         return theLibraryFileAt(PRELUDE)
                 .orElseThrow(() -> new IllegalStateException(
                         "the prelude is missing from the build, or does not read"))
@@ -203,7 +203,7 @@ public final class Interpreter {
     }
 
     private void loadPrelude() {
-        BlockValue body = thePrelude();
+        AnyBlockValue body = thePrelude();
         Outcome outcome = evaluator.evaluate(Binder.bind(body, systemContext), systemContext);
         if (outcome instanceof Outcome.Raised(ErrorValue failure)) {
             throw new IllegalStateException("the prelude failed to load: " + failure);
@@ -233,7 +233,7 @@ public final class Interpreter {
             }
             LibraryFile file = LibraryFile.readFrom(read.values().orElseThrow());
             LibraryFileHeader header = file.header();
-            BlockValue body = file.body();
+            AnyBlockValue body = file.body();
 
             Outcome outcome = header.declaresAModule()
                     || isAProtocolAndSoAModuleWhateverItsHeaderSays(name)
@@ -255,7 +255,7 @@ public final class Interpreter {
         runTheBootStep("qoi-codec.reb");
     }
 
-    private Outcome loadAsASystemFile(BlockValue body) {
+    private Outcome loadAsASystemFile(AnyBlockValue body) {
         declareTheSetWordsOf(body, systemInternals,
                 AnAssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
         return evaluator.evaluate(
@@ -300,7 +300,7 @@ public final class Interpreter {
     }
 
     private static void declareTheSetWordsOf(
-            BlockValue body, Context into, AnAssignmentMayLand mayLand) {
+            AnyBlockValue body, Context into, AnAssignmentMayLand mayLand) {
 
         for (AnyWordValue word : body.setWordsFromHere()) {
             if (!alreadyAnsweredFor(into, word.canonical(), mayLand)) {
@@ -317,13 +317,13 @@ public final class Interpreter {
                 : into.knows(canonical);
     }
 
-    private Outcome loadInto(BlockValue body, Context target) {
+    private Outcome loadInto(AnyBlockValue body, Context target) {
         declareTheSetWordsOf(body, target,
                 AnAssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
         return evaluator.evaluate(Binder.bind(body, target), target);
     }
 
-    private Outcome loadAsAModule(BlockValue body, LibraryFileHeader header) {
+    private Outcome loadAsAModule(AnyBlockValue body, LibraryFileHeader header) {
         Context own = Context.childOf(systemContext);
         for (String exported : header.exportedNames()) {
             if (!own.holds(exported)) {
@@ -593,7 +593,7 @@ public final class Interpreter {
     private static final String THE_MEZZANINE_FILE_THAT_READS_WHAT_START_WROTE = "mezz-banner.reb";
 
     private void leaveTheBannerForStartToBuild() {
-        if (!(systemInternals.valueAt(THE_MEZZANINE_START_RUNS) instanceof BlockValue protecting)) {
+        if (!(systemInternals.valueAt(THE_MEZZANINE_START_RUNS) instanceof AnyBlockValue protecting)) {
             return;
         }
         theLibraryFileAt(MEZZANINE + THE_MEZZANINE_FILE_THAT_READS_WHAT_START_WROTE)
@@ -668,13 +668,13 @@ public final class Interpreter {
                         conclude(new Outcome.Raised(read.error().orElseThrow()), startedAt),
                         "");
             }
-            BlockValue values = read.values().orElseThrow();
+            AnyBlockValue values = read.values().orElseThrow();
             if (values.atTail()) {
                 return new Step(conclude(
                         new Outcome.Completed(UnsetValue.unset()), startedAt), "");
             }
             defineWordsIn(values);
-            BlockValue bound = Binder.bind(values, userContext);
+            AnyBlockValue bound = Binder.bind(values, userContext);
             try {
                 Evaluator.Step taken = evaluator.evaluateNextOrRaise(bound, userContext);
                 return new Step(
@@ -711,7 +711,7 @@ public final class Interpreter {
             return new Outcome.Raised(read.error().orElseThrow());
         }
         defineWordsIn(read.values().orElseThrow());
-        BlockValue bound = Binder.bind(read.values().orElseThrow(), userContext);
+        AnyBlockValue bound = Binder.bind(read.values().orElseThrow(), userContext);
         return evaluator.evaluate(bound, userContext);
     }
 
@@ -761,11 +761,11 @@ public final class Interpreter {
         read.values().ifPresent(this::defineWordsIn);
     }
 
-    private void defineWordsIn(BlockValue block) {
+    private void defineWordsIn(AnyBlockValue block) {
         defineWordsIn(block, userContext);
     }
 
-    private void defineWordsIn(BlockValue block, Context into) {
+    private void defineWordsIn(AnyBlockValue block, Context into) {
         for (Value item : block.remaining()) {
             switch (item) {
                 case AnyWordValue word -> {
@@ -774,7 +774,7 @@ public final class Interpreter {
                         resolveFromLibWhenStartMadeTheUserContext(word, into);
                     }
                 }
-                case BlockValue nested -> defineWordsIn(nested, into);
+                case AnyBlockValue nested -> defineWordsIn(nested, into);
                 default -> {
                 }
             }

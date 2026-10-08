@@ -120,7 +120,7 @@ final class GobPath {
         if (written instanceof IntegerValue(long magnitude)) {
             return java.util.Optional.of(PairValue.square(magnitude));
         }
-        if (written instanceof DecimalValue fraction) {
+        if (written instanceof AnyDecimalValue fraction) {
             return java.util.Optional.of(PairValue.square(fraction.quantity()));
         }
         return java.util.Optional.empty();
@@ -137,7 +137,7 @@ final class GobPath {
 
     private static boolean oneBlockContent(
             GobStorage storage, GobStorage.Content kind, Value written) {
-        if (written instanceof BlockValue block && block.datatype() == Datatype.BLOCK) {
+        if (written instanceof BlockValue block) {
             storage.content(kind, block);
             return true;
         }
@@ -145,7 +145,7 @@ final class GobPath {
     }
 
     private static boolean writtenText(GobStorage storage, Value written) {
-        if (written instanceof BlockValue block && block.datatype() == Datatype.BLOCK) {
+        if (written instanceof BlockValue block) {
             storage.content(GobStorage.Content.TEXT, block);
             return true;
         }
@@ -188,7 +188,7 @@ final class GobPath {
 
     private static boolean writtenPane(GobStorage storage, Value written) {
         List<Value> children;
-        if (written instanceof BlockValue block) {
+        if (written instanceof AnyBlockValue block) {
             children = block.remaining();
         } else if (written instanceof GobValue only) {
             children = List.of(only);
@@ -220,7 +220,7 @@ final class GobPath {
             case ObjectValue ignored -> GobStorage.Held.OBJECT;
             case BinaryValue ignored -> GobStorage.Held.BINARY;
             case IntegerValue ignored -> GobStorage.Held.INTEGER;
-            case BlockValue block when block.datatype() == Datatype.BLOCK ->
+            case BlockValue block ->
                     GobStorage.Held.BLOCK;
             case StringValue ignored ->
                     GobStorage.Held.STRING;
@@ -238,7 +238,7 @@ final class GobPath {
             raiseUnlessTheWordIsNoFlag(storage, aLoneWordAddsToWhatIsThere);
             return true;
         }
-        if (written instanceof BlockValue aBlockStartsFromNothing) {
+        if (written instanceof AnyBlockValue aBlockStartsFromNothing) {
             storage.lowerEveryFlag();
             for (Value item : aBlockStartsFromNothing.remaining()) {
                 if (item instanceof AnyWordValue word) {

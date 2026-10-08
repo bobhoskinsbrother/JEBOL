@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public record RespecifiedNative(NativeValue original, BlockValue spec, List<Parameter> parameters)
+public record RespecifiedNative(NativeValue original, AnyBlockValue spec, List<Parameter> parameters)
         implements NativeValue {
 
     @Override
@@ -30,7 +30,7 @@ public record RespecifiedNative(NativeValue original, BlockValue spec, List<Para
     }
 
     @Override
-    public Optional<BlockValue> ownSpec() {
+    public Optional<AnyBlockValue> ownSpec() {
         return Optional.of(spec);
     }
 }

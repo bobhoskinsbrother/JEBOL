@@ -36,7 +36,7 @@ public final class VectorPath {
     }
 
     public static void write(VectorValue vector, Value selector, Value written) {
-        if (!(selector instanceof IntegerValue) && !(selector instanceof DecimalValue)) {
+        if (!(selector instanceof IntegerValue) && !(selector instanceof AnyDecimalValue)) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET, Molder.mold(selector));
         }
         Integer chosen = positionChosenBy(vector, selector);
@@ -63,7 +63,7 @@ public final class VectorPath {
         long asked;
         if (selector instanceof IntegerValue(long magnitude)) {
             asked = magnitude;
-        } else if (selector instanceof DecimalValue number) {
+        } else if (selector instanceof AnyDecimalValue number) {
             asked = (long) number.quantity();
         } else {
             return null;

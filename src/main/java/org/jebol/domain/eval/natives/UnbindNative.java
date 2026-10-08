@@ -33,18 +33,18 @@ public class UnbindNative extends DefaultNative {
         if (value instanceof AnyWordValue word) {
             return word.boundTo(Context.unbound());
         }
-        if (value instanceof BlockValue block) {
+        if (value instanceof AnyBlockValue block) {
             loosenInPlace(block, deeply);
         }
         return value;
     }
 
-    private void loosenInPlace(BlockValue block, boolean deeply) {
+    private void loosenInPlace(AnyBlockValue block, boolean deeply) {
         for (int at = block.index(); at <= block.storageLength(); at++) {
             Value item = block.storage().at(at);
             if (item instanceof AnyWordValue word) {
                 block.storage().rebindAt(at, word.boundTo(Context.unbound()));
-            } else if (deeply && item instanceof BlockValue nested) {
+            } else if (deeply && item instanceof AnyBlockValue nested) {
                 loosenInPlace(nested, true);
             }
         }

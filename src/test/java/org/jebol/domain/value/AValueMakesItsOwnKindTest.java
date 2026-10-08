@@ -42,7 +42,7 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
-        public Value makeFunctionFrom(Value function, BlockValue spec) {
+        public Value makeFunctionFrom(Value function, AnyBlockValue spec) {
             asked.add("derived from " + function.datatype().literalSpelling());
             return WHAT_WAS_MADE;
         }
@@ -78,7 +78,7 @@ class AValueMakesItsOwnKindTest {
         return maker.asked;
     }
 
-    private static BlockValue aBlock() {
+    private static AnyBlockValue aBlock() {
         return BlockValue.block(List.of(IntegerValue.of(1)));
     }
 
@@ -88,7 +88,7 @@ class AValueMakesItsOwnKindTest {
     }
 
     private static StructValue aStruct() {
-        BlockValue layout = BlockValue.block(List.of(WordValue.of("a"),
+        AnyBlockValue layout = BlockValue.block(List.of(WordValue.of("a"),
                 BlockValue.block(List.of(WordValue.of("uint8!")))));
         return StructValue.of(StructSpec.of(layout, name -> Optional.empty()));
     }

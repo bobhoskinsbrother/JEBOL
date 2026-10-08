@@ -22,7 +22,7 @@ public class AllNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            BlockValue at = (BlockValue) arguments.getFirst();
+            AnyBlockValue at = (AnyBlockValue) arguments.getFirst();
             Value last = UnsetValue.unset();
             while (!at.atTail()) {
                 Evaluator.Step step = evaluator.evaluateNextOrRaise(at, context);

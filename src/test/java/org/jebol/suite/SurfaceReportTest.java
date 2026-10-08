@@ -60,7 +60,7 @@ class SurfaceReportTest {
                 asNative.refinementsDeclaredApart().stream().sorted()
                         .forEach(refinement -> shape.append(" /").append(refinement));
             }
-            case FunctionValue written -> appendArguments(shape, written.parameters());
+            case DefinedFunctionValue written -> appendArguments(shape, written.parameters());
             default -> {
                 return Optional.empty();
             }

@@ -1,116 +1,27 @@
 package org.jebol.domain.value;
 
-import java.util.Optional;
-import java.util.function.ToLongFunction;
+public final class DecimalValue extends AnyDecimalValue {
 
-public record DecimalValue(double quantity, Datatype datatype)
-        implements Value, RebolNumber {
+    DecimalValue(double quantity) {
+        super(quantity);
+    }
+
+    public static DecimalValue of(double quantity) {
+        return new DecimalValue(quantity);
+    }
 
     @Override
-    public Value randomised(RandomDraw draw) {
-        return new DecimalValue(draw.fraction() * quantity, datatype);
+    public Datatype datatype() {
+        return Datatype.DECIMAL;
+    }
+
+    @Override
+    DecimalValue sameKindHolding(double another) {
+        return new DecimalValue(another);
     }
 
     @Override
     public long asCountOfRepetitions() {
-        if (datatype == Datatype.PERCENT) {
-            return RebolNumber.super.asCountOfRepetitions();
-        }
-        return (long) quantity;
-    }
-
-    @Override
-    public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
-        return Double.doubleToRawLongBits(quantity);
-    }
-
-    @Override
-    public long asPosition() {
-        return (long) quantity;
-    }
-
-    @Override
-    public Value absolute() {
-        return quantity == 0.0 ? this : new DecimalValue(Math.abs(quantity), datatype);
-    }
-
-    @Override
-    public Value negated() {
-        return new DecimalValue(-quantity, datatype);
-    }
-
-    @Override
-    public Value heldBetween(Value lowest, Value highest) {
-        return new DecimalValue(Math.max(((DecimalValue) lowest).quantity,
-                Math.min(((DecimalValue) highest).quantity, quantity)), datatype);
-    }
-
-
-    @Override
-    public Value combinedWithANumber(Value right, ArithmeticOperation operation) {
-        Value answered = operation.onFractions(
-                quantity, Numbers.quantityOfANumber(right), true);
-        return datatype == Datatype.PERCENT
-                && right.datatype() == Datatype.PERCENT
-                && !operation.divides()
-                && answered instanceof DecimalValue(double amount, Datatype ignored)
-                ? DecimalValue.percent(amount)
-                : answered;
-    }
-
-    @Override
-    public boolean mayLoseATime(ArithmeticOperation operation) {
-        return false;
-    }
-
-    @Override
-    public boolean mayMeetADate() {
-        return false;
-    }
-
-    @Override
-    public Optional<DecimalValue> asDecimalNumber() {
-        return Optional.of(this);
-    }
-
-    @Override
-    public Optional<MoneyValue> asMoneyInTheCurrencyOf(MoneyValue other) {
-        return Optional.of(new MoneyValue(new Deci(quantity)));
-    }
-
-    @Override
-    public Optional<Value[]> broughtTogetherWith(Value other) {
-        return switch (other) {
-            case MoneyValue theirs -> both(asMoneyInTheCurrencyOf(theirs).orElseThrow(), theirs);
-            case DecimalValue ignored -> both(this, other);
-            case TimeValue theirs -> both(this, theirs.asSeconds());
-            default -> Optional.empty();
-        };
-    }
-
-
-    public DecimalValue {
-        if (datatype != Datatype.DECIMAL && datatype != Datatype.PERCENT) {
-            throw new IllegalArgumentException(
-                    "a decimal value is decimal! or percent!, not " + datatype.literalSpelling());
-        }
-    }
-
-    @Override
-    public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
-        return java.util.Optional.of(asItStands(wanted, quantity));
-    }
-
-    public static DecimalValue of(double quantity) {
-        return new DecimalValue(quantity, Datatype.DECIMAL);
-    }
-
-    public static DecimalValue percent(double quantity) {
-        return new DecimalValue(quantity, Datatype.PERCENT);
-    }
-
-    @Override
-    public String toString() {
-        return Double.toString(quantity);
+        return (long) quantity();
     }
 }

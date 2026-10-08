@@ -45,7 +45,7 @@ public class PutAction extends DefaultNative implements ActionValue {
                     putIntoTheObject(object, field, written);
             case ObjectValue ignored -> throw Raised.of(EvaluationFailure.INVALID_ARG,
                     Molder.mold(key) + " is not a word an object can hold a field under");
-            case BlockValue block -> putIntoTheBlock(block, key, written,
+            case AnyBlockValue block -> putIntoTheBlock(block, key, written,
                     recordWidth(arguments, refinements), refinements.contains("case"));
             case Value anythingElse -> refuseTheDatatype(anythingElse);
         }
@@ -61,7 +61,7 @@ public class PutAction extends DefaultNative implements ActionValue {
     }
 
     private void putIntoTheBlock(
-            BlockValue block, Value key, Value written, int stride, boolean mindingCase) {
+            AnyBlockValue block, Value key, Value written, int stride, boolean mindingCase) {
         List<Value> items = block.remaining();
         int found = positionOfTheKey(items, key, stride, mindingCase);
         if (found == NOT_FOUND) {

@@ -34,8 +34,7 @@ public class SetSchemeNative extends DefaultNative {
                     .filter(slot -> !slot.canonical().equals("self"))
                     .toList();
             if (fields.size() <= WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_ACTOR
-                    || !(fields.get(WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_NAME).value() instanceof AnyWordValue named)
-                    || named.datatype() != Datatype.WORD
+                    || !(fields.get(WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_NAME).value() instanceof WordValue named)
                     || !SCHEMES_SERVED_NATIVELY.contains(named.canonical())) {
                 return NoneValue.none();
             }

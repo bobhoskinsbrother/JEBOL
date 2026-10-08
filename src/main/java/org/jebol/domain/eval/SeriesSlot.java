@@ -16,7 +16,7 @@ record SeriesSlot(RebolSeries series, int at, Value held) implements Slot {
 
     static void write(RebolSeries series, int at, Value value) {
         switch (series) {
-            case BlockValue block -> block.storage().set(at, value);
+            case AnyBlockValue block -> block.storage().set(at, value);
             case AnyStringValue text -> text.storage().set(at,
                     value instanceof CharacterValue(int codepoint)
                             ? codepoint

@@ -12,7 +12,7 @@ public interface Actions {
             case MapValue pairs -> Optional.of(new MapActions(pairs));
             case BinaryValue bytes -> Optional.of(new BinaryActions(bytes));
             case AnyStringValue text -> Optional.of(new StringActions(text));
-            case BlockValue block -> Optional.of(new BlockActions(block));
+            case AnyBlockValue block -> Optional.of(new BlockActions(block));
             case ObjectValue object -> Optional.of(new ObjectActions(object));
             case GobValue gob -> Optional.of(new GobActions(gob));
             case ImageValue picture -> Optional.of(new ImageActions(picture));

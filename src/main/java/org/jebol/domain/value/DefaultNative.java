@@ -10,7 +10,7 @@ import java.util.stream.Stream;
 
 public abstract non-sealed class DefaultNative implements NativeValue {
 
-    private Optional<BlockValue> declaredSpec = Optional.empty();
+    private Optional<AnyBlockValue> declaredSpec = Optional.empty();
     private Optional<List<Parameter>> declaredParameters = Optional.empty();
 
     public abstract List<Parameter> parametersAsWritten();
@@ -26,11 +26,11 @@ public abstract non-sealed class DefaultNative implements NativeValue {
     }
 
     @Override
-    public final Optional<BlockValue> ownSpec() {
+    public final Optional<AnyBlockValue> ownSpec() {
         return declaredSpec;
     }
 
-    public final void declaredBy(BlockValue spec, List<Parameter> declared) {
+    public final void declaredBy(AnyBlockValue spec, List<Parameter> declared) {
         this.declaredSpec = Optional.of(spec);
         this.declaredParameters = Optional.of(List.copyOf(declared));
     }

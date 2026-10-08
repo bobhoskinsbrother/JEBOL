@@ -25,7 +25,7 @@ public abstract class OutputNative extends DefaultNative {
     }
 
     private String forOutput(Value value, Evaluator evaluator) {
-        return Molder.form(value instanceof BlockValue block && block.datatype() == Datatype.BLOCK
+        return Molder.form(value instanceof BlockValue block
                 ? BlockValue.block(evaluator.evaluateEachOrRaise(block, evaluator.systemContext()))
                 : value);
     }

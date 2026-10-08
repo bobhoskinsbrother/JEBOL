@@ -60,8 +60,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
         Deci rounded = roundedBy(MONEY.asDeci(subject), step, refinements);
         if (subject instanceof MoneyValue && scale.isPresent()) {
             return switch (scale.get()) {
-                case DecimalValue quantity when quantity.datatype() == Datatype.PERCENT ->
-                        DecimalValue.percent(rounded.toDouble());
+                case PercentValue ignored -> PercentValue.of(rounded.toDouble());
                 case DecimalValue ignored -> DecimalValue.of(rounded.toDouble());
                 case IntegerValue ignored -> IntegerValue.of(rounded.toLong());
                 default -> new MoneyValue(rounded);
@@ -71,7 +70,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
     }
 
     private Deci aStepMoneyRoundsTo(Value given) {
-        if (!(given instanceof MoneyValue || given instanceof IntegerValue || given instanceof DecimalValue)) {
+        if (!(given instanceof MoneyValue || given instanceof IntegerValue || given instanceof AnyDecimalValue)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, given);
         }
         Deci step = MONEY.asDeci(given);
@@ -140,8 +139,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
     private Value roundedKeepingTheDatatype(Value subject, double rounded) {
         return switch (subject) {
             case MoneyValue amount -> amount.amounting(BigDecimal.valueOf(rounded));
-            case DecimalValue quantity when quantity.datatype() == Datatype.PERCENT ->
-                    DecimalValue.percent(rounded);
+            case PercentValue ignored -> PercentValue.of(rounded);
             case IntegerValue ignored -> IntegerValue.of((long) rounded);
             default -> DecimalValue.of(rounded);
         };
@@ -151,8 +149,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
         return switch (scale) {
             case MoneyValue amount -> amount.amounting(BigDecimal.valueOf(rounded));
             case IntegerValue ignored -> IntegerValue.of((long) rounded);
-            case DecimalValue quantity when quantity.datatype() == Datatype.PERCENT ->
-                    DecimalValue.percent(toFifteenDigits(rounded));
+            case PercentValue ignored -> PercentValue.of(toFifteenDigits(rounded));
             default -> DecimalValue.of(toFifteenDigits(rounded));
         };
     }

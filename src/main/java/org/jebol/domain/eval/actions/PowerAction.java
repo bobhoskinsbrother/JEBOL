@@ -32,13 +32,12 @@ public class PowerAction extends DefaultNative implements ActionValue {
             double raised = Math.pow(
                     Comparison.asDouble(base), Comparison.asDouble(exponent));
             return bothArePercents(base, exponent)
-                    ? DecimalValue.percent(raised)
+                    ? PercentValue.of(raised)
                     : DecimalValue.of(raised);
         };
     }
 
     private boolean bothArePercents(Value base, Value exponent) {
-        return base.datatype() == Datatype.PERCENT
-                && exponent.datatype() == Datatype.PERCENT;
+        return base instanceof PercentValue && exponent instanceof PercentValue;
     }
 }

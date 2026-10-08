@@ -53,7 +53,7 @@ public abstract class CaseChangeNative extends DefaultNative {
     private long howManyAskedOf(AnyStringValue text, Value limit) {
         return switch (limit) {
             case IntegerValue whole -> whole.magnitude();
-            case DecimalValue fraction when fraction.datatype() == Datatype.DECIMAL ->
+            case DecimalValue fraction ->
                     (long) fraction.quantity();
             case AnyStringValue upTo when upTo.sharesStorageWith(text) -> upTo.index() - text.index();
             default -> throw Raised.of(EvaluationFailure.INVALID_PART, limit);

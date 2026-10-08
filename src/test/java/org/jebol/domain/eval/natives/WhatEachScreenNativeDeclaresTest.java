@@ -274,7 +274,7 @@ class WhatEachScreenNativeDeclaresTest {
         @DisplayName("answers a block for a block, and shows nothing, as the C's gob-only branch does")
         void answersABlockForABlock() {
             AScreenThatRecords screen = aScreenOf(1);
-            BlockValue block = BlockValue.block(GobValue.empty());
+            AnyBlockValue block = BlockValue.block(GobValue.empty());
             assertThat(called(definition, screen, Set.of(), block)).isSameAs(block);
             assertThat(screen.shown).isEmpty();
         }

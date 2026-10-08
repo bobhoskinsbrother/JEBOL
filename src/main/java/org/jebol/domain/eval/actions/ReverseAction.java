@@ -51,7 +51,7 @@ public class ReverseAction extends DefaultNative implements ActionValue {
     private long howManyCounted(RebolSeries series, Value asked) {
         return switch (asked) {
             case IntegerValue(long magnitude) -> magnitude;
-            case DecimalValue fraction when fraction.datatype() != Datatype.PERCENT ->
+            case DecimalValue fraction ->
                     (long) Comparison.asDouble(fraction);
             case RebolSeries upTo when upTo.datatype() == series.datatype()
                     && upTo.sharesStorageWith(series) -> upTo.index() - series.index();

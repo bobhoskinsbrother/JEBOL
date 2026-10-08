@@ -35,7 +35,7 @@ public class ApplyNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            BlockValue given = (BlockValue) arguments.get(1);
+            AnyBlockValue given = (AnyBlockValue) arguments.get(1);
             List<Value> supplied = refinements.contains("only")
                     ? new ArrayList<>(given.remaining())
                     : new ArrayList<>(evaluator.evaluateEachOrRaise(given, context));
@@ -72,7 +72,7 @@ public class ApplyNative extends DefaultNative {
                     .filter(Parameter::consumesAnArgument)
                     .filter(parameter -> parameter.owningRefinement().isEmpty())
                     .count();
-            case FunctionValue function -> function.parameters().size();
+            case DefinedFunctionValue function -> function.parameters().size();
             case OperatorValue operator -> arityOf(operator.underlying());
             default -> 0;
         };
@@ -109,7 +109,7 @@ public class ApplyNative extends DefaultNative {
     private List<Value> theWordsItTakes(NativeValue builtIn, Evaluator evaluator) {
         Value reflect = evaluator.systemContext().valueAt("reflect");
         return evaluator.applyFunction(reflect, List.of(builtIn, WordValue.of("words")))
-                instanceof BlockValue words
+                instanceof AnyBlockValue words
                 ? words.remaining()
                 : List.of();
     }

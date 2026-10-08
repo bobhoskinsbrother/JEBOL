@@ -28,7 +28,7 @@ public class SwapAction extends DefaultNative implements ActionValue {
                         text.swapFirstItemWith(other);
                 case BinaryValue bytes when there instanceof BinaryValue other ->
                         bytes.swapFirstItemWith(other);
-                case BlockValue block when there instanceof BlockValue other ->
+                case AnyBlockValue block when there instanceof AnyBlockValue other ->
                         block.swapFirstItemWith(other);
                 case Value anythingElse -> refuseTheArgument(anythingElse, "series1");
             };

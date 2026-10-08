@@ -100,7 +100,7 @@ public final class Molder {
 
     private static int standsWithinNeverPastTheEndForABlockOrAPath(
             RebolSeries series) {
-        return series instanceof BlockValue
+        return series instanceof AnyBlockValue
                 ? Math.min(series.index(), series.storageLength() + 1)
                 : series.index();
     }
@@ -152,7 +152,7 @@ public final class Molder {
     private static String constructBodyOf(RebolSeries series) {
         return switch (series) {
             case AnyStringValue text -> moldedText(text.head().text());
-            case BlockValue block -> "[" + block.head().remaining().stream()
+            case AnyBlockValue block -> "[" + block.head().remaining().stream()
                     .map(Molder::mold).collect(Collectors.joining(" ")) + "]";
             default -> mold(series.head());
         };
@@ -171,7 +171,7 @@ public final class Molder {
      * block holding the source's values, and molding that block would add a
      * layer of brackets the source never had.
      */
-    public static String moldOnly(BlockValue block) {
+    public static String moldOnly(AnyBlockValue block) {
         return renderLined(block, true, WITH_NO_BRACKETS);
     }
 
@@ -202,7 +202,7 @@ public final class Molder {
         return switch (value) {
             case MapValue ignored -> "#[...]";
             case ObjectValue ignored -> "make object! [...]";
-            case BlockValue block -> switch (block.datatype()) {
+            case AnyBlockValue block -> switch (block.datatype()) {
                 case PAREN -> "(...)";
                 case PATH, SET_PATH, GET_PATH, LIT_PATH -> "...";
                 case HASH -> "make hash! [...]";
@@ -214,7 +214,7 @@ public final class Molder {
 
     private static Object nestingIdentityOf(Value value) {
         return switch (value) {
-            case BlockValue block -> block.storage();
+            case AnyBlockValue block -> block.storage();
             case MapValue map -> map;
             case ObjectValue object -> object.context();
             default -> null;
@@ -229,7 +229,7 @@ public final class Molder {
                     ? (logic.truth() ? "#(true)" : "#(false)")
                     : (Boolean.toString(logic.truth()));
             case IntegerValue integer -> Long.toString(integer.magnitude());
-            case DecimalValue decimal -> renderDecimal(decimal);
+            case AnyDecimalValue decimal -> renderDecimal(decimal);
             case MoneyValue money -> renderMoney(money);
             case CharacterValue character -> forReading
                     ? "#\"" + escape(character.toString()) + "\""
@@ -248,7 +248,7 @@ public final class Molder {
             case GobValue gob -> renderGob(gob, forReading);
             case VectorValue vector -> writtenAsAVector(
                     vector, vector.index(), forReading, 1);
-            case BlockValue block -> renderBlock(block, forReading);
+            case AnyBlockValue block -> renderBlock(block, forReading);
             case AnyWordValue word -> forReading ? word.mold() : word.form();
             case DatatypeValue datatype -> forReading
                     ? "#(" + datatype.represents().literalSpelling() + ")"
@@ -259,7 +259,7 @@ public final class Molder {
                             ? "#(typeset! [" + namesInTheTypeset(typeset) + "])"
                             : "make typeset! [" + namesInTheTypeset(typeset) + "]";
             case NativeValue built -> renderNative(built);
-            case FunctionValue function -> renderFunction(function, forReading);
+            case DefinedFunctionValue function -> renderFunction(function, forReading);
             case OperatorValue operator -> renderOperator(operator);
             case MapValue map -> renderMap(map, forReading);
             case BitsetValue bitset -> "#(bitset! "
@@ -290,9 +290,9 @@ public final class Molder {
 
     private static final int SMALLEST_PLAIN_EXPONENT = -6;
 
-    private static String renderDecimal(DecimalValue decimal) {
+    private static String renderDecimal(AnyDecimalValue decimal) {
         double quantity = decimal.quantity();
-        return decimal.datatype() == Datatype.PERCENT && hasDigits(quantity)
+        return decimal instanceof PercentValue && hasDigits(quantity)
                 ? renderPercent(quantity) + "%"
                 : renderDouble(quantity);
     }
@@ -739,8 +739,8 @@ public final class Molder {
         return out.append(')').toString();
     }
 
-    private static String renderLined(BlockValue block, boolean forReading,
-            boolean betweenBrackets) {
+    private static String renderLined(AnyBlockValue block, boolean forReading,
+                                      boolean betweenBrackets) {
         boolean mayBreakLines = !WRITING_ON_ONE_LINE.get();
         StringBuilder out = new StringBuilder(
                 betweenBrackets ? opensWith(block.datatype()) : "");
@@ -792,7 +792,7 @@ public final class Molder {
         return shape == Datatype.PAREN ? ")" : "]";
     }
 
-    private static String renderBlock(BlockValue block, boolean forReading) {
+    private static String renderBlock(AnyBlockValue block, boolean forReading) {
         if (forReading && moldsInBrackets(block.datatype())) {
             return renderLined(block, forReading, BETWEEN_BRACKETS);
         }
@@ -811,7 +811,7 @@ public final class Molder {
         };
     }
 
-    private static String joinPath(BlockValue path, String prefix, String suffix) {
+    private static String joinPath(AnyBlockValue path, String prefix, String suffix) {
         List<Value> segments = path.remaining();
         if (segments.isEmpty() && !WRITING_EVERYTHING_OUT.get()) {
             return "";
@@ -827,7 +827,7 @@ public final class Molder {
                 .collect(Collectors.joining("/")) + suffix;
     }
 
-    private static boolean wouldNotReadBackAsAPath(BlockValue path, List<Value> segments) {
+    private static boolean wouldNotReadBackAsAPath(AnyBlockValue path, List<Value> segments) {
         return segments.isEmpty()
                 || path.storageLength() <= 1
                 || !(segments.getFirst() instanceof WordValue);
@@ -869,9 +869,8 @@ public final class Molder {
                 : "#[op! " + operator.operatorName() + "]";
     }
 
-    private static String renderFunction(FunctionValue function, boolean forReading) {
-        Datatype names = function.closure() ? Datatype.CLOSURE : Datatype.FUNCTION;
-        return openedFor(names) + "["
+    private static String renderFunction(DefinedFunctionValue function, boolean forReading) {
+        return openedFor(function.datatype()) + "["
                 + mold(function.spec().head())
                 + mold(function.body().head())
                 + "]" + closedAfterATypeName();
@@ -893,7 +892,7 @@ public final class Molder {
             ThreadLocal.withInitial(LinkedHashSet::new);
 
     private static String renderField(Value value, boolean forReading) {
-        return value instanceof AnyWordValue word && word.datatype() == Datatype.WORD
+        return value instanceof WordValue word
                 && !WRITING_EVERYTHING_OUT.get()
                 ? "'" + render(value, forReading)
                 : render(value, forReading);

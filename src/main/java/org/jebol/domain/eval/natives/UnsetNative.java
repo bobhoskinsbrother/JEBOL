@@ -27,7 +27,7 @@ public class UnsetNative extends DefaultNative {
                     return nothing;
                 }
                 case AnyWordValue word -> unsetEach(List.of(word));
-                case BlockValue words -> unsetEach(words.remaining());
+                case AnyBlockValue words -> unsetEach(words.remaining());
                 default -> { }
             }
             return UnsetValue.unset();

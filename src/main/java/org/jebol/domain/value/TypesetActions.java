@@ -39,7 +39,7 @@ public final class TypesetActions {
         return TypesetValue.of(Set.copyOf(kept));
     }
 
-    public static Set<Datatype> datatypesNamedIn(BlockValue spec) {
+    public static Set<Datatype> datatypesNamedIn(AnyBlockValue spec) {
         Set<Datatype> found = EnumSet.noneOf(Datatype.class);
         for (Value item : spec.remaining()) {
             if (!addTheTypesNamedBy(item, found)) {

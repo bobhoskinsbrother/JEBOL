@@ -471,7 +471,7 @@ public final class Bincode {
         if (given instanceof IntegerValue(long magnitude)) {
             return magnitude;
         }
-        if (given instanceof DecimalValue fraction) {
+        if (given instanceof AnyDecimalValue fraction) {
             return fraction.quantity();
         }
         throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
@@ -899,7 +899,7 @@ public final class Bincode {
     }
 
     private static double anyNumberWritten(Value given) {
-        if (given instanceof IntegerValue || given instanceof DecimalValue) {
+        if (given instanceof IntegerValue || given instanceof AnyDecimalValue) {
             return anyNumberOf(given);
         }
         throw refuse(given);

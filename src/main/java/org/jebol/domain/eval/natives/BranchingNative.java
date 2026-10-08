@@ -16,7 +16,6 @@ public abstract class BranchingNative extends DefaultNative {
             Value branch, Evaluator evaluator, Context context, Set<String> refinements) {
 
         return branch instanceof BlockValue block
-                && block.datatype() == Datatype.BLOCK
                 && !refinements.contains("only")
                 ? evaluator.evaluateOrRaise(block, context)
                 : branch;

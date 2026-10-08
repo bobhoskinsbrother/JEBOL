@@ -13,6 +13,7 @@ import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.LogicValue;
@@ -263,13 +264,13 @@ public final class Repl {
             interpreter.run("change-dir system/options/path");
         }
 
-        private BlockValue theArgumentsForTheScript() {
+        private AnyBlockValue theArgumentsForTheScript() {
             List<Value> given = new ArrayList<>();
             asked.argumentsForTheScript().forEach(each -> given.add(StringValue.of(each)));
             return BlockValue.block(given);
         }
 
-        private BlockValue theFlagsGiven() {
+        private AnyBlockValue theFlagsGiven() {
             List<Value> given = new ArrayList<>();
             asked.flags().forEach(flag -> given.add(WordValue.of(flag.spelling())));
             given.add(LogicValue.yes());

@@ -27,14 +27,14 @@ public class AssertNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            BlockValue conditions = (BlockValue) arguments.getFirst();
+            AnyBlockValue conditions = (AnyBlockValue) arguments.getFirst();
             return refinements.contains("type")
                     ? everyTypeHeld(conditions, evaluator, context)
                     : everyConditionHeld(conditions, evaluator, context);
         };
     }
 
-    private Value everyTypeHeld(BlockValue pairs, Evaluator evaluator, Context context) {
+    private Value everyTypeHeld(AnyBlockValue pairs, Evaluator evaluator, Context context) {
         List<Value> items = pairs.remaining();
         for (int at = 0; at < items.size(); at += 2) {
             Value subject = items.get(at);
@@ -50,9 +50,7 @@ public class AssertNative extends DefaultNative {
     }
 
     private Value theValueNamedBy(Value subject, Evaluator evaluator, Context context) {
-        boolean namesAValue = subject instanceof AnyWordValue word
-                && word.datatype() == Datatype.WORD
-                || subject instanceof BlockValue path && path.datatype() == Datatype.PATH;
+        boolean namesAValue = subject instanceof WordValue || subject instanceof PathValue;
         if (!namesAValue) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, subject);
         }
@@ -60,9 +58,9 @@ public class AssertNative extends DefaultNative {
     }
 
     private Value everyConditionHeld(
-            BlockValue conditions, Evaluator evaluator, Context context) {
+            AnyBlockValue conditions, Evaluator evaluator, Context context) {
 
-        BlockValue at = conditions;
+        AnyBlockValue at = conditions;
         while (!at.atTail()) {
             Evaluator.Step step = evaluator.evaluateNextOrRaise(at, context);
             at = at.atIndex(step.nextIndex());
@@ -84,7 +82,7 @@ public class AssertNative extends DefaultNative {
                         : NoneValue.none();
                 yield resolved != type && isOfType(held, resolved, context);
             }
-            case BlockValue any -> any.remaining().stream()
+            case AnyBlockValue any -> any.remaining().stream()
                     .anyMatch(one -> isOfType(held, one, context));
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     "assert/type wants a datatype, not " + type.datatype().literalSpelling());

@@ -5,7 +5,7 @@ import org.jebol.domain.eval.Binder;
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.DecimalValue;
@@ -45,11 +45,11 @@ public class ForNative extends LoopingNative {
                 arguments.get(1),
                 arguments.get(2),
                 arguments.get(3),
-                (BlockValue) arguments.get(4));
+                (AnyBlockValue) arguments.get(4));
     }
 
     private Value steppedLoop(Evaluator evaluator, Context within, AnyWordValue counter,
-            Value start, Value end, Value step, BlockValue body) {
+            Value start, Value end, Value step, AnyBlockValue body) {
 
         if (Comparison.asDouble(step) == 0.0) {
             throw Raised.of(EvaluationFailure.CANNOT_USE,
@@ -60,7 +60,7 @@ public class ForNative extends LoopingNative {
 
         Context locals = Context.loopFrameOf(within);
         locals.register(counter.spelling());
-        BlockValue bound = Binder.bind(body, locals);
+        AnyBlockValue bound = Binder.bind(body, locals);
 
         if (start instanceof RebolSeries series) {
             return steppedOverSeries(evaluator, locals, counter, series, end, step, bound);
@@ -76,7 +76,7 @@ public class ForNative extends LoopingNative {
     }
 
     private Value steppedOverWholeNumbers(Evaluator evaluator, Context locals,
-                                          AnyWordValue counter, long from, long to, long stepBy, BlockValue body) {
+                                          AnyWordValue counter, long from, long to, long stepBy, AnyBlockValue body) {
 
         return answerOfTheLoop(() -> {
             Value last = NoneValue.none();
@@ -100,7 +100,7 @@ public class ForNative extends LoopingNative {
     }
 
     private Value steppedOverRealNumbers(Evaluator evaluator, Context locals,
-                                         AnyWordValue counter, double from, double to, double stepBy, BlockValue body) {
+                                         AnyWordValue counter, double from, double to, double stepBy, AnyBlockValue body) {
 
         return answerOfTheLoop(() -> {
             Value last = NoneValue.none();
@@ -113,7 +113,7 @@ public class ForNative extends LoopingNative {
     }
 
     private Value steppedOverSeries(Evaluator evaluator, Context locals, AnyWordValue counter,
-            RebolSeries series, Value end, Value step, BlockValue body) {
+            RebolSeries series, Value end, Value step, AnyBlockValue body) {
 
         int tail = series.storageLength() + 1;
         int endIndex = Math.max(0, Math.min(endIndexOf(end), tail));

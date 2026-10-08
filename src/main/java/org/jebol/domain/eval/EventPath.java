@@ -213,7 +213,7 @@ final class EventPath {
         if (spec instanceof EventValue already) {
             return already;
         }
-        if (!(spec instanceof BlockValue block) || block.datatype() != Datatype.BLOCK) {
+        if (!(spec instanceof BlockValue block)) {
             throw Raised.of(EvaluationFailure.EXPECT_VAL,
                     DatatypeValue.of(Datatype.EVENT),
                     DatatypeValue.of(spec.datatype()));

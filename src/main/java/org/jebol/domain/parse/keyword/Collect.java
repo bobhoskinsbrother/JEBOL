@@ -2,6 +2,7 @@ package org.jebol.domain.parse.keyword;
 
 import org.jebol.domain.parse.ParseTargets;
 import org.jebol.domain.parse.ParseWalk;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
@@ -22,7 +23,7 @@ final class Collect extends SameForABlockAndAString {
         if (goes.ruleAt() >= rules.size()) {
             return ParseWalk.NO_MATCH;
         }
-        BlockValue destination = null;
+        AnyBlockValue destination = null;
         if (goes.assignedTo() != null) {
             destination = BlockValue.block(new ArrayList<>());
             walk.assign(goes.assignedTo(), destination);

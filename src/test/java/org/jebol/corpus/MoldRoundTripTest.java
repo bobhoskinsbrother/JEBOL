@@ -2,7 +2,7 @@ package org.jebol.corpus;
 
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Value;
 import org.junit.jupiter.api.DisplayName;
@@ -27,10 +27,10 @@ class MoldRoundTripTest {
     @MethodSource("programmes")
     @DisplayName("mold then read gives back an equal block")
     void moldingThenReadingIsIdentity(Path programme) {
-        BlockValue original = readOrFail(CorpusReader.read(programme));
+        AnyBlockValue original = readOrFail(CorpusReader.read(programme));
 
         String molded = Molder.moldOnly(original);
-        BlockValue reread = readOrFail(molded);
+        AnyBlockValue reread = readOrFail(molded);
 
         assertThat(reread.remaining())
                 .as("%s did not survive a round trip", programme.getFileName())
@@ -41,7 +41,7 @@ class MoldRoundTripTest {
     @MethodSource("programmes")
     @DisplayName("and the round trip is stable, not merely once")
     void moldingIsStable(Path programme) {
-        BlockValue original = readOrFail(CorpusReader.read(programme));
+        AnyBlockValue original = readOrFail(CorpusReader.read(programme));
 
         String once = Molder.moldOnly(original);
         String twice = Molder.moldOnly(readOrFail(once));
@@ -63,8 +63,8 @@ class MoldRoundTripTest {
 
             assertThat(loaders).isNotEmpty();
             loaders.forEach(entry -> {
-                BlockValue original = readOrFail(entry.code());
-                BlockValue reread = readOrFail(Molder.moldOnly(original));
+                AnyBlockValue original = readOrFail(entry.code());
+                AnyBlockValue reread = readOrFail(Molder.moldOnly(original));
 
                 assertThat(reread.remaining())
                         .as("%s -- %s", entry.id(), entry.origin())
@@ -109,8 +109,8 @@ class MoldRoundTripTest {
         }
 
         private void assertRoundTrips(String source) {
-            BlockValue original = readOrFail(source);
-            BlockValue reread = readOrFail(Molder.moldOnly(original));
+            AnyBlockValue original = readOrFail(source);
+            AnyBlockValue reread = readOrFail(Molder.moldOnly(original));
 
             assertThat(reread.remaining())
                     .as("source: %s%nmolded: %s", source, Molder.moldOnly(original))
@@ -118,7 +118,7 @@ class MoldRoundTripTest {
         }
     }
 
-    private static BlockValue readOrFail(String source) {
+    private static AnyBlockValue readOrFail(String source) {
         TranscodeResult result = Transcoder.transcode(source);
         assertThat(result.succeeded())
                 .as("could not read: %s%n  source: %s",

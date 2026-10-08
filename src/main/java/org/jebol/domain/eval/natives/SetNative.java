@@ -43,7 +43,7 @@ public class SetNative extends DefaultNative {
                     word.boundSlot().setValue(supplied);
                     yield supplied;
                 }
-                case BlockValue path when path.datatype().isAnyPath() ->
+                case AnyBlockValue path when path.datatype().isAnyPath() ->
                         writtenThroughPath(path, supplied);
                 case ObjectValue into when supplied instanceof ObjectValue from
                         && !refinements.contains("only") -> {
@@ -52,7 +52,7 @@ public class SetNative extends DefaultNative {
                     yield supplied;
                 }
                 case ObjectValue into -> spreadOver(wordsOf(into), supplied, refinements);
-                case BlockValue words -> spreadOver(words.remaining(), supplied, refinements);
+                case AnyBlockValue words -> spreadOver(words.remaining(), supplied, refinements);
                 default -> refuseTheDatatype(target);
             };
         };
@@ -63,8 +63,8 @@ public class SetNative extends DefaultNative {
         Optional<List<Value>> values = refinements.contains("only")
                 ? Optional.empty()
                 : Optional.of(supplied)
-                        .filter(BlockValue.class::isInstance)
-                        .map(block -> ((BlockValue) block).remaining());
+                        .filter(AnyBlockValue.class::isInstance)
+                        .map(block -> ((AnyBlockValue) block).remaining());
         if (!refinements.contains("any")) {
             values.ifPresent(spread -> refuseUnsetAmong(words, spread));
         }
@@ -112,7 +112,7 @@ public class SetNative extends DefaultNative {
         }
     }
 
-    private Value writtenThroughPath(BlockValue path, Value supplied) {
+    private Value writtenThroughPath(AnyBlockValue path, Value supplied) {
         List<Value> segments = path.remaining();
         if (segments.size() < 2 || !(segments.getFirst() instanceof AnyWordValue head)) {
             return refuseTheDatatype(path);

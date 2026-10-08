@@ -50,7 +50,7 @@ public abstract class EncodingNative extends DefaultNative {
                     || magnitude < Integer.MIN_VALUE ->
                     throw Raised.of(EvaluationFailure.OUT_OF_RANGE, count);
             case IntegerValue(long magnitude) -> magnitude;
-            case DecimalValue fraction when fraction.datatype() != Datatype.PERCENT ->
+            case DecimalValue fraction ->
                     (long) Comparison.asDouble(fraction);
             case RebolSeries upTo -> distanceFrom(source, upTo);
             default -> throw Raised.of(EvaluationFailure.INVALID_PART, count);

@@ -18,7 +18,7 @@ class ValuePropertiesTest {
             @ForAll @Size(max = 12) List<@IntRange(min = -50, max = 50) Integer> contents,
             @ForAll @IntRange(min = -5, max = 25) int position) {
 
-        BlockValue block = BlockValue.block(
+        AnyBlockValue block = BlockValue.block(
                 contents.stream().map(number -> (Value) IntegerValue.of(number)).toList());
         boolean legal = position >= 1 && position <= contents.size() + 1;
 
@@ -37,10 +37,10 @@ class ValuePropertiesTest {
             @ForAll @Size(max = 12) List<@IntRange(min = 0, max = 9) Integer> contents,
             @ForAll @IntRange(min = 1, max = 13) int rawPosition) {
 
-        BlockValue block = BlockValue.block(
+        AnyBlockValue block = BlockValue.block(
                 contents.stream().map(number -> (Value) IntegerValue.of(number)).toList());
         int position = Math.min(rawPosition, contents.size() + 1);
-        BlockValue positioned = block.atIndex(position);
+        AnyBlockValue positioned = block.atIndex(position);
 
         assertThat(positioned.index() + positioned.lengthFromHere())
                 .isEqualTo(positioned.storageLength() + 1);
@@ -49,7 +49,7 @@ class ValuePropertiesTest {
     @Property
     void headAndTailAreAlwaysLegalPositions(
             @ForAll @Size(max = 20) List<@IntRange(min = 0, max = 9) Integer> contents) {
-        BlockValue block = BlockValue.block(
+        AnyBlockValue block = BlockValue.block(
                 contents.stream().map(number -> (Value) IntegerValue.of(number)).toList());
 
         assertThat(block.head().atHead()).isTrue();
@@ -62,7 +62,7 @@ class ValuePropertiesTest {
             @ForAll @Size(min = 1, max = 12) List<@IntRange(min = 0, max = 9) Integer> contents,
             @ForAll @IntRange(min = 1, max = 12) int rawPosition) {
 
-        BlockValue block = BlockValue.block(
+        AnyBlockValue block = BlockValue.block(
                 contents.stream().map(number -> (Value) IntegerValue.of(number)).toList());
         int position = Math.min(rawPosition, contents.size() + 1);
 

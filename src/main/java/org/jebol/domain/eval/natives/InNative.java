@@ -25,12 +25,12 @@ public class InNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            if (arguments.getFirst() instanceof BlockValue searched
-                    && searched.datatype() != Datatype.PATH) {
+            if (arguments.getFirst() instanceof AnyBlockValue searched
+                    && !(searched instanceof PathValue)) {
                 return firstHolderIn(searched, arguments.get(1), evaluator, context);
             }
             Context frame = contextOf(arguments.getFirst());
-            if (arguments.get(1) instanceof BlockValue body) {
+            if (arguments.get(1) instanceof AnyBlockValue body) {
                 return Binder.bindInPlace(body, frame);
             }
             AnyWordValue word = (AnyWordValue) arguments.get(1);
@@ -59,7 +59,7 @@ public class InNative extends DefaultNative {
     }
 
     private Value firstHolderIn(
-            BlockValue searched, Value wanted, Evaluator evaluator, Context context) {
+            AnyBlockValue searched, Value wanted, Evaluator evaluator, Context context) {
 
         if (!(wanted instanceof AnyWordValue word)) {
             return refuseTheArgument(wanted, "word");

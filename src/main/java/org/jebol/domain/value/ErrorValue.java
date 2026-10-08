@@ -288,7 +288,7 @@ public record ErrorValue(
     }
 
     private String theMessageWrittenFrom(Value said) {
-        if (!(said instanceof BlockValue words)) {
+        if (!(said instanceof AnyBlockValue words)) {
             return Molder.form(said);
         }
         StringBuilder built = new StringBuilder();
@@ -315,7 +315,7 @@ public record ErrorValue(
         if (where instanceof StringValue text) {
             return text.text();
         }
-        if (!(where instanceof BlockValue fragment)) {
+        if (!(where instanceof AnyBlockValue fragment)) {
             return Molder.mold(where);
         }
         StringBuilder built = new StringBuilder();

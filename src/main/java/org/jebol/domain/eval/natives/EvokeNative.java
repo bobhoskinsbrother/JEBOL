@@ -43,7 +43,7 @@ public class EvokeNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            List<Value> chants = arguments.getFirst() instanceof BlockValue several
+            List<Value> chants = arguments.getFirst() instanceof AnyBlockValue several
                     ? several.remaining()
                     : List.of(arguments.getFirst());
             for (int at = 0; at < chants.size(); at++) {

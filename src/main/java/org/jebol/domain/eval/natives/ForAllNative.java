@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.AnyWordValue;
 
@@ -27,6 +27,6 @@ public class ForAllNative extends SteppingThroughNative {
                 evaluator,
                 (AnyWordValue) arguments.get(0),
                 ONE_AT_A_TIME,
-                (BlockValue) arguments.get(1));
+                (AnyBlockValue) arguments.get(1));
     }
 }

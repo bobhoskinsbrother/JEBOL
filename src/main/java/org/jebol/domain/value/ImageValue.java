@@ -307,7 +307,6 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
             return theBytesReadFourAtATime(bytes, colourOnly);
         }
         List<Value> named = given instanceof BlockValue block
-                && block.datatype() == Datatype.BLOCK
                 ? block.remaining()
                 : List.of(given);
         List<PixelWrite> pixels = new ArrayList<>();

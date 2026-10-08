@@ -160,7 +160,7 @@ public enum VectorKind {
         return switch (written) {
             case IntegerValue number -> store(number.magnitude());
             case CharacterValue letter -> store(letter.codepoint());
-            case DecimalValue number -> storeMeasured(number.quantity());
+            case AnyDecimalValue number -> storeMeasured(number.quantity());
             default -> throw new IllegalArgumentException(
                     "a vector holds numbers, not " + written.datatype().literalSpelling());
         };
@@ -217,7 +217,7 @@ public enum VectorKind {
     public List<Value> numbersContributedBy(Value value) {
         return switch (value) {
             case VectorValue source -> source.remaining();
-            case BlockValue block -> block.remaining();
+            case AnyBlockValue block -> block.remaining();
             case BinaryValue bytes -> numbersSpeltByWithTheOddBytesDropped(bytes, bytes.lengthFromHere());
             default -> List.of(value);
         };

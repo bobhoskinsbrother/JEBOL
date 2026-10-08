@@ -42,9 +42,8 @@ public class MoldNative extends DefaultNative {
     }
 
     private Function<Value, String> moldedAsAsked(Value subject, Set<String> refinements) {
-        if (refinements.contains("only") && subject instanceof BlockValue block
-                && block.datatype() == Datatype.BLOCK) {
-            return value -> Molder.moldOnly((BlockValue) value);
+        if (refinements.contains("only") && subject instanceof BlockValue) {
+            return value -> Molder.moldOnly((AnyBlockValue) value);
         }
         return refinements.contains("all") ? Molder::moldAll : Molder::mold;
     }

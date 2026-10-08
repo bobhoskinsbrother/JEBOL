@@ -9,6 +9,7 @@ import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.VectorQuery;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
@@ -157,7 +158,7 @@ public class QueryAction extends PortAction {
                 case AnyWordValue asked when asked.canonical().equals(THE_NAMES_THEMSELVES)
                         && answersItsNames() -> theNames();
                 case AnyWordValue asked -> fieldNamed(asked.canonical()).orElseGet(() -> unknownAlone(asked));
-                case BlockValue several -> eachOf(several);
+                case AnyBlockValue several -> eachOf(several);
                 case NoneValue nothing -> theNames();
                 default -> everyFieldAsAnObject(evaluator);
             };
@@ -167,7 +168,7 @@ public class QueryAction extends PortAction {
             return BlockValue.block(names().stream().<Value>map(WordValue::of).toList());
         }
 
-        private Value eachOf(BlockValue several) {
+        private Value eachOf(AnyBlockValue several) {
             List<Value> answer = new ArrayList<>();
             for (Value item : several.remaining()) {
                 if (!(item instanceof AnyWordValue asked)) {

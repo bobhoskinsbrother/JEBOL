@@ -67,10 +67,7 @@ public class BinaryNative extends DefaultNative {
     }
 
     private Value fetchedIfItAsksToBe(Value item, Evaluator evaluator, Context context) {
-        boolean fetches = item instanceof AnyWordValue word
-                        && word.datatype() == Datatype.GET_WORD
-                || item instanceof BlockValue path
-                        && path.datatype() == Datatype.GET_PATH;
+        boolean fetches = item instanceof GetWordValue || item instanceof GetPathValue;
         return fetches
                 ? evaluator.evaluateOrRaise(BlockValue.block(List.of(item)), context)
                 : item;
@@ -229,18 +226,18 @@ public class BinaryNative extends DefaultNative {
     }
 
     private List<Value> codesWrittenIn(Value asked) {
-        return asked instanceof BlockValue block ? block.remaining() : List.of(asked);
+        return asked instanceof AnyBlockValue block ? block.remaining() : List.of(asked);
     }
 
     private Value shapedLikeTheAsking(Value asked, List<Value> values) {
-        if (asked instanceof BlockValue) {
+        if (asked instanceof AnyBlockValue) {
             return BlockValue.block(values);
         }
         return values.isEmpty() ? NoneValue.none() : values.getFirst();
     }
 
     private Value laidInto(Value target, List<Value> read) {
-        if (!(target instanceof BlockValue into)) {
+        if (!(target instanceof AnyBlockValue into)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(target));
         }
         int at = into.index();

@@ -18,7 +18,7 @@ class WhichValuesConvertToACommonDatatypeTest {
 
     private static final Value A_WHOLE_NUMBER = IntegerValue.of(1);
     private static final Value A_DECIMAL = DecimalValue.of(1.0);
-    private static final Value A_PERCENT = DecimalValue.percent(1.0);
+    private static final Value A_PERCENT = PercentValue.of(1.0);
     private static final Value SOME_MONEY = new MoneyValue(BigDecimal.ONE, Optional.empty());
     private static final Value A_CHARACTER = CharacterValue.of(1);
     private static final Value A_TIME = new TimeValue(1_000_000_000L);
@@ -109,7 +109,7 @@ class WhichValuesConvertToACommonDatatypeTest {
             Value[] pair = A_WHOLE_NUMBER.broughtTogetherWith(A_TIME).orElseThrow();
             assertThat(pair[0].datatype()).isEqualTo(Datatype.DECIMAL);
             assertThat(pair[1].datatype()).isEqualTo(Datatype.DECIMAL);
-            assertThat(((DecimalValue) pair[1]).quantity()).isEqualTo(1.0);
+            assertThat(((AnyDecimalValue) pair[1]).quantity()).isEqualTo(1.0);
         }
     }
 

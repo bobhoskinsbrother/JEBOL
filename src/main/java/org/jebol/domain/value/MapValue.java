@@ -210,8 +210,8 @@ public final class MapValue implements Value {
         return List.copyOf(flat);
     }
 
-    public BlockValue pairsOnLines() {
-        BlockValue block = BlockValue.block(flattened());
+    public AnyBlockValue pairsOnLines() {
+        AnyBlockValue block = BlockValue.block(flattened());
         block.putEachPairOnALine();
         return block;
     }

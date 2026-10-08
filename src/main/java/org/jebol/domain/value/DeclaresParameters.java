@@ -5,7 +5,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-public sealed interface DeclaresParameters extends Value permits NativeValue, FunctionValue {
+public sealed interface DeclaresParameters extends Value permits NativeValue, DefinedFunctionValue {
 
     List<Parameter> parameters();
 
@@ -13,12 +13,12 @@ public sealed interface DeclaresParameters extends Value permits NativeValue, Fu
 
     @Override
     default Value make(Value spec, Maker maker) {
-        return spec instanceof BlockValue block
+        return spec instanceof AnyBlockValue block
                 ? maker.makeFunctionFrom(this, block)
                 : maker.makeAnotherFrom(datatype(), spec);
     }
 
-    default BlockValue typesets() {
+    default AnyBlockValue typesets() {
         List<Value> types = new ArrayList<>();
         Set<String> woven = new LinkedHashSet<>();
         for (Parameter parameter : parameters()) {

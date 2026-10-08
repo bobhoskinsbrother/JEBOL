@@ -69,7 +69,7 @@ public class RemoveAction extends DefaultNative implements ActionValue {
 
     private Value removedFromTheSeries(
             RebolSeries series, Optional<Value> key, Optional<Value> part) {
-        if (key.isPresent() && series instanceof BlockValue pairs) {
+        if (key.isPresent() && series instanceof AnyBlockValue pairs) {
             pairs.removeTheFirstPairWhoseKey(
                     item -> Comparison.identicallyEqual(item, key.get()));
             return series;
@@ -88,9 +88,9 @@ public class RemoveAction extends DefaultNative implements ActionValue {
                     when magnitude > Integer.MAX_VALUE || magnitude < Integer.MIN_VALUE ->
                     throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Long.toString(magnitude));
             case IntegerValue(long magnitude) -> magnitude;
-            case DecimalValue fraction when fraction.datatype() != Datatype.PERCENT ->
+            case DecimalValue fraction ->
                     (long) Comparison.asDouble(fraction);
-            case DecimalValue ignored -> throw Raised.of(EvaluationFailure.INVALID_PART, count);
+            case AnyDecimalValue ignored -> throw Raised.of(EvaluationFailure.INVALID_PART, count);
             case PairValue ignored -> throw Raised.of(EvaluationFailure.INVALID_PART, count);
             case RebolSeries upTo when series.datatype() == upTo.datatype()
                     && series.sharesStorageWith(upTo) -> upTo.index() - series.index();

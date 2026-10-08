@@ -35,7 +35,7 @@ public record LibraryFileHeader(
      * whole library with it.
      */
     public static LibraryFileHeader readFrom(Value header) {
-        if (!(header instanceof BlockValue fields)) {
+        if (!(header instanceof AnyBlockValue fields)) {
             return none();
         }
         String declaredType = "";
@@ -71,7 +71,7 @@ public record LibraryFileHeader(
     }
 
     private static List<String> wordsIn(Value given) {
-        if (!(given instanceof BlockValue listed)) {
+        if (!(given instanceof AnyBlockValue listed)) {
             return List.of();
         }
         return listed.remaining().stream()

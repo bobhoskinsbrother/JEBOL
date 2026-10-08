@@ -39,29 +39,29 @@ public class ComposeNative extends DefaultNative {
                 return composedMap(map, evaluator, context, keepingBlocksWhole, goingDeep);
             }
             Optional<Value> target = argumentOf("into", 0, arguments, refinements);
-            if (!(template instanceof BlockValue block)) {
+            if (!(template instanceof AnyBlockValue block)) {
                 return target.isEmpty()
                         ? template
-                        : spliced(BlockValue.block(List.of(template)), (BlockValue) target.get());
+                        : spliced(BlockValue.block(List.of(template)), (AnyBlockValue) target.get());
             }
-            BlockValue built = composed(block, evaluator, context, keepingBlocksWhole, goingDeep);
-            return target.isEmpty() ? built : spliced(built, (BlockValue) target.get());
+            AnyBlockValue built = composed(block, evaluator, context, keepingBlocksWhole, goingDeep);
+            return target.isEmpty() ? built : spliced(built, (AnyBlockValue) target.get());
         };
     }
 
-    private Value spliced(BlockValue built, BlockValue target) {
+    private Value spliced(AnyBlockValue built, AnyBlockValue target) {
         List<Value> items = built.remaining();
         target.storage().spliceInAt(target.index(), items, built.storage(), built.index());
         return target.atIndex(target.index() + items.size());
     }
 
-    private BlockValue composed(BlockValue template, Evaluator evaluator, Context context,
-            boolean keepingBlocksWhole, boolean goingDeep) {
+    private AnyBlockValue composed(AnyBlockValue template, Evaluator evaluator, Context context,
+                                   boolean keepingBlocksWhole, boolean goingDeep) {
         BlockStorage built = new BlockStorage();
         int reading = template.index();
         for (Value item : template.remaining()) {
             boolean asWritten = true;
-            if (!(item instanceof BlockValue paren) || paren.datatype() != Datatype.PAREN) {
+            if (!(item instanceof ParenValue paren)) {
                 built.append(composedItem(item, evaluator, context, keepingBlocksWhole,
                         goingDeep));
             } else {
@@ -73,13 +73,12 @@ public class ComposeNative extends DefaultNative {
             }
             reading++;
         }
-        return new BlockValue(built, 1, Datatype.BLOCK);
+        return BlockValue.over(built);
     }
 
     private Value composedItem(Value item, Evaluator evaluator, Context context,
             boolean keepingBlocksWhole, boolean goingDeep) {
-        if (goingDeep && item instanceof BlockValue nested
-                && nested.datatype() == Datatype.BLOCK) {
+        if (goingDeep && item instanceof BlockValue nested) {
             return composed(nested, evaluator, context, keepingBlocksWhole, GOING_DEEP);
         }
         if (goingDeep && item instanceof MapValue nested) {
@@ -88,14 +87,13 @@ public class ComposeNative extends DefaultNative {
         return goingDeep ? aBlockShapeCopiedWhole(item) : item;
     }
 
-    private void spliceWhatTheParenProduces(BlockStorage built, BlockValue paren,
+    private void spliceWhatTheParenProduces(BlockStorage built, ParenValue paren,
             Evaluator evaluator, Context context, boolean keepingBlocksWhole) {
-        for (Value produced : evaluator.evaluateEachOrRaise(paren.as(Datatype.BLOCK), context)) {
+        for (Value produced : evaluator.evaluateEachOrRaise(paren.asBlock(), context)) {
             if (produced instanceof UnsetValue) {
                 continue;
             }
-            if (!keepingBlocksWhole && produced instanceof BlockValue spliced
-                    && spliced.datatype() == Datatype.BLOCK) {
+            if (!keepingBlocksWhole && produced instanceof BlockValue spliced) {
                 built.spliceInAt(built.length() + 1, spliced.remaining(),
                         spliced.storage(), spliced.index());
             } else {
@@ -105,19 +103,18 @@ public class ComposeNative extends DefaultNative {
     }
 
     private Value aBlockShapeCopiedWhole(Value item) {
-        return item instanceof BlockValue shaped
-                ? new BlockValue(new BlockStorage(shaped.remaining()), 1, shaped.datatype())
+        return item instanceof AnyBlockValue shaped
+                ? shaped.holding(new BlockStorage(shaped.remaining()))
                 : item;
     }
 
     private MapValue composedMap(MapValue template, Evaluator evaluator, Context context,
             boolean keepingBlocksWhole, boolean goingDeep) {
         return new MapActions(template).composedThrough(held -> {
-            if (held instanceof BlockValue paren && paren.datatype() == Datatype.PAREN) {
-                return evaluator.evaluateOrRaise(paren.as(Datatype.BLOCK), context);
+            if (held instanceof ParenValue paren) {
+                return evaluator.evaluateOrRaise(paren.asBlock(), context);
             }
-            if (goingDeep && held instanceof BlockValue nested
-                    && nested.datatype() == Datatype.BLOCK) {
+            if (goingDeep && held instanceof BlockValue nested) {
                 return composed(nested, evaluator, context, keepingBlocksWhole, GOING_DEEP);
             }
             if (goingDeep && held instanceof MapValue nested) {

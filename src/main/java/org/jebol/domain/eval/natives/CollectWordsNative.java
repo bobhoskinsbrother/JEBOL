@@ -32,7 +32,7 @@ public class CollectWordsNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            List<Value> found = ((BlockValue) arguments.getFirst()).wordsWritten(
+            List<Value> found = ((AnyBlockValue) arguments.getFirst()).wordsWritten(
                     refinements.contains("deep"), refinements.contains("set"));
             Value ignoring = theIgnoredWords(arguments, refinements);
             Set<String> known = namesIn(ignoring);
@@ -65,7 +65,7 @@ public class CollectWordsNative extends DefaultNative {
 
     private Set<String> namesIn(Value source) {
         return switch (source) {
-            case BlockValue words -> words.remaining().stream()
+            case AnyBlockValue words -> words.remaining().stream()
                     .filter(AnyWordValue.class::isInstance)
                     .map(AnyWordValue.class::cast)
                     .map(AnyWordValue::canonical)

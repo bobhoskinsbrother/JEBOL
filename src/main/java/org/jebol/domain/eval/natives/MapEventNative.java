@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EventValue;
 import org.jebol.domain.value.GobValue;
@@ -34,7 +34,7 @@ public class MapEventNative extends GobMappingNative {
         if (!(event.attached() instanceof GobValue gob) || !event.has(EventValue.Flag.HAS_XY)) {
             return event;
         }
-        List<Value> gobAndPoint = ((BlockValue) mappedInwards(gob,
+        List<Value> gobAndPoint = ((AnyBlockValue) mappedInwards(gob,
                 PairValue.of(event.offsetX(), event.offsetY()))).remaining();
         PairValue inside = (PairValue) gobAndPoint.get(1);
         return event

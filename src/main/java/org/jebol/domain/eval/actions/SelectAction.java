@@ -2,7 +2,7 @@ package org.jebol.domain.eval.actions;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.SeriesSearch;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.MapValue;
 import org.jebol.domain.value.NoneValue;
@@ -78,7 +78,7 @@ public class SelectAction extends SeriesSearchAction {
     }
 
     private Value refuseARecordWidthBelowOne(RebolSeries series, long stride) {
-        if (series instanceof BlockValue) {
+        if (series instanceof AnyBlockValue) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                     "select/skip needs a record width of at least one, not " + stride);
         }

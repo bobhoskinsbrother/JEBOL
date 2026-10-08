@@ -56,11 +56,11 @@ public final class HostValues {
     public static Object toHost(Value produced) {
         return switch (produced) {
             case IntegerValue integer -> integer.magnitude();
-            case DecimalValue decimal -> decimal.quantity();
+            case AnyDecimalValue decimal -> decimal.quantity();
             case MoneyValue money -> money.amount();
             case LogicValue logic -> logic.truth();
             case AnyStringValue text -> text.text();
-            case BlockValue block -> {
+            case AnyBlockValue block -> {
                 List<Object> items = new ArrayList<>(block.lengthFromHere());
                 block.remaining().forEach(item -> items.add(toHost(item)));
                 yield List.copyOf(items);

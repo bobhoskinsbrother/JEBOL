@@ -46,13 +46,13 @@ public final class SeriesChange {
             case BinaryValue bytes -> overwritten(bytes, replacing);
             case AnyStringValue text -> overwritten((AnyStringValue) text.clampedToTail(), replacing);
             case VectorValue vector -> overwritten((VectorValue) vector.clampedToTail());
-            case BlockValue block -> overwritten((BlockValue) block.clampedToTail(), replacing);
+            case AnyBlockValue block -> overwritten((AnyBlockValue) block.clampedToTail(), replacing);
             case Value anythingElse -> throw Raised.cannotUseTheAction(anythingElse, "change");
         };
     }
 
     private Value replacedAcrossThePart(RebolSeries stranded, Value limit) {
-        Value copiedReplacement = replacement.copied(replacement instanceof BlockValue);
+        Value copiedReplacement = replacement.copied(replacement instanceof AnyBlockValue);
         long taking = stranded.countUpTo(limit);
         RebolSeries series = stranded.clampedToTail();
         if (taking < 0) {
@@ -83,7 +83,7 @@ public final class SeriesChange {
     }
 
     private Value overwritten(AnyStringValue text, Value replacing) {
-        String written = replacing instanceof BlockValue several
+        String written = replacing instanceof AnyBlockValue several
                 ? several.runTogether()
                 : Molder.form(replacing);
         int[] letters = written.codePoints().toArray();
@@ -111,13 +111,12 @@ public final class SeriesChange {
         return vector.atIndex(vector.index() + numbers.size());
     }
 
-    private Value overwritten(BlockValue block, Value replacing) {
-        Optional<BlockValue> spread = !refinements.contains("only")
+    private Value overwritten(AnyBlockValue block, Value replacing) {
+        Optional<AnyBlockValue> spread = !refinements.contains("only")
                 && replacing instanceof BlockValue several
-                && several.datatype() == Datatype.BLOCK
                 ? Optional.of(several)
                 : Optional.empty();
-        List<Value> replacements = spread.map(BlockValue::remaining).orElse(List.of(replacing));
+        List<Value> replacements = spread.map(AnyBlockValue::remaining).orElse(List.of(replacing));
         for (int at = 0; at < replacements.size(); at++) {
             int where = block.index() + at;
             if (where <= block.storageLength()) {
@@ -137,8 +136,8 @@ public final class SeriesChange {
     private void insertInto(RebolSeries stranded, Value value) {
         RebolSeries series = stranded.clampedToTail();
         switch (series) {
-            case BlockValue block -> {
-                if (value instanceof BlockValue added) {
+            case AnyBlockValue block -> {
+                if (value instanceof AnyBlockValue added) {
                     block.storage().spliceInAt(block.index(), added.remaining(),
                             added.storage(), added.index());
                 } else {

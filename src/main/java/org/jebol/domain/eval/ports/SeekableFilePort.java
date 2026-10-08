@@ -4,6 +4,7 @@ import org.jebol.domain.host.FileInformation;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.value.BinaryStorage;
 import org.jebol.domain.value.BinaryValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
@@ -40,7 +41,7 @@ public final class SeekableFilePort {
     public long position() {
         return switch (port.fieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE)) {
             case IntegerValue at -> at.magnitude();
-            case BlockValue kept
+            case AnyBlockValue kept
                     when kept.remaining().get(THE_POSITION) instanceof IntegerValue(long magnitude) ->
                     magnitude;
             default -> 0;
@@ -52,7 +53,7 @@ public final class SeekableFilePort {
     }
 
     public boolean mayWriteThrough() {
-        return !(port.fieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE) instanceof BlockValue kept)
+        return !(port.fieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE) instanceof AnyBlockValue kept)
                 || kept.remaining().get(WHETHER_IT_MAY_WRITE).isTruthy();
     }
 

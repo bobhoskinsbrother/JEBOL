@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
@@ -24,8 +24,8 @@ public class WhileNative extends LoopingNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            BlockValue condition = (BlockValue) arguments.get(0);
-            BlockValue body = (BlockValue) arguments.get(1);
+            AnyBlockValue condition = (AnyBlockValue) arguments.get(0);
+            AnyBlockValue body = (AnyBlockValue) arguments.get(1);
             return answerOfTheLoop(() -> {
                 Value last = NoneValue.none();
                 while (theTruthInWhatALoopTests(evaluator.evaluateOrRaise(

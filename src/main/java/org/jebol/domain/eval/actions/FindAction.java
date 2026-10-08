@@ -4,7 +4,7 @@ import org.jebol.domain.eval.BitsetActions;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.SeriesSearch;
 import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.EvaluationFailure;
@@ -80,7 +80,7 @@ public class FindAction extends SeriesSearchAction {
                 argumentOf("with", 0, arguments, refinements));
         series.refuseANeedleItCannotHold(wanted, nativeName());
         if (search.stridesForwardByLessThanOne()) {
-            if (series instanceof BlockValue) {
+            if (series instanceof AnyBlockValue) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                         "find/skip needs a record width of at least one, not "
                                 + search.stride());

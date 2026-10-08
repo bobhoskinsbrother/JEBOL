@@ -4,6 +4,7 @@ import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.value.GetPathValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
@@ -60,7 +61,7 @@ public class CallNative extends HostNative {
     }
 
     private List<String> commandWordsOf(Value command, Evaluator evaluator, Context context) {
-        if (!(command instanceof BlockValue block) || command.datatype() != Datatype.BLOCK) {
+        if (!(command instanceof BlockValue block)) {
             return List.of(((AnyStringValue) command).text());
         }
         List<Value> items = block.remaining();
@@ -74,7 +75,7 @@ public class CallNative extends HostNative {
         Value resolved = item;
         if (item instanceof GetWordValue word) {
             resolved = word.boundSlot().value();
-        } else if (item instanceof BlockValue path && path.datatype() == Datatype.GET_PATH) {
+        } else if (item instanceof GetPathValue path) {
             resolved = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
         }
         return switch (resolved) {

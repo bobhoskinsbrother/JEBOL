@@ -36,7 +36,7 @@ public class TryNative extends DefaultNative {
             evaluator.setSystemState("last-error", NoneValue.none());
             Value failure;
             try {
-                return evaluator.evaluateOrRaise((BlockValue) arguments.getFirst(), context);
+                return evaluator.evaluateOrRaise((AnyBlockValue) arguments.getFirst(), context);
             } catch (Raised raised) {
                 failure = raised.error();
             } catch (ThrownSignal | LoopSignal | ContinueSignal | ReturnSignal escaping) {
@@ -75,7 +75,7 @@ public class TryNative extends DefaultNative {
     private Value handled(
             Value failure, Value handler, Evaluator evaluator, Context context) {
 
-        return handler instanceof BlockValue block
+        return handler instanceof AnyBlockValue block
                 ? evaluator.evaluateOrRaise(block, context)
                 : evaluator.applyFunction(handler, List.of(failure));
     }

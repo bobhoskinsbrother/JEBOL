@@ -236,18 +236,18 @@ public final class Context {
         return slots().stream().filter(slot -> !slot.canonical().equals("self")).flatMap(slot -> Stream.of(SetWordValue.of(slot.spelling()), slot.value())).toList();
     }
 
-    public BlockValue setWordsAndValuesOnLines() {
-        BlockValue block = BlockValue.block(setWordsAndValues());
+    public AnyBlockValue setWordsAndValuesOnLines() {
+        AnyBlockValue block = BlockValue.block(setWordsAndValues());
         block.putEachPairOnALine();
         return block;
     }
 
-    public BlockValue wordsExcludingSelf() {
+    public AnyBlockValue wordsExcludingSelf() {
         return BlockValue.block(fieldsExcludingSelf().keySet().stream()
                 .<Value>map(spelling -> WordValue.of(spelling).boundTo(this)).toList());
     }
 
-    public BlockValue valuesExcludingSelf() {
+    public AnyBlockValue valuesExcludingSelf() {
         return BlockValue.block(List.copyOf(fieldsExcludingSelf().values()));
     }
 
@@ -291,6 +291,6 @@ public final class Context {
     }
 
     private boolean isAFunctionTheInterpreterCanCall(Value held) {
-        return held instanceof FunctionValue || held instanceof NativeValue || held instanceof OperatorValue;
+        return held instanceof DefinedFunctionValue || held instanceof NativeValue || held instanceof OperatorValue;
     }
 }

@@ -94,7 +94,7 @@ public record ObjectValue(Context context) implements Value {
     }
 
     public void refuseHiddenFieldsIn(Value target) {
-        List<Value> written = target instanceof BlockValue pairs
+        List<Value> written = target instanceof AnyBlockValue pairs
                 ? pairs.remaining()
                 : List.of(target);
         for (Value each : written) {

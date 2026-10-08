@@ -100,11 +100,11 @@ public final class SeriesContents {
                     into.add(tuple.octetAt(at));
                 }
             }
-            case BlockValue several -> {
+            case AnyBlockValue several -> {
                 List<Value> items = several.remaining();
                 int taking = howMany < 0 ? items.size() : Math.min(howMany, items.size());
                 for (int at = 0; at < taking; at++) {
-                    if (items.get(at) instanceof BlockValue nested) {
+                    if (items.get(at) instanceof AnyBlockValue nested) {
                         throw Raised.of(EvaluationFailure.EXPECT_ARG,
                                 nested.datatype().literalSpelling()
                                         + " cannot go into a binary");

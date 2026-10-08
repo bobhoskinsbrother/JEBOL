@@ -32,7 +32,7 @@ public class NewLineNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            BlockValue block = (BlockValue) arguments.getFirst();
+            AnyBlockValue block = (AnyBlockValue) arguments.getFirst();
             boolean wanted = arguments.get(1).isTruthy();
             OptionalInt stride = theStride(arguments, refinements);
             if (stride.isEmpty()) {

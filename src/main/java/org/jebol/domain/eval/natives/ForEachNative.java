@@ -4,7 +4,7 @@ import org.jebol.domain.eval.Binder;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.MapActions;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.MapValue;
 import org.jebol.domain.value.NoneValue;
@@ -36,11 +36,11 @@ public class ForEachNative extends LoopingNative {
         return (arguments, evaluator, context, refinements) -> arguments.get(1) instanceof NoneValue
                 ? NoneValue.none()
                 : forEachLoop(evaluator, context, arguments.get(0), arguments.get(1),
-                        (BlockValue) arguments.get(2));
+                        (AnyBlockValue) arguments.get(2));
     }
 
     private Value forEachLoop(Evaluator evaluator, Context within,
-            Value target, Value series, BlockValue body) {
+            Value target, Value series, AnyBlockValue body) {
 
         List<AnyWordValue> names = loopNamesIn(target);
         List<AnyWordValue> taking = namesThatTakeAValue(names);
@@ -49,7 +49,7 @@ public class ForEachNative extends LoopingNative {
 
         Context locals = Context.loopFrameOf(within);
         names.forEach(name -> locals.register(name.spelling()));
-        BlockValue bound = Binder.bind(body, locals);
+        AnyBlockValue bound = Binder.bind(body, locals);
 
         return answerOfTheLoop(() -> {
             Value last = NoneValue.none();
