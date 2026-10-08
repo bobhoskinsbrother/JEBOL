@@ -9,7 +9,11 @@ sealed interface BrotliHasher
 
     void remember(byte[] data, int mask, int at);
 
-    void rememberRange(byte[] data, int mask, int from, int until);
+    default void rememberRange(byte[] data, int mask, int from, int until) {
+        for (int at = from; at < until; at++) {
+            remember(data, mask, at);
+        }
+    }
 
     void stitchToPreviousBlock(byte[] data, int mask, int howManyBytes,
             int position);

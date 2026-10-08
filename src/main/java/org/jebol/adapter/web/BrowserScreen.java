@@ -1,14 +1,11 @@
 package org.jebol.adapter.web;
 
-import org.jebol.domain.eval.ScreenEvent;
 import org.jebol.domain.eval.ScreenEventKind;
-import org.jebol.domain.eval.ScreenEventQueue;
+import org.jebol.domain.eval.GobScreen;
 import org.jebol.domain.eval.ScreenMetric;
-import org.jebol.domain.eval.ScreenPort;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +17,7 @@ import java.util.List;
  *
  * <p>Specified in {@code spec/screen.allium}.
  */
-public final class BrowserScreen implements ScreenPort {
+public final class BrowserScreen extends GobScreen {
 
     /**
      * Whoever is looking at the page, and however the picture reaches them --
@@ -36,19 +33,9 @@ public final class BrowserScreen implements ScreenPort {
     }
 
     private final Viewer viewer;
-    private final ScreenEventQueue queued = new ScreenEventQueue();
     private final List<GobValue> showing = new ArrayList<>();
 
-    private GobValue root;
     private PairValue viewport = PairValue.of(0, 0);
-    private org.jebol.domain.value.ObjectValue drawDialect;
-
-    @Override
-    public void useDrawDialect(Value dialect) {
-        this.drawDialect = dialect instanceof org.jebol.domain.value.ObjectValue given
-                ? given
-                : null;
-    }
 
     private BrowserScreen(Viewer viewer) {
         this.viewer = viewer;
@@ -93,7 +80,7 @@ public final class BrowserScreen implements ScreenPort {
 
     @Override
     public void takeTheRootGob(GobValue given) {
-        this.root = given;
+        super.takeTheRootGob(given);
         if (!viewport.equals(PairValue.of(0, 0))) {
             given.storage().size(viewport);
         }
@@ -130,20 +117,6 @@ public final class BrowserScreen implements ScreenPort {
                 drawDialect);
     }
 
-    private List<GobValue> childrenOfTheRoot() {
-        List<GobValue> children = new ArrayList<>();
-        for (Value child : root.storage().pane()) {
-            if (child instanceof GobValue held) {
-                children.add(held);
-            }
-        }
-        return List.copyOf(children);
-    }
-
-    private boolean isInTheRootsPane(GobValue gob) {
-        return childrenOfTheRoot().stream().anyMatch(gob::sharesStorageWith);
-    }
-
     /** The gobs this page currently has windows for. */
     public List<GobValue> whatIsShowing() {
         return List.copyOf(showing);
@@ -152,10 +125,5 @@ public final class BrowserScreen implements ScreenPort {
     /** Something the person looking at the page did, queued and not acted on. */
     public void theBrowserReports(ScreenEventKind kind, GobValue window) {
         queued.add(kind, window);
-    }
-
-    @Override
-    public List<ScreenEvent> takeQueuedEvents() {
-        return queued.takeAll();
     }
 }

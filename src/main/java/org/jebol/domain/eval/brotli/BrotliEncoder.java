@@ -199,7 +199,7 @@ final class BrotliEncoder {
             totalBlockSize = blockSize;
             mlenAt = writer.at() + 3;
 
-            storeMetaBlockHeader(blockSize, false);
+            writer.writeMetaBlockHeader(blockSize, false);
             writer.write(13, 0);
             literalRatio = buildAndStoreLiteralPrefixCodeAnsweringMillibitsPerByte(
                         from, blockSize);
@@ -214,7 +214,7 @@ final class BrotliEncoder {
                 blockSize = Math.min(fragmentEnd - from, FIRST_BLOCK_SIZE);
                 totalBlockSize = blockSize;
                 mlenAt = writer.at() + 3;
-                storeMetaBlockHeader(blockSize, false);
+                writer.writeMetaBlockHeader(blockSize, false);
                 writer.write(13, 0);
                 literalRatio = buildAndStoreLiteralPrefixCodeAnsweringMillibitsPerByte(
                         from, blockSize);
@@ -398,24 +398,9 @@ final class BrotliEncoder {
             return matchingBytes.counted(input, one, other, limit);
         }
 
-        private void storeMetaBlockHeader(int length, boolean stored) {
-            int nibbles = 6;
-            writer.write(1, 0);
-            if (length <= (1 << 16)) {
-                nibbles = 4;
-            } else if (length <= (1 << 20)) {
-                nibbles = 5;
-            }
-            writer.write(2, nibbles - 4);
-            writer.write(nibbles * 4, length - 1);
-            writer.write(1, stored ? 1 : 0);
-        }
-
         private void storeUncompressed(int begin, int end, int rewindTo) {
             writer.rewindTo(rewindTo);
-            storeMetaBlockHeader(end - begin, true);
-            writer.jumpToByteBoundary();
-            writer.writeBytes(input, begin, end - begin);
+            writer.writeUncompressedMetaBlock(input, begin, end - begin);
         }
 
         private boolean shouldStoreInstead(int insertLength) {

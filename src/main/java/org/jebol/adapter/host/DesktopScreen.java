@@ -1,10 +1,8 @@
 package org.jebol.adapter.host;
 
-import org.jebol.domain.eval.ScreenEvent;
 import org.jebol.domain.eval.ScreenEventKind;
-import org.jebol.domain.eval.ScreenEventQueue;
+import org.jebol.domain.eval.GobScreen;
 import org.jebol.domain.eval.ScreenMetric;
-import org.jebol.domain.eval.ScreenPort;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.StringValue;
@@ -25,21 +23,10 @@ import java.util.List;
  *
  * <p>Decision 4 in {@code docs/decisions.md} governs the threading here.
  */
-public final class DesktopScreen implements ScreenPort {
+public final class DesktopScreen extends GobScreen {
 
     private final boolean present;
     private final Map<GobValue, JFrame> windows = new IdentityHashMap<>();
-    private final ScreenEventQueue queued = new ScreenEventQueue();
-
-    private GobValue root;
-    private org.jebol.domain.value.ObjectValue drawDialect;
-
-    @Override
-    public void useDrawDialect(Value dialect) {
-        this.drawDialect = dialect instanceof org.jebol.domain.value.ObjectValue given
-                ? given
-                : null;
-    }
 
     private DesktopScreen(boolean present) {
         this.present = present;
@@ -152,11 +139,6 @@ public final class DesktopScreen implements ScreenPort {
     }
 
     @Override
-    public void takeTheRootGob(GobValue given) {
-        this.root = given;
-    }
-
-    @Override
     public void show(GobValue gob) {
         if (!present) {
             throw new Denied("no-service",
@@ -189,20 +171,6 @@ public final class DesktopScreen implements ScreenPort {
         for (GobValue child : childrenOfTheRoot()) {
             openOrRefresh(child);
         }
-    }
-
-    private List<GobValue> childrenOfTheRoot() {
-        List<GobValue> children = new ArrayList<>();
-        for (Value child : root.storage().pane()) {
-            if (child instanceof GobValue held) {
-                children.add(held);
-            }
-        }
-        return List.copyOf(children);
-    }
-
-    private boolean isInTheRootsPane(GobValue gob) {
-        return childrenOfTheRoot().stream().anyMatch(gob::sharesStorageWith);
     }
 
     private void openOrRefresh(GobValue gob) {
@@ -351,11 +319,6 @@ public final class DesktopScreen implements ScreenPort {
 
     private void queue(ScreenEventKind kind, GobValue window) {
         queued.add(kind, window);
-    }
-
-    @Override
-    public List<ScreenEvent> takeQueuedEvents() {
-        return queued.takeAll();
     }
 
     private static void onTheToolkitThreadAndWaitedFor(Runnable work) {

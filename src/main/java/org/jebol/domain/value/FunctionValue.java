@@ -17,7 +17,7 @@ public record FunctionValue(
         List<String> localNames,
         Context closedOver,
         boolean closure,
-        Context declaredWords) implements Value, DeclaresParameters {
+        Context declaredWords) implements DeclaresParameters {
 
     public FunctionValue {
         if (spec == null || body == null || closedOver == null) {
@@ -50,13 +50,6 @@ public record FunctionValue(
     public FunctionValue asClosure() {
         return new FunctionValue(spec, body, parameters, localNames, closedOver,
                 true, declaredWords);
-    }
-
-    @Override
-    public Value make(Value spec, Maker maker) {
-        return spec instanceof BlockValue block
-                ? maker.makeFunctionFrom(this, block)
-                : maker.makeAnotherFrom(datatype(), spec);
     }
 
     public int arity() {

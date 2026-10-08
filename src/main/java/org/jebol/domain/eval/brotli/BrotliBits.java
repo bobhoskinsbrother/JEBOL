@@ -53,6 +53,25 @@ final class BrotliBits {
         data[position >> 3] = 0;
     }
 
+    void writeMetaBlockHeader(int length, boolean stored) {
+        int nibbles = 6;
+        write(1, 0);
+        if (length <= (1 << 16)) {
+            nibbles = 4;
+        } else if (length <= (1 << 20)) {
+            nibbles = 5;
+        }
+        write(2, nibbles - 4);
+        write(nibbles * 4, length - 1);
+        write(1, stored ? 1 : 0);
+    }
+
+    void writeUncompressedMetaBlock(byte[] source, int at, int howMany) {
+        writeMetaBlockHeader(howMany, true);
+        jumpToByteBoundary();
+        writeBytes(source, at, howMany);
+    }
+
     void rewindTo(int newPosition) {
         data[newPosition >> 3] &= (byte) ((1 << (newPosition & 7)) - 1);
         position = newPosition;

@@ -3,6 +3,7 @@ package org.jebol.domain.eval;
 import org.jebol.domain.cipher.Aria;
 import org.jebol.domain.cipher.BlockModes;
 import org.jebol.domain.cipher.Camellia;
+import org.jebol.domain.cipher.JoinedOctets;
 import org.jebol.domain.cipher.CounterWithCbcMac;
 import org.jebol.domain.cipher.ChaChaWithPoly1305;
 import org.jebol.domain.cipher.CounterWithGalois;
@@ -19,6 +20,9 @@ import java.util.Map;
 import java.util.Set;
 
 public final class CryptPort {
+
+    private final JoinedOctets joined = new JoinedOctets();
+    private final CounterWithCbcMac counterWithCbcMac = new CounterWithCbcMac();
 
     static final String HANDLE_TYPE = "crypt";
 
@@ -379,7 +383,7 @@ public final class CryptPort {
             gatherToAuthenticate(working, octets);
             return;
         }
-        byte[] waiting = joined(working.heldBack, octets);
+        byte[] waiting = joined.of(working.heldBack, octets);
         int wholePart = howMuchOfItCanBeTransformed(working.works(), waiting.length);
         if (wholePart > 0) {
             addToWhatIsReady(working,
@@ -443,7 +447,7 @@ public final class CryptPort {
     }
 
     private void addToWhatIsReady(Working working, byte[] octets) {
-        working.ready = joined(working.ready, octets);
+        working.ready = joined.of(working.ready, octets);
         working.somethingIsReady = true;
     }
 
@@ -566,7 +570,7 @@ public final class CryptPort {
             rest = Arrays.copyOfRange(octets, working.toAuthenticateOctets,
                     octets.length);
         }
-        working.gatheredForGalois = joined(working.gatheredForGalois, rest);
+        working.gatheredForGalois = joined.of(working.gatheredForGalois, rest);
         if (working.works().mode() == Mode.COUNTER_WITH_CBC_MAC) {
             throughCounterWithCbcMac(working);
             return;
@@ -587,7 +591,7 @@ public final class CryptPort {
             working.theNextWriteIsAHeader = false;
             return;
         }
-        working.gatheredForGalois = joined(working.gatheredForGalois, octets);
+        working.gatheredForGalois = joined.of(working.gatheredForGalois, octets);
         addToWhatIsReady(working, theOctetsNotHandedOutYet(working));
     }
 
@@ -595,10 +599,10 @@ public final class CryptPort {
         OneBlock cipher =
                 theBlockCipherBehind(working, COUNTING_IS_ITS_OWN_INVERSE);
         CounterWithCbcMac.Sealed answer = working.decrypting
-                ? CounterWithCbcMac.deciphered(cipher, working.vector,
+                ? counterWithCbcMac.deciphered(cipher, working.vector,
                         working.tagOctets, working.authenticated,
                         working.gatheredForGalois)
-                : CounterWithCbcMac.enciphered(cipher, working.vector,
+                : counterWithCbcMac.enciphered(cipher, working.vector,
                         working.tagOctets, working.authenticated,
                         working.gatheredForGalois);
         if (!answer.worked()) {
@@ -680,11 +684,5 @@ public final class CryptPort {
             widened[at] = octets[at] & 0xFF;
         }
         return BinaryValue.of(widened);
-    }
-
-    private byte[] joined(byte[] first, byte[] second) {
-        byte[] both = Arrays.copyOf(first, first.length + second.length);
-        System.arraycopy(second, 0, both, first.length, second.length);
-        return both;
     }
 }

@@ -13,10 +13,9 @@ import java.util.Arrays;
  */
 public final class CounterWithCbcMac {
 
-    private CounterWithCbcMac() {
-    }
-
     private static final int BLOCK = 16;
+
+    private final JoinedOctets joined = new JoinedOctets();
 
     private static final int SHORTEST_NONCE = 7;
 
@@ -27,28 +26,26 @@ public final class CounterWithCbcMac {
      * authenticated block hold {@code (t - 2) / 2}, so only the even lengths
      * from four to sixteen have a spelling.
      */
-    public static boolean canIssueATagOf(int octets) {
+    public boolean canIssueATagOf(int octets) {
         return octets >= 4 && octets <= BLOCK && octets % 2 == 0;
     }
 
     /** What a run through the mode produced, or nothing where it could not. */
     public record Sealed(byte[] octets, boolean worked) {
-
-        static Sealed nothing() {
-            return new Sealed(new byte[0], false);
-        }
     }
+
+    private static final Sealed NOTHING = new Sealed(new byte[0], false);
 
     /**
      * Enciphers a message and answers it followed by its tag. A tag length of
      * nought is the starred form of the mode: nothing is authenticated and the
      * answer is the cipher text alone.
      */
-    public static Sealed enciphered(OneBlock cipher, byte[] vector, int tagOctets,
+    public Sealed enciphered(OneBlock cipher, byte[] vector, int tagOctets,
             byte[] header, byte[] message) {
 
         if (tagOctets != 0 && !canIssueATagOf(tagOctets)) {
-            return Sealed.nothing();
+            return NOTHING;
         }
         byte[] nonce = nonceClampedWithNoughtsAfterAShortOne(vector);
         byte[] cipherText = maskedWithTheKeystreamCountingFromOne(cipher, nonce, message);
@@ -56,7 +53,7 @@ public final class CounterWithCbcMac {
             return new Sealed(cipherText, true);
         }
         byte[] tag = theTag(cipher, nonce, tagOctets, header, message);
-        return new Sealed(joined(cipherText, tag), true);
+        return new Sealed(joined.of(cipherText, tag), true);
     }
 
     /**
@@ -64,14 +61,14 @@ public final class CounterWithCbcMac {
      * disagree -- so a caller cannot reach plain text that was never vouched
      * for.
      */
-    public static Sealed deciphered(OneBlock cipher, byte[] vector, int tagOctets,
+    public Sealed deciphered(OneBlock cipher, byte[] vector, int tagOctets,
             byte[] header, byte[] sealedOctets) {
 
         if (tagOctets != 0 && !canIssueATagOf(tagOctets)) {
-            return Sealed.nothing();
+            return NOTHING;
         }
         if (sealedOctets.length < tagOctets) {
-            return Sealed.nothing();
+            return NOTHING;
         }
         byte[] cipherText =
                 Arrays.copyOf(sealedOctets, sealedOctets.length - tagOctets);
@@ -85,10 +82,10 @@ public final class CounterWithCbcMac {
         byte[] tagComputed = theTag(cipher, nonce, tagOctets, header, message);
         return theyAgreeInTheSameTimeWhicheverByteDisagrees(tagWritten, tagComputed)
                 ? new Sealed(message, true)
-                : Sealed.nothing();
+                : NOTHING;
     }
 
-    private static boolean theyAgreeInTheSameTimeWhicheverByteDisagrees(
+    private boolean theyAgreeInTheSameTimeWhicheverByteDisagrees(
             byte[] written, byte[] computed) {
         if (written.length != computed.length) {
             return false;
@@ -100,12 +97,12 @@ public final class CounterWithCbcMac {
         return differences == 0;
     }
 
-    private static byte[] nonceClampedWithNoughtsAfterAShortOne(byte[] vector) {
+    private byte[] nonceClampedWithNoughtsAfterAShortOne(byte[] vector) {
         return Arrays.copyOf(vector,
                 Math.clamp(vector.length, SHORTEST_NONCE, LONGEST_NONCE));
     }
 
-    private static byte[] maskedWithTheKeystreamCountingFromOne(
+    private byte[] maskedWithTheKeystreamCountingFromOne(
             OneBlock cipher, byte[] nonce, byte[] message) {
 
         byte[] masked = new byte[message.length];
@@ -121,7 +118,7 @@ public final class CounterWithCbcMac {
         return masked;
     }
 
-    private static byte[] counterBlock(byte[] nonce, long count) {
+    private byte[] counterBlock(byte[] nonce, long count) {
         int countOctets = BLOCK - 1 - nonce.length;
         byte[] counter = new byte[BLOCK];
         counter[0] = (byte) (countOctets - 1);
@@ -134,14 +131,14 @@ public final class CounterWithCbcMac {
         return counter;
     }
 
-    private static byte[] theTag(OneBlock cipher, byte[] nonce, int tagOctets,
+    private byte[] theTag(OneBlock cipher, byte[] nonce, int tagOctets,
             byte[] header, byte[] message) {
 
         byte[] chained = cipher.enciphered(
                 theFirstBlock(nonce, tagOctets, header.length, message.length));
         if (header.length > 0) {
             chained = chainedThrough(cipher, chained,
-                    joined(theHeadersLengthWritten(header.length), header));
+                    joined.of(theHeadersLengthWritten(header.length), header));
         }
         chained = chainedThrough(cipher, chained, message);
         byte[] maskedWith = cipher.enciphered(counterBlock(nonce, 0));
@@ -152,7 +149,7 @@ public final class CounterWithCbcMac {
         return tag;
     }
 
-    private static byte[] theFirstBlock(byte[] nonce, int tagOctets,
+    private byte[] theFirstBlock(byte[] nonce, int tagOctets,
             int headerOctets, int messageOctets) {
 
         int countOctets = BLOCK - 1 - nonce.length;
@@ -169,7 +166,7 @@ public final class CounterWithCbcMac {
         return first;
     }
 
-    private static byte[] theHeadersLengthWritten(int octets) {
+    private byte[] theHeadersLengthWritten(int octets) {
         if (octets < WHERE_TWO_BYTES_STOP_BEING_ENOUGH_FOR_A_HEADER) {
             return new byte[] {(byte) (octets >>> 8), (byte) octets};
         }
@@ -184,7 +181,7 @@ public final class CounterWithCbcMac {
 
     private static final int WHERE_TWO_BYTES_STOP_BEING_ENOUGH_FOR_A_HEADER = 0xFF00;
 
-    private static byte[] chainedThrough(OneBlock cipher, byte[] chained,
+    private byte[] chainedThrough(OneBlock cipher, byte[] chained,
             byte[] octets) {
 
         byte[] running = chained;
@@ -199,11 +196,5 @@ public final class CounterWithCbcMac {
             running = cipher.enciphered(combined);
         }
         return running;
-    }
-
-    private static byte[] joined(byte[] first, byte[] second) {
-        byte[] both = Arrays.copyOf(first, first.length + second.length);
-        System.arraycopy(second, 0, both, first.length, second.length);
-        return both;
     }
 }

@@ -9,7 +9,7 @@ public record NativeValue(
         List<Parameter> parameters,
         Set<String> declaredRefinements,
         Set<String> askedRefinements,
-        Optional<BlockValue> ownSpec) implements Value, DeclaresParameters {
+        Optional<BlockValue> ownSpec) implements DeclaresParameters {
 
     public NativeValue(String nativeName, List<Parameter> parameters) {
         this(nativeName, parameters, Set.of(), Set.of(), Optional.empty());
@@ -36,13 +36,6 @@ public record NativeValue(
     public NativeValue derivedWith(BlockValue spec, List<Parameter> declared) {
         return new NativeValue(nativeName, declared, declaredRefinements,
                 askedRefinements, Optional.of(spec));
-    }
-
-    @Override
-    public Value make(Value spec, Maker maker) {
-        return spec instanceof BlockValue block
-                ? maker.makeFunctionFrom(this, block)
-                : maker.makeAnotherFrom(datatype(), spec);
     }
 
     public boolean declares(String refinement) {

@@ -77,10 +77,10 @@ class XxHash3FromTheSourceTest {
 
             byte[] subject = bytesOf(length);
 
-            assertThat(hexOf(XxHash3.of64MostSignificantByteFirst(subject)))
+            assertThat(hexOf(new XxHash3().of64MostSignificantByteFirst(subject)))
                     .as("xxh3 of %d bytes", length)
                     .isEqualTo(expected64);
-            assertThat(hexOf(XxHash3.of128MostSignificantByteFirst(subject)))
+            assertThat(hexOf(new XxHash3().of128MostSignificantByteFirst(subject)))
                     .as("xxh128 of %d bytes", length)
                     .isEqualTo(expected128);
         }
@@ -97,17 +97,17 @@ class XxHash3FromTheSourceTest {
                     "The quick brown fox jumps over the lazy dog".getBytes(
                             java.nio.charset.StandardCharsets.UTF_8);
 
-            assertThat(hexOf(XxHash3.of64MostSignificantByteFirst(sentence)))
+            assertThat(hexOf(new XxHash3().of64MostSignificantByteFirst(sentence)))
                     .isEqualTo("CE7D19A5418FB365");
-            assertThat(hexOf(XxHash3.of128MostSignificantByteFirst(sentence)))
+            assertThat(hexOf(new XxHash3().of128MostSignificantByteFirst(sentence)))
                     .isEqualTo("DDD650205CA3E7FA24A1CC2E3A8A7651");
         }
 
         @Test
         @DisplayName("and the digest widths are eight and sixteen bytes")
         void theDigestWidthsAreEightAndSixteen() {
-            assertThat(XxHash3.of64MostSignificantByteFirst(bytesOf(300))).hasSize(8);
-            assertThat(XxHash3.of128MostSignificantByteFirst(bytesOf(300))).hasSize(16);
+            assertThat(new XxHash3().of64MostSignificantByteFirst(bytesOf(300))).hasSize(8);
+            assertThat(new XxHash3().of128MostSignificantByteFirst(bytesOf(300))).hasSize(16);
         }
     }
 }

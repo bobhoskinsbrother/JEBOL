@@ -1,9 +1,6 @@
 package org.jebol.domain.eval;
 
-final class Md4 {
-
-    private Md4() {
-    }
+final class Md4 extends Md4FamilyDigest {
 
     private static final int[] STARTING_WORDS = {
         0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476,
@@ -25,40 +22,13 @@ final class Md4 {
         0x00000000, 0x5A827999, 0x6ED9EBA1,
     };
 
-    static byte[] of(byte[] message) {
-        int[] words = STARTING_WORDS.clone();
-        byte[] padded = padded(message);
-        int[] block = new int[16];
-        for (int at = 0; at < padded.length; at += 64) {
-            for (int word = 0; word < 16; word++) {
-                block[word] = littleEndianWordAt(padded, at + word * 4);
-            }
-            compress(words, block);
-        }
-        return digestOf(words);
+    @Override
+    int[] startingWords() {
+        return STARTING_WORDS.clone();
     }
 
-    private static byte[] padded(byte[] message) {
-        int roomForTheLength = 9;
-        int blocks = (message.length + roomForTheLength + 63) / 64;
-        byte[] padded = new byte[blocks * 64];
-        System.arraycopy(message, 0, padded, 0, message.length);
-        padded[message.length] = (byte) 0x80;
-        long bits = (long) message.length * 8;
-        for (int at = 0; at < 8; at++) {
-            padded[padded.length - 8 + at] = (byte) (bits >>> at * 8);
-        }
-        return padded;
-    }
-
-    private static int littleEndianWordAt(byte[] bytes, int at) {
-        return bytes[at] & 0xFF
-                | (bytes[at + 1] & 0xFF) << 8
-                | (bytes[at + 2] & 0xFF) << 16
-                | (bytes[at + 3] & 0xFF) << 24;
-    }
-
-    private static void compress(int[] words, int[] block) {
+    @Override
+    void compress(int[] words, int[] block) {
         int first = words[0];
         int second = words[1];
         int third = words[2];
@@ -83,22 +53,12 @@ final class Md4 {
         words[3] += fourth;
     }
 
-    private static int mixedByChoiceThenMajorityThenExclusiveOr(
+    private int mixedByChoiceThenMajorityThenExclusiveOr(
             int round, int second, int third, int fourth) {
         return switch (round) {
             case 0 -> second & third | ~second & fourth;
             case 1 -> second & third | second & fourth | third & fourth;
             default -> second ^ third ^ fourth;
         };
-    }
-
-    private static byte[] digestOf(int[] words) {
-        byte[] digest = new byte[16];
-        for (int word = 0; word < words.length; word++) {
-            for (int at = 0; at < 4; at++) {
-                digest[word * 4 + at] = (byte) (words[word] >>> at * 8);
-            }
-        }
-        return digest;
     }
 }

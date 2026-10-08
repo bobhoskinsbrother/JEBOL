@@ -85,13 +85,6 @@ final class BrotliFullHasher implements BrotliHasher {
     }
 
     @Override
-    public void rememberRange(byte[] data, int mask, int from, int until) {
-        for (int at = from; at < until; at++) {
-            remember(data, mask, at);
-        }
-    }
-
-    @Override
     public void stitchToPreviousBlock(byte[] data, int mask, int howManyBytes,
             int position) {
 

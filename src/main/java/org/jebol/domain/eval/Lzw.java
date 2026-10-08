@@ -4,9 +4,6 @@ import java.util.Arrays;
 
 final class Lzw {
 
-    private Lzw() {
-    }
-
     private static final int NULL_CODE = 65535;
     private static final int CLEAR_CODE = 256;
     private static final int FIRST_STRING = 257;
@@ -14,28 +11,11 @@ final class Lzw {
 
     private static final int COUNTER_SEED = 65536;
 
-    private static int codeBits(int number) {
+    private int codeBits(int number) {
         return 31 - Integer.numberOfLeadingZeros(number);
     }
 
-    private static final class Written {
-
-        private byte[] held = new byte[64];
-        private int used;
-
-        void write(int octet) {
-            if (used == held.length) {
-                held = Arrays.copyOf(held, held.length * 2);
-            }
-            held[used++] = (byte) octet;
-        }
-
-        byte[] toArray() {
-            return Arrays.copyOf(held, used);
-        }
-    }
-
-    static int widestSymbolForTheLevelReadUnsigned(int level) {
+    int widestSymbolForTheLevelReadUnsigned(int level) {
         long asked = Integer.toUnsignedLong(level);
         if (asked >= 1 && asked <= 7) {
             return 8 + (int) asked;
@@ -62,7 +42,7 @@ final class Lzw {
         private int bits;
     }
 
-    static byte[] compressed(byte[] source, int level) {
+    byte[] compressed(byte[] source, int level) {
         int widest = widestSymbolForTheLevelReadUnsigned(level);
         int totalCodes = 1 << widest;
         int mostEntriesAvailable = totalCodes - FIRST_STRING - 1;
@@ -73,7 +53,7 @@ final class Lzw {
             dictionary[at] = new Encoding();
         }
 
-        Written into = new Written();
+        Octets into = new Octets();
         ShifterLowBitsFirst shifter = new ShifterLowBitsFirst();
         into.write(widest - 9);
 
@@ -192,13 +172,13 @@ final class Lzw {
         return into.toArray();
     }
 
-    private static void clearTheFirstTwoHundredAndFiftySix(Encoding[] dictionary) {
+    private void clearTheFirstTwoHundredAndFiftySix(Encoding[] dictionary) {
         for (int at = 0; at < 256; at++) {
             dictionary[at].clear();
         }
     }
 
-    private static int nextUnreferencedFrom(
+    private int nextUnreferencedFrom(
             Encoding[] dictionary, int from, int highestCode) {
 
         int at = from + 1;
@@ -213,8 +193,8 @@ final class Lzw {
         }
     }
 
-    private static int writeOneCodeInAdjustedBinary(
-            Written into, ShifterLowBitsFirst shifter, int code, int highest,
+    private int writeOneCodeInAdjustedBinary(
+            Octets into, ShifterLowBitsFirst shifter, int code, int highest,
             int outputBytes) {
 
         int width = codeBits(highest);
@@ -243,7 +223,7 @@ final class Lzw {
         private int prefix;
     }
 
-    static byte[] decompressed(byte[] source, int limit) {
+    byte[] decompressed(byte[] source, int limit) {
         if (source.length == 0 || (source[0] & 0xF8) != 0) {
             throw new IllegalArgumentException("lzw data does not open with a symbol width");
         }
@@ -261,7 +241,7 @@ final class Lzw {
         boolean[] referenced = new boolean[totalCodes];
         int[] reversed = new int[totalCodes - 256];
 
-        Written into = new Written();
+        Octets into = new Octets();
         ShifterLowBitsFirst shifter = new ShifterLowBitsFirst();
         int reading = 1;
         int highestSoFar = FIRST_STRING;
@@ -357,7 +337,7 @@ final class Lzw {
                 }
             }
             prefix = code;
-            if (limit > 0 && into.used >= limit) {
+            if (limit > 0 && into.length() >= limit) {
                 break;
             }
         }
@@ -367,7 +347,7 @@ final class Lzw {
                 : whole;
     }
 
-    private static int nextUnreferencedAfter(
+    private int nextUnreferencedAfter(
             boolean[] referenced, int from, int highestCode) {
 
         int at = from + 1;

@@ -75,18 +75,18 @@ final class BrotliTwoPassEncoder {
                 int blockSize = Math.min(left, BLOCK_SIZE);
                 createCommands(at, from, blockSize, at + size);
                 if (worthCompressing(from, blockSize)) {
-                    storeMetaBlockHeader(blockSize, false);
+                    writer.writeMetaBlockHeader(blockSize, false);
                     writer.write(13, 0);
                     storeCommands();
                 } else {
-                    storeUncompressed(from, blockSize);
+                    writer.writeUncompressedMetaBlock(input, from, blockSize);
                 }
                 from += blockSize;
                 left -= blockSize;
             }
             if (writer.at() - openedAt > 31 + ((long) size << 3)) {
                 writer.rewindTo(openedAt);
-                storeUncompressed(at, size);
+                writer.writeUncompressedMetaBlock(input, at, size);
             }
             if (isLast) {
                 writer.write(1, 1);
@@ -369,25 +369,6 @@ final class BrotliTwoPassEncoder {
             int offset = (2 + prefix) << width;
             int code = 2 * (width - 1) + prefix + 80;
             commands[commandCount++] = code | ((shifted - offset) << 8);
-        }
-
-        private void storeMetaBlockHeader(int length, boolean stored) {
-            int nibbles = 6;
-            writer.write(1, 0);
-            if (length <= (1 << 16)) {
-                nibbles = 4;
-            } else if (length <= (1 << 20)) {
-                nibbles = 5;
-            }
-            writer.write(2, nibbles - 4);
-            writer.write(nibbles * 4, length - 1);
-            writer.write(1, stored ? 1 : 0);
-        }
-
-        private void storeUncompressed(int at, int size) {
-            storeMetaBlockHeader(size, true);
-            writer.jumpToByteBoundary();
-            writer.writeBytes(input, at, size);
         }
 
         private boolean worthCompressing(int at, int size) {

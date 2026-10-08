@@ -1,9 +1,6 @@
 package org.jebol.domain.eval;
 
-final class RipeMd160 {
-
-    private RipeMd160() {
-    }
+final class RipeMd160 extends Md4FamilyDigest {
 
     private static final int[] STARTING_WORDS = {
         0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0,
@@ -49,40 +46,17 @@ final class RipeMd160 {
         0x50A28BE6, 0x5C4DD124, 0x6D703EF3, 0x7A6D76E9, 0x00000000,
     };
 
-    static byte[] of(byte[] message) {
-        int[] words = STARTING_WORDS.clone();
-        byte[] padded = padded(message);
-        int[] block = new int[16];
-        for (int at = 0; at < padded.length; at += 64) {
-            for (int word = 0; word < 16; word++) {
-                block[word] = littleEndianWordAt(padded, at + word * 4);
-            }
-            compressBothChainsAndFoldRotatedByOne(words, block);
-        }
-        return digestOf(words);
+    @Override
+    int[] startingWords() {
+        return STARTING_WORDS.clone();
     }
 
-    private static byte[] padded(byte[] message) {
-        int roomForTheLength = 9;
-        int blocks = (message.length + roomForTheLength + 63) / 64;
-        byte[] padded = new byte[blocks * 64];
-        System.arraycopy(message, 0, padded, 0, message.length);
-        padded[message.length] = (byte) 0x80;
-        long bits = (long) message.length * 8;
-        for (int at = 0; at < 8; at++) {
-            padded[padded.length - 8 + at] = (byte) (bits >>> at * 8);
-        }
-        return padded;
+    @Override
+    void compress(int[] words, int[] block) {
+        compressBothChainsAndFoldRotatedByOne(words, block);
     }
 
-    private static int littleEndianWordAt(byte[] bytes, int at) {
-        return bytes[at] & 0xFF
-                | (bytes[at + 1] & 0xFF) << 8
-                | (bytes[at + 2] & 0xFF) << 16
-                | (bytes[at + 3] & 0xFF) << 24;
-    }
-
-    private static void compressBothChainsAndFoldRotatedByOne(
+    private void compressBothChainsAndFoldRotatedByOne(
             int[] words, int[] block) {
         int leftA = words[0];
         int leftB = words[1];
@@ -123,7 +97,7 @@ final class RipeMd160 {
         words[0] = carried;
     }
 
-    private static int mixed(int round, int first, int second, int third) {
+    private int mixed(int round, int first, int second, int third) {
         return switch (round) {
             case 0 -> first ^ second ^ third;
             case 1 -> first & second | ~first & third;
@@ -131,15 +105,5 @@ final class RipeMd160 {
             case 3 -> first & third | second & ~third;
             default -> first ^ (second | ~third);
         };
-    }
-
-    private static byte[] digestOf(int[] words) {
-        byte[] digest = new byte[20];
-        for (int word = 0; word < words.length; word++) {
-            for (int at = 0; at < 4; at++) {
-                digest[word * 4 + at] = (byte) (words[word] >>> at * 8);
-            }
-        }
-        return digest;
     }
 }

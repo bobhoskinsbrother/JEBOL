@@ -1,19 +1,6 @@
 package org.jebol.domain.eval;
 
-final class XxHash3 {
-
-    private XxHash3() {
-    }
-
-    private static final int P32_1 = 0x9E3779B1;
-    private static final int P32_2 = 0x85EBCA77;
-    private static final int P32_3 = 0xC2B2AE3D;
-
-    private static final long P64_1 = 0x9E3779B185EBCA87L;
-    private static final long P64_2 = 0xC2B2AE3D27D4EB4FL;
-    private static final long P64_3 = 0x165667B19E3779F9L;
-    private static final long P64_4 = 0x85EBCA77C2B2AE63L;
-    private static final long P64_5 = 0x27D4EB2F165667C5L;
+final class XxHash3 extends XxHashFamily {
 
     private static final long MIXER_1 = 0x165667919E3779F9L;
     private static final long MIXER_2 = 0x9FB21C651E98DF25L;
@@ -28,9 +15,9 @@ final class XxHash3 {
     private static final int MIDSIZE_LAST_OFFSET = 17;
     private static final int LONGEST_MIDSIZE = 240;
 
-    private static final byte[] SECRET = secret();
+    private static final byte[] SECRET;
 
-    private static byte[] secret() {
+    static {
         int[] published = {
             0xb8, 0xfe, 0x6c, 0x39, 0x23, 0xa4, 0x4b, 0xbe, 0x7c, 0x01, 0x81, 0x2c,
             0xf7, 0x21, 0xad, 0x1c, 0xde, 0xd4, 0x6d, 0xe9, 0x83, 0x90, 0x97, 0xdb,
@@ -49,26 +36,25 @@ final class XxHash3 {
             0x8f, 0xf8, 0xb8, 0xd1, 0x7a, 0xd0, 0x31, 0xce, 0x45, 0xcb, 0x3a, 0x8f,
             0x95, 0x16, 0x04, 0x28, 0xaf, 0xd7, 0xfb, 0xca, 0xbb, 0x4b, 0x40, 0x7e,
         };
-        byte[] bytes = new byte[published.length];
+        SECRET = new byte[published.length];
         for (int at = 0; at < published.length; at++) {
-            bytes[at] = (byte) published[at];
+            SECRET[at] = (byte) published[at];
         }
-        return bytes;
     }
 
-    static byte[] of64MostSignificantByteFirst(byte[] message) {
-        return asBigEndian(hash64(message));
+    byte[] of64MostSignificantByteFirst(byte[] message) {
+        return octets.bigEndian(hash64(message), 8);
     }
 
-    static byte[] of128MostSignificantByteFirst(byte[] message) {
+    byte[] of128MostSignificantByteFirst(byte[] message) {
         long[] halves = hash128(message);
         byte[] written = new byte[16];
-        System.arraycopy(asBigEndian(halves[1]), 0, written, 0, 8);
-        System.arraycopy(asBigEndian(halves[0]), 0, written, 8, 8);
+        System.arraycopy(octets.bigEndian(halves[1], 8), 0, written, 0, 8);
+        System.arraycopy(octets.bigEndian(halves[0], 8), 0, written, 8, 8);
         return written;
     }
 
-    private static long hash64(byte[] message) {
+    private long hash64(byte[] message) {
         int length = message.length;
         if (length <= 16) {
             return ofAtMostSixteen(message);
@@ -82,29 +68,29 @@ final class XxHash3 {
         return finalisedAsSixtyFour(accumulatorsOver(message), message.length);
     }
 
-    private static long ofAtMostSixteen(byte[] message) {
+    private long ofAtMostSixteen(byte[] message) {
         int length = message.length;
         if (length > 8) {
-            long flipLow = longAt(SECRET, 24) ^ longAt(SECRET, 32);
-            long flipHigh = longAt(SECRET, 40) ^ longAt(SECRET, 48);
-            long low = longAt(message, 0) ^ flipLow;
-            long high = longAt(message, length - 8) ^ flipHigh;
+            long flipLow = octets.littleEndianLongAt(SECRET, 24) ^ octets.littleEndianLongAt(SECRET, 32);
+            long flipHigh = octets.littleEndianLongAt(SECRET, 40) ^ octets.littleEndianLongAt(SECRET, 48);
+            long low = octets.littleEndianLongAt(message, 0) ^ flipLow;
+            long high = octets.littleEndianLongAt(message, length - 8) ^ flipHigh;
             return avalanched(length + Long.reverseBytes(low) + high
                     + foldedProductOf(low, high));
         }
         if (length >= 4) {
-            long first = wordAt(message, 0) & 0xFFFFFFFFL;
-            long second = wordAt(message, length - 4) & 0xFFFFFFFFL;
-            long flip = longAt(SECRET, 8) ^ longAt(SECRET, 16);
+            long first = octets.littleEndianWordAt(message, 0) & 0xFFFFFFFFL;
+            long second = octets.littleEndianWordAt(message, length - 4) & 0xFFFFFFFFL;
+            long flip = octets.littleEndianLongAt(SECRET, 8) ^ octets.littleEndianLongAt(SECRET, 16);
             return rrmxmxed((second + (first << 32)) ^ flip, length);
         }
         if (length > 0) {
             return avalanched64(shortCombination(message) ^ shortFlip());
         }
-        return avalanched64(longAt(SECRET, 56) ^ longAt(SECRET, 64));
+        return avalanched64(octets.littleEndianLongAt(SECRET, 56) ^ octets.littleEndianLongAt(SECRET, 64));
     }
 
-    private static long shortCombination(byte[] message) {
+    private long shortCombination(byte[] message) {
         int length = message.length;
         int first = message[0] & 0xFF;
         int middle = message[length >> 1] & 0xFF;
@@ -112,17 +98,17 @@ final class XxHash3 {
         return (first << 16 | (long) middle << 24 | last | (long) length << 8) & 0xFFFFFFFFL;
     }
 
-    private static long shortFlip() {
-        return (wordAt(SECRET, 0) ^ wordAt(SECRET, 4)) & 0xFFFFFFFFL;
+    private long shortFlip() {
+        return (octets.littleEndianWordAt(SECRET, 0) ^ octets.littleEndianWordAt(SECRET, 4)) & 0xFFFFFFFFL;
     }
 
-    private static long mixedSixteen(byte[] message, int at, int secretAt) {
+    private long mixedSixteen(byte[] message, int at, int secretAt) {
         return foldedProductOf(
-                longAt(message, at) ^ longAt(SECRET, secretAt),
-                longAt(message, at + 8) ^ longAt(SECRET, secretAt + 8));
+                octets.littleEndianLongAt(message, at) ^ octets.littleEndianLongAt(SECRET, secretAt),
+                octets.littleEndianLongAt(message, at + 8) ^ octets.littleEndianLongAt(SECRET, secretAt + 8));
     }
 
-    private static long ofSeventeenToAHundredAndTwentyEight(byte[] message) {
+    private long ofSeventeenToAHundredAndTwentyEight(byte[] message) {
         int length = message.length;
         long running = length * P64_1;
         if (length > 32) {
@@ -142,7 +128,7 @@ final class XxHash3 {
         return avalanched(running);
     }
 
-    private static long ofAHundredAndTwentyNineToTwoHundredAndForty(byte[] message) {
+    private long ofAHundredAndTwentyNineToTwoHundredAndForty(byte[] message) {
         int length = message.length;
         int rounds = length / 16;
         long running = length * P64_1;
@@ -159,7 +145,7 @@ final class XxHash3 {
         return avalanched(running + tail);
     }
 
-    private static long[] accumulatorsOver(byte[] message) {
+    private long[] accumulatorsOver(byte[] message) {
         long[] accumulators = {
             P32_3 & 0xFFFFFFFFL, P64_1, P64_2, P64_3,
             P64_4, P32_2 & 0xFFFFFFFFL, P64_5, P32_1 & 0xFFFFFFFFL,
@@ -178,7 +164,7 @@ final class XxHash3 {
         return accumulators;
     }
 
-    private static void accumulate(
+    private void accumulate(
             long[] accumulators, byte[] message, int from, int stripes) {
 
         for (int stripe = 0; stripe < stripes; stripe++) {
@@ -187,40 +173,40 @@ final class XxHash3 {
         }
     }
 
-    private static void accumulateOneStripe(
+    private void accumulateOneStripe(
             long[] accumulators, byte[] message, int from, int secretAt) {
 
         for (int lane = 0; lane < LANES; lane++) {
-            long data = longAt(message, from + lane * 8);
-            long keyed = data ^ longAt(SECRET, secretAt + lane * 8);
+            long data = octets.littleEndianLongAt(message, from + lane * 8);
+            long keyed = data ^ octets.littleEndianLongAt(SECRET, secretAt + lane * 8);
             accumulators[lane ^ 1] += data;
             accumulators[lane] += (keyed & 0xFFFFFFFFL) * (keyed >>> 32 & 0xFFFFFFFFL);
         }
     }
 
-    private static void scramble(long[] accumulators, int secretAt) {
+    private void scramble(long[] accumulators, int secretAt) {
         for (int lane = 0; lane < LANES; lane++) {
             long scrambled = accumulators[lane] ^ accumulators[lane] >>> 47;
-            scrambled ^= longAt(SECRET, secretAt + lane * 8);
+            scrambled ^= octets.littleEndianLongAt(SECRET, secretAt + lane * 8);
             accumulators[lane] = scrambled * (P32_1 & 0xFFFFFFFFL);
         }
     }
 
-    private static long merged(long[] accumulators, int secretAt, long start) {
+    private long merged(long[] accumulators, int secretAt, long start) {
         long running = start;
         for (int pair = 0; pair < 4; pair++) {
             running += foldedProductOf(
-                    accumulators[2 * pair] ^ longAt(SECRET, secretAt + 16 * pair),
-                    accumulators[2 * pair + 1] ^ longAt(SECRET, secretAt + 16 * pair + 8));
+                    accumulators[2 * pair] ^ octets.littleEndianLongAt(SECRET, secretAt + 16 * pair),
+                    accumulators[2 * pair + 1] ^ octets.littleEndianLongAt(SECRET, secretAt + 16 * pair + 8));
         }
         return avalanched(running);
     }
 
-    private static long finalisedAsSixtyFour(long[] accumulators, long length) {
+    private long finalisedAsSixtyFour(long[] accumulators, long length) {
         return merged(accumulators, MERGE_STARTS, length * P64_1);
     }
 
-    private static long[] hash128(byte[] message) {
+    private long[] hash128(byte[] message) {
         int length = message.length;
         if (length <= 16) {
             return ofAtMostSixteenAsTwoHalves(message);
@@ -239,7 +225,7 @@ final class XxHash3 {
         };
     }
 
-    private static long[] ofAtMostSixteenAsTwoHalves(byte[] message) {
+    private long[] ofAtMostSixteenAsTwoHalves(byte[] message) {
         int length = message.length;
         if (length > 8) {
             return ofNineToSixteenAsTwoHalves(message);
@@ -251,24 +237,24 @@ final class XxHash3 {
             long combinedLow = shortCombination(message);
             long combinedHigh = Integer.rotateLeft(
                     Integer.reverseBytes((int) combinedLow), 13) & 0xFFFFFFFFL;
-            long flipLow = (wordAt(SECRET, 0) ^ wordAt(SECRET, 4)) & 0xFFFFFFFFL;
-            long flipHigh = (wordAt(SECRET, 8) ^ wordAt(SECRET, 12)) & 0xFFFFFFFFL;
+            long flipLow = (octets.littleEndianWordAt(SECRET, 0) ^ octets.littleEndianWordAt(SECRET, 4)) & 0xFFFFFFFFL;
+            long flipHigh = (octets.littleEndianWordAt(SECRET, 8) ^ octets.littleEndianWordAt(SECRET, 12)) & 0xFFFFFFFFL;
             return new long[] {
                 avalanched64(combinedLow ^ flipLow),
                 avalanched64(combinedHigh ^ flipHigh),
             };
         }
         return new long[] {
-            avalanched64(longAt(SECRET, 64) ^ longAt(SECRET, 72)),
-            avalanched64(longAt(SECRET, 80) ^ longAt(SECRET, 88)),
+            avalanched64(octets.littleEndianLongAt(SECRET, 64) ^ octets.littleEndianLongAt(SECRET, 72)),
+            avalanched64(octets.littleEndianLongAt(SECRET, 80) ^ octets.littleEndianLongAt(SECRET, 88)),
         };
     }
 
-    private static long[] ofFourToEightAsTwoHalves(byte[] message) {
+    private long[] ofFourToEightAsTwoHalves(byte[] message) {
         int length = message.length;
-        long low = wordAt(message, 0) & 0xFFFFFFFFL;
-        long high = wordAt(message, length - 4) & 0xFFFFFFFFL;
-        long flip = longAt(SECRET, 16) ^ longAt(SECRET, 24);
+        long low = octets.littleEndianWordAt(message, 0) & 0xFFFFFFFFL;
+        long high = octets.littleEndianWordAt(message, length - 4) & 0xFFFFFFFFL;
+        long flip = octets.littleEndianLongAt(SECRET, 16) ^ octets.littleEndianLongAt(SECRET, 24);
         long keyed = (low + (high << 32)) ^ flip;
         long productLow = keyed * (P64_1 + ((long) length << 2));
         long productHigh = Math.unsignedMultiplyHigh(keyed, P64_1 + ((long) length << 2));
@@ -281,12 +267,12 @@ final class XxHash3 {
         return new long[] {productLow, avalanched(productHigh)};
     }
 
-    private static long[] ofNineToSixteenAsTwoHalves(byte[] message) {
+    private long[] ofNineToSixteenAsTwoHalves(byte[] message) {
         int length = message.length;
-        long flipLow = longAt(SECRET, 32) ^ longAt(SECRET, 40);
-        long flipHigh = longAt(SECRET, 48) ^ longAt(SECRET, 56);
-        long low = longAt(message, 0);
-        long high = longAt(message, length - 8);
+        long flipLow = octets.littleEndianLongAt(SECRET, 32) ^ octets.littleEndianLongAt(SECRET, 40);
+        long flipHigh = octets.littleEndianLongAt(SECRET, 48) ^ octets.littleEndianLongAt(SECRET, 56);
+        long low = octets.littleEndianLongAt(message, 0);
+        long high = octets.littleEndianLongAt(message, length - 8);
         long mixed = low ^ high ^ flipLow;
         long productLow = mixed * P64_1;
         long productHigh = Math.unsignedMultiplyHigh(mixed, P64_1);
@@ -302,17 +288,17 @@ final class XxHash3 {
         return new long[] {avalanched(lowOfProduct), avalanched(highOfProduct)};
     }
 
-    private static long[] mixedThirtyTwo(
+    private long[] mixedThirtyTwo(
             long[] accumulators, byte[] message, int first, int second, int secretAt) {
 
         accumulators[0] += mixedSixteen(message, first, secretAt);
-        accumulators[0] ^= longAt(message, second) + longAt(message, second + 8);
+        accumulators[0] ^= octets.littleEndianLongAt(message, second) + octets.littleEndianLongAt(message, second + 8);
         accumulators[1] += mixedSixteen(message, second, secretAt + 16);
-        accumulators[1] ^= longAt(message, first) + longAt(message, first + 8);
+        accumulators[1] ^= octets.littleEndianLongAt(message, first) + octets.littleEndianLongAt(message, first + 8);
         return accumulators;
     }
 
-    private static long[] bothHalvesFrom(long[] accumulators, int length) {
+    private long[] bothHalvesFrom(long[] accumulators, int length) {
         long low = avalanched(accumulators[0] + accumulators[1]);
         long high = -avalanched(accumulators[0] * P64_1
                 + accumulators[1] * P64_4
@@ -320,7 +306,7 @@ final class XxHash3 {
         return new long[] {low, high};
     }
 
-    private static long[] ofSeventeenToAHundredAndTwentyEightAsTwoHalves(byte[] message) {
+    private long[] ofSeventeenToAHundredAndTwentyEightAsTwoHalves(byte[] message) {
         int length = message.length;
         long[] accumulators = {length * P64_1, 0};
         if (length > 32) {
@@ -336,7 +322,7 @@ final class XxHash3 {
         return bothHalvesFrom(accumulators, length);
     }
 
-    private static long[] ofAHundredAndTwentyNineToTwoHundredAndFortyAsTwoHalves(
+    private long[] ofAHundredAndTwentyNineToTwoHundredAndFortyAsTwoHalves(
             byte[] message) {
 
         int length = message.length;
@@ -355,17 +341,17 @@ final class XxHash3 {
         return bothHalvesFrom(accumulators, length);
     }
 
-    private static long foldedProductOf(long left, long right) {
+    private long foldedProductOf(long left, long right) {
         return left * right ^ Math.unsignedMultiplyHigh(left, right);
     }
 
-    private static long avalanched(long hash) {
+    private long avalanched(long hash) {
         long mixed = hash ^ hash >>> 37;
         mixed *= MIXER_1;
         return mixed ^ mixed >>> 32;
     }
 
-    private static long rrmxmxed(long hash, long length) {
+    private long rrmxmxed(long hash, long length) {
         long mixed = hash ^ Long.rotateLeft(hash, 49) ^ Long.rotateLeft(hash, 24);
         mixed *= MIXER_2;
         mixed ^= (mixed >>> 35) + length;
@@ -373,31 +359,4 @@ final class XxHash3 {
         return mixed ^ mixed >>> 28;
     }
 
-    private static long avalanched64(long hash) {
-        long mixed = hash ^ hash >>> 33;
-        mixed *= P64_2;
-        mixed ^= mixed >>> 29;
-        mixed *= P64_3;
-        return mixed ^ mixed >>> 32;
-    }
-
-    private static int wordAt(byte[] bytes, int at) {
-        return bytes[at] & 0xFF
-                | (bytes[at + 1] & 0xFF) << 8
-                | (bytes[at + 2] & 0xFF) << 16
-                | (bytes[at + 3] & 0xFF) << 24;
-    }
-
-    private static long longAt(byte[] bytes, int at) {
-        return wordAt(bytes, at) & 0xFFFFFFFFL
-                | (long) wordAt(bytes, at + 4) << 32;
-    }
-
-    private static byte[] asBigEndian(long value) {
-        byte[] written = new byte[8];
-        for (int at = 0; at < 8; at++) {
-            written[at] = (byte) (value >>> (7 - at) * 8);
-        }
-        return written;
-    }
 }

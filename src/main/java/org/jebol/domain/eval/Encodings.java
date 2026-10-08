@@ -27,31 +27,6 @@ import java.util.zip.Inflater;
 
 public final class Encodings {
 
-    private static final class Octets {
-
-        private byte[] held = new byte[64];
-        private int used;
-
-        void write(int octet) {
-            if (used == held.length) {
-                held = Arrays.copyOf(held, held.length * 2);
-            }
-            held[used++] = (byte) octet;
-        }
-
-        void write(byte[] more, int from, int count) {
-            while (used + count > held.length) {
-                held = Arrays.copyOf(held, held.length * 2);
-            }
-            System.arraycopy(more, from, held, used, count);
-            used += count;
-        }
-
-        byte[] toArray() {
-            return Arrays.copyOf(held, used);
-        }
-    }
-
     private static final String URI_UNESCAPED =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
                     + "!#$&'()*+,-./:;=?@_~";
@@ -579,25 +554,31 @@ public final class Encodings {
 
     static final String MD_4 = "MD4";
 
+    private final RipeMd160 ripeMd160 = new RipeMd160();
+    private final Md4 md4 = new Md4();
+    private final XxHash xxHash = new XxHash();
+    private final XxHash3 xxHash3 = new XxHash3();
+    private final Lzw lzw = new Lzw();
+
     public byte[] digestOf(byte[] octets, String method) {
         String algorithm = DIGESTS.get(method);
         if (RIPEMD_160.equals(algorithm)) {
-            return RipeMd160.of(octets);
+            return ripeMd160.of(octets);
         }
         if (XXH_3.equals(algorithm)) {
-            return XxHash3.of64MostSignificantByteFirst(octets);
+            return xxHash3.of64MostSignificantByteFirst(octets);
         }
         if (XXH_32.equals(algorithm)) {
-            return XxHash.of32MostSignificantByteFirst(octets);
+            return xxHash.of32MostSignificantByteFirst(octets);
         }
         if (XXH_64.equals(algorithm)) {
-            return XxHash.of64MostSignificantByteFirst(octets);
+            return xxHash.of64MostSignificantByteFirst(octets);
         }
         if (XXH_128.equals(algorithm)) {
-            return XxHash3.of128MostSignificantByteFirst(octets);
+            return xxHash3.of128MostSignificantByteFirst(octets);
         }
         if (MD_4.equals(algorithm)) {
-            return Md4.of(octets);
+            return md4.of(octets);
         }
         try {
             return MessageDigest.getInstance(DIGESTS.get(method))
@@ -682,7 +663,7 @@ public final class Encodings {
             case "zlib" -> new DeflateCompressor(level).zlib(octets);
             case "deflate" -> new DeflateCompressor(level).deflate(octets);
             case "crush" -> Crush.compressed(octets, level);
-            case "lzw" -> Lzw.compressed(octets, level);
+            case "lzw" -> lzw.compressed(octets, level);
             case "lzma" -> Lzma.compressed(octets, level);
             case "br" -> Brotli.compressed(octets, level);
             default -> throw new IllegalArgumentException(method);
@@ -698,7 +679,7 @@ public final class Encodings {
             case "zlib" -> inflated(octets, false);
             case "deflate" -> inflated(octets, true);
             case "crush" -> Crush.decompressed(octets, wanted);
-            case "lzw" -> Lzw.decompressed(octets, wanted);
+            case "lzw" -> lzw.decompressed(octets, wanted);
             case "lzma" -> Lzma.decompressed(octets, wanted);
             case "br" -> Brotli.decompressed(octets, wanted);
             default -> throw new IllegalArgumentException(method);

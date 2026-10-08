@@ -7,10 +7,7 @@ import java.util.List;
 
 final class ShapeSubDialect {
 
-    private ShapeSubDialect() {
-    }
-
-    static List<PathStep> pathFrom(BlockValue steps) {
+    List<PathStep> pathFrom(BlockValue steps) {
         WhereARelativeStepIsMeasuredFrom walk =
                 new WhereARelativeStepIsMeasuredFrom();
         List<Value> written = steps.remaining();
@@ -29,7 +26,7 @@ final class ShapeSubDialect {
         return walk.path();
     }
 
-    private static int whereTheNextStepStarts(List<Value> written, int from) {
+    private int whereTheNextStepStarts(List<Value> written, int from) {
         int ahead = from;
         while (ahead < written.size() && !(written.get(ahead) instanceof WordValue)) {
             ahead++;
@@ -39,6 +36,7 @@ final class ShapeSubDialect {
 
     private static final class WhereARelativeStepIsMeasuredFrom {
 
+        private final DrawArguments read = new DrawArguments();
         private final List<PathStep> path = new ArrayList<>();
         private double across;
         private double down;
@@ -50,14 +48,14 @@ final class ShapeSubDialect {
         }
 
         void obey(String command, boolean relative, List<Value> arguments) {
-            List<PairValue> points = everyPairIn(arguments);
+            List<PairValue> points = read.everyPairIn(arguments);
             switch (command) {
                 case "move" -> moveTo(points, relative);
                 case "line" -> lineThrough(points, relative);
-                case "hline" -> lineTo(numberIn(arguments, relative ? across : 0)
+                case "hline" -> lineTo(read.numberIn(arguments, relative ? across : 0)
                         + (relative ? across : 0), down);
                 case "vline" -> lineTo(across,
-                        numberIn(arguments, relative ? down : 0)
+                        read.numberIn(arguments, relative ? down : 0)
                                 + (relative ? down : 0));
                 case "curve" -> cubicThrough(points, relative);
                 case "curv" -> cubicThrough(points, relative);
@@ -150,24 +148,5 @@ final class ShapeSubDialect {
         private double pointDown(PairValue point, boolean relative) {
             return relative ? down + point.y() : point.y();
         }
-    }
-
-    private static List<PairValue> everyPairIn(List<Value> arguments) {
-        return arguments.stream()
-                .filter(PairValue.class::isInstance)
-                .map(PairValue.class::cast)
-                .toList();
-    }
-
-    private static double numberIn(List<Value> arguments, double whenAbsent) {
-        for (Value each : arguments) {
-            if (each instanceof org.jebol.domain.value.DecimalValue fraction) {
-                return fraction.quantity();
-            }
-            if (each instanceof IntegerValue(long magnitude)) {
-                return magnitude;
-            }
-        }
-        return whenAbsent;
     }
 }
