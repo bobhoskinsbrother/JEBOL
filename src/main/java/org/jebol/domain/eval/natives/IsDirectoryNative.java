@@ -4,7 +4,8 @@ import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.NoneValue;
+import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.AnyStringValue;
@@ -27,7 +28,7 @@ public class IsDirectoryNative extends HostNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("target", Set.of(Datatype.FILE, Datatype.URL, Datatype.NONE)));
+        return List.of(Parameter.required("target", Set.of(FileValue.TYPE, UrlValue.TYPE, NoneValue.TYPE)));
     }
 
     @Override

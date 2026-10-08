@@ -24,7 +24,7 @@ class WhatEachConditionalNativeDeclaresTest {
 
     private static final Set<String> ONLY = Set.of("only");
 
-    private static final Set<Datatype> A_BLOCK = Set.of(Datatype.BLOCK);
+    private static final Set<Datatype> A_BLOCK = Set.of(BlockValue.TYPE);
 
     private Value answerOf(DefaultNative definition, Set<String> refinements,
                            Value... arguments) {
@@ -83,17 +83,17 @@ class WhatEachConditionalNativeDeclaresTest {
                         Set.of("case", "default", "all")),
                 Arguments.of(new AttemptNative(), "attempt",
                         List.of(Parameter.required("block",
-                                Set.of(Datatype.BLOCK, Datatype.PAREN))),
+                                Set.of(BlockValue.TYPE, ParenValue.TYPE))),
                         Set.of("safer")),
                 Arguments.of(new TryNative(), "try",
                         List.of(Parameter.required("block",
-                                        Set.of(Datatype.BLOCK, Datatype.PAREN)),
+                                        Set.of(BlockValue.TYPE, ParenValue.TYPE)),
                                 Parameter.belongingTo("with", "handler", Set.of())),
                         Set.of("all", "with")),
                 Arguments.of(new DoNative(), "do",
                         List.of(anyType("value"),
                                 Parameter.belongingTo("args", "arg", Set.of()),
-                                Parameter.belongingTo("next", "var", Set.of(Datatype.WORD))),
+                                Parameter.belongingTo("next", "var", Set.of(WordValue.TYPE))),
                         Set.of("next", "args")));
     }
 

@@ -47,7 +47,7 @@ class SourceProgrammeLoadingTest {
         assertThat(values.get(1))
                 .as("%s should follow its header word with a block", programme.getFileName())
                 .isInstanceOfSatisfying(AnyBlockValue.class, block ->
-                        assertThat(block.datatype()).isEqualTo(Datatype.BLOCK));
+                        assertThat(block.datatype()).isEqualTo(BlockValue.TYPE));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -83,16 +83,16 @@ class SourceProgrammeLoadingTest {
                 .flatMap(result -> flatten(result.values().orElseThrow()).stream())
                 .toList();
 
-        assertThat(countOf(everything, Datatype.PAIR)).as("pairs").isGreaterThan(150);
-        assertThat(countOf(everything, Datatype.TUPLE)).as("tuples").isGreaterThan(70);
-        assertThat(countOf(everything, Datatype.SET_WORD)).as("set-words").isGreaterThan(500);
-        assertThat(countOf(everything, Datatype.PATH)).as("paths").isGreaterThan(300);
-        assertThat(countOf(everything, Datatype.LIT_WORD)).as("lit-words").isGreaterThan(50);
-        assertThat(countOf(everything, Datatype.REFINEMENT)).as("refinements").isGreaterThan(10);
-        assertThat(countOf(everything, Datatype.GET_WORD)).as("get-words").isGreaterThan(5);
-        assertThat(countOf(everything, Datatype.SET_PATH)).as("set-paths").isGreaterThan(20);
-        assertThat(countOf(everything, Datatype.STRING)).as("strings").isGreaterThan(50);
-        assertThat(countOf(everything, Datatype.INTEGER)).as("integers").isGreaterThan(100);
+        assertThat(countOf(everything, PairValue.TYPE)).as("pairs").isGreaterThan(150);
+        assertThat(countOf(everything, TupleValue.TYPE)).as("tuples").isGreaterThan(70);
+        assertThat(countOf(everything, SetWordValue.TYPE)).as("set-words").isGreaterThan(500);
+        assertThat(countOf(everything, PathValue.TYPE)).as("paths").isGreaterThan(300);
+        assertThat(countOf(everything, LitWordValue.TYPE)).as("lit-words").isGreaterThan(50);
+        assertThat(countOf(everything, RefinementValue.TYPE)).as("refinements").isGreaterThan(10);
+        assertThat(countOf(everything, GetWordValue.TYPE)).as("get-words").isGreaterThan(5);
+        assertThat(countOf(everything, SetPathValue.TYPE)).as("set-paths").isGreaterThan(20);
+        assertThat(countOf(everything, StringValue.TYPE)).as("strings").isGreaterThan(50);
+        assertThat(countOf(everything, IntegerValue.TYPE)).as("integers").isGreaterThan(100);
     }
 
     private static long countOf(List<Value> values, Datatype datatype) {

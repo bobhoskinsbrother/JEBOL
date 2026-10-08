@@ -15,8 +15,8 @@ public class InvalidUtfNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("data", Set.of(Datatype.BINARY)),
-                Parameter.belongingTo("utf", "num", Set.of(Datatype.INTEGER)));
+        return List.of(Parameter.required("data", Set.of(BinaryValue.TYPE)),
+                Parameter.belongingTo("utf", "num", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

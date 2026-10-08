@@ -3,7 +3,6 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.crypto.DiffieHellmanKey;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
 
@@ -19,8 +18,8 @@ public class DhInitNative extends CipherNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("g", Set.of(Datatype.BINARY)),
-                Parameter.required("p", Set.of(Datatype.BINARY)));
+        return List.of(Parameter.required("g", Set.of(BinaryValue.TYPE)),
+                Parameter.required("p", Set.of(BinaryValue.TYPE)));
     }
 
     @Override

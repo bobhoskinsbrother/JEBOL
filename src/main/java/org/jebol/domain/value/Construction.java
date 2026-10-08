@@ -1,8 +1,4 @@
-package org.jebol.domain.read;
-
-import org.jebol.domain.value.AnyBlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.Value;
+package org.jebol.domain.value;
 
 public interface Construction {
 

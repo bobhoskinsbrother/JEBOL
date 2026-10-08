@@ -3,7 +3,8 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.AnyBlockValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.AnyWordValue;
 
@@ -20,7 +21,7 @@ public class ForSkipNative extends SteppingThroughNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.softQuoted("word"),
-                Parameter.required("size", Set.of(Datatype.INTEGER, Datatype.DECIMAL)),
+                Parameter.required("size", Set.of(IntegerValue.TYPE, DecimalValue.TYPE)),
                 Parameter.required("body", A_BLOCK));
     }
 

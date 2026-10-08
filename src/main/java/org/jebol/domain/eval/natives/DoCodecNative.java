@@ -21,9 +21,9 @@ public class DoCodecNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("handle", Set.of(Datatype.HANDLE)),
-                Parameter.required("action", Set.of(Datatype.WORD)),
-                Parameter.required("data", Set.of(Datatype.BINARY, Datatype.IMAGE, Datatype.STRING)));
+                Parameter.required("handle", Set.of(HandleValue.TYPE)),
+                Parameter.required("action", Set.of(WordValue.TYPE)),
+                Parameter.required("data", Set.of(BinaryValue.TYPE, ImageValue.TYPE, StringValue.TYPE)));
     }
 
     @Override

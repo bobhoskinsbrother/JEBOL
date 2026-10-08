@@ -14,13 +14,13 @@ public abstract class SetOperationNative extends DefaultNative {
     private static final int EVERY_MEMBER_ON_ITS_OWN = 1;
 
     private static final Set<Datatype> A_SET = Set.of(
-            Datatype.BITSET, Datatype.TYPESET, Datatype.STRING, Datatype.MAP, Datatype.BLOCK);
+            BitsetValue.TYPE, TypesetValue.TYPE, StringValue.TYPE, MapValue.TYPE, BlockValue.TYPE);
 
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("first", A_SET),
                 Parameter.required("second", A_SET),
-                Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)));
+                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

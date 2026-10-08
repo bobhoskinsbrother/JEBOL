@@ -1,7 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.host.*;
-import org.jebol.domain.read.Construction;
+import org.jebol.domain.value.Construction;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.*;
@@ -553,10 +553,10 @@ public final class Evaluator {
 
     private static final Set<Datatype> WORKS_SOMETHING_OUT =
             Typeset.ANY_PATH.membersAnd(
-                    Datatype.WORD, Datatype.SET_WORD, Datatype.GET_WORD,
-                    Datatype.LIT_WORD, Datatype.PAREN,
-                    Datatype.FUNCTION, Datatype.CLOSURE, Datatype.NATIVE,
-                    Datatype.ACTION, Datatype.OP, Datatype.COMMAND);
+                    WordValue.TYPE, SetWordValue.TYPE, GetWordValue.TYPE,
+                    LitWordValue.TYPE, ParenValue.TYPE,
+                    FunctionValue.TYPE, ClosureValue.TYPE, NativeValue.TYPE,
+                    ActionValue.TYPE, OperatorValue.TYPE, CommandValue.TYPE);
 
     public Value evaluateUntilOrRaise(
             AnyBlockValue code, Context context, Predicate<Value> stopsHere) {
@@ -820,8 +820,8 @@ public final class Evaluator {
             case PathValue path -> evaluatePath(frame, frames, path);
             case SetPathValue path -> evaluateSetPath(frame, path);
             case ErrorValue raised -> throw new Raised(raised);
-            default -> input.datatype().isAnyFunction()
-                            && input.datatype() != Datatype.OP
+            default -> input.datatype().belongsTo(Typeset.ANY_FUNCTION)
+                            && input.datatype() != OperatorValue.TYPE
                     ? calledWithoutAName(frame, frames, input)
                     : StepOutcome.of(input);
         };
@@ -913,10 +913,10 @@ public final class Evaluator {
             Frame frame, Deque<Frame> frames, AnyWordValue word) {
         ContextSlot slot = resolve(word);
         Value bound = slot.value();
-        if (bound.datatype() == Datatype.UNSET) {
+        if (bound.datatype() == UnsetValue.TYPE) {
             throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
         }
-        if (bound.datatype() == Datatype.OP) {
+        if (bound.datatype() == OperatorValue.TYPE) {
             boolean atTheVeryHead = frame.position - 1 <= 1;
             throw atTheVeryHead
                     ? Raised.of(EvaluationFailure.NO_OP_ARG,
@@ -926,7 +926,7 @@ public final class Evaluator {
                             "the operator " + word.spelling()
                                     + " has nothing on its left");
         }
-        if (!bound.datatype().isAnyFunction()) {
+        if (!bound.datatype().belongsTo(Typeset.ANY_FUNCTION)) {
             return StepOutcome.of(bound);
         }
         lastWordCalledThrough = word.spelling();
@@ -954,7 +954,7 @@ public final class Evaluator {
         return switch (argument) {
             case AnyWordValue word -> word.looksUpItsDeclaration();
             case AnyBlockValue path -> path instanceof PathValue;
-            default -> argument.datatype().isAnyFunction();
+            default -> argument.datatype().belongsTo(Typeset.ANY_FUNCTION);
         };
     }
 
@@ -1032,7 +1032,7 @@ public final class Evaluator {
 
     private StepOutcome invoke(Frame frame, PendingCall call, Deque<Frame> frames) {
         if (call.isAssignment()) {
-            if (call.slot() != null && call.argumentsInDeclaredOrder().get(0).datatype() == Datatype.UNSET) {
+            if (call.slot() != null && call.argumentsInDeclaredOrder().get(0).datatype() == UnsetValue.TYPE) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE,
                         SetWordValue.of(call.slot().spelling()));
             }
@@ -1062,7 +1062,7 @@ public final class Evaluator {
                     trace.answered(built.nativeName(), produced);
                 }
                 yield built.nativeName().equals("do")
-                        && produced.datatype().isAnyFunction()
+                        && produced.datatype().belongsTo(Typeset.ANY_FUNCTION)
                         && !call.argumentsInDeclaredOrder().isEmpty()
                         && asksForReEvaluation(call.argumentsInDeclaredOrder().get(0))
                         ? startCall(frame, frames, produced, List.of())
@@ -1214,14 +1214,14 @@ public final class Evaluator {
                             + " for its " + parameter.name() + " argument",
                     WordValue.of(calleeName),
                     parameter.asWrittenInTheSpec(),
-                    DatatypeValue.of(argument.datatype())));
+                    argument.datatype()));
         }
     }
 
     private StepOutcome evaluatePath(
             Frame frame, Deque<Frame> frames, AnyBlockValue path) {
         Selection selection = select(path, frame.context);
-        if (!selection.value().datatype().isAnyFunction()) {
+        if (!selection.value().datatype().belongsTo(Typeset.ANY_FUNCTION)) {
             return StepOutcome.of(selection.value());
         }
         return startCall(
@@ -1297,7 +1297,7 @@ public final class Evaluator {
     }
 
     private void writeThroughPath(Frame frame, AnyBlockValue path, Value written) {
-        if (written.datatype() == Datatype.UNSET) {
+        if (written.datatype() == UnsetValue.TYPE) {
             throw Raised.of(EvaluationFailure.NEED_VALUE, path);
         }
         List<Value> segments = path.remaining();
@@ -1489,7 +1489,7 @@ public final class Evaluator {
 
         for (int index = 1; index < segments.size(); index++) {
             Value segment = segments.get(index);
-            if (current.value().datatype().isAnyFunction()) {
+            if (current.value().datatype().belongsTo(Typeset.ANY_FUNCTION)) {
                 AnyWordValue refinement = refinementWordOf(segment);
                 mentioned.add(refinement.canonical());
                 mentionedAsWritten.add(refinement);
@@ -1547,7 +1547,7 @@ public final class Evaluator {
         }
         if (reachedThroughSegment == THE_VARIABLE_THE_PATH_STARTS_FROM) {
             throw Raised.of(EvaluationFailure.BAD_PATH_TYPE,
-                    asWritten, DatatypeValue.of(current.datatype()));
+                    asWritten, current.datatype());
         }
         throw Raised.of(EvaluationFailure.INVALID_PATH,
                 asWritten, asWritten.remaining().get(reachedThroughSegment));
@@ -1557,15 +1557,15 @@ public final class Evaluator {
 
     private static final java.util.Set<Datatype> HAVE_NO_PARTS_TO_SELECT =
             Typeset.ANY_WORD.membersAnd(
-                    Datatype.UNSET, Datatype.NONE, Datatype.LOGIC,
-                    Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT,
-                    Datatype.MONEY, Datatype.DATATYPE, Datatype.TYPESET);
+                    UnsetValue.TYPE, NoneValue.TYPE, LogicValue.TYPE,
+                    IntegerValue.TYPE, DecimalValue.TYPE, PercentValue.TYPE,
+                    MoneyValue.TYPE, Datatype.TYPE, TypesetValue.TYPE);
 
     private Slot selectFirst(Value segment, Context context) {
         if (segment instanceof AnyWordValue word) {
             AnyWordValue bound = word.isBound() ? word : word.boundTo(context);
             ContextSlot slot = resolve(bound);
-            if (slot.value().datatype() == Datatype.UNSET) {
+            if (slot.value().datatype() == UnsetValue.TYPE) {
                 throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
             }
             return slot;
@@ -1841,7 +1841,7 @@ public final class Evaluator {
                 frame.register(parameter.name(), supplied);
                 continue;
             }
-            boolean asked = supplied.datatype() != Datatype.UNSET && supplied.isTruthy();
+            boolean asked = supplied.datatype() != UnsetValue.TYPE && supplied.isTruthy();
             frame.register(parameter.name(),
                     asked ? LogicValue.of(true) : NoneValue.none());
             if (asked) {

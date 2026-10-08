@@ -9,7 +9,7 @@ import java.util.function.UnaryOperator;
 public abstract class ColourNative extends DefaultNative {
 
     protected Set<Datatype> aColourOrAnImage() {
-        return Set.of(Datatype.TUPLE, Datatype.IMAGE);
+        return Set.of(TupleValue.TYPE, ImageValue.TYPE);
     }
 
     protected int[] threeParts(TupleValue colour) {

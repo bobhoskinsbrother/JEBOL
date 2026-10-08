@@ -25,7 +25,7 @@ public final class SchemeActorNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required(THE_ARGUMENT_NOTHING_CAN_FILL, Set.of(Datatype.END)));
+        return List.of(Parameter.required(THE_ARGUMENT_NOTHING_CAN_FILL, Set.of(EndValue.TYPE)));
     }
 
     @Override

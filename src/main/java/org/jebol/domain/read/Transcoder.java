@@ -1,10 +1,6 @@
 package org.jebol.domain.read;
 
-import org.jebol.domain.value.AnyBlockValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;

@@ -8,7 +8,7 @@ final class Numbers {
     private static final MoneyCoercion MONEY = new MoneyCoercion();
 
     private static final java.util.Set<Datatype> ANY_NUMBER_WHICH_EXCLUDES_A_TIME =
-            Typeset.NUMBER.membersAnd(Datatype.MONEY);
+            Typeset.NUMBER.membersAnd(MoneyValue.TYPE);
 
     static boolean isANumber(Value value) {
         return value instanceof IntegerValue
@@ -23,7 +23,7 @@ final class Numbers {
         }
         return ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(one.datatype())
                 && ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(other.datatype())
-                || one.datatype() == Datatype.TIME && other.datatype() == Datatype.TIME;
+                || one instanceof TimeValue && other instanceof TimeValue;
     }
 
     static boolean areEqual(Value one, Value other, Sameness how) {

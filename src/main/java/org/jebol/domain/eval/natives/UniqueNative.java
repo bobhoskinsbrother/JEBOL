@@ -2,7 +2,11 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Combining;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.BitsetValue;
+import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.MapValue;
+import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Parameter;
@@ -23,9 +27,9 @@ public class UniqueNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("set1", Set.of(Datatype.BLOCK, Datatype.STRING,
-                        Datatype.BITSET, Datatype.TYPESET, Datatype.MAP)),
-                Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)));
+                Parameter.required("set1", Set.of(BlockValue.TYPE, StringValue.TYPE,
+                        BitsetValue.TYPE, TypesetValue.TYPE, MapValue.TYPE)),
+                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

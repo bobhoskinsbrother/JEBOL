@@ -3,7 +3,7 @@ package org.jebol.domain.eval.actions;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.*;
 
-import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -19,7 +19,7 @@ public class CopyAction extends DefaultNative implements ActionValue {
         return List.of(Parameter.required("value", whatCanBeCopied()),
                 Parameter.belongingTo("part", "limit", Set.of()),
                 Parameter.belongingTo("types", "kinds",
-                        Set.of(Datatype.TYPESET, Datatype.DATATYPE)));
+                        Set.of(TypesetValue.TYPE, Datatype.TYPE)));
     }
 
     @Override
@@ -35,12 +35,12 @@ public class CopyAction extends DefaultNative implements ActionValue {
     }
 
     private Set<Datatype> whatCanBeCopied() {
-        Set<Datatype> accepted = EnumSet.copyOf(Typeset.SERIES.members());
+        Set<Datatype> accepted = new LinkedHashSet<>(Typeset.SERIES.members());
         accepted.addAll(Typeset.ANY_FUNCTION.members());
-        accepted.addAll(Set.of(Datatype.ACTION, Datatype.CLOSURE, Datatype.COMMAND,
-                Datatype.REBCODE, Datatype.STRUCT, Datatype.PORT, Datatype.MAP,
-                Datatype.OBJECT, Datatype.BITSET, Datatype.ERROR));
-        return Set.copyOf(accepted);
+        accepted.addAll(Set.of(ActionValue.TYPE, ClosureValue.TYPE, CommandValue.TYPE,
+                RebcodeValue.TYPE, StructValue.TYPE, PortValue.TYPE, MapValue.TYPE,
+                ObjectValue.TYPE, BitsetValue.TYPE, ErrorValue.TYPE));
+        return accepted;
     }
 
     private Value copied(List<Value> arguments, Set<String> refinements) {
@@ -88,8 +88,8 @@ public class CopyAction extends DefaultNative implements ActionValue {
     private Set<Datatype> whichDatatypesToCopy(List<Value> arguments, Set<String> refinements) {
         return argumentOf("types", 0, arguments, refinements)
                 .<Set<Datatype>>map(kinds -> switch (kinds) {
-                    case DatatypeValue one -> EnumSet.of(one.represents());
-                    case TypesetValue several -> EnumSet.copyOf(several.members());
+                    case Datatype one -> Set.of(one);
+                    case TypesetValue several -> several.members();
                     default -> Copying.WHAT_A_DEEP_COPY_COPIES;
                 })
                 .orElse(refinements.contains("deep")

@@ -17,7 +17,7 @@ public class RegisterNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.hardQuoted("name"),
-                Parameter.required("value", Set.of(Datatype.STRUCT)));
+                Parameter.required("value", Set.of(StructValue.TYPE)));
     }
 
     @Override

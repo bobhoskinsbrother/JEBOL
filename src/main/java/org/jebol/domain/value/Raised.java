@@ -98,18 +98,7 @@ public final class Raised extends RuntimeException {
                 "cannot use " + spelling + " on "
                         + value.datatype().literalSpelling() + " value",
                 named,
-                DatatypeValue.of(value.datatype())));
-    }
-
-    public static Raised badMakeArg(Value value, String wanted) {
-        return of(EvaluationFailure.BAD_MAKE_ARG,
-                theDatatypeItselfRatherThanItsName(wanted), value);
-    }
-
-    private static Value theDatatypeItselfRatherThanItsName(String wanted) {
-        return Datatype.named(wanted)
-                .<Value>map(DatatypeValue::of)
-                .orElseGet(() -> WordValue.of(wanted));
+                value.datatype()));
     }
 
     public static Raised notRelated(Value left, Value right) {

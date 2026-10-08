@@ -42,7 +42,7 @@ class ConditionalTruthTest {
                     TimeValue.ofNanoseconds(0),
                     WordValue.of("anything"),
                     BinaryValue.of(),
-                    DatatypeValue.of(Datatype.INTEGER),
+                    IntegerValue.TYPE,
                     ErrorValue.script("some-error", "a message"));
 
             assertThat(everythingElse)
@@ -95,7 +95,7 @@ class ConditionalTruthTest {
         void heldHostNullIsTrue() {
             JavaObjectValue hostNull = JavaObjectValue.hostNull("java.lang.String");
             assertThat(hostNull.isTruthy()).isTrue();
-            assertThat(hostNull.datatype()).isNotEqualTo(Datatype.NONE);
+            assertThat(hostNull.datatype()).isNotEqualTo(NoneValue.TYPE);
         }
     }
 
@@ -125,8 +125,8 @@ class ConditionalTruthTest {
         @Test
         @DisplayName("unset is not none, and the difference is the point")
         void unsetIsDistinctFromNone() {
-            assertThat(UnsetValue.unset().datatype()).isEqualTo(Datatype.UNSET);
-            assertThat(NoneValue.none().datatype()).isEqualTo(Datatype.NONE);
+            assertThat(UnsetValue.unset().datatype()).isEqualTo(UnsetValue.TYPE);
+            assertThat(NoneValue.none().datatype()).isEqualTo(NoneValue.TYPE);
             assertThat((Value) UnsetValue.unset()).isNotEqualTo(NoneValue.none());
         }
     }

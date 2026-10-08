@@ -3,7 +3,7 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
@@ -26,9 +26,9 @@ public class DebaseNative extends BinaryBaseNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("value", anyStringOr(Datatype.BINARY)),
-                Parameter.required("base", Set.of(Datatype.INTEGER)),
-                Parameter.belongingTo("part", "limit", anyStringOr(Datatype.BINARY, Datatype.INTEGER)));
+                Parameter.required("value", anyStringOr(BinaryValue.TYPE)),
+                Parameter.required("base", Set.of(IntegerValue.TYPE)),
+                Parameter.belongingTo("part", "limit", anyStringOr(BinaryValue.TYPE, IntegerValue.TYPE)));
     }
 
     @Override

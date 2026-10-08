@@ -1,7 +1,10 @@
 package org.jebol.domain.value;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.function.ToLongFunction;
+import java.util.regex.Pattern;
 
 public abstract sealed class AnyDecimalValue implements Value, RebolNumber
         permits DecimalValue, PercentValue {
@@ -88,8 +91,124 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
     }
 
     @Override
-    public Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
+    public Optional<Value> asDecimal(AnyDecimalDatatype wanted, Conversion asking) {
         return Optional.of(asItStands(wanted, quantity));
+    }
+
+    @Override
+    public boolean isAQuantityOfNothing() {
+        return quantity == 0.0;
+    }
+
+    public abstract static class AnyDecimalDatatype extends Datatype {
+
+        private static final int MOST_FRACTION_CHARACTERS = 24;
+
+        private static final Pattern WRITTEN_DECIMAL = Pattern.compile(
+                "[+-]?(?:[0-9]+(?:[.][0-9]*)?|[.][0-9]+)(?:[eE][+-]?[0-9]*)?");
+
+        private static final Pattern EMPTY_EXPONENT = Pattern.compile("[eE][+-]?$");
+
+        AnyDecimalDatatype(String spelling) {
+            super(spelling, Typeset.NUMBER, Typeset.SCALAR);
+        }
+
+        public abstract AnyDecimalValue holding(double quantity);
+
+        public AnyDecimalValue holdingHundredths(double quantity) {
+            return holding(quantity);
+        }
+
+        abstract boolean isWrittenWithAPercentSign();
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return from.asDecimal(this, asking).orElseGet(() -> scannedIntoADecimal(from));
+        }
+
+        private Value scannedIntoADecimal(Value from) {
+            OptionalDouble scanned = theQuantityScannedFrom(from);
+            if (scanned.isEmpty()) {
+                throw refusing(from);
+            }
+            return from.inHundredths(this, scanned.getAsDouble());
+        }
+
+        private OptionalDouble theQuantityScannedFrom(Value from) {
+            if (from instanceof StringValue text) {
+                return decimalScannedFrom(new WrittenText(text.text())
+                        .theOneNumberIn("a number", MOST_FRACTION_CHARACTERS));
+            }
+            if (from instanceof AnyBlockValue parts) {
+                return OptionalDouble.of(mantissaTimesTenTo(parts));
+            }
+            return OptionalDouble.empty();
+        }
+
+        private double mantissaTimesTenTo(AnyBlockValue parts) {
+            List<Value> both = parts.remaining();
+            if (both.size() != 2) {
+                throw refusing(parts);
+            }
+            double scaled = numberInTheBlock(both.get(0));
+            double exponent = numberInTheBlock(both.get(1));
+            while (exponent >= 1) {
+                exponent--;
+                scaled *= 10.0;
+            }
+            while (exponent <= -1) {
+                exponent++;
+                scaled /= 10.0;
+            }
+            return scaled;
+        }
+
+        private double numberInTheBlock(Value part) {
+            return switch (part) {
+                case IntegerValue(long magnitude) -> magnitude;
+                case AnyDecimalValue number -> number.quantity();
+                default -> throw refusing(part);
+            };
+        }
+
+        private OptionalDouble decimalScannedFrom(String written) {
+            String body = written;
+            if (body.endsWith("%")) {
+                if (!isWrittenWithAPercentSign()) {
+                    return OptionalDouble.empty();
+                }
+                body = body.substring(0, body.length() - 1);
+            }
+            OptionalDouble endless = endlessNumberIn(body.replace("'", ""));
+            if (endless.isPresent()) {
+                return endless;
+            }
+            return numberRewrittenForTheJvm(body)
+                    .map(plain -> OptionalDouble.of(Double.parseDouble(plain)))
+                    .orElseGet(OptionalDouble::empty);
+        }
+
+        private Optional<String> numberRewrittenForTheJvm(String written) {
+            String body = written.replace("'", "").replaceFirst(",", ".");
+            return WRITTEN_DECIMAL.matcher(body).matches()
+                    ? Optional.of(EMPTY_EXPONENT.matcher(body).replaceFirst(""))
+                    : Optional.empty();
+        }
+
+        private OptionalDouble endlessNumberIn(String body) {
+            int hash = body.indexOf('#');
+            if (hash < 0) {
+                return OptionalDouble.empty();
+            }
+            boolean negative = body.charAt(0) == '-';
+            String afterTheHash = body.substring(hash + 1);
+            if (afterTheHash.equalsIgnoreCase("INF")) {
+                return OptionalDouble.of(negative ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY);
+            }
+            return afterTheHash.equalsIgnoreCase("NAN")
+                    ? OptionalDouble.of(Double.NaN)
+                    : OptionalDouble.empty();
+        }
     }
 
     @Override

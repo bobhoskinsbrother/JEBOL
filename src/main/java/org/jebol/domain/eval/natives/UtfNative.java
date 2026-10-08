@@ -15,7 +15,7 @@ public class UtfNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("data", Set.of(Datatype.BINARY)));
+        return List.of(Parameter.required("data", Set.of(BinaryValue.TYPE)));
     }
 
     @Override

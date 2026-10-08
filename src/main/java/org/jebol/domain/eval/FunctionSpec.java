@@ -110,13 +110,13 @@ final class FunctionSpec {
         }
         boolean describesTheReturn = items.get(index) instanceof SetWordValue word
                 && word.canonical().equals("return");
-        Set<Datatype> accepted = EnumSet.noneOf(Datatype.class);
+        Set<Datatype> accepted = new HashSet<>();
         for (Value declared : types.remaining()) {
             if (describesTheReturn && declared instanceof AnyStringValue) {
                 continue;
             }
             switch (resolveTypeName(declared)) {
-                case DatatypeValue datatype -> accepted.add(datatype.represents());
+                case Datatype datatype -> accepted.add(datatype);
                 case TypesetValue typeset -> accepted.addAll(typeset.members());
                 default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
                         "a type block holds datatypes, not "
@@ -130,12 +130,11 @@ final class FunctionSpec {
         if (!(declared instanceof AnyWordValue word) || !word.spelling().endsWith("!")) {
             return declared;
         }
-        String withoutMark = word.spelling().substring(0, word.spelling().length() - 1);
-        for (Datatype candidate : Datatype.values()) {
-            if (candidate.spelling().equalsIgnoreCase(withoutMark)) {
-                return DatatypeValue.of(candidate);
-            }
+        Optional<Datatype> named = Catalogue.DATATYPES.named(word.spelling());
+        if (named.isPresent()) {
+            return named.get();
         }
+        String withoutMark = word.spelling().substring(0, word.spelling().length() - 1);
         return Typeset.named(withoutMark)
                 .map(typeset -> (Value) TypesetValue.of(typeset))
                 .orElseThrow(() -> Raised.of(EvaluationFailure.CANNOT_USE,

@@ -22,7 +22,7 @@ public class ResolveNative extends DefaultNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("target", Typeset.ANY_OBJECT.members()),
                 Parameter.required("source", Typeset.ANY_OBJECT.members()),
-                Parameter.belongingTo("only", "from", Set.of(Datatype.BLOCK, Datatype.INTEGER)));
+                Parameter.belongingTo("only", "from", Set.of(BlockValue.TYPE, IntegerValue.TYPE)));
     }
 
     @Override

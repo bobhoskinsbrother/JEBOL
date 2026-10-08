@@ -31,6 +31,46 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
     @Override
     public abstract Datatype datatype();
 
+    abstract static class DefinedFunctionDatatype extends Datatype {
+
+        DefinedFunctionDatatype(String spelling) {
+            super(spelling, Typeset.ANY_FUNCTION);
+        }
+
+        abstract Value fromTheFunction(FunctionValue made);
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            if (!(spec instanceof AnyBlockValue parts)) {
+                throw refusing(spec);
+            }
+            List<Value> items = parts.remaining();
+            if (items.size() < 2
+                    || !(items.get(0) instanceof AnyBlockValue functionSpec)
+                    || !(items.get(1) instanceof AnyBlockValue body)) {
+                throw refusing(spec);
+            }
+            return fromTheFunction(maker.functionBoundFrom(functionSpec, body));
+        }
+
+        @Override
+        public Value convertedFrom(Value value, Maker maker) {
+            return madeFrom(value, maker);
+        }
+
+        @Override
+        public Value constructedFrom(List<Value> contents, Construction construction) {
+            if (contents.size() != 1
+                    || !(contents.getFirst() instanceof AnyBlockValue definition)
+                    || definition.remaining().size() != 2
+                    || !(definition.remaining().get(0) instanceof BlockValue functionSpec)
+                    || !(definition.remaining().get(1) instanceof BlockValue body)) {
+                throw refusingConstruction(contents);
+            }
+            return construction.functionMadeFrom(functionSpec, body);
+        }
+    }
+
     public abstract DefinedFunctionValue sameKindRunning(AnyBlockValue anotherBody, Context closedOverInstead);
 
     public abstract Context aFreshCallFrame();

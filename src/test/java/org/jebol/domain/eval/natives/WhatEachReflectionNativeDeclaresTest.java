@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.math.BigDecimal;
@@ -28,17 +27,17 @@ class WhatEachReflectionNativeDeclaresTest {
 
     private static final Set<Datatype> ANY_TYPE = Typeset.ANY_TYPE.members();
 
-    private static final Set<Datatype> A_BINARY = Set.of(Datatype.BINARY);
+    private static final Set<Datatype> A_BINARY = Set.of(BinaryValue.TYPE);
 
-    private static final Set<Datatype> AN_IMAGE = Set.of(Datatype.IMAGE);
+    private static final Set<Datatype> AN_IMAGE = Set.of(ImageValue.TYPE);
 
-    private static final Set<Datatype> A_PAIR = Set.of(Datatype.PAIR);
+    private static final Set<Datatype> A_PAIR = Set.of(PairValue.TYPE);
 
-    private static final Set<Datatype> A_WORD = Set.of(Datatype.WORD);
+    private static final Set<Datatype> A_WORD = Set.of(WordValue.TYPE);
 
-    private static final Set<Datatype> A_BLOCK = Set.of(Datatype.BLOCK);
+    private static final Set<Datatype> A_BLOCK = Set.of(BlockValue.TYPE);
 
-    private static final Set<Datatype> AN_INTEGER = Set.of(Datatype.INTEGER);
+    private static final Set<Datatype> AN_INTEGER = Set.of(IntegerValue.TYPE);
 
     private Value answerOf(DefaultNative definition, Set<String> refinements,
                            Value... arguments) {
@@ -50,16 +49,16 @@ class WhatEachReflectionNativeDeclaresTest {
     }
 
     private Set<Datatype> anythingAtAll() {
-        return Typeset.ANY_TYPE.membersAnd(Datatype.UNSET);
+        return Typeset.ANY_TYPE.membersAnd(UnsetValue.TYPE);
     }
 
     private Set<Datatype> anyStringOrABinary() {
-        return Typeset.ANY_STRING.membersAnd(Datatype.BINARY);
+        return Typeset.ANY_STRING.membersAnd(BinaryValue.TYPE);
     }
 
     private Set<Datatype> everyKindOfNumber() {
-        return Typeset.NUMBER.membersAnd(Datatype.MONEY, Datatype.PAIR, Datatype.TUPLE,
-                Datatype.TIME, Datatype.DATE, Datatype.CHAR, Datatype.VECTOR);
+        return Typeset.NUMBER.membersAnd(MoneyValue.TYPE, PairValue.TYPE, TupleValue.TYPE,
+                TimeValue.TYPE, DateValue.TYPE, CharacterValue.TYPE, VectorValue.TYPE);
     }
 
     Stream<Arguments> whatEachDeclares() {
@@ -93,20 +92,20 @@ class WhatEachReflectionNativeDeclaresTest {
                 Arguments.of(new FormOidNative(), "form-oid",
                         List.of(Parameter.required("oid", A_BINARY)), NOTHING),
                 Arguments.of(new BinaryNative(), "binary",
-                        List.of(Parameter.required("ctx", Set.of(Datatype.OBJECT,
-                                        Datatype.BINARY, Datatype.INTEGER, Datatype.NONE)),
-                                Parameter.belongingTo("init", "spec", Set.of(Datatype.BINARY,
-                                        Datatype.INTEGER, Datatype.NONE)),
+                        List.of(Parameter.required("ctx", Set.of(ObjectValue.TYPE,
+                                        BinaryValue.TYPE, IntegerValue.TYPE, NoneValue.TYPE)),
+                                Parameter.belongingTo("init", "spec", Set.of(BinaryValue.TYPE,
+                                        IntegerValue.TYPE, NoneValue.TYPE)),
                                 Parameter.belongingTo("write", "data",
-                                        Set.of(Datatype.BINARY, Datatype.BLOCK)),
-                                Parameter.belongingTo("read", "code", Set.of(Datatype.WORD,
-                                        Datatype.BLOCK, Datatype.INTEGER, Datatype.BINARY)),
+                                        Set.of(BinaryValue.TYPE, BlockValue.TYPE)),
+                                Parameter.belongingTo("read", "code", Set.of(WordValue.TYPE,
+                                        BlockValue.TYPE, IntegerValue.TYPE, BinaryValue.TYPE)),
                                 Parameter.belongingTo("into", "out", A_BLOCK),
                                 Parameter.belongingTo("with", "num", AN_INTEGER)),
                         Set.of("init", "write", "read", "into", "with")),
                 Arguments.of(new RegisterNative(), "register",
                         List.of(Parameter.hardQuoted("name"),
-                                Parameter.required("value", Set.of(Datatype.STRUCT))),
+                                Parameter.required("value", Set.of(StructValue.TYPE))),
                         NOTHING),
                 Arguments.of(new XtestNative(), "xtest", List.of(), NOTHING),
                 Arguments.of(new PremultiplyNative(), "premultiply",
@@ -117,10 +116,10 @@ class WhatEachReflectionNativeDeclaresTest {
                         NOTHING),
                 Arguments.of(new ResizeNative(), "resize",
                         List.of(Parameter.required("image", AN_IMAGE),
-                                Parameter.required("size", Set.of(Datatype.PAIR,
-                                        Datatype.PERCENT, Datatype.INTEGER)),
+                                Parameter.required("size", Set.of(PairValue.TYPE,
+                                        PercentValue.TYPE, IntegerValue.TYPE)),
                                 Parameter.belongingTo("filter", "name",
-                                        Set.of(Datatype.WORD, Datatype.INTEGER)),
+                                        Set.of(WordValue.TYPE, IntegerValue.TYPE)),
                                 Parameter.belongingTo("blur", "factor",
                                         Typeset.NUMBER.members())),
                         Set.of("filter", "blur")),
@@ -132,11 +131,11 @@ class WhatEachReflectionNativeDeclaresTest {
                         Set.of("part")),
                 Arguments.of(new ImageNative(), "image",
                         List.of(Parameter.belongingTo("load", "src-file",
-                                        Set.of(Datatype.FILE, Datatype.BINARY)),
+                                        Set.of(FileValue.TYPE, BinaryValue.TYPE)),
                                 Parameter.belongingTo("save", "dst-file",
-                                        Set.of(Datatype.NONE, Datatype.FILE, Datatype.BINARY)),
+                                        Set.of(NoneValue.TYPE, FileValue.TYPE, BinaryValue.TYPE)),
                                 Parameter.belongingTo("save", "dst-image",
-                                        Set.of(Datatype.NONE, Datatype.IMAGE)),
+                                        Set.of(NoneValue.TYPE, ImageValue.TYPE)),
                                 Parameter.belongingTo("frame", "num", AN_INTEGER),
                                 Parameter.belongingTo("as", "type", A_WORD)),
                         Set.of("load", "save", "frame", "as")),
@@ -144,13 +143,13 @@ class WhatEachReflectionNativeDeclaresTest {
                         List.of(Parameter.required("type", A_WORD)), NOTHING),
                 Arguments.of(new EcdhNative(), "ecdh",
                         List.of(Parameter.required("key",
-                                        Set.of(Datatype.HANDLE, Datatype.NONE)),
+                                        Set.of(HandleValue.TYPE, NoneValue.TYPE)),
                                 Parameter.belongingTo("init", "type", A_WORD),
                                 Parameter.belongingTo("secret", "public-key", A_BINARY)),
                         Set.of("init", "curve", "public", "secret")),
                 Arguments.of(new EcdsaNative(), "ecdsa",
                         List.of(Parameter.required("key",
-                                        Set.of(Datatype.HANDLE, Datatype.BINARY)),
+                                        Set.of(HandleValue.TYPE, BinaryValue.TYPE)),
                                 Parameter.required("hash", A_BINARY),
                                 Parameter.belongingTo("verify", "signature", A_BINARY),
                                 Parameter.belongingTo("curve", "type", A_WORD)),
@@ -160,7 +159,7 @@ class WhatEachReflectionNativeDeclaresTest {
                                 Parameter.required("p", A_BINARY)),
                         NOTHING),
                 Arguments.of(new DhNative(), "dh",
-                        List.of(Parameter.required("dh-key", Set.of(Datatype.HANDLE)),
+                        List.of(Parameter.required("dh-key", Set.of(HandleValue.TYPE)),
                                 Parameter.belongingTo("secret", "public-key", A_BINARY)),
                         Set.of("public", "secret")),
                 Arguments.of(new RsaInitNative(), "rsa-init",
@@ -171,15 +170,15 @@ class WhatEachReflectionNativeDeclaresTest {
                                 Parameter.belongingTo("private", "q", A_BINARY)),
                         Set.of("private")),
                 Arguments.of(new RsaNative(), "rsa",
-                        List.of(Parameter.required("rsa-key", Set.of(Datatype.HANDLE)),
+                        List.of(Parameter.required("rsa-key", Set.of(HandleValue.TYPE)),
                                 Parameter.required("data", anyStringOrABinary()),
                                 Parameter.belongingTo("verify", "signature", A_BINARY),
                                 Parameter.belongingTo("hash", "algorithm",
-                                        Set.of(Datatype.WORD, Datatype.NONE))),
+                                        Set.of(WordValue.TYPE, NoneValue.TYPE))),
                         Set.of("encrypt", "decrypt", "sign", "verify", "hash", "oaep", "pss")),
                 Arguments.of(new Rc4Native(), "rc4",
                         List.of(Parameter.belongingTo("key", "crypt-key", A_BINARY),
-                                Parameter.belongingTo("stream", "ctx", Set.of(Datatype.HANDLE)),
+                                Parameter.belongingTo("stream", "ctx", Set.of(HandleValue.TYPE)),
                                 Parameter.belongingTo("stream", "data", A_BINARY)),
                         Set.of("key", "stream")),
                 Arguments.of(new UtfNative(), "utf?",
@@ -198,7 +197,7 @@ class WhatEachReflectionNativeDeclaresTest {
                         List.of(Parameter.required("word", A_WORD)), NOTHING),
                 Arguments.of(new UnsetNative(), "unset",
                         List.of(Parameter.required("word",
-                                Set.of(Datatype.WORD, Datatype.BLOCK, Datatype.NONE))),
+                                Set.of(WordValue.TYPE, BlockValue.TYPE, NoneValue.TYPE))),
                         NOTHING),
                 Arguments.of(new ProtectNative(), "protect",
                         List.of(Parameter.required("target")),
@@ -207,7 +206,7 @@ class WhatEachReflectionNativeDeclaresTest {
                         List.of(Parameter.required("target")),
                         Set.of("deep", "words", "values")),
                 Arguments.of(new DelectNative(), "delect",
-                        List.of(Parameter.required("dialect", Set.of(Datatype.OBJECT)),
+                        List.of(Parameter.required("dialect", Set.of(ObjectValue.TYPE)),
                                 Parameter.required("input", A_BLOCK),
                                 Parameter.required("output", A_BLOCK),
                                 Parameter.belongingTo("in", "where", A_BLOCK)),
@@ -224,8 +223,12 @@ class WhatEachReflectionNativeDeclaresTest {
         assertThat(definition.refinementsDeclaredApart()).isEqualTo(refinements);
     }
 
+    Stream<Datatype> everyDatatype() {
+        return Catalogue.DATATYPES.entries().stream();
+    }
+
     @ParameterizedTest(name = "{0}")
-    @EnumSource(Datatype.class)
+    @MethodSource("everyDatatype")
     @DisplayName("every datatype's predicate is named after it and takes any value")
     void everyDatatypeHasAPredicate(Datatype datatype) {
         DatatypePredicateAction predicate = new DatatypePredicateAction(datatype);
@@ -302,7 +305,7 @@ class WhatEachReflectionNativeDeclaresTest {
         @DisplayName("type? answers the datatype, and /word answers its name")
         void typeOf() {
             assertThat(answerOf(new TypeOfNative(), IntegerValue.of(1)))
-                    .isEqualTo(DatatypeValue.of(Datatype.INTEGER));
+                    .isEqualTo(IntegerValue.TYPE);
             assertThat(answerOf(new TypeOfNative(), Set.of("word"), StringValue.of("a")))
                     .isEqualTo(WordValue.of("string!"));
         }
@@ -310,10 +313,10 @@ class WhatEachReflectionNativeDeclaresTest {
         @Test
         @DisplayName("a datatype's predicate is true of its own kind only")
         void aDatatypePredicate() {
-            assertThat(answerOf(new DatatypePredicateAction(Datatype.INTEGER),
+            assertThat(answerOf(new DatatypePredicateAction(IntegerValue.TYPE),
                     IntegerValue.of(1)))
                     .isEqualTo(LogicValue.of(true));
-            assertThat(answerOf(new DatatypePredicateAction(Datatype.INTEGER),
+            assertThat(answerOf(new DatatypePredicateAction(IntegerValue.TYPE),
                     DecimalValue.of(1.0)))
                     .isEqualTo(LogicValue.of(false));
         }

@@ -4,8 +4,6 @@ import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.AnyDecimalValue;
 import org.jebol.domain.value.IntegerValue;
@@ -136,7 +134,6 @@ public final class DateMaking {
     }
 
     private static Raised refuse(List<Value> parts) {
-        return Raised.of(EvaluationFailure.BAD_MAKE_ARG,
-                DatatypeValue.of(Datatype.DATE), BlockValue.block(parts));
+        return DateValue.TYPE.refusing(BlockValue.block(parts));
     }
 }

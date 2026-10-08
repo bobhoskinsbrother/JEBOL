@@ -12,8 +12,8 @@ class ADecimalKnowsItsOwnKindTest {
     @Test
     @DisplayName("a decimal answers decimal! and a percent answers percent!")
     void eachAnswersToItsOwnDatatype() {
-        assertThat(DecimalValue.of(1.5).datatype()).isEqualTo(Datatype.DECIMAL);
-        assertThat(PercentValue.of(0.5).datatype()).isEqualTo(Datatype.PERCENT);
+        assertThat(DecimalValue.of(1.5).datatype()).isSameAs(DecimalValue.TYPE);
+        assertThat(PercentValue.of(0.5).datatype()).isSameAs(PercentValue.TYPE);
     }
 
     @Test

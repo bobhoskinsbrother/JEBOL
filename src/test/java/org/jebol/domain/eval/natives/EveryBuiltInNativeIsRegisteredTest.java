@@ -5,6 +5,7 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.actions.AddAction;
+import org.jebol.domain.value.Catalogue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DefaultNative;
 import org.junit.jupiter.api.DisplayName;
@@ -89,7 +90,7 @@ class EveryBuiltInNativeIsRegisteredTest {
     private List<DefaultNative> onePerDatatype(Class<?> definition)
             throws ReflectiveOperationException {
         List<DefaultNative> family = new ArrayList<>();
-        for (Datatype datatype : Datatype.values()) {
+        for (Datatype datatype : Catalogue.DATATYPES.entries()) {
             family.add((DefaultNative) definition.getDeclaredConstructor(Datatype.class)
                     .newInstance(datatype));
         }

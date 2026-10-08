@@ -15,7 +15,7 @@ public class UnbindNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("word", Typeset.ANY_WORD.membersAnd(Datatype.BLOCK)));
+        return List.of(Parameter.required("word", Typeset.ANY_WORD.membersAnd(BlockValue.TYPE)));
     }
 
     @Override

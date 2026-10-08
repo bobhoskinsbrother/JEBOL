@@ -3,7 +3,7 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.AnyStringValue;
@@ -25,7 +25,7 @@ public class ToRealFileNative extends HostNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("path", Set.of(Datatype.FILE, Datatype.STRING)));
+        return List.of(Parameter.required("path", Set.of(FileValue.TYPE, StringValue.TYPE)));
     }
 
     @Override

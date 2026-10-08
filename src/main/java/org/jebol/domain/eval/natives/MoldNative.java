@@ -21,7 +21,7 @@ public class MoldNative extends DefaultNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("value", Typeset.ANY_TYPE.members()),
-                Parameter.belongingTo("part", "limit", Set.of(Datatype.INTEGER)));
+                Parameter.belongingTo("part", "limit", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

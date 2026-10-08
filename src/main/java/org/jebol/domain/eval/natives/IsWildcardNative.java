@@ -15,7 +15,7 @@ public class IsWildcardNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("path", Set.of(Datatype.FILE)));
+        return List.of(Parameter.required("path", Set.of(FileValue.TYPE)));
     }
 
     @Override

@@ -4,6 +4,14 @@ import java.util.List;
 
 public final class FunctionValue extends DefinedFunctionValue {
 
+    public static final Datatype TYPE = new DefinedFunctionDatatype("function") {
+
+        @Override
+        Value fromTheFunction(FunctionValue made) {
+            return made;
+        }
+    };
+
     public FunctionValue(
             AnyBlockValue spec, AnyBlockValue body, List<Parameter> parameters,
             List<String> localNames, Context closedOver) {
@@ -12,7 +20,7 @@ public final class FunctionValue extends DefinedFunctionValue {
 
     @Override
     public Datatype datatype() {
-        return Datatype.FUNCTION;
+        return TYPE;
     }
 
     @Override

@@ -3,6 +3,7 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.WordValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Raised;
@@ -31,7 +32,7 @@ public abstract class PngFilterNative extends EncodingNative {
     }
 
     protected Set<Datatype> aFilterType() {
-        return Set.of(Datatype.INTEGER, Datatype.WORD);
+        return Set.of(IntegerValue.TYPE, WordValue.TYPE);
     }
 
     protected int theFilterNamedBy(Value asked) {

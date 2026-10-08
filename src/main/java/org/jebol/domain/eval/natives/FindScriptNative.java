@@ -21,7 +21,7 @@ public class FindScriptNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("script", Set.of(Datatype.BINARY)));
+        return List.of(Parameter.required("script", Set.of(BinaryValue.TYPE)));
     }
 
     @Override

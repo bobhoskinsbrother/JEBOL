@@ -18,10 +18,10 @@ public class CollectWordsNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("block", Set.of(Datatype.BLOCK)),
+        return List.of(Parameter.required("block", Set.of(BlockValue.TYPE)),
                 Parameter.belongingTo("ignore", "words",
-                        Typeset.ANY_OBJECT.membersAnd(Datatype.BLOCK, Datatype.NONE)),
-                Parameter.belongingTo("as", "type", Set.of(Datatype.DATATYPE)));
+                        Typeset.ANY_OBJECT.membersAnd(BlockValue.TYPE, NoneValue.TYPE)),
+                Parameter.belongingTo("as", "type", Set.of(Datatype.TYPE)));
     }
 
     @Override
@@ -38,8 +38,8 @@ public class CollectWordsNative extends DefaultNative {
             Set<String> known = namesIn(ignoring);
             found.removeIf(word -> known.contains(((AnyWordValue) word).canonical()));
             if (refinements.contains("as")) {
-                Datatype wanted = theWordKindAsked(arguments, refinements);
-                found.replaceAll(word -> ((AnyWordValue) word).as(wanted));
+                AnyWordValue.AnyWordDatatype wanted = theWordKindAsked(arguments, refinements);
+                found.replaceAll(wanted::as);
             }
             return BlockValue.block(found);
         };
@@ -52,15 +52,14 @@ public class CollectWordsNative extends DefaultNative {
                 : NoneValue.none();
     }
 
-    private Datatype theWordKindAsked(List<Value> arguments, Set<String> refinements) {
+    private AnyWordValue.AnyWordDatatype theWordKindAsked(List<Value> arguments, Set<String> refinements) {
         int at = WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES
                 + (refinements.contains("ignore") ? 1 : 0);
         if (arguments.size() <= at
-                || !(arguments.get(at) instanceof DatatypeValue(Datatype represents))
-                || !represents.isAnyWord()) {
+                || !(arguments.get(at) instanceof AnyWordValue.AnyWordDatatype asked)) {
             throw Raised.of(EvaluationFailure.BAD_FUNC_ARG, "as");
         }
-        return represents;
+        return asked;
     }
 
     private Set<String> namesIn(Value source) {

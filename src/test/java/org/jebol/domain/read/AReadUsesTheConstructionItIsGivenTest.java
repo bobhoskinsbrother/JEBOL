@@ -1,10 +1,7 @@
 package org.jebol.domain.read;
 
 import org.jebol.application.Interpreter;
-import org.jebol.domain.value.AnyBlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -111,7 +108,7 @@ class AReadUsesTheConstructionItIsGivenTest {
 
             assertThat(valuesOf(Transcoder.transcode(A_STRUCT_LITERAL, construction)))
                     .containsExactly(WHAT_THE_CONSTRUCTION_MADE);
-            assertThat(construction.asked).containsExactly(Datatype.STRUCT);
+            assertThat(construction.asked).containsExactly(StructValue.TYPE);
         }
 
         @Test
@@ -132,7 +129,7 @@ class AReadUsesTheConstructionItIsGivenTest {
 
             assertThat(((AnyBlockValue) read.getFirst()).remaining())
                     .containsExactly(WHAT_THE_CONSTRUCTION_MADE);
-            assertThat(construction.asked).containsExactly(Datatype.STRUCT);
+            assertThat(construction.asked).containsExactly(StructValue.TYPE);
         }
 
         @Test
@@ -142,7 +139,7 @@ class AReadUsesTheConstructionItIsGivenTest {
 
             Transcoder.transcode("p/(" + A_STRUCT_LITERAL + ")", construction);
 
-            assertThat(construction.asked).containsExactly(Datatype.STRUCT);
+            assertThat(construction.asked).containsExactly(StructValue.TYPE);
         }
 
         @Test

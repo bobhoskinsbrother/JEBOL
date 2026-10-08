@@ -4,13 +4,17 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AStringKnowsItsOwnKindTest {
+
+    private final List<AnyStringValue.AnyStringDatatype> everyStringDatatype = List.of(
+            StringValue.TYPE, FileValue.TYPE, EmailValue.TYPE, RefValue.TYPE, UrlValue.TYPE, TagValue.TYPE);
 
     private String quoted(String text) {
         return '"' + text + '"';
@@ -20,31 +24,38 @@ class AStringKnowsItsOwnKindTest {
     @DisplayName("building one from a datatype")
     class FromADatatype {
 
-        @ParameterizedTest
-        @EnumSource(value = Datatype.class, names = {"STRING", "FILE", "EMAIL", "REF", "URL", "TAG"})
+        @Test
         @DisplayName("each any-string! datatype builds a value that answers to that datatype")
-        void eachStringDatatypeBuildsItsOwnKind(Datatype asked) {
-            assertThat(AnyStringValue.ofTheDatatype("abc", asked).datatype()).isEqualTo(asked);
+        void eachStringDatatypeBuildsItsOwnKind() {
+            assertThat(everyStringDatatype).allSatisfy(asked ->
+                    assertThat(asked.holding("abc").datatype()).isSameAs(asked));
         }
 
         @Test
         @DisplayName("and the class is the kind, so the tag never has to be asked")
         void theClassIsTheKind() {
-            assertThat(AnyStringValue.ofTheDatatype("a", Datatype.STRING)).isInstanceOf(StringValue.class);
-            assertThat(AnyStringValue.ofTheDatatype("a", Datatype.FILE)).isInstanceOf(FileValue.class);
-            assertThat(AnyStringValue.ofTheDatatype("a", Datatype.EMAIL)).isInstanceOf(EmailValue.class);
-            assertThat(AnyStringValue.ofTheDatatype("a", Datatype.REF)).isInstanceOf(RefValue.class);
-            assertThat(AnyStringValue.ofTheDatatype("a", Datatype.URL)).isInstanceOf(UrlValue.class);
-            assertThat(AnyStringValue.ofTheDatatype("a", Datatype.TAG)).isInstanceOf(TagValue.class);
+            assertThat(StringValue.TYPE.holding("a")).isInstanceOf(StringValue.class);
+            assertThat(FileValue.TYPE.holding("a")).isInstanceOf(FileValue.class);
+            assertThat(EmailValue.TYPE.holding("a")).isInstanceOf(EmailValue.class);
+            assertThat(RefValue.TYPE.holding("a")).isInstanceOf(RefValue.class);
+            assertThat(UrlValue.TYPE.holding("a")).isInstanceOf(UrlValue.class);
+            assertThat(TagValue.TYPE.holding("a")).isInstanceOf(TagValue.class);
         }
 
         @ParameterizedTest
-        @EnumSource(value = Datatype.class, names = {"BLOCK", "BINARY", "ISSUE", "WORD", "CHAR"})
-        @DisplayName("a datatype outside any-string! is refused")
-        void aDatatypeOutsideTheFamilyIsRefused(Datatype asked) {
-            assertThatThrownBy(() -> AnyStringValue.ofTheDatatype("a", asked))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("any-string!");
+        @ValueSource(strings = {"block", "binary", "issue", "word", "char"})
+        @DisplayName("a value outside any-string! cannot be seen as a string")
+        void aValueOutsideTheFamilyIsRefused(String spelling) {
+            Value outside = switch (spelling) {
+                case "block" -> BlockValue.block();
+                case "binary" -> BinaryValue.ofBytes(new byte[0]);
+                case "issue" -> IssueValue.of("a");
+                case "word" -> WordValue.of("a");
+                default -> CharacterValue.of('a');
+            };
+            assertThatThrownBy(() -> StringValue.TYPE.as(outside))
+                    .isInstanceOfSatisfying(Raised.class, raised ->
+                            assertThat(raised.error().errorId()).isEqualTo("not-same-class"));
         }
     }
 
@@ -55,14 +66,14 @@ class AStringKnowsItsOwnKindTest {
         @Test
         @DisplayName("the head is position one")
         void theHeadIsOne() {
-            assertThat(AnyStringValue.ofTheDatatype(StringStorage.of("abc"), 1, Datatype.FILE).index())
+            assertThat(FileValue.TYPE.holding(StringStorage.of("abc"), 1).index())
                     .isEqualTo(1);
         }
 
         @Test
         @DisplayName("the tail, one past the last letter, is still a place to stand")
         void theTailIsAllowed() {
-            assertThat(AnyStringValue.ofTheDatatype(StringStorage.of("abc"), 4, Datatype.FILE).text())
+            assertThat(FileValue.TYPE.holding(StringStorage.of("abc"), 4).text())
                     .isEmpty();
         }
 
@@ -70,7 +81,7 @@ class AStringKnowsItsOwnKindTest {
         @ValueSource(ints = {0, -1, 5})
         @DisplayName("before the head or past the tail is refused")
         void outsideTheStorageIsRefused(int index) {
-            assertThatThrownBy(() -> AnyStringValue.ofTheDatatype(StringStorage.of("abc"), index, Datatype.FILE))
+            assertThatThrownBy(() -> FileValue.TYPE.holding(StringStorage.of("abc"), index))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("outside 1..4");
         }
@@ -78,7 +89,7 @@ class AStringKnowsItsOwnKindTest {
         @Test
         @DisplayName("storage is required")
         void storageIsRequired() {
-            assertThatThrownBy(() -> AnyStringValue.ofTheDatatype(null, 1, Datatype.FILE))
+            assertThatThrownBy(() -> FileValue.TYPE.holding(null, 1))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("needs storage");
         }
@@ -99,17 +110,18 @@ class AStringKnowsItsOwnKindTest {
     @DisplayName("making another of the same kind")
     class TheSameKind {
 
-        @ParameterizedTest
-        @EnumSource(value = Datatype.class, names = {"STRING", "FILE", "EMAIL", "REF", "URL", "TAG"})
+        @Test
         @DisplayName("holding new text keeps the kind and starts at the head of fresh storage")
-        void holdingKeepsTheKind(Datatype kind) {
-            AnyStringValue original = AnyStringValue.ofTheDatatype("old", kind).atIndex(2);
-            AnyStringValue held = original.holding("new");
+        void holdingKeepsTheKind() {
+            assertThat(everyStringDatatype).allSatisfy(kind -> {
+                AnyStringValue original = kind.holding("old").atIndex(2);
+                AnyStringValue held = original.holding("new");
 
-            assertThat(held.datatype()).isEqualTo(kind);
-            assertThat(held.text()).isEqualTo("new");
-            assertThat(held.index()).isEqualTo(1);
-            assertThat(held.sharesStorageWith(original)).isFalse();
+                assertThat(held.datatype()).isSameAs(kind);
+                assertThat(held.text()).isEqualTo("new");
+                assertThat(held.index()).isEqualTo(1);
+                assertThat(held.sharesStorageWith(original)).isFalse();
+            });
         }
 
         @Test
@@ -136,20 +148,21 @@ class AStringKnowsItsOwnKindTest {
         @DisplayName("the letters, the position and the storage are shared, only the kind changes")
         void onlyTheKindChanges() {
             AnyStringValue file = FileValue.of("abc").atIndex(2);
-            AnyStringValue url = file.as(Datatype.URL);
+            Value seen = UrlValue.TYPE.as(file);
 
-            assertThat(url).isInstanceOf(UrlValue.class);
-            assertThat(url.index()).isEqualTo(2);
-            assertThat(url.text()).isEqualTo("bc");
-            assertThat(url.sharesStorageWith(file)).isTrue();
+            assertThat(seen).isInstanceOfSatisfying(UrlValue.class, url -> {
+                assertThat(url.index()).isEqualTo(2);
+                assertThat(url.text()).isEqualTo("bc");
+                assertThat(url.sharesStorageWith(file)).isTrue();
+            });
         }
 
         @Test
-        @DisplayName("a kind outside any-string! is refused")
+        @DisplayName("a kind outside any-string! cannot see a string as itself")
         void outsideTheFamilyIsRefused() {
-            assertThatThrownBy(() -> StringValue.of("a").as(Datatype.BINARY))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("any-string!");
+            assertThatThrownBy(() -> BinaryValue.TYPE.as(StringValue.of("a")))
+                    .isInstanceOfSatisfying(Raised.class, raised ->
+                            assertThat(raised.error().errorId()).isEqualTo("not-same-class"));
         }
     }
 

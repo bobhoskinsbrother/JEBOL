@@ -14,7 +14,7 @@ import java.util.Set;
 
 public class RsaInitNative extends CipherNative {
 
-    private static final Set<Datatype> A_BINARY = Set.of(Datatype.BINARY);
+    private static final Set<Datatype> A_BINARY = Set.of(BinaryValue.TYPE);
 
     @Override
     public String nativeName() {

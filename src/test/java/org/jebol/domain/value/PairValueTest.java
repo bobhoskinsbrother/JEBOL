@@ -42,7 +42,7 @@ class PairValueTest {
 
         @Test
         void aPairReportsItselfAsAPair() {
-            assertThat(PairValue.of(1, 2).datatype()).isEqualTo(Datatype.PAIR);
+            assertThat(PairValue.of(1, 2).datatype()).isEqualTo(PairValue.TYPE);
         }
     }
 

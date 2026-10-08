@@ -1,6 +1,6 @@
 package org.jebol.domain.eval.natives;
 
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
@@ -15,6 +15,6 @@ public class DoCommandsNative extends ExtensionPointNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("commands", Set.of(Datatype.BLOCK)));
+        return List.of(Parameter.required("commands", Set.of(BlockValue.TYPE)));
     }
 }

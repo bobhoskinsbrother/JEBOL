@@ -37,12 +37,12 @@ class WhatEachExitNativeDeclaresTest {
                 Arguments.of(new ExitNative(), "exit", List.of(), NOTHING),
                 Arguments.of(new ThrowNative(), "throw",
                         List.of(Parameter.required("value", Typeset.ANY_TYPE.members()),
-                                Parameter.belongingTo("name", "word", Set.of(Datatype.WORD))),
+                                Parameter.belongingTo("name", "word", Set.of(WordValue.TYPE))),
                         Set.of("name")),
                 Arguments.of(new CatchNative(), "catch",
-                        List.of(Parameter.required("block", Set.of(Datatype.BLOCK)),
+                        List.of(Parameter.required("block", Set.of(BlockValue.TYPE)),
                                 Parameter.belongingTo("name", "word",
-                                        Set.of(Datatype.WORD, Datatype.BLOCK)),
+                                        Set.of(WordValue.TYPE, BlockValue.TYPE)),
                                 Parameter.belongingTo("with", "callback", Set.of())),
                         Set.of("name", "all", "quit", "with")));
     }

@@ -2,7 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.read.Construction;
+import org.jebol.domain.value.Construction;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Maker;
 import org.jebol.domain.value.MapValue;
@@ -14,7 +14,7 @@ public final class Boot {
     private String operatingSystemName = "JVM";
     private final BootDeclarations bootDeclarations = new BootDeclarations();
     private final MapValue registeredStructLayouts = MapValue.empty();
-    private final MakingAndConverting makingAndConverting = new MakingAndConverting(registeredStructLayouts);
+    private final MakingWithoutEvaluating withoutEvaluating = new MakingWithoutEvaluating(registeredStructLayouts);
     private final Encodings encodings = new Encodings();
     private final GrantedServices grantedServices = new GrantedServices();
     private final Ports ports = new Ports(grantedServices);
@@ -71,10 +71,10 @@ public final class Boot {
     }
 
     public Construction construction() {
-        return makingAndConverting;
+        return withoutEvaluating;
     }
 
     public Maker makerFor(Evaluator evaluator, Context where) {
-        return new InterpreterMaker(evaluator, where, makingAndConverting);
+        return new InterpreterMaker(evaluator, where, withoutEvaluating);
     }
 }

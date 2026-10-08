@@ -3,7 +3,7 @@ package org.jebol.domain.eval;
 import org.jebol.domain.date.DateOrder;
 import org.jebol.domain.value.*;
 
-import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -59,14 +59,14 @@ public final class Comparison {
 
     private static final Set<Datatype> REFUSE_TO_BE_ORDERED = everythingIn(
             Typeset.ANY_OBJECT, Typeset.ANY_FUNCTION,
-            Datatype.UNSET, Datatype.END, Datatype.NONE, Datatype.LOGIC,
-            Datatype.BITSET, Datatype.MAP, Datatype.TYPESET,
-            Datatype.FRAME, Datatype.IMAGE, Datatype.JAVA_OBJECT);
+            UnsetValue.TYPE, EndValue.TYPE, NoneValue.TYPE, LogicValue.TYPE,
+            BitsetValue.TYPE, MapValue.TYPE, TypesetValue.TYPE,
+            FrameValue.TYPE, ImageValue.TYPE, JavaObjectValue.TYPE);
 
     private static Set<Datatype> everythingIn(
             Typeset first, Typeset second, Datatype... alsoRefusing) {
 
-        Set<Datatype> refusing = EnumSet.copyOf(first.members());
+        Set<Datatype> refusing = new HashSet<>(first.members());
         refusing.addAll(second.members());
         refusing.addAll(Set.of(alsoRefusing));
         return Set.copyOf(refusing);
@@ -104,7 +104,7 @@ public final class Comparison {
 
     private static Raised refusal(Value left, Value right) {
         return Raised.of(EvaluationFailure.INVALID_COMPARE,
-                DatatypeValue.of(left.datatype()), DatatypeValue.of(right.datatype()));
+                left.datatype(), right.datatype());
     }
 
     private static boolean atOneDatatype(Value left, Value right, Strictness strictness) {
@@ -129,7 +129,7 @@ public final class Comparison {
     private static final boolean IT_DID_NOT = false;
 
     private static final Set<Datatype> ANY_NUMBER_WHICH_EXCLUDES_A_TIME =
-            Typeset.NUMBER.membersAnd(Datatype.MONEY);
+            Typeset.NUMBER.membersAnd(MoneyValue.TYPE);
 
     /**
      * REBOL's {@code =} as the series functions ask it: equal, folding case,
@@ -468,9 +468,10 @@ public final class Comparison {
 
     /** The four number datatypes, and a time, which counts as its seconds. */
     public static boolean isNumeric(Value value) {
-        return value.datatype().isNumber()
-                || value.datatype() == Datatype.MONEY
-                || value.datatype() == Datatype.TIME;
+        return value instanceof IntegerValue
+                || value instanceof AnyDecimalValue
+                || value instanceof MoneyValue
+                || value instanceof TimeValue;
     }
 
     /** The number this value is, for the arithmetic and the comparison alike. */

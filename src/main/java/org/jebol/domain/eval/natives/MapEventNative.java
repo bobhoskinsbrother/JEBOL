@@ -2,7 +2,6 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.AnyBlockValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EventValue;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
@@ -21,7 +20,7 @@ public class MapEventNative extends GobMappingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("event", Set.of(Datatype.EVENT)));
+        return List.of(Parameter.required("event", Set.of(EventValue.TYPE)));
     }
 
     @Override

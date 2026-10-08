@@ -2,6 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.AnyBlockValue;
+import org.jebol.domain.value.AnyPathValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
@@ -46,8 +47,7 @@ public class ProtectNative extends ProtectingNative {
     }
 
     private boolean namesAField(Value target, Set<String> refinements) {
-        return target instanceof AnyBlockValue path
-                && path.datatype().isAnyPath()
+        return target instanceof AnyPathValue
                 && !refinements.contains("values");
     }
 

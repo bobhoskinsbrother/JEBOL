@@ -23,7 +23,7 @@ import java.util.function.LongFunction;
 public class RepeatNative extends LoopingNative {
 
     private static final Set<Datatype> WHAT_REPEAT_COUNTS_BY = Typeset.NUMBER.membersAnd(
-            Typeset.SERIES.membersAnd(Datatype.PAIR, Datatype.NONE)
+            Typeset.SERIES.membersAnd(PairValue.TYPE, NoneValue.TYPE)
                     .toArray(Datatype[]::new));
 
     @Override

@@ -2,6 +2,24 @@ package org.jebol.domain.value;
 
 public final class IssueValue extends AnyWordValue {
 
+    public static final AnyWordDatatype TYPE = new AnyWordDatatype("issue") {
+
+        @Override
+        public AnyWordValue spelt(String spelling, Context binding) {
+            return new IssueValue(spelling, binding);
+        }
+
+        @Override
+        String asTheScannerReadsIt(String spelling) {
+            return "#" + spelling;
+        }
+
+        @Override
+        Datatype theDatatypeTheScannerReadsItAs() {
+            return this;
+        }
+    };
+
     IssueValue(String spelling, Context binding) {
         super(spelling, binding);
     }
@@ -12,7 +30,7 @@ public final class IssueValue extends AnyWordValue {
 
     @Override
     public Datatype datatype() {
-        return Datatype.ISSUE;
+        return TYPE;
     }
 
     @Override

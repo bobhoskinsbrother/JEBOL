@@ -1,6 +1,6 @@
 package org.jebol.domain.value;
 
-import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 public final class Copying {
@@ -13,9 +13,9 @@ public final class Copying {
     }
 
     private static Set<Datatype> whatADeepCopyCopies() {
-        Set<Datatype> copies = EnumSet.copyOf(Typeset.ANY_BLOCK.members());
+        Set<Datatype> copies = new LinkedHashSet<>(Typeset.ANY_BLOCK.members());
         copies.addAll(Typeset.ANY_STRING.members());
-        copies.addAll(Set.of(Datatype.BINARY, Datatype.BITSET, Datatype.MAP, Datatype.FUNCTION));
+        copies.addAll(Set.of(BinaryValue.TYPE, BitsetValue.TYPE, MapValue.TYPE, FunctionValue.TYPE));
         return Set.copyOf(copies);
     }
 }

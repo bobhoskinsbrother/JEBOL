@@ -2,6 +2,24 @@ package org.jebol.domain.value;
 
 public final class PercentValue extends AnyDecimalValue {
 
+    public static final AnyDecimalDatatype TYPE = new AnyDecimalDatatype("percent") {
+
+        @Override
+        public AnyDecimalValue holding(double quantity) {
+            return PercentValue.of(quantity);
+        }
+
+        @Override
+        public AnyDecimalValue holdingHundredths(double quantity) {
+            return PercentValue.of(quantity / 100.0);
+        }
+
+        @Override
+        boolean isWrittenWithAPercentSign() {
+            return true;
+        }
+    };
+
     PercentValue(double quantity) {
         super(quantity);
     }
@@ -12,7 +30,7 @@ public final class PercentValue extends AnyDecimalValue {
 
     @Override
     public Datatype datatype() {
-        return Datatype.PERCENT;
+        return TYPE;
     }
 
     @Override

@@ -6,7 +6,8 @@ import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.FileValue;
+import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
@@ -30,7 +31,7 @@ public class DeleteAction extends PortAction {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("path", Set.of(Datatype.FILE, Datatype.URL)));
+        return List.of(Parameter.required("path", Set.of(FileValue.TYPE, UrlValue.TYPE)));
     }
 
     @Override

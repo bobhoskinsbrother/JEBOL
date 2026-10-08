@@ -3,7 +3,8 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.WordValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
@@ -26,10 +27,10 @@ public class CompressNative extends CompressionNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("data", Set.of(Datatype.BINARY, Datatype.STRING)),
-                Parameter.required("method", Set.of(Datatype.WORD)),
+                Parameter.required("data", Set.of(BinaryValue.TYPE, StringValue.TYPE)),
+                Parameter.required("method", Set.of(WordValue.TYPE)),
                 Parameter.belongingTo("part", "length", aPartLimit()),
-                Parameter.belongingTo("level", "lvl", Set.of(Datatype.INTEGER)));
+                Parameter.belongingTo("level", "lvl", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

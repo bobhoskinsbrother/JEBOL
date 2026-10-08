@@ -4,6 +4,14 @@ import java.util.List;
 
 public final class ClosureValue extends DefinedFunctionValue {
 
+    public static final Datatype TYPE = new DefinedFunctionDatatype("closure") {
+
+        @Override
+        Value fromTheFunction(FunctionValue made) {
+            return made.asClosure();
+        }
+    };
+
     ClosureValue(
             AnyBlockValue spec, AnyBlockValue body, List<Parameter> parameters,
             List<String> localNames, Context closedOver, Context wordsSharedWithTheFunctionItWasMadeFrom) {
@@ -12,7 +20,7 @@ public final class ClosureValue extends DefinedFunctionValue {
 
     @Override
     public Datatype datatype() {
-        return Datatype.CLOSURE;
+        return TYPE;
     }
 
     @Override

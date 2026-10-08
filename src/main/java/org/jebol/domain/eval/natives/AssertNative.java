@@ -16,7 +16,7 @@ public class AssertNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("conditions", Set.of(Datatype.BLOCK)));
+        return List.of(Parameter.required("conditions", Set.of(BlockValue.TYPE)));
     }
 
     @Override
@@ -74,7 +74,7 @@ public class AssertNative extends DefaultNative {
 
     private boolean isOfType(Value held, Value type, Context context) {
         return switch (type) {
-            case DatatypeValue wanted -> held.datatype() == wanted.represents();
+            case Datatype wanted -> held.datatype() == wanted;
             case TypesetValue set -> set.holds(held.datatype());
             case AnyWordValue word -> {
                 Value resolved = context.knows(word.canonical())

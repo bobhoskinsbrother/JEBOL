@@ -114,7 +114,7 @@ public enum VectorKind {
 
     /** The datatype word {@code v/type} answers: integer! or decimal!. */
     public Datatype elementDatatype() {
-        return measuring ? Datatype.DECIMAL : Datatype.INTEGER;
+        return measuring ? DecimalValue.TYPE : IntegerValue.TYPE;
     }
 
     /**

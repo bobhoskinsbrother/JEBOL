@@ -4,7 +4,8 @@ import org.jebol.domain.host.FilePort;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.FileValue;
+import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.AnyStringValue;
@@ -31,7 +32,7 @@ public class EchoNative extends HostNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("target",
-                Set.of(Datatype.FILE, Datatype.NONE, Datatype.LOGIC)));
+                Set.of(FileValue.TYPE, NoneValue.TYPE, LogicValue.TYPE)));
     }
 
     @Override

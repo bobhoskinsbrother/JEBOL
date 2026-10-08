@@ -66,8 +66,8 @@ public final class LibContext {
     }
 
     private void registerDatatypesAndTypesets() {
-        for (Datatype datatype : Datatype.values()) {
-            lib.register(datatype.literalSpelling(), DatatypeValue.of(datatype));
+        for (Datatype datatype : Catalogue.DATATYPES.entries()) {
+            lib.register(datatype.literalSpelling(), datatype);
         }
         for (Typeset typeset : Typeset.values()) {
             lib.register(typeset.literalSpelling(), TypesetValue.of(typeset));
@@ -380,7 +380,7 @@ public final class LibContext {
     }
 
     private void registerDatatypePredicates() {
-        for (Datatype datatype : Datatype.values()) {
+        for (Datatype datatype : Catalogue.DATATYPES.entries()) {
             DatatypePredicateAction predicate = new DatatypePredicateAction(datatype);
             declare(predicate, declarations.theSpecEveryDatatypeTestHas());
             lib.register(predicate.nativeName(), predicate);

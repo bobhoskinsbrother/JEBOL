@@ -9,9 +9,6 @@ import java.util.stream.Collectors;
 
 public class AjoinNative extends DefaultNative {
 
-    private static final Set<Datatype> KEEPS_ITS_OWN_KIND =
-            Set.of(Datatype.FILE, Datatype.URL, Datatype.EMAIL, Datatype.REF);
-
     @Override
     public String nativeName() {
         return "ajoin";
@@ -19,7 +16,7 @@ public class AjoinNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("block", Set.of(Datatype.BLOCK)),
+        return List.of(Parameter.required("block", Set.of(BlockValue.TYPE)),
                 Parameter.belongingTo("with", "separator", Typeset.ANY_TYPE.members()));
     }
 
@@ -36,10 +33,10 @@ public class AjoinNative extends DefaultNative {
             String separator = argumentOf("with", 0, arguments, refinements)
                     .map(Molder::form)
                     .orElse("");
-            return AnyStringValue.ofTheDatatype(all.stream()
+            return kindOf(all).holding(all.stream()
                     .filter(piece -> refinements.contains("all") || holdsSomething(piece))
                     .map(Value::runTogether)
-                    .collect(Collectors.joining(separator)), kindOf(all));
+                    .collect(Collectors.joining(separator)));
         };
     }
 
@@ -47,9 +44,16 @@ public class AjoinNative extends DefaultNative {
         return !(piece instanceof NoneValue || piece instanceof UnsetValue);
     }
 
-    private Datatype kindOf(List<Value> pieces) {
-        return pieces.isEmpty() || !KEEPS_ITS_OWN_KIND.contains(pieces.getFirst().datatype())
-                ? Datatype.STRING
-                : pieces.getFirst().datatype();
+    private AnyStringValue.AnyStringDatatype kindOf(List<Value> pieces) {
+        if (pieces.isEmpty()) {
+            return StringValue.TYPE;
+        }
+        return switch (pieces.getFirst()) {
+            case FileValue _ -> FileValue.TYPE;
+            case UrlValue _ -> UrlValue.TYPE;
+            case EmailValue _ -> EmailValue.TYPE;
+            case RefValue _ -> RefValue.TYPE;
+            default -> StringValue.TYPE;
+        };
     }
 }

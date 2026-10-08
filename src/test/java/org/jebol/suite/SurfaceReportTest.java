@@ -42,7 +42,7 @@ class SurfaceReportTest {
 
     private static List<String> withTheDatatypeTable(java.util.Collection<String> lines) {
         List<String> everything = new java.util.ArrayList<>();
-        for (Datatype datatype : Datatype.values()) {
+        for (Datatype datatype : Catalogue.DATATYPES.entries()) {
             everything.add("DATATYPE " + datatype.literalSpelling());
         }
         everything.addAll(lines);
@@ -81,7 +81,7 @@ class SurfaceReportTest {
 
     private static void appendAcceptedTypes(StringBuilder shape, Parameter parameter) {
         Set<Datatype> accepted = parameter.acceptedTypes();
-        if (accepted.isEmpty() || accepted.size() == Datatype.values().length) {
+        if (accepted.isEmpty() || accepted.size() == Catalogue.DATATYPES.entries().size()) {
             return;
         }
         shape.append('<')

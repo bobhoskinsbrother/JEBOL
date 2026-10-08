@@ -16,7 +16,7 @@ public class CaseNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("choices", Set.of(Datatype.BLOCK)));
+        return List.of(Parameter.required("choices", Set.of(BlockValue.TYPE)));
     }
 
     @Override

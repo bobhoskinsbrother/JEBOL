@@ -32,7 +32,7 @@ public final class BlockActions extends SeriesActions {
 
     @Override
     Value ofTheSameKindHolding(List<Value> items) {
-        return BlockValue.block(items).as(block.datatype());
+        return block.holding(items);
     }
 
     @Override

@@ -111,7 +111,172 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
 
     @Override
     public Datatype datatype() {
-        return Datatype.IMAGE;
+        return TYPE;
+    }
+
+    public static final Datatype TYPE = new ImageDatatype();
+
+    private static final class ImageDatatype extends Datatype {
+
+        private static final int WIDEST_ROW_OF_ITS_OWN_LENGTH = 100;
+
+        private static final int WIDEST_HUNDRED_WIDE_PICTURE = 10000;
+
+        private static final int A_ROW_OF_A_BIG_PICTURE = 500;
+
+        private static final int BYTES_A_PIXEL = 4;
+
+        private static final int THE_BITS_OF_AN_OCTET = 0xFF;
+
+        ImageDatatype() {
+            super("image", Typeset.SERIES);
+        }
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            if (spec instanceof ImageValue original) {
+                return new ImageValue(original.storage().copy(), 1);
+            }
+            if (spec instanceof PairValue(double x, double y)) {
+                return ImageValue.of(sideOfClampedBelowAndRefusedAbove(x),
+                        sideOfClampedBelowAndRefusedAbove(y));
+            }
+            if (spec instanceof AnyBlockValue parts && !parts.remaining().isEmpty()) {
+                return imageFromParts(parts);
+            }
+            throw malconstructed(spec);
+        }
+
+        @Override
+        public Value convertedFrom(Value value, Maker maker) {
+            if (value instanceof ImageValue already) {
+                return new ImageValue(already.storage().copy(), 1);
+            }
+            if (!(value instanceof BinaryValue bytes)) {
+                throw Raised.of(EvaluationFailure.INVALID_TYPE, value.datatype());
+            }
+            int pixels = bytes.lengthFromHere() / BYTES_A_PIXEL;
+            if (pixels == 0) {
+                throw refusing(value);
+            }
+            int across = pixels < WIDEST_ROW_OF_ITS_OWN_LENGTH
+                    ? pixels
+                    : pixels < WIDEST_HUNDRED_WIDE_PICTURE
+                            ? WIDEST_ROW_OF_ITS_OWN_LENGTH
+                            : A_ROW_OF_A_BIG_PICTURE;
+            int down = pixels / across;
+            if (across * down < pixels) {
+                down++;
+            }
+            ImageValue made = ImageValue.of(across, down);
+            for (int pixel = 1; pixel <= pixels; pixel++) {
+                int at = bytes.index() + (pixel - 1) * BYTES_A_PIXEL;
+                made.storage().setColourAt(pixel,
+                        bytes.storage().at(at),
+                        bytes.storage().at(at + 1),
+                        bytes.storage().at(at + 2));
+                made.storage().setAlphaAt(pixel, bytes.storage().at(at + 3));
+            }
+            return made;
+        }
+
+        @Override
+        public Value constructedFrom(List<Value> contents, Construction construction) {
+            return construction.madeOf(this, BlockValue.block(contents));
+        }
+
+        private int sideOfClampedBelowAndRefusedAbove(double given) {
+            int side = (int) given;
+            if (side > ImageStorage.LONGEST_SIDE) {
+                throw Raised.of(EvaluationFailure.SIZE_LIMIT, this);
+            }
+            return Math.max(side, 0);
+        }
+
+        private Value imageFromParts(AnyBlockValue specification) {
+            List<Value> parts = specification.remaining();
+            if (!(parts.getFirst() instanceof PairValue(double x, double y))) {
+                throw malconstructed(specification);
+            }
+            ImageValue made = ImageValue.of(
+                    sideThatCanExist(x, specification),
+                    sideThatCanExist(y, specification));
+            int at = 1;
+            if (at < parts.size() && parts.get(at) instanceof BinaryValue colours) {
+                fillColoursFrom(made, colours);
+                at++;
+                if (at < parts.size() && parts.get(at) instanceof BinaryValue alphas) {
+                    fillAlphasFrom(made, alphas);
+                    at++;
+                }
+                if (at < parts.size() && parts.get(at) instanceof IntegerValue start) {
+                    made = made.standingAt(aPositionOfAtLeastOne(start));
+                    at++;
+                }
+            } else if (at < parts.size() && parts.get(at) instanceof TupleValue colour) {
+                fillWith(made, colour);
+                at++;
+                if (at < parts.size() && parts.get(at) instanceof IntegerValue(long magnitude)) {
+                    for (int pixel = 1; pixel <= made.storageLength(); pixel++) {
+                        made.storage().setAlphaAt(pixel, (int) magnitude & THE_BITS_OF_AN_OCTET);
+                    }
+                    at++;
+                }
+            }
+            if (at != parts.size()) {
+                throw malconstructed(specification);
+            }
+            return made;
+        }
+
+        private int sideThatCanExist(double given, AnyBlockValue specification) {
+            if (given < 0 || given > ImageStorage.LONGEST_SIDE) {
+                throw malconstructed(specification);
+            }
+            return (int) given;
+        }
+
+        private int aPositionOfAtLeastOne(IntegerValue start) {
+            if (start.magnitude() < 1) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, start);
+            }
+            return (int) Math.min(start.magnitude(), Integer.MAX_VALUE);
+        }
+
+        private void fillColoursFrom(ImageValue made, BinaryValue colours) {
+            int pixels = Math.min(made.storageLength(), colours.lengthFromHere() / 3);
+            for (int pixel = 1; pixel <= pixels; pixel++) {
+                int at = colours.index() + (pixel - 1) * 3;
+                made.storage().setColourAt(pixel,
+                        colours.storage().at(at),
+                        colours.storage().at(at + 1),
+                        colours.storage().at(at + 2));
+            }
+        }
+
+        private void fillAlphasFrom(ImageValue made, BinaryValue alphas) {
+            int pixels = Math.min(made.storageLength(), alphas.lengthFromHere());
+            for (int pixel = 1; pixel <= pixels; pixel++) {
+                made.storage().setAlphaAt(pixel, alphas.storage().at(alphas.index() + pixel - 1));
+            }
+        }
+
+        private void fillWith(ImageValue made, TupleValue colour) {
+            int[] parts = colour.segments();
+            for (int pixel = 1; pixel <= made.storageLength(); pixel++) {
+                made.storage().setColourAt(pixel,
+                        parts.length > 0 ? parts[0] : 0,
+                        parts.length > 1 ? parts[1] : 0,
+                        parts.length > 2 ? parts[2] : 0);
+                if (parts.length > 3) {
+                    made.storage().setAlphaAt(pixel, parts[3]);
+                }
+            }
+        }
+
+        private Raised malconstructed(Value from) {
+            return Raised.of(EvaluationFailure.MALCONSTRUCT, Molder.mold(from));
+        }
     }
 
     @Override
@@ -312,7 +477,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         List<PixelWrite> pixels = new ArrayList<>();
         for (Value one : named) {
             pixels.add(asAPixel(one, colourOnly).orElseThrow(() -> Raised.of(
-                    EvaluationFailure.INVALID_TYPE, DatatypeValue.of(one.datatype()))));
+                    EvaluationFailure.INVALID_TYPE, one.datatype())));
         }
         return pixels;
     }

@@ -3,7 +3,7 @@ package org.jebol.domain.eval.actions;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.WordValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.LogicValue;
@@ -36,8 +36,8 @@ public class ModifyAction extends PortAction {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("target", Set.of(Datatype.PORT, Datatype.FILE)),
-                Parameter.required("field", Set.of(Datatype.WORD, Datatype.NONE)),
+                Parameter.required("target", Set.of(PortValue.TYPE, FileValue.TYPE)),
+                Parameter.required("field", Set.of(WordValue.TYPE, NoneValue.TYPE)),
                 Parameter.required("value"));
     }
 

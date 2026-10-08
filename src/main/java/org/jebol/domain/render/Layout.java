@@ -111,7 +111,7 @@ public final class Layout {
             Value item,
             java.util.function.Function<String, java.util.Optional<Value>> lookUp) {
 
-        if (!(item instanceof AnyWordValue word) || word.datatype() != org.jebol.domain.value.Datatype.WORD) {
+        if (!(item instanceof AnyWordValue word) || word.datatype() != org.jebol.domain.value.WordValue.TYPE) {
             return item;
         }
         if (COLOURS.containsKey(word.canonical())) {

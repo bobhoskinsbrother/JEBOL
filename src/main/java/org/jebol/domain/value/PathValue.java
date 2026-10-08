@@ -4,6 +4,14 @@ import java.util.List;
 
 public final class PathValue extends AnyPathValue {
 
+    public static final AnyPathDatatype TYPE = new AnyPathDatatype("path") {
+
+        @Override
+        public AnyPathValue holding(BlockStorage storage, int index) {
+            return new PathValue(storage, index);
+        }
+    };
+
     PathValue(BlockStorage storage, int index) {
         super(storage, index);
     }
@@ -14,7 +22,7 @@ public final class PathValue extends AnyPathValue {
 
     @Override
     public Datatype datatype() {
-        return Datatype.PATH;
+        return TYPE;
     }
 
     @Override

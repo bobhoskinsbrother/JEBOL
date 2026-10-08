@@ -16,7 +16,7 @@ public class TraceNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("mode", Set.of(Datatype.INTEGER, Datatype.LOGIC)));
+        return List.of(Parameter.required("mode", Set.of(IntegerValue.TYPE, LogicValue.TYPE)));
     }
 
     @Override

@@ -117,7 +117,7 @@ public final class TimeActions {
     private static Raised notRelatedToATime(ArithmeticOperation operation) {
         return Raised.of(EvaluationFailure.NOT_RELATED,
                 WordValue.of(operation.spelling()),
-                DatatypeValue.of(Datatype.TIME));
+                TimeValue.TYPE);
     }
 
     public static long wholeNanosecondsOf(Value value) {
@@ -132,7 +132,7 @@ public final class TimeActions {
 
     public static long withinWhatADurationHolds(long nanoseconds) {
         if (nanoseconds < -TimeValue.LONGEST || nanoseconds > TimeValue.LONGEST) {
-            throw Raised.of(EvaluationFailure.TYPE_LIMIT, DatatypeValue.of(Datatype.TIME));
+            throw Raised.of(EvaluationFailure.TYPE_LIMIT, TimeValue.TYPE);
         }
         return nanoseconds;
     }

@@ -59,11 +59,107 @@ public record ErrorValue(
                 near, whereChain, writtenFields, ErrorWording.none());
     }
 
-    @Override
-    public Value make(Value spec, Maker maker) {
-        return spec instanceof AnyStringValue
-                ? maker.makeErrorFrom(spec)
-                : maker.makeAnotherFrom(datatype(), spec);
+    public static final Datatype TYPE = new ErrorDatatype();
+
+    private static final class ErrorDatatype extends Datatype {
+
+        ErrorDatatype() {
+            super("error", Typeset.ANY_OBJECT);
+        }
+
+        @Override
+        public Value constructedFrom(List<Value> contents, Construction construction) {
+            throw refusingConstruction(contents);
+        }
+
+        @Override
+        public Value convertedFrom(Value value, Maker maker) {
+            return madeFrom(value, maker);
+        }
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            return switch (spec) {
+                case ObjectValue(Context fields) ->
+                        anErrorSpeltOutBy(BlockValue.block(fields.setWordsAndValues()), true, spec, maker);
+                case BlockValue body -> anErrorSpeltOutBy(BlockValue.block(
+                        maker.objectEvaluatedFrom(body).context().setWordsAndValues()), false, spec, maker);
+                case AnyBlockValue fields -> anErrorSpeltOutBy(fields, false, spec, maker);
+                case StringValue written -> maker.spokenHere(new ErrorValue(ErrorCategory.USER, "message",
+                        written.text(), Optional.of(spec),
+                        Optional.empty(), Optional.empty(),
+                        Optional.empty(), Optional.empty(),
+                        new LinkedHashMap<>()));
+                default -> throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
+            };
+        }
+
+        private Value anErrorSpeltOutBy(
+                AnyBlockValue fields, boolean fromAnObject, Value theSpecAsWritten, Maker maker) {
+
+            List<Value> items = fields.remaining();
+            ErrorCategory category = ErrorCategory.USER;
+            String errorId = "user-error";
+            String typeWordAsSpelled = "";
+            boolean namedAType = false;
+            boolean namedAnId = false;
+            Value unknownId = NoneValue.none();
+            Optional<Value> subject = Optional.empty();
+            Optional<Value> second = Optional.empty();
+            Optional<Value> third = Optional.empty();
+            for (int at = 0; at + 1 < items.size(); at += 2) {
+                if (!(items.get(at) instanceof SetWordValue name)) {
+                    continue;
+                }
+                Value asWritten = items.get(at + 1);
+                String said = asWritten instanceof AnyWordValue spelled
+                        ? spelled.canonical()
+                        : Molder.form(asWritten);
+                switch (name.canonical()) {
+                    case "type" -> {
+                        namedAType = true;
+                        typeWordAsSpelled = asWritten instanceof AnyWordValue spelled
+                                ? spelled.spelling()
+                                : said;
+                        category = ErrorCategory.named(said).orElseThrow(() ->
+                                Raised.of(EvaluationFailure.INVALID_ARG, asWritten));
+                    }
+                    case "id" -> {
+                        namedAnId = true;
+                        errorId = said;
+                        unknownId = asWritten;
+                    }
+                    case "arg1" -> subject = Optional.of(asWritten);
+                    case "arg2" -> second = Optional.of(asWritten);
+                    case "arg3" -> third = Optional.of(asWritten);
+                    default -> { }
+                }
+            }
+            if (!namedAType || !namedAnId) {
+                throw new Raised(ErrorValue.of(ErrorCategory.INTERNAL,
+                        "invalid-error", "an error spec names a type and an id"));
+            }
+            refuseAnErrorTheCatalogueHasNot(
+                    category, errorId, unknownId, theSpecAsWritten, fromAnObject);
+            ErrorValue built = new ErrorValue(category, errorId, errorId, subject,
+                    second, third, Optional.empty(), Optional.empty(),
+                    new LinkedHashMap<>());
+            built.write("type", WordValue.of(typeWordAsSpelled));
+            return maker.spokenHere(built);
+        }
+
+        private void refuseAnErrorTheCatalogueHasNot(
+                ErrorCategory category, String errorId, Value asWritten, Value spec,
+                boolean fromAnObject) {
+
+            if (!ErrorCatalogue.idsIn(category.spelling()).contains(errorId)) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, asWritten);
+            }
+            if (!fromAnObject && ErrorCatalogue.codeFor(category.spelling(), errorId)
+                    < ErrorCatalogue.LOWEST_CODE_AN_ENTRY_HAS) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
+            }
+        }
     }
 
     @Override
@@ -302,7 +398,7 @@ public record ErrorValue(
     }
 
     private String theFieldItNamesOrTheItemItself(Value item) {
-        if (item instanceof AnyWordValue word && word.datatype().isAnyWord()) {
+        if (item instanceof AnyWordValue word) {
             Optional<Value> held = field(word.canonical());
             if (held.isPresent()) {
                 return Molder.mold(held.get());
@@ -378,7 +474,7 @@ public record ErrorValue(
 
     @Override
     public Datatype datatype() {
-        return Datatype.ERROR;
+        return TYPE;
     }
 
     @Override

@@ -3,7 +3,6 @@ package org.jebol.domain.eval.actions;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.Value;
@@ -21,7 +20,7 @@ public abstract class ActorFirstPortAction extends PortAction {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("port", Set.of(Datatype.PORT)));
+        return List.of(Parameter.required("port", Set.of(PortValue.TYPE)));
     }
 
     @Override

@@ -1,5 +1,7 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.eval.EventPath;
+
 import java.util.*;
 
 /**
@@ -84,13 +86,26 @@ public record EventValue(
 
     @Override
     public Value make(Value spec, Maker maker) {
-        return maker.makeEventFrom(this, spec);
+        return EventPath.made(spec, maker::simpleValueOf);
     }
 
     @Override
     public Datatype datatype() {
-        return Datatype.EVENT;
+        return TYPE;
     }
+
+    public static final Datatype TYPE = new Datatype("event") {
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            return EventPath.made(spec, maker::simpleValueOf);
+        }
+
+        @Override
+        public Value convertedFrom(Value value, Maker maker) {
+            return madeFrom(value, maker);
+        }
+    };
 
     public EventValue withType(int index) {
         return new EventValue(index, flags, model, data, attached);

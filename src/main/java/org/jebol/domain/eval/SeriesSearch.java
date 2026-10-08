@@ -5,7 +5,6 @@ import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.HandleValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Molder;
@@ -145,9 +144,9 @@ public final class SeriesSearch {
             return wildcards.patternEnd(text.head().text(), at, end, Molder.form(wanted),
                     refinements.contains("case")) >= 0;
         }
-        if ((wanted instanceof DatatypeValue || wanted instanceof TypesetValue)
+        if ((wanted instanceof Datatype || wanted instanceof TypesetValue)
                 && !refinements.contains("only")) {
-            return wanted instanceof DatatypeValue(Datatype represents)
+            return wanted instanceof Datatype represents
                     ? items.get(at).datatype() == represents
                     : ((TypesetValue) wanted).holds(items.get(at).datatype());
         }

@@ -4,7 +4,7 @@ import org.jebol.domain.eval.crypto.EllipticCurveKey;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.HandleValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
@@ -29,9 +29,9 @@ public class EcdhNative extends CipherNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("key", Set.of(Datatype.HANDLE, Datatype.NONE)),
-                Parameter.belongingTo("init", "type", Set.of(Datatype.WORD)),
-                Parameter.belongingTo("secret", "public-key", Set.of(Datatype.BINARY)));
+        return List.of(Parameter.required("key", Set.of(HandleValue.TYPE, NoneValue.TYPE)),
+                Parameter.belongingTo("init", "type", Set.of(WordValue.TYPE)),
+                Parameter.belongingTo("secret", "public-key", Set.of(BinaryValue.TYPE)));
     }
 
     @Override

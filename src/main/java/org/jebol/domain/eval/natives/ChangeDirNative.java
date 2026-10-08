@@ -4,7 +4,6 @@ import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.FileValue;
@@ -27,7 +26,7 @@ public class ChangeDirNative extends HostNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("path", Set.of(Datatype.FILE)));
+        return List.of(Parameter.required("path", Set.of(FileValue.TYPE)));
     }
 
     @Override

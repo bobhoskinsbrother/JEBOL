@@ -34,6 +34,49 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         return maker.makeStructFrom(this, spec);
     }
 
+    public static final Datatype TYPE = new StructDatatype();
+
+    private static final class StructDatatype extends Datatype {
+
+        StructDatatype() {
+            super("struct");
+        }
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            if (!(spec instanceof AnyBlockValue given)) {
+                throw refusing(spec);
+            }
+            List<Value> written = given.remaining();
+            boolean carriesInitialValues = written.size() == 2
+                    && written.get(0) instanceof AnyBlockValue
+                    && written.get(1) instanceof AnyBlockValue;
+            AnyBlockValue layout = carriesInitialValues && written.getFirst() instanceof AnyBlockValue first
+                    ? first
+                    : given;
+            StructValue made = StructValue.of(laidOutBy(layout, maker));
+            if (carriesInitialValues) {
+                made.startedWith(written.get(1));
+            }
+            return made;
+        }
+
+        @Override
+        public Value convertedFrom(Value value, Maker maker) {
+            return madeFrom(value, maker);
+        }
+
+        private StructSpec laidOutBy(AnyBlockValue layout, Maker maker) {
+            try {
+                return StructSpec.of(layout, maker.structLayouts());
+            } catch (StructLayoutRefused refused) {
+                throw Raised.of(refused.malconstructed()
+                        ? EvaluationFailure.MALCONSTRUCT
+                        : EvaluationFailure.INVALID_ARG, refused.offending());
+            }
+        }
+    }
+
     public static StructValue of(StructSpec spec) {
         return new StructValue(spec, new StructData(spec.size()), 0);
     }
@@ -351,7 +394,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
 
     @Override
     public Datatype datatype() {
-        return Datatype.STRUCT;
+        return TYPE;
     }
 
     @Override

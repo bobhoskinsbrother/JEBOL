@@ -1,6 +1,8 @@
 package org.jebol.domain.eval.natives;
 
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.BinaryValue;
+import org.jebol.domain.value.FileValue;
+import org.jebol.domain.value.HandleValue;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
@@ -16,8 +18,8 @@ public class LoadExtensionNative extends ExtensionPointNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("name", Set.of(Datatype.FILE, Datatype.BINARY)),
-                Parameter.belongingTo("dispatch", "function", Set.of(Datatype.HANDLE)));
+                Parameter.required("name", Set.of(FileValue.TYPE, BinaryValue.TYPE)),
+                Parameter.belongingTo("dispatch", "function", Set.of(HandleValue.TYPE)));
     }
 
     @Override

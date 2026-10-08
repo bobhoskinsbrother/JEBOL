@@ -1,8 +1,41 @@
 package org.jebol.domain.value;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 public final class EmailValue extends AnyStringValue {
 
     private static final char SEPARATES_THE_USER_FROM_THE_HOST = '@';
+
+    public static final AnyStringDatatype TYPE = new AnyStringDatatype("email") {
+
+        @Override
+        public AnyStringValue holding(StringStorage storage, int index) {
+            return new EmailValue(storage, index);
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return from instanceof AnyBlockValue parts
+                    ? addressBuiltFrom(parts)
+                    : super.built(asking, from, maker);
+        }
+
+        private Value addressBuiltFrom(AnyBlockValue parts) {
+            List<Value> written = parts.remaining();
+            if (written.isEmpty()) {
+                throw refusing(parts);
+            }
+            String user = Molder.form(written.getFirst());
+            if (written.size() == 1) {
+                return EmailValue.of(user);
+            }
+            String host = written.subList(1, written.size()).stream()
+                    .map(Molder::form)
+                    .collect(Collectors.joining("."));
+            return EmailValue.of(user + SEPARATES_THE_USER_FROM_THE_HOST + host);
+        }
+    };
 
     EmailValue(StringStorage storage, int index) {
         super(storage, index);
@@ -14,7 +47,7 @@ public final class EmailValue extends AnyStringValue {
 
     @Override
     public Datatype datatype() {
-        return Datatype.EMAIL;
+        return TYPE;
     }
 
     @Override

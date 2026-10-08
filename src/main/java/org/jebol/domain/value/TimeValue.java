@@ -1,5 +1,6 @@
 package org.jebol.domain.value;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.function.ToLongFunction;
 
@@ -142,14 +143,140 @@ public record TimeValue(long nanoseconds) implements Value {
     }
 
     @Override
-    public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
-        return java.util.Optional.of(inHundredths(
+    public Optional<Value> asDecimal(AnyDecimalValue.AnyDecimalDatatype wanted, Conversion asking) {
+        return Optional.of(inHundredths(
                 wanted, (double) nanoseconds / NANOSECONDS_PER_SECOND));
     }
 
     @Override
     public Datatype datatype() {
-        return Datatype.TIME;
+        return TYPE;
+    }
+
+    public static final Datatype TYPE = new TimeDatatype();
+
+    private static final class TimeDatatype extends Datatype {
+
+        private static final double MOST_SECONDS_A_DURATION_HOLDS = 9_223_372_036.0;
+
+        private static final long MOST_SECONDS_A_TIME_HOLDS = 9_223_372_036L;
+
+        private static final long SECONDS_AN_HOUR = 3600L;
+
+        TimeDatatype() {
+            super("time", Typeset.SCALAR);
+        }
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            return spec instanceof AnyBlockValue parts
+                    ? timeFromParts(parts.remaining())
+                    : super.madeFrom(spec, maker);
+        }
+
+        @Override
+        public Value constructedFrom(List<Value> contents, Construction construction) {
+            return construction.madeOf(this, contents.getFirst());
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return switch (from) {
+                case TimeValue already -> already;
+                case StringValue written -> theTimeScannedFrom(written);
+                case BlockValue parts -> aTimeOfHoursMinutesAndSeconds(parts);
+                case ParenValue parts -> aTimeOfHoursMinutesAndSeconds(parts);
+                case IntegerValue number -> aDurationOfSeconds(number, number.magnitude());
+                case DecimalValue number -> aDurationOfSeconds(number, number.quantity());
+                default -> throw refusing(from);
+            };
+        }
+
+        private Value timeFromParts(List<Value> parts) {
+            if (parts.isEmpty() || parts.size() > 3
+                    || !(parts.get(0) instanceof IntegerValue(long hours))) {
+                throw refusing(BlockValue.block(parts));
+            }
+            boolean negative = hours < 0;
+            long seconds = Math.abs(hours) * SECONDS_AN_HOUR;
+            long fraction = 0;
+            if (parts.size() > 1) {
+                if (!(parts.get(1) instanceof IntegerValue(long minutes)) || minutes < 0) {
+                    throw refusing(BlockValue.block(parts));
+                }
+                seconds += minutes * 60;
+            }
+            if (parts.size() > 2) {
+                switch (parts.get(2)) {
+                    case IntegerValue whole when whole.magnitude() >= 0 ->
+                            seconds += whole.magnitude();
+                    case AnyDecimalValue part -> {
+                        seconds += (long) part.quantity();
+                        fraction = Math.round(
+                                (part.quantity() - (long) part.quantity()) * NANOSECONDS_PER_SECOND);
+                    }
+                    default -> throw refusing(BlockValue.block(parts));
+                }
+            }
+            long total = seconds * NANOSECONDS_PER_SECOND + fraction;
+            return ofNanoseconds(negative ? -total : total);
+        }
+
+        private Value aDurationOfSeconds(Value value, double seconds) {
+            if (seconds < -MOST_SECONDS_A_DURATION_HOLDS || seconds > MOST_SECONDS_A_DURATION_HOLDS) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, value);
+            }
+            return ofNanoseconds(TimeActions.wholeNanosecondsOf(value));
+        }
+
+        private Value aTimeOfHoursMinutesAndSeconds(AnyBlockValue parts) {
+            List<Value> given = parts.remaining();
+            if (given.isEmpty() || given.size() > 3
+                    || !(given.getFirst() instanceof IntegerValue(long hours))) {
+                throw refusing(parts);
+            }
+            boolean negated = hours < 0;
+            long seconds = whatFitsInThirtyTwoBits(Math.abs(hours), parts) * SECONDS_AN_HOUR;
+            double fraction = 0.0;
+            for (int at = 1; at < given.size(); at++) {
+                if (seconds > MOST_SECONDS_A_TIME_HOLDS) {
+                    throw refusing(parts);
+                }
+                Value part = given.get(at);
+                if (at == 2 && part instanceof DecimalValue fractional) {
+                    fraction = fractional.quantity();
+                    if (seconds + (long) fraction + 1 > MOST_SECONDS_A_TIME_HOLDS) {
+                        throw refusing(parts);
+                    }
+                    break;
+                }
+                if (!(part instanceof IntegerValue(long magnitude)) || magnitude < 0) {
+                    throw refusing(parts);
+                }
+                seconds += whatFitsInThirtyTwoBits(magnitude, parts) * (at == 1 ? 60L : 1L);
+            }
+            if (seconds > MOST_SECONDS_A_TIME_HOLDS) {
+                throw refusing(parts);
+            }
+            long nanoseconds = seconds * NANOSECONDS_PER_SECOND
+                    + Math.round(fraction * NANOSECONDS_PER_SECOND);
+            return ofNanoseconds(negated ? -nanoseconds : nanoseconds);
+        }
+
+        private long whatFitsInThirtyTwoBits(long magnitude, Value about) {
+            if (magnitude > Integer.MAX_VALUE) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, about);
+            }
+            return magnitude;
+        }
+
+        private Value theTimeScannedFrom(StringValue given) {
+            ScanningATime scanning = new ScanningATime(new WrittenText(given.text()).theOneTimeIn());
+            if (!scanning.readsATime()) {
+                throw refusing(given);
+            }
+            return ofNanoseconds(scanning.nanoseconds());
+        }
     }
 
     @Override

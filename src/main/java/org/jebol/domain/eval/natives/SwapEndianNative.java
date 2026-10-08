@@ -3,7 +3,6 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Parameter;
@@ -31,8 +30,8 @@ public class SwapEndianNative extends EncodingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("value", Set.of(Datatype.BINARY)),
-                Parameter.belongingTo("width", "bytes", Set.of(Datatype.INTEGER)),
+                Parameter.required("value", Set.of(BinaryValue.TYPE)),
+                Parameter.belongingTo("width", "bytes", Set.of(IntegerValue.TYPE)),
                 Parameter.belongingTo("part", "range", aCountOrPosition()));
     }
 

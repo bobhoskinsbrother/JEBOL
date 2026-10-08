@@ -13,7 +13,7 @@ import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
+import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.HandleValue;
@@ -63,11 +63,11 @@ public class QueryAction extends PortAction {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("target", Set.of(Datatype.FILE, Datatype.DATE,
-                        Datatype.HANDLE, Datatype.PORT, Datatype.URL,
-                        Datatype.BLOCK, Datatype.WORD, Datatype.VECTOR)),
+                Parameter.required("target", Set.of(FileValue.TYPE, DateValue.TYPE,
+                        HandleValue.TYPE, PortValue.TYPE, UrlValue.TYPE,
+                        BlockValue.TYPE, WordValue.TYPE, VectorValue.TYPE)),
                 Parameter.required("field",
-                        Set.of(Datatype.WORD, Datatype.BLOCK, Datatype.NONE, Datatype.DATATYPE)));
+                        Set.of(WordValue.TYPE, BlockValue.TYPE, NoneValue.TYPE, Datatype.TYPE)));
     }
 
     @Override
@@ -200,7 +200,7 @@ public class QueryAction extends PortAction {
         }
 
         Raised cannotUse(AnyWordValue asked, Datatype datatype) {
-            return Raised.of(EvaluationFailure.CANNOT_USE, asked, DatatypeValue.of(datatype));
+            return Raised.of(EvaluationFailure.CANNOT_USE, asked, datatype);
         }
     }
 
@@ -232,7 +232,7 @@ public class QueryAction extends PortAction {
 
         @Override
         Value unknownAlone(AnyWordValue asked) {
-            throw cannotUse(asked, Datatype.VECTOR);
+            throw cannotUse(asked, VectorValue.TYPE);
         }
     }
 
@@ -292,7 +292,7 @@ public class QueryAction extends PortAction {
 
         @Override
         Value unknownAlone(AnyWordValue asked) {
-            throw cannotUse(asked, Datatype.HANDLE);
+            throw cannotUse(asked, HandleValue.TYPE);
         }
 
         @Override

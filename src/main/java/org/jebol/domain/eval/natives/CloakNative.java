@@ -3,7 +3,7 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Parameter;
@@ -26,8 +26,8 @@ public abstract class CloakNative extends EncodingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("data", Set.of(Datatype.BINARY)),
-                Parameter.required("key", Set.of(Datatype.STRING, Datatype.BINARY, Datatype.INTEGER)));
+                Parameter.required("data", Set.of(BinaryValue.TYPE)),
+                Parameter.required("key", Set.of(StringValue.TYPE, BinaryValue.TYPE, IntegerValue.TYPE)));
     }
 
     @Override

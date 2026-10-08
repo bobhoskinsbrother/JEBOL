@@ -4,7 +4,11 @@ import org.jebol.domain.eval.Asked;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.BitsetValue;
+import org.jebol.domain.value.GobValue;
+import org.jebol.domain.value.MapValue;
+import org.jebol.domain.value.ObjectValue;
+import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
@@ -21,7 +25,7 @@ public abstract class AddingAction extends SeriesOrFileAction {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series", Typeset.SERIES.membersAnd(
-                        Datatype.PORT, Datatype.MAP, Datatype.GOB, Datatype.OBJECT, Datatype.BITSET)),
+                        PortValue.TYPE, MapValue.TYPE, GobValue.TYPE, ObjectValue.TYPE, BitsetValue.TYPE)),
                 Parameter.required("value", Typeset.ANY_TYPE.members()),
                 Parameter.belongingTo("part", "range", aPartLimit()),
                 Parameter.belongingTo("dup", "count", aDuplicateCount()));

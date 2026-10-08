@@ -5,7 +5,7 @@ import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.IntegerValue;
@@ -37,9 +37,9 @@ public class ChecksumNative extends EncodingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("data", Set.of(Datatype.BINARY, Datatype.STRING, Datatype.FILE)),
-                Parameter.required("method", Set.of(Datatype.WORD)),
-                Parameter.belongingTo("with", "spec", anyStringOr(Datatype.BINARY, Datatype.INTEGER)),
+                Parameter.required("data", Set.of(BinaryValue.TYPE, StringValue.TYPE, FileValue.TYPE)),
+                Parameter.required("method", Set.of(WordValue.TYPE)),
+                Parameter.belongingTo("with", "spec", anyStringOr(BinaryValue.TYPE, IntegerValue.TYPE)),
                 Parameter.belongingTo("part", "length", aPartLimit()));
     }
 
@@ -103,7 +103,7 @@ public class ChecksumNative extends EncodingNative {
     private int hashOf(Value value) {
         return value instanceof BinaryValue bytes
                 ? encodings.murmurOf(bytes.octetsFromHere())
-                : encodings.caseFoldedHashOf(value.asOctets()) ^ value.datatype().ordinal();
+                : encodings.caseFoldedHashOf(value.asOctets()) ^ value.datatype().numberTheCGivesIt();
     }
 
     private Value theContentsOfThatFileSummed(

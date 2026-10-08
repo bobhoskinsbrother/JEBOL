@@ -4,43 +4,49 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AWordKnowsItsOwnKindTest {
 
+    private final List<AnyWordValue.AnyWordDatatype> everyWordDatatype = List.of(
+            WordValue.TYPE, SetWordValue.TYPE, GetWordValue.TYPE, LitWordValue.TYPE,
+            RefinementValue.TYPE, IssueValue.TYPE);
+
     @Nested
     @DisplayName("building one from a datatype")
     class FromADatatype {
 
-        @ParameterizedTest
-        @EnumSource(value = Datatype.class, names = {"WORD", "SET_WORD", "GET_WORD", "LIT_WORD", "REFINEMENT", "ISSUE"})
+        @Test
         @DisplayName("each any-word! datatype builds a word that answers to that datatype")
-        void eachWordDatatypeBuildsItsOwnKind(Datatype asked) {
-            assertThat(AnyWordValue.ofTheDatatype("a", asked).datatype()).isEqualTo(asked);
+        void eachWordDatatypeBuildsItsOwnKind() {
+            assertThat(everyWordDatatype).allSatisfy(asked ->
+                    assertThat(asked.spelt("a").datatype()).isSameAs(asked));
         }
 
         @Test
         @DisplayName("and the class is the kind, so the tag never has to be asked")
         void theClassIsTheKind() {
-            assertThat(AnyWordValue.ofTheDatatype("a", Datatype.WORD)).isInstanceOf(WordValue.class);
-            assertThat(AnyWordValue.ofTheDatatype("a", Datatype.SET_WORD)).isInstanceOf(SetWordValue.class);
-            assertThat(AnyWordValue.ofTheDatatype("a", Datatype.GET_WORD)).isInstanceOf(GetWordValue.class);
-            assertThat(AnyWordValue.ofTheDatatype("a", Datatype.LIT_WORD)).isInstanceOf(LitWordValue.class);
-            assertThat(AnyWordValue.ofTheDatatype("a", Datatype.REFINEMENT)).isInstanceOf(RefinementValue.class);
-            assertThat(AnyWordValue.ofTheDatatype("a", Datatype.ISSUE)).isInstanceOf(IssueValue.class);
+            assertThat(WordValue.TYPE.spelt("a")).isInstanceOf(WordValue.class);
+            assertThat(SetWordValue.TYPE.spelt("a")).isInstanceOf(SetWordValue.class);
+            assertThat(GetWordValue.TYPE.spelt("a")).isInstanceOf(GetWordValue.class);
+            assertThat(LitWordValue.TYPE.spelt("a")).isInstanceOf(LitWordValue.class);
+            assertThat(RefinementValue.TYPE.spelt("a")).isInstanceOf(RefinementValue.class);
+            assertThat(IssueValue.TYPE.spelt("a")).isInstanceOf(IssueValue.class);
         }
 
-        @ParameterizedTest
-        @EnumSource(value = Datatype.class, names = {"STRING", "BLOCK", "PATH", "SET_PATH", "DATATYPE"})
-        @DisplayName("a datatype outside any-word! is refused")
-        void aDatatypeOutsideTheFamilyIsRefused(Datatype asked) {
-            assertThatThrownBy(() -> AnyWordValue.ofTheDatatype("a", asked))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("any-word!");
+        @Test
+        @DisplayName("a value outside any-word! cannot be seen as a word")
+        void aValueOutsideTheFamilyIsRefused() {
+            assertThat(List.<Value>of(StringValue.of("a"), BlockValue.block(), PathValue.of(List.of()),
+                    IntegerValue.TYPE)).allSatisfy(outside ->
+                    assertThatThrownBy(() -> WordValue.TYPE.as(outside))
+                            .isInstanceOfSatisfying(Raised.class, raised ->
+                                    assertThat(raised.error().errorId()).isEqualTo("not-same-class")));
         }
     }
 
@@ -83,15 +89,16 @@ class AWordKnowsItsOwnKindTest {
     @DisplayName("binding")
     class Binding {
 
-        @ParameterizedTest
-        @EnumSource(value = Datatype.class, names = {"WORD", "SET_WORD", "GET_WORD", "LIT_WORD", "REFINEMENT", "ISSUE"})
+        @Test
         @DisplayName("binding a word keeps its kind")
-        void bindingKeepsTheKind(Datatype kind) {
+        void bindingKeepsTheKind() {
             Context somewhere = Context.root();
-            AnyWordValue bound = AnyWordValue.ofTheDatatype("a", kind).boundTo(somewhere);
+            assertThat(everyWordDatatype).allSatisfy(kind -> {
+                AnyWordValue bound = kind.spelt("a").boundTo(somewhere);
 
-            assertThat(bound.datatype()).isEqualTo(kind);
-            assertThat(bound.binding()).isSameAs(somewhere);
+                assertThat(bound.datatype()).isSameAs(kind);
+                assertThat(bound.binding()).isSameAs(somewhere);
+            });
         }
 
         @Test
@@ -102,16 +109,16 @@ class AWordKnowsItsOwnKindTest {
 
             assertThat(bound.asWord().binding()).isSameAs(somewhere);
             assertThat(bound.asSetWord().binding()).isSameAs(somewhere);
-            assertThat(bound.as(Datatype.GET_WORD).binding()).isSameAs(somewhere);
-            assertThat(bound.as(Datatype.GET_WORD)).isInstanceOf(GetWordValue.class);
+            assertThat(GetWordValue.TYPE.as(bound)).isInstanceOfSatisfying(GetWordValue.class,
+                    seen -> assertThat(seen.binding()).isSameAs(somewhere));
         }
 
         @Test
         @DisplayName("seeing a word as a kind outside any-word! is refused")
         void anotherKindOutsideTheFamilyIsRefused() {
-            assertThatThrownBy(() -> WordValue.of("a").as(Datatype.STRING))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("any-word!");
+            assertThatThrownBy(() -> StringValue.TYPE.as(WordValue.of("a")))
+                    .isInstanceOfSatisfying(Raised.class, raised ->
+                            assertThat(raised.error().errorId()).isEqualTo("not-same-class"));
         }
     }
 
@@ -130,11 +137,11 @@ class AWordKnowsItsOwnKindTest {
             assertThat(IssueValue.of("a").mold()).isEqualTo("#a");
         }
 
-        @ParameterizedTest
-        @EnumSource(value = Datatype.class, names = {"WORD", "SET_WORD", "GET_WORD", "LIT_WORD", "REFINEMENT", "ISSUE"})
+        @Test
         @DisplayName("every kind is formed as its bare spelling")
-        void everyKindIsFormedBare(Datatype kind) {
-            assertThat(AnyWordValue.ofTheDatatype("Abc", kind).form()).isEqualTo("Abc");
+        void everyKindIsFormedBare() {
+            assertThat(everyWordDatatype).allSatisfy(kind ->
+                    assertThat(kind.spelt("Abc").form()).isEqualTo("Abc"));
         }
     }
 

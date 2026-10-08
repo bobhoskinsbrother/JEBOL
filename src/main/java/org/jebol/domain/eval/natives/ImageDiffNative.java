@@ -16,10 +16,10 @@ public class ImageDiffNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("a", Set.of(Datatype.IMAGE)),
-                Parameter.required("b", Set.of(Datatype.IMAGE)),
-                Parameter.belongingTo("part", "offset", Set.of(Datatype.PAIR)),
-                Parameter.belongingTo("part", "size", Set.of(Datatype.PAIR)));
+        return List.of(Parameter.required("a", Set.of(ImageValue.TYPE)),
+                Parameter.required("b", Set.of(ImageValue.TYPE)),
+                Parameter.belongingTo("part", "offset", Set.of(PairValue.TYPE)),
+                Parameter.belongingTo("part", "size", Set.of(PairValue.TYPE)));
     }
 
     @Override

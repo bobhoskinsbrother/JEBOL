@@ -143,7 +143,7 @@ class WhatEachScreenNativeDeclaresTest {
         void initTopWindowTakesAGob() {
             InitTopWindowNative definition = new InitTopWindowNative(new GrantedServices());
             assertThat(definition.parametersAsWritten()).extracting(Parameter::name).containsExactly("gob");
-            assertThat(declared(definition, "gob").acceptedTypes()).containsExactly(Datatype.GOB);
+            assertThat(declared(definition, "gob").acceptedTypes()).containsExactly(GobValue.TYPE);
         }
 
         @Test
@@ -152,7 +152,7 @@ class WhatEachScreenNativeDeclaresTest {
             ShowNative definition = new ShowNative(new GrantedServices());
             assertThat(definition.parametersAsWritten()).extracting(Parameter::name).containsExactly("gob");
             assertThat(declared(definition, "gob").acceptedTypes())
-                    .containsExactlyInAnyOrder(Datatype.GOB, Datatype.NONE, Datatype.BLOCK);
+                    .containsExactlyInAnyOrder(GobValue.TYPE, NoneValue.TYPE, BlockValue.TYPE);
         }
 
         @Test
@@ -161,11 +161,11 @@ class WhatEachScreenNativeDeclaresTest {
             GuiMetricNative definition = new GuiMetricNative(new GrantedServices());
             assertThat(definition.parametersAsWritten()).extracting(Parameter::name)
                     .containsExactly("keyword", "val", "idx");
-            assertThat(declared(definition, "keyword").acceptedTypes()).containsExactly(Datatype.WORD);
+            assertThat(declared(definition, "keyword").acceptedTypes()).containsExactly(WordValue.TYPE);
             assertThat(declared(definition, "val").acceptedTypes())
                     .isEqualTo(Typeset.ANY_TYPE.members());
             assertThat(declared(definition, "val").owningRefinement()).contains("set");
-            assertThat(declared(definition, "idx").acceptedTypes()).containsExactly(Datatype.INTEGER);
+            assertThat(declared(definition, "idx").acceptedTypes()).containsExactly(IntegerValue.TYPE);
             assertThat(declared(definition, "idx").owningRefinement()).contains("display");
         }
     }

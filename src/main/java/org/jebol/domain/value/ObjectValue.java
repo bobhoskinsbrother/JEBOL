@@ -115,7 +115,66 @@ public record ObjectValue(Context context) implements Value {
 
     @Override
     public Datatype datatype() {
-        return Datatype.OBJECT;
+        return TYPE;
+    }
+
+    public static final Datatype TYPE = new ObjectDatatype();
+
+    private static final class ObjectDatatype extends Datatype {
+
+        ObjectDatatype() {
+            super("object", Typeset.ANY_OBJECT);
+        }
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            return switch (spec) {
+                case AnyBlockValue body -> maker.objectEvaluatedFrom(body);
+                case IntegerValue(long magnitude) -> anEmptyObjectWithRoomFor(spec, magnitude, maker);
+                case DecimalValue number -> anEmptyObjectWithRoomFor(spec, number.quantity(), maker);
+                default -> throw refusing(spec);
+            };
+        }
+
+        private Value anEmptyObjectWithRoomFor(Value spec, double asked, Maker maker) {
+            if (asked < 0) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, spec);
+            }
+            return maker.objectEvaluatedFrom(BlockValue.block());
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            if (!(from instanceof ErrorValue raised)) {
+                throw refusing(from);
+            }
+            if (raised.field("code").orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
+                    && magnitude < ErrorCatalogue.LOWEST_CODE_AN_ENTRY_HAS) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, from);
+            }
+            Context fields = Context.childOf(Context.root());
+            for (String field : ErrorValue.FIELDS) {
+                fields.register(field, raised.field(field).orElseGet(NoneValue::none));
+            }
+            return new ObjectValue(fields);
+        }
+
+        @Override
+        public Value constructedFrom(List<Value> contents, Construction construction) {
+            if (contents.size() != 1 || !(contents.getFirst() instanceof AnyBlockValue fields)) {
+                throw refusingConstruction(contents);
+            }
+            Context built = Context.root();
+            List<Value> items = fields.remaining();
+            for (int at = 0; at < items.size(); at++) {
+                if (!(items.get(at) instanceof SetWordValue name)) {
+                    throw refusingConstruction(contents);
+                }
+                at++;
+                built.register(name.spelling(), at < items.size() ? items.get(at) : NoneValue.none());
+            }
+            return new ObjectValue(built);
+        }
     }
 
     @Override

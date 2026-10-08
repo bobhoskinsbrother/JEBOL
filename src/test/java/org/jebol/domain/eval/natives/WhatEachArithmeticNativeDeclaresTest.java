@@ -172,7 +172,7 @@ class WhatEachArithmeticNativeDeclaresTest {
         void aPercentStaysAPercent() {
             assertThat(answerOf(new AbsoluteAction(), NOTHING,
                     PercentValue.of(-2.0)).datatype())
-                    .isEqualTo(Datatype.PERCENT);
+                    .isEqualTo(PercentValue.TYPE);
         }
     }
 

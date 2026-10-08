@@ -37,7 +37,7 @@ public class EvokeNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("chant",
-                Set.of(Datatype.WORD, Datatype.BLOCK, Datatype.INTEGER)));
+                Set.of(WordValue.TYPE, BlockValue.TYPE, IntegerValue.TYPE)));
     }
 
     @Override

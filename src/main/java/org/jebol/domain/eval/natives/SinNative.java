@@ -1,6 +1,6 @@
 package org.jebol.domain.eval.natives;
 
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
@@ -15,7 +15,7 @@ public class SinNative extends OneNumberNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value", Set.of(Datatype.DECIMAL)));
+        return List.of(Parameter.required("value", Set.of(DecimalValue.TYPE)));
     }
 
     @Override

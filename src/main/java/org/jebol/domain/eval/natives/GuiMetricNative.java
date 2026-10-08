@@ -5,7 +5,6 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.PairValue;
@@ -34,9 +33,9 @@ public class GuiMetricNative extends ScreenNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("keyword", Set.of(Datatype.WORD)),
+                Parameter.required("keyword", Set.of(WordValue.TYPE)),
                 Parameter.belongingTo("set", "val", Typeset.ANY_TYPE.members()),
-                Parameter.belongingTo("display", "idx", Set.of(Datatype.INTEGER)));
+                Parameter.belongingTo("display", "idx", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

@@ -18,7 +18,7 @@ public class StackNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("offset", Set.of(Datatype.INTEGER)));
+        return List.of(Parameter.required("offset", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

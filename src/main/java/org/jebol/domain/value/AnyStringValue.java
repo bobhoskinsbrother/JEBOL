@@ -43,21 +43,51 @@ public abstract sealed class AnyStringValue implements RebolSeries
         return false;
     }
 
-    public static AnyStringValue ofTheDatatype(String text, Datatype datatype) {
-        return ofTheDatatype(StringStorage.of(text), 1, datatype);
-    }
+    public abstract static class AnyStringDatatype extends SeriesDatatype {
 
-    public static AnyStringValue ofTheDatatype(StringStorage storage, int index, Datatype datatype) {
-        return switch (datatype) {
-            case STRING -> new StringValue(storage, index);
-            case FILE -> new FileValue(storage, index);
-            case EMAIL -> new EmailValue(storage, index);
-            case REF -> new RefValue(storage, index);
-            case URL -> new UrlValue(storage, index);
-            case TAG -> new TagValue(storage, index);
-            default -> throw new IllegalArgumentException(
-                    datatype.literalSpelling() + " is not an any-string! datatype");
-        };
+        AnyStringDatatype(String spelling) {
+            super(spelling, Typeset.SERIES, Typeset.ANY_STRING);
+        }
+
+        public abstract AnyStringValue holding(StringStorage storage, int index);
+
+        public AnyStringValue holding(String text) {
+            return holding(StringStorage.of(text), 1);
+        }
+
+        @Override
+        protected Value withRoomFor(int asked) {
+            return holding(StringStorage.withRoomFor(asked), 1);
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return holding(textOf(from));
+        }
+
+        protected String textOf(Value value) {
+            return switch (value) {
+                case BinaryValue octets -> octets.decodedAsText();
+                case AnyStringValue already -> already.text();
+                default -> value.runTogether();
+            };
+        }
+
+        @Override
+        public Value as(Value value) {
+            return value instanceof AnyStringValue text
+                    ? holding(text.storage(), text.index())
+                    : super.as(value);
+        }
+
+        @Override
+        protected Value constructedFromOne(Value only, Construction construction) {
+            return switch (only) {
+                case AnyStringValue text -> as(text);
+                case BinaryValue _ -> construction.madeOf(this, only);
+                default -> throw refusingConstruction(List.of(only));
+            };
+        }
     }
 
     public AnyStringValue holding(String text) {
@@ -292,7 +322,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
 
     @Override
     public Optional<Value[]> broughtTogetherWith(Value other) {
-        return other.datatype().isAnyString() ? both(this, other) : Optional.empty();
+        return other instanceof AnyStringValue ? both(this, other) : Optional.empty();
     }
 
     @Override
@@ -332,10 +362,6 @@ public abstract sealed class AnyStringValue implements RebolSeries
     @Override
     public AnyStringValue tail() {
         return atIndex(storage.length() + 1);
-    }
-
-    public AnyStringValue as(Datatype otherDatatype) {
-        return ofTheDatatype(storage, index, otherDatatype);
     }
 
     public String text() {

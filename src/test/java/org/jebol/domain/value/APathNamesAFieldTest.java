@@ -2,8 +2,6 @@ package org.jebol.domain.value;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.List;
 
@@ -29,16 +27,15 @@ class APathNamesAFieldTest {
         return holding("account", new ObjectValue(holding("balance", IntegerValue.of(10))));
     }
 
-    @ParameterizedTest(name = "{0}")
-    @EnumSource(value = Datatype.class, names = {"PATH", "SET_PATH", "GET_PATH", "LIT_PATH"})
+    @Test
     @DisplayName("every kind of path names the field it ends on")
-    void everyKindOfPath(Datatype kind) {
+    void everyKindOfPath() {
         Context script = aScriptHoldingAnObject();
-        AnyBlockValue named = BlockValue.block(List.of(
-                boundIn("account", script), WordValue.of("balance"))).as(kind);
-
-        assertThat(named.fieldThePathNames()).hasValueSatisfying(slot ->
-                assertThat(slot.value()).isEqualTo(IntegerValue.of(10)));
+        assertThat(List.of(PathValue.TYPE, SetPathValue.TYPE, GetPathValue.TYPE, LitPathValue.TYPE))
+                .allSatisfy(kind -> assertThat(kind.holding(List.of(
+                                boundIn("account", script), WordValue.of("balance"))).fieldThePathNames())
+                        .hasValueSatisfying(slot ->
+                                assertThat(slot.value()).isEqualTo(IntegerValue.of(10))));
     }
 
     @Test

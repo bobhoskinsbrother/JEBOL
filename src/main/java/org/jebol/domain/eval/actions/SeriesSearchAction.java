@@ -1,6 +1,7 @@
 package org.jebol.domain.eval.actions;
 
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.ActionValue;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
@@ -16,7 +17,7 @@ public abstract class SeriesSearchAction extends DefaultNative implements Action
         return List.of(Parameter.required("series"),
                 Parameter.required("value", Typeset.ANY_TYPE.members()),
                 Parameter.belongingTo("part", "range", aPartLimit()),
-                Parameter.belongingTo("with", "wild", Set.of(Datatype.STRING)),
-                Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)));
+                Parameter.belongingTo("with", "wild", Set.of(StringValue.TYPE)),
+                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }
 }

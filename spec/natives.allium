@@ -1077,6 +1077,7 @@ rule AWellFormedReturnAnnotationRoundTripsThroughSpecOf {
 rule MakeOnAFunctionAnswersOneWithTheNewSpecification {
     when: EvaluateCall(make, original, parts)
     requires: is_any_function(original)
+    requires: not is_op(original)
     requires: is_block(first_of(parts))
 
     ensures: CallResult(value: a_function_whose_spec_is(first_of(parts)))
@@ -1086,6 +1087,7 @@ rule MakeOnAFunctionAnswersOneWithTheNewSpecification {
 rule ADerivedFunctionKeepsTheBehaviourUnlessANewBodyIsGiven {
     when: EvaluateCall(make, original, parts)
     requires: is_any_function(original)
+    requires: not is_op(original)
     requires: count_of(parts) < 2
 
     ensures: CallResult(value: a_function_that_does_what(original) does)
@@ -1152,6 +1154,73 @@ rule MakingFromANativePrototypeWithABodyIsRefused {
 
     ensures: CallFails(error: cannot_use, about: definition)
 }
+
+-- An operator is never a prototype. MAKE from one refuses whatever it is
+-- given, a block with a specification and body, a `*` and a body, or a
+-- number: `make := [* [value1 > value2]]` raises cannot-use naming what was
+-- offered and op!. A real R3 answers the same for all three.
+--
+-- This is the instance, not the datatype. `make op! [[a b] [a]]` builds an
+-- operator from a two-argument function, and stays as it was.
+rule MakingFromAnOperatorPrototypeIsRefused {
+    when: EvaluateCall(make, prototype, definition)
+    requires: is_op(prototype)
+
+    ensures: CallFails(error: cannot_use, about: definition)
+}
+
+-- Six datatypes have no values: end!, frame!, rebcode!, command!, library!
+-- and utype!. Every way of building one is refused, and a real R3 refuses
+-- them the same way. MAKE and TO answer bad-make-arg naming the datatype and
+-- what was offered, whether the offer is a block, a number or none: `make
+-- frame! []` gives arg1 frame! and arg2 [].
+--
+-- utype! is the exception in wording rather than in outcome. MAKE refuses
+-- it as an invalid argument naming what was offered, and TO as an invalid
+-- type naming utype! itself.
+--
+-- The construction syntax refuses all six as malconstruct, the same as any
+-- other literal the reader cannot build: `#(frame! [])` does not read.
+rule MakingADatatypeWithNoValuesIsRefused {
+    when: EvaluateCall(make, datatype, offered)
+    requires: has_no_values(datatype)
+    requires: datatype != utype
+
+    ensures: CallFails(error: bad_make_arg, about: datatype, and: offered)
+}
+
+rule ConvertingToADatatypeWithNoValuesIsRefused {
+    when: EvaluateCall(to, datatype, offered)
+    requires: has_no_values(datatype)
+    requires: datatype != utype
+
+    ensures: CallFails(error: bad_make_arg, about: datatype, and: offered)
+}
+
+rule MakingAUtypeIsRefusedAsAnInvalidArgument {
+    when: EvaluateCall(make, datatype, offered)
+    requires: datatype = utype
+
+    ensures: CallFails(error: invalid_arg, about: offered)
+}
+
+rule ConvertingToAUtypeIsRefusedAsAnInvalidType {
+    when: EvaluateCall(to, datatype, offered)
+    requires: datatype = utype
+
+    ensures: CallFails(error: invalid_type, about: datatype)
+}
+
+rule ConstructingADatatypeWithNoValuesIsMalconstructed {
+    when: ReadConstruction(datatype, contents)
+    requires: has_no_values(datatype)
+
+    ensures: ReadFails(error: malconstruct, about: contents)
+}
+
+open question "A real R3 answers `make utype! [[x] [x]]` with a value rather than a refusal -- a spec and a body make a user-defined type there, a feature R3-Alpha started and never finished. JEBOL refuses it as an invalid argument, as it does every other offer. Is a user-defined type something JEBOL should ever build, or is utype! a name kept only so scripts that mention it still read?"
+
+open question "A real R3 answers `make command! [[x] [x]]` and `to command! [[x] [x]]` with bad-func-def, because the command arm tries to read the block as a function definition before it finds it has no extension to bind to. JEBOL answers bad-make-arg naming command!, as it does for every other offer. Should JEBOL reproduce the C's attempt, or keep the one refusal on the grounds that no command can exist?"
 
 -- === Making a module ========================================
 

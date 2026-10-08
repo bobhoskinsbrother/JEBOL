@@ -1,4 +1,4 @@
-package org.jebol.domain.eval;
+package org.jebol.domain.value;
 
 final class ScanningATime {
 

@@ -119,7 +119,7 @@ class WhatEachRemainingNativeDeclaresTest {
                 for (Datatype datatype : Typeset.ANY_TYPE.members()) {
                     assertThat(each.accepts(datatype)).as(datatype.literalSpelling()).isTrue();
                 }
-                assertThat(each.accepts(Datatype.UNSET)).isTrue();
+                assertThat(each.accepts(UnsetValue.TYPE)).isTrue();
             }
         }
 
@@ -137,11 +137,11 @@ class WhatEachRemainingNativeDeclaresTest {
         void traceTakesAnIntegerOrALogic() {
             Parameter mode = new TraceNative().parametersAsWritten().getFirst();
             assertThat(mode.name()).isEqualTo("mode");
-            assertThat(mode.accepts(Datatype.INTEGER)).isTrue();
-            assertThat(mode.accepts(Datatype.LOGIC)).isTrue();
-            assertThat(mode.accepts(Datatype.DECIMAL)).isFalse();
-            assertThat(mode.accepts(Datatype.NONE)).isFalse();
-            assertThat(mode.accepts(Datatype.STRING)).isFalse();
+            assertThat(mode.accepts(IntegerValue.TYPE)).isTrue();
+            assertThat(mode.accepts(LogicValue.TYPE)).isTrue();
+            assertThat(mode.accepts(DecimalValue.TYPE)).isFalse();
+            assertThat(mode.accepts(NoneValue.TYPE)).isFalse();
+            assertThat(mode.accepts(StringValue.TYPE)).isFalse();
         }
 
         @Test
@@ -150,13 +150,13 @@ class WhatEachRemainingNativeDeclaresTest {
             List<Parameter> declared = new LoadExtensionNative().parametersAsWritten();
             assertThat(declared).extracting(Parameter::name).containsExactly("name", "function");
             Parameter name = declared.get(0);
-            assertThat(name.accepts(Datatype.FILE)).isTrue();
-            assertThat(name.accepts(Datatype.BINARY)).isTrue();
-            assertThat(name.accepts(Datatype.STRING)).isFalse();
+            assertThat(name.accepts(FileValue.TYPE)).isTrue();
+            assertThat(name.accepts(BinaryValue.TYPE)).isTrue();
+            assertThat(name.accepts(StringValue.TYPE)).isFalse();
             Parameter function = declared.get(1);
             assertThat(function.owningRefinement()).contains("dispatch");
-            assertThat(function.accepts(Datatype.HANDLE)).isTrue();
-            assertThat(function.accepts(Datatype.NONE)).isFalse();
+            assertThat(function.accepts(HandleValue.TYPE)).isTrue();
+            assertThat(function.accepts(NoneValue.TYPE)).isFalse();
         }
 
         @Test
@@ -164,13 +164,13 @@ class WhatEachRemainingNativeDeclaresTest {
         void doCallbackTakesAnEventAndDoCommandsABlock() {
             Parameter event = new DoCallbackNative().parametersAsWritten().getFirst();
             assertThat(event.name()).isEqualTo("event");
-            assertThat(event.accepts(Datatype.EVENT)).isTrue();
-            assertThat(event.accepts(Datatype.INTEGER)).isFalse();
+            assertThat(event.accepts(EventValue.TYPE)).isTrue();
+            assertThat(event.accepts(IntegerValue.TYPE)).isFalse();
             Parameter commands = new DoCommandsNative().parametersAsWritten().getFirst();
             assertThat(commands.name()).isEqualTo("commands");
-            assertThat(commands.accepts(Datatype.BLOCK)).isTrue();
-            assertThat(commands.accepts(Datatype.PAREN)).isFalse();
-            assertThat(commands.accepts(Datatype.INTEGER)).isFalse();
+            assertThat(commands.accepts(BlockValue.TYPE)).isTrue();
+            assertThat(commands.accepts(ParenValue.TYPE)).isFalse();
+            assertThat(commands.accepts(IntegerValue.TYPE)).isFalse();
         }
 
         @Test
@@ -179,15 +179,15 @@ class WhatEachRemainingNativeDeclaresTest {
             List<Parameter> declared = new AccessOsNative(new GrantedServices()).parametersAsWritten();
             assertThat(declared).extracting(Parameter::name).containsExactly("field", "value");
             Parameter field = declared.get(0);
-            assertThat(field.accepts(Datatype.WORD)).isTrue();
-            assertThat(field.accepts(Datatype.LIT_WORD)).isFalse();
-            assertThat(field.accepts(Datatype.INTEGER)).isFalse();
+            assertThat(field.accepts(WordValue.TYPE)).isTrue();
+            assertThat(field.accepts(LitWordValue.TYPE)).isFalse();
+            assertThat(field.accepts(IntegerValue.TYPE)).isFalse();
             Parameter value = declared.get(1);
             assertThat(value.owningRefinement()).contains("set");
-            assertThat(value.accepts(Datatype.INTEGER)).isTrue();
-            assertThat(value.accepts(Datatype.BLOCK)).isTrue();
-            assertThat(value.accepts(Datatype.DECIMAL)).isFalse();
-            assertThat(value.accepts(Datatype.STRING)).isFalse();
+            assertThat(value.accepts(IntegerValue.TYPE)).isTrue();
+            assertThat(value.accepts(BlockValue.TYPE)).isTrue();
+            assertThat(value.accepts(DecimalValue.TYPE)).isFalse();
+            assertThat(value.accepts(StringValue.TYPE)).isFalse();
         }
 
         @ParameterizedTest(name = "spec-of :{0} is r3's")

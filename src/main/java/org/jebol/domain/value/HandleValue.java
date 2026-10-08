@@ -1,5 +1,7 @@
 package org.jebol.domain.value;
 
+import java.util.List;
+
 /**
  * An opaque thing the runtime owns and a script can only pass around.
  *
@@ -73,8 +75,26 @@ public record HandleValue(
 
     @Override
     public Datatype datatype() {
-        return Datatype.HANDLE;
+        return TYPE;
     }
+
+    public static final Datatype TYPE = new Datatype("handle") {
+
+        @Override
+        public Value constructedFrom(List<Value> contents, Construction construction) {
+            throw refusingConstruction(contents);
+        }
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            throw Raised.of(EvaluationFailure.CANNOT_USE, SetWordValue.of("make"), this);
+        }
+
+        @Override
+        public Value convertedFrom(Value value, Maker maker) {
+            throw Raised.of(EvaluationFailure.CANNOT_USE, SetWordValue.of("to"), this);
+        }
+    };
 
     public boolean isContext() {
         return kind == Kind.CONTEXT;

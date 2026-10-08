@@ -1,0 +1,2607 @@
+make end! []	E bad-make-arg #(end!)
+make end! 1	E bad-make-arg #(end!)
+make end! -1	E bad-make-arg #(end!)
+make end! 1.5	E bad-make-arg #(end!)
+make end! {12}	E bad-make-arg #(end!)
+make end! {a b}	E bad-make-arg #(end!)
+make end! none	E bad-make-arg #(end!)
+make end! [1 2]	E bad-make-arg #(end!)
+make end! #{01020304}	E bad-make-arg #(end!)
+make end! 'a	E bad-make-arg #(end!)
+make end! #"a"	E bad-make-arg #(end!)
+make end! 1x2	E bad-make-arg #(end!)
+make end! 10%	E bad-make-arg #(end!)
+make end! 1.2.3	E bad-make-arg #(end!)
+make end! 12:00	E bad-make-arg #(end!)
+make end! $1	E bad-make-arg #(end!)
+make end! true	E bad-make-arg #(end!)
+make end! %f	E bad-make-arg #(end!)
+make end! [a: 1]	E bad-make-arg #(end!)
+make end! [[x] [x]]	E bad-make-arg #(end!)
+make end! integer!	E bad-make-arg #(end!)
+make end! #abc	E bad-make-arg #(end!)
+make end! a@b	E bad-make-arg #(end!)
+make end! http://x	E bad-make-arg #(end!)
+make unset! []	#(unset)
+make unset! 1	#(unset)
+make unset! -1	#(unset)
+make unset! 1.5	#(unset)
+make unset! {12}	#(unset)
+make unset! {a b}	#(unset)
+make unset! none	#(unset)
+make unset! [1 2]	#(unset)
+make unset! #{01020304}	#(unset)
+make unset! 'a	#(unset)
+make unset! #"a"	#(unset)
+make unset! 1x2	#(unset)
+make unset! 10%	#(unset)
+make unset! 1.2.3	#(unset)
+make unset! 12:00	#(unset)
+make unset! $1	#(unset)
+make unset! true	#(unset)
+make unset! %f	#(unset)
+make unset! [a: 1]	#(unset)
+make unset! [[x] [x]]	#(unset)
+make unset! integer!	#(unset)
+make unset! #abc	#(unset)
+make unset! a@b	#(unset)
+make unset! http://x	#(unset)
+make none! []	_
+make none! 1	_
+make none! -1	_
+make none! 1.5	_
+make none! {12}	_
+make none! {a b}	_
+make none! none	_
+make none! [1 2]	_
+make none! #{01020304}	_
+make none! 'a	_
+make none! #"a"	_
+make none! 1x2	_
+make none! 10%	_
+make none! 1.2.3	_
+make none! 12:00	_
+make none! $1	_
+make none! true	_
+make none! %f	_
+make none! [a: 1]	_
+make none! [[x] [x]]	_
+make none! integer!	_
+make none! #abc	_
+make none! a@b	_
+make none! http://x	_
+make logic! []	#(true)
+make logic! 1	#(true)
+make logic! -1	#(true)
+make logic! 1.5	#(true)
+make logic! {12}	#(true)
+make logic! {a b}	#(true)
+make logic! none	#(false)
+make logic! [1 2]	#(true)
+make logic! #{01020304}	#(true)
+make logic! 'a	#(true)
+make logic! #"a"	#(true)
+make logic! 1x2	#(true)
+make logic! 10%	#(true)
+make logic! 1.2.3	#(true)
+make logic! 12:00	#(true)
+make logic! $1	#(true)
+make logic! true	#(true)
+make logic! %f	#(true)
+make logic! [a: 1]	#(true)
+make logic! [[x] [x]]	#(true)
+make logic! integer!	#(true)
+make logic! #abc	#(true)
+make logic! a@b	#(true)
+make logic! http://x	#(true)
+make integer! []	E bad-make-arg #(integer!)
+make integer! 1	1
+make integer! -1	-1
+make integer! 1.5	1
+make integer! {12}	12
+make integer! none	E bad-make-arg #(integer!)
+make integer! [1 2]	E bad-make-arg #(integer!)
+make integer! #{01020304}	16909060
+make integer! 'a	E bad-make-arg #(integer!)
+make integer! #"a"	97
+make integer! 1x2	E bad-make-arg #(integer!)
+make integer! 10%	0
+make integer! 1.2.3	E bad-make-arg #(integer!)
+make integer! 12:00	43200
+make integer! $1	1
+make integer! true	1
+make integer! %f	E bad-make-arg #(integer!)
+make integer! [a: 1]	E bad-make-arg #(integer!)
+make integer! [[x] [x]]	E bad-make-arg #(integer!)
+make integer! integer!	E bad-make-arg #(integer!)
+make integer! #abc	2748
+make integer! a@b	E bad-make-arg #(integer!)
+make integer! http://x	E bad-make-arg #(integer!)
+make decimal! []	E bad-make-arg #(decimal!)
+make decimal! 1	1.0
+make decimal! -1	-1.0
+make decimal! 1.5	1.5
+make decimal! {12}	12.0
+make decimal! none	E bad-make-arg #(decimal!)
+make decimal! [1 2]	100.0
+make decimal! #{01020304}	8.3541856494683883e-317
+make decimal! 'a	E bad-make-arg #(decimal!)
+make decimal! #"a"	97.0
+make decimal! 1x2	E bad-make-arg #(decimal!)
+make decimal! 10%	0.10000000000000001
+make decimal! 1.2.3	E bad-make-arg #(decimal!)
+make decimal! 12:00	43200.0
+make decimal! $1	1.0
+make decimal! true	1.0
+make decimal! %f	E bad-make-arg #(decimal!)
+make decimal! [a: 1]	E bad-make-arg #(decimal!)
+make decimal! [[x] [x]]	E bad-make-arg #(decimal!)
+make decimal! integer!	E bad-make-arg #(decimal!)
+make decimal! #abc	E bad-make-arg #(decimal!)
+make decimal! a@b	E bad-make-arg #(decimal!)
+make decimal! http://x	E bad-make-arg #(decimal!)
+make percent! []	E bad-make-arg #(percent!)
+make percent! 1	100%
+make percent! -1	-100%
+make percent! 1.5	150%
+make percent! {12}	12%
+make percent! none	E bad-make-arg #(percent!)
+make percent! [1 2]	100%
+make percent! #{01020304}	8.3542054120942219e-317%
+make percent! 'a	E bad-make-arg #(percent!)
+make percent! #"a"	9700%
+make percent! 1x2	E bad-make-arg #(percent!)
+make percent! 10%	10.000000000000001%
+make percent! 1.2.3	E bad-make-arg #(percent!)
+make percent! 12:00	43200%
+make percent! $1	100%
+make percent! true	100%
+make percent! %f	E bad-make-arg #(percent!)
+make percent! integer!	E bad-make-arg #(percent!)
+make percent! #abc	E bad-make-arg #(percent!)
+make percent! a@b	E bad-make-arg #(percent!)
+make percent! http://x	E bad-make-arg #(percent!)
+make money! []	E bad-make-arg #(money!)
+make money! 1	$1
+make money! -1	-$1
+make money! 1.5	$1.5
+make money! {12}	$12
+make money! none	E bad-make-arg #(money!)
+make money! [1 2]	E bad-make-arg #(money!)
+make money! #{01020304}	$16909060
+make money! 'a	E bad-make-arg #(money!)
+make money! #"a"	E bad-make-arg #(money!)
+make money! 1x2	E bad-make-arg #(money!)
+make money! 10%	$0.1
+make money! 1.2.3	E bad-make-arg #(money!)
+make money! 12:00	E bad-make-arg #(money!)
+make money! $1	$1
+make money! true	$1
+make money! %f	E bad-make-arg #(money!)
+make money! [a: 1]	E bad-make-arg #(money!)
+make money! [[x] [x]]	E bad-make-arg #(money!)
+make money! integer!	E bad-make-arg #(money!)
+make money! #abc	E bad-make-arg #(money!)
+make money! a@b	E bad-make-arg #(money!)
+make money! http://x	E bad-make-arg #(money!)
+make char! []	E bad-make-arg #(char!)
+make char! 1	#"^A"
+make char! -1	E invalid-char 4294967295
+make char! 1.5	#"^A"
+make char! {12}	#"1"
+make char! {a b}	#"a"
+make char! none	E bad-make-arg #(char!)
+make char! [1 2]	E bad-make-arg #(char!)
+make char! #{01020304}	#"^A"
+make char! 'a	E bad-make-arg #(char!)
+make char! #"a"	#"a"
+make char! 1x2	E bad-make-arg #(char!)
+make char! 10%	E bad-make-arg #(char!)
+make char! 1.2.3	E bad-make-arg #(char!)
+make char! 12:00	E bad-make-arg #(char!)
+make char! $1	E bad-make-arg #(char!)
+make char! true	E bad-make-arg #(char!)
+make char! %f	E bad-make-arg #(char!)
+make char! [a: 1]	E bad-make-arg #(char!)
+make char! [[x] [x]]	E bad-make-arg #(char!)
+make char! integer!	E bad-make-arg #(char!)
+make char! #abc	#"઼"
+make char! a@b	E bad-make-arg #(char!)
+make char! http://x	E bad-make-arg #(char!)
+make pair! []	E bad-make-arg #(pair!)
+make pair! 1	1x1
+make pair! -1	-1x-1
+make pair! 1.5	1.5x1.5
+make pair! {12}	E bad-make-arg #(pair!)
+make pair! none	E bad-make-arg #(pair!)
+make pair! [1 2]	1x2
+make pair! #{01020304}	E bad-make-arg #(pair!)
+make pair! 'a	E bad-make-arg #(pair!)
+make pair! #"a"	E bad-make-arg #(pair!)
+make pair! 1x2	1x2
+make pair! 10%	E bad-make-arg #(pair!)
+make pair! 1.2.3	E bad-make-arg #(pair!)
+make pair! 12:00	E bad-make-arg #(pair!)
+make pair! $1	E bad-make-arg #(pair!)
+make pair! true	E bad-make-arg #(pair!)
+make pair! %f	E bad-make-arg #(pair!)
+make pair! [a: 1]	E bad-make-arg #(pair!)
+make pair! [[x] [x]]	E bad-make-arg #(pair!)
+make pair! integer!	E bad-make-arg #(pair!)
+make pair! #abc	E bad-make-arg #(pair!)
+make pair! a@b	E bad-make-arg #(pair!)
+make pair! http://x	E bad-make-arg #(pair!)
+make tuple! []	0.0.0
+make tuple! 1	E bad-make-arg #(tuple!)
+make tuple! -1	E bad-make-arg #(tuple!)
+make tuple! 1.5	E bad-make-arg #(tuple!)
+make tuple! {12}	12.0.0
+make tuple! none	E bad-make-arg #(tuple!)
+make tuple! [1 2]	1.2.0
+make tuple! #{01020304}	1.2.3.4
+make tuple! 'a	E bad-make-arg #(tuple!)
+make tuple! #"a"	E bad-make-arg #(tuple!)
+make tuple! 1x2	E bad-make-arg #(tuple!)
+make tuple! 10%	E bad-make-arg #(tuple!)
+make tuple! 1.2.3	1.2.3
+make tuple! 12:00	E bad-make-arg #(tuple!)
+make tuple! $1	E bad-make-arg #(tuple!)
+make tuple! true	E bad-make-arg #(tuple!)
+make tuple! %f	E bad-make-arg #(tuple!)
+make tuple! [a: 1]	E bad-make-arg #(tuple!)
+make tuple! [[x] [x]]	E bad-make-arg #(tuple!)
+make tuple! integer!	E bad-make-arg #(tuple!)
+make tuple! #abc	E bad-make-arg #(tuple!)
+make tuple! a@b	E bad-make-arg #(tuple!)
+make tuple! http://x	E bad-make-arg #(tuple!)
+make time! []	E bad-make-arg #(time!)
+make time! 1	0:00:01
+make time! -1	-0:00:01
+make time! 1.5	0:00:01.5
+make time! {12}	E bad-make-arg #(time!)
+make time! none	E bad-make-arg #(time!)
+make time! [1 2]	1:02
+make time! #{01020304}	E bad-make-arg #(time!)
+make time! 'a	E bad-make-arg #(time!)
+make time! #"a"	E bad-make-arg #(time!)
+make time! 1x2	E bad-make-arg #(time!)
+make time! 10%	E bad-make-arg #(time!)
+make time! 1.2.3	E bad-make-arg #(time!)
+make time! 12:00	12:00
+make time! $1	E bad-make-arg #(time!)
+make time! true	E bad-make-arg #(time!)
+make time! %f	E bad-make-arg #(time!)
+make time! [a: 1]	E bad-make-arg #(time!)
+make time! [[x] [x]]	E bad-make-arg #(time!)
+make time! integer!	E bad-make-arg #(time!)
+make time! #abc	E bad-make-arg #(time!)
+make time! a@b	E bad-make-arg #(time!)
+make time! http://x	E bad-make-arg #(time!)
+make date! []	E bad-make-arg #(date!)
+make date! 1	1970-01-01T00:00:01
+make date! -1	1969-12-31T23:59:59
+make date! 1.5	1970-01-01T00:00:01.5
+make date! {12}	E bad-make-arg #(date!)
+make date! none	E bad-make-arg #(date!)
+make date! [1 2]	E bad-make-arg #(date!)
+make date! #{01020304}	E bad-make-arg #(date!)
+make date! 'a	E bad-make-arg #(date!)
+make date! #"a"	E bad-make-arg #(date!)
+make date! 1x2	E bad-make-arg #(date!)
+make date! 10%	E bad-make-arg #(date!)
+make date! 1.2.3	E bad-make-arg #(date!)
+make date! 12:00	E bad-make-arg #(date!)
+make date! $1	E bad-make-arg #(date!)
+make date! true	E bad-make-arg #(date!)
+make date! %f	E bad-make-arg #(date!)
+make date! [a: 1]	E bad-make-arg #(date!)
+make date! [[x] [x]]	E bad-make-arg #(date!)
+make date! integer!	E bad-make-arg #(date!)
+make date! #abc	E bad-make-arg #(date!)
+make date! a@b	E bad-make-arg #(date!)
+make date! http://x	E bad-make-arg #(date!)
+make binary! []	#{}
+make binary! 1	#{}
+make binary! -1	E out-of-range -1
+make binary! 1.5	#{}
+make binary! {12}	#{3132}
+make binary! {a b}	#{612062}
+make binary! none	E bad-make-arg #(binary!)
+make binary! [1 2]	#{0102}
+make binary! #{01020304}	#{01020304}
+make binary! 'a	E invalid-arg a
+make binary! #"a"	#{61}
+make binary! 1x2	E invalid-arg 1x2
+make binary! 1.2.3	#{010203}
+make binary! 12:00	E invalid-arg 12:00
+make binary! $1	#{000000000000000000000001}
+make binary! true	E invalid-arg #(true)
+make binary! %f	#{66}
+make binary! [a: 1]	E invalid-arg a:
+make binary! [[x] [x]]	E invalid-arg [x]
+make binary! integer!	E invalid-arg #(integer!)
+make binary! #abc	E invalid-arg #abc
+make binary! a@b	#{614062}
+make binary! http://x	#{687474703A2F2F78}
+make string! []	""
+make string! 1	""
+make string! -1	E out-of-range -1
+make string! 1.5	""
+make string! {12}	"12"
+make string! {a b}	"a b"
+make string! none	E bad-make-arg #(string!)
+make string! [1 2]	"12"
+make string! #{01020304}	"^A^B^C^D"
+make string! 'a	"a"
+make string! #"a"	"a"
+make string! 1x2	"1x2"
+make string! 10%	"10%"
+make string! 1.2.3	"1.2.3"
+make string! 12:00	"12:00"
+make string! $1	"$1"
+make string! true	"true"
+make string! %f	"f"
+make string! [a: 1]	"a1"
+make string! [[x] [x]]	"xx"
+make string! integer!	"integer!"
+make string! #abc	"abc"
+make string! a@b	"a@b"
+make string! http://x	"http://x"
+make file! []	%""
+make file! 1	%""
+make file! -1	E out-of-range -1
+make file! 1.5	%""
+make file! {12}	%12
+make file! {a b}	%a%20b
+make file! none	E bad-make-arg #(file!)
+make file! [1 2]	%12
+make file! #{01020304}	%%01%02%03%04
+make file! 'a	%a
+make file! #"a"	%a
+make file! 1x2	%1x2
+make file! 10%	%10%25
+make file! 1.2.3	%1.2.3
+make file! 12:00	%12%3A00
+make file! $1	%$1
+make file! true	%true
+make file! %f	%f
+make file! [a: 1]	%a1
+make file! [[x] [x]]	%xx
+make file! integer!	%integer!
+make file! #abc	%abc
+make file! a@b	%a@b
+make file! http://x	%http%3A//x
+make email! []	E bad-make-arg #(email!)
+make email! 1	#(email! "")
+make email! -1	E out-of-range -1
+make email! 1.5	#(email! "")
+make email! {12}	#(email! "12")
+make email! {a b}	#(email! "a b")
+make email! none	E bad-make-arg #(email!)
+make email! [1 2]	1@2
+make email! #{01020304}	#(email! "^A^B^C^D")
+make email! 'a	#(email! "a")
+make email! #"a"	#(email! "a")
+make email! 1x2	#(email! "1x2")
+make email! 10%	#(email! "10%")
+make email! 1.2.3	#(email! "1.2.3")
+make email! 12:00	#(email! "12:00")
+make email! $1	#(email! "$1")
+make email! true	#(email! "true")
+make email! %f	#(email! "f")
+make email! [a: 1]	a@1
+make email! [[x] [x]]	x@x
+make email! integer!	#(email! "integer!")
+make email! #abc	#(email! "abc")
+make email! a@b	a@b
+make email! http://x	#(email! "http://x")
+make ref! []	#(ref! "")
+make ref! 1	#(ref! "")
+make ref! -1	E out-of-range -1
+make ref! 1.5	#(ref! "")
+make ref! {12}	#(ref! "12")
+make ref! {a b}	#(ref! "a b")
+make ref! none	E bad-make-arg #(ref!)
+make ref! [1 2]	#(ref! "12")
+make ref! #{01020304}	#(ref! "^A^B^C^D")
+make ref! 'a	#(ref! "a")
+make ref! #"a"	#(ref! "a")
+make ref! 1x2	#(ref! "1x2")
+make ref! 10%	#(ref! "10%")
+make ref! 1.2.3	#(ref! "1.2.3")
+make ref! 12:00	#(ref! "12:00")
+make ref! $1	#(ref! "$1")
+make ref! true	#(ref! "true")
+make ref! %f	#(ref! "f")
+make ref! [a: 1]	#(ref! "a1")
+make ref! [[x] [x]]	#(ref! "xx")
+make ref! integer!	#(ref! "integer!")
+make ref! #abc	#(ref! "abc")
+make ref! a@b	#(ref! "a@b")
+make ref! http://x	#(ref! "http://x")
+make url! 1	#(url! "")
+make url! -1	E out-of-range -1
+make url! 1.5	#(url! "")
+make url! {12}	#(url! "12")
+make url! {a b}	#(url! "a b")
+make url! none	E bad-make-arg #(url!)
+make url! [1 2]	1://2
+make url! #{01020304}	#(url! "^A^B^C^D")
+make url! 'a	#(url! "a")
+make url! #"a"	#(url! "a")
+make url! 1x2	#(url! "1x2")
+make url! 10%	#(url! "10%")
+make url! 1.2.3	#(url! "1.2.3")
+make url! 12:00	12:00
+make url! $1	#(url! "$1")
+make url! true	#(url! "true")
+make url! %f	#(url! "f")
+make url! [a: 1]	a://1
+make url! [[x] [x]]	x://x
+make url! integer!	#(url! "integer!")
+make url! #abc	#(url! "abc")
+make url! a@b	#(url! "a@b")
+make url! http://x	http://x
+make tag! []	#(tag! "")
+make tag! 1	#(tag! "")
+make tag! -1	E out-of-range -1
+make tag! 1.5	#(tag! "")
+make tag! {12}	<12>
+make tag! {a b}	<a b>
+make tag! none	E bad-make-arg #(tag!)
+make tag! [1 2]	<12>
+make tag! #{01020304}	<>
+make tag! 'a	<a>
+make tag! #"a"	<a>
+make tag! 1x2	<1x2>
+make tag! 10%	<10%>
+make tag! 1.2.3	<1.2.3>
+make tag! 12:00	<12:00>
+make tag! $1	<$1>
+make tag! true	<true>
+make tag! %f	<f>
+make tag! [a: 1]	<a1>
+make tag! [[x] [x]]	<xx>
+make tag! integer!	<integer!>
+make tag! #abc	<abc>
+make tag! a@b	<a@b>
+make tag! http://x	<http://x>
+make bitset! []	#(bitset! #{})
+make bitset! 1	#(bitset! #{00})
+make bitset! {12}	#(bitset! #{00000000000060})
+make bitset! {a b}	#(bitset! #{00000000800000000000000060})
+make bitset! none	E invalid-type #(none!)
+make bitset! [1 2]	#(bitset! #{60})
+make bitset! #{01020304}	#(bitset! #{01020304})
+make bitset! #"a"	#(bitset! #{00000000000000000000000040})
+make bitset! %f	#(bitset! #{00000000000000000000000002})
+make bitset! [a: 1]	E invalid-arg [a: 1]
+make bitset! [[x] [x]]	E invalid-arg [[x] [x]]
+make bitset! a@b	#(bitset! #{00000000000000008000000060})
+make bitset! http://x	#(bitset! #{00000000000100200000000000808880})
+make image! []	E malconstruct []
+make image! 1	E malconstruct 1
+make image! -1	E malconstruct -1
+make image! 1.5	E malconstruct 1.5
+make image! {12}	E malconstruct "12"
+make image! {a b}	E malconstruct "a b"
+make image! none	E malconstruct _
+make image! [1 2]	E malconstruct [1 2]
+make image! #{01020304}	E malconstruct #{01020304}
+make image! 'a	E malconstruct a
+make image! #"a"	E malconstruct #"a"
+make image! 1x2	#(image! 1x2 #{FFFFFFFFFFFF})
+make image! 1.2.3	E malconstruct 1.2.3
+make image! 12:00	E malconstruct 12:00
+make image! $1	E malconstruct $1
+make image! true	E malconstruct #(true)
+make image! %f	E malconstruct %f
+make image! [a: 1]	E malconstruct [a: 1]
+make image! [[x] [x]]	E malconstruct [[x] [x]]
+make image! integer!	E malconstruct #(integer!)
+make image! #abc	E malconstruct #abc
+make image! a@b	E malconstruct a@b
+make image! http://x	E malconstruct http://x
+make vector! []	#(int32! [])
+make vector! 1	#(int32! [0])
+make vector! -1	E out-of-range -1
+make vector! 1.5	#(int32! [0])
+make vector! {12}	E bad-make-arg #(vector!)
+make vector! {a b}	E bad-make-arg #(vector!)
+make vector! none	E bad-make-arg #(vector!)
+make vector! [1 2]	#(int64! [1 2])
+make vector! #{01020304}	#(uint8! [1 2 3 4])
+make vector! 'a	E bad-make-arg #(vector!)
+make vector! #"a"	E bad-make-arg #(vector!)
+make vector! 1x2	E bad-make-arg #(vector!)
+make vector! 10%	E bad-make-arg #(vector!)
+make vector! 1.2.3	E bad-make-arg #(vector!)
+make vector! 12:00	E bad-make-arg #(vector!)
+make vector! $1	E bad-make-arg #(vector!)
+make vector! true	E bad-make-arg #(vector!)
+make vector! %f	E bad-make-arg #(vector!)
+make vector! [a: 1]	E bad-make-arg #(vector!)
+make vector! [[x] [x]]	E bad-make-arg #(vector!)
+make vector! integer!	E bad-make-arg #(vector!)
+make vector! #abc	E bad-make-arg #(vector!)
+make vector! a@b	E bad-make-arg #(vector!)
+make vector! http://x	E bad-make-arg #(vector!)
+make block! []	[]
+make block! 1	[]
+make block! -1	E out-of-range -1
+make block! 1.5	[]
+make block! {12}	[12]
+make block! {a b}	[a b]
+make block! none	E invalid-arg _
+make block! [1 2]	[1 2]
+make block! #{01020304}	[]
+make block! 'a	E invalid-arg a
+make block! #"a"	E invalid-arg #"a"
+make block! 1x2	[]
+make block! 1.2.3	E invalid-arg 1.2.3
+make block! 12:00	E invalid-arg 12:00
+make block! $1	E invalid-arg $1
+make block! true	E invalid-arg #(true)
+make block! %f	E invalid-arg %f
+make block! [a: 1]	[a: 1]
+make block! [[x] [x]]	[[x] [x]]
+make block! integer!	E invalid-arg #(integer!)
+make block! #abc	E invalid-arg #abc
+make block! a@b	E invalid-arg a@b
+make block! http://x	E invalid-arg http://x
+make paren! []	()
+make paren! 1	()
+make paren! -1	E out-of-range -1
+make paren! 1.5	()
+make paren! {12}	(12)
+make paren! {a b}	(a b)
+make paren! none	E invalid-arg _
+make paren! [1 2]	(1 2)
+make paren! #{01020304}	()
+make paren! 'a	E invalid-arg a
+make paren! #"a"	E invalid-arg #"a"
+make paren! 1x2	()
+make paren! 1.2.3	E invalid-arg 1.2.3
+make paren! 12:00	E invalid-arg 12:00
+make paren! $1	E invalid-arg $1
+make paren! true	E invalid-arg #(true)
+make paren! %f	E invalid-arg %f
+make paren! [a: 1]	(a: 1)
+make paren! [[x] [x]]	([x] [x])
+make paren! integer!	E invalid-arg #(integer!)
+make paren! #abc	E invalid-arg #abc
+make paren! a@b	E invalid-arg a@b
+make paren! http://x	E invalid-arg http://x
+make path! []	#(path! [])
+make path! 1	#(path! [])
+make path! -1	E out-of-range -1
+make path! 1.5	#(path! [])
+make path! {12}	#(path! [12])
+make path! {a b}	a/b
+make path! none	E invalid-arg _
+make path! [1 2]	#(path! [1 2])
+make path! #{01020304}	#(path! [])
+make path! 'a	E invalid-arg a
+make path! #"a"	E invalid-arg #"a"
+make path! 1x2	#(path! [])
+make path! 1.2.3	E invalid-arg 1.2.3
+make path! 12:00	E invalid-arg 12:00
+make path! $1	E invalid-arg $1
+make path! true	E invalid-arg #(true)
+make path! %f	E invalid-arg %f
+make path! [a: 1]	#(path! [a: 1])
+make path! [[x] [x]]	#(path! [[x] [x]])
+make path! integer!	E invalid-arg #(integer!)
+make path! #abc	E invalid-arg #abc
+make path! a@b	E invalid-arg a@b
+make path! http://x	E invalid-arg http://x
+make set-path! []	#(set-path! [])
+make set-path! 1	#(set-path! [])
+make set-path! -1	E out-of-range -1
+make set-path! 1.5	#(set-path! [])
+make set-path! {12}	#(set-path! [12])
+make set-path! {a b}	a/b:
+make set-path! none	E invalid-arg _
+make set-path! [1 2]	#(set-path! [1 2])
+make set-path! #{01020304}	#(set-path! [])
+make set-path! 'a	E invalid-arg a
+make set-path! #"a"	E invalid-arg #"a"
+make set-path! 1x2	#(set-path! [])
+make set-path! 1.2.3	E invalid-arg 1.2.3
+make set-path! 12:00	E invalid-arg 12:00
+make set-path! $1	E invalid-arg $1
+make set-path! true	E invalid-arg #(true)
+make set-path! %f	E invalid-arg %f
+make set-path! [a: 1]	#(set-path! [a: 1])
+make set-path! [[x] [x]]	#(set-path! [[x] [x]])
+make set-path! integer!	E invalid-arg #(integer!)
+make set-path! #abc	E invalid-arg #abc
+make set-path! a@b	E invalid-arg a@b
+make set-path! http://x	E invalid-arg http://x
+make get-path! []	#(get-path! [])
+make get-path! 1	#(get-path! [])
+make get-path! -1	E out-of-range -1
+make get-path! 1.5	#(get-path! [])
+make get-path! {12}	#(get-path! [12])
+make get-path! {a b}	:a/b
+make get-path! none	E invalid-arg _
+make get-path! [1 2]	#(get-path! [1 2])
+make get-path! #{01020304}	#(get-path! [])
+make get-path! 'a	E invalid-arg a
+make get-path! #"a"	E invalid-arg #"a"
+make get-path! 1x2	#(get-path! [])
+make get-path! 1.2.3	E invalid-arg 1.2.3
+make get-path! 12:00	E invalid-arg 12:00
+make get-path! $1	E invalid-arg $1
+make get-path! true	E invalid-arg #(true)
+make get-path! %f	E invalid-arg %f
+make get-path! [a: 1]	#(get-path! [a: 1])
+make get-path! [[x] [x]]	#(get-path! [[x] [x]])
+make get-path! integer!	E invalid-arg #(integer!)
+make get-path! #abc	E invalid-arg #abc
+make get-path! a@b	E invalid-arg a@b
+make get-path! http://x	E invalid-arg http://x
+make lit-path! []	#(lit-path! [])
+make lit-path! 1	#(lit-path! [])
+make lit-path! -1	E out-of-range -1
+make lit-path! 1.5	#(lit-path! [])
+make lit-path! {12}	#(lit-path! [12])
+make lit-path! {a b}	'a/b
+make lit-path! none	E invalid-arg _
+make lit-path! [1 2]	#(lit-path! [1 2])
+make lit-path! #{01020304}	#(lit-path! [])
+make lit-path! 'a	E invalid-arg a
+make lit-path! #"a"	E invalid-arg #"a"
+make lit-path! 1x2	#(lit-path! [])
+make lit-path! 1.2.3	E invalid-arg 1.2.3
+make lit-path! 12:00	E invalid-arg 12:00
+make lit-path! $1	E invalid-arg $1
+make lit-path! true	E invalid-arg #(true)
+make lit-path! %f	E invalid-arg %f
+make lit-path! [a: 1]	#(lit-path! [a: 1])
+make lit-path! [[x] [x]]	#(lit-path! [[x] [x]])
+make lit-path! integer!	E invalid-arg #(integer!)
+make lit-path! #abc	E invalid-arg #abc
+make lit-path! a@b	E invalid-arg a@b
+make lit-path! http://x	E invalid-arg http://x
+make hash! -1	E out-of-range -1
+make hash! none	E invalid-arg _
+make hash! 'a	E invalid-arg a
+make hash! #"a"	E invalid-arg #"a"
+make hash! 1.2.3	E invalid-arg 1.2.3
+make hash! 12:00	E invalid-arg 12:00
+make hash! $1	E invalid-arg $1
+make hash! true	E invalid-arg #(true)
+make hash! %f	E invalid-arg %f
+make hash! integer!	E invalid-arg #(integer!)
+make hash! #abc	E invalid-arg #abc
+make hash! a@b	E invalid-arg a@b
+make hash! http://x	E invalid-arg http://x
+make map! []	#(map! [])
+make map! 1	#(map! [])
+make map! 1.5	#(map! [])
+make map! {12}	E bad-make-arg #(map!)
+make map! {a b}	E bad-make-arg #(map!)
+make map! none	E bad-make-arg #(map!)
+make map! [1 2]	#(map! [     1 2 ])
+make map! #{01020304}	E bad-make-arg #(map!)
+make map! 'a	E bad-make-arg #(map!)
+make map! #"a"	E bad-make-arg #(map!)
+make map! 1x2	E bad-make-arg #(map!)
+make map! 10%	E bad-make-arg #(map!)
+make map! 1.2.3	E bad-make-arg #(map!)
+make map! 12:00	E bad-make-arg #(map!)
+make map! $1	E bad-make-arg #(map!)
+make map! true	E bad-make-arg #(map!)
+make map! %f	E bad-make-arg #(map!)
+make map! [a: 1]	#(map! [     a: 1 ])
+make map! [[x] [x]]	#(map! [     [x] [x] ])
+make map! integer!	E bad-make-arg #(map!)
+make map! #abc	E bad-make-arg #(map!)
+make map! a@b	E bad-make-arg #(map!)
+make map! http://x	E bad-make-arg #(map!)
+make datatype! []	E bad-make-arg #(datatype!)
+make datatype! 1	E bad-make-arg #(datatype!)
+make datatype! -1	E bad-make-arg #(datatype!)
+make datatype! 1.5	E bad-make-arg #(datatype!)
+make datatype! {12}	E bad-make-arg #(datatype!)
+make datatype! {a b}	E bad-make-arg #(datatype!)
+make datatype! none	E bad-make-arg #(datatype!)
+make datatype! [1 2]	E bad-make-arg #(datatype!)
+make datatype! #{01020304}	E bad-make-arg #(datatype!)
+make datatype! 'a	E bad-make-arg #(datatype!)
+make datatype! #"a"	E bad-make-arg #(datatype!)
+make datatype! 1x2	E bad-make-arg #(datatype!)
+make datatype! 10%	E bad-make-arg #(datatype!)
+make datatype! 1.2.3	E bad-make-arg #(datatype!)
+make datatype! 12:00	E bad-make-arg #(datatype!)
+make datatype! $1	E bad-make-arg #(datatype!)
+make datatype! true	E bad-make-arg #(datatype!)
+make datatype! %f	E bad-make-arg #(datatype!)
+make datatype! [a: 1]	E bad-make-arg #(datatype!)
+make datatype! [[x] [x]]	E bad-make-arg #(datatype!)
+make datatype! integer!	E bad-make-arg #(datatype!)
+make datatype! #abc	E bad-make-arg #(datatype!)
+make datatype! a@b	E bad-make-arg #(datatype!)
+make datatype! http://x	E bad-make-arg #(datatype!)
+make typeset! []	#(typeset! [])
+make typeset! 1	E bad-make-arg #(typeset!)
+make typeset! -1	E bad-make-arg #(typeset!)
+make typeset! 1.5	E bad-make-arg #(typeset!)
+make typeset! {12}	E bad-make-arg #(typeset!)
+make typeset! {a b}	E bad-make-arg #(typeset!)
+make typeset! none	E bad-make-arg #(typeset!)
+make typeset! [1 2]	E invalid-arg 1
+make typeset! #{01020304}	E bad-make-arg #(typeset!)
+make typeset! 'a	E bad-make-arg #(typeset!)
+make typeset! #"a"	E bad-make-arg #(typeset!)
+make typeset! 1x2	E bad-make-arg #(typeset!)
+make typeset! 10%	E bad-make-arg #(typeset!)
+make typeset! 1.2.3	E bad-make-arg #(typeset!)
+make typeset! 12:00	E bad-make-arg #(typeset!)
+make typeset! $1	E bad-make-arg #(typeset!)
+make typeset! true	E bad-make-arg #(typeset!)
+make typeset! %f	E bad-make-arg #(typeset!)
+make typeset! [a: 1]	E invalid-arg a:
+make typeset! [[x] [x]]	E invalid-arg [x]
+make typeset! integer!	E bad-make-arg #(typeset!)
+make typeset! #abc	E bad-make-arg #(typeset!)
+make typeset! a@b	E bad-make-arg #(typeset!)
+make typeset! http://x	E bad-make-arg #(typeset!)
+make word! []	E expect-val #(word!)
+make word! 1	E expect-val #(word!)
+make word! -1	E expect-val #(word!)
+make word! 1.5	E expect-val #(word!)
+make word! {12}	E invalid-chars _
+make word! {a b}	E invalid-chars _
+make word! none	E expect-val #(word!)
+make word! [1 2]	E expect-val #(word!)
+make word! #{01020304}	E expect-val #(word!)
+make word! 'a	a
+make word! #"a"	a
+make word! 1x2	E expect-val #(word!)
+make word! 10%	E expect-val #(word!)
+make word! 1.2.3	E expect-val #(word!)
+make word! 12:00	E expect-val #(word!)
+make word! $1	E expect-val #(word!)
+make word! true	true
+make word! %f	f
+make word! [a: 1]	E expect-val #(word!)
+make word! [[x] [x]]	E expect-val #(word!)
+make word! integer!	integer!
+make word! #abc	abc
+make word! a@b	E invalid-chars _
+make word! http://x	E invalid-chars _
+make set-word! []	E expect-val #(word!)
+make set-word! 1	E expect-val #(word!)
+make set-word! -1	E expect-val #(word!)
+make set-word! 1.5	E expect-val #(word!)
+make set-word! {12}	E invalid-chars _
+make set-word! {a b}	E invalid-chars _
+make set-word! none	E expect-val #(word!)
+make set-word! [1 2]	E expect-val #(word!)
+make set-word! #{01020304}	E expect-val #(word!)
+make set-word! 'a	a:
+make set-word! #"a"	a:
+make set-word! 1x2	E expect-val #(word!)
+make set-word! 10%	E expect-val #(word!)
+make set-word! 1.2.3	E expect-val #(word!)
+make set-word! 12:00	E expect-val #(word!)
+make set-word! $1	E expect-val #(word!)
+make set-word! true	true:
+make set-word! %f	f:
+make set-word! [a: 1]	E expect-val #(word!)
+make set-word! [[x] [x]]	E expect-val #(word!)
+make set-word! integer!	integer!:
+make set-word! #abc	abc:
+make set-word! a@b	E invalid-chars _
+make set-word! http://x	E invalid-chars _
+make get-word! []	E expect-val #(word!)
+make get-word! 1	E expect-val #(word!)
+make get-word! -1	E expect-val #(word!)
+make get-word! 1.5	E expect-val #(word!)
+make get-word! {12}	E invalid-chars _
+make get-word! {a b}	E invalid-chars _
+make get-word! none	E expect-val #(word!)
+make get-word! [1 2]	E expect-val #(word!)
+make get-word! #{01020304}	E expect-val #(word!)
+make get-word! 'a	:a
+make get-word! #"a"	:a
+make get-word! 1x2	E expect-val #(word!)
+make get-word! 10%	E expect-val #(word!)
+make get-word! 1.2.3	E expect-val #(word!)
+make get-word! 12:00	E expect-val #(word!)
+make get-word! $1	E expect-val #(word!)
+make get-word! true	:true
+make get-word! %f	:f
+make get-word! [a: 1]	E expect-val #(word!)
+make get-word! [[x] [x]]	E expect-val #(word!)
+make get-word! integer!	:integer!
+make get-word! #abc	:abc
+make get-word! a@b	E invalid-chars _
+make get-word! http://x	E invalid-chars _
+make lit-word! []	E expect-val #(word!)
+make lit-word! 1	E expect-val #(word!)
+make lit-word! -1	E expect-val #(word!)
+make lit-word! 1.5	E expect-val #(word!)
+make lit-word! {12}	E invalid-chars _
+make lit-word! {a b}	E invalid-chars _
+make lit-word! none	E expect-val #(word!)
+make lit-word! [1 2]	E expect-val #(word!)
+make lit-word! #{01020304}	E expect-val #(word!)
+make lit-word! 'a	'a
+make lit-word! #"a"	'a
+make lit-word! 1x2	E expect-val #(word!)
+make lit-word! 10%	E expect-val #(word!)
+make lit-word! 1.2.3	E expect-val #(word!)
+make lit-word! 12:00	E expect-val #(word!)
+make lit-word! $1	E expect-val #(word!)
+make lit-word! true	'true
+make lit-word! %f	'f
+make lit-word! [a: 1]	E expect-val #(word!)
+make lit-word! [[x] [x]]	E expect-val #(word!)
+make lit-word! integer!	'integer!
+make lit-word! #abc	'abc
+make lit-word! a@b	E invalid-chars _
+make lit-word! http://x	E invalid-chars _
+make refinement! []	E expect-val #(word!)
+make refinement! 1	E expect-val #(word!)
+make refinement! -1	E expect-val #(word!)
+make refinement! 1.5	E expect-val #(word!)
+make refinement! {12}	E invalid-chars _
+make refinement! {a b}	E invalid-chars _
+make refinement! none	E expect-val #(word!)
+make refinement! [1 2]	E expect-val #(word!)
+make refinement! #{01020304}	E expect-val #(word!)
+make refinement! 'a	/a
+make refinement! #"a"	/a
+make refinement! 1x2	E expect-val #(word!)
+make refinement! 10%	E expect-val #(word!)
+make refinement! 1.2.3	E expect-val #(word!)
+make refinement! 12:00	E expect-val #(word!)
+make refinement! $1	E expect-val #(word!)
+make refinement! true	/true
+make refinement! %f	/f
+make refinement! [a: 1]	E expect-val #(word!)
+make refinement! [[x] [x]]	E expect-val #(word!)
+make refinement! integer!	/integer!
+make refinement! #abc	/abc
+make refinement! a@b	E invalid-chars _
+make refinement! http://x	E invalid-chars _
+make issue! []	E expect-val #(word!)
+make issue! 1	E expect-val #(word!)
+make issue! -1	E expect-val #(word!)
+make issue! 1.5	E expect-val #(word!)
+make issue! {12}	#12
+make issue! {a b}	E invalid-chars _
+make issue! none	E expect-val #(word!)
+make issue! [1 2]	E expect-val #(word!)
+make issue! #{01020304}	E expect-val #(word!)
+make issue! 'a	#a
+make issue! #"a"	#a
+make issue! 1x2	E expect-val #(word!)
+make issue! 10%	E expect-val #(word!)
+make issue! 1.2.3	E expect-val #(word!)
+make issue! 12:00	E expect-val #(word!)
+make issue! $1	E expect-val #(word!)
+make issue! true	#true
+make issue! %f	#f
+make issue! [a: 1]	E expect-val #(word!)
+make issue! [[x] [x]]	E expect-val #(word!)
+make issue! integer!	#integer!
+make issue! #abc	#abc
+make issue! a@b	E invalid-chars _
+make issue! http://x	E invalid-chars _
+make native! []	E bad-make-arg #(native!)
+make native! 1	E bad-make-arg #(native!)
+make native! -1	E bad-make-arg #(native!)
+make native! 1.5	E bad-make-arg #(native!)
+make native! {12}	E bad-make-arg #(native!)
+make native! {a b}	E bad-make-arg #(native!)
+make native! none	E bad-make-arg #(native!)
+make native! [1 2]	E bad-make-arg #(native!)
+make native! #{01020304}	E bad-make-arg #(native!)
+make native! 'a	E bad-make-arg #(native!)
+make native! #"a"	E bad-make-arg #(native!)
+make native! 1x2	E bad-make-arg #(native!)
+make native! 10%	E bad-make-arg #(native!)
+make native! 1.2.3	E bad-make-arg #(native!)
+make native! 12:00	E bad-make-arg #(native!)
+make native! $1	E bad-make-arg #(native!)
+make native! true	E bad-make-arg #(native!)
+make native! %f	E bad-make-arg #(native!)
+make native! [a: 1]	E bad-make-arg #(native!)
+make native! [[x] [x]]	E bad-make-arg #(native!)
+make native! integer!	E bad-make-arg #(native!)
+make native! #abc	E bad-make-arg #(native!)
+make native! a@b	E bad-make-arg #(native!)
+make native! http://x	E bad-make-arg #(native!)
+make action! []	E bad-make-arg #(action!)
+make action! 1	E bad-make-arg #(action!)
+make action! -1	E bad-make-arg #(action!)
+make action! 1.5	E bad-make-arg #(action!)
+make action! {12}	E bad-make-arg #(action!)
+make action! {a b}	E bad-make-arg #(action!)
+make action! none	E bad-make-arg #(action!)
+make action! [1 2]	E bad-make-arg #(action!)
+make action! #{01020304}	E bad-make-arg #(action!)
+make action! 'a	E bad-make-arg #(action!)
+make action! #"a"	E bad-make-arg #(action!)
+make action! 1x2	E bad-make-arg #(action!)
+make action! 10%	E bad-make-arg #(action!)
+make action! 1.2.3	E bad-make-arg #(action!)
+make action! 12:00	E bad-make-arg #(action!)
+make action! $1	E bad-make-arg #(action!)
+make action! true	E bad-make-arg #(action!)
+make action! %f	E bad-make-arg #(action!)
+make action! [a: 1]	E bad-make-arg #(action!)
+make action! [[x] [x]]	E bad-make-arg #(action!)
+make action! integer!	E bad-make-arg #(action!)
+make action! #abc	E bad-make-arg #(action!)
+make action! a@b	E bad-make-arg #(action!)
+make action! http://x	E bad-make-arg #(action!)
+make rebcode! []	E bad-make-arg #(rebcode!)
+make rebcode! 1	E bad-make-arg #(rebcode!)
+make rebcode! -1	E bad-make-arg #(rebcode!)
+make rebcode! 1.5	E bad-make-arg #(rebcode!)
+make rebcode! {12}	E bad-make-arg #(rebcode!)
+make rebcode! {a b}	E bad-make-arg #(rebcode!)
+make rebcode! none	E bad-make-arg #(rebcode!)
+make rebcode! [1 2]	E bad-make-arg #(rebcode!)
+make rebcode! #{01020304}	E bad-make-arg #(rebcode!)
+make rebcode! 'a	E bad-make-arg #(rebcode!)
+make rebcode! #"a"	E bad-make-arg #(rebcode!)
+make rebcode! 1x2	E bad-make-arg #(rebcode!)
+make rebcode! 10%	E bad-make-arg #(rebcode!)
+make rebcode! 1.2.3	E bad-make-arg #(rebcode!)
+make rebcode! 12:00	E bad-make-arg #(rebcode!)
+make rebcode! $1	E bad-make-arg #(rebcode!)
+make rebcode! true	E bad-make-arg #(rebcode!)
+make rebcode! %f	E bad-make-arg #(rebcode!)
+make rebcode! [a: 1]	E bad-make-arg #(rebcode!)
+make rebcode! [[x] [x]]	E bad-make-arg #(rebcode!)
+make rebcode! integer!	E bad-make-arg #(rebcode!)
+make rebcode! #abc	E bad-make-arg #(rebcode!)
+make rebcode! a@b	E bad-make-arg #(rebcode!)
+make rebcode! http://x	E bad-make-arg #(rebcode!)
+make command! []	E bad-make-arg #(command!)
+make command! 1	E bad-make-arg #(command!)
+make command! -1	E bad-make-arg #(command!)
+make command! 1.5	E bad-make-arg #(command!)
+make command! {12}	E bad-make-arg #(command!)
+make command! {a b}	E bad-make-arg #(command!)
+make command! none	E bad-make-arg #(command!)
+make command! [1 2]	E bad-make-arg #(command!)
+make command! #{01020304}	E bad-make-arg #(command!)
+make command! 'a	E bad-make-arg #(command!)
+make command! #"a"	E bad-make-arg #(command!)
+make command! 1x2	E bad-make-arg #(command!)
+make command! 10%	E bad-make-arg #(command!)
+make command! 1.2.3	E bad-make-arg #(command!)
+make command! 12:00	E bad-make-arg #(command!)
+make command! $1	E bad-make-arg #(command!)
+make command! true	E bad-make-arg #(command!)
+make command! %f	E bad-make-arg #(command!)
+make command! [a: 1]	E bad-make-arg #(command!)
+make command! integer!	E bad-make-arg #(command!)
+make command! #abc	E bad-make-arg #(command!)
+make command! a@b	E bad-make-arg #(command!)
+make command! http://x	E bad-make-arg #(command!)
+make op! []	E bad-make-arg #(op!)
+make op! 1	E bad-make-arg #(op!)
+make op! -1	E bad-make-arg #(op!)
+make op! 1.5	E bad-make-arg #(op!)
+make op! {12}	E bad-make-arg #(op!)
+make op! {a b}	E bad-make-arg #(op!)
+make op! none	E bad-make-arg #(op!)
+make op! [1 2]	E bad-make-arg #(op!)
+make op! #{01020304}	E bad-make-arg #(op!)
+make op! 'a	E bad-make-arg #(op!)
+make op! #"a"	E bad-make-arg #(op!)
+make op! 1x2	E bad-make-arg #(op!)
+make op! 10%	E bad-make-arg #(op!)
+make op! 1.2.3	E bad-make-arg #(op!)
+make op! 12:00	E bad-make-arg #(op!)
+make op! $1	E bad-make-arg #(op!)
+make op! true	E bad-make-arg #(op!)
+make op! %f	E bad-make-arg #(op!)
+make op! [a: 1]	E bad-make-arg #(op!)
+make op! [[x] [x]]	E bad-make-arg #(op!)
+make op! integer!	E bad-make-arg #(op!)
+make op! #abc	E bad-make-arg #(op!)
+make op! a@b	E bad-make-arg #(op!)
+make op! http://x	E bad-make-arg #(op!)
+make closure! []	E bad-make-arg #(closure!)
+make closure! 1	E bad-make-arg #(closure!)
+make closure! -1	E bad-make-arg #(closure!)
+make closure! 1.5	E bad-make-arg #(closure!)
+make closure! {12}	E bad-make-arg #(closure!)
+make closure! {a b}	E bad-make-arg #(closure!)
+make closure! none	E bad-make-arg #(closure!)
+make closure! [1 2]	E bad-make-arg #(closure!)
+make closure! #{01020304}	E bad-make-arg #(closure!)
+make closure! 'a	E bad-make-arg #(closure!)
+make closure! #"a"	E bad-make-arg #(closure!)
+make closure! 1x2	E bad-make-arg #(closure!)
+make closure! 10%	E bad-make-arg #(closure!)
+make closure! 1.2.3	E bad-make-arg #(closure!)
+make closure! 12:00	E bad-make-arg #(closure!)
+make closure! $1	E bad-make-arg #(closure!)
+make closure! true	E bad-make-arg #(closure!)
+make closure! %f	E bad-make-arg #(closure!)
+make closure! [a: 1]	E bad-make-arg #(closure!)
+make closure! [[x] [x]]	#(closure! [[x][x]])
+make closure! integer!	E bad-make-arg #(closure!)
+make closure! #abc	E bad-make-arg #(closure!)
+make closure! a@b	E bad-make-arg #(closure!)
+make closure! http://x	E bad-make-arg #(closure!)
+make function! []	E bad-make-arg #(function!)
+make function! 1	E bad-make-arg #(function!)
+make function! -1	E bad-make-arg #(function!)
+make function! 1.5	E bad-make-arg #(function!)
+make function! {12}	E bad-make-arg #(function!)
+make function! {a b}	E bad-make-arg #(function!)
+make function! none	E bad-make-arg #(function!)
+make function! [1 2]	E bad-make-arg #(function!)
+make function! #{01020304}	E bad-make-arg #(function!)
+make function! 'a	E bad-make-arg #(function!)
+make function! #"a"	E bad-make-arg #(function!)
+make function! 1x2	E bad-make-arg #(function!)
+make function! 10%	E bad-make-arg #(function!)
+make function! 1.2.3	E bad-make-arg #(function!)
+make function! 12:00	E bad-make-arg #(function!)
+make function! $1	E bad-make-arg #(function!)
+make function! true	E bad-make-arg #(function!)
+make function! %f	E bad-make-arg #(function!)
+make function! [a: 1]	E bad-make-arg #(function!)
+make function! [[x] [x]]	#(function! [[x][x]])
+make function! integer!	E bad-make-arg #(function!)
+make function! #abc	E bad-make-arg #(function!)
+make function! a@b	E bad-make-arg #(function!)
+make function! http://x	E bad-make-arg #(function!)
+make frame! []	E bad-make-arg #(frame!)
+make frame! 1	E bad-make-arg #(frame!)
+make frame! -1	E bad-make-arg #(frame!)
+make frame! 1.5	E bad-make-arg #(frame!)
+make frame! {12}	E bad-make-arg #(frame!)
+make frame! {a b}	E bad-make-arg #(frame!)
+make frame! none	E bad-make-arg #(frame!)
+make frame! [1 2]	E bad-make-arg #(frame!)
+make frame! #{01020304}	E bad-make-arg #(frame!)
+make frame! 'a	E bad-make-arg #(frame!)
+make frame! #"a"	E bad-make-arg #(frame!)
+make frame! 1x2	E bad-make-arg #(frame!)
+make frame! 10%	E bad-make-arg #(frame!)
+make frame! 1.2.3	E bad-make-arg #(frame!)
+make frame! 12:00	E bad-make-arg #(frame!)
+make frame! $1	E bad-make-arg #(frame!)
+make frame! true	E bad-make-arg #(frame!)
+make frame! %f	E bad-make-arg #(frame!)
+make frame! [a: 1]	E bad-make-arg #(frame!)
+make frame! [[x] [x]]	E bad-make-arg #(frame!)
+make frame! integer!	E bad-make-arg #(frame!)
+make frame! #abc	E bad-make-arg #(frame!)
+make frame! a@b	E bad-make-arg #(frame!)
+make frame! http://x	E bad-make-arg #(frame!)
+make object! []	#(object! [ ])
+make object! 1	#(object! [ ])
+make object! -1	E out-of-range -1
+make object! 1.5	#(object! [ ])
+make object! {12}	E bad-make-arg #(object!)
+make object! {a b}	E bad-make-arg #(object!)
+make object! none	E bad-make-arg #(object!)
+make object! [1 2]	#(object! [ ])
+make object! #{01020304}	E bad-make-arg #(object!)
+make object! 'a	E bad-make-arg #(object!)
+make object! #"a"	E bad-make-arg #(object!)
+make object! 1x2	E bad-make-arg #(object!)
+make object! 10%	E bad-make-arg #(object!)
+make object! 1.2.3	E bad-make-arg #(object!)
+make object! 12:00	E bad-make-arg #(object!)
+make object! $1	E bad-make-arg #(object!)
+make object! true	E bad-make-arg #(object!)
+make object! %f	E bad-make-arg #(object!)
+make object! [a: 1]	#(object! [     a: 1 ])
+make object! [[x] [x]]	#(object! [ ])
+make object! integer!	E bad-make-arg #(object!)
+make object! #abc	E bad-make-arg #(object!)
+make object! a@b	E bad-make-arg #(object!)
+make object! http://x	E bad-make-arg #(object!)
+make error! []	E invalid-error _
+make error! 1	E invalid-arg 1
+make error! -1	E invalid-arg -1
+make error! 1.5	E invalid-arg 1.5
+make error! {12}	E message "12"
+make error! {a b}	E message "a b"
+make error! none	E invalid-arg _
+make error! [1 2]	E invalid-error _
+make error! #{01020304}	E invalid-arg #{01020304}
+make error! 'a	E invalid-arg a
+make error! #"a"	E invalid-arg #"a"
+make error! 1x2	E invalid-arg 1x2
+make error! 10%	E invalid-arg 10.000000000000001%
+make error! 1.2.3	E invalid-arg 1.2.3
+make error! 12:00	E invalid-arg 12:00
+make error! $1	E invalid-arg $1
+make error! true	E invalid-arg #(true)
+make error! %f	E invalid-arg %f
+make error! [a: 1]	E invalid-error _
+make error! [[x] [x]]	E invalid-error _
+make error! integer!	E invalid-arg #(integer!)
+make error! #abc	E invalid-arg #abc
+make error! a@b	E invalid-arg a@b
+make error! http://x	E invalid-arg http://x
+make gob! []	#(gob! [offset: 0x0 size: 100x100])
+make gob! 1	E bad-make-arg #(gob!)
+make gob! -1	E bad-make-arg #(gob!)
+make gob! 1.5	E bad-make-arg #(gob!)
+make gob! {12}	E bad-make-arg #(gob!)
+make gob! {a b}	E bad-make-arg #(gob!)
+make gob! none	E bad-make-arg #(gob!)
+make gob! [1 2]	E expect-val #(set-word!)
+make gob! #{01020304}	E bad-make-arg #(gob!)
+make gob! 'a	E bad-make-arg #(gob!)
+make gob! #"a"	E bad-make-arg #(gob!)
+make gob! 1x2	#(gob! [offset: 0x0 size: 1x2])
+make gob! 10%	E bad-make-arg #(gob!)
+make gob! 1.2.3	E bad-make-arg #(gob!)
+make gob! 12:00	E bad-make-arg #(gob!)
+make gob! $1	E bad-make-arg #(gob!)
+make gob! true	E bad-make-arg #(gob!)
+make gob! %f	E bad-make-arg #(gob!)
+make gob! [a: 1]	E bad-field-set a:
+make gob! [[x] [x]]	E expect-val #(set-word!)
+make gob! integer!	E bad-make-arg #(gob!)
+make gob! #abc	E bad-make-arg #(gob!)
+make gob! a@b	E bad-make-arg #(gob!)
+make gob! http://x	E bad-make-arg #(gob!)
+make event! []	#(event! [ ])
+make event! 1	E expect-val #(event!)
+make event! -1	E expect-val #(event!)
+make event! 1.5	E expect-val #(event!)
+make event! {12}	E expect-val #(event!)
+make event! {a b}	E expect-val #(event!)
+make event! none	E expect-val #(event!)
+make event! [1 2]	E bad-field-set 1
+make event! #{01020304}	E expect-val #(event!)
+make event! 'a	E expect-val #(event!)
+make event! #"a"	E expect-val #(event!)
+make event! 1x2	E expect-val #(event!)
+make event! 10%	E expect-val #(event!)
+make event! 1.2.3	E expect-val #(event!)
+make event! 12:00	E expect-val #(event!)
+make event! $1	E expect-val #(event!)
+make event! true	E expect-val #(event!)
+make event! %f	E expect-val #(event!)
+make event! [a: 1]	E bad-field-set a:
+make event! integer!	E expect-val #(event!)
+make event! #abc	E expect-val #(event!)
+make event! a@b	E expect-val #(event!)
+make event! http://x	E expect-val #(event!)
+make handle! []	E cannot-use make:
+make handle! 1	E cannot-use make:
+make handle! -1	E cannot-use make:
+make handle! 1.5	E cannot-use make:
+make handle! {12}	E cannot-use make:
+make handle! {a b}	E cannot-use make:
+make handle! none	E cannot-use make:
+make handle! [1 2]	E cannot-use make:
+make handle! #{01020304}	E cannot-use make:
+make handle! 'a	E cannot-use make:
+make handle! #"a"	E cannot-use make:
+make handle! 1x2	E cannot-use make:
+make handle! 10%	E cannot-use make:
+make handle! 1.2.3	E cannot-use make:
+make handle! 12:00	E cannot-use make:
+make handle! $1	E cannot-use make:
+make handle! true	E cannot-use make:
+make handle! %f	E cannot-use make:
+make handle! [a: 1]	E cannot-use make:
+make handle! [[x] [x]]	E cannot-use make:
+make handle! integer!	E cannot-use make:
+make handle! #abc	E cannot-use make:
+make handle! a@b	E cannot-use make:
+make handle! http://x	E cannot-use make:
+make struct! []	E malconstruct []
+make struct! 1	E bad-make-arg #(struct!)
+make struct! -1	E bad-make-arg #(struct!)
+make struct! 1.5	E bad-make-arg #(struct!)
+make struct! {12}	E bad-make-arg #(struct!)
+make struct! {a b}	E bad-make-arg #(struct!)
+make struct! none	E bad-make-arg #(struct!)
+make struct! [1 2]	E malconstruct 1
+make struct! #{01020304}	E bad-make-arg #(struct!)
+make struct! 'a	E bad-make-arg #(struct!)
+make struct! #"a"	E bad-make-arg #(struct!)
+make struct! 1x2	E bad-make-arg #(struct!)
+make struct! 10%	E bad-make-arg #(struct!)
+make struct! 1.2.3	E bad-make-arg #(struct!)
+make struct! 12:00	E bad-make-arg #(struct!)
+make struct! $1	E bad-make-arg #(struct!)
+make struct! true	E bad-make-arg #(struct!)
+make struct! %f	E bad-make-arg #(struct!)
+make struct! [a: 1]	E malconstruct a:
+make struct! integer!	E bad-make-arg #(struct!)
+make struct! #abc	E bad-make-arg #(struct!)
+make struct! a@b	E bad-make-arg #(struct!)
+make struct! http://x	E bad-make-arg #(struct!)
+make library! []	E bad-make-arg #(library!)
+make library! 1	E bad-make-arg #(library!)
+make library! -1	E bad-make-arg #(library!)
+make library! 1.5	E bad-make-arg #(library!)
+make library! {12}	E bad-make-arg #(library!)
+make library! {a b}	E bad-make-arg #(library!)
+make library! none	E bad-make-arg #(library!)
+make library! [1 2]	E bad-make-arg #(library!)
+make library! #{01020304}	E bad-make-arg #(library!)
+make library! 'a	E bad-make-arg #(library!)
+make library! #"a"	E bad-make-arg #(library!)
+make library! 1x2	E bad-make-arg #(library!)
+make library! 10%	E bad-make-arg #(library!)
+make library! 1.2.3	E bad-make-arg #(library!)
+make library! 12:00	E bad-make-arg #(library!)
+make library! $1	E bad-make-arg #(library!)
+make library! true	E bad-make-arg #(library!)
+make library! %f	E bad-make-arg #(library!)
+make library! [a: 1]	E bad-make-arg #(library!)
+make library! [[x] [x]]	E bad-make-arg #(library!)
+make library! integer!	E bad-make-arg #(library!)
+make library! #abc	E bad-make-arg #(library!)
+make library! a@b	E bad-make-arg #(library!)
+make library! http://x	E bad-make-arg #(library!)
+make utype! []	E invalid-arg []
+make utype! 1	E invalid-arg 1
+make utype! -1	E invalid-arg -1
+make utype! 1.5	E invalid-arg 1.5
+make utype! {12}	E invalid-arg "12"
+make utype! {a b}	E invalid-arg "a b"
+make utype! none	E invalid-arg _
+make utype! [1 2]	E invalid-arg [1 2]
+make utype! #{01020304}	E invalid-arg #{01020304}
+make utype! 'a	E invalid-arg a
+make utype! #"a"	E invalid-arg #"a"
+make utype! 1x2	E invalid-arg 1x2
+make utype! 10%	E invalid-arg 10.000000000000001%
+make utype! 1.2.3	E invalid-arg 1.2.3
+make utype! 12:00	E invalid-arg 12:00
+make utype! $1	E invalid-arg $1
+make utype! true	E invalid-arg #(true)
+make utype! %f	E invalid-arg %f
+make utype! [a: 1]	E invalid-arg [a: 1]
+make utype! integer!	E invalid-arg #(integer!)
+make utype! #abc	E invalid-arg #abc
+make utype! a@b	E invalid-arg a@b
+make utype! http://x	E invalid-arg http://x
+to end! []	E bad-make-arg #(end!)
+to end! 1	E bad-make-arg #(end!)
+to end! -1	E bad-make-arg #(end!)
+to end! 1.5	E bad-make-arg #(end!)
+to end! {12}	E bad-make-arg #(end!)
+to end! {a b}	E bad-make-arg #(end!)
+to end! none	E bad-make-arg #(end!)
+to end! [1 2]	E bad-make-arg #(end!)
+to end! #{01020304}	E bad-make-arg #(end!)
+to end! 'a	E bad-make-arg #(end!)
+to end! #"a"	E bad-make-arg #(end!)
+to end! 1x2	E bad-make-arg #(end!)
+to end! 10%	E bad-make-arg #(end!)
+to end! 1.2.3	E bad-make-arg #(end!)
+to end! 12:00	E bad-make-arg #(end!)
+to end! $1	E bad-make-arg #(end!)
+to end! true	E bad-make-arg #(end!)
+to end! %f	E bad-make-arg #(end!)
+to end! [a: 1]	E bad-make-arg #(end!)
+to end! [[x] [x]]	E bad-make-arg #(end!)
+to end! integer!	E bad-make-arg #(end!)
+to end! #abc	E bad-make-arg #(end!)
+to end! a@b	E bad-make-arg #(end!)
+to end! http://x	E bad-make-arg #(end!)
+to unset! []	#(unset)
+to unset! 1	#(unset)
+to unset! -1	#(unset)
+to unset! 1.5	#(unset)
+to unset! {12}	#(unset)
+to unset! {a b}	#(unset)
+to unset! none	#(unset)
+to unset! [1 2]	#(unset)
+to unset! #{01020304}	#(unset)
+to unset! 'a	#(unset)
+to unset! #"a"	#(unset)
+to unset! 1x2	#(unset)
+to unset! 10%	#(unset)
+to unset! 1.2.3	#(unset)
+to unset! 12:00	#(unset)
+to unset! $1	#(unset)
+to unset! true	#(unset)
+to unset! %f	#(unset)
+to unset! [a: 1]	#(unset)
+to unset! [[x] [x]]	#(unset)
+to unset! integer!	#(unset)
+to unset! #abc	#(unset)
+to unset! a@b	#(unset)
+to unset! http://x	#(unset)
+to none! []	_
+to none! 1	_
+to none! -1	_
+to none! 1.5	_
+to none! {12}	_
+to none! {a b}	_
+to none! none	_
+to none! [1 2]	_
+to none! #{01020304}	_
+to none! 'a	_
+to none! #"a"	_
+to none! 1x2	_
+to none! 10%	_
+to none! 1.2.3	_
+to none! 12:00	_
+to none! $1	_
+to none! true	_
+to none! %f	_
+to none! [a: 1]	_
+to none! [[x] [x]]	_
+to none! integer!	_
+to none! #abc	_
+to none! a@b	_
+to none! http://x	_
+to logic! []	#(true)
+to logic! 1	#(true)
+to logic! -1	#(true)
+to logic! 1.5	#(true)
+to logic! {12}	#(true)
+to logic! {a b}	#(true)
+to logic! none	#(false)
+to logic! [1 2]	#(true)
+to logic! #{01020304}	#(true)
+to logic! 'a	#(true)
+to logic! #"a"	#(true)
+to logic! 1x2	#(true)
+to logic! 10%	#(true)
+to logic! 1.2.3	#(true)
+to logic! 12:00	#(true)
+to logic! $1	#(true)
+to logic! true	#(true)
+to logic! %f	#(true)
+to logic! [a: 1]	#(true)
+to logic! [[x] [x]]	#(true)
+to logic! integer!	#(true)
+to logic! #abc	#(true)
+to logic! a@b	#(true)
+to logic! http://x	#(true)
+to integer! []	E bad-make-arg #(integer!)
+to integer! 1	1
+to integer! -1	-1
+to integer! 1.5	1
+to integer! {12}	12
+to integer! none	E bad-make-arg #(integer!)
+to integer! [1 2]	E bad-make-arg #(integer!)
+to integer! #{01020304}	16909060
+to integer! 'a	E bad-make-arg #(integer!)
+to integer! #"a"	97
+to integer! 1x2	E bad-make-arg #(integer!)
+to integer! 10%	0
+to integer! 1.2.3	E bad-make-arg #(integer!)
+to integer! 12:00	43200
+to integer! $1	1
+to integer! true	E bad-make-arg #(integer!)
+to integer! %f	E bad-make-arg #(integer!)
+to integer! [a: 1]	E bad-make-arg #(integer!)
+to integer! [[x] [x]]	E bad-make-arg #(integer!)
+to integer! integer!	E bad-make-arg #(integer!)
+to integer! #abc	2748
+to integer! a@b	E bad-make-arg #(integer!)
+to integer! http://x	E bad-make-arg #(integer!)
+to decimal! []	E bad-make-arg #(decimal!)
+to decimal! 1	1.0
+to decimal! -1	-1.0
+to decimal! 1.5	1.5
+to decimal! {12}	12.0
+to decimal! none	E bad-make-arg #(decimal!)
+to decimal! [1 2]	100.0
+to decimal! #{01020304}	8.3541856494683883e-317
+to decimal! 'a	E bad-make-arg #(decimal!)
+to decimal! #"a"	97.0
+to decimal! 1x2	E bad-make-arg #(decimal!)
+to decimal! 10%	0.10000000000000001
+to decimal! 1.2.3	E bad-make-arg #(decimal!)
+to decimal! 12:00	43200.0
+to decimal! $1	1.0
+to decimal! true	E bad-make-arg #(decimal!)
+to decimal! %f	E bad-make-arg #(decimal!)
+to decimal! [a: 1]	E bad-make-arg #(decimal!)
+to decimal! [[x] [x]]	E bad-make-arg #(decimal!)
+to decimal! integer!	E bad-make-arg #(decimal!)
+to decimal! #abc	E bad-make-arg #(decimal!)
+to decimal! a@b	E bad-make-arg #(decimal!)
+to decimal! http://x	E bad-make-arg #(decimal!)
+to percent! []	E bad-make-arg #(percent!)
+to percent! 1	100%
+to percent! -1	-100%
+to percent! 1.5	150%
+to percent! {12}	12%
+to percent! none	E bad-make-arg #(percent!)
+to percent! [1 2]	100%
+to percent! #{01020304}	8.3542054120942219e-317%
+to percent! 'a	E bad-make-arg #(percent!)
+to percent! #"a"	9700%
+to percent! 1x2	E bad-make-arg #(percent!)
+to percent! 10%	10.000000000000001%
+to percent! 1.2.3	E bad-make-arg #(percent!)
+to percent! 12:00	43200%
+to percent! $1	100%
+to percent! true	E bad-make-arg #(percent!)
+to percent! %f	E bad-make-arg #(percent!)
+to percent! integer!	E bad-make-arg #(percent!)
+to percent! #abc	E bad-make-arg #(percent!)
+to percent! a@b	E bad-make-arg #(percent!)
+to percent! http://x	E bad-make-arg #(percent!)
+to money! []	E bad-make-arg #(money!)
+to money! 1	$1
+to money! -1	-$1
+to money! 1.5	$1.5
+to money! {12}	$12
+to money! none	E bad-make-arg #(money!)
+to money! [1 2]	E bad-make-arg #(money!)
+to money! #{01020304}	$16909060
+to money! 'a	E bad-make-arg #(money!)
+to money! #"a"	E bad-make-arg #(money!)
+to money! 1x2	E bad-make-arg #(money!)
+to money! 10%	$0.1
+to money! 1.2.3	E bad-make-arg #(money!)
+to money! 12:00	E bad-make-arg #(money!)
+to money! $1	$1
+to money! true	E bad-make-arg #(money!)
+to money! %f	E bad-make-arg #(money!)
+to money! [a: 1]	E bad-make-arg #(money!)
+to money! [[x] [x]]	E bad-make-arg #(money!)
+to money! integer!	E bad-make-arg #(money!)
+to money! #abc	E bad-make-arg #(money!)
+to money! a@b	E bad-make-arg #(money!)
+to money! http://x	E bad-make-arg #(money!)
+to char! []	E bad-make-arg #(char!)
+to char! 1	#"^A"
+to char! -1	E invalid-char 4294967295
+to char! 1.5	#"^A"
+to char! {12}	#"1"
+to char! {a b}	#"a"
+to char! none	E bad-make-arg #(char!)
+to char! [1 2]	E bad-make-arg #(char!)
+to char! #{01020304}	#"^A"
+to char! 'a	E bad-make-arg #(char!)
+to char! #"a"	#"a"
+to char! 1x2	E bad-make-arg #(char!)
+to char! 10%	E bad-make-arg #(char!)
+to char! 1.2.3	E bad-make-arg #(char!)
+to char! 12:00	E bad-make-arg #(char!)
+to char! $1	E bad-make-arg #(char!)
+to char! true	E bad-make-arg #(char!)
+to char! %f	E bad-make-arg #(char!)
+to char! [a: 1]	E bad-make-arg #(char!)
+to char! [[x] [x]]	E bad-make-arg #(char!)
+to char! integer!	E bad-make-arg #(char!)
+to char! #abc	#"઼"
+to char! a@b	E bad-make-arg #(char!)
+to char! http://x	E bad-make-arg #(char!)
+to pair! []	E bad-make-arg #(pair!)
+to pair! 1	1x1
+to pair! -1	-1x-1
+to pair! 1.5	1.5x1.5
+to pair! {12}	E bad-make-arg #(pair!)
+to pair! none	E bad-make-arg #(pair!)
+to pair! [1 2]	1x2
+to pair! #{01020304}	E bad-make-arg #(pair!)
+to pair! 'a	E bad-make-arg #(pair!)
+to pair! #"a"	E bad-make-arg #(pair!)
+to pair! 1x2	1x2
+to pair! 10%	E bad-make-arg #(pair!)
+to pair! 1.2.3	E bad-make-arg #(pair!)
+to pair! 12:00	E bad-make-arg #(pair!)
+to pair! $1	E bad-make-arg #(pair!)
+to pair! true	E bad-make-arg #(pair!)
+to pair! %f	E bad-make-arg #(pair!)
+to pair! [a: 1]	E bad-make-arg #(pair!)
+to pair! [[x] [x]]	E bad-make-arg #(pair!)
+to pair! integer!	E bad-make-arg #(pair!)
+to pair! #abc	E bad-make-arg #(pair!)
+to pair! a@b	E bad-make-arg #(pair!)
+to pair! http://x	E bad-make-arg #(pair!)
+to tuple! []	0.0.0
+to tuple! 1	E bad-make-arg #(tuple!)
+to tuple! -1	E bad-make-arg #(tuple!)
+to tuple! 1.5	E bad-make-arg #(tuple!)
+to tuple! {12}	12.0.0
+to tuple! none	E bad-make-arg #(tuple!)
+to tuple! [1 2]	1.2.0
+to tuple! #{01020304}	1.2.3.4
+to tuple! 'a	E bad-make-arg #(tuple!)
+to tuple! #"a"	E bad-make-arg #(tuple!)
+to tuple! 1x2	E bad-make-arg #(tuple!)
+to tuple! 10%	E bad-make-arg #(tuple!)
+to tuple! 1.2.3	1.2.3
+to tuple! 12:00	E bad-make-arg #(tuple!)
+to tuple! $1	E bad-make-arg #(tuple!)
+to tuple! true	E bad-make-arg #(tuple!)
+to tuple! %f	E bad-make-arg #(tuple!)
+to tuple! [a: 1]	E bad-make-arg #(tuple!)
+to tuple! [[x] [x]]	E bad-make-arg #(tuple!)
+to tuple! integer!	E bad-make-arg #(tuple!)
+to tuple! #abc	E bad-make-arg #(tuple!)
+to tuple! a@b	E bad-make-arg #(tuple!)
+to tuple! http://x	E bad-make-arg #(tuple!)
+to time! []	E bad-make-arg #(time!)
+to time! 1	0:00:01
+to time! -1	-0:00:01
+to time! 1.5	0:00:01.5
+to time! {12}	E bad-make-arg #(time!)
+to time! none	E bad-make-arg #(time!)
+to time! [1 2]	1:02
+to time! #{01020304}	E bad-make-arg #(time!)
+to time! 'a	E bad-make-arg #(time!)
+to time! #"a"	E bad-make-arg #(time!)
+to time! 1x2	E bad-make-arg #(time!)
+to time! 10%	E bad-make-arg #(time!)
+to time! 1.2.3	E bad-make-arg #(time!)
+to time! 12:00	12:00
+to time! $1	E bad-make-arg #(time!)
+to time! true	E bad-make-arg #(time!)
+to time! %f	E bad-make-arg #(time!)
+to time! [a: 1]	E bad-make-arg #(time!)
+to time! [[x] [x]]	E bad-make-arg #(time!)
+to time! integer!	E bad-make-arg #(time!)
+to time! #abc	E bad-make-arg #(time!)
+to time! a@b	E bad-make-arg #(time!)
+to time! http://x	E bad-make-arg #(time!)
+to date! []	E bad-make-arg #(date!)
+to date! 1	1970-01-01T00:00:01
+to date! -1	1969-12-31T23:59:59
+to date! 1.5	1970-01-01T00:00:01.5
+to date! {12}	E bad-make-arg #(date!)
+to date! none	E bad-make-arg #(date!)
+to date! [1 2]	E bad-make-arg #(date!)
+to date! #{01020304}	E bad-make-arg #(date!)
+to date! 'a	E bad-make-arg #(date!)
+to date! #"a"	E bad-make-arg #(date!)
+to date! 1x2	E bad-make-arg #(date!)
+to date! 10%	E bad-make-arg #(date!)
+to date! 1.2.3	E bad-make-arg #(date!)
+to date! 12:00	E bad-make-arg #(date!)
+to date! $1	E bad-make-arg #(date!)
+to date! true	E bad-make-arg #(date!)
+to date! %f	E bad-make-arg #(date!)
+to date! [a: 1]	E bad-make-arg #(date!)
+to date! [[x] [x]]	E bad-make-arg #(date!)
+to date! integer!	E bad-make-arg #(date!)
+to date! #abc	E bad-make-arg #(date!)
+to date! a@b	E bad-make-arg #(date!)
+to date! http://x	E bad-make-arg #(date!)
+to binary! []	#{}
+to binary! 1	#{0000000000000001}
+to binary! -1	#{FFFFFFFFFFFFFFFF}
+to binary! 1.5	#{3FF8000000000000}
+to binary! {12}	#{3132}
+to binary! {a b}	#{612062}
+to binary! none	E bad-make-arg #(binary!)
+to binary! [1 2]	#{0102}
+to binary! #{01020304}	#{01020304}
+to binary! 'a	E invalid-arg a
+to binary! #"a"	#{61}
+to binary! 1x2	E invalid-arg 1x2
+to binary! 1.2.3	#{010203}
+to binary! 12:00	E invalid-arg 12:00
+to binary! $1	#{000000000000000000000001}
+to binary! true	E invalid-arg #(true)
+to binary! %f	#{66}
+to binary! [a: 1]	E invalid-arg a:
+to binary! [[x] [x]]	E invalid-arg [x]
+to binary! integer!	E invalid-arg #(integer!)
+to binary! #abc	E invalid-arg #abc
+to binary! a@b	#{614062}
+to binary! http://x	#{687474703A2F2F78}
+to string! []	""
+to string! 1	"1"
+to string! -1	"-1"
+to string! 1.5	"1.5"
+to string! {12}	"12"
+to string! {a b}	"a b"
+to string! none	E bad-make-arg #(string!)
+to string! [1 2]	"12"
+to string! #{01020304}	"^A^B^C^D"
+to string! 'a	"a"
+to string! #"a"	"a"
+to string! 1x2	"1x2"
+to string! 10%	"10%"
+to string! 1.2.3	"1.2.3"
+to string! 12:00	"12:00"
+to string! $1	"$1"
+to string! true	"true"
+to string! %f	"f"
+to string! [a: 1]	"a1"
+to string! [[x] [x]]	"xx"
+to string! integer!	"integer!"
+to string! #abc	"abc"
+to string! a@b	"a@b"
+to string! http://x	"http://x"
+to file! []	%""
+to file! 1	%1
+to file! -1	%-1
+to file! 1.5	%1.5
+to file! {12}	%12
+to file! {a b}	%a%20b
+to file! none	E bad-make-arg #(file!)
+to file! [1 2]	%12
+to file! #{01020304}	%%01%02%03%04
+to file! 'a	%a
+to file! #"a"	%a
+to file! 1x2	%1x2
+to file! 10%	%10%25
+to file! 1.2.3	%1.2.3
+to file! 12:00	%12%3A00
+to file! $1	%$1
+to file! true	%true
+to file! %f	%f
+to file! [a: 1]	%a1
+to file! [[x] [x]]	%xx
+to file! integer!	%integer!
+to file! #abc	%abc
+to file! a@b	%a@b
+to file! http://x	%http%3A//x
+to email! []	E bad-make-arg #(email!)
+to email! 1	#(email! "1")
+to email! -1	#(email! "-1")
+to email! 1.5	#(email! "1.5")
+to email! {12}	#(email! "12")
+to email! {a b}	#(email! "a b")
+to email! none	E bad-make-arg #(email!)
+to email! [1 2]	1@2
+to email! #{01020304}	#(email! "^A^B^C^D")
+to email! 'a	#(email! "a")
+to email! #"a"	#(email! "a")
+to email! 1x2	#(email! "1x2")
+to email! 10%	#(email! "10%")
+to email! 1.2.3	#(email! "1.2.3")
+to email! 12:00	#(email! "12:00")
+to email! $1	#(email! "$1")
+to email! true	#(email! "true")
+to email! %f	#(email! "f")
+to email! [a: 1]	a@1
+to email! [[x] [x]]	x@x
+to email! integer!	#(email! "integer!")
+to email! #abc	#(email! "abc")
+to email! a@b	a@b
+to email! http://x	#(email! "http://x")
+to ref! []	#(ref! "")
+to ref! 1	#(ref! "1")
+to ref! -1	#(ref! "-1")
+to ref! 1.5	#(ref! "1.5")
+to ref! {12}	#(ref! "12")
+to ref! {a b}	#(ref! "a b")
+to ref! none	E bad-make-arg #(ref!)
+to ref! [1 2]	#(ref! "12")
+to ref! #{01020304}	#(ref! "^A^B^C^D")
+to ref! 'a	#(ref! "a")
+to ref! #"a"	#(ref! "a")
+to ref! 1x2	#(ref! "1x2")
+to ref! 10%	#(ref! "10%")
+to ref! 1.2.3	#(ref! "1.2.3")
+to ref! 12:00	#(ref! "12:00")
+to ref! $1	#(ref! "$1")
+to ref! true	#(ref! "true")
+to ref! %f	#(ref! "f")
+to ref! [a: 1]	#(ref! "a1")
+to ref! [[x] [x]]	#(ref! "xx")
+to ref! integer!	#(ref! "integer!")
+to ref! #abc	#(ref! "abc")
+to ref! a@b	#(ref! "a@b")
+to ref! http://x	#(ref! "http://x")
+to url! 1	#(url! "1")
+to url! -1	#(url! "-1")
+to url! 1.5	#(url! "1.5")
+to url! {12}	#(url! "12")
+to url! {a b}	#(url! "a b")
+to url! none	E bad-make-arg #(url!)
+to url! [1 2]	1://2
+to url! #{01020304}	#(url! "^A^B^C^D")
+to url! 'a	#(url! "a")
+to url! #"a"	#(url! "a")
+to url! 1x2	#(url! "1x2")
+to url! 10%	#(url! "10%")
+to url! 1.2.3	#(url! "1.2.3")
+to url! 12:00	12:00
+to url! $1	#(url! "$1")
+to url! true	#(url! "true")
+to url! %f	#(url! "f")
+to url! [a: 1]	a://1
+to url! [[x] [x]]	x://x
+to url! integer!	#(url! "integer!")
+to url! #abc	#(url! "abc")
+to url! a@b	#(url! "a@b")
+to url! http://x	http://x
+to tag! []	#(tag! "")
+to tag! 1	<1>
+to tag! -1	<-1>
+to tag! 1.5	<1.5>
+to tag! {12}	<12>
+to tag! {a b}	<a b>
+to tag! none	E bad-make-arg #(tag!)
+to tag! [1 2]	<12>
+to tag! #{01020304}	<>
+to tag! 'a	<a>
+to tag! #"a"	<a>
+to tag! 1x2	<1x2>
+to tag! 10%	<10%>
+to tag! 1.2.3	<1.2.3>
+to tag! 12:00	<12:00>
+to tag! $1	<$1>
+to tag! true	<true>
+to tag! %f	<f>
+to tag! [a: 1]	<a1>
+to tag! [[x] [x]]	<xx>
+to tag! integer!	<integer!>
+to tag! #abc	<abc>
+to tag! a@b	<a@b>
+to tag! http://x	<http://x>
+to bitset! []	#(bitset! #{})
+to bitset! 1	#(bitset! #{00})
+to bitset! {12}	#(bitset! #{00000000000060})
+to bitset! {a b}	#(bitset! #{00000000800000000000000060})
+to bitset! none	E invalid-type #(none!)
+to bitset! [1 2]	#(bitset! #{60})
+to bitset! #{01020304}	#(bitset! #{01020304})
+to bitset! #"a"	#(bitset! #{00000000000000000000000040})
+to bitset! %f	#(bitset! #{00000000000000000000000002})
+to bitset! [a: 1]	E invalid-arg [a: 1]
+to bitset! [[x] [x]]	E invalid-arg [[x] [x]]
+to bitset! a@b	#(bitset! #{00000000000000008000000060})
+to bitset! http://x	#(bitset! #{00000000000100200000000000808880})
+to image! []	E invalid-type #(block!)
+to image! 1	E invalid-type #(integer!)
+to image! -1	E invalid-type #(integer!)
+to image! 1.5	E invalid-type #(decimal!)
+to image! {12}	E invalid-type #(string!)
+to image! {a b}	E invalid-type #(string!)
+to image! none	E invalid-type #(none!)
+to image! [1 2]	E invalid-type #(block!)
+to image! #{01020304}	#(image! 1x1 #{010203} #{04})
+to image! 'a	E invalid-type #(word!)
+to image! #"a"	E invalid-type #(char!)
+to image! 1x2	E invalid-type #(pair!)
+to image! 10%	E invalid-type #(percent!)
+to image! 1.2.3	E invalid-type #(tuple!)
+to image! 12:00	E invalid-type #(time!)
+to image! $1	E invalid-type #(money!)
+to image! true	E invalid-type #(logic!)
+to image! %f	E invalid-type #(file!)
+to image! [a: 1]	E invalid-type #(block!)
+to image! [[x] [x]]	E invalid-type #(block!)
+to image! integer!	E invalid-type #(datatype!)
+to image! #abc	E invalid-type #(issue!)
+to image! a@b	E invalid-type #(email!)
+to image! http://x	E invalid-type #(url!)
+to vector! []	#(int32! [])
+to vector! 1	E bad-make-arg #(vector!)
+to vector! -1	E bad-make-arg #(vector!)
+to vector! 1.5	E bad-make-arg #(vector!)
+to vector! {12}	E bad-make-arg #(vector!)
+to vector! {a b}	E bad-make-arg #(vector!)
+to vector! none	E bad-make-arg #(vector!)
+to vector! [1 2]	#(int64! [1 2])
+to vector! #{01020304}	#(uint8! [1 2 3 4])
+to vector! 'a	E bad-make-arg #(vector!)
+to vector! #"a"	E bad-make-arg #(vector!)
+to vector! 1x2	E bad-make-arg #(vector!)
+to vector! 10%	E bad-make-arg #(vector!)
+to vector! 1.2.3	E bad-make-arg #(vector!)
+to vector! 12:00	E bad-make-arg #(vector!)
+to vector! $1	E bad-make-arg #(vector!)
+to vector! true	E bad-make-arg #(vector!)
+to vector! %f	E bad-make-arg #(vector!)
+to vector! [a: 1]	E bad-make-arg #(vector!)
+to vector! [[x] [x]]	E bad-make-arg #(vector!)
+to vector! integer!	E bad-make-arg #(vector!)
+to vector! #abc	E bad-make-arg #(vector!)
+to vector! a@b	E bad-make-arg #(vector!)
+to vector! http://x	E bad-make-arg #(vector!)
+to block! []	[]
+to block! 1	[1]
+to block! -1	[-1]
+to block! 1.5	[1.5]
+to block! {12}	["12"]
+to block! {a b}	["a b"]
+to block! none	[_]
+to block! [1 2]	[1 2]
+to block! #{01020304}	[#{01020304}]
+to block! 'a	[a]
+to block! #"a"	[#"a"]
+to block! 1x2	[1x2]
+to block! 10%	[10.000000000000001%]
+to block! 1.2.3	[1.2.3]
+to block! 12:00	[12:00]
+to block! $1	[$1]
+to block! true	[#(true)]
+to block! %f	[%f]
+to block! [a: 1]	[a: 1]
+to block! [[x] [x]]	[[x] [x]]
+to block! integer!	[#(integer!)]
+to block! #abc	[#abc]
+to block! a@b	[a@b]
+to block! http://x	[http://x]
+to paren! []	()
+to paren! 1	(1)
+to paren! -1	(-1)
+to paren! 1.5	(1.5)
+to paren! {12}	("12")
+to paren! {a b}	("a b")
+to paren! none	(_)
+to paren! [1 2]	(1 2)
+to paren! #{01020304}	(#{01020304})
+to paren! 'a	(a)
+to paren! #"a"	(#"a")
+to paren! 1x2	(1x2)
+to paren! 10%	(10.000000000000001%)
+to paren! 1.2.3	(1.2.3)
+to paren! 12:00	(12:00)
+to paren! $1	($1)
+to paren! true	(#(true))
+to paren! %f	(%f)
+to paren! [a: 1]	(a: 1)
+to paren! [[x] [x]]	([x] [x])
+to paren! integer!	(#(integer!))
+to paren! #abc	(#abc)
+to paren! a@b	(a@b)
+to paren! http://x	(http://x)
+to path! []	#(path! [])
+to path! 1	#(path! [1])
+to path! -1	#(path! [-1])
+to path! 1.5	#(path! [1.5])
+to path! {12}	#(path! ["12"])
+to path! {a b}	#(path! ["a b"])
+to path! none	#(path! [_])
+to path! [1 2]	#(path! [1 2])
+to path! #{01020304}	#(path! [#{01020304}])
+to path! 'a	#(path! [a])
+to path! #"a"	#(path! [#"a"])
+to path! 1x2	#(path! [1x2])
+to path! 10%	#(path! [10.000000000000001%])
+to path! 1.2.3	#(path! [1.2.3])
+to path! 12:00	#(path! [12:00])
+to path! $1	#(path! [$1])
+to path! true	#(path! [#(true)])
+to path! %f	#(path! [%f])
+to path! [a: 1]	#(path! [a: 1])
+to path! [[x] [x]]	#(path! [[x] [x]])
+to path! integer!	#(path! [#(integer!)])
+to path! #abc	#(path! [#abc])
+to path! a@b	#(path! [a@b])
+to path! http://x	#(path! [http://x])
+to set-path! []	#(set-path! [])
+to set-path! 1	#(set-path! [1])
+to set-path! -1	#(set-path! [-1])
+to set-path! 1.5	#(set-path! [1.5])
+to set-path! {12}	#(set-path! ["12"])
+to set-path! {a b}	#(set-path! ["a b"])
+to set-path! none	#(set-path! [_])
+to set-path! [1 2]	#(set-path! [1 2])
+to set-path! #{01020304}	#(set-path! [#{01020304}])
+to set-path! 'a	#(set-path! [a])
+to set-path! #"a"	#(set-path! [#"a"])
+to set-path! 1x2	#(set-path! [1x2])
+to set-path! 10%	#(set-path! [10.000000000000001%])
+to set-path! 1.2.3	#(set-path! [1.2.3])
+to set-path! 12:00	#(set-path! [12:00])
+to set-path! $1	#(set-path! [$1])
+to set-path! true	#(set-path! [#(true)])
+to set-path! %f	#(set-path! [%f])
+to set-path! [a: 1]	#(set-path! [a: 1])
+to set-path! [[x] [x]]	#(set-path! [[x] [x]])
+to set-path! integer!	#(set-path! [#(integer!)])
+to set-path! #abc	#(set-path! [#abc])
+to set-path! a@b	#(set-path! [a@b])
+to set-path! http://x	#(set-path! [http://x])
+to get-path! []	#(get-path! [])
+to get-path! 1	#(get-path! [1])
+to get-path! -1	#(get-path! [-1])
+to get-path! 1.5	#(get-path! [1.5])
+to get-path! {12}	#(get-path! ["12"])
+to get-path! {a b}	#(get-path! ["a b"])
+to get-path! none	#(get-path! [_])
+to get-path! [1 2]	#(get-path! [1 2])
+to get-path! #{01020304}	#(get-path! [#{01020304}])
+to get-path! 'a	#(get-path! [a])
+to get-path! #"a"	#(get-path! [#"a"])
+to get-path! 1x2	#(get-path! [1x2])
+to get-path! 10%	#(get-path! [10.000000000000001%])
+to get-path! 1.2.3	#(get-path! [1.2.3])
+to get-path! 12:00	#(get-path! [12:00])
+to get-path! $1	#(get-path! [$1])
+to get-path! true	#(get-path! [#(true)])
+to get-path! %f	#(get-path! [%f])
+to get-path! [a: 1]	#(get-path! [a: 1])
+to get-path! [[x] [x]]	#(get-path! [[x] [x]])
+to get-path! integer!	#(get-path! [#(integer!)])
+to get-path! #abc	#(get-path! [#abc])
+to get-path! a@b	#(get-path! [a@b])
+to get-path! http://x	#(get-path! [http://x])
+to lit-path! []	#(lit-path! [])
+to lit-path! 1	#(lit-path! [1])
+to lit-path! -1	#(lit-path! [-1])
+to lit-path! 1.5	#(lit-path! [1.5])
+to lit-path! {12}	#(lit-path! ["12"])
+to lit-path! {a b}	#(lit-path! ["a b"])
+to lit-path! none	#(lit-path! [_])
+to lit-path! [1 2]	#(lit-path! [1 2])
+to lit-path! #{01020304}	#(lit-path! [#{01020304}])
+to lit-path! 'a	#(lit-path! [a])
+to lit-path! #"a"	#(lit-path! [#"a"])
+to lit-path! 1x2	#(lit-path! [1x2])
+to lit-path! 10%	#(lit-path! [10.000000000000001%])
+to lit-path! 1.2.3	#(lit-path! [1.2.3])
+to lit-path! 12:00	#(lit-path! [12:00])
+to lit-path! $1	#(lit-path! [$1])
+to lit-path! true	#(lit-path! [#(true)])
+to lit-path! %f	#(lit-path! [%f])
+to lit-path! [a: 1]	#(lit-path! [a: 1])
+to lit-path! [[x] [x]]	#(lit-path! [[x] [x]])
+to lit-path! integer!	#(lit-path! [#(integer!)])
+to lit-path! #abc	#(lit-path! [#abc])
+to lit-path! a@b	#(lit-path! [a@b])
+to lit-path! http://x	#(lit-path! [http://x])
+to hash! 1	E invalid-arg 1
+to hash! -1	E invalid-arg -1
+to hash! 1.5	E invalid-arg 1.5
+to hash! none	E invalid-arg _
+to hash! 'a	E invalid-arg a
+to hash! #"a"	E invalid-arg #"a"
+to hash! 1.2.3	E invalid-arg 1.2.3
+to hash! 12:00	E invalid-arg 12:00
+to hash! $1	E invalid-arg $1
+to hash! true	E invalid-arg #(true)
+to hash! %f	E invalid-arg %f
+to hash! integer!	E invalid-arg #(integer!)
+to hash! #abc	E invalid-arg #abc
+to hash! a@b	E invalid-arg a@b
+to hash! http://x	E invalid-arg http://x
+to map! []	#(map! [])
+to map! 1	E invalid-arg 1
+to map! -1	E invalid-arg -1
+to map! 1.5	E invalid-arg 1.5
+to map! {12}	E bad-make-arg #(map!)
+to map! {a b}	E bad-make-arg #(map!)
+to map! none	E bad-make-arg #(map!)
+to map! [1 2]	#(map! [     1 2 ])
+to map! #{01020304}	E bad-make-arg #(map!)
+to map! 'a	E bad-make-arg #(map!)
+to map! #"a"	E bad-make-arg #(map!)
+to map! 1x2	E bad-make-arg #(map!)
+to map! 10%	E bad-make-arg #(map!)
+to map! 1.2.3	E bad-make-arg #(map!)
+to map! 12:00	E bad-make-arg #(map!)
+to map! $1	E bad-make-arg #(map!)
+to map! true	E bad-make-arg #(map!)
+to map! %f	E bad-make-arg #(map!)
+to map! [a: 1]	#(map! [     a: 1 ])
+to map! [[x] [x]]	#(map! [     [x] [x] ])
+to map! integer!	E bad-make-arg #(map!)
+to map! #abc	E bad-make-arg #(map!)
+to map! a@b	E bad-make-arg #(map!)
+to map! http://x	E bad-make-arg #(map!)
+to datatype! []	E bad-make-arg #(datatype!)
+to datatype! 1	E bad-make-arg #(datatype!)
+to datatype! -1	E bad-make-arg #(datatype!)
+to datatype! 1.5	E bad-make-arg #(datatype!)
+to datatype! {12}	E bad-make-arg #(datatype!)
+to datatype! {a b}	E bad-make-arg #(datatype!)
+to datatype! none	E bad-make-arg #(datatype!)
+to datatype! [1 2]	E bad-make-arg #(datatype!)
+to datatype! #{01020304}	E bad-make-arg #(datatype!)
+to datatype! 'a	E bad-make-arg #(datatype!)
+to datatype! #"a"	E bad-make-arg #(datatype!)
+to datatype! 1x2	E bad-make-arg #(datatype!)
+to datatype! 10%	E bad-make-arg #(datatype!)
+to datatype! 1.2.3	E bad-make-arg #(datatype!)
+to datatype! 12:00	E bad-make-arg #(datatype!)
+to datatype! $1	E bad-make-arg #(datatype!)
+to datatype! true	E bad-make-arg #(datatype!)
+to datatype! %f	E bad-make-arg #(datatype!)
+to datatype! [a: 1]	E bad-make-arg #(datatype!)
+to datatype! [[x] [x]]	E bad-make-arg #(datatype!)
+to datatype! integer!	E bad-make-arg #(datatype!)
+to datatype! #abc	E bad-make-arg #(datatype!)
+to datatype! a@b	E bad-make-arg #(datatype!)
+to datatype! http://x	E bad-make-arg #(datatype!)
+to typeset! []	#(typeset! [])
+to typeset! 1	E bad-make-arg #(typeset!)
+to typeset! -1	E bad-make-arg #(typeset!)
+to typeset! 1.5	E bad-make-arg #(typeset!)
+to typeset! {12}	E bad-make-arg #(typeset!)
+to typeset! {a b}	E bad-make-arg #(typeset!)
+to typeset! none	E bad-make-arg #(typeset!)
+to typeset! [1 2]	E invalid-arg 1
+to typeset! #{01020304}	E bad-make-arg #(typeset!)
+to typeset! 'a	E bad-make-arg #(typeset!)
+to typeset! #"a"	E bad-make-arg #(typeset!)
+to typeset! 1x2	E bad-make-arg #(typeset!)
+to typeset! 10%	E bad-make-arg #(typeset!)
+to typeset! 1.2.3	E bad-make-arg #(typeset!)
+to typeset! 12:00	E bad-make-arg #(typeset!)
+to typeset! $1	E bad-make-arg #(typeset!)
+to typeset! true	E bad-make-arg #(typeset!)
+to typeset! %f	E bad-make-arg #(typeset!)
+to typeset! [a: 1]	E invalid-arg a:
+to typeset! [[x] [x]]	E invalid-arg [x]
+to typeset! integer!	E bad-make-arg #(typeset!)
+to typeset! #abc	E bad-make-arg #(typeset!)
+to typeset! a@b	E bad-make-arg #(typeset!)
+to typeset! http://x	E bad-make-arg #(typeset!)
+to word! []	E expect-val #(word!)
+to word! 1	E expect-val #(word!)
+to word! -1	E expect-val #(word!)
+to word! 1.5	E expect-val #(word!)
+to word! {12}	E invalid-chars _
+to word! {a b}	E invalid-chars _
+to word! none	E expect-val #(word!)
+to word! [1 2]	E expect-val #(word!)
+to word! #{01020304}	E expect-val #(word!)
+to word! 'a	a
+to word! #"a"	a
+to word! 1x2	E expect-val #(word!)
+to word! 10%	E expect-val #(word!)
+to word! 1.2.3	E expect-val #(word!)
+to word! 12:00	E expect-val #(word!)
+to word! $1	E expect-val #(word!)
+to word! true	true
+to word! %f	f
+to word! [a: 1]	E expect-val #(word!)
+to word! [[x] [x]]	E expect-val #(word!)
+to word! integer!	integer!
+to word! #abc	abc
+to word! a@b	E invalid-chars _
+to word! http://x	E invalid-chars _
+to set-word! []	E expect-val #(word!)
+to set-word! 1	E expect-val #(word!)
+to set-word! -1	E expect-val #(word!)
+to set-word! 1.5	E expect-val #(word!)
+to set-word! {12}	E invalid-chars _
+to set-word! {a b}	E invalid-chars _
+to set-word! none	E expect-val #(word!)
+to set-word! [1 2]	E expect-val #(word!)
+to set-word! #{01020304}	E expect-val #(word!)
+to set-word! 'a	a:
+to set-word! #"a"	a:
+to set-word! 1x2	E expect-val #(word!)
+to set-word! 10%	E expect-val #(word!)
+to set-word! 1.2.3	E expect-val #(word!)
+to set-word! 12:00	E expect-val #(word!)
+to set-word! $1	E expect-val #(word!)
+to set-word! true	true:
+to set-word! %f	f:
+to set-word! [a: 1]	E expect-val #(word!)
+to set-word! [[x] [x]]	E expect-val #(word!)
+to set-word! integer!	integer!:
+to set-word! #abc	abc:
+to set-word! a@b	E invalid-chars _
+to set-word! http://x	E invalid-chars _
+to get-word! []	E expect-val #(word!)
+to get-word! 1	E expect-val #(word!)
+to get-word! -1	E expect-val #(word!)
+to get-word! 1.5	E expect-val #(word!)
+to get-word! {12}	E invalid-chars _
+to get-word! {a b}	E invalid-chars _
+to get-word! none	E expect-val #(word!)
+to get-word! [1 2]	E expect-val #(word!)
+to get-word! #{01020304}	E expect-val #(word!)
+to get-word! 'a	:a
+to get-word! #"a"	:a
+to get-word! 1x2	E expect-val #(word!)
+to get-word! 10%	E expect-val #(word!)
+to get-word! 1.2.3	E expect-val #(word!)
+to get-word! 12:00	E expect-val #(word!)
+to get-word! $1	E expect-val #(word!)
+to get-word! true	:true
+to get-word! %f	:f
+to get-word! [a: 1]	E expect-val #(word!)
+to get-word! [[x] [x]]	E expect-val #(word!)
+to get-word! integer!	:integer!
+to get-word! #abc	:abc
+to get-word! a@b	E invalid-chars _
+to get-word! http://x	E invalid-chars _
+to lit-word! []	E expect-val #(word!)
+to lit-word! 1	E expect-val #(word!)
+to lit-word! -1	E expect-val #(word!)
+to lit-word! 1.5	E expect-val #(word!)
+to lit-word! {12}	E invalid-chars _
+to lit-word! {a b}	E invalid-chars _
+to lit-word! none	E expect-val #(word!)
+to lit-word! [1 2]	E expect-val #(word!)
+to lit-word! #{01020304}	E expect-val #(word!)
+to lit-word! 'a	'a
+to lit-word! #"a"	'a
+to lit-word! 1x2	E expect-val #(word!)
+to lit-word! 10%	E expect-val #(word!)
+to lit-word! 1.2.3	E expect-val #(word!)
+to lit-word! 12:00	E expect-val #(word!)
+to lit-word! $1	E expect-val #(word!)
+to lit-word! true	'true
+to lit-word! %f	'f
+to lit-word! [a: 1]	E expect-val #(word!)
+to lit-word! [[x] [x]]	E expect-val #(word!)
+to lit-word! integer!	'integer!
+to lit-word! #abc	'abc
+to lit-word! a@b	E invalid-chars _
+to lit-word! http://x	E invalid-chars _
+to refinement! []	E expect-val #(word!)
+to refinement! 1	E expect-val #(word!)
+to refinement! -1	E expect-val #(word!)
+to refinement! 1.5	E expect-val #(word!)
+to refinement! {12}	E invalid-chars _
+to refinement! {a b}	E invalid-chars _
+to refinement! none	E expect-val #(word!)
+to refinement! [1 2]	E expect-val #(word!)
+to refinement! #{01020304}	E expect-val #(word!)
+to refinement! 'a	/a
+to refinement! #"a"	/a
+to refinement! 1x2	E expect-val #(word!)
+to refinement! 10%	E expect-val #(word!)
+to refinement! 1.2.3	E expect-val #(word!)
+to refinement! 12:00	E expect-val #(word!)
+to refinement! $1	E expect-val #(word!)
+to refinement! true	/true
+to refinement! %f	/f
+to refinement! [a: 1]	E expect-val #(word!)
+to refinement! [[x] [x]]	E expect-val #(word!)
+to refinement! integer!	/integer!
+to refinement! #abc	/abc
+to refinement! a@b	E invalid-chars _
+to refinement! http://x	E invalid-chars _
+to issue! []	E expect-val #(word!)
+to issue! 1	E expect-val #(word!)
+to issue! -1	E expect-val #(word!)
+to issue! 1.5	E expect-val #(word!)
+to issue! {12}	#12
+to issue! {a b}	E invalid-chars _
+to issue! none	E expect-val #(word!)
+to issue! [1 2]	E expect-val #(word!)
+to issue! #{01020304}	E expect-val #(word!)
+to issue! 'a	#a
+to issue! #"a"	#a
+to issue! 1x2	E expect-val #(word!)
+to issue! 10%	E expect-val #(word!)
+to issue! 1.2.3	E expect-val #(word!)
+to issue! 12:00	E expect-val #(word!)
+to issue! $1	E expect-val #(word!)
+to issue! true	#true
+to issue! %f	#f
+to issue! [a: 1]	E expect-val #(word!)
+to issue! [[x] [x]]	E expect-val #(word!)
+to issue! integer!	#integer!
+to issue! #abc	#abc
+to issue! a@b	E invalid-chars _
+to issue! http://x	E invalid-chars _
+to native! []	E bad-make-arg #(native!)
+to native! 1	E bad-make-arg #(native!)
+to native! -1	E bad-make-arg #(native!)
+to native! 1.5	E bad-make-arg #(native!)
+to native! {12}	E bad-make-arg #(native!)
+to native! {a b}	E bad-make-arg #(native!)
+to native! none	E bad-make-arg #(native!)
+to native! [1 2]	E bad-make-arg #(native!)
+to native! #{01020304}	E bad-make-arg #(native!)
+to native! 'a	E bad-make-arg #(native!)
+to native! #"a"	E bad-make-arg #(native!)
+to native! 1x2	E bad-make-arg #(native!)
+to native! 10%	E bad-make-arg #(native!)
+to native! 1.2.3	E bad-make-arg #(native!)
+to native! 12:00	E bad-make-arg #(native!)
+to native! $1	E bad-make-arg #(native!)
+to native! true	E bad-make-arg #(native!)
+to native! %f	E bad-make-arg #(native!)
+to native! [a: 1]	E bad-make-arg #(native!)
+to native! [[x] [x]]	E bad-make-arg #(native!)
+to native! integer!	E bad-make-arg #(native!)
+to native! #abc	E bad-make-arg #(native!)
+to native! a@b	E bad-make-arg #(native!)
+to native! http://x	E bad-make-arg #(native!)
+to action! []	E bad-make-arg #(action!)
+to action! 1	E bad-make-arg #(action!)
+to action! -1	E bad-make-arg #(action!)
+to action! 1.5	E bad-make-arg #(action!)
+to action! {12}	E bad-make-arg #(action!)
+to action! {a b}	E bad-make-arg #(action!)
+to action! none	E bad-make-arg #(action!)
+to action! [1 2]	E bad-make-arg #(action!)
+to action! #{01020304}	E bad-make-arg #(action!)
+to action! 'a	E bad-make-arg #(action!)
+to action! #"a"	E bad-make-arg #(action!)
+to action! 1x2	E bad-make-arg #(action!)
+to action! 10%	E bad-make-arg #(action!)
+to action! 1.2.3	E bad-make-arg #(action!)
+to action! 12:00	E bad-make-arg #(action!)
+to action! $1	E bad-make-arg #(action!)
+to action! true	E bad-make-arg #(action!)
+to action! %f	E bad-make-arg #(action!)
+to action! [a: 1]	E bad-make-arg #(action!)
+to action! [[x] [x]]	E bad-make-arg #(action!)
+to action! integer!	E bad-make-arg #(action!)
+to action! #abc	E bad-make-arg #(action!)
+to action! a@b	E bad-make-arg #(action!)
+to action! http://x	E bad-make-arg #(action!)
+to rebcode! []	E bad-make-arg #(rebcode!)
+to rebcode! 1	E bad-make-arg #(rebcode!)
+to rebcode! -1	E bad-make-arg #(rebcode!)
+to rebcode! 1.5	E bad-make-arg #(rebcode!)
+to rebcode! {12}	E bad-make-arg #(rebcode!)
+to rebcode! {a b}	E bad-make-arg #(rebcode!)
+to rebcode! none	E bad-make-arg #(rebcode!)
+to rebcode! [1 2]	E bad-make-arg #(rebcode!)
+to rebcode! #{01020304}	E bad-make-arg #(rebcode!)
+to rebcode! 'a	E bad-make-arg #(rebcode!)
+to rebcode! #"a"	E bad-make-arg #(rebcode!)
+to rebcode! 1x2	E bad-make-arg #(rebcode!)
+to rebcode! 10%	E bad-make-arg #(rebcode!)
+to rebcode! 1.2.3	E bad-make-arg #(rebcode!)
+to rebcode! 12:00	E bad-make-arg #(rebcode!)
+to rebcode! $1	E bad-make-arg #(rebcode!)
+to rebcode! true	E bad-make-arg #(rebcode!)
+to rebcode! %f	E bad-make-arg #(rebcode!)
+to rebcode! [a: 1]	E bad-make-arg #(rebcode!)
+to rebcode! [[x] [x]]	E bad-make-arg #(rebcode!)
+to rebcode! integer!	E bad-make-arg #(rebcode!)
+to rebcode! #abc	E bad-make-arg #(rebcode!)
+to rebcode! a@b	E bad-make-arg #(rebcode!)
+to rebcode! http://x	E bad-make-arg #(rebcode!)
+to command! []	E bad-make-arg #(command!)
+to command! 1	E bad-make-arg #(command!)
+to command! -1	E bad-make-arg #(command!)
+to command! 1.5	E bad-make-arg #(command!)
+to command! {12}	E bad-make-arg #(command!)
+to command! {a b}	E bad-make-arg #(command!)
+to command! none	E bad-make-arg #(command!)
+to command! [1 2]	E bad-make-arg #(command!)
+to command! #{01020304}	E bad-make-arg #(command!)
+to command! 'a	E bad-make-arg #(command!)
+to command! #"a"	E bad-make-arg #(command!)
+to command! 1x2	E bad-make-arg #(command!)
+to command! 10%	E bad-make-arg #(command!)
+to command! 1.2.3	E bad-make-arg #(command!)
+to command! 12:00	E bad-make-arg #(command!)
+to command! $1	E bad-make-arg #(command!)
+to command! true	E bad-make-arg #(command!)
+to command! %f	E bad-make-arg #(command!)
+to command! [a: 1]	E bad-make-arg #(command!)
+to command! integer!	E bad-make-arg #(command!)
+to command! #abc	E bad-make-arg #(command!)
+to command! a@b	E bad-make-arg #(command!)
+to command! http://x	E bad-make-arg #(command!)
+to op! []	E bad-make-arg #(op!)
+to op! 1	E bad-make-arg #(op!)
+to op! -1	E bad-make-arg #(op!)
+to op! 1.5	E bad-make-arg #(op!)
+to op! {12}	E bad-make-arg #(op!)
+to op! {a b}	E bad-make-arg #(op!)
+to op! none	E bad-make-arg #(op!)
+to op! [1 2]	E bad-make-arg #(op!)
+to op! #{01020304}	E bad-make-arg #(op!)
+to op! 'a	E bad-make-arg #(op!)
+to op! #"a"	E bad-make-arg #(op!)
+to op! 1x2	E bad-make-arg #(op!)
+to op! 10%	E bad-make-arg #(op!)
+to op! 1.2.3	E bad-make-arg #(op!)
+to op! 12:00	E bad-make-arg #(op!)
+to op! $1	E bad-make-arg #(op!)
+to op! true	E bad-make-arg #(op!)
+to op! %f	E bad-make-arg #(op!)
+to op! [a: 1]	E bad-make-arg #(op!)
+to op! [[x] [x]]	E bad-make-arg #(op!)
+to op! integer!	E bad-make-arg #(op!)
+to op! #abc	E bad-make-arg #(op!)
+to op! a@b	E bad-make-arg #(op!)
+to op! http://x	E bad-make-arg #(op!)
+to closure! []	E bad-make-arg #(closure!)
+to closure! 1	E bad-make-arg #(closure!)
+to closure! -1	E bad-make-arg #(closure!)
+to closure! 1.5	E bad-make-arg #(closure!)
+to closure! {12}	E bad-make-arg #(closure!)
+to closure! {a b}	E bad-make-arg #(closure!)
+to closure! none	E bad-make-arg #(closure!)
+to closure! [1 2]	E bad-make-arg #(closure!)
+to closure! #{01020304}	E bad-make-arg #(closure!)
+to closure! 'a	E bad-make-arg #(closure!)
+to closure! #"a"	E bad-make-arg #(closure!)
+to closure! 1x2	E bad-make-arg #(closure!)
+to closure! 10%	E bad-make-arg #(closure!)
+to closure! 1.2.3	E bad-make-arg #(closure!)
+to closure! 12:00	E bad-make-arg #(closure!)
+to closure! $1	E bad-make-arg #(closure!)
+to closure! true	E bad-make-arg #(closure!)
+to closure! %f	E bad-make-arg #(closure!)
+to closure! [a: 1]	E bad-make-arg #(closure!)
+to closure! [[x] [x]]	#(closure! [[x][x]])
+to closure! integer!	E bad-make-arg #(closure!)
+to closure! #abc	E bad-make-arg #(closure!)
+to closure! a@b	E bad-make-arg #(closure!)
+to closure! http://x	E bad-make-arg #(closure!)
+to function! []	E bad-make-arg #(function!)
+to function! 1	E bad-make-arg #(function!)
+to function! -1	E bad-make-arg #(function!)
+to function! 1.5	E bad-make-arg #(function!)
+to function! {12}	E bad-make-arg #(function!)
+to function! {a b}	E bad-make-arg #(function!)
+to function! none	E bad-make-arg #(function!)
+to function! [1 2]	E bad-make-arg #(function!)
+to function! #{01020304}	E bad-make-arg #(function!)
+to function! 'a	E bad-make-arg #(function!)
+to function! #"a"	E bad-make-arg #(function!)
+to function! 1x2	E bad-make-arg #(function!)
+to function! 10%	E bad-make-arg #(function!)
+to function! 1.2.3	E bad-make-arg #(function!)
+to function! 12:00	E bad-make-arg #(function!)
+to function! $1	E bad-make-arg #(function!)
+to function! true	E bad-make-arg #(function!)
+to function! %f	E bad-make-arg #(function!)
+to function! [a: 1]	E bad-make-arg #(function!)
+to function! [[x] [x]]	#(function! [[x][x]])
+to function! integer!	E bad-make-arg #(function!)
+to function! #abc	E bad-make-arg #(function!)
+to function! a@b	E bad-make-arg #(function!)
+to function! http://x	E bad-make-arg #(function!)
+to frame! []	E bad-make-arg #(frame!)
+to frame! 1	E bad-make-arg #(frame!)
+to frame! -1	E bad-make-arg #(frame!)
+to frame! 1.5	E bad-make-arg #(frame!)
+to frame! {12}	E bad-make-arg #(frame!)
+to frame! {a b}	E bad-make-arg #(frame!)
+to frame! none	E bad-make-arg #(frame!)
+to frame! [1 2]	E bad-make-arg #(frame!)
+to frame! #{01020304}	E bad-make-arg #(frame!)
+to frame! 'a	E bad-make-arg #(frame!)
+to frame! #"a"	E bad-make-arg #(frame!)
+to frame! 1x2	E bad-make-arg #(frame!)
+to frame! 10%	E bad-make-arg #(frame!)
+to frame! 1.2.3	E bad-make-arg #(frame!)
+to frame! 12:00	E bad-make-arg #(frame!)
+to frame! $1	E bad-make-arg #(frame!)
+to frame! true	E bad-make-arg #(frame!)
+to frame! %f	E bad-make-arg #(frame!)
+to frame! [a: 1]	E bad-make-arg #(frame!)
+to frame! [[x] [x]]	E bad-make-arg #(frame!)
+to frame! integer!	E bad-make-arg #(frame!)
+to frame! #abc	E bad-make-arg #(frame!)
+to frame! a@b	E bad-make-arg #(frame!)
+to frame! http://x	E bad-make-arg #(frame!)
+to object! []	E bad-make-arg #(object!)
+to object! 1	E bad-make-arg #(object!)
+to object! -1	E bad-make-arg #(object!)
+to object! 1.5	E bad-make-arg #(object!)
+to object! {12}	E bad-make-arg #(object!)
+to object! {a b}	E bad-make-arg #(object!)
+to object! none	E bad-make-arg #(object!)
+to object! [1 2]	E bad-make-arg #(object!)
+to object! #{01020304}	E bad-make-arg #(object!)
+to object! 'a	E bad-make-arg #(object!)
+to object! #"a"	E bad-make-arg #(object!)
+to object! 1x2	E bad-make-arg #(object!)
+to object! 10%	E bad-make-arg #(object!)
+to object! 1.2.3	E bad-make-arg #(object!)
+to object! 12:00	E bad-make-arg #(object!)
+to object! $1	E bad-make-arg #(object!)
+to object! true	E bad-make-arg #(object!)
+to object! %f	E bad-make-arg #(object!)
+to object! [a: 1]	E bad-make-arg #(object!)
+to object! [[x] [x]]	E bad-make-arg #(object!)
+to object! integer!	E bad-make-arg #(object!)
+to object! #abc	E bad-make-arg #(object!)
+to object! a@b	E bad-make-arg #(object!)
+to object! http://x	E bad-make-arg #(object!)
+to module! []	E bad-make-arg #(module!)
+to module! 1	E bad-make-arg #(module!)
+to module! -1	E bad-make-arg #(module!)
+to module! 1.5	E bad-make-arg #(module!)
+to module! {12}	E bad-make-arg #(module!)
+to module! {a b}	E bad-make-arg #(module!)
+to module! none	E bad-make-arg #(module!)
+to module! [1 2]	E invalid-arg 1
+to module! #{01020304}	E bad-make-arg #(module!)
+to module! 'a	E bad-make-arg #(module!)
+to module! #"a"	E bad-make-arg #(module!)
+to module! 1x2	E bad-make-arg #(module!)
+to module! 10%	E bad-make-arg #(module!)
+to module! 1.2.3	E bad-make-arg #(module!)
+to module! 12:00	E bad-make-arg #(module!)
+to module! $1	E bad-make-arg #(module!)
+to module! true	E bad-make-arg #(module!)
+to module! %f	E bad-make-arg #(module!)
+to module! [a: 1]	E invalid-arg a:
+to module! [[x] [x]]	E invalid-arg [x]
+to module! integer!	E bad-make-arg #(module!)
+to module! #abc	E bad-make-arg #(module!)
+to module! a@b	E bad-make-arg #(module!)
+to module! http://x	E bad-make-arg #(module!)
+to error! []	E invalid-error _
+to error! 1	E invalid-arg 1
+to error! -1	E invalid-arg -1
+to error! 1.5	E invalid-arg 1.5
+to error! {12}	E message "12"
+to error! {a b}	E message "a b"
+to error! none	E invalid-arg _
+to error! [1 2]	E invalid-error _
+to error! #{01020304}	E invalid-arg #{01020304}
+to error! 'a	E invalid-arg a
+to error! #"a"	E invalid-arg #"a"
+to error! 1x2	E invalid-arg 1x2
+to error! 10%	E invalid-arg 10.000000000000001%
+to error! 1.2.3	E invalid-arg 1.2.3
+to error! 12:00	E invalid-arg 12:00
+to error! $1	E invalid-arg $1
+to error! true	E invalid-arg #(true)
+to error! %f	E invalid-arg %f
+to error! [a: 1]	E invalid-error _
+to error! [[x] [x]]	E invalid-error _
+to error! integer!	E invalid-arg #(integer!)
+to error! #abc	E invalid-arg #abc
+to error! a@b	E invalid-arg a@b
+to error! http://x	E invalid-arg http://x
+to port! []	E bad-make-arg #(port!)
+to port! 1	E bad-make-arg #(port!)
+to port! -1	E bad-make-arg #(port!)
+to port! 1.5	E bad-make-arg #(port!)
+to port! {12}	E bad-make-arg #(port!)
+to port! {a b}	E bad-make-arg #(port!)
+to port! none	E bad-make-arg #(port!)
+to port! [1 2]	E bad-make-arg #(port!)
+to port! #{01020304}	E bad-make-arg #(port!)
+to port! 'a	E bad-make-arg #(port!)
+to port! #"a"	E bad-make-arg #(port!)
+to port! 1x2	E bad-make-arg #(port!)
+to port! 10%	E bad-make-arg #(port!)
+to port! 1.2.3	E bad-make-arg #(port!)
+to port! 12:00	E bad-make-arg #(port!)
+to port! $1	E bad-make-arg #(port!)
+to port! true	E bad-make-arg #(port!)
+to port! %f	E bad-make-arg #(port!)
+to port! [a: 1]	E bad-make-arg #(port!)
+to port! [[x] [x]]	E bad-make-arg #(port!)
+to port! integer!	E bad-make-arg #(port!)
+to port! #abc	E bad-make-arg #(port!)
+to port! a@b	E bad-make-arg #(port!)
+to port! http://x	E bad-make-arg #(port!)
+to gob! []	E invalid-arg #(gob!)
+to gob! 1	E invalid-arg #(gob!)
+to gob! -1	E invalid-arg #(gob!)
+to gob! 1.5	E invalid-arg #(gob!)
+to gob! {12}	E invalid-arg #(gob!)
+to gob! {a b}	E invalid-arg #(gob!)
+to gob! none	E invalid-arg #(gob!)
+to gob! [1 2]	E invalid-arg #(gob!)
+to gob! #{01020304}	E invalid-arg #(gob!)
+to gob! 'a	E invalid-arg #(gob!)
+to gob! #"a"	E invalid-arg #(gob!)
+to gob! 1x2	E invalid-arg #(gob!)
+to gob! 10%	E invalid-arg #(gob!)
+to gob! 1.2.3	E invalid-arg #(gob!)
+to gob! 12:00	E invalid-arg #(gob!)
+to gob! $1	E invalid-arg #(gob!)
+to gob! true	E invalid-arg #(gob!)
+to gob! %f	E invalid-arg #(gob!)
+to gob! [a: 1]	E invalid-arg #(gob!)
+to gob! [[x] [x]]	E invalid-arg #(gob!)
+to gob! integer!	E invalid-arg #(gob!)
+to gob! #abc	E invalid-arg #(gob!)
+to gob! a@b	E invalid-arg #(gob!)
+to gob! http://x	E invalid-arg #(gob!)
+to event! []	#(event! [ ])
+to event! 1	E expect-val #(event!)
+to event! -1	E expect-val #(event!)
+to event! 1.5	E expect-val #(event!)
+to event! {12}	E expect-val #(event!)
+to event! {a b}	E expect-val #(event!)
+to event! none	E expect-val #(event!)
+to event! [1 2]	E bad-field-set 1
+to event! #{01020304}	E expect-val #(event!)
+to event! 'a	E expect-val #(event!)
+to event! #"a"	E expect-val #(event!)
+to event! 1x2	E expect-val #(event!)
+to event! 10%	E expect-val #(event!)
+to event! 1.2.3	E expect-val #(event!)
+to event! 12:00	E expect-val #(event!)
+to event! $1	E expect-val #(event!)
+to event! true	E expect-val #(event!)
+to event! %f	E expect-val #(event!)
+to event! [a: 1]	E bad-field-set a:
+to event! integer!	E expect-val #(event!)
+to event! #abc	E expect-val #(event!)
+to event! a@b	E expect-val #(event!)
+to event! http://x	E expect-val #(event!)
+to handle! []	E cannot-use to:
+to handle! 1	E cannot-use to:
+to handle! -1	E cannot-use to:
+to handle! 1.5	E cannot-use to:
+to handle! {12}	E cannot-use to:
+to handle! {a b}	E cannot-use to:
+to handle! none	E cannot-use to:
+to handle! [1 2]	E cannot-use to:
+to handle! #{01020304}	E cannot-use to:
+to handle! 'a	E cannot-use to:
+to handle! #"a"	E cannot-use to:
+to handle! 1x2	E cannot-use to:
+to handle! 10%	E cannot-use to:
+to handle! 1.2.3	E cannot-use to:
+to handle! 12:00	E cannot-use to:
+to handle! $1	E cannot-use to:
+to handle! true	E cannot-use to:
+to handle! %f	E cannot-use to:
+to handle! [a: 1]	E cannot-use to:
+to handle! [[x] [x]]	E cannot-use to:
+to handle! integer!	E cannot-use to:
+to handle! #abc	E cannot-use to:
+to handle! a@b	E cannot-use to:
+to handle! http://x	E cannot-use to:
+to struct! []	E malconstruct []
+to struct! 1	E bad-make-arg #(struct!)
+to struct! -1	E bad-make-arg #(struct!)
+to struct! 1.5	E bad-make-arg #(struct!)
+to struct! {12}	E bad-make-arg #(struct!)
+to struct! {a b}	E bad-make-arg #(struct!)
+to struct! none	E bad-make-arg #(struct!)
+to struct! [1 2]	E malconstruct 1
+to struct! #{01020304}	E bad-make-arg #(struct!)
+to struct! 'a	E bad-make-arg #(struct!)
+to struct! #"a"	E bad-make-arg #(struct!)
+to struct! 1x2	E bad-make-arg #(struct!)
+to struct! 10%	E bad-make-arg #(struct!)
+to struct! 1.2.3	E bad-make-arg #(struct!)
+to struct! 12:00	E bad-make-arg #(struct!)
+to struct! $1	E bad-make-arg #(struct!)
+to struct! true	E bad-make-arg #(struct!)
+to struct! %f	E bad-make-arg #(struct!)
+to struct! [a: 1]	E malconstruct a:
+to struct! integer!	E bad-make-arg #(struct!)
+to struct! #abc	E bad-make-arg #(struct!)
+to struct! a@b	E bad-make-arg #(struct!)
+to struct! http://x	E bad-make-arg #(struct!)
+to library! []	E bad-make-arg #(library!)
+to library! 1	E bad-make-arg #(library!)
+to library! -1	E bad-make-arg #(library!)
+to library! 1.5	E bad-make-arg #(library!)
+to library! {12}	E bad-make-arg #(library!)
+to library! {a b}	E bad-make-arg #(library!)
+to library! none	E bad-make-arg #(library!)
+to library! [1 2]	E bad-make-arg #(library!)
+to library! #{01020304}	E bad-make-arg #(library!)
+to library! 'a	E bad-make-arg #(library!)
+to library! #"a"	E bad-make-arg #(library!)
+to library! 1x2	E bad-make-arg #(library!)
+to library! 10%	E bad-make-arg #(library!)
+to library! 1.2.3	E bad-make-arg #(library!)
+to library! 12:00	E bad-make-arg #(library!)
+to library! $1	E bad-make-arg #(library!)
+to library! true	E bad-make-arg #(library!)
+to library! %f	E bad-make-arg #(library!)
+to library! [a: 1]	E bad-make-arg #(library!)
+to library! [[x] [x]]	E bad-make-arg #(library!)
+to library! integer!	E bad-make-arg #(library!)
+to library! #abc	E bad-make-arg #(library!)
+to library! a@b	E bad-make-arg #(library!)
+to library! http://x	E bad-make-arg #(library!)
+to utype! []	E invalid-type #(utype!)
+to utype! 1	E invalid-type #(utype!)
+to utype! -1	E invalid-type #(utype!)
+to utype! 1.5	E invalid-type #(utype!)
+to utype! {12}	E invalid-type #(utype!)
+to utype! {a b}	E invalid-type #(utype!)
+to utype! none	E invalid-type #(utype!)
+to utype! [1 2]	E invalid-type #(utype!)
+to utype! #{01020304}	E invalid-type #(utype!)
+to utype! 'a	E invalid-type #(utype!)
+to utype! #"a"	E invalid-type #(utype!)
+to utype! 1x2	E invalid-type #(utype!)
+to utype! 10%	E invalid-type #(utype!)
+to utype! 1.2.3	E invalid-type #(utype!)
+to utype! 12:00	E invalid-type #(utype!)
+to utype! $1	E invalid-type #(utype!)
+to utype! true	E invalid-type #(utype!)
+to utype! %f	E invalid-type #(utype!)
+to utype! [a: 1]	E invalid-type #(utype!)
+to utype! [[x] [x]]	E invalid-type #(utype!)
+to utype! integer!	E invalid-type #(utype!)
+to utype! #abc	E invalid-type #(utype!)
+to utype! a@b	E invalid-type #(utype!)
+to utype! http://x	E invalid-type #(utype!)

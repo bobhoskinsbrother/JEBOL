@@ -13,7 +13,7 @@ public abstract class CaseChangeNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("string", Typeset.ANY_STRING.membersAnd(Datatype.CHAR)),
+                Parameter.required("string", Typeset.ANY_STRING.membersAnd(CharacterValue.TYPE)),
                 Parameter.belongingTo("part", "length",
                         Typeset.NUMBER.membersAnd(Typeset.ANY_STRING.members().toArray(Datatype[]::new))));
     }

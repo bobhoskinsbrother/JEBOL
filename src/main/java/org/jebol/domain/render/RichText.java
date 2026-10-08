@@ -5,6 +5,7 @@ import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
+import org.jebol.domain.value.RefinementValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,8 +34,7 @@ final class RichText {
                         new Run(said.text(), colour, size, bold, italic));
                 case TupleValue parts -> colour = Colour.ofTuple(parts);
                 case AnyWordValue command -> {
-                    boolean turningItOn =
-                            command.datatype() != org.jebol.domain.value.Datatype.REFINEMENT;
+                    boolean turningItOn = !(command instanceof RefinementValue);
                     switch (command.canonical()) {
                         case "bold", "b" -> bold = turningItOn;
                         case "italic", "i" -> italic = turningItOn;

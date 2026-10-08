@@ -3,7 +3,7 @@ package org.jebol.domain.eval.actions;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.PortValue;
 
@@ -25,7 +25,7 @@ public class OpenAction extends PortAction {
     public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("spec"),
-                Parameter.belongingTo("allow", "access", Set.of(Datatype.BLOCK)));
+                Parameter.belongingTo("allow", "access", Set.of(BlockValue.TYPE)));
     }
 
     @Override

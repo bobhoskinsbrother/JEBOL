@@ -11,6 +11,18 @@ package org.jebol.domain.value;
  */
 public record UnsetValue() implements Value {
 
+    public static final Datatype TYPE = new Datatype("unset") {
+
+        @Override
+        protected void refuseToBuildSomethingOutOfNothing(Value from) {
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return unset();
+        }
+    };
+
     private static final UnsetValue INSTANCE = new UnsetValue();
 
     /** The single unset value. All unset values are equal. */
@@ -20,7 +32,7 @@ public record UnsetValue() implements Value {
 
     @Override
     public Datatype datatype() {
-        return Datatype.UNSET;
+        return TYPE;
     }
 
     @Override

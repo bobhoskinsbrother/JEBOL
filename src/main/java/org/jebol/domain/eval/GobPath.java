@@ -5,7 +5,7 @@ import org.jebol.domain.value.*;
 import java.util.ArrayList;
 import java.util.List;
 
-final class GobPath {
+public final class GobPath {
 
     private GobPath() {
     }
@@ -76,7 +76,7 @@ final class GobPath {
         }
     }
 
-    static boolean accepted(GobStorage storage, String field, Value written) {
+    public static boolean accepted(GobStorage storage, String field, Value written) {
         return switch (field) {
             case "offset" -> asPairWhereALoneNumberIsBothHalves(written).map(pair -> {
                 storage.offset(pair);

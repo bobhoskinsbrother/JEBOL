@@ -24,7 +24,7 @@ public class SetSchemeNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("scheme", Set.of(Datatype.OBJECT)));
+        return List.of(Parameter.required("scheme", Set.of(ObjectValue.TYPE)));
     }
 
     @Override

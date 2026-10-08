@@ -7,7 +7,7 @@ import org.jebol.domain.value.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -25,9 +25,9 @@ public abstract class EncodingNative extends DefaultNative {
     }
 
     protected Set<Datatype> aCountOrPosition() {
-        Set<Datatype> accepted = EnumSet.copyOf(aPartLimit());
-        accepted.remove(Datatype.PAIR);
-        return Set.copyOf(accepted);
+        Set<Datatype> accepted = new LinkedHashSet<>(aPartLimit());
+        accepted.remove(PairValue.TYPE);
+        return accepted;
     }
 
     protected String textOf(Value value) {

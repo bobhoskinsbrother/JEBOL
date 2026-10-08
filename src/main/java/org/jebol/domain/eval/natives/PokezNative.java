@@ -18,8 +18,8 @@ public class PokezNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("series", Typeset.SERIES.membersAnd(Datatype.BITSET, Datatype.TUPLE)),
-                Parameter.required("index", Set.of(Datatype.INTEGER)),
+                Parameter.required("series", Typeset.SERIES.membersAnd(BitsetValue.TYPE, TupleValue.TYPE)),
+                Parameter.required("index", Set.of(IntegerValue.TYPE)),
                 Parameter.required("value"));
     }
 
@@ -30,7 +30,7 @@ public class PokezNative extends DefaultNative {
             if (series instanceof TupleValue unchangeable) {
                 throw Raised.of(EvaluationFailure.CANNOT_USE,
                         SetWordValue.of(THE_ACTION_IT_WRAPS),
-                        DatatypeValue.of(unchangeable.datatype()));
+                        unchangeable.datatype());
             }
             long index = ((IntegerValue) arguments.get(1)).magnitude();
             boolean countsFromOne = index >= 0 && !(series instanceof BitsetValue);

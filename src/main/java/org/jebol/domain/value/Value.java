@@ -25,10 +25,9 @@ public sealed interface Value permits
         DateValue,
         RebolSeries,
         AnyWordValue,
-        DatatypeValue,
+        Datatype,
         TypesetValue,
-        DeclaresParameters,
-        OperatorValue,
+        AnyFunctionValue,
         ObjectValue,
         PortValue,
         ModuleValue,
@@ -42,7 +41,7 @@ public sealed interface Value permits
     Datatype datatype();
 
     default Value make(Value spec, Maker maker) {
-        return maker.makeAnotherFrom(datatype(), spec);
+        return datatype().madeFrom(spec, maker);
     }
 
     default Optional<Context> fieldsAsAContext() {
@@ -95,7 +94,7 @@ public sealed interface Value permits
 
     default Value trimmed(Trimming trimming) {
         throw Raised.of(EvaluationFailure.CANNOT_USE,
-                SetWordValue.of("trim"), DatatypeValue.of(datatype()));
+                SetWordValue.of("trim"), datatype());
     }
 
     default Value picked(int oneBasedPosition) {
@@ -243,19 +242,23 @@ public sealed interface Value permits
         return true;
     }
 
-    default Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
+    default Optional<Value> asDecimal(AnyDecimalValue.AnyDecimalDatatype wanted, Conversion asking) {
         return Optional.empty();
     }
 
-    default Value asItStands(Datatype wanted, double quantity) {
-        return wanted == Datatype.PERCENT
-                ? PercentValue.of(quantity)
-                : DecimalValue.of(quantity);
+    default Value asItStands(AnyDecimalValue.AnyDecimalDatatype wanted, double quantity) {
+        return wanted.holding(quantity);
     }
 
-    default Value inHundredths(Datatype wanted, double quantity) {
-        return wanted == Datatype.PERCENT
-                ? PercentValue.of(quantity / 100.0)
-                : DecimalValue.of(quantity);
+    default Value inHundredths(AnyDecimalValue.AnyDecimalDatatype wanted, double quantity) {
+        return wanted.holdingHundredths(quantity);
+    }
+
+    default boolean isAQuantityOfNothing() {
+        return false;
+    }
+
+    default Datatype theDatatypeItStandsFor() {
+        return datatype();
     }
 }

@@ -2,10 +2,10 @@ package org.jebol.domain.value;
 
 import org.jebol.domain.value.sets.MembersKept;
 
-import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * A set of datatypes: {@code number!}, {@code series!} and their
@@ -20,8 +20,20 @@ import java.util.Set;
  */
 public record TypesetValue(Optional<Typeset> family, Set<Datatype> members) implements Value {
 
+    public static final Datatype TYPE = new Datatype("typeset") {
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return switch (from) {
+                case TypesetValue already -> already;
+                case BlockValue block -> TypesetValue.of(TypesetActions.datatypesNamedIn(block));
+                default -> throw refusing(from);
+            };
+        }
+    };
+
     public TypesetValue {
-        members = members.isEmpty() ? Set.of() : EnumSet.copyOf(members);
+        members = Set.copyOf(members);
     }
 
     @Override
@@ -45,7 +57,7 @@ public record TypesetValue(Optional<Typeset> family, Set<Datatype> members) impl
     private Set<Datatype> someDatatypesFrom(Value right) {
         return switch (right) {
             case TypesetValue set -> set.members();
-            case DatatypeValue(Datatype represents) -> Set.of(represents);
+            case Datatype one -> Set.of(one);
             default -> throw Raised.of(EvaluationFailure.INVALID_ARG, right);
         };
     }
@@ -94,7 +106,7 @@ public record TypesetValue(Optional<Typeset> family, Set<Datatype> members) impl
 
     @Override
     public Datatype datatype() {
-        return Datatype.TYPESET;
+        return TYPE;
     }
 
     @Override
@@ -103,16 +115,8 @@ public record TypesetValue(Optional<Typeset> family, Set<Datatype> members) impl
     }
 
     private String spelledOut() {
-        StringBuilder written = new StringBuilder();
-        for (Datatype datatype : Datatype.values()) {
-            if (!members.contains(datatype)) {
-                continue;
-            }
-            if (!written.isEmpty()) {
-                written.append(' ');
-            }
-            written.append(datatype.literalSpelling());
-        }
-        return written.toString();
+        return Catalogue.DATATYPES.where(members::contains).stream()
+                .map(Datatype::literalSpelling)
+                .collect(Collectors.joining(" "));
     }
 }

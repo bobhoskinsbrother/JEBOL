@@ -1,6 +1,7 @@
 package org.jebol.domain.value;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -216,7 +217,105 @@ public record TupleValue(int[] segments) implements Value {
 
     @Override
     public Datatype datatype() {
-        return Datatype.TUPLE;
+        return TYPE;
+    }
+
+    public static final Datatype TYPE = new TupleDatatype();
+
+    private static final class TupleDatatype extends Datatype {
+
+        private static final int THE_LARGEST_OCTET = 255;
+
+        TupleDatatype() {
+            super("tuple", Typeset.SCALAR);
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return switch (from) {
+                case TupleValue already -> already;
+                case AnyStringValue text -> tupleScannedFrom(text.text(), from);
+                case AnyBlockValue segments -> tupleOfSegments(segments);
+                case BinaryValue octets -> tupleOfOctets(octets);
+                case IssueValue issue -> tupleOfHexPairs(issue.spelling(), from);
+                default -> throw refusing(from);
+            };
+        }
+
+        private Value tupleOfSegments(AnyBlockValue segments) {
+            List<Value> items = segments.remaining();
+            if (items.size() > MAXIMUM_SEGMENTS) {
+                throw refusing(segments);
+            }
+            int[] octets = new int[items.size()];
+            for (int at = 0; at < items.size(); at++) {
+                octets[at] = octetOf(items.get(at), segments);
+            }
+            return TupleValue.of(octets);
+        }
+
+        private int octetOf(Value item, Value whole) {
+            long number = switch (item) {
+                case IntegerValue wholeNumber -> wholeNumber.magnitude();
+                case CharacterValue letter -> letter.codepoint();
+                case AnyDecimalValue fractional -> Math.round(Math.abs(fractional.quantity()))
+                        * (fractional.quantity() < 0 ? -1 : 1);
+                default -> throw refusing(whole);
+            };
+            if (number < 0 || number > THE_LARGEST_OCTET) {
+                throw refusing(whole);
+            }
+            return (int) number;
+        }
+
+        private Value tupleOfOctets(BinaryValue octets) {
+            int width = Math.min(octets.lengthFromHere(), MAXIMUM_SEGMENTS);
+            int[] kept = new int[width];
+            for (int at = 0; at < width; at++) {
+                kept[at] = octets.storage().at(octets.index() + at) & THE_BITS_OF_AN_OCTET;
+            }
+            return TupleValue.of(kept);
+        }
+
+        private Value tupleOfHexPairs(String digits, Value original) {
+            if (digits.length() % 2 != 0 || digits.length() / 2 > MAXIMUM_SEGMENTS) {
+                throw refusing(original);
+            }
+            int[] octets = new int[digits.length() / 2];
+            for (int at = 0; at < octets.length; at++) {
+                try {
+                    octets[at] = Integer.parseInt(digits.substring(at * 2, at * 2 + 2), 16);
+                } catch (NumberFormatException notHexadecimal) {
+                    throw refusing(original);
+                }
+            }
+            return TupleValue.of(octets);
+        }
+
+        private Value tupleScannedFrom(String text, Value original) {
+            String[] parts = text.split("\\.", -1);
+            if (text.isEmpty() || parts.length > MAXIMUM_SEGMENTS) {
+                throw refusing(original);
+            }
+            int width = Math.max(parts.length, MINIMUM_SHOWN_SEGMENTS);
+            int[] octets = new int[width];
+            for (int at = 0; at < parts.length; at++) {
+                if (parts[at].isEmpty() && at == parts.length - 1) {
+                    break;
+                }
+                int written;
+                try {
+                    written = Integer.parseInt(parts[at].trim());
+                } catch (NumberFormatException notANumber) {
+                    throw refusing(original);
+                }
+                if (written < 0 || written > THE_LARGEST_OCTET) {
+                    throw refusing(original);
+                }
+                octets[at] = written;
+            }
+            return TupleValue.of(octets);
+        }
     }
 
     @Override

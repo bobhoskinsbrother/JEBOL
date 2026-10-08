@@ -107,7 +107,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
     private Value roundedToAMultiple(Value subject, double value, Value step) {
         double multiple = Comparison.asDouble(step);
         if (multiple == 0) {
-            if (step.datatype() == Datatype.INTEGER && subject.datatype() == Datatype.INTEGER) {
+            if (step.datatype() == IntegerValue.TYPE && subject.datatype() == IntegerValue.TYPE) {
                 throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
             }
             return roundedToTheScalesDatatype(step, value);

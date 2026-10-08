@@ -3,7 +3,7 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
@@ -27,10 +27,10 @@ public class UnfilterNative extends PngFilterNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("data", Set.of(Datatype.BINARY)),
+                Parameter.required("data", Set.of(BinaryValue.TYPE)),
                 Parameter.required("width", aWidth()),
                 Parameter.belongingTo("as", "type", aFilterType()),
-                Parameter.belongingTo("skip", "bpp", Set.of(Datatype.INTEGER)));
+                Parameter.belongingTo("skip", "bpp", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

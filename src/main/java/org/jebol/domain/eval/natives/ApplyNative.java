@@ -24,7 +24,7 @@ public class ApplyNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("func"),
-                Parameter.required("block", Set.of(Datatype.BLOCK)));
+                Parameter.required("block", Set.of(BlockValue.TYPE)));
     }
 
     @Override
@@ -41,7 +41,7 @@ public class ApplyNative extends DefaultNative {
                     : new ArrayList<>(evaluator.evaluateEachOrRaise(given, context));
             Value callee = arguments.getFirst();
             while (isDo(callee) && !supplied.isEmpty()
-                    && supplied.getFirst().datatype().isAnyFunction()) {
+                    && supplied.getFirst().datatype().belongsTo(Typeset.ANY_FUNCTION)) {
                 callee = supplied.removeFirst();
             }
             if (callee instanceof NativeValue builtIn

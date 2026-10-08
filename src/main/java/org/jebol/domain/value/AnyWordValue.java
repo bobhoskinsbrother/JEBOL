@@ -1,5 +1,6 @@
 package org.jebol.domain.value;
 
+import java.util.List;
 import java.util.Optional;
 
 public abstract sealed class AnyWordValue implements Value
@@ -43,21 +44,86 @@ public abstract sealed class AnyWordValue implements Value
         return ParameterKind.NORMAL;
     }
 
-    public static AnyWordValue ofTheDatatype(String spelling, Datatype datatype) {
-        return ofTheDatatype(spelling, Context.unbound(), datatype);
-    }
+    public abstract static class AnyWordDatatype extends Datatype {
 
-    private static AnyWordValue ofTheDatatype(String spelling, Context binding, Datatype datatype) {
-        return switch (datatype) {
-            case WORD -> new WordValue(spelling, binding);
-            case SET_WORD -> new SetWordValue(spelling, binding);
-            case GET_WORD -> new GetWordValue(spelling, binding);
-            case LIT_WORD -> new LitWordValue(spelling, binding);
-            case REFINEMENT -> new RefinementValue(spelling, binding);
-            case ISSUE -> new IssueValue(spelling, binding);
-            default -> throw new IllegalArgumentException(
-                    datatype.literalSpelling() + " is not an any-word! datatype");
-        };
+        private static final String THE_PUNCTUATION_THAT_SPELLS_A_WORD_ALONE = "!%&*+-./<=>?^`|~";
+
+        private static final int THE_FIRST_CODE_POINT_THE_SCANNER_TAKES_FOR_A_LETTER = 128;
+
+        AnyWordDatatype(String spelling) {
+            super(spelling, Typeset.ANY_WORD);
+        }
+
+        public abstract AnyWordValue spelt(String spelling, Context binding);
+
+        public AnyWordValue spelt(String spelling) {
+            return spelt(spelling, Context.unbound());
+        }
+
+        String asTheScannerReadsIt(String spelling) {
+            return spelling;
+        }
+
+        Datatype theDatatypeTheScannerReadsItAs() {
+            return WordValue.TYPE;
+        }
+
+        @Override
+        protected void refuseToBuildSomethingOutOfNothing(Value from) {
+        }
+
+        @Override
+        public Value constructedFrom(List<Value> contents, Construction construction) {
+            throw refusingConstruction(contents);
+        }
+
+        @Override
+        public Value as(Value value) {
+            return value instanceof AnyWordValue word
+                    ? spelt(word.spelling(), word.binding())
+                    : super.as(value);
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return switch (from) {
+                case AnyWordValue word -> spelt(word.spelling());
+                case LogicValue(boolean truth) -> spelt(Boolean.toString(truth));
+                case CharacterValue letter -> spelt(theWordASingleCharacterSpells(letter));
+                case AnyStringValue text -> spelt(spellingReadFrom(text.text(), maker));
+                case Datatype asked -> spelt(spellingReadFrom(asked.literalSpelling(), maker));
+                default -> throw Raised.of(EvaluationFailure.EXPECT_VAL, WordValue.TYPE, from.datatype());
+            };
+        }
+
+        private String theWordASingleCharacterSpells(CharacterValue letter) {
+            if (!spellsAWordAlone(letter.codepoint())) {
+                throw Raised.of(EvaluationFailure.BAD_CHAR, letter);
+            }
+            return Character.toString(letter.codepoint());
+        }
+
+        private boolean spellsAWordAlone(int codepoint) {
+            return codepoint >= THE_FIRST_CODE_POINT_THE_SCANNER_TAKES_FOR_A_LETTER
+                    || Character.isLetter(codepoint)
+                    || THE_PUNCTUATION_THAT_SPELLS_A_WORD_ALONE.indexOf(codepoint) >= 0;
+        }
+
+        private String spellingReadFrom(String text, Maker maker) {
+            String trimmed = new WrittenText(text).theOneWordIn();
+            List<Value> read;
+            try {
+                read = maker.valuesReadFrom(asTheScannerReadsIt(trimmed)).orElse(List.of());
+            } catch (RuntimeException unreadable) {
+                throw Raised.of(EvaluationFailure.INVALID_CHARS);
+            }
+            if (read.size() != 1 || !(read.getFirst() instanceof AnyWordValue word)
+                    || word.datatype() != theDatatypeTheScannerReadsItAs()
+                    || !word.spelling().equals(trimmed)) {
+                throw Raised.of(EvaluationFailure.INVALID_CHARS);
+            }
+            return word.spelling();
+        }
     }
 
     public String spelling() {
@@ -98,10 +164,6 @@ public abstract sealed class AnyWordValue implements Value
             throw Raised.of(EvaluationFailure.NOT_DEFINED, spelling);
         }
         return binding.slotFor(canonical);
-    }
-
-    public AnyWordValue as(Datatype otherDatatype) {
-        return ofTheDatatype(spelling, binding, otherDatatype);
     }
 
     public WordValue asWord() {

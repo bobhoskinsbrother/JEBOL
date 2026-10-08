@@ -2,6 +2,14 @@ package org.jebol.domain.value;
 
 public final class RefinementValue extends AnyWordValue {
 
+    public static final AnyWordDatatype TYPE = new AnyWordDatatype("refinement") {
+
+        @Override
+        public AnyWordValue spelt(String spelling, Context binding) {
+            return new RefinementValue(spelling, binding);
+        }
+    };
+
     RefinementValue(String spelling, Context binding) {
         super(spelling, binding);
     }
@@ -12,7 +20,7 @@ public final class RefinementValue extends AnyWordValue {
 
     @Override
     public Datatype datatype() {
-        return Datatype.REFINEMENT;
+        return TYPE;
     }
 
     @Override

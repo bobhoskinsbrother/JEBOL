@@ -3,8 +3,9 @@ package org.jebol.domain.eval;
 import org.jebol.domain.value.*;
 
 import java.util.List;
+import java.util.function.UnaryOperator;
 
-final class EventPath {
+public final class EventPath {
 
     private EventPath() {
     }
@@ -189,14 +190,14 @@ final class EventPath {
         for (int at = 0; at < spec.size(); at += 2) {
             Value name = spec.get(at);
             Value given = aSetWordWithNothingAfterItReadsAsNone(spec, at);
-            Value written = given.datatype() == Datatype.UNSET
+            Value written = given.datatype() == UnsetValue.TYPE
                     ? NoneValue.none()
                     : simpleValueOf.apply(given);
             String field = name instanceof AnyWordValue asked ? asked.canonical() : "";
             java.util.Optional<EventValue> after = written(built, field, written);
             if (after.isEmpty()) {
                 throw Raised.of(EvaluationFailure.BAD_FIELD_SET,
-                        name, DatatypeValue.of(written.datatype()));
+                        name, written.datatype());
             }
             built = after.orElseThrow();
         }
@@ -208,20 +209,12 @@ final class EventPath {
         return at + 1 < spec.size() ? spec.get(at + 1) : NoneValue.none();
     }
 
-    static Value made(Value from, Value spec,
-            java.util.function.UnaryOperator<Value> simpleValueOf) {
+    public static Value made(Value spec, UnaryOperator<Value> simpleValueOf) {
         if (spec instanceof EventValue already) {
             return already;
         }
         if (!(spec instanceof BlockValue block)) {
-            throw Raised.of(EvaluationFailure.EXPECT_VAL,
-                    DatatypeValue.of(Datatype.EVENT),
-                    DatatypeValue.of(spec.datatype()));
-        }
-        if (!(from instanceof EventValue) && !(from instanceof DatatypeValue)) {
-            throw Raised.of(EvaluationFailure.EXPECT_VAL,
-                    DatatypeValue.of(Datatype.EVENT),
-                    DatatypeValue.of(from.datatype()));
+            throw Raised.of(EvaluationFailure.EXPECT_VAL, EventValue.TYPE, spec.datatype());
         }
         return filledFromSpec(
                 aBlockStartsFromAClearedEvent(), block.remaining(), simpleValueOf);

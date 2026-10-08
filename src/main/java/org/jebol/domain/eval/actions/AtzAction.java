@@ -3,7 +3,8 @@ package org.jebol.domain.eval.actions;
 import org.jebol.domain.eval.Arithmetic;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.PortValue;
@@ -31,7 +32,7 @@ public class AtzAction extends SeriesOrFileAction {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series"),
-                Parameter.required("position", Set.of(Datatype.INTEGER, Datatype.PAIR)));
+                Parameter.required("position", Set.of(IntegerValue.TYPE, PairValue.TYPE)));
     }
 
     @Override

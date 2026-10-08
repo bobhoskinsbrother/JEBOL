@@ -25,7 +25,7 @@ public class IsProtectedNative extends DefaultNative {
 
     private boolean isProtected(Value value) {
         return switch (value) {
-            case AnyBlockValue path when path.datatype().isAnyPath() ->
+            case AnyPathValue path ->
                     path.fieldThePathNames().map(ContextSlot::isProtected).orElse(false);
             case AnyBlockValue block -> block.storage().isProtected();
             case AnyStringValue text -> text.storage().isProtected();

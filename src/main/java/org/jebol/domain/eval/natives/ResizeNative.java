@@ -22,10 +22,10 @@ public class ResizeNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("image", Set.of(Datatype.IMAGE)),
+        return List.of(Parameter.required("image", Set.of(ImageValue.TYPE)),
                 Parameter.required("size",
-                        Set.of(Datatype.PAIR, Datatype.PERCENT, Datatype.INTEGER)),
-                Parameter.belongingTo("filter", "name", Set.of(Datatype.WORD, Datatype.INTEGER)),
+                        Set.of(PairValue.TYPE, PercentValue.TYPE, IntegerValue.TYPE)),
+                Parameter.belongingTo("filter", "name", Set.of(WordValue.TYPE, IntegerValue.TYPE)),
                 Parameter.belongingTo("blur", "factor", Typeset.NUMBER.members()));
     }
 
@@ -68,7 +68,7 @@ public class ResizeNative extends DefaultNative {
             high = scaledFrom(wide, wasHigh, wasWide);
         }
         if (wide <= 0 || high <= 0) {
-            throw Raised.of(EvaluationFailure.NO_CREATE, DatatypeValue.of(Datatype.IMAGE));
+            throw Raised.of(EvaluationFailure.NO_CREATE, ImageValue.TYPE);
         }
         return ImageOperations.resized(image, wide, high);
     }

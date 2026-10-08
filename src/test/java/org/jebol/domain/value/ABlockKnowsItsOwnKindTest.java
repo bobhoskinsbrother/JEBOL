@@ -4,7 +4,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
@@ -47,46 +46,46 @@ class ABlockKnowsItsOwnKindTest {
         }
     };
 
+    private final List<AnyBlockValue.AnyBlockDatatype> everyBlockDatatype = List.of(
+            BlockValue.TYPE, ParenValue.TYPE, HashValue.TYPE,
+            PathValue.TYPE, SetPathValue.TYPE, GetPathValue.TYPE, LitPathValue.TYPE);
+
+    private final List<AnyPathValue.AnyPathDatatype> everyPathDatatype = List.of(
+            PathValue.TYPE, SetPathValue.TYPE, GetPathValue.TYPE, LitPathValue.TYPE);
+
     @Nested
     @DisplayName("building one from a datatype")
     class FromADatatype {
 
-        @ParameterizedTest
-        @EnumSource(value = Datatype.class, names = {"BLOCK", "PAREN", "HASH", "PATH", "SET_PATH", "GET_PATH", "LIT_PATH"})
+        @Test
         @DisplayName("each any-block! datatype builds a value that answers to that datatype")
-        void eachBlockDatatypeBuildsItsOwnKind(Datatype asked) {
-            assertThat(AnyBlockValue.ofTheDatatype(BlockStorage.of(), 1, asked).datatype()).isEqualTo(asked);
-        }
-
-        @ParameterizedTest
-        @EnumSource(value = Datatype.class, names = {"PATH", "SET_PATH", "GET_PATH", "LIT_PATH"})
-        @DisplayName("each any-path! datatype builds a path")
-        void eachPathDatatypeBuildsAPath(Datatype asked) {
-            assertThat(AnyBlockValue.ofTheDatatype(BlockStorage.of(), 1, asked)).isInstanceOf(AnyPathValue.class);
-        }
-
-        @ParameterizedTest
-        @EnumSource(value = Datatype.class, names = {"BLOCK", "PAREN", "HASH"})
-        @DisplayName("the others are not paths")
-        void theOthersAreNotPaths(Datatype asked) {
-            assertThat(AnyBlockValue.ofTheDatatype(BlockStorage.of(), 1, asked)).isNotInstanceOf(AnyPathValue.class);
-        }
-
-        @ParameterizedTest
-        @EnumSource(value = Datatype.class, names = {"STRING", "WORD", "MAP", "OBJECT"})
-        @DisplayName("a datatype outside any-block! is refused")
-        void aDatatypeOutsideTheFamilyIsRefused(Datatype asked) {
-            assertThatThrownBy(() -> AnyBlockValue.ofTheDatatype(BlockStorage.of(), 1, asked))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("any-block!");
+        void eachBlockDatatypeBuildsItsOwnKind() {
+            assertThat(everyBlockDatatype).allSatisfy(asked ->
+                    assertThat(asked.holding(BlockStorage.of(), 1).datatype()).isSameAs(asked));
         }
 
         @Test
-        @DisplayName("a path asked for with a block datatype is refused")
-        void aPathAskedForWithABlockDatatype() {
-            assertThatThrownBy(() -> AnyPathValue.path(List.of(), Datatype.BLOCK))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("any-path!");
+        @DisplayName("each any-path! datatype builds a path")
+        void eachPathDatatypeBuildsAPath() {
+            assertThat(everyPathDatatype).allSatisfy(asked ->
+                    assertThat(asked.holding(List.of())).isInstanceOf(AnyPathValue.class));
+        }
+
+        @Test
+        @DisplayName("the others are not paths")
+        void theOthersAreNotPaths() {
+            assertThat(List.of(BlockValue.TYPE, ParenValue.TYPE, HashValue.TYPE)).allSatisfy(asked ->
+                    assertThat(asked.holding(List.of())).isNotInstanceOf(AnyPathValue.class));
+        }
+
+        @Test
+        @DisplayName("a value outside any-block! cannot be seen as a block")
+        void aValueOutsideTheFamilyIsRefused() {
+            assertThat(List.<Value>of(StringValue.of("a"), WordValue.of("a"), MapValue.empty(),
+                    new ObjectValue(Context.root()))).allSatisfy(outside ->
+                    assertThatThrownBy(() -> BlockValue.TYPE.as(outside))
+                            .isInstanceOfSatisfying(Raised.class, raised ->
+                                    assertThat(raised.error().errorId()).isEqualTo("not-same-class")));
         }
     }
 
@@ -98,7 +97,7 @@ class ABlockKnowsItsOwnKindTest {
         @ValueSource(ints = {1, 4})
         @DisplayName("from the head to one past the last item is a place to stand")
         void theHeadAndTheTailAreAllowed(int index) {
-            assertThat(AnyBlockValue.ofTheDatatype(new BlockStorage(oneTwoThree), index, Datatype.PAREN).index())
+            assertThat(ParenValue.TYPE.holding(new BlockStorage(oneTwoThree), index).index())
                     .isEqualTo(index);
         }
 
@@ -106,7 +105,7 @@ class ABlockKnowsItsOwnKindTest {
         @ValueSource(ints = {0, -1, 5})
         @DisplayName("before the head or past the tail is refused")
         void outsideTheStorageIsRefused(int index) {
-            assertThatThrownBy(() -> AnyBlockValue.ofTheDatatype(new BlockStorage(oneTwoThree), index, Datatype.PAREN))
+            assertThatThrownBy(() -> ParenValue.TYPE.holding(new BlockStorage(oneTwoThree), index))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("outside 1..4");
         }
@@ -140,7 +139,7 @@ class ABlockKnowsItsOwnKindTest {
         @Test
         @DisplayName("a lit-path seen as a path is a plain path over the same segments")
         void aLitPathAsAPath() {
-            AnyBlockValue litPath = AnyPathValue.path(oneTwoThree, Datatype.LIT_PATH);
+            AnyBlockValue litPath = LitPathValue.TYPE.holding(oneTwoThree);
 
             assertThat(litPath.asPath()).isInstanceOf(PathValue.class);
             assertThat(litPath.asPath().sharesStorageWith(litPath)).isTrue();
@@ -149,7 +148,7 @@ class ABlockKnowsItsOwnKindTest {
         @Test
         @DisplayName("holding other storage keeps the kind")
         void holdingKeepsTheKind() {
-            AnyBlockValue setPath = AnyPathValue.path(oneTwoThree, Datatype.SET_PATH);
+            AnyBlockValue setPath = SetPathValue.TYPE.holding(oneTwoThree);
 
             assertThat(setPath.holding(BlockStorage.of())).isInstanceOf(SetPathValue.class);
         }
@@ -169,14 +168,15 @@ class ABlockKnowsItsOwnKindTest {
         @DisplayName("a path and a get-path look up their declaration")
         void aPathAndAGetPathLookUpTheirDeclaration() {
             assertThat(PathValue.of(oneTwoThree).looksUpItsDeclaration()).isTrue();
-            assertThat(AnyPathValue.path(oneTwoThree, Datatype.GET_PATH).looksUpItsDeclaration()).isTrue();
+            assertThat(GetPathValue.TYPE.holding(oneTwoThree).looksUpItsDeclaration()).isTrue();
         }
 
-        @ParameterizedTest
-        @EnumSource(value = Datatype.class, names = {"BLOCK", "PAREN", "HASH", "SET_PATH", "LIT_PATH"})
+        @Test
         @DisplayName("no other kind looks up its declaration")
-        void nothingElseLooksUpItsDeclaration(Datatype kind) {
-            assertThat(AnyBlockValue.ofTheDatatype(BlockStorage.of(), 1, kind).looksUpItsDeclaration()).isFalse();
+        void nothingElseLooksUpItsDeclaration() {
+            assertThat(List.of(BlockValue.TYPE, ParenValue.TYPE, HashValue.TYPE, SetPathValue.TYPE,
+                    LitPathValue.TYPE)).allSatisfy(kind ->
+                    assertThat(kind.holding(List.of()).looksUpItsDeclaration()).isFalse());
         }
 
         @Test
@@ -211,7 +211,7 @@ class ABlockKnowsItsOwnKindTest {
         @DisplayName("the same items in two kinds are two different values")
         void differentKindsDiffer() {
             assertThat(ParenValue.of(oneTwoThree)).isNotEqualTo(BlockValue.block(oneTwoThree));
-            assertThat(PathValue.of(oneTwoThree)).isNotEqualTo(AnyPathValue.path(oneTwoThree, Datatype.GET_PATH));
+            assertThat(PathValue.of(oneTwoThree)).isNotEqualTo(GetPathValue.TYPE.holding(oneTwoThree));
         }
 
         @Test

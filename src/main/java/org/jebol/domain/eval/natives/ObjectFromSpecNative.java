@@ -13,7 +13,7 @@ public abstract class ObjectFromSpecNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required(whatTheSpecIsCalled(), Set.of(Datatype.BLOCK)));
+        return List.of(Parameter.required(whatTheSpecIsCalled(), Set.of(BlockValue.TYPE)));
     }
 
     @Override

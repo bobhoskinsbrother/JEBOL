@@ -954,7 +954,7 @@ public final class Interpreter {
     public String whatTheConsolePrints(ScriptOutcome outcome) {
         Value result = outcome.value();
         evaluator.setSystemState("last-result", result);
-        if (outcome.conclusion() == Conclusion.HALTED || result.datatype() == Datatype.UNSET) {
+        if (outcome.conclusion() == Conclusion.HALTED || result.datatype() == UnsetValue.TYPE) {
             return "";
         }
         if (result instanceof ErrorValue error) {
@@ -985,7 +985,7 @@ public final class Interpreter {
 
     /** What a console would show for an outcome. */
     public String display(ScriptOutcome outcome) {
-        if (outcome.succeeded() && outcome.value().datatype() == Datatype.UNSET) {
+        if (outcome.succeeded() && outcome.value().datatype() == UnsetValue.TYPE) {
             return "";
         }
         return outcome.display();

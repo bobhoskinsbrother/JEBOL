@@ -5,6 +5,19 @@ import java.util.function.ToLongFunction;
 /** {@code true} or {@code false}. The only value whose truth is its content. */
 public record LogicValue(boolean truth) implements Value {
 
+    public static final Datatype TYPE = new Datatype("logic") {
+
+        @Override
+        protected void refuseToBuildSomethingOutOfNothing(Value from) {
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return LogicValue.of(from.isTruthy()
+                    && !(asking.builds() && from.isAQuantityOfNothing()));
+        }
+    };
+
     private static final long THE_SEED_FALSE_GIVES = 1L;
 
     @Override
@@ -56,7 +69,7 @@ public record LogicValue(boolean truth) implements Value {
     }
 
     @Override
-    public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
+    public java.util.Optional<Value> asDecimal(AnyDecimalValue.AnyDecimalDatatype wanted, Conversion asking) {
         return asking.builds()
                 ? java.util.Optional.of(
                         asItStands(wanted, truth() ? 1.0 : 0.0))
@@ -65,7 +78,7 @@ public record LogicValue(boolean truth) implements Value {
 
     @Override
     public Datatype datatype() {
-        return Datatype.LOGIC;
+        return TYPE;
     }
 
     @Override

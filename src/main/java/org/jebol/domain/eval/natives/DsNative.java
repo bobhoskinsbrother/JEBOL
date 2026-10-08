@@ -38,7 +38,7 @@ public class DsNative extends DefaultNative {
         List<Evaluator.OpenCall> open = evaluator.callsInProgress();
         int slotsInUse = (open.size() + 1) * StackNative.FRAME_VALUE_UNITS;
         evaluator.output().writeLine(String.format(FRAME_LINE,
-                slotsInUse, nativeName(), 0, Datatype.NATIVE.literalSpelling()));
+                slotsInUse, nativeName(), 0, NativeValue.TYPE.literalSpelling()));
         slotsInUse -= StackNative.FRAME_VALUE_UNITS;
         for (Evaluator.OpenCall call : open) {
             printOneFrame(evaluator, call, slotsInUse);

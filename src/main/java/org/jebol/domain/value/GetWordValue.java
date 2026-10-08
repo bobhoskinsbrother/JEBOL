@@ -2,6 +2,14 @@ package org.jebol.domain.value;
 
 public final class GetWordValue extends AnyWordValue {
 
+    public static final AnyWordDatatype TYPE = new AnyWordDatatype("get-word") {
+
+        @Override
+        public AnyWordValue spelt(String spelling, Context binding) {
+            return new GetWordValue(spelling, binding);
+        }
+    };
+
     GetWordValue(String spelling, Context binding) {
         super(spelling, binding);
     }
@@ -12,7 +20,7 @@ public final class GetWordValue extends AnyWordValue {
 
     @Override
     public Datatype datatype() {
-        return Datatype.GET_WORD;
+        return TYPE;
     }
 
     @Override

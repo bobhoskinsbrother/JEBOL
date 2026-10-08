@@ -17,8 +17,8 @@ public class ToHexNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("value", Set.of(Datatype.INTEGER, Datatype.CHAR, Datatype.TUPLE)),
-                Parameter.belongingTo("size", "len", Set.of(Datatype.INTEGER)));
+                Parameter.required("value", Set.of(IntegerValue.TYPE, CharacterValue.TYPE, TupleValue.TYPE)),
+                Parameter.belongingTo("size", "len", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

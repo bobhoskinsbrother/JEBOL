@@ -21,7 +21,7 @@ public class TrimAction extends DefaultNative implements ActionValue {
     public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("series", Typeset.SERIES.membersAnd(
-                        Datatype.OBJECT, Datatype.ERROR, Datatype.MODULE)),
+                        ObjectValue.TYPE, ErrorValue.TYPE, ModuleValue.TYPE)),
                 Parameter.belongingTo("with", "characters", Set.of()));
     }
 

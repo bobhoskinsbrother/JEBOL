@@ -14,7 +14,7 @@ public class EnlineNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series", Typeset.ANY_STRING.membersAnd(Datatype.BLOCK)));
+        return List.of(Parameter.required("series", Typeset.ANY_STRING.membersAnd(BlockValue.TYPE)));
     }
 
     @Override

@@ -2,6 +2,7 @@ package org.jebol.domain.value;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -224,13 +225,56 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
     }
 
     @Override
-    public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
-        return java.util.Optional.of(asItStands(wanted, asDeci().toDouble()));
+    public Optional<Value> asDecimal(AnyDecimalValue.AnyDecimalDatatype wanted, Conversion asking) {
+        return Optional.of(asItStands(wanted, asDeci().toDouble()));
+    }
+
+    @Override
+    public boolean isAQuantityOfNothing() {
+        return amount.signum() == 0;
     }
 
     @Override
     public Datatype datatype() {
-        return Datatype.MONEY;
+        return TYPE;
+    }
+
+    public static final Datatype TYPE = new MoneyDatatype();
+
+    private static final class MoneyDatatype extends Datatype {
+
+        private static final int MOST_MONEY_CHARACTERS = 36;
+
+        MoneyDatatype() {
+            super("money", Typeset.SCALAR);
+        }
+
+        @Override
+        public Value constructedFrom(List<Value> contents, Construction construction) {
+            throw refusingConstruction(contents);
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return switch (from) {
+                case MoneyValue already -> already;
+                case IntegerValue whole -> new MoneyValue(new Deci(whole.magnitude()));
+                case AnyDecimalValue quantity -> new MoneyValue(new Deci(quantity.quantity()));
+                case AnyStringValue text -> readMoney(text);
+                case BinaryValue bytes -> MoneyValue.fromBytes(bytes.bytesFromHere());
+                case LogicValue truth when asking.builds() ->
+                        new MoneyValue(new Deci(truth.truth() ? 1 : 0));
+                default -> throw refusing(from);
+            };
+        }
+
+        private MoneyValue readMoney(AnyStringValue text) {
+            String written = new WrittenText(text.text())
+                    .theOneNumberIn("a money", MOST_MONEY_CHARACTERS);
+            return new DeciReading(written).theWholeOf()
+                    .map(MoneyValue::new)
+                    .orElseThrow(() -> refusing(text));
+        }
     }
 
     @Override

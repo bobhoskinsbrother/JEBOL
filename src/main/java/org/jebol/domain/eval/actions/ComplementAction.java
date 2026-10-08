@@ -17,9 +17,9 @@ public class ComplementAction extends DefaultNative implements ActionValue {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value", Set.of(
-                Datatype.LOGIC, Datatype.INTEGER, Datatype.TUPLE,
-                Datatype.BINARY, Datatype.BITSET, Datatype.TYPESET,
-                Datatype.IMAGE)));
+                LogicValue.TYPE, IntegerValue.TYPE, TupleValue.TYPE,
+                BinaryValue.TYPE, BitsetValue.TYPE, TypesetValue.TYPE,
+                ImageValue.TYPE)));
     }
 
     @Override

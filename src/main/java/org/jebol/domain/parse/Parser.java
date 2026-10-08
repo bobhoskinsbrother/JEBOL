@@ -195,7 +195,7 @@ public final class Parser implements ParseWalk {
             return false;
         }
         Value held = target.slotFor(word.canonical()).value();
-        if (held instanceof UnsetValue || held.datatype().isAnyFunction()) {
+        if (held instanceof UnsetValue || held.datatype().belongsTo(Typeset.ANY_FUNCTION)) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, word);
         }
         return held instanceof BlockValue rule ? matchSequence(rule.remaining()) : matchValue(held);
@@ -492,7 +492,7 @@ public final class Parser implements ParseWalk {
     }
 
 
-    private Datatype parsing = Datatype.BLOCK;
+    private Datatype parsing = BlockValue.TYPE;
 
 
     int inputLengthOverABlock() {
@@ -555,7 +555,7 @@ public final class Parser implements ParseWalk {
             }
             return matchNamedRule(word) ? 1 : NO_MATCH;
         }
-        if (rule instanceof UnsetValue || rule.datatype().isAnyFunction()) {
+        if (rule instanceof UnsetValue || rule.datatype().belongsTo(Typeset.ANY_FUNCTION)) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, rule);
         }
         if (rule instanceof PathValue path) {
@@ -632,8 +632,8 @@ public final class Parser implements ParseWalk {
 
     private void refuseATargetThatCannotHoldWhatThisParseYieldsOverABlock(Value target) {
         Datatype kind = target.datatype();
-        boolean holdsWhatWeParse = kind == Datatype.BINARY && parsing == Datatype.BINARY;
-        if (!holdsWhatWeParse && kind != Datatype.BLOCK && kind != Datatype.PAREN && kind != Datatype.HASH) {
+        boolean holdsWhatWeParse = kind == BinaryValue.TYPE && parsing == BinaryValue.TYPE;
+        if (!holdsWhatWeParse && kind != BlockValue.TYPE && kind != ParenValue.TYPE && kind != HashValue.TYPE) {
             throw Raised.of(EvaluationFailure.PARSE_INTO_TYPE);
         }
     }
@@ -646,7 +646,7 @@ public final class Parser implements ParseWalk {
 
     Value sliceOfTheInputKeepingItsOwnDatatype(List<Value> taken) {
         AnyBlockValue slice = BlockValue.block(taken);
-        return source instanceof AnyBlockValue whole ? slice.as(whole.datatype()) : slice;
+        return source instanceof AnyBlockValue whole ? whole.holding(taken) : slice;
     }
 
     Value firstOf(List<Value> taken) {
@@ -684,7 +684,7 @@ public final class Parser implements ParseWalk {
             case BlockValue nested -> matchSequence(nested.remaining());
             case BitsetValue members ->
                     !atEnd() && current() instanceof CharacterValue(int codepoint) && members.holds(codepoint) && advanceOne();
-            case DatatypeValue wanted -> matchesDatatype(wanted.represents());
+            case Datatype wanted -> matchesDatatype(wanted);
             case TypesetValue wanted -> !atEnd() && wanted.holds(current().datatype()) && advanceOne();
             case LitWordValue quoted -> matchesLiteral(quoted.asWord());
             case WordValue word -> switch (word.canonical()) {
@@ -847,7 +847,7 @@ public final class Parser implements ParseWalk {
         if (rule instanceof IntegerValue) {
             return matchRepeat(rules, at);
         }
-        if (rule instanceof UnsetValue || rule.datatype().isAnyFunction()) {
+        if (rule instanceof UnsetValue || rule.datatype().belongsTo(Typeset.ANY_FUNCTION)) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, rule);
         }
         if (rule instanceof PathValue path) {
@@ -918,7 +918,7 @@ public final class Parser implements ParseWalk {
     public Value textSliceBetween(int from, int to) {
         String taken = textBetween(from, to);
         if (!walkingBytes) {
-            return AnyStringValue.ofTheDatatype(taken, source.datatype());
+            return source instanceof AnyStringValue text ? text.holding(taken) : StringValue.of(taken);
         }
         int[] octets = new int[taken.length()];
         for (int at = 0; at < octets.length; at++) {
@@ -928,9 +928,11 @@ public final class Parser implements ParseWalk {
     }
 
     private void refuseATargetThatCannotHoldWhatThisParseYieldsOverAString(Value target) {
-        Datatype kind = target.datatype();
-        Datatype parsing = source == null ? null : source.datatype();
-        boolean suits = kind == Datatype.BLOCK || kind == Datatype.PAREN || kind == Datatype.HASH || (kind.isAnyString() && (parsing == null || parsing.isAnyString())) || (kind == Datatype.BINARY && (parsing == null || parsing == Datatype.BINARY));
+        boolean suits = target instanceof BlockValue
+                || target instanceof ParenValue
+                || target instanceof HashValue
+                || target instanceof AnyStringValue && (source == null || source instanceof AnyStringValue)
+                || target instanceof BinaryValue && (source == null || source instanceof BinaryValue);
         if (!suits) {
             throw Raised.of(EvaluationFailure.PARSE_INTO_TYPE);
         }

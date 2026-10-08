@@ -23,7 +23,7 @@ public class RemoveAction extends DefaultNative implements ActionValue {
     @Override
     public List<Parameter> parametersAsWritten() {
         Set<Datatype> range = new HashSet<>(aPartLimit());
-        range.add(Datatype.CHAR);
+        range.add(CharacterValue.TYPE);
         return List.of(Parameter.required("series"),
                 Parameter.belongingTo("part", "count", Set.copyOf(range)),
                 Parameter.belongingTo("key", "which", Set.of()));

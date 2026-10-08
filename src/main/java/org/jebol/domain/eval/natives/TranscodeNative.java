@@ -30,8 +30,8 @@ public class TranscodeNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("source"),
-                Parameter.belongingTo("line", "count", Set.of(Datatype.INTEGER)),
-                Parameter.belongingTo("part", "length", Set.of(Datatype.INTEGER)));
+                Parameter.belongingTo("line", "count", Set.of(IntegerValue.TYPE)),
+                Parameter.belongingTo("part", "length", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

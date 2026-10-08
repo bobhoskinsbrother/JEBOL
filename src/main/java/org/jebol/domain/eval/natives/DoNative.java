@@ -26,7 +26,7 @@ public class DoNative extends DefaultNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value", Typeset.ANY_TYPE.members()),
                 Parameter.belongingTo("args", "arg", Set.of()),
-                Parameter.belongingTo("next", "var", Set.of(Datatype.WORD)));
+                Parameter.belongingTo("next", "var", Set.of(WordValue.TYPE)));
     }
 
     @Override

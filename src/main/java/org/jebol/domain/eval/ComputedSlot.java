@@ -12,6 +12,6 @@ record ComputedSlot(Value held, Value selector) implements Slot {
     @Override
     public void setValue(Value replacement) {
         throw Raised.of(EvaluationFailure.BAD_FIELD_SET,
-                selector, DatatypeValue.of(replacement.datatype()));
+                selector, replacement.datatype());
     }
 }

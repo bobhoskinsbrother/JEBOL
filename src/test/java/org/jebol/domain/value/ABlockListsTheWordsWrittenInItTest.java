@@ -64,7 +64,7 @@ class ABlockListsTheWordsWrittenInItTest {
                 GetWordValue.of("b"), LitWordValue.of("c"));
 
         assertThat(written.wordsWritten(DEEPLY, EVERY_WORD)).allSatisfy(word -> {
-            assertThat(word.datatype()).isEqualTo(Datatype.WORD);
+            assertThat(word.datatype()).isEqualTo(WordValue.TYPE);
             assertThat(((AnyWordValue) word).isBound()).isFalse();
         });
     }

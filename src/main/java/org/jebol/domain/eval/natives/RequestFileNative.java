@@ -5,7 +5,7 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.NoneValue;
@@ -31,9 +31,9 @@ public class RequestFileNative extends WindowNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.belongingTo("file", "name", Set.of(Datatype.FILE)),
-                Parameter.belongingTo("title", "text", Set.of(Datatype.STRING)),
-                Parameter.belongingTo("filter", "list", Set.of(Datatype.BLOCK)));
+                Parameter.belongingTo("file", "name", Set.of(FileValue.TYPE)),
+                Parameter.belongingTo("title", "text", Set.of(StringValue.TYPE)),
+                Parameter.belongingTo("filter", "list", Set.of(BlockValue.TYPE)));
     }
 
     @Override

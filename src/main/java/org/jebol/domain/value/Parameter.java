@@ -1,6 +1,5 @@
 package org.jebol.domain.value;
 
-import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
 
@@ -20,7 +19,7 @@ public record Parameter(
         Optional<String> owningRefinement) {
 
     static final Set<Datatype> A_REFINEMENTS_SLOT =
-            EnumSet.of(Datatype.NONE, Datatype.LOGIC);
+            Set.of(NoneValue.TYPE, LogicValue.TYPE);
 
     public Parameter {
         if (name == null || name.isEmpty()) {
@@ -35,7 +34,7 @@ public record Parameter(
         }
         acceptedTypes = acceptedTypes.isEmpty()
                 ? Set.of()
-                : EnumSet.copyOf(acceptedTypes);
+                : Set.copyOf(acceptedTypes);
     }
 
     public static Parameter required(String name) {
@@ -103,7 +102,7 @@ public record Parameter(
     /** Whether a value of this datatype is acceptable here. */
     public boolean accepts(Datatype datatype) {
         return acceptedTypes.isEmpty()
-                ? datatype != Datatype.UNSET
+                ? datatype != UnsetValue.TYPE
                 : acceptedTypes.contains(datatype);
     }
 

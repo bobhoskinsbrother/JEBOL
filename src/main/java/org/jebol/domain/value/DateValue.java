@@ -1,5 +1,8 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.date.DateMaking;
+
+import java.util.List;
 import java.util.Optional;
 import java.util.function.ToLongFunction;
 
@@ -71,13 +74,62 @@ public record DateValue(
 
     @Override
     public Datatype datatype() {
-        return Datatype.DATE;
+        return TYPE;
+    }
+
+    public static final Datatype TYPE = new DateDatatype();
+
+    private static final class DateDatatype extends Datatype {
+
+        private static final long MICROSECONDS_A_SECOND = 1_000_000L;
+
+        DateDatatype() {
+            super("date", Typeset.SCALAR);
+        }
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            return switch (spec) {
+                case AnyBlockValue parts -> DateMaking.fromParts(parts.remaining());
+                case DateValue already -> DateMaking.fromParts(List.of(already));
+                default -> super.madeFrom(spec, maker);
+            };
+        }
+
+        @Override
+        public Value constructedFrom(List<Value> contents, Construction construction) {
+            Value specification = theSpecificationIn(contents);
+            if (!(specification instanceof AnyBlockValue || specification instanceof DateValue)) {
+                throw refusingConstruction(contents);
+            }
+            return construction.madeOf(this, specification);
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return switch (from) {
+                case DateValue already -> already;
+                case IntegerValue seconds ->
+                        DateMaking.atTheTimestamp(seconds.magnitude() * MICROSECONDS_A_SECOND);
+                case DecimalValue seconds -> DateMaking.atTheTimestamp(
+                        (long) (seconds.quantity() * MICROSECONDS_A_SECOND));
+                case AnyBlockValue parts -> DateMaking.fromParts(parts.remaining());
+                case AnyStringValue written -> dateReadFrom(written, maker);
+                default -> throw refusing(from);
+            };
+        }
+
+        private Value dateReadFrom(AnyStringValue written, Maker maker) {
+            return maker.valuesReadFrom(written.text())
+                    .filter(read -> read.size() == 1 && read.getFirst() instanceof DateValue)
+                    .map(List::getFirst)
+                    .orElseThrow(() -> refusing(written));
+        }
     }
 
     @Override
-    public java.util.Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
-        return java.util.Optional.of(
-                inHundredths(wanted, secondsSinceTheEpoch()));
+    public Optional<Value> asDecimal(AnyDecimalValue.AnyDecimalDatatype wanted, Conversion asking) {
+        return Optional.of(inHundredths(wanted, secondsSinceTheEpoch()));
     }
 
     public double secondsSinceTheEpoch() {

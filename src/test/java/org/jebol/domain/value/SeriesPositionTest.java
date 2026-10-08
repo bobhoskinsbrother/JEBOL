@@ -211,29 +211,29 @@ class SeriesPositionTest {
     class WrongDatatype {
 
         @Test
-        void aBlockValueRejectsAStringDatatype() {
-            assertThatThrownBy(() -> AnyBlockValue.ofTheDatatype(BlockStorage.of(), 1, Datatype.STRING))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("any-block!");
+        void aBlockDatatypeCannotSeeAStringAsABlock() {
+            assertThatThrownBy(() -> BlockValue.TYPE.as(StringValue.of("")))
+                    .isInstanceOfSatisfying(Raised.class, raised ->
+                            assertThat(raised.error().errorId()).isEqualTo("not-same-class"));
         }
 
         @Test
-        void aStringValueRejectsABlockDatatype() {
-            assertThatThrownBy(() -> AnyStringValue.ofTheDatatype(StringStorage.of(""), 1, Datatype.BLOCK))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("any-string!");
+        void aStringDatatypeCannotSeeABlockAsAString() {
+            assertThatThrownBy(() -> StringValue.TYPE.as(BlockValue.block()))
+                    .isInstanceOfSatisfying(Raised.class, raised ->
+                            assertThat(raised.error().errorId()).isEqualTo("not-same-class"));
         }
 
         @Test
-        void aPathFactoryRejectsANonPathDatatype() {
-            assertThatThrownBy(() -> AnyPathValue.path(List.of(), Datatype.BLOCK))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("any-path!");
+        void aPathDatatypeSeesABlockAsAPathButNotAString() {
+            assertThat(PathValue.TYPE.as(BlockValue.block())).isInstanceOf(PathValue.class);
+            assertThatThrownBy(() -> PathValue.TYPE.as(StringValue.of("a")))
+                    .isInstanceOf(Raised.class);
         }
 
         @Test
         void storageIsRequired() {
-            assertThatThrownBy(() -> AnyBlockValue.ofTheDatatype(null, 1, Datatype.BLOCK))
+            assertThatThrownBy(() -> BlockValue.TYPE.holding(null, 1))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("storage");
         }

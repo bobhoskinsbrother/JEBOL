@@ -1,7 +1,6 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.TupleValue;
@@ -19,8 +18,8 @@ public class ColorDistanceNative extends ColourNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("a", Set.of(Datatype.TUPLE)),
-                Parameter.required("b", Set.of(Datatype.TUPLE)));
+                Parameter.required("a", Set.of(TupleValue.TYPE)),
+                Parameter.required("b", Set.of(TupleValue.TYPE)));
     }
 
     @Override

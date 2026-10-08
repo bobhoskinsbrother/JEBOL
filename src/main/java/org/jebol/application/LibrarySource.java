@@ -82,7 +82,7 @@ final class LibrarySource {
             case PairValue pair -> true;
             case TupleValue tuple -> true;
             case AnyWordValue word -> true;
-            case DatatypeValue datatype -> true;
+            case Datatype datatype -> true;
             default -> false;
         };
     }

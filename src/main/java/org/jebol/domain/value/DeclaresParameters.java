@@ -5,18 +5,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-public sealed interface DeclaresParameters extends Value permits NativeValue, DefinedFunctionValue {
+public sealed interface DeclaresParameters extends AnyFunctionValue
+        permits NativeValue, DefinedFunctionValue {
 
     List<Parameter> parameters();
 
     Set<String> refinementsDeclaredApart();
-
-    @Override
-    default Value make(Value spec, Maker maker) {
-        return spec instanceof AnyBlockValue block
-                ? maker.makeFunctionFrom(this, block)
-                : maker.makeAnotherFrom(datatype(), spec);
-    }
 
     default AnyBlockValue typesets() {
         List<Value> types = new ArrayList<>();

@@ -17,9 +17,9 @@ public class InNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("object", Typeset.ANY_OBJECT.membersAnd(Datatype.BLOCK)),
+                Parameter.required("object", Typeset.ANY_OBJECT.membersAnd(BlockValue.TYPE)),
                 Parameter.required("word",
-                        Typeset.ANY_WORD.membersAnd(Datatype.BLOCK, Datatype.PAREN)));
+                        Typeset.ANY_WORD.membersAnd(BlockValue.TYPE, ParenValue.TYPE)));
     }
 
     @Override

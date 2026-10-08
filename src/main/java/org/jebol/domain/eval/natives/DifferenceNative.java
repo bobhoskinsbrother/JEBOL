@@ -11,8 +11,8 @@ import java.util.Set;
 public class DifferenceNative extends DefaultNative {
 
     private static final Set<Datatype> TAKES_A_DIFFERENCE = Set.of(
-            Datatype.BITSET, Datatype.TYPESET, Datatype.STRING, Datatype.MAP,
-            Datatype.BLOCK, Datatype.DATE);
+            BitsetValue.TYPE, TypesetValue.TYPE, StringValue.TYPE, MapValue.TYPE,
+            BlockValue.TYPE, DateValue.TYPE);
 
     private static final int EVERY_MEMBER_ON_ITS_OWN = 1;
 
@@ -26,7 +26,7 @@ public class DifferenceNative extends DefaultNative {
         return List.of(
                 Parameter.required("first", TAKES_A_DIFFERENCE),
                 Parameter.required("second", TAKES_A_DIFFERENCE),
-                Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)));
+                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

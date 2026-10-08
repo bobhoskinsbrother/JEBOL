@@ -2,7 +2,6 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Parameter;
 
@@ -19,7 +18,7 @@ public class PickzNative extends PickingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series"),
-                Parameter.required("index", Set.of(Datatype.INTEGER)));
+                Parameter.required("index", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

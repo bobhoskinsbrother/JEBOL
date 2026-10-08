@@ -21,7 +21,7 @@ public class TryNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("block", Set.of(Datatype.BLOCK, Datatype.PAREN)),
+                Parameter.required("block", Set.of(BlockValue.TYPE, ParenValue.TYPE)),
                 Parameter.belongingTo("with", "handler", Set.of()));
     }
 

@@ -73,7 +73,7 @@ class WhatEachOutputNativeDeclaresTest {
         for (Datatype datatype : Typeset.ANY_TYPE.members()) {
             assertThat(value.accepts(datatype)).as(datatype.literalSpelling()).isTrue();
         }
-        assertThat(value.accepts(Datatype.UNSET)).isTrue();
+        assertThat(value.accepts(UnsetValue.TYPE)).isTrue();
     }
 
     @Nested
@@ -87,10 +87,10 @@ class WhatEachOutputNativeDeclaresTest {
             assertThat(declared).extracting(Parameter::name).containsExactly("value", "limit");
             Parameter limit = declared.get(1);
             assertThat(limit.owningRefinement()).contains("part");
-            assertThat(limit.accepts(Datatype.INTEGER)).isTrue();
-            assertThat(limit.accepts(Datatype.DECIMAL)).isFalse();
-            assertThat(limit.accepts(Datatype.PERCENT)).isFalse();
-            assertThat(limit.accepts(Datatype.NONE)).isFalse();
+            assertThat(limit.accepts(IntegerValue.TYPE)).isTrue();
+            assertThat(limit.accepts(DecimalValue.TYPE)).isFalse();
+            assertThat(limit.accepts(PercentValue.TYPE)).isFalse();
+            assertThat(limit.accepts(NoneValue.TYPE)).isFalse();
         }
 
         @Test

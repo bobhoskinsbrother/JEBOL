@@ -1,10 +1,45 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.eval.BitsetActions;
 import org.jebol.domain.value.sets.MembersKept;
 
 import java.util.Arrays;
+import java.util.List;
 
 public final class BitsetValue implements Value {
+
+    public static final Datatype TYPE = new Datatype("bitset") {
+
+        @Override
+        protected void refuseToBuildSomethingOutOfNothing(Value from) {
+            if (from instanceof NoneValue) {
+                throw Raised.of(EvaluationFailure.INVALID_TYPE, NoneValue.TYPE);
+            }
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return BitsetActions.madeFrom(from);
+        }
+
+        @Override
+        public Value constructedFrom(List<Value> contents, Construction construction) {
+            if (contents.size() == 2
+                    && contents.getFirst() instanceof AnyWordValue complementing
+                    && complementing.canonical().equals("not")
+                    && contents.get(1) instanceof BinaryValue octets) {
+                return BitsetValue.of(octets.octetsFromHere()).complemented();
+            }
+            if (contents.size() != 1) {
+                throw refusingConstruction(contents);
+            }
+            return switch (contents.getFirst()) {
+                case BinaryValue octets -> BitsetValue.of(octets.octetsFromHere());
+                case BitsetValue already -> already;
+                default -> throw refusingConstruction(contents);
+            };
+        }
+    };
 
     private static final int BITS_PER_OCTET = 8;
 
@@ -224,7 +259,7 @@ public final class BitsetValue implements Value {
 
     @Override
     public Datatype datatype() {
-        return Datatype.BITSET;
+        return TYPE;
     }
 
     @Override

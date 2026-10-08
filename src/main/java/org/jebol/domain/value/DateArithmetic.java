@@ -22,7 +22,7 @@ public final class DateArithmetic {
         if (operation.subtractsOneFromTheOther()) {
             throw Raised.of(EvaluationFailure.NOT_RELATED,
                     WordValue.of(operation.spelling() + ":"),
-                    DatatypeValue.of(left.datatype()));
+                    left.datatype());
         }
         return movedBy(left, operation);
     }
@@ -37,7 +37,7 @@ public final class DateArithmetic {
     private Value movedBy(Value span, ArithmeticOperation operation) {
         refuseASpanADateCannotMoveBy(span, operation);
         int sign = operation.signWhenMoving();
-        return span.datatype() == Datatype.INTEGER
+        return span instanceof IntegerValue
                 ? movedByDays(sign * (long) quantityOf(span))
                 : movedByTheClock(sign * clockShiftOf(span));
     }

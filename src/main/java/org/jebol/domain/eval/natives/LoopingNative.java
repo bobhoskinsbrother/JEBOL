@@ -12,7 +12,7 @@ import java.util.function.Supplier;
 
 public abstract class LoopingNative extends DefaultNative {
 
-    protected static final Set<Datatype> A_BLOCK = Set.of(Datatype.BLOCK);
+    protected static final Set<Datatype> A_BLOCK = Set.of(BlockValue.TYPE);
 
     protected Value answerOfTheLoop(Supplier<Value> rounds) {
         try {

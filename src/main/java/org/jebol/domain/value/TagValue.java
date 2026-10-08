@@ -2,6 +2,14 @@ package org.jebol.domain.value;
 
 public final class TagValue extends AnyStringValue {
 
+    public static final AnyStringDatatype TYPE = new AnyStringDatatype("tag") {
+
+        @Override
+        public AnyStringValue holding(StringStorage storage, int index) {
+            return new TagValue(storage, index);
+        }
+    };
+
     TagValue(StringStorage storage, int index) {
         super(storage, index);
     }
@@ -12,7 +20,7 @@ public final class TagValue extends AnyStringValue {
 
     @Override
     public Datatype datatype() {
-        return Datatype.TAG;
+        return TYPE;
     }
 
     @Override

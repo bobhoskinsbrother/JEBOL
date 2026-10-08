@@ -113,7 +113,7 @@ public final class ContextSlot implements Slot {
     }
 
     public boolean holdsUnset() {
-        return value.datatype() == Datatype.UNSET;
+        return value instanceof UnsetValue;
     }
 
     @Override

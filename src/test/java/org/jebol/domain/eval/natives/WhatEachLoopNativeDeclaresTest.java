@@ -23,7 +23,7 @@ class WhatEachLoopNativeDeclaresTest {
 
     private static final Set<String> NOTHING = Set.of();
 
-    private static final Set<Datatype> A_BLOCK = Set.of(Datatype.BLOCK);
+    private static final Set<Datatype> A_BLOCK = Set.of(BlockValue.TYPE);
 
     private void call(DefaultNative definition, Set<String> refinements,
                       Value... arguments) {
@@ -32,7 +32,7 @@ class WhatEachLoopNativeDeclaresTest {
 
     private Set<Datatype> whatRepeatCountsBy() {
         return Typeset.NUMBER.membersAnd(
-                Typeset.SERIES.membersAnd(Datatype.PAIR, Datatype.NONE)
+                Typeset.SERIES.membersAnd(PairValue.TYPE, NoneValue.TYPE)
                         .toArray(Datatype[]::new));
     }
 
@@ -69,9 +69,9 @@ class WhatEachLoopNativeDeclaresTest {
                         NOTHING),
                 Arguments.of(new RemoveEachNative(), "remove-each",
                         List.of(Parameter.softQuoted("word"),
-                                Parameter.required("series", Set.of(Datatype.BLOCK,
-                                        Datatype.BINARY, Datatype.STRING, Datatype.MAP,
-                                        Datatype.VECTOR)),
+                                Parameter.required("series", Set.of(BlockValue.TYPE,
+                                        BinaryValue.TYPE, StringValue.TYPE, MapValue.TYPE,
+                                        VectorValue.TYPE)),
                                 Parameter.required("body", A_BLOCK)),
                         Set.of("count")),
                 Arguments.of(new MapEachNative(), "map-each",
@@ -82,7 +82,7 @@ class WhatEachLoopNativeDeclaresTest {
                 Arguments.of(new ForSkipNative(), "forskip",
                         List.of(Parameter.softQuoted("word"),
                                 Parameter.required("size",
-                                        Set.of(Datatype.INTEGER, Datatype.DECIMAL)),
+                                        Set.of(IntegerValue.TYPE, DecimalValue.TYPE)),
                                 Parameter.required("body", A_BLOCK)),
                         NOTHING),
                 Arguments.of(new ForAllNative(), "forall",

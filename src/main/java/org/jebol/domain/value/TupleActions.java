@@ -63,8 +63,8 @@ public final class TupleActions {
     private void refuseATimeBesideATuple(Value left, Value right) {
         if (left instanceof TimeValue || right instanceof TimeValue) {
             throw Raised.of(EvaluationFailure.NOT_RELATED,
-                    DatatypeValue.of(Datatype.TIME),
-                    DatatypeValue.of(Datatype.TUPLE));
+                    TimeValue.TYPE,
+                    TupleValue.TYPE);
         }
     }
 }

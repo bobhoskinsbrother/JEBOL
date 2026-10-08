@@ -18,7 +18,7 @@ public class PokeAction extends DefaultNative implements ActionValue {
     public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("series", Typeset.SERIES.membersAnd(
-                        Datatype.PORT, Datatype.MAP, Datatype.GOB, Datatype.BITSET)),
+                        PortValue.TYPE, MapValue.TYPE, GobValue.TYPE, BitsetValue.TYPE)),
                 Parameter.required("index"),
                 Parameter.required("value", Typeset.ANY_TYPE.members()));
     }

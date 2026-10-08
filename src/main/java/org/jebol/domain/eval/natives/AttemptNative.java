@@ -19,7 +19,7 @@ public class AttemptNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("block", Set.of(Datatype.BLOCK, Datatype.PAREN)));
+        return List.of(Parameter.required("block", Set.of(BlockValue.TYPE, ParenValue.TYPE)));
     }
 
     @Override

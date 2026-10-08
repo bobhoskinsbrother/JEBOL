@@ -202,12 +202,7 @@ public final class Molder {
         return switch (value) {
             case MapValue ignored -> "#[...]";
             case ObjectValue ignored -> "make object! [...]";
-            case AnyBlockValue block -> switch (block.datatype()) {
-                case PAREN -> "(...)";
-                case PATH, SET_PATH, GET_PATH, LIT_PATH -> "...";
-                case HASH -> "make hash! [...]";
-                default -> "[...]";
-            };
+            case AnyBlockValue block -> block.moldedWhenAlreadyInsideItself();
             default -> "...";
         };
     }
@@ -250,9 +245,9 @@ public final class Molder {
                     vector, vector.index(), forReading, 1);
             case AnyBlockValue block -> renderBlock(block, forReading);
             case AnyWordValue word -> forReading ? word.mold() : word.form();
-            case DatatypeValue datatype -> forReading
-                    ? "#(" + datatype.represents().literalSpelling() + ")"
-                    : datatype.represents().literalSpelling();
+            case Datatype datatype -> forReading
+                    ? "#(" + datatype.literalSpelling() + ")"
+                    : datatype.literalSpelling();
             case TypesetValue typeset -> !forReading
                     ? namesInTheTypeset(typeset)
                     : WRITING_EVERYTHING_OUT.get()
@@ -265,14 +260,13 @@ public final class Molder {
             case BitsetValue bitset -> "#(bitset! "
                     + (bitset.isComplemented() ? "not " : "")
                     + moldedBytes(bitset.octets()) + ")";
-            case ObjectValue object -> renderObject(object, Datatype.OBJECT, forReading);
+            case ObjectValue object -> renderObject(object, ObjectValue.TYPE, forReading);
             case PortValue port -> renderObject(
-                    new ObjectValue(port.context()), Datatype.PORT, forReading);
+                    new ObjectValue(port.context()), PortValue.TYPE, forReading);
             case ModuleValue module -> renderObject(
-                    new ObjectValue(module.context()), Datatype.MODULE, forReading);
+                    new ObjectValue(module.context()), ModuleValue.TYPE, forReading);
             case TaskValue task -> renderObject(
-                    new ObjectValue(task.context()), Datatype.TASK, ALWAYS_MOLDED);
-            case ErrorValue error -> renderError(error, forReading);
+                    new ObjectValue(task.context()), TaskValue.TYPE, ALWAYS_MOLDED);            case ErrorValue error -> renderError(error, forReading);
             case StructValue struct -> renderStruct(struct, forReading);
             case JavaObjectValue host -> "#[java-object! " + host.className() + "]";
         };
@@ -743,7 +737,7 @@ public final class Molder {
                                       boolean betweenBrackets) {
         boolean mayBreakLines = !WRITING_ON_ONE_LINE.get();
         StringBuilder out = new StringBuilder(
-                betweenBrackets ? opensWith(block.datatype()) : "");
+                betweenBrackets ? block.opensWith() : "");
         int outer = LINED_DEPTH.get();
         boolean steppedIn = false;
         boolean somethingWritten = false;
@@ -772,43 +766,22 @@ public final class Molder {
         if (mayBreakLines && steppedIn) {
             out.append('\n').append(ONE_INDENT.repeat(outer));
         }
-        return out.append(closesWith(block.datatype())).toString();
-    }
-
-    private static boolean moldsInBrackets(Datatype shape) {
-        return shape == Datatype.BLOCK || shape == Datatype.PAREN
-                || shape == Datatype.HASH;
-    }
-
-    private static String opensWith(Datatype shape) {
-        return switch (shape) {
-            case PAREN -> "(";
-            case HASH -> "make hash! [";
-            default -> "[";
-        };
-    }
-
-    private static String closesWith(Datatype shape) {
-        return shape == Datatype.PAREN ? ")" : "]";
+        return out.append(block.closesWith()).toString();
     }
 
     private static String renderBlock(AnyBlockValue block, boolean forReading) {
-        if (forReading && moldsInBrackets(block.datatype())) {
+        if (forReading && block.moldsInBrackets()) {
             return renderLined(block, forReading, BETWEEN_BRACKETS);
         }
         String items = block.remaining().stream()
                 .map(item -> render(item, forReading))
                 .collect(Collectors.joining(" "));
-        if (!forReading && moldsInBrackets(block.datatype())) {
+        if (!forReading && block.moldsInBrackets()) {
             return items;
         }
-        return switch (block.datatype()) {
-            case PATH -> joinPath(block, "", "");
-            case SET_PATH -> joinPath(block, "", forReading ? ":" : "");
-            case GET_PATH -> joinPath(block, forReading ? ":" : "", "");
-            case LIT_PATH -> joinPath(block, forReading ? "'" : "", "");
-            default -> "[" + items + "]";
-        };
+        return block instanceof AnyPathValue path
+                ? joinPath(path, path.markedBefore(forReading), path.markedAfter(forReading))
+                : "[" + items + "]";
     }
 
     private static String joinPath(AnyBlockValue path, String prefix, String suffix) {
@@ -851,7 +824,7 @@ public final class Molder {
             }
             return written.toString();
         });
-        return openedFor(Datatype.EVENT) + "[" + fields
+        return openedFor(EventValue.TYPE) + "[" + fields
                 + (onSeparateLines ? aLineIndentedAsDeepAsWeAre() : "")
                 + "]" + closedAfterATypeName();
     }
@@ -864,7 +837,7 @@ public final class Molder {
 
     private static String renderOperator(OperatorValue operator) {
         return operator.underlying() instanceof NativeValue built && built.ownSpec().isPresent()
-                ? openedFor(Datatype.OP) + "[" + mold(built.ownSpec().orElseThrow().head()) + "]"
+                ? openedFor(OperatorValue.TYPE) + "[" + mold(built.ownSpec().orElseThrow().head()) + "]"
                         + closedAfterATypeName()
                 : "#[op! " + operator.operatorName() + "]";
     }
@@ -877,7 +850,7 @@ public final class Molder {
     }
 
     private static String renderGob(GobValue gob, boolean forReading) {
-        StringBuilder built = new StringBuilder(openedFor(Datatype.GOB)).append('[');
+        StringBuilder built = new StringBuilder(openedFor(GobValue.TYPE)).append('[');
         List<Value> spec = gob.storage().moldingSpec();
         for (int at = 0; at < spec.size(); at++) {
             if (at > 0) {
@@ -937,7 +910,7 @@ public final class Molder {
         for (String name : ErrorValue.FIELDS) {
             fields.put(name, error.field(name).orElseGet(NoneValue::none));
         }
-        return openedFor(Datatype.ERROR) + "[" + moldedFields(fields) + "]"
+        return openedFor(ErrorValue.TYPE) + "[" + moldedFields(fields) + "]"
                 + closedAfterATypeName();
     }
 

@@ -3,7 +3,7 @@ package org.jebol.domain.eval;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.DatatypeValue;
+import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.IntegerValue;
@@ -77,13 +77,13 @@ public final class ValueHash {
             case TupleValue tuple -> ofTuple(tuple.segments());
             case PairValue pair -> Float.floatToRawIntBits((float) pair.x())
                     ^ Float.floatToRawIntBits((float) pair.y());
-            case DatatypeValue datatype -> crcOfAWord(datatype.represents().literalSpelling());
+            case Datatype datatype -> crcOfAWord(datatype.literalSpelling());
             default -> finalMix(typeNumberOf(value));
         };
     }
 
     private int typeNumberOf(Value value) {
-        return value.datatype().ordinal();
+        return value.datatype().numberTheCGivesIt();
     }
 
     private int ofText(AnyStringValue text) {

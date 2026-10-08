@@ -40,8 +40,8 @@ public class AccessOsNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("field", Set.of(Datatype.WORD)),
-                Parameter.belongingTo("set", "value", Set.of(Datatype.INTEGER, Datatype.BLOCK)));
+                Parameter.required("field", Set.of(WordValue.TYPE)),
+                Parameter.belongingTo("set", "value", Set.of(IntegerValue.TYPE, BlockValue.TYPE)));
     }
 
     @Override

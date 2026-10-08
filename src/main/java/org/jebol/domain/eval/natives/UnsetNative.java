@@ -16,7 +16,7 @@ public class UnsetNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("word",
-                Set.of(Datatype.WORD, Datatype.BLOCK, Datatype.NONE)));
+                Set.of(WordValue.TYPE, BlockValue.TYPE, NoneValue.TYPE)));
     }
 
     @Override

@@ -3,7 +3,6 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.crypto.StreamCipher;
 import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.HandleValue;
 import org.jebol.domain.value.Parameter;
@@ -23,9 +22,9 @@ public class Rc4Native extends CipherNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.belongingTo("key", "crypt-key", Set.of(Datatype.BINARY)),
-                Parameter.belongingTo("stream", "ctx", Set.of(Datatype.HANDLE)),
-                Parameter.belongingTo("stream", "data", Set.of(Datatype.BINARY)));
+        return List.of(Parameter.belongingTo("key", "crypt-key", Set.of(BinaryValue.TYPE)),
+                Parameter.belongingTo("stream", "ctx", Set.of(HandleValue.TYPE)),
+                Parameter.belongingTo("stream", "data", Set.of(BinaryValue.TYPE)));
     }
 
     @Override

@@ -20,8 +20,8 @@ class AValueCombinesItselfBitwiseTest {
     private static final Value A_CHARACTER = CharacterValue.of('L');
     private static final Value SOME_OCTETS = BinaryValue.of(0x0F, 0x10);
     private static final Value A_BITSET = BitsetValue.of(new byte[]{0x60});
-    private static final Value A_TYPESET = TypesetValue.of(Set.of(Datatype.STRING));
-    private static final Value A_DATATYPE = DatatypeValue.of(Datatype.INTEGER);
+    private static final Value A_TYPESET = TypesetValue.of(Set.of(StringValue.TYPE));
+    private static final Value A_DATATYPE = IntegerValue.TYPE;
     private static final Value A_VECTOR = VectorValue.holding(VectorKind.INT8, 12, 10, 6);
 
     private static final List<Value> ALL_TEN = List.of(
@@ -129,9 +129,9 @@ class AValueCombinesItselfBitwiseTest {
         @DisplayName("the same two values either way round answer two datatypes")
         void theSameTwoValuesGiveTwoDatatypes() {
             assertThat(A_WHOLE_NUMBER.bitwise(A_CHARACTER, AND).datatype())
-                    .isEqualTo(Datatype.INTEGER);
+                    .isEqualTo(IntegerValue.TYPE);
             assertThat(A_CHARACTER.bitwise(A_WHOLE_NUMBER, AND).datatype())
-                    .isEqualTo(Datatype.CHAR);
+                    .isEqualTo(CharacterValue.TYPE);
         }
 
         @Test

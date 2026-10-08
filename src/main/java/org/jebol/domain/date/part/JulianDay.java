@@ -2,8 +2,6 @@ package org.jebol.domain.date.part;
 
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.TimeValue;
 
@@ -98,6 +96,6 @@ final class JulianDay {
     }
 
     private static Raised noDateReachesThatYear() {
-        return Raised.of(EvaluationFailure.TYPE_LIMIT, DatatypeValue.of(Datatype.DATE));
+        return Raised.of(EvaluationFailure.TYPE_LIMIT, DateValue.TYPE);
     }
 }

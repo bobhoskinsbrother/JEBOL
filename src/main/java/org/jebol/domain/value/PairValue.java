@@ -1,5 +1,6 @@
 package org.jebol.domain.value;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.function.DoublePredicate;
 import java.util.function.ToLongFunction;
@@ -135,8 +136,52 @@ public record PairValue(double x, double y) implements Value {
 
     @Override
     public Datatype datatype() {
-        return Datatype.PAIR;
+        return TYPE;
     }
+
+    public static final Datatype TYPE = new Datatype("pair", Typeset.SCALAR) {
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            return built(Conversion.MAKE, spec, maker);
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return switch (from) {
+                case PairValue pair -> pair;
+                case IntegerValue whole -> PairValue.square(whole.magnitude());
+                case DecimalValue quantity -> PairValue.square(quantity.quantity());
+                case AnyStringValue text -> readPair(text, maker);
+                case BlockValue block -> pairOf(block);
+                default -> throw refusing(from);
+            };
+        }
+
+        private Value pairOf(BlockValue block) {
+            List<Value> halves = block.remaining();
+            if (halves.size() != 2) {
+                throw refusing(block);
+            }
+            return PairValue.of(aHalfIn(halves.get(0), block), aHalfIn(halves.get(1), block));
+        }
+
+        private double aHalfIn(Value half, BlockValue block) {
+            return switch (half) {
+                case IntegerValue(long magnitude) -> magnitude;
+                case AnyDecimalValue number -> number.quantity();
+                default -> throw refusing(block);
+            };
+        }
+
+        private Value readPair(AnyStringValue text, Maker maker) {
+            List<Value> read = maker.valuesReadFrom(text.text()).orElse(List.of());
+            if (read.size() != 1 || !(read.getFirst() instanceof PairValue pair)) {
+                throw refusing(StringValue.of(text.text()));
+            }
+            return pair;
+        }
+    };
 
     public Optional<Value> half(String name) {
         return switch (name) {

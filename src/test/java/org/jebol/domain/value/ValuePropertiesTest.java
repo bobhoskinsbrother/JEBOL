@@ -84,11 +84,12 @@ class ValuePropertiesTest {
             @ForAll("wordSpellings") String spelling) {
         AnyWordValue plain = WordValue.of(spelling);
 
-        for (Datatype shape : List.of(Datatype.SET_WORD, Datatype.GET_WORD,
-                Datatype.LIT_WORD, Datatype.REFINEMENT, Datatype.ISSUE)) {
-            assertThat(plain.as(shape).namesSameAs(plain))
-                    .as("%s as %s", spelling, shape)
-                    .isTrue();
+        for (AnyWordValue.AnyWordDatatype shape : List.of(SetWordValue.TYPE, GetWordValue.TYPE,
+                LitWordValue.TYPE, RefinementValue.TYPE, IssueValue.TYPE)) {
+            assertThat(shape.as(plain)).isInstanceOfSatisfying(AnyWordValue.class, reshaped ->
+                    assertThat(reshaped.namesSameAs(plain))
+                            .as("%s as %s", spelling, shape)
+                            .isTrue());
         }
     }
 
@@ -129,9 +130,9 @@ class ValuePropertiesTest {
 
     @Property
     void moldingAWordAlwaysReadsBackEqual(@ForAll("wordSpellings") String spelling) {
-        for (Datatype shape : List.of(Datatype.WORD, Datatype.SET_WORD,
-                Datatype.GET_WORD, Datatype.LIT_WORD, Datatype.REFINEMENT)) {
-            assertReadsBackEqual(AnyWordValue.ofTheDatatype(spelling, shape));
+        for (AnyWordValue.AnyWordDatatype shape : List.of(WordValue.TYPE, SetWordValue.TYPE,
+                GetWordValue.TYPE, LitWordValue.TYPE, RefinementValue.TYPE)) {
+            assertReadsBackEqual(shape.spelt(spelling));
         }
     }
 

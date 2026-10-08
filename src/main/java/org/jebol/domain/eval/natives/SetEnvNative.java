@@ -3,7 +3,8 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.NoneValue;
+import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Value;
@@ -26,7 +27,7 @@ public class SetEnvNative extends EnvironmentNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("name", aVariablesName()),
-                Parameter.required("value", Set.of(Datatype.STRING, Datatype.NONE)));
+                Parameter.required("value", Set.of(StringValue.TYPE, NoneValue.TYPE)));
     }
 
     @Override

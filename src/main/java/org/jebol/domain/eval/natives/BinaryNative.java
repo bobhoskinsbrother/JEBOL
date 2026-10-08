@@ -22,15 +22,15 @@ public class BinaryNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("ctx", Set.of(Datatype.OBJECT, Datatype.BINARY,
-                        Datatype.INTEGER, Datatype.NONE)),
+                Parameter.required("ctx", Set.of(ObjectValue.TYPE, BinaryValue.TYPE,
+                        IntegerValue.TYPE, NoneValue.TYPE)),
                 Parameter.belongingTo("init", "spec",
-                        Set.of(Datatype.BINARY, Datatype.INTEGER, Datatype.NONE)),
-                Parameter.belongingTo("write", "data", Set.of(Datatype.BINARY, Datatype.BLOCK)),
-                Parameter.belongingTo("read", "code", Set.of(Datatype.WORD, Datatype.BLOCK,
-                        Datatype.INTEGER, Datatype.BINARY)),
-                Parameter.belongingTo("into", "out", Set.of(Datatype.BLOCK)),
-                Parameter.belongingTo("with", "num", Set.of(Datatype.INTEGER)));
+                        Set.of(BinaryValue.TYPE, IntegerValue.TYPE, NoneValue.TYPE)),
+                Parameter.belongingTo("write", "data", Set.of(BinaryValue.TYPE, BlockValue.TYPE)),
+                Parameter.belongingTo("read", "code", Set.of(WordValue.TYPE, BlockValue.TYPE,
+                        IntegerValue.TYPE, BinaryValue.TYPE)),
+                Parameter.belongingTo("into", "out", Set.of(BlockValue.TYPE)),
+                Parameter.belongingTo("with", "num", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

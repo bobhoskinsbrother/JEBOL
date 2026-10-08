@@ -1,9 +1,13 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.application.Interpreter;
+import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.IssueValue;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Parameter;
+import org.jebol.domain.value.ParenValue;
+import org.jebol.domain.value.StringValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -44,12 +48,12 @@ class WhatParseDeclaresTest {
         void inputTakesSeriesAndRulesTakesABlock() {
             assertThat(parse.parametersAsWritten()).extracting(Parameter::name)
                     .containsExactly("input", "rules");
-            assertThat(parse.parametersAsWritten().getFirst().accepts(Datatype.STRING)).isTrue();
-            assertThat(parse.parametersAsWritten().getFirst().accepts(Datatype.BLOCK)).isTrue();
-            assertThat(parse.parametersAsWritten().getFirst().accepts(Datatype.ISSUE)).isFalse();
-            assertThat(parse.parametersAsWritten().get(1).accepts(Datatype.BLOCK)).isTrue();
-            assertThat(parse.parametersAsWritten().get(1).accepts(Datatype.PAREN)).isFalse();
-            assertThat(parse.parametersAsWritten().get(1).accepts(Datatype.STRING)).isFalse();
+            assertThat(parse.parametersAsWritten().getFirst().accepts(StringValue.TYPE)).isTrue();
+            assertThat(parse.parametersAsWritten().getFirst().accepts(BlockValue.TYPE)).isTrue();
+            assertThat(parse.parametersAsWritten().getFirst().accepts(IssueValue.TYPE)).isFalse();
+            assertThat(parse.parametersAsWritten().get(1).accepts(BlockValue.TYPE)).isTrue();
+            assertThat(parse.parametersAsWritten().get(1).accepts(ParenValue.TYPE)).isFalse();
+            assertThat(parse.parametersAsWritten().get(1).accepts(StringValue.TYPE)).isFalse();
         }
 
         @Test

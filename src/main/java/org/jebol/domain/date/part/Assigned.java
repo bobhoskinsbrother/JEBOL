@@ -2,7 +2,6 @@ package org.jebol.domain.date.part;
 
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.DateValue;
 import org.jebol.domain.value.AnyDecimalValue;
 import org.jebol.domain.value.IntegerValue;
@@ -73,6 +72,6 @@ record Assigned(Value value, AnyWordValue part) {
     }
 
     Raised refusal() {
-        return Raised.of(EvaluationFailure.BAD_FIELD_SET, part, DatatypeValue.of(value.datatype()));
+        return Raised.of(EvaluationFailure.BAD_FIELD_SET, part, value.datatype());
     }
 }

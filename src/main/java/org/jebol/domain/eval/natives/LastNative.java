@@ -15,7 +15,7 @@ public class LastNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value",
-                Typeset.SERIES.membersAnd(Datatype.TUPLE, Datatype.GOB)));
+                Typeset.SERIES.membersAnd(TupleValue.TYPE, GobValue.TYPE)));
     }
 
     @Override

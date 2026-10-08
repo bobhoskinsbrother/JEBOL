@@ -19,7 +19,7 @@ public class ReverseAction extends DefaultNative implements ActionValue {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series"),
-                Parameter.belongingTo("part", "limit", Set.of(Datatype.INTEGER)));
+                Parameter.belongingTo("part", "limit", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

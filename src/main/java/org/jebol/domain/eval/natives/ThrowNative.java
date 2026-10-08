@@ -19,7 +19,7 @@ public class ThrowNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value", Typeset.ANY_TYPE.members()),
-                Parameter.belongingTo("name", "word", Set.of(Datatype.WORD)));
+                Parameter.belongingTo("name", "word", Set.of(WordValue.TYPE)));
     }
 
     @Override

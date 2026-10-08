@@ -19,7 +19,7 @@ public class SetNative extends DefaultNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("word", Typeset.ANY_PATH.membersAnd(
-                        Datatype.WORD, Datatype.LIT_WORD, Datatype.BLOCK, Datatype.OBJECT)),
+                        WordValue.TYPE, LitWordValue.TYPE, BlockValue.TYPE, ObjectValue.TYPE)),
                 Parameter.required("value", Typeset.ANY_TYPE.members()));
     }
 
@@ -35,7 +35,7 @@ public class SetNative extends DefaultNative {
             Value supplied = arguments.get(1);
             refuseUnassignable(target, EvaluationFailure.EXPECT_ARG);
             target.refuseToBeWrittenWhenItNamesSelf();
-            if (!refinements.contains("any") && supplied.datatype() == Datatype.UNSET) {
+            if (!refinements.contains("any") && supplied.datatype() == UnsetValue.TYPE) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE, target);
             }
             return switch (target) {
@@ -43,7 +43,7 @@ public class SetNative extends DefaultNative {
                     word.boundSlot().setValue(supplied);
                     yield supplied;
                 }
-                case AnyBlockValue path when path.datatype().isAnyPath() ->
+                case AnyPathValue path ->
                         writtenThroughPath(path, supplied);
                 case ObjectValue into when supplied instanceof ObjectValue from
                         && !refinements.contains("only") -> {
@@ -87,7 +87,7 @@ public class SetNative extends DefaultNative {
 
     private void refuseUnsetAmong(List<Value> words, List<Value> values) {
         for (int index = 0; index < words.size() && index < values.size(); index++) {
-            if (values.get(index).datatype() == Datatype.UNSET) {
+            if (values.get(index).datatype() == UnsetValue.TYPE) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE, words.get(index));
             }
         }
@@ -143,7 +143,7 @@ public class SetNative extends DefaultNative {
         boolean onlySome = refinements.contains("some");
         for (ContextSlot slot : fieldsBothDeclare(into, from)) {
             Value supplied = from.context().ownSlotFor(slot.canonical()).value();
-            if (!anyValue && supplied.datatype() == Datatype.UNSET) {
+            if (!anyValue && supplied.datatype() == UnsetValue.TYPE) {
                 continue;
             }
             if (onlySome && holdsSomething(slot.value()) && !holdsSomething(supplied)) {
@@ -165,6 +165,6 @@ public class SetNative extends DefaultNative {
     }
 
     private boolean holdsSomething(Value held) {
-        return held.datatype() != Datatype.NONE && held.datatype() != Datatype.UNSET;
+        return held.datatype() != NoneValue.TYPE && held.datatype() != UnsetValue.TYPE;
     }
 }

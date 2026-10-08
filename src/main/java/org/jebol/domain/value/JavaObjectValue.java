@@ -40,8 +40,11 @@ public record JavaObjectValue(String className, Optional<Object> held) implement
 
     @Override
     public Datatype datatype() {
-        return Datatype.JAVA_OBJECT;
+        return TYPE;
     }
+
+    public static final Datatype TYPE = new Datatype("java-object") {
+    };
 
     @Override
     public String toString() {

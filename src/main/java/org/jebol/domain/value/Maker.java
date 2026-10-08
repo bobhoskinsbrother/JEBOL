@@ -1,20 +1,29 @@
 package org.jebol.domain.value;
 
+import java.util.List;
+import java.util.Optional;
+
 public interface Maker {
-
-    Value make(Datatype kind, Value spec);
-
-    Value makeAnotherFrom(Datatype kind, Value spec);
 
     Value makeObjectFrom(ObjectValue prototype, Value spec);
 
-    Value makeFunctionFrom(Value function, AnyBlockValue spec);
-
-    Value makeErrorFrom(Value spec);
+    Value makeFunctionFrom(AnyFunctionValue prototype, AnyBlockValue spec);
 
     Value makeStructFrom(StructValue prototype, Value spec);
 
-    Value makeEventFrom(EventValue prototype, Value spec);
+    ObjectValue objectEvaluatedFrom(AnyBlockValue body);
 
-    Value convertedTo(DatatypeValue wanted, Value value);
+    FunctionValue functionBoundFrom(AnyBlockValue spec, AnyBlockValue body);
+
+    Value systemFunctionApplied(String name, Value argument);
+
+    Value simpleValueOf(Value piece);
+
+    ErrorValue spokenHere(ErrorValue error);
+
+    StructSpec.LayoutRegistry structLayouts();
+
+    Optional<List<Value>> valuesReadFrom(String source);
+
+    AnyBlockValue sourceRead(String source);
 }

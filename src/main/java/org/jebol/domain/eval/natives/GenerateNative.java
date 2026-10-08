@@ -16,7 +16,7 @@ public class GenerateNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("type", Set.of(Datatype.WORD)));
+        return List.of(Parameter.required("type", Set.of(WordValue.TYPE)));
     }
 
     @Override

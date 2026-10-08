@@ -18,7 +18,7 @@ public class StatsNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.belongingTo("dump-series", "pool-id", Set.of(Datatype.INTEGER)));
+        return List.of(Parameter.belongingTo("dump-series", "pool-id", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

@@ -1,7 +1,6 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.TupleValue;
 
@@ -19,7 +18,7 @@ public class HsvToRgbNative extends ColourNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("hsv", Set.of(Datatype.TUPLE)));
+        return List.of(Parameter.required("hsv", Set.of(TupleValue.TYPE)));
     }
 
     @Override

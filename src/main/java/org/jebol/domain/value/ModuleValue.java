@@ -72,7 +72,57 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
 
     @Override
     public Datatype datatype() {
-        return Datatype.MODULE;
+        return TYPE;
+    }
+
+    public static final Datatype TYPE = new ModuleDatatype();
+
+    private static final class ModuleDatatype extends Datatype {
+
+        ModuleDatatype() {
+            super("module", Typeset.ANY_OBJECT);
+        }
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            if (!(spec instanceof AnyBlockValue)) {
+                throw refusing(spec);
+            }
+            if (!(maker.systemFunctionApplied("make-module*", spec) instanceof ModuleValue module)) {
+                throw Raised.of(EvaluationFailure.INVALID_SPEC, "module!");
+            }
+            return module;
+        }
+
+        @Override
+        public Value convertedFrom(Value value, Maker maker) {
+            if (!(value instanceof BlockValue parts) || parts.remaining().isEmpty()) {
+                throw refusing(value);
+            }
+            List<Value> given = parts.remaining();
+            if (!(given.getFirst() instanceof ObjectValue header)) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, given.getFirst());
+            }
+            if (given.size() < 2 || !(given.get(1) instanceof ObjectValue(Context fields))) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG,
+                        given.size() < 2 ? given.getFirst() : given.get(1));
+            }
+            return new ModuleValue(fields, header);
+        }
+
+        @Override
+        public Value constructedFrom(List<Value> contents, Construction construction) {
+            if (!(theSpecificationIn(contents) instanceof AnyBlockValue parts)) {
+                throw refusingConstruction(contents);
+            }
+            List<Value> given = parts.remaining();
+            if (given.size() < 2
+                    || !(given.get(0) instanceof ObjectValue header)
+                    || !(given.get(1) instanceof ObjectValue(Context fields))) {
+                throw refusingConstruction(contents);
+            }
+            return new ModuleValue(fields, header);
+        }
     }
 
     @Override

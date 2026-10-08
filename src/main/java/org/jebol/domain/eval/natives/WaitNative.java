@@ -6,7 +6,7 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.AnyDecimalValue;
 import org.jebol.domain.value.EventCatalogue;
 import org.jebol.domain.value.EventValue;
@@ -45,7 +45,7 @@ public class WaitNative extends PortWakingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value",
-                Typeset.NUMBER.membersAnd(Datatype.TIME, Datatype.PORT, Datatype.BLOCK, Datatype.NONE)));
+                Typeset.NUMBER.membersAnd(TimeValue.TYPE, PortValue.TYPE, BlockValue.TYPE, NoneValue.TYPE)));
     }
 
     @Override
@@ -89,7 +89,7 @@ public class WaitNative extends PortWakingNative {
 
     private Value whicheverPortWoke(List<Value> waitedOn, Evaluator evaluator) {
         if (!(evaluator.hostPort("system") instanceof PortValue queue)
-                || !queue.fieldValue("awake").datatype().isAnyFunction()) {
+                || !queue.fieldValue("awake").datatype().belongsTo(Typeset.ANY_FUNCTION)) {
             return NoneValue.none();
         }
         AnyBlockValue ports = BlockValue.block(new ArrayList<>(waitedOn));

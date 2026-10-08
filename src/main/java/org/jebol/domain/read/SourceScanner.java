@@ -1,31 +1,6 @@
 package org.jebol.domain.read;
 
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.AnyBlockValue;
-import org.jebol.domain.value.AnyPathValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.ParenValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.AnyDecimalValue;
-import org.jebol.domain.value.PercentValue;
-import org.jebol.domain.value.ErrorValue;
-import org.jebol.domain.value.MapValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.EmailValue;
-import org.jebol.domain.value.FileValue;
-import org.jebol.domain.value.RefValue;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.TagValue;
-import org.jebol.domain.value.UrlValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.AnyWordValue;
-import org.jebol.domain.value.GetWordValue;
-import org.jebol.domain.value.IssueValue;
-import org.jebol.domain.value.LitWordValue;
-import org.jebol.domain.value.RefinementValue;
-import org.jebol.domain.value.SetWordValue;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -1477,23 +1452,23 @@ final class SourceScanner {
 
     private Value pathOf(int token, List<Value> segments, int bp) {
         List<Value> parts = new ArrayList<>(segments);
-        Datatype kind;
+        AnyPathValue.AnyPathDatatype kind;
         if (token == TOKEN_LIT) {
-            kind = Datatype.LIT_PATH;
+            kind = LitPathValue.TYPE;
             parts.set(0, asPlainWord(parts.getFirst()));
         } else if (parts.getFirst() instanceof GetWordValue first) {
             if (at(end) == ':') {
                 throw invalid(TOKEN_PATH, bp, end);
             }
-            kind = Datatype.GET_PATH;
+            kind = GetPathValue.TYPE;
             parts.set(0, asPlainWord(first));
         } else if (at(end) == ':') {
-            kind = Datatype.SET_PATH;
+            kind = SetPathValue.TYPE;
             begin = ++end;
         } else {
-            kind = Datatype.PATH;
+            kind = PathValue.TYPE;
         }
-        return AnyPathValue.path(parts, kind);
+        return kind.holding(parts);
     }
 
     private Value asPlainWord(Value segment) {

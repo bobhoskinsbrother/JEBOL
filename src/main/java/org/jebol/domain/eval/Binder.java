@@ -42,7 +42,7 @@ public final class Binder {
                 for (Value item : block.remaining()) {
                     items.add(clonedAndRebound(item, from, into));
                 }
-                yield BlockValue.block(items).as(block.datatype());
+                yield block.holding(items);
             }
             case AnyStringValue text -> text.holding(text.text());
             case BinaryValue bytes -> bytes.copyOfTheFirst(bytes.lengthFromHere());

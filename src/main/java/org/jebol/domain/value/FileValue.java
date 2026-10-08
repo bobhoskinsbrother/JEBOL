@@ -2,6 +2,14 @@ package org.jebol.domain.value;
 
 public final class FileValue extends AnyStringValue {
 
+    public static final AnyStringDatatype TYPE = new AnyStringDatatype("file") {
+
+        @Override
+        public AnyStringValue holding(StringStorage storage, int index) {
+            return new FileValue(storage, index);
+        }
+    };
+
     private static final String DELIMITERS_WRITTEN_AS_HEX = ";\"()[]{}<>\\^%:";
 
     FileValue(StringStorage storage, int index) {
@@ -14,7 +22,7 @@ public final class FileValue extends AnyStringValue {
 
     @Override
     public Datatype datatype() {
-        return Datatype.FILE;
+        return TYPE;
     }
 
     @Override

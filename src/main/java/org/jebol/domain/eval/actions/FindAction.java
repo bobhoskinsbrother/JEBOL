@@ -6,7 +6,6 @@ import org.jebol.domain.eval.SeriesSearch;
 import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ImageValue;
@@ -50,7 +49,7 @@ public class FindAction extends SeriesSearchAction {
                 case BitsetValue bitset -> LogicValue.of(new BitsetActions(bitset).holds(
                         wanted, refinements.contains("any"), !refinements.contains("case")));
                 case TypesetValue typeset -> LogicValue.of(
-                        wanted instanceof DatatypeValue(Datatype represents)
+                        wanted instanceof Datatype represents
                                 && typeset.holds(represents));
                 case GobValue searched -> theChildFound(searched, wanted);
                 case ImageValue picture -> picture.thePixelFound(wanted,

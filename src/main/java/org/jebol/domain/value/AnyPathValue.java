@@ -11,12 +11,37 @@ public abstract sealed class AnyPathValue extends AnyBlockValue
         super(storage, index);
     }
 
-    public static AnyPathValue path(List<Value> segments, Datatype pathDatatype) {
-        if (!pathDatatype.isAnyPath()) {
-            throw new IllegalArgumentException(
-                    pathDatatype.literalSpelling() + " is not an any-path! datatype");
+    public abstract static class AnyPathDatatype extends AnyBlockDatatype {
+
+        AnyPathDatatype(String spelling) {
+            super(spelling, Typeset.SERIES, Typeset.ANY_BLOCK, Typeset.ANY_PATH);
         }
-        return (AnyPathValue) ofTheDatatype(new BlockStorage(segments), 1, pathDatatype);
+
+        @Override
+        public abstract AnyPathValue holding(BlockStorage storage, int index);
+
+        @Override
+        public AnyPathValue holding(List<Value> segments) {
+            return holding(new BlockStorage(segments), 1);
+        }
+    }
+
+    @Override
+    boolean moldsInBrackets() {
+        return false;
+    }
+
+    @Override
+    String moldedWhenAlreadyInsideItself() {
+        return "...";
+    }
+
+    String markedBefore(boolean forReading) {
+        return "";
+    }
+
+    String markedAfter(boolean forReading) {
+        return "";
     }
 
     @Override

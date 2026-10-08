@@ -4,7 +4,8 @@ import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.BinaryValue;
+import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
 
@@ -26,9 +27,9 @@ public class EnhexNative extends PercentEncodingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("value", anyStringOr(Datatype.BINARY)),
-                Parameter.belongingTo("escape", "char", Set.of(Datatype.CHAR)),
-                Parameter.belongingTo("except", "unescaped", Set.of(Datatype.BITSET)));
+                Parameter.required("value", anyStringOr(BinaryValue.TYPE)),
+                Parameter.belongingTo("escape", "char", Set.of(CharacterValue.TYPE)),
+                Parameter.belongingTo("except", "unescaped", Set.of(BitsetValue.TYPE)));
     }
 
     @Override

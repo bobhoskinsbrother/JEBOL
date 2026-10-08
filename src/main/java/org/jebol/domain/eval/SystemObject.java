@@ -6,7 +6,6 @@ import org.jebol.domain.eval.natives.ResizeNative;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.value.*;
 
-import java.util.Arrays;
 import java.util.List;
 
 public final class SystemObject {
@@ -132,7 +131,7 @@ public final class SystemObject {
 
     private Value catalog() {
         Context catalog = Context.root();
-        catalog.register("datatypes", BlockValue.block(Arrays.stream(Datatype.values()).map(datatype -> (Value) DatatypeValue.of(datatype)).toList()));
+        catalog.register("datatypes", BlockValue.block(List.copyOf(Catalogue.DATATYPES.entries())));
         catalog.register("structs", registeredStructLayouts);
         catalog.register("actions", lib.actionsInOrder());
         catalog.register("natives", lib.nativesInOrder());

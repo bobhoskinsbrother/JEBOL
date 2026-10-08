@@ -2,7 +2,6 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DecimalValue;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
@@ -19,7 +18,7 @@ public class FractionNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("number", Set.of(Datatype.DECIMAL)));
+        return List.of(Parameter.required("number", Set.of(DecimalValue.TYPE)));
     }
 
     @Override

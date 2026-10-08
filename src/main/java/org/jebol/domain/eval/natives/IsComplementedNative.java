@@ -15,7 +15,7 @@ public class IsComplementedNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value", Set.of(Datatype.BITSET)));
+        return List.of(Parameter.required("value", Set.of(BitsetValue.TYPE)));
     }
 
     @Override

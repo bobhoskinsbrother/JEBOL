@@ -19,8 +19,8 @@ public class SwitchNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value"),
-                Parameter.required("choices", Set.of(Datatype.BLOCK)),
-                Parameter.belongingTo("default", "fallback", Set.of(Datatype.BLOCK)));
+                Parameter.required("choices", Set.of(BlockValue.TYPE)),
+                Parameter.belongingTo("default", "fallback", Set.of(BlockValue.TYPE)));
     }
 
     @Override

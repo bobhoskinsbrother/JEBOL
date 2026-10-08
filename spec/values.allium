@@ -6,11 +6,13 @@
 -- values share mutable storage, how words carry bindings, and when two
 -- values count as equal. It specifies no evaluation; see eval.allium.
 --
--- Some datatypes here are names and nothing more. `#(vector!)` is a datatype
--- value and `datatype? #(vector!)` is true, because the reader has no
+-- Some datatypes here are names and nothing more. `#(frame!)` is a datatype
+-- value and `datatype? #(frame!)` is true, because the reader has no
 -- business deciding which datatypes exist -- but no value of one can be made,
--- so there is nothing to specify beyond the name. Eight of them: library!,
--- routine!, vector!, command!, task!, utype!, rebcode! and frame!.
+-- by MAKE, by TO or by the construction syntax, so there is nothing to
+-- specify beyond the name and the refusal. Six of them: end!, frame!,
+-- rebcode!, command!, library! and utype!. The refusals are rules in
+-- natives.allium.
 --
 -- struct! is neither a full datatype nor a bare name. A value of it can be
 -- made and STRUCT? affirms it, but only the layout is held. StructValue below
@@ -33,19 +35,19 @@ enum Datatype {
     | module | port -- a context that carries something extra: a header, or
                     -- a way out of the interpreter
     | java_object   -- a value belonging to the host, reachable both ways
+    | bitset | closure | event | gob | handle | hash | image
+    | struct | task | typeset | vector
 
-    -- Named but not built. No value of these exists yet, and the names
-    -- still have to: `#(bitset!)` is a datatype value and `datatype?`
-    -- answers true for it, whether or not a bitset can be made.
+    -- Named but never built. No value of these exists, and the names
+    -- still have to: `#(frame!)` is a datatype value and `datatype?`
+    -- answers true for it, though nothing can make a frame.
     --
-    -- This was tried once as a way to stop the reader refusing `bitset!`
-    -- in source and reverted, because that was the wrong fix -- a bare
+    -- This was tried once as a way to stop the reader refusing a datatype
+    -- name in source and reverted, because that was the wrong fix -- a bare
     -- name is a word and the reader has no business deciding which
     -- datatypes exist. The names are needed for the construction form,
     -- which is a different question and does need them.
-    | bitset | closure | command | end | event | frame | gob
-    | handle | hash | image | library | rebcode
-    | struct | task | utype | vector
+    | command | end | frame | library | rebcode | utype
 }
 
 -- ACTION was in that list, and moved out of it when values of it started
@@ -62,12 +64,18 @@ enum Datatype {
 -- under another spelling is an action too, which is why the count of words
 -- that answer ACTION is larger than sixty.
 
--- The concrete datatypes reachable through each family variant. A family
--- exists where several datatypes share one representation and differ only
--- in how the loader spells them and how MOLD prints them.
-enum StringDatatype { string | file | url | email | tag | ref }
-enum BlockDatatype { block | paren | path | set_path | get_path | lit_path }
-enum WordDatatype { word | set_word | get_word | lit_word | refinement | issue }
+-- The typesets Rebol builds from its datatype catalogue: the last column of
+-- `src/boot/types.reb`, where `string` is any-string!, `block` any-block!,
+-- `path` any-path!, `word` any-word!, `function` any-function! and `object`
+-- any-object!. Which datatypes belong to each is declared once, by the
+-- catalogue entries below, and read off them everywhere else.
+--
+-- immediate!, copyable! and their kind are not here because Rebol does not
+-- build them from the catalogue: `base-defs.reb` makes them out of these.
+enum Typeset {
+    number | scalar | series
+    | any_string | any_block | any_path | any_word | any_function | any_object
+}
 
 -- Error categories as R3-Alpha groups them in its error catalogue.
 -- The `throw` category is what a control-flow signal looks like once
@@ -320,15 +328,23 @@ entity Value {
     -- narrows this to the datatypes it can carry.
     datatype: Datatype
 
-    -- Typeset membership, as R3-Alpha defines the standard typesets.
-    is_any_string: datatype in {string, file, url, email, tag}
-    is_any_block: datatype in {block, paren, path, set_path, get_path, lit_path}
-    is_any_word: datatype in {word, set_word, get_word, lit_word, refinement, issue}
-    is_any_path: datatype in {path, set_path, get_path, lit_path}
-    is_series: is_any_string or is_any_block or datatype = binary
-    is_number: datatype in {integer, decimal, percent}
-    is_scalar: datatype in {integer, decimal, percent, money, char, pair, tuple, time, date}
-    is_any_function: datatype in {native, action, function, op}
+    -- The typesets its datatype belongs to, as that datatype's catalogue
+    -- entry declares them. Nothing else says which datatypes a typeset holds.
+    typesets: catalogue_typesets(datatype)
+
+    is_any_string: any_string in typesets
+    is_any_block: any_block in typesets
+    is_any_word: any_word in typesets
+    is_any_path: any_path in typesets
+    is_series: series in typesets
+    is_number: number in typesets
+    is_scalar: scalar in typesets
+    is_any_function: any_function in typesets
+    is_any_object: any_object in typesets
+
+    -- any-type! is the one standard typeset no catalogue column builds: it is
+    -- every datatype but end!, which the catalogue lists and no value has.
+    is_any_type: datatype != end
 
     -- Conditional truth. Only NONE and logic FALSE are false; everything
     -- else is true, including zero, the empty string and the empty block.
@@ -515,7 +531,6 @@ variant DateValue : Value {
 }
 
 variant AnyStringValue : Value {
-    string_type: StringDatatype
     storage: StringStorage
     index: Integer              -- 1-based position; storage.length + 1 is the tail
 }
@@ -674,20 +689,29 @@ enum StructFieldType {
 }
 
 variant AnyBlockValue : Value {
-    block_type: BlockDatatype
     storage: BlockStorage
     index: Integer
 }
 
 variant AnyWordValue : Value {
-    word_type: WordDatatype
     spelling: String            -- case preserved as written
     canonical: String           -- lowercased, the form used for comparison
     binding: Context?           -- absent when the word is unbound
 }
 
+-- A datatype is a value. `integer!` is not a description of integers kept
+-- somewhere else: it is a value a program holds, compares, puts in a block
+-- and asks TYPE? of, and the answer is datatype!.
+--
+-- The catalogue is the set of these values, one for each datatype, and it is
+-- the only place a datatype's facts are declared: where it stands in the
+-- catalogue and which typesets it belongs to. The order is `types.reb`'s and
+-- is observable, because a typeset molds its members in it. Every datatype
+-- has exactly one entry, listed under Defaults.
 variant DatatypeValue : Value {
-    represents: Datatype        -- the value of integer!, string! and friends
+    datatype_it_is: Datatype
+    position: Integer           -- 1-based place in the catalogue
+    declared_typesets: Set<Typeset>
 }
 
 variant NativeValue : Value {
@@ -829,8 +853,98 @@ config {
 }
 
 ------------------------------------------------------------
+-- Defaults
+------------------------------------------------------------
+
+-- The datatype catalogue, in `src/boot/types.reb`'s order, with the
+-- typesets each row of that file declares. java-object! is last because it
+-- is JEBOL's own and Rebol's table has no row for it.
+
+default DatatypeValue end_entry = { datatype: datatype, datatype_it_is: end, position: 1, declared_typesets: {} }
+default DatatypeValue unset_entry = { datatype: datatype, datatype_it_is: unset, position: 2, declared_typesets: {} }
+default DatatypeValue none_entry = { datatype: datatype, datatype_it_is: none, position: 3, declared_typesets: {} }
+default DatatypeValue logic_entry = { datatype: datatype, datatype_it_is: logic, position: 4, declared_typesets: {} }
+default DatatypeValue integer_entry = { datatype: datatype, datatype_it_is: integer, position: 5, declared_typesets: { number, scalar } }
+default DatatypeValue decimal_entry = { datatype: datatype, datatype_it_is: decimal, position: 6, declared_typesets: { number, scalar } }
+default DatatypeValue percent_entry = { datatype: datatype, datatype_it_is: percent, position: 7, declared_typesets: { number, scalar } }
+default DatatypeValue money_entry = { datatype: datatype, datatype_it_is: money, position: 8, declared_typesets: { scalar } }
+default DatatypeValue char_entry = { datatype: datatype, datatype_it_is: char, position: 9, declared_typesets: { scalar } }
+default DatatypeValue pair_entry = { datatype: datatype, datatype_it_is: pair, position: 10, declared_typesets: { scalar } }
+default DatatypeValue tuple_entry = { datatype: datatype, datatype_it_is: tuple, position: 11, declared_typesets: { scalar } }
+default DatatypeValue time_entry = { datatype: datatype, datatype_it_is: time, position: 12, declared_typesets: { scalar } }
+default DatatypeValue date_entry = { datatype: datatype, datatype_it_is: date, position: 13, declared_typesets: { scalar } }
+default DatatypeValue binary_entry = { datatype: datatype, datatype_it_is: binary, position: 14, declared_typesets: { series } }
+default DatatypeValue string_entry = { datatype: datatype, datatype_it_is: string, position: 15, declared_typesets: { series, any_string } }
+default DatatypeValue file_entry = { datatype: datatype, datatype_it_is: file, position: 16, declared_typesets: { series, any_string } }
+default DatatypeValue email_entry = { datatype: datatype, datatype_it_is: email, position: 17, declared_typesets: { series, any_string } }
+default DatatypeValue ref_entry = { datatype: datatype, datatype_it_is: ref, position: 18, declared_typesets: { series, any_string } }
+default DatatypeValue url_entry = { datatype: datatype, datatype_it_is: url, position: 19, declared_typesets: { series, any_string } }
+default DatatypeValue tag_entry = { datatype: datatype, datatype_it_is: tag, position: 20, declared_typesets: { series, any_string } }
+default DatatypeValue bitset_entry = { datatype: datatype, datatype_it_is: bitset, position: 21, declared_typesets: {} }
+default DatatypeValue image_entry = { datatype: datatype, datatype_it_is: image, position: 22, declared_typesets: { series } }
+default DatatypeValue vector_entry = { datatype: datatype, datatype_it_is: vector, position: 23, declared_typesets: { series } }
+default DatatypeValue block_entry = { datatype: datatype, datatype_it_is: block, position: 24, declared_typesets: { series, any_block } }
+default DatatypeValue paren_entry = { datatype: datatype, datatype_it_is: paren, position: 25, declared_typesets: { series, any_block } }
+default DatatypeValue path_entry = { datatype: datatype, datatype_it_is: path, position: 26, declared_typesets: { series, any_block, any_path } }
+default DatatypeValue set_path_entry = { datatype: datatype, datatype_it_is: set_path, position: 27, declared_typesets: { series, any_block, any_path } }
+default DatatypeValue get_path_entry = { datatype: datatype, datatype_it_is: get_path, position: 28, declared_typesets: { series, any_block, any_path } }
+default DatatypeValue lit_path_entry = { datatype: datatype, datatype_it_is: lit_path, position: 29, declared_typesets: { series, any_block, any_path } }
+default DatatypeValue hash_entry = { datatype: datatype, datatype_it_is: hash, position: 30, declared_typesets: { series, any_block } }
+default DatatypeValue map_entry = { datatype: datatype, datatype_it_is: map, position: 31, declared_typesets: {} }
+default DatatypeValue datatype_entry = { datatype: datatype, datatype_it_is: datatype, position: 32, declared_typesets: {} }
+default DatatypeValue typeset_entry = { datatype: datatype, datatype_it_is: typeset, position: 33, declared_typesets: {} }
+default DatatypeValue word_entry = { datatype: datatype, datatype_it_is: word, position: 34, declared_typesets: { any_word } }
+default DatatypeValue set_word_entry = { datatype: datatype, datatype_it_is: set_word, position: 35, declared_typesets: { any_word } }
+default DatatypeValue get_word_entry = { datatype: datatype, datatype_it_is: get_word, position: 36, declared_typesets: { any_word } }
+default DatatypeValue lit_word_entry = { datatype: datatype, datatype_it_is: lit_word, position: 37, declared_typesets: { any_word } }
+default DatatypeValue refinement_entry = { datatype: datatype, datatype_it_is: refinement, position: 38, declared_typesets: { any_word } }
+default DatatypeValue issue_entry = { datatype: datatype, datatype_it_is: issue, position: 39, declared_typesets: { any_word } }
+default DatatypeValue native_entry = { datatype: datatype, datatype_it_is: native, position: 40, declared_typesets: { any_function } }
+default DatatypeValue action_entry = { datatype: datatype, datatype_it_is: action, position: 41, declared_typesets: { any_function } }
+default DatatypeValue rebcode_entry = { datatype: datatype, datatype_it_is: rebcode, position: 42, declared_typesets: { any_function } }
+default DatatypeValue command_entry = { datatype: datatype, datatype_it_is: command, position: 43, declared_typesets: { any_function } }
+default DatatypeValue op_entry = { datatype: datatype, datatype_it_is: op, position: 44, declared_typesets: { any_function } }
+default DatatypeValue closure_entry = { datatype: datatype, datatype_it_is: closure, position: 45, declared_typesets: { any_function } }
+default DatatypeValue function_entry = { datatype: datatype, datatype_it_is: function, position: 46, declared_typesets: { any_function } }
+default DatatypeValue frame_entry = { datatype: datatype, datatype_it_is: frame, position: 47, declared_typesets: {} }
+default DatatypeValue object_entry = { datatype: datatype, datatype_it_is: object, position: 48, declared_typesets: { any_object } }
+default DatatypeValue module_entry = { datatype: datatype, datatype_it_is: module, position: 49, declared_typesets: { any_object } }
+default DatatypeValue error_entry = { datatype: datatype, datatype_it_is: error, position: 50, declared_typesets: { any_object } }
+default DatatypeValue task_entry = { datatype: datatype, datatype_it_is: task, position: 51, declared_typesets: { any_object } }
+default DatatypeValue port_entry = { datatype: datatype, datatype_it_is: port, position: 52, declared_typesets: { any_object } }
+default DatatypeValue gob_entry = { datatype: datatype, datatype_it_is: gob, position: 53, declared_typesets: {} }
+default DatatypeValue event_entry = { datatype: datatype, datatype_it_is: event, position: 54, declared_typesets: {} }
+default DatatypeValue handle_entry = { datatype: datatype, datatype_it_is: handle, position: 55, declared_typesets: {} }
+default DatatypeValue struct_entry = { datatype: datatype, datatype_it_is: struct, position: 56, declared_typesets: {} }
+default DatatypeValue library_entry = { datatype: datatype, datatype_it_is: library, position: 57, declared_typesets: {} }
+default DatatypeValue utype_entry = { datatype: datatype, datatype_it_is: utype, position: 58, declared_typesets: {} }
+default DatatypeValue java_object_entry = { datatype: datatype, datatype_it_is: java_object, position: 59, declared_typesets: {} }
+
+------------------------------------------------------------
 -- Invariants
 ------------------------------------------------------------
+
+-- A datatype value's own datatype is datatype!: `type? integer!` is
+-- `datatype!`, for every entry in the catalogue.
+invariant ADatatypeIsADatatypeValue {
+    for entry in DatatypeValues:
+        entry.datatype = datatype
+}
+
+-- The typesets a value belongs to are the ones its datatype's catalogue
+-- entry declares, and nothing else. This is what makes the catalogue the one
+-- place membership is written down.
+invariant TypesetsComeFromTheCatalogue {
+    for entry in DatatypeValues:
+        catalogue_typesets(entry.datatype_it_is) = entry.declared_typesets
+}
+
+-- No two entries stand in the same place, so the catalogue has one order.
+invariant EachCatalogueEntryHasItsOwnPosition {
+    for entry in DatatypeValues:
+        for other in DatatypeValues:
+            entry.position = other.position implies entry = other
+}
 
 -- A series index is a position, and a position runs from the head to one
 -- past the last element. One past the last element is the tail, which is

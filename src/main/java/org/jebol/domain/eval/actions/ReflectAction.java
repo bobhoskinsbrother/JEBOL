@@ -25,7 +25,7 @@ public class ReflectAction extends DefaultNative implements ActionValue {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value"),
-                Parameter.required("field", Set.of(Datatype.WORD)));
+                Parameter.required("field", Set.of(WordValue.TYPE)));
     }
 
     @Override
@@ -38,7 +38,7 @@ public class ReflectAction extends DefaultNative implements ActionValue {
         return switch (subject) {
             case UnsetValue nothing -> throw Raised.cannotUse(nothing, this);
             case VectorValue vector -> reflectedFrom(vector, field);
-            case DatatypeValue(Datatype represents) -> declarations.specOf(represents)
+            case Datatype represents -> declarations.specOf(represents)
                     .map(described -> reflectedFrom(described, field.canonical()))
                     .orElseGet(NoneValue::none);
             case NativeValue built -> reflectedFrom(built, field.canonical());

@@ -3,7 +3,6 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.UnsetValue;
@@ -24,7 +23,7 @@ public class InitTopWindowNative extends ScreenNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("gob", Set.of(Datatype.GOB)));
+        return List.of(Parameter.required("gob", Set.of(GobValue.TYPE)));
     }
 
     @Override

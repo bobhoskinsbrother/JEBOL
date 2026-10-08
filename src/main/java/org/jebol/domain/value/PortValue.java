@@ -107,7 +107,49 @@ public record PortValue(Context context) implements Value {
 
     @Override
     public Datatype datatype() {
-        return Datatype.PORT;
+        return TYPE;
+    }
+
+    public static final Datatype TYPE = new PortDatatype();
+
+    private static final class PortDatatype extends Datatype {
+
+        PortDatatype() {
+            super("port", Typeset.ANY_OBJECT);
+        }
+
+        @Override
+        public Value constructedFrom(List<Value> contents, Construction construction) {
+            throw refusingConstruction(contents);
+        }
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            if (!canNameAScheme(spec)) {
+                throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
+            }
+            if (!(maker.systemFunctionApplied("make-port*", spec) instanceof PortValue port)) {
+                throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
+            }
+            return port;
+        }
+
+        private boolean canNameAScheme(Value spec) {
+            return spec instanceof FileValue
+                    || spec instanceof UrlValue
+                    || spec instanceof BlockValue
+                    || spec instanceof ObjectValue
+                    || spec instanceof WordValue
+                    || spec instanceof PortValue;
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            if (!(from instanceof ObjectValue(Context fields))) {
+                throw refusing(from);
+            }
+            return new PortValue(fields);
+        }
     }
 
     @Override

@@ -33,7 +33,7 @@ public final class MoneyCoercion {
         boolean cmpValueComparesTheAmounts = right instanceof MoneyValue
                 && (left instanceof MoneyValue || left instanceof AnyDecimalValue);
         if (!cmpValueComparesTheAmounts) {
-            return Integer.compare(left.datatype().ordinal(), right.datatype().ordinal());
+            return left.datatype().compareTo(right.datatype());
         }
         Deci ours = asDeci(left);
         Deci theirs = asDeci(right);

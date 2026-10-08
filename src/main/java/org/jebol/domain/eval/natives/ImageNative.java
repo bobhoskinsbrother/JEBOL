@@ -22,12 +22,12 @@ public class ImageNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.belongingTo("load", "src-file", Set.of(Datatype.FILE, Datatype.BINARY)),
+                Parameter.belongingTo("load", "src-file", Set.of(FileValue.TYPE, BinaryValue.TYPE)),
                 Parameter.belongingTo("save", "dst-file",
-                        Set.of(Datatype.NONE, Datatype.FILE, Datatype.BINARY)),
-                Parameter.belongingTo("save", "dst-image", Set.of(Datatype.NONE, Datatype.IMAGE)),
-                Parameter.belongingTo("frame", "num", Set.of(Datatype.INTEGER)),
-                Parameter.belongingTo("as", "type", Set.of(Datatype.WORD)));
+                        Set.of(NoneValue.TYPE, FileValue.TYPE, BinaryValue.TYPE)),
+                Parameter.belongingTo("save", "dst-image", Set.of(NoneValue.TYPE, ImageValue.TYPE)),
+                Parameter.belongingTo("frame", "num", Set.of(IntegerValue.TYPE)),
+                Parameter.belongingTo("as", "type", Set.of(WordValue.TYPE)));
     }
 
     @Override

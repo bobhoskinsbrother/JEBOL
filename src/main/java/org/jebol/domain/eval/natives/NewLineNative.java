@@ -19,9 +19,9 @@ public class NewLineNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("position", Set.of(Datatype.BLOCK, Datatype.PAREN)),
+                Parameter.required("position", Set.of(BlockValue.TYPE, ParenValue.TYPE)),
                 Parameter.required("value"),
-                Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)));
+                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

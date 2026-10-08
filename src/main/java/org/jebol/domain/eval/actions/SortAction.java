@@ -20,7 +20,7 @@ public class SortAction extends DefaultNative implements ActionValue {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series", Typeset.SERIES.members()),
-                Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)),
+                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)),
                 Parameter.belongingTo("compare", "comparator", Set.of()),
                 Parameter.belongingTo("part", "count", aPartLimit()));
     }
@@ -87,7 +87,7 @@ public class SortAction extends DefaultNative implements ActionValue {
         }
         if (refinements.contains("all")
                 && comparator.isPresent()
-                && !comparator.get().datatype().isAnyFunction()) {
+                && !comparator.get().datatype().belongsTo(Typeset.ANY_FUNCTION)) {
             throw Raised.of(EvaluationFailure.BAD_REFINES,
                     "sort/all compares whole records, so a column has nothing left to say");
         }

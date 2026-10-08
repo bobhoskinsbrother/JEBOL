@@ -33,22 +33,133 @@ public abstract sealed class AnyBlockValue implements RebolSeries
 
     abstract AnyBlockValue sameKindOver(BlockStorage storage, int index);
 
-    public static AnyBlockValue ofTheDatatype(BlockStorage storage, int index, Datatype datatype) {
-        return switch (datatype) {
-            case BLOCK -> new BlockValue(storage, index);
-            case PAREN -> new ParenValue(storage, index);
-            case HASH -> new HashValue(storage, index);
-            case PATH -> new PathValue(storage, index);
-            case SET_PATH -> new SetPathValue(storage, index);
-            case GET_PATH -> new GetPathValue(storage, index);
-            case LIT_PATH -> new LitPathValue(storage, index);
-            default -> throw new IllegalArgumentException(
-                    datatype.literalSpelling() + " is not an any-block! datatype");
-        };
+    public abstract static class AnyBlockDatatype extends SeriesDatatype {
+
+        private static final int BYTES_A_SLOT_TAKES = 32;
+
+        AnyBlockDatatype(String spelling, Typeset... declaredTypesets) {
+            super(spelling, declaredTypesets);
+        }
+
+        public abstract AnyBlockValue holding(BlockStorage storage, int index);
+
+        public AnyBlockValue holding(List<Value> items) {
+            return holding(new BlockStorage(items), 1);
+        }
+
+        boolean wrapsWhatItConverts() {
+            return true;
+        }
+
+        boolean listsATypesetsMembers() {
+            return false;
+        }
+
+        @Override
+        protected int bytesAnItemTakes() {
+            return BYTES_A_SLOT_TAKES;
+        }
+
+        @Override
+        protected void refuseToBuildSomethingOutOfNothing(Value from) {
+        }
+
+        @Override
+        protected Value withRoomFor(int asked) {
+            return holding(List.of());
+        }
+
+        @Override
+        public Value as(Value value) {
+            return value instanceof AnyBlockValue block
+                    ? holding(block.storage(), block.index())
+                    : super.as(value);
+        }
+
+        @Override
+        protected Value constructedFromOne(Value only, Construction construction) {
+            if (!(only instanceof AnyBlockValue block)) {
+                throw refusingConstruction(List.of(only));
+            }
+            return as(block);
+        }
+
+        @Override
+        protected Value constructedFromMore(List<Value> contents, Construction construction) {
+            return standingWhereItWasTold(
+                    constructedFromOne(contents.getFirst(), construction), contents.get(1));
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return whatTheHostHadRoomFor(() -> blockBuilt(asking, from, maker));
+        }
+
+        private Value blockBuilt(Conversion asking, Value from, Maker maker) {
+            if (from instanceof AnyBlockValue given) {
+                BlockStorage built = new BlockStorage(given.remaining());
+                built.takeLineBreaksFrom(given.storage(), given.index());
+                return holding(built, 1);
+            }
+            if (from instanceof MapValue pairs) {
+                return as(pairs.pairsOnLines());
+            }
+            if (from.isAnyObject()) {
+                return as(from.fieldsAsAContext().orElseThrow().setWordsAndValuesOnLines());
+            }
+            if (from instanceof VectorValue numbers) {
+                return holding(numbers.remaining());
+            }
+            if (asking.builds()) {
+                if (from instanceof IntegerValue || from instanceof DecimalValue) {
+                    return holding(List.of());
+                }
+            } else if (wrapsWhatItConverts()) {
+                return from instanceof TypesetValue kinds && listsATypesetsMembers()
+                        ? holding(Catalogue.DATATYPES.where(kinds::holds).stream()
+                                .<Value>map(datatype -> datatype).toList())
+                        : holding(List.of(from));
+            }
+            if (from instanceof StringValue text) {
+                return sourceReadStoppingAtANoughtByte(text.text(), maker);
+            }
+            if (from instanceof BinaryValue octets) {
+                return sourceReadStoppingAtANoughtByte(octets.decodedAsText(), maker);
+            }
+            if (from instanceof PairValue) {
+                return holding(List.of());
+            }
+            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(from));
+        }
+
+        private Value sourceReadStoppingAtANoughtByte(String source, Maker maker) {
+            int endsAt = source.indexOf('\0');
+            return as(maker.sourceRead(endsAt < 0 ? source : source.substring(0, endsAt)));
+        }
     }
 
     public AnyBlockValue holding(BlockStorage another) {
         return sameKindOver(another, 1);
+    }
+
+    public AnyBlockValue holding(List<Value> items) {
+        return sameKindOver(new BlockStorage(items), 1);
+    }
+
+    String opensWith() {
+        return "[";
+    }
+
+    String closesWith() {
+        return "]";
+    }
+
+    boolean moldsInBrackets() {
+        return true;
+    }
+
+    String moldedWhenAlreadyInsideItself() {
+        return opensWith() + "..." + closesWith();
     }
 
     public BlockStorage storage() {
@@ -224,10 +335,6 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     @Override
     public AnyBlockValue tail() {
         return atIndex(storage.length() + 1);
-    }
-
-    public AnyBlockValue as(Datatype otherDatatype) {
-        return ofTheDatatype(storage, index, otherDatatype);
     }
 
     public boolean looksUpItsDeclaration() {

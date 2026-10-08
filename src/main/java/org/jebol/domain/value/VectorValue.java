@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.function.ToLongFunction;
+import java.util.function.UnaryOperator;
 
 public record VectorValue(VectorStorage storage, int index) implements RebolSeries {
 
@@ -144,7 +145,53 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
 
     @Override
     public Datatype datatype() {
-        return Datatype.VECTOR;
+        return TYPE;
+    }
+
+    public static final Datatype TYPE = new VectorDatatype();
+
+    private static final class VectorDatatype extends Datatype {
+
+        private static final int BYTES_A_VECTORS_NUMBER_TAKES = 4;
+
+        VectorDatatype() {
+            super("vector", Typeset.SERIES);
+        }
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            return switch (spec) {
+                case IntegerValue(long magnitude) -> ofSize(spec, magnitude);
+                case DecimalValue number -> ofSize(spec, (long) number.quantity());
+                case BinaryValue bytes -> VectorSpec.ofOctets(bytes);
+                case VectorValue already -> already.copyOfTheFirst(already.lengthFromHere());
+                case AnyBlockValue block -> VectorSpec.readMakeSpec(block.remaining(), maker::simpleValueOf)
+                        .<Value>map(made -> made)
+                        .orElseThrow(() -> refusing(spec));
+                default -> throw refusing(spec);
+            };
+        }
+
+        private Value ofSize(Value spec, long howMany) {
+            refuseMoreRoomThanFits(howMany, BYTES_A_VECTORS_NUMBER_TAKES);
+            if (howMany < 0) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(spec));
+            }
+            return whatTheHostHadRoomFor(() -> VectorSpec.ofSize((int) howMany));
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return switch (from) {
+                case VectorValue already -> already;
+                case BinaryValue octets -> VectorSpec.ofOctets(octets);
+                case AnyBlockValue block -> VectorSpec.readMakeSpec(
+                                block.remaining(), UnaryOperator.identity())
+                        .<Value>map(made -> made)
+                        .orElseThrow(() -> refusing(from));
+                default -> throw refusing(from);
+            };
+        }
     }
 
     @Override

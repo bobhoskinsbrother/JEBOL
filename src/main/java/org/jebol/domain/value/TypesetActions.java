@@ -2,7 +2,7 @@ package org.jebol.domain.value;
 
 import org.jebol.domain.value.sets.SetOperation;
 
-import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
 
@@ -15,32 +15,20 @@ public final class TypesetActions {
     }
 
     public TypesetValue complemented() {
-        Set<Datatype> rest = EnumSet.allOf(Datatype.class);
-        rest.removeAll(members.members());
-        return TypesetValue.of(Set.copyOf(rest));
+        return TypesetValue.of(Catalogue.DATATYPES.where(each -> !members.holds(each)));
     }
 
     public boolean holds(Value asked) {
-        return asked instanceof DatatypeValue(Datatype represents)
-                && members.holds(represents);
+        return asked instanceof Datatype datatype && members.holds(datatype);
     }
 
     public TypesetValue combinedWith(TypesetValue theirs, SetOperation how) {
-        Set<Datatype> mine = members.members();
-        Set<Datatype> yours = theirs.members();
-        Set<Datatype> kept = EnumSet.noneOf(Datatype.class);
-        for (Datatype each : Datatype.values()) {
-            boolean inMine = mine.contains(each);
-            boolean inYours = yours.contains(each);
-            if (how.holdsWhen(inMine, inYours)) {
-                kept.add(each);
-            }
-        }
-        return TypesetValue.of(Set.copyOf(kept));
+        return TypesetValue.of(Catalogue.DATATYPES.where(
+                each -> how.holdsWhen(members.holds(each), theirs.holds(each))));
     }
 
     public static Set<Datatype> datatypesNamedIn(AnyBlockValue spec) {
-        Set<Datatype> found = EnumSet.noneOf(Datatype.class);
+        Set<Datatype> found = new LinkedHashSet<>();
         for (Value item : spec.remaining()) {
             if (!addTheTypesNamedBy(item, found)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(item));
@@ -50,8 +38,8 @@ public final class TypesetActions {
     }
 
     public static boolean addTheTypesNamedBy(Value item, Set<Datatype> found) {
-        if (item instanceof DatatypeValue(Datatype represents)) {
-            found.add(represents);
+        if (item instanceof Datatype datatype) {
+            found.add(datatype);
             return true;
         }
         if (item instanceof TypesetValue typeset) {
@@ -62,7 +50,7 @@ public final class TypesetActions {
             return false;
         }
         String spelling = word.spelling();
-        Optional<Datatype> one = Datatype.named(spelling);
+        Optional<Datatype> one = Catalogue.DATATYPES.named(spelling);
         one.ifPresent(found::add);
         Optional<Typeset> family = Typeset.named(spelling.endsWith("!")
                 ? spelling.substring(0, spelling.length() - 1)

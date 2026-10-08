@@ -4,6 +4,9 @@ import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.TagValue;
+import org.jebol.domain.value.WordValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Parameter;
@@ -32,13 +35,13 @@ public class IconvNative extends EncodingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("data", Set.of(Datatype.BINARY)),
+                Parameter.required("data", Set.of(BinaryValue.TYPE)),
                 Parameter.required("codepage", aCodepage()),
                 Parameter.belongingTo("to", "target", aCodepage()));
     }
 
     private Set<Datatype> aCodepage() {
-        return Set.of(Datatype.WORD, Datatype.INTEGER, Datatype.TAG, Datatype.STRING);
+        return Set.of(WordValue.TYPE, IntegerValue.TYPE, TagValue.TYPE, StringValue.TYPE);
     }
 
     @Override

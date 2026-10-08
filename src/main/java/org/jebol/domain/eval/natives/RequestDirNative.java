@@ -3,7 +3,7 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.FileValue;
@@ -26,8 +26,8 @@ public class RequestDirNative extends WindowNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.belongingTo("title", "text", Set.of(Datatype.STRING)),
-                Parameter.belongingTo("dir", "name", Set.of(Datatype.FILE)));
+                Parameter.belongingTo("title", "text", Set.of(StringValue.TYPE)),
+                Parameter.belongingTo("dir", "name", Set.of(FileValue.TYPE)));
     }
 
     @Override

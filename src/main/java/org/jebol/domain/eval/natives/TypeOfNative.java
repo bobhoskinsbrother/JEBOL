@@ -1,7 +1,6 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.DatatypeValue;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.WordValue;
@@ -30,6 +29,6 @@ public class TypeOfNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> refinements.contains("word")
                 ? WordValue.of(arguments.getFirst().datatype().literalSpelling())
-                : DatatypeValue.of(arguments.getFirst().datatype());
+                : arguments.getFirst().datatype();
     }
 }

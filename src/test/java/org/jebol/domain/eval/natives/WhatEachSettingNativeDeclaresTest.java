@@ -13,7 +13,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -29,7 +28,7 @@ class WhatEachSettingNativeDeclaresTest {
 
     private static final Set<Datatype> ANY_TYPE = Typeset.ANY_TYPE.members();
 
-    private static final Set<Datatype> AN_INTEGER = Set.of(Datatype.INTEGER);
+    private static final Set<Datatype> AN_INTEGER = Set.of(IntegerValue.TYPE);
 
     private Value answerOf(DefaultNative definition, Set<String> refinements,
                            Value... arguments) {
@@ -47,23 +46,23 @@ class WhatEachSettingNativeDeclaresTest {
 
     private Set<Datatype> whatSetTakes() {
         return Typeset.ANY_PATH.membersAnd(
-                Datatype.WORD, Datatype.LIT_WORD, Datatype.BLOCK, Datatype.OBJECT);
+                WordValue.TYPE, LitWordValue.TYPE, BlockValue.TYPE, ObjectValue.TYPE);
     }
 
     private Set<Datatype> whatPokeTakes() {
         return Typeset.SERIES.membersAnd(
-                Datatype.PORT, Datatype.MAP, Datatype.GOB, Datatype.BITSET);
+                PortValue.TYPE, MapValue.TYPE, GobValue.TYPE, BitsetValue.TYPE);
     }
 
     private Set<Datatype> whatDifferenceTakes() {
-        return Set.of(Datatype.BITSET, Datatype.TYPESET, Datatype.STRING, Datatype.MAP,
-                Datatype.BLOCK, Datatype.DATE);
+        return Set.of(BitsetValue.TYPE, TypesetValue.TYPE, StringValue.TYPE, MapValue.TYPE,
+                BlockValue.TYPE, DateValue.TYPE);
     }
 
     private Set<Datatype> whatBoundsAPart() {
         return Stream.concat(
-                        Typeset.NUMBER.membersAnd(Datatype.PAIR).stream(),
-                        Arrays.stream(Datatype.values()).filter(Datatype::isSeries))
+                        Typeset.NUMBER.membersAnd(PairValue.TYPE).stream(),
+                        Typeset.SERIES.members().stream())
                 .collect(Collectors.toUnmodifiableSet());
     }
 
@@ -86,7 +85,7 @@ class WhatEachSettingNativeDeclaresTest {
                                 Parameter.belongingTo("part", "count", Set.of())),
                         Set.of("part", "last", "deep", "all")),
                 Arguments.of(new AjoinNative(), "ajoin",
-                        List.of(Parameter.required("block", Set.of(Datatype.BLOCK)),
+                        List.of(Parameter.required("block", Set.of(BlockValue.TYPE)),
                                 Parameter.belongingTo("with", "separator", ANY_TYPE)),
                         Set.of("all", "with")),
                 Arguments.of(new PokeAction(), "poke",
@@ -101,7 +100,7 @@ class WhatEachSettingNativeDeclaresTest {
                         Set.of("case", "skip")),
                 Arguments.of(new ReflectAction(new BootDeclarations()), "reflect",
                         List.of(Parameter.required("value"),
-                                Parameter.required("field", Set.of(Datatype.WORD))),
+                                Parameter.required("field", Set.of(WordValue.TYPE))),
                         NOTHING),
                 Arguments.of(new PutAction(), "put",
                         List.of(Parameter.required("target"),
@@ -113,7 +112,7 @@ class WhatEachSettingNativeDeclaresTest {
                         List.of(Parameter.required("series"),
                                 Parameter.required("value", ANY_TYPE),
                                 Parameter.belongingTo("part", "range", whatBoundsAPart()),
-                                Parameter.belongingTo("with", "wild", Set.of(Datatype.STRING)),
+                                Parameter.belongingTo("with", "wild", Set.of(StringValue.TYPE)),
                                 Parameter.belongingTo("skip", "size", AN_INTEGER)),
                         Set.of("case", "skip", "any", "only", "last", "part", "same", "with",
                                 "reverse")));

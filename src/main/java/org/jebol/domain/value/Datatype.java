@@ -1,157 +1,147 @@
 package org.jebol.domain.value;
 
-import java.util.Optional;
+import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
-/**
- * Every datatype JEBOL represents, as specified in {@code spec/values.allium}.
- *
- * <p>The spelling is the REBOL name without its trailing exclamation mark, so
- * {@code SET_WORD} reports itself as {@code set-word}. The typeset predicates
- * mirror the standard R3-Alpha typesets rather than being invented here.
- *
- * <p><b>The order is {@code types.reb}'s and is not free to change.</b> A
- * typeset molds its members by walking the table, so the order is visible in
- * every one that writes itself down: {@code mold any-string!} is
- * {@code [string! file! email! ref! url! tag!]} because that is the order the
- * table lists them in, and nothing else would read back the same. Forty-three
- * of the fifty-eight used to sit somewhere else, which was invisible until a
- * typeset was molded and compared.
- *
- * <p>{@code java-object!} is last because it is JEBOL's own and Rebol's table
- * has no row for it.
- */
-public enum Datatype {
-    END("end"),
-    UNSET("unset"),
-    NONE("none"),
-    LOGIC("logic"),
-    INTEGER("integer"),
-    DECIMAL("decimal"),
-    PERCENT("percent"),
-    MONEY("money"),
-    CHAR("char"),
-    PAIR("pair"),
-    TUPLE("tuple"),
-    TIME("time"),
-    DATE("date"),
-    BINARY("binary"),
-    STRING("string"),
-    FILE("file"),
-    EMAIL("email"),
-    REF("ref"),
-    URL("url"),
-    TAG("tag"),
-    BITSET("bitset"),
-    IMAGE("image"),
-    VECTOR("vector"),
-    BLOCK("block"),
-    PAREN("paren"),
-    PATH("path"),
-    SET_PATH("set-path"),
-    GET_PATH("get-path"),
-    LIT_PATH("lit-path"),
-    HASH("hash"),
-    MAP("map"),
-    DATATYPE("datatype"),
-    TYPESET("typeset"),
-    WORD("word"),
-    SET_WORD("set-word"),
-    GET_WORD("get-word"),
-    LIT_WORD("lit-word"),
-    REFINEMENT("refinement"),
-    ISSUE("issue"),
-    NATIVE("native"),
-    ACTION("action"),
-    REBCODE("rebcode"),
-    COMMAND("command"),
-    OP("op"),
-    CLOSURE("closure"),
-    FUNCTION("function"),
-    FRAME("frame"),
-    OBJECT("object"),
-    MODULE("module"),
-    ERROR("error"),
-    TASK("task"),
-    PORT("port"),
-    GOB("gob"),
-    EVENT("event"),
-    HANDLE("handle"),
-    STRUCT("struct"),
-    LIBRARY("library"),
-    UTYPE("utype"),
-    JAVA_OBJECT("java-object");
+public abstract non-sealed class Datatype implements Value, Comparable<Datatype> {
 
-    private static final Set<Datatype> ANY_STRING =
-            Set.of(STRING, FILE, URL, EMAIL, TAG, REF);
-    private static final Set<Datatype> ANY_BLOCK =
-            Set.of(BLOCK, PAREN, PATH, SET_PATH, GET_PATH, LIT_PATH, HASH);
-    private static final Set<Datatype> ANY_PATH =
-            Set.of(PATH, SET_PATH, GET_PATH, LIT_PATH);
-    private static final Set<Datatype> ANY_WORD =
-            Set.of(WORD, SET_WORD, GET_WORD, LIT_WORD, REFINEMENT, ISSUE);
-    private static final Set<Datatype> NUMBER =
-            Set.of(INTEGER, DECIMAL, PERCENT);
-    private static final Set<Datatype> SCALAR =
-            Set.of(INTEGER, DECIMAL, PERCENT, MONEY, CHAR, PAIR, TUPLE, TIME, DATE);
-    private static final Set<Datatype> ANY_FUNCTION =
-            Set.of(NATIVE, ACTION, REBCODE, COMMAND, OP, CLOSURE, FUNCTION);
+    public static final Datatype TYPE = new TheDatatypeOfDatatypes();
 
     private final String spelling;
+    private final Set<Typeset> declaredTypesets;
 
-    Datatype(String spelling) {
+    protected Datatype(String spelling, Typeset... declaredTypesets) {
         this.spelling = spelling;
+        this.declaredTypesets = Set.of(declaredTypesets);
     }
 
     public String spelling() {
         return spelling;
     }
 
-    public static Optional<Datatype> named(String spelling) {
-        String wanted = spelling.endsWith("!")
-                ? spelling.substring(0, spelling.length() - 1)
-                : spelling;
-        for (Datatype datatype : values()) {
-            if (datatype.spelling().equalsIgnoreCase(wanted)) {
-                return java.util.Optional.of(datatype);
-            }
-        }
-        return java.util.Optional.empty();
-    }
-
     public String literalSpelling() {
         return spelling + "!";
     }
 
-    public boolean isAnyString() {
-        return ANY_STRING.contains(this);
+    public boolean declares(Typeset typeset) {
+        return declaredTypesets.contains(typeset);
     }
 
-    public boolean isAnyBlock() {
-        return ANY_BLOCK.contains(this);
+    public boolean belongsTo(Typeset typeset) {
+        return typeset.holds(this);
     }
 
-    public boolean isAnyPath() {
-        return ANY_PATH.contains(this);
+    public int position() {
+        return Catalogue.DATATYPES.positionOf(this);
     }
 
-    public boolean isAnyWord() {
-        return ANY_WORD.contains(this);
+    public int numberTheCGivesIt() {
+        return position() - 1;
     }
 
-    public boolean isSeries() {
-        return isAnyString() || isAnyBlock() || this == BINARY || this == IMAGE || this == VECTOR;
+    @Override
+    public Datatype datatype() {
+        return TYPE;
     }
 
-    public boolean isNumber() {
-        return NUMBER.contains(this);
+    @Override
+    public Datatype theDatatypeItStandsFor() {
+        return this;
     }
 
-    public boolean isScalar() {
-        return SCALAR.contains(this);
+    @Override
+    public Value make(Value spec, Maker maker) {
+        return madeFrom(spec, maker);
     }
 
-    public boolean isAnyFunction() {
-        return ANY_FUNCTION.contains(this);
+    public Value madeFrom(Value spec, Maker maker) {
+        refuseToBuildSomethingOutOfNothing(spec);
+        return built(Conversion.MAKE, spec, maker);
+    }
+
+    public Value convertedFrom(Value value, Maker maker) {
+        refuseToBuildSomethingOutOfNothing(value);
+        return built(Conversion.TO, value, maker);
+    }
+
+    protected Value built(Conversion asking, Value from, Maker maker) {
+        throw refusing(from);
+    }
+
+    protected void refuseToBuildSomethingOutOfNothing(Value from) {
+        if (from instanceof NoneValue) {
+            throw refusing(from);
+        }
+    }
+
+    public Value as(Value value) {
+        if (value.datatype() == this) {
+            return value;
+        }
+        throw Raised.of(EvaluationFailure.NOT_SAME_CLASS, value.datatype(), this);
+    }
+
+    public Value constructedFrom(List<Value> contents, Construction construction) {
+        return construction.madeOf(this, theSpecificationIn(contents));
+    }
+
+    protected Value theSpecificationIn(List<Value> contents) {
+        return contents.size() == 1 ? contents.getFirst() : BlockValue.block(contents);
+    }
+
+    protected void refuseMoreRoomThanFits(double asked, int bytesAnItemTakes) {
+        long theMostItemsThatFit = Integer.MAX_VALUE / bytesAnItemTakes - 1;
+        if (asked > theMostItemsThatFit) {
+            throw Raised.of(EvaluationFailure.NO_MEMORY);
+        }
+    }
+
+    protected Value whatTheHostHadRoomFor(Supplier<Value> allocating) {
+        try {
+            return allocating.get();
+        } catch (OutOfMemoryError nothingLeftToGive) {
+            throw Raised.of(EvaluationFailure.NO_MEMORY);
+        }
+    }
+
+    public Raised refusing(Value given) {
+        return Raised.of(EvaluationFailure.BAD_MAKE_ARG, this, given);
+    }
+
+    protected Raised refusingConstruction(List<Value> contents) {
+        return Raised.of(EvaluationFailure.MALCONSTRUCT, BlockValue.block(contents));
+    }
+
+    @Override
+    public Value bitwise(Value right, BitwiseOperation operation) {
+        throw Raised.cannotUse(this, "a bit operation");
+    }
+
+    @Override
+    public int compareTo(Datatype other) {
+        return Integer.compare(position(), other.position());
+    }
+
+    @Override
+    public String toString() {
+        return literalSpelling();
+    }
+
+    private static final class TheDatatypeOfDatatypes extends Datatype {
+
+        TheDatatypeOfDatatypes() {
+            super("datatype");
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            if (!(from instanceof AnyWordValue word) || !word.spelling().endsWith("!")) {
+                throw refusing(from);
+            }
+            return Catalogue.DATATYPES.named(word.spelling())
+                    .<Value>map(found -> found)
+                    .orElseThrow(() -> refusing(from));
+        }
     }
 }

@@ -78,18 +78,18 @@ public final class Delect {
     }
 
     private static boolean convertsInto(java.util.Set<Datatype> types, Value value) {
-        return types.contains(Datatype.INTEGER) && value instanceof AnyDecimalValue
-                || types.contains(Datatype.DECIMAL) && value instanceof IntegerValue;
+        return types.contains(IntegerValue.TYPE) && value instanceof AnyDecimalValue
+                || types.contains(DecimalValue.TYPE) && value instanceof IntegerValue;
     }
 
     private static Value convertedFor(java.util.Set<Datatype> types, Value value) {
         if (types.contains(value.datatype())) {
             return value;
         }
-        if (types.contains(Datatype.INTEGER) && value instanceof AnyDecimalValue fraction) {
+        if (types.contains(IntegerValue.TYPE) && value instanceof AnyDecimalValue fraction) {
             return IntegerValue.of(cutDownRatherThanRounded(fraction));
         }
-        if (types.contains(Datatype.DECIMAL) && value instanceof IntegerValue(long magnitude)) {
+        if (types.contains(DecimalValue.TYPE) && value instanceof IntegerValue(long magnitude)) {
             return DecimalValue.of(magnitude);
         }
         return value;
@@ -321,7 +321,7 @@ public final class Delect {
     private static Optional<java.util.Set<Datatype>> typesNamedBy(
             Value written, Context where) {
 
-        if (written instanceof DatatypeValue(Datatype represents)) {
+        if (written instanceof Datatype represents) {
             return Optional.of(java.util.Set.of(represents));
         }
         if (written instanceof TypesetValue family) {
@@ -330,7 +330,7 @@ public final class Delect {
         if (!(written instanceof AnyWordValue word)) {
             return Optional.empty();
         }
-        Optional<Datatype> one = Datatype.named(word.spelling());
+        Optional<Datatype> one = Catalogue.DATATYPES.named(word.spelling());
         if (one.isPresent()) {
             return Optional.of(java.util.Set.of(one.get()));
         }

@@ -21,7 +21,7 @@ public class PutAction extends DefaultNative implements ActionValue {
         return List.of(Parameter.required("target"),
                 Parameter.required("key", Typeset.ANY_TYPE.members()),
                 Parameter.required("value", Typeset.ANY_TYPE.members()),
-                Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)));
+                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

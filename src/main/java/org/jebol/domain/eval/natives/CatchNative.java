@@ -21,8 +21,8 @@ public class CatchNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("block", Set.of(Datatype.BLOCK)),
-                Parameter.belongingTo("name", "word", Set.of(Datatype.WORD, Datatype.BLOCK)),
+        return List.of(Parameter.required("block", Set.of(BlockValue.TYPE)),
+                Parameter.belongingTo("name", "word", Set.of(WordValue.TYPE, BlockValue.TYPE)),
                 Parameter.belongingTo("with", "callback", Set.of()));
     }
 

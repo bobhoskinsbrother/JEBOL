@@ -20,7 +20,7 @@ public class SplitLinesNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value", Set.of(Datatype.STRING)));
+        return List.of(Parameter.required("value", Set.of(StringValue.TYPE)));
     }
 
     @Override

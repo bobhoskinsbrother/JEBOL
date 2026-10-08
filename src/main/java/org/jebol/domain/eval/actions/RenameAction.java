@@ -7,6 +7,8 @@ import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.Parameter;
@@ -30,7 +32,7 @@ public class RenameAction extends PortAction {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        Set<Datatype> anEnd = Set.of(Datatype.FILE, Datatype.BLOCK, Datatype.PORT, Datatype.URL);
+        Set<Datatype> anEnd = Set.of(FileValue.TYPE, BlockValue.TYPE, PortValue.TYPE, UrlValue.TYPE);
         return List.of(Parameter.required("from", anEnd), Parameter.required("to", anEnd));
     }
 

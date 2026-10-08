@@ -5,6 +5,20 @@ import java.util.List;
 
 public final class BlockValue extends AnyBlockValue {
 
+    public static final AnyBlockDatatype TYPE = new AnyBlockDatatype(
+            "block", Typeset.SERIES, Typeset.ANY_BLOCK) {
+
+        @Override
+        public AnyBlockValue holding(BlockStorage storage, int index) {
+            return new BlockValue(storage, index);
+        }
+
+        @Override
+        boolean listsATypesetsMembers() {
+            return true;
+        }
+    };
+
     BlockValue(BlockStorage storage, int index) {
         super(storage, index);
     }
@@ -23,7 +37,7 @@ public final class BlockValue extends AnyBlockValue {
 
     @Override
     public Datatype datatype() {
-        return Datatype.BLOCK;
+        return TYPE;
     }
 
     @Override

@@ -3,7 +3,8 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.crypto.EllipticCurveKey;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.HandleValue;
+import org.jebol.domain.value.WordValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
@@ -23,10 +24,10 @@ public class EcdsaNative extends CipherNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("key", Set.of(Datatype.HANDLE, Datatype.BINARY)),
-                Parameter.required("hash", Set.of(Datatype.BINARY)),
-                Parameter.belongingTo("verify", "signature", Set.of(Datatype.BINARY)),
-                Parameter.belongingTo("curve", "type", Set.of(Datatype.WORD)));
+        return List.of(Parameter.required("key", Set.of(HandleValue.TYPE, BinaryValue.TYPE)),
+                Parameter.required("hash", Set.of(BinaryValue.TYPE)),
+                Parameter.belongingTo("verify", "signature", Set.of(BinaryValue.TYPE)),
+                Parameter.belongingTo("curve", "type", Set.of(WordValue.TYPE)));
     }
 
     @Override

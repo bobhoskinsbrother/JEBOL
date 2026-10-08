@@ -100,7 +100,7 @@ public final class View {
             return Optional.empty();
         }
         Value held = context.slotFor(canonical).value();
-        return held.datatype() == Datatype.UNSET
+        return held.datatype() == UnsetValue.TYPE
                 ? Optional.empty()
                 : Optional.of(held);
     }

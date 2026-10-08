@@ -1,7 +1,6 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Parameter;
@@ -20,8 +19,8 @@ public class MapGobOffsetNative extends GobMappingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("gob", Set.of(Datatype.GOB)),
-                Parameter.required("xy", Set.of(Datatype.PAIR)));
+                Parameter.required("gob", Set.of(GobValue.TYPE)),
+                Parameter.required("xy", Set.of(PairValue.TYPE)));
     }
 
     @Override

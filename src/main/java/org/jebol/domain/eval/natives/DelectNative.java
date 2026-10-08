@@ -16,10 +16,10 @@ public class DelectNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("dialect", Set.of(Datatype.OBJECT)),
-                Parameter.required("input", Set.of(Datatype.BLOCK)),
-                Parameter.required("output", Set.of(Datatype.BLOCK)),
-                Parameter.belongingTo("in", "where", Set.of(Datatype.BLOCK)));
+        return List.of(Parameter.required("dialect", Set.of(ObjectValue.TYPE)),
+                Parameter.required("input", Set.of(BlockValue.TYPE)),
+                Parameter.required("output", Set.of(BlockValue.TYPE)),
+                Parameter.belongingTo("in", "where", Set.of(BlockValue.TYPE)));
     }
 
     @Override

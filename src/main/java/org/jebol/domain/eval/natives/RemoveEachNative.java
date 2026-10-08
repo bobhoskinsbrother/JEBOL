@@ -10,7 +10,8 @@ import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.MapValue;
@@ -38,8 +39,8 @@ public class RemoveEachNative extends LoopingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.softQuoted("word"),
-                Parameter.required("series", Set.of(Datatype.BLOCK, Datatype.BINARY,
-                        Datatype.STRING, Datatype.MAP, Datatype.VECTOR)),
+                Parameter.required("series", Set.of(BlockValue.TYPE, BinaryValue.TYPE,
+                        StringValue.TYPE, MapValue.TYPE, VectorValue.TYPE)),
                 Parameter.required("body", A_BLOCK));
     }
 

@@ -22,11 +22,10 @@ public class MakeAction extends DefaultNative implements ActionValue {
 
     @Override
     public RefinedCallable behaviour() {
-        return (value, evaluator, context, refinements) ->
-        {
-            Value first = value.getFirst();
-            Value second = value.get(1);
-            return first.make(second, evaluator.makerIn(context));
+        return (arguments, evaluator, context, refinements) -> {
+            Value made = arguments.getFirst().make(arguments.get(1), evaluator.makerIn(context));
+            evaluator.symbols().internWhatWasRead(List.of(made));
+            return made;
         };
     }
 }

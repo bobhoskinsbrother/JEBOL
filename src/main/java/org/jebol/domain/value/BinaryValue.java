@@ -1,10 +1,17 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.eval.BitsetActions;
+
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -342,9 +349,162 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
+    public Optional<Value> asDecimal(AnyDecimalValue.AnyDecimalDatatype wanted, Conversion asking) {
         return Optional.of(inHundredths(
                 wanted, Double.longBitsToDouble(bitsOfTheLastEightOctets())));
+    }
+
+    public String decodedAsText() {
+        byte[] bytes = octetsFromHere();
+        int marked = byteOrderMark();
+        if (marked != 0) {
+            return textBehindTheMark(bytes, marked);
+        }
+        CharsetDecoder strictly = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT);
+        byte[] joined = withSurrogatePairsJoined(bytes);
+        ByteBuffer reading = ByteBuffer.wrap(joined);
+        CharBuffer written = CharBuffer.allocate(joined.length + 1);
+        CoderResult stopped = strictly.decode(reading, written, true);
+        if (stopped.isError()) {
+            throw Raised.of(EvaluationFailure.INVALID_UTF, BinaryValue.ofBytes(
+                    Arrays.copyOfRange(joined, reading.position(), joined.length)));
+        }
+        strictly.flush(written);
+        return written.flip().toString();
+    }
+
+    private byte[] withSurrogatePairsJoined(byte[] bytes) {
+        byte[] joined = new byte[bytes.length];
+        int written = 0;
+        int at = 0;
+        while (at < bytes.length) {
+            int high = surrogateAt(bytes, at, 0xA0);
+            int low = high < 0 ? -1 : surrogateAt(bytes, at + 3, 0xB0);
+            if (low < 0) {
+                joined[written] = bytes[at];
+                written++;
+                at++;
+                continue;
+            }
+            written = fourBytesOf(joined, written,
+                    0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00));
+            at += 6;
+        }
+        return Arrays.copyOf(joined, written);
+    }
+
+    private int surrogateAt(byte[] bytes, int at, int leadingHalf) {
+        if (at + 2 >= bytes.length || (bytes[at] & 0xFF) != 0xED) {
+            return -1;
+        }
+        int second = bytes[at + 1] & 0xFF;
+        int third = bytes[at + 2] & 0xFF;
+        if (second < leadingHalf || second >= leadingHalf + 0x10
+                || third < 0x80 || third > 0xBF) {
+            return -1;
+        }
+        return 0xD000 | (second & 0x3F) << 6 | third & 0x3F;
+    }
+
+    private int fourBytesOf(byte[] joined, int written, int codepoint) {
+        joined[written] = (byte) (0xF0 | codepoint >> 18);
+        joined[written + 1] = (byte) (0x80 | codepoint >> 12 & 0x3F);
+        joined[written + 2] = (byte) (0x80 | codepoint >> 6 & 0x3F);
+        joined[written + 3] = (byte) (0x80 | codepoint & 0x3F);
+        return written + 4;
+    }
+
+    private String textBehindTheMark(byte[] bytes, int marked) {
+        Charset theMarkAnnounces = switch (marked) {
+            case 8 -> StandardCharsets.UTF_8;
+            case 16 -> StandardCharsets.UTF_16BE;
+            case -16 -> StandardCharsets.UTF_16LE;
+            case 32 -> Charset.forName("UTF-32BE");
+            default -> Charset.forName("UTF-32LE");
+        };
+        int width = Math.abs(marked) == 8 ? 3 : Math.abs(marked) / 8;
+        try {
+            return theMarkAnnounces.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(bytes, width, bytes.length - width))
+                    .toString();
+        } catch (CharacterCodingException notText) {
+            throw Raised.of(EvaluationFailure.INVALID_UTF, "binary");
+        }
+    }
+
+    public static final Datatype TYPE = new BinaryDatatype();
+
+    private static final class BinaryDatatype extends SeriesDatatype {
+
+        private static final int THE_LARGEST_OCTET = 255;
+
+        BinaryDatatype() {
+            super("binary", Typeset.SERIES);
+        }
+
+        @Override
+        protected Value withRoomFor(int asked) {
+            return new BinaryValue(new BinaryStorage(asked), 1);
+        }
+
+        @Override
+        public Value as(Value value) {
+            return value instanceof BinaryValue ? value : super.as(value);
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return switch (from) {
+                case BinaryValue already -> already;
+                case AnyStringValue text ->
+                        BinaryValue.ofBytes(text.text().getBytes(StandardCharsets.UTF_8));
+                case IntegerValue whole -> BinaryValue.ofBytes(
+                        ByteBuffer.allocate(Long.BYTES).putLong(whole.magnitude()).array());
+                case DecimalValue fractional -> BinaryValue.ofBytes(ByteBuffer.allocate(Long.BYTES)
+                        .putLong(Double.doubleToRawLongBits(fractional.quantity())).array());
+                case MoneyValue amount -> BinaryValue.ofBytes(amount.toBytes());
+                case BlockValue block -> bytesOfEach(block);
+                case VectorValue vector -> BinaryValue.ofBytes(vector.octetsFromHere());
+                case StructValue struct -> BinaryValue.ofBytes(struct.octets());
+                case TupleValue segments -> BinaryValue.ofBytes(octetsOf(segments));
+                case BitsetValue members -> BinaryValue.ofBytes(new BitsetActions(members).asOctets());
+                case ImageValue picture -> BinaryValue.ofBytes(picture.everyPixel());
+                case CharacterValue letter -> BinaryValue.ofBytes(
+                        Character.toString(letter.codepoint()).getBytes(StandardCharsets.UTF_8));
+                default -> throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(from));
+            };
+        }
+
+        private Value bytesOfEach(AnyBlockValue block) {
+            List<Value> items = block.remaining();
+            int[] octets = new int[items.size()];
+            for (int at = 0; at < items.size(); at++) {
+                octets[at] = anOctetIn(items.get(at));
+            }
+            return BinaryValue.of(octets);
+        }
+
+        private int anOctetIn(Value item) {
+            if (!(item instanceof IntegerValue(long magnitude))) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, item);
+            }
+            if (magnitude < 0 || magnitude > THE_LARGEST_OCTET) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, item);
+            }
+            return (int) magnitude;
+        }
+
+        private byte[] octetsOf(TupleValue segments) {
+            byte[] octets = new byte[segments.segmentCount()];
+            for (int at = 0; at < octets.length; at++) {
+                octets[at] = (byte) segments.octetAt(at + 1);
+            }
+            return octets;
+        }
     }
 
     public long bitsOfTheLastEightOctets() {
@@ -358,7 +518,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
 
     @Override
     public Datatype datatype() {
-        return Datatype.BINARY;
+        return TYPE;
     }
 
     @Override

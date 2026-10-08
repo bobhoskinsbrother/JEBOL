@@ -28,7 +28,7 @@ public abstract class ProtectingNative extends DefaultNative {
     private boolean protectFieldNamedBy(
             Value target, boolean protectedNow, Set<String> refinements) {
 
-        if (!(target instanceof AnyBlockValue path) || !path.datatype().isAnyPath()) {
+        if (!(target instanceof AnyPathValue path)) {
             return false;
         }
         if (refinements.contains("values")) {
@@ -61,7 +61,8 @@ public abstract class ProtectingNative extends DefaultNative {
             return;
         }
         List<Value> items = switch (target) {
-            case AnyBlockValue block when !block.datatype().isAnyPath() -> block.remaining();
+            case AnyPathValue _ -> List.of();
+            case AnyBlockValue block -> block.remaining();
             case AnyWordValue only -> List.of(only);
             default -> List.of();
         };
@@ -93,7 +94,7 @@ public abstract class ProtectingNative extends DefaultNative {
     }
 
     private Optional<ContextSlot> slotNamedInAList(Value item) {
-        if (item instanceof AnyBlockValue path && path.datatype().isAnyPath()) {
+        if (item instanceof AnyPathValue path) {
             return path.fieldThePathNames();
         }
         if (item instanceof AnyWordValue word && word.isBound()

@@ -21,8 +21,8 @@ public class ConstructNative extends DefaultNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("body",
-                        Set.of(Datatype.BLOCK, Datatype.STRING, Datatype.BINARY)),
-                Parameter.belongingTo("with", "object", Set.of(Datatype.OBJECT)));
+                        Set.of(BlockValue.TYPE, StringValue.TYPE, BinaryValue.TYPE)),
+                Parameter.belongingTo("with", "object", Set.of(ObjectValue.TYPE)));
     }
 
     @Override

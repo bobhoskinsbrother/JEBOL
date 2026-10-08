@@ -3,7 +3,8 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.Binder;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.AnyBlockValue;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 
@@ -19,8 +20,8 @@ public class WithNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("context", Set.of(Datatype.OBJECT)),
-                Parameter.required("body", Set.of(Datatype.BLOCK)));
+        return List.of(Parameter.required("context", Set.of(ObjectValue.TYPE)),
+                Parameter.required("body", Set.of(BlockValue.TYPE)));
     }
 
     @Override

@@ -1,5 +1,6 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.eval.MapActions;
 import org.jebol.domain.value.sets.MembersKept;
 import org.jebol.domain.value.sets.SetOperation;
 
@@ -274,7 +275,52 @@ public final class MapValue implements Value {
 
     @Override
     public Datatype datatype() {
-        return Datatype.MAP;
+        return TYPE;
+    }
+
+    public static final Datatype TYPE = new MapDatatype();
+
+    private static final class MapDatatype extends Datatype {
+
+        private static final int BYTES_A_SLOT_TAKES = 32;
+
+        MapDatatype() {
+            super("map");
+        }
+
+        @Override
+        public Value madeFrom(Value spec, Maker maker) {
+            return switch (spec) {
+                case IntegerValue(long magnitude) -> withRoomFor(spec, magnitude);
+                case DecimalValue number -> withRoomFor(spec, number.quantity());
+                default -> madeOfPairsIn(spec);
+            };
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            if (from instanceof IntegerValue || from instanceof DecimalValue) {
+                throw Raised.of(EvaluationFailure.INVALID_ARG, from);
+            }
+            return madeOfPairsIn(from);
+        }
+
+        private Value withRoomFor(Value spec, double asked) {
+            if (asked < 0) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                        "a map cannot have room for " + Molder.form(spec) + " pairs");
+            }
+            refuseMoreRoomThanFits(asked, BYTES_A_SLOT_TAKES);
+            return MapValue.empty();
+        }
+
+        private Value madeOfPairsIn(Value source) {
+            List<Value> pairs = MapActions.pairsOffered(source);
+            if (pairs == null) {
+                throw refusing(source);
+            }
+            return MapActions.madeFrom(source, pairs);
+        }
     }
 
     @Override

@@ -2,7 +2,10 @@ package org.jebol.domain.eval.actions;
 
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.BitsetValue;
+import org.jebol.domain.value.GobValue;
+import org.jebol.domain.value.MapValue;
+import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.PortValue;
@@ -25,7 +28,7 @@ public class IsTailAction extends SeriesOrFileAction {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series", Typeset.SERIES.membersAnd(
-                Datatype.GOB, Datatype.PORT, Datatype.BITSET, Datatype.TYPESET, Datatype.MAP)));
+                GobValue.TYPE, PortValue.TYPE, BitsetValue.TYPE, TypesetValue.TYPE, MapValue.TYPE)));
     }
 
     @Override

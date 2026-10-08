@@ -2,6 +2,7 @@ package org.jebol.domain.value;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.ToLongFunction;
 
@@ -139,13 +140,110 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     }
 
     @Override
-    public Optional<Value> asDecimal(Datatype wanted, Conversion asking) {
+    public Optional<Value> asDecimal(AnyDecimalValue.AnyDecimalDatatype wanted, Conversion asking) {
         return Optional.of(asItStands(wanted, magnitude));
     }
 
     @Override
+    public boolean isAQuantityOfNothing() {
+        return magnitude == 0;
+    }
+
+    @Override
     public Datatype datatype() {
-        return Datatype.INTEGER;
+        return TYPE;
+    }
+
+    public static final Datatype TYPE = new IntegerDatatype();
+
+    private static final class IntegerDatatype extends Datatype {
+
+        private static final int MOST_HEX_DIGITS = 16;
+
+        private static final int MOST_WHOLE_NUMBER_CHARACTERS = 25;
+
+        private static final double TOO_LARGE_FOR_A_WHOLE_NUMBER = 9.223372036854776E18;
+
+        IntegerDatatype() {
+            super("integer", Typeset.NUMBER, Typeset.SCALAR);
+        }
+
+        @Override
+        public Value constructedFrom(List<Value> contents, Construction construction) {
+            throw refusingConstruction(contents);
+        }
+
+        @Override
+        protected Value built(Conversion asking, Value from, Maker maker) {
+            return switch (from) {
+                case IntegerValue whole -> whole;
+                case LogicValue truth -> {
+                    if (!asking.builds()) {
+                        throw refusing(from);
+                    }
+                    yield IntegerValue.of(truth.truth() ? 1 : 0);
+                }
+                case IssueValue issue -> hexNumberIn(issue);
+                case AnyStringValue text -> wholeNumberReadFrom(text);
+                case CharacterValue character -> IntegerValue.of(character.codepoint());
+                case BinaryValue bytes -> IntegerValue.of(bytes.bitsOfTheLastEightOctets());
+                case DateValue moment -> IntegerValue.of(moment.wholeSecondsSinceTheEpoch());
+                case AnyDecimalValue number -> wholeNumberWithinRange(number.quantity());
+                case MoneyValue amount -> IntegerValue.of(amount.asDeci().toLong());
+                case TimeValue clock ->
+                        IntegerValue.of(clock.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND);
+                default -> throw refusing(from);
+            };
+        }
+
+        private Value wholeNumberWithinRange(double quantity) {
+            if (Double.isNaN(quantity)
+                    || quantity < -TOO_LARGE_FOR_A_WHOLE_NUMBER
+                    || quantity >= TOO_LARGE_FOR_A_WHOLE_NUMBER) {
+                throw Raised.of(EvaluationFailure.OVERFLOW,
+                        "no whole number is what " + quantity + " names");
+            }
+            return IntegerValue.of((long) quantity);
+        }
+
+        private Value hexNumberIn(AnyWordValue issue) {
+            String digits = issue.spelling();
+            if (digits.isEmpty() || digits.length() > MOST_HEX_DIGITS) {
+                throw refusing(issue);
+            }
+            try {
+                return IntegerValue.of(Long.parseUnsignedLong(digits, 16));
+            } catch (NumberFormatException notHexAtAll) {
+                throw refusing(issue);
+            }
+        }
+
+        private Value wholeNumberReadFrom(AnyStringValue text) {
+            String withoutSeparators = new WrittenText(text.text())
+                    .theOneNumberIn("an integer", MOST_WHOLE_NUMBER_CHARACTERS)
+                    .replace("'", "");
+            try {
+                return IntegerValue.of(Long.parseLong(withoutSeparators));
+            } catch (NumberFormatException notAWholeNumber) {
+                return truncatedDecimal(withoutSeparators, text);
+            }
+        }
+
+        private Value truncatedDecimal(String candidate, AnyStringValue original) {
+            if (candidate.indexOf('.') < 0) {
+                throw refusing(original);
+            }
+            double asNumber;
+            try {
+                asNumber = Double.parseDouble(candidate);
+            } catch (NumberFormatException notANumberEither) {
+                throw refusing(original);
+            }
+            if (!(Math.abs(asNumber) < TOO_LARGE_FOR_A_WHOLE_NUMBER)) {
+                throw refusing(original);
+            }
+            return IntegerValue.of((long) asNumber);
+        }
     }
 
     @Override

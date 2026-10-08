@@ -100,15 +100,15 @@ class WhichValuesConvertToACommonDatatypeTest {
         @DisplayName("a whole number beside money becomes money, not the other way about")
         void theNarrowerSideWidens() {
             assertThat(theDatatypeTheyBothConvertTo(A_WHOLE_NUMBER, SOME_MONEY))
-                    .containsExactly(Datatype.MONEY, Datatype.MONEY);
+                    .containsExactly(MoneyValue.TYPE, MoneyValue.TYPE);
         }
 
         @Test
         @DisplayName("a time beside a whole number becomes decimal seconds")
         void aTimeWidensToSeconds() {
             Value[] pair = A_WHOLE_NUMBER.broughtTogetherWith(A_TIME).orElseThrow();
-            assertThat(pair[0].datatype()).isEqualTo(Datatype.DECIMAL);
-            assertThat(pair[1].datatype()).isEqualTo(Datatype.DECIMAL);
+            assertThat(pair[0].datatype()).isEqualTo(DecimalValue.TYPE);
+            assertThat(pair[1].datatype()).isEqualTo(DecimalValue.TYPE);
             assertThat(((AnyDecimalValue) pair[1]).quantity()).isEqualTo(1.0);
         }
     }

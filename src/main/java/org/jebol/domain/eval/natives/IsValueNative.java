@@ -15,7 +15,7 @@ public class IsValueNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("word", Set.of(Datatype.WORD)));
+        return List.of(Parameter.required("word", Set.of(WordValue.TYPE)));
     }
 
     @Override

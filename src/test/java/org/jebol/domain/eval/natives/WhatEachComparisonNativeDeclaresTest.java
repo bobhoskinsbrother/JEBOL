@@ -90,7 +90,7 @@ class WhatEachComparisonNativeDeclaresTest {
             assertThat(function.parametersAsWritten()).allSatisfy(parameter ->
                     assertThat(parameter.acceptedTypes())
                             .isEqualTo(Typeset.ANY_TYPE.members())
-                            .contains(Datatype.BLOCK, Datatype.NONE, Datatype.OBJECT));
+                            .contains(BlockValue.TYPE, NoneValue.TYPE, ObjectValue.TYPE));
         }
 
         @ParameterizedTest(name = "{1}")
