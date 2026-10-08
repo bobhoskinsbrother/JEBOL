@@ -3,7 +3,7 @@ package org.jebol.domain.eval.definition;
 public class NaturalLogarithmNative extends OneNumberNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "log-e";
     }
 

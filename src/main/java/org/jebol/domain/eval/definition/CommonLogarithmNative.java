@@ -3,7 +3,7 @@ package org.jebol.domain.eval.definition;
 public class CommonLogarithmNative extends OneNumberNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "log-10";
     }
 

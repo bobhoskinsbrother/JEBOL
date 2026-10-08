@@ -15,7 +15,7 @@ public class HeadAction extends SeriesOrFileAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "head";
     }
 

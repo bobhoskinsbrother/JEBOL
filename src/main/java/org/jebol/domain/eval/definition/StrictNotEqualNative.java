@@ -5,7 +5,7 @@ import org.jebol.domain.eval.Comparison;
 public class StrictNotEqualNative extends EqualityNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "strict-not-equal?";
     }
 

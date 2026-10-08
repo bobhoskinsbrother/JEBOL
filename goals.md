@@ -363,16 +363,17 @@ to be plumbed. But registering a bare function says nothing about what it
 withholding another, or report that an extension failed to start rather
 than that a word was missing.
 
-`NativeDefinition` is the beginning of that contract: a name, its parameters, its
-behaviour, its refinements, and `registerWordDefinition` taking the
-interface so a shipped built-in and an added library register the same way.
+`NativeValue` is the beginning of that contract: a name, its parameters, its
+behaviour, its refinements. Each built-in is an instance of a `DefaultNative`
+subclass, and that instance is itself the value `lib` holds, so a shipped
+built-in and an added library would register the same way.
 
 #### Part one: put Natives on the contract
 
 **This comes first, and not because extensions need it.** `RebolNativeWords` is
 fifteen thousand lines that define every built-in through a private
 `define` and dispatch through switches on a verb or a scheme name. Moving
-those onto `NativeDefinition` is the type-major refactor's delivery mechanism,
+those onto `NativeValue` is the type-major refactor's delivery mechanism,
 and doing it first means the contract is proved against four hundred real
 cases before anything outside depends on it. A contract drawn from one
 example and published is a contract that will be wrong.
@@ -382,14 +383,15 @@ capability this build ships from one a library added**.
 
 Work, roughly in order:
 
-- one `NativeDefinition` per built-in, replacing the `define(...)` call
-- the shared helpers off the interface: `acceptsAllNumbers` is on `NativeDefinition`
+- one `DefaultNative` subclass per built-in, registered as the value itself,
+  replacing the `define(...)` call
+- the shared helpers off the base class: `acceptsAllNumbers` is on `DefaultNative`
   today because it needed somewhere to live, and a scheme definition should
   not inherit a method about numeric parameter lists. An abstract class the
   arithmetic definitions extend is the likelier home
 - accessors in the house style. `getName` and `parameters` are JavaBean
   prefixes where everything around them reads `spelling()`, `parameters()`,
-  `behaviours()`. This interface is the one an outside library implements,
+  `behaviour()`. This interface is the one an outside library implements,
   so its names are the ones that matter most
 - the registry as an instance the interpreter owns, not a static. A static
   collection cannot be substituted in a test and cannot be added to
@@ -424,15 +426,17 @@ refused as `already-used`, which is a real error id meaning exactly that.
 Sealed after boot rather than immutable throughout, because boot is what
 fills it.
 
-There is a precedent to follow: `defineFunction` writes to `userContext`
-and not to lib, so host functions already land where they cannot clobber a
-built-in.
+There is a precedent to follow: `defineFunction` writes a
+`HostFunctionNative` to `userContext` and not to lib, and that native carries
+its own behaviour, so a host function cannot clobber a built-in. Until
+2026-10-08 it could: behaviour was looked up by name at every call, and a
+host function named `print` replaced the behaviour of `lib/print` too.
 
 #### Part three: the other kinds
 
 A scheme is not a function and has no parameters or behaviour in the same
 sense: it has a spec, an init, an awake and an actor. A codec has a name,
-suffixes, and three functions. So `NativeDefinition` is the function contract and
+suffixes, and three functions. So `NativeValue` is the function contract and
 the others are siblings, with the registration overloaded per kind rather
 than one contract wide enough to leave most of itself empty in every use.
 

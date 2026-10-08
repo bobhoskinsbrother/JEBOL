@@ -5,16 +5,7 @@ import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.read.SyntaxFailure;
 import org.jebol.domain.read.Transcoder;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.ErrorValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -32,19 +23,19 @@ public class TranscodeNative extends DefaultNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "transcode";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("source"),
                 Parameter.belongingTo("line", "count", Set.of(Datatype.INTEGER)),
                 Parameter.belongingTo("part", "length", Set.of(Datatype.INTEGER)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("one", "error", "next", "part", "line", "only");
     }
 

@@ -12,7 +12,7 @@ public class CloseAction extends ActorFirstPortAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "close";
     }
 

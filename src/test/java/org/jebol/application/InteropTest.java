@@ -167,6 +167,20 @@ class InteropTest {
 
             assertThat(interpreter.run("error? try [explode 1]").display()).isEqualTo("#(true)");
         }
+
+        @Test
+        @DisplayName("a host function named like a native leaves the native as it was")
+        void aHostFunctionNeverReplacesANative() {
+            StringBuilder written = new StringBuilder();
+            Interpreter interpreter = Interpreter.writingTo(written::append,
+                    Bounds.standard().withHostAccess(HostAccess.READING_AND_CALLING));
+            interpreter.defineFunction("print", 1, arguments -> "from the host");
+
+            interpreter.run("lib/print {from lib}");
+
+            assertThat(written.toString()).isEqualTo("from lib" + System.lineSeparator());
+            assertThat(interpreter.run("print {anything}").asHostValue()).isEqualTo("from the host");
+        }
     }
 
     @Nested

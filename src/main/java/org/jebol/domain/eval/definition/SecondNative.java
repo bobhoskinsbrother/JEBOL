@@ -3,7 +3,7 @@ package org.jebol.domain.eval.definition;
 public class SecondNative extends OrdinalNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "second";
     }
 

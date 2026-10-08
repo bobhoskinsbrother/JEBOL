@@ -22,12 +22,12 @@ public class CreateAction extends PortAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "create";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("path", Set.of(Datatype.FILE, Datatype.URL)));
     }
 
@@ -35,14 +35,14 @@ public class CreateAction extends PortAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             PortValue port = ports.portMadeFor(arguments.getFirst(), evaluator, context);
-            return evaluator.theRebolActorsAnswer(name(), List.of(port), Set.of())
+            return evaluator.theRebolActorsAnswer(nativeName(), List.of(port), Set.of())
                     .orElseGet(() -> created(port, evaluator));
         };
     }
 
     private Value created(PortValue port, Evaluator evaluator) {
         if (!port.isAFile()) {
-            throw ports.noActionFor(name());
+            throw ports.noActionFor(nativeName());
         }
         granted.require(HostService.FILES);
         String path = ports.pathOf(port);

@@ -11,7 +11,7 @@ public abstract class OneBranchNative extends BranchingNative {
     protected abstract boolean runsTheBranchWhenTheConditionHolds();
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsAnyType("condition", "branch");
     }
 

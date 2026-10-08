@@ -2,13 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Binder;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,17 +11,17 @@ import java.util.Set;
 public class BindNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "bind";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("word"), Parameter.required("target"));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("copy", "only", "new", "set");
     }
 

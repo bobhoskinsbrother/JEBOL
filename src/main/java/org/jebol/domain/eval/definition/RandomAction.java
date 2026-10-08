@@ -4,6 +4,7 @@ import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.RandomDrawing;
 import org.jebol.domain.eval.RebolRandom;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
@@ -22,17 +23,17 @@ public class RandomAction extends DefaultNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "random";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWhateverComesAlong("value");
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("seed", "secure", "only");
     }
 

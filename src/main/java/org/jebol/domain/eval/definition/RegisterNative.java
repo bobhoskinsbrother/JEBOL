@@ -2,15 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.MapValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StructValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -18,12 +10,12 @@ import java.util.Set;
 public class RegisterNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "register";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.hardQuoted("name"),
                 Parameter.required("value", Set.of(Datatype.STRUCT)));
     }

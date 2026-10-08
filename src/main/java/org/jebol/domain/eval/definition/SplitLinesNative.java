@@ -1,11 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,12 +14,12 @@ public class SplitLinesNative extends DefaultNative {
     private static final int CARRIAGE_RETURN = '\r';
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "split-lines";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value", Set.of(Datatype.STRING)));
     }
 

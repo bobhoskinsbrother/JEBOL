@@ -3,6 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.ImageOperations;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.ImageValue;
 import org.jebol.domain.value.Parameter;
 
@@ -12,12 +13,12 @@ import java.util.Set;
 public class PremultiplyNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "premultiply";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("image", Set.of(Datatype.IMAGE)));
     }
 

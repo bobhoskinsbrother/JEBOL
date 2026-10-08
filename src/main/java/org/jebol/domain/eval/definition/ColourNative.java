@@ -1,9 +1,6 @@
 package org.jebol.domain.eval.definition;
 
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.ImageValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.Set;
 import java.util.function.Function;

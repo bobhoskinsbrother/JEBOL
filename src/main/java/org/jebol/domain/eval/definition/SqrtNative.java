@@ -9,12 +9,12 @@ import java.util.Set;
 public class SqrtNative extends OneNumberNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "sqrt";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value", Set.of(Datatype.DECIMAL)));
     }
 

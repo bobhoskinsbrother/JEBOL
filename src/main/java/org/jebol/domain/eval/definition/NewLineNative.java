@@ -1,14 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.OptionalInt;
@@ -19,12 +12,12 @@ public class NewLineNative extends DefaultNative {
     private static final int WHERE_THE_SKIP_SIZE_ARRIVES = 2;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "new-line";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("position", Set.of(Datatype.BLOCK, Datatype.PAREN)),
                 Parameter.required("value"),
@@ -32,7 +25,7 @@ public class NewLineNative extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("all", "skip");
     }
 

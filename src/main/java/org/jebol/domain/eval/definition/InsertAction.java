@@ -15,7 +15,7 @@ public class InsertAction extends AddingAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "insert";
     }
 

@@ -1,22 +1,19 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 
 public class IsPastAction extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "past?";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWhateverComesAlong("series");
     }
 

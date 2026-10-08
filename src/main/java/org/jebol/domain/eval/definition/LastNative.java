@@ -1,25 +1,19 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 
 public class LastNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "last";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value",
                 Typeset.SERIES.membersAnd(Datatype.TUPLE, Datatype.GOB)));
     }

@@ -9,12 +9,12 @@ import java.util.Set;
 public class DoCommandsNative extends ExtensionPointNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "do-commands";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("commands", Set.of(Datatype.BLOCK)));
     }
 }

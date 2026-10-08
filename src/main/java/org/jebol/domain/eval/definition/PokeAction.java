@@ -2,11 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Actions;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -14,12 +10,12 @@ import java.util.Set;
 public class PokeAction extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "poke";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("series", Typeset.SERIES.membersAnd(
                         Datatype.PORT, Datatype.MAP, Datatype.GOB, Datatype.BITSET)),
@@ -32,7 +28,7 @@ public class PokeAction extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> evaluator
                 .theRebolActorsAnswer("poke", arguments, Set.of())
                 .orElseGet(() -> Actions.of(arguments.getFirst())
-                        .orElseThrow(() -> Raised.cannotUse(arguments.getFirst(), name()))
+                        .orElseThrow(() -> Raised.cannotUse(arguments.getFirst(), nativeName()))
                         .poked(arguments.get(1), arguments.get(2)));
     }
 }

@@ -2,10 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Delect;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -13,12 +10,12 @@ import java.util.Set;
 public class DelectNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "delect";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("dialect", Set.of(Datatype.OBJECT)),
                 Parameter.required("input", Set.of(Datatype.BLOCK)),
                 Parameter.required("output", Set.of(Datatype.BLOCK)),
@@ -26,7 +23,7 @@ public class DelectNative extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("in", "all");
     }
 

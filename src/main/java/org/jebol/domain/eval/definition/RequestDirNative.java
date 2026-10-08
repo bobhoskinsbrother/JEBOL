@@ -19,19 +19,19 @@ public class RequestDirNative extends WindowNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "request-dir";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.belongingTo("title", "text", Set.of(Datatype.STRING)),
                 Parameter.belongingTo("dir", "name", Set.of(Datatype.FILE)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("title", "dir", "keep");
     }
 

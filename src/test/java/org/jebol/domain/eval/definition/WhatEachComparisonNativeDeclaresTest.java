@@ -1,16 +1,6 @@
 package org.jebol.domain.eval.definition;
 
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.TestInstance;
@@ -27,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class WhatEachComparisonNativeDeclaresTest {
 
-    private Value answerOf(NativeDefinition function, Value left, Value right) {
+    private Value answerOf(DefaultNative function, Value left, Value right) {
         return function.behaviour().call(List.of(left, right), null, null, Set.of());
     }
 
@@ -86,18 +76,18 @@ class WhatEachComparisonNativeDeclaresTest {
         @ParameterizedTest(name = "{1}")
         @MethodSource("eachComparison")
         @DisplayName("named as Rebol spells it, with value1 and value2 and no refinement")
-        void twoValuesAndNoRefinement(NativeDefinition function, String name) {
-            assertThat(function.name()).isEqualTo(name);
-            assertThat(function.parameters()).extracting(Parameter::name)
+        void twoValuesAndNoRefinement(DefaultNative function, String name) {
+            assertThat(function.nativeName()).isEqualTo(name);
+            assertThat(function.parametersAsWritten()).extracting(Parameter::name)
                     .containsExactly("value1", "value2");
-            assertThat(function.refinements()).isEmpty();
+            assertThat(function.refinementsDeclaredApart()).isEmpty();
         }
 
         @ParameterizedTest(name = "{1}")
         @MethodSource("eachEqualityQuestion")
         @DisplayName("an equality question accepts every datatype there is")
-        void anEqualityQuestionAcceptsAnyType(NativeDefinition function, String name) {
-            assertThat(function.parameters()).allSatisfy(parameter ->
+        void anEqualityQuestionAcceptsAnyType(DefaultNative function, String name) {
+            assertThat(function.parametersAsWritten()).allSatisfy(parameter ->
                     assertThat(parameter.acceptedTypes())
                             .isEqualTo(Typeset.ANY_TYPE.members())
                             .contains(Datatype.BLOCK, Datatype.NONE, Datatype.OBJECT));
@@ -106,8 +96,8 @@ class WhatEachComparisonNativeDeclaresTest {
         @ParameterizedTest(name = "{1}")
         @MethodSource("eachOrderQuestion")
         @DisplayName("an order question takes a bare value, which leaves out unset")
-        void anOrderQuestionTakesABareValue(NativeDefinition function, String name) {
-            assertThat(function.parameters()).allSatisfy(parameter ->
+        void anOrderQuestionTakesABareValue(DefaultNative function, String name) {
+            assertThat(function.parametersAsWritten()).allSatisfy(parameter ->
                     assertThat(parameter.acceptedTypes()).isEmpty());
         }
     }
@@ -143,7 +133,7 @@ class WhatEachComparisonNativeDeclaresTest {
 
         @ParameterizedTest(name = "{0} {1} {2} is {3}")
         @MethodSource("answersRebolGives")
-        void answersAsRebolDoes(NativeDefinition function, Value left, Value right,
+        void answersAsRebolDoes(DefaultNative function, Value left, Value right,
                                 boolean wanted) {
             assertThat(answerOf(function, left, right)).isEqualTo(LogicValue.of(wanted));
         }
@@ -176,7 +166,7 @@ class WhatEachComparisonNativeDeclaresTest {
 
         @ParameterizedTest(name = "{0} {1} {2} is {3}")
         @MethodSource("answersRebolGives")
-        void answersAsRebolDoes(NativeDefinition function, Value left, Value right,
+        void answersAsRebolDoes(DefaultNative function, Value left, Value right,
                                 boolean wanted) {
             assertThat(answerOf(function, left, right)).isEqualTo(LogicValue.of(wanted));
         }
@@ -184,7 +174,7 @@ class WhatEachComparisonNativeDeclaresTest {
         @ParameterizedTest(name = "{1}")
         @MethodSource("eachOrderQuestion")
         @DisplayName("a value that has no order is refused rather than answered false")
-        void aValueWithNoOrderIsRefused(NativeDefinition function, String name) {
+        void aValueWithNoOrderIsRefused(DefaultNative function, String name) {
             assertThatThrownBy(() -> answerOf(function, NoneValue.none(), one()))
                     .isInstanceOf(Raised.class)
                     .extracting(raised -> ((Raised) raised).error().errorId())
@@ -194,7 +184,7 @@ class WhatEachComparisonNativeDeclaresTest {
         @ParameterizedTest(name = "{1}")
         @MethodSource("eachOrderQuestion")
         @DisplayName("and so is a block set against a number")
-        void aBlockAgainstANumberIsRefused(NativeDefinition function, String name) {
+        void aBlockAgainstANumberIsRefused(DefaultNative function, String name) {
             assertThatThrownBy(() -> answerOf(function, BlockValue.block(List.of(one())), one()))
                     .isInstanceOf(Raised.class)
                     .extracting(raised -> ((Raised) raised).error().errorId())
@@ -214,7 +204,7 @@ class WhatEachComparisonNativeDeclaresTest {
                     List.of(one(), oneAsADecimal()),
                     List.of(StringValue.of("abc"), StringValue.of("ABC")),
                     List.of(NoneValue.none(), one()));
-            List<List<NativeDefinition>> twins = List.of(
+            List<List<DefaultNative>> twins = List.of(
                     List.of(new EqualNative(), new NotEqualNative()),
                     List.of(new EquivNative(), new NotEquivNative()),
                     List.of(new StrictEqualNative(), new StrictNotEqualNative()));
@@ -228,7 +218,7 @@ class WhatEachComparisonNativeDeclaresTest {
                     List.of(one(), one()),
                     List.of(two(), one()),
                     List.of(one(), oneAsADecimal()));
-            List<List<NativeDefinition>> twins = List.of(
+            List<List<DefaultNative>> twins = List.of(
                     List.of(new GreaterOrEqualNative(), new LesserNative()),
                     List.of(new GreaterNative(), new LesserOrEqualNative()));
             return twins.stream().flatMap(twin -> pairs.stream().map(pair ->
@@ -237,7 +227,7 @@ class WhatEachComparisonNativeDeclaresTest {
 
         @ParameterizedTest(name = "{0} and {1} on {2} {3}")
         @MethodSource("eachTwinAndAPairOfValues")
-        void theTwinsDisagree(NativeDefinition positive, NativeDefinition negative,
+        void theTwinsDisagree(DefaultNative positive, DefaultNative negative,
                               Value left, Value right) {
             assertThat(answerOf(negative, left, right))
                     .isEqualTo(LogicValue.of(!answerOf(positive, left, right).isTruthy()));
@@ -245,7 +235,7 @@ class WhatEachComparisonNativeDeclaresTest {
 
         @ParameterizedTest(name = "{0} and {1} on {2} {3}")
         @MethodSource("eachOrderTwinAndAPairOfValues")
-        void theOrderTwinsDisagree(NativeDefinition positive, NativeDefinition negative,
+        void theOrderTwinsDisagree(DefaultNative positive, DefaultNative negative,
                                    Value left, Value right) {
             assertThat(answerOf(negative, left, right))
                     .isEqualTo(LogicValue.of(!answerOf(positive, left, right).isTruthy()));

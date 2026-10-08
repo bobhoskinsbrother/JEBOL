@@ -48,12 +48,12 @@ public class DecompressNative extends CompressionNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "decompress";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("data", Set.of(Datatype.BINARY)),
                 Parameter.required("method", Set.of(Datatype.WORD)),
@@ -62,7 +62,7 @@ public class DecompressNative extends CompressionNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("part", "size");
     }
 

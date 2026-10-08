@@ -3,7 +3,7 @@ package org.jebol.domain.eval.definition;
 public class DecrementNative extends SteppingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "--";
     }
 

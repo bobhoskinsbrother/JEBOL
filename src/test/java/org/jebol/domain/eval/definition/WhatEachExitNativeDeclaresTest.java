@@ -2,13 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.ReturnSignal;
 import org.jebol.domain.eval.ThrownSignal;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -30,8 +24,8 @@ class WhatEachExitNativeDeclaresTest {
 
     private static final Set<String> NOTHING = Set.of();
 
-    private void call(NativeDefinition definition, Set<String> refinements,
-            Value... arguments) {
+    private void call(DefaultNative definition, Set<String> refinements,
+                      Value... arguments) {
         definition.behaviour().call(List.of(arguments), null, null, refinements);
     }
 
@@ -56,11 +50,11 @@ class WhatEachExitNativeDeclaresTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("whatEachDeclares")
     @DisplayName("each declares exactly what the inline definition declared")
-    void declaresWhatItDeclaredInline(NativeDefinition definition, String name,
+    void declaresWhatItDeclaredInline(DefaultNative definition, String name,
             List<Parameter> parameters, Set<String> refinements) {
-        assertThat(definition.name()).isEqualTo(name);
-        assertThat(definition.parameters()).isEqualTo(parameters);
-        assertThat(definition.refinements()).isEqualTo(refinements);
+        assertThat(definition.nativeName()).isEqualTo(name);
+        assertThat(definition.parametersAsWritten()).isEqualTo(parameters);
+        assertThat(definition.refinementsDeclaredApart()).isEqualTo(refinements);
     }
 
     @Nested

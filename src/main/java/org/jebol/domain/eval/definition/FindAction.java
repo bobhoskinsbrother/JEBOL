@@ -25,12 +25,12 @@ import java.util.Set;
 public class FindAction extends SeriesSearchAction {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "find";
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("tail", "last", "only", "case", "any", "same", "part",
                 "with", "skip", "reverse", "match");
     }
@@ -78,7 +78,7 @@ public class FindAction extends SeriesSearchAction {
                 argumentOf("part", 0, arguments, refinements),
                 argumentOf("skip", 0, arguments, refinements),
                 argumentOf("with", 0, arguments, refinements));
-        series.refuseANeedleItCannotHold(wanted, name());
+        series.refuseANeedleItCannotHold(wanted, nativeName());
         if (search.stridesForwardByLessThanOne()) {
             if (series instanceof BlockValue) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE,

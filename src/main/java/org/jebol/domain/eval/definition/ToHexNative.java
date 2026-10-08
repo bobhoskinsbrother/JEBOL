@@ -1,11 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.HexWidth;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.OptionalLong;
@@ -14,19 +10,19 @@ import java.util.Set;
 public class ToHexNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "to-hex";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("value", Set.of(Datatype.INTEGER, Datatype.CHAR, Datatype.TUPLE)),
                 Parameter.belongingTo("size", "len", Set.of(Datatype.INTEGER)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("size");
     }
 

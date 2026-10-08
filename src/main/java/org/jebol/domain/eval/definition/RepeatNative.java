@@ -27,12 +27,12 @@ public class RepeatNative extends LoopingNative {
                     .toArray(Datatype[]::new));
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "repeat";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.softQuoted("counter"),
                 Parameter.required("count", WHAT_REPEAT_COUNTS_BY),
                 Parameter.required("body", A_BLOCK));

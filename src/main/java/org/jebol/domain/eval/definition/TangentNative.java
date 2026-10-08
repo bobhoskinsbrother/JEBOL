@@ -5,7 +5,7 @@ import org.jebol.domain.eval.Arithmetic;
 public class TangentNative extends TrigonometryNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "tangent";
     }
 

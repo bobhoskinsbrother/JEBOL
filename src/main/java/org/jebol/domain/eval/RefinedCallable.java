@@ -9,8 +9,7 @@ import java.util.Set;
 /**
  * What a native does when it is called, told which refinements were used.
  *
- * <p>Most natives have no refinements and are written against
- * {@link Callable}, which this wraps. The ones that do had been registered
+ * <p>Natives with refinements had once been registered
  * once per refinement, so {@code copy/part} was a separate native from
  * {@code copy}. That worked while there were three of them and stopped
  * working at nine: FIND takes {@code /any}, {@code /tail}, {@code /last},

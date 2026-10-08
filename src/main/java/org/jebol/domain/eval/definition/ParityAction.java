@@ -1,18 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.DateValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.TimeValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 
@@ -23,7 +12,7 @@ public abstract class ParityAction extends DefaultNative {
     protected abstract boolean asksForOdd();
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWhateverComesAlong("number");
     }
 
@@ -52,7 +41,7 @@ public abstract class ParityAction extends DefaultNative {
             case DecimalValue fractional -> roundedHalfAwayFromZero(fractional.quantity());
             case IntegerValue(long magnitude) -> magnitude;
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    name() + " takes a whole number, not "
+                    nativeName() + " takes a whole number, not "
                             + value.datatype().literalSpelling());
         };
     }

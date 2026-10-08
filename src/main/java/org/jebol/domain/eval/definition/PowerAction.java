@@ -2,23 +2,19 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 
 public class PowerAction extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "power";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsOnlyNumbers("base", "exponent");
     }
 

@@ -19,12 +19,12 @@ public class DebaseNative extends BinaryBaseNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "debase";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("value", anyStringOr(Datatype.BINARY)),
                 Parameter.required("base", Set.of(Datatype.INTEGER)),
@@ -32,7 +32,7 @@ public class DebaseNative extends BinaryBaseNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("url", "part");
     }
 

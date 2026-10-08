@@ -9,7 +9,7 @@ public class DecloakNative extends CloakNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "decloak";
     }
 

@@ -1,5 +1,7 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.eval.definition.AddAction;
+import org.jebol.domain.eval.definition.DoNative;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -116,7 +118,7 @@ class AContextWalksItsOwnFieldsTest {
         @Test
         @DisplayName("a native held there is the answer")
         void aNative() {
-            NativeValue held = new NativeValue("do*", List.of());
+            NativeValue held = new DoNative();
 
             assertThat(aSystemWhoseSysHolds("do*", held).systemFunctionNamed("do*"))
                     .isEqualTo(held);
@@ -125,7 +127,7 @@ class AContextWalksItsOwnFieldsTest {
         @Test
         @DisplayName("an operator held there is the answer too")
         void anOperator() {
-            OperatorValue held = new OperatorValue("+", new NativeValue("add", List.of()));
+            OperatorValue held = new OperatorValue("+", new AddAction());
 
             assertThat(aSystemWhoseSysHolds("do*", held).systemFunctionNamed("do*"))
                     .isEqualTo(held);

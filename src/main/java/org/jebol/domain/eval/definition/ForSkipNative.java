@@ -13,12 +13,12 @@ import java.util.Set;
 public class ForSkipNative extends SteppingThroughNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "forskip";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.softQuoted("word"),
                 Parameter.required("size", Set.of(Datatype.INTEGER, Datatype.DECIMAL)),
                 Parameter.required("body", A_BLOCK));

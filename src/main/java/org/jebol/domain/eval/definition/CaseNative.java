@@ -2,12 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -15,17 +10,17 @@ import java.util.Set;
 public class CaseNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "case";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("choices", Set.of(Datatype.BLOCK)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("all");
     }
 

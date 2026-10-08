@@ -2,17 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.application.Interpreter;
 
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,8 +24,8 @@ class WhatEachObjectNativeDeclaresTest {
 
     private static final Set<Datatype> A_BLOCK = Set.of(Datatype.BLOCK);
 
-    private Value answerOf(NativeDefinition definition, Set<String> refinements,
-            Value... arguments) {
+    private Value answerOf(DefaultNative definition, Set<String> refinements,
+                           Value... arguments) {
         return definition.behaviour().call(List.of(arguments), null, null, refinements);
     }
 
@@ -117,11 +107,11 @@ class WhatEachObjectNativeDeclaresTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("whatEachDeclares")
     @DisplayName("each declares exactly what the inline definition declared")
-    void declaresWhatItDeclaredInline(NativeDefinition definition, String name,
+    void declaresWhatItDeclaredInline(DefaultNative definition, String name,
             List<Parameter> parameters, Set<String> refinements) {
-        assertThat(definition.name()).isEqualTo(name);
-        assertThat(definition.parameters()).isEqualTo(parameters);
-        assertThat(definition.refinements()).isEqualTo(refinements);
+        assertThat(definition.nativeName()).isEqualTo(name);
+        assertThat(definition.parametersAsWritten()).isEqualTo(parameters);
+        assertThat(definition.refinementsDeclaredApart()).isEqualTo(refinements);
     }
 
     @Nested

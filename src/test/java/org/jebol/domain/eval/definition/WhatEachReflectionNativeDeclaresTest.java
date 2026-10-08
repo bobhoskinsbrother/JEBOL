@@ -1,22 +1,6 @@
 package org.jebol.domain.eval.definition;
 
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -53,12 +37,12 @@ class WhatEachReflectionNativeDeclaresTest {
 
     private static final Set<Datatype> AN_INTEGER = Set.of(Datatype.INTEGER);
 
-    private Value answerOf(NativeDefinition definition, Set<String> refinements,
-            Value... arguments) {
+    private Value answerOf(DefaultNative definition, Set<String> refinements,
+                           Value... arguments) {
         return definition.behaviour().call(List.of(arguments), null, null, refinements);
     }
 
-    private Value answerOf(NativeDefinition definition, Value... arguments) {
+    private Value answerOf(DefaultNative definition, Value... arguments) {
         return answerOf(definition, NOTHING, arguments);
     }
 
@@ -230,11 +214,11 @@ class WhatEachReflectionNativeDeclaresTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("whatEachDeclares")
     @DisplayName("each declares exactly what the inline definition declared")
-    void declaresWhatItDeclaredInline(NativeDefinition definition, String name,
+    void declaresWhatItDeclaredInline(DefaultNative definition, String name,
             List<Parameter> parameters, Set<String> refinements) {
-        assertThat(definition.name()).isEqualTo(name);
-        assertThat(definition.parameters()).isEqualTo(parameters);
-        assertThat(definition.refinements()).isEqualTo(refinements);
+        assertThat(definition.nativeName()).isEqualTo(name);
+        assertThat(definition.parametersAsWritten()).isEqualTo(parameters);
+        assertThat(definition.refinementsDeclaredApart()).isEqualTo(refinements);
     }
 
     @ParameterizedTest(name = "{0}")
@@ -243,10 +227,10 @@ class WhatEachReflectionNativeDeclaresTest {
     void everyDatatypeHasAPredicate(Datatype datatype) {
         DatatypePredicateAction predicate = new DatatypePredicateAction(datatype);
 
-        assertThat(predicate.name()).isEqualTo(datatype.spelling() + "?");
-        assertThat(predicate.parameters())
+        assertThat(predicate.nativeName()).isEqualTo(datatype.spelling() + "?");
+        assertThat(predicate.parametersAsWritten())
                 .isEqualTo(List.of(Parameter.required("value", ANY_TYPE)));
-        assertThat(predicate.refinements()).isEmpty();
+        assertThat(predicate.refinementsDeclaredApart()).isEmpty();
     }
 
     @Nested

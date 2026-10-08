@@ -11,12 +11,12 @@ import java.util.List;
 public class WhileNative extends LoopingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "while";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("condition", A_BLOCK),
                 Parameter.required("body", A_BLOCK));
     }

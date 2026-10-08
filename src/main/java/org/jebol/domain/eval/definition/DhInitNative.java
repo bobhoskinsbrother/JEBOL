@@ -13,12 +13,12 @@ import java.util.Set;
 public class DhInitNative extends CipherNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "dh-init";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("g", Set.of(Datatype.BINARY)),
                 Parameter.required("p", Set.of(Datatype.BINARY)));
     }

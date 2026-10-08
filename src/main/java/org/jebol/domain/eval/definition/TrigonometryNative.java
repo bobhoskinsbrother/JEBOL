@@ -3,6 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
 
@@ -14,12 +15,12 @@ public abstract class TrigonometryNative extends DefaultNative {
     protected abstract double ratioOf(double radians);
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsOnlyNumbers("value");
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("radians");
     }
 

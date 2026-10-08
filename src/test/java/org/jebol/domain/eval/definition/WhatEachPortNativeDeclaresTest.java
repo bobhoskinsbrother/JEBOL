@@ -9,6 +9,7 @@ import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.LocalFileSeparator;
 import org.jebol.domain.eval.Ports;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Molder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -116,9 +117,9 @@ class WhatEachPortNativeDeclaresTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("eachNameAndItsRefinements")
     @DisplayName("each answers to its Rebol name with the refinements Rebol declares")
-    void declaresItsNameAndRefinements(NativeDefinition definition, String name, Set<String> refinements) {
-        assertThat(definition.name()).isEqualTo(name);
-        assertThat(definition.refinements()).isEqualTo(refinements);
+    void declaresItsNameAndRefinements(DefaultNative definition, String name, Set<String> refinements) {
+        assertThat(definition.nativeName()).isEqualTo(name);
+        assertThat(definition.refinementsDeclaredApart()).isEqualTo(refinements);
     }
 
     @ParameterizedTest(name = "{0} is refused with {1}, naming {2} and {3}")

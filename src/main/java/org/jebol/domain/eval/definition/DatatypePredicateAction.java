@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
 
@@ -16,12 +17,12 @@ public class DatatypePredicateAction extends DefaultNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return asked.spelling() + "?";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsAnyType("value");
     }
 

@@ -1,9 +1,6 @@
 package org.jebol.domain.eval.definition;
 
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.GobValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Optional;

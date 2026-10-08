@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Parameter;
 
@@ -11,17 +12,17 @@ import java.util.Set;
 public class ArctangentOfAPointNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "arctangent2";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("point", Set.of(Datatype.PAIR)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("radians");
     }
 

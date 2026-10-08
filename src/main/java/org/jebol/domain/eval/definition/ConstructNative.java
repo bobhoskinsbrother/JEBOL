@@ -1,18 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -24,12 +13,12 @@ public class ConstructNative extends DefaultNative {
     private static final int WHERE_THE_PROTOTYPE_ARRIVES = 1;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "construct";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("body",
                         Set.of(Datatype.BLOCK, Datatype.STRING, Datatype.BINARY)),
@@ -37,7 +26,7 @@ public class ConstructNative extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("only", "with");
     }
 

@@ -17,12 +17,12 @@ public class RgbToHsvNative extends ColourNative {
     private static final double BLUE_STARTS_AT = 170.0;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "rgb-to-hsv";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("rgb", Set.of(Datatype.TUPLE)));
     }
 

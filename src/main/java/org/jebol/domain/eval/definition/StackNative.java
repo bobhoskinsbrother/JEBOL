@@ -2,13 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -18,17 +12,17 @@ public class StackNative extends DefaultNative {
     static final int FRAME_VALUE_UNITS = 8;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "stack";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("offset", Set.of(Datatype.INTEGER)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("block", "word", "func", "args", "size", "depth", "limit");
     }
 

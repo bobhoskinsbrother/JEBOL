@@ -1,5 +1,6 @@
 package org.jebol.domain.value;
 
+import org.jebol.domain.eval.definition.PrintNative;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -138,14 +139,14 @@ class AValueMakesItsOwnKindTest {
         @Test
         @DisplayName("a native given a block derives from itself")
         void aNativeGivenABlock() {
-            assertThat(whatWasAskedWhenMaking(new NativeValue("print", List.of()), aBlock()))
+            assertThat(whatWasAskedWhenMaking(new PrintNative(), aBlock()))
                     .containsExactly("derived from native!");
         }
 
         @Test
         @DisplayName("a native given anything else is made as any other native would be")
         void aNativeGivenSomethingElse() {
-            assertThat(whatWasAskedWhenMaking(new NativeValue("print", List.of()),
+            assertThat(whatWasAskedWhenMaking(new PrintNative(),
                     IntegerValue.of(1)))
                     .containsExactly("made from a native!");
         }

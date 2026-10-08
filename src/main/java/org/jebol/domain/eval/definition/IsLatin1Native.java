@@ -5,7 +5,7 @@ public class IsLatin1Native extends WithinCodepointsNative {
     private static final int THE_LAST_LATIN1_CODEPOINT = 0xFF;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "latin1?";
     }
 

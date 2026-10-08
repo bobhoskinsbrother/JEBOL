@@ -24,12 +24,12 @@ public class AtzAction extends SeriesOrFileAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "atz";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series"),
                 Parameter.required("position", Set.of(Datatype.INTEGER, Datatype.PAIR)));
     }

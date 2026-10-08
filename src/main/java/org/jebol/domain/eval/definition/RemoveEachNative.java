@@ -31,12 +31,12 @@ import java.util.Set;
 public class RemoveEachNative extends LoopingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "remove-each";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.softQuoted("word"),
                 Parameter.required("series", Set.of(Datatype.BLOCK, Datatype.BINARY,
                         Datatype.STRING, Datatype.MAP, Datatype.VECTOR)),
@@ -44,7 +44,7 @@ public class RemoveEachNative extends LoopingNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("count");
     }
 

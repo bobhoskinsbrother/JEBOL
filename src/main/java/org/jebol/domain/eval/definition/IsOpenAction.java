@@ -12,7 +12,7 @@ public class IsOpenAction extends ActorFirstPortAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "open?";
     }
 

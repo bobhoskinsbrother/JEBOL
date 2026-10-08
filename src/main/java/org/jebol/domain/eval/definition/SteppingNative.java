@@ -1,13 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.ContextSlot;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 
@@ -16,7 +10,7 @@ public abstract class SteppingNative extends DefaultNative {
     protected abstract int step();
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.hardQuoted("word"));
     }
 

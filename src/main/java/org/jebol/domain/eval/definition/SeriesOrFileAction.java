@@ -3,10 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.OpenFile;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.PortValue;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -20,7 +17,7 @@ public abstract class SeriesOrFileAction extends DefaultNative {
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWhateverComesAlong("series");
     }
 

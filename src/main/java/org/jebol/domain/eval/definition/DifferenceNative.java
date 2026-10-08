@@ -2,14 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Combining;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DateValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.MapValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.TypesetValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 import org.jebol.domain.value.sets.SetOperation;
 
 import java.util.List;
@@ -24,12 +17,12 @@ public class DifferenceNative extends DefaultNative {
     private static final int EVERY_MEMBER_ON_ITS_OWN = 1;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "difference";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("first", TAKES_A_DIFFERENCE),
                 Parameter.required("second", TAKES_A_DIFFERENCE),
@@ -37,7 +30,7 @@ public class DifferenceNative extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("case", "skip");
     }
 
@@ -53,7 +46,7 @@ public class DifferenceNative extends DefaultNative {
                     ? EVERY_MEMBER_ON_ITS_OWN
                     : recordWidth(arguments, refinements);
             return Combining.sets(first, second,
-                    SetOperation.named(name()).orElseThrow(),
+                    SetOperation.named(nativeName()).orElseThrow(),
                     refinements.contains("case"), stride);
         };
     }

@@ -7,23 +7,7 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.ReturnSignal;
 import org.jebol.domain.read.SyntaxFailure;
 import org.jebol.domain.read.TranscodeResult;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.ErrorValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -34,19 +18,19 @@ public class DoNative extends DefaultNative {
     private static final int WHERE_THE_SCRIPT_ARGUMENTS_ARRIVE = 1;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "do";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value", Typeset.ANY_TYPE.members()),
                 Parameter.belongingTo("args", "arg", Set.of()),
                 Parameter.belongingTo("next", "var", Set.of(Datatype.WORD)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("next", "args");
     }
 

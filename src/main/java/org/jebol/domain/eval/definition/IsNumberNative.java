@@ -1,26 +1,19 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 
 public class IsNumberNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "number?";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value",
                 Typeset.ANY_TYPE.membersAnd(Datatype.UNSET)));
     }

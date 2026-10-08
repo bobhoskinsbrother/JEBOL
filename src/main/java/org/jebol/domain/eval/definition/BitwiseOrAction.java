@@ -6,7 +6,7 @@ import org.jebol.domain.value.Or;
 public class BitwiseOrAction extends BitwiseAction {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "or~";
     }
 

@@ -15,7 +15,7 @@ public class BackAction extends SeriesOrFileAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "back";
     }
 

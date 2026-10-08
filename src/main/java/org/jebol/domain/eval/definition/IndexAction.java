@@ -23,17 +23,17 @@ public class IndexAction extends SeriesOrFileAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "index?";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series", somewhereToStand()));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("xy");
     }
 

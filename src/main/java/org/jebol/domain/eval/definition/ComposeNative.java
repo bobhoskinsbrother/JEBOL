@@ -3,15 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.MapActions;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockStorage;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.MapValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,18 +14,18 @@ public class ComposeNative extends DefaultNative {
     private static final boolean GOING_DEEP = true;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "compose";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("block"),
                 Parameter.belongingTo("into", "out", Typeset.ANY_BLOCK.members()));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("only", "deep", "into");
     }
 

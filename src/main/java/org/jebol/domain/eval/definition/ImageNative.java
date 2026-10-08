@@ -4,20 +4,7 @@ import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.FilePort;
 import org.jebol.domain.eval.ImagePort;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BinaryStorage;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.ImageValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,12 +15,12 @@ public class ImageNative extends DefaultNative {
     private static final int THE_FIRST_FRAME = 1;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "image";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.belongingTo("load", "src-file", Set.of(Datatype.FILE, Datatype.BINARY)),
                 Parameter.belongingTo("save", "dst-file",
@@ -44,7 +31,7 @@ public class ImageNative extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("load", "save", "frame", "as");
     }
 

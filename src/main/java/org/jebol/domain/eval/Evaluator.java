@@ -16,7 +16,6 @@ public final class Evaluator {
 
     private static final int THE_IDENTITY_BEFORE_THE_FIRST_CIPHER = 2000;
 
-    private final Map<String, RefinedCallable> behaviours;
     private final OutputPort output;
     private final Context systemContext;
     private final PathDispatch pathDispatch = new PathDispatch();
@@ -146,15 +145,12 @@ public final class Evaluator {
         return walks;
     }
 
-    public Evaluator(
-            Map<String, RefinedCallable> behaviours, Context systemContext,
-            OutputPort output) {
-        this(behaviours, systemContext, Construction.refused(), MakerSource.none(), output,
+    public Evaluator(Context systemContext, OutputPort output) {
+        this(systemContext, Construction.refused(), MakerSource.none(), output,
                 DEFAULT_MAXIMUM_DEPTH, Interruption.never(), DEFAULT_CHECK_EVERY);
     }
 
     public Evaluator(
-            Map<String, RefinedCallable> behaviours,
             Context systemContext,
             Construction construction,
             MakerSource makerSource,
@@ -162,7 +158,6 @@ public final class Evaluator {
             int maximumDepth,
             Interruption interruption,
             int checkEvery) {
-        this.behaviours = new java.util.HashMap<>(behaviours);
         this.systemContext = systemContext;
         this.construction = construction;
         this.makerSource = makerSource;
@@ -171,11 +166,6 @@ public final class Evaluator {
         this.maximumDepth = maximumDepth;
         this.interruption = interruption;
         this.checkEvery = checkEvery;
-    }
-
-    public void defineNative(String name, Callable behaviour) {
-        behaviours.put(name, (arguments, evaluator, context, refinements) ->
-                behaviour.call(arguments, evaluator, context));
     }
 
     private OutputPort alsoWritingTo;
@@ -1135,11 +1125,7 @@ public final class Evaluator {
     private Value runNative(NativeValue built, List<Value> arguments, Context context,
             int checkedFrom, String calledAs, Runnable onceTheArgumentsPass) {
         checkArgumentTypes(built, arguments, calledAs, checkedFrom);
-        RefinedCallable behaviour = behaviours.get(built.nativeName());
-        if (behaviour == null) {
-            throw Raised.of(EvaluationFailure.CANNOT_USE,
-                    "no behaviour registered for " + built.nativeName());
-        }
+        RefinedCallable behaviour = built.behaviour();
         onceTheArgumentsPass.run();
         nativesCalled++;
         Value produced;

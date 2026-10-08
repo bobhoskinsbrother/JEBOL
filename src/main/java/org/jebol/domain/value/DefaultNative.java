@@ -1,14 +1,4 @@
-package org.jebol.domain.eval.definition;
-
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.ErrorValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+package org.jebol.domain.value;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,11 +8,36 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public abstract class DefaultNative implements NativeDefinition {
+public abstract non-sealed class DefaultNative implements NativeValue {
+
+    private Optional<BlockValue> declaredSpec = Optional.empty();
+    private Optional<List<Parameter>> declaredParameters = Optional.empty();
+
+    public abstract List<Parameter> parametersAsWritten();
 
     @Override
-    public Set<String> refinements() {
+    public final List<Parameter> parameters() {
+        return declaredParameters.orElseGet(this::parametersAsWritten);
+    }
+
+    @Override
+    public Set<String> refinementsDeclaredApart() {
         return Set.of();
+    }
+
+    @Override
+    public final Optional<BlockValue> ownSpec() {
+        return declaredSpec;
+    }
+
+    public final void declaredBy(BlockValue spec, List<Parameter> declared) {
+        this.declaredSpec = Optional.of(spec);
+        this.declaredParameters = Optional.of(List.copyOf(declared));
+    }
+
+    @Override
+    public String toString() {
+        return "native " + nativeName() + "/" + arity();
     }
 
     protected List<Parameter> acceptsAllNumbers(String... names) {
@@ -133,15 +148,15 @@ public abstract class DefaultNative implements NativeDefinition {
         throw new Raised(ErrorValue.about(
                 EvaluationFailure.EXPECT_ARG.category(),
                 EvaluationFailure.EXPECT_ARG.errorId(),
-                name() + " does not allow " + given.datatype().literalSpelling()
+                nativeName() + " does not allow " + given.datatype().literalSpelling()
                         + " for its " + declaredArgument + " argument",
-                WordValue.of(name()),
+                WordValue.of(nativeName()),
                 WordValue.of(declaredArgument),
                 DatatypeValue.of(given.datatype())));
     }
 
     protected Value refuseTheDatatype(Value given) {
-        throw Raised.cannotUse(given, name());
+        throw Raised.cannotUse(given, nativeName());
     }
 
     private List<Parameter> each(String[] names, Set<Datatype> allowed) {

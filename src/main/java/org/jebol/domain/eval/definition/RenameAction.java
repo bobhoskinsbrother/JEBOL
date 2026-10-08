@@ -24,12 +24,12 @@ public class RenameAction extends PortAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "rename";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         Set<Datatype> anEnd = Set.of(Datatype.FILE, Datatype.BLOCK, Datatype.PORT, Datatype.URL);
         return List.of(Parameter.required("from", anEnd), Parameter.required("to", anEnd));
     }
@@ -39,14 +39,14 @@ public class RenameAction extends PortAction {
         return (arguments, evaluator, context, refinements) -> {
             Value asked = arguments.getFirst();
             PortValue from = ports.portMadeFor(asked, evaluator, context);
-            return evaluator.theRebolActorsAnswer(name(), List.of(from, arguments.get(1)), Set.of())
+            return evaluator.theRebolActorsAnswer(nativeName(), List.of(from, arguments.get(1)), Set.of())
                     .orElseGet(() -> renamed(asked, from, arguments.get(1), evaluator));
         };
     }
 
     private Value renamed(Value asked, PortValue from, Value destination, Evaluator evaluator) {
         if (!from.isAFile()) {
-            throw ports.noActionFor(name());
+            throw ports.noActionFor(nativeName());
         }
         if (!(destination instanceof StringValue to) || to.datatype() != Datatype.FILE) {
             throw Raised.of(EvaluationFailure.NO_RENAME, asked);

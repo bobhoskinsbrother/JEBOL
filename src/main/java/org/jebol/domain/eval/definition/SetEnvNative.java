@@ -18,12 +18,12 @@ public class SetEnvNative extends EnvironmentNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "set-env";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("name", aVariablesName()),
                 Parameter.required("value", Set.of(Datatype.STRING, Datatype.NONE)));

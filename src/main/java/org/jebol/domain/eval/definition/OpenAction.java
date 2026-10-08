@@ -17,19 +17,19 @@ public class OpenAction extends PortAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "open";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("spec"),
                 Parameter.belongingTo("allow", "access", Set.of(Datatype.BLOCK)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("new", "read", "write", "seek", "allow");
     }
 
@@ -37,7 +37,7 @@ public class OpenAction extends PortAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             PortValue port = ports.portMadeFor(arguments.getFirst(), evaluator, context);
-            return evaluator.theRebolActorsAnswer(name(), List.of(port), refinements)
+            return evaluator.theRebolActorsAnswer(nativeName(), List.of(port), refinements)
                     .orElseGet(() -> ports.opened(port, evaluator, refinements));
         };
     }

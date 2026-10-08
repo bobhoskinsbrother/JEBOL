@@ -19,12 +19,12 @@ import java.util.function.Supplier;
 public class ForEachNative extends LoopingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "foreach";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.softQuoted("target"),
                 Parameter.required("series"),
                 Parameter.required("body", A_BLOCK));

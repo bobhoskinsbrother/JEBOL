@@ -4,6 +4,7 @@ import org.jebol.domain.date.part.DatePart;
 import org.jebol.domain.eval.BitsetActions;
 import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.DateValue;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Value;
 
 public abstract class PickingNative extends DefaultNative {

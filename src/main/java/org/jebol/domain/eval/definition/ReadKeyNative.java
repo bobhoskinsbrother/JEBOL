@@ -23,12 +23,12 @@ public class ReadKeyNative extends HostNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "read-key";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of();
     }
 

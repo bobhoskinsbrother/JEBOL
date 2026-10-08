@@ -18,12 +18,12 @@ public class InitTopWindowNative extends ScreenNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "init-top-window";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("gob", Set.of(Datatype.GOB)));
     }
 

@@ -17,19 +17,19 @@ public class PickAction extends PickingNative {
     private static final int WHAT_FALSE_PICKS = 2;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "pick";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWhateverComesAlong("series", "index");
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .theRebolActorsAnswer(name(), arguments, Set.of())
+                .theRebolActorsAnswer(nativeName(), arguments, Set.of())
                 .orElseGet(() -> picked(arguments.getFirst(), arguments.get(1)));
     }
 

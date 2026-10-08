@@ -1,22 +1,19 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 
 public class IsSelflessNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "selfless?";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("context"));
     }
 

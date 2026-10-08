@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.SeriesChange;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Typeset;
 
@@ -11,12 +12,12 @@ import java.util.Set;
 public class ChangeAction extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "change";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series"),
                 Parameter.required("value", Typeset.ANY_TYPE.members()),
                 Parameter.belongingTo("part", "range", aPartLimit()),
@@ -24,7 +25,7 @@ public class ChangeAction extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("part", "only", "dup");
     }
 

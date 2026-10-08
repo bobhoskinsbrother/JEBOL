@@ -2,18 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.MapValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -23,12 +12,12 @@ public class PutAction extends DefaultNative {
     private static final int NOT_FOUND = -1;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "put";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("target"),
                 Parameter.required("key", Typeset.ANY_TYPE.members()),
                 Parameter.required("value", Typeset.ANY_TYPE.members()),
@@ -36,7 +25,7 @@ public class PutAction extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("case", "skip");
     }
 

@@ -20,12 +20,12 @@ public class UnfilterNative extends PngFilterNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "unfilter";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("data", Set.of(Datatype.BINARY)),
                 Parameter.required("width", aWidth()),
@@ -34,7 +34,7 @@ public class UnfilterNative extends PngFilterNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("as", "skip");
     }
 

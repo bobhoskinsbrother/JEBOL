@@ -1,19 +1,10 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.ContextSlot;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.NativeValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.eval.SchemeActorNative;
+import org.jebol.domain.value.*;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 public class SetSchemeNative extends DefaultNative {
@@ -26,15 +17,13 @@ public class SetSchemeNative extends DefaultNative {
 
     private static final int WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_ACTOR = 4;
 
-    private static final String THE_ARGUMENT_NOTHING_CAN_FILL = "internal";
-
     @Override
-    public String name() {
+    public String nativeName() {
         return "set-scheme";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("scheme", Set.of(Datatype.OBJECT)));
     }
 
@@ -57,12 +46,6 @@ public class SetSchemeNative extends DefaultNative {
     }
 
     private Value theNativeActorFor(WordValue named) {
-        return new NativeValue(
-                "the " + named.canonical() + " actor",
-                List.of(Parameter.required(THE_ARGUMENT_NOTHING_CAN_FILL, Set.of(Datatype.END))),
-                Set.of(),
-                Set.of(),
-                Optional.of(BlockValue.block(List.of(
-                        NoneValue.none(), WordValue.of(THE_ARGUMENT_NOTHING_CAN_FILL)))));
+        return new SchemeActorNative(named.canonical());
     }
 }

@@ -19,7 +19,7 @@ public abstract class AddingAction extends SeriesOrFileAction {
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series", Typeset.SERIES.membersAnd(
                         Datatype.PORT, Datatype.MAP, Datatype.GOB, Datatype.OBJECT, Datatype.BITSET)),
                 Parameter.required("value", Typeset.ANY_TYPE.members()),
@@ -28,7 +28,7 @@ public abstract class AddingAction extends SeriesOrFileAction {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("part", "only", "dup");
     }
 

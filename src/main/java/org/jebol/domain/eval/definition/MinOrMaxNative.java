@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
@@ -13,7 +14,7 @@ public abstract class MinOrMaxNative extends DefaultNative {
     protected abstract boolean wantsTheLarger();
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWhateverComesAlong("value1", "value2");
     }
 

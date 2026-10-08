@@ -17,18 +17,18 @@ import java.util.Set;
 public class DhNative extends CipherNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "dh";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("dh-key", Set.of(Datatype.HANDLE)),
                 Parameter.belongingTo("secret", "public-key", Set.of(Datatype.BINARY)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("public", "secret");
     }
 

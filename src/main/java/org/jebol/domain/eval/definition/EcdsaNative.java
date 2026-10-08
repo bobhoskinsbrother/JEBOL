@@ -17,12 +17,12 @@ import java.util.Set;
 public class EcdsaNative extends CipherNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "ecdsa";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("key", Set.of(Datatype.HANDLE, Datatype.BINARY)),
                 Parameter.required("hash", Set.of(Datatype.BINARY)),
                 Parameter.belongingTo("verify", "signature", Set.of(Datatype.BINARY)),
@@ -30,7 +30,7 @@ public class EcdsaNative extends CipherNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("sign", "verify", "curve");
     }
 

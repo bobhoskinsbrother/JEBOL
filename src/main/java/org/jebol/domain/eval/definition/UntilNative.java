@@ -10,12 +10,12 @@ import java.util.List;
 public class UntilNative extends LoopingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "until";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("body", A_BLOCK));
     }
 

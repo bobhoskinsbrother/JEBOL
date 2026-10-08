@@ -2,15 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.FunctionValue;
-import org.jebol.domain.value.NativeValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.OperatorValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -25,18 +17,18 @@ import java.util.Set;
 public class ApplyNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "apply";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("func"),
                 Parameter.required("block", Set.of(Datatype.BLOCK)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("only");
     }
 
@@ -53,7 +45,7 @@ public class ApplyNative extends DefaultNative {
                 callee = supplied.removeFirst();
             }
             if (callee instanceof NativeValue builtIn
-                    && !builtIn.declaredRefinements().isEmpty()) {
+                    && !builtIn.refinementsDeclaredApart().isEmpty()) {
                 return appliedWithRefinements(builtIn, supplied, evaluator);
             }
             return evaluator.applyFunction(callee, exactlyAsManyAsItTakes(callee, supplied));

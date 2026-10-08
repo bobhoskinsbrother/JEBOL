@@ -2,10 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Actions;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,18 +11,18 @@ import java.util.Set;
 public class TruncateNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "truncate";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series"),
                 Parameter.belongingTo("part", "count", aPartLimit()));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("part");
     }
 

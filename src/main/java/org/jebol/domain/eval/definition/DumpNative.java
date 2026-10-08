@@ -1,6 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
@@ -9,17 +10,17 @@ import java.util.Set;
 public class DumpNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "dump";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWhateverComesAlong("value");
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("fmt");
     }
 

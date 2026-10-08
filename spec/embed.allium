@@ -660,6 +660,24 @@ rule QuitEndsTheRunWithoutEndingTheHost {
         -- choose whether there is one.
 }
 
+-- A host function is a native of its own, set in the script's context under
+-- the name the host gave it. It never replaces a native that already carries
+-- that name: `lib/print` still prints after a host defines a function called
+-- print, and only the word `print` in the script's context now reaches the
+-- host's function.
+--
+-- A native carries its own behaviour, so nothing a host defines can change
+-- what another native value does. JEBOL used to look each native's behaviour
+-- up by name at every call, and a host function named print replaced the
+-- behaviour of every print, the one in lib included.
+rule AHostFunctionNeverReplacesANative {
+    when: DefineHostFunction(host, interpreter, name, arity)
+
+    ensures: the_script_context_of(interpreter).name = a_native_running_the_host_function
+    ensures: for existing in natives_named(name):
+        existing.behaviour = existing.behaviour_before_the_definition
+}
+
 -- A run that passes its deadline is stopped whether or not it was going to
 -- finish. Without this the bound is advice.
 rule OverdueRunIsStopped {
@@ -708,6 +726,7 @@ surface Embedding {
         Run(host, interpreter, source_text)
         RunNext(host, interpreter, source_text)
         Cancel(host, interpreter)
+        DefineHostFunction(host, interpreter, name, arity)
 
     exposes:
         Conclusion

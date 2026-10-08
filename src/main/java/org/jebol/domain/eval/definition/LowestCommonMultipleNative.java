@@ -9,12 +9,12 @@ import java.util.List;
 public class LowestCommonMultipleNative extends WholeNumberNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "lcm";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWholeNumbers("first", "second");
     }
 

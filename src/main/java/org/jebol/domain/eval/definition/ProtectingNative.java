@@ -1,18 +1,6 @@
 package org.jebol.domain.eval.definition;
 
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.ContextSlot;
-import org.jebol.domain.value.MapValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.VectorValue;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -23,7 +11,7 @@ import java.util.Set;
 public abstract class ProtectingNative extends DefaultNative {
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWhateverComesAlong("target");
     }
 

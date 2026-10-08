@@ -1,10 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -17,12 +14,12 @@ public class FormOidNative extends DefaultNative {
     private static final int MORE_GROUPS_FOLLOW = 0x80;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "form-oid";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("oid", Set.of(Datatype.BINARY)));
     }
 

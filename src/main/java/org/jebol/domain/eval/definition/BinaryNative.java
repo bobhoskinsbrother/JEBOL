@@ -3,21 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.Bincode;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BinaryStorage;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.ContextSlot;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -29,12 +15,12 @@ import java.util.function.UnaryOperator;
 public class BinaryNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "binary";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("ctx", Set.of(Datatype.OBJECT, Datatype.BINARY,
                         Datatype.INTEGER, Datatype.NONE)),
@@ -48,7 +34,7 @@ public class BinaryNative extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("init", "write", "read", "into", "with");
     }
 

@@ -3,13 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.DateValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.TimeValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -28,17 +22,17 @@ public class NowNative extends DefaultNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "now";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of();
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("year", "month", "day", "time", "zone", "date",
                 "weekday", "yearday", "precise", "utc");
     }

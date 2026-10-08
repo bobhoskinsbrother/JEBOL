@@ -9,12 +9,12 @@ import java.util.List;
 public class GrayscaleNative extends ColourNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "grayscale";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("target", aColourOrAnImage()));
     }
 

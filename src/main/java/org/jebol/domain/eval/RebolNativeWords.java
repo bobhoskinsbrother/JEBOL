@@ -8,7 +8,6 @@ import org.jebol.domain.value.*;
 
 import java.util.*;
 
-import static java.util.Set.of;
 
 public final class RebolNativeWords {
 
@@ -16,8 +15,7 @@ public final class RebolNativeWords {
     private String operatingSystemName = "JVM";
     private Context systemInternals = Context.root();
     private final BootDeclarations bootDeclarations = new BootDeclarations();
-    private final Map<String, RefinedCallable> behaviours = new LinkedHashMap<>();
-    private final Map<String, NativeValue> definitions = new LinkedHashMap<>();
+    private final Map<String, DefaultNative> definitions = new LinkedHashMap<>();
     private final Map<String, String> operatorTwins = new LinkedHashMap<>();
     private final Map<String, String> aliases = new LinkedHashMap<>();
     private final Context runState = Context.root();
@@ -110,10 +108,6 @@ public final class RebolNativeWords {
         grantedServices.grantOnly(granted);
     }
 
-    public Map<String, RefinedCallable> behaviours() {
-        return Map.copyOf(behaviours);
-    }
-
     public Context systemInternals() {
         return systemInternals;
     }
@@ -137,11 +131,10 @@ public final class RebolNativeWords {
         }
         context.register("system", systemObject(context));
 
-        Map<String, NativeValue> carryingTheirSpecs = new LinkedHashMap<>();
-        definitions.forEach((name, built) -> carryingTheirSpecs.put(name, carryingItsSpec(built)));
-        carryingTheirSpecs.forEach(context::register);
-        operatorTwins.forEach((operator, twin) -> context.register(operator, new OperatorValue(operator, carryingTheirSpecs.get(twin))));
-        aliases.forEach((alias, originalName) -> context.register(alias, carryingTheirSpecs.get(originalName)));
+        definitions.values().forEach(this::declareItsSpec);
+        definitions.forEach(context::register);
+        operatorTwins.forEach((operator, twin) -> context.register(operator, new OperatorValue(operator, definitions.get(twin))));
+        aliases.forEach((alias, originalName) -> context.register(alias, definitions.get(originalName)));
         return context;
     }
 
@@ -615,7 +608,7 @@ public final class RebolNativeWords {
         return valueFor(errors);
     }
 
-    private Value catalog(Map<String, NativeValue> definitions) {
+    private Value catalog(Map<String, DefaultNative> definitions) {
         Context catalog = Context.root();
         catalog.register("datatypes", BlockValue.block(Arrays.stream(Datatype.values()).map(datatype -> (Value) DatatypeValue.of(datatype)).toList()));
         catalog.register("structs", registeredStructLayouts);
@@ -632,11 +625,11 @@ public final class RebolNativeWords {
         return valueFor(catalog);
     }
 
-    private BlockValue definitions(Map<String, NativeValue> definitions) {
+    private BlockValue definitions(Map<String, DefaultNative> definitions) {
         return BlockValue.block(definitions.keySet().stream().filter(spelling -> !ACTION_NAMES.contains(spelling)).sorted().<Value>map(WordValue::of).toList());
     }
 
-    private BlockValue actions(Map<String, NativeValue> definitions) {
+    private BlockValue actions(Map<String, DefaultNative> definitions) {
         return BlockValue.block(ACTION_NAMES.stream().filter(definitions::containsKey).<Value>map(WordValue::of).toList());
     }
 
@@ -644,9 +637,9 @@ public final class RebolNativeWords {
         return new ObjectValue(context);
     }
 
-    private NativeValue carryingItsSpec(NativeValue built) {
+    private void declareItsSpec(DefaultNative built) {
         BlockValue spec = bootDeclarations.specOf(built);
-        return built.derivedWith(spec, new DeclaredArguments(spec).inPlaceOf(built.parameters()));
+        built.declaredBy(spec, new DeclaredArguments(spec).inPlaceOf(built.parametersAsWritten()));
     }
 
     private void registerOperator(String spelling, String prefixTwin) {
@@ -663,10 +656,8 @@ public final class RebolNativeWords {
         aliases.put(alias, originalName);
     }
 
-    private void register(NativeDefinition function) {
-        String name = function.name();
-        definitions.put(name, new NativeValue(name, function.parameters(), function.refinements(), of()));
-        behaviours.put(name, function.behaviour());
+    private void register(DefaultNative function) {
+        definitions.put(function.nativeName(), function);
     }
 
     private List<Value> catalogueEntries() {

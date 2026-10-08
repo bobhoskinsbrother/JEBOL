@@ -2,15 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,19 +13,19 @@ import java.util.stream.Collectors;
 public class ReduceNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "reduce";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("block"),
                 Parameter.belongingTo("into", "target", Typeset.ANY_BLOCK.members()),
                 Parameter.belongingTo("only", "words", Set.of()));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("into", "only", "no-set");
     }
 

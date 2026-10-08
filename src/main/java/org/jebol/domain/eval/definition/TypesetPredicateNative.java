@@ -1,6 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Typeset;
@@ -12,12 +13,12 @@ public abstract class TypesetPredicateNative extends DefaultNative {
     protected abstract Typeset asked();
 
     @Override
-    public String name() {
+    public String nativeName() {
         return asked().spelling() + "?";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsAnyType("value");
     }
 

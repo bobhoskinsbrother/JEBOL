@@ -6,22 +6,7 @@ import org.jebol.domain.eval.ScreenEvent;
 import org.jebol.domain.eval.ScreenMetric;
 import org.jebol.domain.eval.ScreenPort;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.ErrorCategory;
-import org.jebol.domain.value.GobValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,7 +19,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -108,23 +92,23 @@ class WhatEachScreenNativeDeclaresTest {
     }
 
     private Evaluator anEvaluatorOn(ScreenPort screen) {
-        Evaluator evaluator = new Evaluator(Map.of(), Context.root(), line -> { });
+        Evaluator evaluator = new Evaluator(Context.root(), line -> { });
         evaluator.useScreen(screen);
         return evaluator;
     }
 
-    private Value called(NativeDefinition definition, ScreenPort screen, Set<String> refinements,
-            Value... arguments) {
+    private Value called(DefaultNative definition, ScreenPort screen, Set<String> refinements,
+                         Value... arguments) {
         return definition.behaviour().call(List.of(arguments), anEvaluatorOn(screen), null, refinements);
     }
 
-    private Raised refusalOf(NativeDefinition definition, ScreenPort screen, Set<String> refinements,
+    private Raised refusalOf(DefaultNative definition, ScreenPort screen, Set<String> refinements,
             Value... arguments) {
         return catchThrowableOfType(Raised.class, () -> called(definition, screen, refinements, arguments));
     }
 
-    private Parameter declared(NativeDefinition definition, String parameter) {
-        return definition.parameters().stream()
+    private Parameter declared(DefaultNative definition, String parameter) {
+        return definition.parametersAsWritten().stream()
                 .filter(each -> each.name().equals(parameter))
                 .findFirst()
                 .orElseThrow();
@@ -145,9 +129,9 @@ class WhatEachScreenNativeDeclaresTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("eachNameAndItsRefinements")
     @DisplayName("each answers to the name boot/window.reb gives it, with the refinements it declares")
-    void declaresItsNameAndRefinements(NativeDefinition definition, String name, Set<String> refinements) {
-        assertThat(definition.name()).isEqualTo(name);
-        assertThat(definition.refinements()).isEqualTo(refinements);
+    void declaresItsNameAndRefinements(DefaultNative definition, String name, Set<String> refinements) {
+        assertThat(definition.nativeName()).isEqualTo(name);
+        assertThat(definition.refinementsDeclaredApart()).isEqualTo(refinements);
     }
 
     @Nested
@@ -158,7 +142,7 @@ class WhatEachScreenNativeDeclaresTest {
         @DisplayName("init-top-window takes a gob and nothing else")
         void initTopWindowTakesAGob() {
             InitTopWindowNative definition = new InitTopWindowNative(new GrantedServices());
-            assertThat(definition.parameters()).extracting(Parameter::name).containsExactly("gob");
+            assertThat(definition.parametersAsWritten()).extracting(Parameter::name).containsExactly("gob");
             assertThat(declared(definition, "gob").acceptedTypes()).containsExactly(Datatype.GOB);
         }
 
@@ -166,7 +150,7 @@ class WhatEachScreenNativeDeclaresTest {
         @DisplayName("show takes a gob, none or a block")
         void showTakesAGobNoneOrABlock() {
             ShowNative definition = new ShowNative(new GrantedServices());
-            assertThat(definition.parameters()).extracting(Parameter::name).containsExactly("gob");
+            assertThat(definition.parametersAsWritten()).extracting(Parameter::name).containsExactly("gob");
             assertThat(declared(definition, "gob").acceptedTypes())
                     .containsExactlyInAnyOrder(Datatype.GOB, Datatype.NONE, Datatype.BLOCK);
         }
@@ -175,7 +159,7 @@ class WhatEachScreenNativeDeclaresTest {
         @DisplayName("gui-metric takes a word, an untyped value under /set and an integer under /display")
         void guiMetricTakesAWordAValueAndAnIndex() {
             GuiMetricNative definition = new GuiMetricNative(new GrantedServices());
-            assertThat(definition.parameters()).extracting(Parameter::name)
+            assertThat(definition.parametersAsWritten()).extracting(Parameter::name)
                     .containsExactly("keyword", "val", "idx");
             assertThat(declared(definition, "keyword").acceptedTypes()).containsExactly(Datatype.WORD);
             assertThat(declared(definition, "val").acceptedTypes())

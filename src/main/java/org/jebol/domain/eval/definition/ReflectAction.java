@@ -4,21 +4,7 @@ import org.jebol.domain.eval.BootDeclarations;
 import org.jebol.domain.eval.DatatypeSpec;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.VectorQuery;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.NativeValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.OperatorValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.VectorValue;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -32,12 +18,12 @@ public class ReflectAction extends DefaultNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "reflect";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value"),
                 Parameter.required("field", Set.of(Datatype.WORD)));
     }
@@ -50,7 +36,7 @@ public class ReflectAction extends DefaultNative {
 
     private Value reflected(Value subject, WordValue field) {
         return switch (subject) {
-            case UnsetValue nothing -> throw Raised.cannotUse(nothing, name());
+            case UnsetValue nothing -> throw Raised.cannotUse(nothing, nativeName());
             case VectorValue vector -> reflectedFrom(vector, field);
             case DatatypeValue(Datatype represents) -> declarations.specOf(represents)
                     .map(described -> reflectedFrom(described, field.canonical()))

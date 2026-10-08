@@ -5,7 +5,7 @@ import org.jebol.domain.value.UnicodeCases;
 public class UppercaseNative extends CaseChangeNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "uppercase";
     }
 

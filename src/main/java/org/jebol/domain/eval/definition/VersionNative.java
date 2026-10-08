@@ -2,11 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,17 +26,17 @@ public class VersionNative extends DefaultNative {
     private static final int BUILD_FIELDS_ONLY_A_C_BUILD_KNOWS = 11;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "version";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of();
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("data");
     }
 

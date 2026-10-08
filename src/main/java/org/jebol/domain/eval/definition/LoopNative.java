@@ -13,12 +13,12 @@ import java.util.List;
 public class LoopNative extends LoopingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "loop";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("count", Typeset.NUMBER.members()),
                 Parameter.required("body", A_BLOCK));
     }

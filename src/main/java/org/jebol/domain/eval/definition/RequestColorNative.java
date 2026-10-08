@@ -20,17 +20,17 @@ public class RequestColorNative extends WindowNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "request-color";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.belongingTo("default", "color", Set.of(Datatype.TUPLE)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("default");
     }
 

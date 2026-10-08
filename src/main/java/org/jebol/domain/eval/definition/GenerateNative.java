@@ -2,12 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.EllipticCurveKey;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -15,12 +10,12 @@ import java.util.Set;
 public class GenerateNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "generate";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("type", Set.of(Datatype.WORD)));
     }
 

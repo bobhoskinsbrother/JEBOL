@@ -24,12 +24,12 @@ public class SwapEndianNative extends EncodingNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "swap-endian";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("value", Set.of(Datatype.BINARY)),
                 Parameter.belongingTo("width", "bytes", Set.of(Datatype.INTEGER)),
@@ -37,7 +37,7 @@ public class SwapEndianNative extends EncodingNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("width", "part");
     }
 

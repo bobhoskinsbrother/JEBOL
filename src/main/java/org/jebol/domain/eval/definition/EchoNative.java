@@ -24,12 +24,12 @@ public class EchoNative extends HostNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "echo";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("target",
                 Set.of(Datatype.FILE, Datatype.NONE, Datatype.LOGIC)));
     }

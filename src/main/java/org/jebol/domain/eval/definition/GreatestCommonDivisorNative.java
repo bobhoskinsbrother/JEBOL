@@ -9,12 +9,12 @@ import java.util.List;
 public class GreatestCommonDivisorNative extends WholeNumberNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "gcd";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWholeNumbers("first", "second");
     }
 

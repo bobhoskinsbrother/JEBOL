@@ -2,12 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 
@@ -22,12 +17,12 @@ public class DsNative extends DefaultNative {
     private static final String NO_NAME = "?";
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "ds";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of();
     }
 
@@ -43,7 +38,7 @@ public class DsNative extends DefaultNative {
         List<Evaluator.OpenCall> open = evaluator.callsInProgress();
         int slotsInUse = (open.size() + 1) * StackNative.FRAME_VALUE_UNITS;
         evaluator.output().writeLine(String.format(FRAME_LINE,
-                slotsInUse, name(), 0, Datatype.NATIVE.literalSpelling()));
+                slotsInUse, nativeName(), 0, Datatype.NATIVE.literalSpelling()));
         slotsInUse -= StackNative.FRAME_VALUE_UNITS;
         for (Evaluator.OpenCall call : open) {
             printOneFrame(evaluator, call, slotsInUse);

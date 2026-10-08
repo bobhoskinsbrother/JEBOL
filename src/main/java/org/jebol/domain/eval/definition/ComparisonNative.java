@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.LogicValue;
 
 public abstract class ComparisonNative extends DefaultNative {

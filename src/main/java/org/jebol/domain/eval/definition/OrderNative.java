@@ -7,7 +7,7 @@ import java.util.List;
 public abstract class OrderNative extends ComparisonNative {
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWhateverComesAlong("value1", "value2");
     }
 }

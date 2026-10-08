@@ -1,6 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Typeset;
 
@@ -10,7 +11,7 @@ import java.util.Set;
 public abstract class SeriesSearchAction extends DefaultNative {
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series"),
                 Parameter.required("value", Typeset.ANY_TYPE.members()),
                 Parameter.belongingTo("part", "range", aPartLimit()),

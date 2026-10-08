@@ -13,7 +13,7 @@ public class TailAction extends SeriesOrFileAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "tail";
     }
 

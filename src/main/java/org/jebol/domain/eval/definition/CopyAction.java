@@ -1,23 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Copying;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.ErrorValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.ImageValue;
-import org.jebol.domain.value.ModuleValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.PortValue;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.StructValue;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.TypesetValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -26,12 +10,12 @@ import java.util.Set;
 public class CopyAction extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "copy";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value", whatCanBeCopied()),
                 Parameter.belongingTo("part", "limit", Set.of()),
                 Parameter.belongingTo("types", "kinds",
@@ -39,14 +23,14 @@ public class CopyAction extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("part", "deep", "types");
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .theRebolActorsAnswer(name(), List.of(arguments.getFirst()), refinements)
+                .theRebolActorsAnswer(nativeName(), List.of(arguments.getFirst()), refinements)
                 .orElseGet(() -> copied(arguments, refinements));
     }
 

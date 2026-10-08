@@ -9,12 +9,12 @@ import java.util.Set;
 public class DoCallbackNative extends ExtensionPointNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "do-callback";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("event", Set.of(Datatype.EVENT)));
     }
 }

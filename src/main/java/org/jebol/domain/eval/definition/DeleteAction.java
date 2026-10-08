@@ -24,12 +24,12 @@ public class DeleteAction extends PortAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "delete";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("path", Set.of(Datatype.FILE, Datatype.URL)));
     }
 
@@ -38,14 +38,14 @@ public class DeleteAction extends PortAction {
         return (arguments, evaluator, context, refinements) -> {
             Value target = arguments.getFirst();
             PortValue port = ports.portMadeFor(target, evaluator, context);
-            return evaluator.theRebolActorsAnswer(name(), List.of(port), Set.of())
+            return evaluator.theRebolActorsAnswer(nativeName(), List.of(port), Set.of())
                     .orElseGet(() -> deleted(target, port, evaluator));
         };
     }
 
     private Value deleted(Value target, PortValue port, Evaluator evaluator) {
         if (!port.isAFile()) {
-            throw ports.noActionFor(name());
+            throw ports.noActionFor(nativeName());
         }
         granted.require(HostService.FILES);
         try {

@@ -9,12 +9,12 @@ public class UnprotectNative extends ProtectingNative {
     private static final boolean UNPROTECTED = false;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "unprotect";
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("deep", "words", "values");
     }
 

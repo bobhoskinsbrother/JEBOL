@@ -20,12 +20,12 @@ public class ChangeDirNative extends HostNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "change-dir";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("path", Set.of(Datatype.FILE)));
     }
 

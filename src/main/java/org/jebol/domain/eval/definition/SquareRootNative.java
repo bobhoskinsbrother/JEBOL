@@ -3,6 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.DecimalValue;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
 
@@ -12,12 +13,12 @@ import java.util.Set;
 public class SquareRootNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "square-root";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsOnlyNumbers("value");
     }
 
@@ -30,7 +31,7 @@ public class SquareRootNative extends DefaultNative {
         };
     }
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of();
     }
 

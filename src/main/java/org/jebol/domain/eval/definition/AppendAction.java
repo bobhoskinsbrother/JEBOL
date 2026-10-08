@@ -17,7 +17,7 @@ public class AppendAction extends AddingAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "append";
     }
 

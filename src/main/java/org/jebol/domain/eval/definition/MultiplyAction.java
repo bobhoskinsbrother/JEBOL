@@ -1,6 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Multiply;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
@@ -10,12 +11,12 @@ import java.util.Set;
 
 public class MultiplyAction extends DefaultNative {
 
-    public String name() {
+    public String nativeName() {
         return "multiply";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsAllNumbers("value1", "value2");
     }
 
@@ -30,7 +31,7 @@ public class MultiplyAction extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of();
     }
 

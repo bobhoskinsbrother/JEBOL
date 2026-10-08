@@ -1,25 +1,19 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.ContextSlot;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 
 public class FirstPlusNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "first+";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.softQuoted("word"));
     }
 

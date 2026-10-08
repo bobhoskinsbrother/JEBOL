@@ -4,21 +4,7 @@ import org.jebol.domain.eval.Actions;
 import org.jebol.domain.eval.BitsetActions;
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.MapValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.PortValue;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.HashSet;
 import java.util.List;
@@ -30,12 +16,12 @@ public class RemoveAction extends DefaultNative {
     private static final long ONE_ITEM = 1;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "remove";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         Set<Datatype> range = new HashSet<>(aPartLimit());
         range.add(Datatype.CHAR);
         return List.of(Parameter.required("series"),
@@ -44,7 +30,7 @@ public class RemoveAction extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("part", "key");
     }
 
@@ -54,7 +40,7 @@ public class RemoveAction extends DefaultNative {
             if (arguments.getFirst() instanceof NoneValue nothing) {
                 return nothing;
             }
-            return evaluator.theRebolActorsAnswer(name(), arguments, refinements)
+            return evaluator.theRebolActorsAnswer(nativeName(), arguments, refinements)
                     .orElseGet(() -> removedFrom(arguments.getFirst(), arguments, refinements));
         };
     }
@@ -64,7 +50,7 @@ public class RemoveAction extends DefaultNative {
         return switch (subject) {
             case PortValue queue when queue.eventQueue().isPresent() ->
                     throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
-                            WordValue.of(name()).as(Datatype.SET_WORD));
+                            WordValue.of(nativeName()).as(Datatype.SET_WORD));
             case MapValue map -> {
                 key.ifPresent(map::remove);
                 yield map;

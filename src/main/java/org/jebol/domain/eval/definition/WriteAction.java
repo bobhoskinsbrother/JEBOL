@@ -20,12 +20,12 @@ public class WriteAction extends PortAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "write";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("destination",
                         Set.of(Datatype.FILE, Datatype.PORT, Datatype.URL, Datatype.BLOCK, Datatype.WORD)),
@@ -36,7 +36,7 @@ public class WriteAction extends PortAction {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("part", "seek", "append", "allow", "lines", "binary", "all");
     }
 

@@ -3,15 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.BitsetActions;
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.TimeValue;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.Arrays;
 import java.util.List;
@@ -19,12 +11,12 @@ import java.util.List;
 public class IsZeroNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "zero?";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsAnyType("value");
     }
 

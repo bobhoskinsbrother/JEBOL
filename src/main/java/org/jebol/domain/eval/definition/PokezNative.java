@@ -1,18 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BitsetValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -22,12 +11,12 @@ public class PokezNative extends DefaultNative {
     private static final String THE_ACTION_IT_WRAPS = "poke";
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "pokez";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("series", Typeset.SERIES.membersAnd(Datatype.BITSET, Datatype.TUPLE)),
                 Parameter.required("index", Set.of(Datatype.INTEGER)),

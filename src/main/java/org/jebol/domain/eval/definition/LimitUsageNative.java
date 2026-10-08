@@ -3,11 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.UsageLimit;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Map;
@@ -21,12 +17,12 @@ public class LimitUsageNative extends DefaultNative {
             "memory", UsageLimit.MEMORY_BYTES);
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "limit-usage";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("field", Set.of(Datatype.WORD)),
                 Parameter.required("limit", Typeset.NUMBER.members()));

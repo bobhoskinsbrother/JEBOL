@@ -10,17 +10,17 @@ import java.util.Set;
 public class LuminosityNative extends ColourNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "luminosity";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("target", aColourOrAnImage()));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("luma");
     }
 

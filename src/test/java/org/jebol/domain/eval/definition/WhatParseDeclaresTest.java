@@ -35,21 +35,21 @@ class WhatParseDeclaresTest {
         @Test
         @DisplayName("it answers to parse, with /case its only refinement")
         void answersToItsNameWithOnlyCase() {
-            assertThat(parse.name()).isEqualTo("parse");
-            assertThat(parse.refinements()).isEqualTo(Set.of("case"));
+            assertThat(parse.nativeName()).isEqualTo("parse");
+            assertThat(parse.refinementsDeclaredApart()).isEqualTo(Set.of("case"));
         }
 
         @Test
         @DisplayName("input takes every series and rules takes only a block")
         void inputTakesSeriesAndRulesTakesABlock() {
-            assertThat(parse.parameters()).extracting(Parameter::name)
+            assertThat(parse.parametersAsWritten()).extracting(Parameter::name)
                     .containsExactly("input", "rules");
-            assertThat(parse.parameters().getFirst().accepts(Datatype.STRING)).isTrue();
-            assertThat(parse.parameters().getFirst().accepts(Datatype.BLOCK)).isTrue();
-            assertThat(parse.parameters().getFirst().accepts(Datatype.ISSUE)).isFalse();
-            assertThat(parse.parameters().get(1).accepts(Datatype.BLOCK)).isTrue();
-            assertThat(parse.parameters().get(1).accepts(Datatype.PAREN)).isFalse();
-            assertThat(parse.parameters().get(1).accepts(Datatype.STRING)).isFalse();
+            assertThat(parse.parametersAsWritten().getFirst().accepts(Datatype.STRING)).isTrue();
+            assertThat(parse.parametersAsWritten().getFirst().accepts(Datatype.BLOCK)).isTrue();
+            assertThat(parse.parametersAsWritten().getFirst().accepts(Datatype.ISSUE)).isFalse();
+            assertThat(parse.parametersAsWritten().get(1).accepts(Datatype.BLOCK)).isTrue();
+            assertThat(parse.parametersAsWritten().get(1).accepts(Datatype.PAREN)).isFalse();
+            assertThat(parse.parametersAsWritten().get(1).accepts(Datatype.STRING)).isFalse();
         }
 
         @Test

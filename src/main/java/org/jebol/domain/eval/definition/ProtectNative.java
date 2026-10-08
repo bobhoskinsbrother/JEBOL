@@ -15,12 +15,12 @@ public class ProtectNative extends ProtectingNative {
     private static final boolean PROTECTED = true;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "protect";
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("deep", "words", "values", "hide", "lock");
     }
 

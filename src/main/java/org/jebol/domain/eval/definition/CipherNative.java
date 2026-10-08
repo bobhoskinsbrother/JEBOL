@@ -1,6 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Evaluator;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.HandleValue;
 import org.jebol.domain.value.JavaObjectValue;
 import org.jebol.domain.value.Value;

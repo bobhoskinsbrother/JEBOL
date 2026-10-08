@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Parameter;
 
@@ -11,19 +12,19 @@ import java.util.Set;
 public class DistanceNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "distance";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("value1", Set.of(Datatype.PAIR)),
                 Parameter.required("value2", Set.of(Datatype.PAIR)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("taxicab");
     }
 

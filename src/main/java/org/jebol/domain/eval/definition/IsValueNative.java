@@ -1,10 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -12,12 +9,12 @@ import java.util.Set;
 public class IsValueNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "value?";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("word", Set.of(Datatype.WORD)));
     }
 

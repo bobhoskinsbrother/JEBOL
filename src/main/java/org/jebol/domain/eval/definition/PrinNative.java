@@ -5,7 +5,7 @@ import org.jebol.domain.eval.OutputPort;
 public class PrinNative extends OutputNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "prin";
     }
 

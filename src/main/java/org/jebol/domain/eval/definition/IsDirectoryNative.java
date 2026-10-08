@@ -20,17 +20,17 @@ public class IsDirectoryNative extends HostNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "dir?";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("target", Set.of(Datatype.FILE, Datatype.URL, Datatype.NONE)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("check");
     }
 

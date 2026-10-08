@@ -1,24 +1,19 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.GobValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 
 public class SwapAction extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "swap";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWhateverComesAlong("series", "with");
     }
 

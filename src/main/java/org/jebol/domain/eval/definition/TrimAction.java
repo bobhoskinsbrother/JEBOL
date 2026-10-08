@@ -1,15 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.CharacterValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Trimming;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.HashSet;
 import java.util.List;
@@ -21,12 +13,12 @@ public class TrimAction extends DefaultNative {
     private static final int AN_OCTET = 0xFF;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "trim";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("series", Typeset.SERIES.membersAnd(
                         Datatype.OBJECT, Datatype.ERROR, Datatype.MODULE)),
@@ -34,7 +26,7 @@ public class TrimAction extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("head", "tail", "auto", "lines", "all", "with");
     }
 

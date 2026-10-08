@@ -24,12 +24,12 @@ public class IconvNative extends EncodingNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "iconv";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("data", Set.of(Datatype.BINARY)),
                 Parameter.required("codepage", aCodepage()),
@@ -41,7 +41,7 @@ public class IconvNative extends EncodingNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("to");
     }
 

@@ -25,12 +25,12 @@ public class RsaNative extends CipherNative {
     private static final String THE_DIGEST_WHEN_NONE_IS_NAMED = "sha256";
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "rsa";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("rsa-key", Set.of(Datatype.HANDLE)),
                 Parameter.required("data", Typeset.ANY_STRING.membersAnd(Datatype.BINARY)),
                 Parameter.belongingTo("verify", "signature", Set.of(Datatype.BINARY)),
@@ -38,7 +38,7 @@ public class RsaNative extends CipherNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("encrypt", "decrypt", "sign", "verify", "hash", "oaep", "pss");
     }
 

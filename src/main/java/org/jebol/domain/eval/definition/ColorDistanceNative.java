@@ -12,12 +12,12 @@ import java.util.Set;
 public class ColorDistanceNative extends ColourNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "color-distance";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("a", Set.of(Datatype.TUPLE)),
                 Parameter.required("b", Set.of(Datatype.TUPLE)));

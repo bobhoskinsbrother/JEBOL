@@ -28,12 +28,12 @@ public class ModifyAction extends PortAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "modify";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("target", Set.of(Datatype.PORT, Datatype.FILE)),
                 Parameter.required("field", Set.of(Datatype.WORD, Datatype.NONE)),
@@ -43,7 +43,7 @@ public class ModifyAction extends PortAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .theRebolActorsAnswer(name(), arguments, Set.of())
+                .theRebolActorsAnswer(nativeName(), arguments, Set.of())
                 .orElseGet(() -> modified(arguments.getFirst(), arguments.get(1), arguments.get(2)));
     }
 

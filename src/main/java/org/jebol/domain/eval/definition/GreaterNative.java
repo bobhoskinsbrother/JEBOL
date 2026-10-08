@@ -5,7 +5,7 @@ import org.jebol.domain.eval.Comparison;
 public class GreaterNative extends OrderNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "greater?";
     }
 

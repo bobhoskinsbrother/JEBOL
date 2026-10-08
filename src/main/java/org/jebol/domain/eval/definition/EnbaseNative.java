@@ -21,12 +21,12 @@ public class EnbaseNative extends BinaryBaseNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "enbase";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("value", anyStringOr(Datatype.BINARY, Datatype.INTEGER)),
                 Parameter.required("base", Set.of(Datatype.INTEGER)),
@@ -34,7 +34,7 @@ public class EnbaseNative extends BinaryBaseNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("url", "part", "flat");
     }
 

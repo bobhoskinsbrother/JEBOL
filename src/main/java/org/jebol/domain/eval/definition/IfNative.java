@@ -3,7 +3,7 @@ package org.jebol.domain.eval.definition;
 public class IfNative extends OneBranchNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "if";
     }
 

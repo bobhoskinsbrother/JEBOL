@@ -57,7 +57,7 @@ class SurfaceReportTest {
         switch (value) {
             case NativeValue asNative -> {
                 appendArguments(shape, asNative.parameters());
-                asNative.declaredRefinements().stream().sorted()
+                asNative.refinementsDeclaredApart().stream().sorted()
                         .forEach(refinement -> shape.append(" /").append(refinement));
             }
             case FunctionValue written -> appendArguments(shape, written.parameters());

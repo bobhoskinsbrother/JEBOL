@@ -3,18 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.BootDeclarations;
 import org.jebol.domain.eval.CryptPort;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -41,12 +30,12 @@ class WhatEachSettingNativeDeclaresTest {
 
     private static final Set<Datatype> AN_INTEGER = Set.of(Datatype.INTEGER);
 
-    private Value answerOf(NativeDefinition definition, Set<String> refinements,
-            Value... arguments) {
+    private Value answerOf(DefaultNative definition, Set<String> refinements,
+                           Value... arguments) {
         return definition.behaviour().call(List.of(arguments), null, null, refinements);
     }
 
-    private Value answerOf(NativeDefinition definition, Value... arguments) {
+    private Value answerOf(DefaultNative definition, Value... arguments) {
         return answerOf(definition, NOTHING, arguments);
     }
 
@@ -132,11 +121,11 @@ class WhatEachSettingNativeDeclaresTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("whatEachDeclares")
     @DisplayName("each declares exactly what the inline definition declared")
-    void declaresWhatItDeclaredInline(NativeDefinition definition, String name,
+    void declaresWhatItDeclaredInline(DefaultNative definition, String name,
             List<Parameter> parameters, Set<String> refinements) {
-        assertThat(definition.name()).isEqualTo(name);
-        assertThat(definition.parameters()).isEqualTo(parameters);
-        assertThat(definition.refinements()).isEqualTo(refinements);
+        assertThat(definition.nativeName()).isEqualTo(name);
+        assertThat(definition.parametersAsWritten()).isEqualTo(parameters);
+        assertThat(definition.refinementsDeclaredApart()).isEqualTo(refinements);
     }
 
     @Nested

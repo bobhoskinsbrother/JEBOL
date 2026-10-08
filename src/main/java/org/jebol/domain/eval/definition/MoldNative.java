@@ -2,16 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -22,19 +13,19 @@ public class MoldNative extends DefaultNative {
     private static final int THE_BASE_WHEN_THE_SYSTEM_NAMES_NONE = 16;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "mold";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("value", Typeset.ANY_TYPE.members()),
                 Parameter.belongingTo("part", "limit", Set.of(Datatype.INTEGER)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("only", "all", "flat", "part");
     }
 

@@ -28,12 +28,12 @@ public class ChecksumNative extends EncodingNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "checksum";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("data", Set.of(Datatype.BINARY, Datatype.STRING, Datatype.FILE)),
                 Parameter.required("method", Set.of(Datatype.WORD)),
@@ -42,7 +42,7 @@ public class ChecksumNative extends EncodingNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("with", "part");
     }
 

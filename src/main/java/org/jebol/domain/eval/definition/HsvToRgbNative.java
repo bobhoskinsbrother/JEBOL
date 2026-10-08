@@ -13,12 +13,12 @@ public class HsvToRgbNative extends ColourNative {
     private static final double A_SIXTH_OF_THE_WHEEL = 255.0 / 6;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "hsv-to-rgb";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("hsv", Set.of(Datatype.TUPLE)));
     }
 

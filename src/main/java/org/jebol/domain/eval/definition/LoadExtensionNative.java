@@ -9,19 +9,19 @@ import java.util.Set;
 public class LoadExtensionNative extends ExtensionPointNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "load-extension";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("name", Set.of(Datatype.FILE, Datatype.BINARY)),
                 Parameter.belongingTo("dispatch", "function", Set.of(Datatype.HANDLE)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("dispatch");
     }
 }

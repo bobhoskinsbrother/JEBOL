@@ -1,18 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.ContextSlot;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -23,12 +12,12 @@ public class CollectWordsNative extends DefaultNative {
     private static final int WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES = 1;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "collect-words";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("block", Set.of(Datatype.BLOCK)),
                 Parameter.belongingTo("ignore", "words",
                         Typeset.ANY_OBJECT.membersAnd(Datatype.BLOCK, Datatype.NONE)),
@@ -36,7 +25,7 @@ public class CollectWordsNative extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("deep", "set", "ignore", "as");
     }
 

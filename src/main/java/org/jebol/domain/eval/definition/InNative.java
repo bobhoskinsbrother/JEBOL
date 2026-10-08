@@ -3,32 +3,19 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.Binder;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.ErrorValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.ModuleValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.PortValue;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 
 public class InNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "in";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("object", Typeset.ANY_OBJECT.membersAnd(Datatype.BLOCK)),
                 Parameter.required("word",

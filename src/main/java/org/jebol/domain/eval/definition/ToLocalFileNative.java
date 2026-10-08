@@ -25,17 +25,17 @@ public class ToLocalFileNative extends HostNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "to-local-file";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("path", Set.of(Datatype.FILE, Datatype.STRING)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("full");
     }
 

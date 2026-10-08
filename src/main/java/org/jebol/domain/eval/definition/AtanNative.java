@@ -9,12 +9,12 @@ import java.util.Set;
 public class AtanNative extends OneNumberNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "atan";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value", Set.of(Datatype.DECIMAL)));
     }
 

@@ -23,12 +23,12 @@ import java.util.List;
 public class ForNative extends LoopingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "for";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.softQuoted("counter"),
                 Parameter.required("start"),
                 Parameter.required("end"),

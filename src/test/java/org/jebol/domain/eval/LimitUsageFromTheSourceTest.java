@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.Interpreter;
+import org.jebol.domain.eval.definition.LimitUsageNative;
 import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -51,16 +52,14 @@ class LimitUsageFromTheSourceTest {
     class TheNativeItself {
 
         private static Value called(Evaluator evaluator, String field, Value limit) {
-            return RebolNativeWords.standard(Set.of()).behaviours()
-                    .get("limit-usage")
+            return new LimitUsageNative().behaviour()
                     .call(List.of(WordValue.of(field), limit),
                             evaluator, null, Set.of());
         }
 
         private static Evaluator anEvaluator() {
             RebolNativeWords natives = RebolNativeWords.standard(Set.of());
-            return new Evaluator(natives.behaviours(), natives.asContext(),
-                    line -> { });
+            return new Evaluator(natives.asContext(), line -> { });
         }
 
         @Test

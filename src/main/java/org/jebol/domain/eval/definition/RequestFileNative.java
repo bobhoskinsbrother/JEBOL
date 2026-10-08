@@ -23,12 +23,12 @@ public class RequestFileNative extends WindowNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "request-file";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.belongingTo("file", "name", Set.of(Datatype.FILE)),
                 Parameter.belongingTo("title", "text", Set.of(Datatype.STRING)),
@@ -36,7 +36,7 @@ public class RequestFileNative extends WindowNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("save", "multi", "file", "title", "filter");
     }
 

@@ -18,12 +18,12 @@ public class EnhexNative extends PercentEncodingNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "enhex";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("value", anyStringOr(Datatype.BINARY)),
                 Parameter.belongingTo("escape", "char", Set.of(Datatype.CHAR)),
@@ -31,7 +31,7 @@ public class EnhexNative extends PercentEncodingNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("escape", "except", "uri");
     }
 

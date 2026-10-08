@@ -3,7 +3,7 @@ package org.jebol.domain.eval.definition;
 public class IntersectNative extends SetOperationNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "intersect";
     }
 }

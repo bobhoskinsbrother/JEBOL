@@ -6,7 +6,7 @@ import org.jebol.domain.value.Xor;
 public class BitwiseXorAction extends BitwiseAction {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "xor~";
     }
 

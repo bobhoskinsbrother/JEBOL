@@ -2,10 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.QuitRequested;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -13,17 +10,17 @@ import java.util.Set;
 public class QuitNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "quit";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.belongingTo("return", "value", Set.of()));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("return", "now");
     }
 

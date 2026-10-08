@@ -15,7 +15,7 @@ public class NextAction extends SeriesOrFileAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "next";
     }
 

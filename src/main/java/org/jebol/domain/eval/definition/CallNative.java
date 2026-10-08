@@ -26,12 +26,12 @@ public class CallNative extends HostNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "call";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         Set<Datatype> aRedirection = Set.of(Datatype.STRING, Datatype.BINARY, Datatype.FILE, Datatype.NONE);
         return List.of(
                 Parameter.required("command", Typeset.ANY_STRING.membersAnd(Datatype.BLOCK)),
@@ -41,7 +41,7 @@ public class CallNative extends HostNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("wait", "console", "shell", "info", "input", "output", "error");
     }
 

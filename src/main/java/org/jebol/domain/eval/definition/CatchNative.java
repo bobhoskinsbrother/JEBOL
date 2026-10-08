@@ -4,14 +4,7 @@ import org.jebol.domain.eval.HaltRequested;
 import org.jebol.domain.eval.QuitRequested;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.ThrownSignal;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.LogicValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -22,19 +15,19 @@ public class CatchNative extends DefaultNative {
     private static final int WHERE_THE_NAMES_ARRIVE = 1;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "catch";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("block", Set.of(Datatype.BLOCK)),
                 Parameter.belongingTo("name", "word", Set.of(Datatype.WORD, Datatype.BLOCK)),
                 Parameter.belongingTo("with", "callback", Set.of()));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("name", "all", "quit", "with");
     }
 

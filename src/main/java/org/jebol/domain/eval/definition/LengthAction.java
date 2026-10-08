@@ -26,14 +26,14 @@ public class LengthAction extends SeriesOrFileAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "length?";
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .theRebolActorsAnswer(name(), arguments, Set.of())
+                .theRebolActorsAnswer(nativeName(), arguments, Set.of())
                 .orElseGet(() -> lengthOf(arguments.getFirst(), evaluator));
     }
 
@@ -59,7 +59,7 @@ public class LengthAction extends SeriesOrFileAction {
         }
         return switch (port.schemeName()) {
             case "clipboard" -> throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
-                    WordValue.of(name()).as(Datatype.SET_WORD));
+                    WordValue.of(nativeName()).as(Datatype.SET_WORD));
             case "udp" -> IntegerValue.of(port.fieldValue("data") instanceof RebolSeries held
                     ? held.lengthFromHere()
                     : 0);

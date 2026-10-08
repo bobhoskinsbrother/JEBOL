@@ -3,7 +3,7 @@ package org.jebol.domain.eval.definition;
 public class EntabNative extends TabbingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "entab";
     }
 

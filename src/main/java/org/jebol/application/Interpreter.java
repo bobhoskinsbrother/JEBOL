@@ -75,7 +75,6 @@ public final class Interpreter {
         this.systemInternals = natives.systemInternals();
         this.userContext = Context.childOf(systemContext);
         this.evaluator = new Evaluator(
-                natives.behaviours(),
                 systemContext,
                 natives.construction(),
                 natives::makerFor,
@@ -809,13 +808,8 @@ public final class Interpreter {
      * arrives as an error value rather than the throwable it started as.
      */
     public void defineFunction(String name, int arity, HostFunction function) {
-        List<Parameter> parameters = new ArrayList<>(arity);
-        for (int position = 1; position <= arity; position++) {
-            parameters.add(Parameter.required("argument" + position));
-        }
-        userContext.register(name, new NativeValue(name, parameters));
-        evaluator.defineNative(name, (arguments, ignored, context) ->
-                runHostFunction(name, function, arguments));
+        userContext.register(name, new HostFunctionNative(name, arity,
+                (arguments, ignored, context, refinements) -> runHostFunction(name, function, arguments)));
     }
 
     private Value runHostFunction(

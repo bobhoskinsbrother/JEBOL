@@ -6,10 +6,7 @@ import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.ProcessPort;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -94,10 +91,10 @@ class WhatEachRemainingNativeDeclaresTest {
     @ParameterizedTest(name = "{1} declares {2}")
     @MethodSource("eachNameAndItsRefinements")
     @DisplayName("each answers to the name boot/natives.reb or boot/actions.reb gives it, with the refinements it declares")
-    void answersToItsNameWithItsRefinements(NativeDefinition definition, String name,
-            Set<String> refinements) {
-        assertThat(definition.name()).isEqualTo(name);
-        assertThat(definition.refinements()).isEqualTo(refinements);
+    void answersToItsNameWithItsRefinements(DefaultNative definition, String name,
+                                            Set<String> refinements) {
+        assertThat(definition.nativeName()).isEqualTo(name);
+        assertThat(definition.refinementsDeclaredApart()).isEqualTo(refinements);
     }
 
     @Nested
@@ -107,15 +104,15 @@ class WhatEachRemainingNativeDeclaresTest {
         @Test
         @DisplayName("now takes no argument at all")
         void nowTakesNothing() {
-            assertThat(new NowNative(new GrantedServices()).parameters()).isEmpty();
+            assertThat(new NowNative(new GrantedServices()).parametersAsWritten()).isEmpty();
         }
 
         @Test
         @DisplayName("also and to-value take values of any type, unset included")
         void alsoAndToValueTakeAnyType() {
-            List<Parameter> also = new AlsoNative().parameters();
+            List<Parameter> also = new AlsoNative().parametersAsWritten();
             assertThat(also).extracting(Parameter::name).containsExactly("value1", "value2");
-            List<Parameter> toValue = new ToValueNative().parameters();
+            List<Parameter> toValue = new ToValueNative().parametersAsWritten();
             assertThat(toValue).extracting(Parameter::name).containsExactly("value");
             for (Parameter each : List.of(also.get(0), also.get(1), toValue.getFirst())) {
                 for (Datatype datatype : Typeset.ANY_TYPE.members()) {
@@ -128,16 +125,16 @@ class WhatEachRemainingNativeDeclaresTest {
         @Test
         @DisplayName("comment and random take one value with no type named")
         void commentAndRandomNameNoType() {
-            assertThat(new CommentNative().parameters()).extracting(Parameter::name)
+            assertThat(new CommentNative().parametersAsWritten()).extracting(Parameter::name)
                     .containsExactly("value");
-            assertThat(new RandomAction(new Encodings()).parameters()).extracting(Parameter::name)
+            assertThat(new RandomAction(new Encodings()).parametersAsWritten()).extracting(Parameter::name)
                     .containsExactly("value");
         }
 
         @Test
         @DisplayName("trace's mode is an integer or a logic and nothing else")
         void traceTakesAnIntegerOrALogic() {
-            Parameter mode = new TraceNative().parameters().getFirst();
+            Parameter mode = new TraceNative().parametersAsWritten().getFirst();
             assertThat(mode.name()).isEqualTo("mode");
             assertThat(mode.accepts(Datatype.INTEGER)).isTrue();
             assertThat(mode.accepts(Datatype.LOGIC)).isTrue();
@@ -149,7 +146,7 @@ class WhatEachRemainingNativeDeclaresTest {
         @Test
         @DisplayName("load-extension takes a file or a binary, and a handle that belongs to /dispatch")
         void loadExtensionTakesAFileOrABinary() {
-            List<Parameter> declared = new LoadExtensionNative().parameters();
+            List<Parameter> declared = new LoadExtensionNative().parametersAsWritten();
             assertThat(declared).extracting(Parameter::name).containsExactly("name", "function");
             Parameter name = declared.get(0);
             assertThat(name.accepts(Datatype.FILE)).isTrue();
@@ -164,11 +161,11 @@ class WhatEachRemainingNativeDeclaresTest {
         @Test
         @DisplayName("do-callback takes an event and do-commands a block")
         void doCallbackTakesAnEventAndDoCommandsABlock() {
-            Parameter event = new DoCallbackNative().parameters().getFirst();
+            Parameter event = new DoCallbackNative().parametersAsWritten().getFirst();
             assertThat(event.name()).isEqualTo("event");
             assertThat(event.accepts(Datatype.EVENT)).isTrue();
             assertThat(event.accepts(Datatype.INTEGER)).isFalse();
-            Parameter commands = new DoCommandsNative().parameters().getFirst();
+            Parameter commands = new DoCommandsNative().parametersAsWritten().getFirst();
             assertThat(commands.name()).isEqualTo("commands");
             assertThat(commands.accepts(Datatype.BLOCK)).isTrue();
             assertThat(commands.accepts(Datatype.PAREN)).isFalse();
@@ -178,7 +175,7 @@ class WhatEachRemainingNativeDeclaresTest {
         @Test
         @DisplayName("access-os takes a word, and an integer or a block that belongs to /set")
         void accessOsTakesAWordAndAValueForSet() {
-            List<Parameter> declared = new AccessOsNative(new GrantedServices()).parameters();
+            List<Parameter> declared = new AccessOsNative(new GrantedServices()).parametersAsWritten();
             assertThat(declared).extracting(Parameter::name).containsExactly("field", "value");
             Parameter field = declared.get(0);
             assertThat(field.accepts(Datatype.WORD)).isTrue();

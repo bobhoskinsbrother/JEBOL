@@ -18,12 +18,12 @@ import java.util.Set;
 public class SelectAction extends SeriesSearchAction {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "select";
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("case", "skip", "any", "only", "last", "part", "same", "with",
                 "reverse");
     }
@@ -44,7 +44,7 @@ public class SelectAction extends SeriesSearchAction {
             case NoneValue nothing -> nothing;
             case Value object when object.isAnyObject() -> theFieldWanted(object, wanted);
             case RebolSeries series -> {
-                series.refuseANeedleItCannotHold(wanted, name());
+                series.refuseANeedleItCannotHold(wanted, nativeName());
                 yield theItemAfterTheMatch(series, wanted, arguments, refinements);
             }
             case Value anythingElse -> refuseTheDatatype(anythingElse);

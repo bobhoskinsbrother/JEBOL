@@ -15,7 +15,7 @@ public class ClearAction extends SeriesOrFileAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "clear";
     }
 

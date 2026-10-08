@@ -12,7 +12,7 @@ public class UpdateAction extends ActorFirstPortAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "update";
     }
 

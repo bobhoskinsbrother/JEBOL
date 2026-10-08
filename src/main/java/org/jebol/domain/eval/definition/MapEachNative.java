@@ -15,12 +15,12 @@ import java.util.List;
 public class MapEachNative extends LoopingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "map-each";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.softQuoted("word"),
                 Parameter.required("series", A_BLOCK),
                 Parameter.required("body", A_BLOCK));

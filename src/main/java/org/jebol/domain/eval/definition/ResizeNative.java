@@ -3,18 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.Arithmetic;
 import org.jebol.domain.eval.ImageOperations;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.ImageValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -27,12 +16,12 @@ public class ResizeNative extends DefaultNative {
             "Mitchell", "Lanczos", "Bessel", "Sinc");
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "resize";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("image", Set.of(Datatype.IMAGE)),
                 Parameter.required("size",
                         Set.of(Datatype.PAIR, Datatype.PERCENT, Datatype.INTEGER)),
@@ -41,7 +30,7 @@ public class ResizeNative extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("filter", "blur");
     }
 

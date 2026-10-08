@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
@@ -9,12 +10,12 @@ import java.util.List;
 public class LerpNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "lerp";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWhateverComesAlong("value1", "value2", "fraction");
     }
 

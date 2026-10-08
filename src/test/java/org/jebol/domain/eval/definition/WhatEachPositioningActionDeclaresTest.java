@@ -3,6 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Typeset;
 import org.junit.jupiter.api.DisplayName;
@@ -81,11 +82,11 @@ class WhatEachPositioningActionDeclaresTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("whatEachDeclares")
     @DisplayName("each declares exactly what the inline definition declared")
-    void declaresWhatItDeclaredInline(NativeDefinition definition, String name,
-            List<Parameter> parameters, Set<String> refinements) {
-        assertThat(definition.name()).isEqualTo(name);
-        assertThat(definition.parameters()).isEqualTo(parameters);
-        assertThat(definition.refinements()).isEqualTo(refinements);
+    void declaresWhatItDeclaredInline(DefaultNative definition, String name,
+                                      List<Parameter> parameters, Set<String> refinements) {
+        assertThat(definition.nativeName()).isEqualTo(name);
+        assertThat(definition.parametersAsWritten()).isEqualTo(parameters);
+        assertThat(definition.refinementsDeclaredApart()).isEqualTo(refinements);
     }
 
     @Nested

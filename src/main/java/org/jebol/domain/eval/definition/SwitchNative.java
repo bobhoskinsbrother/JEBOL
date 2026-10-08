@@ -2,11 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -16,19 +12,19 @@ public class SwitchNative extends DefaultNative {
     private static final int WHERE_THE_FALLBACK_ARRIVES = 2;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "switch";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value"),
                 Parameter.required("choices", Set.of(Datatype.BLOCK)),
                 Parameter.belongingTo("default", "fallback", Set.of(Datatype.BLOCK)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("case", "default", "all");
     }
 

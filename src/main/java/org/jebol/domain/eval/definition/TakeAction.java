@@ -3,13 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.Actions;
 import org.jebol.domain.eval.CryptPort;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.PortValue;
-import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,18 +18,18 @@ public class TakeAction extends DefaultNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "take";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series"),
                 Parameter.belongingTo("part", "count", Set.of()));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("part", "last", "deep", "all");
     }
 

@@ -3,7 +3,7 @@ package org.jebol.domain.eval.definition;
 public class ObjectNative extends ObjectFromSpecNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "object";
     }
 

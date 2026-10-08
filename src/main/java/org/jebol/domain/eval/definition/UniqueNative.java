@@ -3,6 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.Combining;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.sets.SetOperation;
@@ -15,12 +16,12 @@ public class UniqueNative extends DefaultNative {
     private static final int EVERY_MEMBER_ON_ITS_OWN = 1;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "unique";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("set1", Set.of(Datatype.BLOCK, Datatype.STRING,
                         Datatype.BITSET, Datatype.TYPESET, Datatype.MAP)),
@@ -28,7 +29,7 @@ public class UniqueNative extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("case", "skip");
     }
 

@@ -12,12 +12,12 @@ import java.util.Set;
 public class WakeUpNative extends PortWakingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "wake-up";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("port", Set.of(Datatype.PORT)),
                 Parameter.required("event", Set.of(Datatype.EVENT)));

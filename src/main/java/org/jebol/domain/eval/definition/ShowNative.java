@@ -17,12 +17,12 @@ public class ShowNative extends ScreenNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "show";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("gob", Set.of(Datatype.GOB, Datatype.NONE, Datatype.BLOCK)));
     }
 

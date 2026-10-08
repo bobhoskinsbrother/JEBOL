@@ -9,12 +9,12 @@ import java.util.List;
 public class PrimeNative extends WholeNumberNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "prime?";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWholeNumbers("value");
     }
 

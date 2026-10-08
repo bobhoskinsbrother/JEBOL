@@ -13,12 +13,12 @@ import java.util.Set;
 public class TintNative extends ColourNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "tint";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("target", aColourOrAnImage()),
                 Parameter.required("rgb", Set.of(Datatype.TUPLE)),

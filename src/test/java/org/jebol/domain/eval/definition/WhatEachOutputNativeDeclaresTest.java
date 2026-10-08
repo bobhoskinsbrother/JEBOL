@@ -2,10 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.OutputPort;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -59,18 +56,18 @@ class WhatEachOutputNativeDeclaresTest {
     @ParameterizedTest(name = "{1} declares {2}")
     @MethodSource("eachNameAndItsRefinements")
     @DisplayName("each answers to the name boot/natives.reb gives it, with the refinements it declares")
-    void answersToItsNameWithItsRefinements(NativeDefinition definition, String name,
-            Set<String> refinements) {
-        assertThat(definition.name()).isEqualTo(name);
-        assertThat(definition.refinements()).isEqualTo(refinements);
+    void answersToItsNameWithItsRefinements(DefaultNative definition, String name,
+                                            Set<String> refinements) {
+        assertThat(definition.nativeName()).isEqualTo(name);
+        assertThat(definition.refinementsDeclaredApart()).isEqualTo(refinements);
     }
 
     @ParameterizedTest(name = "{0} takes value of any type, unset included")
     @MethodSource("eachNativeTakingOneValueOfAnyType")
     @DisplayName("mold, form, print and prin each take one value of any type")
-    void takesOneValueOfAnyType(NativeDefinition definition) {
-        assertThat(definition.parameters()).hasSize(definition instanceof MoldNative ? 2 : 1);
-        Parameter value = definition.parameters().getFirst();
+    void takesOneValueOfAnyType(DefaultNative definition) {
+        assertThat(definition.parametersAsWritten()).hasSize(definition instanceof MoldNative ? 2 : 1);
+        Parameter value = definition.parametersAsWritten().getFirst();
         assertThat(value.name()).isEqualTo("value");
         assertThat(value.owningRefinement()).isEmpty();
         for (Datatype datatype : Typeset.ANY_TYPE.members()) {
@@ -86,7 +83,7 @@ class WhatEachOutputNativeDeclaresTest {
         @Test
         @DisplayName("mold's limit belongs to /part and takes only an integer")
         void moldsLimitBelongsToPart() {
-            List<Parameter> declared = new MoldNative().parameters();
+            List<Parameter> declared = new MoldNative().parametersAsWritten();
             assertThat(declared).extracting(Parameter::name).containsExactly("value", "limit");
             Parameter limit = declared.get(1);
             assertThat(limit.owningRefinement()).contains("part");
@@ -99,7 +96,7 @@ class WhatEachOutputNativeDeclaresTest {
         @Test
         @DisplayName("quit's value belongs to /return")
         void quitsValueBelongsToReturn() {
-            List<Parameter> declared = new QuitNative().parameters();
+            List<Parameter> declared = new QuitNative().parametersAsWritten();
             assertThat(declared).extracting(Parameter::name).containsExactly("value");
             assertThat(declared.getFirst().owningRefinement()).contains("return");
         }

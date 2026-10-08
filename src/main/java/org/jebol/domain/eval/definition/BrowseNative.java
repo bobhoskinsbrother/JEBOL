@@ -18,12 +18,12 @@ public class BrowseNative extends WindowNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "browse";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("url", Set.of(Datatype.URL, Datatype.FILE, Datatype.NONE)));
     }
 

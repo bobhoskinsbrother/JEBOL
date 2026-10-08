@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.value.DefaultNative;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -75,10 +76,10 @@ class WhatEachSeriesActionDeclaresTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("eachNameAndItsRefinements")
     @DisplayName("each answers to its Rebol name with the refinements it always had")
-    void declaresItsNameAndRefinements(NativeDefinition definition, String name,
-            Set<String> refinements) {
-        assertThat(definition.name()).isEqualTo(name);
-        assertThat(definition.refinements()).isEqualTo(refinements);
+    void declaresItsNameAndRefinements(DefaultNative definition, String name,
+                                       Set<String> refinements) {
+        assertThat(definition.nativeName()).isEqualTo(name);
+        assertThat(definition.refinementsDeclaredApart()).isEqualTo(refinements);
     }
 
     @Nested

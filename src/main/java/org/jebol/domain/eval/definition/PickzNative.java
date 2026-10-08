@@ -12,12 +12,12 @@ import java.util.Set;
 public class PickzNative extends PickingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "pickz";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series"),
                 Parameter.required("index", Set.of(Datatype.INTEGER)));
     }

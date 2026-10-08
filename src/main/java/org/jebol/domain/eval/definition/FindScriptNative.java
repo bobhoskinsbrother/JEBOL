@@ -1,10 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Parameter;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Locale;
@@ -18,12 +15,12 @@ public class FindScriptNative extends DefaultNative {
     private static final char BYTE_ORDER_MARK = '﻿';
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "find-script";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("script", Set.of(Datatype.BINARY)));
     }
 

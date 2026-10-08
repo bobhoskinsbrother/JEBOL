@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Arithmetic;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
@@ -10,17 +11,17 @@ import java.util.Set;
 public class ModuloNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "modulo";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsAnythingDivisible("dividend", "divisor");
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("floor");
     }
 

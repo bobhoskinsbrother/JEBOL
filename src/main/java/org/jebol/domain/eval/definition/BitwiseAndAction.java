@@ -6,7 +6,7 @@ import org.jebol.domain.value.BitwiseOperation;
 public class BitwiseAndAction extends BitwiseAction {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "and~";
     }
 

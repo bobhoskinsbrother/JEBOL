@@ -22,12 +22,12 @@ public class ReadAction extends PortAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "read";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("source",
                         Set.of(Datatype.FILE, Datatype.PORT, Datatype.URL, Datatype.BLOCK, Datatype.WORD)),
@@ -36,7 +36,7 @@ public class ReadAction extends PortAction {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("part", "seek", "string", "binary", "lines", "all");
     }
 
@@ -46,7 +46,7 @@ public class ReadAction extends PortAction {
             PortRequest asked = asked(arguments, refinements);
             Value source = arguments.getFirst();
             if (source instanceof PortValue port) {
-                return evaluator.theRebolActorsAnswer(name(), arguments, refinements)
+                return evaluator.theRebolActorsAnswer(nativeName(), arguments, refinements)
                         .orElseGet(() -> port.isAFile()
                                 ? ports.readFromTheFileBehind(port, evaluator, asked)
                                 : ports.readFrom(port, evaluator, arguments, asked));

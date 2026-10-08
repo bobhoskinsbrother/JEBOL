@@ -16,19 +16,19 @@ public class DehexNative extends PercentEncodingNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "dehex";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("value", anyStringOr(Datatype.BINARY)),
                 Parameter.belongingTo("escape", "char", Set.of(Datatype.CHAR)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("escape", "uri");
     }
 

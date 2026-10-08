@@ -17,12 +17,12 @@ public class RequestPasswordNative extends WindowNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "request-password";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of();
     }
 

@@ -2,13 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Combining;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 import org.jebol.domain.value.sets.SetOperation;
 
 import java.util.List;
@@ -23,14 +17,14 @@ public abstract class SetOperationNative extends DefaultNative {
             Datatype.BITSET, Datatype.TYPESET, Datatype.STRING, Datatype.MAP, Datatype.BLOCK);
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("first", A_SET),
                 Parameter.required("second", A_SET),
                 Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("case", "skip");
     }
 
@@ -38,7 +32,7 @@ public abstract class SetOperationNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> Combining.sets(
                 arguments.getFirst(), arguments.get(1),
-                SetOperation.named(name()).orElseThrow(),
+                SetOperation.named(nativeName()).orElseThrow(),
                 refinements.contains("case"),
                 recordWidthOf(argumentOf("skip", 0, arguments, refinements)));
     }

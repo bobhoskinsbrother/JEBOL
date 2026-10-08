@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.FileSystemCalls;
 import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Value;
 
 import java.util.function.Supplier;

@@ -17,12 +17,12 @@ public class RsaInitNative extends CipherNative {
     private static final Set<Datatype> A_BINARY = Set.of(Datatype.BINARY);
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "rsa-init";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("n", A_BINARY),
                 Parameter.required("e", A_BINARY),
                 Parameter.belongingTo("private", "d", A_BINARY),
@@ -31,7 +31,7 @@ public class RsaInitNative extends CipherNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("private");
     }
 

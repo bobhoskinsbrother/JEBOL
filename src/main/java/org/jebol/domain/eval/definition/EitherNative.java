@@ -8,12 +8,12 @@ import java.util.List;
 public class EitherNative extends BranchingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "either";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsAnyType("condition", "true-branch", "false-branch");
     }
 

@@ -3,7 +3,7 @@ package org.jebol.domain.eval.definition;
 public class ShiftRightNative extends ShiftingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "shift-right";
     }
 

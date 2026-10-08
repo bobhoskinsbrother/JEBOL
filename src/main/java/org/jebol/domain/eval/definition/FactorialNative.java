@@ -17,12 +17,12 @@ public class FactorialNative extends WholeNumberNative {
     private static final int LARGEST_FACTORIAL_AT_ALL = 170;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "factorial";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return acceptsWholeNumbers("value");
     }
 

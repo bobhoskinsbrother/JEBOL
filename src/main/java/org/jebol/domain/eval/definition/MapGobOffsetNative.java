@@ -13,19 +13,19 @@ import java.util.Set;
 public class MapGobOffsetNative extends GobMappingNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "map-gob-offset";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("gob", Set.of(Datatype.GOB)),
                 Parameter.required("xy", Set.of(Datatype.PAIR)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("reverse");
     }
 

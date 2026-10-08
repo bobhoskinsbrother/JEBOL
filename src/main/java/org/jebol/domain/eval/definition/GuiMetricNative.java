@@ -27,12 +27,12 @@ public class GuiMetricNative extends ScreenNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "gui-metric";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("keyword", Set.of(Datatype.WORD)),
                 Parameter.belongingTo("set", "val", Typeset.ANY_TYPE.members()),
@@ -40,7 +40,7 @@ public class GuiMetricNative extends ScreenNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("set", "display");
     }
 

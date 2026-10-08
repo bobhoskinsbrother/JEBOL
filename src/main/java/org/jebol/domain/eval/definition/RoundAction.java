@@ -2,18 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.Deci;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.MoneyCoercion;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.TimeValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -29,18 +18,18 @@ public class RoundAction extends DefaultNative {
     private static final double HALFWAY = 0.5;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "round";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("value"),
                 Parameter.belongingTo("to", "multiple", Set.of()));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("to", "down", "even", "half-down", "floor", "ceiling", "half-ceiling");
     }
 

@@ -1,13 +1,6 @@
 package org.jebol.domain.eval.definition;
 
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DecimalValue;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.MoneyValue;
-import org.jebol.domain.value.PairValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.TimeValue;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -30,8 +23,8 @@ class WhatEachArithmeticNativeDeclaresTest {
 
     private static final Set<String> IN_RADIANS = Set.of("radians");
 
-    private Value answerOf(NativeDefinition function, Set<String> refinements,
-                                  Value... arguments) {
+    private Value answerOf(DefaultNative function, Set<String> refinements,
+                           Value... arguments) {
         return function.behaviour().call(List.of(arguments), null, null, refinements);
     }
 
@@ -55,7 +48,7 @@ class WhatEachArithmeticNativeDeclaresTest {
         @MethodSource("eachOne")
         @DisplayName("zero degrees and zero radians give the same answer")
         void zeroIsZeroEitherWay(
-                NativeDefinition function, String name, double atZero, double ignored) {
+                DefaultNative function, String name, double atZero, double ignored) {
             assertThat(quantityOf(answerOf(function, NOTHING, IntegerValue.of(0))))
                     .isEqualTo(atZero);
             assertThat(quantityOf(answerOf(function, IN_RADIANS, IntegerValue.of(0))))
@@ -66,10 +59,10 @@ class WhatEachArithmeticNativeDeclaresTest {
         @MethodSource("eachOne")
         @DisplayName("and each declares the radians refinement and one number")
         void eachDeclaresTheSameShape(
-                NativeDefinition function, String name, double a, double b) {
-            assertThat(function.name()).isEqualTo(name);
-            assertThat(function.refinements()).containsExactly("radians");
-            assertThat(function.parameters()).hasSize(1);
+                DefaultNative function, String name, double a, double b) {
+            assertThat(function.nativeName()).isEqualTo(name);
+            assertThat(function.refinementsDeclaredApart()).containsExactly("radians");
+            assertThat(function.parametersAsWritten()).hasSize(1);
         }
 
         @Test
@@ -141,10 +134,10 @@ class WhatEachArithmeticNativeDeclaresTest {
         @Test
         @DisplayName("and none of them takes a refinement")
         void noneTakesARefinement() {
-            for (NativeDefinition function : List.of(
+            for (DefaultNative function : List.of(
                     new NaturalLogarithmNative(), new CommonLogarithmNative(),
                     new BinaryLogarithmNative(), new ExponentialNative())) {
-                assertThat(function.refinements()).as(function.name()).isEmpty();
+                assertThat(function.refinementsDeclaredApart()).as(function.nativeName()).isEmpty();
             }
         }
     }
@@ -189,10 +182,10 @@ class WhatEachArithmeticNativeDeclaresTest {
         @Test
         @DisplayName("integer-divide takes two, the rest of these take one")
         void theirArity() {
-            assertThat(new IntegerDivideNative().parameters()).hasSize(2);
-            assertThat(new AbsoluteAction().parameters()).hasSize(1);
-            assertThat(new ToDegreesNative().parameters()).hasSize(1);
-            assertThat(new ToRadiansNative().parameters()).hasSize(1);
+            assertThat(new IntegerDivideNative().parametersAsWritten()).hasSize(2);
+            assertThat(new AbsoluteAction().parametersAsWritten()).hasSize(1);
+            assertThat(new ToDegreesNative().parametersAsWritten()).hasSize(1);
+            assertThat(new ToRadiansNative().parametersAsWritten()).hasSize(1);
         }
 
         @Test
@@ -212,8 +205,8 @@ class WhatEachArithmeticNativeDeclaresTest {
                     .isEqualTo(180.0);
         }
 
-        private String theFirstParameterOf(NativeDefinition function) {
-            return function.parameters().stream()
+        private String theFirstParameterOf(DefaultNative function) {
+            return function.parametersAsWritten().stream()
                     .map(Parameter::name)
                     .findFirst()
                     .orElseThrow();

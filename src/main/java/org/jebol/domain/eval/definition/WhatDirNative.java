@@ -16,12 +16,12 @@ public class WhatDirNative extends HostNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "what-dir";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of();
     }
 

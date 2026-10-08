@@ -2,17 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.SeriesSorting;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.IntegerValue;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.VectorValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,12 +13,12 @@ public class SortAction extends DefaultNative {
     private static final int EACH_ITEM_ON_ITS_OWN = 1;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "sort";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series", Typeset.SERIES.members()),
                 Parameter.belongingTo("skip", "size", Set.of(Datatype.INTEGER)),
                 Parameter.belongingTo("compare", "comparator", Set.of()),
@@ -36,7 +26,7 @@ public class SortAction extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("case", "compare", "skip", "reverse", "all", "part", "unstable");
     }
 

@@ -2,6 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.StringValue;
 
@@ -13,12 +14,12 @@ public class ToRebolFileNative extends DefaultNative {
     private static final char REBOLS_SEPARATOR = '/';
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "to-rebol-file";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("path", Set.of(Datatype.FILE, Datatype.STRING)));
     }
 

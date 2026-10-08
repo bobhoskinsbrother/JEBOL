@@ -16,12 +16,12 @@ public class GetEnvNative extends EnvironmentNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "get-env";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("name", aVariablesName()));
     }
 

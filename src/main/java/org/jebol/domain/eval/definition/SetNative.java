@@ -2,18 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Binder;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.ContextSlot;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.ObjectValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,12 +11,12 @@ import java.util.Set;
 public class SetNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "set";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("word", Typeset.ANY_PATH.membersAnd(
                         Datatype.WORD, Datatype.LIT_WORD, Datatype.BLOCK, Datatype.OBJECT)),
@@ -35,7 +24,7 @@ public class SetNative extends DefaultNative {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("any", "only", "some");
     }
 

@@ -6,17 +6,7 @@ import org.jebol.domain.eval.LoopSignal;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.ReturnSignal;
 import org.jebol.domain.eval.ThrownSignal;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.ErrorCategory;
-import org.jebol.domain.value.ErrorValue;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -24,19 +14,19 @@ import java.util.Set;
 public class TryNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "try";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("block", Set.of(Datatype.BLOCK, Datatype.PAREN)),
                 Parameter.belongingTo("with", "handler", Set.of()));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("all", "with");
     }
 

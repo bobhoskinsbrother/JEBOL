@@ -5,6 +5,7 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.value.Datatype;
+import org.jebol.domain.value.DefaultNative;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -19,19 +20,22 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class EveryNativeDefinitionIsRegisteredTest {
+class EveryBuiltInNativeIsRegisteredTest {
 
-    private List<NativeDefinition> everyDefinitionOnTheClasspath() {
+    private static final String THE_BUILT_INS_PACKAGE = LoopNative.class.getPackageName();
+
+    private List<DefaultNative> everyDefinitionOnTheClasspath() {
         String classesDirs = System.getProperty("jebol.mainClassesDirs");
         List<Path> paths = Arrays.stream(classesDirs.split(File.pathSeparator))
                 .map(Path::of)
                 .filter(Files::isDirectory)
                 .toList();
-        List<NativeDefinition> found = new ArrayList<>();
+        List<DefaultNative> found = new ArrayList<>();
         for (JavaClass each : new ClassFileImporter()
                 .withImportOption(new ImportOption.DoNotIncludeTests())
                 .importPaths(paths)) {
-            if (!each.isAssignableTo(NativeDefinition.class)
+            if (!each.isAssignableTo(DefaultNative.class)
+                    || !each.getPackageName().equals(THE_BUILT_INS_PACKAGE)
                     || each.isInterface()
                     || each.getModifiers().toString().contains("ABSTRACT")) {
                 continue;
@@ -41,13 +45,13 @@ class EveryNativeDefinitionIsRegisteredTest {
         return found;
     }
 
-    private List<NativeDefinition> instantiated(JavaClass each) {
+    private List<DefaultNative> instantiated(JavaClass each) {
         try {
             Class<?> definition = Class.forName(each.getName());
             if (isAFamilyOfOnePerDatatype(definition)) {
                 return onePerDatatype(definition);
             }
-            return List.of((NativeDefinition) builtFromItsSmallestConstructor(definition));
+            return List.of((DefaultNative) builtFromItsSmallestConstructor(definition));
         } catch (ReflectiveOperationException unbuildable) {
             throw new IllegalStateException(
                     each.getName() + " has no constructor taking nothing, a datatype or "
@@ -79,11 +83,11 @@ class EveryNativeDefinitionIsRegisteredTest {
                 .orElseThrow(NoSuchMethodException::new);
     }
 
-    private List<NativeDefinition> onePerDatatype(Class<?> definition)
+    private List<DefaultNative> onePerDatatype(Class<?> definition)
             throws ReflectiveOperationException {
-        List<NativeDefinition> family = new ArrayList<>();
+        List<DefaultNative> family = new ArrayList<>();
         for (Datatype datatype : Datatype.values()) {
-            family.add((NativeDefinition) definition.getDeclaredConstructor(Datatype.class)
+            family.add((DefaultNative) definition.getDeclaredConstructor(Datatype.class)
                     .newInstance(datatype));
         }
         return family;
@@ -100,17 +104,17 @@ class EveryNativeDefinitionIsRegisteredTest {
     @Test
     @DisplayName("a definition nobody registers is a native nobody can call")
     void everyDefinitionIsReachableFromAScript() {
-        List<NativeDefinition> defined = everyDefinitionOnTheClasspath();
+        List<DefaultNative> defined = everyDefinitionOnTheClasspath();
 
         assertThat(defined)
-                .as("no NativeDefinition was found at all, so this test is "
+                .as("no DefaultNative was found at all, so this test is "
                         + "asserting nothing; check jebol.mainClassesDirs")
                 .isNotEmpty();
 
-        List<String> names = defined.stream().map(NativeDefinition::name).toList();
+        List<String> names = defined.stream().map(DefaultNative::nativeName).toList();
 
         assertThat(whatTheInterpreterKnows(names))
-                .as("these are written as a NativeDefinition but no call to "
+                .as("these are written as a DefaultNative but no call to "
                         + "register mentions them, so a script cannot "
                         + "reach them and nothing else would say so")
                 .isEqualTo("[]");
@@ -120,7 +124,7 @@ class EveryNativeDefinitionIsRegisteredTest {
     @DisplayName("each one declares the name it registers under exactly once")
     void noTwoDefinitionsClaimTheSameName() {
         List<String> names = everyDefinitionOnTheClasspath().stream()
-                .map(NativeDefinition::name)
+                .map(DefaultNative::nativeName)
                 .toList();
 
         assertThat(names)

@@ -12,12 +12,12 @@ public class ForAllNative extends SteppingThroughNative {
     private static final int ONE_AT_A_TIME = 1;
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "forall";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.softQuoted("word"), Parameter.required("body", A_BLOCK));
     }
 

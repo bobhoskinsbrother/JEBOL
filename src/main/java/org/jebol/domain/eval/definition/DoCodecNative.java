@@ -2,15 +2,7 @@ package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.Codecs;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BinaryValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.HandleValue;
-import org.jebol.domain.value.ImageValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -22,12 +14,12 @@ public class DoCodecNative extends DefaultNative {
     private final Codecs codecs = new Codecs();
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "do-codec";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("handle", Set.of(Datatype.HANDLE)),
                 Parameter.required("action", Set.of(Datatype.WORD)),

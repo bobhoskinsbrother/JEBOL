@@ -3,7 +3,7 @@ package org.jebol.domain.eval.definition;
 public class CosineNative extends TrigonometryNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "cosine";
     }
 

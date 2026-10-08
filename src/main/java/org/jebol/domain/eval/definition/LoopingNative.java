@@ -3,17 +3,7 @@ package org.jebol.domain.eval.definition;
 import org.jebol.domain.eval.ContinueSignal;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.LoopSignal;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Context;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.Molder;
-import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.UnsetValue;
-import org.jebol.domain.value.Value;
-import org.jebol.domain.value.WordValue;
+import org.jebol.domain.value.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,7 +44,7 @@ public abstract class LoopingNative extends DefaultNative {
                 return List.of(single);
             }
             throw Raised.of(EvaluationFailure.EXPECT_ARG,
-                    name() + " walks with a word or a block of words, not a "
+                    nativeName() + " walks with a word or a block of words, not a "
                             + target.datatype().literalSpelling());
         }
         if (block.lengthFromHere() == 0) {
@@ -64,7 +54,7 @@ public abstract class LoopingNative extends DefaultNative {
         for (Value item : block.remaining()) {
             if (!(item instanceof WordValue name)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
-                        name() + " walks with words, and " + Molder.mold(item)
+                        nativeName() + " walks with words, and " + Molder.mold(item)
                                 + " is not one");
             }
             names.add(name);

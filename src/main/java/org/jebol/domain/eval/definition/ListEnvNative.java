@@ -19,12 +19,12 @@ public class ListEnvNative extends EnvironmentNative {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "list-env";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of();
     }
 

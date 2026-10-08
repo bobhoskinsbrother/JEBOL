@@ -3,7 +3,7 @@ package org.jebol.domain.eval.definition;
 public class ArccosineNative extends InverseTrigonometryNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "arccosine";
     }
 

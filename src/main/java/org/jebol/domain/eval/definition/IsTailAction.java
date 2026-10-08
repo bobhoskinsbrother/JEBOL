@@ -18,12 +18,12 @@ public class IsTailAction extends SeriesOrFileAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "tail?";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series", Typeset.SERIES.membersAnd(
                 Datatype.GOB, Datatype.PORT, Datatype.BITSET, Datatype.TYPESET, Datatype.MAP)));
     }

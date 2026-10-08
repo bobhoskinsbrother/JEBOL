@@ -1,10 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.*;
 
 import java.util.List;
 import java.util.Set;
@@ -12,17 +9,17 @@ import java.util.Set;
 public class DelineNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "deline";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("string", Typeset.ANY_STRING.members()));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("lines");
     }
 

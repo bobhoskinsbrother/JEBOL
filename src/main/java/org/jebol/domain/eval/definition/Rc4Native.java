@@ -17,19 +17,19 @@ import java.util.Set;
 public class Rc4Native extends CipherNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "rc4";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.belongingTo("key", "crypt-key", Set.of(Datatype.BINARY)),
                 Parameter.belongingTo("stream", "ctx", Set.of(Datatype.HANDLE)),
                 Parameter.belongingTo("stream", "data", Set.of(Datatype.BINARY)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("key", "stream");
     }
 

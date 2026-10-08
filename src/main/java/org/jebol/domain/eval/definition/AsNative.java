@@ -1,15 +1,7 @@
 package org.jebol.domain.eval.definition;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.BlockValue;
-import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.DatatypeValue;
-import org.jebol.domain.value.EvaluationFailure;
-import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.Value;
+import org.jebol.domain.value.*;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -18,12 +10,12 @@ import java.util.Set;
 public class AsNative extends DefaultNative {
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "as";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("type", aSeriesTypeAnd(Datatype.DATATYPE)),
                 Parameter.required("spec", aSeriesTypeAnd()));

@@ -22,19 +22,19 @@ public class EcdhNative extends CipherNative {
     private static final List<String> WHAT_ECDH_DOES = List.of("init", "curve", "public", "secret");
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "ecdh";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("key", Set.of(Datatype.HANDLE, Datatype.NONE)),
                 Parameter.belongingTo("init", "type", Set.of(Datatype.WORD)),
                 Parameter.belongingTo("secret", "public-key", Set.of(Datatype.BINARY)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.copyOf(WHAT_ECDH_DOES);
     }
 

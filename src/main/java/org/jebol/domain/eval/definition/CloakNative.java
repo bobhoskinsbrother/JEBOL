@@ -24,14 +24,14 @@ public abstract class CloakNative extends EncodingNative {
     abstract boolean decodes();
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("data", Set.of(Datatype.BINARY)),
                 Parameter.required("key", Set.of(Datatype.STRING, Datatype.BINARY, Datatype.INTEGER)));
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("with");
     }
 

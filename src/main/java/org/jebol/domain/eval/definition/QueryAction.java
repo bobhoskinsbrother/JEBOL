@@ -53,12 +53,12 @@ public class QueryAction extends PortAction {
     }
 
     @Override
-    public String name() {
+    public String nativeName() {
         return "query";
     }
 
     @Override
-    public List<Parameter> parameters() {
+    public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("target", Set.of(Datatype.FILE, Datatype.DATE,
                         Datatype.HANDLE, Datatype.PORT, Datatype.URL,
@@ -68,14 +68,14 @@ public class QueryAction extends PortAction {
     }
 
     @Override
-    public Set<String> refinements() {
+    public Set<String> refinementsDeclaredApart() {
         return Set.of("mode");
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            Optional<Value> itsOwn = evaluator.theRebolActorsAnswer(name(), arguments, refinements);
+            Optional<Value> itsOwn = evaluator.theRebolActorsAnswer(nativeName(), arguments, refinements);
             if (itsOwn.isPresent()) {
                 return itsOwn.get();
             }
@@ -99,13 +99,13 @@ public class QueryAction extends PortAction {
             return aFileAsked(((StringValue) target).text(), field, evaluator);
         }
         PortValue port = ports.portMadeFor(target, evaluator, context);
-        return evaluator.theRebolActorsAnswer(name(), List.of(port, field), Set.of())
+        return evaluator.theRebolActorsAnswer(nativeName(), List.of(port, field), Set.of())
                 .orElseGet(() -> aNativelyServedPortAsked(port, field, evaluator));
     }
 
     private Value aNativelyServedPortAsked(PortValue port, Value field, Evaluator evaluator) {
         if (!port.isAFile()) {
-            throw ports.noActionFor(name());
+            throw ports.noActionFor(nativeName());
         }
         return aFileAsked(ports.pathOf(port), field, evaluator);
     }
