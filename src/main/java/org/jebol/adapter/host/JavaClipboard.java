@@ -1,6 +1,6 @@
 package org.jebol.adapter.host;
 
-import org.jebol.domain.eval.ClipboardPort;
+import org.jebol.domain.host.ClipboardPort;
 
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;

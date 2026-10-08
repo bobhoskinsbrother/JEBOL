@@ -1,6 +1,6 @@
 package org.jebol.adapter.cli;
 
-import org.jebol.domain.eval.OutputPort;
+import org.jebol.domain.host.OutputPort;
 
 import java.io.PrintStream;
 

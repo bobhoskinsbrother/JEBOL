@@ -2,8 +2,8 @@ package org.jebol.adapter.host;
 
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
-import org.jebol.domain.eval.ScreenMetric;
-import org.jebol.domain.eval.ScreenPort;
+import org.jebol.domain.host.ScreenMetric;
+import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.GobValue;
 import org.junit.jupiter.api.DisplayName;

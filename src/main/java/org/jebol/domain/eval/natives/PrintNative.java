@@ -1,6 +1,6 @@
 package org.jebol.domain.eval.natives;
 
-import org.jebol.domain.eval.OutputPort;
+import org.jebol.domain.host.OutputPort;
 
 public class PrintNative extends OutputNative {
 

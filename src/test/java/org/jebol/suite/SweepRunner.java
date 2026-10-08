@@ -3,7 +3,7 @@ package org.jebol.suite;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.jebol.application.Interpreter;
-import org.jebol.domain.eval.OutputPort;
+import org.jebol.domain.host.OutputPort;
 
 public final class SweepRunner {
 

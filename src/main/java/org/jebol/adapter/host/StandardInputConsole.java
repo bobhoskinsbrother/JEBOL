@@ -1,7 +1,7 @@
 package org.jebol.adapter.host;
 
-import org.jebol.domain.eval.ConsolePort;
-import org.jebol.domain.eval.FilePort;
+import org.jebol.domain.host.ConsolePort;
+import org.jebol.domain.host.FilePort;
 
 import java.io.BufferedReader;
 import java.io.Console;

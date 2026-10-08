@@ -1,7 +1,15 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.eval.brotli.Brotli;
-import org.jebol.domain.eval.deflate.DeflateCompressor;
+import org.jebol.domain.eval.compression.brotli.Brotli;
+import org.jebol.domain.eval.compression.Crush;
+import org.jebol.domain.eval.compression.Lzma;
+import org.jebol.domain.eval.compression.Lzw;
+import org.jebol.domain.eval.compression.Octets;
+import org.jebol.domain.eval.compression.deflate.DeflateCompressor;
+import org.jebol.domain.eval.hashing.Md4;
+import org.jebol.domain.eval.hashing.RipeMd160;
+import org.jebol.domain.eval.hashing.XxHash;
+import org.jebol.domain.eval.hashing.XxHash3;
 import org.jebol.domain.value.BitsetValue;
 
 import javax.crypto.Mac;
@@ -542,17 +550,17 @@ public final class Encodings {
         return avalanched(hash ^ utf8.length);
     }
 
-    static final String RIPEMD_160 = "RIPEMD160";
+    public static final String RIPEMD_160 = "RIPEMD160";
 
-    static final String XXH_3 = "XXH3";
+    public static final String XXH_3 = "XXH3";
 
-    static final String XXH_32 = "XXH32";
+    public static final String XXH_32 = "XXH32";
 
-    static final String XXH_64 = "XXH64";
+    public static final String XXH_64 = "XXH64";
 
-    static final String XXH_128 = "XXH128";
+    public static final String XXH_128 = "XXH128";
 
-    static final String MD_4 = "MD4";
+    public static final String MD_4 = "MD4";
 
     private final RipeMd160 ripeMd160 = new RipeMd160();
     private final Md4 md4 = new Md4();

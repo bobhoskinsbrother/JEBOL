@@ -2,7 +2,7 @@ package org.jebol.corpus;
 
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
-import org.jebol.domain.eval.OutputPort;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.value.ErrorValue;
 
 import java.util.List;

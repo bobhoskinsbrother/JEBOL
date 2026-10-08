@@ -1,8 +1,8 @@
 package org.jebol.domain.eval.actions;
 
 import org.jebol.domain.eval.GrantedServices;
-import org.jebol.domain.eval.PortRequest;
-import org.jebol.domain.eval.Ports;
+import org.jebol.domain.eval.ports.PortRequest;
+import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.natives.HostNative;
 import org.jebol.domain.value.ActionValue;
 import org.jebol.domain.value.Value;

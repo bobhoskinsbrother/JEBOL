@@ -1,6 +1,6 @@
 package org.jebol.domain.eval.natives;
 
-import org.jebol.domain.eval.DiffieHellmanKey;
+import org.jebol.domain.eval.crypto.DiffieHellmanKey;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.Datatype;

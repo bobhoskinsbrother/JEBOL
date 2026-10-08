@@ -2,8 +2,8 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.eval.ScreenMetric;
-import org.jebol.domain.eval.ScreenPort;
+import org.jebol.domain.host.ScreenMetric;
+import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;

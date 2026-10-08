@@ -1,6 +1,6 @@
 package org.jebol.domain.eval.natives;
 
-import org.jebol.domain.eval.EllipticCurveKey;
+import org.jebol.domain.eval.crypto.EllipticCurveKey;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.*;
 

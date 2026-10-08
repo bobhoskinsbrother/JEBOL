@@ -1,6 +1,6 @@
 package org.jebol.adapter.host;
 
-import org.jebol.domain.eval.EnvironmentPort;
+import org.jebol.domain.host.EnvironmentPort;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;

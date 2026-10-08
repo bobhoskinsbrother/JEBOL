@@ -2,7 +2,7 @@ package org.jebol.adapter.web;
 
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
-import org.jebol.domain.eval.ScreenEventKind;
+import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.render.PaintInstruction;
 import org.jebol.domain.render.PaintList;

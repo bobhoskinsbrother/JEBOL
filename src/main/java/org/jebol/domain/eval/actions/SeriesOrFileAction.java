@@ -2,7 +2,7 @@ package org.jebol.domain.eval.actions;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
-import org.jebol.domain.eval.OpenFile;
+import org.jebol.domain.eval.ports.OpenFile;
 import org.jebol.domain.value.*;
 
 import java.util.List;

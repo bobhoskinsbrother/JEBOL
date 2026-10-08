@@ -1,7 +1,7 @@
 package org.jebol.application;
 
-import org.jebol.domain.eval.FileInformation;
-import org.jebol.domain.eval.FilePort;
+import org.jebol.domain.host.FileInformation;
+import org.jebol.domain.host.FilePort;
 
 import java.io.File;
 import java.io.IOException;

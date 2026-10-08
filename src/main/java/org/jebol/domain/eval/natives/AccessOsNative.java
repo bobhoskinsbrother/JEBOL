@@ -2,7 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
-import org.jebol.domain.eval.ProcessPort.WhoTheProcessRunsAs;
+import org.jebol.domain.host.ProcessPort.WhoTheProcessRunsAs;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.*;

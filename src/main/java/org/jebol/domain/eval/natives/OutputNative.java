@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Evaluator;
-import org.jebol.domain.eval.OutputPort;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.*;
 

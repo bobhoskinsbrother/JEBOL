@@ -1,6 +1,6 @@
 package org.jebol.application;
 
-import org.jebol.domain.eval.ScreenEventKind;
+import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.GobValue;
 import org.junit.jupiter.api.DisplayName;

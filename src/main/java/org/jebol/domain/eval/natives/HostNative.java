@@ -1,6 +1,6 @@
 package org.jebol.domain.eval.natives;
 
-import org.jebol.domain.eval.FileSystemCalls;
+import org.jebol.domain.eval.ports.FileSystemCalls;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Value;

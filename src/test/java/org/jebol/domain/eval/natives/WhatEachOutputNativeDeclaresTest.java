@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.application.Interpreter;
-import org.jebol.domain.eval.OutputPort;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

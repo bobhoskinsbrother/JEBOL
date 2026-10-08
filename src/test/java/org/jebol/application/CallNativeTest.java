@@ -1,6 +1,6 @@
 package org.jebol.application;
 
-import org.jebol.domain.eval.ProcessPort;
+import org.jebol.domain.host.ProcessPort;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

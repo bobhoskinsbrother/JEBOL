@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.eval.StreamCipher;
+import org.jebol.domain.eval.crypto.StreamCipher;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.EvaluationFailure;

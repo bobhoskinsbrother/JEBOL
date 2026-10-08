@@ -1,6 +1,6 @@
 package org.jebol.adapter.host;
 
-import org.jebol.domain.eval.NetworkPort;
+import org.jebol.domain.host.NetworkPort;
 
 import java.io.IOException;
 import java.io.InputStream;

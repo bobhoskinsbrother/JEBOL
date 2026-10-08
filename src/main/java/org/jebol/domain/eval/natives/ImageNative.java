@@ -1,8 +1,8 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Evaluator;
-import org.jebol.domain.eval.FilePort;
-import org.jebol.domain.eval.ImagePort;
+import org.jebol.domain.host.FilePort;
+import org.jebol.domain.host.ImagePort;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.*;
 

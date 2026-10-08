@@ -1,6 +1,6 @@
 # The Brotli port
 
-Thirty-nine files under `org.jebol.domain.eval.brotli`, one of them public.
+Thirty-nine files under `org.jebol.domain.eval.compression.brotli`, one of them public.
 This note carries what the code cannot: which C file each piece came from, and
 the handful of format facts that a reader would otherwise have to derive.
 

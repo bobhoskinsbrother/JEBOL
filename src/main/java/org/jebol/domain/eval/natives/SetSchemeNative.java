@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.eval.SchemeActorNative;
+import org.jebol.domain.eval.ports.SchemeActorNative;
 import org.jebol.domain.value.*;
 
 import java.util.List;

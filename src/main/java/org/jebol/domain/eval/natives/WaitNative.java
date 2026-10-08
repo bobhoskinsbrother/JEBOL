@@ -3,7 +3,7 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.eval.ScreenEvent;
+import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.DecimalValue;

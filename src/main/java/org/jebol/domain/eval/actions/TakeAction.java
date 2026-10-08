@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.actions;
 
 import org.jebol.domain.eval.Actions;
-import org.jebol.domain.eval.CryptPort;
+import org.jebol.domain.eval.ports.CryptPort;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.*;
 

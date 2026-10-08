@@ -1,6 +1,6 @@
 package org.jebol.domain.eval.natives;
 
-import org.jebol.domain.eval.AKeyThatCanBeReleased;
+import org.jebol.domain.eval.crypto.AKeyThatCanBeReleased;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.*;
 

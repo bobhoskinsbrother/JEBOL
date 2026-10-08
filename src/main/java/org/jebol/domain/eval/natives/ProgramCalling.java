@@ -1,8 +1,8 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Evaluator;
-import org.jebol.domain.eval.FilePort;
-import org.jebol.domain.eval.ProcessPort;
+import org.jebol.domain.host.FilePort;
+import org.jebol.domain.host.ProcessPort;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;

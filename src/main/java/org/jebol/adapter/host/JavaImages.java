@@ -1,6 +1,6 @@
 package org.jebol.adapter.host;
 
-import org.jebol.domain.eval.ImagePort;
+import org.jebol.domain.host.ImagePort;
 
 import java.awt.Graphics2D;
 import java.awt.Point;

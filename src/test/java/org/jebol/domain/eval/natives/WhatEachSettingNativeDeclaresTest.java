@@ -2,7 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.BootDeclarations;
-import org.jebol.domain.eval.CryptPort;
+import org.jebol.domain.eval.ports.CryptPort;
 import org.jebol.domain.eval.actions.*;
 import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;

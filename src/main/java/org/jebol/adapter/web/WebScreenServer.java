@@ -2,7 +2,7 @@ package org.jebol.adapter.web;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import org.jebol.domain.eval.ScreenEventKind;
+import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.value.GobValue;
 

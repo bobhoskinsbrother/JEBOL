@@ -1,5 +1,8 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.host.FilePort;
+import org.jebol.domain.host.NetworkPort;
+
 import java.util.Optional;
 
 /**

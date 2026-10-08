@@ -2,9 +2,9 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
-import org.jebol.domain.eval.ScreenEvent;
-import org.jebol.domain.eval.ScreenMetric;
-import org.jebol.domain.eval.ScreenPort;
+import org.jebol.domain.host.ScreenEvent;
+import org.jebol.domain.host.ScreenMetric;
+import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;

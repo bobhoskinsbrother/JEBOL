@@ -1,6 +1,6 @@
 package org.jebol.domain.eval.natives;
 
-import org.jebol.domain.eval.FilePort;
+import org.jebol.domain.host.FilePort;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.host.HostService;

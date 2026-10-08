@@ -1,8 +1,8 @@
 package org.jebol.adapter.host;
 
-import org.jebol.domain.eval.ScreenEventKind;
-import org.jebol.domain.eval.GobScreen;
-import org.jebol.domain.eval.ScreenMetric;
+import org.jebol.domain.host.ScreenEventKind;
+import org.jebol.domain.host.GobScreen;
+import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.StringValue;

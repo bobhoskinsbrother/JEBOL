@@ -1,6 +1,6 @@
 package org.jebol.adapter.host;
 
-import org.jebol.domain.eval.WindowPort;
+import org.jebol.domain.host.WindowPort;
 
 import javax.swing.*;
 import java.awt.*;

@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.GrantedServices;
-import org.jebol.domain.eval.ScreenPort;
+import org.jebol.domain.host.ScreenPort;
 
 public abstract class ScreenNative extends WindowNative {
 

@@ -1,6 +1,6 @@
 package org.jebol.application;
 
-import org.jebol.domain.eval.EnvironmentPort;
+import org.jebol.domain.host.EnvironmentPort;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

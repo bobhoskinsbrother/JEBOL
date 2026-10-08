@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.actions;
 
 import org.jebol.domain.eval.GrantedServices;
-import org.jebol.domain.eval.Ports;
+import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.Value;
 

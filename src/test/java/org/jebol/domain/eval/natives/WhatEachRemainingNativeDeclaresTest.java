@@ -4,7 +4,7 @@ import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.GrantedServices;
-import org.jebol.domain.eval.ProcessPort;
+import org.jebol.domain.host.ProcessPort;
 import org.jebol.domain.eval.actions.RandomAction;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.*;

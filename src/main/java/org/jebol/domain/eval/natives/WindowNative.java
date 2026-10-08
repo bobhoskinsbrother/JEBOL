@@ -1,7 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.GrantedServices;
-import org.jebol.domain.eval.WindowPort;
+import org.jebol.domain.host.WindowPort;
 import org.jebol.domain.host.ServiceRefusal;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;

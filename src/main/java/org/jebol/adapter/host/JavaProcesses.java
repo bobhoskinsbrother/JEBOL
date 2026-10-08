@@ -1,6 +1,6 @@
 package org.jebol.adapter.host;
 
-import org.jebol.domain.eval.ProcessPort;
+import org.jebol.domain.host.ProcessPort;
 
 import java.io.File;
 import java.io.IOException;
