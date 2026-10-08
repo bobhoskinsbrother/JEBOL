@@ -1,7 +1,7 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.eval.definition.CipherNative;
-import org.jebol.domain.eval.definition.ResizeNative;
+import org.jebol.domain.eval.natives.CipherNative;
+import org.jebol.domain.eval.natives.ResizeNative;
 import org.jebol.domain.value.*;
 
 import java.util.Arrays;

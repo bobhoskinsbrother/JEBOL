@@ -1,12 +1,10 @@
 package org.jebol.domain.value;
 
-import org.jebol.domain.eval.definition.AddAction;
-import org.jebol.domain.eval.definition.DoNative;
+import org.jebol.domain.eval.actions.AddAction;
+import org.jebol.domain.eval.natives.DoNative;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

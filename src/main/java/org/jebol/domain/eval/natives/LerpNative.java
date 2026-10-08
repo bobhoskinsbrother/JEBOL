@@ -1,0 +1,33 @@
+package org.jebol.domain.eval.natives;
+
+import org.jebol.domain.eval.Comparison;
+import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.value.DefaultNative;
+import org.jebol.domain.value.Parameter;
+
+import java.util.List;
+
+public class LerpNative extends DefaultNative {
+
+    @Override
+    public String nativeName() {
+        return "lerp";
+    }
+
+    @Override
+    public List<Parameter> parametersAsWritten() {
+        return acceptsWhateverComesAlong("value1", "value2", "fraction");
+    }
+
+    @Override
+    public RefinedCallable behaviour() {
+        return (arguments, evaluator, context, refinements) ->
+                arguments.get(0).partWayTo(arguments.get(1),
+                        heldInsideTheJourney(
+                                Comparison.asDouble(arguments.get(2))));
+    }
+
+    private double heldInsideTheJourney(double asked) {
+        return Math.max(0, Math.min(1, asked));
+    }
+}

@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
-import org.jebol.domain.eval.definition.*;
+import org.jebol.domain.eval.actions.*;
+import org.jebol.domain.eval.natives.*;
 
 import org.jebol.domain.value.*;
 

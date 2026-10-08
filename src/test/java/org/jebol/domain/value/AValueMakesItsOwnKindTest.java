@@ -1,6 +1,6 @@
 package org.jebol.domain.value;
 
-import org.jebol.domain.eval.definition.PrintNative;
+import org.jebol.domain.eval.natives.PrintNative;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

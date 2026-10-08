@@ -1,7 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.Interpreter;
-import org.jebol.domain.eval.definition.LimitUsageNative;
+import org.jebol.domain.eval.natives.LimitUsageNative;
 import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
