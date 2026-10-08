@@ -1,6 +1,6 @@
 package org.jebol.suite;
 
-import org.jebol.domain.eval.RebolNativeWords;
+import org.jebol.domain.eval.Boot;
 import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,7 +18,7 @@ class SurfaceReportTest {
     @DisplayName("every function JEBOL has, with its arguments and refinements")
     void theSurfaceIsPrinted() {
         TreeMap<String, String> byName = new TreeMap<>();
-        for (ContextSlot slot : RebolNativeWords.standard().boot().lib().slots()) {
+        for (ContextSlot slot : Boot.standard().start().lib().slots()) {
             describe(slot.value()).ifPresent(
                     shape -> byName.put(slot.canonical(), slot.canonical() + " |" + shape));
         }

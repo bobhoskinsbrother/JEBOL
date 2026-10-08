@@ -11,7 +11,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ConsoleRebolNativeWordsTest {
+class ConsoleNativesTest {
 
     private static final class Prepared implements ConsolePort {
 

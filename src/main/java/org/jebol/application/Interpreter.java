@@ -59,26 +59,26 @@ public final class Interpreter {
         Set<HostService> duringTheBoot =
                 EnumSet.of(HostService.CLOCK, HostService.WINDOWS);
         duringTheBoot.addAll(bounds.grantedServices());
-        RebolNativeWords natives = RebolNativeWords.standard(duringTheBoot);
-        natives.useFileSeparator(File.separatorChar);
-        natives.useOperatingSystemNamed(whatRebolCallsThisOperatingSystem());
-        natives.useErrorCatalogue(theSourceIn("/org/jebol/errors.reb"));
-        natives.useDatatypeSpecs(theSourceIn("/org/jebol/typespec.reb"));
-        natives.useOperatorTable(theSourceIn("/org/jebol/ops.reb"));
-        natives.useModeTable(theSourceIn("/org/jebol/modes.reb"));
-        natives.useFunctionDeclarations(
+        Boot boot = Boot.standard(duringTheBoot);
+        boot.useFileSeparator(File.separatorChar);
+        boot.useOperatingSystemNamed(whatRebolCallsThisOperatingSystem());
+        boot.useErrorCatalogue(theSourceIn("/org/jebol/errors.reb"));
+        boot.useDatatypeSpecs(theSourceIn("/org/jebol/typespec.reb"));
+        boot.useOperatorTable(theSourceIn("/org/jebol/ops.reb"));
+        boot.useModeTable(theSourceIn("/org/jebol/modes.reb"));
+        boot.useFunctionDeclarations(
                 theSourceIn("/org/jebol/actions.reb"),
                 theSourceIn("/org/jebol/natives.reb"),
                 theSourceIn("/org/jebol/gen-natives.reb"));
         this.bounds = bounds;
-        SystemObject system = natives.boot();
+        SystemObject system = boot.start();
         this.systemContext = system.lib();
         this.systemInternals = system.internals();
         this.userContext = Context.childOf(systemContext);
         this.evaluator = new Evaluator(
                 systemContext,
-                natives.construction(),
-                natives::makerFor,
+                boot.construction(),
+                boot::makerFor,
                 output,
                 bounds.maximumNesting(),
                 this::reasonToStop,
@@ -92,7 +92,7 @@ public final class Interpreter {
         loadRebolsOwnLibrary();
         nameTheLauncherOnlyOnceTheLibraryHasLoaded();
         registerTheSchemesRebolDeclares();
-        natives.grantOnly(bounds.grantedServices());
+        boot.grantOnly(bounds.grantedServices());
         system.forgetStartupState();
         evaluator.symbols().startCountingWhatTheSessionReads();
     }

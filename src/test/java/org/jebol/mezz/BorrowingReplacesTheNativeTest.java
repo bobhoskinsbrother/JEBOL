@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class BorrowingReplacesRebolNativeWordsTest {
+class BorrowingReplacesTheNativeTest {
 
     @Test
     @DisplayName("a borrowed definition takes the word from the native")

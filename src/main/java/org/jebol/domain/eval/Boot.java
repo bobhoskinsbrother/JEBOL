@@ -8,7 +8,7 @@ import org.jebol.domain.value.MapValue;
 
 import java.util.Set;
 
-public final class RebolNativeWords {
+public final class Boot {
 
     private String operatingSystemName = "JVM";
     private final BootDeclarations bootDeclarations = new BootDeclarations();
@@ -19,17 +19,17 @@ public final class RebolNativeWords {
     private final Ports ports = new Ports(grantedServices);
     private final LocalFileSeparator localFileSeparator = new LocalFileSeparator();
 
-    private RebolNativeWords() {
+    private Boot() {
     }
 
-    public static RebolNativeWords standard() {
-        return new RebolNativeWords();
+    public static Boot standard() {
+        return new Boot();
     }
 
-    public static RebolNativeWords standard(Set<HostService> granted) {
-        RebolNativeWords natives = standard();
-        natives.grantOnly(granted);
-        return natives;
+    public static Boot standard(Set<HostService> granted) {
+        Boot boot = standard();
+        boot.grantOnly(granted);
+        return boot;
     }
 
     public void useOperatorTable(String source) {
@@ -64,7 +64,7 @@ public final class RebolNativeWords {
         grantedServices.grantOnly(granted);
     }
 
-    public SystemObject boot() {
+    public SystemObject start() {
         LibContext lib = new LibContext(bootDeclarations, grantedServices, ports, encodings, localFileSeparator);
         return new SystemObject(lib, bootDeclarations, ports, encodings, registeredStructLayouts, operatingSystemName);
     }

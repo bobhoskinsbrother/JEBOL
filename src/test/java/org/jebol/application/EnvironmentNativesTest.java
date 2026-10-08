@@ -9,7 +9,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class EnvironmentRebolNativeWordsTest {
+class EnvironmentNativesTest {
 
     private static EnvironmentPort madeUp() {
         return new EnvironmentPort() {
