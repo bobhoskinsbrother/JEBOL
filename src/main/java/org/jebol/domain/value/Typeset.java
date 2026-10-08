@@ -7,42 +7,21 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/**
- * A named group of datatypes, written {@code number!} or {@code series!}.
- *
- * <p>Distinct from a {@link Datatype}: {@code integer!} names one thing a
- * value can be, {@code number!} names several. Function specs use both
- * interchangeably, which is why {@code func [n [number!]]} has to mean
- * something.
- */
+import static org.jebol.domain.value.Datatype.*;
+
 public enum Typeset {
-    ANY_TYPE("any-type", EnumSet.complementOf(EnumSet.of(Datatype.END))),
-    NUMBER("number", EnumSet.of(Datatype.INTEGER, Datatype.DECIMAL, Datatype.PERCENT)),
+    ANY_TYPE("any-type", EnumSet.complementOf(EnumSet.of(END))),
+    NUMBER("number", EnumSet.of(INTEGER, DECIMAL, PERCENT)),
     SCALAR("scalar", datatypesWhere(Datatype::isScalar)),
     SERIES("series", datatypesWhere(Datatype::isSeries)),
-    ANY_OBJECT("any-object", EnumSet.of(
-            Datatype.OBJECT, Datatype.MODULE, Datatype.ERROR,
-            Datatype.TASK, Datatype.PORT)),
-
+    ANY_OBJECT("any-object", EnumSet.of(OBJECT, MODULE, ERROR, TASK, PORT)),
     COPYABLE("copyable", EnumSet.of(
-            Datatype.BINARY, Datatype.STRING, Datatype.FILE, Datatype.EMAIL,
-            Datatype.REF, Datatype.URL, Datatype.TAG, Datatype.BITSET,
-            Datatype.IMAGE, Datatype.VECTOR, Datatype.BLOCK, Datatype.PAREN,
-            Datatype.PATH, Datatype.SET_PATH, Datatype.GET_PATH, Datatype.LIT_PATH,
-            Datatype.HASH, Datatype.MAP, Datatype.NATIVE, Datatype.ACTION,
-            Datatype.REBCODE, Datatype.COMMAND, Datatype.OP, Datatype.CLOSURE,
-            Datatype.FUNCTION, Datatype.OBJECT, Datatype.ERROR, Datatype.PORT)),
-
+            BINARY, STRING, FILE, EMAIL, REF, URL, TAG, BITSET, IMAGE, VECTOR, BLOCK,  PAREN, PATH, SET_PATH, GET_PATH,
+            LIT_PATH, HASH, MAP, NATIVE, ACTION, REBCODE, COMMAND, OP, CLOSURE, FUNCTION, OBJECT, ERROR, PORT)),
     IMMEDIATE("immediate", EnumSet.of(
-            Datatype.NONE, Datatype.LOGIC, Datatype.INTEGER, Datatype.DECIMAL,
-            Datatype.PERCENT, Datatype.MONEY, Datatype.CHAR, Datatype.PAIR,
-            Datatype.TUPLE, Datatype.TIME, Datatype.DATE, Datatype.DATATYPE,
-            Datatype.TYPESET, Datatype.WORD, Datatype.SET_WORD, Datatype.GET_WORD,
-            Datatype.LIT_WORD, Datatype.REFINEMENT, Datatype.ISSUE, Datatype.EVENT)),
-
-    INTERNAL("internal", EnumSet.of(
-            Datatype.END, Datatype.UNSET, Datatype.FRAME, Datatype.HANDLE)),
-
+            NONE, LOGIC, INTEGER, DECIMAL, PERCENT, MONEY, CHAR, PAIR, TUPLE, TIME, DATE, DATATYPE, TYPESET, WORD,
+            SET_WORD, GET_WORD, LIT_WORD, REFINEMENT, ISSUE, EVENT)),
+    INTERNAL("internal", EnumSet.of(END, UNSET, FRAME, HANDLE)),
     ANY_STRING("any-string", datatypesWhere(Datatype::isAnyString)),
     ANY_BLOCK("any-block", datatypesWhere(Datatype::isAnyBlock)),
     ANY_PATH("any-path", datatypesWhere(Datatype::isAnyPath)),
@@ -73,25 +52,14 @@ public enum Typeset {
         return members;
     }
 
-    /**
-     * This typeset's members and the datatypes named as well.
-     *
-     * <p>For a declaration that takes a whole family and a few besides, so
-     * that it is written as the family rather than as the family's members
-     * copied out. A datatype joining the family joins every such declaration
-     * with it.
-     */
     public Set<Datatype> membersAnd(Datatype... alsoTaken) {
         Set<Datatype> taken = EnumSet.copyOf(members);
         taken.addAll(Set.of(alsoTaken));
         return Set.copyOf(taken);
     }
 
-    /** The typeset with this name, if there is one. */
     public static Optional<Typeset> named(String spelling) {
         String wanted = spelling.toLowerCase(Locale.ROOT);
-        return Stream.of(values())
-                .filter(typeset -> typeset.spelling.equals(wanted))
-                .findFirst();
+        return Stream.of(values()).filter(typeset -> typeset.spelling.equals(wanted)).findFirst();
     }
 }
