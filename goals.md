@@ -56,46 +56,44 @@ Read `CLAUDE.md` first.
 Ordered by importance. Agreeing with the C comes before improving on it: a
 place where JEBOL answers something a real 3.22.5 does not is a defect.
 
-### 1. One registration contract for built-ins and extensions
+### 1. One way to plug in extra functions, and know what is plugged in
 
-A Java function can already be registered (`Interpreter.defineFunction`), but
-registering a bare function says nothing about what it **is**, so nothing can
-ask what is present, grant one capability while withholding another, or report
-that an extension failed to start. The test that the contract is right:
-**nothing outside can tell a capability this build ships from one a library
-added.**
+Today a host can add a Java function to JEBOL with
+`Interpreter.defineFunction`. But JEBOL only gets the function, not what it
+is. So nothing can list what has been added, allow one addition while
+blocking another, or report that an addition failed to start.
 
-1. **Take the shared helpers off `DefaultNative`.** `acceptsAllNumbers` lives
-   there, so a scheme definition inherits a method about numeric parameter
-   lists. An abstract class the arithmetic definitions extend is the likelier
-   home.
-2. **Stop a script replacing a built-in in lib.** Shadowing must keep working;
-   replacing must not:
+The aim: something a library adds should look and behave exactly like
+something JEBOL ships with. A script should not be able to tell the
+difference.
 
-   | | the C | JEBOL |
-   | --- | --- | --- |
-   | `add: func [a b][99]` then `add 1 2` | 99 | 99 |
-   | then `lib/add 1 2` | **3** | **99** |
+1. **Move the shared helpers somewhere sensible.** `DefaultNative` holds
+   `acceptsAllNumbers`, a helper only arithmetic needs. Because everything
+   builds on `DefaultNative`, even a network scheme inherits it. Move it to a
+   class only the arithmetic functions use.
+2. **Stop an extension taking a built-in's name.** If a library tries to add
+   a function called `add`, refuse it with the `already-used` error. Lock the
+   built-in names once start-up finishes, and look in libraries only after
+   the built-ins. (A script can already define its own `add` without
+   touching the built-in one. That works and is tested.)
+3. **Describe the other kinds of plug-in.** A function is not the only thing
+   a library might add. A scheme (like `http`) needs a spec, a start-up step,
+   a wake-up handler and an actor. A codec (like `png`) needs a name, the
+   file suffixes it handles and three functions. Decide what each must
+   provide before writing the first one.
+4. **Decide how a library gets loaded.** Three choices: JEBOL finds it on the
+   classpath by itself; the host hands it over; or JEBOL finds it but a
+   script still needs permission before using it. The third is the default
+   unless there is a reason against it.
 
-   In Rebol the script's definition lands in the user context and lib keeps
-   its own. The likely shape: built-ins sealed once boot has finished,
-   extensions consulted second, and registering a name the built-ins hold
-   refused as `already-used`. `defineFunction` already writes to the user
-   context rather than lib, which is the precedent.
-3. **Give the other kinds their own contract.** A scheme has a spec, an init,
-   an awake and an actor; a codec has a name, suffixes and three functions.
-   `NativeValue` is the function contract and the others are siblings. Settle
-   this before a second kind is written.
-4. **Decide how a library arrives.** Open question: discovered from the
-   classpath, handed over by the host, or discovered and still requiring a
-   grant before a script reaches it. The last keeps both properties and is the
-   default reading unless someone argues otherwise.
-
-What it unlocks: the `serial` scheme, and the `callback` scheme, which nothing
-can post to; the six extension error ids nothing can raise (`bad-extension`,
-`extension-init`, `no-extension`, `command-fail`, `bad-command`,
-`handle-exists`); and the fourteen compiled modules withheld from
-`system/modules` because their addresses fetch a shared library.
+What this makes possible:
+- the `serial` scheme, and the `callback` scheme, which nothing can send to
+  yet;
+- six extension errors JEBOL can never raise today: `bad-extension`,
+  `extension-init`, `no-extension`, `command-fail`, `bad-command` and
+  `handle-exists`;
+- fourteen compiled modules that are left out of `system/modules`, because
+  loading them means fetching a native library.
 
 ### 2. Register the MIDI scheme
 

@@ -115,6 +115,10 @@ public final class Context {
         itsOwnSelf = Optional.of(self);
     }
 
+    public boolean hasItsOwnSlotFor(String canonicalName) {
+        return slotsByCanonicalName.containsKey(canonicalName);
+    }
+
     public boolean bindsAWordSpelt(String canonicalName) {
         return holds(canonicalName) || itsOwnSelfAnswersTo(canonicalName);
     }

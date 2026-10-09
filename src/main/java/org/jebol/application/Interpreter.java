@@ -574,20 +574,24 @@ public final class Interpreter {
         return outcome;
     }
 
-    private boolean startMadeTheUserContext;
-
     private void adoptTheUserContextStartMade() {
         if (pathInto("system", "contexts", "user") instanceof ObjectValue(Context made)
                 && made != userContext) {
             userContext = made;
-            startMadeTheUserContext = true;
         }
     }
 
-    private void resolveFromLibWhenStartMadeTheUserContext(AnyWordValue word, Context into) {
-        if (startMadeTheUserContext && into == userContext && systemContext.knows(word.canonical())) {
-            into.register(word.spelling(), systemContext.slotFor(word.canonical()).value());
+    private void giveItAUserSlotHoldingWhatLibHolds(AnyWordValue word, Context into) {
+        into.register(word.spelling(), whatLibHolds(word, into));
+    }
+
+    private Value whatLibHolds(AnyWordValue word, Context into) {
+        if (into.knows(word.canonical())) {
+            return into.slotFor(word.canonical()).value();
         }
+        return systemContext.knows(word.canonical())
+                ? systemContext.slotFor(word.canonical()).value()
+                : UnsetValue.unset();
     }
 
     private static final String THE_MEZZANINE_FILE_THAT_READS_WHAT_START_WROTE = "mezz-banner.reb";
@@ -774,9 +778,8 @@ public final class Interpreter {
         for (Value item : block.remaining()) {
             switch (item) {
                 case AnyWordValue word -> {
-                    if (!into.knows(word.canonical())) {
-                        into.register(word.spelling());
-                        resolveFromLibWhenStartMadeTheUserContext(word, into);
+                    if (!into.hasItsOwnSlotFor(word.canonical())) {
+                        giveItAUserSlotHoldingWhatLibHolds(word, into);
                     }
                 }
                 case AnyBlockValue nested -> defineWordsIn(nested, into);

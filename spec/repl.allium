@@ -129,28 +129,35 @@ rule SubmissionArrives {
     )
 }
 
--- Before evaluating, every set-word in the submission that names nothing
--- yet gets a slot in the user context. This is the one place JEBOL
--- creates a binding on assignment, and it is what makes `x: 1` work at a
--- console when `do [x: 1]` inside a function does not.
+-- Before evaluating, every word in the submission that the user context has
+-- no slot of its own for gets one. This is the one place JEBOL creates a
+-- binding on assignment, and it is what makes `x: 1` work at a console when
+-- `do [x: 1]` inside a function does not.
+--
+-- A word lib already defines gets a user slot too, holding lib's value, as
+-- R3's intern does. That is what keeps lib intact: `add: func [a b][99]` at
+-- the prompt sets the user's `add`, and `lib/add 1 2` is still 3. JEBOL gave
+-- such a word no user slot until 2026-10-09, so the assignment landed in lib
+-- itself and replaced the built-in for everything that used it -- while a
+-- script, read through LOAD's intern, already behaved as R3 does.
 rule SubmissionExtendsContextForFreshWords {
     when: submission: Submission.created
     requires: submission.status = submitted
     requires: reads_successfully(submission.source_text)
 
     ensures:
-        for word in set_words_within(submission.source_text):
-            if not is_known_in(submission.session.user_context, word.canonical):
+        for word in words_within(submission.source_text):
+            if not has_its_own_slot(submission.session.user_context, word.canonical):
                 values/ContextSlot.created(
                     context: submission.session.user_context,
                     spelling: word.spelling,
                     canonical: word.canonical,
-                    value: unset_value(),
+                    value: lib_value_of_or_unset(word),
                     is_protected: false
                 )
 
     @guidance
-        -- Slots start UNSET rather than NONE. A word that has been named
+        -- A word lib does not define starts UNSET rather than NONE. A word that has been named
         -- but not yet assigned is exactly what UNSET is for, and the
         -- evaluator already reports that differently from an unbound
         -- word.
