@@ -404,7 +404,7 @@ public final class LibContext {
         for (int at = 0; at + 1 < written.size(); at += 2) {
             if (written.get(at) instanceof AnyWordValue operator && written.get(at + 1) instanceof AnyWordValue twin) {
                 lib.register(operator.spelling(), new OperatorValue(operator.spelling(),
-                        registered(twin.spelling(), "operator " + operator.spelling() + " has no prefix twin called ")));
+                        thePrefixTwinOf(operator, twin)));
             }
         }
     }
@@ -432,11 +432,13 @@ public final class LibContext {
         built.declaredBy(spec, new DeclaredArguments(spec).inPlaceOf(built.parametersAsWritten()));
     }
 
-    private Value registered(String spelling, String complaintIfMissing) {
-        String canonical = Context.canonicalise(spelling);
-        if (!lib.holds(canonical)) {
-            throw new IllegalStateException(complaintIfMissing + spelling);
+    private AnyFunctionValue thePrefixTwinOf(AnyWordValue operator, AnyWordValue twin) {
+        String canonical = Context.canonicalise(twin.spelling());
+        if (!lib.holds(canonical)
+                || !(lib.ownSlotFor(canonical).value() instanceof AnyFunctionValue function)) {
+            throw new IllegalStateException("operator " + operator.spelling()
+                    + " has no prefix twin called " + twin.spelling());
         }
-        return lib.ownSlotFor(canonical).value();
+        return function;
     }
 }

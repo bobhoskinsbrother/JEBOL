@@ -35,7 +35,7 @@ public class SetNative extends DefaultNative {
             Value supplied = arguments.get(1);
             refuseUnassignable(target, EvaluationFailure.EXPECT_ARG);
             target.refuseToBeWrittenWhenItNamesSelf();
-            if (!refinements.contains("any") && supplied.datatype() == UnsetValue.TYPE) {
+            if (!refinements.contains("any") && supplied instanceof UnsetValue) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE, target);
             }
             return switch (target) {
@@ -87,7 +87,7 @@ public class SetNative extends DefaultNative {
 
     private void refuseUnsetAmong(List<Value> words, List<Value> values) {
         for (int index = 0; index < words.size() && index < values.size(); index++) {
-            if (values.get(index).datatype() == UnsetValue.TYPE) {
+            if (values.get(index) instanceof UnsetValue) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE, words.get(index));
             }
         }
@@ -143,7 +143,7 @@ public class SetNative extends DefaultNative {
         boolean onlySome = refinements.contains("some");
         for (ContextSlot slot : fieldsBothDeclare(into, from)) {
             Value supplied = from.context().ownSlotFor(slot.canonical()).value();
-            if (!anyValue && supplied.datatype() == UnsetValue.TYPE) {
+            if (!anyValue && supplied instanceof UnsetValue) {
                 continue;
             }
             if (onlySome && holdsSomething(slot.value()) && !holdsSomething(supplied)) {

@@ -954,7 +954,7 @@ public final class Interpreter {
     public String whatTheConsolePrints(ScriptOutcome outcome) {
         Value result = outcome.value();
         evaluator.setSystemState("last-result", result);
-        if (outcome.conclusion() == Conclusion.HALTED || result.datatype() == UnsetValue.TYPE) {
+        if (outcome.conclusion() == Conclusion.HALTED || result instanceof UnsetValue) {
             return "";
         }
         if (result instanceof ErrorValue error) {
@@ -968,7 +968,7 @@ public final class Interpreter {
 
     private boolean theConsoleShowsResultsOfTheType(Datatype type) {
         return pathInto("system", "options", "result-types") instanceof TypesetValue shown
-                && shown.members().contains(type);
+                && shown.holds(type);
     }
 
     private String cutShortAt(int longest, String written) {
@@ -985,7 +985,7 @@ public final class Interpreter {
 
     /** What a console would show for an outcome. */
     public String display(ScriptOutcome outcome) {
-        if (outcome.succeeded() && outcome.value().datatype() == UnsetValue.TYPE) {
+        if (outcome.succeeded() && outcome.value() instanceof UnsetValue) {
             return "";
         }
         return outcome.display();

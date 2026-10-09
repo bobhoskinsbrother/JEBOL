@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public record PortValue(Context context) implements Value {
+public record PortValue(Context context) implements Value, PathTargetWithFields {
 
     private static final Set<String> THE_SCHEMES_THAT_ARE_QUEUES =
             Set.of("system", "event", "callback");

@@ -19,7 +19,6 @@ public final class Evaluator {
 
     private final OutputPort output;
     private final Context systemContext;
-    private final PathDispatch pathDispatch = new PathDispatch();
 
     private Context runtimeContext;
     private final int maximumDepth;
@@ -820,8 +819,8 @@ public final class Evaluator {
             case PathValue path -> evaluatePath(frame, frames, path);
             case SetPathValue path -> evaluateSetPath(frame, path);
             case ErrorValue raised -> throw new Raised(raised);
-            default -> input.datatype().belongsTo(TypesetValue.ANY_FUNCTION)
-                            && input.datatype() != OperatorValue.TYPE
+            default -> input instanceof AnyFunctionValue
+                            && !(input instanceof OperatorValue)
                     ? calledWithoutAName(frame, frames, input)
                     : StepOutcome.of(input);
         };
@@ -913,10 +912,10 @@ public final class Evaluator {
             Frame frame, Deque<Frame> frames, AnyWordValue word) {
         ContextSlot slot = resolve(word);
         Value bound = slot.value();
-        if (bound.datatype() == UnsetValue.TYPE) {
+        if (bound instanceof UnsetValue) {
             throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
         }
-        if (bound.datatype() == OperatorValue.TYPE) {
+        if (bound instanceof OperatorValue) {
             boolean atTheVeryHead = frame.position - 1 <= 1;
             throw atTheVeryHead
                     ? Raised.of(EvaluationFailure.NO_OP_ARG,
@@ -926,7 +925,7 @@ public final class Evaluator {
                             "the operator " + word.spelling()
                                     + " has nothing on its left");
         }
-        if (!bound.datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
+        if (!(bound instanceof AnyFunctionValue)) {
             return StepOutcome.of(bound);
         }
         lastWordCalledThrough = word.spelling();
@@ -954,7 +953,7 @@ public final class Evaluator {
         return switch (argument) {
             case AnyWordValue word -> word.looksUpItsDeclaration();
             case AnyBlockValue path -> path instanceof PathValue;
-            default -> argument.datatype().belongsTo(TypesetValue.ANY_FUNCTION);
+            default -> argument instanceof AnyFunctionValue;
         };
     }
 
@@ -1032,7 +1031,7 @@ public final class Evaluator {
 
     private StepOutcome invoke(Frame frame, PendingCall call, Deque<Frame> frames) {
         if (call.isAssignment()) {
-            if (call.slot() != null && call.argumentsInDeclaredOrder().get(0).datatype() == UnsetValue.TYPE) {
+            if (call.slot() != null && call.argumentsInDeclaredOrder().get(0) instanceof UnsetValue) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE,
                         SetWordValue.of(call.slot().spelling()));
             }
@@ -1062,7 +1061,7 @@ public final class Evaluator {
                     trace.answered(built.nativeName(), produced);
                 }
                 yield built.nativeName().equals("do")
-                        && produced.datatype().belongsTo(TypesetValue.ANY_FUNCTION)
+                        && produced instanceof AnyFunctionValue
                         && !call.argumentsInDeclaredOrder().isEmpty()
                         && asksForReEvaluation(call.argumentsInDeclaredOrder().get(0))
                         ? startCall(frame, frames, produced, List.of())
@@ -1221,7 +1220,7 @@ public final class Evaluator {
     private StepOutcome evaluatePath(
             Frame frame, Deque<Frame> frames, AnyBlockValue path) {
         Selection selection = select(path, frame.context);
-        if (!selection.value().datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
+        if (!(selection.value() instanceof AnyFunctionValue)) {
             return StepOutcome.of(selection.value());
         }
         return startCall(
@@ -1297,7 +1296,7 @@ public final class Evaluator {
     }
 
     private void writeThroughPath(Frame frame, AnyBlockValue path, Value written) {
-        if (written.datatype() == UnsetValue.TYPE) {
+        if (written instanceof UnsetValue) {
             throw Raised.of(EvaluationFailure.NEED_VALUE, path);
         }
         List<Value> segments = path.remaining();
@@ -1342,13 +1341,12 @@ public final class Evaluator {
                 && select(PathValue.of(segments.subList(0, 1)),
                         frame.context).value() instanceof GobValue holdingPair
                 && GobPath.field(holdingPair, pairField) instanceof PairValue half) {
-            GobPath.write(holdingPair, pairField, new PairDispatcher().withHalfWritten(
-                    half, selectorFor(lastSegment, frame.context), written));
+            GobPath.write(holdingPair, pairField, half.withHalfWritten(
+                    selectorFor(lastSegment, frame.context), written));
             return;
         }
-        Optional<Dispatcher> dispatched = pathDispatch.forDatatype(target.datatype());
-        if (dispatched.isPresent()) {
-            dispatched.get().writeTo(
+        if (target instanceof PathTarget steppedInto) {
+            steppedInto.writeThrough(
                     place, selectorFor(lastSegment, frame.context), written);
             return;
         }
@@ -1489,7 +1487,7 @@ public final class Evaluator {
 
         for (int index = 1; index < segments.size(); index++) {
             Value segment = segments.get(index);
-            if (current.value().datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
+            if (current.value() instanceof AnyFunctionValue) {
                 AnyWordValue refinement = refinementWordOf(segment);
                 mentioned.add(refinement.canonical());
                 mentionedAsWritten.add(refinement);
@@ -1514,9 +1512,8 @@ public final class Evaluator {
 
     private Slot slotWith(Slot holder, Value selector) {
         Value target = holder.value();
-        Optional<Dispatcher> dispatched = pathDispatch.forDatatype(target.datatype());
-        if (dispatched.isPresent()) {
-            return dispatched.get().placeWithin(holder, selector);
+        if (target instanceof PathTarget steppedInto) {
+            return steppedInto.placeSteppedIntoBy(selector);
         }
         if (target instanceof RebolSeries series
                 && selector instanceof IntegerValue position
@@ -1565,7 +1562,7 @@ public final class Evaluator {
         if (segment instanceof AnyWordValue word) {
             AnyWordValue bound = word.isBound() ? word : word.boundTo(context);
             ContextSlot slot = resolve(bound);
-            if (slot.value().datatype() == UnsetValue.TYPE) {
+            if (slot.value() instanceof UnsetValue) {
                 throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
             }
             return slot;
@@ -1602,9 +1599,8 @@ public final class Evaluator {
     }
 
     private Value selectWith(Value target, Value selector) {
-        Optional<Dispatcher> dispatched = pathDispatch.forDatatype(target.datatype());
-        if (dispatched.isPresent()) {
-            return dispatched.get().readFrom(target, selector);
+        if (target instanceof PathTarget steppedInto) {
+            return steppedInto.steppedIntoBy(selector);
         }
         if (target instanceof TimeValue time) {
             return partOfATime(time, selector);

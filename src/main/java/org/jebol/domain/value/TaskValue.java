@@ -17,7 +17,7 @@ import java.util.List;
  * a script can read off a task -- its fields, its molded form, whether DO
  * answers it -- is here; whether anything runs is in spec/natives.allium.
  */
-public record TaskValue(Context context, AnyBlockValue body) implements Value {
+public record TaskValue(Context context, AnyBlockValue body) implements Value, PathTargetWithFields {
 
     /** The five names a task's header always has, in the order it has them. */
     public static final List<String> THE_FIELDS_A_TASK_HAS =

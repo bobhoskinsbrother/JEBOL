@@ -9,7 +9,7 @@ import java.util.List;
  * <p>Every operator has a prefix twin doing the same work, so {@code 1 + 2}
  * and {@code add 1 2} are one behaviour reached two ways.
  */
-public record OperatorValue(String operatorName, Value underlying) implements AnyFunctionValue {
+public record OperatorValue(String operatorName, AnyFunctionValue underlying) implements AnyFunctionValue {
 
     public OperatorValue {
         if (operatorName == null || operatorName.isEmpty()) {
@@ -17,11 +17,6 @@ public record OperatorValue(String operatorName, Value underlying) implements An
         }
         if (underlying == null) {
             throw new IllegalArgumentException("an operator needs something to dispatch to");
-        }
-        if (!underlying.datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
-            throw new IllegalArgumentException(
-                    "an operator dispatches to a function, not "
-                            + underlying.datatype().literalSpelling());
         }
     }
 
@@ -54,10 +49,10 @@ public record OperatorValue(String operatorName, Value underlying) implements An
 
         @Override
         public Value madeFrom(Value spec, Maker maker) {
-            Value dispatching = spec instanceof AnyBlockValue parts
+            Value offered = spec instanceof AnyBlockValue parts
                     ? aFunctionMadeFrom(parts, maker)
                     : spec;
-            if (!dispatching.datatype().belongsTo(TypesetValue.ANY_FUNCTION)
+            if (!(offered instanceof AnyFunctionValue dispatching)
                     || howManyArgumentsBeforeAnyRefinement(dispatching)
                             != THE_ARGUMENTS_AN_OPERATOR_TAKES) {
                 throw refusing(spec);
@@ -75,12 +70,11 @@ public record OperatorValue(String operatorName, Value underlying) implements An
             return maker.functionBoundFrom(functionSpec, body);
         }
 
-        private int howManyArgumentsBeforeAnyRefinement(Value dispatching) {
+        private int howManyArgumentsBeforeAnyRefinement(AnyFunctionValue dispatching) {
             List<Parameter> declared = switch (dispatching) {
                 case DeclaresParameters function -> function.parameters();
                 case OperatorValue operator ->
                         List.of(Parameter.required("a"), Parameter.required("b"));
-                default -> List.of();
             };
             int counted = 0;
             for (Parameter parameter : declared) {

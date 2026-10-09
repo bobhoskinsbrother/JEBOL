@@ -3,7 +3,7 @@ package org.jebol.domain.value;
 import java.util.List;
 import java.util.Optional;
 
-public record ModuleValue(Context context, ObjectValue header) implements Value {
+public record ModuleValue(Context context, ObjectValue header) implements Value, PathTargetWithFields {
 
     public ModuleValue {
         if (context == null || context.isUnbound()) {

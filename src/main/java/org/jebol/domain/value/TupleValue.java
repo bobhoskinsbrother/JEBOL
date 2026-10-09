@@ -30,7 +30,7 @@ import java.util.stream.IntStream;
  * twelve octets. {@code Emit_Tuple} in {@code t-tuple.c} is the padding to
  * three, and {@code Cmp_Tuple} beside it is the comparison over the zeros.
  */
-public record TupleValue(int[] segments) implements Value {
+public record TupleValue(int[] segments) implements Value, PathTarget {
 
     /** What a tuple shows however few octets it keeps. */
     public static final int MINIMUM_SHOWN_SEGMENTS = 3;
@@ -168,6 +168,42 @@ public record TupleValue(int[] segments) implements Value {
         return oneBasedPosition < 1 || oneBasedPosition > shownCount()
                 ? NoneValue.none()
                 : IntegerValue.of(octetAt(oneBasedPosition));
+    }
+
+    @Override
+    public Value steppedIntoBy(Value selector) {
+        if (!(selector instanceof IntegerValue(long at))) {
+            throw Raised.of(EvaluationFailure.INVALID_PATH,
+                    "cannot select " + selector.datatype().literalSpelling()
+                            + " from " + datatype().literalSpelling());
+        }
+        return at < 1 || at > shownCount() ? NoneValue.none() : picked((int) at);
+    }
+
+    @Override
+    public void writeThrough(Slot place, Value selector, Value written) {
+        if (!(selector instanceof IntegerValue(long magnitude))) {
+            throw Raised.of(EvaluationFailure.INVALID_PATH, Molder.mold(selector));
+        }
+        place.setValue(withOctetWritten((int) magnitude, written));
+    }
+
+    private TupleValue withOctetWritten(int position, Value written) {
+        if (position < 1 || position > MAXIMUM_SEGMENTS) {
+            throw Raised.of(EvaluationFailure.INVALID_PATH, Integer.toString(position));
+        }
+        if (written instanceof NoneValue) {
+            return TupleValue.of(Arrays.copyOf(segments, position - 1));
+        }
+        long amount = switch (written) {
+            case IntegerValue(long magnitude) -> magnitude;
+            case AnyDecimalValue quantity -> (long) quantity.quantity();
+            default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET);
+        };
+        int[] octets = octetsToTwelve();
+        octets[position - 1] = (int) Math.max(0, Math.min(TupleDatatype.THE_LARGEST_OCTET, amount));
+        int kept = position > shownCount() ? position : segmentCount();
+        return TupleValue.of(Arrays.copyOf(octets, kept));
     }
 
     /** An octet by position, counting from one, and zero past the kept ones. */

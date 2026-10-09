@@ -41,7 +41,7 @@ public class ApplyNative extends DefaultNative {
                     : new ArrayList<>(evaluator.evaluateEachOrRaise(given, context));
             Value callee = arguments.getFirst();
             while (isDo(callee) && !supplied.isEmpty()
-                    && supplied.getFirst().datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
+                    && supplied.getFirst() instanceof AnyFunctionValue) {
                 callee = supplied.removeFirst();
             }
             if (callee instanceof NativeValue builtIn

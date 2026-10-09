@@ -87,7 +87,7 @@ public class SortAction extends DefaultNative implements ActionValue {
         }
         if (refinements.contains("all")
                 && comparator.isPresent()
-                && !comparator.get().datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
+                && !(comparator.get() instanceof AnyFunctionValue)) {
             throw Raised.of(EvaluationFailure.BAD_REFINES,
                     "sort/all compares whole records, so a column has nothing left to say");
         }

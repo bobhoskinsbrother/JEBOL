@@ -5,7 +5,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
-public record ObjectValue(Context context) implements Value {
+public record ObjectValue(Context context) implements Value, PathTargetWithFields {
 
     @Override
     public boolean equalTo(Value other, Sameness how) {

@@ -1,8 +1,6 @@
-package org.jebol.domain.eval;
+package org.jebol.domain.value;
 
-import org.jebol.domain.value.*;
-
-record ComputedSlot(Value held, Value selector) implements Slot {
+public record ComputedSlot(Value held, Value selector) implements Slot {
 
     @Override
     public Value value() {

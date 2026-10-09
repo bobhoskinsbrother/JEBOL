@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class MapValue implements Value {
+public final class MapValue implements Value, PathTarget {
 
     private final Map<Value, Value> entries;
     private boolean protectedFromChange;
@@ -165,6 +165,31 @@ public final class MapValue implements Value {
 
     public void put(Value key, Value value) {
         put(key, value, false);
+    }
+
+    @Override
+    public Value steppedIntoBy(Value selector) {
+        return select(selector);
+    }
+
+    @Override
+    public Slot placeSteppedIntoBy(Value selector) {
+        return new MapSlot(this, selector, select(selector));
+    }
+
+    @Override
+    public void writeThrough(Slot place, Value selector, Value written) {
+        if (isProtected()) {
+            throw Raised.of(EvaluationFailure.PROTECTED);
+        }
+        putUnlessTheKeyIsNone(selector, written);
+    }
+
+    void putUnlessTheKeyIsNone(Value key, Value written) {
+        if (key instanceof NoneValue) {
+            return;
+        }
+        put(key, written);
     }
 
     public void put(Value key, Value value, boolean mindingCase) {

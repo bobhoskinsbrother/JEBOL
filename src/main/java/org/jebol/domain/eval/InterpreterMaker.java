@@ -113,7 +113,7 @@ public final class InterpreterMaker implements Maker {
     }
 
     @Override
-    public Value makeFunctionFrom(AnyFunctionValue prototype, AnyBlockValue spec) {
+    public AnyFunctionValue makeFunctionFrom(AnyFunctionValue prototype, AnyBlockValue spec) {
         List<Value> parts = spec.remaining();
         if (parts.isEmpty()) {
             return prototype;
@@ -135,10 +135,10 @@ public final class InterpreterMaker implements Maker {
                     newBody.map(this::asABlock).orElseGet(() -> asABlock(written.body())),
                     written.closedOver());
             case NativeValue built -> newSpecification
-                    .<Value>map(given -> built.derivedWith(given, FunctionSpec.parametersIn(given)))
+                    .<AnyFunctionValue>map(given -> built.derivedWith(given, FunctionSpec.parametersIn(given)))
                     .orElse(built);
             case OperatorValue operator -> newSpecification
-                    .<Value>map(given -> operatorRespecified(operator, given))
+                    .<AnyFunctionValue>map(given -> operatorRespecified(operator, given))
                     .orElse(operator);
         };
     }
@@ -147,12 +147,9 @@ public final class InterpreterMaker implements Maker {
         return prototype instanceof DefinedFunctionValue && body instanceof AnyBlockValue;
     }
 
-    private Value operatorRespecified(OperatorValue operator, AnyBlockValue specification) {
-        if (!(operator.underlying() instanceof AnyFunctionValue dispatching)) {
-            throw operator.refusedAsAPrototypeFor(specification);
-        }
+    private OperatorValue operatorRespecified(OperatorValue operator, AnyBlockValue specification) {
         return new OperatorValue(operator.operatorName(),
-                makeFunctionFrom(dispatching, BlockValue.block(List.of(specification))));
+                makeFunctionFrom(operator.underlying(), BlockValue.block(List.of(specification))));
     }
 
     private AnyBlockValue asABlock(Value half) {

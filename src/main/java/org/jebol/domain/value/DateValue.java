@@ -1,6 +1,7 @@
 package org.jebol.domain.value;
 
 import org.jebol.domain.date.DateMaking;
+import org.jebol.domain.date.part.DatePart;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,7 +19,17 @@ public record DateValue(
         int month,
         int day,
         Optional<TimeValue> timeOfDay,
-        Optional<Integer> zoneMinutes) implements Value {
+        Optional<Integer> zoneMinutes) implements Value, PathTarget {
+
+    @Override
+    public Value steppedIntoBy(Value selector) {
+        return DatePart.readFrom(this, selector);
+    }
+
+    @Override
+    public void writeThrough(Slot place, Value selector, Value written) {
+        place.setValue(DatePart.writtenOn(this, selector, written));
+    }
 
     @Override
     public Value arithmetic(Value right, ArithmeticOperation operation) {
