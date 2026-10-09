@@ -3,6 +3,8 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.host.ScreenPort;
 
+import java.util.function.Supplier;
+
 public abstract class ScreenNative extends WindowNative {
 
     protected ScreenNative(GrantedServices granted) {
@@ -10,8 +12,15 @@ public abstract class ScreenNative extends WindowNative {
     }
 
     protected void throughTheScreen(Runnable operation) {
-        try {
+        answeredThroughTheScreen(() -> {
             operation.run();
+            return null;
+        });
+    }
+
+    protected <T> T answeredThroughTheScreen(Supplier<T> asking) {
+        try {
+            return asking.get();
         } catch (ScreenPort.Denied denied) {
             throw refusedByTheHost(denied.errorId(), denied.getMessage());
         }

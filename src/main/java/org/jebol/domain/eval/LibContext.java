@@ -397,6 +397,9 @@ public final class LibContext {
         registerExtension(new InitTopWindowNative(grantedServices));
         registerExtension(new ShowNative(grantedServices));
         registerExtension(new GuiMetricNative(grantedServices));
+        registerExtension(new CaretToOffsetNative(grantedServices));
+        registerExtension(new OffsetToCaretNative(grantedServices));
+        registerExtension(new SizeTextNative(grantedServices));
     }
 
     private void registerOperators() {

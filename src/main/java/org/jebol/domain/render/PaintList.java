@@ -186,7 +186,7 @@ public record PaintList(List<PaintInstruction> instructions) {
         RichText.Line line = new RichText(Colour.BLACK).lineIn(richText);
         return line.runs().isEmpty()
                 ? List.of()
-                : List.of(new PaintInstruction.Writing(where, line.runs(), line.layout()));
+                : List.of(new PaintInstruction.Writing(where, line.runs(), line.layout(), line.caret()));
     }
 
     private static java.util.Optional<PaintInstruction> pictured(

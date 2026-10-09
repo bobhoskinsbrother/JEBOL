@@ -20,13 +20,19 @@ public record TextLayout(
     }
 
     public LinePlacement whereTheLineGoes(Placement box, double lineWide, double ascent, double descent) {
-        double left = box.across() + originAcross;
-        double top = box.down() + originDown;
-        double roomAcross = box.wide() - originAcross - marginAcross;
-        double roomDown = box.high() - originDown - marginDown;
         return new LinePlacement(
-                left + theShareOfTheSpareRoomBefore(roomAcross - lineWide),
-                top + theSpaceAboveTheLine(roomDown, ascent + descent) + ascent);
+                whereALineStarts(box, lineWide),
+                whereTheStackStarts(box, ascent + descent) + ascent);
+    }
+
+    public double whereALineStarts(Placement box, double lineWide) {
+        double roomAcross = box.wide() - originAcross - marginAcross;
+        return box.across() + originAcross + theShareOfTheSpareRoomBefore(roomAcross - lineWide);
+    }
+
+    public double whereTheStackStarts(Placement box, double stackHigh) {
+        double roomDown = box.high() - originDown - marginDown;
+        return box.down() + originDown + theSpaceAboveTheLine(roomDown, stackHigh);
     }
 
     private double theShareOfTheSpareRoomBefore(double spareRoom) {

@@ -5,6 +5,7 @@ import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.ScreenPort;
+import org.jebol.domain.render.TextMeasure;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
@@ -75,6 +76,11 @@ class WhatEachScreenNativeDeclaresTest {
         @Override
         public Optional<ScreenEvent> takeTheNextEvent() {
             return Optional.empty();
+        }
+
+        @Override
+        public TextMeasure textMeasure() {
+            return ScreenPort.none().textMeasure();
         }
     }
 

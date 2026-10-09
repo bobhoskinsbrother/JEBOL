@@ -80,13 +80,26 @@ the-show-queue-is-shown-one-gob-at-a-time: func [block] [
 	]
 ]
 
+every-colours-fourth-number-is-read-as-its-transparency: func [block /local colour] [
+	forall block [
+		if all [tuple? block/1 4 = length? block/1] [
+			colour: block/1
+			colour/4: 255 - colour/4
+			change block colour
+		]
+		if any [block? block/1 paren? block/1] [
+			every-colours-fourth-number-is-read-as-its-transparency block/1
+		]
+	]
+]
+
 a-colour-scaled-as-2010-scaled-it: func [colour multiplier /local scaled] [
 	scaled: colour * multiplier
-	if 4 = length? colour [scaled/4: colour/4]
+	if 4 = length? colour [scaled/4: 255 - min 255 to integer! 255 - colour/4 * multiplier]
 	scaled
 ]
 
-span-colors-leaves-the-fourth-number-as-2010-did: func [block] [
+span-colors-scales-transparency-as-2010-did: func [block] [
 	forall block [
 		if all [set-word? block/1 block/1 = quote span-colors:] [
 			block/4: [
@@ -95,7 +108,38 @@ span-colors-leaves-the-fourth-number-as-2010-did: func [block] [
 				out
 			]
 		]
-		if block? block/1 [span-colors-leaves-the-fourth-number-as-2010-did block/1]
+		if block? block/1 [span-colors-scales-transparency-as-2010-did block/1]
+	]
+]
+
+reset-the-faces-in: func [panel] [
+	foreach face any [select panel 'faces []] [
+		case [
+			has-actor? face 'on-reset [do-style face 'on-reset none]
+			find [check radio toggle] face/style [set-face face true? get-facet face 'orig-state]
+		]
+		if select face 'faces [reset-the-faces-in face]
+	]
+]
+
+reset-everything-in-the-panel-of: func [face /local outer] [
+	while [not select face 'names] [
+		unless outer: parent-face? face [break]
+		face: outer
+	]
+	reset-the-faces-in face
+]
+
+reset-with-no-name-resets-the-whole-form: func [block] [
+	forall block [
+		if all [
+			set-word? block/1 block/1 = quote reset:
+			block? block/2 string? first block/2
+			block? block/3
+		] [
+			block/3: [either name [do-style get name 'on-reset none] [reset-everything-in-the-panel-of face]]
+		]
+		if block? block/1 [reset-with-no-name-resets-the-whole-form block/1]
 	]
 ]
 
@@ -104,6 +148,8 @@ move-the-event-port-out-of-system-view gui
 a-word-given-to-set-as-a-get-word-is-set-as-a-plain-word gui
 the-key-handler-also-takes-the-keys-that-type-nothing gui
 the-show-queue-is-shown-one-gob-at-a-time gui
-span-colors-leaves-the-fourth-number-as-2010-did gui
+every-colours-fourth-number-is-read-as-its-transparency gui
+span-colors-scales-transparency-as-2010-did gui
+reset-with-no-name-resets-the-whole-form gui
 gui-event-port: none
 do gui

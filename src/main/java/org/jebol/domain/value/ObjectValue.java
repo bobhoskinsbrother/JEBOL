@@ -17,6 +17,9 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
     public boolean everyFieldAgrees(
             ObjectValue other, java.util.function.BiPredicate<Value, Value> agree) {
 
+        if (other.context == context) {
+            return true;
+        }
         java.util.Map<String, Value> ours = context.fieldsExcludingSelf();
         java.util.Map<String, Value> theirs = other.context.fieldsExcludingSelf();
         if (!ours.keySet().equals(theirs.keySet())
@@ -36,14 +39,13 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof ObjectValue(Context context1)
-                && context.fieldsExcludingSelf().equals(context1.fieldsExcludingSelf())
-                && context.fieldCount() == context1.fieldCount();
+        return other instanceof ObjectValue theirs
+                && everyFieldAgrees(theirs, Object::equals);
     }
 
     @Override
     public int hashCode() {
-        return context.fieldsExcludingSelf().hashCode();
+        return context.fieldsExcludingSelf().keySet().hashCode();
     }
 
     @Override

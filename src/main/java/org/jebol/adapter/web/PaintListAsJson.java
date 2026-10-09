@@ -33,7 +33,8 @@ final class PaintListAsJson {
                     holding("runs", written.runs().stream()
                             .map(PaintListAsJson::asARun)
                             .collect(Collectors.joining(",", "[", "]"))),
-                    holding("layout", asALayout(written.layout())));
+                    holding("layout", asALayout(written.layout())),
+                    holding("caret", asACaret(written.caret())));
             case PaintInstruction.Picture shown -> anObject(
                     placed(shown),
                     measuring("draw-wide", shown.wide()),
@@ -116,6 +117,22 @@ final class PaintListAsJson {
                 measuring("size", run.size()),
                 holding("bold", String.valueOf(run.bold())),
                 holding("italic", String.valueOf(run.italic())));
+    }
+
+    private static String asACaret(TextCaret caret) {
+        if (!caret.isShown()) {
+            return "null";
+        }
+        return anObject(
+                counting("run", caret.run()),
+                counting("character", caret.character()),
+                holding("selection", caret.marksASelection()
+                        ? anObject(
+                                counting("from-run", caret.selectionFrom().run()),
+                                counting("from-character", caret.selectionFrom().character()),
+                                counting("to-run", caret.selectionTo().run()),
+                                counting("to-character", caret.selectionTo().character()))
+                        : "null"));
     }
 
     private static String asALayout(TextLayout layout) {

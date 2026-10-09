@@ -30,8 +30,7 @@ class TheSlidersExampleSurvivesAnOperatorEndToEndTest {
     private static final String NOTHING_WENT_WRONG = "fine";
 
     private static final String OPEN_THE_EXAMPLE = """
-            change-dir %examples/sliders/
-            do %text-stand-ins.r
+            change-dir %examples/r3-gui/
             do %gui-322.r
             the-layout: last load %sliders.r
             gui-view: get bind 'view first find gui first [view:]
@@ -329,15 +328,15 @@ class TheSlidersExampleSurvivesAnOperatorEndToEndTest {
     }
 
     @Test
-    @DisplayName("the progress bar's track keeps its half opacity when the GUI darkens it, as 2010's scaling left the fourth number alone")
+    @DisplayName("the progress bar's track is dark, its 2010 transparency darkened with it and read as 3.22's opacity")
     void theProgressTrackIsDark() {
         assertThat(interpreter.display(interpreter.run("""
                 track: get-facet the-faces-styled 'progress 1 'area-fill
                 collect [foreach colour track [keep colour/4]]""")))
-                .isEqualTo("[128 128 128]");
+                .isEqualTo("[217 191 127]");
         assertThat(interpreter.display(interpreter.run("""
                 first get-facet the-faces-styled 'progress 1 'area-fill""")))
-                .isEqualTo("24.24.24.128");
+                .isEqualTo("24.24.24.217");
     }
 
     @Test

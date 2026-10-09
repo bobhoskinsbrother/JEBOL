@@ -22,21 +22,33 @@ final class RichText {
     private boolean bold;
     private boolean italic;
     private TextLayout layout = TextLayout.STANDARD;
-    private boolean theNextObjectIsAPara;
+    private WhatTheNextObjectIs theNextObject = WhatTheNextObjectIs.A_FONT;
+    private Optional<ObjectValue> theCaretObject = Optional.empty();
+
+    private enum WhatTheNextObjectIs { A_FONT, A_PARA, A_CARET }
 
     RichText(Colour penColour) {
         this.colour = penColour;
     }
 
-    record Line(List<TextRun> runs, TextLayout layout) {
+    record Line(List<TextRun> runs, List<Integer> placeOfEachRun, TextLayout layout, TextCaret caret) {
+
+        Optional<Integer> theRunAt(int placeInTheBlock) {
+            int run = placeOfEachRun.indexOf(placeInTheBlock);
+            return run < 0 ? Optional.empty() : Optional.of(run);
+        }
     }
 
     Line lineIn(AnyBlockValue block) {
         List<TextRun> runs = new ArrayList<>();
-        for (Value item : block.remaining()) {
-            switch (item) {
-                case AnyStringValue said when !said.text().isEmpty() ->
-                        runs.add(new TextRun(said.text(), colour, size, bold, italic));
+        List<Integer> places = new ArrayList<>();
+        List<Value> items = block.remaining();
+        for (int offset = 0; offset < items.size(); offset++) {
+            switch (items.get(offset)) {
+                case AnyStringValue said -> {
+                    runs.add(new TextRun(said.text(), colour, size, bold, italic));
+                    places.add(block.index() + offset);
+                }
                 case TupleValue parts -> colour = Colour.ofTuple(parts);
                 case AnyWordValue command -> obeyTheWord(command);
                 case ObjectValue fields -> takeTheObject(fields);
@@ -45,28 +57,58 @@ final class RichText {
                 }
             }
         }
-        return new Line(List.copyOf(runs), layout);
+        Line withoutACaret = new Line(List.copyOf(runs), List.copyOf(places), layout, TextCaret.NONE);
+        return new Line(withoutACaret.runs(), withoutACaret.placeOfEachRun(), layout,
+                theCaretObject.map(fields -> theCaretIn(fields, withoutACaret)).orElse(TextCaret.NONE));
     }
 
     private void obeyTheWord(AnyWordValue command) {
         boolean turningItOn = !(command instanceof RefinementValue);
-        theNextObjectIsAPara = false;
+        theNextObject = WhatTheNextObjectIs.A_FONT;
         switch (command.canonical()) {
             case "bold", "b" -> bold = turningItOn;
             case "italic", "i" -> italic = turningItOn;
-            case "para" -> theNextObjectIsAPara = true;
+            case "para" -> theNextObject = WhatTheNextObjectIs.A_PARA;
+            case "caret" -> theNextObject = WhatTheNextObjectIs.A_CARET;
             default -> {
             }
         }
     }
 
     private void takeTheObject(ObjectValue fields) {
-        if (theNextObjectIsAPara) {
-            takeTheParaIn(fields);
-        } else {
-            takeTheFontIn(fields);
+        switch (theNextObject) {
+            case A_PARA -> takeTheParaIn(fields);
+            case A_CARET -> theCaretObject = Optional.of(fields);
+            case A_FONT -> takeTheFontIn(fields);
         }
-        theNextObjectIsAPara = false;
+        theNextObject = WhatTheNextObjectIs.A_FONT;
+    }
+
+    private TextCaret theCaretIn(ObjectValue fields, Line line) {
+        return new TextCaret(
+                thePlaceNamedBy(theField(fields, "caret"), line),
+                thePlaceNamedBy(theField(fields, "start"), line),
+                thePlaceNamedBy(theField(fields, "end"), line));
+    }
+
+    private TextLines.RunAndCharacter thePlaceNamedBy(Optional<Value> field, Line line) {
+        if (field.isEmpty() || !(field.get() instanceof AnyBlockValue pair) || pair.remaining().size() < 2) {
+            return TextLines.RunAndCharacter.NOWHERE;
+        }
+        Optional<Integer> placeInTheBlock = switch (pair.remaining().get(0)) {
+            case AnyBlockValue atTheString -> Optional.of(atTheString.index());
+            case IntegerValue(long place) when place > 0 -> Optional.of((int) place);
+            default -> Optional.empty();
+        };
+        Optional<Integer> character = switch (pair.remaining().get(1)) {
+            case AnyStringValue atTheCaret -> Optional.of(atTheCaret.index() - 1);
+            case IntegerValue(long place) when place > 0 -> Optional.of((int) place - 1);
+            default -> Optional.empty();
+        };
+        Optional<Integer> run = placeInTheBlock.flatMap(line::theRunAt);
+        return run.isPresent() && character.isPresent()
+                ? new TextLines.RunAndCharacter(run.get(), character.get())
+                : TextLines.RunAndCharacter.NOWHERE;
     }
 
     private void takeTheFontIn(ObjectValue fields) {

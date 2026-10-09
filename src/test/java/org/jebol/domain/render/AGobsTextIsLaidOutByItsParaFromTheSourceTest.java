@@ -267,11 +267,11 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("an empty string is not a run")
-        void anEmptyStringIsNoRun() {
+        @DisplayName("an empty string is a run, so an empty field still has a line and a place for its caret")
+        void anEmptyStringIsARun() {
             assertThat(theOnlyLineOf("""
                     "" "label" ""
-                    """).runs()).extracting(TextRun::text).containsExactly("label");
+                    """).runs()).extracting(TextRun::text).containsExactly("", "label", "");
         }
     }
 }

@@ -121,6 +121,24 @@ class PaintListAsJsonFromTheSourceTest {
         }
 
         @Test
+        @DisplayName("a caret crosses with the run and the character it is before, and no caret crosses as null")
+        void aCaretCrosses() {
+            assertThat(written("""
+                    written: copy {abcd}
+                    labelled: make gob! [size: 100x20]
+                    labelled/text: reduce ['caret make object! [caret: none start: none end: none] written]
+                    caret: select labelled/text 'caret
+                    caret/caret: reduce [at labelled/text 3 at written 3]
+                    labelled"""))
+                    .contains("""
+                            "caret":{"run":0,"character":2,"selection":null}""");
+            assertThat(written("""
+                    make gob! [size: 100x20 text: "hello"]"""))
+                    .contains("""
+                            "caret":null""");
+        }
+
+        @Test
         @DisplayName("a colour it can see through crosses as rgba")
         void aSeeThroughColourCrossesAsRgba() {
             assertThat(written("""

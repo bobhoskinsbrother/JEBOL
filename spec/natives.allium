@@ -6028,6 +6028,30 @@ rule ObjectEqualityComparesFieldsAsValues {
                     field_value_at(request.left, at), field_value_at(request.right, at))))
 }
 
+-- An object is equal to itself without its fields being looked at, as R3's
+-- comparison answers the same frame first. That is what lets an object that
+-- refers back to itself be compared at all: a GUI face points at its parent,
+-- whose pane points at the face, and the 2010 R3 GUI asks `over-face <> face`
+-- every time the pointer moves within one face. JEBOL compared the fields
+-- every time until 2026-10-09 and the comparison never ended.
+rule AnObjectIsEqualToItselfWithoutLookingInside {
+    when: EvaluateComparison(request)
+    requires: request.strictness in {equal, equiv, strict_equal}
+    requires: is_object(request.left) and request.left = request.right
+    ensures: ComparisonHolds(holds: true)
+}
+
+-- Two different objects that refer to each other, or each to itself, have
+-- no end to their comparison. R3 raises stack-overflow for two such blocks,
+-- an error a script can catch, and dies with nothing said for two such
+-- objects; JEBOL raises stack-overflow for both, because ending the whole
+-- process is never the answer to a question a script asked.
+rule AComparisonWithNoEndRaisesStackOverflow {
+    when: EvaluateComparison(request)
+    requires: the_comparison_never_ends(request.left, request.right)
+    ensures: ComparisonFailed(failure: stack_overflow)
+}
+
 -- How far apart two decimals may be and still be equal, counted in steps
 -- of the floating point representation rather than as a fixed amount, so
 -- the allowance scales with the size of the numbers.

@@ -1,5 +1,6 @@
 package org.jebol.domain.host;
 
+import org.jebol.domain.render.TextMeasure;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Value;
@@ -75,6 +76,8 @@ public interface ScreenPort {
      * {@code spec/screen.allium}.
      */
     Optional<ScreenEvent> takeTheNextEvent();
+
+    TextMeasure textMeasure();
 
     /**
      * Makes a gob the root: remembered, cut loose, and sized to the screen.
@@ -183,6 +186,14 @@ public interface ScreenPort {
             @Override
             public Optional<ScreenEvent> takeTheNextEvent() {
                 return Optional.empty();
+            }
+
+            @Override
+            public TextMeasure textMeasure() {
+                return run -> {
+                    throw new Denied("no-service",
+                            "this interpreter was given no screen to measure text with");
+                };
             }
         };
     }

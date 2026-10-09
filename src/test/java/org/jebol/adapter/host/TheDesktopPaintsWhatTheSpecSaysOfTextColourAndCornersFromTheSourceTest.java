@@ -162,6 +162,56 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
     }
 
     @Nested
+    @DisplayName("text over several lines, and a caret in it")
+    class LinesAndACaret {
+
+        @Test
+        @DisplayName("a newline puts the second line below the first, not after it")
+        void aNewlineStartsALineBelow() {
+            Ink ink = theInkOf(aLabel("""
+                    para (make object! [origin: 0x0 margin: 0x0 align: 'left valign: 'top])
+                    "MM^/MM"
+                    """));
+
+            assertThat(ink.bottom() - ink.top()).as("two lines tall").isGreaterThan(18);
+            assertThat(ink.right()).as("no wider than one line of MM").isLessThan(40);
+        }
+
+        @Test
+        @DisplayName("a set caret is drawn as a line where the text after it starts")
+        void aSetCaretIsDrawn() {
+            BufferedImage surface = painted("""
+                    written: copy {MMMM}
+                    labelled: make gob! [size: 200x40]
+                    labelled/text: reduce [
+                        'para make object! [origin: 0x0 margin: 0x0 align: 'left valign: 'top]
+                        'caret make object! [caret: none start: none end: none]
+                        written
+                    ]
+                    caret: select labelled/text 'caret
+                    caret/caret: reduce [at labelled/text 4 written]
+                    labelled""");
+
+            assertThat(theInkOf(surface).left()).as("the caret before the first M").isBetween(0, 1);
+        }
+
+        @Test
+        @DisplayName("and an unset caret draws nothing where the text starts")
+        void anUnsetCaretIsNotDrawn() {
+            BufferedImage surface = painted("""
+                    labelled: make gob! [size: 200x40]
+                    labelled/text: reduce [
+                        'para make object! [origin: 10x0 margin: 0x0 align: 'left valign: 'top]
+                        'caret make object! [caret: [0 0] start: [0 0] end: [0 0]]
+                        copy {MMMM}
+                    ]
+                    labelled""");
+
+            assertThat(theInkOf(surface).left()).isGreaterThanOrEqualTo(10);
+        }
+    }
+
+    @Nested
     @DisplayName("a font's shadow")
     class TheShadow {
 

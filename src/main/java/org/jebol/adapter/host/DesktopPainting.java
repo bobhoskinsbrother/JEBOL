@@ -1,5 +1,6 @@
 package org.jebol.adapter.host;
 
+import org.jebol.adapter.fonts.JavaTextMeasure;
 import org.jebol.domain.render.*;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ImageValue;
@@ -10,6 +11,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Arc2D;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Path2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Optional;
@@ -23,7 +25,9 @@ import java.util.Optional;
 public final class DesktopPainting {
 
     private static final int OPAQUE = Placement.OPAQUE;
-    private static final Font TEXT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+    private static final JavaTextMeasure MEASURE = new JavaTextMeasure();
+    private static final Color THE_COLOUR_A_SELECTION_IS_MARKED_IN = new Color(170, 200, 245);
+    private static final double THE_WIDTH_OF_A_CARET = 1;
 
     private DesktopPainting() {
     }
@@ -114,44 +118,72 @@ public final class DesktopPainting {
     private static void write(
             Graphics2D onto, Placement where, PaintInstruction.Writing written) {
 
-        List<FontMetrics> measured = written.runs().stream()
-                .map(run -> onto.getFontMetrics(theFontOf(run)))
-                .toList();
-        double lineWide = 0;
-        double ascent = 0;
-        double descent = 0;
-        for (int index = 0; index < measured.size(); index++) {
-            lineWide += measured.get(index).stringWidth(written.runs().get(index).text());
-            ascent = Math.max(ascent, measured.get(index).getAscent());
-            descent = Math.max(descent, measured.get(index).getDescent());
-        }
+        TextLines lines = new TextLines(written.runs(), MEASURE);
         TextLayout layout = written.layout();
-        TextLayout.LinePlacement placed = layout.whereTheLineGoes(where, lineWide, ascent, descent);
+        markTheSelection(onto, lines, layout, where, written.caret());
         if (layout.castsAShadow()) {
-            writeTheRuns(onto, written.runs(), measured,
-                    placed.across() + layout.shadowAcross(), placed.baseline() + layout.shadowDown(),
+            writeTheLines(onto, lines, layout, where, layout.shadowAcross(), layout.shadowDown(),
                     Optional.of(Color.BLACK));
         }
-        writeTheRuns(onto, written.runs(), measured, placed.across(), placed.baseline(), Optional.empty());
+        writeTheLines(onto, lines, layout, where, 0, 0, Optional.empty());
+        drawTheCaret(onto, lines, layout, where, written);
     }
 
-    private static void writeTheRuns(Graphics2D onto, List<TextRun> runs, List<FontMetrics> measured,
-            double across, double baseline, Optional<Color> everyRunIn) {
+    private static void writeTheLines(Graphics2D onto, TextLines lines, TextLayout layout, Placement where,
+            double movedAcross, double movedDown, Optional<Color> everyRunIn) {
 
-        double alongTheLine = across;
-        for (int index = 0; index < runs.size(); index++) {
-            TextRun run = runs.get(index);
-            onto.setFont(theFontOf(run));
-            onto.setColor(everyRunIn.orElseGet(() -> javaColourOf(run.colour())));
-            onto.drawString(run.text(), (float) alongTheLine, (float) baseline);
-            alongTheLine += measured.get(index).stringWidth(run.text());
+        for (int index = 0; index < lines.lines().size(); index++) {
+            TextLines.Line line = lines.lines().get(index);
+            double along = lines.startOfLine(index, layout, where) + movedAcross;
+            double baseline = lines.topOfLine(index, layout, where) + line.ascent() + movedDown;
+            for (TextLines.Piece piece : line.pieces()) {
+                onto.setFont(MEASURE.fontOf(piece.font()));
+                onto.setColor(everyRunIn.orElseGet(() -> javaColourOf(piece.font().colour())));
+                onto.drawString(piece.text(), (float) along, (float) baseline);
+                along += piece.wide();
+            }
         }
     }
 
-    private static Font theFontOf(TextRun run) {
-        return TEXT.deriveFont(
-                (run.bold() ? Font.BOLD : 0) | (run.italic() ? Font.ITALIC : 0),
-                (float) run.size());
+    private static void markTheSelection(Graphics2D onto, TextLines lines, TextLayout layout, Placement where,
+            TextCaret caret) {
+
+        if (!caret.marksASelection()) {
+            return;
+        }
+        TextLines.CaretPlace from = lines.whereTheCaretIs(
+                caret.selectionFrom().run(), caret.selectionFrom().character(), layout, where);
+        TextLines.CaretPlace to = lines.whereTheCaretIs(
+                caret.selectionTo().run(), caret.selectionTo().character(), layout, where);
+        TextLines.CaretPlace first = from.top() < to.top() || (from.top() == to.top() && from.across() <= to.across())
+                ? from : to;
+        TextLines.CaretPlace last = first == from ? to : from;
+        onto.setColor(THE_COLOUR_A_SELECTION_IS_MARKED_IN);
+        if (first.top() == last.top()) {
+            fillBetween(onto, first.across(), first.top(), last.across(), first.top() + first.high());
+            return;
+        }
+        fillBetween(onto, first.across(), first.top(), where.across() + where.wide(), first.top() + first.high());
+        fillBetween(onto, where.across(), first.top() + first.high(), where.across() + where.wide(), last.top());
+        fillBetween(onto, where.across(), last.top(), last.across(), last.top() + last.high());
+    }
+
+    private static void fillBetween(Graphics2D onto, double left, double top, double right, double bottom) {
+        onto.fill(new Rectangle2D.Double(left, top, Math.max(0, right - left), Math.max(0, bottom - top)));
+    }
+
+    private static void drawTheCaret(Graphics2D onto, TextLines lines, TextLayout layout, Placement where,
+            PaintInstruction.Writing written) {
+
+        TextCaret caret = written.caret();
+        if (!caret.isShown()) {
+            return;
+        }
+        TextLines.CaretPlace placed = lines.whereTheCaretIs(caret.run(), caret.character(), layout, where);
+        Colour inked = caret.run() < written.runs().size() ? written.runs().get(caret.run()).colour() : Colour.BLACK;
+        onto.setColor(javaColourOf(inked));
+        fillBetween(onto, placed.across(), placed.top(), placed.across() + THE_WIDTH_OF_A_CARET,
+                placed.top() + placed.high());
     }
 
     private static void show(

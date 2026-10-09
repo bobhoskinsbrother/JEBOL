@@ -25,7 +25,7 @@ public sealed interface PaintInstruction {
         }
     }
 
-    record Writing(Placement where, List<TextRun> runs, TextLayout layout)
+    record Writing(Placement where, List<TextRun> runs, TextLayout layout, TextCaret caret)
             implements PaintInstruction {
 
         /** The size a gob's own text is written at when nothing asks for one. */
@@ -33,6 +33,10 @@ public sealed interface PaintInstruction {
 
         public Writing {
             runs = List.copyOf(runs);
+        }
+
+        public Writing(Placement where, List<TextRun> runs, TextLayout layout) {
+            this(where, runs, layout, TextCaret.NONE);
         }
 
         public static Writing plain(Placement where, String text, Colour colour) {

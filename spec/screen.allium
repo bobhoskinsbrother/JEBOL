@@ -864,6 +864,93 @@ rule AFontWithAShadowWritesItTwice {
             the_line_is_written_first(gob, black, the_font_of(gob).shadow)
 }
 
+-- A gob's text runs over as many lines as it has newlines plus one. Each line
+-- is as tall as the tallest run on it -- its ascent and descent -- and the
+-- lines are stacked from the top of the space the para leaves; a line is
+-- placed across by the para's align, and the whole stack down by its valign.
+-- A newline is where a line ends and is not itself written. The comment area
+-- of a form is the case that needs it: it holds what a person typed, Enter
+-- and all.
+rule AGobsTextBreaksAtItsNewlines {
+    when: FlattenTheTree(root)
+    ensures:
+        for gob in every_gob_under(root) where it_has_text(gob):
+            the_lines_written(gob) = the_text_split_at_newlines(gob)
+}
+
+-- How wide and how tall text is, is the screen's to say: it is the screen
+-- that has the font. A desktop window and a page answer from the same
+-- measurement, so a caret worked out for one sits where the other draws the
+-- text. Measuring is part of drawing, so a screen with no display refuses it
+-- as it refuses SHOW: not present.
+rule TextIsMeasuredByTheScreen {
+    when: the_script_measures_text(run, gob)
+    requires: windows_are_granted(run)
+    requires: not run.interpreter.screen_port.has_a_display
+
+    ensures: MeasuringFails(error: not_present)
+}
+
+-- SIZE-TEXT answers how much room the gob's text takes: the widest line
+-- across, and every line's height added together down. The para's origin and
+-- margin are the gob's to add -- the 2010 R3 GUI adds them itself -- so they
+-- are not in the answer. A gob with no text, or text with no string in it, is
+-- 0x0; a string with no characters is still a line, one line tall.
+rule SizeTextIsTheRoomTheTextTakes {
+    when: the_script_asks(size_text, gob)
+    requires: run.interpreter.screen_port.has_a_display
+
+    ensures: the_answer_is(the_widest_line(gob) by the_lines_heights_added(gob))
+}
+
+-- CARET-TO-OFFSET answers where a caret before a character is drawn, from the
+-- gob's own top left: across, the line's start as the para places it plus
+-- the width of the text before the caret on that line; down, the top of the
+-- line. The string is named by its place in the rich-text block -- an integer,
+-- or the block at that place -- and the character by its place in the string
+-- -- an integer, or the string at that place, which is how the 2010 GUI asks.
+-- A place past the end is the end.
+rule CaretToOffsetIsWhereTheCaretIsDrawn {
+    when: the_script_asks(caret_to_offset, gob, element, position)
+    requires: run.interpreter.screen_port.has_a_display
+
+    ensures: the_answer_is(the_place_a_caret_is_drawn(gob, element, position))
+}
+
+-- OFFSET-TO-CARET is the other way round: given a point in the gob, the
+-- caret nearest it. The line is the one the point is level with, the first
+-- or last when it is above or below them all; across, the caret is at the
+-- character boundary nearest the point, the start or end of the line when it
+-- is outside it. The answer is the C's: a copy of the rich-text block,
+-- positioned at the string, with that string positioned at the caret -- so
+-- `first` of it is the string at the caret, the very string the gob holds, and
+-- the 2010 GUI edits it in place. A gob whose text holds no string answers
+-- none.
+rule OffsetToCaretFindsTheNearestCaret {
+    when: the_script_asks(offset_to_caret, gob, point)
+    requires: run.interpreter.screen_port.has_a_display
+
+    ensures: the_answer_is(the_block_at_the_caret_nearest(gob, point))
+}
+
+-- Rich text may hold `caret` followed by an object with three fields, caret,
+-- start and end, each a block of two: where in the rich-text block, and where
+-- in that string. The caret is drawn as a line one pixel wide, the height of
+-- its line, before the character it names, in the colour of that run's text;
+-- when start and end are both set and differ, the text between them is
+-- marked by a fill behind it. Neither is drawn while caret is unset. The
+-- object is the caret's and not a font, so nothing in it changes the text.
+--
+-- R3's text engine draws both from that object; the 2010 GUI puts it in
+-- every editable field's text. JEBOL read it as a font until 2026-10-09, and
+-- drew no caret, so a field being typed into showed no place to type.
+rule ARichTextCaretIsDrawn {
+    when: FlattenTheTree(root)
+    ensures:
+        for gob in every_gob_under(root) where its_caret_is_set(gob):
+            a_caret_is_drawn_at(the_place_a_caret_is_drawn(gob, its_caret_element(gob), its_caret_position(gob)))
+}
+
 -- A window's text is its title, and the screen's text is a label. Neither is
 -- painted.
 --

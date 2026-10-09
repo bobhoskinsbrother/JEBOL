@@ -1,5 +1,4 @@
 REBOL [Title: "Sliders"]
-do %text-stand-ins.r
 do %gui-322.r
 view [
     title "Progress, Scrollers, and Sliders"

@@ -1127,6 +1127,8 @@ public final class Evaluator {
             throw Raised.of(EvaluationFailure.PROTECTED);
         } catch (SlotIsProtected refused) {
             throw Raised.of(EvaluationFailure.LOCKED_WORD, refused.spelling());
+        } catch (StackOverflowError aStructureWithNoEnd) {
+            throw Raised.of(EvaluationFailure.STACK_OVERFLOW);
         }
         if (produced == null) {
             throw new IllegalStateException(

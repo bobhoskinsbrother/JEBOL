@@ -74,41 +74,125 @@ final class WebScreenPage {
                   + run.size + 'px sans-serif';
             }
 
-            function writeTheLine(step) {
-              const layout = step.layout;
-              let lineWide = 0;
-              let ascent = 0;
-              let descent = 0;
-              const widths = step.runs.map(run => {
-                brush.font = fontOf(run);
-                const measured = brush.measureText(run.text);
-                ascent = Math.max(ascent, measured.fontBoundingBoxAscent);
-                descent = Math.max(descent, measured.fontBoundingBoxDescent);
-                lineWide += measured.width;
-                return measured.width;
-              });
-              const roomAcross = step.wide - layout['origin-across'] - layout['margin-across'];
-              const roomDown = step.high - layout['origin-down'] - layout['margin-down'];
-              const spareAcross = roomAcross - lineWide;
-              const spareDown = roomDown - (ascent + descent);
-              const across = step.across + layout['origin-across']
-                  + { left: 0, centre: spareAcross / 2, right: spareAcross }[layout.align];
-              const baseline = step.down + layout['origin-down']
-                  + { top: 0, middle: spareDown / 2, bottom: spareDown }[layout.valign] + ascent;
-              if (layout['shadow-across'] !== 0 || layout['shadow-down'] !== 0) {
-                writeTheRuns(step.runs, widths, across + layout['shadow-across'],
-                    baseline + layout['shadow-down'], '#000000');
-              }
-              writeTheRuns(step.runs, widths, across, baseline, null);
+            function measured(run, text) {
+              brush.font = fontOf(run);
+              const found = brush.measureText(text);
+              return { wide: found.width, ascent: found.fontBoundingBoxAscent,
+                       descent: found.fontBoundingBoxDescent };
             }
 
-            function writeTheRuns(runs, widths, across, baseline, everyRunIn) {
-              let along = across;
+            function theLinesOf(runs) {
+              const lines = [];
+              let pieces = [];
               runs.forEach((run, index) => {
-                brush.font = fontOf(run);
-                brush.fillStyle = everyRunIn || run.colour;
-                brush.fillText(run.text, along, baseline);
-                along += widths[index];
+                const characters = [...run.text];
+                let from = 0;
+                for (let at = 0; at <= characters.length; at++) {
+                  const endsTheRun = at === characters.length;
+                  if (endsTheRun || characters[at] === '\\n') {
+                    const text = characters.slice(from, at).join('');
+                    pieces.push({ run: index, from: from, text: text, font: run,
+                                  wide: measured(run, text).wide });
+                    if (!endsTheRun) {
+                      lines.push(aLineOf(pieces));
+                      pieces = [];
+                      from = at + 1;
+                    }
+                  }
+                }
+              });
+              if (pieces.length) lines.push(aLineOf(pieces));
+              return lines;
+            }
+
+            function aLineOf(pieces) {
+              let wide = 0, ascent = 0, descent = 0;
+              pieces.forEach(piece => {
+                const extent = measured(piece.font, piece.text);
+                wide += piece.wide;
+                ascent = Math.max(ascent, extent.ascent);
+                descent = Math.max(descent, extent.descent);
+              });
+              return { pieces: pieces, wide: wide, ascent: ascent, descent: descent,
+                       high: ascent + descent };
+            }
+
+            function placeTheLines(step, lines) {
+              const layout = step.layout;
+              const roomAcross = step.wide - layout['origin-across'] - layout['margin-across'];
+              const roomDown = step.high - layout['origin-down'] - layout['margin-down'];
+              const tallness = lines.reduce((sum, line) => sum + line.high, 0);
+              const spareDown = roomDown - tallness;
+              let top = step.down + layout['origin-down']
+                  + { top: 0, middle: spareDown / 2, bottom: spareDown }[layout.valign];
+              lines.forEach(line => {
+                const spareAcross = roomAcross - line.wide;
+                line.left = step.across + layout['origin-across']
+                    + { left: 0, centre: spareAcross / 2, right: spareAcross }[layout.align];
+                line.top = top;
+                top += line.high;
+              });
+            }
+
+            function whereTheCaretIs(lines, run, character) {
+              for (const line of lines) {
+                let along = line.left;
+                for (const piece of line.pieces) {
+                  const length = [...piece.text].length;
+                  if (piece.run === run && character >= piece.from && character <= piece.from + length) {
+                    const before = [...piece.text].slice(0, character - piece.from).join('');
+                    return { across: along + measured(piece.font, before).wide, top: line.top, high: line.high };
+                  }
+                  along += piece.wide;
+                }
+              }
+              const last = lines[lines.length - 1];
+              return { across: last.left + last.wide, top: last.top, high: last.high };
+            }
+
+            function markTheSelection(step, lines, selection) {
+              const from = whereTheCaretIs(lines, selection['from-run'], selection['from-character']);
+              const to = whereTheCaretIs(lines, selection['to-run'], selection['to-character']);
+              const first = from.top < to.top || (from.top === to.top && from.across <= to.across) ? from : to;
+              const last = first === from ? to : from;
+              brush.fillStyle = '#aac8f5';
+              if (first.top === last.top) {
+                brush.fillRect(first.across, first.top, last.across - first.across, first.high);
+                return;
+              }
+              const right = step.across + step.wide;
+              brush.fillRect(first.across, first.top, right - first.across, first.high);
+              brush.fillRect(step.across, first.top + first.high, step.wide, last.top - first.top - first.high);
+              brush.fillRect(step.across, last.top, last.across - step.across, last.high);
+            }
+
+            function writeTheLine(step) {
+              const layout = step.layout;
+              const lines = theLinesOf(step.runs);
+              if (!lines.length) return;
+              placeTheLines(step, lines);
+              if (step.caret && step.caret.selection) markTheSelection(step, lines, step.caret.selection);
+              if (layout['shadow-across'] !== 0 || layout['shadow-down'] !== 0) {
+                writeTheRuns(lines, layout['shadow-across'], layout['shadow-down'], '#000000');
+              }
+              writeTheRuns(lines, 0, 0, null);
+              if (step.caret) {
+                const placed = whereTheCaretIs(lines, step.caret.run, step.caret.character);
+                const run = step.runs[step.caret.run];
+                brush.fillStyle = run ? run.colour : '#000000';
+                brush.fillRect(placed.across, placed.top, 1, placed.high);
+              }
+            }
+
+            function writeTheRuns(lines, movedAcross, movedDown, everyRunIn) {
+              lines.forEach(line => {
+                let along = line.left + movedAcross;
+                line.pieces.forEach(piece => {
+                  brush.font = fontOf(piece.font);
+                  brush.fillStyle = everyRunIn || piece.font.colour;
+                  brush.fillText(piece.text, along, line.top + line.ascent + movedDown);
+                  along += piece.wide;
+                });
               });
             }
 

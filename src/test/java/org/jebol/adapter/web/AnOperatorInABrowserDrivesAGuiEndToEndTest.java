@@ -165,8 +165,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
     @DisplayName("the sliders example's slider is dragged by a real mouse in a browser, and its value changes")
     void theSlidersAreDraggedInABrowser() {
         String opened = answerTo("""
-                change-dir %examples/sliders/
-                do %text-stand-ins.r
+                change-dir %examples/r3-gui/
                 do %gui-322.r
                 the-layout: last load %sliders.r
                 gui-view: get bind 'view first find gui first [view:]

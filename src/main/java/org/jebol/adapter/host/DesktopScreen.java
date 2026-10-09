@@ -2,7 +2,10 @@ package org.jebol.adapter.host;
 
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventKind;
+import org.jebol.adapter.fonts.JavaTextMeasure;
 import org.jebol.domain.host.GobScreen;
+import org.jebol.domain.host.ScreenPort;
+import org.jebol.domain.render.TextMeasure;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
@@ -30,6 +33,7 @@ public final class DesktopScreen extends GobScreen {
     private static final List<Integer> ICON_SIZES = List.of(16, 32, 64, 128, 256, 512);
 
     private final JebolsIcon icon = new JebolsIcon();
+    private final JavaTextMeasure measure = new JavaTextMeasure();
     private final boolean present;
     private final Map<GobValue, JFrame> windows = new IdentityHashMap<>();
 
@@ -151,6 +155,14 @@ public final class DesktopScreen extends GobScreen {
         } finally {
             measured.dispose();
         }
+    }
+
+    @Override
+    public TextMeasure textMeasure() {
+        if (!present) {
+            return ScreenPort.none().textMeasure();
+        }
+        return measure;
     }
 
     @Override

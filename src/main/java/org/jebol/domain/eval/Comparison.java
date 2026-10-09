@@ -164,25 +164,7 @@ public final class Comparison {
 
 
     private static boolean strictFields(ObjectValue left, ObjectValue right) {
-        return fieldsAgree(left, right, Comparison::identicallyEqual);
-    }
-
-    private static boolean fieldsAgree(
-            ObjectValue left, ObjectValue right, java.util.function.BiPredicate<Value, Value> agree) {
-
-        Map<String, Value> ours = left.context().fieldsExcludingSelf();
-        Map<String, Value> theirs = right.context().fieldsExcludingSelf();
-        if (!ours.keySet().equals(theirs.keySet())
-                || theyHideDifferentNumbersOfFields(left, right)) {
-            return false;
-        }
-        return ours.entrySet().stream()
-                .allMatch(field -> agree.test(field.getValue(), theirs.get(field.getKey())));
-    }
-
-    private static boolean theyHideDifferentNumbersOfFields(
-            ObjectValue left, ObjectValue right) {
-        return left.context().fieldCount() != right.context().fieldCount();
+        return left.everyFieldAgrees(right, Comparison::identicallyEqual);
     }
 
     /**

@@ -1,6 +1,9 @@
 package org.jebol.adapter.web;
 
+import org.jebol.adapter.fonts.JavaTextMeasure;
 import org.jebol.domain.host.ScreenEventDetail;
+import org.jebol.domain.host.ScreenPort;
+import org.jebol.domain.render.TextMeasure;
 import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ScreenMetric;
@@ -34,6 +37,7 @@ public final class BrowserScreen extends GobScreen {
     }
 
     private final Viewer viewer;
+    private final JavaTextMeasure measure = new JavaTextMeasure();
     private final List<GobValue> showing = new ArrayList<>();
 
     private PairValue viewport = PairValue.of(0, 0);
@@ -93,6 +97,11 @@ public final class BrowserScreen extends GobScreen {
         if (root != null) {
             viewer.paint(theWholePagePaintedAfreshRatherThanPatched());
         }
+    }
+
+    @Override
+    public TextMeasure textMeasure() {
+        return hasADisplay() ? measure : ScreenPort.none().textMeasure();
     }
 
     @Override

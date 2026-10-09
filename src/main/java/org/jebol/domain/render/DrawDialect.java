@@ -461,7 +461,7 @@ public final class DrawDialect {
                             where.down() + (int) Math.round(at.y()),
                             (int) Math.round(size.x()), (int) Math.round(size.y()),
                             clip, where.opacity()),
-                    line.runs(), line.layout()));
+                    line.runs(), line.layout(), line.caret()));
         }
 
         private void clippedTo(List<Value> arguments) {
