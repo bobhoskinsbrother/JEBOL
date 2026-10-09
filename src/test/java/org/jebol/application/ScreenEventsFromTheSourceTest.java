@@ -132,6 +132,140 @@ class ScreenEventsFromTheSourceTest {
     }
 
     @Nested
+    @DisplayName("waiting on the event port among other things, with a time")
+    class AmongOthers {
+
+        private final RecordingScreen screen = aScreen();
+
+        private final Interpreter interpreter = withAScreen(screen);
+
+        private String afterRunning(String source) {
+            interpreter.defineFreshWordsIn(source);
+            return interpreter.display(interpreter.run(source));
+        }
+
+        private void theOperatorDownMovesAndLetsGo() {
+            var window = screen.whatOpened().getFirst();
+            screen.theOperatorDoes(ScreenEventKind.DOWN, window);
+            screen.theOperatorDoes(ScreenEventKind.MOVE, window);
+            screen.theOperatorDoes(ScreenEventKind.UP, window);
+        }
+
+        @Test
+        @DisplayName("hands everything already queued to the handlers, in order, with no time to spare")
+        @Timeout(20)
+        void aWaitOfNoTimeDeliversWhatIsQueued() {
+            afterRunning(A_WINDOW_AND_A_WATCHER);
+            theOperatorDownMovesAndLetsGo();
+
+            assertThat(afterRunning("""
+                    wait [system/ports/event 0]
+                    seen""")).isEqualTo("[down move up]");
+        }
+
+        @Test
+        @DisplayName("and leaves the window open, since only closing it ends a program")
+        @Timeout(20)
+        void theWindowStaysOpen() {
+            afterRunning(A_WINDOW_AND_A_WATCHER);
+            theOperatorDownMovesAndLetsGo();
+
+            assertThat(afterRunning("""
+                    wait [system/ports/event 0]
+                    length? system/view/screen-gob""")).isEqualTo("1");
+        }
+
+        @Test
+        @DisplayName("delivers each event once, so a second wait finds nothing new")
+        @Timeout(20)
+        void eachEventIsDeliveredOnce() {
+            afterRunning(A_WINDOW_AND_A_WATCHER);
+            theOperatorDownMovesAndLetsGo();
+
+            assertThat(afterRunning("""
+                    wait [system/ports/event 0]
+                    wait [system/ports/event 0]
+                    seen""")).isEqualTo("[down move up]");
+        }
+
+        @Test
+        @DisplayName("with nothing queued, answers none once the time is up")
+        @Timeout(20)
+        void nothingQueuedAnswersNone() {
+            afterRunning(A_WINDOW_AND_A_WATCHER);
+
+            assertThat(afterRunning("""
+                    answer: wait [system/ports/event 0.3]
+                    reduce [answer empty? seen]""")).isEqualTo("[_ #(true)]");
+        }
+
+        @Test
+        @DisplayName("waits out the time it was given, and no longer, when nothing comes")
+        @Timeout(20)
+        void itWaitsOutItsTime() {
+            afterRunning(A_WINDOW_AND_A_WATCHER);
+            long startedAt = System.nanoTime();
+
+            afterRunning("wait [system/ports/event 0.3]");
+
+            assertThat(Duration.ofNanos(System.nanoTime() - startedAt))
+                    .isBetween(Duration.ofMillis(300), Duration.ofSeconds(3));
+        }
+
+        @Test
+        @DisplayName("reaches a port the script opened on the event scheme itself, as the 2010 GUI does")
+        @Timeout(20)
+        void aPortTheScriptOpenedIsReached() {
+            afterRunning("""
+                    view/no-wait make gob! [size: 100x100]
+                    seen: copy []
+                    own-port: open [scheme: 'event]
+                    own-port/awake: func [event] [append seen event/type false]
+                    """);
+            theOperatorDownMovesAndLetsGo();
+
+            assertThat(afterRunning("""
+                    wait [own-port 0]
+                    seen""")).isEqualTo("[down move up]");
+        }
+
+        @Test
+        @DisplayName("answers the port when a handler wakes it, and stops handing out events there")
+        @Timeout(20)
+        void aWokenPortIsTheAnswer() {
+            afterRunning("""
+                    view/no-wait make gob! [size: 100x100]
+                    seen: copy []
+                    own-port: open [scheme: 'event]
+                    own-port/awake: func [event] [append seen event/type event/type = 'move]
+                    """);
+            theOperatorDownMovesAndLetsGo();
+
+            assertThat(afterRunning("""
+                    answer: wait [own-port 5]
+                    reduce [same? answer own-port seen]""")).isEqualTo("[#(true) [down move]]");
+        }
+
+        @Test
+        @DisplayName("and what came after the waking event stays queued for the next wait")
+        @Timeout(20)
+        void whatCameAfterStaysQueued() {
+            afterRunning("""
+                    view/no-wait make gob! [size: 100x100]
+                    seen: copy []
+                    own-port: open [scheme: 'event]
+                    own-port/awake: func [event] [append seen event/type event/type = 'move]
+                    """);
+            theOperatorDownMovesAndLetsGo();
+
+            assertThat(afterRunning("""
+                    wait [own-port 5]
+                    wait [own-port 0]
+                    seen""")).isEqualTo("[down move up]");
+        }
+    }
+
+    @Nested
     @DisplayName("when a wait ends")
     class TheEnding {
 

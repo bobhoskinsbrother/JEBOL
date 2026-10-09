@@ -132,7 +132,6 @@ public class QueryAction extends PortAction {
             return BlockValue.block(List.of());
         }
         return BlockValue.block(info.slots().stream()
-                .filter(slot -> !slot.canonical().equals("self"))
                 .<Value>map(slot -> WordValue.of(slot.spelling()))
                 .toList());
     }
@@ -184,7 +183,7 @@ public class QueryAction extends PortAction {
 
         Value everyFieldAsAnObject(Evaluator evaluator) {
             ObjectValue described = new ObjectValue(Context.childOf(evaluator.systemContext()));
-            described.context().register("self", described);
+            described.context().pointItsOwnSelfAt(described);
             return withEveryFieldIn(described);
         }
 

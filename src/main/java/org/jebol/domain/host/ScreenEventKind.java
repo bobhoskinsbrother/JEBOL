@@ -17,6 +17,8 @@ public enum ScreenEventKind {
     OFFSET("offset"),
     KEY("key"),
     KEY_UP("key-up"),
+    CONTROL("control"),
+    CONTROL_UP("control-up"),
     DOWN("down"),
     UP("up"),
     MOVE("move");

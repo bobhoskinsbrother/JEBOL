@@ -158,8 +158,11 @@ public record DateValue(
     }
 
     public TimeValue spanTo(DateValue other) {
+        Moment here = moment();
+        Moment there = other.moment();
         return TimeValue.ofNanoseconds(
-                (dayNumber() - other.dayNumber()) * NANOSECONDS_A_DAY);
+                (here.dayNumber() - there.dayNumber()) * NANOSECONDS_A_DAY
+                        + here.nanosecondsIntoTheDay() - there.nanosecondsIntoTheDay());
     }
 
     public java.time.LocalDate asLocalDate() {

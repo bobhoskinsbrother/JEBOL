@@ -507,14 +507,14 @@ public final class Evaluator {
 
     public ObjectValue freshObjectWithin(Context enclosing) {
         ObjectValue built = new ObjectValue(Context.childOf(enclosing));
-        built.context().register("self", built);
+        built.context().pointItsOwnSelfAt(built);
         return built;
     }
 
     public ObjectValue evaluatedInto(ObjectValue built, AnyBlockValue body) {
         Context fields = built.context();
         body.setWordsFromHere().stream().map(AnyWordValue::spelling).forEach(fields::register);
-        evaluateOrRaise(Binder.bindOnly(body, fields, fields.ownFieldNames()), fields);
+        evaluateOrRaise(Binder.bindOnly(body, fields, fields.theNamesItBinds()), fields);
         return built;
     }
 

@@ -1,5 +1,6 @@
 package org.jebol.adapter.host;
 
+import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ScreenMetric;
@@ -25,6 +26,10 @@ import java.util.List;
  */
 public final class DesktopScreen extends GobScreen {
 
+    private static final String THE_PROPERTY_MACOS_NAMES_THE_APPLICATION_BY = "apple.awt.application.name";
+    private static final List<Integer> ICON_SIZES = List.of(16, 32, 64, 128, 256, 512);
+
+    private final JebolsIcon icon = new JebolsIcon();
     private final boolean present;
     private final Map<GobValue, JFrame> windows = new IdentityHashMap<>();
 
@@ -33,7 +38,17 @@ public final class DesktopScreen extends GobScreen {
     }
 
     public static DesktopScreen onThisMachine() {
+        System.setProperty(THE_PROPERTY_MACOS_NAMES_THE_APPLICATION_BY, JebolsIcon.THE_APPLICATIONS_NAME);
         return new DesktopScreen(!GraphicsEnvironment.isHeadless());
+    }
+
+    private void showJebolsIconOn(JFrame frame) {
+        List<Image> everySize = ICON_SIZES.stream().<Image>map(icon::drawnAt).toList();
+        frame.setIconImages(everySize);
+        if (Taskbar.isTaskbarSupported()
+                && Taskbar.getTaskbar().isSupported(Taskbar.Feature.ICON_IMAGE)) {
+            Taskbar.getTaskbar().setIconImage(everySize.getLast());
+        }
     }
 
     @Override
@@ -139,69 +154,43 @@ public final class DesktopScreen extends GobScreen {
     }
 
     @Override
-    public void show(GobValue gob) {
-        if (!present) {
-            throw new Denied("no-service",
-                    "this machine has no display to put a window on");
-        }
-        if (root == null) {
-            return;
-        }
-        if (gob.sharesStorageWith(root)) {
-            reconcileEveryWindow();
-            return;
-        }
-        if (isInTheRootsPane(gob)) {
-            openOrRefresh(gob);
-            return;
-        }
-        closeTheWindowFor(gob);
+    protected Denied nothingToShowOn() {
+        return new Denied("no-service", "this machine has no display to put a window on");
     }
 
-    private void reconcileEveryWindow() {
-        closeWhatLeftThePaneBeforeOpeningWhatArrivedInIt();
+    @Override
+    protected List<GobValue> gobsWithWindows() {
+        return List.copyOf(windows.keySet());
     }
 
-    private void closeWhatLeftThePaneBeforeOpeningWhatArrivedInIt() {
-        for (GobValue standing : List.copyOf(windows.keySet())) {
-            if (!isInTheRootsPane(standing)) {
-                closeTheWindowFor(standing);
-            }
-        }
-        for (GobValue child : childrenOfTheRoot()) {
-            openOrRefresh(child);
-        }
-    }
-
-    private void openOrRefresh(GobValue gob) {
-        JFrame standing = windowFor(gob);
-        if (standing != null) {
-            onTheToolkitThreadAndWaitedFor(standing::repaint);
-            return;
-        }
+    @Override
+    protected void openTheWindowFor(GobValue gob) {
         onTheToolkitThreadAndWaitedFor(() -> windows.put(gob, aWindowShowing(gob)));
     }
 
-    private JFrame windowFor(GobValue gob) {
-        for (Map.Entry<GobValue, JFrame> each : windows.entrySet()) {
-            if (each.getKey().sharesStorageWith(gob)) {
-                return each.getValue();
-            }
-        }
-        return null;
+    @Override
+    protected void repaintTheWindowFor(GobValue gob) {
+        windowFor(gob).ifPresent(standing -> onTheToolkitThreadAndWaitedFor(standing::repaint));
     }
 
-    private void closeTheWindowFor(GobValue gob) {
-        JFrame standing = windowFor(gob);
-        if (standing == null) {
-            return;
-        }
-        windows.entrySet().removeIf(each -> each.getValue() == standing);
-        onTheToolkitThreadAndWaitedFor(standing::dispose);
+    @Override
+    protected void closeTheWindowFor(GobValue gob) {
+        windowFor(gob).ifPresent(standing -> {
+            windows.entrySet().removeIf(each -> each.getValue() == standing);
+            onTheToolkitThreadAndWaitedFor(standing::dispose);
+        });
+    }
+
+    private Optional<JFrame> windowFor(GobValue gob) {
+        return windows.entrySet().stream()
+                .filter(each -> each.getKey().sharesStorageWith(gob))
+                .map(Map.Entry::getValue)
+                .findFirst();
     }
 
     private JFrame aWindowShowing(GobValue gob) {
         JFrame frame = new JFrame(titleOf(gob));
+        showJebolsIconOn(frame);
         frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         frame.setContentPane(aSurfacePainting(gob));
         frame.pack();
@@ -255,12 +244,15 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void componentResized(java.awt.event.ComponentEvent changed) {
-                queue(ScreenEventKind.RESIZE, gob);
+                Dimension drawable = frame.getContentPane().getSize();
+                queue(ScreenEventKind.RESIZE, gob,
+                        new ScreenEventDetail.At(drawable.width, drawable.height));
             }
 
             @Override
             public void componentMoved(java.awt.event.ComponentEvent changed) {
-                queue(ScreenEventKind.OFFSET, gob);
+                queue(ScreenEventKind.OFFSET, gob,
+                        new ScreenEventDetail.At(frame.getX(), frame.getY()));
             }
         });
         frame.addKeyListener(new KeyListener() {
@@ -271,24 +263,24 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void keyPressed(KeyEvent down) {
-                queue(ScreenEventKind.KEY, gob);
+                queueTheKey(down, ScreenEventKind.KEY, ScreenEventKind.CONTROL, gob);
             }
 
             @Override
             public void keyReleased(KeyEvent up) {
-                queue(ScreenEventKind.KEY_UP, gob);
+                queueTheKey(up, ScreenEventKind.KEY_UP, ScreenEventKind.CONTROL_UP, gob);
             }
         });
         frame.getContentPane().addMouseListener(new MouseListener() {
 
             @Override
             public void mousePressed(MouseEvent down) {
-                queue(ScreenEventKind.DOWN, gob);
+                queue(ScreenEventKind.DOWN, gob, whereThePointerIs(down));
             }
 
             @Override
             public void mouseReleased(MouseEvent up) {
-                queue(ScreenEventKind.UP, gob);
+                queue(ScreenEventKind.UP, gob, whereThePointerIs(up));
             }
 
             @Override
@@ -307,18 +299,67 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void mouseMoved(MouseEvent moved) {
-                queue(ScreenEventKind.MOVE, gob);
+                queue(ScreenEventKind.MOVE, gob, whereThePointerIs(moved));
             }
 
             @Override
             public void mouseDragged(MouseEvent dragged) {
-                queue(ScreenEventKind.MOVE, gob);
+                queue(ScreenEventKind.MOVE, gob, whereThePointerIs(dragged));
             }
         });
     }
 
+    private ScreenEventDetail whereThePointerIs(MouseEvent pointer) {
+        return new ScreenEventDetail.At(pointer.getX(), pointer.getY());
+    }
+
+    private void queueTheKey(KeyEvent pressed, ScreenEventKind typing, ScreenEventKind naming,
+            GobValue window) {
+
+        Optional<String> named = Optional.ofNullable(KEYS_THAT_TYPE_NOTHING.get(pressed.getKeyCode()));
+        if (named.isPresent()) {
+            queue(naming, window, new ScreenEventDetail.NamedKey(named.get()));
+            return;
+        }
+        if (pressed.getKeyChar() != KeyEvent.CHAR_UNDEFINED) {
+            queue(typing, window, new ScreenEventDetail.Typed(pressed.getKeyChar()));
+        }
+    }
+
+    private static final Map<Integer, String> KEYS_THAT_TYPE_NOTHING = Map.ofEntries(
+            Map.entry(KeyEvent.VK_PAGE_UP, "page-up"),
+            Map.entry(KeyEvent.VK_PAGE_DOWN, "page-down"),
+            Map.entry(KeyEvent.VK_END, "end"),
+            Map.entry(KeyEvent.VK_HOME, "home"),
+            Map.entry(KeyEvent.VK_LEFT, "left"),
+            Map.entry(KeyEvent.VK_UP, "up"),
+            Map.entry(KeyEvent.VK_RIGHT, "right"),
+            Map.entry(KeyEvent.VK_DOWN, "down"),
+            Map.entry(KeyEvent.VK_INSERT, "insert"),
+            Map.entry(KeyEvent.VK_F1, "f1"),
+            Map.entry(KeyEvent.VK_F2, "f2"),
+            Map.entry(KeyEvent.VK_F3, "f3"),
+            Map.entry(KeyEvent.VK_F4, "f4"),
+            Map.entry(KeyEvent.VK_F5, "f5"),
+            Map.entry(KeyEvent.VK_F6, "f6"),
+            Map.entry(KeyEvent.VK_F7, "f7"),
+            Map.entry(KeyEvent.VK_F8, "f8"),
+            Map.entry(KeyEvent.VK_F9, "f9"),
+            Map.entry(KeyEvent.VK_F10, "f10"),
+            Map.entry(KeyEvent.VK_F11, "f11"),
+            Map.entry(KeyEvent.VK_F12, "f12"),
+            Map.entry(KeyEvent.VK_SHIFT, "shift"),
+            Map.entry(KeyEvent.VK_CONTROL, "control"),
+            Map.entry(KeyEvent.VK_ALT, "alt"),
+            Map.entry(KeyEvent.VK_PAUSE, "pause"),
+            Map.entry(KeyEvent.VK_CAPS_LOCK, "capital"));
+
     private void queue(ScreenEventKind kind, GobValue window) {
         queued.add(kind, window);
+    }
+
+    private void queue(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
+        queued.add(kind, window, detail);
     }
 
     private static void onTheToolkitThreadAndWaitedFor(Runnable work) {

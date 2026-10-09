@@ -129,7 +129,6 @@ public sealed interface Value permits
 
     default boolean declaresAFieldFindCanReachBy(Value wanted) {
         return wanted instanceof WordValue word
-                && !word.canonical().equals("self")
                 && declaresTheField(word.canonical());
     }
 

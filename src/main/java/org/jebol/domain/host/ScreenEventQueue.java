@@ -4,7 +4,7 @@ import org.jebol.domain.value.GobValue;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.List;
+import java.util.Optional;
 
 public final class ScreenEventQueue {
 
@@ -14,9 +14,11 @@ public final class ScreenEventQueue {
         queued.add(new ScreenEvent(kind, window));
     }
 
-    public synchronized List<ScreenEvent> takeAll() {
-        List<ScreenEvent> taken = List.copyOf(queued);
-        queued.clear();
-        return taken;
+    public synchronized void add(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
+        queued.add(new ScreenEvent(kind, window, detail));
+    }
+
+    public synchronized Optional<ScreenEvent> takeTheOldest() {
+        return Optional.ofNullable(queued.poll());
     }
 }

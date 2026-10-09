@@ -95,7 +95,6 @@ public class SetNative extends DefaultNative {
 
     private List<Value> wordsOf(ObjectValue object) {
         return object.context().slots().stream()
-                .filter(slot -> !slot.canonical().equals("self"))
                 .<Value>map(slot -> WordValue.of(slot.spelling()).boundTo(object.context()))
                 .toList();
     }
@@ -159,8 +158,7 @@ public class SetNative extends DefaultNative {
 
     private List<ContextSlot> fieldsBothDeclare(ObjectValue into, ObjectValue from) {
         return into.context().slots().stream()
-                .filter(slot -> !slot.canonical().equals("self")
-                        && from.context().holds(slot.canonical()))
+                .filter(slot -> from.context().holds(slot.canonical()))
                 .toList();
     }
 

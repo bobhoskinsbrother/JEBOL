@@ -1,15 +1,15 @@
 package org.jebol.application;
 
-import org.jebol.domain.host.ScreenEvent;
+import org.jebol.domain.host.GobScreen;
+import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.host.ScreenMetric;
-import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 
 import java.util.*;
 
-final class RecordingScreen implements ScreenPort {
+final class RecordingScreen extends GobScreen {
 
     private final boolean present;
     private final Map<ScreenMetric, PairValue> measurements =
@@ -17,13 +17,11 @@ final class RecordingScreen implements ScreenPort {
     private int displays = 1;
     private boolean operatorClosesWhateverOpens;
 
-    private GobValue root;
     private final List<GobValue> shown = new ArrayList<>();
     private final List<GobValue> opened = new ArrayList<>();
     private final List<GobValue> refreshed = new ArrayList<>();
     private final List<GobValue> closed = new ArrayList<>();
     private final List<GobValue> withWindows = new ArrayList<>();
-    private final Deque<ScreenEvent> queued = new ArrayDeque<>();
 
     private RecordingScreen(boolean present) {
         this.present = present;
@@ -78,87 +76,50 @@ final class RecordingScreen implements ScreenPort {
     }
 
     @Override
-    public void takeTheRootGob(GobValue given) {
-        this.root = given;
+    public void show(GobValue gob) {
+        if (present) {
+            shown.add(gob);
+        }
+        super.show(gob);
     }
 
     @Override
-    public void show(GobValue gob) {
-        if (!present) {
-            throw new Denied("no-service", "this test screen has no display");
-        }
-        shown.add(gob);
-        if (gob == null || root == null) {
-            return;
-        }
-        if (gob.sharesStorageWith(root)) {
-            reconcileAgainstTheRoot();
-            return;
-        }
-        if (isInTheRootsPane(gob)) {
-            openOrRefresh(gob);
-            return;
-        }
-        if (hasAWindow(gob)) {
-            closeTheWindowFor(gob);
-        }
+    protected Denied nothingToShowOn() {
+        return new Denied("no-service", "this test screen has no display");
     }
 
-    private void reconcileAgainstTheRoot() {
-        for (GobValue standing : List.copyOf(withWindows)) {
-            if (!isInTheRootsPane(standing)) {
-                closeTheWindowFor(standing);
-            }
-        }
-        for (GobValue child : childrenOfTheRoot()) {
-            openOrRefresh(child);
-        }
+    @Override
+    protected List<GobValue> gobsWithWindows() {
+        return List.copyOf(withWindows);
     }
 
-    private void openOrRefresh(GobValue gob) {
-        if (hasAWindow(gob)) {
-            refreshed.add(gob);
-            return;
-        }
+    @Override
+    protected void openTheWindowFor(GobValue gob) {
         withWindows.add(gob);
         opened.add(gob);
         if (operatorClosesWhateverOpens) {
-            queued.add(new ScreenEvent(ScreenEventKind.CLOSE, gob));
+            queued.add(ScreenEventKind.CLOSE, gob);
         }
-    }
-
-    private void closeTheWindowFor(GobValue gob) {
-        withWindows.removeIf(gob::sharesStorageWith);
-        closed.add(gob);
-    }
-
-    private boolean hasAWindow(GobValue gob) {
-        return withWindows.stream().anyMatch(gob::sharesStorageWith);
-    }
-
-    private List<GobValue> childrenOfTheRoot() {
-        List<GobValue> children = new ArrayList<>();
-        for (var child : root.storage().pane()) {
-            if (child instanceof GobValue gob) {
-                children.add(gob);
-            }
-        }
-        return List.copyOf(children);
-    }
-
-    private boolean isInTheRootsPane(GobValue gob) {
-        return childrenOfTheRoot().stream().anyMatch(gob::sharesStorageWith);
     }
 
     @Override
-    public synchronized List<ScreenEvent> takeQueuedEvents() {
-        List<ScreenEvent> taken = List.copyOf(queued);
-        queued.clear();
-        return taken;
+    protected void repaintTheWindowFor(GobValue gob) {
+        refreshed.add(gob);
     }
 
-    synchronized void theOperatorDoes(ScreenEventKind kind, GobValue window) {
-        queued.add(new ScreenEvent(kind, window));
+    @Override
+    protected void closeTheWindowFor(GobValue gob) {
+        if (withWindows.removeIf(gob::sharesStorageWith)) {
+            closed.add(gob);
+        }
+    }
+
+    void theOperatorDoes(ScreenEventKind kind, GobValue window) {
+        queued.add(kind, window);
+    }
+
+    void theOperatorDoes(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
+        queued.add(kind, window, detail);
     }
 
     GobValue rootGob() {

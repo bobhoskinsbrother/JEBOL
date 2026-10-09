@@ -103,6 +103,11 @@ public record PaintList(List<PaintInstruction> instructions) {
         if (gob.contentKind() == GobStorage.Content.DRAW) {
             gathered.addAll(
                     whatItsDrawBlockPaints(gob, where, wide, high, drawDialect));
+        } else if (gob.contentKind() == GobStorage.Content.TEXT
+                && gob.contentIfKind(GobStorage.Content.TEXT) instanceof AnyBlockValue richText) {
+            if (titledDepths <= 0) {
+                gathered.addAll(writtenAsRichText(richText, where));
+            }
         } else if (titledDepths <= 0 || !itsTextIsATitle(gob)) {
             instructionFor(gob, where).ifPresent(gathered::add);
         }
@@ -161,7 +166,7 @@ public record PaintList(List<PaintInstruction> instructions) {
                 where.across(), where.down(), where.wide(), where.high(), where.clip(),
                 multipliedOpacity(where.opacity(), Colour.opacityOfTuple(parts)));
         return Optional.of(
-                new PaintInstruction.Fill(showing, Colour.ofTuple(parts)));
+                new PaintInstruction.Fill(showing, Colour.ofTuple(parts).solid()));
     }
 
     private static java.util.Optional<PaintInstruction> written(
@@ -175,6 +180,13 @@ public record PaintList(List<PaintInstruction> instructions) {
         }
         return Optional.of(
                 PaintInstruction.Writing.plain(where, text, Colour.BLACK));
+    }
+
+    private static List<PaintInstruction> writtenAsRichText(AnyBlockValue richText, Placement where) {
+        RichText.Line line = new RichText(Colour.BLACK).lineIn(richText);
+        return line.runs().isEmpty()
+                ? List.of()
+                : List.of(new PaintInstruction.Writing(where, line.runs(), line.layout()));
     }
 
     private static java.util.Optional<PaintInstruction> pictured(

@@ -203,7 +203,7 @@ class DesktopScreenFromTheSourceTest {
 
             screen.takeAsTheRoot(GobValue.empty());
 
-            assertThat(screen.takeQueuedEvents()).isEmpty();
+            assertThat(screen.takeTheNextEvent()).isEmpty();
         }
 
         @Test

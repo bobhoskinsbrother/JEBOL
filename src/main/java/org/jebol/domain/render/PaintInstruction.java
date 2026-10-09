@@ -2,6 +2,9 @@ package org.jebol.domain.render;
 
 import org.jebol.domain.value.ImageValue;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * One thing to paint, with everywhere it goes already worked out. A renderer
  * executes these and decides nothing.
@@ -22,17 +25,24 @@ public sealed interface PaintInstruction {
         }
     }
 
-    record Writing(
-            Placement where, String text, Colour colour,
-            double size, boolean bold, boolean italic)
+    record Writing(Placement where, List<TextRun> runs, TextLayout layout)
             implements PaintInstruction {
 
         /** The size a gob's own text is written at when nothing asks for one. */
         public static final double THE_ORDINARY_SIZE = 12;
 
-        /** Plain, at the ordinary size: what a gob's own string is. */
+        public Writing {
+            runs = List.copyOf(runs);
+        }
+
         public static Writing plain(Placement where, String text, Colour colour) {
-            return new Writing(where, text, colour, THE_ORDINARY_SIZE, false, false);
+            return new Writing(where,
+                    List.of(new TextRun(text, colour, THE_ORDINARY_SIZE, false, false)),
+                    TextLayout.STANDARD);
+        }
+
+        public String text() {
+            return runs.stream().map(TextRun::text).collect(Collectors.joining());
         }
 
         @Override

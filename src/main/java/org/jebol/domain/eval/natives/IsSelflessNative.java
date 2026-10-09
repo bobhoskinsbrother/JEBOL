@@ -21,6 +21,6 @@ public class IsSelflessNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> LogicValue.of(
                 !(arguments.getFirst() instanceof ObjectValue(Context fields))
-                        || !fields.holds("self"));
+                        || !fields.hasItsOwnSelf());
     }
 }

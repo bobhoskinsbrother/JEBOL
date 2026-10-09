@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 @Tag("browser")
 class PageRendersLikeTheDesktopTest {
@@ -164,6 +165,116 @@ class PageRendersLikeTheDesktopTest {
                 .as("a blank canvas would match a blank surface and mean nothing")
                 .isGreaterThanOrEqualTo(5);
         assertTheyAgree(fromTheBrowser, fromJava2D);
+    }
+
+    private static final String SEE_THROUGH_COLOURS_AND_ROUNDED_CORNERS = """
+            system/view/screen-gob/color: 0.0.0
+            view/no-wait make gob! [
+                size: 420x260
+                draw: [
+                    pen off
+                    fill-pen 244.196.66 box 0x0 420x260
+                    fill-pen 0.0.0.128 box 20x20 200x120 12
+                    fill-pen 200.0.0.64 box 120x60 380x220 30
+                    fill-pen 58.140.208 pen 20.20.20 line-width 2
+                    box 240x30 400x110 8
+                ]
+            ]
+            system/view/screen-gob
+            """;
+
+    @Test
+    @DisplayName("and a see-through colour and a rounded box paint the same in both")
+    void opacityAndRoundedCornersMatch() throws Exception {
+        Interpreter interpreter = anInterpreterOnThisPage();
+        interpreter.defineFreshWordsIn(SEE_THROUGH_COLOURS_AND_ROUNDED_CORNERS);
+        GobValue root = (GobValue) interpreter.run(SEE_THROUGH_COLOURS_AND_ROUNDED_CORNERS).value();
+
+        BufferedImage fromTheBrowser = whatTheCanvasShows();
+        BufferedImage fromJava2D = whatJava2DPaints(root,
+                fromTheBrowser.getWidth(), fromTheBrowser.getHeight());
+
+        Color halved = colourAt(fromTheBrowser, 60, 40);
+        assertThat(halved.getRed()).as("half-transparent black over the yellow halves its red").isCloseTo(122, within(1));
+        assertThat(halved.getGreen()).as("and its green").isCloseTo(98, within(1));
+        assertThat(halved.getBlue()).as("and its blue").isCloseTo(33, within(1));
+        assertThat(colourAt(fromTheBrowser, 21, 21))
+                .as("inside the box's square corner but outside its rounded one")
+                .isEqualTo(new Color(244, 196, 66));
+        assertTheyAgree(fromTheBrowser, fromJava2D);
+    }
+
+    private static final String A_CENTRED_LABEL = """
+            system/view/screen-gob/color: 255.255.255
+            labelled: make gob! [size: 420x260]
+            labelled/text: compose [
+                font (make object! [size: 20 color: 0.0.0])
+                para (make object! [origin: 0x0 margin: 0x0 align: 'center valign: 'middle])
+                "MMMMMM"
+            ]
+            view/no-wait labelled
+            system/view/screen-gob
+            """;
+
+    @Test
+    @DisplayName("and a centred label's ink is in the middle of its gob in the browser too")
+    void aCentredLabelIsCentredInTheBrowser() throws Exception {
+        Interpreter interpreter = anInterpreterOnThisPage();
+        interpreter.defineFreshWordsIn(A_CENTRED_LABEL);
+        interpreter.run(A_CENTRED_LABEL);
+
+        BufferedImage shown = whatTheCanvasShows();
+        int left = Integer.MAX_VALUE;
+        int right = -1;
+        int top = Integer.MAX_VALUE;
+        int bottom = -1;
+        for (int down = 0; down < 260; down++) {
+            for (int across = 0; across < 420; across++) {
+                Color seen = colourAt(shown, across, down);
+                if (seen.getRed() + seen.getGreen() + seen.getBlue() < 3 * 128) {
+                    left = Math.min(left, across);
+                    right = Math.max(right, across);
+                    top = Math.min(top, down);
+                    bottom = Math.max(bottom, down);
+                }
+            }
+        }
+
+        assertThat(right).as("some ink was written").isGreaterThanOrEqualTo(0);
+        assertThat((left + right) / 2.0).isCloseTo(210.0, within(2.0));
+        assertThat((top + bottom) / 2.0).isCloseTo(130.0, within(4.0));
+    }
+
+    private static final String A_WHITE_LABEL_WITH_A_SHADOW = """
+            system/view/screen-gob/color: 255.255.255
+            labelled: make gob! [size: 420x260]
+            labelled/text: compose [
+                font (make object! [size: 20 color: 255.255.255 shadow: 2x2])
+                "MMMMMM"
+            ]
+            view/no-wait labelled
+            system/view/screen-gob
+            """;
+
+    @Test
+    @DisplayName("and a white label's shadow is the only ink on white in the browser too")
+    void aShadowIsWrittenInTheBrowser() throws Exception {
+        Interpreter interpreter = anInterpreterOnThisPage();
+        interpreter.defineFreshWordsIn(A_WHITE_LABEL_WITH_A_SHADOW);
+        interpreter.run(A_WHITE_LABEL_WITH_A_SHADOW);
+
+        BufferedImage shown = whatTheCanvasShows();
+        int inked = 0;
+        for (int down = 0; down < 60; down++) {
+            for (int across = 0; across < 200; across++) {
+                Color seen = colourAt(shown, across, down);
+                if (seen.getRed() + seen.getGreen() + seen.getBlue() < 3 * 128) {
+                    inked++;
+                }
+            }
+        }
+
+        assertThat(inked).isGreaterThan(50);
     }
 
     private BufferedImage whatTheCanvasShows() throws IOException {

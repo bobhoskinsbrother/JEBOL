@@ -30,9 +30,7 @@ public class SetSchemeNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            List<ContextSlot> fields = ((ObjectValue) arguments.getFirst()).context().slots().stream()
-                    .filter(slot -> !slot.canonical().equals("self"))
-                    .toList();
+            List<ContextSlot> fields = ((ObjectValue) arguments.getFirst()).context().slots();
             if (fields.size() <= WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_ACTOR
                     || !(fields.get(WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_NAME).value() instanceof WordValue named)
                     || !SCHEMES_SERVED_NATIVELY.contains(named.canonical())) {

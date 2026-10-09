@@ -140,13 +140,18 @@ class WhatEachObjectNativeDeclaresTest {
         @DisplayName("selfless? is true of an object with no self, and of anything not an object")
         void selfless() {
             Context withSelf = Context.root();
-            withSelf.register("self", NoneValue.none());
+            withSelf.pointItsOwnSelfAt(NoneValue.none());
+            Context withAFieldSpeltSelf = Context.root();
+            withAFieldSpeltSelf.register("self", NoneValue.none());
 
             assertThat(answerOf(new IsSelflessNative(), NOTHING,
                     new ObjectValue(holding("a", IntegerValue.of(1)))))
                     .isEqualTo(LogicValue.of(true));
             assertThat(answerOf(new IsSelflessNative(), NOTHING, new ObjectValue(withSelf)))
                     .isEqualTo(LogicValue.of(false));
+            assertThat(answerOf(new IsSelflessNative(), NOTHING, new ObjectValue(withAFieldSpeltSelf)))
+                    .as("a field that is merely spelt self is not the object's own self")
+                    .isEqualTo(LogicValue.of(true));
             assertThat(answerOf(new IsSelflessNative(), NOTHING, IntegerValue.of(1)))
                     .isEqualTo(LogicValue.of(true));
         }

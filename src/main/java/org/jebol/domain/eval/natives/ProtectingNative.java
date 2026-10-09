@@ -161,7 +161,7 @@ public abstract class ProtectingNative extends DefaultNative {
             } else {
                 slot.allowAssignment();
             }
-            if (deeply && !slot.canonical().equals("self") && isReachedByADeepProtection(slot.value())) {
+            if (deeply && isReachedByADeepProtection(slot.value())) {
                 setProtection(slot.value(), protectedNow, true, false, reached);
             }
         });

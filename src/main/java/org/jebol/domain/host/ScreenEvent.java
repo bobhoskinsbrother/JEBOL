@@ -13,11 +13,18 @@ import org.jebol.domain.value.GobValue;
  *
  * <p>Specified in {@code spec/screen.allium}.
  */
-public record ScreenEvent(ScreenEventKind kind, GobValue window) {
+public record ScreenEvent(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
 
     public ScreenEvent {
         if (kind == null) {
             throw new IllegalArgumentException("an event needs a kind");
         }
+        if (detail == null) {
+            throw new IllegalArgumentException("an event needs a detail, if only NothingMore");
+        }
+    }
+
+    public ScreenEvent(ScreenEventKind kind, GobValue window) {
+        this(kind, window, new ScreenEventDetail.NothingMore());
     }
 }

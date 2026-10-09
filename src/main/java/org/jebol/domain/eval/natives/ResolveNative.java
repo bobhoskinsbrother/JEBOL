@@ -63,7 +63,7 @@ public class ResolveNative extends DefaultNative {
         Map<String, Value> available = theFieldsOtherThanSelfIn(from);
         for (int at = writable.startAt(); at <= targetSlots.size(); at++) {
             ContextSlot slot = targetSlots.get(at - 1);
-            if (slot.canonical().equals("self") || slot.isProtected()) {
+            if (slot.isProtected()) {
                 continue;
             }
             boolean known = available.containsKey(slot.canonical());
@@ -87,9 +87,7 @@ public class ResolveNative extends DefaultNative {
     private Map<String, Value> theFieldsOtherThanSelfIn(Context from) {
         Map<String, Value> available = new LinkedHashMap<>();
         for (ContextSlot slot : from.slots()) {
-            if (!slot.canonical().equals("self")) {
-                available.put(slot.canonical(), slot.value());
-            }
+            available.put(slot.canonical(), slot.value());
         }
         return available;
     }

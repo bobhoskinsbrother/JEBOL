@@ -136,7 +136,7 @@ public final class Repl {
     private static Interpreter anInterpreterFor(
             String[] arguments, PrintStream out, boolean forAScript, Path root) {
 
-        Bounds bounds = forAScript ? everyHostService() : Bounds.standard();
+        Bounds bounds = (forAScript ? everyHostService() : Bounds.standard()).withoutAWallClockLimit();
         if (ChosenScreen.wasAskedFor(arguments)) {
             bounds = bounds.granting(HostService.WINDOWS);
         }

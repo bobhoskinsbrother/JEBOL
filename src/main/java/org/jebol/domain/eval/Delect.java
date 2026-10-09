@@ -112,9 +112,7 @@ public final class Delect {
         Run(ObjectValue dialect, AnyBlockValue input, AnyBlockValue output,
             Evaluator evaluator, Context where) {
 
-            this.fields = dialect.context().slots().stream()
-                    .filter(slot -> !slot.canonical().equals("self"))
-                    .toList();
+            this.fields = dialect.context().slots();
             this.input = input;
             this.output = output;
             this.evaluator = evaluator;

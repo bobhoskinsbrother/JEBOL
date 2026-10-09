@@ -2,20 +2,30 @@ package org.jebol.domain.render;
 
 import org.jebol.domain.value.TupleValue;
 
+import java.math.BigDecimal;
+
 /**
- * A colour, as three octets. Opacity is not here: it multiplies down a whole
- * gob tree and belongs on the {@link Placement}.
+ * A colour, as three octets and how opaque it is, 255 being solid. A gob's own
+ * opacity is not here: it multiplies down a whole gob tree and belongs on the
+ * {@link Placement}.
  *
- * <p>Specified in {@code spec/screen.allium}.
+ * <p>Specified in {@code spec/screen.allium} and {@code spec/draw.allium}.
  */
-public record Colour(int red, int green, int blue) {
+public record Colour(int red, int green, int blue, int opacity) {
 
     private static final int WIDEST_OCTET = 255;
+
+    private static final int CSS_OPACITY_PLACES = 1000;
 
     public Colour {
         red = Math.clamp(red, 0, WIDEST_OCTET);
         green = Math.clamp(green, 0, WIDEST_OCTET);
         blue = Math.clamp(blue, 0, WIDEST_OCTET);
+        opacity = Math.clamp(opacity, 0, WIDEST_OCTET);
+    }
+
+    public Colour(int red, int green, int blue) {
+        this(red, green, blue, WIDEST_OCTET);
     }
 
     public static final Colour BLACK = new Colour(0, 0, 0);
@@ -34,7 +44,7 @@ public record Colour(int red, int green, int blue) {
         return gamma <= 0 || gamma == 1
                 ? this
                 : new Colour(curved(red, gamma), curved(green, gamma),
-                        curved(blue, gamma));
+                        curved(blue, gamma), opacity);
     }
 
     private static int curved(int channel, double gamma) {
@@ -43,9 +53,16 @@ public record Colour(int red, int green, int blue) {
                 (int) Math.round(Math.pow(shareOfFull, 1 / gamma) * 255), 0, 255);
     }
 
-    /** The first three octets of a REBOL tuple. */
     public static Colour ofTuple(TupleValue parts) {
-        return new Colour(parts.octetAt(1), parts.octetAt(2), parts.octetAt(3));
+        return new Colour(parts.octetAt(1), parts.octetAt(2), parts.octetAt(3), opacityOfTuple(parts));
+    }
+
+    public Colour solid() {
+        return new Colour(red, green, blue);
+    }
+
+    public boolean isSolid() {
+        return opacity == WIDEST_OCTET;
     }
 
     /**
@@ -59,5 +76,14 @@ public record Colour(int red, int green, int blue) {
     /** As {@code #rrggbb}, which is what a browser wants. */
     public String asHexTriplet() {
         return String.format("#%02x%02x%02x", red, green, blue);
+    }
+
+    public String asCss() {
+        if (isSolid()) {
+            return asHexTriplet();
+        }
+        double share = Math.round(opacity * CSS_OPACITY_PLACES / (double) WIDEST_OCTET)
+                / (double) CSS_OPACITY_PLACES;
+        return "rgba(%d,%d,%d,%s)".formatted(red, green, blue, BigDecimal.valueOf(share).stripTrailingZeros().toPlainString());
     }
 }

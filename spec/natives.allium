@@ -431,6 +431,31 @@ rule UntakenBranchIsNotEvaluated {
 -- Only the tested value counts. `while [false] [()]` is fine, because the
 -- body's answer is thrown away, and so is `loop 1 []`, which counts rather
 -- than testing.
+-- FORSKIP with a step of zero does not refuse. It runs the body at the same
+-- position, round after round, until the body breaks out -- `Loop_All` in the
+-- C has no check on the step, and a real 3.22.5 does exactly that. Over an
+-- empty series it runs nothing and answers none, as it does for any step.
+rule ForskipWithAStepOfZeroStaysWhereItIs {
+    when: EvaluateCall(forskip, word, step, body)
+    requires: step = 0
+    requires: not is_tail(the_series_held_by(word))
+
+    ensures: the_body_runs_again_at(the_series_held_by(word))
+}
+
+-- DIFFERENCE of two dates is the time between the instants they name: the
+-- whole days apart and the time of day apart, both taken in UTC, so a zone
+-- moves the answer and a fraction of a second survives. `Subtract_Date` in
+-- t-date.c: `(t1 - t2) + diff * TIME_IN_DAY`, a date with no time counting as
+-- its midnight. JEBOL counted the whole days only until 2026-10-09, so 1.5
+-- seconds apart answered 0:00.
+rule TheDifferenceOfTwoDatesIsTheTimeBetweenThem {
+    when: EvaluateCall(difference, first, second)
+    requires: is_a_date(first) and is_a_date(second)
+
+    ensures: the_answer_is(the_time_between(the_instant_of(first), the_instant_of(second)))
+}
+
 rule ALoopTestThatAnswersNothingRaisesNoReturn {
     when: EvaluateCall(until, body)
     requires: is_unset(result_of_evaluating(body))
@@ -6370,6 +6395,26 @@ rule FormingAnErrorTakesItsWordsFromTheCatalogue {
     ensures: a_near_line_follows when subject.near != none
 }
 
+-- JEBOL raises four ids Rebol's catalogue does not name -- no-service,
+-- host-access, host-error and no-such-action -- for the host grants and the
+-- browser view R3 has no equivalent of. With nothing in `errors.reb` to look
+-- up, such an error is worded by the sentence it was raised with, so the
+-- console says what went wrong: `** Access error: a host service the script
+-- was not granted, or that nothing can offer: ...`. It used to say
+-- "(improperly formatted error)", which hid every refused window and every
+-- failed host call behind the same words.
+--
+-- An id Rebol does name keeps its catalogue wording, and if the catalogue it
+-- would be read from is missing, it still answers "(improperly formatted
+-- error)" as Rebol's boot strings do.
+rule AnIdOnlyJebolRaisesIsWordedByItsOwnSentence {
+    when: EvaluateForm(subject)
+    requires: is_error(subject)
+    requires: not rebols_catalogue_names(subject.id)
+
+    ensures: the_message = the_sentence_it_was_raised_with(subject)
+}
+
 -- WHERE is the chain of calls the failure came up through, innermost first,
 -- and it does not stop at the user's functions.
 --
@@ -10724,7 +10769,7 @@ rule AHiddenFieldIsNotFound {
     ensures: CallResult(value: none)
 }
 
--- SELF is not found either, although it can be read.
+-- SELF is not found either.
 --
 -- The search starts one slot in: `word = FRM_WORDS(frame) + 1;` with the loop
 -- running from one. Slot zero is the object's own SELF, so the search never
@@ -10767,6 +10812,35 @@ rule SelfIsNotAFieldToFind {
 -- The slot is not read-only in the way PROTECT makes a word read-only, and
 -- the two mechanisms do not meet: PROTECT and UNPROTECT on the word SELF
 -- both succeed and change nothing anybody can see.
+-- An object's own SELF is slot zero and no field. Only a `self` word bound
+-- into the object -- one in the body it was made from, or in a function that
+-- body made -- reaches it. Asked by name it is not there: `o/self` is
+-- invalid-path, `in o 'self` and `get in o 'self` are none, and WORDS-OF,
+-- VALUES-OF, LENGTH? and MOLD leave it out. A real 3.22.5 answers all of
+-- these so.
+--
+-- A field that happens to be spelt `self` is an ordinary field, and nothing
+-- leaves it out. MAKE OBJECT! of a map with a `self` key makes one: `make
+-- object! make map! [self 2]` molds as `make object! [self: 2]`, its
+-- WORDS-OF is `[self]` and `o/self` is 2. JEBOL kept the object's own SELF as
+-- a field named self and hid every field of that spelling until 2026-10-09,
+-- so the map's key vanished and `o/self` answered the object.
+rule AnObjectsOwnSelfIsNoField {
+    when: AskForAField(object, self)
+    requires: is_any_object(object)
+    requires: not has_a_field_spelt(object, self)
+
+    ensures: the_field_is_absent
+}
+
+rule AFieldSpeltSelfIsAnOrdinaryField {
+    when: AskForAField(object, self)
+    requires: is_any_object(object)
+    requires: has_a_field_spelt(object, self)
+
+    ensures: the_answer_is(the_value_of_that_field)
+}
+
 rule SettingSelfIsRefused {
     when: EvaluateCall(set, word, value)
     requires: word = self
@@ -11860,6 +11934,22 @@ rule ADatatypeConvertsToTheWordThatNamesIt {
     ensures: CallResult(value: the_spelling_of(subject))
 }
 
+-- A word converted to another kind of word keeps its binding. `to set-word!
+-- in o 'x` sets o's x, and TO or MAKE into word!, get-word!, lit-word!,
+-- refinement! or issue! all answer a word that still reads o's x, as a real
+-- 3.22.5 does. Only the kind changes; the spelling and the context stay.
+--
+-- A word read from text is a new word and is bound to nothing: `to word! "x"`
+-- is unbound however many x's are in scope.
+rule AWordConvertedToAnotherKindOfWordKeepsItsBinding {
+    when: EvaluateCall(conversion, word_datatype, subject)
+    requires: conversion = to or conversion = make
+    requires: is_any_word(subject)
+
+    ensures: CallResult(value: a_word_of(word_datatype, spelt: the_spelling_of(subject)))
+    ensures: the_binding_of(the_answer) = the_binding_of(subject)
+}
+
 -- === A raw string, and what it does not read ==========
 
 -- A raw string is written between a run of percent signs and a brace, and holds
@@ -12251,6 +12341,7 @@ rule SettingAnObjectFromAnObjectCopiesByNameAndClones {
 rule MakingAnObjectFromAPrototypeClonesAndRebinds {
     when: EvaluateCall(make, prototype, body)
     requires: is_object(prototype)
+    requires: is_block(body) or is_none(body) or is_object(body)
 
     ensures:
         for field in the_own_fields_of(prototype):
@@ -12261,6 +12352,46 @@ rule MakingAnObjectFromAPrototypeClonesAndRebinds {
                     into: the_frame_of(the_new_object))
         the_new_object_shares_no_series_with(prototype)
         words_bound_outside(the_frame_of(prototype)) = left_as_written
+}
+
+-- A prototype given none is copied with nothing added: `make o none` is a new
+-- object with o's fields, and changing it leaves o alone. Given anything that
+-- is not a block, none or an object -- a number, a string, a paren, a binary,
+-- a word -- MAKE refuses with bad-make-arg naming object! and the prototype,
+-- as a real 3.22.5 does: `make object [a: 1] 5` gives arg1 object! and arg2
+-- the object.
+rule MakingAnObjectFromAPrototypeAndNoneIsACopy {
+    when: EvaluateCall(make, prototype, body)
+    requires: is_object(prototype)
+    requires: is_none(body)
+
+    ensures: CallResult(value: a_copy_of(prototype))
+    ensures: the_answer_is_not(same_as: prototype)
+}
+
+-- MAKE OBJECT! of a map builds an object from the map's word keys, as
+-- `Map_To_Object` does. A key that is any kind of word becomes a field of the
+-- same spelling, case kept, holding the map's value as it stands -- shared, not
+-- copied, and not evaluated, so a value written as the word `none` stays that
+-- word. A key that is not a word, or a value that is none itself, is left out.
+-- A `self` key is an ordinary field. TO OBJECT! of a map is still refused.
+rule MakingAnObjectFromAMapTakesItsWordKeys {
+    when: EvaluateCall(make, object_datatype, map)
+    requires: is_map(map)
+
+    ensures:
+        for entry in the_entries_of(map):
+            if is_any_word(entry.key) and not is_none(entry.value):
+                the_field_holds(the_answer, entry.key) = entry.value
+    ensures: the_fields_of(the_answer) = the_word_keys_holding_more_than_none(map)
+}
+
+rule MakingAnObjectFromAPrototypeAndAnythingElseIsRefused {
+    when: EvaluateCall(make, prototype, body)
+    requires: is_object(prototype)
+    requires: not (is_block(body) or is_none(body) or is_object(body))
+
+    ensures: CallFails(error: bad_make_arg, about: prototype)
 }
 
 -- CONSTRUCT floors an unset to none, and a set-word with nothing after it

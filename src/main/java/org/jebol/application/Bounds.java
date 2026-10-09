@@ -3,6 +3,7 @@ package org.jebol.application;
 import org.jebol.domain.host.HostService;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 
 /**
  * What a host decides before a script runs.
@@ -65,6 +66,20 @@ public record Bounds(
 
     public Bounds withWallClockLimit(Duration limit) {
         return new Bounds(limit, maximumNesting, checkEvery, hostAccess, grantedServices);
+    }
+
+    /** No limit on how long a script may run: what a person running their own script expects. */
+    public Bounds withoutAWallClockLimit() {
+        return withWallClockLimit(ChronoUnit.FOREVER.getDuration());
+    }
+
+    /** When a run that starts at this moment, in nanoseconds, must stop. */
+    public long deadlineFrom(long startedAtNanos) {
+        try {
+            return Math.addExact(startedAtNanos, wallClockLimit.toNanos());
+        } catch (ArithmeticException beyondAnyClock) {
+            return Long.MAX_VALUE;
+        }
     }
 
     public Bounds withMaximumNesting(int nesting) {

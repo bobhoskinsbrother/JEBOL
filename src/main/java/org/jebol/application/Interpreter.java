@@ -609,7 +609,7 @@ public final class Interpreter {
     private ScriptOutcome concludedWithinTheBounds(Supplier<Outcome> evaluating) {
         cancellationRequested.set(false);
         long startedAt = System.nanoTime();
-        deadlineNanos = startedAt + bounds.wallClockLimit().toNanos();
+        deadlineNanos = bounds.deadlineFrom(startedAt);
         try {
             return conclude(evaluating.get(), startedAt);
         } catch (QuitRequested quit) {
@@ -625,7 +625,7 @@ public final class Interpreter {
         } catch (Stopped stopped) {
             return new ScriptOutcome(
                     conclusionFor(stopped),
-                    ErrorValue.of(ErrorCategory.ACCESS, idFor(stopped), stopped.reason()),
+                    theStoppedRunReportedHere(stopped),
                     Duration.ofNanos(System.nanoTime() - startedAt));
         } finally {
             deadlineNanos = Long.MAX_VALUE;
@@ -660,7 +660,7 @@ public final class Interpreter {
     public Step runNext(String source) {
         cancellationRequested.set(false);
         long startedAt = System.nanoTime();
-        deadlineNanos = startedAt + bounds.wallClockLimit().toNanos();
+        deadlineNanos = bounds.deadlineFrom(startedAt);
         try {
             TranscodeResult read = evaluator.read(source);
             if (!read.succeeded()) {
@@ -698,7 +698,7 @@ public final class Interpreter {
         } catch (Stopped stopped) {
             return new Step(new ScriptOutcome(
                     conclusionFor(stopped),
-                    ErrorValue.of(ErrorCategory.ACCESS, idFor(stopped), stopped.reason()),
+                    theStoppedRunReportedHere(stopped),
                     Duration.ofNanos(System.nanoTime() - startedAt)), "");
         } finally {
             deadlineNanos = Long.MAX_VALUE;
@@ -741,6 +741,11 @@ public final class Interpreter {
         return stopped.reason().startsWith("the host")
                 ? Conclusion.CANCELLED
                 : Conclusion.TIMED_OUT;
+    }
+
+    private ErrorValue theStoppedRunReportedHere(Stopped stopped) {
+        return evaluator.spokenHere(ErrorValue.about(ErrorCategory.ACCESS, idFor(stopped),
+                stopped.reason(), StringValue.of(stopped.reason())));
     }
 
     private String idFor(Stopped stopped) {

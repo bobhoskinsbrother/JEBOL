@@ -59,12 +59,7 @@ final class WebScreenPage {
                   brush.fillStyle = step.colour;
                   brush.fillRect(step.across, step.down, step.wide, step.high);
                 } else if (step.kind === 'writing') {
-                  brush.fillStyle = step.colour;
-                  const size = step.size || 12;
-                  brush.font = (step.italic ? 'italic ' : '')
-                      + (step.bold ? 'bold ' : '') + size + 'px sans-serif';
-                  brush.fillText(step.text, step.across + 2,
-                      step.down + Math.min(step.high - 2, size + 2));
+                  writeTheLine(step);
                 } else if (step.kind === 'picture') {
                   showPicture(step);
                 } else if (step.kind === 'drawing') {
@@ -72,6 +67,49 @@ final class WebScreenPage {
                 }
                 brush.restore();
               }
+            }
+
+            function fontOf(run) {
+              return (run.italic ? 'italic ' : '') + (run.bold ? 'bold ' : '')
+                  + run.size + 'px sans-serif';
+            }
+
+            function writeTheLine(step) {
+              const layout = step.layout;
+              let lineWide = 0;
+              let ascent = 0;
+              let descent = 0;
+              const widths = step.runs.map(run => {
+                brush.font = fontOf(run);
+                const measured = brush.measureText(run.text);
+                ascent = Math.max(ascent, measured.fontBoundingBoxAscent);
+                descent = Math.max(descent, measured.fontBoundingBoxDescent);
+                lineWide += measured.width;
+                return measured.width;
+              });
+              const roomAcross = step.wide - layout['origin-across'] - layout['margin-across'];
+              const roomDown = step.high - layout['origin-down'] - layout['margin-down'];
+              const spareAcross = roomAcross - lineWide;
+              const spareDown = roomDown - (ascent + descent);
+              const across = step.across + layout['origin-across']
+                  + { left: 0, centre: spareAcross / 2, right: spareAcross }[layout.align];
+              const baseline = step.down + layout['origin-down']
+                  + { top: 0, middle: spareDown / 2, bottom: spareDown }[layout.valign] + ascent;
+              if (layout['shadow-across'] !== 0 || layout['shadow-down'] !== 0) {
+                writeTheRuns(step.runs, widths, across + layout['shadow-across'],
+                    baseline + layout['shadow-down'], '#000000');
+              }
+              writeTheRuns(step.runs, widths, across, baseline, null);
+            }
+
+            function writeTheRuns(runs, widths, across, baseline, everyRunIn) {
+              let along = across;
+              runs.forEach((run, index) => {
+                brush.font = fontOf(run);
+                brush.fillStyle = everyRunIn || run.colour;
+                brush.fillText(run.text, along, baseline);
+                along += widths[index];
+              });
             }
 
             const capNames = { 'butt': 'butt', 'square': 'square', 'rounded': 'round' };

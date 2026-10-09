@@ -87,7 +87,7 @@ public abstract sealed class AnyWordValue implements Value
         @Override
         protected Value built(Conversion asking, Value from, Maker maker) {
             return switch (from) {
-                case AnyWordValue word -> spelt(word.spelling());
+                case AnyWordValue word -> spelt(word.spelling(), word.binding());
                 case LogicValue(boolean truth) -> spelt(Boolean.toString(truth));
                 case CharacterValue letter -> spelt(theWordASingleCharacterSpells(letter));
                 case AnyStringValue text -> spelt(spellingReadFrom(text.text(), maker));

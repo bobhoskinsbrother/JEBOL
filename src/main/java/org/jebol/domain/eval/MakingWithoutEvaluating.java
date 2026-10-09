@@ -4,6 +4,7 @@ import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.AnyFunctionValue;
+import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Construction;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
@@ -40,8 +41,13 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
     }
 
     @Override
-    public Value makeObjectFrom(ObjectValue prototype, Value spec) {
-        throw Raised.cannotUseTheAction(spec, "make");
+    public Value makeObjectFrom(ObjectValue prototype, BlockValue body) {
+        throw Raised.cannotUseTheAction(body, "make");
+    }
+
+    @Override
+    public Value objectMergedFrom(ObjectValue prototype, ObjectValue other) {
+        throw Raised.cannotUseTheAction(other, "make");
     }
 
     @Override

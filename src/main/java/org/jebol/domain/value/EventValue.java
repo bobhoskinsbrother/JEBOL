@@ -209,6 +209,10 @@ public record EventValue(
      */
     public Optional<Value> keyRead() {
         if (typeIndex == EventCatalogue.KEY || typeIndex == EventCatalogue.KEY_UP) {
+            if (!Character.isValidCodePoint(data)) {
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
+                        "an event's key holds " + data + ", which is no character");
+            }
             return Optional.of(CharacterValue.of(data));
         }
         if (typeIndex == EventCatalogue.CONTROL || typeIndex == EventCatalogue.CONTROL_UP) {

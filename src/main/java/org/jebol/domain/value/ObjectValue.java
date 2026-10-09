@@ -48,7 +48,12 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
 
     @Override
     public Value make(Value spec, Maker maker) {
-        return maker.makeObjectFrom(this, spec);
+        return switch (spec) {
+            case BlockValue body -> maker.makeObjectFrom(this, body);
+            case NoneValue nothing -> maker.makeObjectFrom(this, BlockValue.block(List.of()));
+            case ObjectValue other -> maker.objectMergedFrom(this, other);
+            default -> throw Raised.of(EvaluationFailure.BAD_MAKE_ARG, TYPE, this);
+        };
     }
 
     @Override
@@ -71,9 +76,8 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
     public Value copied(boolean deeply, Set<Datatype> kinds) {
         Context fields = Context.root();
         ObjectValue duplicate = new ObjectValue(fields);
-        fields.register("self", duplicate);
-        context.slots().stream()
-                .filter(slot -> !slot.canonical().equals("self"))
+        fields.pointItsOwnSelfAt(duplicate);
+        context.slots()
                 .forEach(slot -> fields.register(slot.spelling(),
                         slot.value().copiedAsAMember(deeply, kinds)));
         return duplicate;
@@ -105,7 +109,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
     }
 
     private Stream<ContextSlot> fieldsOtherThanSelf() {
-        return context.slots().stream().filter(slot -> !slot.canonical().equals("self"));
+        return context.slots().stream();
     }
 
     private boolean hidesTheDeclaredField(AnyWordValue word) {
@@ -132,8 +136,21 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
                 case AnyBlockValue body -> maker.objectEvaluatedFrom(body);
                 case IntegerValue(long magnitude) -> anEmptyObjectWithRoomFor(spec, magnitude, maker);
                 case DecimalValue number -> anEmptyObjectWithRoomFor(spec, number.quantity(), maker);
+                case MapValue map -> anObjectOfTheWordKeysIn(map, maker);
                 default -> throw refusing(spec);
             };
+        }
+
+        private Value anObjectOfTheWordKeysIn(MapValue map, Maker maker) {
+            ObjectValue made = maker.objectEvaluatedFrom(BlockValue.block());
+            List<Value> keys = map.keys();
+            List<Value> values = map.values();
+            for (int at = 0; at < keys.size(); at++) {
+                if (keys.get(at) instanceof AnyWordValue word && !(values.get(at) instanceof NoneValue)) {
+                    made.context().register(word.spelling(), values.get(at));
+                }
+            }
+            return made;
         }
 
         private Value anEmptyObjectWithRoomFor(Value spec, double asked, Maker maker) {

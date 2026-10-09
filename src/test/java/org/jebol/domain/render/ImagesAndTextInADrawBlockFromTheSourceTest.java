@@ -162,31 +162,27 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("each string is its own run, laid out along the line")
+        @DisplayName("each string is its own run of one line, in the order written")
         void eachStringIsItsOwnRun() {
             List<PaintInstruction> painted =
                     drawingOf("", "text vectorial 0x0 200x40 [{one} {two}]");
 
-            assertThat(painted).hasSize(2);
-            assertThat(((PaintInstruction.Writing) painted.get(0)).text())
-                    .isEqualTo("one");
-            assertThat(((PaintInstruction.Writing) painted.get(1)).text())
-                    .isEqualTo("two");
-            assertThat(painted.get(1).where().across())
-                    .as("the second starts where the first ran out")
-                    .isGreaterThan(painted.get(0).where().across());
+            assertThat(painted).hasSize(1);
+            assertThat(((PaintInstruction.Writing) painted.getFirst()).runs())
+                    .extracting(TextRun::text).containsExactly("one", "two");
         }
 
         @Test
         @DisplayName("BOLD and ITALIC before a string style it, and the slash turns it off")
         void boldAndItalicStyleWhatFollows() {
-            List<PaintInstruction> painted = drawingOf("",
-                    "text vectorial 0x0 200x40 [bold {loud} /bold {quiet} italic {leaning}]");
+            List<TextRun> runs = ((PaintInstruction.Writing) drawingOf("",
+                    "text vectorial 0x0 200x40 [bold {loud} /bold {quiet} italic {leaning}]")
+                    .getFirst()).runs();
 
-            assertThat(painted).hasSize(3);
-            assertThat(((PaintInstruction.Writing) painted.get(0)).bold()).isTrue();
-            assertThat(((PaintInstruction.Writing) painted.get(1)).bold()).isFalse();
-            assertThat(((PaintInstruction.Writing) painted.get(2)).italic()).isTrue();
+            assertThat(runs).hasSize(3);
+            assertThat(runs.get(0).bold()).isTrue();
+            assertThat(runs.get(1).bold()).isFalse();
+            assertThat(runs.get(2).italic()).isTrue();
         }
 
         @Test
@@ -195,8 +191,7 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
             List<PaintInstruction> painted = drawingOf("",
                     "text vectorial 0x0 200x40 [24 255.0.0 {big and red}]");
 
-            PaintInstruction.Writing written =
-                    (PaintInstruction.Writing) painted.getFirst();
+            TextRun written = ((PaintInstruction.Writing) painted.getFirst()).runs().getFirst();
             assertThat(written.size()).isEqualTo(24);
             assertThat(written.colour()).isEqualTo(new Colour(255, 0, 0));
         }
@@ -204,8 +199,8 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
         @Test
         @DisplayName("it takes its colour from the pen")
         void ittakesItsColourFromThePen() {
-            PaintInstruction.Writing written = (PaintInstruction.Writing) drawingOf(
-                    "", "pen 255.0.0 text vectorial 0x0 200x40 [{red}]").getFirst();
+            TextRun written = ((PaintInstruction.Writing) drawingOf(
+                    "", "pen 255.0.0 text vectorial 0x0 200x40 [{red}]").getFirst()).runs().getFirst();
 
             assertThat(written.colour()).isEqualTo(new Colour(255, 0, 0));
         }

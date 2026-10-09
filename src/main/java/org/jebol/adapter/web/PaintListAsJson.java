@@ -27,14 +27,13 @@ final class PaintListAsJson {
         return switch (instruction) {
             case PaintInstruction.Fill filled -> anObject(
                     placed(filled),
-                    saying("colour", filled.colour().asHexTriplet()));
+                    saying("colour", filled.colour().asCss()));
             case PaintInstruction.Writing written -> anObject(
                     placed(written),
-                    saying("text", written.text()),
-                    saying("colour", written.colour().asHexTriplet()),
-                    measuring("size", written.size()),
-                    holding("bold", String.valueOf(written.bold())),
-                    holding("italic", String.valueOf(written.italic())));
+                    holding("runs", written.runs().stream()
+                            .map(PaintListAsJson::asARun)
+                            .collect(Collectors.joining(",", "[", "]"))),
+                    holding("layout", asALayout(written.layout())));
             case PaintInstruction.Picture shown -> anObject(
                     placed(shown),
                     measuring("draw-wide", shown.wide()),
@@ -110,10 +109,31 @@ final class PaintListAsJson {
                 + measuring("radius-down", down);
     }
 
+    private static String asARun(TextRun run) {
+        return anObject(
+                saying("text", run.text()),
+                saying("colour", run.colour().asCss()),
+                measuring("size", run.size()),
+                holding("bold", String.valueOf(run.bold())),
+                holding("italic", String.valueOf(run.italic())));
+    }
+
+    private static String asALayout(TextLayout layout) {
+        return anObject(
+                counting("origin-across", layout.originAcross()),
+                counting("origin-down", layout.originDown()),
+                counting("margin-across", layout.marginAcross()),
+                counting("margin-down", layout.marginDown()),
+                saying("align", layout.align().asJson()),
+                saying("valign", layout.valign().asJson()),
+                counting("shadow-across", layout.shadowAcross()),
+                counting("shadow-down", layout.shadowDown()));
+    }
+
     private static String asAStroke(PaintState painted) {
         return painted.strokeColour()
                 .map(colour -> anObject(
-                        saying("colour", colour.asHexTriplet()),
+                        saying("colour", colour.asCss()),
                         measuring("width", painted.lineWidth()),
                         saying("cap", painted.lineCap().spelling()),
                         saying("join", painted.lineJoin().spelling()),
@@ -127,7 +147,7 @@ final class PaintListAsJson {
         }
         return painted.fillColour()
                 .map(colour -> anObject(
-                        saying("colour", colour.asHexTriplet()),
+                        saying("colour", colour.asCss()),
                         saying("rule", painted.fillRule().spelling())))
                 .orElse("null");
     }
@@ -137,7 +157,7 @@ final class PaintListAsJson {
         for (int at = 0; at < gradient.colours().size(); at++) {
             stops.append(at == 0 ? "" : ",").append(anObject(
                     measuring("at", Math.min(1, Math.max(0, gradient.stops().get(at)))),
-                    saying("colour", gradient.colours().get(at).asHexTriplet())));
+                    saying("colour", gradient.colours().get(at).asCss())));
         }
         return anObject(
                 saying("rule", painted.fillRule().spelling()),

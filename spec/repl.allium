@@ -461,6 +461,33 @@ rule TheConsoleGrantsEveryService {
     ensures: the_granted_services() = every_host_service()
 }
 
+-- A script run from the command line has no time limit, as `r3 script.r3`
+-- has none, and neither has a line typed at its console. The same reasoning as the grants: the person chose to run it, and
+-- a program that opens a window and waits for them is meant to run for as
+-- long as they use it. The five seconds `Bounds.standard()` carries is the
+-- embedding default and stays there.
+--
+-- It was not so until 2026-10-09, and a GUI showed why it matters: the window
+-- opened, nothing checked the clock while it sat idle, and the first move of
+-- the mouse ran a handler, found the five seconds long gone and ended the
+-- program with a timeout.
+rule AScriptOnTheCommandLineHasNoTimeLimit {
+    when: run: ScriptRun.created
+
+    ensures: run.wall_clock_limit = none
+}
+
+-- A run its bounds stopped -- out of time, or cancelled by its host -- is
+-- reported in the words of the interpreter's own catalogue: `** Access error:
+-- port action timed out: ...` for a timeout, as `errors.reb` says. It was
+-- reported as "(improperly formatted error)", because the error was built
+-- with no catalogue to read.
+rule AStoppedRunIsReportedInTheCataloguesWords {
+    when: a_run_is_stopped_by_its_bounds(run)
+
+    ensures: the_report_reads(the_catalogue_entry_for(access, the_stopping_id(run)))
+}
+
 -- A script is read as bytes and decoded, which is what drops a byte order
 -- mark at the front of it. LoadOfABinaryDropsAnyByteOrderMark says the same
 -- thing of LOAD, and a script on the command line has to agree: the mark

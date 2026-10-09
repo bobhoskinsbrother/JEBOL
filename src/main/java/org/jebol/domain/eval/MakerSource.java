@@ -2,6 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.AnyFunctionValue;
+import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.FunctionValue;
@@ -33,8 +34,13 @@ public interface MakerSource {
         }
 
         @Override
-        public Value makeObjectFrom(ObjectValue prototype, Value spec) {
-            throw Raised.cannotUseTheAction(spec, "make");
+        public Value makeObjectFrom(ObjectValue prototype, BlockValue body) {
+            throw Raised.cannotUseTheAction(body, "make");
+        }
+
+        @Override
+        public Value objectMergedFrom(ObjectValue prototype, ObjectValue other) {
+            throw Raised.cannotUseTheAction(other, "make");
         }
 
         @Override

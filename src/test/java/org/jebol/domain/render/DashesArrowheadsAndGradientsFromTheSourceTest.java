@@ -199,6 +199,78 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
     class Gradients {
 
         @Test
+        @DisplayName("a gradient with no type word is linear, as host-draw.c makes it")
+        void noTypeIsLinear() {
+            Gradient made = onlyDrawing(
+                    "grad-pen 1x1 0 20 90 [10.10.10 200.200.200] box 0x0 100x20")
+                    .painted().fillGradient().orElseThrow();
+
+            assertThat(made.shape()).isEqualTo(GradientShape.LINEAR);
+            assertThat(made.radial()).isFalse();
+            assertThat(made.colours()).containsExactly(new Colour(10, 10, 10), new Colour(200, 200, 200));
+        }
+
+        @Test
+        @DisplayName("and keeps the offset, the range and the angle it was given")
+        void noTypeKeepsItsNumbers() {
+            Gradient made = onlyDrawing(
+                    "grad-pen 1x1 0 20 90 [10.10.10 200.200.200] box 0x0 100x20")
+                    .painted().fillGradient().orElseThrow();
+
+            assertThat(made.acrossOffset()).isEqualTo(1);
+            assertThat(made.downOffset()).isEqualTo(1);
+            assertThat(made.from()).isEqualTo(0);
+            assertThat(made.to()).isEqualTo(20);
+            assertThat(made.angle()).isEqualTo(90);
+        }
+
+        @Test
+        @DisplayName("the 2010 GUI's progress bar track, half-transparent greys with no type, is a gradient")
+        void theProgressBarsTrackIsAGradient() {
+            assertThat(onlyDrawing(
+                    "pen 96.96.96 line-width 1.5 grad-pen 1x1 0 20 90 [24.24.24.128 40.40.40.128 80.80.80.128] "
+                            + "box 1x1 200x20 3").painted().fillGradient()).isPresent();
+        }
+
+        @Test
+        @DisplayName("a fill-pen after a gradient fills with the colour, as the 2010 GUI's slider knob shows")
+        void aFillPenReplacesTheGradient() {
+            List<PaintInstruction> painted = drawingOf(
+                    "grad-pen 1x1 0 4 90 [40.40.40 160.160.160] box 1x1 200x10 3 "
+                            + "fill-pen 255.0.0 triangle -6x16 0x2 6x16");
+            PaintState theKnob = ((PaintInstruction.Drawn) painted.getLast()).painted();
+
+            assertThat(theKnob.fillGradient()).isEmpty();
+            assertThat(theKnob.fillColour()).contains(new Colour(255, 0, 0));
+        }
+
+        @Test
+        @DisplayName("and fill-pen off after a gradient fills with nothing at all")
+        void fillPenOffAfterAGradientFillsNothing() {
+            PaintState painted = onlyDrawing(
+                    "grad-pen 1x1 0 4 90 [40.40.40 160.160.160] fill-pen off box 1x1 200x10")
+                    .painted();
+
+            assertThat(painted.fillGradient()).isEmpty();
+            assertThat(painted.fillColour()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("and a gradient after a fill-pen is the gradient again")
+        void aGradientAfterAFillPenWins() {
+            assertThat(onlyDrawing(
+                    "fill-pen 255.0.0 grad-pen 1x1 0 4 90 [40.40.40 160.160.160] box 1x1 200x10")
+                    .painted().fillGradient()).isPresent();
+        }
+
+        @Test
+        @DisplayName("a gradient with no type and one colour is still no gradient")
+        void noTypeAndOneColourIsNone() {
+            assertThat(onlyDrawing("grad-pen 1x1 0 20 90 [10.10.10] box 0x0 100x20")
+                    .painted().fillGradient()).isEmpty();
+        }
+
+        @Test
         @DisplayName("a linear gradient fills with the colours it was given")
         void alinearGradientFillsWithItsColours() {
             PaintState filled = onlyDrawing(

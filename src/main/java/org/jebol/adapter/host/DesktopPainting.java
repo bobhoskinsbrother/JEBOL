@@ -12,6 +12,7 @@ import java.awt.geom.Ellipse2D;
 import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Executes a paint list on a Java2D surface.
@@ -23,8 +24,6 @@ public final class DesktopPainting {
 
     private static final int OPAQUE = Placement.OPAQUE;
     private static final Font TEXT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
-
-    private static final int WRITING_INSET = 2;
 
     private DesktopPainting() {
     }
@@ -115,15 +114,44 @@ public final class DesktopPainting {
     private static void write(
             Graphics2D onto, Placement where, PaintInstruction.Writing written) {
 
-        Font asked = TEXT.deriveFont(
-                (written.bold() ? Font.BOLD : 0) | (written.italic() ? Font.ITALIC : 0),
-                (float) written.size());
-        onto.setFont(asked);
-        onto.setColor(javaColourOf(written.colour()));
-        onto.drawString(written.text(),
-                where.across() + WRITING_INSET,
-                where.down() + Math.min(
-                        where.high() - WRITING_INSET, asked.getSize() + WRITING_INSET));
+        List<FontMetrics> measured = written.runs().stream()
+                .map(run -> onto.getFontMetrics(theFontOf(run)))
+                .toList();
+        double lineWide = 0;
+        double ascent = 0;
+        double descent = 0;
+        for (int index = 0; index < measured.size(); index++) {
+            lineWide += measured.get(index).stringWidth(written.runs().get(index).text());
+            ascent = Math.max(ascent, measured.get(index).getAscent());
+            descent = Math.max(descent, measured.get(index).getDescent());
+        }
+        TextLayout layout = written.layout();
+        TextLayout.LinePlacement placed = layout.whereTheLineGoes(where, lineWide, ascent, descent);
+        if (layout.castsAShadow()) {
+            writeTheRuns(onto, written.runs(), measured,
+                    placed.across() + layout.shadowAcross(), placed.baseline() + layout.shadowDown(),
+                    Optional.of(Color.BLACK));
+        }
+        writeTheRuns(onto, written.runs(), measured, placed.across(), placed.baseline(), Optional.empty());
+    }
+
+    private static void writeTheRuns(Graphics2D onto, List<TextRun> runs, List<FontMetrics> measured,
+            double across, double baseline, Optional<Color> everyRunIn) {
+
+        double alongTheLine = across;
+        for (int index = 0; index < runs.size(); index++) {
+            TextRun run = runs.get(index);
+            onto.setFont(theFontOf(run));
+            onto.setColor(everyRunIn.orElseGet(() -> javaColourOf(run.colour())));
+            onto.drawString(run.text(), (float) alongTheLine, (float) baseline);
+            alongTheLine += measured.get(index).stringWidth(run.text());
+        }
+    }
+
+    private static Font theFontOf(TextRun run) {
+        return TEXT.deriveFont(
+                (run.bold() ? Font.BOLD : 0) | (run.italic() ? Font.ITALIC : 0),
+                (float) run.size());
     }
 
     private static void show(
@@ -264,7 +292,7 @@ public final class DesktopPainting {
     }
 
     private static Color javaColourOf(org.jebol.domain.render.Colour colour) {
-        return new Color(colour.red(), colour.green(), colour.blue());
+        return new Color(colour.red(), colour.green(), colour.blue(), colour.opacity());
     }
 
     static BufferedImage asJavaImage(ImageValue pixels) {

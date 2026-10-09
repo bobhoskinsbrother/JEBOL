@@ -220,9 +220,20 @@ class MovedToJavaFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a step of zero is refused rather than looping for ever")
-        void aStepOfZeroIsRefused() {
-            assertThat(errorIdFrom("b: [1 2] forskip b 0 [1]")).isEqualTo("invalid-arg");
+        @DisplayName("a step of zero runs the body again at the same place until it breaks out")
+        void aStepOfZeroStaysWhereItIs() {
+            assertThat(answerTo("""
+                    n: 0 b: [1 2 3]
+                    forskip b 0 [n: n + 1 if n > 5 [break]]
+                    reduce [n index? b]""")).isEqualTo("[6 1]");
+        }
+
+        @Test
+        @DisplayName("a step of zero over an empty series runs nothing and answers none")
+        void aStepOfZeroOverNothingRunsNothing() {
+            assertThat(answerTo("""
+                    n: 0 b: []
+                    reduce [forskip b 0 [n: n + 1] n]""")).isEqualTo("[_ 0]");
         }
 
         @Test

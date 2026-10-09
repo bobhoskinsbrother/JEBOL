@@ -70,7 +70,6 @@ public class ForEachNative extends LoopingNative {
         }
         return switch (series) {
             case ObjectValue object -> object.context().slots().stream()
-                    .filter(slot -> !slot.canonical().equals("self"))
                     .<Value>map(slot -> WordValue.of(slot.spelling()))
                     .toList();
             case MapValue map -> map.keys();

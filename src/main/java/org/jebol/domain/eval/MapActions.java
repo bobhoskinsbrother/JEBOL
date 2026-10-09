@@ -126,7 +126,6 @@ public final class MapActions implements Actions {
         return switch (given) {
             case MapValue already -> already.flattened();
             case ObjectValue object -> object.context().slots().stream()
-                    .filter(slot -> !slot.canonical().equals("self"))
                     .<Value>mapMulti((slot, accept) -> {
                         accept.accept(WordValue.of(slot.spelling()));
                         accept.accept(slot.value());

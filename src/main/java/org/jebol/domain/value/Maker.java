@@ -5,7 +5,9 @@ import java.util.Optional;
 
 public interface Maker {
 
-    Value makeObjectFrom(ObjectValue prototype, Value spec);
+    Value makeObjectFrom(ObjectValue prototype, BlockValue body);
+
+    Value objectMergedFrom(ObjectValue prototype, ObjectValue other);
 
     Value makeFunctionFrom(AnyFunctionValue prototype, AnyBlockValue spec);
 

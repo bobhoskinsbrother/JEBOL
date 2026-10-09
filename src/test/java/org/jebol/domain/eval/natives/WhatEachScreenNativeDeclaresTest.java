@@ -19,6 +19,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -72,8 +73,8 @@ class WhatEachScreenNativeDeclaresTest {
         }
 
         @Override
-        public List<ScreenEvent> takeQueuedEvents() {
-            return List.of();
+        public Optional<ScreenEvent> takeTheNextEvent() {
+            return Optional.empty();
         }
     }
 

@@ -85,8 +85,10 @@ enum ScreenEventKind {
     close          -- the operator asked for the window to go away
     | resize       -- the window changed size
     | offset       -- the window moved
-    | key          -- a key went down
-    | key_up       -- a key came up
+    | key          -- a key that types a character went down
+    | key_up       -- a key that types a character came up
+    | control      -- a key that types nothing went down: an arrow, f1, escape
+    | control_up   -- a key that types nothing came up
     | down         -- a pointer button went down
     | up           -- a pointer button came up
     | move         -- the pointer moved
@@ -167,6 +169,9 @@ entity ScreenEvent {
     kind: ScreenEventKind
     window: ScreenWindow
     delivered: boolean
+    across: Integer?            -- present when the event has a position or a size
+    down: Integer?
+    key: String?                -- a character, or one of system/catalog's key names
 }
 
 ------------------------------------------------------------
@@ -380,6 +385,27 @@ rule ShowingAGobAlreadyOpenRefreshesIt {
     ensures: the_window_is_repainted(the_window_for(gob))
 }
 
+-- Given a gob somewhere inside a window -- a button, a slider's knob, any face
+-- -- repaint the window that holds it. The window is found by walking up the
+-- gob's parents until one is in the root's pane.
+--
+-- This is the SHOW a GUI makes most: every face that changes shows its own
+-- gob, not its window. The C ends OS_Show_Gob with `OS_Draw_Window(0, gob)`,
+-- where the 0 means "the window parent of gob". JEBOL ignored such a show
+-- until 2026-10-09, so a dragged slider changed its value and the screen never
+-- moved.
+--
+-- A gob that is in no window, or a window that has no window open yet, is
+-- shown by nothing, and showing it opens or closes nothing.
+rule ShowingAGobInsideAWindowRepaintsThatWindow {
+    when: script_shows(run, gob)
+    requires: windows_are_granted(run)
+    requires: run.interpreter.screen_port.has_a_display
+    requires: the_window_holding(gob).standing = showing
+
+    ensures: the_window_is_repainted(the_window_holding(gob))
+}
+
 -- Given a gob that has a window and has left the root's pane, close it.
 rule ShowingAGobThatLeftTheScreenClosesItsWindow {
     when: script_shows(run, gob)
@@ -405,6 +431,21 @@ rule ShowingAnswersWhatItWasGiven {
     requires: windows_are_granted(run)
 
     ensures: ShowResult(value: gob)
+}
+
+-- A window JEBOL opens on the desktop carries JEBOL's own icon and name, in
+-- its title bar and in the operating system's dock or task bar. Without them
+-- the operator sees the Java runtime's mascot and the word "java", which says
+-- what the program is built on rather than what it is. The icon is drawn by
+-- JEBOL itself rather than read from a file, because the shipped jar carries
+-- no pictures. A screen with no display opens no window and shows no icon.
+rule ADesktopWindowCarriesJebolsIconAndName {
+    when: ScreenWindow.created(port, gob, standing)
+    requires: port.has_a_display
+
+    ensures:
+        the_window_icon_is(jebols_icon)
+        the_application_is_named(jebol)
 }
 
 -- Showing needs a screen, and a granted service with nothing behind it is
@@ -450,6 +491,51 @@ rule AnEventFromTheScreenIsQueuedRatherThanDelivered {
         delivered: false)
 }
 
+-- An event carries what a script needs to act on it, as R3's host fills it.
+-- A pointer event -- down, up, move -- carries where the pointer is, counted
+-- from the top left of the window's drawable area. A resize carries the
+-- drawable area's new size, and a move of the window carries where the
+-- window now is on the screen. All three arrive as `event/offset`.
+--
+-- A key event carries the key, and which kind of event it is depends on the
+-- key, as R3's host decides it. A key that types a character is a `key` or
+-- `key-up` event and `event/key` is that character. A key that types none is
+-- a `control` or `control-up` event and `event/key` is its name from
+-- `system/catalog`'s key list -- up, down, left, right, home, end, page-up,
+-- page-down, insert, delete, escape, backspace, f1 to f12 and the rest. The C
+-- reads a control event's key as a position in that list and a key event's as
+-- a character, so the two cannot be mixed. A key the list does not name is
+-- not reported.
+--
+-- A close carries neither.
+rule AScreenEventCarriesItsPositionOrItsKey {
+    when: the_screen_reports(port, kind, window)
+
+    ensures:
+        if kind = down or kind = up or kind = move:
+            the_event_offset_is(the_pointer_position_within(window))
+        else if kind = resize:
+            the_event_offset_is(the_drawable_size_of(window))
+        else if kind = offset:
+            the_event_offset_is(the_screen_position_of(window))
+        else if kind = key or kind = key_up or kind = control or kind = control_up:
+            the_event_key_is(the_key_pressed)
+}
+
+-- Reading `event/key` of a key event whose stored number is no character --
+-- which `make event! [type: 'key key: 'f12]` leaves, because the C stores a
+-- named key in the top half of the number and reads a key event's number as a
+-- character -- raises out-of-range. A real 3.22.5 answers a character past
+-- the end of Unicode there, which JEBOL cannot hold. Raising is the nearest
+-- answer that is still a REBOL error rather than a host failure.
+rule ReadingAKeyThatIsNoCharacterIsRefused {
+    when: EvaluatePath(event, key)
+    requires: event.type_index = key_event or event.type_index = key_up_event
+    requires: not is_a_character(event.data)
+
+    ensures: PathFails(error: out_of_range)
+}
+
 -- Waiting on the event port is where queued events become handler calls, and
 -- it happens on the thread that started the run. So a block written in a
 -- handler sees the same interpreter every other block sees.
@@ -461,6 +547,28 @@ rule WaitingOnTheEventPortDeliversWhatIsQueued {
         for event in undelivered_events_of(run.interpreter.screen_port):
             the_handlers_are_run_for(event)
             event.delivered = true
+}
+
+-- The same holds when the event port is one of several things waited on, as
+-- in `wait [port 0]` or `wait [port 0:00:01]`. Everything that arrives before
+-- the time is up is handed to the handlers, and the wait returns the port if a
+-- handler woke it, or none when the time runs out. The C does the same: a
+-- WAIT on a block runs every port's awake through the system port, the event
+-- port among them.
+--
+-- JEBOL ignored the screen in this form until 2026-10-09, and that hid a crash
+-- from the sliders example's end-to-end test: it waited on `[port 0]`, so no
+-- event the operator made ever reached a handler, and every check that the
+-- example "survived" passed because nothing ran.
+rule WaitingOnTheEventPortAmongOthersDeliversWhatArrivesInTime {
+    when: script_waits_on_the_event_port_with_a_timeout(run, timeout)
+    requires: windows_are_granted(run)
+
+    ensures:
+        for event in events_arriving_before(run.interpreter.screen_port, timeout):
+            the_handlers_are_run_for(event)
+            event.delivered = true
+        the_wait_returns(run)
 }
 
 -- The wait ends when the last window has closed, and not before.
@@ -667,6 +775,65 @@ rule AContentKindWithNothingToPaintProducesNoInstruction {
     ensures:
         for gob in every_gob_under(root) where content_is_not_paintable(gob):
             no_instruction_exists_for(gob)
+}
+
+-- A gob whose text is a block holds R3's rich-text dialect, and only its
+-- strings are written. `font` followed by an object sets the size from its
+-- `size`, the colour from its `color`, bold or italic from its `style` and
+-- the shadow from its `shadow`; `para` followed by an object lays the line out
+-- (see AGobsTextIsLaidOutByItsPara); `anti-alias` followed by its switch is
+-- read past. The block's own source is never written: the 2010 R3 GUI hands
+-- every label `[font make object! [...] para make object! [...] anti-alias on
+-- "These will change:"]`, and forming that whole wrote the font's fields
+-- across the window.
+rule AGobsRichTextWritesOnlyItsStrings {
+    when: FlattenTheTree(root)
+    ensures:
+        for gob in every_gob_under(root) where its_text_is_a_block(gob):
+            the_instructions_for(gob) write only the_strings_of(gob.text)
+}
+
+-- A gob's text is laid out inside the gob by its para. The para's `origin`
+-- moves the space the text has in from the top left, and its `margin` takes
+-- the same from the bottom right. Within what is left, `align` puts the line
+-- at the left, the centre or the right, and `valign` puts it at the top, the
+-- middle or the bottom. A para that says nothing about a field leaves it as
+-- `system/standard/para` has it: origin 2x2, margin 2x2, left, top. A gob
+-- whose text is a plain string has that standard para.
+--
+-- The line is placed as one piece, all its runs together, so a centred line
+-- of a plain word and a bold word is centred as a whole. Where each run
+-- starts follows from how wide the runs before it really are, and that is
+-- measured by whatever writes the text, because only it knows the font.
+--
+-- The C's layout is in the rich-text engine, which is not in the vendored
+-- source; `host-text.c` shows what it is handed -- origin and margin as
+-- pairs, align left, center or right, valign top, middle or bottom -- and the
+-- defaults are `view-funcs.reb`'s. The 2010 GUI's buttons are `align:
+-- 'center valign: 'middle` and its radio buttons `origin: 18x0`, which is
+-- where the label starts so as to clear the circle. JEBOL ignored the para
+-- until 2026-10-09: every button label sat at its top left and every radio
+-- label was written over its circle.
+rule AGobsTextIsLaidOutByItsPara {
+    when: FlattenTheTree(root)
+    ensures:
+        for gob in every_gob_under(root) where it_has_text(gob):
+            the_line_is_placed(gob,
+                the_box_of(gob, the_para_of(gob).origin, the_para_of(gob).margin),
+                the_para_of(gob).align,
+                the_para_of(gob).valign)
+}
+
+-- A font with a `shadow` pair writes its text twice: first in black, moved by
+-- the pair, then in its own colour where it belongs. `host-text.c` reads the
+-- shadow as an offset, a colour and a blur; `view-funcs.reb`'s standard font
+-- has none. The 2010 GUI's buttons have `shadow: 2x2`, which is what makes
+-- their white labels stand out from the blue.
+rule AFontWithAShadowWritesItTwice {
+    when: FlattenTheTree(root)
+    ensures:
+        for gob in every_gob_under(root) where has_a_shadow(the_font_of(gob)):
+            the_line_is_written_first(gob, black, the_font_of(gob).shadow)
 }
 
 -- A window's text is its title, and the screen's text is a label. Neither is

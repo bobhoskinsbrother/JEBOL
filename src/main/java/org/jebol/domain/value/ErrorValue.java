@@ -380,7 +380,15 @@ public record ErrorValue(
     private String theMessageTheCatalogueGives() {
         return wording.forTheId(category.spelling(), errorId)
                 .map(this::theMessageWrittenFrom)
-                .orElse(ErrorWording.NOTHING_IN_THE_CATALOGUE);
+                .orElseGet(this::theWordsWhenTheCatalogueHasNone);
+    }
+
+    private String theWordsWhenTheCatalogueHasNone() {
+        return rebolsCatalogueNamesIt() ? ErrorWording.NOTHING_IN_THE_CATALOGUE : message;
+    }
+
+    private boolean rebolsCatalogueNamesIt() {
+        return ErrorCatalogue.idsIn(category.spelling()).contains(errorId);
     }
 
     private String theMessageWrittenFrom(Value said) {

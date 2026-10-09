@@ -4,7 +4,6 @@ import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.ContextSlot;
 import org.jebol.domain.value.Datatype;
-import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.RebolSeries;
@@ -20,10 +19,6 @@ public abstract class SteppingThroughNative extends LoopingNative {
         }
         if (!(slot.value() instanceof RebolSeries start)) {
             throw Raised.cannotUse(slot.value(), "forall");
-        }
-        if (step == 0) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    "a step of zero would never reach the end");
         }
         if (step < 0 && start.index() > start.storageLength()) {
             slot.setValue(start.atIndex(start.storageLength() + 1 + step));

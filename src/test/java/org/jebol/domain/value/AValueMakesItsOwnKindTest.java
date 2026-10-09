@@ -26,8 +26,14 @@ class AValueMakesItsOwnKindTest {
         private final List<String> asked = new ArrayList<>();
 
         @Override
-        public Value makeObjectFrom(ObjectValue prototype, Value spec) {
+        public Value makeObjectFrom(ObjectValue prototype, BlockValue body) {
             asked.add("object like");
+            return whatAPrototypeMade;
+        }
+
+        @Override
+        public Value objectMergedFrom(ObjectValue prototype, ObjectValue other) {
+            asked.add("object merged");
             return whatAPrototypeMade;
         }
 

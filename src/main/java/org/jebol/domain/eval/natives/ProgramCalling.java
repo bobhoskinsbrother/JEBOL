@@ -159,7 +159,7 @@ final class ProgramCalling {
     private Value informationObject(ProcessPort.ProgramResult result, Evaluator evaluator) {
         Context fields = Context.childOf(evaluator.systemContext());
         ObjectValue built = new ObjectValue(fields);
-        fields.register("self", built);
+        fields.pointItsOwnSelfAt(built);
         fields.register("id", IntegerValue.of(result.processNumber()));
         if (waits && result.exitCode().isPresent()) {
             fields.register("exit-code", IntegerValue.of(result.exitCode().orElseThrow()));

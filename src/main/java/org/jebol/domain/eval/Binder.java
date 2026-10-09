@@ -107,7 +107,7 @@ public final class Binder {
             int where = block.index() + at;
             Value item = block.storage().at(where);
             if (item instanceof AnyWordValue word) {
-                if (target.holds(word.canonical())) {
+                if (target.bindsAWordSpelt(word.canonical())) {
                     block.storage().rebindAt(where, word.boundTo(target));
                 }
             } else if (deeply) {
@@ -143,7 +143,7 @@ public final class Binder {
 
     private static Value boundIfTheTargetHoldsIt(Value value, Context target) {
         return switch (value) {
-            case AnyWordValue word when target.holds(word.canonical()) ->
+            case AnyWordValue word when target.bindsAWordSpelt(word.canonical()) ->
                     word.boundTo(target);
             case AnyWordValue word -> word;
             case AnyBlockValue nested -> bindWhatTheTargetHoldsItself(nested, target);

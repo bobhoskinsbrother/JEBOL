@@ -3,19 +3,25 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.EventPath;
 import org.jebol.domain.host.ScreenEvent;
+import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.AnyFunctionValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.AnyDecimalValue;
+import org.jebol.domain.value.CharacterValue;
 import org.jebol.domain.value.EventCatalogue;
 import org.jebol.domain.value.EventValue;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.LitWordValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.NoneValue;
+import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.PortValue;
+import org.jebol.domain.value.SetWordValue;
 import org.jebol.domain.value.TimeValue;
 import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
@@ -24,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 public class WaitNative extends PortWakingNative {
 
@@ -34,8 +41,6 @@ public class WaitNative extends PortWakingNative {
     private static final long NANOSECONDS_IN_A_MILLISECOND = 1_000_000L;
 
     private static final double MILLISECONDS_IN_A_SECOND = 1000;
-
-    private static final int AN_UNCATALOGUED_EVENT = 0;
 
     @Override
     public String nativeName() {
@@ -57,12 +62,18 @@ public class WaitNative extends PortWakingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value asked = arguments.getFirst();
-            if (asked instanceof PortValue port && port.schemeName().equals("event")) {
-                return waitedOnTheScreen(port, evaluator);
+            if (isAnEventPort(asked)) {
+                return waitedOnTheScreen((PortValue) asked, evaluator);
             }
             List<Value> waitedOn = asked instanceof AnyBlockValue block
                     ? evaluator.evaluateEachOrRaise(block, context)
                     : List.of(asked);
+            Optional<PortValue> eventPort = theEventPortAmong(waitedOn);
+            if (eventPort.isPresent()) {
+                return howLongToWaitAmong(waitedOn)
+                        .map(milliseconds -> waitedOnTheScreenFor(eventPort.get(), milliseconds, evaluator))
+                        .orElseGet(() -> waitedOnTheScreen(eventPort.get(), evaluator));
+            }
             if (whicheverPortWoke(waitedOn, evaluator) instanceof PortValue woken) {
                 return woken;
             }
@@ -129,10 +140,8 @@ public class WaitNative extends PortWakingNative {
 
     private Value waitedOnTheScreen(PortValue port, Evaluator evaluator) {
         while (theScreenStillHasSomethingToSay(evaluator)) {
-            for (ScreenEvent reported : evaluator.screen().takeQueuedEvents()) {
-                if (wakes(port, guiEventFor(reported), evaluator)) {
-                    return NoneValue.none();
-                }
+            if (aQueuedEventWakes(port, evaluator)) {
+                return NoneValue.none();
             }
             if (!theScreenStillHasSomethingToSay(evaluator)) {
                 return NoneValue.none();
@@ -142,17 +151,72 @@ public class WaitNative extends PortWakingNative {
         return NoneValue.none();
     }
 
+    private boolean aQueuedEventWakes(PortValue port, Evaluator evaluator) {
+        Optional<ScreenEvent> next = evaluator.screen().takeTheNextEvent();
+        while (next.isPresent()) {
+            if (wakes(port, guiEventFor(next.get()), evaluator)) {
+                return true;
+            }
+            next = evaluator.screen().takeTheNextEvent();
+        }
+        return false;
+    }
+
+    private boolean isAnEventPort(Value asked) {
+        return asked instanceof PortValue port && port.schemeName().equals("event");
+    }
+
+    private Optional<PortValue> theEventPortAmong(List<Value> waitedOn) {
+        return waitedOn.stream()
+                .filter(this::isAnEventPort)
+                .map(PortValue.class::cast)
+                .findFirst();
+    }
+
+    private Value waitedOnTheScreenFor(PortValue port, long milliseconds, Evaluator evaluator) {
+        long deadline = System.nanoTime() + milliseconds * NANOSECONDS_IN_A_MILLISECOND;
+        while (true) {
+            if (aQueuedEventWakes(port, evaluator)) {
+                return port;
+            }
+            long remainingNanoseconds = deadline - System.nanoTime();
+            if (remainingNanoseconds <= 0 || evaluator.reasonToStop().isPresent()) {
+                return NoneValue.none();
+            }
+            sleepInterruptibly(Math.min(SCREEN_POLL_MILLISECONDS,
+                    Math.ceilDiv(remainingNanoseconds, NANOSECONDS_IN_A_MILLISECOND)), evaluator);
+        }
+    }
+
     private boolean theScreenStillHasSomethingToSay(Evaluator evaluator) {
         Value root = evaluator.systemContext().valueAt("system", "view", "screen-gob");
         return root instanceof GobValue gob && gob.storage().length() > 0;
     }
 
     private EventValue guiEventFor(ScreenEvent reported) {
-        return EventValue.fresh()
-                .withType(EventCatalogue.typeIndexOf(reported.kind().spelling())
-                        .orElse(AN_UNCATALOGUED_EVENT))
-                .withAttached(EventValue.Model.GUI,
-                        reported.window() == null ? NoneValue.none() : reported.window());
+        List<Value> spec = new ArrayList<>(List.of(
+                SetWordValue.of("type"), LitWordValue.of(reported.kind().spelling())));
+        spec.addAll(reported.window() == null
+                ? List.of(SetWordValue.of("port"), NoneValue.none())
+                : List.of(SetWordValue.of("window"), reported.window()));
+        spec.addAll(whatTheDetailWrites(reported.detail()));
+        return EventPath.made(BlockValue.block(spec), UnaryOperator.identity()) instanceof EventValue made
+                ? made
+                : EventValue.fresh();
+    }
+
+    private List<Value> whatTheDetailWrites(ScreenEventDetail detail) {
+        return switch (detail) {
+            case ScreenEventDetail.At(int across, int down) ->
+                    List.of(SetWordValue.of("offset"), PairValue.of(across, down));
+            case ScreenEventDetail.Typed(int codepoint) ->
+                    List.of(SetWordValue.of("key"), CharacterValue.of(codepoint));
+            case ScreenEventDetail.NamedKey(String name) -> EventCatalogue.keyIndexOf(name)
+                    .<List<Value>>map(position -> List.of(
+                            SetWordValue.of("code"), IntegerValue.of(position + 1)))
+                    .orElse(List.of());
+            case ScreenEventDetail.NothingMore nothing -> List.of();
+        };
     }
 
     private void sleepInterruptibly(long milliseconds, Evaluator evaluator) {

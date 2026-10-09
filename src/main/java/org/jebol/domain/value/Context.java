@@ -17,6 +17,9 @@ public final class Context {
     private boolean onlyThroughACallThatIsRunning;
     private Context supersededBy;
     private boolean closedToNewNames;
+    private Optional<ContextSlot> itsOwnSelf = Optional.empty();
+
+    private static final String THE_WORD_AN_OBJECT_ANSWERS_TO_FOR_ITSELF = "self";
 
     private Context(Context parent, boolean unbound) {
         this.parent = parent;
@@ -100,7 +103,28 @@ public final class Context {
         if (supersededBy != null) {
             return frameThatResolvesForThisOne().knows(canonicalName);
         }
-        return slotsByCanonicalName.containsKey(canonicalName) || (parent != null && parent.knows(canonicalName));
+        return slotsByCanonicalName.containsKey(canonicalName)
+                || itsOwnSelfAnswersTo(canonicalName)
+                || (parent != null && parent.knows(canonicalName));
+    }
+
+    public void pointItsOwnSelfAt(Value object) {
+        ContextSlot self = new ContextSlot(this,
+                THE_WORD_AN_OBJECT_ANSWERS_TO_FOR_ITSELF, THE_WORD_AN_OBJECT_ANSWERS_TO_FOR_ITSELF);
+        self.setValue(object);
+        itsOwnSelf = Optional.of(self);
+    }
+
+    public boolean bindsAWordSpelt(String canonicalName) {
+        return holds(canonicalName) || itsOwnSelfAnswersTo(canonicalName);
+    }
+
+    public boolean hasItsOwnSelf() {
+        return itsOwnSelf.isPresent();
+    }
+
+    private boolean itsOwnSelfAnswersTo(String canonicalName) {
+        return itsOwnSelf.isPresent() && canonicalName.equals(THE_WORD_AN_OBJECT_ANSWERS_TO_FOR_ITSELF);
     }
 
     public boolean holds(String canonicalName) {
@@ -116,7 +140,7 @@ public final class Context {
         if (supersededBy != null) {
             return frameThatResolvesForThisOne().holderOf(canonicalName);
         }
-        if (holds(canonicalName)) {
+        if (holds(canonicalName) || itsOwnSelfAnswersTo(canonicalName)) {
             return this;
         }
         if (!unbound && parent != null) {
@@ -135,6 +159,9 @@ public final class Context {
         ContextSlot slot = slotsByCanonicalName.get(canonicalName);
         if (slot != null) {
             return slot;
+        }
+        if (itsOwnSelfAnswersTo(canonicalName)) {
+            return itsOwnSelf.orElseThrow();
         }
         if (parent != null) {
             return parent.slotFor(canonicalName);
@@ -203,7 +230,7 @@ public final class Context {
         for (ContextSlot slot : slots()) {
             boolean holdsNothing = slot.value() instanceof NoneValue
                     || slot.value() instanceof UnsetValue;
-            if (!slot.canonical().equals("self") && !holdsNothing) {
+            if (!holdsNothing) {
                 kept.register(slot.spelling(), slot.value());
             }
         }
@@ -211,13 +238,13 @@ public final class Context {
     }
 
     public boolean holdsNothingButSelf() {
-        return slots().stream().allMatch(slot -> slot.canonical().equals("self"));
+        return slots().isEmpty();
     }
 
     public Map<String, Value> fieldsExcludingSelf() {
         Map<String, Value> fields = new LinkedHashMap<>();
         slotsByCanonicalName.forEach((name, slot) -> {
-            if (!name.equals("self") && !slot.isHidden()) {
+            if (!slot.isHidden()) {
                 fields.put(name, slot.value());
             }
         });
@@ -225,7 +252,7 @@ public final class Context {
     }
 
     public int fieldCount() {
-        return (int) slotsByCanonicalName.entrySet().stream().filter(entry -> !entry.getKey().equals("self")).count();
+        return slotsByCanonicalName.size();
     }
 
     public int slotCount() {
@@ -233,7 +260,7 @@ public final class Context {
     }
 
     public List<Value> setWordsAndValues() {
-        return slots().stream().filter(slot -> !slot.canonical().equals("self")).flatMap(slot -> Stream.of(SetWordValue.of(slot.spelling()), slot.value())).toList();
+        return slots().stream().flatMap(slot -> Stream.of(SetWordValue.of(slot.spelling()), slot.value())).toList();
     }
 
     public AnyBlockValue setWordsAndValuesOnLines() {
@@ -259,13 +286,18 @@ public final class Context {
         return slots().stream().map(ContextSlot::canonical).collect(Collectors.toSet());
     }
 
+    public Set<String> theNamesItBinds() {
+        Set<String> bound = new HashSet<>(ownFieldNames());
+        itsOwnSelf.ifPresent(self -> bound.add(THE_WORD_AN_OBJECT_ANSWERS_TO_FOR_ITSELF));
+        return bound;
+    }
+
     public List<ContextSlot> everySlot() {
         return new ArrayList<>(slotsByCanonicalName.values());
     }
 
     public List<Value> boundWordsAndValues() {
         return slots().stream()
-                .filter(slot -> !slot.canonical().equals("self"))
                 .<Value>mapMulti((slot, accept) -> {
                     accept.accept(WordValue.of(slot.spelling()).boundTo(this));
                     accept.accept(slot.value());

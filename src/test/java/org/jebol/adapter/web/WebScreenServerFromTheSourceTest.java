@@ -243,7 +243,7 @@ class WebScreenServerFromTheSourceTest {
                     {"kind":"jump"}"""))
                     .as("%s", lastPostSaid)
                     .isEqualTo(204);
-            assertThat(screen.takeQueuedEvents()).isEmpty();
+            assertThat(screen.takeTheNextEvent()).isEmpty();
         }
 
         @Test

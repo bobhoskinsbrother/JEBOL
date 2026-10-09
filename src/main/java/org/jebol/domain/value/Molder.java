@@ -22,8 +22,6 @@ import java.util.stream.Stream;
  */
 public final class Molder {
 
-    private static final String THE_WORD_EVERY_OBJECT_HOLDS_FOR_ITSELF = "self";
-
     private static final boolean ALWAYS_MOLDED = true;
 
     private Molder() {
@@ -947,8 +945,6 @@ public final class Molder {
 
     private static Stream<ContextSlot> fieldsOutsideSelf(
             ObjectValue object) {
-        return object.context().slots().stream()
-                .filter(slot -> !slot.canonical()
-                        .equals(THE_WORD_EVERY_OBJECT_HOLDS_FOR_ITSELF));
+        return object.context().slots().stream();
     }
 }

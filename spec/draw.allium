@@ -117,6 +117,21 @@ rule ADrawBlockStartsWithADefaultState {
         the_starting_state_has(anti_aliased: true)
 }
 
+-- A draw block's coordinates are measured from its own gob's top-left corner,
+-- wherever that gob sits. `box 1x1 98x26` on a button at 10x259 in its window
+-- covers 11x260 to 108x285 of the window. The paint list holds positions from
+-- the surface (EveryPositionIsAbsolute in screen.allium), so the reading adds
+-- the gob's place before anything is painted, shapes, gradients and images
+-- alike, and RESET-MATRIX returns to the gob's corner rather than to the
+-- surface's.
+rule ADrawBlocksCoordinatesAreTheGobsOwn {
+    when: a_draw_block_is_read(gob)
+    ensures:
+        for shape in the_shapes_it_paints:
+            shape.position_on_the_surface =
+                shape.position_in_the_block + the_surface_position_of(gob)
+}
+
 -- PEN sets the line colour, and PEN with a logic turns the line off.
 --
 -- `[tuple! image! logic!]` is three slots, so a caller writes one of the three
@@ -139,6 +154,32 @@ rule FillPenSetsTheInsideColourOrTurnsItOff {
     ensures:
         if a_colour_was_given: the_state_has(fill_colour: that_colour)
         if no_colour_was_given: the_state_has(fill_colour: absent)
+}
+
+-- FILL-PEN replaces a gradient GRAD-PEN set earlier: what comes after is
+-- filled with the colour. AGG's fill pen and its gradient pen are one pen, and
+-- the 2010 R3 GUI's slider shows it -- a gradient for the track, then
+-- `fill-pen knob-color` for the knob, and the reference screenshot's knob is
+-- plain red. JEBOL kept the gradient until 2026-10-09 and drew a grey knob.
+rule FillPenReplacesAGradient {
+    when: the_command_is(fill_pen)
+    ensures: the_state_has(fill_gradient: absent)
+}
+
+-- A colour's fourth number is how opaque it is: 255 is solid, 0 is invisible,
+-- and a colour of three numbers is solid. `sys-value.h` builds every draw
+-- colour with `TO_COLOR_TUPLE`, which takes the fourth byte as alpha and puts
+-- 0xff there when the tuple has only three.
+--
+-- The same holds for a pen, a fill-pen and every colour of a gradient. The
+-- 2010 R3 GUI's scroller track is `0.0.0.128` -- half-transparent black, so
+-- the panel shows through it -- and JEBOL painted it solid black until
+-- 2026-10-09 because its colours carried no opacity at all.
+rule AColoursFourthNumberIsHowOpaqueItIs {
+    when: the_command_is(pen) or the_command_is(fill_pen) or the_command_is(grad_pen)
+    ensures:
+        for colour in the_colours_given:
+            the_colour_painted(colour).opacity = opacity_read_from(colour)
 }
 
 -- A width of zero or less is a width of one.
@@ -591,6 +632,19 @@ rule GradPenFillsWithARunOfColours {
     ensures: the_state_becomes(filled_with(a_gradient_of(colours)))
 }
 
+-- A GRAD-PEN with no type word is linear. `host-draw.c` passes `DW_LINEAR`
+-- when the type slot is none, so `grad-pen 1x1 0 20 90 [...]` is a linear
+-- run from 0 to 20 turned 90 degrees. The 2010 R3 GUI writes its progress bar
+-- and its slider exactly so, and JEBOL dropped every such gradient until
+-- 2026-10-09, which left the progress bar an empty outline.
+rule AGradPenWithNoTypeIsLinear {
+    when: the_command_is(grad_pen, type, mode, offset, range, angle, scale, colours)
+    requires: no_type_was_given
+    requires: count_of(colours) >= 2
+
+    ensures: the_state_becomes(filled_with(a_linear_gradient))
+}
+
 rule AGradientOfOneColourOrNoneIsNoGradientAtAll {
     when: the_command_is(grad_pen, type, mode, offset, range, angle, scale, colours)
     requires: count_of(colours) < 2
@@ -709,8 +763,11 @@ rule ThreeOrFourCornersPullThePictureOntoThem {
 -- TEXT writes the strings of its block at an offset.
 --
 -- The block is R3's rich-text dialect -- `bold`, `italic`, sizes, colours and
--- strings interleaved -- and what is written here is the strings, joined by
--- spaces, in the pen's colour. The styling words are read and not obeyed.
+-- strings interleaved -- and what is written here is the strings, in the
+-- pen's colour unless the block sets one. `font` followed by an object takes
+-- its size, colour and style, as it does for a gob's text (see
+-- AGobsRichTextWritesOnlyItsStrings in screen.allium); `para` and
+-- `anti-alias` are read past and nothing they hold is written.
 --
 -- **Text is the one thing in this file that the two renderers cannot be held
 -- to pixel for pixel**, and it is not a fault in either: Java2D and a browser

@@ -88,27 +88,34 @@ public final class BrowserScreen extends GobScreen {
 
     @Override
     public void show(GobValue gob) {
-        if (!hasADisplay()) {
-            throw new Denied("no-service",
-                    "no browser is attached to this screen");
+        super.show(gob);
+        if (root != null) {
+            viewer.paint(theWholePagePaintedAfreshRatherThanPatched());
         }
-        if (root == null) {
-            return;
-        }
-        reconcile(gob);
-        viewer.paint(theWholePagePaintedAfreshRatherThanPatched());
     }
 
-    private void reconcile(GobValue gob) {
-        if (gob.sharesStorageWith(root)) {
-            showing.clear();
-            showing.addAll(childrenOfTheRoot());
-            return;
-        }
+    @Override
+    protected Denied nothingToShowOn() {
+        return new Denied("no-service", "no browser is attached to this screen");
+    }
+
+    @Override
+    protected List<GobValue> gobsWithWindows() {
+        return List.copyOf(showing);
+    }
+
+    @Override
+    protected void openTheWindowFor(GobValue gob) {
+        showing.add(gob);
+    }
+
+    @Override
+    protected void repaintTheWindowFor(GobValue gob) {
+    }
+
+    @Override
+    protected void closeTheWindowFor(GobValue gob) {
         showing.removeIf(gob::sharesStorageWith);
-        if (isInTheRootsPane(gob)) {
-            showing.add(gob);
-        }
     }
 
     private PaintList theWholePagePaintedAfreshRatherThanPatched() {

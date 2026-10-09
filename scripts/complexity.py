@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""How much deciding each method does, which is goal 11's measure.
+"""How much deciding each method does, which is the type-major refactor's measure.
 
 Cyclomatic complexity is one plus the branch points: every if, while, for,
 case, catch, &&, ||, ternary and switch guard. It is a crude number and a
-useful one here, because the thing goal 11 removes -- a registration table
+useful one here, because the thing that refactor removes -- a registration table
 deciding what an action means for each datatype -- is made of exactly those.
 
 It moves where the work happens and nowhere else. Migrating APPEND, INSERT,

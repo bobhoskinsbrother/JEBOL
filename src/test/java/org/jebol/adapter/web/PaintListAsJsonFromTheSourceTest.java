@@ -88,6 +88,49 @@ class PaintListAsJsonFromTheSourceTest {
         }
 
         @Test
+        @DisplayName("a plain string carries the standard layout, so the page places it as the desktop does")
+        void aPlainStringCarriesTheStandardLayout() {
+            assertThat(written("""
+                    make gob! [size: 100x20 text: "hello"]"""))
+                    .contains("""
+                            "layout":{"origin-across":2,"origin-down":2,"margin-across":2,"margin-down":2,\
+                            "align":"left","valign":"top","shadow-across":0,"shadow-down":0}""");
+        }
+
+        @Test
+        @DisplayName("a centred para crosses as centre and middle")
+        void aCentredParaCrosses() {
+            assertThat(written("""
+                    labelled: make gob! [size: 100x20]
+                    labelled/text: compose [para (make object! [origin: 0x0 margin: 0x0 align: 'center valign: 'middle]) "hi"]
+                    labelled"""))
+                    .contains("""
+                            "align":"centre","valign":"middle",""");
+        }
+
+        @Test
+        @DisplayName("each run of a line crosses with its own font, in the order it is written")
+        void eachRunCrosses() {
+            assertThat(written("""
+                    labelled: make gob! [size: 100x20]
+                    labelled/text: [{plain } bold {heavy}]
+                    labelled"""))
+                    .contains("""
+                            "runs":[{"text":"plain ","colour":"#000000","size":12,"bold":false,"italic":false},\
+                            {"text":"heavy","colour":"#000000","size":12,"bold":true,"italic":false}]""");
+        }
+
+        @Test
+        @DisplayName("a colour it can see through crosses as rgba")
+        void aSeeThroughColourCrossesAsRgba() {
+            assertThat(written("""
+                    labelled: make gob! [size: 100x20]
+                    labelled/text: [0.0.0.128 {faint}]
+                    labelled"""))
+                    .contains("rgba(0,0,0,0.502)");
+        }
+
+        @Test
         @DisplayName("a quotation mark in a caption does not end the string")
         void aQuoteIsEscaped() {
             assertThat(written("""

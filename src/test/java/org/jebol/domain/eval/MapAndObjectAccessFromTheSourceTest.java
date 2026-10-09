@@ -327,12 +327,12 @@ class MapAndObjectAccessFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("SELF is not found, although the object answers to it")
+        @DisplayName("SELF is not found, and IN finds no self either, as a real 3.22.5 answers")
         void selfIsNotFound() {
             assertThat(answerTo("none? find make object! [a: 1] 'self")).isEqualTo(TRUE);
             assertThat(answerTo("none? select make object! [a: 1] 'self"))
                     .isEqualTo(TRUE);
-            assertThat(answerTo("object? get in make object! [a: 1] 'self"))
+            assertThat(answerTo("none? in make object! [a: 1] 'self"))
                     .isEqualTo(TRUE);
         }
 

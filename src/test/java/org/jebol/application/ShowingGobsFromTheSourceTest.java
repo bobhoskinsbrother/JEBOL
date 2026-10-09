@@ -121,6 +121,113 @@ class ShowingGobsFromTheSourceTest {
     }
 
     @Nested
+    @DisplayName("showing a gob inside a window")
+    class TheInside {
+
+        private final RecordingScreen screen = aScreen();
+
+        private final Interpreter interpreter = withAScreen(screen);
+
+        private void running(String source) {
+            interpreter.defineFreshWordsIn(source);
+            interpreter.run(source);
+        }
+
+        private static final String A_WINDOW_WITH_A_KNOB_TWO_DEEP = """
+                root: system/view/screen-gob
+                w: make gob! [size: 200x100]
+                track: make gob! [size: 180x20]
+                knob: make gob! [size: 20x20]
+                append track knob
+                append w track
+                append root w
+                show w
+                """;
+
+        @Test
+        @DisplayName("repaints the window holding it, as a face does each time it changes")
+        void aChildRepaintsItsWindow() {
+            running(A_WINDOW_WITH_A_KNOB_TWO_DEEP + "show track");
+
+            assertThat(screen.whatWasRefreshed()).hasSize(1);
+            assertThat(screen.whatWasRefreshed().getFirst().sharesStorageWith(screen.whatOpened().getFirst()))
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("however deep it sits")
+        void aGrandchildRepaintsItsWindow() {
+            running(A_WINDOW_WITH_A_KNOB_TWO_DEEP + "show knob");
+
+            assertThat(screen.whatWasRefreshed()).hasSize(1);
+            assertThat(screen.whatWasRefreshed().getFirst().sharesStorageWith(screen.whatOpened().getFirst()))
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("and neither opens nor closes anything")
+        void itOpensAndClosesNothing() {
+            running(A_WINDOW_WITH_A_KNOB_TWO_DEEP + "show knob");
+
+            assertThat(screen.whatOpened()).hasSize(1);
+            assertThat(screen.whatClosed()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("of the two windows open, only the one holding it is repainted")
+        void onlyItsOwnWindowIsRepainted() {
+            running(A_WINDOW_WITH_A_KNOB_TWO_DEEP + """
+                    other: make gob! [size: 50x50]
+                    append root other
+                    show other
+                    show knob
+                    """);
+
+            assertThat(screen.whatWasRefreshed()).hasSize(1);
+            assertThat(screen.whatWasRefreshed().getFirst().sharesStorageWith(screen.whatOpened().getFirst()))
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("a gob in a window not yet opened repaints nothing and opens nothing")
+        void aGobInAnUnopenedWindowDoesNothing() {
+            running("""
+                    root: system/view/screen-gob
+                    w: make gob! [size: 200x100]
+                    knob: make gob! [size: 20x20]
+                    append w knob
+                    append root w
+                    show knob
+                    """);
+
+            assertThat(screen.whatOpened()).isEmpty();
+            assertThat(screen.whatWasRefreshed()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("a gob in no window at all repaints nothing and closes nothing")
+        void aLooseGobDoesNothing() {
+            running(A_WINDOW_WITH_A_KNOB_TWO_DEEP + """
+                    loose: make gob! [size: 20x20]
+                    holder: make gob! [size: 40x40]
+                    append holder loose
+                    show loose
+                    """);
+
+            assertThat(screen.whatWasRefreshed()).isEmpty();
+            assertThat(screen.whatClosed()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("a block of gobs is shown by nothing, as 3.22's SHOW acts on a gob alone")
+        void aBlockIsShownByNothing() {
+            running(A_WINDOW_WITH_A_KNOB_TWO_DEEP + "show reduce [knob track]");
+
+            assertThat(screen.whatWasRefreshed()).isEmpty();
+        }
+    }
+
+    @Nested
     @DisplayName("showing a gob that has left the screen's pane")
     class TheClosing {
 

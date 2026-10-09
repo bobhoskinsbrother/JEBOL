@@ -76,16 +76,19 @@ public final class InterpreterMaker implements Maker {
     }
 
     @Override
-    public Value makeObjectFrom(ObjectValue prototype, Value spec) {
-        return spec instanceof ObjectValue other
-                ? mergedObject(prototype, other)
-                : evaluator.evaluatedInto(aCopyOf(prototype), (AnyBlockValue) spec);
+    public Value makeObjectFrom(ObjectValue prototype, BlockValue body) {
+        return evaluator.evaluatedInto(aCopyOf(prototype), body);
+    }
+
+    @Override
+    public Value objectMergedFrom(ObjectValue prototype, ObjectValue other) {
+        return mergedObject(prototype, other);
     }
 
     private ObjectValue aCopyOf(ObjectValue prototype) {
         ObjectValue built = evaluator.freshObjectWithin(context);
         Context fields = built.context();
-        fieldsOtherThanSelfIn(prototype.context()).forEach(slot -> fields.register(
+        prototype.context().slots().forEach(slot -> fields.register(
                 slot.spelling(), Binder.clonedAndRebound(
                         slot.value(), Set.of(prototype.context()), fields)));
         return built;
@@ -93,23 +96,17 @@ public final class InterpreterMaker implements Maker {
 
     private Value mergedObject(ObjectValue prototype, ObjectValue other) {
         Context fields = Context.childOf(context);
-        fieldsOtherThanSelfIn(prototype.context())
+        prototype.context().slots()
                 .forEach(slot -> fields.register(slot.spelling(), slot.value()));
-        fieldsOtherThanSelfIn(other.context())
+        other.context().slots()
                 .forEach(slot -> fields.register(slot.spelling(), slot.value()));
 
         ObjectValue merged = new ObjectValue(fields);
-        fields.register("self", merged);
+        fields.pointItsOwnSelfAt(merged);
         Set<Context> sources = Set.of(prototype.context(), other.context());
-        fieldsOtherThanSelfIn(fields).forEach(slot -> fields.register(slot.spelling(),
+        fields.slots().forEach(slot -> fields.register(slot.spelling(),
                 Binder.clonedAndRebound(slot.value(), sources, fields)));
         return merged;
-    }
-
-    private List<ContextSlot> fieldsOtherThanSelfIn(Context fields) {
-        return fields.slots().stream()
-                .filter(slot -> !slot.canonical().equals("self"))
-                .toList();
     }
 
     @Override

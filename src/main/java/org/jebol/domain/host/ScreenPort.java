@@ -5,6 +5,7 @@ import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * How a script puts a gob tree on a screen and hears what happened to it.
@@ -65,12 +66,15 @@ public interface ScreenPort {
     void show(GobValue gob);
 
     /**
-     * The events that have arrived since this was last asked, and clears them.
+     * The oldest event not yet taken, removed from the queue, or empty when
+     * nothing is waiting.
      *
      * <p>Taken rather than delivered, because the thread that made them must
-     * not be the thread that acts on them. See {@code spec/screen.allium}.
+     * not be the thread that acts on them; and one at a time, so the events
+     * behind one that wakes a port stay queued for the next wait. See
+     * {@code spec/screen.allium}.
      */
-    List<ScreenEvent> takeQueuedEvents();
+    Optional<ScreenEvent> takeTheNextEvent();
 
     /**
      * Makes a gob the root: remembered, cut loose, and sized to the screen.
@@ -177,8 +181,8 @@ public interface ScreenPort {
             }
 
             @Override
-            public List<ScreenEvent> takeQueuedEvents() {
-                return List.of();
+            public Optional<ScreenEvent> takeTheNextEvent() {
+                return Optional.empty();
             }
         };
     }

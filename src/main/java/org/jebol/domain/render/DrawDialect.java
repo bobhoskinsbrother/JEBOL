@@ -97,7 +97,8 @@ public final class DrawDialect {
         private void obey(String command, List<Value> arguments) {
             switch (command) {
                 case "pen" -> state = state.withStroke(read.colourIn(arguments));
-                case "fill-pen" -> state = state.withFill(read.colourIn(arguments));
+                case "fill-pen" -> state = state.withFill(read.colourIn(arguments))
+                        .withFillGradient(Optional.empty());
                 case "line-width" -> state =
                         state.withLineWidth(read.numberAt(arguments, 0).orElse(1.0));
                 case "line-cap" -> read.wordAt(arguments, 0).flatMap(LineCap::named)
@@ -157,8 +158,12 @@ public final class DrawDialect {
             paintTheGapsBetweenTheDashes(path);
             paintAGradientNoToolkitHas(path);
             painted.add(new PaintInstruction.Drawn(whereTheClipStandsNow(),
-                    path, transform, theStateARendererGets()));
+                    path, theTransformOnTheSurface(), theStateARendererGets()));
             paintAnyArrowheads(path);
+        }
+
+        private Transform theTransformOnTheSurface() {
+            return Transform.movedBy(where.across(), where.down()).combinedWith(transform);
         }
 
         private PaintState theStateARendererGets() {
@@ -206,7 +211,7 @@ public final class DrawDialect {
                         .withFillGradient(Optional.empty())
                         .withFill(Optional.of(piece.colour()));
                 painted.add(new PaintInstruction.Drawn(
-                        clippedToTheShapeItFills(path), piece.path(), transform, state));
+                        clippedToTheShapeItFills(path), piece.path(), theTransformOnTheSurface(), state));
             }
             state = wasStanding;
         }
@@ -284,7 +289,7 @@ public final class DrawDialect {
                 return;
             }
             painted.add(new PaintInstruction.Drawn(whereTheClipStandsNow(), gaps,
-                    transform, state.withDashes(List.of())
+                    theTransformOnTheSurface(), state.withDashes(List.of())
                             .withFill(Optional.empty())
                             .withFillGradient(Optional.empty())
                             .withStroke(gapColour)));
@@ -302,12 +307,13 @@ public final class DrawDialect {
             Optional<Colour> filled =
                     arrowColour.isPresent() ? arrowColour : state.strokeColour();
             painted.add(new PaintInstruction.Drawn(whereTheClipStandsNow(), heads,
-                    transform, state.withDashes(List.of())
+                    theTransformOnTheSurface(), state.withDashes(List.of())
                             .withStroke(Optional.empty())
                             .withFillGradient(Optional.empty())
                             .withFill(filled)));
         }
 
+        private static final double HOW_FAR_A_CUBIC_PULLS_TO_MAKE_A_QUARTER_CIRCLE = 0.5522847498;
         private static final int THE_GRADIENT_TYPE = 0;
         private static final int THE_GRADIENT_OFFSET = 2;
         private static final int THE_GRADIENT_RANGE_FROM = 4;
@@ -316,11 +322,9 @@ public final class DrawDialect {
         private static final int THE_GRADIENT_COLOURS = 9;
 
         private Optional<Gradient> aGradientFrom(List<Value> arguments) {
-            Optional<String> asked = read.wordAt(arguments, THE_GRADIENT_TYPE);
-            if (asked.isEmpty()) {
-                return Optional.empty();
-            }
-            Optional<GradientShape> shape = GradientShape.named(asked.orElseThrow());
+            Optional<GradientShape> shape = read.wordAt(arguments, THE_GRADIENT_TYPE)
+                    .map(GradientShape::named)
+                    .orElse(Optional.of(GradientShape.LINEAR));
             List<Colour> colours = everyColourIn(arguments, THE_GRADIENT_COLOURS);
             if (shape.isEmpty() || colours.size() < 2) {
                 return Optional.empty();
@@ -447,19 +451,17 @@ public final class DrawDialect {
                     .orElse(PairValue.of(0, 0));
             PairValue size = read.pairAt(arguments, THE_TEXT_OFFSET + 1)
                     .orElse(PairValue.of(wide - at.x(), high - at.y()));
-            double alongTheLine = 0;
-            for (RichText.Run run
-                    : RichText.runsIn(written, state.strokeColour().orElseThrow())) {
-                painted.add(new PaintInstruction.Writing(
-                        new Placement(
-                                where.across()
-                                        + (int) Math.round(at.x() + alongTheLine),
-                                where.down() + (int) Math.round(at.y()),
-                                (int) Math.round(size.x()), (int) Math.round(size.y()),
-                                clip, where.opacity()),
-                        run.text(), run.colour(), run.size(), run.bold(), run.italic()));
-                alongTheLine += RichText.howWideItRunsOut(run);
+            RichText.Line line = new RichText(state.strokeColour().orElseThrow()).lineIn(written);
+            if (line.runs().isEmpty()) {
+                return;
             }
+            painted.add(new PaintInstruction.Writing(
+                    new Placement(
+                            where.across() + (int) Math.round(at.x()),
+                            where.down() + (int) Math.round(at.y()),
+                            (int) Math.round(size.x()), (int) Math.round(size.y()),
+                            clip, where.opacity()),
+                    line.runs(), line.layout()));
         }
 
         private void clippedTo(List<Value> arguments) {
@@ -552,11 +554,38 @@ public final class DrawDialect {
         private List<PathStep> aBox(List<Value> arguments) {
             PairValue corner = read.pairAt(arguments, 0).orElse(PairValue.of(0, 0));
             PairValue end = read.pairAt(arguments, 1).orElse(PairValue.of(wide, high));
+            double left = Math.min(corner.x(), end.x());
+            double top = Math.min(corner.y(), end.y());
+            double right = Math.max(corner.x(), end.x());
+            double bottom = Math.max(corner.y(), end.y());
+            double radius = Math.min(read.numberAt(arguments, 2).orElse(0.0),
+                    Math.min(right - left, bottom - top) / 2);
+            return radius > 0
+                    ? aBoxWithRoundedCorners(left, top, right, bottom, radius)
+                    : List.of(
+                            new PathStep.MoveTo(left, top),
+                            new PathStep.LineTo(right, top),
+                            new PathStep.LineTo(right, bottom),
+                            new PathStep.LineTo(left, bottom),
+                            new PathStep.Close());
+        }
+
+        private List<PathStep> aBoxWithRoundedCorners(
+                double left, double top, double right, double bottom, double radius) {
+
+            double pull = radius * HOW_FAR_A_CUBIC_PULLS_TO_MAKE_A_QUARTER_CIRCLE;
             return List.of(
-                    new PathStep.MoveTo(corner.x(), corner.y()),
-                    new PathStep.LineTo(end.x(), corner.y()),
-                    new PathStep.LineTo(end.x(), end.y()),
-                    new PathStep.LineTo(corner.x(), end.y()),
+                    new PathStep.MoveTo(left + radius, top),
+                    new PathStep.LineTo(right - radius, top),
+                    new PathStep.CubicTo(right - radius + pull, top, right, top + radius - pull, right, top + radius),
+                    new PathStep.LineTo(right, bottom - radius),
+                    new PathStep.CubicTo(right, bottom - radius + pull, right - radius + pull, bottom,
+                            right - radius, bottom),
+                    new PathStep.LineTo(left + radius, bottom),
+                    new PathStep.CubicTo(left + radius - pull, bottom, left, bottom - radius + pull,
+                            left, bottom - radius),
+                    new PathStep.LineTo(left, top + radius),
+                    new PathStep.CubicTo(left, top + radius - pull, left + radius - pull, top, left + radius, top),
                     new PathStep.Close());
         }
 
@@ -647,7 +676,7 @@ public final class DrawDialect {
                         .withFill(Optional.of(piece.colour()));
                 painted.add(new PaintInstruction.Drawn(
                         whereTheClipStandsNow().insideTheShape(outline),
-                        piece.path(), transform, theStateARendererGets()));
+                        piece.path(), theTransformOnTheSurface(), theStateARendererGets()));
             }
             state = wasStanding.withFill(Optional.empty())
                     .withFillGradient(Optional.empty());
