@@ -153,7 +153,7 @@ public final class Repl {
             putTheApplicationDataWhereTheParentKeepsIt(interpreter, environment, arguments);
         }
         if (ChosenScreen.wasAskedFor(arguments)) {
-            ChosenScreen.attachTo(interpreter, arguments, out);
+            ChosenScreen.attachTo(interpreter, arguments, out, forAScript);
         }
         return interpreter;
     }

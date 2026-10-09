@@ -522,6 +522,34 @@ rule AScreenEventCarriesItsPositionOrItsKey {
             the_event_key_is(the_key_pressed)
 }
 
+-- A browser keeps the rule above the same way a desktop window does. The page
+-- posts each pointer event -- down, up and move, move included -- with where
+-- the pointer is on the page, in whole pixels; JEBOL takes the window's own
+-- place off, so the event counts from the window's top left as a desktop
+-- window's does. The page posts each key with what it typed, as the number of
+-- the character, or, for a key that types nothing, with its name from the
+-- catalogue's key list.
+--
+-- A number rather than the character itself, because the page's message is
+-- read as flat fields and a comma typed as a key would split it.
+--
+-- What cannot be delivered whole is not delivered at all: a pointer event with
+-- no position, or one whose position is not two whole numbers; a key event
+-- whose number is no character; a control event whose name the catalogue does
+-- not know. Delivering any of them would hand the GUI an event R3's host never
+-- makes -- a click with no offset fails `event/offset:` in the 2010 GUI as it
+-- does in R3. Until 2026-10-09 the page posted only the kind, so every click in
+-- a browser was such an event and no GUI could be used there.
+rule ABrowsersEventCarriesWhatADesktopWindowsDoes {
+    when: the_browser_posts(port, kind, fields)
+
+    ensures:
+        if can_be_delivered_whole(kind, fields):
+            the_screen_reports(port, kind, the_first_window_showing(port))
+        else:
+            nothing_is_queued
+}
+
 -- Reading `event/key` of a key event whose stored number is no character --
 -- which `make event! [type: 'key key: 'f12]` leaves, because the C stores a
 -- named key in the top half of the number and reads a key event's number as a

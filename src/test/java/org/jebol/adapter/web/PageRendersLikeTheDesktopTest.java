@@ -19,6 +19,8 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -93,14 +95,30 @@ class PageRendersLikeTheDesktopTest {
         assertTheyAgree(fromTheBrowser, fromJava2D);
     }
 
-    private static void assertTheyAgree(BufferedImage one, BufferedImage other) {
-        Differences found = differences(one, other);
+    private static final int EXACTLY = 0;
+
+    private static final int HOW_FAR_TWO_STACKED_BLENDS_MAY_ROUND_APART = 1;
+
+    private static final Path WHERE_A_DISAGREEMENT_IS_KEPT = Path.of("build", "reports", "browser-check");
+
+    private static void assertTheyAgree(BufferedImage one, BufferedImage other) throws IOException {
+        assertTheyAgree("a picture", one, other, EXACTLY);
+    }
+
+    private static void assertTheyAgree(String scene, BufferedImage fromTheBrowser, BufferedImage fromJava2D,
+            int insideAShapeAllowance) throws IOException {
+
+        Differences found = differences(fromTheBrowser, fromJava2D, insideAShapeAllowance);
+        if (found.insideAShape() > 0 || found.edgeShare() > MOST_EDGE_PIXELS_THAT_MAY_DIFFER) {
+            keepBothPicturesOf(scene, fromTheBrowser, fromJava2D);
+        }
+        BufferedImage one = fromTheBrowser;
         assertThat(found.insideAShape())
                 .as("one paint list, two renderers, and nothing between them that "
                         + "either of them decides; a pixel away from any edge that "
-                        + "differs at all is one of them executing the instruction "
-                        + "differently; %d by %d compared",
-                        one.getWidth(), one.getHeight())
+                        + "differs by more than %d is one of them executing the instruction "
+                        + "differently; %d by %d compared; both pictures are in %s",
+                        insideAShapeAllowance, one.getWidth(), one.getHeight(), WHERE_A_DISAGREEMENT_IS_KEPT)
                 .isZero();
         assertThat(found.edgeShare())
                 .as("an edge pixel may differ, because coverage is a judgement "
@@ -108,6 +126,15 @@ class PageRendersLikeTheDesktopTest {
                         + "picture may be edge that needs the allowance",
                         MOST_EDGE_PIXELS_THAT_MAY_DIFFER)
                 .isLessThanOrEqualTo(MOST_EDGE_PIXELS_THAT_MAY_DIFFER);
+    }
+
+    private static void keepBothPicturesOf(String scene, BufferedImage fromTheBrowser, BufferedImage fromJava2D)
+            throws IOException {
+
+        Files.createDirectories(WHERE_A_DISAGREEMENT_IS_KEPT);
+        String named = scene.replaceAll("[^a-z0-9]+", "-");
+        ImageIO.write(fromTheBrowser, "png", WHERE_A_DISAGREEMENT_IS_KEPT.resolve(named + "-browser.png").toFile());
+        ImageIO.write(fromJava2D, "png", WHERE_A_DISAGREEMENT_IS_KEPT.resolve(named + "-java2d.png").toFile());
     }
 
     @Test
@@ -201,19 +228,21 @@ class PageRendersLikeTheDesktopTest {
         assertThat(colourAt(fromTheBrowser, 21, 21))
                 .as("inside the box's square corner but outside its rounded one")
                 .isEqualTo(new Color(244, 196, 66));
-        assertTheyAgree(fromTheBrowser, fromJava2D);
+        assertTheyAgree("see-through colours and rounded corners", fromTheBrowser, fromJava2D,
+                HOW_FAR_TWO_STACKED_BLENDS_MAY_ROUND_APART);
     }
 
     private static final String A_CENTRED_LABEL = """
             system/view/screen-gob/color: 255.255.255
-            labelled: make gob! [size: 420x260]
+            labelled: make gob! [size: 300x200]
             labelled/text: compose [
                 font (make object! [size: 20 color: 0.0.0])
                 para (make object! [origin: 0x0 margin: 0x0 align: 'center valign: 'middle])
                 "MMMMMM"
             ]
             view/no-wait labelled
-            system/view/screen-gob
+            system/view/screen-gob/1/offset: 20x10
+            show system/view/screen-gob
             """;
 
     @Test
@@ -228,8 +257,8 @@ class PageRendersLikeTheDesktopTest {
         int right = -1;
         int top = Integer.MAX_VALUE;
         int bottom = -1;
-        for (int down = 0; down < 260; down++) {
-            for (int across = 0; across < 420; across++) {
+        for (int down = 0; down < shown.getHeight(); down++) {
+            for (int across = 0; across < shown.getWidth(); across++) {
                 Color seen = colourAt(shown, across, down);
                 if (seen.getRed() + seen.getGreen() + seen.getBlue() < 3 * 128) {
                     left = Math.min(left, across);
@@ -241,8 +270,10 @@ class PageRendersLikeTheDesktopTest {
         }
 
         assertThat(right).as("some ink was written").isGreaterThanOrEqualTo(0);
-        assertThat((left + right) / 2.0).isCloseTo(210.0, within(2.0));
-        assertThat((top + bottom) / 2.0).isCloseTo(130.0, within(4.0));
+        assertThat((left + right) / 2.0).as("across, the gob's middle being 20 + 150")
+                .isCloseTo(170.0, within(2.0));
+        assertThat((top + bottom) / 2.0).as("down, the gob's middle being 10 + 100")
+                .isCloseTo(110.0, within(4.0));
     }
 
     private static final String A_WHITE_LABEL_WITH_A_SHADOW = """
@@ -334,7 +365,7 @@ class PageRendersLikeTheDesktopTest {
         }
     }
 
-    private static Differences differences(BufferedImage one, BufferedImage other) {
+    private static Differences differences(BufferedImage one, BufferedImage other, int insideAShapeAllowance) {
         if (one.getWidth() != other.getWidth() || one.getHeight() != other.getHeight()) {
             int every = Math.max(one.getWidth() * one.getHeight(),
                     other.getWidth() * other.getHeight());
@@ -344,7 +375,7 @@ class PageRendersLikeTheDesktopTest {
         int onAnEdge = 0;
         for (int down = 0; down < one.getHeight(); down++) {
             for (int across = 0; across < one.getWidth(); across++) {
-                if (theSameColour(one, other, across, down, 0)) {
+                if (theSameColour(one, other, across, down, insideAShapeAllowance)) {
                     continue;
                 }
                 if (!sitsOnAnEdge(one, across, down)

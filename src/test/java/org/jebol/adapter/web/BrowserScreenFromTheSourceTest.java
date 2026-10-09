@@ -2,6 +2,7 @@ package org.jebol.adapter.web;
 
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
+import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.render.PaintInstruction;
@@ -302,8 +303,10 @@ class BrowserScreenFromTheSourceTest {
             interpreter.defineFreshWordsIn(setUp);
             interpreter.run(setUp);
 
-            screen.theBrowserReports(ScreenEventKind.DOWN, screen.whatIsShowing().getFirst());
-            screen.theBrowserReports(ScreenEventKind.CLOSE, screen.whatIsShowing().getFirst());
+            screen.theBrowserReports(ScreenEventKind.DOWN, screen.whatIsShowing().getFirst(),
+                    new ScreenEventDetail.At(5, 5));
+            screen.theBrowserReports(ScreenEventKind.CLOSE, screen.whatIsShowing().getFirst(),
+                    new ScreenEventDetail.NothingMore());
             interpreter.run("do-events");
 
             assertThat(interpreter.display(interpreter.run("mold seen")))
@@ -325,7 +328,7 @@ class BrowserScreenFromTheSourceTest {
             interpreter.run(opening);
 
             screen.theBrowserReports(
-                    ScreenEventKind.CLOSE, screen.whatIsShowing().getFirst());
+                    ScreenEventKind.CLOSE, screen.whatIsShowing().getFirst(), new ScreenEventDetail.NothingMore());
             interpreter.run("do-events");
 
             assertThat(interpreter.display(interpreter.run(
@@ -333,6 +336,34 @@ class BrowserScreenFromTheSourceTest {
                     .as("a person shutting a browser tab ends the wait exactly as "
                             + "a person shutting a window does")
                     .isEqualTo(TRUE);
+        }
+
+        @Test
+        @DisplayName("a handler reads where a click was, counted from its window's top left as on a desktop")
+        @Timeout(20)
+        void aHandlerReadsWhereTheClickWas() {
+            SomebodyLooking viewer = new SomebodyLooking();
+            BrowserScreen screen = BrowserScreen.seenBy(viewer);
+            Interpreter interpreter = withABrowser(screen);
+            String setUp = """
+                    view/no-wait make gob! [size: 100x100 color: 1.1.1]
+                    system/view/screen-gob/1/offset: 30x40
+                    seen: copy []
+                    handle-events [
+                        name: 'watcher
+                        priority: 90
+                        handler: func [event] [append seen event/offset  event]
+                    ]""";
+            interpreter.defineFreshWordsIn(setUp);
+            interpreter.run(setUp);
+
+            screen.theBrowserReports(ScreenEventKind.DOWN, screen.whatIsShowing().getFirst(),
+                    new ScreenEventDetail.At(35, 47));
+            screen.theBrowserReports(ScreenEventKind.CLOSE, screen.whatIsShowing().getFirst(),
+                    new ScreenEventDetail.NothingMore());
+            interpreter.run("do-events");
+
+            assertThat(interpreter.display(interpreter.run("first seen"))).isEqualTo("5x7");
         }
     }
 }

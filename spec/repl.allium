@@ -468,6 +468,22 @@ rule TheConsoleGrantsEveryService {
     ensures: the_granted_services() = every_host_service()
 }
 
+-- With `--screen=web` and a script, the script waits for a browser. The page's
+-- address is printed, and the script starts once a browser has opened it. A
+-- script that opens a window on a page nobody is looking at has its SHOW
+-- refused as not present, and the run ends before anyone could have seen it;
+-- that is what happened to the first person to try it, on 2026-10-09. At the
+-- console, with no script, nothing waits: the prompt says to open the page
+-- before VIEW, and a person can do that in either order.
+rule AScriptOnTheWebScreenWaitsForABrowser {
+    when: run: ScriptRun.created
+    requires: the_screen_asked_for_is_the_web()
+
+    ensures:
+        the_page_address_is_printed()
+        the_script_starts_after(a_browser_has_opened_the_page())
+}
+
 -- A script run from the command line has no time limit, as `r3 script.r3`
 -- has none, and neither has a line typed at its console. The same reasoning as the grants: the person chose to run it, and
 -- a program that opens a window and waits for them is meant to run for as

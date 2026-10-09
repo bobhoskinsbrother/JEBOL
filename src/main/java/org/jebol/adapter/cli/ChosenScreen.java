@@ -32,11 +32,11 @@ final class ChosenScreen {
                 .toArray(String[]::new);
     }
 
-    static void attachTo(Interpreter interpreter, String[] arguments, PrintStream out) {
+    static void attachTo(Interpreter interpreter, String[] arguments, PrintStream out, boolean forAScript) {
         String asked = theSwitchValueIn(arguments).orElseThrow();
         switch (asked.toLowerCase(Locale.ROOT)) {
             case A_WINDOW -> attachAWindow(interpreter, out);
-            case A_PAGE -> attachAPage(interpreter, out);
+            case A_PAGE -> attachAPage(interpreter, out, forAScript);
             default -> refuseRatherThanStartWithoutTheScreenAsked(asked);
         }
     }
@@ -49,18 +49,37 @@ final class ChosenScreen {
                 : "Screen: asked for a window and this machine has no display.");
     }
 
-    private static void attachAPage(Interpreter interpreter, PrintStream out) {
+    private static void attachAPage(Interpreter interpreter, PrintStream out, boolean forAScript) {
         try {
             WebScreenServer serving = WebScreenServer.on(WHICHEVER_PORT_IS_FREE);
             BrowserScreen screen = BrowserScreen.seenBy(serving);
             serving.reportTo(screen);
             interpreter.useScreen(screen);
+            if (forAScript) {
+                out.println("Screen: a page at " + serving.address()
+                        + " -- the script starts once it is open.");
+                untilABrowserHasOpened(screen);
+                return;
+            }
             out.println("Screen: a page at " + serving.address()
                     + " -- open it, then VIEW.");
         } catch (IOException couldNotListen) {
             throw new IllegalStateException(
                     "the page could not be served: " + couldNotListen.getMessage(),
                     couldNotListen);
+        }
+    }
+
+    private static final long HOW_OFTEN_TO_LOOK_FOR_A_BROWSER_MILLISECONDS = 50;
+
+    private static void untilABrowserHasOpened(BrowserScreen screen) {
+        while (!screen.hasADisplay()) {
+            try {
+                Thread.sleep(HOW_OFTEN_TO_LOOK_FOR_A_BROWSER_MILLISECONDS);
+            } catch (InterruptedException stopped) {
+                Thread.currentThread().interrupt();
+                return;
+            }
         }
     }
 

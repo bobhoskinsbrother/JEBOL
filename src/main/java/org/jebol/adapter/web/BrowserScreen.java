@@ -1,5 +1,6 @@
 package org.jebol.adapter.web;
 
+import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ScreenMetric;
@@ -129,8 +130,16 @@ public final class BrowserScreen extends GobScreen {
         return List.copyOf(showing);
     }
 
-    /** Something the person looking at the page did, queued and not acted on. */
-    public void theBrowserReports(ScreenEventKind kind, GobValue window) {
-        queued.add(kind, window);
+    public void theBrowserReports(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
+        queued.add(kind, window, countedFromTheWindow(detail, window));
+    }
+
+    private ScreenEventDetail countedFromTheWindow(ScreenEventDetail detail, GobValue window) {
+        if (!(detail instanceof ScreenEventDetail.At(int across, int down)) || window == null) {
+            return detail;
+        }
+        PairValue place = window.storage().offset();
+        return new ScreenEventDetail.At(
+                across - (int) Math.round(place.x()), down - (int) Math.round(place.y()));
     }
 }

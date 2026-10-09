@@ -207,11 +207,46 @@ final class WebScreenPage {
             pictures.addEventListener('paint', message => paint(JSON.parse(message.data)));
             pictures.addEventListener('open', sayHowBigWeAre);
 
+            const keysThatTypeNothing = {
+              PageUp: 'page-up', PageDown: 'page-down', End: 'end', Home: 'home',
+              ArrowLeft: 'left', ArrowUp: 'up', ArrowRight: 'right', ArrowDown: 'down',
+              Insert: 'insert',
+              F1: 'f1', F2: 'f2', F3: 'f3', F4: 'f4', F5: 'f5', F6: 'f6',
+              F7: 'f7', F8: 'f8', F9: 'f9', F10: 'f10', F11: 'f11', F12: 'f12',
+              Shift: 'shift', Control: 'control', Alt: 'alt', Pause: 'pause', CapsLock: 'capital'
+            };
+            const keysThatTypeAControlCharacter = {
+              Backspace: 8, Tab: 9, Enter: 13, Escape: 27, Delete: 127
+            };
+
+            function tellWhereThePointerIs(kind, pointer) {
+              tell({ kind: kind, across: Math.round(pointer.offsetX), down: Math.round(pointer.offsetY) });
+            }
+
+            function theCharacterTyped(pressed) {
+              if (pressed.key in keysThatTypeAControlCharacter) {
+                return keysThatTypeAControlCharacter[pressed.key];
+              }
+              return [...pressed.key].length === 1 ? pressed.key.codePointAt(0) : null;
+            }
+
+            function tellTheKey(pressed, typing, naming) {
+              if (pressed.key in keysThatTypeNothing) {
+                tell({ kind: naming, named: keysThatTypeNothing[pressed.key] });
+                return;
+              }
+              const typed = theCharacterTyped(pressed);
+              if (typed !== null) {
+                tell({ kind: typing, code: typed });
+              }
+            }
+
             window.addEventListener('resize', sayHowBigWeAre);
-            canvas.addEventListener('mousedown', () => tell({ kind: 'down' }));
-            canvas.addEventListener('mouseup', () => tell({ kind: 'up' }));
-            window.addEventListener('keydown', () => tell({ kind: 'key' }));
-            window.addEventListener('keyup', () => tell({ kind: 'key-up' }));
+            canvas.addEventListener('mousedown', pointer => tellWhereThePointerIs('down', pointer));
+            canvas.addEventListener('mouseup', pointer => tellWhereThePointerIs('up', pointer));
+            canvas.addEventListener('mousemove', pointer => tellWhereThePointerIs('move', pointer));
+            window.addEventListener('keydown', pressed => tellTheKey(pressed, 'key', 'control'));
+            window.addEventListener('keyup', pressed => tellTheKey(pressed, 'key-up', 'control-up'));
             window.addEventListener('beforeunload', () => tell({ kind: 'close' }));
 
             sayHowBigWeAre();

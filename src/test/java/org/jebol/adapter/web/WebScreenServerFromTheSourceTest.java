@@ -3,9 +3,18 @@ package org.jebol.adapter.web;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.ScreenEvent;
+import org.jebol.domain.host.ScreenEventDetail;
+import org.jebol.domain.host.ScreenEventKind;
+import org.jebol.domain.value.GobValue;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
+import java.util.Locale;
+import java.util.Optional;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -186,6 +195,189 @@ class WebScreenServerFromTheSourceTest {
     }
 
     @Nested
+    @DisplayName("what a posted event carries")
+    class WhatAnEventCarries {
+
+        private GobValue theWindow;
+
+        private void aWindowIsShowingAt(int across, int down) throws Exception {
+            aBrowserOpensThePage(640, 480);
+            Interpreter interpreter = anInterpreterOnThisScreen();
+            String opening = """
+                    view/no-wait make gob! [size: 100x100 color: 1.1.1]
+                    system/view/screen-gob/1/offset: %dx%d""".formatted(across, down);
+            interpreter.defineFreshWordsIn(opening);
+            interpreter.run(opening);
+            theWindow = screen.whatIsShowing().getFirst();
+        }
+
+        private Optional<ScreenEvent> whatIsQueuedAfterPosting(String body) throws Exception {
+            assertThat(post("event", body)).as("%s", lastPostSaid).isEqualTo(204);
+            return screen.takeTheNextEvent();
+        }
+
+        private ScreenEvent anEvent(ScreenEventKind kind, ScreenEventDetail detail) {
+            return new ScreenEvent(kind, theWindow, detail);
+        }
+
+        @ParameterizedTest(name = "{0} at {1}x{2} on the page is {3}x{4} in the window")
+        @CsvSource({
+                "move, 50,  60,  40,  40",
+                "down, 50,  60,  40,  40",
+                "up,   50,  60,  40,  40",
+                "move, 10,  20,  0,   0",
+                "move, 11,  21,  1,   1",
+                "move, 9,   19,  -1,  -1",
+                "move, 0,   0,   -10, -20",
+        })
+        @DisplayName("a pointer event counts from the window's top left, the window's place taken off the page's")
+        @Timeout(20)
+        void aPointerEventCountsFromTheWindow(String kind, int pageAcross, int pageDown,
+                int windowAcross, int windowDown) throws Exception {
+            aWindowIsShowingAt(10, 20);
+
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"%s","across":%d,"down":%d}""".formatted(kind, pageAcross, pageDown)))
+                    .contains(anEvent(ScreenEventKind.valueOf(kind.toUpperCase(Locale.ROOT)),
+                            new ScreenEventDetail.At(windowAcross, windowDown)));
+        }
+
+        @ParameterizedTest(name = "a move posted with {0} is not delivered")
+        @ValueSource(strings = {
+                """
+                {"kind":"move"}""",
+                """
+                {"kind":"move","across":5}""",
+                """
+                {"kind":"move","down":5}""",
+                """
+                {"kind":"move","across":"x","down":5}""",
+                """
+                {"kind":"move","across":5.5,"down":5}""",
+                """
+                {"kind":"move","across":true,"down":5}""",
+                """
+                {"kind":"down","across":"","down":5}""",
+                """
+                {"kind":"up","across":"5","down":5}""",
+        })
+        @DisplayName("a pointer event without two whole numbers for where it is is not delivered at all")
+        @Timeout(20)
+        void aPointerEventWithoutAPlaceIsDropped(String body) throws Exception {
+            aWindowIsShowingAt(10, 20);
+
+            assertThat(whatIsQueuedAfterPosting(body)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("a field the page adds that nobody reads is ignored")
+        @Timeout(20)
+        void anExtraFieldIsIgnored() throws Exception {
+            aWindowIsShowingAt(10, 20);
+
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"move","across":15,"down":25,"buttons":1}"""))
+                    .contains(anEvent(ScreenEventKind.MOVE, new ScreenEventDetail.At(5, 5)));
+        }
+
+        @ParameterizedTest(name = "{0} with code {1} types the character {1}")
+        @CsvSource({
+                "key,    97",
+                "key,    44",
+                "key-up, 97",
+                "key,    0",
+                "key,    13",
+                "key,    1114111",
+                "key,    128578",
+        })
+        @DisplayName("a key event carries the character it typed, a comma included")
+        @Timeout(20)
+        void aKeyCarriesItsCharacter(String kind, int code) throws Exception {
+            aWindowIsShowingAt(10, 20);
+
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"%s","code":%d}""".formatted(kind, code)))
+                    .contains(anEvent(kind.equals("key") ? ScreenEventKind.KEY : ScreenEventKind.KEY_UP,
+                            new ScreenEventDetail.Typed(code)));
+        }
+
+        @ParameterizedTest(name = "a key posted with {0} is not delivered")
+        @ValueSource(strings = {
+                """
+                {"kind":"key"}""",
+                """
+                {"kind":"key","code":-1}""",
+                """
+                {"kind":"key","code":1114112}""",
+                """
+                {"kind":"key","code":55296}""",
+                """
+                {"kind":"key","code":"a"}""",
+                """
+                {"kind":"key","code":97.5}""",
+                """
+                {"kind":"key","code":"97"}""",
+        })
+        @DisplayName("a key whose number is no character is not delivered")
+        @Timeout(20)
+        void aKeyThatIsNoCharacterIsDropped(String body) throws Exception {
+            aWindowIsShowingAt(10, 20);
+
+            assertThat(whatIsQueuedAfterPosting(body)).isEmpty();
+        }
+
+        @ParameterizedTest(name = "{0} named {1} is that key")
+        @CsvSource({
+                "control,    page-up",
+                "control,    left",
+                "control,    f12",
+                "control-up, page-down",
+        })
+        @DisplayName("a key that types nothing carries its name from the catalogue")
+        @Timeout(20)
+        void aControlKeyCarriesItsName(String kind, String named) throws Exception {
+            aWindowIsShowingAt(10, 20);
+
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"%s","named":"%s"}""".formatted(kind, named)))
+                    .contains(anEvent(kind.equals("control") ? ScreenEventKind.CONTROL : ScreenEventKind.CONTROL_UP,
+                            new ScreenEventDetail.NamedKey(named)));
+        }
+
+        @ParameterizedTest(name = "a control key named {0} is not delivered")
+        @ValueSource(strings = {"sideways", "PAGE-UP", "Page-Up", ""})
+        @DisplayName("a name the catalogue does not hold, spelt exactly, is not delivered")
+        @Timeout(20)
+        void anUnknownNameIsDropped(String named) throws Exception {
+            aWindowIsShowingAt(10, 20);
+
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"control","named":"%s"}""".formatted(named))).isEmpty();
+        }
+
+        @Test
+        @DisplayName("a control key with no name at all is not delivered")
+        @Timeout(20)
+        void aControlKeyWithNoNameIsDropped() throws Exception {
+            aWindowIsShowingAt(10, 20);
+
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"control"}""")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("a close carries nothing more, and is delivered")
+        @Timeout(20)
+        void aCloseCarriesNothing() throws Exception {
+            aWindowIsShowingAt(10, 20);
+
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"close"}"""))
+                    .contains(anEvent(ScreenEventKind.CLOSE, new ScreenEventDetail.NothingMore()));
+        }
+    }
+
+    @Nested
     @DisplayName("what the browser posts back")
     class TheEvents {
 
@@ -222,7 +414,7 @@ class WebScreenServerFromTheSourceTest {
             interpreter.run(setUp);
 
             post("event", """
-                    {"kind":"key"}""");
+                    {"kind":"key","code":97}""");
             post("event", """
                     {"kind":"close"}""");
             interpreter.run("do-events");
@@ -262,20 +454,48 @@ class WebScreenServerFromTheSourceTest {
     class TheReader {
 
         @Test
-        @DisplayName("takes the fields of a flat object")
+        @DisplayName("takes the fields of a flat object, text as text and a whole number as a number")
         void itTakesTheFields() {
-            assertThat(FieldsOfAPostedEvent.read("""
-                    {"kind":"measure","wide":1024}"""))
-                    .containsEntry("kind", "measure")
-                    .containsEntry("wide", "1024");
+            FieldsOfAPostedEvent posted = new FieldsOfAPostedEvent("""
+                    {"kind":"measure","wide":1024}""");
+
+            assertThat(posted.text("kind")).contains("measure");
+            assertThat(posted.wholeNumber("wide")).contains(1024);
+        }
+
+        @ParameterizedTest(name = "{0} holds no whole number")
+        @ValueSource(strings = {
+                """
+                {"wide":"1024"}""",
+                """
+                {"wide":10.5}""",
+                """
+                {"wide":true}""",
+                """
+                {"wide":null}""",
+                """
+                {"wide":}""",
+                """
+                {"other":5}""",
+        })
+        @DisplayName("a whole number is digits as posted: quoted text, a fraction or anything else is not one")
+        void aWholeNumberIsOnlyDigits(String body) {
+            assertThat(new FieldsOfAPostedEvent(body).wholeNumber("wide")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("and a number is not text, so an unquoted kind is no kind")
+        void aNumberIsNotText() {
+            assertThat(new FieldsOfAPostedEvent("""
+                    {"kind":5}""").text("kind")).isEmpty();
         }
 
         @Test
         @DisplayName("and answers nothing for anything that is not one")
         void itAnswersNothingForNonsense() {
-            assertThat(FieldsOfAPostedEvent.read("")).isEmpty();
-            assertThat(FieldsOfAPostedEvent.read("hello")).isEmpty();
-            assertThat(FieldsOfAPostedEvent.read("[1,2]")).isEmpty();
+            assertThat(new FieldsOfAPostedEvent("").saysNothing()).isTrue();
+            assertThat(new FieldsOfAPostedEvent("hello").saysNothing()).isTrue();
+            assertThat(new FieldsOfAPostedEvent("[1,2]").saysNothing()).isTrue();
         }
     }
 }
