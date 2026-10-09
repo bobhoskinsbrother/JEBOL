@@ -23,8 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Tag("browser")
 class AnOperatorInABrowserDrivesAGuiEndToEndTest {
 
-    private static final int PAGE_WIDE = 600;
-    private static final int PAGE_HIGH = 500;
+    private static final int PAGE_WIDE = 800;
+    private static final int PAGE_HIGH = 800;
 
     private WebScreenServer serving;
     private BrowserScreen screen;
@@ -194,5 +194,67 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
             return "#(true)".equals(answerTo("before <> get-face the-slider"));
         });
         assertThat(answerTo("(get-face the-slider) > before")).isEqualTo("#(true)");
+    }
+
+    private void theSurveyIsOpen() {
+        answerTo("""
+                change-dir %examples/r3-gui/
+                do %gui-322.r
+                the-layout: last load %survey.r
+                gui-view: get bind 'view first find gui first [view:]
+                the-window: gui-view/no-wait the-layout
+                the-faces-styled: func [style /local found walk] [
+                    found: copy []
+                    walk: func [gob at /local here] [
+                        foreach sub any [gob/pane []] [
+                            here: at + sub/offset
+                            if all [object? sub/data style = select sub/data 'style] [
+                                append found reduce [sub/data here + to pair! sub/size / 2]
+                            ]
+                            walk sub here
+                        ]
+                    ]
+                    walk the-window the-window/offset
+                    found
+                ]
+                the-face: func [style index] [pick extract the-faces-styled style 2 index]
+                the-middle-of: func [style index /local middle] [
+                    middle: pick extract next the-faces-styled style 2 index
+                    to pair! reduce [to integer! middle/x to integer! middle/y]
+                ]
+                chosen?: func [style index] [true? get-face the-face style index]""");
+    }
+
+    private void theOperatorClicks(String style, int index) {
+        String[] middle = answerTo("the-middle-of '%s %d".formatted(style, index)).split("x");
+        theOperatorAt(Integer.parseInt(middle[0]), Integer.parseInt(middle[1])).click().perform();
+    }
+
+    private void untilTheGuiHasHeard(String question) {
+        new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> {
+            answerTo("wait [gui-event-port 0.05]");
+            return "#(true)".equals(answerTo(question));
+        });
+    }
+
+    @Test
+    @DisplayName("in a browser, the survey takes a name typed into its field and a chosen radio, and Reset clears both")
+    void theSurveyIsFilledInAndResetInABrowser() {
+        theSurveyIsOpen();
+
+        theOperatorClicks("field", 1);
+        untilTheGuiHasHeard("""
+                same? guie/focal-face the-face 'field 1""");
+        new Actions(browser).sendKeys("Ben").perform();
+        untilTheGuiHasHeard("""
+                {Ben} = get-face the-face 'field 1""");
+
+        theOperatorClicks("radio", 2);
+        untilTheGuiHasHeard("chosen? 'radio 2");
+        assertThat(answerTo("reduce [chosen? 'radio 1  chosen? 'radio 3]")).isEqualTo("[#(false) #(false)]");
+
+        theOperatorClicks("button", 2);
+        untilTheGuiHasHeard("""
+                all [empty? get-face the-face 'field 1  not chosen? 'radio 2]""");
     }
 }
