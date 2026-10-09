@@ -2,7 +2,7 @@ package org.jebol.domain.value;
 
 public final class UtypeValue {
 
-    public static final Datatype TYPE = new DatatypeWithNoValues("utype") {
+    public static final Datatype TYPE = new Datatype("utype") {
 
         @Override
         public Value madeFrom(Value spec, Maker maker) {

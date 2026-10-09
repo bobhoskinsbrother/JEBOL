@@ -56,7 +56,7 @@ class WhatEachConditionalNativeDeclaresTest {
     }
 
     private Parameter anyType(String name) {
-        return Parameter.required(name, Typeset.ANY_TYPE.members());
+        return Parameter.required(name, TypesetValue.ANY_TYPE.members());
     }
 
     Stream<Arguments> whatEachDeclares() {

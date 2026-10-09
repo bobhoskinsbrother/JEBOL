@@ -16,7 +16,7 @@ public abstract class TabbingNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("string", Typeset.ANY_STRING.membersAnd(BinaryValue.TYPE)),
+                Parameter.required("string", TypesetValue.ANY_STRING.membersAnd(BinaryValue.TYPE)),
                 Parameter.belongingTo("size", "number", Set.of(IntegerValue.TYPE)));
     }
 

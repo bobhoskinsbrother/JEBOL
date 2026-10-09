@@ -12,7 +12,7 @@ import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.RebolSeries;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
 
@@ -22,8 +22,8 @@ import java.util.function.LongFunction;
 
 public class RepeatNative extends LoopingNative {
 
-    private static final Set<Datatype> WHAT_REPEAT_COUNTS_BY = Typeset.NUMBER.membersAnd(
-            Typeset.SERIES.membersAnd(PairValue.TYPE, NoneValue.TYPE)
+    private static final Set<Datatype> WHAT_REPEAT_COUNTS_BY = TypesetValue.NUMBER.membersAnd(
+            TypesetValue.SERIES.membersAnd(PairValue.TYPE, NoneValue.TYPE)
                     .toArray(Datatype[]::new));
 
     @Override

@@ -4,7 +4,7 @@ import org.jebol.domain.eval.LoopSignal;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.TypesetValue;
 
 import java.util.List;
 import java.util.Set;
@@ -18,7 +18,7 @@ public class BreakNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.belongingTo("return", "value", Typeset.ANY_TYPE.members()));
+        return List.of(Parameter.belongingTo("return", "value", TypesetValue.ANY_TYPE.members()));
     }
 
     @Override

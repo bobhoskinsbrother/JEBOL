@@ -17,10 +17,10 @@ public class PokeAction extends DefaultNative implements ActionValue {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("series", Typeset.SERIES.membersAnd(
+                Parameter.required("series", TypesetValue.SERIES.membersAnd(
                         PortValue.TYPE, MapValue.TYPE, GobValue.TYPE, BitsetValue.TYPE)),
                 Parameter.required("index"),
-                Parameter.required("value", Typeset.ANY_TYPE.members()));
+                Parameter.required("value", TypesetValue.ANY_TYPE.members()));
     }
 
     @Override

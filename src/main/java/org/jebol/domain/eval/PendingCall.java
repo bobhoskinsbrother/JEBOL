@@ -61,7 +61,7 @@ final class PendingCall {
         if (calledThrough != null) {
             return Optional.of(calledThrough);
         }
-        return callee != null && callee.datatype().belongsTo(Typeset.ANY_FUNCTION)
+        return callee != null && callee.datatype().belongsTo(TypesetValue.ANY_FUNCTION)
                 ? Optional.of(AN_UNNAMED_CALL)
                 : Optional.empty();
     }

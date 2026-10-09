@@ -35,8 +35,8 @@ public class CopyAction extends DefaultNative implements ActionValue {
     }
 
     private Set<Datatype> whatCanBeCopied() {
-        Set<Datatype> accepted = new LinkedHashSet<>(Typeset.SERIES.members());
-        accepted.addAll(Typeset.ANY_FUNCTION.members());
+        Set<Datatype> accepted = new LinkedHashSet<>(TypesetValue.SERIES.members());
+        accepted.addAll(TypesetValue.ANY_FUNCTION.members());
         accepted.addAll(Set.of(ActionValue.TYPE, ClosureValue.TYPE, CommandValue.TYPE,
                 RebcodeValue.TYPE, StructValue.TYPE, PortValue.TYPE, MapValue.TYPE,
                 ObjectValue.TYPE, BitsetValue.TYPE, ErrorValue.TYPE));

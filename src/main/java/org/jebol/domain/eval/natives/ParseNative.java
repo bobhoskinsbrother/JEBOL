@@ -17,7 +17,7 @@ public class ParseNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("input", Typeset.SERIES.members()),
+                Parameter.required("input", TypesetValue.SERIES.members()),
                 Parameter.required("rules", Set.of(BlockValue.TYPE)));
     }
 

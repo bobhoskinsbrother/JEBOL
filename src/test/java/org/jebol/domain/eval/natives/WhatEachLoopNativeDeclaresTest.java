@@ -31,15 +31,15 @@ class WhatEachLoopNativeDeclaresTest {
     }
 
     private Set<Datatype> whatRepeatCountsBy() {
-        return Typeset.NUMBER.membersAnd(
-                Typeset.SERIES.membersAnd(PairValue.TYPE, NoneValue.TYPE)
+        return TypesetValue.NUMBER.membersAnd(
+                TypesetValue.SERIES.membersAnd(PairValue.TYPE, NoneValue.TYPE)
                         .toArray(Datatype[]::new));
     }
 
     Stream<Arguments> whatEachDeclares() {
         return Stream.of(
                 Arguments.of(new LoopNative(), "loop",
-                        List.of(Parameter.required("count", Typeset.NUMBER.members()),
+                        List.of(Parameter.required("count", TypesetValue.NUMBER.members()),
                                 Parameter.required("body", A_BLOCK)),
                         NOTHING),
                 Arguments.of(new RepeatNative(), "repeat",
@@ -92,7 +92,7 @@ class WhatEachLoopNativeDeclaresTest {
                 Arguments.of(new ContinueNative(), "continue", List.of(), NOTHING),
                 Arguments.of(new BreakNative(), "break",
                         List.of(Parameter.belongingTo("return", "value",
-                                Typeset.ANY_TYPE.members())),
+                                TypesetValue.ANY_TYPE.members())),
                         Set.of("return")));
     }
 

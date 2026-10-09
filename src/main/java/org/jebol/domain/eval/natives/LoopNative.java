@@ -5,7 +5,7 @@ import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -19,7 +19,7 @@ public class LoopNative extends LoopingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("count", Typeset.NUMBER.members()),
+        return List.of(Parameter.required("count", TypesetValue.NUMBER.members()),
                 Parameter.required("body", A_BLOCK));
     }
 

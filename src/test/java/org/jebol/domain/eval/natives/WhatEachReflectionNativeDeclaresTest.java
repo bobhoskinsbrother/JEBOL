@@ -25,7 +25,7 @@ class WhatEachReflectionNativeDeclaresTest {
 
     private static final Set<String> NOTHING = Set.of();
 
-    private static final Set<Datatype> ANY_TYPE = Typeset.ANY_TYPE.members();
+    private static final Set<Datatype> ANY_TYPE = TypesetValue.ANY_TYPE.members();
 
     private static final Set<Datatype> A_BINARY = Set.of(BinaryValue.TYPE);
 
@@ -49,15 +49,15 @@ class WhatEachReflectionNativeDeclaresTest {
     }
 
     private Set<Datatype> anythingAtAll() {
-        return Typeset.ANY_TYPE.membersAnd(UnsetValue.TYPE);
+        return TypesetValue.ANY_TYPE.membersAnd(UnsetValue.TYPE);
     }
 
     private Set<Datatype> anyStringOrABinary() {
-        return Typeset.ANY_STRING.membersAnd(BinaryValue.TYPE);
+        return TypesetValue.ANY_STRING.membersAnd(BinaryValue.TYPE);
     }
 
     private Set<Datatype> everyKindOfNumber() {
-        return Typeset.NUMBER.membersAnd(MoneyValue.TYPE, PairValue.TYPE, TupleValue.TYPE,
+        return TypesetValue.NUMBER.membersAnd(MoneyValue.TYPE, PairValue.TYPE, TupleValue.TYPE,
                 TimeValue.TYPE, DateValue.TYPE, CharacterValue.TYPE, VectorValue.TYPE);
     }
 
@@ -112,7 +112,7 @@ class WhatEachReflectionNativeDeclaresTest {
                         List.of(Parameter.required("image", AN_IMAGE)), NOTHING),
                 Arguments.of(new BlurNative(), "blur",
                         List.of(Parameter.required("image", AN_IMAGE),
-                                Parameter.required("radius", Typeset.NUMBER.members())),
+                                Parameter.required("radius", TypesetValue.NUMBER.members())),
                         NOTHING),
                 Arguments.of(new ResizeNative(), "resize",
                         List.of(Parameter.required("image", AN_IMAGE),
@@ -121,7 +121,7 @@ class WhatEachReflectionNativeDeclaresTest {
                                 Parameter.belongingTo("filter", "name",
                                         Set.of(WordValue.TYPE, IntegerValue.TYPE)),
                                 Parameter.belongingTo("blur", "factor",
-                                        Typeset.NUMBER.members())),
+                                        TypesetValue.NUMBER.members())),
                         Set.of("filter", "blur")),
                 Arguments.of(new ImageDiffNative(), "image-diff",
                         List.of(Parameter.required("a", AN_IMAGE),

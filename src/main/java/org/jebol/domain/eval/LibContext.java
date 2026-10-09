@@ -69,8 +69,8 @@ public final class LibContext {
         for (Datatype datatype : Catalogue.DATATYPES.entries()) {
             lib.register(datatype.literalSpelling(), datatype);
         }
-        for (Typeset typeset : Typeset.values()) {
-            lib.register(typeset.literalSpelling(), TypesetValue.of(typeset));
+        for (TypesetValue typeset : Catalogue.DATATYPES.standardTypesets()) {
+            typeset.spelling().ifPresent(spelling -> lib.register(spelling + "!", typeset));
         }
     }
 

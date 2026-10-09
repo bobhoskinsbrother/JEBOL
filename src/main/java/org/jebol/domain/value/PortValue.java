@@ -112,10 +112,10 @@ public record PortValue(Context context) implements Value {
 
     public static final Datatype TYPE = new PortDatatype();
 
-    private static final class PortDatatype extends Datatype {
+    private static final class PortDatatype extends AnyObjectDatatype {
 
         PortDatatype() {
-            super("port", Typeset.ANY_OBJECT);
+            super("port");
         }
 
         @Override

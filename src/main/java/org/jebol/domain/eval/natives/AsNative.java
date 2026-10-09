@@ -22,8 +22,8 @@ public class AsNative extends DefaultNative {
     }
 
     private Set<Datatype> aSeriesTypeAnd(Datatype... alsoTaken) {
-        Set<Datatype> accepted = new LinkedHashSet<>(Typeset.ANY_BLOCK.members());
-        accepted.addAll(Typeset.ANY_STRING.members());
+        Set<Datatype> accepted = new LinkedHashSet<>(TypesetValue.ANY_BLOCK.members());
+        accepted.addAll(TypesetValue.ANY_STRING.members());
         accepted.addAll(List.of(alsoTaken));
         return accepted;
     }

@@ -46,7 +46,7 @@ public sealed interface NativeValue extends DeclaresParameters
         return (int) (base + forRefinements);
     }
 
-    Datatype TYPE = new Datatype("native", Typeset.ANY_FUNCTION) {
+    Datatype TYPE = new AnyFunctionDatatype("native") {
     };
 
     @Override

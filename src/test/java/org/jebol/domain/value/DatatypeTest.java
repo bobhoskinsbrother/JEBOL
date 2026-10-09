@@ -135,7 +135,7 @@ class DatatypeTest {
         @ParameterizedTest
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         void anyStringMatchesTheTable(Datatype datatype) {
-            assertThat(datatype.belongsTo(Typeset.ANY_STRING))
+            assertThat(datatype.belongsTo(TypesetValue.ANY_STRING))
                     .as("%s in any-string!", datatype)
                     .isEqualTo(EXPECTED_ANY_STRING.contains(datatype));
         }
@@ -143,7 +143,7 @@ class DatatypeTest {
         @ParameterizedTest
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         void anyBlockMatchesTheTable(Datatype datatype) {
-            assertThat(datatype.belongsTo(Typeset.ANY_BLOCK))
+            assertThat(datatype.belongsTo(TypesetValue.ANY_BLOCK))
                     .as("%s in any-block!", datatype)
                     .isEqualTo(EXPECTED_ANY_BLOCK.contains(datatype));
         }
@@ -151,7 +151,7 @@ class DatatypeTest {
         @ParameterizedTest
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         void anyPathMatchesTheTable(Datatype datatype) {
-            assertThat(datatype.belongsTo(Typeset.ANY_PATH))
+            assertThat(datatype.belongsTo(TypesetValue.ANY_PATH))
                     .as("%s in any-path!", datatype)
                     .isEqualTo(EXPECTED_ANY_PATH.contains(datatype));
         }
@@ -159,7 +159,7 @@ class DatatypeTest {
         @ParameterizedTest
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         void anyWordMatchesTheTable(Datatype datatype) {
-            assertThat(datatype.belongsTo(Typeset.ANY_WORD))
+            assertThat(datatype.belongsTo(TypesetValue.ANY_WORD))
                     .as("%s in any-word!", datatype)
                     .isEqualTo(EXPECTED_ANY_WORD.contains(datatype));
         }
@@ -167,7 +167,7 @@ class DatatypeTest {
         @ParameterizedTest
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         void seriesMatchesTheTable(Datatype datatype) {
-            assertThat(datatype.belongsTo(Typeset.SERIES))
+            assertThat(datatype.belongsTo(TypesetValue.SERIES))
                     .as("%s in series!", datatype)
                     .isEqualTo(EXPECTED_SERIES.contains(datatype));
         }
@@ -175,7 +175,7 @@ class DatatypeTest {
         @ParameterizedTest
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         void numberMatchesTheTable(Datatype datatype) {
-            assertThat(datatype.belongsTo(Typeset.NUMBER))
+            assertThat(datatype.belongsTo(TypesetValue.NUMBER))
                     .as("%s in number!", datatype)
                     .isEqualTo(EXPECTED_NUMBER.contains(datatype));
         }
@@ -183,7 +183,7 @@ class DatatypeTest {
         @ParameterizedTest
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         void scalarMatchesTheTable(Datatype datatype) {
-            assertThat(datatype.belongsTo(Typeset.SCALAR))
+            assertThat(datatype.belongsTo(TypesetValue.SCALAR))
                     .as("%s in scalar!", datatype)
                     .isEqualTo(EXPECTED_SCALAR.contains(datatype));
         }
@@ -191,7 +191,7 @@ class DatatypeTest {
         @ParameterizedTest
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         void anyFunctionMatchesTheTable(Datatype datatype) {
-            assertThat(datatype.belongsTo(Typeset.ANY_FUNCTION))
+            assertThat(datatype.belongsTo(TypesetValue.ANY_FUNCTION))
                     .as("%s in any-function!", datatype)
                     .isEqualTo(EXPECTED_ANY_FUNCTION.contains(datatype));
         }
@@ -199,7 +199,7 @@ class DatatypeTest {
         @ParameterizedTest
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         void anyObjectMatchesTheTable(Datatype datatype) {
-            assertThat(datatype.belongsTo(Typeset.ANY_OBJECT))
+            assertThat(datatype.belongsTo(TypesetValue.ANY_OBJECT))
                     .as("%s in any-object!", datatype)
                     .isEqualTo(EXPECTED_ANY_OBJECT.contains(datatype));
         }
@@ -207,7 +207,7 @@ class DatatypeTest {
         @ParameterizedTest
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         void anyTypeIsEverythingButEnd(Datatype datatype) {
-            assertThat(datatype.belongsTo(Typeset.ANY_TYPE))
+            assertThat(datatype.belongsTo(TypesetValue.ANY_TYPE))
                     .as("%s in any-type!", datatype)
                     .isEqualTo(datatype != EndValue.TYPE);
         }
@@ -215,7 +215,7 @@ class DatatypeTest {
         @Test
         @DisplayName("a typeset lists its members in the catalogue's order")
         void membersComeInCatalogueOrder() {
-            assertThat(Typeset.ANY_STRING.members()).containsExactly(
+            assertThat(TypesetValue.ANY_STRING.members()).containsExactly(
                     StringValue.TYPE, FileValue.TYPE, EmailValue.TYPE, RefValue.TYPE,
                     UrlValue.TYPE, TagValue.TYPE);
         }
@@ -229,19 +229,19 @@ class DatatypeTest {
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         @DisplayName("series! is any-string!, any-block!, binary!, image! and vector!")
         void seriesIsTheUnionOfItsParts(Datatype datatype) {
-            boolean expected = datatype.belongsTo(Typeset.ANY_STRING)
-                    || datatype.belongsTo(Typeset.ANY_BLOCK)
+            boolean expected = datatype.belongsTo(TypesetValue.ANY_STRING)
+                    || datatype.belongsTo(TypesetValue.ANY_BLOCK)
                     || datatype == BinaryValue.TYPE
                     || datatype == ImageValue.TYPE
                     || datatype == VectorValue.TYPE;
-            assertThat(datatype.belongsTo(Typeset.SERIES)).isEqualTo(expected);
+            assertThat(datatype.belongsTo(TypesetValue.SERIES)).isEqualTo(expected);
         }
 
         @ParameterizedTest
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         @DisplayName("every any-path! is also an any-block!")
         void pathsAreBlocks(Datatype datatype) {
-            assertThat(!datatype.belongsTo(Typeset.ANY_PATH) || datatype.belongsTo(Typeset.ANY_BLOCK))
+            assertThat(!datatype.belongsTo(TypesetValue.ANY_PATH) || datatype.belongsTo(TypesetValue.ANY_BLOCK))
                     .isTrue();
         }
 
@@ -249,7 +249,7 @@ class DatatypeTest {
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         @DisplayName("no datatype is both a word and a block")
         void wordsAreNotBlocks(Datatype datatype) {
-            assertThat(datatype.belongsTo(Typeset.ANY_WORD) && datatype.belongsTo(Typeset.ANY_BLOCK))
+            assertThat(datatype.belongsTo(TypesetValue.ANY_WORD) && datatype.belongsTo(TypesetValue.ANY_BLOCK))
                     .isFalse();
         }
 
@@ -257,7 +257,7 @@ class DatatypeTest {
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         @DisplayName("every number! is also a scalar!")
         void numbersAreScalars(Datatype datatype) {
-            assertThat(!datatype.belongsTo(Typeset.NUMBER) || datatype.belongsTo(Typeset.SCALAR))
+            assertThat(!datatype.belongsTo(TypesetValue.NUMBER) || datatype.belongsTo(TypesetValue.SCALAR))
                     .isTrue();
         }
 
@@ -265,7 +265,7 @@ class DatatypeTest {
         @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
         @DisplayName("nothing is both a scalar! and a series!")
         void scalarsAreNotSeries(Datatype datatype) {
-            assertThat(datatype.belongsTo(Typeset.SCALAR) && datatype.belongsTo(Typeset.SERIES))
+            assertThat(datatype.belongsTo(TypesetValue.SCALAR) && datatype.belongsTo(TypesetValue.SERIES))
                     .isFalse();
         }
     }

@@ -20,7 +20,7 @@ public class ReduceNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("block"),
-                Parameter.belongingTo("into", "target", Typeset.ANY_BLOCK.members()),
+                Parameter.belongingTo("into", "target", TypesetValue.ANY_BLOCK.members()),
                 Parameter.belongingTo("only", "words", Set.of()));
     }
 

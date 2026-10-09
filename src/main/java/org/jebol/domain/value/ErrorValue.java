@@ -61,10 +61,10 @@ public record ErrorValue(
 
     public static final Datatype TYPE = new ErrorDatatype();
 
-    private static final class ErrorDatatype extends Datatype {
+    private static final class ErrorDatatype extends AnyObjectDatatype {
 
         ErrorDatatype() {
-            super("error", Typeset.ANY_OBJECT);
+            super("error");
         }
 
         @Override

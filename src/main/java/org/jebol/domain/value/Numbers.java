@@ -8,7 +8,7 @@ final class Numbers {
     private static final MoneyCoercion MONEY = new MoneyCoercion();
 
     private static final java.util.Set<Datatype> ANY_NUMBER_WHICH_EXCLUDES_A_TIME =
-            Typeset.NUMBER.membersAnd(MoneyValue.TYPE);
+            TypesetValue.NUMBER.membersAnd(MoneyValue.TYPE);
 
     static boolean isANumber(Value value) {
         return value instanceof IntegerValue

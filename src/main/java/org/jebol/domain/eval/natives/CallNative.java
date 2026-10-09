@@ -17,7 +17,7 @@ import org.jebol.domain.value.Molder;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.AnyStringValue;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.GetWordValue;
 import org.jebol.domain.value.WordValue;
@@ -40,7 +40,7 @@ public class CallNative extends HostNative {
     public List<Parameter> parametersAsWritten() {
         Set<Datatype> aRedirection = Set.of(StringValue.TYPE, BinaryValue.TYPE, FileValue.TYPE, NoneValue.TYPE);
         return List.of(
-                Parameter.required("command", Typeset.ANY_STRING.membersAnd(BlockValue.TYPE)),
+                Parameter.required("command", TypesetValue.ANY_STRING.membersAnd(BlockValue.TYPE)),
                 Parameter.belongingTo("input", "in", aRedirection),
                 Parameter.belongingTo("output", "out", aRedirection),
                 Parameter.belongingTo("error", "err", aRedirection));

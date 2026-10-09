@@ -156,7 +156,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
 
     public static final Datatype TYPE = new IntegerDatatype();
 
-    private static final class IntegerDatatype extends Datatype {
+    private static final class IntegerDatatype extends NumberDatatype {
 
         private static final int MOST_HEX_DIGITS = 16;
 
@@ -165,7 +165,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
         private static final double TOO_LARGE_FOR_A_WHOLE_NUMBER = 9.223372036854776E18;
 
         IntegerDatatype() {
-            super("integer", Typeset.NUMBER, Typeset.SCALAR);
+            super("integer");
         }
 
         @Override

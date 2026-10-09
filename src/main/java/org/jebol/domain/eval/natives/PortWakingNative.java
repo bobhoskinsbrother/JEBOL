@@ -4,7 +4,7 @@ import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.PortValue;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -16,7 +16,7 @@ public abstract class PortWakingNative extends DefaultNative {
             return true;
         }
         Value awake = port.context().ownSlotFor("awake").value();
-        if (!awake.datatype().belongsTo(Typeset.ANY_FUNCTION)) {
+        if (!awake.datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
             return true;
         }
         return evaluator.applyFunction(awake, List.of(event)) instanceof LogicValue(boolean truth)

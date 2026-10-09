@@ -18,7 +18,7 @@ public class PokezNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("series", Typeset.SERIES.membersAnd(BitsetValue.TYPE, TupleValue.TYPE)),
+                Parameter.required("series", TypesetValue.SERIES.membersAnd(BitsetValue.TYPE, TupleValue.TYPE)),
                 Parameter.required("index", Set.of(IntegerValue.TYPE)),
                 Parameter.required("value"));
     }

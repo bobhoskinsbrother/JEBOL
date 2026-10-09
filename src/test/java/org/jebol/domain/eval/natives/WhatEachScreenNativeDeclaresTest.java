@@ -163,7 +163,7 @@ class WhatEachScreenNativeDeclaresTest {
                     .containsExactly("keyword", "val", "idx");
             assertThat(declared(definition, "keyword").acceptedTypes()).containsExactly(WordValue.TYPE);
             assertThat(declared(definition, "val").acceptedTypes())
-                    .isEqualTo(Typeset.ANY_TYPE.members());
+                    .isEqualTo(TypesetValue.ANY_TYPE.members());
             assertThat(declared(definition, "val").owningRefinement()).contains("set");
             assertThat(declared(definition, "idx").acceptedTypes()).containsExactly(IntegerValue.TYPE);
             assertThat(declared(definition, "idx").owningRefinement()).contains("display");

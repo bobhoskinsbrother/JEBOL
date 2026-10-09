@@ -18,9 +18,9 @@ public class SetNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("word", Typeset.ANY_PATH.membersAnd(
+                Parameter.required("word", TypesetValue.ANY_PATH.membersAnd(
                         WordValue.TYPE, LitWordValue.TYPE, BlockValue.TYPE, ObjectValue.TYPE)),
-                Parameter.required("value", Typeset.ANY_TYPE.members()));
+                Parameter.required("value", TypesetValue.ANY_TYPE.members()));
     }
 
     @Override

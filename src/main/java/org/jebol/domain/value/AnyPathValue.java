@@ -14,7 +14,7 @@ public abstract sealed class AnyPathValue extends AnyBlockValue
     public abstract static class AnyPathDatatype extends AnyBlockDatatype {
 
         AnyPathDatatype(String spelling) {
-            super(spelling, Typeset.SERIES, Typeset.ANY_BLOCK, Typeset.ANY_PATH);
+            super(spelling);
         }
 
         @Override

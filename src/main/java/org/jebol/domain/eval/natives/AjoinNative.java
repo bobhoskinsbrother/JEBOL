@@ -17,7 +17,7 @@ public class AjoinNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("block", Set.of(BlockValue.TYPE)),
-                Parameter.belongingTo("with", "separator", Typeset.ANY_TYPE.members()));
+                Parameter.belongingTo("with", "separator", TypesetValue.ANY_TYPE.members()));
     }
 
     @Override

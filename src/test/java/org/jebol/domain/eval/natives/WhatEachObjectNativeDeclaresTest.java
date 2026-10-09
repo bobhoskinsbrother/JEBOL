@@ -39,8 +39,8 @@ class WhatEachObjectNativeDeclaresTest {
     Stream<Arguments> whatEachDeclares() {
         return Stream.of(
                 Arguments.of(new MakeAction(), "make",
-                        List.of(Parameter.required("prototype", Typeset.ANY_TYPE.members()),
-                                Parameter.required("body", Typeset.ANY_TYPE.members())),
+                        List.of(Parameter.required("prototype", TypesetValue.ANY_TYPE.members()),
+                                Parameter.required("body", TypesetValue.ANY_TYPE.members())),
                         NOTHING),
                 Arguments.of(new ConstructNative(), "construct",
                         List.of(Parameter.required("body",
@@ -48,18 +48,18 @@ class WhatEachObjectNativeDeclaresTest {
                                 Parameter.belongingTo("with", "object", Set.of(ObjectValue.TYPE))),
                         Set.of("only", "with")),
                 Arguments.of(new ContextOfWordNative(), "context?",
-                        List.of(Parameter.required("word", Typeset.ANY_WORD.members())),
+                        List.of(Parameter.required("word", TypesetValue.ANY_WORD.members())),
                         NOTHING),
                 Arguments.of(new ResolveNative(), "resolve",
-                        List.of(Parameter.required("target", Typeset.ANY_OBJECT.members()),
-                                Parameter.required("source", Typeset.ANY_OBJECT.members()),
+                        List.of(Parameter.required("target", TypesetValue.ANY_OBJECT.members()),
+                                Parameter.required("source", TypesetValue.ANY_OBJECT.members()),
                                 Parameter.belongingTo("only", "from",
                                         Set.of(BlockValue.TYPE, IntegerValue.TYPE))),
                         Set.of("only", "all", "extend")),
                 Arguments.of(new InNative(), "in",
                         List.of(Parameter.required("object",
-                                        Typeset.ANY_OBJECT.membersAnd(BlockValue.TYPE)),
-                                Parameter.required("word", Typeset.ANY_WORD.membersAnd(
+                                        TypesetValue.ANY_OBJECT.membersAnd(BlockValue.TYPE)),
+                                Parameter.required("word", TypesetValue.ANY_WORD.membersAnd(
                                         BlockValue.TYPE, ParenValue.TYPE))),
                         NOTHING),
                 Arguments.of(new ApplyNative(), "apply",
@@ -72,7 +72,7 @@ class WhatEachObjectNativeDeclaresTest {
                 Arguments.of(new CollectWordsNative(), "collect-words",
                         List.of(Parameter.required("block", A_BLOCK),
                                 Parameter.belongingTo("ignore", "words",
-                                        Typeset.ANY_OBJECT.membersAnd(
+                                        TypesetValue.ANY_OBJECT.membersAnd(
                                                 BlockValue.TYPE, NoneValue.TYPE)),
                                 Parameter.belongingTo("as", "type", Set.of(Datatype.TYPE))),
                         Set.of("deep", "set", "ignore", "as")),
@@ -98,7 +98,7 @@ class WhatEachObjectNativeDeclaresTest {
                         List.of(Parameter.required("value")), NOTHING),
                 Arguments.of(new UnbindNative(), "unbind",
                         List.of(Parameter.required("word",
-                                Typeset.ANY_WORD.membersAnd(BlockValue.TYPE))),
+                                TypesetValue.ANY_WORD.membersAnd(BlockValue.TYPE))),
                         Set.of("deep")),
                 Arguments.of(new BindNative(), "bind",
                         List.of(Parameter.required("word"), Parameter.required("target")),

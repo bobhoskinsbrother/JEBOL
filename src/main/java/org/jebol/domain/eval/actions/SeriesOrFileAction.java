@@ -26,10 +26,10 @@ public abstract class SeriesOrFileAction extends DefaultNative implements Action
     }
 
     protected Set<Datatype> somewhereToStand() {
-        return Typeset.SERIES.membersAnd(PortValue.TYPE, NoneValue.TYPE, GobValue.TYPE);
+        return TypesetValue.SERIES.membersAnd(PortValue.TYPE, NoneValue.TYPE, GobValue.TYPE);
     }
 
     protected Set<Datatype> anOffset() {
-        return Typeset.NUMBER.membersAnd(LogicValue.TYPE, PairValue.TYPE);
+        return TypesetValue.NUMBER.membersAnd(LogicValue.TYPE, PairValue.TYPE);
     }
 }

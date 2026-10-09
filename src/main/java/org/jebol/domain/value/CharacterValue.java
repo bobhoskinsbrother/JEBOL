@@ -133,12 +133,12 @@ public record CharacterValue(int codepoint) implements Value {
 
     public static final Datatype TYPE = new CharacterDatatype();
 
-    private static final class CharacterDatatype extends Datatype {
+    private static final class CharacterDatatype extends ScalarDatatype {
 
         private static final int MOST_HEX_DIGITS_SCANNED = 16;
 
         CharacterDatatype() {
-            super("char", Typeset.SCALAR);
+            super("char");
         }
 
         @Override

@@ -26,7 +26,7 @@ public class ResizeNative extends DefaultNative {
                 Parameter.required("size",
                         Set.of(PairValue.TYPE, PercentValue.TYPE, IntegerValue.TYPE)),
                 Parameter.belongingTo("filter", "name", Set.of(WordValue.TYPE, IntegerValue.TYPE)),
-                Parameter.belongingTo("blur", "factor", Typeset.NUMBER.members()));
+                Parameter.belongingTo("blur", "factor", TypesetValue.NUMBER.members()));
     }
 
     @Override

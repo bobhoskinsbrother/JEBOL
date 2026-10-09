@@ -13,8 +13,8 @@ public final class Copying {
     }
 
     private static Set<Datatype> whatADeepCopyCopies() {
-        Set<Datatype> copies = new LinkedHashSet<>(Typeset.ANY_BLOCK.members());
-        copies.addAll(Typeset.ANY_STRING.members());
+        Set<Datatype> copies = new LinkedHashSet<>(TypesetValue.ANY_BLOCK.members());
+        copies.addAll(TypesetValue.ANY_STRING.members());
         copies.addAll(Set.of(BinaryValue.TYPE, BitsetValue.TYPE, MapValue.TYPE, FunctionValue.TYPE));
         return Set.copyOf(copies);
     }

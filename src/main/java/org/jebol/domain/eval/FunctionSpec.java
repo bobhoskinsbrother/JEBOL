@@ -134,9 +134,8 @@ final class FunctionSpec {
         if (named.isPresent()) {
             return named.get();
         }
-        String withoutMark = word.spelling().substring(0, word.spelling().length() - 1);
-        return Typeset.named(withoutMark)
-                .map(typeset -> (Value) TypesetValue.of(typeset))
+        return Catalogue.DATATYPES.typesetNamed(word.spelling())
+                .<Value>map(typeset -> typeset)
                 .orElseThrow(() -> Raised.of(EvaluationFailure.CANNOT_USE,
                         word.spelling() + " names no datatype"));
     }

@@ -241,12 +241,12 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
 
     public static final Datatype TYPE = new MoneyDatatype();
 
-    private static final class MoneyDatatype extends Datatype {
+    private static final class MoneyDatatype extends ScalarDatatype {
 
         private static final int MOST_MONEY_CHARACTERS = 36;
 
         MoneyDatatype() {
-            super("money", Typeset.SCALAR);
+            super("money");
         }
 
         @Override

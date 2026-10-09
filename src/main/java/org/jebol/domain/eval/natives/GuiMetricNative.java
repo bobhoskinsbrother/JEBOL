@@ -10,7 +10,7 @@ import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
@@ -34,7 +34,7 @@ public class GuiMetricNative extends ScreenNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("keyword", Set.of(WordValue.TYPE)),
-                Parameter.belongingTo("set", "val", Typeset.ANY_TYPE.members()),
+                Parameter.belongingTo("set", "val", TypesetValue.ANY_TYPE.members()),
                 Parameter.belongingTo("display", "idx", Set.of(IntegerValue.TYPE)));
     }
 

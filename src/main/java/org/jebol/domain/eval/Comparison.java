@@ -58,13 +58,13 @@ public final class Comparison {
     }
 
     private static final Set<Datatype> REFUSE_TO_BE_ORDERED = everythingIn(
-            Typeset.ANY_OBJECT, Typeset.ANY_FUNCTION,
+            TypesetValue.ANY_OBJECT, TypesetValue.ANY_FUNCTION,
             UnsetValue.TYPE, EndValue.TYPE, NoneValue.TYPE, LogicValue.TYPE,
             BitsetValue.TYPE, MapValue.TYPE, TypesetValue.TYPE,
             FrameValue.TYPE, ImageValue.TYPE, JavaObjectValue.TYPE);
 
     private static Set<Datatype> everythingIn(
-            Typeset first, Typeset second, Datatype... alsoRefusing) {
+            TypesetValue first, TypesetValue second, Datatype... alsoRefusing) {
 
         Set<Datatype> refusing = new HashSet<>(first.members());
         refusing.addAll(second.members());
@@ -129,7 +129,7 @@ public final class Comparison {
     private static final boolean IT_DID_NOT = false;
 
     private static final Set<Datatype> ANY_NUMBER_WHICH_EXCLUDES_A_TIME =
-            Typeset.NUMBER.membersAnd(MoneyValue.TYPE);
+            TypesetValue.NUMBER.membersAnd(MoneyValue.TYPE);
 
     /**
      * REBOL's {@code =} as the series functions ask it: equal, folding case,

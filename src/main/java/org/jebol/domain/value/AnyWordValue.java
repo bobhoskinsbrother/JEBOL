@@ -51,7 +51,7 @@ public abstract sealed class AnyWordValue implements Value
         private static final int THE_FIRST_CODE_POINT_THE_SCANNER_TAKES_FOR_A_LETTER = 128;
 
         AnyWordDatatype(String spelling) {
-            super(spelling, Typeset.ANY_WORD);
+            super(spelling);
         }
 
         public abstract AnyWordValue spelt(String spelling, Context binding);

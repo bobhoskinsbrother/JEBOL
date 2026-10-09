@@ -9,7 +9,7 @@ import org.jebol.domain.value.NativeValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.StringValue;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.GetWordValue;
@@ -165,7 +165,7 @@ public final class BootDeclarations {
                 default -> spec.add(WordValue.of(parameter.name()));
             }
             if (!parameter.acceptedTypes().isEmpty()
-                    && !parameter.acceptedTypes().equals(Typeset.ANY_TYPE.members())) {
+                    && !parameter.acceptedTypes().equals(TypesetValue.ANY_TYPE.members())) {
                 spec.add(BlockValue.block(parameter.acceptedTypes().stream()
                         .sorted(Comparator.comparing(Datatype::spelling))
                         .<Value>map(type -> WordValue.of(type.literalSpelling()))

@@ -9,7 +9,6 @@
 # reported as unused. Confirmed with minimal repros; see
 # docs/allium-checker-notes.md.
 
-Value 'Typeset' is declared but not referenced elsewhere.
 Value 'ErrorCategory' is declared but not referenced elsewhere.
 Value 'HandleKind' is declared but not referenced elsewhere.
 Value 'StructFieldType' is declared but not referenced elsewhere.

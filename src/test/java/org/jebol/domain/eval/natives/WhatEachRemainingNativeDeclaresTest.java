@@ -116,7 +116,7 @@ class WhatEachRemainingNativeDeclaresTest {
             List<Parameter> toValue = new ToValueNative().parametersAsWritten();
             assertThat(toValue).extracting(Parameter::name).containsExactly("value");
             for (Parameter each : List.of(also.get(0), also.get(1), toValue.getFirst())) {
-                for (Datatype datatype : Typeset.ANY_TYPE.members()) {
+                for (Datatype datatype : TypesetValue.ANY_TYPE.members()) {
                     assertThat(each.accepts(datatype)).as(datatype.literalSpelling()).isTrue();
                 }
                 assertThat(each.accepts(UnsetValue.TYPE)).isTrue();

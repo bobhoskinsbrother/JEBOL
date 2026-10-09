@@ -26,7 +26,7 @@ class WhatEachSettingNativeDeclaresTest {
 
     private static final Set<String> NOTHING = Set.of();
 
-    private static final Set<Datatype> ANY_TYPE = Typeset.ANY_TYPE.members();
+    private static final Set<Datatype> ANY_TYPE = TypesetValue.ANY_TYPE.members();
 
     private static final Set<Datatype> AN_INTEGER = Set.of(IntegerValue.TYPE);
 
@@ -45,12 +45,12 @@ class WhatEachSettingNativeDeclaresTest {
     }
 
     private Set<Datatype> whatSetTakes() {
-        return Typeset.ANY_PATH.membersAnd(
+        return TypesetValue.ANY_PATH.membersAnd(
                 WordValue.TYPE, LitWordValue.TYPE, BlockValue.TYPE, ObjectValue.TYPE);
     }
 
     private Set<Datatype> whatPokeTakes() {
-        return Typeset.SERIES.membersAnd(
+        return TypesetValue.SERIES.membersAnd(
                 PortValue.TYPE, MapValue.TYPE, GobValue.TYPE, BitsetValue.TYPE);
     }
 
@@ -61,8 +61,8 @@ class WhatEachSettingNativeDeclaresTest {
 
     private Set<Datatype> whatBoundsAPart() {
         return Stream.concat(
-                        Typeset.NUMBER.membersAnd(PairValue.TYPE).stream(),
-                        Typeset.SERIES.members().stream())
+                        TypesetValue.NUMBER.membersAnd(PairValue.TYPE).stream(),
+                        TypesetValue.SERIES.members().stream())
                 .collect(Collectors.toUnmodifiableSet());
     }
 

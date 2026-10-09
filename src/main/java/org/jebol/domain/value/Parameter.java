@@ -111,7 +111,7 @@ public record Parameter(
             return TypesetValue.of(A_REFINEMENTS_SLOT);
         }
         return TypesetValue.of(acceptedTypes.isEmpty()
-                ? Typeset.ANY_TYPE.members()
+                ? TypesetValue.ANY_TYPE.members()
                 : acceptedTypes);
     }
 }

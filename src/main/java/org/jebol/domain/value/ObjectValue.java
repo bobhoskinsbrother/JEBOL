@@ -120,10 +120,10 @@ public record ObjectValue(Context context) implements Value {
 
     public static final Datatype TYPE = new ObjectDatatype();
 
-    private static final class ObjectDatatype extends Datatype {
+    private static final class ObjectDatatype extends AnyObjectDatatype {
 
         ObjectDatatype() {
-            super("object", Typeset.ANY_OBJECT);
+            super("object");
         }
 
         @Override

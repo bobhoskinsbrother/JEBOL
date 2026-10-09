@@ -67,12 +67,28 @@ public final class Catalogue {
             StructValue.TYPE,
             LibraryValue.TYPE,
             UtypeValue.TYPE,
-            JavaObjectValue.TYPE));
+            JavaObjectValue.TYPE),
+            List.of(
+                    TypesetValue.ANY_TYPE,
+                    TypesetValue.NUMBER,
+                    TypesetValue.SCALAR,
+                    TypesetValue.SERIES,
+                    TypesetValue.ANY_STRING,
+                    TypesetValue.ANY_BLOCK,
+                    TypesetValue.ANY_PATH,
+                    TypesetValue.ANY_WORD,
+                    TypesetValue.ANY_FUNCTION,
+                    TypesetValue.ANY_OBJECT,
+                    TypesetValue.IMMEDIATE,
+                    TypesetValue.COPYABLE,
+                    TypesetValue.INTERNAL));
 
     private final List<Datatype> entries;
+    private final List<TypesetValue> standardTypesets;
 
-    private Catalogue(List<Datatype> entries) {
+    private Catalogue(List<Datatype> entries, List<TypesetValue> standardTypesets) {
         this.entries = entries;
+        this.standardTypesets = standardTypesets;
     }
 
     public List<Datatype> entries() {
@@ -84,12 +100,27 @@ public final class Catalogue {
     }
 
     public Optional<Datatype> named(String spelling) {
-        String wanted = spelling.endsWith("!")
-                ? spelling.substring(0, spelling.length() - 1)
-                : spelling;
+        String wanted = withoutTheMark(spelling);
         return entries.stream()
                 .filter(datatype -> datatype.spelling().equalsIgnoreCase(wanted))
                 .findFirst();
+    }
+
+    public List<TypesetValue> standardTypesets() {
+        return standardTypesets;
+    }
+
+    public Optional<TypesetValue> typesetNamed(String spelling) {
+        String wanted = withoutTheMark(spelling);
+        return standardTypesets().stream()
+                .filter(typeset -> typeset.spelling().filter(wanted::equalsIgnoreCase).isPresent())
+                .findFirst();
+    }
+
+    private String withoutTheMark(String spelling) {
+        return spelling.endsWith("!")
+                ? spelling.substring(0, spelling.length() - 1)
+                : spelling;
     }
 
     public Set<Datatype> where(Predicate<Datatype> test) {

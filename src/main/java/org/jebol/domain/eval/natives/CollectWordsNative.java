@@ -20,7 +20,7 @@ public class CollectWordsNative extends DefaultNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("block", Set.of(BlockValue.TYPE)),
                 Parameter.belongingTo("ignore", "words",
-                        Typeset.ANY_OBJECT.membersAnd(BlockValue.TYPE, NoneValue.TYPE)),
+                        TypesetValue.ANY_OBJECT.membersAnd(BlockValue.TYPE, NoneValue.TYPE)),
                 Parameter.belongingTo("as", "type", Set.of(Datatype.TYPE)));
     }
 

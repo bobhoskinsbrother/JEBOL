@@ -7,7 +7,7 @@ import org.jebol.domain.value.WordValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
 
@@ -28,7 +28,7 @@ public abstract class PngFilterNative extends EncodingNative {
     }
 
     protected Set<Datatype> aWidth() {
-        return Typeset.NUMBER.members();
+        return TypesetValue.NUMBER.members();
     }
 
     protected Set<Datatype> aFilterType() {

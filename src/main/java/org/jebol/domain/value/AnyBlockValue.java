@@ -33,12 +33,12 @@ public abstract sealed class AnyBlockValue implements RebolSeries
 
     abstract AnyBlockValue sameKindOver(BlockStorage storage, int index);
 
-    public abstract static class AnyBlockDatatype extends SeriesDatatype {
+    public abstract static class AnyBlockDatatype extends PositionedSeriesDatatype {
 
         private static final int BYTES_A_SLOT_TAKES = 32;
 
-        AnyBlockDatatype(String spelling, Typeset... declaredTypesets) {
-            super(spelling, declaredTypesets);
+        AnyBlockDatatype(String spelling) {
+            super(spelling);
         }
 
         public abstract AnyBlockValue holding(BlockStorage storage, int index);

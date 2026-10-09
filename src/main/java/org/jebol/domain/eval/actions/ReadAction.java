@@ -11,7 +11,7 @@ import org.jebol.domain.value.WordValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.AnyStringValue;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -34,8 +34,8 @@ public class ReadAction extends PortAction {
         return List.of(
                 Parameter.required("source",
                         Set.of(FileValue.TYPE, PortValue.TYPE, UrlValue.TYPE, BlockValue.TYPE, WordValue.TYPE)),
-                Parameter.belongingTo("part", "length", Typeset.NUMBER.members()),
-                Parameter.belongingTo("seek", "index", Typeset.NUMBER.members()));
+                Parameter.belongingTo("part", "length", TypesetValue.NUMBER.members()),
+                Parameter.belongingTo("seek", "index", TypesetValue.NUMBER.members()));
     }
 
     @Override

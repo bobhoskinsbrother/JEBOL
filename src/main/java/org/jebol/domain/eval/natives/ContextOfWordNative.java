@@ -14,7 +14,7 @@ public class ContextOfWordNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("word", Typeset.ANY_WORD.members()));
+        return List.of(Parameter.required("word", TypesetValue.ANY_WORD.members()));
     }
 
     @Override

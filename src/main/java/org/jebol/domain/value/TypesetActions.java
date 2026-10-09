@@ -52,9 +52,7 @@ public final class TypesetActions {
         String spelling = word.spelling();
         Optional<Datatype> one = Catalogue.DATATYPES.named(spelling);
         one.ifPresent(found::add);
-        Optional<Typeset> family = Typeset.named(spelling.endsWith("!")
-                ? spelling.substring(0, spelling.length() - 1)
-                : spelling);
+        Optional<TypesetValue> family = Catalogue.DATATYPES.typesetNamed(spelling);
         family.ifPresent(whole -> found.addAll(whole.members()));
         return one.isPresent() || family.isPresent();
     }

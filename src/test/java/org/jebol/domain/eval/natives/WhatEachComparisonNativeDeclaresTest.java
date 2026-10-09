@@ -89,7 +89,7 @@ class WhatEachComparisonNativeDeclaresTest {
         void anEqualityQuestionAcceptsAnyType(DefaultNative function, String name) {
             assertThat(function.parametersAsWritten()).allSatisfy(parameter ->
                     assertThat(parameter.acceptedTypes())
-                            .isEqualTo(Typeset.ANY_TYPE.members())
+                            .isEqualTo(TypesetValue.ANY_TYPE.members())
                             .contains(BlockValue.TYPE, NoneValue.TYPE, ObjectValue.TYPE));
         }
 

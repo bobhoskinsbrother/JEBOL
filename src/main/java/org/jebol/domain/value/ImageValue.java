@@ -116,7 +116,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
 
     public static final Datatype TYPE = new ImageDatatype();
 
-    private static final class ImageDatatype extends Datatype {
+    private static final class ImageDatatype extends SeriesDatatype {
 
         private static final int WIDEST_ROW_OF_ITS_OWN_LENGTH = 100;
 
@@ -129,7 +129,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         private static final int THE_BITS_OF_AN_OCTET = 0xFF;
 
         ImageDatatype() {
-            super("image", Typeset.SERIES);
+            super("image");
         }
 
         @Override

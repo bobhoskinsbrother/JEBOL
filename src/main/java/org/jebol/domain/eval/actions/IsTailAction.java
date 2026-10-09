@@ -9,7 +9,6 @@ import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.PortValue;
-import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
@@ -27,7 +26,7 @@ public class IsTailAction extends SeriesOrFileAction {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series", Typeset.SERIES.membersAnd(
+        return List.of(Parameter.required("series", TypesetValue.SERIES.membersAnd(
                 GobValue.TYPE, PortValue.TYPE, BitsetValue.TYPE, TypesetValue.TYPE, MapValue.TYPE)));
     }
 

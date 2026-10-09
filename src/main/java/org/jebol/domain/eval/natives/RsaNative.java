@@ -10,7 +10,7 @@ import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Raised;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
 
@@ -32,7 +32,7 @@ public class RsaNative extends CipherNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("rsa-key", Set.of(HandleValue.TYPE)),
-                Parameter.required("data", Typeset.ANY_STRING.membersAnd(BinaryValue.TYPE)),
+                Parameter.required("data", TypesetValue.ANY_STRING.membersAnd(BinaryValue.TYPE)),
                 Parameter.belongingTo("verify", "signature", Set.of(BinaryValue.TYPE)),
                 Parameter.belongingTo("hash", "algorithm", Set.of(WordValue.TYPE, NoneValue.TYPE)));
     }

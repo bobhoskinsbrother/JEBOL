@@ -3,22 +3,13 @@ package org.jebol.domain.value;
 import org.jebol.domain.value.sets.MembersKept;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-/**
- * A set of datatypes: {@code number!}, {@code series!} and their
- * siblings, and any set a script builds for itself.
- *
- * <p>Holds the members rather than the name, because a typeset need not
- * have one. {@code to typeset! [integer! string!]} is a perfectly good
- * typeset that R3's own base-defs.reb builds one of per generated
- * function, and it answers to no name at all. The named ones keep theirs
- * so that MOLD can print {@code series!} rather than the twenty datatypes
- * it stands for.
- */
-public record TypesetValue(Optional<Typeset> family, Set<Datatype> members) implements Value {
+public final class TypesetValue implements Value {
 
     public static final Datatype TYPE = new Datatype("typeset") {
 
@@ -32,13 +23,98 @@ public record TypesetValue(Optional<Typeset> family, Set<Datatype> members) impl
         }
     };
 
-    public TypesetValue {
-        members = Set.copyOf(members);
+    public static final TypesetValue ANY_TYPE = new TypesetValue("any-type",
+            datatype -> datatype != EndValue.TYPE);
+
+    public static final TypesetValue NUMBER = new TypesetValue("number",
+            datatype -> datatype instanceof NumberDatatype);
+
+    public static final TypesetValue SCALAR = new TypesetValue("scalar",
+            datatype -> datatype instanceof ScalarDatatype);
+
+    public static final TypesetValue SERIES = new TypesetValue("series",
+            datatype -> datatype instanceof SeriesDatatype);
+
+    public static final TypesetValue ANY_STRING = new TypesetValue("any-string",
+            datatype -> datatype instanceof AnyStringValue.AnyStringDatatype);
+
+    public static final TypesetValue ANY_BLOCK = new TypesetValue("any-block",
+            datatype -> datatype instanceof AnyBlockValue.AnyBlockDatatype);
+
+    public static final TypesetValue ANY_PATH = new TypesetValue("any-path",
+            datatype -> datatype instanceof AnyPathValue.AnyPathDatatype);
+
+    public static final TypesetValue ANY_WORD = new TypesetValue("any-word",
+            datatype -> datatype instanceof AnyWordValue.AnyWordDatatype);
+
+    public static final TypesetValue ANY_FUNCTION = new TypesetValue("any-function",
+            datatype -> datatype instanceof AnyFunctionDatatype);
+
+    public static final TypesetValue ANY_OBJECT = new TypesetValue("any-object",
+            datatype -> datatype instanceof AnyObjectDatatype);
+
+    public static final TypesetValue IMMEDIATE = new TypesetValue("immediate",
+            datatype -> TypesetValue.SCALAR.holds(datatype)
+                    || TypesetValue.ANY_WORD.holds(datatype)
+                    || datatype == NoneValue.TYPE
+                    || datatype == LogicValue.TYPE
+                    || datatype == Datatype.TYPE
+                    || datatype == TypesetValue.TYPE
+                    || datatype == EventValue.TYPE);
+
+    public static final TypesetValue COPYABLE = new TypesetValue("copyable",
+            datatype -> TypesetValue.SERIES.holds(datatype)
+                    || TypesetValue.ANY_FUNCTION.holds(datatype)
+                    || datatype == PortValue.TYPE
+                    || datatype == MapValue.TYPE
+                    || datatype == ObjectValue.TYPE
+                    || datatype == BitsetValue.TYPE
+                    || datatype == ErrorValue.TYPE);
+
+    public static final TypesetValue INTERNAL = new TypesetValue("internal",
+            datatype -> datatype == EndValue.TYPE
+                    || datatype == UnsetValue.TYPE
+                    || datatype == FrameValue.TYPE
+                    || datatype == HandleValue.TYPE);
+
+    private final Optional<String> spelling;
+    private final Predicate<Datatype> membership;
+
+    private TypesetValue(String spelling, Predicate<Datatype> membership) {
+        this.spelling = Optional.of(spelling);
+        this.membership = membership;
+    }
+
+    private TypesetValue(Set<Datatype> members) {
+        this.spelling = Optional.empty();
+        this.membership = Set.copyOf(members)::contains;
+    }
+
+    public static TypesetValue of(Set<Datatype> members) {
+        return new TypesetValue(members);
+    }
+
+    public Optional<String> spelling() {
+        return spelling;
+    }
+
+    public boolean holds(Datatype datatype) {
+        return membership.test(datatype);
+    }
+
+    public Set<Datatype> members() {
+        return Catalogue.DATATYPES.where(membership);
+    }
+
+    public Set<Datatype> membersAnd(Datatype... alsoTaken) {
+        Set<Datatype> taken = new LinkedHashSet<>(members());
+        taken.addAll(List.of(alsoTaken));
+        return taken;
     }
 
     @Override
     public boolean atTail() {
-        return members.isEmpty();
+        return members().isEmpty();
     }
 
     @Override
@@ -65,11 +141,12 @@ public record TypesetValue(Optional<Typeset> family, Set<Datatype> members) impl
     private Set<Datatype> membersKeptAgainst(
             Set<Datatype> theirs, BitwiseOperation operation) {
 
-        Set<Datatype> named = new LinkedHashSet<>(members);
+        Set<Datatype> ours = members();
+        Set<Datatype> named = new LinkedHashSet<>(ours);
         named.addAll(theirs);
         Set<Datatype> kept = new LinkedHashSet<>();
         for (Datatype candidate : named) {
-            if (isKept(members.contains(candidate), theirs.contains(candidate), operation)) {
+            if (isKept(ours.contains(candidate), theirs.contains(candidate), operation)) {
                 kept.add(candidate);
             }
         }
@@ -80,28 +157,14 @@ public record TypesetValue(Optional<Typeset> family, Set<Datatype> members) impl
         return operation.onWholeElements(inOurs ? 1 : 0, inTheirs ? 1 : 0) != 0;
     }
 
-    public static TypesetValue of(Typeset represents) {
-        return new TypesetValue(Optional.of(represents), represents.members());
-    }
-
-    /** A set with no name, built from whichever datatypes were asked for. */
-    public static TypesetValue of(Set<Datatype> members) {
-        return new TypesetValue(Optional.empty(), members);
-    }
-
-    /** Whether a value of this datatype belongs to the set. */
-    public boolean holds(Datatype datatype) {
-        return members.contains(datatype);
-    }
-
     @Override
     public boolean equals(Object other) {
-        return other instanceof TypesetValue set && members.equals(set.members);
+        return other instanceof TypesetValue set && members().equals(set.members());
     }
 
     @Override
     public int hashCode() {
-        return members.hashCode();
+        return members().hashCode();
     }
 
     @Override
@@ -115,7 +178,7 @@ public record TypesetValue(Optional<Typeset> family, Set<Datatype> members) impl
     }
 
     private String spelledOut() {
-        return Catalogue.DATATYPES.where(members::contains).stream()
+        return members().stream()
                 .map(Datatype::literalSpelling)
                 .collect(Collectors.joining(" "));
     }

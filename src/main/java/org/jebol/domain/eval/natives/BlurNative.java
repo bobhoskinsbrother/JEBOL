@@ -18,7 +18,7 @@ public class BlurNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("image", Set.of(ImageValue.TYPE)),
-                Parameter.required("radius", Typeset.NUMBER.members()));
+                Parameter.required("radius", TypesetValue.NUMBER.members()));
     }
 
     @Override

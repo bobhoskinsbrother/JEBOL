@@ -77,10 +77,10 @@ public record ModuleValue(Context context, ObjectValue header) implements Value 
 
     public static final Datatype TYPE = new ModuleDatatype();
 
-    private static final class ModuleDatatype extends Datatype {
+    private static final class ModuleDatatype extends AnyObjectDatatype {
 
         ModuleDatatype() {
-            super("module", Typeset.ANY_OBJECT);
+            super("module");
         }
 
         @Override

@@ -13,7 +13,6 @@ import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.PortValue;
-import org.jebol.domain.value.Typeset;
 import org.jebol.domain.value.TypesetValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -36,7 +35,7 @@ class WhatEachPositioningActionDeclaresTest {
     private static final Set<String> NOTHING = Set.of();
 
     private static final Set<Datatype> AN_OFFSET =
-            Typeset.NUMBER.membersAnd(LogicValue.TYPE, PairValue.TYPE);
+            TypesetValue.NUMBER.membersAnd(LogicValue.TYPE, PairValue.TYPE);
 
     private final GrantedServices granted = new GrantedServices();
 
@@ -46,11 +45,11 @@ class WhatEachPositioningActionDeclaresTest {
     }
 
     private Set<Datatype> somewhereToStand() {
-        return Typeset.SERIES.membersAnd(PortValue.TYPE, NoneValue.TYPE, GobValue.TYPE);
+        return TypesetValue.SERIES.membersAnd(PortValue.TYPE, NoneValue.TYPE, GobValue.TYPE);
     }
 
     private Set<Datatype> somethingWithATail() {
-        return Typeset.SERIES.membersAnd(GobValue.TYPE, PortValue.TYPE, BitsetValue.TYPE,
+        return TypesetValue.SERIES.membersAnd(GobValue.TYPE, PortValue.TYPE, BitsetValue.TYPE,
                 TypesetValue.TYPE, MapValue.TYPE);
     }
 

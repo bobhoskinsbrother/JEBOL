@@ -150,12 +150,12 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
 
     public static final Datatype TYPE = new VectorDatatype();
 
-    private static final class VectorDatatype extends Datatype {
+    private static final class VectorDatatype extends SeriesDatatype {
 
         private static final int BYTES_A_VECTORS_NUMBER_TAKES = 4;
 
         VectorDatatype() {
-            super("vector", Typeset.SERIES);
+            super("vector");
         }
 
         @Override

@@ -32,11 +32,11 @@ class WhatEachExitNativeDeclaresTest {
     Stream<Arguments> whatEachDeclares() {
         return Stream.of(
                 Arguments.of(new ReturnNative(), "return",
-                        List.of(Parameter.required("value", Typeset.ANY_TYPE.members())),
+                        List.of(Parameter.required("value", TypesetValue.ANY_TYPE.members())),
                         NOTHING),
                 Arguments.of(new ExitNative(), "exit", List.of(), NOTHING),
                 Arguments.of(new ThrowNative(), "throw",
-                        List.of(Parameter.required("value", Typeset.ANY_TYPE.members()),
+                        List.of(Parameter.required("value", TypesetValue.ANY_TYPE.members()),
                                 Parameter.belongingTo("name", "word", Set.of(WordValue.TYPE))),
                         Set.of("name")),
                 Arguments.of(new CatchNative(), "catch",

@@ -345,13 +345,7 @@ public final class Delect {
                         instanceof TypesetValue family) {
             return Optional.of(family.members());
         }
-        return Typeset.named(withoutItsMark(word.spelling())).map(Typeset::members);
-    }
-
-    private static String withoutItsMark(String spelling) {
-        return spelling.endsWith("!")
-                ? spelling.substring(0, spelling.length() - 1)
-                : spelling;
+        return Catalogue.DATATYPES.typesetNamed(word.spelling()).map(TypesetValue::members);
     }
 
     private static final class Placing {

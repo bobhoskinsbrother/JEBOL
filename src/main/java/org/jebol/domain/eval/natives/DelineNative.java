@@ -15,7 +15,7 @@ public class DelineNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("string", Typeset.ANY_STRING.members()));
+        return List.of(Parameter.required("string", TypesetValue.ANY_STRING.members()));
     }
 
     @Override

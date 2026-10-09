@@ -4,8 +4,7 @@ import java.util.List;
 
 public final class ParenValue extends AnyBlockValue {
 
-    public static final AnyBlockDatatype TYPE = new AnyBlockDatatype(
-            "paren", Typeset.SERIES, Typeset.ANY_BLOCK) {
+    public static final AnyBlockDatatype TYPE = new AnyBlockDatatype("paren") {
 
         @Override
         public AnyBlockValue holding(BlockStorage storage, int index) {

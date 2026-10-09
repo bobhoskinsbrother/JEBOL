@@ -14,7 +14,7 @@ public class CheckNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series", Typeset.SERIES.members()));
+        return List.of(Parameter.required("series", TypesetValue.SERIES.members()));
     }
 
     @Override

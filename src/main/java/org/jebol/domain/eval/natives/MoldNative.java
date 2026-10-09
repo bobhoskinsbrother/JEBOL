@@ -20,7 +20,7 @@ public class MoldNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("value", Typeset.ANY_TYPE.members()),
+                Parameter.required("value", TypesetValue.ANY_TYPE.members()),
                 Parameter.belongingTo("part", "limit", Set.of(IntegerValue.TYPE)));
     }
 

@@ -25,7 +25,7 @@ public class LimitUsageNative extends DefaultNative {
     public List<Parameter> parametersAsWritten() {
         return List.of(
                 Parameter.required("field", Set.of(WordValue.TYPE)),
-                Parameter.required("limit", Typeset.NUMBER.members()));
+                Parameter.required("limit", TypesetValue.NUMBER.members()));
     }
 
     @Override

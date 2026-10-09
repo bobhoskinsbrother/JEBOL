@@ -18,7 +18,7 @@ public record OperatorValue(String operatorName, Value underlying) implements An
         if (underlying == null) {
             throw new IllegalArgumentException("an operator needs something to dispatch to");
         }
-        if (!underlying.datatype().belongsTo(Typeset.ANY_FUNCTION)) {
+        if (!underlying.datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
             throw new IllegalArgumentException(
                     "an operator dispatches to a function, not "
                             + underlying.datatype().literalSpelling());
@@ -37,14 +37,14 @@ public record OperatorValue(String operatorName, Value underlying) implements An
 
     public static final Datatype TYPE = new OperatorDatatype();
 
-    private static final class OperatorDatatype extends Datatype {
+    private static final class OperatorDatatype extends AnyFunctionDatatype {
 
         private static final String AN_OPERATOR_NOBODY_HAS_NAMED = "?";
 
         private static final int THE_ARGUMENTS_AN_OPERATOR_TAKES = 2;
 
         OperatorDatatype() {
-            super("op", Typeset.ANY_FUNCTION);
+            super("op");
         }
 
         @Override
@@ -57,7 +57,7 @@ public record OperatorValue(String operatorName, Value underlying) implements An
             Value dispatching = spec instanceof AnyBlockValue parts
                     ? aFunctionMadeFrom(parts, maker)
                     : spec;
-            if (!dispatching.datatype().belongsTo(Typeset.ANY_FUNCTION)
+            if (!dispatching.datatype().belongsTo(TypesetValue.ANY_FUNCTION)
                     || howManyArgumentsBeforeAnyRefinement(dispatching)
                             != THE_ARGUMENTS_AN_OPERATOR_TAKES) {
                 throw refusing(spec);

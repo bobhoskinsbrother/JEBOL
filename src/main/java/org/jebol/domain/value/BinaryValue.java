@@ -438,12 +438,12 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
 
     public static final Datatype TYPE = new BinaryDatatype();
 
-    private static final class BinaryDatatype extends SeriesDatatype {
+    private static final class BinaryDatatype extends PositionedSeriesDatatype {
 
         private static final int THE_LARGEST_OCTET = 255;
 
         BinaryDatatype() {
-            super("binary", Typeset.SERIES);
+            super("binary");
         }
 
         @Override

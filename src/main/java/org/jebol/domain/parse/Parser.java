@@ -195,7 +195,7 @@ public final class Parser implements ParseWalk {
             return false;
         }
         Value held = target.slotFor(word.canonical()).value();
-        if (held instanceof UnsetValue || held.datatype().belongsTo(Typeset.ANY_FUNCTION)) {
+        if (held instanceof UnsetValue || held.datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, word);
         }
         return held instanceof BlockValue rule ? matchSequence(rule.remaining()) : matchValue(held);
@@ -555,7 +555,7 @@ public final class Parser implements ParseWalk {
             }
             return matchNamedRule(word) ? 1 : NO_MATCH;
         }
-        if (rule instanceof UnsetValue || rule.datatype().belongsTo(Typeset.ANY_FUNCTION)) {
+        if (rule instanceof UnsetValue || rule.datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, rule);
         }
         if (rule instanceof PathValue path) {
@@ -847,7 +847,7 @@ public final class Parser implements ParseWalk {
         if (rule instanceof IntegerValue) {
             return matchRepeat(rules, at);
         }
-        if (rule instanceof UnsetValue || rule.datatype().belongsTo(Typeset.ANY_FUNCTION)) {
+        if (rule instanceof UnsetValue || rule.datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, rule);
         }
         if (rule instanceof PathValue path) {

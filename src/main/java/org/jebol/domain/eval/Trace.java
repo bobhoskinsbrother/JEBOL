@@ -69,7 +69,7 @@ public final class Trace {
     }
 
     void line(int position, Value value, Context context) {
-        if (callsOnly || value.datatype().belongsTo(Typeset.ANY_FUNCTION)) {
+        if (callsOnly || value.datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
             return;
         }
         int depth = indentFor(AT_THIS_DEPTH);
@@ -138,7 +138,7 @@ public final class Trace {
             return "";
         }
         Value held = holder.slotFor(word.canonical()).value();
-        if (held.datatype().belongsTo(Typeset.ANY_FUNCTION)) {
+        if (held.datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
             return " : " + held.datatype().literalSpelling() + " " + molded(held);
         }
         return " : " + molded(held);

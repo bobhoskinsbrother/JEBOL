@@ -4,17 +4,17 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.TypesetValue;
 
 import java.util.List;
 
 public abstract class TypesetPredicateNative extends DefaultNative {
 
-    protected abstract Typeset asked();
+    protected abstract TypesetValue asked();
 
     @Override
     public String nativeName() {
-        return asked().spelling() + "?";
+        return asked().spelling().orElseThrow() + "?";
     }
 
     @Override
@@ -25,6 +25,6 @@ public abstract class TypesetPredicateNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                LogicValue.of(asked().members().contains(arguments.getFirst().datatype()));
+                LogicValue.of(asked().holds(arguments.getFirst().datatype()));
     }
 }

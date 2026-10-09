@@ -43,10 +43,10 @@ public abstract sealed class AnyStringValue implements RebolSeries
         return false;
     }
 
-    public abstract static class AnyStringDatatype extends SeriesDatatype {
+    public abstract static class AnyStringDatatype extends PositionedSeriesDatatype {
 
         AnyStringDatatype(String spelling) {
-            super(spelling, Typeset.SERIES, Typeset.ANY_STRING);
+            super(spelling);
         }
 
         public abstract AnyStringValue holding(StringStorage storage, int index);

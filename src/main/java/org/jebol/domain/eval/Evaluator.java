@@ -552,7 +552,7 @@ public final class Evaluator {
     }
 
     private static final Set<Datatype> WORKS_SOMETHING_OUT =
-            Typeset.ANY_PATH.membersAnd(
+            TypesetValue.ANY_PATH.membersAnd(
                     WordValue.TYPE, SetWordValue.TYPE, GetWordValue.TYPE,
                     LitWordValue.TYPE, ParenValue.TYPE,
                     FunctionValue.TYPE, ClosureValue.TYPE, NativeValue.TYPE,
@@ -820,7 +820,7 @@ public final class Evaluator {
             case PathValue path -> evaluatePath(frame, frames, path);
             case SetPathValue path -> evaluateSetPath(frame, path);
             case ErrorValue raised -> throw new Raised(raised);
-            default -> input.datatype().belongsTo(Typeset.ANY_FUNCTION)
+            default -> input.datatype().belongsTo(TypesetValue.ANY_FUNCTION)
                             && input.datatype() != OperatorValue.TYPE
                     ? calledWithoutAName(frame, frames, input)
                     : StepOutcome.of(input);
@@ -926,7 +926,7 @@ public final class Evaluator {
                             "the operator " + word.spelling()
                                     + " has nothing on its left");
         }
-        if (!bound.datatype().belongsTo(Typeset.ANY_FUNCTION)) {
+        if (!bound.datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
             return StepOutcome.of(bound);
         }
         lastWordCalledThrough = word.spelling();
@@ -954,7 +954,7 @@ public final class Evaluator {
         return switch (argument) {
             case AnyWordValue word -> word.looksUpItsDeclaration();
             case AnyBlockValue path -> path instanceof PathValue;
-            default -> argument.datatype().belongsTo(Typeset.ANY_FUNCTION);
+            default -> argument.datatype().belongsTo(TypesetValue.ANY_FUNCTION);
         };
     }
 
@@ -1062,7 +1062,7 @@ public final class Evaluator {
                     trace.answered(built.nativeName(), produced);
                 }
                 yield built.nativeName().equals("do")
-                        && produced.datatype().belongsTo(Typeset.ANY_FUNCTION)
+                        && produced.datatype().belongsTo(TypesetValue.ANY_FUNCTION)
                         && !call.argumentsInDeclaredOrder().isEmpty()
                         && asksForReEvaluation(call.argumentsInDeclaredOrder().get(0))
                         ? startCall(frame, frames, produced, List.of())
@@ -1221,7 +1221,7 @@ public final class Evaluator {
     private StepOutcome evaluatePath(
             Frame frame, Deque<Frame> frames, AnyBlockValue path) {
         Selection selection = select(path, frame.context);
-        if (!selection.value().datatype().belongsTo(Typeset.ANY_FUNCTION)) {
+        if (!selection.value().datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
             return StepOutcome.of(selection.value());
         }
         return startCall(
@@ -1489,7 +1489,7 @@ public final class Evaluator {
 
         for (int index = 1; index < segments.size(); index++) {
             Value segment = segments.get(index);
-            if (current.value().datatype().belongsTo(Typeset.ANY_FUNCTION)) {
+            if (current.value().datatype().belongsTo(TypesetValue.ANY_FUNCTION)) {
                 AnyWordValue refinement = refinementWordOf(segment);
                 mentioned.add(refinement.canonical());
                 mentionedAsWritten.add(refinement);
@@ -1555,8 +1555,8 @@ public final class Evaluator {
 
     private static final int THE_VARIABLE_THE_PATH_STARTS_FROM = 0;
 
-    private static final java.util.Set<Datatype> HAVE_NO_PARTS_TO_SELECT =
-            Typeset.ANY_WORD.membersAnd(
+    private static final Set<Datatype> HAVE_NO_PARTS_TO_SELECT =
+            TypesetValue.ANY_WORD.membersAnd(
                     UnsetValue.TYPE, NoneValue.TYPE, LogicValue.TYPE,
                     IntegerValue.TYPE, DecimalValue.TYPE, PercentValue.TYPE,
                     MoneyValue.TYPE, Datatype.TYPE, TypesetValue.TYPE);

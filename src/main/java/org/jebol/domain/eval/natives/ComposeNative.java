@@ -21,7 +21,7 @@ public class ComposeNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("block"),
-                Parameter.belongingTo("into", "out", Typeset.ANY_BLOCK.members()));
+                Parameter.belongingTo("into", "out", TypesetValue.ANY_BLOCK.members()));
     }
 
     @Override

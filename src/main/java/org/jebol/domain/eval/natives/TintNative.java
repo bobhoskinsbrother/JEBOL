@@ -4,7 +4,7 @@ import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.TupleValue;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.TypesetValue;
 
 import java.util.List;
 import java.util.Set;
@@ -21,7 +21,7 @@ public class TintNative extends ColourNative {
         return List.of(
                 Parameter.required("target", aColourOrAnImage()),
                 Parameter.required("rgb", Set.of(TupleValue.TYPE)),
-                Parameter.required("amount", Typeset.NUMBER.members()));
+                Parameter.required("amount", TypesetValue.NUMBER.members()));
     }
 
     @Override

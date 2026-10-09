@@ -155,7 +155,7 @@ public record TimeValue(long nanoseconds) implements Value {
 
     public static final Datatype TYPE = new TimeDatatype();
 
-    private static final class TimeDatatype extends Datatype {
+    private static final class TimeDatatype extends ScalarDatatype {
 
         private static final double MOST_SECONDS_A_DURATION_HOLDS = 9_223_372_036.0;
 
@@ -164,7 +164,7 @@ public record TimeValue(long nanoseconds) implements Value {
         private static final long SECONDS_AN_HOUR = 3600L;
 
         TimeDatatype() {
-            super("time", Typeset.SCALAR);
+            super("time");
         }
 
         @Override

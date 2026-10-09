@@ -40,7 +40,7 @@ public abstract non-sealed class DefaultNative implements NativeValue {
     }
 
     protected List<Parameter> acceptsAllNumbers(String... names) {
-        return each(names, Typeset.NUMBER.membersAnd(
+        return each(names, TypesetValue.NUMBER.membersAnd(
                 MoneyValue.TYPE,
                 PairValue.TYPE,
                 TupleValue.TYPE,
@@ -52,7 +52,7 @@ public abstract non-sealed class DefaultNative implements NativeValue {
     }
 
     protected List<Parameter> acceptsOnlyNumbers(String... names) {
-        return each(names, Typeset.NUMBER.members());
+        return each(names, TypesetValue.NUMBER.members());
     }
 
     protected List<Parameter> acceptsWholeNumbers(String... names) {
@@ -65,22 +65,22 @@ public abstract non-sealed class DefaultNative implements NativeValue {
     }
 
     protected List<Parameter> acceptsAnythingMeasurable(String... names) {
-        return each(names, Typeset.NUMBER.membersAnd(
+        return each(names, TypesetValue.NUMBER.membersAnd(
                 MoneyValue.TYPE, TimeValue.TYPE, PairValue.TYPE));
     }
 
     protected List<Parameter> acceptsAnythingWithARange(String... names) {
-        return each(names, Typeset.NUMBER.membersAnd(
+        return each(names, TypesetValue.NUMBER.membersAnd(
                 TupleValue.TYPE, PairValue.TYPE, MoneyValue.TYPE));
     }
 
     protected List<Parameter> acceptsAnythingDivisible(String... names) {
-        return each(names, Typeset.NUMBER.membersAnd(
+        return each(names, TypesetValue.NUMBER.membersAnd(
                 MoneyValue.TYPE, CharacterValue.TYPE, TimeValue.TYPE));
     }
 
     protected List<Parameter> acceptsAnythingWithASign(String... names) {
-        return each(names, Typeset.NUMBER.membersAnd(
+        return each(names, TypesetValue.NUMBER.membersAnd(
                 PairValue.TYPE, MoneyValue.TYPE, TimeValue.TYPE, BitsetValue.TYPE));
     }
 
@@ -92,18 +92,18 @@ public abstract non-sealed class DefaultNative implements NativeValue {
     }
 
     protected List<Parameter> acceptsAnyType(String... names) {
-        return each(names, Typeset.ANY_TYPE.members());
+        return each(names, TypesetValue.ANY_TYPE.members());
     }
 
     protected Set<Datatype> aPartLimit() {
         return Stream.concat(
-                        Typeset.NUMBER.membersAnd(PairValue.TYPE).stream(),
-                        Typeset.SERIES.members().stream())
+                        TypesetValue.NUMBER.membersAnd(PairValue.TYPE).stream(),
+                        TypesetValue.SERIES.members().stream())
                 .collect(Collectors.toUnmodifiableSet());
     }
 
     protected Set<Datatype> aDuplicateCount() {
-        return Typeset.NUMBER.membersAnd(PairValue.TYPE);
+        return TypesetValue.NUMBER.membersAnd(PairValue.TYPE);
     }
 
     protected List<Parameter> acceptsWhateverComesAlong(String... names) {

@@ -5,7 +5,7 @@ import org.jebol.domain.eval.SeriesChange;
 import org.jebol.domain.value.ActionValue;
 import org.jebol.domain.value.DefaultNative;
 import org.jebol.domain.value.Parameter;
-import org.jebol.domain.value.Typeset;
+import org.jebol.domain.value.TypesetValue;
 
 import java.util.List;
 import java.util.Set;
@@ -20,7 +20,7 @@ public class ChangeAction extends DefaultNative implements ActionValue {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(Parameter.required("series"),
-                Parameter.required("value", Typeset.ANY_TYPE.members()),
+                Parameter.required("value", TypesetValue.ANY_TYPE.members()),
                 Parameter.belongingTo("part", "range", aPartLimit()),
                 Parameter.belongingTo("dup", "count", aDuplicateCount()));
     }

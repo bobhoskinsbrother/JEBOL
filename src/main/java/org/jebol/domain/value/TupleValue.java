@@ -222,12 +222,12 @@ public record TupleValue(int[] segments) implements Value {
 
     public static final Datatype TYPE = new TupleDatatype();
 
-    private static final class TupleDatatype extends Datatype {
+    private static final class TupleDatatype extends ScalarDatatype {
 
         private static final int THE_LARGEST_OCTET = 255;
 
         TupleDatatype() {
-            super("tuple", Typeset.SCALAR);
+            super("tuple");
         }
 
         @Override

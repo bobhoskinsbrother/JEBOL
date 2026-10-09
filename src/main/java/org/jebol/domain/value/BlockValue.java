@@ -5,8 +5,7 @@ import java.util.List;
 
 public final class BlockValue extends AnyBlockValue {
 
-    public static final AnyBlockDatatype TYPE = new AnyBlockDatatype(
-            "block", Typeset.SERIES, Typeset.ANY_BLOCK) {
+    public static final AnyBlockDatatype TYPE = new AnyBlockDatatype("block") {
 
         @Override
         public AnyBlockValue holding(BlockStorage storage, int index) {

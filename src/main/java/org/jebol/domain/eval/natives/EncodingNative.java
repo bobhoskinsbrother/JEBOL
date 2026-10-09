@@ -21,7 +21,7 @@ public abstract class EncodingNative extends DefaultNative {
     }
 
     protected Set<Datatype> anyStringOr(Datatype... alsoAccepted) {
-        return Typeset.ANY_STRING.membersAnd(alsoAccepted);
+        return TypesetValue.ANY_STRING.membersAnd(alsoAccepted);
     }
 
     protected Set<Datatype> aCountOrPosition() {

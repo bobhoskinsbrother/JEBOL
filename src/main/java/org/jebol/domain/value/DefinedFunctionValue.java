@@ -31,10 +31,10 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
     @Override
     public abstract Datatype datatype();
 
-    abstract static class DefinedFunctionDatatype extends Datatype {
+    abstract static class DefinedFunctionDatatype extends AnyFunctionDatatype {
 
         DefinedFunctionDatatype(String spelling) {
-            super(spelling, Typeset.ANY_FUNCTION);
+            super(spelling);
         }
 
         abstract Value fromTheFunction(FunctionValue made);

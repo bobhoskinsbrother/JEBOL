@@ -6,8 +6,6 @@ import org.jebol.domain.value.Construction;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.NoneValue;
-import org.jebol.domain.value.Typeset;
-import org.jebol.domain.value.TypesetValue;
 import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorKind;
@@ -93,9 +91,8 @@ final class ConstructedValues {
         if (datatype.isPresent()) {
             return datatype.get();
         }
-        String name = word.spelling().substring(0, word.spelling().length() - 1);
-        return Typeset.named(name)
-                .map(typeset -> (Value) TypesetValue.of(typeset))
+        return Catalogue.DATATYPES.typesetNamed(word.spelling())
+                .<Value>map(typeset -> typeset)
                 .orElseThrow(CannotConstruct::new);
     }
 }

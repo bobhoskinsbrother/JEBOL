@@ -1,7 +1,6 @@
 package org.jebol.domain.value;
 
 import java.util.List;
-import java.util.Set;
 import java.util.function.Supplier;
 
 public abstract non-sealed class Datatype implements Value, Comparable<Datatype> {
@@ -9,11 +8,9 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
     public static final Datatype TYPE = new TheDatatypeOfDatatypes();
 
     private final String spelling;
-    private final Set<Typeset> declaredTypesets;
 
-    protected Datatype(String spelling, Typeset... declaredTypesets) {
+    protected Datatype(String spelling) {
         this.spelling = spelling;
-        this.declaredTypesets = Set.of(declaredTypesets);
     }
 
     public String spelling() {
@@ -24,11 +21,7 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
         return spelling + "!";
     }
 
-    public boolean declares(Typeset typeset) {
-        return declaredTypesets.contains(typeset);
-    }
-
-    public boolean belongsTo(Typeset typeset) {
+    public boolean belongsTo(TypesetValue typeset) {
         return typeset.holds(this);
     }
 

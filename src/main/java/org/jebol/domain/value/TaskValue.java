@@ -54,7 +54,7 @@ public record TaskValue(Context context, AnyBlockValue body) implements Value {
         return TYPE;
     }
 
-    public static final Datatype TYPE = new Datatype("task", Typeset.ANY_OBJECT) {
+    public static final Datatype TYPE = new AnyObjectDatatype("task") {
 
         @Override
         protected Value built(Conversion asking, Value from, Maker maker) {

@@ -79,12 +79,12 @@ public record DateValue(
 
     public static final Datatype TYPE = new DateDatatype();
 
-    private static final class DateDatatype extends Datatype {
+    private static final class DateDatatype extends ScalarDatatype {
 
         private static final long MICROSECONDS_A_SECOND = 1_000_000L;
 
         DateDatatype() {
-            super("date", Typeset.SCALAR);
+            super("date");
         }
 
         @Override

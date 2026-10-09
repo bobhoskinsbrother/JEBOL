@@ -139,7 +139,7 @@ public record PairValue(double x, double y) implements Value {
         return TYPE;
     }
 
-    public static final Datatype TYPE = new Datatype("pair", Typeset.SCALAR) {
+    public static final Datatype TYPE = new ScalarDatatype("pair") {
 
         @Override
         public Value madeFrom(Value spec, Maker maker) {

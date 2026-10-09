@@ -100,7 +100,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
         return quantity == 0.0;
     }
 
-    public abstract static class AnyDecimalDatatype extends Datatype {
+    public abstract static class AnyDecimalDatatype extends NumberDatatype {
 
         private static final int MOST_FRACTION_CHARACTERS = 24;
 
@@ -110,7 +110,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
         private static final Pattern EMPTY_EXPONENT = Pattern.compile("[eE][+-]?$");
 
         AnyDecimalDatatype(String spelling) {
-            super(spelling, Typeset.NUMBER, Typeset.SCALAR);
+            super(spelling);
         }
 
         public abstract AnyDecimalValue holding(double quantity);

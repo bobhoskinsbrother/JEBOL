@@ -70,7 +70,7 @@ class WhatEachOutputNativeDeclaresTest {
         Parameter value = definition.parametersAsWritten().getFirst();
         assertThat(value.name()).isEqualTo("value");
         assertThat(value.owningRefinement()).isEmpty();
-        for (Datatype datatype : Typeset.ANY_TYPE.members()) {
+        for (Datatype datatype : TypesetValue.ANY_TYPE.members()) {
             assertThat(value.accepts(datatype)).as(datatype.literalSpelling()).isTrue();
         }
         assertThat(value.accepts(UnsetValue.TYPE)).isTrue();
