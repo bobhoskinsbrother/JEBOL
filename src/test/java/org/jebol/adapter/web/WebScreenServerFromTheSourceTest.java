@@ -7,6 +7,7 @@ import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.value.GobValue;
+import org.jebol.domain.value.Value;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -208,7 +209,13 @@ class WebScreenServerFromTheSourceTest {
                     system/view/screen-gob/1/offset: %dx%d""".formatted(across, down);
             interpreter.defineFreshWordsIn(opening);
             interpreter.run(opening);
-            theWindow = screen.whatIsShowing().getFirst();
+            theWindow = theFirstWindowIn(interpreter);
+        }
+
+        private GobValue theFirstWindowIn(Interpreter interpreter) {
+            Value window = interpreter.run("system/view/screen-gob/1").value();
+            assertThat(window).isInstanceOf(GobValue.class);
+            return (GobValue) window;
         }
 
         private Optional<ScreenEvent> whatIsQueuedAfterPosting(String body) throws Exception {
@@ -227,8 +234,8 @@ class WebScreenServerFromTheSourceTest {
                 "up,   50,  60,  40,  40",
                 "move, 10,  20,  0,   0",
                 "move, 11,  21,  1,   1",
-                "move, 9,   19,  -1,  -1",
-                "move, 0,   0,   -10, -20",
+                "move, 108, 118, 98,  98",
+                "move, 109, 119, 99,  99",
         })
         @DisplayName("a pointer event counts from the window's top left, the window's place taken off the page's")
         @Timeout(20)
@@ -240,6 +247,55 @@ class WebScreenServerFromTheSourceTest {
                     {"kind":"%s","across":%d,"down":%d}""".formatted(kind, pageAcross, pageDown)))
                     .contains(anEvent(ScreenEventKind.valueOf(kind.toUpperCase(Locale.ROOT)),
                             new ScreenEventDetail.At(windowAcross, windowDown)));
+        }
+
+        @ParameterizedTest(name = "a {0} at {1}x{2}, on no window, is not delivered")
+        @CsvSource({
+                "move, 9,   19",
+                "move, 9,   50",
+                "move, 50,  19",
+                "move, 110, 120",
+                "move, 110, 50",
+                "move, 50,  120",
+                "move, 0,   0",
+                "down, 9,   19",
+                "down, 110, 120",
+                "up,   0,   0",
+        })
+        @DisplayName("a pointer event on no window, with no press held, reaches nothing")
+        @Timeout(20)
+        void aPointerEventOnNoWindowIsDropped(String kind, int pageAcross, int pageDown) throws Exception {
+            aWindowIsShowingAt(10, 20);
+
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"%s","across":%d,"down":%d}""".formatted(kind, pageAcross, pageDown))).isEmpty();
+        }
+
+        @Test
+        @DisplayName("a drag that leaves the window still belongs to it, counted from its top left")
+        @Timeout(20)
+        void aDragThatLeavesTheWindowStillBelongsToIt() throws Exception {
+            aWindowIsShowingAt(10, 20);
+
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"down","across":50,"down":60}""")).isPresent();
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"move","across":0,"down":0}"""))
+                    .contains(anEvent(ScreenEventKind.MOVE, new ScreenEventDetail.At(-10, -20)));
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"up","across":200,"down":300}"""))
+                    .contains(anEvent(ScreenEventKind.UP, new ScreenEventDetail.At(190, 280)));
+        }
+
+        @ParameterizedTest(name = "a {0} posted from the page is not delivered")
+        @ValueSource(strings = {"resize", "offset"})
+        @DisplayName("a page never moves or resizes one window, so a resize or offset posted names none")
+        @Timeout(20)
+        void aResizeOrOffsetIsDropped(String kind) throws Exception {
+            aWindowIsShowingAt(10, 20);
+
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"%s","across":5,"down":5}""".formatted(kind))).isEmpty();
         }
 
         @ParameterizedTest(name = "a move posted with {0} is not delivered")
@@ -374,6 +430,84 @@ class WebScreenServerFromTheSourceTest {
             assertThat(whatIsQueuedAfterPosting("""
                     {"kind":"close"}"""))
                     .contains(anEvent(ScreenEventKind.CLOSE, new ScreenEventDetail.NothingMore()));
+        }
+    }
+
+    @Nested
+    @DisplayName("with two windows on the page")
+    class TwoWindows {
+
+        private GobValue lower;
+        private GobValue upper;
+
+        @BeforeEach
+        void twoOverlappingWindows() throws Exception {
+            aBrowserOpensThePage(640, 480);
+            Interpreter interpreter = anInterpreterOnThisScreen();
+            String opening = """
+                    lower: view/no-wait make gob! [size: 100x100 color: 1.1.1]
+                    lower/offset: 10x20
+                    upper: view/no-wait make gob! [size: 100x100 color: 2.2.2]
+                    upper/offset: 60x70""";
+            interpreter.defineFreshWordsIn(opening);
+            interpreter.run(opening);
+            lower = theGobIn(interpreter, "lower");
+            upper = theGobIn(interpreter, "upper");
+        }
+
+        private GobValue theGobIn(Interpreter interpreter, String word) {
+            Value gob = interpreter.run(word).value();
+            assertThat(gob).isInstanceOf(GobValue.class);
+            return (GobValue) gob;
+        }
+
+        private Optional<ScreenEvent> whatIsQueuedAfterPosting(String body) throws Exception {
+            assertThat(post("event", body)).as("%s", lastPostSaid).isEqualTo(204);
+            return screen.takeTheNextEvent();
+        }
+
+        @Test
+        @DisplayName("a click where only the lower window is reaches the lower window")
+        @Timeout(20)
+        void aClickOnTheLowerReachesIt() throws Exception {
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"down","across":20,"down":30}"""))
+                    .contains(new ScreenEvent(ScreenEventKind.DOWN, lower, new ScreenEventDetail.At(10, 10)));
+        }
+
+        @Test
+        @DisplayName("a click where both windows are reaches the upper one, opened last")
+        @Timeout(20)
+        void aClickOnTheOverlapReachesTheUpper() throws Exception {
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"down","across":80,"down":90}"""))
+                    .contains(new ScreenEvent(ScreenEventKind.DOWN, upper, new ScreenEventDetail.At(20, 20)));
+        }
+
+        @Test
+        @DisplayName("a key before any click reaches the upper window, and after a click on the lower, the lower")
+        @Timeout(20)
+        void aKeyFollowsTheClick() throws Exception {
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"key","code":97}"""))
+                    .contains(new ScreenEvent(ScreenEventKind.KEY, upper, new ScreenEventDetail.Typed('a')));
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"down","across":20,"down":30}""")).isPresent();
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"key","code":98}"""))
+                    .contains(new ScreenEvent(ScreenEventKind.KEY, lower, new ScreenEventDetail.Typed('b')));
+        }
+
+        @Test
+        @DisplayName("a close from the page is one close for each window")
+        @Timeout(20)
+        void aCloseClosesBoth() throws Exception {
+            assertThat(whatIsQueuedAfterPosting("""
+                    {"kind":"close"}"""))
+                    .contains(new ScreenEvent(ScreenEventKind.CLOSE, lower));
+            assertThat(screen.takeTheNextEvent())
+                    .contains(new ScreenEvent(ScreenEventKind.CLOSE, upper));
+            assertThat(screen.takeTheNextEvent()).isEmpty();
         }
     }
 

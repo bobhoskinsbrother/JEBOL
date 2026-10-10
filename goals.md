@@ -58,27 +58,7 @@ then to iOS, with the defects that would hurt there fixed before each stage.
 Agreeing with the C comes before improving on it: a place where JEBOL answers
 something a real 3.22.5 does not is a defect.
 
-### 1. Events that name the wrong window
-
-A browser paints every window onto one surface, so a click comes back without
-saying which window it was in, and `WebScreenServer` hands it to the first one
-showing. With one window that is right; with two it is a coin toss, and a
-handler that fires on the wrong window is a defect nothing in the language can
-catch. The open question in `spec/screen.allium` names three ways out: the page
-carries the windows' rectangles and names the one a click landed in; the paint
-list carries a window per instruction; or a page holds one window and VIEW of a
-second is an error. Goal 3 rebuilds how events reach the interpreter, so this
-is decided and fixed first.
-
-### 2. Boot time
-
-About 50ms per warm `Interpreter.create()` when last measured. The evaluation
-of the system object's declaration runs on every boot although the answer is
-the same each time; caching the built object is the next move. To be done as a
-measured investigation. Compiled to WebAssembly or running on a phone, boot
-may be several times slower, so goal 3's trial measures it there too.
-
-### 3. The web, with the interpreter compiled to WebAssembly
+### 2. The web, with the interpreter compiled to WebAssembly
 
 The first of three goals -- this one, 8 and 9 -- that give JEBOL one front end
 everywhere. Today a page is drawn by JavaScript that repeats the desktop's
@@ -98,15 +78,22 @@ needs new adapters rather than a changed core.
    Brotli tests. Write down what the compiler refused, how big the download
    is and how long a boot takes. This decides whether the rest goes ahead.
 2. **Make the core compile, and keep it compiling.** Replace whatever the
-   compiler refuses; WAIT's sleep becomes a port. Compiling the core for the
-   web becomes part of the gate, so a change that breaks it fails the build.
+   compiler refuses; WAIT's sleep becomes a port. `ScreenEventQueue` is
+   synchronised and sits in the domain; the hand-off between threads moves
+   out to the adapters, as `BrowserScreen` already does for a page's events,
+   and the domain keeps a plain queue. Compiling the core for the web becomes
+   part of the gate, so a change that breaks it fails the build.
 3. **Run the interpreter in a worker.** A page's main thread cannot block, and
    WAIT does. The interpreter runs in a Web Worker and draws to a canvas it
    owns. Events reach it through shared memory, which needs the page served
    with cross-origin isolation, or through WebAssembly's pause-and-resume.
    At first it draws with the existing JavaScript renderer, so the first
    running page comes before the drawing engine. Whether a task ever runs on
-   a thread of its own (goal 16) is decided here, with the worker.
+   a thread of its own (goal 16) is decided here, with the worker. The page
+   resizing is not yet an event: `BrowserScreen.theBrowserMeasures` writes the
+   root gob's size from the server's thread while the script may be reading
+   it. It becomes something the interpreter takes on its own thread, like a
+   click, and the spec says when a script sees the new size.
 4. **The browser's adapters, and what it refuses.** The console becomes an
    element on the page. Files live in the browser's private storage for the
    site, or in memory. HTTP and HTTPS go through `fetch`. TCP, UDP, DNS and
@@ -122,6 +109,14 @@ needs new adapters rather than a changed core.
    a page served as static files, and the browser gate drives them there.
 7. **A build that ships it.** A task produces the static files; their size goes
    in the table at the top of this file beside the jar's.
+
+### 3. Boot time
+
+About 50ms per warm `Interpreter.create()` when last measured. The evaluation
+of the system object's declaration runs on every boot although the answer is
+the same each time; caching the built object is the next move. To be done as a
+measured investigation. Compiled to WebAssembly or running on a phone, boot
+may be several times slower, so goal 3's trial measures it there too.
 
 ### 4. Check the TLS certificate
 

@@ -161,6 +161,66 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
                 not none? find/only heard [control left]""");
     }
 
+    private void twoWindowsRecordingWhichOneHears() {
+        answerTo("""
+                left: view/no-wait make gob! [size: 200x200 color: 200.0.0]
+                left/offset: 20x30
+                right: view/no-wait make gob! [size: 200x200 color: 0.0.200]
+                right/offset: 400x30
+                show system/view/screen-gob
+                heard: copy []
+                handle-events [
+                    name: 'recorder
+                    priority: 90
+                    handler: func [event] [
+                        if find [down key] event/type [
+                            append/only heard reduce [
+                                event/type
+                                case [same? event/window left ['left] same? event/window right ['right] true ['neither]]
+                                either event/type = 'down [event/offset] [event/key]
+                            ]
+                        ]
+                        event
+                    ]
+                ]""");
+    }
+
+    @Test
+    @DisplayName("with two windows on the page, a real click on the second reaches the second and not the first")
+    void aClickReachesTheWindowItLandedOn() {
+        twoWindowsRecordingWhichOneHears();
+
+        theOperatorAt(400 + 10, 30 + 20).click().perform();
+        theOperatorAt(20 + 30, 30 + 40).click().perform();
+
+        untilTheScriptHasHeard("""
+                [[down right 10x20] [down left 30x40]] = heard""");
+    }
+
+    @Test
+    @DisplayName("a real click on the bare page between two windows reaches neither")
+    void aClickOnTheBarePageReachesNothing() {
+        twoWindowsRecordingWhichOneHears();
+
+        theOperatorAt(300, 100).click().perform();
+        theOperatorAt(20 + 5, 30 + 5).click().perform();
+
+        untilTheScriptHasHeard("""
+                [[down left 5x5]] = heard""");
+    }
+
+    @Test
+    @DisplayName("typing after a click on the first window reaches the first, though the second opened last")
+    void typingFollowsTheClick() {
+        twoWindowsRecordingWhichOneHears();
+
+        theOperatorAt(20 + 5, 30 + 5).click().perform();
+        new Actions(browser).sendKeys("a").perform();
+
+        untilTheScriptHasHeard("""
+                [[down left 5x5] [key left #"a"]] = heard""");
+    }
+
     @Test
     @DisplayName("the sliders example's slider is dragged by a real mouse in a browser, and its value changes")
     void theSlidersAreDraggedInABrowser() {

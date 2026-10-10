@@ -6,7 +6,6 @@ import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.value.EventCatalogue;
-import org.jebol.domain.value.GobValue;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -15,7 +14,6 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -139,8 +137,7 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
             return;
         }
         said.text("kind").flatMap(this::kindNamed).ifPresent(kind ->
-                whatTheEventCarries(kind, said).ifPresent(detail -> screen.theBrowserReports(kind,
-                        theFirstWindowShowingBecauseAPageCannotSayWhichOneWasClicked(), detail)));
+                whatTheEventCarries(kind, said).ifPresent(detail -> screen.theBrowserReports(kind, detail)));
     }
 
     private Optional<ScreenEventDetail> whatTheEventCarries(ScreenEventKind kind, FieldsOfAPostedEvent said) {
@@ -176,10 +173,5 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
             }
         }
         return Optional.empty();
-    }
-
-    private GobValue theFirstWindowShowingBecauseAPageCannotSayWhichOneWasClicked() {
-        List<GobValue> showing = screen.whatIsShowing();
-        return showing.isEmpty() ? null : showing.getFirst();
     }
 }

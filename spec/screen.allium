@@ -144,6 +144,12 @@ variant DesktopScreen : ScreenPort {
 variant BrowserScreen : ScreenPort {
     connected: boolean       -- whether a browser is attached right now
     reported_size: Integer   -- what the browser said its viewport measures
+
+    -- The window a pointer press began in, while the button is still down.
+    pressed_in: ScreenWindow?
+
+    -- The window last pressed in, which the keyboard follows.
+    keyboard_with: ScreenWindow?
 }
 
 -- One window on the operator's screen, backing one gob.
@@ -545,9 +551,122 @@ rule ABrowsersEventCarriesWhatADesktopWindowsDoes {
 
     ensures:
         if can_be_delivered_whole(kind, fields):
-            the_screen_reports(port, kind, the_first_window_showing(port))
+            ThePageReported(port, kind, fields)
         else:
             nothing_is_queued
+}
+
+-- Which window an event from a page belongs to.
+--
+-- A page paints every window onto one surface, so it cannot say which window
+-- a click was in. The screen can: it holds every window's place and size, so
+-- it decides the way a desktop's window manager does, and the page sends only
+-- where the pointer is on the page.
+--
+-- A window covers the points from its offset up to, and not including, its
+-- offset plus its size. Where windows overlap, the one on top is the one
+-- latest in the root's pane, because that is the one painted last and so the
+-- one a person sees. VIEW appends each new window to the pane, so a new
+-- window opens on top.
+--
+-- The window is decided when the interpreter takes the event, not when the
+-- page posts it. A window's place is a gob's offset, which the script writes
+-- on its own thread, and the screen's thread reading it would be the second
+-- thread inside the interpreter that TheScreensThreadNeverEntersTheInterpreter
+-- forbids.
+--
+-- These rules replace handing every event to the first window showing, which
+-- was right with one window and a coin toss with two: a handler firing on the
+-- wrong window is a defect nothing in the language can catch.
+
+-- A press belongs to the topmost window under the pointer, and that window
+-- takes the keyboard. A press on no window reaches nothing, as a click on the
+-- desktop behind every window reaches no window.
+rule APressBelongsToTheTopmostWindowUnderThePointer {
+    when: ThePageReported(port, kind, fields)
+    requires: kind = down
+
+    ensures:
+        if a_window_is_under(port, the_pointer_in(fields)):
+            the_screen_reports(port, kind, the_topmost_window_under(port, the_pointer_in(fields)))
+            port.pressed_in = the_topmost_window_under(port, the_pointer_in(fields))
+            port.keyboard_with = the_topmost_window_under(port, the_pointer_in(fields))
+        else:
+            nothing_is_queued
+}
+
+-- While a press is held, every move and the release belong to the window the
+-- press began in, wherever the pointer has gone. That is the grab every
+-- desktop toolkit makes, so a slider dragged past its window's edge still
+-- hears where the pointer is and still hears the button come up. The offset
+-- then counts from that window's top left even when it is negative or past
+-- the window's size, as a desktop's does.
+rule WhileAPressIsHeldThePointerBelongsToTheWindowItBeganIn {
+    when: ThePageReported(port, kind, fields)
+    requires: kind = move or kind = up
+    requires: port.pressed_in != null
+    requires: port.pressed_in.standing = showing
+
+    ensures:
+        the_screen_reports(port, kind, port.pressed_in)
+        if kind = up:
+            port.pressed_in = null
+}
+
+-- With no press held, a move or a release belongs to the topmost window under
+-- the pointer, and to nothing when no window is under it. A window that
+-- closed while the button was down holds no press any longer.
+rule WithNoPressHeldThePointerBelongsToTheWindowUnderIt {
+    when: ThePageReported(port, kind, fields)
+    requires: kind = move or kind = up
+    requires: port.pressed_in = null or port.pressed_in.standing != showing
+
+    ensures:
+        port.pressed_in = null
+        if a_window_is_under(port, the_pointer_in(fields)):
+            the_screen_reports(port, kind, the_topmost_window_under(port, the_pointer_in(fields)))
+        else:
+            nothing_is_queued
+}
+
+-- A key belongs to the window last pressed in, while it is still showing.
+-- Before any press, or once that window has closed, it belongs to the topmost
+-- window, because a desktop gives a newly opened window the keyboard. With no
+-- window showing it reaches nothing.
+rule AKeyBelongsToTheWindowLastPressedIn {
+    when: ThePageReported(port, kind, fields)
+    requires: kind = key or kind = key_up or kind = control or kind = control_up
+
+    ensures:
+        if port.keyboard_with != null and port.keyboard_with.standing = showing:
+            the_screen_reports(port, kind, port.keyboard_with)
+        else if port.open_windows.count > 0:
+            the_screen_reports(port, kind, the_topmost_window(port))
+        else:
+            nothing_is_queued
+}
+
+-- The page going away takes every window on it, so a close from the page is
+-- one close for each window showing, in the order of the root's pane. A
+-- person shutting the tab ends the wait exactly as shutting every window on a
+-- desktop would.
+rule ThePageClosingClosesEveryWindowOnIt {
+    when: ThePageReported(port, kind, fields)
+    requires: kind = close
+
+    ensures:
+        for window in port.open_windows:
+            the_screen_reports(port, kind, window)
+}
+
+-- A page never moves or resizes one of its windows -- the page resizing is a
+-- measurement of the whole screen, not an event of any window -- so a resize
+-- or an offset posted from it names no window and reaches nothing.
+rule APageNeverMovesOrResizesOneWindow {
+    when: ThePageReported(port, kind, fields)
+    requires: kind = resize or kind = offset
+
+    ensures: nothing_is_queued
 }
 
 -- Reading `event/key` of a key event whose stored number is no character --
@@ -612,6 +731,33 @@ rule TheWaitEndsWhenTheScreenHasNoWindowsLeft {
     requires: run.interpreter.screen_port.open_windows.count = 0
 
     ensures: the_wait_returns(run)
+}
+
+-- A wait on the screen is ended by the run's deadline, and by the host asking
+-- the run to stop, with windows still open. It is the reading the first open
+-- question below takes, written down as a rule: a run with no deadline waits
+-- for its windows forever, and a run with one is ended by it, so
+-- FinishedRunsRespectTheirDeadline in embed.allium holds with no exception.
+--
+-- Until 2026-10-10 the wait looked at the screen in a loop that never asked
+-- whether the run should stop. Once the deadline had passed, every pause in
+-- that loop returned at once, so a script waiting on a window nobody closed
+-- ran past its deadline without end, and used a whole processor doing it.
+-- A wait that ended at the deadline and was the script's last step also
+-- reported an ordinary finish, because nothing after it noticed the deadline;
+-- `wait 30` on its own did the same. Every wait now ends the run itself.
+rule ADeadlineEndsAWaitOnTheScreen {
+    when: script_waits_on_the_event_port(run)
+    requires: windows_are_granted(run)
+    requires: run.interpreter.screen_port.open_windows.count > 0
+    requires: the_deadline_has_passed(run) or the_host_asked_the_run_to_stop(run)
+
+    ensures:
+        the_wait_returns(run)
+        if the_deadline_has_passed(run):
+            run.conclusion = timed_out
+        else:
+            run.conclusion = cancelled
 }
 
 ------------------------------------------------------------
@@ -1164,5 +1310,3 @@ open question "Which gob content kinds paint in this increment? Colour, text and
 open question "GUI-METRIC declares a /set refinement for the writable keywords -- restore, minimize, maximize and activate are in the word list -- and neither host reads the value it is given. The posix host reads the /display index and nothing else. Are those four words window controls that were never finished, or metrics that were never made writable? Nothing in the mezzanine calls GUI-METRIC/SET, so there is no second reading to check against."
 
 open question "What size is a window, as against the gob inside it? VIEW builds a parent gob at the child's size and then offsets it by title-size, which reads as though the gob's size is the drawable area and the title bar sits outside it. Both hosts also serve border-size and border-fixed, which only matter if something is meant to add them. Nothing in view-funcs.reb adds them, so either the host is expected to, or they are there for a layout engine that was never written."
-
-open question "Which window does an event on a page belong to? A browser paints every window onto one surface, so a click comes back with no way to say which window it was in, and the server hands the first one that is showing to the screen. With one window open that is right and with two it is a coin toss. Three ways out and none has been chosen: the page could carry the flattened windows' rectangles and name the one the click landed in; the paint list could carry a window identifier per instruction so the page can report it; or a page could be declared to hold one window, which is the smallest change and the one that makes VIEW of a second window an error rather than a guess. It wants deciding before anything is built on it, because a handler that fires on the wrong window is a defect nothing in the language can catch."

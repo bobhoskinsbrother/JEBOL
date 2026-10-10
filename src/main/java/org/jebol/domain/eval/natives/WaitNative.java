@@ -3,6 +3,7 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.Comparison;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.Stopped;
 import org.jebol.domain.eval.EventPath;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
@@ -78,7 +79,7 @@ public class WaitNative extends PortWakingNative {
                 return woken;
             }
             howLongToWaitAmong(waitedOn).ifPresent(milliseconds ->
-                    sleepInterruptibly(Math.max(0, milliseconds), evaluator));
+                    sleptWithoutBeingInterrupted(Math.max(0, milliseconds), evaluator));
             return NoneValue.none();
         };
     }
@@ -143,10 +144,10 @@ public class WaitNative extends PortWakingNative {
             if (aQueuedEventWakes(port, evaluator)) {
                 return NoneValue.none();
             }
-            if (!theScreenStillHasSomethingToSay(evaluator)) {
+            if (!theScreenStillHasSomethingToSay(evaluator)
+                    || !sleptWithoutBeingInterrupted(SCREEN_POLL_MILLISECONDS, evaluator)) {
                 return NoneValue.none();
             }
-            sleepInterruptibly(SCREEN_POLL_MILLISECONDS, evaluator);
         }
         return NoneValue.none();
     }
@@ -180,11 +181,11 @@ public class WaitNative extends PortWakingNative {
                 return port;
             }
             long remainingNanoseconds = deadline - System.nanoTime();
-            if (remainingNanoseconds <= 0 || evaluator.reasonToStop().isPresent()) {
+            if (remainingNanoseconds <= 0
+                    || !sleptWithoutBeingInterrupted(Math.min(SCREEN_POLL_MILLISECONDS,
+                            Math.ceilDiv(remainingNanoseconds, NANOSECONDS_IN_A_MILLISECOND)), evaluator)) {
                 return NoneValue.none();
             }
-            sleepInterruptibly(Math.min(SCREEN_POLL_MILLISECONDS,
-                    Math.ceilDiv(remainingNanoseconds, NANOSECONDS_IN_A_MILLISECOND)), evaluator);
         }
     }
 
@@ -219,19 +220,25 @@ public class WaitNative extends PortWakingNative {
         };
     }
 
-    private void sleepInterruptibly(long milliseconds, Evaluator evaluator) {
+    private boolean sleptWithoutBeingInterrupted(long milliseconds, Evaluator evaluator) {
         long remaining = milliseconds;
         while (remaining > 0) {
-            if (evaluator.reasonToStop().isPresent()) {
-                return;
-            }
+            stopIfTheRunHasBeenStopped(evaluator);
             try {
                 Thread.sleep(Math.min(SLEEP_SLICE_MILLISECONDS, remaining));
             } catch (InterruptedException stopped) {
                 Thread.currentThread().interrupt();
-                return;
+                return false;
             }
             remaining -= SLEEP_SLICE_MILLISECONDS;
         }
+        stopIfTheRunHasBeenStopped(evaluator);
+        return true;
+    }
+
+    private void stopIfTheRunHasBeenStopped(Evaluator evaluator) {
+        evaluator.reasonToStop().ifPresent(reason -> {
+            throw new Stopped(reason);
+        });
     }
 }

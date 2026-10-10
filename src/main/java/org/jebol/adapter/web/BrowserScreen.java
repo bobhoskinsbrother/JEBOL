@@ -1,8 +1,10 @@
 package org.jebol.adapter.web;
 
 import org.jebol.adapter.fonts.JavaTextMeasure;
+import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenPort;
+import org.jebol.domain.host.WindowsOnOneSurface;
 import org.jebol.domain.render.TextMeasure;
 import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.host.GobScreen;
@@ -13,6 +15,9 @@ import org.jebol.domain.value.PairValue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * A browser as a third screen, implementing the same port a desktop window
@@ -39,6 +44,11 @@ public final class BrowserScreen extends GobScreen {
     private final Viewer viewer;
     private final JavaTextMeasure measure = new JavaTextMeasure();
     private final List<GobValue> showing = new ArrayList<>();
+    private final WindowsOnOneSurface surface = new WindowsOnOneSurface();
+    private final Queue<Posted> postedByThePage = new ConcurrentLinkedQueue<>();
+
+    private record Posted(ScreenEventKind kind, ScreenEventDetail detail) {
+    }
 
     private PairValue viewport = PairValue.of(0, 0);
 
@@ -134,21 +144,28 @@ public final class BrowserScreen extends GobScreen {
                 drawDialect);
     }
 
-    /** The gobs this page currently has windows for. */
-    public List<GobValue> whatIsShowing() {
-        return List.copyOf(showing);
+    public void theBrowserReports(ScreenEventKind kind, ScreenEventDetail detail) {
+        postedByThePage.add(new Posted(kind, detail));
     }
 
-    public void theBrowserReports(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
-        queued.add(kind, window, countedFromTheWindow(detail, window));
+    @Override
+    public Optional<ScreenEvent> takeTheNextEvent() {
+        addressEverythingThePagePosted();
+        return super.takeTheNextEvent();
     }
 
-    private ScreenEventDetail countedFromTheWindow(ScreenEventDetail detail, GobValue window) {
-        if (!(detail instanceof ScreenEventDetail.At(int across, int down)) || window == null) {
-            return detail;
+    private void addressEverythingThePagePosted() {
+        for (Posted next = postedByThePage.poll(); next != null; next = postedByThePage.poll()) {
+            for (ScreenEvent addressed : surface.addressed(next.kind(), next.detail(), windowsShowingFromBottomToTop())) {
+                queued.add(addressed.kind(), addressed.window(), addressed.detail());
+            }
         }
-        PairValue place = window.storage().offset();
-        return new ScreenEventDetail.At(
-                across - (int) Math.round(place.x()), down - (int) Math.round(place.y()));
+    }
+
+    private List<GobValue> windowsShowingFromBottomToTop() {
+        if (root == null) {
+            return List.of();
+        }
+        return childrenOfTheRoot().stream().filter(this::hasAWindow).toList();
     }
 }
