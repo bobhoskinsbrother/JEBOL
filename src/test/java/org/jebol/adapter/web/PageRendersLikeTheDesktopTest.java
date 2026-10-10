@@ -276,6 +276,45 @@ class PageRendersLikeTheDesktopTest {
                 .isCloseTo(110.0, within(4.0));
     }
 
+    private static final String A_LABEL_TOO_LONG_FOR_ITS_GOB = """
+            system/view/screen-gob/color: 255.255.255
+            labelled: make gob! [size: 300x200]
+            labelled/text: compose [
+                font (make object! [size: 20 color: 0.0.0])
+                para (make object! [origin: 0x0 margin: 0x0 wrap?: true])
+                "MMMM MMMM MMMM MMMM MMMM MMMM MMMM MMMM"
+            ]
+            view/no-wait labelled
+            system/view/screen-gob/1/offset: 20x10
+            show system/view/screen-gob
+            """;
+
+    @Test
+    @DisplayName("and a label too long for its gob wraps inside it in the browser too, onto more than one line")
+    void aLongLabelWrapsInTheBrowser() throws Exception {
+        Interpreter interpreter = anInterpreterOnThisPage();
+        interpreter.defineFreshWordsIn(A_LABEL_TOO_LONG_FOR_ITS_GOB);
+        interpreter.run(A_LABEL_TOO_LONG_FOR_ITS_GOB);
+
+        BufferedImage shown = whatTheCanvasShows();
+        int right = -1;
+        int top = Integer.MAX_VALUE;
+        int bottom = -1;
+        for (int down = 0; down < shown.getHeight(); down++) {
+            for (int across = 0; across < shown.getWidth(); across++) {
+                Color seen = colourAt(shown, across, down);
+                if (seen.getRed() + seen.getGreen() + seen.getBlue() < 3 * 128) {
+                    right = Math.max(right, across);
+                    top = Math.min(top, down);
+                    bottom = Math.max(bottom, down);
+                }
+            }
+        }
+
+        assertThat(right).as("the ink stays inside the gob, whose right edge is 20 + 300").isBetween(0, 320);
+        assertThat(bottom - top).as("the ink runs over more than one 20-point line").isGreaterThan(30);
+    }
+
     private static final String A_WHITE_LABEL_WITH_A_SHADOW = """
             system/view/screen-gob/color: 255.255.255
             labelled: make gob! [size: 420x260]

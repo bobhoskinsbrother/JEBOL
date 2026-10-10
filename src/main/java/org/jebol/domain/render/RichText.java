@@ -5,6 +5,7 @@ import org.jebol.domain.value.AnyDecimalValue;
 import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.ObjectValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.RefinementValue;
@@ -141,6 +142,8 @@ final class RichText {
         TextVerticalAlignment down = theField(fields, "valign").flatMap(this::theWordsSpelling)
                 .flatMap(TextVerticalAlignment::spelt).orElse(TextVerticalAlignment.TOP);
         layout = layout.aligned(across, down);
+        theField(fields, "wrap?").filter(LogicValue.class::isInstance).map(LogicValue.class::cast)
+                .ifPresent(wraps -> layout = layout.wrapping(wraps.truth()));
     }
 
     private Optional<String> theWordsSpelling(Value word) {

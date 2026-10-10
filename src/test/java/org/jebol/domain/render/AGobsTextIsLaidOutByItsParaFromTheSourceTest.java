@@ -103,6 +103,27 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
                             TextAlignment.RIGHT, TextVerticalAlignment.TOP, 0, 0));
         }
 
+        @ParameterizedTest(name = "wrap?: {0} wraps: {1}")
+        @CsvSource(quoteCharacter = '"', value = {
+                "false, false",
+                "off,   false",
+                "true,  true",
+                "none,  true",
+                "1,     true",
+                "'no,   true",
+        })
+        @DisplayName("wrap? as a logic says whether a long line breaks, and anything else leaves the standard's true")
+        void wrapIsTakenOnlyAsALogic(String given, boolean wraps) {
+            assertThat(theLayoutUnder("wrap?: " + given).wraps()).isEqualTo(wraps);
+        }
+
+        @Test
+        @DisplayName("a para without wrap? wraps, as the standard para does, and so does a plain string")
+        void theStandardWraps() {
+            assertThat(theLayoutUnder("align: 'left").wraps()).isTrue();
+            assertThat(TextLayout.STANDARD.wraps()).isTrue();
+        }
+
         @ParameterizedTest(name = "align {0} is {1}")
         @CsvSource(quoteCharacter = '"', value = {
                 "'left,   LEFT",

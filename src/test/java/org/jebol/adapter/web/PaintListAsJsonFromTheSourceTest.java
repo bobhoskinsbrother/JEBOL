@@ -8,6 +8,8 @@ import org.jebol.domain.value.GobValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -94,7 +96,19 @@ class PaintListAsJsonFromTheSourceTest {
                     make gob! [size: 100x20 text: "hello"]"""))
                     .contains("""
                             "layout":{"origin-across":2,"origin-down":2,"margin-across":2,"margin-down":2,\
-                            "align":"left","valign":"top","shadow-across":0,"shadow-down":0}""");
+                            "align":"left","valign":"top","shadow-across":0,"shadow-down":0,"wraps":true}""");
+        }
+
+        @ParameterizedTest(name = "wrap? {0} crosses as {1}")
+        @CsvSource({"true, true", "false, false"})
+        @DisplayName("whether the para wraps crosses, so the page breaks a long line where the desktop does")
+        void whetherItWrapsCrosses(String given, String crossed) {
+            assertThat(written("""
+                    labelled: make gob! [size: 100x20]
+                    labelled/text: compose [para (make object! [wrap?: %s]) "hi"]
+                    labelled""".formatted(given)))
+                    .contains("""
+                            "wraps":%s}""".formatted(crossed));
         }
 
         @Test

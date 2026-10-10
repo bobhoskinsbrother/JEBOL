@@ -242,4 +242,29 @@ class TheSurveyExampleTakesAnOperatorsAnswersEndToEndTest {
 
         assertThat(answerTo("{yes} = get-face the-face 'area 1")).isEqualTo("#(true)");
     }
+
+    @Test
+    @DisplayName("a comment longer than the area is wide wraps onto more lines inside it, and a short one stays on one")
+    void aLongCommentWraps() {
+        theOperatorClicks("area", 1);
+        theOperatorTypes("no");
+        assertThat(answerTo(THE_ROOM_THE_COMMENT_TAKES)).as("a short comment").isEqualTo("[#(true) #(false)]");
+
+        theOperatorTypes(" the quick brown fox jumps over the lazy dog and keeps on running");
+
+        assertThat(answerTo(THE_ROOM_THE_COMMENT_TAKES)).as("a long comment").isEqualTo("[#(true) #(true)]");
+    }
+
+    private static final String THE_ROOM_THE_COMMENT_TAKES = """
+            comment-face: the-face 'area 1
+            written-in: none
+            look-in: func [outer] [
+                foreach shown any [outer/pane []] [
+                    if block? shown/text [written-in: shown]
+                    look-in shown
+                ]
+            ]
+            look-in comment-face/gob
+            room: size-text written-in
+            reduce [room/x <= written-in/size/x  room/y > 12]""";
 }

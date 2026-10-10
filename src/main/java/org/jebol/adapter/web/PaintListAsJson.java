@@ -144,7 +144,8 @@ final class PaintListAsJson {
                 saying("align", layout.align().asJson()),
                 saying("valign", layout.valign().asJson()),
                 counting("shadow-across", layout.shadowAcross()),
-                counting("shadow-down", layout.shadowDown()));
+                counting("shadow-down", layout.shadowDown()),
+                holding("wraps", String.valueOf(layout.wraps())));
     }
 
     private static String asAStroke(PaintState painted) {

@@ -878,6 +878,26 @@ rule AGobsTextBreaksAtItsNewlines {
             the_lines_written(gob) = the_text_split_at_newlines(gob)
 }
 
+-- A para whose `wrap?` is true also breaks a line that is too wide for the
+-- room its origin and margin leave across. The break comes before the word
+-- that would not fit, and the spaces after the last word that did stay on
+-- its line, hanging past the edge rather than starting the next one. A word
+-- too wide for the room on a line of its own is broken where it overflows,
+-- with at least one character on each line. A para that says nothing about
+-- `wrap?` takes it from `system/standard/para`, which has it true, and so
+-- does a plain string. A wrapped line is a line like any other: it is placed by
+-- align, counted by SIZE-TEXT, and a caret moves over it the same way. The
+-- 2010 GUI's comment area is `wrap?: true` and its fields `wrap?: false`.
+-- The C's wrapping is in the rich-text engine, which is not in the vendored
+-- source, so the breaking rule here is the ordinary one for a word processor.
+rule AParaThatWrapsBreaksALineTooWideForItsRoom {
+    when: FlattenTheTree(root)
+    ensures:
+        for gob in every_gob_under(root) where the_para_of(gob).wrap and it_has_text(gob):
+            every_line_fits(gob, the_box_of(gob, the_para_of(gob).origin, the_para_of(gob).margin))
+                or the_line_is_one_overflowing_character(gob)
+}
+
 -- How wide and how tall text is, is the screen's to say: it is the screen
 -- that has the font. A desktop window and a page answer from the same
 -- measurement, so a caret worked out for one sits where the other draws the

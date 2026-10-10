@@ -118,8 +118,8 @@ public final class DesktopPainting {
     private static void write(
             Graphics2D onto, Placement where, PaintInstruction.Writing written) {
 
-        TextLines lines = new TextLines(written.runs(), MEASURE);
         TextLayout layout = written.layout();
+        TextLines lines = new TextLines(written.runs(), MEASURE, layout.roomForEachLine(where));
         markTheSelection(onto, lines, layout, where, written.caret());
         if (layout.castsAShadow()) {
             writeTheLines(onto, lines, layout, where, layout.shadowAcross(), layout.shadowDown(),

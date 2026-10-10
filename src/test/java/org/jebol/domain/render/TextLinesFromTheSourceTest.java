@@ -154,6 +154,105 @@ class TextLinesFromTheSourceTest {
     }
 
     @Nested
+    @DisplayName("a line too wide for its room")
+    class Wrapping {
+
+        private TextLines wrappedIn(double room, TextRun... runs) {
+            return new TextLines(List.of(runs), halfASizePerCharacter, room);
+        }
+
+        private List<String> theLinesWritten(TextLines lines) {
+            return lines.lines().stream()
+                    .map(line -> line.pieces().stream().map(TextLines.Piece::text).reduce("", String::concat))
+                    .toList();
+        }
+
+        @ParameterizedTest(name = "in a room {0} wide, {1} is written as {2}")
+        @CsvSource(delimiter = ';', value = {
+                "36; abc de; abc de",
+                "35; abc de; abc |de",
+                "30; abcde fg; abcde |fg",
+                "29; abcde fg; abcd|e fg",
+                "30; abcdefgh; abcde|fgh",
+                "3; ab; a|b",
+                "0; ab; a|b",
+                "30; abc de\\nf; abc |de|f",
+                "30; ab   cd; ab   |cd",
+        })
+        @DisplayName("the break comes before the word that would not fit, and a word too wide on its own is broken where it overflows")
+        void whereTheLineBreaks(double room, String text, String expected) {
+            assertThat(theLinesWritten(wrappedIn(room, plain(text.replace("\\n", "\n")))))
+                    .containsExactly(expected.split("\\|"));
+        }
+
+        @Test
+        @DisplayName("with no limit to the room, a line never breaks but at a newline")
+        void noLimitNoBreak() {
+            assertThat(theLinesWritten(wrappedIn(Double.POSITIVE_INFINITY, plain("abc de fgh ijk"))))
+                    .containsExactly("abc de fgh ijk");
+        }
+
+        @Test
+        @DisplayName("a string with no characters is still one line when wrapping")
+        void anEmptyStringIsOneLine() {
+            TextLines lines = wrappedIn(30, plain(""));
+
+            assertThat(lines.lines()).hasSize(1);
+            assertThat(lines.tallness()).isEqualTo(12);
+        }
+
+        @Test
+        @DisplayName("the spaces hanging off a broken line are not counted in its width")
+        void hangingSpacesTakeNoRoom() {
+            TextLines lines = wrappedIn(35, plain("abc de"));
+
+            assertThat(lines.lines().get(0).wide()).isEqualTo(18);
+            assertThat(lines.widest()).isEqualTo(18);
+            assertThat(lines.tallness()).isEqualTo(24);
+        }
+
+        @Test
+        @DisplayName("a break between two runs keeps each run's piece on its own line")
+        void aBreakBetweenRuns() {
+            TextLines lines = wrappedIn(24, plain("ab "), plain("cd"));
+
+            assertThat(lines.lines().get(0).pieces()).extracting(TextLines.Piece::run).containsExactly(0);
+            assertThat(lines.lines().get(1).pieces()).extracting(TextLines.Piece::run).containsExactly(1);
+        }
+
+        @Test
+        @DisplayName("a word spread over two runs is one word, broken where it overflows")
+        void aWordOverTwoRuns() {
+            TextLines lines = wrappedIn(18, plain("ab"), plain("cd"));
+
+            assertThat(theLinesWritten(lines)).containsExactly("abc", "d");
+            assertThat(lines.lines().get(1).pieces().getFirst().from()).isEqualTo(1);
+        }
+
+        @ParameterizedTest(name = "before character {0} is {1} across and {2} down")
+        @CsvSource({
+                "3, 18, 0",
+                "4, 0,  12",
+                "5, 6,  12",
+        })
+        @DisplayName("a caret on a wrapped line is drawn on it, and the place where a line was broken starts the next")
+        void aCaretOnAWrappedLine(int character, double across, double down) {
+            TextLines.CaretPlace placed = wrappedIn(35, plain("abc de")).whereTheCaretIs(0, character, noInset, aBox);
+
+            assertThat(placed.across()).isEqualTo(across);
+            assertThat(placed.top()).isEqualTo(down);
+        }
+
+        @Test
+        @DisplayName("a point on the second wrapped line finds the caret there")
+        void thePointFindsTheWrappedLine() {
+            TextLines.RunAndCharacter found = wrappedIn(35, plain("abc de")).caretNearest(7, 13, noInset, aBox);
+
+            assertThat(found.character()).isEqualTo(5);
+        }
+    }
+
+    @Nested
     @DisplayName("the caret nearest a point")
     class TheNearestCaret {
 

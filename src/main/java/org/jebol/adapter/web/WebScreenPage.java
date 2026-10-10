@@ -81,7 +81,12 @@ final class WebScreenPage {
                        descent: found.fontBoundingBoxDescent };
             }
 
-            function theLinesOf(runs) {
+            function aPiece(runs, run, from, text) {
+              return { run: run, from: from, text: text, font: runs[run],
+                       wide: measured(runs[run], text).wide };
+            }
+
+            function theLinesBetweenNewlines(runs) {
               const lines = [];
               let pieces = [];
               runs.forEach((run, index) => {
@@ -90,31 +95,105 @@ final class WebScreenPage {
                 for (let at = 0; at <= characters.length; at++) {
                   const endsTheRun = at === characters.length;
                   if (endsTheRun || characters[at] === '\\n') {
-                    const text = characters.slice(from, at).join('');
-                    pieces.push({ run: index, from: from, text: text, font: run,
-                                  wide: measured(run, text).wide });
+                    pieces.push(aPiece(runs, index, from, characters.slice(from, at).join('')));
                     if (!endsTheRun) {
-                      lines.push(aLineOf(pieces));
+                      lines.push(pieces);
                       pieces = [];
                       from = at + 1;
                     }
                   }
                 }
               });
-              if (pieces.length) lines.push(aLineOf(pieces));
+              if (pieces.length) lines.push(pieces);
               return lines;
             }
 
-            function aLineOf(pieces) {
-              let wide = 0, ascent = 0, descent = 0;
+            function theLinesOf(runs, room) {
+              return theLinesBetweenNewlines(runs).flatMap(pieces => brokenToFit(runs, pieces, room));
+            }
+
+            function isASpace(letter) {
+              return letter.character === ' ' || letter.character === '\\t';
+            }
+
+            function theLettersOf(pieces) {
+              const letters = [];
+              pieces.forEach(piece => {
+                if (piece.text === '') letters.push({ run: piece.run, at: piece.from, character: null });
+                [...piece.text].forEach((character, index) =>
+                  letters.push({ run: piece.run, at: piece.from + index, character: character }));
+              });
+              return letters;
+            }
+
+            function thePiecesOf(runs, letters) {
+              const pieces = [];
+              let start = 0;
+              while (start < letters.length) {
+                let end = start + 1;
+                while (end < letters.length && letters[end].run === letters[start].run
+                       && letters[start].character !== null && letters[end].character !== null) end++;
+                const text = letters.slice(start, end).filter(letter => letter.character !== null)
+                    .map(letter => letter.character).join('');
+                pieces.push(aPiece(runs, letters[start].run, letters[start].at, text));
+                start = end;
+              }
+              return pieces;
+            }
+
+            function widthOf(pieces) {
+              return pieces.reduce((sum, piece) => sum + piece.wide, 0);
+            }
+
+            function aLineOfTheLetters(runs, letters) {
+              let printed = letters.length;
+              while (printed > 0 && isASpace(letters[printed - 1])) printed--;
+              return aLineOf(thePiecesOf(runs, letters), widthOf(thePiecesOf(runs, letters.slice(0, printed))));
+            }
+
+            function brokenToFit(runs, pieces, room) {
+              const letters = theLettersOf(pieces);
+              if (room === Infinity || !letters.length) return [aLineOf(pieces, widthOf(pieces))];
+              const fits = some => widthOf(thePiecesOf(runs, some)) <= room;
+              const broken = [];
+              let lineStart = 0, at = 0;
+              while (at < letters.length) {
+                let wordEnd = at;
+                while (wordEnd < letters.length && !isASpace(letters[wordEnd])) wordEnd++;
+                if (fits(letters.slice(lineStart, wordEnd))) {
+                  at = wordEnd;
+                  while (at < letters.length && isASpace(letters[at])) at++;
+                } else if (at > lineStart) {
+                  broken.push(aLineOfTheLetters(runs, letters.slice(lineStart, at)));
+                  lineStart = at;
+                } else {
+                  let fitting = at + 1;
+                  while (fitting < wordEnd && fits(letters.slice(at, fitting + 1))) fitting++;
+                  broken.push(aLineOfTheLetters(runs, letters.slice(at, fitting)));
+                  lineStart = fitting;
+                  at = fitting;
+                }
+              }
+              if (lineStart < letters.length || !broken.length) {
+                broken.push(aLineOfTheLetters(runs, letters.slice(lineStart)));
+              }
+              return broken;
+            }
+
+            function aLineOf(pieces, wide) {
+              let ascent = 0, descent = 0;
               pieces.forEach(piece => {
                 const extent = measured(piece.font, piece.text);
-                wide += piece.wide;
                 ascent = Math.max(ascent, extent.ascent);
                 descent = Math.max(descent, extent.descent);
               });
               return { pieces: pieces, wide: wide, ascent: ascent, descent: descent,
                        high: ascent + descent };
+            }
+
+            function theRoomForEachLine(step) {
+              const layout = step.layout;
+              return layout.wraps ? step.wide - layout['origin-across'] - layout['margin-across'] : Infinity;
             }
 
             function placeTheLines(step, lines) {
@@ -135,7 +214,7 @@ final class WebScreenPage {
             }
 
             function whereTheCaretIs(lines, run, character) {
-              for (const line of lines) {
+              for (const line of [...lines].reverse()) {
                 let along = line.left;
                 for (const piece of line.pieces) {
                   const length = [...piece.text].length;
@@ -168,7 +247,7 @@ final class WebScreenPage {
 
             function writeTheLine(step) {
               const layout = step.layout;
-              const lines = theLinesOf(step.runs);
+              const lines = theLinesOf(step.runs, theRoomForEachLine(step));
               if (!lines.length) return;
               placeTheLines(step, lines);
               if (step.caret && step.caret.selection) markTheSelection(step, lines, step.caret.selection);

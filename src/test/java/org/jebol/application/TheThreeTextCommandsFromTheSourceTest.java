@@ -68,6 +68,20 @@ class TheThreeTextCommandsFromTheSourceTest {
             assertThat(answerTo("size-text make gob! [size: 10x10 text: {}]")).isEqualTo("0x12");
         }
 
+        @ParameterizedTest(name = "in a gob {0} wide with wrap? {1}, the text takes {2}")
+        @CsvSource({
+                "36, true,  36x12",
+                "35, true,  18x24",
+                "35, false, 36x12",
+        })
+        @DisplayName("a para that wraps breaks a line too wide for the gob, and the answer is the wrapped text's room")
+        void aWrappingParaBreaksTheLine(int wide, boolean wraps, String expected) {
+            assertThat(answerTo("""
+                    narrow: make gob! [size: %dx100]
+                    narrow/text: reduce ['para make object! [origin: 0x0 margin: 0x0 wrap?: %s] {abc de}]
+                    size-text narrow""".formatted(wide, wraps))).isEqualTo(expected);
+        }
+
         @ParameterizedTest(name = "size-text {0} is refused")
         @ValueSource(strings = {"5", "{abc}", "none", "[]"})
         @DisplayName("anything but a gob is refused, as its declaration says")

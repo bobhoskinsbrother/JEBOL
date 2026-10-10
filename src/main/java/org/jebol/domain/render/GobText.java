@@ -22,7 +22,7 @@ public final class GobText {
     public GobText(GobValue gob, TextMeasure measure) {
         this.gob = gob;
         this.line = theLineOf(gob);
-        this.lines = new TextLines(line.runs(), measure);
+        this.lines = new TextLines(line.runs(), measure, line.layout().roomForEachLine(theGobsOwnBox()));
     }
 
     private RichText.Line theLineOf(GobValue written) {

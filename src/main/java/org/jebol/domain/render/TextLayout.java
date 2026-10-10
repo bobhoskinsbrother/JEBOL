@@ -4,13 +4,21 @@ public record TextLayout(
         int originAcross, int originDown,
         int marginAcross, int marginDown,
         TextAlignment align, TextVerticalAlignment valign,
-        int shadowAcross, int shadowDown) {
+        int shadowAcross, int shadowDown,
+        boolean wraps) {
 
     private static final int THE_STANDARD_INSET = 2;
+    private static final boolean THE_STANDARD_PARA_WRAPS = true;
 
     public static final TextLayout STANDARD = new TextLayout(
             THE_STANDARD_INSET, THE_STANDARD_INSET, THE_STANDARD_INSET, THE_STANDARD_INSET,
             TextAlignment.LEFT, TextVerticalAlignment.TOP, 0, 0);
+
+    public TextLayout(int originAcross, int originDown, int marginAcross, int marginDown,
+            TextAlignment align, TextVerticalAlignment valign, int shadowAcross, int shadowDown) {
+        this(originAcross, originDown, marginAcross, marginDown, align, valign, shadowAcross, shadowDown,
+                THE_STANDARD_PARA_WRAPS);
+    }
 
     public record LinePlacement(double across, double baseline) {
     }
@@ -52,19 +60,29 @@ public record TextLayout(
         };
     }
 
+    public double roomForEachLine(Placement box) {
+        return wraps ? box.wide() - originAcross - marginAcross : Double.POSITIVE_INFINITY;
+    }
+
     public TextLayout withOrigin(int across, int down) {
-        return new TextLayout(across, down, marginAcross, marginDown, align, valign, shadowAcross, shadowDown);
+        return new TextLayout(across, down, marginAcross, marginDown, align, valign, shadowAcross, shadowDown, wraps);
     }
 
     public TextLayout withMargin(int across, int down) {
-        return new TextLayout(originAcross, originDown, across, down, align, valign, shadowAcross, shadowDown);
+        return new TextLayout(originAcross, originDown, across, down, align, valign, shadowAcross, shadowDown, wraps);
     }
 
     public TextLayout aligned(TextAlignment across, TextVerticalAlignment down) {
-        return new TextLayout(originAcross, originDown, marginAcross, marginDown, across, down, shadowAcross, shadowDown);
+        return new TextLayout(originAcross, originDown, marginAcross, marginDown, across, down, shadowAcross, shadowDown,
+                wraps);
     }
 
     public TextLayout withShadow(int across, int down) {
-        return new TextLayout(originAcross, originDown, marginAcross, marginDown, align, valign, across, down);
+        return new TextLayout(originAcross, originDown, marginAcross, marginDown, align, valign, across, down, wraps);
+    }
+
+    public TextLayout wrapping(boolean breaksALongLine) {
+        return new TextLayout(originAcross, originDown, marginAcross, marginDown, align, valign, shadowAcross,
+                shadowDown, breaksALongLine);
     }
 }
