@@ -77,6 +77,20 @@ public interface ScreenPort {
      */
     Optional<ScreenEvent> takeTheNextEvent();
 
+    /**
+     * Takes everything the other side has measured but this port has not yet
+     * taken: a measurement becomes the screen's own, resizing what hangs on
+     * it. Events are left for the next {@link #takeTheNextEvent}, which is
+     * what decides the moment they are judged at.
+     *
+     * <p>Called on the interpreter's own thread -- before a run starts, and
+     * whenever the wait asks for an event -- because that is the only place a
+     * report may change what a script sees. A measurement applied where it
+     * arrived would write a gob another thread was reading.
+     */
+    default void takePendingReports() {
+    }
+
     TextMeasure textMeasure();
 
     /**

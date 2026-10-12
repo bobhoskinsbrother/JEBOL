@@ -1183,3 +1183,90 @@ page script that waits prints its later lines once the fiber is resumed by
 page harness must be told when the script has really finished rather than
 writing its output when `main` returns; that is the worker's business in goal 1
 step 1.
+
+## 28. The interpreter runs in a worker, and the run loop lives on main's fiber
+
+**A page's worker runs the WebAssembly interpreter and owns the canvas; the
+page's own thread only paints what arrives and posts what the operator does.**
+The worker's shell (`src/teavm/js/jebol-worker.js`) loads the module, calls the
+boot, and speaks for the page. Java's side is `TheInterpreterInAWorker`
+(`src/teavm`): `main` boots and then runs the loop - await a script from the
+page, run it, report, repeat. Paint lists cross to the page as the same JSON
+the server arrangement writes, so the page paints with the existing renderer;
+goal 1 step 3 replaces that renderer and then the worker paints the canvas
+directly.
+
+**Events go by postMessage and TeaVM's pause-and-resume, not by shared
+memory.** The shell buffers the page's postings in a plain JavaScript array;
+Java pulls them on the interpreter's own thread, before each run and whenever
+the wait asks for an event. Nothing re-enters the module while a fiber is
+suspended, and the page needs no cross-origin isolation. Latency is the wait's
+ten millisecond poll.
+
+**The run loop has to live on main's fiber, and this cost a day to learn.** A
+script's `wait` suspends through TeaVM's fiber machinery, and that machinery
+only exists on the path that enters through `main`: a call arriving from a
+page callback - an exported method invoked from `onmessage` - runs with no
+fiber armed, and the first suspension throws
+`IllegalStateException` from `Fiber.suspend`. So the page's call does not run
+the script; it hands the script to a `JSPromise` the run loop is awaiting, and
+the script runs inside main's fiber where suspension is legal. `JSPromise.await`
+(`org.teavm.jso.core`) is the sanctioned pause-and-resume from Java.
+
+**Three smaller lessons.** A method a page calls as a function wants
+`@JSExport`, not `@Export`: the first is a JS-facing export the runtime
+registers where `teavm.exports` can see it, the second is a raw wasm export
+nobody wraps. JSBody classes substitute by whole class and static method -
+`TextMeasures` became a factory class because the constructor-call
+substitution of `JavaTextMeasure` never applied, while the same shape as a
+static call applies fine. And the classlib lacks `ConcurrentLinkedQueue`, so
+the web build carries `TConcurrentLinkedQueue` at the classlib's own mapped
+name and the classlib's policy finds it; the JVM keeps the real thing.
+
+**The worker says when it has failed.** A worker that died quietly would leave
+a page waiting forever, so the shell reports load failures, boot throws and
+unhandled rejections to the page, and the browser gate treats any `failed` or
+`worker error` line as the end of its wait.
+
+## 29. The page's measurement is taken, not applied
+
+**`BrowserScreen.theBrowserMeasures` queues; the interpreter takes.** The
+posting used to write the root gob's size from the thread that carried it,
+racing the script that may have been reading that very size. Now the
+measurement joins a queue like a click, and the interpreter takes it on its own
+thread at two moments: before a run starts, and whenever the wait asks for an
+event. A script sees the new size from the moment the interpreter takes it,
+and never mid-expression; a window opened after the take centres against the
+new size.
+
+**Events are left where they were.** The run-start take takes measurements
+only. A click posted between two runs is still judged when the interpreter
+takes it inside a wait, which is what
+`aClickIsJudgedWhenTaken` in `BrowserScreenFromTheSourceTest` pins - taking
+events at run start as well broke that, and the take was narrowed until it
+did not.
+
+**A posting that cannot be a size is dropped** - a negative side, or a
+missing one - the same rule the event postings already followed: what cannot
+be delivered whole is not delivered at all.
+
+## 30. A task's body runs where the host gives it a thread, and nowhere else
+
+**In a browser, never.** A worker has one execution context and the script's
+run occupies it; a task's body would be the second thread inside an
+interpreter the domain model says one thread owns. `DO` of a task there starts
+nothing, which is also what a real 3.22.5 does with it, and the suite's
+assertion (`do make task! [1 / 0]` answers the task) stays green.
+
+**On the JVM, by a fresh interpreter on a thread of its own.** The seam is
+`TaskPort` (`org.jebol.domain.host`), wired by the host like the file system
+and the screen; every interpreter starts with the port that starts nothing.
+`TasksOnThreads` (`org.jebol.adapter.host`) runs the body in a fresh
+interpreter on a daemon thread: the parent's output, none of the parent's
+contexts, no deadline, and what it raises stays at its own edge. The console
+wires it; the web build does not.
+
+**Decided while building goal 1's worker**, which is what showed what a
+platform can give the interpreter. The spec rule is
+`TheFateOfATasksBodyIsTheHostsToDecide` in `spec/natives.allium`, replacing the
+open question that stood there.

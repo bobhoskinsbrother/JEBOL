@@ -1,6 +1,6 @@
 package org.jebol.adapter.web;
 
-import org.jebol.adapter.fonts.JavaTextMeasure;
+import org.jebol.adapter.fonts.TextMeasures;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenPort;
@@ -28,10 +28,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 public final class BrowserScreen extends GobScreen {
 
-    /**
-     * Whoever is looking at the page, and however the picture reaches them --
-     * the whole of the transport, as two questions.
-     */
+    /** Whoever is looking at the page, and however the picture reaches them. */
     public interface Viewer {
 
         /** Whether a browser is attached right now. */
@@ -39,15 +36,29 @@ public final class BrowserScreen extends GobScreen {
 
         /** Here is the picture. Paint it. */
         void paint(PaintList painting);
+
+        /**
+         * Hands over whatever the page has posted since last asked, by
+         * reporting each item back through the screen. A transport that is
+         * posted to from outside takes nothing here; one that holds what it
+         * was sent -- a worker reading a queue the page fills -- pulls its
+         * own side now, so the pull happens on the interpreter's thread.
+         */
+        default void takeWhatThePagePosted() {
+        }
     }
 
     private final Viewer viewer;
-    private final JavaTextMeasure measure = new JavaTextMeasure();
+    private final TextMeasure measure = TextMeasures.ofTheMachineThisBuildRunsOn();
     private final List<GobValue> showing = new ArrayList<>();
     private final WindowsOnOneSurface surface = new WindowsOnOneSurface();
     private final Queue<Posted> postedByThePage = new ConcurrentLinkedQueue<>();
+    private final Queue<Measured> measuredByThePage = new ConcurrentLinkedQueue<>();
 
     private record Posted(ScreenEventKind kind, ScreenEventDetail detail) {
+    }
+
+    private record Measured(int wide, int high) {
     }
 
     private PairValue viewport = PairValue.of(0, 0);
@@ -70,12 +81,20 @@ public final class BrowserScreen extends GobScreen {
         return hasADisplay() ? 1 : 0;
     }
 
-    /** What the browser last said its viewport measures, resizing the root with it. */
+    /** What the browser last measured, as the interpreter took it. */
+    public PairValue viewport() {
+        return viewport;
+    }
+
+    /**
+     * The page said how big its viewport is. Queued rather than applied: the
+     * caller may be on any thread, and the interpreter takes it on its own.
+     */
     public void theBrowserMeasures(int wide, int high) {
-        this.viewport = PairValue.of(wide, high);
-        if (root != null) {
-            root.storage().size(viewport);
+        if (wide < 0 || high < 0) {
+            return;
         }
+        measuredByThePage.add(new Measured(wide, high));
     }
 
     @Override
@@ -149,16 +168,37 @@ public final class BrowserScreen extends GobScreen {
     }
 
     @Override
+    public void takePendingReports() {
+        viewer.takeWhatThePagePosted();
+        takeEveryMeasurement();
+    }
+
+    @Override
     public Optional<ScreenEvent> takeTheNextEvent() {
+        takePendingReports();
         addressEverythingThePagePosted();
         return super.takeTheNextEvent();
     }
 
+    private void takeEveryMeasurement() {
+        for (Measured next = measuredByThePage.poll(); next != null; next = measuredByThePage.poll()) {
+            takenByTheInterpreter(next.wide(), next.high());
+        }
+    }
+
     private void addressEverythingThePagePosted() {
         for (Posted next = postedByThePage.poll(); next != null; next = postedByThePage.poll()) {
-            for (ScreenEvent addressed : surface.addressed(next.kind(), next.detail(), windowsShowingFromBottomToTop())) {
+            for (ScreenEvent addressed : surface.addressed(
+                    next.kind(), next.detail(), windowsShowingFromBottomToTop())) {
                 queued.add(addressed.kind(), addressed.window(), addressed.detail());
             }
+        }
+    }
+
+    private void takenByTheInterpreter(int wide, int high) {
+        this.viewport = PairValue.of(wide, high);
+        if (root != null) {
+            root.storage().size(viewport);
         }
     }
 

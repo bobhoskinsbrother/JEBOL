@@ -97,8 +97,14 @@ public class DoNative extends DefaultNative {
                     raiseHalfAnExpression(assigning);
             case SetPathValue assigning ->
                     raiseHalfAnExpression(assigning);
+            case TaskValue task -> handedToWhereverTheHostRunsABody(task, evaluator);
             default -> value;
         };
+    }
+
+    private Value handedToWhereverTheHostRunsABody(TaskValue task, Evaluator evaluator) {
+        evaluator.tasks().runTheBody(Molder.mold(task.body()), evaluator.output());
+        return task;
     }
 
     private Value evaluatedSource(String source, Evaluator evaluator) {

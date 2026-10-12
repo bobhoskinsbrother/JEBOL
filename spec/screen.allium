@@ -143,7 +143,9 @@ variant DesktopScreen : ScreenPort {
 -- the only difference is which adapter executes the paint list.
 variant BrowserScreen : ScreenPort {
     connected: boolean       -- whether a browser is attached right now
-    reported_size: Integer   -- what the browser said its viewport measures
+    reported_size: Integer   -- what the browser said its viewport measures,
+                             -- written when the interpreter takes the
+                             -- measurement and never where the posting arrives
 
     -- The window a pointer press began in, while the button is still down.
     pressed_in: ScreenWindow?
@@ -669,9 +671,49 @@ rule ThePageClosingClosesEveryWindowOnIt {
             the_screen_reports(port, kind, window)
 }
 
--- A page never moves or resizes one of its windows -- the page resizing is a
--- measurement of the whole screen, not an event of any window -- so a resize
--- or an offset posted from it names no window and reaches nothing.
+-- The browser measuring its viewport is taken by the interpreter, not applied
+-- where it arrives.
+--
+-- The page posts how big its viewport is when it loads and whenever it is
+-- resized. That posting arrives on whatever thread carried it -- the
+-- transport's -- and writing the root gob's size there races the script,
+-- which may be reading the very size being written. So the measurement is
+-- queued the way a click is, and the interpreter takes it on its own thread
+-- at two moments: before a run starts, and whenever it takes an event inside
+-- a wait. Those are the moments the interpreter is between script steps and
+-- looking at the screen. A script sees the new size from the moment the
+-- interpreter takes it, and never in the middle of an expression; a script
+-- that is neither running nor waiting sees nothing until it next does one.
+--
+-- A window opened after the measurement was taken is centred against the new
+-- size, which is what makes this a taking rather than a deferral: VIEW
+-- centres with `screen/size - window/size / 2`, and the size it reads must
+-- already be the page's.
+rule TheBrowsersMeasurementIsTakenNotApplied {
+    when: ThePageMeasures(port, wide, high)
+    requires: wide >= 0 and high >= 0
+
+    ensures:
+        the_measurement_joins_the_queue(port)
+        the_viewport_and_the_root_gob_change_size(port, wide, high)
+            when the_interpreter_takes(port)
+}
+
+-- A viewport cannot measure fewer than no pixels in either direction, and a
+-- posting that claims one cannot be delivered whole. Dropped, like any other
+-- posting the page cannot make properly, rather than clamped: a measurement
+-- the page never sent must not arrive looking like one it did.
+rule AMeasurementThatCannotBeASizeIsDropped {
+    when: ThePageMeasures(port, wide, high)
+    requires: wide < 0 or high < 0
+
+    ensures: nothing_is_queued
+}
+
+-- A page never moves or resizes one of its windows -- the page's own resize
+-- is the measurement above, which belongs to the whole screen and to no
+-- window -- so a resize or an offset posted from it names no window and
+-- reaches nothing.
 rule APageNeverMovesOrResizesOneWindow {
     when: ThePageReported(port, kind, fields)
     requires: kind = resize or kind = offset

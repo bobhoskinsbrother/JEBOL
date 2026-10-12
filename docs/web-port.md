@@ -8,26 +8,29 @@ what the code cannot. `CLAUDE.md` carries the method.
 
 ## Where it stands
 
-The core compiles to WebAssembly with TeaVM 0.16.0 and runs in a real browser.
-The build is JEBOL's own: `./gradlew buildWasmGC` writes `jebol-web.wasm` and
-`jebol-web-runtime.js` into `build/generated/teavm/wasm-gc`, and
-`./gradlew browserCheck` depends on that task and then drives a page in Chrome.
+The core compiles to WebAssembly with TeaVM 0.16.0 and runs in a real browser,
+inside the page's worker. The build is JEBOL's own: `./gradlew buildWasmGC`
+writes `jebol-web.wasm` and `jebol-web-runtime.js` into
+`build/generated/teavm/wasm-gc` (with `jebol-worker.js`, the shell the worker
+runs), and `./gradlew browserCheck` depends on that task and then drives a
+page in Chrome.
 
 The pieces:
 
 | Piece | Where |
 | --- | --- |
-| The web's main class | `src/teavm/java/org/jebol/adapter/web/TheScriptOnThePage`, handed the script as its first argument |
+| The web's main class, the run loop in the worker | `src/teavm/java/org/jebol/adapter/web/TheInterpreterInAWorker`, booting on `main` and awaiting scripts the page hands over |
+| The worker's shell | `src/teavm/js/jebol-worker.js`, copied beside the module by the `copyTheWorkerScript` task |
 | The web's substitutions and the library-file list | `src/teavm/java` and `src/teavm/resources`, wired in `build.gradle.kts` |
 | The library files TeaVM must embed | listed by the `writeTheWebResourceList` task from `src/main/resources/org/jebol`, so the list cannot drift |
-| The page and its script | `src/test/resources/web/rebol-on-a-page.html`, the Rebol inside a `<script type="text/rebol">` tag |
-| The unit level | `AScriptInAPageTagFromTheSourceTest` runs that tag's script on the JVM and pins its seven printed lines |
-| The end-to-end level | `AScriptInAPageTagRunsInABrowserEndToEndTest` serves the build and the page, drives Chrome, and reads the same seven lines out of the page |
+| The page and its scripts | `src/test/resources/web/rebol-on-a-page.html`, two Rebol tags -- the Brotli script and a GUI script -- a canvas, and the renderer copied from `WebScreenPage` |
+| The unit level | `AScriptInAPageTagFromTheSourceTest` runs the first tag's script on the JVM and pins its eight printed lines |
+| The end-to-end level | `AScriptInAPageTagRunsInABrowserEndToEndTest` serves the build and the page, drives Chrome, and checks the eight lines, the canvas, a click, and a resize |
 
 Measured so far: the WebAssembly module is 12.8 MB unobfuscated beside a 38 KB
-runtime loader; the trial below measured a boot in Chrome of 477 ms going cold
-and 164 to 201 ms warm. The shipped form, obfuscated and compressed, is goal 1
-step 5's business.
+runtime loader (the worker's shell is a few KB more); the trial below measured
+a boot in Chrome of 477 ms going cold and 164 to 201 ms warm. The shipped
+form, obfuscated and compressed, is goal 1 step 5's business.
 
 The two pieces of blocking code named in this note are gone. WAIT's sleep is a
 port (`PausePort`, in `org.jebol.domain.host`) that the interpreter asks one
@@ -40,15 +43,11 @@ moves what was posted into the interpreter's own queue on the interpreter's
 own thread. `BrowserScreen` already worked this way; `DesktopScreen` now does
 too.
 
-A measurement worth keeping for step 1: **TeaVM's `Thread.sleep` works in a
-browser**, and so does the pause port over it - a page script that waits
-prints its later lines once the fiber is resumed by `setTimeout`. But
-`teavm.exports.main` returns at the first suspension, so the page harness
-writes its output as soon as `main` returns and a script that waits prints
-only what it printed before the wait; delaying the read of the output by a
-second shows the rest arriving. Until the worker's entry point can tell the
-page when the script has really finished, the browser gate cannot hold a
-script that waits: the pause is pinned by the JVM tests and measured here.
+The worker closes the gap this note used to carry: a page script that waits
+now prints its later lines, and the worker posts a `finished` message when the
+run is really over, which is what lets the browser gate hold a script that
+waits. The waiting happens inside main's fiber -- see decision 28 in
+`docs/decisions.md` for why it has to.
 
 ## The TeaVM trial, 2026-10-10
 
@@ -169,6 +168,12 @@ The web build starts no processes: `ProcessHandle` answers "there is only this
 one" and `ExecutableFile.markRunnable` answers true without touching the file.
 `CALL` is refused for the same reason, under step 2.
 
+The worker measures no text: `TextMeasures` is substituted whole to
+`WebTextMeasures`, which refuses with the same no-service a screen without a
+display gives. A page's canvas knows its own fonts and the interpreter cannot
+reach it synchronously from where it runs; the bundled font and the reader
+belong to the drawing engine, step 3.
+
 ## What is left
 
 - Gzipped sizes, which is what a page downloads, and the obfuscated module's
@@ -176,5 +181,5 @@ one" and `ExecutableFile.markRunnable` answers true without touching the file.
 - Boot measured on the shipped entry point rather than the trial harness (the
   entry runs the script once and prints no timings; the harness that measured
   boot five times a page is gone with the scratchpad).
-- Goal 1, steps 1 to 5: the worker, the browser's own adapters, one drawing
-  engine in the domain, the examples with no server, and a build that ships.
+- Goal 1, steps 2 to 5: the browser's own adapters, one drawing engine in the
+  domain, the examples with no server, and a build that ships.

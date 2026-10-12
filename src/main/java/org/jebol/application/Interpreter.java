@@ -614,6 +614,7 @@ public final class Interpreter {
 
     private ScriptOutcome concludedWithinTheBounds(Supplier<Outcome> evaluating) {
         cancellationRequested.set(false);
+        evaluator.screen().takePendingReports();
         long startedAt = System.nanoTime();
         deadlineNanos = bounds.deadlineFrom(startedAt);
         try {
@@ -665,6 +666,7 @@ public final class Interpreter {
      */
     public Step runNext(String source) {
         cancellationRequested.set(false);
+        evaluator.screen().takePendingReports();
         long startedAt = System.nanoTime();
         deadlineNanos = bounds.deadlineFrom(startedAt);
         try {
@@ -858,6 +860,18 @@ public final class Interpreter {
     /** Gives the script a console to read a line from. Writing goes elsewhere. */
     public void useConsole(ConsolePort port) {
         evaluator.useConsole(port);
+    }
+
+    /**
+     * Tells this interpreter whether a task's body may run somewhere else.
+     *
+     * <p>Every interpreter starts with the port that starts nothing, which is
+     * what a real 3.22.5 does with {@code DO} of a task. A host with threads
+     * to give supplies its own here; one without -- a browser's worker --
+     * keeps the default.
+     */
+    public void useTasks(TaskPort port) {
+        evaluator.useTasks(port);
     }
 
     /** Gives the script a screen to put a window on: one grant for all five dialogs. */

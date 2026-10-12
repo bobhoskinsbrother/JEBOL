@@ -2,10 +2,7 @@ package org.jebol.adapter.web;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import org.jebol.domain.host.ScreenEventDetail;
-import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.render.PaintList;
-import org.jebol.domain.value.EventCatalogue;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -13,8 +10,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -120,58 +115,25 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
     }
 
     private void takeAnEvent(HttpExchange exchange) throws IOException {
-        actOn(new FieldsOfAPostedEvent(
-                new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)));
+        actOn(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
         exchange.sendResponseHeaders(204, -1);
         exchange.close();
     }
 
-    private void actOn(FieldsOfAPostedEvent said) {
+    private void actOn(String posted) {
         if (screen == null) {
             return;
         }
-        if (said.text("kind").filter("measure"::equals).isPresent()) {
-            wide = said.wholeNumber("wide").orElse(0);
-            high = said.wholeNumber("high").orElse(0);
-            screen.theBrowserMeasures(wide, high);
+        WhatThePageSaid said = new WhatThePageSaid(posted);
+        if (said.isAMeasurement()) {
+            if (said.isAWholeMeasurement()) {
+                wide = said.wide();
+                high = said.high();
+                screen.theBrowserMeasures(wide, high);
+            }
             return;
         }
-        said.text("kind").flatMap(this::kindNamed).ifPresent(kind ->
-                whatTheEventCarries(kind, said).ifPresent(detail -> screen.theBrowserReports(kind, detail)));
-    }
-
-    private Optional<ScreenEventDetail> whatTheEventCarries(ScreenEventKind kind, FieldsOfAPostedEvent said) {
-        return switch (kind) {
-            case DOWN, UP, MOVE -> wherethePointerIs(said);
-            case KEY, KEY_UP -> said.wholeNumber("code")
-                    .filter(this::isACharacter)
-                    .map(ScreenEventDetail.Typed::new);
-            case CONTROL, CONTROL_UP -> said.text("named")
-                    .filter(named -> EventCatalogue.keyIndexOf(named).isPresent())
-                    .map(ScreenEventDetail.NamedKey::new);
-            case CLOSE, RESIZE, OFFSET -> Optional.of(new ScreenEventDetail.NothingMore());
-        };
-    }
-
-    private boolean isACharacter(int code) {
-        return Character.isValidCodePoint(code)
-                && (code < Character.MIN_SURROGATE || code > Character.MAX_SURROGATE);
-    }
-
-    private Optional<ScreenEventDetail> wherethePointerIs(FieldsOfAPostedEvent said) {
-        Optional<Integer> across = said.wholeNumber("across");
-        Optional<Integer> down = said.wholeNumber("down");
-        return across.isPresent() && down.isPresent()
-                ? Optional.of(new ScreenEventDetail.At(across.get(), down.get()))
-                : Optional.empty();
-    }
-
-    private Optional<ScreenEventKind> kindNamed(String word) {
-        for (ScreenEventKind kind : ScreenEventKind.values()) {
-            if (kind.spelling().equals(word.toLowerCase(Locale.ROOT))) {
-                return Optional.of(kind);
-            }
-        }
-        return Optional.empty();
+        said.asAnEvent().ifPresent(kind ->
+                said.carrying(kind).ifPresent(detail -> screen.theBrowserReports(kind, detail)));
     }
 }

@@ -15,6 +15,8 @@ public class WebSubstitutions extends SimpleSubstitutionPolicy {
                 .simpleNamePrefix("T");
         sink.selectClasses(named("org.jebol.application.ExecutableFile"))
                 .simpleNamePrefix("Web");
+        sink.selectClasses(named("org.jebol.adapter.fonts.TextMeasures"))
+                .simpleNamePrefix("Web");
         sink.selectClasses(named("org.jebol.domain.eval.compression.brotli.FusedMultiplyAdd"))
                 .simpleNamePrefix("Exact");
     }

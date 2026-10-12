@@ -5,6 +5,7 @@ import org.jebol.adapter.host.JavaImages;
 import org.jebol.adapter.host.JavaProcesses;
 import org.jebol.adapter.host.JavaSockets;
 import org.jebol.adapter.host.ProcessEnvironment;
+import org.jebol.adapter.host.TasksOnThreads;
 import org.jebol.application.Bounds;
 import org.jebol.application.Conclusion;
 import org.jebol.application.FileSystemPort;
@@ -144,6 +145,7 @@ public final class Repl {
         }
         Interpreter interpreter =
                 Interpreter.writingTo(new StreamOutput(out), bounds);
+        interpreter.useTasks(new TasksOnThreads(bounds));
         giveItTheImageCodecWhichReachesNothingAndIsNotAGrant(interpreter);
         if (forAScript) {
             ProcessEnvironment environment = new ProcessEnvironment();

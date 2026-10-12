@@ -1407,7 +1407,42 @@ rule DoOfATaskAnswersTheTask {
     ensures: not CallFails(error: any_error)
 }
 
-open question "DO of a task does not start anything here. The datatype is whole -- a task is made, molded, read and written through its fields, and DO answers it -- and the one thing missing is the thread. `Do_Task` hands the body to `OS_Create_Thread`, and the body is bound to the contexts the parent is using, so running it on a second thread means every context, every series and every slot being safe to touch from two threads at once. None of them is. Running it on the calling thread instead is not the same behaviour and is worse than not running it: `do make task! [1 / 0]` would raise where a real Rebol answers a task, and the suite asserts the second. So the choice is between a concurrency model and nothing, and nothing is what is here. What it costs is a script that uses tasks for real doing nothing quietly, which is the dangerous kind of silence -- a host service that had to be granted, the way the filesystem and the processes are, would at least make the absence sayable."
+-- Whether a task's body runs at all is the host's to say, and the answer
+-- differs by platform. Decided with goal 1's worker, which showed what a
+-- platform can actually give the interpreter.
+--
+-- In a browser the interpreter runs in a worker: one execution context, and
+-- the script's run occupies it. A task's body would be a second thread inside
+-- the interpreter the domain model says one thread owns, and a worker has no
+-- second thread to give. There it starts nothing, and that is the design
+-- rather than a gap: the worker's page is the stop, the way closing the last
+-- window is.
+--
+-- On the JVM a host keeps as many interpreters as it has threads, one each.
+-- So a task's body runs in a fresh interpreter on a thread of its own. It
+-- sees none of the parent's contexts, because the parent's series cannot be
+-- shared with a second thread safely; it writes where the parent writes; and
+-- what it raises or how long it takes stays at its own edge, because the
+-- parent answered the task and moved on before the body produced anything.
+rule TheFateOfATasksBodyIsTheHostsToDecide {
+    when: EvaluateCall(do, subject)
+    requires: is_task(subject)
+
+    ensures:
+        if the_host_supplies_a_way_to_run_a_body_elsewhere():
+            the_body_runs_in_a_fresh_interpreter_on_its_own_thread(subject)
+        else:
+            the_body_starts_nothing()
+
+    @guidance
+        -- The seam is a port the host wires, in the shape of the file system
+        -- and the screen: a task port, absent until a host supplies one. The
+        -- JVM adapter runs the body on a thread of its own in a fresh
+        -- interpreter that inherits the parent's output and pause and none of
+        -- its contexts; the web build supplies none, and a worker's page
+        -- cannot either. A body that raises stops that thread; nothing
+        -- crosses back to the parent, which already answered.
+}
 
 -- === Reading and writing the bits of a set =================
 

@@ -6,10 +6,12 @@ import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventKind;
+import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.render.PaintInstruction;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.value.GobValue;
+import org.jebol.domain.value.PairValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -232,6 +234,84 @@ class BrowserScreenFromTheSourceTest {
 
             assertThat(interpreter.display(interpreter.run("gui-metric 'screen-size")))
                     .isEqualTo("0x0");
+        }
+    }
+
+    @Nested
+    @DisplayName("a measurement the page posted is taken by the interpreter, not applied where it arrives")
+    class TheTakingOfAMeasurement {
+
+        @Test
+        @DisplayName("nothing changes until the interpreter looks, and a look takes what was posted")
+        void nothingChangesUntilTheInterpreterLooks() {
+            BrowserScreen screen = BrowserScreen.seenBy(new SomebodyLooking());
+            Interpreter interpreter = withABrowser(screen, 640, 480);
+
+            assertThat(screen.measure(ScreenMetric.SCREEN_SIZE, 0))
+                    .as("the measurement is queued, and the interpreter has not looked yet")
+                    .isEqualTo(PairValue.of(0, 0));
+
+            assertThat(interpreter.run("1").succeeded()).isTrue();
+
+            assertThat(screen.measure(ScreenMetric.SCREEN_SIZE, 0))
+                    .isEqualTo(PairValue.of(640, 480));
+        }
+
+        @Test
+        @DisplayName("the last measurement posted before a take is the one taken")
+        void theLastMeasurementPostedWins() {
+            BrowserScreen screen = BrowserScreen.seenBy(new SomebodyLooking());
+            Interpreter interpreter = withABrowser(screen, 640, 480);
+            screen.theBrowserMeasures(100, 50);
+
+            assertThat(interpreter.run("1").succeeded()).isTrue();
+
+            assertThat(screen.measure(ScreenMetric.SCREEN_SIZE, 0))
+                    .isEqualTo(PairValue.of(100, 50));
+        }
+
+        @Test
+        @DisplayName("a posting that cannot be a size is dropped, and the taken viewport stands")
+        void aPostingThatCannotBeASizeIsDropped() {
+            BrowserScreen screen = BrowserScreen.seenBy(new SomebodyLooking());
+            Interpreter interpreter = withABrowser(screen, 640, 480);
+            interpreter.run("1");
+
+            screen.theBrowserMeasures(-1, 480);
+
+            assertThat(interpreter.run("1").succeeded()).isTrue();
+            assertThat(screen.measure(ScreenMetric.SCREEN_SIZE, 0))
+                    .isEqualTo(PairValue.of(640, 480));
+        }
+
+        @Test
+        @Timeout(value = 20, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+        @DisplayName("a resize arriving while the script waits is taken at the next take, inside the wait")
+        void aResizeWhileWaitingIsTaken() throws Exception {
+            BrowserScreen screen = BrowserScreen.seenBy(new SomebodyLooking());
+            Interpreter interpreter = Interpreter.withBounds(
+                    Bounds.standard().granting(HostService.WINDOWS));
+            interpreter.useScreen(screen);
+            screen.theBrowserMeasures(800, 600);
+            interpreter.run("view/no-wait make gob! [size: 100x100 color: 1.1.1]");
+
+            AScriptOnItsOwnThread waiting = new AScriptOnItsOwnThread(interpreter, "do-events");
+            screen.theBrowserMeasures(640, 480);
+
+            untilTheViewportIs(screen, 640, 480);
+            interpreter.cancel();
+            assertThat(waiting.outcomeWithin(Duration.ofSeconds(5)).conclusion())
+                    .isEqualTo(Conclusion.CANCELLED);
+        }
+
+        private void untilTheViewportIs(BrowserScreen screen, int wide, int high) {
+            long givenUpAt = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+            while (!screen.measure(ScreenMetric.SCREEN_SIZE, 0).equals(PairValue.of(wide, high))) {
+                if (System.nanoTime() > givenUpAt) {
+                    throw new AssertionError("the viewport never became " + wide + "x" + high);
+                }
+                Thread.onSpinWait();
+            }
         }
     }
 
@@ -489,6 +569,31 @@ class BrowserScreenFromTheSourceTest {
 
             assertThat(interpreter.display(interpreter.run("seen"))).isEqualTo("[close first close second]");
             assertThat(interpreter.display(interpreter.run("tail? system/view/screen-gob"))).isEqualTo(TRUE);
+        }
+
+        @Test
+        @Timeout(20)
+        @DisplayName("a resize or an offset posted from the page names no window and reaches nothing")
+        void aResizeOrAnOffsetPostedReachesNothing() {
+            SomebodyLooking viewer = new SomebodyLooking();
+            BrowserScreen screen = BrowserScreen.seenBy(viewer);
+            Interpreter interpreter = withABrowser(screen);
+            String setUp = """
+                    w: view/no-wait make gob! [size: 100x100 color: 1.1.1]
+                    seen: copy []
+                    handle-events [
+                        name: 'watcher
+                        priority: 90
+                        handler: func [event] [append seen event/type  event]
+                    ]""";
+            interpreter.defineFreshWordsIn(setUp);
+            interpreter.run(setUp);
+
+            screen.theBrowserReports(ScreenEventKind.RESIZE, new ScreenEventDetail.NothingMore());
+            screen.theBrowserReports(ScreenEventKind.OFFSET, new ScreenEventDetail.NothingMore());
+            interpreter.run("wait [system/ports/event 0]");
+
+            assertThat(interpreter.display(interpreter.run("mold seen"))).isEqualTo("\"[]\"");
         }
     }
 

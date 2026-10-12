@@ -212,6 +212,16 @@ public final class Evaluator {
         this.clipboard = port;
     }
 
+    private TaskPort tasks = TaskPort.none();
+
+    public TaskPort tasks() {
+        return tasks;
+    }
+
+    public void useTasks(TaskPort port) {
+        this.tasks = port;
+    }
+
     public BundledModules bundledModules() {
         return bundledModules;
     }

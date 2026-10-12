@@ -45,6 +45,7 @@ dependencies {
     "teavmCompileOnly"("org.teavm:teavm-classlib:0.16.0")
     "teavmCompileOnly"("org.teavm:teavm-core:0.16.0")
     "teavmCompileOnly"("org.teavm:teavm-extension-spi:0.16.0")
+    "teavmCompileOnly"("org.teavm:teavm-interop:0.16.0")
     "teavmCompileOnly"("org.jetbrains:annotations:24.1.0")
 }
 
@@ -57,7 +58,7 @@ sourceSets.named("teavm") {
 
 teavm {
     wasmGC {
-        mainClass.set("org.jebol.adapter.web.TheScriptOnThePage")
+        mainClass.set("org.jebol.adapter.web.TheInterpreterInAWorker")
         targetFileName.set("jebol-web")
         obfuscated.set(false)
         outOfProcess.set(true)
@@ -66,6 +67,19 @@ teavm {
 
 tasks.named<JavaCompile>("compileTeavmJava") {
     options.release.set(21)
+}
+
+// The worker's shell script is the page's other half and is served beside the
+// module it loads, so it is copied where the WebAssembly build writes.
+val copyTheWorkerScript by tasks.registering(Copy::class) {
+    group = "build"
+    description = "Put the worker's shell script beside the WebAssembly module"
+    from("src/teavm/js/jebol-worker.js")
+    into(layout.buildDirectory.dir("generated/teavm/wasm-gc"))
+}
+
+tasks.named("buildWasmGC") {
+    dependsOn(copyTheWorkerScript)
 }
 
 // TeaVM only embeds a resource it is told about. The list is written from the

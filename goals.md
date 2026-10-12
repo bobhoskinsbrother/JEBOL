@@ -20,10 +20,10 @@ Measured on 2026-10-12.
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 114 of Rebol's 142 error ids can be raised |
 | `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 13 |
-| `./gradlew check` | 27,395 tests |
+| `./gradlew check` | 27,405 tests |
 | `corpus/` | 1,140 of 1,140 entries pass |
 | the shipped jar | about 2,748 KB at its last build, and no dependencies |
-| the web build | 12.8 MB of WebAssembly, unobfuscated, beside a 38 KB loader |
+| the web build | 13.4 MB of WebAssembly, unobfuscated, beside a 38 KB loader and the worker's shell |
 
 ---
 
@@ -69,38 +69,32 @@ where the screen is, and each platform only copies pixels to the screen, sends
 back taps and keys, and supplies a font. That is how R3 itself was ported: AGG
 drew into a pixel buffer everywhere.
 
+The interpreter already runs in the page's worker, with the events crossing by
+postMessage and TeaVM's pause-and-resume, the page's measurement taken like an
+event, and the drawing done by the existing JavaScript renderer. See decision
+28 in `docs/decisions.md` and `docs/web-port.md`.
+
 The domain and application layers already use no networking, no AWT and no
 reflection, and the domain does not block: WAIT's pause and the screen's event
 queue sit behind ports. Files, the network and processes sit behind ports too,
 so each platform needs new adapters rather than a changed core.
 
-1. **Run the interpreter in a worker.** A page's main thread cannot block, and
-   WAIT does. The interpreter runs in a Web Worker and draws to a canvas it
-   owns. Events reach it through shared memory, which needs the page served
-   with cross-origin isolation, or through WebAssembly's pause-and-resume.
-   At first it draws with the existing JavaScript renderer, so the first
-   running page comes before the drawing engine. Whether a task ever runs on
-   a thread of its own (goal 15) is decided here, with the worker. The page
-   resizing is not yet an event: `BrowserScreen.theBrowserMeasures` writes the
-   root gob's size from the server's thread while the script may be reading
-   it. It becomes something the interpreter takes on its own thread, like a
-   click, and the spec says when a script sees the new size.
-2. **The browser's adapters, and what it refuses.** The console becomes an
+1. **The browser's adapters, and what it refuses.** The console becomes an
    element on the page. Files live in the browser's private storage for the
    site, or in memory. HTTP and HTTPS go through `fetch`. TCP, UDP, DNS and
    CALL are refused with an error that says the browser does not allow them.
    Crypto is refused today by the stand-ins in `src/teavm`; whether the
    browser supplies it, and how, is decided here. The spec says which services
    a browser grants before any of it is built.
-3. **The drawing engine.** The paint list is drawn into a grid of pixels in
+2. **The drawing engine.** The paint list is drawn into a grid of pixels in
    the domain: fills, strokes, curves, smooth edges, opacity, gradients,
    images and clipping, then text, with a font reader and one bundled font.
    The desktop and the page both copy the grid to the screen. Java2D's
    renderer and the JavaScript renderer are deleted, and the browser gate
    expects identical pixels with no tolerance.
-4. **The examples with no server.** The sliders and the survey run wholly in
+3. **The examples with no server.** The sliders and the survey run wholly in
    a page served as static files, and the browser gate drives them there.
-5. **A build that ships it.** A task produces the static files; their size goes
+4. **A build that ships it.** A task produces the static files; their size goes
    in the table at the top of this file beside the jar's.
 
 ### 2. Boot time
@@ -204,7 +198,7 @@ What this makes possible:
    runtime do not have, and replace them or choose the oldest Android version
    that does.
 2. **The app.** An Android project of its own, so the jar keeps no
-   dependencies. One screen copies the pixel grid from goal 1 step 3 to the
+   dependencies. One screen copies the pixel grid from goal 1 step 2 to the
    display and turns touches and the on-screen keyboard into JEBOL's events.
    Pausing and resuming the app are handled.
 3. **Android's adapters.** Files in the app's own storage, real sockets, a
@@ -232,7 +226,7 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
 2. **A minimal iOS app.** Gluon's tools for GraalVM on iOS: an app that
    prints `1 + 2` on a simulator, then on a phone. Signing and Xcode are part
    of this step.
-3. **The app.** One view copies the pixel grid from goal 1 step 3 to the
+3. **The app.** One view copies the pixel grid from goal 1 step 2 to the
    screen; touches, the keyboard, and pausing and resuming are handled as on
    Android, using goal 7 step 4's work in the 2010 GUI.
 4. **iOS's adapters.** Files in the app's own sandbox and real sockets. CALL is
@@ -325,16 +319,17 @@ interpreters -- reads as missing.
 - **The old markup path** -- 522 lines.
 - **`effect`**, the one DRAW command not painted; it is a dialect of its own
   and belongs with the codecs.
-- **The stroked-curve comparison** between the two renderers. Goal 1 step 3
+- **The stroked-curve comparison** between the two renderers. Goal 1 step 2
   replaces both renderers with one engine, after which there is nothing to
   compare.
 
 ### 15. Loose ends
 
-- **A task is never run.** `make task!` builds one and DO answers it, but
-  nothing runs the body on a thread of its own. The open question beside
-  `DoOfATaskAnswersTheTask` in `spec/natives.allium` says what it would take.
-  Decided with goal 1 step 1.
+- **A task's body runs nowhere by default.** DO of a task answers the task,
+  and the body runs only where a host supplies a way to run it: on a thread of
+  its own in a fresh interpreter on the JVM, which the console wires, and
+  never in a browser. Decided with goal 1's worker; the rule is
+  `TheFateOfATasksBodyIsTheHostsToDecide` in `spec/natives.allium`.
 - **The command-line console grants only WINDOWS**, so `read %README.md`
   answers `no-service` there. Decide whether that is the design.
 - **`access-os` answers `not-here` for `uid`, `euid`, `gid` and `egid`.** The
@@ -432,3 +427,10 @@ A flake is a fail. None of these is closed.
 - **`WebScreenServerFromTheSourceTest`** failed once with 404 where it wanted
   204, and has passed every time since. The assertion now carries the whole
   response for next time.
+- **`thru-cache-test.r3`** failed once under a full gate on 2026-10-12 -- three
+  assertions "never reached" because the script died before them, and the
+  whole suite passed alone straight after. The reads to
+  `raw.githubusercontent.com` are goal 20's dependency on two outside
+  services, and under a parallel gate one of them stalled past the run's
+  deadline. Goal 20 is the fix; until then a full gate can fail here without
+  anything having changed.

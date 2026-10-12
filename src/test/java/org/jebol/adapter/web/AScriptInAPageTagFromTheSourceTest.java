@@ -26,7 +26,7 @@ class AScriptInAPageTagFromTheSourceTest {
 
         assertThat(outcome.succeeded()).isTrue();
         assertThat(written.toString().lines().toList())
-                .containsExactly("3", "true", "true", "true", "true", "true", "true");
+                .containsExactly("3", "true", "true", "true", "true", "true", "true", "waited");
     }
 
     private static String theScriptOnThePage() throws IOException {
