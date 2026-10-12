@@ -5,6 +5,7 @@ import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.Stopped;
 import org.jebol.domain.eval.EventPath;
+import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.value.AnyBlockValue;
@@ -37,7 +38,7 @@ public class WaitNative extends PortWakingNative {
 
     private static final long SCREEN_POLL_MILLISECONDS = 10;
 
-    private static final long SLEEP_SLICE_MILLISECONDS = 50;
+    private static final long PAUSE_SLICE_MILLISECONDS = 50;
 
     private static final long NANOSECONDS_IN_A_MILLISECOND = 1_000_000L;
 
@@ -224,16 +225,21 @@ public class WaitNative extends PortWakingNative {
         long remaining = milliseconds;
         while (remaining > 0) {
             stopIfTheRunHasBeenStopped(evaluator);
-            try {
-                Thread.sleep(Math.min(SLEEP_SLICE_MILLISECONDS, remaining));
-            } catch (InterruptedException stopped) {
-                Thread.currentThread().interrupt();
+            if (!theHostLetsTimePass(evaluator, Math.min(PAUSE_SLICE_MILLISECONDS, remaining))) {
                 return false;
             }
-            remaining -= SLEEP_SLICE_MILLISECONDS;
+            remaining -= PAUSE_SLICE_MILLISECONDS;
         }
         stopIfTheRunHasBeenStopped(evaluator);
         return true;
+    }
+
+    private boolean theHostLetsTimePass(Evaluator evaluator, long milliseconds) {
+        try {
+            return evaluator.pause().pauseFor(milliseconds);
+        } catch (FilePort.Denied refused) {
+            throw refused.raised();
+        }
     }
 
     private void stopIfTheRunHasBeenStopped(Evaluator evaluator) {

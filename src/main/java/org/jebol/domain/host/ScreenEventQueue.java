@@ -10,15 +10,11 @@ public final class ScreenEventQueue {
 
     private final Deque<ScreenEvent> queued = new ArrayDeque<>();
 
-    public synchronized void add(ScreenEventKind kind, GobValue window) {
-        queued.add(new ScreenEvent(kind, window));
-    }
-
-    public synchronized void add(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
+    public void add(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
         queued.add(new ScreenEvent(kind, window, detail));
     }
 
-    public synchronized Optional<ScreenEvent> takeTheOldest() {
+    public Optional<ScreenEvent> takeTheOldest() {
         return Optional.ofNullable(queued.poll());
     }
 }

@@ -83,6 +83,7 @@ public final class Interpreter {
                 bounds.maximumNesting(),
                 this::reasonToStop,
                 bounds.checkEvery());
+        evaluator.usePause(new ThreadPause());
         evaluator.putRuntimeWordsIn(userContext);
         evaluator.symbols().useBootSymbols(theSourceIn("/org/jebol/boot-symbols.txt"));
         evaluator.useBundledModules(Interpreter::bundledModules);
@@ -873,6 +874,17 @@ public final class Interpreter {
         evaluator.useScreen(port);
         handOverTheRootGobTo(port);
         handOverTheDrawDialectTo(port);
+    }
+
+    /**
+     * Replaces how this interpreter lets time pass while a script waits.
+     *
+     * <p>Every interpreter is built with the thread's own pause, which is what
+     * makes {@code wait} work with no host at all. A host whose platform must
+     * not stop the thread its script runs on supplies its own here.
+     */
+    public void usePause(PausePort port) {
+        evaluator.usePause(port);
     }
 
     private void handOverTheDrawDialectTo(ScreenPort port) {

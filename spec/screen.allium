@@ -495,6 +495,16 @@ rule AnEventFromTheScreenIsQueuedRatherThanDelivered {
         kind: kind,
         window: window,
         delivered: false)
+
+    @guidance
+        -- Where the crossing happens belongs to the adapter and not to the
+        -- queue. The queue the interpreter reads is plain storage touched by
+        -- the interpreter's own thread, like every other part of the domain;
+        -- the adapter that hears a toolkit's listener leaves the event
+        -- somewhere safe for the crossing and moves it across when the
+        -- interpreter asks for one. BrowserScreen already worked this way
+        -- for a page's events, and a desktop window now does too, which is
+        -- what leaves the domain with no lock in it at all.
 }
 
 -- An event carries what a script needs to act on it, as R3's host fills it.

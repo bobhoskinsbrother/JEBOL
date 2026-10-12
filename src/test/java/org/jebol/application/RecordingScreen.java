@@ -112,7 +112,7 @@ final class RecordingScreen extends GobScreen {
         withWindows.add(gob);
         opened.add(gob);
         if (operatorClosesWhateverOpens) {
-            queued.add(ScreenEventKind.CLOSE, gob);
+            posted(ScreenEventKind.CLOSE, gob);
         }
     }
 
@@ -129,11 +129,11 @@ final class RecordingScreen extends GobScreen {
     }
 
     void theOperatorDoes(ScreenEventKind kind, GobValue window) {
-        queued.add(kind, window);
+        posted(kind, window);
     }
 
     void theOperatorDoes(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
-        queued.add(kind, window, detail);
+        posted(kind, window, detail);
     }
 
     GobValue rootGob() {

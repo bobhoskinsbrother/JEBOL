@@ -125,5 +125,33 @@ class ScreenInvariantsFromTheSourceTest {
                     .as("a queue that drops under contention would show up here")
                     .isEqualTo("9");
         }
+
+        @Test
+        @DisplayName("an event posted while the interpreter is inside the wait is taken by it")
+        @Timeout(20)
+        void anEventPostedDuringTheWaitIsTaken() throws InterruptedException {
+            RecordingScreen screen = RecordingScreen.measuring(1024, 768);
+            Interpreter interpreter = withAScreen(screen);
+            interpreter.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
+            interpreter.run(A_WINDOW_AND_A_WATCHER);
+            GobValue window = screen.whatOpened().getFirst();
+
+            Thread toolkit = new Thread(() -> {
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException stopped) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+                screen.theOperatorDoes(ScreenEventKind.CLOSE, window);
+            }, "toolkit");
+            toolkit.start();
+            interpreter.run("do-events");
+            toolkit.join();
+
+            assertThat(interpreter.display(interpreter.run("mold seen")))
+                    .as("the crossing happens while the interpreter waits, not before it")
+                    .isEqualTo("\"[close]\"");
+        }
     }
 }

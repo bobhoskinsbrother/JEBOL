@@ -35,6 +35,7 @@ public final class Evaluator {
 
     private WindowPort windows = WindowPort.none();
     private ScreenPort screen = ScreenPort.none();
+    private PausePort pause = PausePort.none();
 
     private ProcessPort processes = ProcessPort.none();
 
@@ -371,6 +372,14 @@ public final class Evaluator {
 
     public void useScreen(ScreenPort port) {
         this.screen = port;
+    }
+
+    public PausePort pause() {
+        return pause;
+    }
+
+    public void usePause(PausePort port) {
+        this.pause = port;
     }
 
     public EnvironmentPort environment() {

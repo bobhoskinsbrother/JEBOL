@@ -20,9 +20,9 @@ Measured on 2026-10-12.
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 114 of Rebol's 142 error ids can be raised |
 | `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 14 |
-| `./gradlew check` | 27,386 tests |
+| `./gradlew check` | 27,395 tests |
 | `corpus/` | 1,140 of 1,140 entries pass |
-| the shipped jar | about 2,560 KB at its last build, and no dependencies |
+| the shipped jar | about 2,748 KB at its last build, and no dependencies |
 | the web build | 12.8 MB of WebAssembly, unobfuscated, beside a 38 KB loader |
 
 ---
@@ -70,18 +70,11 @@ back taps and keys, and supplies a font. That is how R3 itself was ported: AGG
 drew into a pixel buffer everywhere.
 
 The domain and application layers already use no networking, no AWT and no
-reflection. The only blocking code is WAIT's sleep loop and the event queue's
-locks. Files, the network and processes sit behind ports, so each platform
-needs new adapters rather than a changed core.
+reflection, and the domain does not block: WAIT's pause and the screen's event
+queue sit behind ports. Files, the network and processes sit behind ports too,
+so each platform needs new adapters rather than a changed core.
 
-1. **What the build still must move out of the domain.** The core compiles
-   with TeaVM, and the second gate builds it and drives a page in Chrome; what
-   the trial measured, what the compiler refused and how each refusal was
-   answered are in `docs/web-port.md`. Two pieces of blocking code are left:
-   WAIT's sleep loop becomes a port, and `ScreenEventQueue`, synchronised and
-   in the domain, keeps a plain queue with the hand-off between threads moving
-   out to the adapters, as `BrowserScreen` already does for a page's events.
-2. **Run the interpreter in a worker.** A page's main thread cannot block, and
+1. **Run the interpreter in a worker.** A page's main thread cannot block, and
    WAIT does. The interpreter runs in a Web Worker and draws to a canvas it
    owns. Events reach it through shared memory, which needs the page served
    with cross-origin isolation, or through WebAssembly's pause-and-resume.
@@ -92,22 +85,22 @@ needs new adapters rather than a changed core.
    root gob's size from the server's thread while the script may be reading
    it. It becomes something the interpreter takes on its own thread, like a
    click, and the spec says when a script sees the new size.
-3. **The browser's adapters, and what it refuses.** The console becomes an
+2. **The browser's adapters, and what it refuses.** The console becomes an
    element on the page. Files live in the browser's private storage for the
    site, or in memory. HTTP and HTTPS go through `fetch`. TCP, UDP, DNS and
    CALL are refused with an error that says the browser does not allow them.
    Crypto is refused today by the stand-ins in `src/teavm`; whether the
    browser supplies it, and how, is decided here. The spec says which services
    a browser grants before any of it is built.
-4. **The drawing engine.** The paint list is drawn into a grid of pixels in
+3. **The drawing engine.** The paint list is drawn into a grid of pixels in
    the domain: fills, strokes, curves, smooth edges, opacity, gradients,
    images and clipping, then text, with a font reader and one bundled font.
    The desktop and the page both copy the grid to the screen. Java2D's
    renderer and the JavaScript renderer are deleted, and the browser gate
    expects identical pixels with no tolerance.
-5. **The examples with no server.** The sliders and the survey run wholly in
+4. **The examples with no server.** The sliders and the survey run wholly in
    a page served as static files, and the browser gate drives them there.
-6. **A build that ships it.** A task produces the static files; their size goes
+5. **A build that ships it.** A task produces the static files; their size goes
    in the table at the top of this file beside the jar's.
 
 ### 3. Boot time
@@ -116,7 +109,7 @@ About 50ms per warm `Interpreter.create()` when last measured. The evaluation
 of the system object's declaration runs on every boot although the answer is
 the same each time; caching the built object is the next move. To be done as a
 measured investigation. Compiled to WebAssembly or running on a phone, boot
-may be several times slower, so goal 3's trial measures it there too.
+may be several times slower, so the numbers there belong in this goal too.
 
 ### 4. Check the TLS certificate
 
@@ -211,7 +204,7 @@ What this makes possible:
    runtime do not have, and replace them or choose the oldest Android version
    that does.
 2. **The app.** An Android project of its own, so the jar keeps no
-   dependencies. One screen copies the pixel grid from goal 3 step 5 to the
+   dependencies. One screen copies the pixel grid from goal 2 step 3 to the
    display and turns touches and the on-screen keyboard into JEBOL's events.
    Pausing and resuming the app are handled.
 3. **Android's adapters.** Files in the app's own storage, real sockets, a
@@ -239,7 +232,7 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
 2. **A minimal iOS app.** Gluon's tools for GraalVM on iOS: an app that
    prints `1 + 2` on a simulator, then on a phone. Signing and Xcode are part
    of this step.
-3. **The app.** One view copies the pixel grid from goal 3 step 5 to the
+3. **The app.** One view copies the pixel grid from goal 2 step 3 to the
    screen; touches, the keyboard, and pausing and resuming are handled as on
    Android, using goal 8 step 4's work in the 2010 GUI.
 4. **iOS's adapters.** Files in the app's own sandbox and real sockets. CALL is
@@ -341,7 +334,7 @@ interpreters -- reads as missing.
 - **A task is never run.** `make task!` builds one and DO answers it, but
   nothing runs the body on a thread of its own. The open question beside
   `DoOfATaskAnswersTheTask` in `spec/natives.allium` says what it would take.
-  Decided with goal 3 step 3.
+  Decided with goal 2 step 1.
 - **The command-line console grants only WINDOWS**, so `read %README.md`
   answers `no-service` there. Decide whether that is the design.
 - **`access-os` answers `not-here` for `uid`, `euid`, `gid` and `egid`.** The

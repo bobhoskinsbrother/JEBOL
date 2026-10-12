@@ -249,7 +249,7 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void windowClosing(WindowEvent shutting) {
-                queue(ScreenEventKind.CLOSE, gob);
+                posted(ScreenEventKind.CLOSE, gob);
             }
         });
         frame.addComponentListener(new java.awt.event.ComponentAdapter() {
@@ -257,13 +257,13 @@ public final class DesktopScreen extends GobScreen {
             @Override
             public void componentResized(java.awt.event.ComponentEvent changed) {
                 Dimension drawable = frame.getContentPane().getSize();
-                queue(ScreenEventKind.RESIZE, gob,
+                posted(ScreenEventKind.RESIZE, gob,
                         new ScreenEventDetail.At(drawable.width, drawable.height));
             }
 
             @Override
             public void componentMoved(java.awt.event.ComponentEvent changed) {
-                queue(ScreenEventKind.OFFSET, gob,
+                posted(ScreenEventKind.OFFSET, gob,
                         new ScreenEventDetail.At(frame.getX(), frame.getY()));
             }
         });
@@ -287,12 +287,12 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void mousePressed(MouseEvent down) {
-                queue(ScreenEventKind.DOWN, gob, whereThePointerIs(down));
+                posted(ScreenEventKind.DOWN, gob, whereThePointerIs(down));
             }
 
             @Override
             public void mouseReleased(MouseEvent up) {
-                queue(ScreenEventKind.UP, gob, whereThePointerIs(up));
+                posted(ScreenEventKind.UP, gob, whereThePointerIs(up));
             }
 
             @Override
@@ -311,12 +311,12 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void mouseMoved(MouseEvent moved) {
-                queue(ScreenEventKind.MOVE, gob, whereThePointerIs(moved));
+                posted(ScreenEventKind.MOVE, gob, whereThePointerIs(moved));
             }
 
             @Override
             public void mouseDragged(MouseEvent dragged) {
-                queue(ScreenEventKind.MOVE, gob, whereThePointerIs(dragged));
+                posted(ScreenEventKind.MOVE, gob, whereThePointerIs(dragged));
             }
         });
     }
@@ -330,11 +330,11 @@ public final class DesktopScreen extends GobScreen {
 
         Optional<String> named = Optional.ofNullable(KEYS_THAT_TYPE_NOTHING.get(pressed.getKeyCode()));
         if (named.isPresent()) {
-            queue(naming, window, new ScreenEventDetail.NamedKey(named.get()));
+            posted(naming, window, new ScreenEventDetail.NamedKey(named.get()));
             return;
         }
         if (pressed.getKeyChar() != KeyEvent.CHAR_UNDEFINED) {
-            queue(typing, window, new ScreenEventDetail.Typed(pressed.getKeyChar()));
+            posted(typing, window, new ScreenEventDetail.Typed(pressed.getKeyChar()));
         }
     }
 
@@ -365,14 +365,6 @@ public final class DesktopScreen extends GobScreen {
             Map.entry(KeyEvent.VK_ALT, "alt"),
             Map.entry(KeyEvent.VK_PAUSE, "pause"),
             Map.entry(KeyEvent.VK_CAPS_LOCK, "capital"));
-
-    private void queue(ScreenEventKind kind, GobValue window) {
-        queued.add(kind, window);
-    }
-
-    private void queue(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
-        queued.add(kind, window, detail);
-    }
 
     private static void onTheToolkitThreadAndWaitedFor(Runnable work) {
         if (SwingUtilities.isEventDispatchThread()) {

@@ -8,10 +8,13 @@ import org.jebol.domain.value.Value;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public abstract class GobScreen implements ScreenPort {
 
     protected final ScreenEventQueue queued = new ScreenEventQueue();
+    private final Queue<ScreenEvent> postedFromAnotherThread = new ConcurrentLinkedQueue<>();
     protected GobValue root;
     protected ObjectValue drawDialect;
 
@@ -27,9 +30,31 @@ public abstract class GobScreen implements ScreenPort {
         this.root = given;
     }
 
+    /**
+     * Leaves an event where a toolkit's own thread may put it, to be moved
+     * into the interpreter's queue when the interpreter asks for one.
+     */
+    protected final void posted(ScreenEventKind kind, GobValue window) {
+        postedFromAnotherThread.add(new ScreenEvent(kind, window));
+    }
+
+    /** The same, for an event that carries where it happened or which key. */
+    protected final void posted(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
+        postedFromAnotherThread.add(new ScreenEvent(kind, window, detail));
+    }
+
     @Override
     public Optional<ScreenEvent> takeTheNextEvent() {
+        moveEverythingPostedFromAnotherThread();
         return queued.takeTheOldest();
+    }
+
+    private void moveEverythingPostedFromAnotherThread() {
+        for (ScreenEvent next = postedFromAnotherThread.poll();
+                next != null;
+                next = postedFromAnotherThread.poll()) {
+            queued.add(next.kind(), next.window(), next.detail());
+        }
     }
 
     @Override

@@ -1117,7 +1117,7 @@ decide which platform it is on.
 algorithm class the core reaches for is a stand-in whose methods throw an error
 naming the method. A page that asks for SHA-1 or a signature gets a refusal
 rather than an answer invented in the browser. What the web does instead is
-goal 2 step 4's decision, and how TLS is checked is goal 4's.
+goal 2 step 2's decision, and how TLS is checked is goal 4's.
 
 **The web compile lives in the second gate.** `browserCheck` depends on
 `buildWasmGC` and then runs the page the way a reader would, in a real Chrome;
@@ -1142,3 +1142,44 @@ runs: true for a page, and for the bare console, and false only when
 `--screen=window` was asked for. The launcher script a child is started from,
 and the JDK start scripts the build produces, carry the same flag. Headless
 AWT still measures text, so nothing about layout changes; the Dock entry goes.
+
+## 27. WAIT's pause is a port, and the screen's queue holds no lock
+
+**The two pieces of blocking code the web port named are gone.** They were
+WAIT's `Thread.sleep` and the `synchronized` methods on `ScreenEventQueue`,
+and both are gone: the first is a port and the second is the adapter's job.
+
+**The pause is a port.** `PausePort` (`org.jebol.domain.host`) has one method,
+`pauseFor(long milliseconds)`, and answers whether the slice happened. WAIT
+asks for one fifty millisecond slice at a time and checks its own reason to
+stop between them, so the length and the deadline stay the interpreter's and
+only the pause crosses. Every interpreter is built with `ThreadPause`
+(`org.jebol.application`), which stops the thread the script runs on, so `wait`
+works with no host at all; `Interpreter.usePause` replaces it. The web build
+gets its own when the worker arrives, which is why the seam exists: a worker
+can be stopped outright, and a page's main thread cannot.
+
+**The pause is not a grant.** A host that granted nothing still gets a working
+`wait 1`, because waiting for time is the interpreter's own act rather than a
+service; what a host may refuse is a wait on a screen or a port, and those
+refusals are already there. A platform that will not let the time pass answers
+false, and the wait ends there rather than failing - the same path an
+interrupted thread takes, which `isEndedByAnInterrupt` in
+`BrowserScreenFromTheSourceTest` was already pinning.
+
+**The queue is plain.** `ScreenEventQueue` is now an `ArrayDeque` with no
+`synchronized`, because only the interpreter's own thread touches it. The
+crossing belongs to the adapter: `GobScreen.posted` leaves an event in a
+`ConcurrentLinkedQueue` from whatever thread the toolkit calls on, and
+`takeTheNextEvent` moves what was posted into the interpreter's queue when the
+interpreter asks for one. `BrowserScreen` already worked this way; a desktop
+window now does too. The cross-thread tests in
+`ScreenInvariantsFromTheSourceTest` exercise the crossing, including an event
+posted while the interpreter is inside `do-events`.
+
+**Measured while doing this: TeaVM's `Thread.sleep` works in a browser.** A
+page script that waits prints its later lines once the fiber is resumed by
+`setTimeout`. But `teavm.exports.main` returns at the first suspension, so the
+page harness must be told when the script has really finished rather than
+writing its output when `main` returns; that is the worker's business in goal 2
+step 1.

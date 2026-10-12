@@ -3388,6 +3388,30 @@ rule WaitingOnAPortNothingWakesAnswersNone {
     ensures: CallResult(value: none)
 }
 
+-- A wait with no port to wake it is a wait for time to pass, and the time
+-- passes through the host.
+--
+-- The length and the stop-check are the interpreter's: a deadline is the
+-- run's and no platform can know about one, so the interpreter asks for one
+-- slice at a time and looks between them. The pause itself is the host's,
+-- because no two platforms do it the same way -- a desktop lets the thread
+-- sleep, a browser's main thread must keep running its event loop, and a
+-- worker can be stopped outright.
+rule AWaitWithNoPortToWakeItLetsTimePass {
+    when: EvaluateCall(wait, waited_on)
+    requires: not names_a_port_with_something_to_report(waited_on)
+    requires: there_is_a_length_among(waited_on)
+
+    ensures:
+        the_host_let_time_pass_for(how_long_to_wait_among(waited_on))
+        CallResult(value: none)
+
+    @guidance
+        -- The pause is a port the domain owns and an adapter implements. A
+        -- platform that cannot let the time pass answers that the slice did
+        -- not happen, and the wait ends there rather than failing.
+}
+
 -- Bytes that came back are put in the port's DATA rather than answered, and
 -- added to what is there rather than replacing it. A protocol reads a header
 -- and then a body out of the same buffer, and it decides when it has enough --

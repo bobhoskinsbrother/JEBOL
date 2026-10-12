@@ -27,14 +27,35 @@ The pieces:
 Measured so far: the WebAssembly module is 12.8 MB unobfuscated beside a 38 KB
 runtime loader; the trial below measured a boot in Chrome of 477 ms going cold
 and 164 to 201 ms warm. The shipped form, obfuscated and compressed, is goal 2
-step 7's business.
+step 5's business.
+
+The two pieces of blocking code named in this note are gone. WAIT's sleep is a
+port (`PausePort`, in `org.jebol.domain.host`) that the interpreter asks one
+fifty millisecond slice at a time, so it can still end a wait at its own
+deadline between slices; an interpreter is built with `ThreadPause` and a host
+replaces it through `Interpreter.usePause`. And `ScreenEventQueue` is plain
+storage again: an adapter that hears a toolkit's listener leaves the event in a
+`ConcurrentLinkedQueue` through `GobScreen.posted`, and `takeTheNextEvent`
+moves what was posted into the interpreter's own queue on the interpreter's
+own thread. `BrowserScreen` already worked this way; `DesktopScreen` now does
+too.
+
+A measurement worth keeping for step 1: **TeaVM's `Thread.sleep` works in a
+browser**, and so does the pause port over it - a page script that waits
+prints its later lines once the fiber is resumed by `setTimeout`. But
+`teavm.exports.main` returns at the first suspension, so the page harness
+writes its output as soon as `main` returns and a script that waits prints
+only what it printed before the wait; delaying the read of the output by a
+second shows the rest arriving. Until the worker's entry point can tell the
+page when the script has really finished, the browser gate cannot hold a
+script that waits: the pause is pinned by the JVM tests and measured here.
 
 ## The TeaVM trial, 2026-10-10
 
-Goal 2 step 1 was a one-day trial: compile the domain and application with
-TeaVM, run `print 1 + 2` in a page and then the Brotli cases, and write down
-what the compiler refused, how big the download is and how long a boot takes.
-TeaVM 0.16.0, Java 25 sources, Chrome headless on macOS.
+The trial that decided the web port was a one-day exercise: compile the domain
+and application with TeaVM, run `print 1 + 2` in a page and then the Brotli
+cases, and write down what the compiler refused, how big the download is and
+how long a boot takes. TeaVM 0.16.0, Java 25 sources, Chrome headless on macOS.
 
 The trial ran in a scratch Gradle project outside the repo, compiling copies of
 `src/main/java` and `src/main/resources`. Its numbers:
@@ -141,12 +162,12 @@ and a stub without a hierarchy is invalid wasm wherever a cast touches it.
 Crypto is refused by stand-ins that throw `UnsupportedOperationException`
 naming the method, and so is HMAC, signatures and key agreement. A page that
 reaches one gets an error rather than a wrong answer made up in the browser.
-What the web does instead is goal 2 step 4's business, and the TLS checking is
+What the web does instead is goal 2 step 2's business, and the TLS checking is
 goal 4's.
 
 The web build starts no processes: `ProcessHandle` answers "there is only this
 one" and `ExecutableFile.markRunnable` answers true without touching the file.
-`CALL` is refused for the same reason, under step 4.
+`CALL` is refused for the same reason, under step 2.
 
 ## What is left
 
@@ -155,5 +176,5 @@ one" and `ExecutableFile.markRunnable` answers true without touching the file.
 - Boot measured on the shipped entry point rather than the trial harness (the
   entry runs the script once and prints no timings; the harness that measured
   boot five times a page is gone with the scratchpad).
-- Goals 2 steps 3 to 7: the worker, the browser's own adapters, one drawing
+- Goals 2 steps 1 to 5: the worker, the browser's own adapters, one drawing
   engine in the domain, the examples with no server, and a build that ships.
