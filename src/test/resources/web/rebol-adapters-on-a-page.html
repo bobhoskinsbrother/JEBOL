@@ -17,6 +17,7 @@
 the-url: to url! rejoin [{THE-ORIGIN-URL} "/hello"]
 print read the-url
 print (read/binary the-url) = #{68656C6C6F}
+if exists? %kept.txt [print rejoin ["again " read/string %kept.txt]]
 write %kept.txt "kept"
 print read/string %kept.txt
 print input
@@ -24,8 +25,11 @@ print error? try [read tcp://127.0.0.1:1]
 page: to url! rejoin [{THE-ORIGIN-URL} "/missing"]
 e: try [read page]
 print e/id
-e: try [checksum "abc" 'sha1]
-print e/id
+print mold checksum "abc" 'sha1
+print mold checksum/with "abc" 'sha1 "key"
+sized: make gob! [size: 200x40]
+sized/text: "MMMM"
+print size-text sized
 </script>
 <script>
 const out = [];
@@ -57,6 +61,8 @@ function theWorkerSays(message) {
 const theWorker = new Worker('jebol-worker.js');
 theWorker.onmessage = theWorkerSays;
 theWorker.onerror = problem => say('worker error ' + problem.message);
+
+theWorker.postMessage({ kind: 'measure', wide: window.innerWidth, high: window.innerHeight });
 
 consoleInput.addEventListener('keydown', pressed => {
   if (pressed.key === 'Enter') {

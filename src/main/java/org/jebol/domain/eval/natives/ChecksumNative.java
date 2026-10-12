@@ -66,7 +66,7 @@ public class ChecksumNative extends EncodingNative {
 
         String asked = method.canonical();
         Optional<Value> spec = argumentOf("with", 0, arguments, refinements);
-        if (Encodings.DIGESTS.containsKey(asked)) {
+        if (encodings.canDigest(asked)) {
             return BinaryValue.ofBytes(spec
                     .map(key -> keyedDigestOf(octets, asked, key))
                     .orElseGet(() -> encodings.digestOf(octets, asked)));
@@ -109,7 +109,7 @@ public class ChecksumNative extends EncodingNative {
     private Value theContentsOfThatFileSummed(
             Value file, AnyWordValue method, Evaluator evaluator, Set<String> refinements) {
 
-        if (!Encodings.DIGESTS.containsKey(method.canonical())) {
+        if (!encodings.canDigest(method.canonical())) {
             throw Raised.of(EvaluationFailure.FEATURE_NA);
         }
         if (refinements.contains("part") || refinements.contains("with")) {

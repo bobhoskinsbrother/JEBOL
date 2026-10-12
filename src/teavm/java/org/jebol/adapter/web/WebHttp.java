@@ -6,6 +6,7 @@ import org.teavm.jso.JSObject;
 import org.teavm.jso.core.JSPromise;
 import org.teavm.jso.typedarrays.Int8Array;
 
+import java.time.Duration;
 import java.util.List;
 
 public final class WebHttp implements HttpPort {
@@ -23,7 +24,7 @@ public final class WebHttp implements HttpPort {
                 request.headerValues().toArray(String[]::new),
                 asATypedArray(request.content()),
                 request.followsRedirects(),
-                (int) request.timeout().orElse(java.time.Duration.ofMillis(
+                (int) request.timeout().orElse(Duration.ofMillis(
                         WHEN_THE_SPEC_NAMES_NO_TIMEOUT)).toMillis())
                 .await();
         String refused = refusedOf(answer);

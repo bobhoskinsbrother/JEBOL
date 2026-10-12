@@ -4,12 +4,13 @@ import org.jebol.application.Bounds;
 import org.jebol.application.Conclusion;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
+import org.jebol.application.TextMeasures;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.render.PaintInstruction;
 import org.jebol.domain.render.PaintList;
+import org.jebol.domain.render.SurfaceCall;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 import org.junit.jupiter.api.DisplayName;
@@ -33,7 +34,7 @@ class BrowserScreenFromTheSourceTest {
 
     private static final class SomebodyLooking implements BrowserScreen.Viewer {
 
-        private final List<PaintList> painted = new ArrayList<>();
+        private final List<List<SurfaceCall>> painted = new ArrayList<>();
         private boolean looking = true;
 
         @Override
@@ -42,7 +43,7 @@ class BrowserScreenFromTheSourceTest {
         }
 
         @Override
-        public void paint(PaintList painting) {
+        public void paint(List<SurfaceCall> painting) {
             painted.add(painting);
         }
 
@@ -56,7 +57,7 @@ class BrowserScreenFromTheSourceTest {
             return nobody;
         }
 
-        PaintList lastPainted() {
+        List<SurfaceCall> lastPainted() {
             return painted.getLast();
         }
 
@@ -108,9 +109,9 @@ class BrowserScreenFromTheSourceTest {
                     view/no-wait make gob! [size: 320x200 color: 30.34.44]""");
 
             assertThat(viewer.timesPainted()).isPositive();
-            assertThat(viewer.lastPainted().instructions())
+            assertThat(viewer.lastPainted())
                     .isNotEmpty()
-                    .allMatch(each -> each instanceof PaintInstruction);
+                    .allMatch(each -> each instanceof SurfaceCall);
         }
 
         @Test
@@ -127,8 +128,9 @@ class BrowserScreenFromTheSourceTest {
             interpreter.defineFreshWordsIn(describing);
             GobValue window = (GobValue) interpreter.run(describing).value();
 
-            assertThat(viewer.lastPainted().instructions())
-                    .isEqualTo(PaintList.ofAWindow(window, null).instructions());
+            assertThat(viewer.lastPainted())
+                    .isEqualTo(PaintList.ofAWindow(window, null)
+                            .calls(TextMeasures.ofTheCarriedFont()));
         }
 
         @Test

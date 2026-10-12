@@ -1,12 +1,12 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.host.DigestPort;
+import org.jebol.domain.host.DigestPorts;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 final class SecureDrawing extends RandomDrawing {
@@ -31,16 +31,16 @@ final class SecureDrawing extends RandomDrawing {
         while (hashed.hasRemaining()) {
             hashed.put(lowestByte);
         }
-        byte[] digest = sha1().digest(hashed.array());
+        byte[] digest = sha1Of(hashed.array());
         return ByteBuffer.wrap(Arrays.copyOf(digest, Long.BYTES))
                 .order(ByteOrder.LITTLE_ENDIAN).getLong();
     }
 
-    private MessageDigest sha1() {
+    private static byte[] sha1Of(byte[] octets) {
         try {
-            return MessageDigest.getInstance("SHA-1");
-        } catch (NoSuchAlgorithmException | UnsupportedOperationException unavailable) {
-            throw Raised.of(EvaluationFailure.FEATURE_NA, "SHA-1");
+            return DigestPorts.theOneForThisBuild().digestOf("sha1", octets);
+        } catch (DigestPort.Refused refused) {
+            throw Raised.of(EvaluationFailure.FEATURE_NA, "sha1");
         }
     }
 

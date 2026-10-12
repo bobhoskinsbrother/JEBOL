@@ -2,6 +2,7 @@ package org.jebol.adapter.host;
 
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
+import org.jebol.application.TextMeasures;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.value.GobValue;
@@ -47,7 +48,8 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
         try {
             onto.setColor(Color.WHITE);
             onto.fillRect(0, 0, WIDE, HIGH);
-            DesktopPainting.execute(onto, PaintList.of(gob, dialect));
+            Java2DSurface.execute(onto, PaintList.of(gob, dialect),
+                    TextMeasures.ofTheCarriedFont());
         } finally {
             onto.dispose();
         }

@@ -1,10 +1,9 @@
 package org.jebol.domain.eval.ports;
 
 import org.jebol.domain.eval.Encodings;
+import org.jebol.domain.host.DigestPort;
 import org.jebol.domain.value.*;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
@@ -43,28 +42,17 @@ final class ChecksumPort {
         if (DIGESTS_THAT_KEEP_THE_BYTES.contains(algorithm)) {
             return keepingTheBytes(method);
         }
-        try {
-            return aroundTheDigest(MessageDigest.getInstance(algorithm));
-        } catch (NoSuchAlgorithmException unavailable) {
-            throw Raised.of(EvaluationFailure.INVALID_SPEC, method);
-        }
-    }
-
-    private RunningSumThatAReadDoesNotEnd aroundTheDigest(MessageDigest digest) {
+        DigestPort.RunningDigest running = encodings.runningDigestOf(method);
         return new RunningSumThatAReadDoesNotEnd() {
 
             @Override
             public void add(byte[] octets, int from, int length) {
-                digest.update(octets, from, length);
+                running.add(octets, from, length);
             }
 
             @Override
             public byte[] soFar() {
-                try {
-                    return ((MessageDigest) digest.clone()).digest();
-                } catch (CloneNotSupportedException cannotBeSplit) {
-                    throw Raised.of(EvaluationFailure.INVALID_SPEC, digest.getAlgorithm());
-                }
+                return running.soFar();
             }
         };
     }

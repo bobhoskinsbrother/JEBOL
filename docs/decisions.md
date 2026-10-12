@@ -1115,9 +1115,9 @@ decide which platform it is on.
 
 **Crypto is refused, not faked.** Every `javax.crypto` and `java.security`
 algorithm class the core reaches for is a stand-in whose methods throw an error
-naming the method. A page that asks for SHA-1 or a signature gets a refusal
-rather than an answer invented in the browser. What the web does instead is
-goal 1 step 2's decision, and how TLS is checked is goal 3's.
+naming the method. A page that asks for a signature gets a refusal rather than
+an answer invented in the browser. Digests and HMACs came later, through the
+browser's own WebCrypto -- decision 34 -- and how TLS is checked is goal 2's.
 
 **The web compile lives in the second gate.** `browserCheck` depends on
 `buildWasmGC` and then runs the page the way a reader would, in a real Chrome;
@@ -1181,8 +1181,8 @@ posted while the interpreter is inside `do-events`.
 page script that waits prints its later lines once the fiber is resumed by
 `setTimeout`. But `teavm.exports.main` returns at the first suspension, so the
 page harness must be told when the script has really finished rather than
-writing its output when `main` returns; that is the worker's business in goal 1
-step 1.
+writing its output when `main` returns; that is the worker's business, written
+down next.
 
 ## 28. The interpreter runs in a worker, and the run loop lives on main's fiber
 
@@ -1193,8 +1193,8 @@ boot, and speaks for the page. Java's side is `TheInterpreterInAWorker`
 (`src/teavm`): `main` boots and then runs the loop - await a script from the
 page, run it, report, repeat. Paint lists cross to the page as the same JSON
 the server arrangement writes, so the page paints with the existing renderer;
-goal 1 step 3 replaces that renderer and then the worker paints the canvas
-directly.
+decision 35 replaced that renderer afterwards, and the page now replays the
+same surface calls the desktop draws.
 
 **Events go by postMessage and TeaVM's pause-and-resume, not by shared
 memory.** The shell buffers the page's postings in a plain JavaScript array;
@@ -1266,7 +1266,7 @@ interpreter on a daemon thread: the parent's output, none of the parent's
 contexts, no deadline, and what it raises stays at its own edge. The console
 wires it; the web build does not.
 
-**Decided while building goal 1's worker**, which is what showed what a
+**Decided while building the web worker**, which is what showed what a
 platform can give the interpreter. The spec rule is
 `TheFateOfATasksBodyIsTheHostsToDecide` in `spec/natives.allium`, replacing the
 open question that stood there.
@@ -1278,8 +1278,14 @@ already had three refusals -- `not_granted`, `not_present`, `never_portable`
 -- but nothing could produce the middle one except a window port that was
 absent. A page can offer some of what a machine offers and cannot offer the
 rest at any price: it has no raw connection for TCP, UDP or DNS, no way to
-start a program, no environment it was launched with and no working
-directory of its own.
+start a program and no environment it was launched with.
+
+A working directory turned out not to belong in that list. It is the
+interpreter's own -- which directory a relative path counts from -- and costs
+the page nothing, because it lives inside the store the host already has, so
+a browser offers it and grants it. Building the examples with no server is
+what showed it: the 2010 GUI's own files are loaded by name, and a page
+without a working directory cannot `do %gui-322.r` at all.
 
 **So `Bounds` carries a second set beside the grants.** `lacking(NETWORK)`
 says this host has no such service at all, and `granting` refuses a service
@@ -1291,10 +1297,9 @@ the domain knows nothing about browsers and should not learn.
 
 **The two are refused before anything is attempted**, so a script cannot
 learn whether a host exists by timing a name lookup it was never allowed to
-make. The web build's four are `NETWORK`, `PROCESSES`, `ENVIRONMENT` and
-`WORKING_DIRECTORY`; the spec rule is `ABrowserOffersWhatItsPageCan` in
-`spec/embed.allium`, and the tests that pin the sentences are
-`ABrowserHostFromTheSourceTest`.
+make. The web build's three are `NETWORK`, `PROCESSES` and `ENVIRONMENT`;
+the spec rule is `ABrowserOffersWhatItsPageCan` in `spec/embed.allium`, and
+the tests that pin the sentences are `ABrowserHostFromTheSourceTest`.
 
 ## 32. A host that fetches owns the http and https schemes' actor
 
@@ -1336,44 +1341,93 @@ probe is what the rule was written from.
 a browser's own `fetch` has done it before it answers, so the actor does not
 decompress and the `HttpPort` contract says so.
 
-**The web build's `WebHttp` meets the port with `fetch`,** and the fiber
-suspends on the promise while it is in flight -- the same pause-and-resume a
-WAIT uses. A `@JSBody` script returns the status, the headers, the bytes and
+**The web build's `WebHttp` meets the port with `fetch`,** and the run waits
+on the promise while it is in flight -- the same pause-and-resume a WAIT
+uses. A `@JSBody` script returns the status, the headers, the bytes and
 a reason rather than throwing, because a JS exception crossing back into
 Java would be the host exception the invariant forbids.
 
 ## 33. The browser's files are the worker's memory, and its console is the page's element
 
-**Memory rather than the browser's private store, for now.** The page's own
-storage for a site (OPFS) is asynchronous and a script's reads are not, so a
-port over it would suspend the fiber on every call. `WebFiles`
-(`org.jebol.adapter.web`) keeps the files in the worker, with the confined
-filesystem's shape: a root that shows as `/`, a per-port working directory,
-and `..` clamping at the root. Nothing survives a reload, and the decision
-to make it survive belongs with the store rather than with the port.
+**The browser's files are the page's private store for the site.** OPFS,
+reached through `WebFiles.Store`: the whole tree is loaded once at boot, so
+every read is answered from memory and never waits, and every change is
+awaited into the store, so a file a script has finished writing is a file a
+reload finds. A host whose browser has no store gets the memory one, which
+keeps nothing. `WebFiles` keeps the confined filesystem's shape: a root that
+shows as `/`, a per-port working directory, and `..` clamping at the root.
 
 **The console is the page.** What a script printed the page shows; a line
 the operator types arrives as a posting and `WebConsole.readLine` takes it,
-slicing the fiber while it waits so the worker's event loop keeps delivering.
-A line the page cannot read without showing it (a password) is refused
-rather than read in the open.
+stopping the run a slice at a time while it waits, so the worker's event loop
+keeps delivering. A line the page cannot read without showing it (a password)
+is refused rather than read in the open.
 
-## 34. The browser's cryptography is decided, and its refusals are errors
+## 34. The browser's cryptography comes from WebCrypto, and its refusals are errors
 
-**Decided: digests and HMACs come from WebCrypto, the rest is refused.**
-WebCrypto's catalogue is fixed -- SHA-1, the SHA-2 sizes, and HMAC over them
--- and Rebol's is not: no MD5, no RIPEMD-160, no SHA-3, no Camellia, no
-ARIA. JEBOL's own Java ciphers (Camellia and ARIA among them) work on the
-web already; the JDK-backed halves do not. When the web's fetching of
-digests lands it will be a port behind the domain's hashing, reached
-asynchronously the way HTTP is, and the methods WebCrypto has not got stay
-`feature-na`.
+**Built: digests and HMACs come from WebCrypto, the rest is refused.**
+`DigestPort` (`org.jebol.domain.host`) is the port, and `DigestPorts`
+answers the one this build computes with: `JvmDigests` over MessageDigest and
+Mac, which has Rebol's whole catalogue, and, in the web build,
+`WebDigestPorts` over `crypto.subtle`, substituted whole. WebCrypto's
+catalogue is fixed -- SHA-1, the SHA-256 family, and HMAC over them -- so a
+browser's digest methods are those four and the rest (`md5`, `sha224`, the
+SHA-3 sizes) are not in `system/catalog/checksums` there and are refused
+`invalid-arg` by name. The checksum port reads a file through the port's
+running digest; the browser's keeps the bytes and digests them when asked,
+because crypto.subtle cannot be fed a piece at a time. `random/secure`'s
+SHA-1 goes through the same port. JEBOL's own Java digests (RIPEMD-160,
+xxHash, MD4) are unchanged and work everywhere.
 
-**Built today: the refusals are ordinary REBOL errors, not host
-exceptions.** `Encodings.digestOf`, `Encodings.keyedDigestOf`,
-`SecureDrawing` and the crypt port's ciphers caught only the JDK's own
-exceptions, so the web build's throwing stand-ins escaped as Java throwables
--- which the invariant `NoFailureEscapesAsAHostException` forbids. They now
-catch the stand-ins' `UnsupportedOperationException` too and raise
-`feature-na`, so `checksum "abc" 'sha1` and `random/secure` are values a
-script can catch. The browser gate asserts it.
+**And its refusals are ordinary REBOL errors, not host exceptions.** A
+method the host has not got raises `feature-na` from the port's own refusal,
+and the crypt port's ciphers catch the web stand-ins'
+`UnsupportedOperationException` and refuse by name the same way. Nothing a
+host cannot compute escapes as a Java throwable, which the invariant
+`NoFailureEscapesAsAHostException` forbids. The browser gate asserts that the
+worker's SHA-1 and HMAC equal the ones the JVM takes.
+
+## 35. One way of rendering: one executor in the domain, one adapter per platform, one font
+
+**The paint list is walked once, and that walk lives in the domain.** It
+becomes calls on a surface -- clip, opacity, transform, fill, stroke, image,
+text -- each call carrying its own state so nothing is saved or restored
+between them. An adapter implements those calls on one toolkit and decides
+nothing: `Java2DSurface` for a desktop window, the page's replayer for a
+canvas, `Canvas` and CoreGraphics later. The spec's `SurfaceCall` is that
+list, and the rule is that the same paint list produces the same calls on
+every surface.
+
+**The alternative was a rasteriser in the domain, and it is not taken.**
+Goal 1 step 3 as first written wanted fills, strokes, curves, coverage,
+gradients, images, clipping and glyphs all scan-converted in JEBOL, with
+every platform copying the finished grid. It buys pixels that are identical
+everywhere. It costs a rasteriser and a TrueType glyph rasteriser, built and
+kept for ever; text without the platform's hinting, which is a visible loss
+on the desktop; full-screen software repaints in a worker and later on a
+phone where the platform would have used a GPU; and `gamma` is the only
+feature it would add that the toolkits lack. R3 ported AGG into every
+platform because in its day no platform had a vector API; today every
+platform has a good one. What the rasteriser would have guaranteed, the
+spec already bounds: a pixel inside a shape matches exactly, an edge pixel
+may differ by at most 24 of 255 across at most a fortieth of the picture,
+and those two numbers are a change to the specification rather than a nudge
+in a test.
+
+**One font supplies the metrics, and it is carried by the build.** Noto Sans
+Regular, under the SIL Open Font License, read at the edge and handed to the
+domain as bytes the way the error catalogue and the borrowed library already
+are, and embedded in the WebAssembly module by the existing resource list.
+A reader in the domain takes its `cmap`, `hmtx`, `head`, `hhea` and `maxp`:
+units per em, ascender, descender and advance widths, and no outlines at
+all. That answers `SIZE-TEXT`, wrapping, line breaks and carets, so those
+are the domain's and the same on every platform -- which the spec already
+claimed and the code did not do, because each renderer measured with its own
+toolkit's font. Each adapter then draws glyphs with the same face, so the
+letters are one design everywhere and only the hinting differs. The page
+stops laying text out: a few hundred lines of JavaScript that duplicated
+`TextLines` are deleted rather than kept in step.
+
+**Decided while planning the web port**, after the plan's first draft
+proposed the rasteriser. Goals 7 and 8 change with it: a phone app
+implements the surface on its own canvas rather than copying a grid.

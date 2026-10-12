@@ -10,17 +10,14 @@ import org.jebol.domain.eval.hashing.Md4;
 import org.jebol.domain.eval.hashing.RipeMd160;
 import org.jebol.domain.eval.hashing.XxHash;
 import org.jebol.domain.eval.hashing.XxHash3;
+import org.jebol.domain.host.DigestPort;
+import org.jebol.domain.host.DigestPorts;
 import org.jebol.domain.value.BitsetValue;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -28,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.IntPredicate;
 import java.util.zip.Adler32;
 import java.util.zip.CRC32;
@@ -489,6 +487,9 @@ public final class Encodings {
 
     public static final List<String> CYCLIC = List.of("crc32", "adler32", "crc24", "tcp");
 
+    static final Set<String> JAVA_DIGESTS = Set.of(
+            "ripemd160", "xxh3", "xxh32", "xxh64", "xxh128", "md4");
+
     private static final List<String> CATALOGUE_ORDER = List.of(
             "adler32", "crc24", "crc32",
             "md4", "md5", "ripemd160",
@@ -498,7 +499,8 @@ public final class Encodings {
             "tcp");
 
     List<String> checksumMethods() {
-        List<String> served = new ArrayList<>(DIGESTS.keySet());
+        List<String> served = new ArrayList<>(
+                DIGESTS.keySet().stream().filter(this::canDigest).toList());
         served.addAll(CYCLIC);
         return CATALOGUE_ORDER.stream().filter(served::contains).toList();
     }
@@ -570,6 +572,16 @@ public final class Encodings {
     private final XxHash3 xxHash3 = new XxHash3();
     private final Lzw lzw = new Lzw();
 
+    private final DigestPort port;
+
+    public Encodings() {
+        this(DigestPorts.theOneForThisBuild());
+    }
+
+    public Encodings(DigestPort port) {
+        this.port = port;
+    }
+
     public byte[] digestOf(byte[] octets, String method) {
         String algorithm = DIGESTS.get(method);
         if (RIPEMD_160.equals(algorithm)) {
@@ -591,25 +603,30 @@ public final class Encodings {
             return md4.of(octets);
         }
         try {
-            return MessageDigest.getInstance(DIGESTS.get(method))
-                    .digest(octets);
-        } catch (NoSuchAlgorithmException | UnsupportedOperationException unavailable) {
+            return port.digestOf(method, octets);
+        } catch (DigestPort.Refused refused) {
             throw Raised.of(EvaluationFailure.FEATURE_NA, method);
         }
     }
 
     public byte[] keyedDigestOf(byte[] octets, String method, byte[] key) {
         try {
-            String algorithm = "Hmac" + DIGESTS.get(method).replace("-", "");
-            Mac mac = Mac.getInstance(algorithm);
-            mac.init(new SecretKeySpec(
-                    key.length == 0 ? new byte[1] : key, algorithm));
-            return mac.doFinal(octets);
-        } catch (NoSuchAlgorithmException
-                | InvalidKeyException
-                | UnsupportedOperationException unavailable) {
+            return port.keyedDigestOf(method, octets, key);
+        } catch (DigestPort.Refused refused) {
             throw Raised.of(EvaluationFailure.FEATURE_NA, method);
         }
+    }
+
+    public DigestPort.RunningDigest runningDigestOf(String method) {
+        try {
+            return port.start(method);
+        } catch (DigestPort.Refused refused) {
+            throw Raised.of(EvaluationFailure.FEATURE_NA, method);
+        }
+    }
+
+    public boolean canDigest(String method) {
+        return JAVA_DIGESTS.contains(method) || port.methods().contains(method);
     }
 
     public long cyclicOf(byte[] octets, String method) {

@@ -1408,7 +1408,7 @@ rule DoOfATaskAnswersTheTask {
 }
 
 -- Whether a task's body runs at all is the host's to say, and the answer
--- differs by platform. Decided with goal 1's worker, which showed what a
+-- differs by platform. Decided with the web worker, which showed what a
 -- platform can actually give the interpreter.
 --
 -- In a browser the interpreter runs in a worker: one execution context, and

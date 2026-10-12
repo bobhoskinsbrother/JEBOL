@@ -16,10 +16,10 @@ class ABrowserHostFromTheSourceTest {
                 .granting(HostService.FILES)
                 .granting(HostService.WINDOWS)
                 .granting(HostService.WEB)
+                .granting(HostService.WORKING_DIRECTORY)
                 .lacking(HostService.NETWORK)
                 .lacking(HostService.PROCESSES)
                 .lacking(HostService.ENVIRONMENT)
-                .lacking(HostService.WORKING_DIRECTORY)
                 .called("a browser");
     }
 

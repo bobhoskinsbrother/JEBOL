@@ -2,10 +2,12 @@ package org.jebol.adapter.host;
 
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
+import org.jebol.application.TextMeasures;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.GobValue;
+import org.jebol.domain.value.PairValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -30,7 +32,7 @@ class DesktopScreenFromTheSourceTest {
                 new BufferedImage(wide, high, BufferedImage.TYPE_INT_ARGB);
         Graphics2D onto = surface.createGraphics();
         try {
-            DesktopPainting.paint(onto, gob);
+            Java2DSurface.paint(onto, gob, TextMeasures.ofTheCarriedFont());
         } finally {
             onto.dispose();
         }
@@ -184,9 +186,9 @@ class DesktopScreenFromTheSourceTest {
                 if (metric.isACount()) {
                     continue;
                 }
-                assertThat(screen.measure(metric, 0))
-                        .as("%s", metric.spelling())
-                        .isEqualTo(org.jebol.domain.value.PairValue.of(0, 0));
+        assertThat(screen.measure(metric, 0))
+                .as("%s", metric.spelling())
+                .isEqualTo(PairValue.of(0, 0));
             }
         }
 

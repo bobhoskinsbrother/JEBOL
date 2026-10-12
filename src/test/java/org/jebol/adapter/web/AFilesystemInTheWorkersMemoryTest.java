@@ -6,7 +6,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -210,5 +216,114 @@ class AFilesystemInTheWorkersMemoryTest {
         assertThat(files.canonicalPathOf("/a.txt")).isEqualTo("/a.txt");
         assertThat(files.canonicalPathOf("/d")).isEqualTo("/d/");
         assertThat(files.canonicalPathOf("/nothing")).isNull();
+    }
+
+    private static final class AStoreThatRemembers implements WebFiles.Store {
+
+        private final Map<String, byte[]> files = new LinkedHashMap<>();
+        private final Set<String> directories = new TreeSet<>();
+        private final List<String> events = new ArrayList<>();
+        private String refusal;
+
+        AStoreThatRemembers holding(String path, String contents) {
+            files.put(path, bytesOf(contents));
+            return this;
+        }
+
+        AStoreThatRemembers holdingADirectory(String path) {
+            directories.add(path);
+            return this;
+        }
+
+        AStoreThatRemembers refusing(String because) {
+            this.refusal = because;
+            return this;
+        }
+
+        @Override
+        public Tree everything() {
+            return new Tree(files, directories);
+        }
+
+        @Override
+        public void wrote(String path, byte[] contents) {
+            refuseIfAsked();
+            files.put(path, contents.clone());
+            events.add("wrote " + path);
+        }
+
+        @Override
+        public void removed(String path) {
+            refuseIfAsked();
+            files.remove(path);
+            directories.remove(path);
+            events.add("removed " + path);
+        }
+
+        @Override
+        public void madeADirectory(String path) {
+            refuseIfAsked();
+            directories.add(path);
+            events.add("made " + path);
+        }
+
+        private void refuseIfAsked() {
+            if (refusal != null) {
+                throw new FilePort.Denied("cannot-open", refusal);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("what the store already holds is a file the script can read")
+    void theStoreIsLoadedFirst() {
+        WebFiles files = new WebFiles(new AStoreThatRemembers()
+                .holding("/kept.txt", "kept")
+                .holdingADirectory("/d"));
+
+        assertThat(textOf(files, "/kept.txt")).isEqualTo("kept");
+        assertThat(files.isDirectory("/d")).isTrue();
+        assertThat(files.namesIn("/")).containsExactly("d/", "kept.txt");
+    }
+
+    @Test
+    @DisplayName("every change is written back to the store")
+    void everyChangeGoesToTheStore() {
+        AStoreThatRemembers store = new AStoreThatRemembers();
+        WebFiles files = new WebFiles(store);
+
+        files.makeDirectory("/d", false);
+        files.write("/d/a.txt", bytesOf("one"));
+        files.appendTo("/d/a.txt", bytesOf("two"));
+        files.rename("/d/a.txt", "/d/b.txt");
+        files.delete("/d/b.txt");
+
+        assertThat(store.events).containsExactly(
+                "made /d",
+                "wrote /d/a.txt",
+                "wrote /d/a.txt",
+                "removed /d/a.txt",
+                "wrote /d/b.txt",
+                "removed /d/b.txt");
+    }
+
+    @Test
+    @DisplayName("a store that refuses stops the change before the memory has it")
+    void aRefusingStoreStopsTheChange() {
+        AStoreThatRemembers store = new AStoreThatRemembers().refusing("no room in the store");
+        WebFiles files = new WebFiles(store);
+
+        assertThat(refusalIdOf(() -> files.write("/a.txt", bytesOf("x"))))
+                .isEqualTo("cannot-open");
+        assertThat(files.exists("/a.txt")).isFalse();
+    }
+
+    @Test
+    @DisplayName("an empty store is an empty filesystem")
+    void anEmptyStoreIsEmpty() {
+        WebFiles files = new WebFiles(new AStoreThatRemembers());
+
+        assertThat(files.namesIn("/")).isEmpty();
+        assertThat(files.exists("/anything")).isFalse();
     }
 }

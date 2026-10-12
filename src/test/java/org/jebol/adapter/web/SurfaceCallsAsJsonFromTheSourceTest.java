@@ -2,6 +2,7 @@ package org.jebol.adapter.web;
 
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
+import org.jebol.application.TextMeasures;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.value.GobValue;
@@ -13,7 +14,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class PaintListAsJsonFromTheSourceTest {
+class SurfaceCallsAsJsonFromTheSourceTest {
 
     private static final String ONE_CONTROL_CHARACTER = String.valueOf((char) 1);
 
@@ -25,7 +26,8 @@ class PaintListAsJsonFromTheSourceTest {
     }
 
     private static String written(String source) {
-        return PaintListAsJson.written(PaintList.of(gobFrom(source)), 800, 600);
+        return SurfaceCallsAsJson.written(
+                PaintList.of(gobFrom(source)).calls(TextMeasures.ofTheCarriedFont()), 800, 600);
     }
 
     @Nested
@@ -34,7 +36,7 @@ class PaintListAsJsonFromTheSourceTest {
 
         @Test
         @DisplayName("its kind, its place and its colour")
-        void afillCarriesItsPlaceAndColour() {
+        void aFillCarriesItsPlaceAndColour() {
             String json = written("make gob! [size: 40x30 color: 200.100.50]");
 
             assertThat(json).contains("""
@@ -44,11 +46,11 @@ class PaintListAsJsonFromTheSourceTest {
             assertThat(json).contains("""
                     "high":30,""");
             assertThat(json).contains("""
-                    "colour":"#c86432"}""");
+                    "colour":"#c86432",""");
         }
 
         @Test
-        @DisplayName("and the clip it may paint in, which the browser must not work out")
+        @DisplayName("and the clip it may paint in, which the page must not work out")
         void theClipCrosses() {
             String json = written("""
                     parent: make gob! [size: 20x20 color: 1.1.1]
@@ -56,7 +58,7 @@ class PaintListAsJsonFromTheSourceTest {
                     parent""");
 
             assertThat(json)
-                    .as("the child is clipped to ten by ten, and the browser is "
+                    .as("the child is clipped to ten by ten, and the page is "
                             + "told so rather than deducing it")
                     .contains("""
                             "clip":{"across":10,"down":10,"wide":10,"high":10}""");
@@ -79,77 +81,41 @@ class PaintListAsJsonFromTheSourceTest {
     class TheWriting {
 
         @Test
-        @DisplayName("its words, carried as text")
-        void theWordsCross() {
-            assertThat(written("""
-                    make gob! [size: 100x20 text: "hello"]"""))
+        @DisplayName("its words, placed, so the page lays nothing out")
+        void theWordsCrossPlaced() {
+            String json = written("""
+                    make gob! [size: 100x20 text: "hello"]""");
+
+            assertThat(json)
                     .contains("""
-                            "kind":"writing",""")
+                            "kind":"text",""")
                     .contains("""
-                            "text":"hello",""");
+                            "text":"hello",""")
+                    .contains("""
+                            "size":12,""")
+                    .contains("""
+                            "baseline":""");
         }
 
-        @Test
-        @DisplayName("a plain string carries the standard layout, so the page places it as the desktop does")
-        void aPlainStringCarriesTheStandardLayout() {
-            assertThat(written("""
-                    make gob! [size: 100x20 text: "hello"]"""))
-                    .contains("""
-                            "layout":{"origin-across":2,"origin-down":2,"margin-across":2,"margin-down":2,\
-                            "align":"left","valign":"top","shadow-across":0,"shadow-down":0,"wraps":true}""");
-        }
-
-        @ParameterizedTest(name = "wrap? {0} crosses as {1}")
-        @CsvSource({"true, true", "false, false"})
-        @DisplayName("whether the para wraps crosses, so the page breaks a long line where the desktop does")
-        void whetherItWrapsCrosses(String given, String crossed) {
-            assertThat(written("""
+        @ParameterizedTest(name = "wrap? {0}")
+        @CsvSource({"true", "false"})
+        @DisplayName("a long line wraps into more lines when the para wraps, and the pieces are placed per line")
+        void wrappingIsTheDomains(String wraps) {
+            String json = written("""
                     labelled: make gob! [size: 100x20]
-                    labelled/text: compose [para (make object! [wrap?: %s]) "hi"]
-                    labelled""".formatted(given)))
-                    .contains("""
-                            "wraps":%s}""".formatted(crossed));
-        }
+                    labelled/text: compose [para (make object! [wrap?: %s]) "one two three four five six"]
+                    labelled""".formatted(wraps));
 
-        @Test
-        @DisplayName("a centred para crosses as centre and middle")
-        void aCentredParaCrosses() {
-            assertThat(written("""
-                    labelled: make gob! [size: 100x20]
-                    labelled/text: compose [para (make object! [origin: 0x0 margin: 0x0 align: 'center valign: 'middle]) "hi"]
-                    labelled"""))
-                    .contains("""
-                            "align":"centre","valign":"middle",""");
-        }
-
-        @Test
-        @DisplayName("each run of a line crosses with its own font, in the order it is written")
-        void eachRunCrosses() {
-            assertThat(written("""
-                    labelled: make gob! [size: 100x20]
-                    labelled/text: [{plain } bold {heavy}]
-                    labelled"""))
-                    .contains("""
-                            "runs":[{"text":"plain ","colour":"#000000","size":12,"bold":false,"italic":false},\
-                            {"text":"heavy","colour":"#000000","size":12,"bold":true,"italic":false}]""");
-        }
-
-        @Test
-        @DisplayName("a caret crosses with the run and the character it is before, and no caret crosses as null")
-        void aCaretCrosses() {
-            assertThat(written("""
-                    written: copy {abcd}
-                    labelled: make gob! [size: 100x20]
-                    labelled/text: reduce ['caret make object! [caret: none start: none end: none] written]
-                    caret: select labelled/text 'caret
-                    caret/caret: reduce [at labelled/text 3 at written 3]
-                    labelled"""))
-                    .contains("""
-                            "caret":{"run":0,"character":2,"selection":null}""");
-            assertThat(written("""
-                    make gob! [size: 100x20 text: "hello"]"""))
-                    .contains("""
-                            "caret":null""");
+            int baselines = json.split("\"baseline\"", -1).length - 1;
+            if (wraps.equals("true")) {
+                assertThat(baselines)
+                        .as("a wrapping para breaks the line and the pieces are placed per line")
+                        .isGreaterThan(1);
+            } else {
+                assertThat(baselines)
+                        .as("a plain para keeps one line")
+                        .isEqualTo(1);
+            }
         }
 
         @Test
@@ -175,16 +141,16 @@ class PaintListAsJsonFromTheSourceTest {
         @Test
         @DisplayName("and neither does a backslash, a newline or a tab")
         void theOtherEscapesHold() {
-            assertThat(PaintListAsJson.asAString("a\\b")).isEqualTo("\"a\\\\b\"");
-            assertThat(PaintListAsJson.asAString("a\nb")).isEqualTo("\"a\\nb\"");
-            assertThat(PaintListAsJson.asAString("a\tb")).isEqualTo("\"a\\tb\"");
-            assertThat(PaintListAsJson.asAString("a\rb")).isEqualTo("\"a\\rb\"");
+            assertThat(SurfaceCallsAsJson.asAString("a\\b")).isEqualTo("\"a\\\\b\"");
+            assertThat(SurfaceCallsAsJson.asAString("a\nb")).isEqualTo("\"a\\nb\"");
+            assertThat(SurfaceCallsAsJson.asAString("a\tb")).isEqualTo("\"a\\tb\"");
+            assertThat(SurfaceCallsAsJson.asAString("a\rb")).isEqualTo("\"a\\rb\"");
         }
 
         @Test
         @DisplayName("a character below a space becomes an escape rather than a raw byte")
         void controlCharactersAreEscaped() {
-            assertThat(PaintListAsJson.asAString("a" + ONE_CONTROL_CHARACTER + "b"))
+            assertThat(SurfaceCallsAsJson.asAString("a" + ONE_CONTROL_CHARACTER + "b"))
                     .isEqualTo("\"a\\u0001b\"");
         }
 
@@ -193,7 +159,7 @@ class PaintListAsJsonFromTheSourceTest {
         void aCaptionCannotBreakOut() {
             String breakingOut = "\",\"kind\":\"fill\",\"x\":\"";
 
-            assertThat(PaintListAsJson.asAString(breakingOut))
+            assertThat(SurfaceCallsAsJson.asAString(breakingOut))
                     .as("what a script wrote is one string and stays one")
                     .isEqualTo("\"\\\",\\\"kind\\\":\\\"fill\\\",\\\"x\\\":\\\"\"");
         }
@@ -201,7 +167,7 @@ class PaintListAsJsonFromTheSourceTest {
         @Test
         @DisplayName("a character above the basic plane survives whole")
         void anAstralCharacterSurvives() {
-            assertThat(PaintListAsJson.asAString("a🌈b"))
+            assertThat(SurfaceCallsAsJson.asAString("a🌈b"))
                     .isEqualTo("\"a🌈b\"");
         }
     }
@@ -211,7 +177,7 @@ class PaintListAsJsonFromTheSourceTest {
     class TheMessage {
 
         @Test
-        @DisplayName("says how big the surface is, so the browser sizes its canvas")
+        @DisplayName("says how big the surface is, so the page sizes its canvas")
         void theSurfaceSizeIsSaid() {
             assertThat(written("make gob! [size: 10x10 color: 1.1.1]"))
                     .contains("""
@@ -221,7 +187,7 @@ class PaintListAsJsonFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("holds the instructions in the order they must be painted")
+        @DisplayName("holds the calls in the order they must be painted")
         void theOrderIsKept() {
             String json = written("""
                     parent: make gob! [size: 40x40 color: 1.1.1]
@@ -234,7 +200,7 @@ class PaintListAsJsonFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and an empty list is a message with no instructions, not no message")
+        @DisplayName("and an empty list is a message with no calls, not no message")
         void anEmptyListIsStillAMessage() {
             assertThat(written("make gob! [size: 0x0]"))
                     .contains("""

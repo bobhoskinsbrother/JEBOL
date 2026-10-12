@@ -118,9 +118,12 @@ entity ScreenPort {
     -- every other port would have been handed for the same tree.
     last_painted: PaintList?
 
-    -- Which renderer sits behind it. The kinds differ in how they execute a
-    -- paint list and in nothing else a script can see, which is the whole
-    -- claim this spec makes.
+    -- Which adapter executes the paint list. The list is walked once, in the
+    -- domain, into calls on a surface; an adapter implements those calls on
+    -- one toolkit and decides nothing. The kinds differ in the coverage
+    -- arithmetic of an edge pixel and in how a letter is hinted, and in
+    -- nothing else a script can see, which is the whole claim this spec
+    -- makes.
     renderer: DesktopScreen | BrowserScreen
 
     open_windows: windows where standing = showing
@@ -929,6 +932,31 @@ config {
     most_edge_pixels_that_may_differ: Decimal = 0.025
 }
 
+-- === The surface the list is executed on ====================
+
+-- The paint list is walked once, in the domain, into calls on a surface.
+-- These are the calls, and each carries its own clip rectangle, clip shape,
+-- opacity and transform, so an adapter keeps no state between one call and
+-- the next and decides nothing. Text crosses already placed: the domain lays
+-- it out with the one font this build carries and the adapter draws the
+-- pieces where it is told.
+--
+-- The walk happens here rather than in each adapter because that is where
+-- two implementations drift: two adapters that each walk the list have two
+-- opinions about clipping, transforms, opacity and where a glyph sits, and
+-- only a person comparing screenshots would see them diverge.
+enum SurfaceCall {
+    fill_a_path
+    | stroke_a_path
+    | draw_an_image
+    | draw_a_piece_of_text
+}
+
+rule EveryAdapterIsAskedForTheSameCalls {
+    when: the_same_paint_list_is_executed_on(two_surfaces)
+    ensures: the_calls_are_the_same_for_both()
+}
+
 -- A gob paints itself before its children, and its children in pane order.
 --
 -- The order is the whole of what "in front" means, and the C's compositor
@@ -1096,10 +1124,11 @@ rule AParaThatWrapsBreaksALineTooWideForItsRoom {
                 or the_line_is_one_overflowing_character(gob)
 }
 
--- How wide and how tall text is, is the screen's to say: it is the screen
--- that has the font. A desktop window and a page answer from the same
--- measurement, so a caret worked out for one sits where the other draws the
--- text. Measuring is part of drawing, so a screen with no display refuses it
+-- How wide and how tall text is comes from the one font this build carries,
+-- measured in the domain, so a desktop window and a page answer the same
+-- thing: a caret worked out for one sits where the other draws the text, and
+-- a line breaks in the same place on both. The screen still has to be there
+-- -- measuring is part of drawing, and a screen with no display refuses it
 -- as it refuses SHOW: not present.
 rule TextIsMeasuredByTheScreen {
     when: the_script_measures_text(run, gob)
@@ -1319,6 +1348,7 @@ surface TheScreen {
         ScreenMetric
         WindowStanding
         ScreenEventKind
+        SurfaceCall
 
     @guarantee TheToolkitLivesEntirelyBehindThisPort
         -- Four requests cross this boundary and every one of them is about

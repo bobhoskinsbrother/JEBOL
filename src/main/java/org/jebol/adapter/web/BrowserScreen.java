@@ -1,6 +1,6 @@
 package org.jebol.adapter.web;
 
-import org.jebol.adapter.fonts.TextMeasures;
+import org.jebol.application.TextMeasures;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenPort;
@@ -10,6 +10,7 @@ import org.jebol.domain.host.ScreenEventKind;
 import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.render.PaintList;
+import org.jebol.domain.render.SurfaceCall;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 
@@ -35,7 +36,7 @@ public final class BrowserScreen extends GobScreen {
         boolean isConnected();
 
         /** Here is the picture. Paint it. */
-        void paint(PaintList painting);
+        void paint(List<SurfaceCall> painting);
 
         /**
          * Hands over whatever the page has posted since last asked, by
@@ -49,7 +50,6 @@ public final class BrowserScreen extends GobScreen {
     }
 
     private final Viewer viewer;
-    private final TextMeasure measure = TextMeasures.ofTheMachineThisBuildRunsOn();
     private final List<GobValue> showing = new ArrayList<>();
     private final WindowsOnOneSurface surface = new WindowsOnOneSurface();
     private final Queue<Posted> postedByThePage = new ConcurrentLinkedQueue<>();
@@ -128,9 +128,20 @@ public final class BrowserScreen extends GobScreen {
         }
     }
 
+    private List<SurfaceCall> theWholePagePaintedAfreshRatherThanPatched() {
+        return PaintList.ofTheScreen(root,
+                (int) Math.round(viewport.x()), (int) Math.round(viewport.y()),
+                drawDialect).calls(textMeasure());
+    }
+
+    /** How big the surface is, which is what a page sizes its canvas to. */
+    public PairValue theSizeOfTheSurface() {
+        return viewport;
+    }
+
     @Override
     public TextMeasure textMeasure() {
-        return hasADisplay() ? measure : ScreenPort.none().textMeasure();
+        return hasADisplay() ? TextMeasures.ofTheCarriedFont() : ScreenPort.none().textMeasure();
     }
 
     @Override
@@ -155,12 +166,6 @@ public final class BrowserScreen extends GobScreen {
     @Override
     protected void closeTheWindowFor(GobValue gob) {
         showing.removeIf(gob::sharesStorageWith);
-    }
-
-    private PaintList theWholePagePaintedAfreshRatherThanPatched() {
-        return PaintList.ofTheScreen(root,
-                (int) Math.round(viewport.x()), (int) Math.round(viewport.y()),
-                drawDialect);
     }
 
     public void theBrowserReports(ScreenEventKind kind, ScreenEventDetail detail) {

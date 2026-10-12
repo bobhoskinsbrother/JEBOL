@@ -2,17 +2,22 @@ package org.jebol.adapter.web;
 
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
+import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.render.PaintList;
+import org.jebol.domain.render.SurfaceCall;
 import org.teavm.jso.JSBody;
 import org.teavm.jso.JSExport;
 import org.teavm.jso.core.JSPromise;
 import org.teavm.jso.function.JSConsumer;
 
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
 public class TheInterpreterInAWorker {
 
     private static BrowserScreen screen;
     private static WebConsole console;
+    private static WebFiles files;
     private static Interpreter interpreter;
     private static JSConsumer<String> theNextScriptToSend;
 
@@ -24,7 +29,8 @@ public class TheInterpreterInAWorker {
                 TheInterpreterInAWorker::asTheScriptPrints, aWorkerRunsWhereTheScreenIs());
         interpreter.useScreen(screen);
         interpreter.useConsole(console);
-        interpreter.useFileSystem(new WebFiles());
+        files = new WebFiles(TheBrowsersStore.forThePage());
+        interpreter.useFileSystem(files);
         interpreter.useHttp(new WebHttp());
         say("booted", "");
         while (true) {
@@ -44,10 +50,10 @@ public class TheInterpreterInAWorker {
                 .granting(HostService.FILES)
                 .granting(HostService.WINDOWS)
                 .granting(HostService.WEB)
+                .granting(HostService.WORKING_DIRECTORY)
                 .lacking(HostService.NETWORK)
                 .lacking(HostService.PROCESSES)
                 .lacking(HostService.ENVIRONMENT)
-                .lacking(HostService.WORKING_DIRECTORY)
                 .called("a browser");
     }
 
@@ -71,7 +77,7 @@ public class TheInterpreterInAWorker {
     }
 
     private static String field(String name, String value) {
-        return PaintListAsJson.asAString(name) + ":" + PaintListAsJson.asAString(value);
+        return SurfaceCallsAsJson.asAString(name) + ":" + SurfaceCallsAsJson.asAString(value);
     }
 
     private static final class ThePageOnTheOtherSide implements BrowserScreen.Viewer {
@@ -84,11 +90,11 @@ public class TheInterpreterInAWorker {
         }
 
         @Override
-        public void paint(PaintList painting) {
+        public void paint(List<SurfaceCall> painting) {
             sendToThePage("{"
                     + field("kind", "paint") + ","
-                    + PaintListAsJson.asAString("picture") + ":"
-                    + PaintListAsJson.written(painting,
+                    + SurfaceCallsAsJson.asAString("picture") + ":"
+                    + SurfaceCallsAsJson.written(painting,
                             (int) Math.round(screen.viewport().x()),
                             (int) Math.round(screen.viewport().y()))
                     + "}");
@@ -105,11 +111,29 @@ public class TheInterpreterInAWorker {
                     }
                 } else if (said.isALine()) {
                     console.aLineWasTyped(said.theLine());
+                } else if (said.isAFile()) {
+                    said.theFileName().ifPresent(name -> said.theFileText().ifPresent(text ->
+                            putAFileThePageHandedOver(name, text)));
                 } else {
                     said.asAnEvent().ifPresent(kind ->
                             said.carrying(kind).ifPresent(detail ->
                                     screen.theBrowserReports(kind, detail)));
                 }
+            }
+        }
+
+        private void putAFileThePageHandedOver(String name, String text) {
+            try {
+                String parent = name.contains("/")
+                        ? name.substring(0, name.lastIndexOf('/'))
+                        : "";
+                if (!parent.isEmpty()) {
+                    files.makeDirectory(parent, true);
+                }
+                files.write(name, text.getBytes(StandardCharsets.UTF_8));
+            } catch (FilePort.Denied refused) {
+                say("failed", "the page's file " + name + " would not go in: "
+                        + refused.getMessage());
             }
         }
     }

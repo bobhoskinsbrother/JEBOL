@@ -72,6 +72,62 @@ public record PaintList(List<PaintInstruction> instructions) {
 
     private static final int DEPTHS_WHOSE_TEXT_IS_A_TITLE = 2;
 
+    public List<SurfaceCall> calls(TextMeasure measure) {
+        List<SurfaceCall> calls = new ArrayList<>();
+        for (PaintInstruction instruction : instructions) {
+            switch (instruction) {
+                case PaintInstruction.Fill filled -> calls.add(asARectangleCall(filled));
+                case PaintInstruction.Writing written -> calls.add(
+                        new SurfaceCall.Written(written.where(), PlacedText.of(written, measure)));
+                case PaintInstruction.Picture shown -> calls.add(new SurfaceCall.Pictured(
+                        shown.where(), shown.pixels(), shown.wide(), shown.high(), shown.transform()));
+                case PaintInstruction.Drawn drawing -> addWhatIsDrawn(calls, drawing);
+            }
+        }
+        return calls;
+    }
+
+    public void executeOn(Surface surface, TextMeasure measure) {
+        calls(measure).forEach(surface::execute);
+    }
+
+    private static SurfaceCall asARectangleCall(PaintInstruction.Fill filled) {
+        Placement where = filled.where();
+        double left = where.across();
+        double top = where.down();
+        double right = left + where.wide();
+        double bottom = top + where.high();
+        return new SurfaceCall.Filled(where,
+                List.of(
+                        new PathStep.MoveTo(left, top),
+                        new PathStep.LineTo(right, top),
+                        new PathStep.LineTo(right, bottom),
+                        new PathStep.LineTo(left, bottom),
+                        new PathStep.Close()),
+                FillRule.NON_ZERO, Optional.empty(), filled.colour(), Transform.NONE,
+                true);
+    }
+
+    private static void addWhatIsDrawn(
+            List<SurfaceCall> calls, PaintInstruction.Drawn drawing) {
+
+        PaintState painted = drawing.painted();
+        if (painted.fillGradient().isPresent()) {
+            calls.add(new SurfaceCall.Filled(drawing.where(), drawing.path(),
+                    painted.fillRule(), painted.fillGradient(), Colour.BLACK,
+                    drawing.transform(), painted.antiAliased()));
+        } else if (painted.fillColour().isPresent()) {
+            calls.add(new SurfaceCall.Filled(drawing.where(), drawing.path(),
+                    painted.fillRule(), Optional.empty(),
+                    painted.fillColour().orElseThrow(), drawing.transform(),
+                    painted.antiAliased()));
+        }
+        if (painted.strokeColour().isPresent()) {
+            calls.add(new SurfaceCall.Stroked(
+                    drawing.where(), drawing.path(), painted, drawing.transform()));
+        }
+    }
+
     private static PaintList within(
             GobValue root, ClipRectangle surface, int titledDepths,
             ObjectValue drawDialect) {
@@ -144,7 +200,7 @@ public record PaintList(List<PaintInstruction> instructions) {
                 / (float) Placement.OPAQUE);
     }
 
-    private static java.util.Optional<PaintInstruction> instructionFor(
+    private static Optional<PaintInstruction> instructionFor(
             GobStorage gob, Placement where) {
 
         return switch (gob.contentKind()) {
@@ -156,7 +212,7 @@ public record PaintList(List<PaintInstruction> instructions) {
         };
     }
 
-    private static java.util.Optional<PaintInstruction> filledWith(
+    private static Optional<PaintInstruction> filledWith(
             Value colour, Placement where) {
 
         if (!(colour instanceof TupleValue parts)) {
@@ -169,7 +225,7 @@ public record PaintList(List<PaintInstruction> instructions) {
                 new PaintInstruction.Fill(showing, Colour.ofTuple(parts).solid()));
     }
 
-    private static java.util.Optional<PaintInstruction> written(
+    private static Optional<PaintInstruction> written(
             Value held, Placement where) {
 
         String text = held instanceof AnyStringValue said
@@ -189,7 +245,7 @@ public record PaintList(List<PaintInstruction> instructions) {
                 : List.of(new PaintInstruction.Writing(where, line.runs(), line.layout(), line.caret()));
     }
 
-    private static java.util.Optional<PaintInstruction> pictured(
+    private static Optional<PaintInstruction> pictured(
             Value held, Placement where) {
 
         return held instanceof ImageValue pixels

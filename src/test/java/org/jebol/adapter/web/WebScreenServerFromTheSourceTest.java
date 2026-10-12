@@ -189,7 +189,7 @@ class WebScreenServerFromTheSourceTest {
             assertThat(message).contains("""
                     "kind":"fill",""");
             assertThat(message).contains("""
-                    "colour":"#0a141e"}""");
+                    "colour":"#0a141e",""");
             assertThat(message).contains("""
                     "clip":{""");
         }

@@ -2,9 +2,10 @@ package org.jebol.adapter.web;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import org.jebol.domain.render.PaintList;
+import org.jebol.domain.render.SurfaceCall;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -40,6 +41,7 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         listening.createContext("/paint",
                 serving::openThePaintStreamWhichOnlyTheBrowserEverCloses);
         listening.createContext("/event", serving::takeAnEvent);
+        listening.createContext("/NotoSans-Regular.ttf", serving::serveTheCarriedFont);
         listening.start();
         return serving;
     }
@@ -70,9 +72,9 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
     }
 
     @Override
-    public void paint(PaintList painting) {
+    public void paint(List<SurfaceCall> painting) {
         sendToEveryBrowser("paint",
-                PaintListAsJson.written(painting, wide, high));
+                SurfaceCallsAsJson.written(painting, wide, high));
     }
 
     @Override
@@ -87,6 +89,19 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         exchange.sendResponseHeaders(200, page.length);
         try (OutputStream out = exchange.getResponseBody()) {
             out.write(page);
+        }
+    }
+
+    private void serveTheCarriedFont(HttpExchange exchange) throws IOException {
+        byte[] font;
+        try (InputStream reading = WebScreenServer.class
+                .getResourceAsStream("/org/jebol/fonts/NotoSans-Regular.ttf")) {
+            font = reading.readAllBytes();
+        }
+        exchange.getResponseHeaders().add("Content-Type", "font/ttf");
+        exchange.sendResponseHeaders(200, font.length);
+        try (OutputStream out = exchange.getResponseBody()) {
+            out.write(font);
         }
     }
 

@@ -2,7 +2,7 @@ package org.jebol.adapter.host;
 
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventKind;
-import org.jebol.adapter.fonts.JavaTextMeasure;
+import org.jebol.application.TextMeasures;
 import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.render.TextMeasure;
@@ -15,6 +15,7 @@ import org.jebol.domain.value.Value;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.List;
 
@@ -33,7 +34,6 @@ public final class DesktopScreen extends GobScreen {
     private static final List<Integer> ICON_SIZES = List.of(16, 32, 64, 128, 256, 512);
 
     private final JebolsIcon icon = new JebolsIcon();
-    private final JavaTextMeasure measure = new JavaTextMeasure();
     private final boolean present;
     private final Map<GobValue, JFrame> windows = new IdentityHashMap<>();
 
@@ -162,7 +162,7 @@ public final class DesktopScreen extends GobScreen {
         if (!present) {
             return ScreenPort.none().textMeasure();
         }
-        return measure;
+        return TextMeasures.ofTheCarriedFont();
     }
 
     @Override
@@ -225,8 +225,9 @@ public final class DesktopScreen extends GobScreen {
         return aSurfacePainting(gob, reading);
     }
 
-    private static JPanel aSurfacePainting(
+    private JPanel aSurfacePainting(
             GobValue gob, org.jebol.domain.value.ObjectValue drawDialect) {
+        DesktopScreen onThisScreen = this;
         JPanel surface = new JPanel() {
 
             private static final long serialVersionUID = 1L;
@@ -234,8 +235,8 @@ public final class DesktopScreen extends GobScreen {
             @Override
             protected void paintComponent(Graphics onto) {
                 super.paintComponent(onto);
-                DesktopPainting.paintTheContentsOfLeavingItsTitleToTheTitleBar(
-                        (Graphics2D) onto, gob, drawDialect);
+                Java2DSurface.paintTheContentsOfLeavingItsTitleToTheTitleBar(
+                        (Graphics2D) onto, gob, drawDialect, onThisScreen.textMeasure());
             }
         };
         surface.setPreferredSize(new Dimension(
@@ -252,17 +253,17 @@ public final class DesktopScreen extends GobScreen {
                 posted(ScreenEventKind.CLOSE, gob);
             }
         });
-        frame.addComponentListener(new java.awt.event.ComponentAdapter() {
+        frame.addComponentListener(new ComponentAdapter() {
 
             @Override
-            public void componentResized(java.awt.event.ComponentEvent changed) {
+            public void componentResized(ComponentEvent changed) {
                 Dimension drawable = frame.getContentPane().getSize();
                 posted(ScreenEventKind.RESIZE, gob,
                         new ScreenEventDetail.At(drawable.width, drawable.height));
             }
 
             @Override
-            public void componentMoved(java.awt.event.ComponentEvent changed) {
+            public void componentMoved(ComponentEvent changed) {
                 posted(ScreenEventKind.OFFSET, gob,
                         new ScreenEventDetail.At(frame.getX(), frame.getY()));
             }
@@ -375,7 +376,7 @@ public final class DesktopScreen extends GobScreen {
             SwingUtilities.invokeAndWait(work);
         } catch (InterruptedException stopped) {
             Thread.currentThread().interrupt();
-        } catch (java.lang.reflect.InvocationTargetException failed) {
+        } catch (InvocationTargetException failed) {
             throw new Denied("no-service",
                     "the screen could not do that: " + failed.getCause());
         }

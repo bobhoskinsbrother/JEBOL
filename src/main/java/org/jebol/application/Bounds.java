@@ -4,6 +4,9 @@ import org.jebol.domain.host.HostService;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.EnumSet;
+import java.util.Locale;
+import java.util.Set;
 
 
 public record Bounds(
@@ -11,8 +14,8 @@ public record Bounds(
         int maximumNesting,
         int checkEvery,
         HostAccess hostAccess,
-        java.util.Set<HostService> grantedServices,
-        java.util.Set<HostService> lackingServices,
+        Set<HostService> grantedServices,
+        Set<HostService> lackingServices,
         String hostName) {
 
     private static final Duration DEFAULT_WALL_CLOCK_LIMIT = Duration.ofSeconds(5);
@@ -38,8 +41,8 @@ public record Bounds(
             throw new IllegalArgumentException(
                     "lacking services is a decision; use an empty set to lack nothing");
         }
-        grantedServices = java.util.Set.copyOf(grantedServices);
-        lackingServices = java.util.Set.copyOf(lackingServices);
+        grantedServices = Set.copyOf(grantedServices);
+        lackingServices = Set.copyOf(lackingServices);
         if (hostAccess == null) {
             throw new IllegalArgumentException(
                     "host access is a decision; use HostAccess.NONE_AT_ALL to decide against");
@@ -54,7 +57,7 @@ public record Bounds(
     public static Bounds standard() {
         return new Bounds(
                 DEFAULT_WALL_CLOCK_LIMIT, DEFAULT_MAXIMUM_NESTING, DEFAULT_CHECK_EVERY,
-                HostAccess.NONE_AT_ALL, java.util.Set.of(), java.util.Set.of(), DEFAULT_HOST_NAME);
+                HostAccess.NONE_AT_ALL, Set.of(), Set.of(), DEFAULT_HOST_NAME);
     }
 
     public Bounds withWallClockLimit(Duration limit) {
@@ -104,11 +107,11 @@ public record Bounds(
     public Bounds granting(HostService service) {
         if (lackingServices.contains(service)) {
             throw new IllegalArgumentException(hostName + " cannot grant "
-                    + service.name().toLowerCase(java.util.Locale.ROOT)
+                    + service.name().toLowerCase(Locale.ROOT)
                     + ": it has no way to offer it");
         }
-        java.util.Set<HostService> wider =
-                java.util.EnumSet.noneOf(HostService.class);
+        Set<HostService> wider =
+                EnumSet.noneOf(HostService.class);
         wider.addAll(grantedServices);
         wider.add(service);
         return new Bounds(wallClockLimit, maximumNesting, checkEvery, hostAccess, wider,
@@ -126,11 +129,11 @@ public record Bounds(
     public Bounds lacking(HostService service) {
         if (grantedServices.contains(service)) {
             throw new IllegalArgumentException(
-                    hostName + " cannot lack " + service.name().toLowerCase(java.util.Locale.ROOT)
+                    hostName + " cannot lack " + service.name().toLowerCase(Locale.ROOT)
                             + ": it was granted it");
         }
-        java.util.Set<HostService> fewer =
-                java.util.EnumSet.noneOf(HostService.class);
+        Set<HostService> fewer =
+                EnumSet.noneOf(HostService.class);
         fewer.addAll(lackingServices);
         fewer.add(service);
         return new Bounds(wallClockLimit, maximumNesting, checkEvery, hostAccess, grantedServices,

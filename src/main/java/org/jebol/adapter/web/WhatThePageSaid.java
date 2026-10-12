@@ -31,6 +31,18 @@ final class WhatThePageSaid {
         return said.text("text").orElse("");
     }
 
+    boolean isAFile() {
+        return said.text("kind").filter("file"::equals).isPresent();
+    }
+
+    Optional<String> theFileName() {
+        return said.text("path");
+    }
+
+    Optional<String> theFileText() {
+        return said.text("text");
+    }
+
     int wide() {
         return said.wholeNumber("wide").orElseThrow();
     }

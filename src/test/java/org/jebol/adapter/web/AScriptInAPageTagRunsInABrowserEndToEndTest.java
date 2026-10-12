@@ -174,7 +174,8 @@ class AScriptInAPageTagRunsInABrowserEndToEndTest {
                 return;
             }
             body = Files.readAllBytes(file);
-            contentType = asked.endsWith(".wasm") ? "application/wasm" : "text/javascript";
+            contentType = asked.endsWith(".wasm") ? "application/wasm"
+                    : asked.endsWith(".ttf") ? "font/ttf" : "text/javascript";
         }
         exchange.getResponseHeaders().add("Content-Type", contentType);
         exchange.sendResponseHeaders(200, body.length);

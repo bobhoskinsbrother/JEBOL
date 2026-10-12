@@ -2,6 +2,11 @@ package org.jebol.adapter.web;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import org.jebol.application.TextMeasures;
+import org.jebol.domain.host.DigestPorts;
+import org.jebol.domain.render.Colour;
+import org.jebol.domain.render.TextExtent;
+import org.jebol.domain.render.TextRun;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -93,7 +98,7 @@ class TheBrowserAdaptersEndToEndTest {
     }
 
     @Test
-    @DisplayName("a script fetches, keeps a file, reads the page's own line, and is refused the rest")
+    @DisplayName("a script fetches, keeps a file, reads the page's own line, measures text, and is refused the rest")
     void theScriptReachesTheOutside() {
         untilTheOutputContains("kept");
 
@@ -101,7 +106,7 @@ class TheBrowserAdaptersEndToEndTest {
         consoleInput.sendKeys("typed-here" + Keys.ENTER);
 
         untilThePageSays("the refusals",
-                () -> theLinesSoFar().contains("feature-na"));
+                () -> theLinesSoFar().contains(theSizeOfTheLabelsText()));
 
         assertThat(theLinesSoFar()).containsSubsequence(
                 "hello",
@@ -110,7 +115,47 @@ class TheBrowserAdaptersEndToEndTest {
                 "typed-here",
                 "true",
                 "protocol");
-        assertThat(theLinesSoFar()).contains("feature-na");
+        assertThat(theLinesSoFar())
+                .as("the worker's SHA-1 is the same digest the JVM takes")
+                .contains("#{" + theHexOf("abc") + "}");
+        assertThat(theLinesSoFar())
+                .as("and its HMAC is the same keyed digest the JVM takes")
+                .contains("#{" + theKeyedHexOf("abc") + "}");
+        assertThat(theLinesSoFar())
+                .as("the worker measured with the font this build carries")
+                .contains(theSizeOfTheLabelsText());
+
+        browser.navigate().refresh();
+        untilThePageSays("the file it wrote before the reload",
+                () -> theLinesSoFar().contains("again kept"));
+        assertThat(theLinesSoFar())
+                .as("a file a script wrote is a file a reload finds")
+                .contains("again kept");
+    }
+
+    private static String theSizeOfTheLabelsText() {
+        TextExtent extent = TextMeasures.ofTheCarriedFont().extentOf(
+                new TextRun("MMMM", Colour.BLACK, 12, false, false));
+        return Math.round(extent.wide()) + "x" + Math.round(extent.high());
+    }
+
+    private static String theHexOf(String text) {
+        return hexOf(DigestPorts.theOneForThisBuild()
+                .digestOf("sha1", text.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private static String theKeyedHexOf(String text) {
+        return hexOf(DigestPorts.theOneForThisBuild().keyedDigestOf(
+                "sha1", text.getBytes(StandardCharsets.UTF_8),
+                "key".getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private static String hexOf(byte[] octets) {
+        StringBuilder written = new StringBuilder();
+        for (byte octet : octets) {
+            written.append(String.format("%02X", octet));
+        }
+        return written.toString();
     }
 
     private void answer(HttpExchange exchange) throws IOException {
@@ -136,7 +181,8 @@ class TheBrowserAdaptersEndToEndTest {
                 return;
             }
             body = Files.readAllBytes(file);
-            contentType = asked.endsWith(".wasm") ? "application/wasm" : "text/javascript";
+            contentType = asked.endsWith(".wasm") ? "application/wasm"
+                    : asked.endsWith(".ttf") ? "font/ttf" : "text/javascript";
         }
         respond(exchange, body, contentType, 200);
     }

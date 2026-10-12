@@ -1,11 +1,13 @@
 package org.jebol.adapter.web;
 
-import org.jebol.adapter.host.DesktopPainting;
+import org.jebol.adapter.host.Java2DSurface;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
+import org.jebol.application.TextMeasures;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.value.GobValue;
+import org.jebol.domain.value.ObjectValue;
 import org.junit.jupiter.api.*;
 import org.openqa.selenium.By;
 import org.openqa.selenium.OutputType;
@@ -22,6 +24,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -360,21 +364,22 @@ class PageRendersLikeTheDesktopTest {
         try {
             onto.setColor(Color.WHITE);
             onto.fillRect(0, 0, wide, high);
-            DesktopPainting.execute(onto,
-                    PaintList.ofTheScreen(root, wide, high, theDrawDialect));
+            Java2DSurface.execute(onto,
+                    PaintList.ofTheScreen(root, wide, high, theDrawDialect),
+                    TextMeasures.ofTheCarriedFont());
         } finally {
             onto.dispose();
         }
         return surface;
     }
 
-    private org.jebol.domain.value.ObjectValue theDrawDialect;
+    private ObjectValue theDrawDialect;
 
     private Interpreter anInterpreterOnThisPage() {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().granting(HostService.WINDOWS));
         interpreter.useScreen(screen);
-        theDrawDialect = (org.jebol.domain.value.ObjectValue)
+        theDrawDialect = (ObjectValue)
                 interpreter.run("system/dialects/draw").value();
         return interpreter;
     }
@@ -384,7 +389,7 @@ class PageRendersLikeTheDesktopTest {
     }
 
     private static int howManyColoursAreIn(BufferedImage surface) {
-        java.util.Set<Integer> seen = new java.util.HashSet<>();
+        Set<Integer> seen = new HashSet<>();
         for (int down = 0; down < surface.getHeight(); down++) {
             for (int across = 0; across < surface.getWidth(); across++) {
                 seen.add(surface.getRGB(across, down) & 0xFFFFFF);

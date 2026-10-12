@@ -21,6 +21,24 @@ public final class WebFiles implements FilePort {
 
     private String whereARelativePathCountsFromNow = "/";
 
+    private final Store store;
+
+    public WebFiles() {
+        this(Store.memory());
+    }
+
+    public WebFiles(Store store) {
+        this.store = store;
+        Store.Tree stored = store.everything();
+        directories.addAll(stored.directories());
+        stored.files().forEach((path, contents) -> {
+            files.put(path, contents.clone());
+            for (String parent = parentOf(path); !directories.contains(parent); parent = parentOf(parent)) {
+                directories.add(parent);
+            }
+        });
+    }
+
     @Override
     public byte[] readBytes(String path) {
         byte[] held = files.get(absolute(path));
@@ -34,6 +52,7 @@ public final class WebFiles implements FilePort {
     public void write(String path, byte[] contents) {
         String target = absolute(path);
         requireTheParentDirectory(target, path);
+        store.wrote(target, contents.clone());
         files.put(target, contents.clone());
     }
 
@@ -46,6 +65,7 @@ public final class WebFiles implements FilePort {
         byte[] written = new byte[grown];
         System.arraycopy(held, 0, written, 0, held.length);
         System.arraycopy(contents, 0, written, (int) position, contents.length);
+        store.wrote(target, written.clone());
         files.put(target, written);
     }
 
@@ -57,6 +77,7 @@ public final class WebFiles implements FilePort {
         byte[] grown = new byte[held.length + contents.length];
         System.arraycopy(held, 0, grown, 0, held.length);
         System.arraycopy(contents, 0, grown, held.length, contents.length);
+        store.wrote(target, grown.clone());
         files.put(target, grown);
     }
 
@@ -104,6 +125,7 @@ public final class WebFiles implements FilePort {
             directories.add(made);
         }
         directories.add(target);
+        store.madeADirectory(target);
     }
 
     @Override
@@ -118,12 +140,17 @@ public final class WebFiles implements FilePort {
                 throw new Denied("no-delete", "cannot delete " + path, path);
             }
             directories.remove(target);
+            store.removed(target);
             return true;
         }
         if (directories.contains(target)) {
             throw new Denied("no-delete", "cannot delete " + path, path);
         }
-        return files.remove(target) != null;
+        if (files.remove(target) == null) {
+            return false;
+        }
+        store.removed(target);
+        return true;
     }
 
     @Override
@@ -134,6 +161,8 @@ public final class WebFiles implements FilePort {
         }
         String target = absolute(to);
         requireTheParentDirectory(target, to);
+        store.removed(absolute(from));
+        store.wrote(target, held.clone());
         files.put(target, held);
     }
 
@@ -239,5 +268,50 @@ public final class WebFiles implements FilePort {
 
     private static boolean namesADirectory(String path) {
         return path.endsWith("/");
+    }
+
+    public interface Store {
+
+        Tree everything();
+
+        void wrote(String path, byte[] contents);
+
+        void removed(String path);
+
+        void madeADirectory(String path);
+
+        record Tree(Map<String, byte[]> files, Set<String> directories) {
+
+            public Tree {
+                files = Map.copyOf(files);
+                directories = Set.copyOf(directories);
+            }
+
+            public static Tree empty() {
+                return new Tree(Map.of(), Set.of());
+            }
+        }
+
+        static Store memory() {
+            return new Store() {
+
+                @Override
+                public Tree everything() {
+                    return Tree.empty();
+                }
+
+                @Override
+                public void wrote(String path, byte[] contents) {
+                }
+
+                @Override
+                public void removed(String path) {
+                }
+
+                @Override
+                public void madeADirectory(String path) {
+                }
+            };
+        }
     }
 }

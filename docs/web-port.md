@@ -1,8 +1,9 @@
 # The web port
 
-Goal 1 in `goals.md`: one interpreter and one drawing engine on every platform,
-the web first, with the interpreter compiled to WebAssembly. This note carries
-what the code cannot. `CLAUDE.md` carries the method.
+One interpreter and one way of drawing on every platform, the web first, with
+the interpreter compiled to WebAssembly. This was goal 1 in `goals.md` and it
+is finished, so the goal is deleted and this note is the record. It carries
+what the code cannot; `CLAUDE.md` carries the method.
 
 ---
 
@@ -23,14 +24,23 @@ The pieces:
 | The worker's shell | `src/teavm/js/jebol-worker.js`, copied beside the module by the `copyTheWorkerScript` task |
 | The web's substitutions and the library-file list | `src/teavm/java` and `src/teavm/resources`, wired in `build.gradle.kts` |
 | The library files TeaVM must embed | listed by the `writeTheWebResourceList` task from `src/main/resources/org/jebol`, so the list cannot drift |
-| The page and its scripts | `src/test/resources/web/rebol-on-a-page.html`, two Rebol tags -- the Brotli script and a GUI script -- a canvas, and the renderer copied from `WebScreenPage`; `rebol-adapters-on-a-page.html` adds an input element and a script that fetches, keeps a file and reads a typed line |
+| The page and its scripts | `site/index.html` is the shipped page -- the R3 GUI examples with no server -- and `src/test/resources/web/rebol-on-a-page.html` and `rebol-adapters-on-a-page.html` are the gate's own; each carries a canvas and a replayer of the surface's calls copied from `WebScreenPage` |
+| The site a host serves | `assembleTheSite` copies `site/`, the module, its loader, the worker's shell, the font with its licence and `examples/r3-gui` into `build/site`; `TheExamplesWithNoServerEndToEndTest` serves that directory and nothing else, so the gate drives the artifact itself |
 | The unit level | `AScriptInAPageTagFromTheSourceTest` runs the first tag's script on the JVM and pins its eight printed lines; `AFilesystemInTheWorkersMemoryTest` and `ThePageConsoleFromTheSourceTest` cover the browser's files and console |
-| The end-to-end level | `AScriptInAPageTagRunsInABrowserEndToEndTest` serves the build and the page, drives Chrome, and checks the eight lines, the canvas, a click, and a resize; `TheBrowserAdaptersEndToEndTest` fetches from the test's own server, writes and reads a file, types into the console element, and catches the refusals |
+| The end-to-end level | `AScriptInAPageTagRunsInABrowserEndToEndTest` serves the build and the page, drives Chrome, and checks the eight lines, the canvas, a click, and a resize; `TheBrowserAdaptersEndToEndTest` fetches from the test's own server, writes and reads a file, types into the console element, and catches the refusals; `TheExamplesWithNoServerEndToEndTest` drives the assembled site -- a real drag changes the slider, a real click and real keys put a name in the survey's field |
 
-Measured so far: the WebAssembly module is 13.7 MB unobfuscated beside a 38 KB
-runtime loader (the worker's shell is a few KB more); the trial below measured
-a boot in Chrome of 477 ms going cold and 164 to 201 ms warm. The shipped
-form, obfuscated and compressed, is goal 1 step 5's business.
+Measured on 2026-10-12, `gzip -9`: the module is 13.7 MB unobfuscated and 4.1 MB
+gzipped, the runtime loader 38 KB and 8.6 KB, the worker's shell 5.5 KB and
+1.7 KB, the carried font 556 KB and 277 KB, the page with its examples 90 KB and
+26 KB -- the whole site 14.3 MB, 4.4 MB gzipped, which is what a page downloads
+to run its first example. Obfuscation is deliberately off: the TeaVM faults
+below are read from the names in a stack trace. `goals.md` carries these
+figures.
+
+The trial below measured a boot in Chrome of 477 ms going cold and 164 to 201 ms
+warm. The shipped page now prints its own boot -- page start to the interpreter
+ready, worker spawn, module fetch and compile included -- and in the gate's
+headless Chrome it reported 598 ms.
 
 The two pieces of blocking code named in this note are gone. WAIT's sleep is a
 port (`PausePort`, in `org.jebol.domain.host`) that the interpreter asks one
@@ -160,49 +170,45 @@ and a stub without a hierarchy is invalid wasm wherever a cast touches it.
 
 **A page has less outside it than a machine, and the worker says so once.**
 `TheInterpreterInAWorker` builds the browser's bounds: console, files,
-windows and web are granted; network, processes, environment and working
-directory are `lacking`, so a script that reaches for a raw connection or
-another program reads `not_present` with the browser named rather than
-`not_granted`. That is decision 31 in `docs/decisions.md`, and
-`ABrowserHostFromTheSourceTest` pins the sentences.
+windows, web and a working directory are granted, because each of those the
+page can supply; network, processes and environment are `lacking`, so a
+script that reaches for a raw connection or another program reads
+`not_present` with the browser named rather than `not_granted`. That is
+decision 31 in `docs/decisions.md`, and `ABrowserHostFromTheSourceTest` pins
+the sentences.
 
 **HTTP is the browser's own.** `WebHttp` (`src/teavm`) answers the `HttpPort`
 the worker supplies, and `read http://...` goes through `fetch` -- names,
-redirects and certificates are the browser's, and the fiber suspends on the
-promise while it is in flight. Decision 32 has the shape; a page that fetches
-outside its own origin is subject to the browser's CORS rules like any other
-page.
+redirects and certificates are the browser's, and the run waits on the
+promise while it is in flight, which is the pause-and-resume decision 28
+describes. Decision 32 has the shape; a page that fetches outside its own
+origin is subject to the browser's CORS rules like any other page.
 
-**Files are the worker's memory and the console is the page's element** -
-`WebFiles` and `WebConsole` (`org.jebol.adapter.web`). Nothing survives a
-reload; decision 33 says why, and what would change it.
+**Files are the page's private store for the site, and the console is the
+page's element** - `WebFiles`, `TheBrowsersStore` and `WebConsole`
+(`org.jebol.adapter.web`). The whole store is loaded once at boot and every
+change is awaited into it, so a reload finds what a script wrote; a browser
+without OPFS falls back to memory. Decision 33.
 
-**Crypto is refused by stand-ins that throw, and the refusals are ordinary
-errors.** The stand-ins name the method they cannot compute, and the domain
-catches them and raises `feature-na`, so `checksum "abc" 'sha1` and
-`random/secure` are values a script can catch. What the web supplies instead
-is decided in decision 34: digests and HMACs from WebCrypto, the rest
-refused. The TLS checking is goal 3's.
+**Crypto is the browser's own where it can be, and refused where it cannot.**
+`DigestPort` (`org.jebol.domain.host`) is the port; the web build substitutes
+`WebDigestPorts` over `crypto.subtle`, so SHA-1, SHA-256, SHA-384, SHA-512 and
+HMAC over them are the browser's answers and everything else -- `md5`,
+`sha224`, the SHA-3 sizes -- is absent from the catalogue and refused by
+name. JEBOL's own Java digests work everywhere, and so do its ciphers. The
+browser gate asserts the worker's SHA-1 and HMAC equal the JVM's. Decision 34;
+the TLS checking is goal 2's.
 
 The web build starts no processes: `ProcessHandle` answers "there is only this
 one" and `ExecutableFile.markRunnable` answers true without touching the file.
 
-The worker measures no text: `TextMeasures` is substituted whole to
-`WebTextMeasures`, which refuses with the same no-service a screen without a
-display gives. A page's canvas knows its own fonts and the interpreter cannot
-reach it synchronously from where it runs; the bundled font and the reader
-belong to the drawing engine, step 3.
+The worker measures text with the font this build carries: `CarriedFont`
+reads the metrics and `TextMeasures` is the one measure every screen
+answers with, so SIZE-TEXT, wrapping and carets are the domain's and the same
+on every platform. The page draws its glyphs with the same face, loaded from
+the file the build serves. Decisions 33 and 35.
 
-## What is left
-
-- Files that survive a reload: a port over the browser's private store for
-  the site, which is asynchronous, so every call would suspend the fiber.
-- The WebCrypto digests decision 34 records: a port behind the domain's
-  hashing, reached asynchronously the way HTTP is.
-- Gzipped sizes, which is what a page downloads, and the obfuscated module's
-  size beside the jar's in `goals.md`.
-- Boot measured on the shipped entry point rather than the trial harness (the
-  entry runs the script once and prints no timings; the harness that measured
-  boot five times a page is gone with the scratchpad).
-- Goal 1, steps 3 to 5: one drawing engine in the domain, the examples with
-  no server, and a build that ships.
+What replaced the trial's scratchpad harness: the shipped page reports its own
+boot in the output panel, and `TheExamplesWithNoServerEndToEndTest` fails if
+that line is missing, so the shipped entry point is where the timing comes
+from.

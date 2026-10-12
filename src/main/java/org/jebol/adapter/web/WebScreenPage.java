@@ -14,6 +14,7 @@ final class WebScreenPage {
             <style>
               html, body { margin: 0; height: 100%; background: #101216; }
               canvas { display: block; }
+              @font-face { font-family: 'Jebol Carried'; src: url('NotoSans-Regular.ttf'); }
             </style>
             </head>
             <body>
@@ -34,265 +35,126 @@ final class WebScreenPage {
               tell({ kind: 'measure', wide: window.innerWidth, high: window.innerHeight });
             }
 
+            let theLastPicture = null;
+
             function paint(picture) {
+              theLastPicture = picture;
               canvas.width = picture.wide;
               canvas.height = picture.high;
               brush.clearRect(0, 0, picture.wide, picture.high);
-              for (const step of picture.paint) {
-                brush.save();
-                brush.beginPath();
-                brush.rect(step.clip.across, step.clip.down, step.clip.wide, step.clip.high);
-                brush.clip();
-                if (step['clip-shape'] && step['clip-shape'].length) {
-                  const t = step.transform;
-                  brush.save();
-                  if (t) brush.transform(t[0], t[1], t[2], t[3], t[4], t[5]);
-                  const inside = asPath(step['clip-shape']);
-                  brush.restore();
-                  if (t) {
-                    const placed = new Path2D();
-                    const shift = new DOMMatrix([t[0], t[1], t[2], t[3], t[4], t[5]]);
-                    placed.addPath(inside, shift);
-                    brush.clip(placed);
-                  } else {
-                    brush.clip(inside);
-                  }
-                }
-                brush.globalAlpha = step.opacity / 255;
-                if (step.kind === 'fill') {
-                  brush.fillStyle = step.colour;
-                  brush.fillRect(step.across, step.down, step.wide, step.high);
-                } else if (step.kind === 'writing') {
-                  writeTheLine(step);
-                } else if (step.kind === 'picture') {
-                  showPicture(step);
-                } else if (step.kind === 'drawing') {
-                  drawShape(step);
-                }
-                brush.restore();
+              for (const call of picture.paint) {
+                paintOneCall(call);
               }
             }
 
-            function fontOf(run) {
-              return (run.italic ? 'italic ' : '') + (run.bold ? 'bold ' : '')
-                  + run.size + 'px sans-serif';
-            }
-
-            function measured(run, text) {
-              brush.font = fontOf(run);
-              const found = brush.measureText(text);
-              return { wide: found.width, ascent: found.fontBoundingBoxAscent,
-                       descent: found.fontBoundingBoxDescent };
-            }
-
-            function aPiece(runs, run, from, text) {
-              return { run: run, from: from, text: text, font: runs[run],
-                       wide: measured(runs[run], text).wide };
-            }
-
-            function theLinesBetweenNewlines(runs) {
-              const lines = [];
-              let pieces = [];
-              runs.forEach((run, index) => {
-                const characters = [...run.text];
-                let from = 0;
-                for (let at = 0; at <= characters.length; at++) {
-                  const endsTheRun = at === characters.length;
-                  if (endsTheRun || characters[at] === '\\n') {
-                    pieces.push(aPiece(runs, index, from, characters.slice(from, at).join('')));
-                    if (!endsTheRun) {
-                      lines.push(pieces);
-                      pieces = [];
-                      from = at + 1;
-                    }
-                  }
-                }
-              });
-              if (pieces.length) lines.push(pieces);
-              return lines;
-            }
-
-            function theLinesOf(runs, room) {
-              return theLinesBetweenNewlines(runs).flatMap(pieces => brokenToFit(runs, pieces, room));
-            }
-
-            function isASpace(letter) {
-              return letter.character === ' ' || letter.character === '\\t';
-            }
-
-            function theLettersOf(pieces) {
-              const letters = [];
-              pieces.forEach(piece => {
-                if (piece.text === '') letters.push({ run: piece.run, at: piece.from, character: null });
-                [...piece.text].forEach((character, index) =>
-                  letters.push({ run: piece.run, at: piece.from + index, character: character }));
-              });
-              return letters;
-            }
-
-            function thePiecesOf(runs, letters) {
-              const pieces = [];
-              let start = 0;
-              while (start < letters.length) {
-                let end = start + 1;
-                while (end < letters.length && letters[end].run === letters[start].run
-                       && letters[start].character !== null && letters[end].character !== null) end++;
-                const text = letters.slice(start, end).filter(letter => letter.character !== null)
-                    .map(letter => letter.character).join('');
-                pieces.push(aPiece(runs, letters[start].run, letters[start].at, text));
-                start = end;
+            function paintOneCall(call) {
+              brush.save();
+              brush.beginPath();
+              brush.rect(call.clip.across, call.clip.down, call.clip.wide, call.clip.high);
+              brush.clip();
+              if (call['clip-shape'] && call['clip-shape'].length) {
+                clipToTheShape(call);
               }
-              return pieces;
-            }
-
-            function widthOf(pieces) {
-              return pieces.reduce((sum, piece) => sum + piece.wide, 0);
-            }
-
-            function aLineOfTheLetters(runs, letters) {
-              let printed = letters.length;
-              while (printed > 0 && isASpace(letters[printed - 1])) printed--;
-              return aLineOf(thePiecesOf(runs, letters), widthOf(thePiecesOf(runs, letters.slice(0, printed))));
-            }
-
-            function brokenToFit(runs, pieces, room) {
-              const letters = theLettersOf(pieces);
-              if (room === Infinity || !letters.length) return [aLineOf(pieces, widthOf(pieces))];
-              const fits = some => widthOf(thePiecesOf(runs, some)) <= room;
-              const broken = [];
-              let lineStart = 0, at = 0;
-              while (at < letters.length) {
-                let wordEnd = at;
-                while (wordEnd < letters.length && !isASpace(letters[wordEnd])) wordEnd++;
-                if (fits(letters.slice(lineStart, wordEnd))) {
-                  at = wordEnd;
-                  while (at < letters.length && isASpace(letters[at])) at++;
-                } else if (at > lineStart) {
-                  broken.push(aLineOfTheLetters(runs, letters.slice(lineStart, at)));
-                  lineStart = at;
-                } else {
-                  let fitting = at + 1;
-                  while (fitting < wordEnd && fits(letters.slice(at, fitting + 1))) fitting++;
-                  broken.push(aLineOfTheLetters(runs, letters.slice(at, fitting)));
-                  lineStart = fitting;
-                  at = fitting;
-                }
+              brush.globalAlpha = call.opacity / 255;
+              if (call.kind === 'fill') {
+                fillThePath(call);
+              } else if (call.kind === 'stroke') {
+                strokeThePath(call);
+              } else if (call.kind === 'picture') {
+                showPicture(call);
+              } else if (call.kind === 'text') {
+                writeTheText(call);
               }
-              if (lineStart < letters.length || !broken.length) {
-                broken.push(aLineOfTheLetters(runs, letters.slice(lineStart)));
-              }
-              return broken;
+              brush.restore();
             }
 
-            function aLineOf(pieces, wide) {
-              let ascent = 0, descent = 0;
-              pieces.forEach(piece => {
-                const extent = measured(piece.font, piece.text);
-                ascent = Math.max(ascent, extent.ascent);
-                descent = Math.max(descent, extent.descent);
-              });
-              return { pieces: pieces, wide: wide, ascent: ascent, descent: descent,
-                       high: ascent + descent };
+            function isIdentity(t) {
+              return !t || (t[0] === 1 && t[1] === 0 && t[2] === 0
+                  && t[3] === 1 && t[4] === 0 && t[5] === 0);
             }
 
-            function theRoomForEachLine(step) {
-              const layout = step.layout;
-              return layout.wraps ? step.wide - layout['origin-across'] - layout['margin-across'] : Infinity;
-            }
-
-            function placeTheLines(step, lines) {
-              const layout = step.layout;
-              const roomAcross = step.wide - layout['origin-across'] - layout['margin-across'];
-              const roomDown = step.high - layout['origin-down'] - layout['margin-down'];
-              const tallness = lines.reduce((sum, line) => sum + line.high, 0);
-              const spareDown = roomDown - tallness;
-              let top = step.down + layout['origin-down']
-                  + { top: 0, middle: spareDown / 2, bottom: spareDown }[layout.valign];
-              lines.forEach(line => {
-                const spareAcross = roomAcross - line.wide;
-                line.left = step.across + layout['origin-across']
-                    + { left: 0, centre: spareAcross / 2, right: spareAcross }[layout.align];
-                line.top = top;
-                top += line.high;
-              });
-            }
-
-            function whereTheCaretIs(lines, run, character) {
-              for (const line of [...lines].reverse()) {
-                let along = line.left;
-                for (const piece of line.pieces) {
-                  const length = [...piece.text].length;
-                  if (piece.run === run && character >= piece.from && character <= piece.from + length) {
-                    const before = [...piece.text].slice(0, character - piece.from).join('');
-                    return { across: along + measured(piece.font, before).wide, top: line.top, high: line.high };
-                  }
-                  along += piece.wide;
-                }
-              }
-              const last = lines[lines.length - 1];
-              return { across: last.left + last.wide, top: last.top, high: last.high };
-            }
-
-            function markTheSelection(step, lines, selection) {
-              const from = whereTheCaretIs(lines, selection['from-run'], selection['from-character']);
-              const to = whereTheCaretIs(lines, selection['to-run'], selection['to-character']);
-              const first = from.top < to.top || (from.top === to.top && from.across <= to.across) ? from : to;
-              const last = first === from ? to : from;
-              brush.fillStyle = '#aac8f5';
-              if (first.top === last.top) {
-                brush.fillRect(first.across, first.top, last.across - first.across, first.high);
+            function clipToTheShape(call) {
+              const inside = asPath(call['clip-shape']);
+              if (isIdentity(call.transform)) {
+                brush.clip(inside);
                 return;
               }
-              const right = step.across + step.wide;
-              brush.fillRect(first.across, first.top, right - first.across, first.high);
-              brush.fillRect(step.across, first.top + first.high, step.wide, last.top - first.top - first.high);
-              brush.fillRect(step.across, last.top, last.across - step.across, last.high);
+              const t = call.transform;
+              const placed = new Path2D();
+              placed.addPath(inside, new DOMMatrix([t[0], t[1], t[2], t[3], t[4], t[5]]));
+              brush.clip(placed);
             }
 
-            function writeTheLine(step) {
-              const layout = step.layout;
-              const lines = theLinesOf(step.runs, theRoomForEachLine(step));
-              if (!lines.length) return;
-              placeTheLines(step, lines);
-              if (step.caret && step.caret.selection) markTheSelection(step, lines, step.caret.selection);
-              if (layout['shadow-across'] !== 0 || layout['shadow-down'] !== 0) {
-                writeTheRuns(lines, layout['shadow-across'], layout['shadow-down'], '#000000');
-              }
-              writeTheRuns(lines, 0, 0, null);
-              if (step.caret) {
-                const placed = whereTheCaretIs(lines, step.caret.run, step.caret.character);
-                const run = step.runs[step.caret.run];
-                brush.fillStyle = run ? run.colour : '#000000';
-                brush.fillRect(placed.across, placed.top, 1, placed.high);
-              }
-            }
-
-            function writeTheRuns(lines, movedAcross, movedDown, everyRunIn) {
-              lines.forEach(line => {
-                let along = line.left + movedAcross;
-                line.pieces.forEach(piece => {
-                  brush.font = fontOf(piece.font);
-                  brush.fillStyle = everyRunIn || piece.font.colour;
-                  brush.fillText(piece.text, along, line.top + line.ascent + movedDown);
-                  along += piece.wide;
-                });
-              });
+            function applyTransform(call) {
+              const t = call.transform;
+              if (!isIdentity(t)) brush.transform(t[0], t[1], t[2], t[3], t[4], t[5]);
             }
 
             const capNames = { 'butt': 'butt', 'square': 'square', 'rounded': 'round' };
             const joinNames = { 'miter': 'miter', 'miter-bevel': 'miter',
                                 'round': 'round', 'bevel': 'bevel' };
 
-            function showPicture(step) {
-              const pixels = asImageData(step);
+            function fillThePath(call) {
+              applyTransform(call);
+              brush.fillStyle = call.gradient ? asGradient(call.gradient) : call.colour;
+              brush.fill(asPath(call.path), call.rule === 'even-odd' ? 'evenodd' : 'nonzero');
+            }
+
+            function strokeThePath(call) {
+              applyTransform(call);
+              brush.strokeStyle = call.colour;
+              brush.lineWidth = call.width;
+              brush.lineCap = capNames[call.cap];
+              brush.lineJoin = joinNames[call.join];
+              brush.setLineDash(call.dashes || []);
+              brush.stroke(asPath(call.path));
+              brush.setLineDash([]);
+            }
+
+            function showPicture(call) {
+              applyTransform(call);
+              const pixels = asImageData(call);
               const held = document.createElement('canvas');
               held.width = pixels.width;
               held.height = pixels.height;
               held.getContext('2d').putImageData(pixels, 0, 0);
-              const t = step.transform;
-              if (t) brush.transform(t[0], t[1], t[2], t[3], t[4], t[5]);
-              brush.drawImage(held, step.across, step.down,
-                  step['draw-wide'], step['draw-high']);
+              brush.drawImage(held, call.across, call.down,
+                  call['draw-wide'], call['draw-high']);
+            }
+
+            function fontOf(piece) {
+              return (piece.italic ? 'italic ' : '') + (piece.bold ? 'bold ' : '')
+                  + piece.size + 'px "Jebol Carried", sans-serif';
+            }
+
+            function writeTheText(call) {
+              if (call.selection && call.selection.length) {
+                brush.fillStyle = call['selection-colour'];
+                for (const patch of call.selection) {
+                  brush.fillRect(patch.across, patch.top, patch.wide, patch.high);
+                }
+              }
+              if (call.shadow) {
+                writeThePieces(call.lines, call.shadow.across, call.shadow.down,
+                    call.shadow.colour);
+              }
+              writeThePieces(call.lines, 0, 0, null);
+              if (call.caret) {
+                brush.fillStyle = call.caret.colour;
+                brush.fillRect(call.caret.across, call.caret.top,
+                    call.caret.wide, call.caret.high);
+              }
+            }
+
+            function writeThePieces(lines, movedAcross, movedDown, everyPieceIn) {
+              for (const line of lines) {
+                for (const piece of line.pieces) {
+                  brush.font = fontOf(piece);
+                  brush.fillStyle = everyPieceIn || piece.colour;
+                  brush.fillText(piece.text, piece.across + movedAcross,
+                      piece.baseline + movedDown);
+                }
+              }
             }
 
             function asGradient(fill) {
@@ -307,27 +169,6 @@ final class WebScreenPage {
                 run.addColorStop(Math.min(1, Math.max(0, stop.at)), stop.colour);
               }
               return run;
-            }
-
-            function drawShape(step) {
-              const shape = asPath(step.path);
-              const t = step.transform;
-              brush.transform(t[0], t[1], t[2], t[3], t[4], t[5]);
-              if (step.fill) {
-                brush.fillStyle = step.fill.gradient
-                    ? asGradient(step.fill)
-                    : step.fill.colour;
-                brush.fill(shape, step.fill.rule === 'even-odd' ? 'evenodd' : 'nonzero');
-              }
-              if (step.stroke) {
-                brush.strokeStyle = step.stroke.colour;
-                brush.lineWidth = step.stroke.width;
-                brush.lineCap = capNames[step.stroke.cap];
-                brush.lineJoin = joinNames[step.stroke.join];
-                brush.setLineDash(step.stroke.dashes || []);
-                brush.stroke(shape);
-                brush.setLineDash([]);
-              }
             }
 
             function asPath(steps) {
@@ -373,6 +214,10 @@ final class WebScreenPage {
             const pictures = new EventSource('/paint');
             pictures.addEventListener('paint', message => paint(JSON.parse(message.data)));
             pictures.addEventListener('open', sayHowBigWeAre);
+
+            document.fonts.load('12px "Jebol Carried"').then(() => {
+              if (theLastPicture) paint(theLastPicture);
+            });
 
             const keysThatTypeNothing = {
               PageUp: 'page-up', PageDown: 'page-down', End: 'end', Home: 'home',

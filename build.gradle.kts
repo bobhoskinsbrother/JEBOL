@@ -78,8 +78,34 @@ val copyTheWorkerScript by tasks.registering(Copy::class) {
     into(layout.buildDirectory.dir("generated/teavm/wasm-gc"))
 }
 
+// The font this build carries is fetched by the page and drawn with, so it is
+// served beside the page that asks for it.
+val copyTheCarriedFont by tasks.registering(Copy::class) {
+    group = "build"
+    description = "Put the font this build carries beside the WebAssembly module"
+    from("src/main/resources/org/jebol/fonts/NotoSans-Regular.ttf")
+    into(layout.buildDirectory.dir("generated/teavm/wasm-gc"))
+}
+
 tasks.named("buildWasmGC") {
-    dependsOn(copyTheWorkerScript)
+    dependsOn(copyTheWorkerScript, copyTheCarriedFont)
+}
+
+// The static files a host can serve with no server code at all: the page, the
+// module and its loader, the worker's shell, the font with its licence, and
+// the examples the page runs. `browserCheck` drives this site, so the gate
+// measures the artifact rather than a rehearsal of it.
+val assembleTheSite by tasks.registering(Sync::class) {
+    group = "build"
+    description = "Assemble the static site: the examples page and everything it fetches"
+    dependsOn(tasks.named("buildWasmGC"))
+    into(layout.buildDirectory.dir("site"))
+    from("site")
+    from("examples/r3-gui") { into("examples/r3-gui") }
+    from(layout.buildDirectory.dir("generated/teavm/wasm-gc")) {
+        include("jebol-web.wasm", "jebol-web-runtime.js", "jebol-worker.js", "NotoSans-Regular.ttf")
+    }
+    from("src/main/resources/org/jebol/fonts/NotoSans-OFL.txt")
 }
 
 // TeaVM only embeds a resource it is told about. The list is written from the
@@ -131,7 +157,11 @@ val browserCheck by tasks.registering(Test::class) {
         "jebol.webBuild",
         layout.buildDirectory.dir("generated/teavm/wasm-gc").get().asFile.path,
     )
-    dependsOn(tasks.named("buildWasmGC"))
+    systemProperty(
+        "jebol.webSite",
+        layout.buildDirectory.dir("site").get().asFile.path,
+    )
+    dependsOn(tasks.named("buildWasmGC"), assembleTheSite)
     outputs.upToDateWhen { false }
 }
 

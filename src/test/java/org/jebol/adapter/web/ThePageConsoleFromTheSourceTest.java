@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Timeout;
 
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -55,7 +56,7 @@ class ThePageConsoleFromTheSourceTest {
         typist.start();
 
         assertThat(console.readLine()).isEqualTo("arrived");
-        assertThat(taken.await(Duration.ofSeconds(1).toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS))
+        assertThat(taken.await(Duration.ofSeconds(1).toMillis(), TimeUnit.MILLISECONDS))
                 .isTrue();
         typist.join();
     }

@@ -964,23 +964,25 @@ value HttpResponse {
 -- A browser is a host worth naming, because the page it runs in can do
 -- less than a machine and the difference is visible to scripts.
 --
--- It has a console the page shows, files in a store of that site's own,
--- the clock, the screen it is drawn on, the clipboard, and HTTP through
--- the browser's own fetching. It has no raw connection, no way to start a
--- program, no environment it was launched with and no working directory
--- of its own, because a page has none of those.
+-- It has a console the page shows, files in a store of that site's own, the
+-- clock, the screen it is drawn on, the clipboard, HTTP through the
+-- browser's own fetching, and a working directory -- which is the
+-- interpreter's own and costs the page nothing, since it lives inside the
+-- store the host already has. It has no raw connection, no way to start a
+-- program and no environment it was launched with, because a page has none
+-- of those.
 --
--- So a browser's bounds lack those four and may grant any of the six it
--- has. Asking for a lacking one is refused not_present with the browser
--- named, which is a different answer from the same script on a machine
--- where the operator simply did not grant it. The four are refused
--- before anything is attempted, so a script cannot learn whether a host
--- exists by timing a name lookup it was never allowed to make.
+-- So a browser's bounds lack those three and may grant any of the others.
+-- Asking for a lacking one is refused not_present with the browser named,
+-- which is a different answer from the same script on a machine where the
+-- operator simply did not grant it. The three are refused before anything is
+-- attempted, so a script cannot learn whether a host exists by timing a name
+-- lookup it was never allowed to make.
 rule ABrowserOffersWhatItsPageCan {
     when: interpreter: Interpreter.created
 
     ensures: interpreter.bounds.lacking_services =
-        {network, processes, environment, working_directory}
+        {network, processes, environment}
     ensures: interpreter.bounds.host_name = "a browser"
 }
 

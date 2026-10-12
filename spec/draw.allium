@@ -769,11 +769,10 @@ rule ThreeOrFourCornersPullThePictureOntoThem {
 -- AGobsRichTextWritesOnlyItsStrings in screen.allium); `para` and
 -- `anti-alias` are read past and nothing they hold is written.
 --
--- **Text is the one thing in this file that the two renderers cannot be held
--- to pixel for pixel**, and it is not a fault in either: Java2D and a browser
--- measure and hint glyphs differently, so the same string at the same size
--- lands on different pixels. The words are the same and the position is the
--- same. That is what is checked; the shapes of the letters are not.
+-- **The words, the place, the size, the line breaks and the colour are the
+-- domain's**: one carried font supplies the metrics, so the layout is the
+-- same everywhere. The ink is not: an adapter hints and anti-aliases glyphs
+-- its own way, which is the one difference this file leaves standing.
 rule TextWritesTheStringsOfItsBlock {
     when: the_command_is(text, mode, offset, size, block)
     requires: any_strings_in(block)

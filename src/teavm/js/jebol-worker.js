@@ -40,6 +40,119 @@ self.addEventListener('error', function (event) {
   self.postMessage({ kind: 'failed', text: 'the worker errored: ' + detail });
 });
 
+var jebolStoreRoot = null;
+
+function jebolStoreRootDirectory() {
+  if (!jebolStoreRoot) {
+    jebolStoreRoot = navigator.storage.getDirectory();
+  }
+  return jebolStoreRoot;
+}
+
+function jebolStoreSegments(path) {
+  return path.split('/').filter(function (segment) { return segment.length > 0; });
+}
+
+async function jebolStoreDirectoryFor(path, create) {
+  var directory = await jebolStoreRootDirectory();
+  for (const segment of jebolStoreSegments(path)) {
+    directory = await directory.getDirectoryHandle(segment, { create: create });
+  }
+  return directory;
+}
+
+async function jebolStoreFileFor(path, create) {
+  var segments = jebolStoreSegments(path);
+  var name = segments.pop();
+  var directory = await jebolStoreDirectoryFor(segments.join('/'), create);
+  return directory.getFileHandle(name, { create: create });
+}
+
+async function jebolStoreEverything() {
+  var found = [];
+  async function walk(directory, path) {
+    for await (const entry of directory.entries()) {
+      var name = entry[0];
+      var handle = entry[1];
+      if (handle.kind === 'directory') {
+        found.push({ path: path + name + '/', directory: true, octets: new Int8Array() });
+        await walk(handle, path + name + '/');
+      } else {
+        var access = await handle.createSyncAccessHandle();
+        var octets = new Int8Array(access.getSize());
+        access.read(octets, { at: 0 });
+        access.close();
+        found.push({ path: path + name, directory: false, octets: octets });
+      }
+    }
+  }
+  try {
+    await walk(await jebolStoreRootDirectory(), '/');
+    return { failed: null, entries: found };
+  } catch (problem) {
+    return { failed: String(problem && problem.message || problem), entries: [] };
+  }
+}
+
+async function jebolStoreWrite(path, octets) {
+  try {
+    var file = await jebolStoreFileFor(path, true);
+    var access = await file.createSyncAccessHandle();
+    access.truncate(0);
+    access.write(octets, { at: 0 });
+    access.flush();
+    access.close();
+    return { failed: null };
+  } catch (problem) {
+    return { failed: String(problem && problem.message || problem) };
+  }
+}
+
+async function jebolStoreMakeDirectory(path) {
+  try {
+    await jebolStoreDirectoryFor(path, true);
+    return { failed: null };
+  } catch (problem) {
+    return { failed: String(problem && problem.message || problem) };
+  }
+}
+
+async function jebolStoreRemove(path) {
+  try {
+    var segments = jebolStoreSegments(path);
+    var name = segments.pop();
+    var directory = await jebolStoreDirectoryFor(segments.join('/'), false);
+    await directory.removeEntry(name, { recursive: true });
+    return { failed: null };
+  } catch (problem) {
+    return { failed: String(problem && problem.message || problem) };
+  }
+}
+
+var jebolDigestNames = {
+  'sha1': 'SHA-1', 'sha256': 'SHA-256', 'sha384': 'SHA-384', 'sha512': 'SHA-512'
+};
+
+async function jebolDigest(method, octets) {
+  try {
+    var taken = await crypto.subtle.digest(jebolDigestNames[method], octets);
+    return { failed: null, octets: new Int8Array(taken) };
+  } catch (problem) {
+    return { failed: String(problem && problem.message || problem), octets: new Int8Array() };
+  }
+}
+
+async function jebolKeyedDigest(method, key, octets) {
+  try {
+    var imported = await crypto.subtle.importKey('raw', key,
+        { name: 'HMAC', hash: { name: jebolDigestNames[method] } }, false, ['sign']);
+    var signed = await crypto.subtle.sign('HMAC', imported, octets);
+    return { failed: null, octets: new Int8Array(signed) };
+  } catch (problem) {
+    return { failed: String(problem && problem.message || problem), octets: new Int8Array() };
+  }
+}
+
 TeaVM.wasmGC.load('jebol-web.wasm').then(function (teavm) {
   jebol = teavm.exports;
   try {

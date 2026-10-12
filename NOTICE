@@ -30,3 +30,15 @@ than by editing the script.
 
 REBOL is a trademark of REBOL Technologies. JEBOL is not associated with
 or endorsed by REBOL Technologies or by the maintainers of Oldes/Rebol3.
+
+------------------------------------------------------------------------
+
+This product includes Noto Sans Regular, from the Noto font family.
+
+NotoSans-Regular.ttf and its licence are at
+src/main/resources/org/jebol/fonts/. Copyright 2018 The Noto Project
+Authors (github.com/googlei18n/noto-fonts), licensed under the SIL Open
+Font License, Version 1.1, which is copied beside the font. The font
+ships: it is inside the jar under org/jebol/fonts/ and inside the
+WebAssembly module, and it is the face every renderer draws with and the
+metrics SIZE-TEXT, wrapping and carets are answered from.
