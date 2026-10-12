@@ -78,7 +78,7 @@ final class BrotliLog2 {
             double secondHigh, double secondLow) {
 
         double high = firstHigh * secondHigh;
-        double error = Math.fma(firstHigh, secondHigh, -high);
+        double error = FusedMultiplyAdd.of(firstHigh, secondHigh, -high);
         double low = error + firstHigh * secondLow + firstLow * secondHigh;
         double tightened = high + low;
         return new double[]{tightened, low - (tightened - high)};

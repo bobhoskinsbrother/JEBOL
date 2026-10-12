@@ -22,8 +22,12 @@ final class WebScreenPage {
             const canvas = document.getElementById('screen');
             const brush = canvas.getContext('2d');
 
+            let sendingEvents = Promise.resolve();
+
             function tell(fields) {
-              fetch('/event', { method: 'POST', body: JSON.stringify(fields) });
+              sendingEvents = sendingEvents
+                  .then(() => fetch('/event', { method: 'POST', body: JSON.stringify(fields) }))
+                  .catch(() => {});
             }
 
             function sayHowBigWeAre() {

@@ -93,6 +93,8 @@ public final class Repl {
     static int runTheCommandLine(String[] arguments, BufferedReader typed,
             PrintStream out, PrintStream errors, String startedIn) {
 
+        ChosenScreen.makeTheProcessSuitTheScreenAskedFor(arguments);
+
         Path root = theRootAskedFor(arguments);
         RebolArguments asked = new RebolArguments(List.of(
                 withoutTheSwitchesOnlyJebolTakes(ChosenScreen.withoutTheSwitch(arguments))));

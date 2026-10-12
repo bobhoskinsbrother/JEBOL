@@ -1,0 +1,38 @@
+<!doctype html><meta charset="utf-8"><title>a script on a page</title>
+<script type="text/rebol" id="rebol">
+print 1 + 2
+print (compress/level "" 'br 0) = #{3B}
+print (compress/level "test test test" 'br 0) = #{8B0680746573742074657374207465737403}
+sentence: to binary! {The quick brown fox jumps over the lazy dog. The quick brown fox jumps again.}
+print (compress/level sentence 'br 2) = #{
+    1B4C000080AAAAAAEAFF74A5C3496F273D5C44CD44173335
+    15333553DB06E0602C88C42431C09D364D963E2BC728D34A
+    E8F634A2BD2C63DB4FECD6CE95952AFFC76CC9A1832692A4
+    3407}
+print (compress/level sentence 'br 3) = #{
+    1B4C00000042B695EA85444B843260023E4C51FC4A16B2E2
+    BAF44539468D0BA1DBD398EC651EDB7E62B776AEA2ACF27F
+    24CB0E40B2D4E600}
+print (compress/level sentence 'br 5) = (compress/level sentence 'br 9)
+print (decompress (compress/level sentence 'br 11) 'br) = sentence
+</script>
+<script src="jebol-web-runtime.js"></script>
+<script>
+const out = [];
+const shown = console.log.bind(console);
+console.log = (...parts) => { out.push(parts.join(" ")); shown(...parts); };
+TeaVM.wasmGC.load("jebol-web.wasm").then(teavm => {
+  try {
+    teavm.exports.main([document.getElementById("rebol").textContent]);
+  } catch (e) {
+    out.push("threw " + e);
+  }
+  finish(out.join("\n"));
+}, e => finish("failed to load " + e));
+function finish(text) {
+  const shownOutput = document.createElement("pre");
+  shownOutput.id = "out";
+  shownOutput.textContent = text;
+  document.body.appendChild(shownOutput);
+}
+</script>

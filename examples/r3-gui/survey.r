@@ -18,7 +18,6 @@ view [
         field
         label "Comment:"
         area
-        pad ; temporary, for bug
     ]
     group [
         button "Submit" submit none ; the guide's http://www.rebol.net/cgi/submit.r no longer takes a post, so the answers are printed

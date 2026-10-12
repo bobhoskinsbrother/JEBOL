@@ -46,10 +46,10 @@ public abstract class EncodingNative extends DefaultNative {
 
     private long unitsCountedBy(Value source, Value count) {
         return switch (count) {
-            case IntegerValue(long magnitude) when magnitude > Integer.MAX_VALUE
-                    || magnitude < Integer.MIN_VALUE ->
+            case IntegerValue whole when whole.magnitude() > Integer.MAX_VALUE
+                    || whole.magnitude() < Integer.MIN_VALUE ->
                     throw Raised.of(EvaluationFailure.OUT_OF_RANGE, count);
-            case IntegerValue(long magnitude) -> magnitude;
+            case IntegerValue whole -> whole.magnitude();
             case DecimalValue fraction ->
                     (long) Comparison.asDouble(fraction);
             case RebolSeries upTo -> distanceFrom(source, upTo);

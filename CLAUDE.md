@@ -183,16 +183,17 @@ Do not `rm -rf build/test-results` to force a re-run -- it makes Gradle fail wit
 cleanTest` instead.
 
 **`./gradlew browserCheck` is the second gate, and it is not optional -- it is
-separate.** It drives a real Chrome through WebDriver, renders the same paint
-list in Java2D and in the browser, and compares the two pixel for pixel. That is
-how "a page and a window show the same picture" is a thing the build knows
-rather than a thing anybody says.
+separate.** It builds the core for the web with TeaVM (`buildWasmGC`), drives a
+real Chrome through WebDriver, runs a script that sits in a page's tag, renders
+the same paint list in Java2D and in the browser, and compares the two pixel for
+pixel. That is how "a page and a window show the same picture" is a thing the
+build knows rather than a thing anybody says.
 
 It is out of `check` because it needs a browser installed and a network the
 first time it fetches a driver, and the ordinary gate should need neither. That
 makes it a second gate rather than a skipped test: everything it holds runs
 every time it runs, and it is never quietly excluded. Run it after any change to
-`PaintList`, to either renderer, or to the page.
+the core, to `PaintList`, to either renderer, or to the page.
 
 Selenium is a `testImplementation` dependency and nothing else. **The shipped jar
 has no dependencies and this does not change that** -- about 1730 KB, of which

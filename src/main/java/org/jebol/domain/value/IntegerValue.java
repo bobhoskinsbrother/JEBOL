@@ -1,5 +1,6 @@
 package org.jebol.domain.value;
 
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -208,11 +209,12 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
 
         private Value hexNumberIn(AnyWordValue issue) {
             String digits = issue.spelling();
-            if (digits.isEmpty() || digits.length() > MOST_HEX_DIGITS) {
+            if (digits.isEmpty() || digits.length() > MOST_HEX_DIGITS
+                    || digits.charAt(0) == '+' || digits.charAt(0) == '-') {
                 throw refusing(issue);
             }
             try {
-                return IntegerValue.of(Long.parseUnsignedLong(digits, 16));
+                return IntegerValue.of(new BigInteger(digits, 16).longValue());
             } catch (NumberFormatException notHexAtAll) {
                 throw refusing(issue);
             }

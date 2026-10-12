@@ -291,20 +291,21 @@ thirteen modules bundled with the build are most of it — SPEC-OF, the error
 catalogue and IMPORT are read out of those.
 
 ```
-./gradlew check          # the whole suite, about four and a half minutes
-./gradlew browserCheck   # the second gate: a real browser, pixel for pixel
+./gradlew check          # the whole suite, about six minutes
+./gradlew browserCheck   # the second gate: the web build in a real browser
 ```
 
 `check` also runs the spec gate, so the specifications are validated by the
 same command as the code. It fails on any error, any analysis finding, and any
 warning not on the allowlist.
 
-`browserCheck` is separate rather than skipped. It drives a real Chrome through
-WebDriver, renders the same paint list in Java2D and in the browser, and
-compares the two pixel for pixel — which is how "a page and a window show the
-same picture" is a thing the build knows rather than a thing somebody says. It
-is out of `check` because it needs a browser installed and a network the first
-time it fetches a driver, and the ordinary gate should need neither.
+`browserCheck` is separate rather than skipped. It builds the interpreter for
+the web with TeaVM, drives a real Chrome through WebDriver, runs a script that
+sits in a page's tag, renders the same paint list in Java2D and in the browser,
+and compares the two pixel for pixel — which is how "a page and a window show
+the same picture" is a thing the build knows rather than a thing somebody says.
+It is out of `check` because it needs a browser installed and a network the
+first time it fetches a driver, and the ordinary gate should need neither.
 
 ## Reading further
 

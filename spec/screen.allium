@@ -1215,6 +1215,20 @@ rule AnEventFromABrowserJoinsTheSameQueue {
         delivered: false)
 }
 
+-- Events from one page join the queue in the order they happened.
+--
+-- A page posts what happened one event at a time, each posting accepted
+-- before the next is made, so a field typed into quickly holds its letters
+-- in that order. Two postings racing would reach the queue in whatever
+-- order the transport carried them, which a person reads as a transposed
+-- pair of letters in a comment box.
+rule TheEventsAPageSendsJoinTheQueueInOrder {
+    when: the_browser_reports(port, kind, window)
+    requires: the_page_sent_an_earlier_event(port)
+
+    ensures: the_earlier_event_joined_the_queue_first(port)
+}
+
 ------------------------------------------------------------
 -- Invariants
 ------------------------------------------------------------

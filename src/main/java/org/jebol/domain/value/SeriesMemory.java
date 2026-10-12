@@ -2,6 +2,7 @@ package org.jebol.domain.value;
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
+import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -38,7 +39,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class SeriesMemory {
 
     private static final ReferenceQueue<Object> COLLECTED = new ReferenceQueue<>();
-    private static final Set<Reservation> OUTSTANDING = ConcurrentHashMap.newKeySet();
+    private static final Set<Reservation> OUTSTANDING =
+            Collections.newSetFromMap(new ConcurrentHashMap<>());
     private static final AtomicLong HELD = new AtomicLong();
 
     private SeriesMemory() {

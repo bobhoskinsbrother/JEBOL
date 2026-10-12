@@ -407,7 +407,7 @@ public final class Interpreter {
     private List<String> borrowedFileNames() {
         return resourceText(MEZZANINE + "ORDER.txt")
                 .stream()
-                .flatMap(String::lines)
+                .flatMap(text -> TextLines.of(text).stream())
                 .map(String::strip)
                 .filter(line -> !line.isEmpty() && !line.startsWith("#"))
                 .toList();
@@ -453,11 +453,12 @@ public final class Interpreter {
             java.nio.file.Path launcher =
                     java.nio.file.Files.createTempFile("jebol-boot", ".sh");
             java.nio.file.Files.writeString(launcher, "#!/bin/sh\nexec \"" + jvm
-                    + "\" -cp \"" + aClasspathMadeAbsoluteSoItWorksFromAnyDirectory()
+                    + "\" -Djava.awt.headless=true -cp \""
+                    + aClasspathMadeAbsoluteSoItWorksFromAnyDirectory()
                     + "\" org.jebol.adapter.cli.Repl --root \"" + hostRoot + "\""
                     + whereTheApplicationDataIsSwitch(dataDirectory)
                     + " \"$@\"\n");
-            if (!launcher.toFile().setExecutable(true)) {
+            if (!ExecutableFile.markRunnable(launcher.toFile())) {
                 return "";
             }
             launcher.toFile().deleteOnExit();
@@ -499,7 +500,7 @@ public final class Interpreter {
     private static final Map<String, byte[]> RESOURCES = new ConcurrentHashMap<>();
 
     private static final Set<String> RESOURCES_THAT_ARE_THERE =
-            ConcurrentHashMap.newKeySet();
+            Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private static byte[] readingTheResource(String path) {
         try (InputStream reading = Interpreter.class.getResourceAsStream(path)) {

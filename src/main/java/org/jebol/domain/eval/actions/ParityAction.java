@@ -36,10 +36,10 @@ public abstract class ParityAction extends DefaultNative implements ActionValue 
         return switch (value) {
             case MoneyValue amount -> (int) amount.asDeci().toLong();
             case CharacterValue(int codepoint) -> codepoint;
-            case TimeValue(long nanoseconds) -> nanoseconds / 1_000_000_000L;
+            case TimeValue moment -> moment.nanoseconds() / 1_000_000_000L;
             case DateValue date -> date.day();
             case AnyDecimalValue fractional -> roundedHalfAwayFromZero(fractional.quantity());
-            case IntegerValue(long magnitude) -> magnitude;
+            case IntegerValue whole -> whole.magnitude();
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     nativeName() + " takes a whole number, not "
                             + value.datatype().literalSpelling());

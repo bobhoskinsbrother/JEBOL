@@ -255,6 +255,24 @@ class TheSurveyExampleTakesAnOperatorsAnswersEndToEndTest {
         assertThat(answerTo(THE_ROOM_THE_COMMENT_TAKES)).as("a long comment").isEqualTo("[#(true) #(true)]");
     }
 
+    @Test
+    @DisplayName("the comment area is no wider than the panel that holds it, so the text inside it is not cut off")
+    void theCommentAreaIsNoWiderThanItsPanel() {
+        assertThat(answerTo("""
+                find-styled: func [gob wanted /local found] [
+                    either all [object? gob/data wanted = select gob/data 'style] [gob] [
+                        foreach sub any [gob/pane []] [
+                            if found: find-styled sub wanted [return found]
+                        ]
+                        none
+                    ]
+                ]
+                area-gob: find-styled the-window 'area
+                panel-gob: find-styled the-window 'panel
+                (area-gob/offset/x + area-gob/size/x) <= panel-gob/size/x"""))
+                .isEqualTo("#(true)");
+    }
+
     private static final String THE_ROOM_THE_COMMENT_TAKES = """
             comment-face: the-face 'area 1
             written-in: none

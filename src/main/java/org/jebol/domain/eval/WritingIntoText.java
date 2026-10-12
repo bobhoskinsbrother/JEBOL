@@ -47,11 +47,13 @@ final class WritingIntoText {
             case CharacterValue(int codepoint) when codepoint > GREATEST_CODEPOINT ->
                     throw Raised.of(EvaluationFailure.BAD_PATH_SET);
             case CharacterValue(int codepoint) -> codepoint;
-            case IntegerValue(long wanted) when wanted < 0 || wanted > GREATEST_CODEPOINT ->
+            case IntegerValue whole when whole.magnitude() < 0
+                    || whole.magnitude() > GREATEST_CODEPOINT ->
                     throw Raised.of(EvaluationFailure.BAD_PATH_SET);
-            case IntegerValue(long wanted) when text instanceof BinaryValue
-                    && wanted > GREATEST_OCTET -> throw Raised.of(EvaluationFailure.OUT_OF_RANGE, written);
-            case IntegerValue(long wanted) -> (int) wanted;
+            case IntegerValue whole when text instanceof BinaryValue
+                    && whole.magnitude() > GREATEST_OCTET ->
+                    throw Raised.of(EvaluationFailure.OUT_OF_RANGE, written);
+            case IntegerValue whole -> (int) whole.magnitude();
             case RebolSeries other when other instanceof AnyStringValue || other instanceof BinaryValue ->
                     theFirstCodepointOf(other);
             default -> throw Raised.of(EvaluationFailure.INVALID_PATH);

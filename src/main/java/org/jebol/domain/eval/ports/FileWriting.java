@@ -66,7 +66,7 @@ final class FileWriting {
             return withTheLineFeedByteLinesAsks(boundedOctets(binary.octetsFromHere()));
         }
         if (data instanceof CharacterValue(int codepoint)) {
-            return utf8(Character.toString(codepoint));
+            return utf8(new String(Character.toChars(codepoint)));
         }
         if (data instanceof AnyBlockValue block && oneValuePerLine) {
             return utf8(eachValueFormedOnItsOwnLine(block));

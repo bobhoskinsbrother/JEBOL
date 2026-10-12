@@ -19,7 +19,16 @@ final class ChosenScreen {
 
     private static final int WHICHEVER_PORT_IS_FREE = 0;
 
+    private static final String THE_HEADLESS_PROPERTY = "java.awt.headless";
+
     private ChosenScreen() {
+    }
+
+    static void makeTheProcessSuitTheScreenAskedFor(String[] arguments) {
+        boolean aWindowWasAskedFor = theSwitchValueIn(arguments)
+                .filter(A_WINDOW::equalsIgnoreCase)
+                .isPresent();
+        System.setProperty(THE_HEADLESS_PROPERTY, Boolean.toString(!aWindowWasAskedFor));
     }
 
     static boolean wasAskedFor(String[] arguments) {

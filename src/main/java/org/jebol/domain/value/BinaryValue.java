@@ -474,7 +474,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
                 case BitsetValue members -> BinaryValue.ofBytes(new BitsetActions(members).asOctets());
                 case ImageValue picture -> BinaryValue.ofBytes(picture.everyPixel());
                 case CharacterValue letter -> BinaryValue.ofBytes(
-                        Character.toString(letter.codepoint()).getBytes(StandardCharsets.UTF_8));
+                        new String(Character.toChars(letter.codepoint())).getBytes(StandardCharsets.UTF_8));
                 default -> throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(from));
             };
         }

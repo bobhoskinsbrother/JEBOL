@@ -87,7 +87,7 @@ public final class SeriesContents {
             case AnyStringValue text ->
                     addUtf8(theFirstCountedInCodePoints(howMany, text.text()), into);
             case CharacterValue letter ->
-                    addUtf8(Character.toString(letter.codepoint()), into);
+                    addUtf8(new String(Character.toChars(letter.codepoint())), into);
             case IntegerValue whole -> {
                 if (whole.magnitude() < 0 || whole.magnitude() > 255) {
                     throw Raised.of(EvaluationFailure.OUT_OF_RANGE,

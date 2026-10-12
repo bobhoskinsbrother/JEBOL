@@ -8,6 +8,7 @@ import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.*;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -291,10 +292,14 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
     }
 
     private void untilTheGuiHasHeard(String question) {
-        new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> {
-            answerTo("wait [gui-event-port 0.05]");
-            return "#(true)".equals(answerTo(question));
-        });
+        try {
+            new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> {
+                answerTo("wait [gui-event-port 0.05]");
+                return "#(true)".equals(answerTo(question));
+            });
+        } catch (TimeoutException neverHeard) {
+            throw new AssertionError("the GUI never heard: " + question, neverHeard);
+        }
     }
 
     @Test
@@ -316,5 +321,23 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
         theOperatorClicks("button", 2);
         untilTheGuiHasHeard("""
                 all [empty? get-face the-face 'field 1  not chosen? 'radio 2]""");
+    }
+
+    @Test
+    @DisplayName("a sentence typed into the comment area arrives whole and in order, however fast it is typed")
+    void aSentenceTypedIntoTheCommentAreaArrivesWhole() {
+        theSurveyIsOpen();
+
+        theOperatorClicks("area", 1);
+        untilTheGuiHasHeard("""
+                not none? guie/focal-face""");
+        new Actions(browser).sendKeys(
+                "the quick brown fox jumps over the lazy dog and keeps on running for a very long time indeed")
+                .perform();
+        untilTheGuiHasHeard("""
+                not empty? get-face the-face 'area 1""");
+        assertThat(answerTo("""
+                get-face the-face 'area 1"""))
+                .isEqualTo("{the quick brown fox jumps over the lazy dog and keeps on running for a very long time indeed}");
     }
 }

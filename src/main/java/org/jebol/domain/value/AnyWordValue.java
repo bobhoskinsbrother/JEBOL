@@ -100,7 +100,7 @@ public abstract sealed class AnyWordValue implements Value
             if (!spellsAWordAlone(letter.codepoint())) {
                 throw Raised.of(EvaluationFailure.BAD_CHAR, letter);
             }
-            return Character.toString(letter.codepoint());
+            return new String(Character.toChars(letter.codepoint()));
         }
 
         private boolean spellsAWordAlone(int codepoint) {

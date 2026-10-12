@@ -84,10 +84,10 @@ public class RemoveAction extends DefaultNative implements ActionValue {
 
     private long howManyCounted(RebolSeries series, Value count) {
         return switch (count) {
-            case IntegerValue(long magnitude)
-                    when magnitude > Integer.MAX_VALUE || magnitude < Integer.MIN_VALUE ->
-                    throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Long.toString(magnitude));
-            case IntegerValue(long magnitude) -> magnitude;
+            case IntegerValue whole
+                    when whole.magnitude() > Integer.MAX_VALUE || whole.magnitude() < Integer.MIN_VALUE ->
+                    throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Long.toString(whole.magnitude()));
+            case IntegerValue whole -> whole.magnitude();
             case DecimalValue fraction ->
                     (long) Comparison.asDouble(fraction);
             case AnyDecimalValue ignored -> throw Raised.of(EvaluationFailure.INVALID_PART, count);

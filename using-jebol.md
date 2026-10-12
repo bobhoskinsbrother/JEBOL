@@ -292,7 +292,8 @@ runs untrusted scripts.
 `effect`. VID is absent. There is no Rebol to compare a picture against — a
 stock 3.22.5 has no `draw` at all — so the check is that Java2D and a real
 browser draw the same paint list the same way, which `./gradlew browserCheck`
-does on every run.
+does on every run. The same gate builds the interpreter for the web and runs a
+script that sits in a page's tag.
 
 **The console.** There is no argument that takes the name of a script file,
 and a path given on the command line is ignored without a message.

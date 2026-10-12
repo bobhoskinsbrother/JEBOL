@@ -10,7 +10,7 @@ and `using-jebol.md` point here for them.
 
 ## Where the port stands
 
-Measured on 2026-10-09.
+Measured on 2026-10-12.
 
 | Measure | Reads |
 | --- | --- |
@@ -20,9 +20,10 @@ Measured on 2026-10-09.
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 114 of Rebol's 142 error ids can be raised |
 | `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 14 |
-| `./gradlew check` | 26,823 tests |
+| `./gradlew check` | 27,386 tests |
 | `corpus/` | 1,140 of 1,140 entries pass |
 | the shipped jar | about 2,560 KB at its last build, and no dependencies |
+| the web build | 12.8 MB of WebAssembly, unobfuscated, beside a 38 KB loader |
 
 ---
 
@@ -73,17 +74,14 @@ reflection. The only blocking code is WAIT's sleep loop and the event queue's
 locks. Files, the network and processes sit behind ports, so each platform
 needs new adapters rather than a changed core.
 
-1. **A one-day trial.** Compile the domain and application with TeaVM, or
-   GraalVM Web Image if TeaVM fails. Run `print 1 + 2` in a page, then the
-   Brotli tests. Write down what the compiler refused, how big the download
-   is and how long a boot takes. This decides whether the rest goes ahead.
-2. **Make the core compile, and keep it compiling.** Replace whatever the
-   compiler refuses; WAIT's sleep becomes a port. `ScreenEventQueue` is
-   synchronised and sits in the domain; the hand-off between threads moves
-   out to the adapters, as `BrowserScreen` already does for a page's events,
-   and the domain keeps a plain queue. Compiling the core for the web becomes
-   part of the gate, so a change that breaks it fails the build.
-3. **Run the interpreter in a worker.** A page's main thread cannot block, and
+1. **What the build still must move out of the domain.** The core compiles
+   with TeaVM, and the second gate builds it and drives a page in Chrome; what
+   the trial measured, what the compiler refused and how each refusal was
+   answered are in `docs/web-port.md`. Two pieces of blocking code are left:
+   WAIT's sleep loop becomes a port, and `ScreenEventQueue`, synchronised and
+   in the domain, keeps a plain queue with the hand-off between threads moving
+   out to the adapters, as `BrowserScreen` already does for a page's events.
+2. **Run the interpreter in a worker.** A page's main thread cannot block, and
    WAIT does. The interpreter runs in a Web Worker and draws to a canvas it
    owns. Events reach it through shared memory, which needs the page served
    with cross-origin isolation, or through WebAssembly's pause-and-resume.
@@ -94,20 +92,22 @@ needs new adapters rather than a changed core.
    root gob's size from the server's thread while the script may be reading
    it. It becomes something the interpreter takes on its own thread, like a
    click, and the spec says when a script sees the new size.
-4. **The browser's adapters, and what it refuses.** The console becomes an
+3. **The browser's adapters, and what it refuses.** The console becomes an
    element on the page. Files live in the browser's private storage for the
    site, or in memory. HTTP and HTTPS go through `fetch`. TCP, UDP, DNS and
    CALL are refused with an error that says the browser does not allow them.
-   The spec says which services a browser grants before any of it is built.
-5. **The drawing engine.** The paint list is drawn into a grid of pixels in
+   Crypto is refused today by the stand-ins in `src/teavm`; whether the
+   browser supplies it, and how, is decided here. The spec says which services
+   a browser grants before any of it is built.
+4. **The drawing engine.** The paint list is drawn into a grid of pixels in
    the domain: fills, strokes, curves, smooth edges, opacity, gradients,
    images and clipping, then text, with a font reader and one bundled font.
    The desktop and the page both copy the grid to the screen. Java2D's
    renderer and the JavaScript renderer are deleted, and the browser gate
    expects identical pixels with no tolerance.
-6. **The examples with no server.** The sliders and the survey run wholly in
+5. **The examples with no server.** The sliders and the survey run wholly in
    a page served as static files, and the browser gate drives them there.
-7. **A build that ships it.** A task produces the static files; their size goes
+6. **A build that ships it.** A task produces the static files; their size goes
    in the table at the top of this file beside the jar's.
 
 ### 3. Boot time

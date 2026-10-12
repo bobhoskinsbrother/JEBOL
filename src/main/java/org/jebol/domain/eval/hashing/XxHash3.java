@@ -257,7 +257,7 @@ public final class XxHash3 extends XxHashFamily {
         long flip = octets.littleEndianLongAt(SECRET, 16) ^ octets.littleEndianLongAt(SECRET, 24);
         long keyed = (low + (high << 32)) ^ flip;
         long productLow = keyed * (P64_1 + ((long) length << 2));
-        long productHigh = Math.unsignedMultiplyHigh(keyed, P64_1 + ((long) length << 2));
+        long productHigh = UnsignedProducts.highOf(keyed, P64_1 + ((long) length << 2));
 
         productHigh += productLow << 1;
         productLow ^= productHigh >>> 3;
@@ -275,7 +275,7 @@ public final class XxHash3 extends XxHashFamily {
         long high = octets.littleEndianLongAt(message, length - 8);
         long mixed = low ^ high ^ flipLow;
         long productLow = mixed * P64_1;
-        long productHigh = Math.unsignedMultiplyHigh(mixed, P64_1);
+        long productHigh = UnsignedProducts.highOf(mixed, P64_1);
 
         productLow += (long) (length - 1) << 54;
         high ^= flipHigh;
@@ -283,7 +283,7 @@ public final class XxHash3 extends XxHashFamily {
         productLow ^= Long.reverseBytes(productHigh);
 
         long lowOfProduct = productLow * P64_2;
-        long highOfProduct = Math.unsignedMultiplyHigh(productLow, P64_2)
+        long highOfProduct = UnsignedProducts.highOf(productLow, P64_2)
                 + productHigh * P64_2;
         return new long[] {avalanched(lowOfProduct), avalanched(highOfProduct)};
     }
@@ -342,7 +342,7 @@ public final class XxHash3 extends XxHashFamily {
     }
 
     private long foldedProductOf(long left, long right) {
-        return left * right ^ Math.unsignedMultiplyHigh(left, right);
+        return left * right ^ UnsignedProducts.highOf(left, right);
     }
 
     private long avalanched(long hash) {

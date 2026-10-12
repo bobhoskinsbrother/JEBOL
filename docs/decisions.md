@@ -1089,3 +1089,56 @@ patch differing by seven is still caught.
 measure and hint glyphs differently, so the same string at the same size lands
 on different pixels. The words, the place, the size, the weight and the colour
 are decided in the domain; the shapes of the letters are the toolkit's.
+
+## 25. The web build compiles the core as it is, and substitutes only what the browser lacks
+
+**There is one copy of the interpreter.** The web build compiles `src/main`
+with TeaVM exactly as the JVM compiles it. `src/teavm` holds the web's own
+additions and nothing else: the entry point the page calls, one substitution
+policy, the classlib stand-ins for the JDK classes the browser does not have,
+and the resource list. No core class is forked, and no library file is written
+twice. Where TeaVM cannot compile a construct at all, the construct is rewritten
+in place to one it can, and the rewrite is answer-preserving rather than a
+switch: for example two guarded `case Whole(long magnitude) when ...` arms of one
+switch become bare patterns with the accessor in the guard, which both compilers
+take. The JDK gate is what proves those rewrites change nothing: the whole
+suite runs against them on the JVM.
+
+**What the browser lacks is substituted, never branched on.** One policy class
+names every substitution, so a reader can see the whole list in one place.
+`Math.fma` stays `Math.fma` on the JVM and becomes the `BigDecimal` form, which
+rounds once and agrees with it, on the web. `ProcessHandle` answers that only
+this process exists; `PhantomReference`, which the classlib lacks, is a weak
+reference with a null `get()`; `File.setExecutable` is behind one class whose
+web form answers true without touching the file. Nothing tests a runtime flag to
+decide which platform it is on.
+
+**Crypto is refused, not faked.** Every `javax.crypto` and `java.security`
+algorithm class the core reaches for is a stand-in whose methods throw an error
+naming the method. A page that asks for SHA-1 or a signature gets a refusal
+rather than an answer invented in the browser. What the web does instead is
+goal 2 step 4's decision, and how TLS is checked is goal 4's.
+
+**The web compile lives in the second gate.** `browserCheck` depends on
+`buildWasmGC` and then runs the page the way a reader would, in a real Chrome;
+`check` stays a JDK-only gate. The trial's script is now a fixture: the Rebol
+sits in a `<script type="text/rebol">` tag on a real page, one test runs that
+tag's script on the JVM and pins the seven lines it prints, and one drives the
+same page through the WebAssembly build and reads the same seven lines out of
+the DOM. The TeaVM faults met on the way, and the numbers the trial measured,
+are in `docs/web-port.md`.
+
+## 26. The process opens no window unless a window is asked for
+
+**JEBOL runs headless, and `--screen=window` is what turns the display back
+on.** A page draws its own window, so the JVM serving it has no use for
+macOS's window server - but measuring a letter to answer SIZE-TEXT loads
+`java.awt`'s fonts, and the moment AWT initialises macOS gives the process a
+Dock icon. Someone who opens the page and sees a stray app appear beside it
+reads that as a fault in the page, and they are nearly right.
+
+So the CLI chooses `java.awt.headless` from the switch before anything else
+runs: true for a page, and for the bare console, and false only when
+`--screen=window` was asked for. The launcher script a child is started from,
+and the JDK start scripts the build produces, carry the same flag. Headless
+AWT still measures text, so nothing about layout changes; the Dock entry goes.

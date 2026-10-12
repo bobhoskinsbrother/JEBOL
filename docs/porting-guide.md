@@ -186,9 +186,10 @@ no way to tell which to believe.
 twenty-five minutes depending on what it has to recompile.
 
 `./gradlew browserCheck` is the second gate and is not optional, only
-separate: it drives a real Chrome and compares what it paints against Java2D,
-pixel for pixel. Run it after any change to `PaintList`, either renderer, or
-the page.
+separate: it builds the core for the web with TeaVM, drives a real Chrome, runs
+a script from a page, and compares what the renderers paint against each other,
+pixel for pixel. Run it after any change to the core, to `PaintList`, to either
+renderer, or to the page.
 
 `scripts/c-surface.py` rebuilds `c-surface.txt` when Rebol's tree changes.
 

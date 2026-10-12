@@ -436,7 +436,7 @@ public final class Bincode {
     private static void writeFloat(Cursor cursor, String code, double value) {
         int width = floatWidthOf(code);
         long bits = switch (width) {
-            case 2 -> Float.floatToFloat16((float) value) & 0xFFFFL;
+            case 2 -> HalfFloats.of((float) value) & 0xFFFFL;
             case 4 -> Float.floatToIntBits((float) value) & 0xFFFFFFFFL;
             default -> Double.doubleToLongBits(value);
         };
@@ -461,7 +461,7 @@ public final class Bincode {
         }
         cursor.at += width;
         return DecimalValue.of(switch (width) {
-            case 2 -> Float.float16ToFloat((short) bits);
+            case 2 -> HalfFloats.asFloat((short) bits);
             case 4 -> Float.intBitsToFloat((int) bits);
             default -> Double.longBitsToDouble(bits);
         });

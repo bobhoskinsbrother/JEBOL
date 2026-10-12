@@ -26,6 +26,7 @@ import org.jebol.domain.value.RebolSeries;
 import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.TextLines;
 import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
@@ -217,7 +218,7 @@ public final class Ports {
                 .orElse(whole);
         port.setField("data", StringValue.of(copied));
         if (asked.refinements().contains("lines")) {
-            return BlockValue.block(copied.lines().<Value>map(StringValue::of).toList());
+            return BlockValue.block(TextLines.of(copied).stream().<Value>map(StringValue::of).toList());
         }
         return StringValue.of(copied);
     }

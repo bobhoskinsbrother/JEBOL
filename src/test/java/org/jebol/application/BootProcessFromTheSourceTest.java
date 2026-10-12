@@ -45,6 +45,14 @@ class BootProcessFromTheSourceTest {
     }
 
     @Test
+    @DisplayName("and the child it starts is told to open no window, as a script run this way has none")
+    void theChildIsToldToOpenNoWindow() {
+        assertThat(answerTo("""
+                not none? find read system/options/boot {-Djava.awt.headless=true}"""))
+                .isEqualTo("#(true)");
+    }
+
+    @Test
     @DisplayName("a child asked to quit leaves with a status of zero")
     void aChildThatQuitsLeavesWithZero() {
         assertThat(answerTo("""
