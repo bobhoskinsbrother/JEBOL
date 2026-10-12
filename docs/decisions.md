@@ -1117,7 +1117,7 @@ decide which platform it is on.
 algorithm class the core reaches for is a stand-in whose methods throw an error
 naming the method. A page that asks for SHA-1 or a signature gets a refusal
 rather than an answer invented in the browser. What the web does instead is
-goal 2 step 2's decision, and how TLS is checked is goal 4's.
+goal 1 step 2's decision, and how TLS is checked is goal 3's.
 
 **The web compile lives in the second gate.** `browserCheck` depends on
 `buildWasmGC` and then runs the page the way a reader would, in a real Chrome;
@@ -1181,5 +1181,5 @@ posted while the interpreter is inside `do-events`.
 page script that waits prints its later lines once the fiber is resumed by
 `setTimeout`. But `teavm.exports.main` returns at the first suspension, so the
 page harness must be told when the script has really finished rather than
-writing its output when `main` returns; that is the worker's business in goal 2
+writing its output when `main` returns; that is the worker's business in goal 1
 step 1.

@@ -1,6 +1,6 @@
 # The web port
 
-Goal 2 in `goals.md`: one interpreter and one drawing engine on every platform,
+Goal 1 in `goals.md`: one interpreter and one drawing engine on every platform,
 the web first, with the interpreter compiled to WebAssembly. This note carries
 what the code cannot. `CLAUDE.md` carries the method.
 
@@ -26,7 +26,7 @@ The pieces:
 
 Measured so far: the WebAssembly module is 12.8 MB unobfuscated beside a 38 KB
 runtime loader; the trial below measured a boot in Chrome of 477 ms going cold
-and 164 to 201 ms warm. The shipped form, obfuscated and compressed, is goal 2
+and 164 to 201 ms warm. The shipped form, obfuscated and compressed, is goal 1
 step 5's business.
 
 The two pieces of blocking code named in this note are gone. WAIT's sleep is a
@@ -162,8 +162,8 @@ and a stub without a hierarchy is invalid wasm wherever a cast touches it.
 Crypto is refused by stand-ins that throw `UnsupportedOperationException`
 naming the method, and so is HMAC, signatures and key agreement. A page that
 reaches one gets an error rather than a wrong answer made up in the browser.
-What the web does instead is goal 2 step 2's business, and the TLS checking is
-goal 4's.
+What the web does instead is goal 1 step 2's business, and the TLS checking is
+goal 3's.
 
 The web build starts no processes: `ProcessHandle` answers "there is only this
 one" and `ExecutableFile.markRunnable` answers true without touching the file.
@@ -176,5 +176,5 @@ one" and `ExecutableFile.markRunnable` answers true without touching the file.
 - Boot measured on the shipped entry point rather than the trial harness (the
   entry runs the script once and prints no timings; the harness that measured
   boot five times a page is gone with the scratchpad).
-- Goals 2 steps 1 to 5: the worker, the browser's own adapters, one drawing
+- Goal 1, steps 1 to 5: the worker, the browser's own adapters, one drawing
   engine in the domain, the examples with no server, and a build that ships.
