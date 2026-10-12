@@ -6,14 +6,7 @@ import org.jebol.domain.value.EventCatalogue;
 
 import java.util.Locale;
 import java.util.Optional;
-import java.util.OptionalInt;
 
-/**
- * One posting from a page, read once: a measurement of the whole viewport, or
- * an event of a kind the screen serves. Both the server that reaches a page
- * over HTTP and the worker a page speaks to directly read the wire through
- * this, so the two transports cannot drift apart about what a posting says.
- */
 final class WhatThePageSaid {
 
     private final FieldsOfAPostedEvent said;
@@ -26,9 +19,16 @@ final class WhatThePageSaid {
         return said.text("kind").filter("measure"::equals).isPresent();
     }
 
-    /** A measurement is a size only when it carries both its sides. */
     boolean isAWholeMeasurement() {
         return said.wholeNumber("wide").isPresent() && said.wholeNumber("high").isPresent();
+    }
+
+    boolean isALine() {
+        return said.text("kind").filter("line"::equals).isPresent();
+    }
+
+    String theLine() {
+        return said.text("text").orElse("");
     }
 
     int wide() {

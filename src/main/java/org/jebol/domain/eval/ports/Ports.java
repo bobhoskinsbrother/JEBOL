@@ -159,6 +159,7 @@ public final class Ports {
                     theSchemeReachesNothingOutside();
             case "file", "dir" -> granted.require(HostService.FILES);
             case "tcp", "dns", "udp" -> granted.require(HostService.NETWORK);
+            case "http", "https" -> granted.require(HostService.WEB);
             case "event" -> granted.require(HostService.WINDOWS);
             case "clipboard" -> granted.require(HostService.CLIPBOARD);
             default -> throw Raised.of(EvaluationFailure.NO_SERVICE,

@@ -65,6 +65,14 @@ public final class Boot {
         grantedServices.grantOnly(granted);
     }
 
+    public void lackOnly(Set<HostService> lacking) {
+        grantedServices.lackOnly(lacking);
+    }
+
+    public void useHostName(String name) {
+        grantedServices.useHostName(name);
+    }
+
     public SystemObject start() {
         LibContext lib = new LibContext(bootDeclarations, grantedServices, ports, encodings, localFileSeparator);
         return new SystemObject(lib, bootDeclarations, ports, encodings, registeredStructLayouts, operatingSystemName);

@@ -94,6 +94,8 @@ public final class Interpreter {
         nameTheLauncherOnlyOnceTheLibraryHasLoaded();
         registerTheSchemesRebolDeclares();
         boot.grantOnly(bounds.grantedServices());
+        boot.lackOnly(bounds.lackingServices());
+        boot.useHostName(bounds.hostName());
         system.forgetStartupState();
         evaluator.symbols().startCountingWhatTheSessionReads();
     }
@@ -846,6 +848,18 @@ public final class Interpreter {
     /** Tells this interpreter where its script's network may reach. */
     public void useNetwork(NetworkPort port) {
         evaluator.useNetwork(port);
+    }
+
+    /**
+     * Tells this interpreter to fetch a script's HTTP itself.
+     *
+     * <p>A host with no fetching of its own leaves this alone and the http
+     * and https schemes keep Rebol's own protocol. A host that supplies one
+     * gets the actor of both schemes, so `read http://...`, `open
+     * http://...` and every later read of that port reach the host.
+     */
+    public void useHttp(HttpPort port) {
+        evaluator.useHttp(port);
     }
 
     public void useClipboard(ClipboardPort port) {

@@ -1,6 +1,8 @@
 package org.jebol.domain.eval;
 
 import org.jebol.domain.host.*;
+import org.jebol.domain.eval.ports.HttpSchemeActor;
+import org.jebol.domain.eval.ports.ServesPortActions;
 import org.jebol.domain.value.Construction;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
@@ -202,6 +204,36 @@ public final class Evaluator {
         this.network = port;
     }
 
+    /**
+     * Tells this interpreter where HTTP goes, and gives the http and https
+     * schemes an actor that fetches there.
+     *
+     * <p>Swapping the actor is what makes every route the same: a url read,
+     * a port opened by hand and a port stepped through all ask the actor,
+     * and the actor is this host's. Rebol's own protocol stays loaded and
+     * its scheme keeps its spec and its info; only the arm that reached the
+     * connection changes.
+     */
+    public void useHttp(HttpPort port) {
+        for (String scheme : List.of("http", "https")) {
+            theSchemeNamed(scheme).orElseThrow(() -> new IllegalStateException(
+                            "the " + scheme + " scheme is not registered yet"))
+                    .context().ownSlotFor("actor")
+                    .setBeneathAnyProtection(new HttpSchemeActor(scheme, port));
+        }
+    }
+
+    private Optional<ObjectValue> theSchemeNamed(String name) {
+        if (!systemContext.knows("system")) {
+            return Optional.empty();
+        }
+        Value definition = systemContext.slotFor("system").value()
+                .fieldValue("schemes").fieldValue(name);
+        return definition instanceof ObjectValue found
+                ? Optional.of(found)
+                : Optional.empty();
+    }
+
     private ClipboardPort clipboard = ClipboardPort.none();
 
     public ClipboardPort clipboard() {
@@ -253,8 +285,16 @@ public final class Evaluator {
         if (port.hasNoActor()) {
             return Optional.of(NoneValue.none());
         }
-        return port.actorWrittenInRebol().map(actor ->
-                askTheActor(actor, action, arguments, refinements));
+        Optional<ObjectValue> writtenInRebol = port.actorWrittenInRebol();
+        if (writtenInRebol.isPresent()) {
+            return writtenInRebol.map(actor ->
+                    askTheActor(actor, action, arguments, refinements));
+        }
+        Value actor = port.fieldValue("actor");
+        if (actor instanceof ServesPortActions serves) {
+            return serves.answers(action, arguments, refinements, this);
+        }
+        return Optional.empty();
     }
 
     public Value askTheActor(ObjectValue actor, String action,

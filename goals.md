@@ -23,7 +23,7 @@ Measured on 2026-10-12.
 | `./gradlew check` | 27,405 tests |
 | `corpus/` | 1,140 of 1,140 entries pass |
 | the shipped jar | about 2,748 KB at its last build, and no dependencies |
-| the web build | 13.4 MB of WebAssembly, unobfuscated, beside a 38 KB loader and the worker's shell |
+| the web build | 13.7 MB of WebAssembly, unobfuscated, beside a 38 KB loader and the worker's shell |
 
 ---
 
@@ -79,22 +79,29 @@ reflection, and the domain does not block: WAIT's pause and the screen's event
 queue sit behind ports. Files, the network and processes sit behind ports too,
 so each platform needs new adapters rather than a changed core.
 
-1. **The browser's adapters, and what it refuses.** The console becomes an
-   element on the page. Files live in the browser's private storage for the
-   site, or in memory. HTTP and HTTPS go through `fetch`. TCP, UDP, DNS and
-   CALL are refused with an error that says the browser does not allow them.
-   Crypto is refused today by the stand-ins in `src/teavm`; whether the
-   browser supplies it, and how, is decided here. The spec says which services
-   a browser grants before any of it is built.
-2. **The drawing engine.** The paint list is drawn into a grid of pixels in
+The browser's adapters are in place: the console is the page's element, files
+live in the worker's memory, HTTP and HTTPS go through `fetch`, and TCP, UDP,
+DNS and CALL are refused with an error that says the browser does not allow
+them, which is decision 31 to 33 in `docs/decisions.md`. What is left in this
+step:
+
+1. **Files that survive a reload.** The browser's private store for the site
+   is asynchronous, and a script's reads are not, so a port over it suspends
+   the fiber on every call. Decide how much of that cost to pay, or what
+   smaller store to use, and move `WebFiles` behind it. Decision 33.
+2. **The WebCrypto digests.** Decision 34: the browser supplies digests and
+   HMACs through `crypto.subtle`, asynchronously, and the methods it has not
+   got stay `feature-na`. The refusals are ordinary errors today; the supply
+   is the port and its two adapters.
+3. **The drawing engine.** The paint list is drawn into a grid of pixels in
    the domain: fills, strokes, curves, smooth edges, opacity, gradients,
    images and clipping, then text, with a font reader and one bundled font.
    The desktop and the page both copy the grid to the screen. Java2D's
    renderer and the JavaScript renderer are deleted, and the browser gate
    expects identical pixels with no tolerance.
-3. **The examples with no server.** The sliders and the survey run wholly in
+4. **The examples with no server.** The sliders and the survey run wholly in
    a page served as static files, and the browser gate drives them there.
-4. **A build that ships it.** A task produces the static files; their size goes
+5. **A build that ships it.** A task produces the static files; their size goes
    in the table at the top of this file beside the jar's.
 
 ### 2. Boot time

@@ -492,7 +492,7 @@ public final class CryptPort {
         }
         try {
             return OneBlock.jvmAes(key);
-        } catch (GeneralSecurityException refused) {
+        } catch (GeneralSecurityException | UnsupportedOperationException refused) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC,
                     WordValue.of(working.algorithm));
         }
@@ -650,10 +650,14 @@ public final class CryptPort {
     }
 
     private ChaChaWithPoly1305.Sealed theChaChaAnswer(Working working) {
-        return ChaChaWithPoly1305.through(
-                fittedTo(working.key, working.works().keyOctets()),
-                working.chaining, working.authenticated,
-                working.gatheredForGalois, working.decrypting);
+        try {
+            return ChaChaWithPoly1305.through(
+                    fittedTo(working.key, working.works().keyOctets()),
+                    working.chaining, working.authenticated,
+                    working.gatheredForGalois, working.decrypting);
+        } catch (UnsupportedOperationException unavailable) {
+            throw Raised.of(EvaluationFailure.FEATURE_NA, WordValue.of(working.algorithm));
+        }
     }
 
     private byte[] theWholeTag(Working working) {

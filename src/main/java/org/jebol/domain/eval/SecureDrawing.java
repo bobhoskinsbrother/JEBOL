@@ -1,5 +1,8 @@
 package org.jebol.domain.eval;
 
+import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.Raised;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.MessageDigest;
@@ -36,8 +39,8 @@ final class SecureDrawing extends RandomDrawing {
     private MessageDigest sha1() {
         try {
             return MessageDigest.getInstance("SHA-1");
-        } catch (NoSuchAlgorithmException everyJavaPlatformHasIt) {
-            throw new IllegalStateException(everyJavaPlatformHasIt);
+        } catch (NoSuchAlgorithmException | UnsupportedOperationException unavailable) {
+            throw Raised.of(EvaluationFailure.FEATURE_NA, "SHA-1");
         }
     }
 

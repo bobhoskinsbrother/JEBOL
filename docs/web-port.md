@@ -23,11 +23,11 @@ The pieces:
 | The worker's shell | `src/teavm/js/jebol-worker.js`, copied beside the module by the `copyTheWorkerScript` task |
 | The web's substitutions and the library-file list | `src/teavm/java` and `src/teavm/resources`, wired in `build.gradle.kts` |
 | The library files TeaVM must embed | listed by the `writeTheWebResourceList` task from `src/main/resources/org/jebol`, so the list cannot drift |
-| The page and its scripts | `src/test/resources/web/rebol-on-a-page.html`, two Rebol tags -- the Brotli script and a GUI script -- a canvas, and the renderer copied from `WebScreenPage` |
-| The unit level | `AScriptInAPageTagFromTheSourceTest` runs the first tag's script on the JVM and pins its eight printed lines |
-| The end-to-end level | `AScriptInAPageTagRunsInABrowserEndToEndTest` serves the build and the page, drives Chrome, and checks the eight lines, the canvas, a click, and a resize |
+| The page and its scripts | `src/test/resources/web/rebol-on-a-page.html`, two Rebol tags -- the Brotli script and a GUI script -- a canvas, and the renderer copied from `WebScreenPage`; `rebol-adapters-on-a-page.html` adds an input element and a script that fetches, keeps a file and reads a typed line |
+| The unit level | `AScriptInAPageTagFromTheSourceTest` runs the first tag's script on the JVM and pins its eight printed lines; `AFilesystemInTheWorkersMemoryTest` and `ThePageConsoleFromTheSourceTest` cover the browser's files and console |
+| The end-to-end level | `AScriptInAPageTagRunsInABrowserEndToEndTest` serves the build and the page, drives Chrome, and checks the eight lines, the canvas, a click, and a resize; `TheBrowserAdaptersEndToEndTest` fetches from the test's own server, writes and reads a file, types into the console element, and catches the refusals |
 
-Measured so far: the WebAssembly module is 12.8 MB unobfuscated beside a 38 KB
+Measured so far: the WebAssembly module is 13.7 MB unobfuscated beside a 38 KB
 runtime loader (the worker's shell is a few KB more); the trial below measured
 a boot in Chrome of 477 ms going cold and 164 to 201 ms warm. The shipped
 form, obfuscated and compressed, is goal 1 step 5's business.
@@ -158,15 +158,34 @@ and a stub without a hierarchy is invalid wasm wherever a cast touches it.
 
 ## What the web build refuses
 
-Crypto is refused by stand-ins that throw `UnsupportedOperationException`
-naming the method, and so is HMAC, signatures and key agreement. A page that
-reaches one gets an error rather than a wrong answer made up in the browser.
-What the web does instead is goal 1 step 2's business, and the TLS checking is
-goal 3's.
+**A page has less outside it than a machine, and the worker says so once.**
+`TheInterpreterInAWorker` builds the browser's bounds: console, files,
+windows and web are granted; network, processes, environment and working
+directory are `lacking`, so a script that reaches for a raw connection or
+another program reads `not_present` with the browser named rather than
+`not_granted`. That is decision 31 in `docs/decisions.md`, and
+`ABrowserHostFromTheSourceTest` pins the sentences.
+
+**HTTP is the browser's own.** `WebHttp` (`src/teavm`) answers the `HttpPort`
+the worker supplies, and `read http://...` goes through `fetch` -- names,
+redirects and certificates are the browser's, and the fiber suspends on the
+promise while it is in flight. Decision 32 has the shape; a page that fetches
+outside its own origin is subject to the browser's CORS rules like any other
+page.
+
+**Files are the worker's memory and the console is the page's element** -
+`WebFiles` and `WebConsole` (`org.jebol.adapter.web`). Nothing survives a
+reload; decision 33 says why, and what would change it.
+
+**Crypto is refused by stand-ins that throw, and the refusals are ordinary
+errors.** The stand-ins name the method they cannot compute, and the domain
+catches them and raises `feature-na`, so `checksum "abc" 'sha1` and
+`random/secure` are values a script can catch. What the web supplies instead
+is decided in decision 34: digests and HMACs from WebCrypto, the rest
+refused. The TLS checking is goal 3's.
 
 The web build starts no processes: `ProcessHandle` answers "there is only this
 one" and `ExecutableFile.markRunnable` answers true without touching the file.
-`CALL` is refused for the same reason, under step 2.
 
 The worker measures no text: `TextMeasures` is substituted whole to
 `WebTextMeasures`, which refuses with the same no-service a screen without a
@@ -176,10 +195,14 @@ belong to the drawing engine, step 3.
 
 ## What is left
 
+- Files that survive a reload: a port over the browser's private store for
+  the site, which is asynchronous, so every call would suspend the fiber.
+- The WebCrypto digests decision 34 records: a port behind the domain's
+  hashing, reached asynchronously the way HTTP is.
 - Gzipped sizes, which is what a page downloads, and the obfuscated module's
   size beside the jar's in `goals.md`.
 - Boot measured on the shipped entry point rather than the trial harness (the
   entry runs the script once and prints no timings; the harness that measured
   boot five times a page is gone with the scratchpad).
-- Goal 1, steps 2 to 5: the browser's own adapters, one drawing engine in the
-  domain, the examples with no server, and a build that ships.
+- Goal 1, steps 3 to 5: one drawing engine in the domain, the examples with
+  no server, and a build that ships.

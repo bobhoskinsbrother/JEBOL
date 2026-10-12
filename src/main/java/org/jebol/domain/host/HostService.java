@@ -19,5 +19,7 @@ public enum HostService {
 
     WINDOWS,
 
-    CLIPBOARD
+    CLIPBOARD,
+
+    WEB
 }

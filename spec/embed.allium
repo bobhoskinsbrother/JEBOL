@@ -49,6 +49,7 @@ enum HostService {
     | clock             -- what the time is now
     | network           -- open a connection to another machine
     | windows           -- ask the operator with a window on a screen
+    | web               -- fetch a url through the host's own HTTP machinery
 }
 
 -- What feeds a started program's standard input.
@@ -100,6 +101,24 @@ value Bounds {
     -- a host that must set five things sets none of them; this one has no
     -- useful default, because the useful value is the one nobody guessed.
     granted_services: Set<HostService> = empty
+
+    -- The kinds of outside thing this host has no way to offer at all.
+    -- Empty by default, because a host on a machine has everything a
+    -- machine has until it says otherwise, and a host whose outside is a
+    -- page has less.
+    --
+    -- A different fact from a grant, with a different refusal. A service
+    -- the host has and did not grant is the host's decision on the day and
+    -- can be changed; a service it has not got never can be, and a script
+    -- reading the error needs to tell them apart before asking for the
+    -- wrong one.
+    lacking_services: Set<HostService> = empty
+
+    -- What this host calls itself in a refusal: "a browser", "this host".
+    -- A refusal names the service and the thing that refused it, so a
+    -- script that got one can say what it asked and who said no without
+    -- JEBOL knowing a browser from a phone.
+    host_name: String = "this host"
 }
 
 -- What the host can tell the interpreter about one thing on its filesystem.
@@ -241,6 +260,11 @@ entity Interpreter {
     user_context: values/Context
     network: NetworkPort
 
+    -- Where a script's HTTP goes on a host that fetches for it. Absent on
+    -- a host that leaves HTTP to Rebol's own protocol, which is every JVM
+    -- host until one says otherwise.
+    http: HttpPort?
+
     runs: ScriptRun with interpreter = this
     active_runs: runs where status = running
 
@@ -307,14 +331,33 @@ config {
 -- error, and the error says which of the three reasons applies. Silence
 -- is the failure this prevents: a READ that quietly answers none reads as
 -- an empty file, and a script cannot tell the two apart.
+--
+-- Which of the two reasons it is turns on whether the host has the
+-- service at all. A grant the host did not give can be asked for again; a
+-- service it was never able to offer cannot, and a script that reads
+-- "not present" knows to stop asking.
 rule RefusedServiceRaises {
     when: script_asks_for(run, service)
     requires: service not in run.interpreter.bounds.granted_services
     ensures:
         run.status = finished
         run.conclusion = raised
-        run.refusal_reason in ServiceRefusal
         run.refused_service = service
+        run.refusal_reason = if service in run.interpreter.bounds.lacking_services:
+            not_present
+        else:
+            not_granted
+}
+
+-- And the sentence says what was asked and who said no, so a script can
+-- report "a browser does not allow processes" rather than a bare refusal.
+-- The host names itself; JEBOL never guesses what kind of host it is in.
+rule ARefusalNamesTheServiceAndTheHost {
+    when: script_asks_for(run, service)
+    requires: service not in run.interpreter.bounds.granted_services
+    ensures: CallFails(error: no_service, about: service)
+    ensures: the_error_says_which_host_refused(run) =
+        run.interpreter.bounds.host_name
 }
 
 -- Three things exist to call code written in C, thus no host can offer
@@ -740,6 +783,9 @@ surface Embedding {
         ProgramToStart
         ProgramResult
         FileChoiceRequest
+        HttpPort
+        HttpRequest
+        HttpResponse
 
     @guarantee AStartedProgramArrivesSplitWithItsThreeStreamsDecided
         -- A command crosses the boundary already separated into the program
@@ -863,4 +909,96 @@ open question "What does a host see of a script's progress while it runs? Nothin
 entity NetworkPort {
     resolves_names: boolean
     carries_connections: boolean
+}
+
+-- And a host may fetch for the script rather than carry the connection
+-- itself.
+--
+-- The request crosses as the pieces a url and a port's spec already
+-- carry: a method, headers, some content, and whether redirects are to be
+-- followed. The answer comes back whole -- the status, the headers and
+-- the body -- and the body is bytes, because what they mean is the
+-- codec's business rather than the transport's. A host that fetches has
+-- settled names, certificates and redirects by the time it answers; a
+-- script cannot see those as separate steps and does not have to.
+--
+-- One service for both http and https, because a host that can fetch over
+-- the secure transport fetches over both, and a script cannot tell the
+-- transport from the answer.
+entity HttpPort {
+    answers_requests: boolean
+    follows_redirects: boolean
+}
+
+-- What crosses the boundary when a script reads a url on a host that
+-- fetches for it.
+value HttpRequest {
+    url: String
+    method: String
+
+    -- The headers, flat: a name, then its value, then the next name. Flat
+    -- for the same reason a program's filters are: it is how a script
+    -- writes them, and pairing them is a reading rather than a fact. Every
+    -- entry is text by the time it crosses.
+    header_names: List<String>
+    header_values: List<String>
+
+    content: List<Integer>?
+    follows_redirects: Boolean
+    timeout: Duration?
+}
+
+-- And what comes back. The body is bytes rather than text because the
+-- decoding is the codec's business: a host that answered a string would
+-- be choosing an encoding on behalf of a caller who may have asked for
+-- binary.
+value HttpResponse {
+    status: Integer
+    header_names: List<String>
+    header_values: List<String>
+    body: List<Integer>
+}
+
+-- === What a browser can offer ================================
+
+-- A browser is a host worth naming, because the page it runs in can do
+-- less than a machine and the difference is visible to scripts.
+--
+-- It has a console the page shows, files in a store of that site's own,
+-- the clock, the screen it is drawn on, the clipboard, and HTTP through
+-- the browser's own fetching. It has no raw connection, no way to start a
+-- program, no environment it was launched with and no working directory
+-- of its own, because a page has none of those.
+--
+-- So a browser's bounds lack those four and may grant any of the six it
+-- has. Asking for a lacking one is refused not_present with the browser
+-- named, which is a different answer from the same script on a machine
+-- where the operator simply did not grant it. The four are refused
+-- before anything is attempted, so a script cannot learn whether a host
+-- exists by timing a name lookup it was never allowed to make.
+rule ABrowserOffersWhatItsPageCan {
+    when: interpreter: Interpreter.created
+
+    ensures: interpreter.bounds.lacking_services =
+        {network, processes, environment, working_directory}
+    ensures: interpreter.bounds.host_name = "a browser"
+}
+
+-- And what it does have it may still choose not to grant. The web service
+-- is the one a page cannot do without: without it there is no HTTP at
+-- all, because a page has no other way to fetch.
+rule ABrowserWithTheWebServiceAnswersHttpItself {
+    when: script_reads_an_http_url(run, url)
+    requires: run.interpreter.http != null
+    requires: web in run.interpreter.bounds.granted_services
+
+    let request = an_http_request_for(url)
+    let answer = the_answer_the_host_gave()
+
+    ensures: the_request_crosses_as(request)
+    ensures: the_answer_that_crossed_back_is(answer)
+    ensures: if the_host_reached_it():
+        CallResult(value: the_body_it_brought_back())
+    ensures: if the_host_could_not_reach_it():
+        CallFails(error: cannot_connect)
 }

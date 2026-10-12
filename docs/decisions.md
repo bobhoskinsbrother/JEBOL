@@ -1270,3 +1270,110 @@ wires it; the web build does not.
 platform can give the interpreter. The spec rule is
 `TheFateOfATasksBodyIsTheHostsToDecide` in `spec/natives.allium`, replacing the
 open question that stood there.
+
+## 31. A host that lacks a service is a different fact from one that did not grant it
+
+**The browser is the host that forced the distinction.** The service model
+already had three refusals -- `not_granted`, `not_present`, `never_portable`
+-- but nothing could produce the middle one except a window port that was
+absent. A page can offer some of what a machine offers and cannot offer the
+rest at any price: it has no raw connection for TCP, UDP or DNS, no way to
+start a program, no environment it was launched with and no working
+directory of its own.
+
+**So `Bounds` carries a second set beside the grants.** `lacking(NETWORK)`
+says this host has no such service at all, and `granting` refuses a service
+the same bounds lack, because a host that could change its mind should have
+granted it. A refusal picks its reason from the two sets: in `lacking`, it
+is `not_present`; merely ungranted, it stays `not_granted`. The sentence
+names the host, which names itself once with `called("a browser")`, because
+the domain knows nothing about browsers and should not learn.
+
+**The two are refused before anything is attempted**, so a script cannot
+learn whether a host exists by timing a name lookup it was never allowed to
+make. The web build's four are `NETWORK`, `PROCESSES`, `ENVIRONMENT` and
+`WORKING_DIRECTORY`; the spec rule is `ABrowserOffersWhatItsPageCan` in
+`spec/embed.allium`, and the tests that pin the sentences are
+`ABrowserHostFromTheSourceTest`.
+
+## 32. A host that fetches owns the http and https schemes' actor
+
+**CALL is not the only thing a browser does differently with a URL.** Rebol's
+`prot-http.reb` implements HTTP over a TCP connection it opens itself, so on
+the web it could only ever be refused. The browser has its own fetching, with
+its own names, certificates, redirects and cookies, and the goal for the web
+is that `read http://...` uses it.
+
+**The seam is the scheme's actor, not the scheme.** `HttpPort`
+(`org.jebol.domain.host`) is a new port: one exchange in, one answer out.
+`Interpreter.useHttp(port)` swaps the actor of `http` and `https` for
+`HttpSchemeActor`, a native that answers OPEN, READ and CLOSE through the
+port and declines everything else. Rebol's protocol stays loaded and the
+scheme keeps its spec and its `info`, so `query http://x none` answers the
+same three extra fields as before, `system/modules` still lists `http`, and
+a host that supplies nothing is untouched: `read http://` then reaches
+`prot-http.reb` and the `NETWORK` service exactly as it always did.
+
+**The answers are Rebol's own, because a script must not be able to tell
+which one answered**: the body as text unless `/binary`, `/string` and
+`/lines` honoured, `/part` and `/seek` trimmed and sent as a `Range`, a
+redirect followed, a status of 300 or 400-and-up raising `protocol`, and a
+url that could not be reached raising `no-connect`. `write` has no arm yet
+and says so with `no-port-action`, naming the verb.
+
+**Which bodies are text is the content type's decision, as it is in
+`prot-http.reb`'s own `decode-result`**, and that was verified against a real
+3.22.5 rather than read off the source: a charset parameter, `text/*` or
+`application/json` decode (by that charset where one is named, and a charset
+nothing can decode leaves the bytes alone); anything else -- an octet stream,
+an image, no declared type at all -- is answered as the bytes it is, and
+`/string` and `/lines` force text whatever the type says. The first probe of
+this was read as saying a 404 answered rather than raised, and turned out to
+be pointing at a file that existed, so its "404" was a 200. The corrected
+probe is what the rule was written from.
+
+**The body crosses decoded.** Undoing a content coding is part of fetching:
+a browser's own `fetch` has done it before it answers, so the actor does not
+decompress and the `HttpPort` contract says so.
+
+**The web build's `WebHttp` meets the port with `fetch`,** and the fiber
+suspends on the promise while it is in flight -- the same pause-and-resume a
+WAIT uses. A `@JSBody` script returns the status, the headers, the bytes and
+a reason rather than throwing, because a JS exception crossing back into
+Java would be the host exception the invariant forbids.
+
+## 33. The browser's files are the worker's memory, and its console is the page's element
+
+**Memory rather than the browser's private store, for now.** The page's own
+storage for a site (OPFS) is asynchronous and a script's reads are not, so a
+port over it would suspend the fiber on every call. `WebFiles`
+(`org.jebol.adapter.web`) keeps the files in the worker, with the confined
+filesystem's shape: a root that shows as `/`, a per-port working directory,
+and `..` clamping at the root. Nothing survives a reload, and the decision
+to make it survive belongs with the store rather than with the port.
+
+**The console is the page.** What a script printed the page shows; a line
+the operator types arrives as a posting and `WebConsole.readLine` takes it,
+slicing the fiber while it waits so the worker's event loop keeps delivering.
+A line the page cannot read without showing it (a password) is refused
+rather than read in the open.
+
+## 34. The browser's cryptography is decided, and its refusals are errors
+
+**Decided: digests and HMACs come from WebCrypto, the rest is refused.**
+WebCrypto's catalogue is fixed -- SHA-1, the SHA-2 sizes, and HMAC over them
+-- and Rebol's is not: no MD5, no RIPEMD-160, no SHA-3, no Camellia, no
+ARIA. JEBOL's own Java ciphers (Camellia and ARIA among them) work on the
+web already; the JDK-backed halves do not. When the web's fetching of
+digests lands it will be a port behind the domain's hashing, reached
+asynchronously the way HTTP is, and the methods WebCrypto has not got stay
+`feature-na`.
+
+**Built today: the refusals are ordinary REBOL errors, not host
+exceptions.** `Encodings.digestOf`, `Encodings.keyedDigestOf`,
+`SecureDrawing` and the crypt port's ciphers caught only the JDK's own
+exceptions, so the web build's throwing stand-ins escaped as Java throwables
+-- which the invariant `NoFailureEscapesAsAHostException` forbids. They now
+catch the stand-ins' `UnsupportedOperationException` too and raise
+`feature-na`, so `checksum "abc" 'sha1` and `random/secure` are values a
+script can catch. The browser gate asserts it.

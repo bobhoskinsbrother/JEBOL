@@ -151,6 +151,7 @@ the port that serves it.
 | Read a line from the operator | `CONSOLE` | `useConsole(port)` |
 | Ask what the time is | `CLOCK` | none |
 | Open a connection to another machine | `NETWORK` | `useNetwork(port)` |
+| Fetch a url with HTTP or HTTPS | `WEB` | `useHttp(port)` |
 | Ask the operator through a window | `WINDOWS` | `useWindows(port)` and `useScreen(port)` |
 
 ```java
@@ -158,6 +159,16 @@ Interpreter interpreter = Interpreter.withBounds(
         Bounds.standard().granting(HostService.FILES));
 interpreter.useFileSystem(FileSystemPort.rootedAt(Path.of("/srv/scripts")).readOnly());
 ```
+
+A host that has no way to offer a service at all says so once, on the bounds.
+`lacking(NETWORK)` means this host has no network, whatever it grants later.
+A script that asks for one reads `not_present` rather than `not_granted`. Use
+`called("a phone")` to name the host in that sentence.
+
+`useHttp(port)` is the web build's shape of `WEB`: the host fetches, and the
+http and https schemes answer through it. A host that supplies no HTTP port
+leaves those schemes to Rebol's own protocol, which opens a `NETWORK`
+connection of its own.
 
 The file port is rooted at one directory and that root is a boundary. A path
 that goes outside the root is refused. This is true whether the path climbs

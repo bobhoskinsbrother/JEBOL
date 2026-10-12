@@ -3081,14 +3081,15 @@ rule TheClipboardNeedsItsGrant {
 -- READ, WRITE and RENAME take more than a file. Each also accepts a url, a
 -- block naming a specification, and a word naming a scheme; WRITE takes a
 -- port as well. Every one of those routes to a scheme rather than to the
--- filesystem, and JEBOL serves no scheme, so the routing finds nothing.
+-- filesystem, and where the host serves no such scheme the routing finds
+-- nothing.
 --
 -- Routing that finds nothing is the honest shape here rather than a
 -- pretence. A real R3 hands the call to the scheme's actor, and the actor is
 -- what knows how to read an http url or write to a clipboard. JEBOL routes
--- the same way and there is no actor at the end of it, so the answer is a
--- no-service error naming the scheme that was wanted: nothing here reads the
--- http scheme.
+-- the same way, and where neither its own arm nor a host's own scheme is at
+-- the end of it the answer is a no-service error naming the scheme that was
+-- wanted: nothing here reads the http scheme.
 --
 -- Naming the scheme matters. A script told only that a read failed cannot
 -- tell a missing file from a protocol nobody implemented, and the two ask
@@ -3105,6 +3106,28 @@ rule ReadingOrWritingThroughASchemeFindsNoScheme {
     requires: not the_host_serves(the_scheme_named_by(target))
 
     ensures: CallFails(error: no_service, about: the_scheme_named_by(target))
+}
+
+-- A host may also serve a scheme itself rather than routing to a raw
+-- transport. A browser has no TCP, but it has HTTP, and a url naming it is
+-- answered by the host: the request crosses as the method, the headers
+-- and the content a port's spec already carries, and the answer comes
+-- back as the status, the headers and the body.
+--
+-- The answers are the ones Rebol's own protocol gives, because a script
+-- must not be able to tell which answered: the body as text unless
+-- /binary, with /string and /lines honoured, /part and /seek taken against
+-- the body, redirects followed, and a host that could not be reached
+-- raising rather than answering none. A page has one way to fetch and it
+-- is the host's; that it is the browser's own machinery rather than a
+-- socket JEBOL opened is invisible from here.
+rule AHostThatServesASchemeItselfAnswersTheUrl {
+    when: EvaluateCall(verb, target)
+    requires: verb in {open, read, write}
+    requires: the_host_serves(the_scheme_named_by(target))
+
+    ensures: the_request_crosses_as(the_http_request_for(target))
+    ensures: CallResult(value: the_answer_that_crossed_back())
 }
 
 -- The file scheme is one this host does serve, so a url naming it reads and

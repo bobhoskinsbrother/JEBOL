@@ -11,6 +11,8 @@ import org.jebol.domain.eval.hashing.RipeMd160;
 import org.jebol.domain.eval.hashing.XxHash;
 import org.jebol.domain.eval.hashing.XxHash3;
 import org.jebol.domain.value.BitsetValue;
+import org.jebol.domain.value.EvaluationFailure;
+import org.jebol.domain.value.Raised;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -591,8 +593,8 @@ public final class Encodings {
         try {
             return MessageDigest.getInstance(DIGESTS.get(method))
                     .digest(octets);
-        } catch (NoSuchAlgorithmException unavailable) {
-            throw new IllegalArgumentException(method + " is not available here");
+        } catch (NoSuchAlgorithmException | UnsupportedOperationException unavailable) {
+            throw Raised.of(EvaluationFailure.FEATURE_NA, method);
         }
     }
 
@@ -604,9 +606,9 @@ public final class Encodings {
                     key.length == 0 ? new byte[1] : key, algorithm));
             return mac.doFinal(octets);
         } catch (NoSuchAlgorithmException
-                | InvalidKeyException unavailable) {
-            throw new IllegalArgumentException(
-                    method + " has no keyed form here");
+                | InvalidKeyException
+                | UnsupportedOperationException unavailable) {
+            throw Raised.of(EvaluationFailure.FEATURE_NA, method);
         }
     }
 
