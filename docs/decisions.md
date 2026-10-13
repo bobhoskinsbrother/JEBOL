@@ -1615,3 +1615,37 @@ structure with no class loading and no per-word interning. A JEBOL boot that
 skipped *construction and evaluation* would need a boot image in the strong
 sense - R3's delayed module loading is the nearest thing that exists - and
 these numbers bound what pre-parsing alone can do.
+
+**Decision 40 took this back out**, for the reason these measurements gave:
+19ms of a cold create and nothing else measurable, against 222 KB in both
+artifacts and a codec to keep. The finding above is what survives.
+
+## 40. The library image comes back out, and the cold start is the JVM, not the scan
+
+**Built in decision 39, measured, and reverted.** The image was exact and its
+test proved it, but what it bought was 19ms of the first
+`Interpreter.create()` in a fresh process - 427ms without it against 408 with,
+five runs each way - and nothing else that could be measured. That is what its
+mechanism predicts: a warm create copies the cached trees whether they came
+from the image or from the scanner, so only the first create of a process can
+gain, and in the worker inflating and rebuilding the values cost what scanning
+them cost, 459 to 467ms either way. The test run's spread across identical
+code is 4m02 to 4m29, which swallows any difference the image could make;
+the one run of 3m47s was that spread, not the image. So 222 KB in the jar and
+the module, a build step, and five hundred lines of codec went back out.
+What stayed from the same batch is the part with a mechanism that shows in
+warm creates: the copier learning bitsets and maps, which stopped the
+eight-odd mezz files carrying them being re-scanned on every create, and the
+repair of `modules/unicode-utils.reb` (the findings note has the evidence).
+
+**The cold start, measured rather than named.** Temporary stopwatches on the
+first create against the next two: the system and its symbols 121ms cold
+against 8 warm, the system object 48 against 1, the library 215 against 65,
+the declaration tables 23 against 0.2. That is a first-use cost spread across
+every phase, and the JVM's own logging says what it is: 2,626 classes are
+loaded during one create, 1,162 of them JEBOL's, and about three thousand
+methods are JIT-compiled. The boot's actual work is around 75ms; the other
+330ms is the JVM loading, verifying, initialising and compiling the
+interpreter's whole surface. It is not dispatch - a switch over a sealed
+interface is a table switch and costs nothing - it is that a cold JVM pays
+per class and per method, and a boot touches nearly all of them.

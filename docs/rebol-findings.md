@@ -6619,11 +6619,21 @@ number.
 `src/main/resources/org/jebol/modules/unicode-utils.reb` never closes the
 `make vector! [unsigned integer! 8 [` it opens on line 45: the `]` on line 64
 shuts the data block, and the second one the construction needs is missing.
-The copy JEBOL carries is byte-identical to the file at its own `home:` URL,
-`https://src.rebol.tech/modules/unicode-utils.reb`, fetched 2026-10-13, so
-the error is upstream's. `./r3-head /tmp/unicode-utils.r3` answers
+The error is in Rebol's own tree, not in the vendoring: JEBOL's copy was
+byte-identical to `rebol3-source/src/modules/unicode-utils.reb` and to the
+file at its own `home:` URL, `https://src.rebol.tech/modules/unicode-utils.reb`
+(fetched 2026-10-13). `./r3-head /tmp/unicode-utils.r3` answers
 `** Syntax error: missing "]" at "end-of-script"` near `(line 44) ][`, and
-JEBOL refuses it with the same error and the same id. Nothing in the build
-or the library loads this module, which is why the gate never noticed; the
-library image skips it by name rather than repairing it, because agreeing
-with the C comes before improving on it.
+JEBOL refused it with the same error and the same id until the bracket was
+put back. Nothing in the build or the library loads this module, which is why
+the gate never noticed it before.
+
+**JEBOL repairs it anyway, and that is a knowing divergence.** A `]` closes
+the construction, `UnicodeUtilsModuleLoadsTest` proves the module imports and
+that `decode-utf8` turns `#{41 42 43}` into `ABC`, `#{C3 A9}` into the
+character 233, drops a character above the basic plane unless `/html` asks
+for an entity, and `SuiteSelectionTest`'s byte-for-byte module pin excepts
+this one file by name. A script importing unicode-utils therefore runs here
+and cannot run in a real 3.22.5, which is the wrong direction for this
+project to differ in, and it was taken because the file is otherwise dead
+code that only a build error can reach.

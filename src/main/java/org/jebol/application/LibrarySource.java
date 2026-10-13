@@ -1,12 +1,9 @@
 package org.jebol.application;
 
-import org.jebol.domain.read.LibraryImage;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.*;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,10 +13,6 @@ final class LibrarySource {
 
     private LibrarySource() {
     }
-
-    private static final String THE_IMAGE = "/org/jebol/library.image";
-
-    private static volatile boolean theImageWasRead;
 
     private static final Map<String, AnyBlockValue> READINGS = new ConcurrentHashMap<>();
 
@@ -31,10 +24,6 @@ final class LibrarySource {
             return Transcoder.transcode(source);
         }
         AnyBlockValue held = READINGS.get(name);
-        if (held == null) {
-            readTheImageOnce();
-            held = READINGS.get(name);
-        }
         if (held != null) {
             return new TranscodeResult.Success((AnyBlockValue) freshCopyOf(held));
         }
@@ -49,26 +38,6 @@ final class LibrarySource {
         }
         READINGS.put(name, values);
         return new TranscodeResult.Success((AnyBlockValue) freshCopyOf(values));
-    }
-
-    private static void readTheImageOnce() {
-        if (theImageWasRead) {
-            return;
-        }
-        synchronized (LibrarySource.class) {
-            if (theImageWasRead) {
-                return;
-            }
-            theImageWasRead = true;
-            try (InputStream reading = LibrarySource.class.getResourceAsStream(THE_IMAGE)) {
-                if (reading != null) {
-                    LibraryImage.treesIn(reading.readAllBytes()).forEach(READINGS::put);
-                }
-            } catch (IOException unreadable) {
-                throw new IllegalStateException(
-                        "the library image would not read", unreadable);
-            }
-        }
     }
 
     private static Value freshCopyOf(Value value) {

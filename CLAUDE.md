@@ -199,12 +199,11 @@ every time it runs, and it is never quietly excluded. Run it after any change to
 the core, to `PaintList`, to either renderer, or to the page.
 
 Selenium is a `testImplementation` dependency and nothing else. **The shipped jar
-has no dependencies and this does not change that** -- about 3.3 MB, of which
-556 KB is the carried font, 228 KB the borrowed REBOL library, 222 KB the
-library image, and about 190 KB Brotli's static dictionary and the three tables
-that index it, all carried in the source because the domain may not read a
-file. The size is in `goals.md` too and that is the copy to correct when it
-moves.
+has no dependencies and this does not change that** -- about 3,090 KB, of which
+556 KB is the carried font, 228 KB the borrowed REBOL library, and about 190 KB
+Brotli's static dictionary and the three tables that index it, all carried in
+the source because the domain may not read a file. The size is in `goals.md`
+too and that is the copy to correct when it moves.
 
 ## Code comments: never. Javadoc: only on the contract
 
