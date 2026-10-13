@@ -638,6 +638,7 @@ public final class Interpreter {
                     Duration.ofNanos(System.nanoTime() - startedAt));
         } finally {
             deadlineNanos = Long.MAX_VALUE;
+            evaluator.screen().offerWhatWasShown();
         }
     }
 
@@ -712,6 +713,7 @@ public final class Interpreter {
                     Duration.ofNanos(System.nanoTime() - startedAt)), "");
         } finally {
             deadlineNanos = Long.MAX_VALUE;
+            evaluator.screen().offerWhatWasShown();
         }
     }
 

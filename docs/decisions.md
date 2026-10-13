@@ -1399,20 +1399,20 @@ list, and the rule is that the same paint list produces the same calls on
 every surface.
 
 **The alternative was a rasteriser in the domain, and it is not taken.**
-Goal 1 step 3 as first written wanted fills, strokes, curves, coverage,
-gradients, images, clipping and glyphs all scan-converted in JEBOL, with
-every platform copying the finished grid. It buys pixels that are identical
-everywhere. It costs a rasteriser and a TrueType glyph rasteriser, built and
-kept for ever; text without the platform's hinting, which is a visible loss
-on the desktop; full-screen software repaints in a worker and later on a
-phone where the platform would have used a GPU; and `gamma` is the only
-feature it would add that the toolkits lack. R3 ported AGG into every
-platform because in its day no platform had a vector API; today every
-platform has a good one. What the rasteriser would have guaranteed, the
-spec already bounds: a pixel inside a shape matches exactly, an edge pixel
-may differ by at most 24 of 255 across at most a fortieth of the picture,
-and those two numbers are a change to the specification rather than a nudge
-in a test.
+The web port's plan as first written wanted fills, strokes, curves,
+coverage, gradients, images, clipping and glyphs all scan-converted in
+JEBOL, with every platform copying the finished grid. It buys pixels that
+are identical everywhere. It costs a rasteriser and a TrueType glyph
+rasteriser, built and kept for ever; text without the platform's hinting,
+which is a visible loss on the desktop; full-screen software repaints in a
+worker and later on a phone where the platform would have used a GPU; and
+`gamma` is the only feature it would add that the toolkits lack. R3 ported
+AGG into every platform because in its day no platform had a vector API;
+today every platform has a good one. What the rasteriser would have
+guaranteed, the spec already bounds: a pixel inside a shape matches exactly,
+an edge pixel may differ by at most 24 of 255 across at most a fortieth of
+the picture, and those two numbers are a change to the specification rather
+than a nudge in a test.
 
 **One font supplies the metrics, and it is carried by the build.** Noto Sans
 Regular, under the SIL Open Font License, read at the edge and handed to the
@@ -1429,5 +1429,34 @@ stops laying text out: a few hundred lines of JavaScript that duplicated
 `TextLines` are deleted rather than kept in step.
 
 **Decided while planning the web port**, after the plan's first draft
-proposed the rasteriser. Goals 7 and 8 change with it: a phone app
+proposed the rasteriser. Goals 6 and 7 change with it: a phone app
 implements the surface on its own canvas rather than copying a grid.
+
+## 36. A page is painted between events, not once per show
+
+**The browser adapter coalesced nothing, and a drag showed what that costs.**
+A GUI shows every face that changes, so one move of a slider drag is three
+shows -- the example's scroller, its progress bar and the slider itself --
+and the adapter painted the whole surface for each of the three: 121 paints
+for a 40-move drag, around 24ms of work per move, in three pictures that
+hash identical because the list is the whole surface every time. A toolkit
+adapter never had the problem: `DesktopScreen` invalidates and Swing decides
+when to draw. The web adapter had no toolkit to lean on and no coalescing of
+its own.
+
+**So a show is remembered, and the picture offered is the tree as it stands
+when the interpreter next looks at the screen.** `ScreenPort` gained
+`offerWhatWasShown`: the interpreter calls it before a run, when one ends,
+and `BrowserScreen` calls it inside a wait once there are no more events to
+take. That is the whole rule, and it is what the spec's browser rule now
+says: nothing but the timing changes, because the list is always the whole
+surface. The tests that counted paints per show were asserting the timing
+rather than the picture, and now assert the picture the page ends up with.
+
+**Measured again the same way:** 40 paints for a 40-move drag at a pointer
+posting every 50ms, one per move; at a real mouse's rate -- 200 moves
+posting every 8ms -- 56 paints, one per event batch, at a steady 35 frames
+a second, draining 24ms after the pointer stopped. The first picture after
+a move arrives 10 to 22ms later, which is the wait's ten-millisecond poll
+plus one whole-surface walk. The walk itself is the next thing to shrink if
+it ever needs shrinking: 98KB of JSON for the two example windows.

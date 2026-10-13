@@ -119,7 +119,7 @@ much a script is allowed is settled before goal 6.
 Today a host can add a Java function to JEBOL with
 `Interpreter.defineFunction`. But JEBOL only gets the function, not what it
 is. So nothing can list what has been added, allow one addition while
-blocking another, or report that an addition failed to start. Goals 7 and 8
+blocking another, or report that an addition failed to start. Goals 6 and 7
 reach the phones' own features -- the camera, location, notifications -- one
 port per feature, and those are plug-ins of exactly this kind, so this comes
 first.
@@ -284,9 +284,9 @@ interpreters -- reads as missing.
 - **The old markup path** -- 522 lines.
 - **`effect`**, the one DRAW command not painted; it is a dialect of its own
   and belongs with the codecs.
-- **The stroked-curve comparison** between the two adapters. Goal 1 step 3
-  makes the walk one and leaves only the toolkit's coverage arithmetic, which
-  the spec's tolerance already bounds.
+- **The stroked-curve comparison** between the two adapters. The surface of
+  decision 35 makes the walk one and leaves only the toolkit's coverage
+  arithmetic, which the spec's tolerance already bounds.
 
 ### 14. Loose ends
 
@@ -364,6 +364,18 @@ SECURE not being enforced is part of goal 4.
 exchange, a local server, or a second gate allowed a network -- so the gate
 needs nothing but a JDK.
 
+### 20. A drag still lags, and the paint is the slow part
+
+The picture reaches the page 10 to 22ms after each pointer move, and a fast
+drag settles at about 35 frames a second, which still reads as laggy. The
+measurements are decision 36's. Three costs, in the order they bite: the
+wait polls every ten milliseconds and that sets the floor; each paint walks
+the whole surface and writes its JSON afresh -- 98KB for the two examples --
+where only what has changed is ever looked at; and the page clears and
+replays the whole canvas for each. Decide between patching the paint list,
+painting at most once a frame, and letting a superseded pointer move be
+dropped before the worker sees it.
+
 ---
 
 ## Standing
@@ -397,5 +409,5 @@ A flake is a fail. None of these is closed.
   whole suite passed alone straight after. The reads to
   `raw.githubusercontent.com` are goal 19's dependency on two outside
   services, and under a parallel gate one of them stalled past the run's
-  deadline. Goal 20 is the fix; until then a full gate can fail here without
+  deadline. Goal 19 is the fix; until then a full gate can fail here without
   anything having changed.

@@ -63,6 +63,8 @@ public final class BrowserScreen extends GobScreen {
 
     private PairValue viewport = PairValue.of(0, 0);
 
+    private boolean aPictureIsOwed;
+
     private BrowserScreen(Viewer viewer) {
         this.viewer = viewer;
     }
@@ -124,19 +126,23 @@ public final class BrowserScreen extends GobScreen {
     public void show(GobValue gob) {
         super.show(gob);
         if (root != null) {
-            viewer.paint(theWholePagePaintedAfreshRatherThanPatched());
+            aPictureIsOwed = true;
         }
+    }
+
+    @Override
+    public void offerWhatWasShown() {
+        if (!aPictureIsOwed || root == null) {
+            return;
+        }
+        aPictureIsOwed = false;
+        viewer.paint(theWholePagePaintedAfreshRatherThanPatched());
     }
 
     private List<SurfaceCall> theWholePagePaintedAfreshRatherThanPatched() {
         return PaintList.ofTheScreen(root,
                 (int) Math.round(viewport.x()), (int) Math.round(viewport.y()),
                 drawDialect).calls(textMeasure());
-    }
-
-    /** How big the surface is, which is what a page sizes its canvas to. */
-    public PairValue theSizeOfTheSurface() {
-        return viewport;
     }
 
     @Override
@@ -182,7 +188,11 @@ public final class BrowserScreen extends GobScreen {
     public Optional<ScreenEvent> takeTheNextEvent() {
         takePendingReports();
         addressEverythingThePagePosted();
-        return super.takeTheNextEvent();
+        Optional<ScreenEvent> next = super.takeTheNextEvent();
+        if (next.isEmpty()) {
+            offerWhatWasShown();
+        }
+        return next;
     }
 
     private void takeEveryMeasurement() {

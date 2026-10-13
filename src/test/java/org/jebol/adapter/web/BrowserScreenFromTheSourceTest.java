@@ -134,32 +134,82 @@ class BrowserScreenFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a second window paints again, so the page holds both")
+        @DisplayName("two windows shown between two looks are one picture, holding both")
         @Timeout(20)
-        void asecondWindowPaintsAgain() {
+        void twoWindowsAreOnePicture() {
             SomebodyLooking viewer = new SomebodyLooking();
-
-            sessionOn(BrowserScreen.seenBy(viewer), """
+            Interpreter interpreter = withABrowser(BrowserScreen.seenBy(viewer));
+            String opening = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]
-                    view/no-wait make gob! [size: 100x100 color: 2.2.2]""");
+                    view/no-wait make gob! [size: 100x100 color: 2.2.2]""";
+            interpreter.defineFreshWordsIn(opening);
+            interpreter.run(opening);
+            GobValue root = (GobValue) interpreter.run("system/view/screen-gob").value();
 
-            assertThat(viewer.timesPainted()).isGreaterThanOrEqualTo(2);
+            assertThat(viewer.timesPainted())
+                    .as("a page is told the tree as it stands, not once per show")
+                    .isEqualTo(1);
+            assertThat(viewer.lastPainted())
+                    .isEqualTo(PaintList.ofTheScreen(root, 800, 600, null)
+                            .calls(TextMeasures.ofTheCarriedFont()));
         }
 
         @Test
-        @DisplayName("and closing one paints again too, so what went is gone")
+        @DisplayName("and closing one between two looks is one picture, with what went gone")
         @Timeout(20)
-        void closingPaintsAgain() {
+        void closingIsOnePicture() {
             SomebodyLooking viewer = new SomebodyLooking();
+            Interpreter interpreter = withABrowser(BrowserScreen.seenBy(viewer));
+            String opening = """
+                    keep: view/no-wait make gob! [size: 100x100 color: 1.1.1]
+                    closing: view/no-wait make gob! [size: 50x50 color: 2.2.2]
+                    unview closing""";
+            interpreter.defineFreshWordsIn(opening);
+            interpreter.run(opening);
+            GobValue root = (GobValue) interpreter.run("system/view/screen-gob").value();
 
-            sessionOn(BrowserScreen.seenBy(viewer), """
+            assertThat(viewer.timesPainted()).isEqualTo(1);
+            assertThat(viewer.lastPainted())
+                    .as("the picture the page last gets is the tree as it now stands")
+                    .isEqualTo(PaintList.ofTheScreen(root, 800, 600, null)
+                            .calls(TextMeasures.ofTheCarriedFont()));
+        }
+
+        @Test
+        @DisplayName("faces shown while one event is handled are one picture, not three")
+        @Timeout(20)
+        void threeShowsInOneEventAreOnePicture() {
+            SomebodyLooking viewer = new SomebodyLooking();
+            BrowserScreen screen = BrowserScreen.seenBy(viewer);
+            Interpreter interpreter = withABrowser(screen);
+            String setUp = """
                     w: view/no-wait make gob! [size: 100x100 color: 1.1.1]
-                    painted-once: true
-                    unview w""");
+                    w/offset: 0x0
+                    inner: make gob! [size: 10x10 color: 2.2.2]
+                    append w inner
+                    times-shown: 0
+                    handle-events [
+                        name: 'shower
+                        priority: 90
+                        handler: func [event] [
+                            times-shown: times-shown + 1
+                            show inner
+                            show inner
+                            show w
+                            event
+                        ]
+                    ]""";
+            interpreter.defineFreshWordsIn(setUp);
+            interpreter.run(setUp);
+            int paintedBefore = viewer.timesPainted();
 
-            assertThat(viewer.timesPainted())
-                    .as("a browser is not told to erase; it is told the new picture")
-                    .isGreaterThanOrEqualTo(2);
+            screen.theBrowserReports(ScreenEventKind.DOWN, new ScreenEventDetail.At(5, 5));
+            interpreter.run("wait [system/ports/event 0]");
+
+            assertThat(interpreter.display(interpreter.run("times-shown"))).isEqualTo("1");
+            assertThat(viewer.timesPainted() - paintedBefore)
+                    .as("three shows between two looks are offered as one picture")
+                    .isEqualTo(1);
         }
     }
 

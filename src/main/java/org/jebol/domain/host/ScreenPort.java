@@ -26,6 +26,10 @@ import java.util.Optional;
  * window does not. {@link #none()} is where that split is written down and
  * {@code spec/screen.allium} is where it is argued.
  *
+ * <p>{@link #offerWhatWasShown()} is not a script's request: it is the
+ * interpreter telling the port that it is between script steps, which is when
+ * a deferred picture goes out.
+ *
  * <p>Specified in {@code spec/screen.allium}.
  */
 public interface ScreenPort {
@@ -65,6 +69,23 @@ public interface ScreenPort {
      * what turns "refresh it" into "close it".
      */
     void show(GobValue gob);
+
+    /**
+     * Offers whatever has been shown since the last offer, and nothing when
+     * nothing has.
+     *
+     * <p>A show is remembered rather than painted where it happens, because a
+     * screen only ever shows the tree as it stands: three faces shown while
+     * one event is handled are one picture. Called where the interpreter is
+     * between script steps -- before a run, when one ends, and inside a wait
+     * once there are no more events to take.
+     *
+     * <p>An adapter over a toolkit does nothing here. Invalidating is already
+     * cheap there and the toolkit itself coalesces the drawing, which is the
+     * same shape arrived at from the other side.
+     */
+    default void offerWhatWasShown() {
+    }
 
     /**
      * The oldest event not yet taken, removed from the queue, or empty when

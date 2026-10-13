@@ -1253,10 +1253,21 @@ rule EveryRendererExecutesTheSameList {
 -- framework is the host's business, and JEBOL exists to run inside a host
 -- that already has one. A transport in the domain would be a decision made
 -- for every host by a language.
+--
+-- A show is remembered, and the picture offered is the tree as it stands when
+-- the interpreter next looks at the screen. A GUI shows every face that
+-- changes, so one pointer move can be three shows, and three faces shown
+-- while one event is handled are one picture -- the list is the whole surface
+-- either way, so nothing but the timing tells them apart. That is the same
+-- coalescing a toolkit gives for free: the desktop adapter invalidates and
+-- lets its toolkit decide when to draw, and only a transport with no toolkit
+-- behind it has to say so itself.
 rule TheTransportIsNotThePortsBusiness {
-    when: script_shows(run, gob)
+    when: the_interpreter_looks_at_the_screen(run)
     requires: windows_are_granted(run)
     requires: the_screen_is_a_browser(run)
+    requires: something_was_shown_since_the_last_look(run)
+
     ensures: the_paint_list_is_offered_to_whatever_is_attached(run)
 }
 
