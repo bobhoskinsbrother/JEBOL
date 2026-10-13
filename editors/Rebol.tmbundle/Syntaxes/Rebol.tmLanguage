@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>name</key>
+	<string>Rebol</string>
+	<key>uuid</key>
+	<string>AF9D6691-D90C-4532-8BCE-1D74C0C94EB9</string>
+	<key>scopeName</key>
+	<string>source.rebol</string>
+	<key>fileTypes</key>
+	<array>
+		<string>r</string>
+		<string>reb</string>
+		<string>r3</string>
+		<string>rebol</string>
+	</array>
+	<key>firstLineMatch</key>
+	<string>^[Rr][Ee][Bb][Oo][Ll]\s*\[</string>
+	<key>patterns</key>
+	<array>
+
+		<dict>
+			<key>name</key>
+			<string>comment.line.semicolon.rebol</string>
+			<key>match</key>
+			<string>;.*$\n?</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>string.quoted.binary.rebol</string>
+			<key>match</key>
+			<string>(?:2#|16#|64#)?#\{[^}]*\}</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>constant.character.rebol</string>
+			<key>begin</key>
+			<string>#"</string>
+			<key>end</key>
+			<string>"</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>name</key>
+					<string>constant.character.escape.rebol</string>
+					<key>match</key>
+					<string>\^(?:\([0-9A-Fa-f]{1,6}\)|\d|[^\s])</string>
+				</dict>
+			</array>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>string.quoted.double.rebol</string>
+			<key>begin</key>
+			<string>"</string>
+			<key>end</key>
+			<string>"</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>name</key>
+					<string>constant.character.escape.rebol</string>
+					<key>match</key>
+					<string>\^(?:\([0-9A-Fa-f]{1,6}\)|\d|[^\s])</string>
+				</dict>
+			</array>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>string.quoted.brace.rebol</string>
+			<key>begin</key>
+			<string>\{</string>
+			<key>end</key>
+			<string>\}</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>name</key>
+					<string>constant.character.escape.rebol</string>
+					<key>match</key>
+					<string>\^(?:\([0-9A-Fa-f]{1,6}\)|\d|[^\s])</string>
+				</dict>
+				<dict>
+					<key>name</key>
+					<string>string.quoted.brace.rebol</string>
+					<key>begin</key>
+					<string>\{</string>
+					<key>end</key>
+					<string>\}</string>
+					<key>patterns</key>
+					<array>
+						<dict>
+							<key>name</key>
+							<string>constant.character.escape.rebol</string>
+							<key>match</key>
+							<string>\^(?:\([0-9A-Fa-f]{1,6}\)|\d|[^\s])</string>
+						</dict>
+					</array>
+				</dict>
+			</array>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>entity.name.tag.rebol</string>
+			<key>match</key>
+			<string>&lt;/?[A-Za-z][A-Za-z0-9-]*(?:\s+[^&lt;&gt;]*)?/?&gt;</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>markup.underline.link.rebol</string>
+			<key>match</key>
+			<string>\b[A-Za-z][A-Za-z0-9+.-]*:\/\/\S+</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>string.other.email.rebol</string>
+			<key>match</key>
+			<string>[\w.+-]+@[\w-]+(?:\.[\w-]+)+</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>constant.other.date.rebol</string>
+			<key>match</key>
+			<string>\d{1,4}-(?:[A-Za-z]{3,}|\d{1,2})-\d{1,4}</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>constant.numeric.time.rebol</string>
+			<key>match</key>
+			<string>\d{1,3}:\d{1,2}(?::\d{1,2})?(?:\.\d+)?</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>constant.numeric.money.rebol</string>
+			<key>match</key>
+			<string>\$[+-]?\d[\d,]*(?:\.\d+)?(?:[A-Z]{3})?</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>constant.numeric.percent.rebol</string>
+			<key>match</key>
+			<string>[+-]?\d[\d']*(?:\.\d+)?%</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>constant.numeric.pair.rebol</string>
+			<key>match</key>
+			<string>[+-]?\d[\d']*(?:\.\d+)?x[+-]?\d[\d']*(?:\.\d+)?</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>constant.numeric.tuple.rebol</string>
+			<key>match</key>
+			<string>\d+(?:\.\d+){2,11}</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>constant.numeric.hex.rebol</string>
+			<key>match</key>
+			<string>\d{1,2}#[0-9A-Fa-f]+</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>constant.numeric.decimal.rebol</string>
+			<key>match</key>
+			<string>[+-]?\d[\d']*\.\d+(?:[eE][+-]?\d+)?|[+-]?1\.#(?:INF|NaN)</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>constant.numeric.integer.rebol</string>
+			<key>match</key>
+			<string>[+-]?\d[\d']*</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>constant.other.issue.rebol</string>
+			<key>match</key>
+			<string>#[A-Za-z][\w!?*+-]*</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>string.other.file.rebol</string>
+			<key>match</key>
+			<string>%(?:"[^"]*"|(?:[^\s\[\](){};,"]|\^(?:\([0-9A-Fa-f]{1,6}\)|\d|[^\s]))+)</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>variable.other.path.rebol</string>
+			<key>match</key>
+			<string>[:']?[A-Za-z_][\w!?*+-]*(?:/[A-Za-z_*][\w!?*+-]*)+:?</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>variable.other.get.rebol</string>
+			<key>match</key>
+			<string>:[A-Za-z_][\w!?*+-]*</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>variable.other.lit.rebol</string>
+			<key>match</key>
+			<string>'(?=[A-Za-z_])[A-Za-z_][\w!?*+-]*</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>variable.other.refinement.rebol</string>
+			<key>match</key>
+			<string>(?&lt;=[\w\]\)])/[A-Za-z][\w-]*</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>variable.other.set.rebol</string>
+			<key>match</key>
+			<string>[A-Za-z_][\w!?*+.'-]*:</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>keyword.control.rebol</string>
+			<key>match</key>
+			<string>\b(?:if|unless|either|case|switch|while|until|loop|repeat|foreach|forall|forskip|forever|for|do|does|func|function|has|make|use|collect|keep|compose|reduce|rejoin|reform|reblock|bind|try|attempt|catch|throw|return|exit|break|continue|halt|quit|wait|view|parse|load|save|read|write|append|insert|remove|clear|copy|find|select|pick|poke|sort|reverse|head|tail|next|back|skip|at|in|get|set|mold|form|print|prin|probe)\b</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>keyword.operator.rebol</string>
+			<key>match</key>
+			<string>\b(?:and|or|xor|not|all|any)\b|===|==|&lt;&gt;|&lt;=|&gt;=|\*\*|\/\/|[-+*\/=~&lt;&gt;&amp;|]+</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>support.type.rebol</string>
+			<key>match</key>
+			<string>\b[A-Za-z][A-Za-z0-9-]*!</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>constant.language.rebol</string>
+			<key>match</key>
+			<string>\b(?:true|false|none)\b</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>variable.other.rebol</string>
+			<key>match</key>
+			<string>[A-Za-z_][\w!?*+.'-]*</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>punctuation.section.block.begin.rebol</string>
+			<key>match</key>
+			<string>\[</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>punctuation.section.block.end.rebol</string>
+			<key>match</key>
+			<string>\]</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>punctuation.section.parens.begin.rebol</string>
+			<key>match</key>
+			<string>\(</string>
+		</dict>
+
+		<dict>
+			<key>name</key>
+			<string>punctuation.section.parens.end.rebol</string>
+			<key>match</key>
+			<string>\)</string>
+		</dict>
+
+	</array>
+</dict>
+</plist>

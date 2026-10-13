@@ -96,13 +96,13 @@ check answers against.
 
 ## JEBOL Web
 
-**The same interpreter, compiled to WebAssembly, running in the page's
+**The same Java interpreter, compiled to WebAssembly, running in an html page using a
 worker.** There is no server-side code: the page fetches the module and your
 app's REBOL, the worker boots the interpreter where the screen is, and the page
 is the screen.
 
-The design is one front end everywhere. The domain walks the gob tree once and
-turns it into surface calls — fill a path, stroke a path, draw an image, draw a
+The GUI has been designed to have one frontend everywhere - whether it's web, desktop app, or mobile app. 
+The domain walks the gob tree once and turns it into surface calls — fill a path, stroke a path, draw an image, draw a
 piece of text — and each platform implements those calls with its own toolkit.
 On the desktop that is Java2D; in a page it is a canvas. Events come back the
 other way as ordinary postings, and the worker refuses what a page cannot do —
@@ -350,6 +350,7 @@ src/main/resources/org/jebol/mezz/
                  Rebol's own library, vendored and run unchanged
 site/            the runner page every site is built around
 examples/r3-gui/ the shipped demo app: the 2010 R3 GUI, with main.reb as its entry
+editors/         a TextMate bundle: REBOL highlighting for IntelliJ and VS Code
 corpus/          published REBOL examples with their published results
   sources/       fourteen complete programs, fetched byte for byte
 src/test/resources/rebol-suite/
@@ -366,6 +367,14 @@ The dependency rule points inward and is enforced by `DependencyRuleTest`
 rather than by convention: the domain knows nothing of the application or the
 adapters, and nothing in the domain touches `java.io`, `java.nio.file` or
 `java.net`.
+
+**Highlighting.** `editors/Rebol.tmbundle` is a TextMate grammar of the
+language - the word kinds, blocks, parens and paths, every literal datatype,
+strings of all four spellings and comments. In IntelliJ: Settings → Editor →
+TextMate Bundles, `+`, and point it at the folder. In VS Code: wrap it in an
+extension whose `package.json` declares the grammar. `.r`, `.reb` and `.r3`
+files then read as REBOL. A test compiles every pattern in it the way the
+editor does, so a bad regex cannot land quietly.
 
 ## Building
 
