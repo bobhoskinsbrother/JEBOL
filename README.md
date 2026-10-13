@@ -45,12 +45,11 @@ does with a block and a function.
 ## What is JEBOL?
 
 A port of [Oldes' Rebol3](https://github.com/Oldes/Rebol3), version 3.22.5, to
-Java: an ordinary jar with no dependencies, running on any JDK.
+Java: an ordinary jar with no dependencies, running on any JDK 25.
 
 ```
-$ ./gradlew installDist
-$ JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1) \
-    ./build/install/jebol/bin/jebol
+$ ./gradlew jar
+$ java -jar build/libs/jebol-0.1.0-SNAPSHOT.jar
 JEBOL -- REBOL 3 on the JVM. Type quit to leave.
 >> 2 + 3 * 4
 == 20
@@ -62,6 +61,15 @@ JEBOL -- REBOL 3 on the JVM. Type quit to leave.
 == #{2CF24DBA5FB0A30E26E83B2AC5B9E29E1B161E5C1FA7425E73043362938B9824}
 >> divide 1 0
 ** math error: division by zero
+```
+
+A script file goes on the command line, one expression goes after `--do`, and
+standard input pipes into the console.
+
+```
+$ java -jar build/libs/jebol-0.1.0-SNAPSHOT.jar my-script.reb
+$ java -jar build/libs/jebol-0.1.0-SNAPSHOT.jar --do "print 1 + 2"
+$ cat my-script.reb | java -jar build/libs/jebol-0.1.0-SNAPSHOT.jar
 ```
 
 ## Why Port to JVM?
@@ -81,6 +89,60 @@ Oldes' branch rather than REBOL 2, R3-Alpha as it is the version with the most
 surviving reference material (and it is currently still active) so there is a running binary to
 check answers against.
 
+## JEBOL Web
+
+**The same interpreter, compiled to WebAssembly, running in the page's
+worker.** There is no server-side code: the page fetches the module and its
+library, the worker boots the interpreter where the screen is, and the page
+paints the picture the domain hands it.
+
+The design is one front end everywhere. The domain walks the gob tree once and
+turns it into surface calls — fill a path, stroke a path, draw an image, draw a
+piece of text — and each platform implements those calls with its own toolkit.
+On the desktop that is Java2D; in a page it is a canvas. Events come back the
+other way as ordinary postings, and the worker refuses what a page cannot do —
+network, processes, environment — with an error that says the browser does not
+allow it rather than pretending otherwise.
+
+What the browser supplies instead: files live in the page's private store and
+survive a reload, HTTP and HTTPS go through `fetch`, digests and HMACs come from
+WebCrypto, and text is measured with the one font the build carries so a page
+and a window lay out the same words in the same places.
+
+**Build it and serve it.** The site is static files, and any static server
+will do:
+
+```
+$ ./gradlew assembleTheSite
+$ cd build/site && python3 -m http.server 8000
+```
+
+Open `http://localhost:8000/`. The page runs the 2010 R3 GUI examples — the
+sliders and the opinion survey — wholly in the browser, with no server behind
+them. `build/site` holds ten files: the page, the WebAssembly module, TeaVM's
+loader, the worker's shell, the font with its licence, and the examples the page
+fetches. Their sizes are in `goals.md`.
+
+**The other way round, for a JVM host.** A host that has not got a web stack of
+its own can serve the page itself and drive the desktop interpreter through it:
+one screen, two windows — a Swing window or a browser page, the same port either
+way.
+
+```
+$ java -jar build/libs/jebol-0.1.0-SNAPSHOT.jar --screen=web
+Screen: a page at http://127.0.0.1:54463/ -- open it, then VIEW.
+```
+
+Open the address it prints; `VIEW/no-wait [...]` in the console then draws into
+the page. `--screen=window` is the default arrangement and puts that picture in
+a native window instead.
+
+**The gate.** `./gradlew browserCheck` builds the web module, drives the
+assembled site in a real Chrome, and compares what the page draws against what
+Java2D draws from the same paint list, pixel for pixel. It is the reason a page
+and a window showing the same picture is a thing the build knows. `docs/web-port.md`
+is the port's record and decisions 31 to 35 carry the shapes it settled on.
+
 ## What is Ported, and What is Copied?
 
 The two are kept apart on purpose, and the split is the whole design.
@@ -98,9 +160,9 @@ Rebol's own library: `join`, `collect`, `split`, the codecs, the port schemes,
 That means a function is ported by making the C it depends on work, not by
 reimplementing the function. When `join` misbehaves the fault is underneath it,
 and the borrowed file is a fixed point that says so. It also means the surface
-is Rebol's rather than an approximation of it: every C function R3 exposes has
-a match, none of its 404 functions is missing, and `system/catalog/datatypes`
-has all fifty-eight of Rebol's (plus `java-object!`).
+is Rebol's rather than an approximation of it: every function R3 exposes has a
+match, and `system/catalog/datatypes` has all fifty-eight of Rebol's (plus
+`java-object!`). The measures are in `goals.md`.
 
 **Declaration checking.**
 `scripts/c-parity.py` compares two files, so it cannot fail on anything a
@@ -159,11 +221,10 @@ against does not run either. Those are usually one arm of an `either error? try
 [...]` whose other arm is the one taken, and each line carries the `r3-head`
 session that settled it. For the figures, see `goals.md`.
 
-**`known-gaps.txt` is down to a single line, and no work will retire it.** It
-asks to read `system/options/boot`, which is the launcher a script runs to
-start a confined child interpreter and therefore has to sit outside whatever
-root the script can see. Passing it would mean giving up confinement
-propagation to win one assertion.
+**`known-gaps.txt` is empty.** Every assertion Rebol's suite makes is reached
+here and answers as the Rebol this is measured against answers, except the
+lines in `fails-on-rebol-too.txt`, which name the assertions that Rebol does
+not run either.
 
 **So the suite has nothing left to say, and what remains is what it could never
 see.** No assertion in it asks whether an error id can be raised, whether a
@@ -192,10 +253,11 @@ Things to note:
 - **PDF belongs in an optional extension**, not in the jar. **SWF is not worth
   writing at all**, and both of those decisions are worth more than the
   assertions they cost.
-- **DRAW paints every command its dialect table declares**, including the ones
-  no toolkit has — Gouraud-shaded triangles, conic and diamond gradients,
-  two-colour dashes, keyed and warped images — because those are worked out in
-  the domain and handed to both renderers as plain shapes and pixels. There is
+- **DRAW paints every command its dialect table declares except `effect`**,
+  including the ones no toolkit has — Gouraud-shaded triangles, conic and
+  diamond gradients, two-colour dashes, keyed and warped images — because those
+  are worked out in the domain and handed to both renderers as plain shapes and
+  pixels. `effect` is a dialect of its own and belongs with the codecs. There is
   no Rebol to check the pictures against: a stock 3.22.5 has no `draw` at all.
 - **`read https://` works, and the TLS client does not authenticate the
   server.** An expired certificate, a self-signed one, one issued for another
@@ -206,8 +268,11 @@ Things to note:
 - **Twenty-eight of Rebol's error ids cannot be raised here**, and every one of
   them has a written reason — twenty-four are ids a real 3.22.5 cannot raise
   either.
-- **Five of R3's scheme names are not registered**: `callback`, `clipboard`,
-  `midi`, `serial` and `udp`. JEBOL registers seven R3 has not, most of them
+- **`midi` is the one scheme name a real 3.22.5 has and JEBOL does not**
+  (goal 7). `callback`, `clipboard`, `serial` and `udp` are registered even
+  where the device behind them is not, which is what Rebol does on a build with
+  no such device compiled into it: the name opens to a refusal that says what
+  is missing. JEBOL registers seven scheme names R3 has not, `bundled` and six
   protocols out of the borrowed library.
 - **A `task!` is made, read, molded and answered by DO, and never runs on a
   thread.** Its body is bound to contexts none of which is safe to touch from
@@ -262,18 +327,26 @@ src/main/java/org/jebol/
   domain/read    the reader
   domain/eval    the evaluator, the natives, the dialects, the ports
   domain/parse   PARSE, over blocks and over strings
+  domain/render  the surface: one walk of the gob tree, calls an adapter draws
+  domain/host    the ports a host implements: screen, files, network, digests
   application    Interpreter: one instance, one thread, owns its values
-  adapter/cli    the REPL
+  adapter/host   the desktop: a Java2D surface in a native window
+  adapter/web    the browser: a canvas surface, events over HTTP or postMessage
+  adapter/cli    the console
+src/teavm/java/  the web's entry point and its substitutions, for TeaVM only
+src/teavm/js/    the worker's shell, and the store and digests it lends the page
 src/main/resources/org/jebol/mezz/
                  Rebol's own library, vendored and run unchanged
+site/            the shipped page: the examples, the replayer, the worker hookup
+examples/r3-gui/ the 2010 R3 GUI the shipped page runs
 corpus/          published REBOL examples with their published results
   sources/       fourteen complete programs, fetched byte for byte
 src/test/resources/rebol-suite/
                  Rebol's own test files, and the gap list
 scripts/         the measures, which are run rather than remembered:
                  c-parity (declarations) and runtime-parity (two running
-                 interpreters), error-parity, and sweep.py for diffing one
-                 suite file against a real Rebol assertion by assertion
+                 interpreters), error-parity, sweep.py for diffing one suite
+                 file against a real Rebol, timing.py for boots and speed
 docs/            decisions, the porting guide, findings about Rebol itself
 goals.md         everything left to do, ordered by importance, and the method
 ```
@@ -285,19 +358,31 @@ adapters, and nothing in the domain touches `java.io`, `java.nio.file` or
 
 ## Building
 
-Java 25, Gradle, no runtime dependencies. The shipped jar is about 1,696 KB, of
-which Rebol's borrowed library, its function and error declarations and the
-thirteen modules bundled with the build are most of it — SPEC-OF, the error
-catalogue and IMPORT are read out of those.
+**What you need: a JDK to run Gradle, and nothing else.** The build asks for a
+Java 25 toolchain and downloads one itself (the toolchain resolver in
+`settings.gradle.kts`), so the JDK on your PATH does not have to be 25. There are
+no runtime dependencies; the jar carries everything it needs.
 
 ```
-./gradlew check          # the whole suite, about six minutes
+./gradlew build          # compile, run the gates, and write the jar
+./gradlew jar            # just the jar: build/libs/jebol-0.1.0-SNAPSHOT.jar
+./gradlew check          # the spec gate and the whole test suite
 ./gradlew browserCheck   # the second gate: the web build in a real browser
+./gradlew assembleTheSite  # the static site in build/site (see JEBOL Web)
+./gradlew run            # the console, from source
 ```
 
-`check` also runs the spec gate, so the specifications are validated by the
-same command as the code. It fails on any error, any analysis finding, and any
-warning not on the allowlist.
+`build` depends on `check`, so it is the whole ordinary gate in one command.
+The jar it writes runs itself:
+
+```
+$ java -jar build/libs/jebol-0.1.0-SNAPSHOT.jar --do "print 1 + 2"
+```
+
+`check` also runs the spec gate, so the specifications in `spec/` are validated
+by the same command as the code. It fails on any error, any analysis finding, and
+any warning not on the allowlist. It needs nothing but a JDK — no network, no
+browser, no other program.
 
 `browserCheck` is separate rather than skipped. It builds the interpreter for
 the web with TeaVM, drives a real Chrome through WebDriver, runs a script that
@@ -307,6 +392,16 @@ the same picture" is a thing the build knows rather than a thing somebody says.
 It is out of `check` because it needs a browser installed and a network the
 first time it fetches a driver, and the ordinary gate should need neither.
 
+**The measures are scripts, and they are run rather than remembered.**
+`./r3-head` is a real Rebol 3.22.5 built from the checkout beside it
+(`scripts/build-r3.sh` rebuilds it from the C); `scripts/c-parity.py` and
+`scripts/runtime-parity.py` compare the surface against it;
+`scripts/error-parity.py` asks whether every error id can be raised;
+`scripts/sweep.py` diffs one suite file assertion by assertion; and
+`scripts/timing.py` reports how long a boot takes and how the interpreter
+compares with the C. What each last said is in `goals.md`, which is also where
+the jar's size and the counts live.
+
 ## Reading further
 
 - `goals.md` — everything left to do, ordered by importance, with the numbers
@@ -314,4 +409,5 @@ first time it fetches a driver, and the ordinary gate should need neither.
 - `docs/decisions.md` — what has been decided, why, and what it rules out
 - `docs/porting-guide.md` — how to port a function, and what the authorities are
 - `docs/rebol-findings.md` — what reading Rebol's source turned up about Rebol
+- `docs/web-port.md` — how the web port is put together, and what it cost
 - `using-jebol.md` — the manual

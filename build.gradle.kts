@@ -210,6 +210,14 @@ tasks.named<JavaExec>("run") {
     standardInput = System.`in`
 }
 
+// The jar runs the console on its own, so `java -jar` is a whole
+// installation: no launcher script, no dependencies, nothing to unpack.
+tasks.jar {
+    manifest {
+        attributes("Main-Class" to application.mainClass.get())
+    }
+}
+
 distributions {
     named("main") {
         contents {

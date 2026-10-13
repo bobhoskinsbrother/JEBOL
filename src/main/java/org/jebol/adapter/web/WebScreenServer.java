@@ -12,6 +12,8 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A browser reached over the JDK's own HTTP server: one implementation of
@@ -37,6 +39,8 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
         HttpServer listening = HttpServer.create(
                 new InetSocketAddress(onlyReachableFromThisMachine(), port), 0);
         WebScreenServer serving = new WebScreenServer(listening);
+        listening.setExecutor(Executors.newCachedThreadPool(
+                WebScreenServer::aConnectionThatDoesNotHoldTheProcessOpen));
         listening.createContext("/", serving::servePage);
         listening.createContext("/paint",
                 serving::openThePaintStreamWhichOnlyTheBrowserEverCloses);
@@ -48,6 +52,15 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
 
     private static InetAddress onlyReachableFromThisMachine() {
         return InetAddress.getLoopbackAddress();
+    }
+
+    private static final AtomicInteger CONNECTIONS = new AtomicInteger();
+
+    private static Thread aConnectionThatDoesNotHoldTheProcessOpen(Runnable work) {
+        Thread serving = new Thread(work,
+                "a-browser-connection-" + CONNECTIONS.incrementAndGet());
+        serving.setDaemon(true);
+        return serving;
     }
 
     /** Which port it ended up on, which matters when it was asked for any. */

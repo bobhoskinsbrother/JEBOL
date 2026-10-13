@@ -79,9 +79,7 @@ public final class Repl {
     static void main(String[] arguments) {
         int status = runTheCommandLine(arguments, System.out, System.err,
                 System.getProperty("user.dir", "."));
-        if (status != KEEP_THE_PROCESS) {
-            System.exit(status);
-        }
+        System.exit(status == KEEP_THE_PROCESS ? WHAT_A_FINISHED_START_REPORTS : status);
     }
 
     static int runTheCommandLine(
