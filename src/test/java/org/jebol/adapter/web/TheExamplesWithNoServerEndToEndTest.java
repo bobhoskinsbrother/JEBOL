@@ -115,6 +115,7 @@ class TheExamplesWithNoServerEndToEndTest {
         untilThePageSays("the two example windows",
                 () -> theLinesSoFar().contains("open")
                         && theLinesSoFar().stream().anyMatch(line -> line.startsWith("booted in "))
+                        && theLinesSoFar().stream().anyMatch(line -> line.startsWith("worker loaded in "))
                         && theLinesSoFar().stream().anyMatch(line -> line.startsWith("slider-at "))
                         && theLinesSoFar().stream().anyMatch(line -> line.startsWith("field-at ")));
 

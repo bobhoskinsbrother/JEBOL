@@ -153,14 +153,23 @@ async function jebolKeyedDigest(method, key, octets) {
   }
 }
 
+var jebolStartedLoadingAt = performance.now();
+
 TeaVM.wasmGC.load('jebol-web.wasm').then(function (teavm) {
+  var loadedAt = performance.now();
   jebol = teavm.exports;
   try {
     teavm.exports.main([]);
   } catch (problem) {
     var why = problem && problem.stack ? problem.stack : String(problem);
     self.postMessage({ kind: 'failed', text: 'booting the interpreter threw: ' + why });
+    return;
   }
+  self.postMessage({
+    kind: 'loaded',
+    loadMs: Math.round(loadedAt - jebolStartedLoadingAt),
+    mainMs: Math.round(performance.now() - loadedAt)
+  });
 }, function (why) {
   self.postMessage({ kind: 'failed', text: 'failed to load the interpreter: ' + why });
 });

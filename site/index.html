@@ -274,6 +274,10 @@ function theWorkerSays(message) {
     theExampleFilesAreInTheStore()
         .then(() => runTheScriptIn('examples'))
         .then(source => theWorker.postMessage({ run: source }));
+  } else if (said.kind === 'loaded') {
+    out.push('worker loaded in ' + said.loadMs + ' ms and started the interpreter in '
+        + said.mainMs + ' ms\n');
+    shown.textContent = out.join('');
   } else if (said.kind === 'finished') {
     out.push(said.text);
     shown.textContent = out.join('');

@@ -1460,3 +1460,63 @@ a second, draining 24ms after the pointer stopped. The first picture after
 a move arrives 10 to 22ms later, which is the wait's ten-millisecond poll
 plus one whole-surface walk. The walk itself is the next thing to shrink if
 it ever needs shrinking: 98KB of JSON for the two example windows.
+## 37. What the timings say: the library load, and streams on the per-call path
+
+**The goal's next move was wrong, and the measurement says so.** Goal 1 said
+the system object's declaration is evaluated on every boot "although the
+answer is the same each time", and that caching the built object was the next
+move. Temporary stopwatches around the constructor of a warm
+`Interpreter.create()` (2026-10-13, macOS, JDK 25, `scripts/timing.py boot`)
+put the phases at: declaration tables 0.2ms, the evaluator and its symbols 5
+to 7ms, the system object and its declaration 1.0ms, the borrowed library 56
+to 83ms, everything after it 0.1ms. A warm create is 75ms median, 90ms p95,
+and a first call 0.6s while the JVM loads and JITs. So the whole of boot is
+the borrowed library's evaluation; caching the built system object would save
+about one per cent, and that sentence is deleted from the goal.
+
+**A full `./gradlew test` builds about 16,300 interpreters**, counted with a
+temporary counter across the 36 forks of one run (5m16s, 27,405 tests), so a
+millisecond off create is around sixteen seconds of core time.
+
+**The interpreter is 15x to 34x slower than a real 3.22.5 on the timing
+workloads.** `scripts/timing.py speed`, one second per workload, JEBOL JVM
+against `./r3-head`: function calls 848ms against 25, a counting loop 821
+against 28, recursion 508 against 19, a path into a context 341 against 18,
+growing a block 702 against 46, growing a string 699 against 41. Per value
+walked that is roughly 20 to 25x. The wasm worker runs the same workloads at
+2.2x to 3.3x the JVM, and its own boot -- the shipped page's report, in the
+gate's headless Chrome -- is 471ms inside the worker against the JVM's 75ms,
+about 6.3x, with the module's fetch and compile 69ms on top of the page's 598ms
+total.
+
+**The hotspot is one pattern, not many: stream pipelines on the path every
+call takes.** JFR stacks from the call workload attribute about half the
+samples to `java.util.stream` machinery, under two JEBOL methods:
+`PendingCall`'s constructor runs `arrivingParametersOf`, which runs
+`declaredParametersOf`, which filters and collects with a stream, and
+`Evaluator.checkArgumentTypes` does the same per native call. Every infix
+operator, every native, every set-word builds two or three stream pipelines
+and their short-lived lists. The library load pays the same tax: it is 56 to
+83ms of calls to natives and functions that each build the pipeline.
+
+The rest of the profile, each with a stack and a share:
+
+- `MapValue`'s case-insensitive lookup streams the whole key set and, per
+  key, calls `AnyStringValue.text()` -- building a Java string just to
+  compare it (about 5 per cent of boot samples, and `String.equals` and
+  `equalsIgnoreCase` show in run profiles too).
+- `AnyBlockValue.copied` copies every block through a stream; the boot copies
+  the whole library this way (about 8 per cent).
+- `SeriesMemory` keeps a `ConcurrentHashMap`-backed identity set and mutates
+  it on every series buffer allocated, in a domain that is single-threaded by
+  construction (about 3 per cent, plus its rehashing).
+- Word evaluation hashes a canonical string in a `HashMap` per lookup;
+  `HashMap.getNode` and `String.equals` are 7 to 17 per cent of the
+  lookup-heavy workloads.
+
+**What this makes of the two goals.** The boot work and the speed work are
+one job: the same per-call overheads dominate both, so fixing the call path
+moves the gate, the desktop and the browser at once. Goal 20 carries the
+ranked list; this decision holds the numbers. The instrument is
+`scripts/timing.py`, whose docstring says how to run it and what the figures
+do and do not mean.

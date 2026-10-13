@@ -40,7 +40,9 @@ figures.
 The trial below measured a boot in Chrome of 477 ms going cold and 164 to 201 ms
 warm. The shipped page now prints its own boot -- page start to the interpreter
 ready, worker spawn, module fetch and compile included -- and in the gate's
-headless Chrome it reported 598 ms.
+headless Chrome it reported 598 ms: the module's fetch and compile 69 ms of
+it, and the interpreter started inside the worker 471 ms, about 6.3x the JVM's
+warm create.
 
 The two pieces of blocking code named in this note are gone. WAIT's sleep is a
 port (`PausePort`, in `org.jebol.domain.host`) that the interpreter asks one
