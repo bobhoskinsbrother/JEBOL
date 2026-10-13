@@ -1520,3 +1520,50 @@ moves the gate, the desktop and the browser at once. Goal 20 carries the
 ranked list; this decision holds the numbers. The instrument is
 `scripts/timing.py`, whose docstring says how to run it and what the figures
 do and do not mean.
+
+## 38. The per-call plumbing comes out, and the web boot was compared wrongly
+
+**What was done, all of it removing work that was redone per call.** The
+ranked actions of goal 20, in the order decision 37 measured them:
+
+- `PendingCall` no longer filters parameters with streams on every call. It
+  keeps the callee's own parameter list and builds the sequence of parameters
+  this call will fill once, lazily, with a loop; `arityOf`,
+  `arrivingParametersOf`, `declaredParametersOf` and their pipelines are
+  gone, and with them two or three short-lived lists per operator, native and
+  set-word.
+- `PendingCall.argumentsInDeclaredOrder` was called up to four times per
+  invocation, each time copying the argument list; `invoke` asks once, and an
+  assignment asks only for its one value. `runFunction`'s three streams over
+  the parameter list are three loops over the same list, and `openFrameOf`,
+  which streamed the open-call stack on every function call, is a loop.
+- `MapValue`'s case-insensitive match walks its keys instead of streaming
+  them.
+- `AnyBlockValue.copied` and `frontCopied` copy with loops, and the per-boot
+  copies of the whole library go through them.
+- `SeriesMemory`'s outstanding set is a plain `HashSet`; the class's own
+  claim is one writer at a time, and a `ConcurrentHashMap` was paying a lock
+  and an entry per buffer for a promise nobody needed.
+- `Context.slotOrNone` makes the `knows`-then-`slotFor` walk one pass, and
+  canonical names are interned, so a word lookup is an identity compare
+  rather than a character-by-character one. The C keeps one symbol per
+  spelling for the process for the same reason.
+
+**What it bought.** The seven workloads of `scripts/timing.py speed`, before
+and after, the real 3.22.5 beside them unchanged: function calls 848 to about
+330ms (34x to 13x), a counting loop 821 to 330 (29x to 11x), the same in a
+local 764 to 330 (24x to 11x), recursion 508 to 240 (27x to 12x), a path into
+a context 341 to 210 (19x to 12x), growing a block 702 to 400 (15x to 8x),
+growing a string 699 to 420 (17x to 10x). The wasm worker halved on the same
+workloads: calls 1838 to 888ms, a counting loop 2109 to 1028. A warm
+`Interpreter.create()` went from 75 to 54ms (first 438, p95 84), and the
+gate's test run from 5m16s to 4m19s.
+
+**And a correction: the web boot was never 6.3x the JVM's.** Decision 37
+compared the worker's cold interpreter start, 471ms, against the JVM's warm
+create, 75ms. The comparison that means something is the JVM's first create
+in a fresh process, 590ms then and 438ms now, against the worker's 459ms:
+the two spend most of their time on the same one-time work, parsing the
+borrowed library and running it once, and the JVM's warm 54ms is that same
+work already parsed and JITted. What the worker pays on top is the module's
+fetch and compile, 65ms, which is V8's business and not JEBOL's.

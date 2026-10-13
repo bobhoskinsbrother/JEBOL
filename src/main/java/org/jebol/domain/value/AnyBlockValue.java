@@ -198,9 +198,12 @@ public abstract sealed class AnyBlockValue implements RebolSeries
 
     @Override
     public Value copied(boolean deeply, Set<Datatype> kinds) {
-        BlockStorage built = new BlockStorage(remaining().stream()
-                .map(item -> item.copiedAsAMember(deeply, kinds))
-                .toList());
+        List<Value> items = remaining();
+        List<Value> members = new ArrayList<>(items.size());
+        for (Value item : items) {
+            members.add(item.copiedAsAMember(deeply, kinds));
+        }
+        BlockStorage built = new BlockStorage(members);
         built.takeLineBreaksFrom(storage, index);
         return sameKindOver(built, 1);
     }
@@ -212,11 +215,14 @@ public abstract sealed class AnyBlockValue implements RebolSeries
 
     @Override
     public Value frontCopied(int howMany, boolean deeply, Set<Datatype> kinds) {
-        BlockStorage built = new BlockStorage(remaining().subList(0, howMany).stream()
-                .map(item -> deeply && kinds.contains(item.datatype())
-                        ? item.copied(true, kinds)
-                        : item)
-                .toList());
+        List<Value> taken = remaining().subList(0, howMany);
+        List<Value> members = new ArrayList<>(taken.size());
+        for (Value item : taken) {
+            members.add(deeply && kinds.contains(item.datatype())
+                    ? item.copied(true, kinds)
+                    : item);
+        }
+        BlockStorage built = new BlockStorage(members);
         built.takeLineBreaksFrom(storage, index);
         return sameKindOver(built, 1);
     }

@@ -160,10 +160,11 @@ public abstract sealed class AnyWordValue implements Value
     }
 
     public ContextSlot boundSlot() {
-        if (!isBound() || !binding.knows(canonical)) {
+        ContextSlot slot = binding.slotOrNone(canonical);
+        if (slot == null) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, spelling);
         }
-        return binding.slotFor(canonical);
+        return slot;
     }
 
     public WordValue asWord() {

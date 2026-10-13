@@ -829,20 +829,18 @@ public final class Evaluator {
         }
     }
 
-    private java.util.Optional<Context> openFrameOf(DefinedFunctionValue function) {
-        return functionsBeingRun.stream()
-                .filter(call -> call.function() == function)
-                .map(OpenCall::locals)
-                .findFirst();
+    private Context theFrameThisCallTakesOverFrom(DefinedFunctionValue function) {
+        for (OpenCall open : functionsBeingRun) {
+            if (open.function() == function) {
+                return open.locals();
+            }
+        }
+        return function.declaredWords();
     }
 
     private void handBackTheFrameTakenOverBy(OpenCall ending) {
         ending.locals().supersededBy(null);
         theFrameThisCallTakesOverFrom(ending.function()).supersededBy(null);
-    }
-
-    private Context theFrameThisCallTakesOverFrom(DefinedFunctionValue function) {
-        return openFrameOf(function).orElseGet(function::declaredWords);
     }
 
     private static AnyBlockValue theBodyThisCallRuns(
@@ -952,11 +950,11 @@ public final class Evaluator {
         if (!(frame.current() instanceof WordValue word)) {
             return Optional.empty();
         }
-        if (!word.isBound() || !word.binding().knows(word.canonical())) {
+        ContextSlot slot = word.binding().slotOrNone(word.canonical());
+        if (slot == null) {
             return Optional.empty();
         }
-        return word.binding().slotFor(word.canonical()).value()
-                instanceof OperatorValue operator
+        return slot.value() instanceof OperatorValue operator
                 ? Optional.of(operator)
                 : Optional.empty();
     }
@@ -996,14 +994,14 @@ public final class Evaluator {
     }
 
     private StepOutcome evaluateSetWord(Frame frame, AnyWordValue word) {
-        if (!word.isBound() || !word.binding().knows(word.canonical())) {
+        ContextSlot slot = word.binding().slotOrNone(word.canonical());
+        if (slot == null) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
         }
         if (frame.atEnd()) {
             throw Raised.of(EvaluationFailure.NEED_VALUE, word);
         }
         word.refuseToBeWrittenWhenItNamesSelf();
-        ContextSlot slot = word.binding().slotFor(word.canonical());
         frame.pendingCalls.push(PendingCall.assignment(slot));
         return StepOutcome.waiting();
     }
@@ -1025,10 +1023,11 @@ public final class Evaluator {
     }
 
     private ContextSlot resolve(AnyWordValue word) {
-        if (!word.isBound() || !word.binding().knows(word.canonical())) {
+        ContextSlot slot = word.binding().slotOrNone(word.canonical());
+        if (slot == null) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
         }
-        return word.binding().slotFor(word.canonical());
+        return slot;
     }
 
     private StepOutcome startCall(
@@ -1090,7 +1089,8 @@ public final class Evaluator {
 
     private StepOutcome invoke(Frame frame, PendingCall call, Deque<Frame> frames) {
         if (call.isAssignment()) {
-            if (call.slot() != null && call.argumentsInDeclaredOrder().get(0) instanceof UnsetValue) {
+            Value given = call.theOnlyArgument();
+            if (call.slot() != null && given instanceof UnsetValue) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE,
                         SetWordValue.of(call.slot().spelling()));
             }
@@ -1100,42 +1100,43 @@ public final class Evaluator {
             }
             if (call.destination() != null) {
                 try {
-                    call.destination().accept(call.argumentsInDeclaredOrder().get(0));
+                    call.destination().accept(given);
                 } catch (ProtectedFromChange refused) {
                     throw Raised.of(EvaluationFailure.PROTECTED);
                 }
-                return StepOutcome.of(call.argumentsInDeclaredOrder().get(0));
+                return StepOutcome.of(given);
             }
-            call.slot().setValue(call.argumentsInDeclaredOrder().get(0));
-            return StepOutcome.of(call.argumentsInDeclaredOrder().get(0));
+            call.slot().setValue(given);
+            return StepOutcome.of(given);
         }
+        List<Value> ordered = call.argumentsInDeclaredOrder();
         return switch (call.callee()) {
             case NativeValue built -> {
                 if (trace.isOn()) {
-                    trace.call(built.nativeName(), built, call.argumentsInDeclaredOrder());
+                    trace.call(built.nativeName(), built, ordered);
                 }
-                Value produced = runNative(built, call.argumentsInDeclaredOrder(), frame.context,
+                Value produced = runNative(built, ordered, frame.context,
                         EVERY_ARGUMENT_IS_CHECKED, call.nameInAnArgumentError(), call::enter);
                 if (trace.isOn()) {
                     trace.answered(built.nativeName(), produced);
                 }
                 yield built.nativeName().equals("do")
                         && produced instanceof AnyFunctionValue
-                        && !call.argumentsInDeclaredOrder().isEmpty()
-                        && asksForReEvaluation(call.argumentsInDeclaredOrder().get(0))
+                        && !ordered.isEmpty()
+                        && asksForReEvaluation(ordered.get(0))
                         ? startCall(frame, frames, produced, List.of())
                         : StepOutcome.of(produced);
             }
             case OperatorValue operator -> StepOutcome.of(invokeUnderlying(
-                    operator, call.argumentsInDeclaredOrder(), frame.context,
+                    operator, ordered, frame.context,
                     call.nameInAnArgumentError(), call::enter));
             case DefinedFunctionValue function -> {
                 nameOfTheCallBeingMade = lastWordCalledThrough;
                 if (trace.isOn()) {
                     trace.call(nameOfTheCallBeingMade == null
-                            ? "?" : nameOfTheCallBeingMade, function, call.argumentsInDeclaredOrder());
+                            ? "?" : nameOfTheCallBeingMade, function, ordered);
                 }
-                yield runFunction(frames, function, call);
+                yield runFunction(frames, function, call, ordered);
             }
             default -> throw Raised.of(EvaluationFailure.CANNOT_USE,
                     call.callee().datatype().literalSpelling() + " is not callable");
@@ -1196,35 +1197,51 @@ public final class Evaluator {
         return produced;
     }
 
-    private StepOutcome runFunction(Deque<Frame> frames, DefinedFunctionValue function, PendingCall call) {
-        List<Value> arguments = call.argumentsInDeclaredOrder();
+    private StepOutcome runFunction(
+            Deque<Frame> frames, DefinedFunctionValue function, PendingCall call,
+            List<Value> arguments) {
         List<String> refinements = call.refinements();
         checkArgumentTypes(function.parameters(),
-                new java.util.HashSet<>(refinements), arguments, call.nameInAnArgumentError());
+                refinements::contains, arguments, call.nameInAnArgumentError());
         call.enter();
         Context locals = function.aFreshCallFrame();
 
-        List<Parameter> consuming = function.parameters().stream()
-                .filter(Parameter::consumesAnArgument)
-                .filter(parameter -> parameter.owningRefinement()
-                        .map(refinements::contains).orElse(true))
-                .toList();
-        for (int index = 0; index < consuming.size() && index < arguments.size(); index++) {
-            locals.register(consuming.get(index).name(), arguments.get(index));
+        int at = 0;
+        for (Parameter parameter : function.parameters()) {
+            if (!parameter.consumesAnArgument()) {
+                continue;
+            }
+            boolean granted = parameter.owningRefinement()
+                    .map(refinements::contains).orElse(true);
+            if (!granted) {
+                continue;
+            }
+            if (at < arguments.size()) {
+                locals.register(parameter.name(), arguments.get(at));
+            }
+            at++;
         }
 
-        function.parameters().stream()
-                .filter(parameter -> parameter.owningRefinement().isPresent())
-                .filter(parameter -> !consuming.contains(parameter))
-                .forEach(parameter -> locals.register(parameter.name(), NoneValue.none()));
+        for (Parameter parameter : function.parameters()) {
+            boolean alreadyGiven = parameter.owningRefinement().isPresent()
+                    && parameter.consumesAnArgument()
+                    && parameter.owningRefinement()
+                            .map(refinements::contains).orElse(true);
+            if (parameter.owningRefinement().isPresent() && !alreadyGiven) {
+                locals.register(parameter.name(), NoneValue.none());
+            }
+        }
 
-        function.parameters().stream()
-                .filter(parameter -> parameter.kind() == ParameterKind.REFINEMENT)
-                .forEach(parameter -> locals.register(
-                        parameter.name(),
-                        refinements.contains(parameter.name().toLowerCase(Locale.ROOT))
-                                ? LogicValue.yes()
-                                : NoneValue.none()));
+        for (Parameter parameter : function.parameters()) {
+            if (parameter.kind() != ParameterKind.REFINEMENT) {
+                continue;
+            }
+            locals.register(
+                    parameter.name(),
+                    refinements.contains(parameter.name().toLowerCase(Locale.ROOT))
+                            ? LogicValue.yes()
+                            : NoneValue.none());
+        }
 
         function.localNames().forEach(name -> locals.register(name, NoneValue.none()));
 
@@ -1234,33 +1251,44 @@ public final class Evaluator {
 
     private void checkArgumentTypes(
             NativeValue built, List<Value> arguments, String calleeName, int checkedFrom) {
-        checkArgumentTypes(built.parameters(), built.askedRefinements(),
+        checkArgumentTypes(built.parameters(), built.askedRefinements()::contains,
                 arguments, calleeName, checkedFrom);
     }
 
-    private void checkArgumentTypes(
-            List<Parameter> parameters, List<Value> arguments, String calleeName) {
-        checkArgumentTypes(parameters, Set.of(), arguments, calleeName);
-    }
+    private static final Predicate<String> NOTHING_WAS_ASKED_FOR = asked -> false;
 
     private void checkArgumentTypes(
-            List<Parameter> parameters, Set<String> asked,
-            List<Value> arguments, String calleeName) {
-        checkArgumentTypes(parameters, asked, arguments, calleeName,
+            List<Parameter> parameters, List<Value> arguments, String calleeName) {
+        checkArgumentTypes(parameters, NOTHING_WAS_ASKED_FOR, arguments, calleeName,
                 EVERY_ARGUMENT_IS_CHECKED);
     }
 
     private void checkArgumentTypes(
-            List<Parameter> parameters, Set<String> asked,
+            List<Parameter> parameters, Predicate<String> asked,
+            List<Value> arguments, String calleeName) {
+        checkArgumentTypes(parameters, asked, arguments, calleeName, EVERY_ARGUMENT_IS_CHECKED);
+    }
+
+    private void checkArgumentTypes(
+            List<Parameter> parameters, Predicate<String> asked,
             List<Value> arguments, String calleeName, int checkedFrom) {
-        List<Parameter> consuming = parameters.stream()
-                .filter(Parameter::consumesAnArgument)
-                .filter(parameter -> parameter.owningRefinement()
-                        .map(asked::contains).orElse(true))
-                .toList();
-        for (int index = checkedFrom;
-                index < arguments.size() && index < consuming.size(); index++) {
-            refuseUnlessAccepted(consuming.get(index), arguments.get(index), calleeName);
+        int at = 0;
+        for (Parameter parameter : parameters) {
+            if (!parameter.consumesAnArgument()) {
+                continue;
+            }
+            boolean takesAnArgumentThisCall = parameter.owningRefinement()
+                    .map(asked::test).orElse(true);
+            if (!takesAnArgumentThisCall) {
+                continue;
+            }
+            if (at >= arguments.size()) {
+                return;
+            }
+            if (at >= checkedFrom) {
+                refuseUnlessAccepted(parameter, arguments.get(at), calleeName);
+            }
+            at++;
         }
     }
 

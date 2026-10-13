@@ -117,10 +117,12 @@ public final class MapValue implements Value, PathTarget {
         if (mindingCase) {
             return entries.containsKey(wanted) ? wanted : NoneValue.none();
         }
-        return entries.keySet().stream()
-                .filter(held -> held.equals(wanted) || alikeApartFromCase(held, wanted))
-                .findFirst()
-                .orElseGet(NoneValue::none);
+        for (Value held : entries.keySet()) {
+            if (held.equals(wanted) || alikeApartFromCase(held, wanted)) {
+                return held;
+            }
+        }
+        return NoneValue.none();
     }
 
     private static boolean alikeApartFromCase(Value held, Value wanted) {

@@ -24,8 +24,8 @@ Measured on 2026-10-12, and the timing rows on 2026-10-13.
 | `corpus/` | 1,140 of 1,140 entries pass |
 | the shipped jar | about 2,748 KB at its last build, and no dependencies |
 | the web build | 13.7 MB of WebAssembly (4.1 MB gzipped) beside a 38 KB loader, a 5.5 KB worker and a 556 KB font; the whole site 14.3 MB, 4.4 MB gzipped |
-| a warm `Interpreter.create()` | 75ms median, 90ms p95, the first call 0.6s; 16,300 of them per `./gradlew test` (`scripts/timing.py boot`) |
-| the interpreter's speed | 15x to 34x slower than a real 3.22.5 on `scripts/timing.py speed`; 2.2x to 3.3x more again in the browser |
+| a warm `Interpreter.create()` | 54ms median, 84ms p95, the first call 438ms; 16,300 of them per `./gradlew test` (`scripts/timing.py boot`) |
+| the interpreter's speed | 8x to 14x slower than a real 3.22.5 on `scripts/timing.py speed`; about 2x more again in the browser |
 
 ---
 
@@ -64,18 +64,21 @@ comes before improving on it: a place where JEBOL answers something a real
 ### 1. Boot time
 
 Measured on 2026-10-13 with `scripts/timing.py boot`: a warm
-`Interpreter.create()` is 75ms median and 90ms p95, the first call 0.6s while
-the JVM loads and JITs, and a full `./gradlew test` builds about 16,300
-interpreters. Of the 75ms the borrowed library's evaluation is 56 to 83ms,
-the system object and its declaration 1ms, and the declaration tables 0.2ms:
-caching the built object would save nothing, and the library load is the work
-(decision 37).
+`Interpreter.create()` is 54ms median and 84ms p95, the first call 438ms
+while the JVM loads and JITs, and a full `./gradlew test` builds about 16,300
+interpreters. A warm create is almost entirely the borrowed library's
+evaluation; the system object and its declaration are 1ms of it and the
+declaration tables 0.2ms, so caching the built object would save nothing
+(decision 37). The library's per-call work was the same work goal 20's first
+actions took out, which is where the 75ms became 54 (decision 38).
 
-In the browser, the shipped page's own report in the gate's headless Chrome:
-598ms from page start to the interpreter ready, of which the module's fetch
-and compile is 69ms and the interpreter inside the worker 471ms, about 6.3x
-the JVM's warm create. Once started the workloads run at 2.2x to 3.3x the
-JVM. All of it moves with create, so this goal and goal 20 are one job.
+In the browser the worker reports its own split: the module's fetch and
+compile is 65ms and the interpreter's cold start inside the worker 459ms.
+That 459ms and the JVM's first create, 438ms, are the same work -- parsing
+the borrowed library and running it once -- where the warm 54ms is that work
+cached and JITted. The worker boots once per page, so it pays the cold
+figure; the fetch, compile and per-boot parse are the parts left to attack
+if this ever needs to be smaller.
 
 ### 2. Check the TLS certificate
 
@@ -371,7 +374,7 @@ SECURE not being enforced is part of goal 4.
 exchange, a local server, or a second gate allowed a network -- so the gate
 needs nothing but a JDK.
 
-### 20. A drag still lags, and the paint and the interpreter are the slow parts
+### 20. A drag still lags, and the interpreter has a next tier
 
 The picture reaches the page 10 to 22ms after each pointer move, and a fast
 drag settles at about 35 frames a second, which still reads as laggy. The
@@ -379,35 +382,26 @@ measurements are decision 36's. Three costs, in the order they bite: the
 wait polls every ten milliseconds and that sets the floor; each paint walks
 the whole surface and writes its JSON afresh -- 98KB for the two examples --
 where only what has changed is ever looked at; and the page clears and
-replays the whole canvas for each.
+replays the whole canvas for each. The three actions for that, unchanged:
+patch the paint list rather than rebuilding it, paint at most once a frame,
+and drop a pointer move a later one has superseded.
 
-The interpreter underneath is 15x to 34x slower than a real 3.22.5 on the
-timing workloads (decision 37), and about half of those samples are stream
-pipelines on the per-call path, at boot and at run time alike. The concrete
-actions, in the order the profile ranks them:
+The interpreter's first tier is done. Decision 38 took the streams off the
+per-call path, kept the parameter sequence per call instead of rescanning,
+made the argument list one copy instead of up to four, and interned
+canonical names: about 2x on the timing workloads, 75ms to 54ms on a warm
+boot, 5m16s to 4m19s on the test run. The profile's next tier, if the drag
+still reads slow after the paint work:
 
-1. **Take the streams off the per-call path.** `PendingCall`'s constructor
-   (`arrivingParametersOf`, `declaredParametersOf`) and
-   `Evaluator.checkArgumentTypes` each build a stream pipeline and
-   short-lived lists for every infix operator, native and set-word. Plain
-   loops, and a callee's filtered parameter lists kept rather than
-   recomputed per call.
-2. **`MapValue`'s case-insensitive lookups** stream the key set and build a
-   Java string per key to compare. One folded-keys map, built where the map
-   is built.
-3. **`AnyBlockValue.copied`** copies a block through a stream per block, and
-   the boot copies the whole library this way. Loops.
-4. **`SeriesMemory`** mutates a `ConcurrentHashMap`-backed set on every
-   series buffer allocated, in a single-threaded domain. An identity set
-   with no concurrency, or accounting that needs no map.
-5. **Word lookup** hashes a canonical string per evaluation;
-   `HashMap.getNode` and `String.equals` are 7 to 17 per cent of
-   lookup-heavy workloads. Interned canonical names, or a hash carried by
-   the word.
-
-Then the drag's own three: patching the paint list rather than rebuilding
-it, painting at most once a frame, and dropping a pointer move a later one
-has superseded.
+1. **The per-call frame machinery.** Every function call makes a fresh
+   `Context` and registers each parameter into its `LinkedHashMap`
+   (`HashMap.putVal` is the top frame in the call workload), then tears it
+   down. An array-backed call frame is the next measurable thing.
+2. **`BlockStorage.at(int)`**, 7 to 8 per cent of some workloads: every value
+   read from a block pays bounds arithmetic and an indirection.
+3. **The wasm worker's cold start**, 459ms, which is the JVM's first create
+   by another route; the per-boot parse of the borrowed library is its
+   biggest single piece and the candidate for a build-time form of it.
 
 ---
 

@@ -171,15 +171,15 @@ nothing else in the build will ever notice.
 ## Running the suite
 
 `./gradlew check` is the gate. It takes about five minutes for 27,405 tests,
-and its floor is `Interpreter.create()`: about 75ms warm, and one full run
+and its floor is `Interpreter.create()`: about 54ms warm, and one full run
 builds about 16,300 interpreters. Ask `scripts/timing.py boot` for the current
 boot figures, `scripts/timing.py speed` for the interpreter's own speed against
 a real 3.22.5, and goals.md for both. It used to be 86ms and twenty-two
 minutes, and where that went is worth knowing before trying to speed anything
 else up -- reading Rebol's library was most of it, and `LibrarySource` now
 reads each file once for the whole process and hands out a copy. Where the
-remaining 75ms goes, and what is slow in the interpreter itself, is decision
-37.
+remaining 54ms goes, and what is slow in the interpreter itself, is decisions
+37 and 38.
 
 Do not `rm -rf build/test-results` to force a re-run -- it makes Gradle fail with
 `NoSuchFileException` on its own binary results directory. Use `./gradlew
