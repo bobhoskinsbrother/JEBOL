@@ -1,9 +1,12 @@
 package org.jebol.application;
 
+import org.jebol.domain.read.LibraryImage;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
 import org.jebol.domain.value.*;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +16,10 @@ final class LibrarySource {
 
     private LibrarySource() {
     }
+
+    private static final String THE_IMAGE = "/org/jebol/library.image";
+
+    private static volatile boolean theImageWasRead;
 
     private static final Map<String, AnyBlockValue> READINGS = new ConcurrentHashMap<>();
 
@@ -24,6 +31,10 @@ final class LibrarySource {
             return Transcoder.transcode(source);
         }
         AnyBlockValue held = READINGS.get(name);
+        if (held == null) {
+            readTheImageOnce();
+            held = READINGS.get(name);
+        }
         if (held != null) {
             return new TranscodeResult.Success((AnyBlockValue) freshCopyOf(held));
         }
@@ -40,14 +51,54 @@ final class LibrarySource {
         return new TranscodeResult.Success((AnyBlockValue) freshCopyOf(values));
     }
 
+    private static void readTheImageOnce() {
+        if (theImageWasRead) {
+            return;
+        }
+        synchronized (LibrarySource.class) {
+            if (theImageWasRead) {
+                return;
+            }
+            theImageWasRead = true;
+            try (InputStream reading = LibrarySource.class.getResourceAsStream(THE_IMAGE)) {
+                if (reading != null) {
+                    LibraryImage.treesIn(reading.readAllBytes()).forEach(READINGS::put);
+                }
+            } catch (IOException unreadable) {
+                throw new IllegalStateException(
+                        "the library image would not read", unreadable);
+            }
+        }
+    }
+
     private static Value freshCopyOf(Value value) {
         return switch (value) {
             case AnyBlockValue block -> copiedBlock(block);
             case AnyStringValue text -> text.holding(text.text());
             case BinaryValue octets -> new BinaryValue(
                     new BinaryStorage(octets.octetsFromHere()), 1);
+            case BitsetValue set -> copiedBitset(set);
+            case MapValue map -> copiedMap(map);
             default -> aScalarWithNothingBehindItToShare(value);
         };
+    }
+
+    private static Value copiedBitset(BitsetValue set) {
+        BitsetValue copy = BitsetValue.of(set.octets());
+        copy = set.isComplemented() ? copy.complemented() : copy;
+        copy.protectFromChange(set.isProtected());
+        return copy;
+    }
+
+    private static Value copiedMap(MapValue map) {
+        List<Value> flattened = map.flattened();
+        List<Value> members = new ArrayList<>(flattened.size());
+        for (Value member : flattened) {
+            members.add(freshCopyOf(member));
+        }
+        MapValue copy = MapValue.of(members);
+        copy.protectFromChange(map.isProtected());
+        return copy;
     }
 
     private static Value aScalarWithNothingBehindItToShare(Value value) {
@@ -66,8 +117,9 @@ final class LibrarySource {
 
     private static boolean everySeriesCanBeCopied(Value value) {
         return switch (value) {
-            case AnyBlockValue block -> block.remaining().stream()
-                    .allMatch(LibrarySource::everySeriesCanBeCopied);
+            case AnyBlockValue block -> everyMemberCanBeCopied(block.remaining());
+            case MapValue map -> everyMemberCanBeCopied(map.flattened());
+            case BitsetValue set -> true;
             case AnyStringValue text -> true;
             case BinaryValue octets -> true;
             case IntegerValue whole -> true;
@@ -85,5 +137,14 @@ final class LibrarySource {
             case Datatype datatype -> true;
             default -> false;
         };
+    }
+
+    private static boolean everyMemberCanBeCopied(List<Value> members) {
+        for (Value member : members) {
+            if (!everySeriesCanBeCopied(member)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

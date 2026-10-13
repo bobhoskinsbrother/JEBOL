@@ -6614,3 +6614,16 @@ so `random/seed 1 random/secure 1.2.3` is 1.255.3.
 
 **Differs by nature, not by defect:** `access-os 'pid` is each process's own
 number.
+
+**A borrowed module has a syntax error and no interpreter can read it.**
+`src/main/resources/org/jebol/modules/unicode-utils.reb` never closes the
+`make vector! [unsigned integer! 8 [` it opens on line 45: the `]` on line 64
+shuts the data block, and the second one the construction needs is missing.
+The copy JEBOL carries is byte-identical to the file at its own `home:` URL,
+`https://src.rebol.tech/modules/unicode-utils.reb`, fetched 2026-10-13, so
+the error is upstream's. `./r3-head /tmp/unicode-utils.r3` answers
+`** Syntax error: missing "]" at "end-of-script"` near `(line 44) ][`, and
+JEBOL refuses it with the same error and the same id. Nothing in the build
+or the library loads this module, which is why the gate never noticed; the
+library image skips it by name rather than repairing it, because agreeing
+with the C comes before improving on it.

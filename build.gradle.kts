@@ -108,21 +108,48 @@ val assembleTheSite by tasks.registering(Sync::class) {
     from("src/main/resources/org/jebol/fonts/NotoSans-OFL.txt")
 }
 
+// The parsed library, written before anything else in the build reads it.
+// The interpreter boots from this image rather than scanning the borrowed
+// source, and a file the scanner or the image cannot carry fails the build
+// here rather than a test or a page later on.
+val writeTheLibraryImage by tasks.registering(JavaExec::class) {
+    group = "build"
+    description = "Write the parsed library image the interpreter boots from"
+    classpath = sourceSets["main"].output.classesDirs
+    mainClass.set("org.jebol.application.WritingTheLibraryImage")
+    val resources = layout.projectDirectory.dir("src/main/resources")
+    val generated = layout.buildDirectory.dir("generated/library")
+    args(resources.asFile.path, generated.get().asFile.path)
+    inputs.dir(resources.dir("org/jebol")).withPropertyName("librarySources")
+    outputs.dir(generated)
+}
+
+sourceSets["main"].resources.srcDir(layout.buildDirectory.dir("generated/library"))
+
+tasks.named("processResources") {
+    dependsOn(writeTheLibraryImage)
+}
+
 // TeaVM only embeds a resource it is told about. The list is written from the
 // resources themselves so it cannot drift from them.
 val writeTheWebResourceList by tasks.registering {
     group = "build"
     description = "List the library files the web build must carry"
-    val library = fileTree("src/main/resources/org/jebol")
-    inputs.files(library).withPropertyName("libraryFiles")
+    val roots = listOf(
+        file("src/main/resources/org/jebol"),
+        layout.buildDirectory.dir("generated/library/org/jebol").get().asFile,
+    )
+    inputs.files(roots.map { fileTree(it) }).withPropertyName("libraryFiles")
+    dependsOn(writeTheLibraryImage)
     val list = layout.buildDirectory.file("generated/web/jebol-resources.txt")
     outputs.file(list)
     doLast {
         list.get().asFile.parentFile.mkdirs()
-        list.get().asFile.writeText(library.files
-            .map { it.relativeTo(file("src/main/resources")).invariantSeparatorsPath }
-            .sorted()
-            .joinToString("\n"))
+        list.get().asFile.writeText(roots.flatMap { root ->
+            root.walkTopDown().filter { it.isFile }
+                .map { "org/jebol/" + it.relativeTo(root).invariantSeparatorsPath }
+                .toList()
+        }.sorted().joinToString("\n"))
     }
 }
 

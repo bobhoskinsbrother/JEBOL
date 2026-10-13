@@ -22,9 +22,9 @@ Measured on 2026-10-12, and the timing rows on 2026-10-13.
 | `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 12 |
 | `./gradlew check` | 27,405 tests |
 | `corpus/` | 1,140 of 1,140 entries pass |
-| the shipped jar | about 2,748 KB at its last build, and no dependencies |
-| the web build | 13.7 MB of WebAssembly (4.1 MB gzipped) beside a 38 KB loader, a 5.5 KB worker and a 556 KB font; the whole site 14.3 MB, 4.4 MB gzipped |
-| a warm `Interpreter.create()` | 54ms median, 84ms p95, the first call 438ms; 16,300 of them per `./gradlew test` (`scripts/timing.py boot`) |
+| the shipped jar | about 3.3 MB at its last build (the carried font, 556 KB, and the library image, 222 KB, are most of the growth), and no dependencies |
+| the web build | 13.9 MB of WebAssembly (4.4 MB gzipped) beside a 38 KB loader, a 5.9 KB worker and a 556 KB font; the whole site 14.6 MB, 4.7 MB gzipped |
+| a warm `Interpreter.create()` | 44 to 57ms median across runs, 66ms p95, the first call 408ms with the library image and 427ms without; 16,300 of them per `./gradlew test` (`scripts/timing.py boot`) |
 | the interpreter's speed | 8x to 14x slower than a real 3.22.5 on `scripts/timing.py speed`; about 2x more again in the browser |
 
 ---
@@ -64,21 +64,33 @@ comes before improving on it: a place where JEBOL answers something a real
 ### 1. Boot time
 
 Measured on 2026-10-13 with `scripts/timing.py boot`: a warm
-`Interpreter.create()` is 54ms median and 84ms p95, the first call 438ms
-while the JVM loads and JITs, and a full `./gradlew test` builds about 16,300
-interpreters. A warm create is almost entirely the borrowed library's
+`Interpreter.create()` is 44 to 57ms median across runs and 66ms p95, the
+first call 408ms with the library image and 427ms without it, and a full
+`./gradlew test` builds about 16,300 interpreters. A warm create is almost
+entirely the borrowed library's
 evaluation; the system object and its declaration are 1ms of it and the
 declaration tables 0.2ms, so caching the built object would save nothing
 (decision 37). The library's per-call work was the same work goal 20's first
-actions took out, which is where the 75ms became 54 (decision 38).
+actions took out, which is where the 75ms became 54 (decision 38). For
+scale, a real 3.22.5 boots in 10ms by the same measure, every run: it has no
+JIT and nothing to cache, so it parses and evaluates its whole library
+inside that figure each time. It runs the timing workloads 8x to 14x faster
+than the JVM, about 2x more again in the browser.
 
-In the browser the worker reports its own split: the module's fetch and
-compile is 65ms and the interpreter's cold start inside the worker 459ms.
-That 459ms and the JVM's first create, 438ms, are the same work -- parsing
-the borrowed library and running it once -- where the warm 54ms is that work
-cached and JITted. The worker boots once per page, so it pays the cold
-figure; the fetch, compile and per-boot parse are the parts left to attack
-if this ever needs to be smaller.
+The borrowed library is parsed at build time now: `WritingTheLibraryImage`
+writes `org/jebol/library.image` - 109 files, 222 KB, DEFLATE-compressed -
+before anything compiles tests against it, and the interpreter boots from it,
+with the text kept as the fallback (decision 39). What that bought was
+smaller than expected. The JVM's first create went from 427ms to 408ms and
+the warm create barely moved; the worker's interpreter start did not move at
+all, 464ms, because inflating and rebuilding the values costs about what
+scanning them costs in wasm. The cold start is dominated by building the
+value objects and initialising the code, not by reading text, so a
+pre-parsed library can only take the scan out of it. The test run went from
+4m19s to 3m47s, and almost all of that is from the copier learning bitsets
+and maps, which stopped eight-odd mezz files being re-scanned on every
+create. A boot image in the stronger sense, one that skips construction or
+evaluation, is what would move the 400ms that is left.
 
 ### 2. Check the TLS certificate
 

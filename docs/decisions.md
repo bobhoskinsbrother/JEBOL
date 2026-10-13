@@ -1567,3 +1567,51 @@ the two spend most of their time on the same one-time work, parsing the
 borrowed library and running it once, and the JVM's warm 54ms is that same
 work already parsed and JITted. What the worker pays on top is the module's
 fetch and compile, 65ms, which is V8's business and not JEBOL's.
+
+## 39. The library image, and what it does and does not buy
+
+**Built: the borrowed library is parsed at build time into one image the
+interpreter boots from.** `LibraryImage` (`org.jebol.domain.read`) writes and
+reads the whole value tree of a library file as a compact binary, DEFLATE
+-compressed with the JDK's own `Deflater`/`Inflater`; line breaks, spellings,
+word kinds, the six string kinds, bitsets and maps travel exactly.
+`WritingTheLibraryImage` (`org.jebol.application`) walks `src/main/resources`
+at build time and writes `org/jebol/library.image` - 109 files, 222,458 bytes
+- and the build runs that task before anything compiles tests against it
+(`processResources` depends on it), so a library file the scanner or the
+image cannot carry fails the build rather than a test. `LibrarySource` reads
+it once per process into the same cache it always kept, hands out fresh
+copies as decision 22 requires, and falls back to transcribing the text when
+the image is absent. The text stays, for that fallback. One file is skipped
+by name: `modules/unicode-utils.reb` has an unclosed `[` upstream, and a real
+3.22.5 refuses it with `missing "]" at "end-of-script"`, so no interpreter
+can read it and the image does not pretend to.
+
+**Exactness is a test, not a hope.** `TheLibraryImageFromTheSourceTest`
+round-trips every `.reb` resource in the library through the image and
+compares the trees value by value, spelling by spelling, line break by line
+break. Everything else boots through the image: the whole suite and the
+browser gate.
+
+**What it bought, measured like for like.** The JVM's first create in a fresh
+process went from a 427ms median without the image to 408ms with it, and the
+warm create moved by about nothing (44 to 57ms across runs either way). The
+worker's interpreter start did not move at all - 464ms - because inflating
+and rebuilding the values costs about what scanning them cost in wasm. The
+gate's test run went from 4m19s to 3m47s, and **that is almost all from the
+other half of this work**: the copier learned to duplicate bitsets and maps,
+so the eight-odd files holding them (the mezz constants, `sys-ports.reb`,
+`prot-mysql`-era protocols and friends) are now cached once per process and
+copied per boot, where before every create re-scanned them. Two milliseconds
+times 16,300 creates is the thirty seconds.
+
+**The reading that matters for boot.** The cold start is dominated by
+building the value objects and initialising the code, not by reading text, so
+a pre-parsed image can only take the scan out of it - about 4 per cent.
+R3's 10ms is not its boot blob doing something clever: it decompresses text,
+scans it and evaluates the whole library too, as `b-init.c` and
+`sys-start.reb` show. It is fast because everything else is a C data
+structure with no class loading and no per-word interning. A JEBOL boot that
+skipped *construction and evaluation* would need a boot image in the strong
+sense - R3's delayed module loading is the nearest thing that exists - and
+these numbers bound what pre-parsing alone can do.
