@@ -134,10 +134,7 @@ generated one. The shipped demo takes the same path: `examples/r3-gui` is the
 app, and the driver that used to live in the page's tag is now just
 `examples/r3-gui/main.reb`.
 
-**The other way round, for a JVM host.** A host that has not got a web stack of
-its own can serve the page itself and drive the desktop interpreter through it:
-one screen, two windows — a Swing window or a browser page, the same port either
-way.
+**The JVM Host Option.** The front end can also be served through a Swing window from the Java interpreter.
 
 ```
 $ java -jar build/libs/jebol-1.0.0.jar --screen=web
@@ -148,7 +145,7 @@ Open the address it prints; `VIEW/no-wait [...]` in the console then draws into
 the page. `--screen=window` is the default arrangement and puts that picture in
 a native window instead.
 
-**The gate.** `./gradlew browserCheck` builds the web module, drives the
+**The end to end tests** `./gradlew browserCheck` builds the web module, drives the
 assembled site in a real Chrome, and compares what the page draws against what
 Java2D draws from the same paint list, pixel for pixel. It is the reason a page
 and a window showing the same picture is a thing the build knows. `docs/web-port.md`
@@ -166,14 +163,7 @@ is rewritten in Java against the C as the authority.
 it stands, byte for byte, from a vendored copy under
 `src/main/resources/org/jebol/mezz/`. Eighty-two files, about 860 KB of
 Rebol's own library: `join`, `collect`, `split`, the codecs, the port schemes,
-`sys-load`. 
-
-That means a function is ported by making the C it depends on work, not by
-reimplementing the function. When `join` misbehaves the fault is underneath it,
-and the borrowed file is a fixed point that says so. It also means the surface
-is Rebol's rather than an approximation of it: every function R3 exposes has a
-match, and `system/catalog/datatypes` has all fifty-eight of Rebol's (plus
-`java-object!`). The measures are in `goals.md`.
+`sys-load`.
 
 **Declaration checking.**
 `scripts/c-parity.py` compares two files, so it cannot fail on anything a
@@ -201,10 +191,7 @@ the prose. `errors.reb` is there on the same footing.
 
 **Rebol's own test suite is the measure.** All sixty-seven files from
 `src/tests/units/` are vendored and every assertion they write is reached and
-run. What still fails is named line by line in
-`src/test/resources/rebol-suite/known-gaps.txt`, and that list only ever
-shrinks: the build fails if a listed assertion starts passing, so nothing comes
-off it quietly and nothing goes on it without being seen.
+run. 
 
 **The counts live in `goals.md` and nowhere else**, so there is one place to
 correct when they move rather than four that drift apart.
@@ -226,16 +213,9 @@ Beside it, and outliving it:
 ## Where it has got to, and what is left
 
 **Rebol's own suite passes, and the handful of assertions that do not are
-accounted for by name** — either in `known-gaps.txt`, which is what still fails,
-or in `fails-on-rebol-too.txt`, which is assertions the Rebol this is measured
-against does not run either. Those are usually one arm of an `either error? try
+accounted for by name** — `fails-on-rebol-too.txt` - assertions that fail in r3 too. Those are usually one arm of an `either error? try
 [...]` whose other arm is the one taken, and each line carries the `r3-head`
 session that settled it. For the figures, see `goals.md`.
-
-**`known-gaps.txt` is empty.** Every assertion Rebol's suite makes is reached
-here and answers as the Rebol this is measured against answers, except the
-lines in `fails-on-rebol-too.txt`, which name the assertions that Rebol does
-not run either.
 
 **So the suite has nothing left to say, and what remains is what it could never
 see.** No assertion in it asks whether an error id can be raised, whether a
@@ -354,7 +334,7 @@ editors/         a TextMate bundle: REBOL highlighting for IntelliJ and VS Code
 corpus/          published REBOL examples with their published results
   sources/       fourteen complete programs, fetched byte for byte
 src/test/resources/rebol-suite/
-                 Rebol's own test files, and the gap list
+                 Rebol's own test files, and what a real Rebol fails too
 scripts/         the measures, which are run rather than remembered:
                  c-parity (declarations) and runtime-parity (two running
                  interpreters), error-parity, sweep.py for diffing one suite

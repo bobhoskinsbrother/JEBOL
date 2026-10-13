@@ -134,21 +134,18 @@ All of these stay where they are. A change that moves one is wrong.
 
 - **`RebolSuiteTest`** -- Rebol's own assertions, about a minute alone. The
   inner loop between changes. **Every assertion its sixty-seven files write is
-  run.** Each failure is named in `known-gaps.txt`: not a skip list, because
-  every line in it runs on every build and the test fails if a listed assertion
-  starts passing. `fails-on-rebol-too.txt` holds the ones that are not run at
+  run.** `fails-on-rebol-too.txt` holds the ones that are not run at
   all, each carrying the `r3-head` session showing a real Rebol does not run it
   either. **For the counts see `goals.md`, which is the only file that carries
   them.**
 
   **It fails two different ways and they mean opposite things.** A
   `theAssertionHolds` failure is a regression and has to be fixed. A
-  `theGapListHasNoPassingEntries` failure is progress: those assertions now
-  pass and their lines come out of the file. Take the list out of the failure
-  message in `build/test-results/test/*.xml`, check the message ends in `]`
-  in case AssertJ truncated it, and filter those lines out. Never empty
-  `known-gaps.txt` to see the whole picture -- restoring it from HEAD and
-  reading the two failure kinds apart is what tells a regression from a win.
+  `theFindingsListHasNoPassingEntries` failure is a finding that needs
+  re-checking: the assertions it names now hold here, so either the finding was
+  wrong or the world moved. Put them to `./r3-head` and either take them off
+  `fails-on-rebol-too.txt` or fix the port. Check the message ends in `]` in
+  case AssertJ truncated the list.
 
   Two gates hold the count honest, and neither takes a list. A file the
   reader cannot take to the end fails the build; an assertion the harness

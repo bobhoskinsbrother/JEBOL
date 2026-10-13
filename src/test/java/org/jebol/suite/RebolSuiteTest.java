@@ -1,11 +1,7 @@
 package org.jebol.suite;
 
-import org.jebol.adapter.host.ProcessEnvironment;
-import org.jebol.application.Bounds;
-import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
-import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,7 +16,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,7 +29,6 @@ class RebolSuiteTest {
 
     private static final Path SUITE =
             Path.of("src", "test", "resources", "rebol-suite");
-    private static final Path GAPS = SUITE.resolve("known-gaps.txt");
 
     private static final Path FAILS_ON_REBOL_TOO =
             SUITE.resolve("fails-on-rebol-too.txt");
@@ -44,10 +38,6 @@ class RebolSuiteTest {
                 .flatMap(file -> file.assertions().stream())
                 .toList()
                 .stream();
-    }
-
-    static List<String> knownGaps() {
-        return linesOf(GAPS);
     }
 
     private static List<String> linesOf(Path list) {
@@ -68,11 +58,9 @@ class RebolSuiteTest {
     }
 
     static Stream<SuiteFile.Assertion> assertionsExpectedToPass() {
-        List<String> gaps = knownGaps();
         List<String> alsoFailingOnRebol = failingOnRebolToo();
         return everyAssertion()
                 .filter(assertion -> !assertion.redOnly())
-                .filter(assertion -> !gaps.contains(assertion.toString()))
                 .filter(assertion -> !alsoFailingOnRebol.contains(assertion.toString()));
     }
 
@@ -316,45 +304,6 @@ class RebolSuiteTest {
     }
 
     @Test
-    @DisplayName("no known gap has quietly started passing")
-    void theGapListHasNoPassingEntries() {
-        List<String> gaps = knownGaps();
-        List<String> nowPassing = everyAssertion()
-                .filter(assertion -> gaps.contains(assertion.toString()))
-                .filter(RebolSuiteTest::holds)
-                .map(SuiteFile.Assertion::toString)
-                .toList();
-
-        assertThat(nowPassing)
-                .as("these pass now and should come off known-gaps.txt, or the "
-                        + "list stops meaning anything")
-                .isEmpty();
-    }
-
-    @Test
-    @DisplayName("no known gap names an assertion that is not there")
-    void theGapListNamesRealAssertions() {
-        Set<String> live = everyAssertion()
-                .map(SuiteFile.Assertion::toString)
-                .collect(Collectors.toSet());
-
-        assertThat(knownGaps().stream().filter(gap -> !live.contains(gap)).toList())
-                .as("these name no assertion, so nothing can ever take them off "
-                        + "the list; delete them")
-                .isEmpty();
-    }
-
-    @Test
-    @DisplayName("nothing is in both lists")
-    void theTwoListsDoNotOverlap() {
-        List<String> gaps = knownGaps();
-        assertThat(failingOnRebolToo().stream().filter(gaps::contains).toList())
-                .as("an assertion is either work to do or a finding about "
-                        + "Rebol; being both means one of the two is wrong")
-                .isEmpty();
-    }
-
-    @Test
     @DisplayName("no finding about Rebol has quietly started passing here")
     void theFindingsListHasNoPassingEntries() {
         List<String> findings = failingOnRebolToo();
@@ -370,17 +319,4 @@ class RebolSuiteTest {
                 .isEmpty();
     }
 
-    @Test
-    @DisplayName("no assertion about Red is on the gap list")
-    void noRedOnlyAssertionIsAGap() {
-        List<String> gaps = knownGaps();
-        assertThat(everyAssertion()
-                .filter(SuiteFile.Assertion::redOnly)
-                .map(SuiteFile.Assertion::toString)
-                .filter(gaps::contains)
-                .toList())
-                .as("Rebol reports these as differences from Red, not failures; "
-                        + "fixing them would move JEBOL away from Rebol")
-                .isEmpty();
-    }
 }

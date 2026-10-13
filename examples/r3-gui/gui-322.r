@@ -1,4 +1,4 @@
-    REBOL [Title: "Load the 2010 R3 GUI on 3.22"]
+REBOL [Title: "Load the 2010 R3 GUI on 3.22"]
 gui: load %gui-source.r
 remove/part gui 5
 

@@ -17,11 +17,6 @@ Two things it will not tell you:
   * It stops being useful once the probe script itself dies -- everything
     after the first raise reads as a difference. When a file shows "N
     assertions, N differ", fix the first one and sweep again.
-  * A group name in known-gaps.txt is not always the group the assertion is
-    in. The slicer takes the last `===start-group===` it saw at the top
-    level, and files like codecs-test.r3 nest theirs inside
-    `if find codecs 'png [...]`, so a hundred entries can all claim to be in
-    the first group.
 """
 import collections
 import os

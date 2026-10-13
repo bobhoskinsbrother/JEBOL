@@ -23,48 +23,38 @@ One JUnit case per `--assert`, because that is what the suite is already shaped
 like, and because a case that checks one thing says what broke without needing to
 be read.
 
-`known-gaps.txt` lists what fails today, **so a new failure is a regression and
-shows up red** while the backlog stays visible and countable rather than being
-skipped into silence.
-
-It is down to one line, and that line is not work: it asks to read the launcher
-a confined child interpreter is started from, which has to sit outside what a
-script can see. So the harness has stopped being a backlog and become a
-ratchet against regression -- which is the job it keeps doing after there is
+It is green: the gap list reached empty and was deleted, and every assertion
+the harness grades holds. So the harness has stopped being a backlog and become
+a ratchet against regression -- which is the job it keeps doing now there is
 nothing left to fix, and the reason it runs on every build rather than being
 retired.
 
 ---
 
-## The two lists, and why both ratchet
+**`fails-on-rebol-too.txt`** Those assertions are wrong about the Rebol
+they came from: JEBOL answers what that Rebol answers. Counting them as work
+to do would say the port owes something when it does not, and deleting them
+would lose the finding, so they sit in a file of their own with the `r3-head`
+output that settled each one written beside it.
 
-**`known-gaps.txt` is work to do.** A line comes off when the assertion it names
-starts passing.
-
-**`fails-on-rebol-too.txt` is not.** Those assertions are wrong about the Rebol
-they came from: JEBOL answers what that Rebol answers. Leaving them in the gap
-list would say there is work here and there is not, and deleting them would lose
-the finding, so they sit in a file of their own with the `r3-head` output that
-settled each one written beside it.
-
-**Every line of the gap list must name an assertion that exists.** Without that
-check the list rots in the one direction nobody looks: a line comes off when its
-assertion starts passing, an assertion that no longer exists never starts
-passing, so a line whose wording or position has shifted stays on the list for
+**Why nothing owed is kept in a list any more.** A hand-kept list of
+outstanding assertions rots in the one direction nobody looks: a line comes off
+when its assertion starts passing, and an assertion that no longer exists never
+starts passing, so a line whose wording or position has shifted stays on for
 good and is counted as outstanding work for ever. **It had happened to 182 of
 1,016 lines by the time anybody checked** - 95 of them in `image-test.r3` alone,
-which had 101 lines against 14 assertions. The gap list read as eighteen per cent
-worse than the port was, and the number was quoted in the readme.
+which had 101 lines against 14 assertions. The backlog read as eighteen per cent
+worse than the port was, and the number was quoted in the readme. That list is
+gone now, and nothing has taken its place: what the harness grades, it reads
+from the suite itself.
 
-**The findings list needs the same ratchet, in the other direction.** The gap list
-only shrinks because the build fails when a listed assertion starts passing;
-nothing asked the same of the findings list, so an entry moved there left the
-published backlog one smaller and the gate green. That was demonstrated rather
-than argued: moving `bitset-test.r3 #139`, which a real Rebol passes and JEBOL
-fails, out of one file and into the other took the count down by one and broke
-nothing. A finding on that list says a real Rebol does not pass this either; **if
-JEBOL starts passing it, the finding was wrong or the world moved**, and either way
-somebody has to go and look.
+**The findings list carries its own ratchet, in the other direction.** A
+finding on it says a real Rebol does not pass this either, and **if JEBOL starts
+passing it, the finding was wrong or the world moved**, and either way somebody
+has to go and look. Without that check the list was somewhere to lose a failure
+rather than fix it, and that was demonstrated rather than argued: moving
+`bitset-test.r3 #139`, which a real Rebol passes and JEBOL fails, onto the list
+took the count down by one and broke nothing.
 
 ---
 
@@ -74,7 +64,7 @@ Rebol's own runner counts a failing `--red--` assertion apart from its failures,
 as a difference from Red rather than a defect.
 
 Grading one here anyway is **not merely stricter**, because the strict reading asks
-for behaviour a real Rebol has not got: eight lines of the gap list wanted
+for behaviour a real Rebol has not got: eight assertions wanted
 `integer? power 2 16`, which is `65536.0` in Rebol and therefore false there too.
 The ratchet would have gone green for whoever made JEBOL disagree with a real
 Rebol. **A stricter rule is only safer when the thing it is strict about is true.**
@@ -214,8 +204,9 @@ than a verdict about the port**, and it says so.
 
 **An assertion id must be unique within its file.** The ordinal counts assertions
 across the whole file rather than within a test. Numbering within a test looked
-tidier and produced duplicate ids wherever two tests shared a name, which made a
-gap list unusable: one assertion under a shared id passed while another failed.
+tidier and produced duplicate ids wherever two tests shared a name, which made
+any list keyed by those ids unusable: one assertion under a shared id passed
+while another failed.
 
 **The `Rebol [...]` header is data, not code** - evaluating it would call whatever
 REBOL is bound to.
@@ -444,19 +435,23 @@ unfinished business, and a tenth one appearing is a thing somebody has to look a
 `org.jebol.suite.SuiteStops` is the counterpart to `scripts/sweep.py`. The sweep
 says which assertions answer wrongly; this says which raise, and a raise is worth
 more than a wrong answer because everything after it in the file never runs at
-all. A file with one stop near the top can owe a hundred entries and need one fix.
+all. A file with one stop near the top can hide a hundred assertions behind one
+fix.
 
-Run it, and give it the smallest gap count worth reporting:
+Run it:
 
 ```
 ./gradlew compileTestJava
 java -cp build/classes/java/main:build/classes/java/test:build/resources/main:build/resources/test \
-     org.jebol.suite.SuiteStops 7
+     org.jebol.suite.SuiteStops
 ```
 
-It is a `main` rather than a test on purpose. It runs every suite file twice over
-and takes a minute, and it answers a question about the state of the port rather
-than asserting anything, so it has no business in the gate.
+It prints every file that stops, how many of its steps stopped, and the first
+ten of those stops. Give it a file name to see one file. It is a `main` rather
+than a test on purpose. It runs every
+suite file twice over and takes a minute, and it answers a question about the
+state of the port rather than asserting anything, so it has no business in the
+gate.
 
 It builds its interpreter through `SuiteHost`, the same one the gate uses. It used
 to build its own, granting every service and installing only a filesystem -

@@ -14,7 +14,6 @@ Measured on 2026-10-12, and the timing rows on 2026-10-13.
 
 | Measure | Reads |
 | --- | --- |
-| `known-gaps.txt` | empty |
 | `fails-on-rebol-too.txt` | 169 a real 3.22.5 also fails or never runs |
 | `scripts/c-parity.py` | 277 of 279 C functions match R3's surface; the 2 are in goal 8 |
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
@@ -37,7 +36,7 @@ Read `CLAUDE.md` first.
   file with a `Rebol []` header. Ask it rather than guessing.
 - **`rebol3-source/`** is the C, searched through the IntelliJ MCP.
 - **`scripts/sweep.py <file.r3>`** shows which suite assertions answer
-  differently; **`org.jebol.suite.SuiteStops 1`** shows which raise. Fix a
+  differently; **`org.jebol.suite.SuiteStops`** shows which raise. Fix a
   raise first: everything after it never runs.
 - **`org.jebol.adapter.cli.Repl`** reads a script from standard input, one
   expression per line, so the same cases can be put to both interpreters and

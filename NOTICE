@@ -24,9 +24,7 @@ scripts, taken from src/tests/ upstream. They do not ship.
 
 They are vendored rather than fetched so the suite is reproducible
 without a network, and they are kept byte-for-byte as published so that
-a failure is unambiguously ours. Where JEBOL cannot yet satisfy one, the
-gap is recorded in src/test/resources/rebol-suite/known-gaps.txt rather
-than by editing the script.
+a failure is unambiguously ours.
 
 REBOL is a trademark of REBOL Technologies. JEBOL is not associated with
 or endorsed by REBOL Technologies or by the maintainers of Oldes/Rebol3.

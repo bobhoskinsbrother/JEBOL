@@ -1,16 +1,10 @@
 package org.jebol.suite;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-import org.jebol.application.Bounds;
-import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
-import org.jebol.domain.host.HostService;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class SuiteStops {
 
@@ -19,7 +13,7 @@ public final class SuiteStops {
 
     private static final int ENOUGH_STOPS_TO_SEE_THE_SHAPE = 10;
 
-    private static Interpreter fullyBounded() throws Exception {
+    private static Interpreter fullyBounded() {
         Interpreter interpreter = SuiteHost.installOn(
                 Interpreter.withBounds(SuiteHost.grantingEverything()));
         String dialect = String.join("\n",
@@ -38,26 +32,22 @@ public final class SuiteStops {
         return interpreter;
     }
 
-    static void main(String[] argued) throws Exception {
-        long least = argued.length > 0 ? Long.parseLong(argued[0]) : 1;
-        Map<String, Long> owed = new TreeMap<>();
-        for (String entry : RebolSuiteTest.knownGaps()) {
-            owed.merge(entry.split(" / ")[0], 1L, Long::sum);
-        }
+    static void main(String[] argued) {
         for (SuiteFile file : RebolSuiteTest.filesInSuite()) {
-            long owes = owed.getOrDefault(file.name(), 0L);
-            if (owes < least) {
+            if (argued.length > 0 && !file.name().equals(argued[0])) {
                 continue;
             }
             List<String> stops = stopsIn(file);
-            System.out.printf("=== %d gaps  %s  (%d steps stopped)%n",
-                    owes, file.name(), stops.size());
+            if (stops.isEmpty()) {
+                continue;
+            }
+            System.out.printf("%s  (%d steps stopped)%n", file.name(), stops.size());
             stops.stream().limit(ENOUGH_STOPS_TO_SEE_THE_SHAPE)
                     .forEach(System.out::println);
         }
     }
 
-    private static List<String> stopsIn(SuiteFile file) throws Exception {
+    private static List<String> stopsIn(SuiteFile file) {
         Interpreter interpreter = fullyBounded();
         List<String> stops = new ArrayList<>();
         for (SuiteFile.Step step : file.steps()) {

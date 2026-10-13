@@ -2,9 +2,7 @@
 #
 # Two kinds, and neither is a gap. Some are wrong about the Rebol they came
 # from, and JEBOL answers what that Rebol answers. Others are guarded on a
-# feature 3.22.5 has not got, so they never run there at all. Putting either
-# in known-gaps.txt would say there is work here and there is not, and
-# deleting them would lose the finding.
+# feature 3.22.5 has not got, so they never run there at all.
 #
 # Nothing goes in here on reasoning. Each line was run through ./r3-head, the
 # same 3.22.5 the port is measured against, and the answer written down below

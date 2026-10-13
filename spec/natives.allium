@@ -6749,7 +6749,7 @@ rule OpeningADirectoryThatIsNotThereIsRefused {
     ensures: CallFails(error: cannot_open, about: target)
 }
 
-open question "`open/new` on a directory that is not there does two different things on consecutive runs of a real 3.22.5, in a fresh directory both times with byte-identical input. The first run answers a port and the second raises `no-create` naming the directory, and the directory exists afterwards either way -- so it is made and then something after the making disagrees about whether that counts. Nothing on `known-gaps.txt` turns on it and no assertion in the suite asks, which is why it is a question rather than a rule: specifying either answer would be specifying a coin toss. It is the second place the canonical reference has been caught being non-deterministic, the first being `checksum-test.r3`, and both are recorded so that a single run is never taken as settling one of them."
+open question "`open/new` on a directory that is not there does two different things on consecutive runs of a real 3.22.5, in a fresh directory both times with byte-identical input. The first run answers a port and the second raises `no-create` naming the directory, and the directory exists afterwards either way -- so it is made and then something after the making disagrees about whether that counts. It is the second place the canonical reference has been caught being non-deterministic, the first being `checksum-test.r3`, and both are recorded so that a single run is never taken as settling one of them."
 
 rule TryPassesThroughASuccessfulResult {
     when: EvaluateTry(body)
