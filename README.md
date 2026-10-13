@@ -114,23 +114,25 @@ survive a reload, HTTP and HTTPS go through `fetch`, digests and HMACs come from
 WebCrypto, and text is measured with the one font the build carries so a page
 and a window lay out the same words in the same places.
 
-**An app is a directory of REBOL.** `main.reb` in it is the entry — the script
-the worker interprets — and every other file in the directory is fetched into
-the worker's store before it runs, so `do %lib/whatever.reb` and `read %data.txt`
-find the app's own files. Nothing else is yours to write: the runner page, the
-module, its loader, the worker's shell and the font are put together around the
-directory by the build.
+**A directory app is:**
+
+- `main.reb` — the entry. Whatever REBOL is in it is what the worker interprets.
+- Any other files — every file in the directory is fetched into the worker's
+  store before `main.reb` runs, so `do %lib/whatever.reb` and `read %data.txt`
+  find them.
+- Nothing else. No HTML, no JS. The build writes `index.html` for you from
+  `site/runner.html` (canvas, replayer, worker hookup) with your file list baked
+  in, and puts the module, the loader, the worker's shell and the font beside it.
 
 ```
 $ ./gradlew assembleTheSite -PsiteDir=my-app
 $ cd build/site && python3 -m http.server 8000
 ```
 
-Open `http://localhost:8000/`, and the app runs. This is the same path the
-shipped demo takes: run `./gradlew assembleTheSite` with no property and the
-site is built around `examples/r3-gui` — the 2010 R3 GUI sliders and opinion
-survey — whose every file is ordinary REBOL. If the directory holds an
-`index.html` of its own, that is used instead of the runner the build writes.
+If you put your own `index.html` in the directory, that is used instead of the
+generated one. The shipped demo takes the same path: `examples/r3-gui` is the
+app, and the driver that used to live in the page's tag is now just
+`examples/r3-gui/main.reb`.
 
 **The other way round, for a JVM host.** A host that has not got a web stack of
 its own can serve the page itself and drive the desktop interpreter through it:
