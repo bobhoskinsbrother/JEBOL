@@ -1117,7 +1117,7 @@ decide which platform it is on.
 algorithm class the core reaches for is a stand-in whose methods throw an error
 naming the method. A page that asks for a signature gets a refusal rather than
 an answer invented in the browser. Digests and HMACs came later, through the
-browser's own WebCrypto -- decision 34 -- and how TLS is checked is goal 2's.
+browser's own WebCrypto -- decision 34 -- and how TLS is checked is goal 1's.
 
 **The web compile lives in the second gate.** `browserCheck` depends on
 `buildWasmGC` and then runs the page the way a reader would, in a real Chrome;
@@ -1429,7 +1429,7 @@ stops laying text out: a few hundred lines of JavaScript that duplicated
 `TextLines` are deleted rather than kept in step.
 
 **Decided while planning the web port**, after the plan's first draft
-proposed the rasteriser. Goals 6 and 7 change with it: a phone app
+proposed the rasteriser. Goals 5 and 6 change with it: a phone app
 implements the surface on its own canvas rather than copying a grid.
 
 ## 36. A page is painted between events, not once per show
@@ -1462,8 +1462,8 @@ plus one whole-surface walk. The walk itself is the next thing to shrink if
 it ever needs shrinking: 98KB of JSON for the two example windows.
 ## 37. What the timings say: the library load, and streams on the per-call path
 
-**The goal's next move was wrong, and the measurement says so.** Goal 1 said
-the system object's declaration is evaluated on every boot "although the
+**The goal's next move was wrong, and the measurement says so.** The boot
+goal said the system object's declaration is evaluated on every boot "although the
 answer is the same each time", and that caching the built object was the next
 move. Temporary stopwatches around the constructor of a warm
 `Interpreter.create()` (2026-10-13, macOS, JDK 25, `scripts/timing.py boot`)
@@ -1516,7 +1516,7 @@ The rest of the profile, each with a stack and a share:
 
 **What this makes of the two goals.** The boot work and the speed work are
 one job: the same per-call overheads dominate both, so fixing the call path
-moves the gate, the desktop and the browser at once. Goal 20 carries the
+moves the gate, the desktop and the browser at once. Goal 19 carries the
 ranked list; this decision holds the numbers. The instrument is
 `scripts/timing.py`, whose docstring says how to run it and what the figures
 do and do not mean.
@@ -1524,7 +1524,7 @@ do and do not mean.
 ## 38. The per-call plumbing comes out, and the web boot was compared wrongly
 
 **What was done, all of it removing work that was redone per call.** The
-ranked actions of goal 20, in the order decision 37 measured them:
+ranked actions of goal 19, in the order decision 37 measured them:
 
 - `PendingCall` no longer filters parameters with streams on every call. It
   keeps the callee's own parameter list and builds the sequence of parameters

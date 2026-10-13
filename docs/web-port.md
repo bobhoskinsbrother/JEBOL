@@ -1,9 +1,9 @@
 # The web port
 
 One interpreter and one way of drawing on every platform, the web first, with
-the interpreter compiled to WebAssembly. This was goal 1 in `goals.md` and it
-is finished, so the goal is deleted and this note is the record. It carries
-what the code cannot; `CLAUDE.md` carries the method.
+the interpreter compiled to WebAssembly. This was the first goal in
+`goals.md` and it is finished, so the goal is deleted and this note is the
+record. It carries what the code cannot; `CLAUDE.md` carries the method.
 
 ---
 
@@ -199,7 +199,7 @@ HMAC over them are the browser's answers and everything else -- `md5`,
 `sha224`, the SHA-3 sizes -- is absent from the catalogue and refused by
 name. JEBOL's own Java digests work everywhere, and so do its ciphers. The
 browser gate asserts the worker's SHA-1 and HMAC equal the JVM's. Decision 34;
-the TLS checking is goal 2's.
+the TLS checking is goal 1's.
 
 The web build starts no processes: `ProcessHandle` answers "there is only this
 one" and `ExecutableFile.markRunnable` answers true without touching the file.

@@ -16,10 +16,10 @@ Measured on 2026-10-12, and the timing rows on 2026-10-13.
 | --- | --- |
 | `known-gaps.txt` | empty |
 | `fails-on-rebol-too.txt` | 169 a real 3.22.5 also fails or never runs |
-| `scripts/c-parity.py` | 277 of 279 C functions match R3's surface; the 2 are in goal 9 |
+| `scripts/c-parity.py` | 277 of 279 C functions match R3's surface; the 2 are in goal 8 |
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 114 of Rebol's 142 error ids can be raised |
-| `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 12 |
+| `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 11 |
 | `./gradlew check` | 27,405 tests |
 | `corpus/` | 1,140 of 1,140 entries pass |
 | the shipped jar | about 3,090 KB at its last build (the carried font, 556 KB, is most of what the last two batches added), and no dependencies |
@@ -56,44 +56,12 @@ Read `CLAUDE.md` first.
 
 ## The goals
 
-Ordered by importance. The first seven take JEBOL to Android, then to iOS, with
+Ordered by importance. The first six take JEBOL to Android, then to iOS, with
 the defects that would hurt there fixed before each stage. Agreeing with the C
 comes before improving on it: a place where JEBOL answers something a real
 3.22.5 does not is a defect.
 
-### 1. Boot time
-
-Measured on 2026-10-13 with `scripts/timing.py boot`: a warm
-`Interpreter.create()` is 44 to 57ms median across runs and 66ms p95, the
-first call 427ms, and a full
-`./gradlew test` builds about 16,300 interpreters. A warm create is almost
-entirely the borrowed library's
-evaluation; the system object and its declaration are 1ms of it and the
-declaration tables 0.2ms, so caching the built object would save nothing
-(decision 37). The library's per-call work was the same work goal 20's first
-actions took out, which is where the 75ms became 54 (decision 38). For
-scale, a real 3.22.5 boots in 10ms by the same measure, every run: it has no
-JIT and nothing to cache, so it parses and evaluates its whole library
-inside that figure each time. It runs the timing workloads 8x to 14x faster
-than the JVM, about 2x more again in the browser.
-
-The borrowed library was parsed at build time into one image and booted from
-it for a while: 109 files, 222 KB, DEFLATE-compressed, exact down to the line
-breaks, with the text kept as the fallback. It bought 19ms of the first
-create in a fresh process and nothing at all warm, in the worker or in the
-gate, which is what its mechanism predicts - a warm create copies the cached
-trees either way, and only the first scan of a process can be replaced - so
-it was taken back out rather than kept for 222 KB in both artifacts and a
-codec to maintain (decision 40). What the exercise proved is worth more: the
-cold start is 2,626 classes first loaded and verified and about three
-thousand methods first JIT-compiled, spread across every phase, where the
-boot's actual work is about 75ms. The cold figure is the JVM starting the
-interpreter up, not the library being read. The one change from the batch
-that stayed, the copier learning bitsets and maps, stopped eight-odd mezz
-files being re-scanned on every create and took the test run from about 4m19
-to about 4m05 (runs vary 4m02 to 4m29).
-
-### 2. Check the TLS certificate
+### 1. Check the TLS certificate
 
 Every certificate a browser would refuse is accepted, by R3 and by JEBOL:
 expired, self-signed, wrong host and untrusted root all read. The web build
@@ -110,12 +78,12 @@ hooked in through the `CRT` codec rather than by editing `prot-tls.reb`.
    included.
 4. A failure ends the handshake rather than logging.
 5. A test against badssl.com for each refusal, one good host, and the same put
-   to `./r3-head`. These reach the network -- see goal 19.
+   to `./r3-head`. These reach the network -- see goal 18.
 
 Until then, `read https://` should be described as unauthenticated wherever it
 matters.
 
-### 3. Running out of memory escapes as a host exception
+### 2. Running out of memory escapes as a host exception
 
 MAKE turns an allocation the heap cannot serve into `no-memory`. Appending in a
 loop, reading a large file and joining strings do not, and an
@@ -123,10 +91,10 @@ loop, reading a large file and joining strings do not, and an
 `eval.allium`. On a phone, with far less memory, that ends the app. Needs a
 sweep of everywhere JEBOL allocates on a script's say-so.
 
-### 4. What a script may touch
+### 3. What a script may touch
 
 Apps will run scripts with the phone's files and features in reach, so how
-much a script is allowed is settled before goal 6.
+much a script is allowed is settled before goal 5.
 
 1. **A script reads and writes outside its own folder.** `read %../outside.txt`,
    `read %/etc/hosts` and `write %../written.txt "x"` all work here; R3 refuses
@@ -137,12 +105,12 @@ much a script is allowed is settled before goal 6.
    boundary sits is an open question in `natives.allium`, and it sits beside
    JEBOL's own grants in `Bounds`: decide how the two combine first.
 
-### 5. One way to plug in extra functions, and know what is plugged in
+### 4. One way to plug in extra functions, and know what is plugged in
 
 Today a host can add a Java function to JEBOL with
 `Interpreter.defineFunction`. But JEBOL only gets the function, not what it
 is. So nothing can list what has been added, allow one addition while
-blocking another, or report that an addition failed to start. Goals 6 and 7
+blocking another, or report that an addition failed to start. Goals 5 and 6
 reach the phones' own features -- the camera, location, notifications -- one
 port per feature, and those are plug-ins of exactly this kind, so this comes
 first.
@@ -179,7 +147,7 @@ What this makes possible:
 - fourteen compiled modules that are left out of `system/modules`, because
   loading them means fetching a native library.
 
-### 6. Android, with the interpreter running on Android's own Java
+### 5. Android, with the interpreter running on Android's own Java
 
 1. **Check JEBOL's Java against Android's.** JEBOL is written for Java 25.
    Find the language features and library calls Android's compiler and
@@ -195,12 +163,12 @@ What this makes possible:
    field brings up the keyboard; layouts scale with the screen's size and
    density. This is done once, in the GUI's REBOL, and iOS and the web on a
    phone use it too.
-5. **Android's own features**, one plug-in each in goal 5's shape.
+5. **Android's own features**, one plug-in each in goal 4's shape.
 6. **A gate on an emulator.** The examples are driven on an Android emulator
    the way the browser gate drives Chrome: a gate of its own, never a skipped
    test.
 
-### 7. iOS, with the interpreter compiled ahead of time by GraalVM
+### 6. iOS, with the interpreter compiled ahead of time by GraalVM
 
 Not a web view: one would pause JEBOL whenever the app is in the background,
 keep it out of widgets, the Watch and app extensions, and make every call to
@@ -216,18 +184,18 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
    of this step.
 3. **The app.** One view draws the domain's surface calls with iOS's own
    drawing; touches, the keyboard, and pausing and resuming are handled as
-   on Android, using goal 6 step 4's work in the 2010 GUI.
+   on Android, using goal 5 step 4's work in the 2010 GUI.
 4. **iOS's adapters.** Files in the app's own sandbox and real sockets. CALL is
    refused: Apple does not allow an app to start another program.
 5. **A way to call iOS itself.** JEBOL reaches iOS's own features -- the
    camera, location, notifications, background work -- through GraalVM's
-   direct calls into native code, one plug-in per feature in goal 5's shape.
+   direct calls into native code, one plug-in per feature in goal 4's shape.
    Whether the same compiled JEBOL fits inside a widget or an extension,
    within the memory iOS allows them, is measured here.
 6. **A gate on the simulator**, as on Android: the examples driven in the app,
    a gate of its own.
 
-### 8. Register the MIDI scheme
+### 7. Register the MIDI scheme
 
 `open midi://` is `cannot-open` in R3 (no device on that build) and
 `no-scheme` here. Its declaration is `sys-ports-midi.reb`, in `rebol3-source`
@@ -238,7 +206,7 @@ before the first borrowed protocol file calls it (`prot-mysql.reb`), and
 before `mezz-tail.reb` protects `system/schemes`. Making MIDI actually work
 through `javax.sound.midi` is a further step and a separate goal.
 
-### 9. Two divergences
+### 8. Two divergences
 
 1. **WORDS-OF cannot tell a field named SELF from an object's own SELF.**
    `c: use [x] [x: 1 context? 'x] append c 'self words-of c` is `[x self]` in R3
@@ -248,7 +216,7 @@ through `javax.sound.midi` is a further step and a separate goal.
 2. **`to-degrees` and `to-radians` take a percent.** R3 declares both
    `[integer! decimal!]` and refuses `10%` with `expect-arg`.
 
-### 10. MAKE and TO answers no assertion asks
+### 9. MAKE and TO answers no assertion asks
 
 - **`to paren! any-string!`** is a block in R3, because `Set_Block` writes
   `REB_BLOCK` whatever was asked for, and a paren here. A decision rather than
@@ -263,7 +231,7 @@ through `javax.sound.midi` is a further step and a separate goal.
   something for the first and answers `bad-func-def` for the second. Both are
   open questions in `spec/natives.allium`.
 
-### 11. Two found in Rebol's own declarations
+### 10. Two found in Rebol's own declarations
 
 1. **`system/standard/stats` starts at zero; R3 starts every field at none.**
    `STATS/PROFILE` and `DELTA-PROFILE` subtract the fields, so changing them is
@@ -274,7 +242,7 @@ through `javax.sound.midi` is a further step and a separate goal.
    write a line. `TheDialectsWordsMatchRebolsOwnTest` will turn red when it
    lands, and its list of absences wants updating then.
 
-### 12. The type-major refactor: what is left
+### 11. The type-major refactor: what is left
 
 Each datatype's behaviour belongs in its own class, not in a switch elsewhere.
 What still switches on the datatype, by `scripts/complexity.py`:
@@ -301,7 +269,7 @@ from source files and JEBOL's from what is a function at run time, so
 `init-schemes` -- which sets its own name to `'done` once run, in both
 interpreters -- reads as missing.
 
-### 13. Graphics: what is left
+### 12. Graphics: what is left
 
 - **VID.**
 - **The old markup path** -- 522 lines.
@@ -311,7 +279,7 @@ interpreters -- reads as missing.
   decision 35 makes the walk one and leaves only the toolkit's coverage
   arithmetic, which the spec's tolerance already bounds.
 
-### 14. Loose ends
+### 13. Loose ends
 
 - **A task's body runs nowhere by default.** DO of a task answers the task,
   and the body runs only where a host supplies a way to run it: on a thread of
@@ -327,9 +295,9 @@ interpreters -- reads as missing.
   in `embed.allium`, and the design questions in `natives.allium` (whether a
   `struct!` is more than its layout, which verbs reach a port's actor, whether
   values may cross between interpreters). Where SECURE's boundary sits belongs
-  to goal 4.
+  to goal 3.
 
-### 15. Verify a fetched module
+### 14. Verify a fetched module
 
 Nothing is fetched today: every module this build needs is bundled. Before an
 address points outward again:
@@ -342,7 +310,7 @@ address points outward again:
 
 Still to decide: whether a host can refuse fetching outright.
 
-### 16. A debugger
+### 15. A debugger
 
 **First, make `trace` agree with R3.** For `x: 1 + 2` R3 prints the operator
 (`+ : op! [value1 value2]`), its call (`--> +`) and its result
@@ -355,7 +323,7 @@ decide first: what drives it (the Debug Adapter Protocol, written here since
 the jar takes no dependencies); what a paused script does to the deadline and
 grants it runs under; and whether a script may debug itself.
 
-### 17. Tools for a model writing REBOL
+### 16. Tools for a model writing REBOL
 
 - **A dialect that fails loudly.** A rule that does not match answers false
   and the calling code drops it.
@@ -368,26 +336,26 @@ grants it runs under; and whether a script may debug itself.
   reporting services asked for), `match` (where a block stopped against a
   grammar) and `word` (what a word takes and whether it is reliable here).
 
-### 18. What the command line does differently from r3
+### 17. What the command line does differently from r3
 
 1. **The bare console does not run `start`**: its own banner, sandboxed
    bounds, no colours. Deciding it means deciding whether the plain console
    keeps its sandbox.
-2. **`--trace` does not trace the boot.** Do with goal 16.
+2. **`--trace` does not trace the boot.** Do with goal 15.
 3. **The version and build differ.** `Rebol/core 3.22.5` here against
    `Rebol/Bulk 3.22.5 (...)` and its copyright lines, and `system/build` is none
    in every field. What JEBOL should claim is a decision.
 
-SECURE not being enforced is part of goal 4.
+SECURE not being enforced is part of goal 3.
 
-### 19. Take the network out of the gate
+### 18. Take the network out of the gate
 
 `thru-cache-test.r3` reads `raw.githubusercontent.com` and `httpbin.org`, so
 `./gradlew check` depends on two outside services. Replace them -- a recorded
 exchange, a local server, or a second gate allowed a network -- so the gate
 needs nothing but a JDK.
 
-### 20. A drag still lags, and the interpreter has a next tier
+### 19. A drag still lags, and the interpreter has a next tier
 
 The picture reaches the page 10 to 22ms after each pointer move, and a fast
 drag settles at about 35 frames a second, which still reads as laggy. The
@@ -447,7 +415,7 @@ A flake is a fail. None of these is closed.
 - **`thru-cache-test.r3`** failed once under a full gate on 2026-10-12 -- three
   assertions "never reached" because the script died before them, and the
   whole suite passed alone straight after. The reads to
-  `raw.githubusercontent.com` are goal 19's dependency on two outside
+  `raw.githubusercontent.com` are goal 18's dependency on two outside
   services, and under a parallel gate one of them stalled past the run's
-  deadline. Goal 19 is the fix; until then a full gate can fail here without
+  deadline. Goal 18 is the fix; until then a full gate can fail here without
   anything having changed.
