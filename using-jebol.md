@@ -83,9 +83,17 @@ To execute one piece of text and stop, give the `--do` argument.
 Rebuild with `./gradlew installDist` after any change to the Java sources. The
 installed files do not change until you do.
 
-There is no argument that takes the name of a script file. A path given on the
-command line is ignored without a message, and the console starts. A script
-must arrive on standard input or inside `--do`.
+A script file or an app directory goes on the command line. A directory is an
+app: it runs the `main.reb` inside it, with the app as the working directory,
+so the app's own files are what `do %...` and `read %...` find. A directory
+with no `main.reb` in it is refused with a sentence that says so.
+
+```
+jebol my-script.reb
+jebol my-app/
+```
+
+Otherwise a script arrives on standard input or inside `--do`.
 
 ```
 cat my-script.reb | jebol
@@ -306,8 +314,10 @@ browser draw the same paint list the same way, which `./gradlew browserCheck`
 does on every run. The same gate builds the interpreter for the web and runs a
 script that sits in a page's tag.
 
-**The console.** There is no argument that takes the name of a script file,
-and a path given on the command line is ignored without a message.
+**The console grants only WINDOWS.** `read %README.md` typed at the prompt
+answers `no-service`, where the same word in a script named on the command
+line reads the file. Run a program from a file, or give the console what it
+needs through `--do`.
 
 Every count here comes from `goals.md` and changes with the work. Take the
 current numbers from a run of `./gradlew check` rather than from this page.

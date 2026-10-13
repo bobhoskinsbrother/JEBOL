@@ -91,21 +91,44 @@ tasks.named("buildWasmGC") {
     dependsOn(copyTheWorkerScript, copyTheCarriedFont)
 }
 
-// The static files a host can serve with no server code at all: the page, the
-// module and its loader, the worker's shell, the font with its licence, and
-// the examples the page runs. `browserCheck` drives this site, so the gate
-// measures the artifact rather than a rehearsal of it.
+// The static files a host can serve with no server code at all: a runner page
+// built around an app, the module and its loader, the worker's shell and the
+// font with its licence. The app is `-PsiteDir=my-app`, a directory of REBOL
+// whose main.reb is the entry and whose every file is fetched into the
+// worker's store before it runs; the shipped demo is examples/r3-gui, served
+// the same way. A directory with an index.html of its own keeps it.
 val assembleTheSite by tasks.registering(Sync::class) {
     group = "build"
-    description = "Assemble the static site: the examples page and everything it fetches"
+    description = "Assemble the static site: a runner page and the app it runs"
     dependsOn(tasks.named("buildWasmGC"))
+    val theApp = providers.gradleProperty("siteDir").getOrElse("examples/r3-gui")
+    val theRunner = layout.projectDirectory.file("site/runner.html")
+    inputs.property("appDirectory", theApp)
+    inputs.file(theRunner).withPropertyName("runnerPage")
     into(layout.buildDirectory.dir("site"))
-    from("site")
-    from("examples/r3-gui") { into("examples/r3-gui") }
+    from(theApp)
     from(layout.buildDirectory.dir("generated/teavm/wasm-gc")) {
         include("jebol-web.wasm", "jebol-web-runtime.js", "jebol-worker.js", "NotoSans-Regular.ttf")
     }
     from("src/main/resources/org/jebol/fonts/NotoSans-OFL.txt")
+    doLast {
+        val site = layout.buildDirectory.dir("site").get().asFile
+        if (site.resolve("index.html").exists()) {
+            return@doLast
+        }
+        val app = file(theApp)
+        val names = app.walkTopDown().filter { it.isFile }
+            .map { it.relativeTo(app).invariantSeparatorsPath }
+            .sorted()
+            .toList()
+        val filesJson = names.joinToString(",", "[", "]") { name ->
+            "\"" + name.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+        }
+        site.resolve("index.html").writeText(
+            theRunner.asFile.readText()
+                .replace("__THE_APP_FILES__", filesJson)
+                .replace("__THE_APP_ENTRY__", "main.reb"))
+    }
 }
 
 // TeaVM only embeds a resource it is told about. The list is written from the

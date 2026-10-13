@@ -25,6 +25,7 @@ import org.jebol.domain.value.WordValue;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +56,10 @@ public final class Repl {
 
     private static final int WHAT_A_FINISHED_START_REPORTS = 0;
 
+    private static final int WHAT_A_MISUSED_COMMAND_LINE_REPORTS = 2;
+
+    private static final String THE_ENTRY_AN_APP_DIRECTORY_RUNS = "main.reb";
+
     private static final Set<String> LEVELS_THAT_STOP_SHORT_OF_START = Set.of("base", "sys");
 
     private static final String SAYING_IT_IS_CLOSING_UNLESS_QUIET =
@@ -77,8 +82,14 @@ public final class Repl {
     }
 
     static void main(String[] arguments) {
-        int status = runTheCommandLine(arguments, System.out, System.err,
-                System.getProperty("user.dir", "."));
+        int status;
+        try {
+            status = runTheCommandLine(arguments, System.out, System.err,
+                    System.getProperty("user.dir", "."));
+        } catch (IllegalArgumentException refused) {
+            System.err.println(refused.getMessage());
+            status = WHAT_A_MISUSED_COMMAND_LINE_REPORTS;
+        }
         System.exit(status == KEEP_THE_PROCESS ? WHAT_A_FINISHED_START_REPORTS : status);
     }
 
@@ -97,6 +108,7 @@ public final class Repl {
         Path root = theRootAskedFor(arguments);
         RebolArguments asked = new RebolArguments(List.of(
                 withoutTheSwitchesOnlyJebolTakes(ChosenScreen.withoutTheSwitch(arguments))));
+        asked.script().ifPresent(script -> asked.theScriptIs(anAppsEntryFor(script)));
         boolean anythingWasAsked = asked.script().isPresent() || !asked.flags().isEmpty();
         Interpreter interpreter = anInterpreterFor(arguments, out, anythingWasAsked, root);
         if (!anythingWasAsked) {
@@ -105,6 +117,23 @@ public final class Repl {
         }
         return new TheCommandLine(asked, startedIn, root)
                 .runThrough(interpreter, typed, out, errors);
+    }
+
+    private static String anAppsEntryFor(String whereItPoints) {
+        if (whereItPoints.isEmpty()) {
+            return whereItPoints;
+        }
+        Path asked = Path.of(whereItPoints);
+        if (!Files.isDirectory(asked)) {
+            return whereItPoints;
+        }
+        Path entry = asked.resolve(THE_ENTRY_AN_APP_DIRECTORY_RUNS);
+        if (!Files.isRegularFile(entry)) {
+            throw new IllegalArgumentException(whereItPoints
+                    + " is a directory, and an app is run from the "
+                    + THE_ENTRY_AN_APP_DIRECTORY_RUNS + " inside it, which is not there");
+        }
+        return entry.toString();
     }
 
     private static String[] withoutTheSwitchesOnlyJebolTakes(String[] arguments) {

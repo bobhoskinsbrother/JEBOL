@@ -1649,3 +1649,25 @@ methods are JIT-compiled. The boot's actual work is around 75ms; the other
 interpreter's whole surface. It is not dispatch - a switch over a sealed
 interface is a table switch and costs nothing - it is that a cold JVM pays
 per class and per method, and a boot touches nearly all of them.
+
+## 41. A directory is an app, and a page is the same app on the web
+
+**A directory given to the command line runs the `main.reb` inside it.** The C
+has no such form: `./r3-head app/` answers `access error: cannot decode or
+encode (no codec): unbound`, which JEBOL answered too, and a directory is what
+an app is. The entry is `main.reb`; the app's directory is the working
+directory, which the C already makes of a script file (`what-dir` inside one is
+the script's own directory, and JEBOL matches); and a directory with no
+`main.reb` is refused with a sentence that says so rather than that codec
+error. This is a deliberate divergence - an app directory runs here and cannot
+run in a real 3.22.5 - taken because running an app is what a command line is
+for, and the refusal is a divergence in the right direction besides.
+
+**The same shape on the web: a directory of REBOL is a web app.** The runner
+page (`site/runner.html`, the canvas, the replayer and the worker hookup) is
+filled in by the build with the app's file list and its `main.reb` as the entry;
+every file is fetched into the worker's store before the entry runs. So
+`./gradlew assembleTheSite -PsiteDir=my-app` is the whole of making one, a
+directory with an `index.html` in it keeps that page instead, and the shipped
+demo is the same with `examples/r3-gui` as the directory: its driver, once the
+page's own script tag, is now just `examples/r3-gui/main.reb`.

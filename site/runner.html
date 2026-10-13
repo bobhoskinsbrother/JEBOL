@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>JEBOL - the R3 GUI examples, with no server</title>
+<title>JEBOL</title>
 <style>
   html, body { margin: 0; height: 100%; background: #101216; }
   canvas { display: block; }
@@ -12,52 +12,6 @@
 </head>
 <body>
 <canvas id="screen"></canvas>
-<script type="text/rebol" id="examples">
-change-dir %examples/r3-gui/
-do %gui-322.r
-gui-view: get bind 'view first find gui first [view:]
-sliders-layout: last load %sliders.r
-slider-window: gui-view/no-wait sliders-layout
-slider-window/offset: 20x20
-survey-layout: last load %survey.r
-survey-window: gui-view/no-wait survey-layout
-survey-window/offset: 620x20
-show system/view/screen-gob
-the-slider: none
-the-field: none
-walk-window: func [gob at /local here] [
-    foreach sub any [gob/pane []] [
-        here: at + sub/offset
-        if object? sub/data [
-            case [
-                'slider = select sub/data 'style [
-                    the-slider: sub/data
-                    print rejoin ["slider-at " here + to pair! sub/size / 2]
-                ]
-                all ['field = select sub/data 'style none? the-field] [
-                    the-field: sub/data
-                    print rejoin ["field-at " here + to pair! sub/size / 2]
-                ]
-            ]
-        ]
-        walk-window sub here
-    ]
-]
-walk-window slider-window slider-window/offset
-walk-window survey-window survey-window/offset
-print "open"
-was-slider: get-face the-slider
-was-field: copy get-face the-field
-print rejoin ["slider " was-slider]
-print rejoin ["field " was-field]
-forever [
-    wait [gui-event-port 0:00:00.2]
-    value: get-face the-slider
-    if value <> was-slider [was-slider: value  print rejoin ["slider " value]]
-    value: copy get-face the-field
-    if value <> was-field [was-field: value  print rejoin ["field " value]]
-]
-</script>
 <script>
 const canvas = document.getElementById('screen');
 const brush = canvas.getContext('2d');
@@ -240,25 +194,16 @@ const shown = document.createElement('pre');
 shown.id = 'out';
 shown.textContent = '';
 
-const theExampleFiles = [
-  'examples/r3-gui/gui-322.r',
-  'examples/r3-gui/gui-source.r',
-  'examples/r3-gui/sliders.r',
-  'examples/r3-gui/survey.r'
-];
+const theAppFiles = __THE_APP_FILES__;
 
-function theExampleFilesAreInTheStore() {
-  return Promise.all(theExampleFiles.map(name =>
+function theAppFilesAreInTheStore() {
+  return Promise.all(theAppFiles.map(name =>
       fetch(name).then(response => response.text()).then(text =>
           theWorker.postMessage({ kind: 'file', path: name, text: text }))));
 }
 
-function runTheScriptIn(tagId) {
-  const tag = document.getElementById(tagId);
-  if (tag.textContent.trim().length > 0) {
-    return Promise.resolve(tag.textContent);
-  }
-  return fetch(tag.src).then(response => response.text());
+function theEntryScript() {
+  return fetch('__THE_APP_ENTRY__').then(response => response.text());
 }
 
 function theWorkerSays(message) {
@@ -271,8 +216,8 @@ function theWorkerSays(message) {
   } else if (said.kind === 'booted') {
     out.push('booted in ' + Math.round(performance.now() - thePageOpenedAt) + ' ms\n');
     shown.textContent = out.join('');
-    theExampleFilesAreInTheStore()
-        .then(() => runTheScriptIn('examples'))
+    theAppFilesAreInTheStore()
+        .then(() => theEntryScript())
         .then(source => theWorker.postMessage({ run: source }));
   } else if (said.kind === 'loaded') {
     out.push('worker loaded in ' + said.loadMs + ' ms and started the interpreter in '

@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ReplEndToEndTest {
 
@@ -542,6 +543,36 @@ class ReplEndToEndTest {
 
             assertThat(ran.printed()).isEqualTo("found it\n");
             assertThat(ran.exitStatus()).isZero();
+        }
+
+        @Test
+        @DisplayName("a directory is an app, and the main.reb in it is what runs")
+        void aDirectoryRunsItsMain(@TempDir java.nio.file.Path directory)
+                throws Exception {
+
+            java.nio.file.Path app = directory.resolve("app");
+            java.nio.file.Files.createDirectory(app);
+            java.nio.file.Files.writeString(app.resolve("data.txt"), "its own file");
+            scriptSaying(app, "main.reb",
+                    "print join {from the app: } read/string %data.txt\n");
+
+            Ran ran = running(directory, app.toString());
+
+            assertThat(ran.printed()).isEqualTo("from the app: its own file\n");
+            assertThat(ran.exitStatus()).isZero();
+        }
+
+        @Test
+        @DisplayName("and a directory with no main.reb says what an app needs")
+        void aDirectoryWithNoMainIsRefused(@TempDir java.nio.file.Path directory)
+                throws Exception {
+
+            java.nio.file.Path empty = directory.resolve("empty");
+            java.nio.file.Files.createDirectory(empty);
+
+            assertThatThrownBy(() -> running(directory, empty.toString()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("main.reb");
         }
 
         @Test

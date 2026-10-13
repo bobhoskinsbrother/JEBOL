@@ -68,9 +68,14 @@ standard input pipes into the console.
 
 ```
 $ java -jar build/libs/jebol-1.0.0.jar my-script.reb
+$ java -jar build/libs/jebol-1.0.0.jar my-app/
 $ java -jar build/libs/jebol-1.0.0.jar --do "print 1 + 2"
 $ cat my-script.reb | java -jar build/libs/jebol-1.0.0.jar
 ```
+
+A directory is an app: it runs the `main.reb` inside it, with the app as the
+working directory, so `do %lib/whatever.reb` and `read %data.txt` find the
+app's own files. That is how a desktop app ships.
 
 ## Why Port to JVM?
 
@@ -92,9 +97,9 @@ check answers against.
 ## JEBOL Web
 
 **The same interpreter, compiled to WebAssembly, running in the page's
-worker.** There is no server-side code: the page fetches the module and its
-library, the worker boots the interpreter where the screen is, and the page
-paints the picture the domain hands it.
+worker.** There is no server-side code: the page fetches the module and your
+app's REBOL, the worker boots the interpreter where the screen is, and the page
+is the screen.
 
 The design is one front end everywhere. The domain walks the gob tree once and
 turns it into surface calls — fill a path, stroke a path, draw an image, draw a
@@ -109,19 +114,23 @@ survive a reload, HTTP and HTTPS go through `fetch`, digests and HMACs come from
 WebCrypto, and text is measured with the one font the build carries so a page
 and a window lay out the same words in the same places.
 
-**Build it and serve it.** The site is static files, and any static server
-will do:
+**An app is a directory of REBOL.** `main.reb` in it is the entry — the script
+the worker interprets — and every other file in the directory is fetched into
+the worker's store before it runs, so `do %lib/whatever.reb` and `read %data.txt`
+find the app's own files. Nothing else is yours to write: the runner page, the
+module, its loader, the worker's shell and the font are put together around the
+directory by the build.
 
 ```
-$ ./gradlew assembleTheSite
+$ ./gradlew assembleTheSite -PsiteDir=my-app
 $ cd build/site && python3 -m http.server 8000
 ```
 
-Open `http://localhost:8000/`. The page runs the 2010 R3 GUI examples — the
-sliders and the opinion survey — wholly in the browser, with no server behind
-them. `build/site` holds ten files: the page, the WebAssembly module, TeaVM's
-loader, the worker's shell, the font with its licence, and the examples the page
-fetches. Their sizes are in `goals.md`.
+Open `http://localhost:8000/`, and the app runs. This is the same path the
+shipped demo takes: run `./gradlew assembleTheSite` with no property and the
+site is built around `examples/r3-gui` — the 2010 R3 GUI sliders and opinion
+survey — whose every file is ordinary REBOL. If the directory holds an
+`index.html` of its own, that is used instead of the runner the build writes.
 
 **The other way round, for a JVM host.** A host that has not got a web stack of
 its own can serve the page itself and drive the desktop interpreter through it:
@@ -337,8 +346,8 @@ src/teavm/java/  the web's entry point and its substitutions, for TeaVM only
 src/teavm/js/    the worker's shell, and the store and digests it lends the page
 src/main/resources/org/jebol/mezz/
                  Rebol's own library, vendored and run unchanged
-site/            the shipped page: the examples, the replayer, the worker hookup
-examples/r3-gui/ the 2010 R3 GUI the shipped page runs
+site/            the runner page every site is built around
+examples/r3-gui/ the shipped demo app: the 2010 R3 GUI, with main.reb as its entry
 corpus/          published REBOL examples with their published results
   sources/       fourteen complete programs, fetched byte for byte
 src/test/resources/rebol-suite/

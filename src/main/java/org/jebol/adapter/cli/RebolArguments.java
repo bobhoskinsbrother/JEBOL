@@ -162,6 +162,11 @@ final class RebolArguments {
         return script;
     }
 
+    void theScriptIs(String path) {
+        script = Optional.of(path);
+        values.put(Flag.SCRIPT, path);
+    }
+
     List<String> argumentsForTheScript() {
         List<String> handedOn = new ArrayList<>();
         valueOf(Flag.ARGS).ifPresent(handedOn::add);
