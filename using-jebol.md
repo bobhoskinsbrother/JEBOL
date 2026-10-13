@@ -50,8 +50,8 @@ The distribution holds a launcher for Unix, a launcher for Windows, one jar,
 this document, `LICENSE` and `NOTICE`.
 
 ```
-unzip jebol-0.1.0-SNAPSHOT.zip
-JAVA_HOME=/path/to/java25 jebol-0.1.0-SNAPSHOT/bin/jebol
+unzip jebol-1.0.0.zip
+JAVA_HOME=/path/to/java25 jebol-1.0.0/bin/jebol
 ```
 
 ### From the sources

@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "org.jebol"
-version = "0.1.0-SNAPSHOT"
+version = "1.0.0"
 
 java {
     // 25 rather than 21 for the Foreign Function and Memory API, which

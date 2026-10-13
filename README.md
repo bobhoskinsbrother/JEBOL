@@ -49,7 +49,7 @@ Java: an ordinary jar with no dependencies, running on any JDK 25.
 
 ```
 $ ./gradlew jar
-$ java -jar build/libs/jebol-0.1.0-SNAPSHOT.jar
+$ java -jar build/libs/jebol-1.0.0.jar
 JEBOL -- REBOL 3 on the JVM. Type quit to leave.
 >> 2 + 3 * 4
 == 20
@@ -67,9 +67,9 @@ A script file goes on the command line, one expression goes after `--do`, and
 standard input pipes into the console.
 
 ```
-$ java -jar build/libs/jebol-0.1.0-SNAPSHOT.jar my-script.reb
-$ java -jar build/libs/jebol-0.1.0-SNAPSHOT.jar --do "print 1 + 2"
-$ cat my-script.reb | java -jar build/libs/jebol-0.1.0-SNAPSHOT.jar
+$ java -jar build/libs/jebol-1.0.0.jar my-script.reb
+$ java -jar build/libs/jebol-1.0.0.jar --do "print 1 + 2"
+$ cat my-script.reb | java -jar build/libs/jebol-1.0.0.jar
 ```
 
 ## Why Port to JVM?
@@ -129,7 +129,7 @@ one screen, two windows — a Swing window or a browser page, the same port eith
 way.
 
 ```
-$ java -jar build/libs/jebol-0.1.0-SNAPSHOT.jar --screen=web
+$ java -jar build/libs/jebol-1.0.0.jar --screen=web
 Screen: a page at http://127.0.0.1:54463/ -- open it, then VIEW.
 ```
 
@@ -365,7 +365,7 @@ no runtime dependencies; the jar carries everything it needs.
 
 ```
 ./gradlew build          # compile, run the gates, and write the jar
-./gradlew jar            # just the jar: build/libs/jebol-0.1.0-SNAPSHOT.jar
+./gradlew jar            # just the jar: build/libs/jebol-1.0.0.jar
 ./gradlew check          # the spec gate and the whole test suite
 ./gradlew browserCheck   # the second gate: the web build in a real browser
 ./gradlew assembleTheSite  # the static site in build/site (see JEBOL Web)
@@ -376,7 +376,7 @@ no runtime dependencies; the jar carries everything it needs.
 The jar it writes runs itself:
 
 ```
-$ java -jar build/libs/jebol-0.1.0-SNAPSHOT.jar --do "print 1 + 2"
+$ java -jar build/libs/jebol-1.0.0.jar --do "print 1 + 2"
 ```
 
 `check` also runs the spec gate, so the specifications in `spec/` are validated
