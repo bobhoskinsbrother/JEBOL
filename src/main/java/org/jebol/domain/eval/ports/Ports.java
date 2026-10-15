@@ -331,13 +331,8 @@ public final class Ports {
     }
 
     private void queueWhatHappenedTo(PortValue port, String happened, Evaluator evaluator) {
-        if (!(evaluator.hostPort("system") instanceof PortValue queue)) {
-            return;
-        }
-        queue.eventQueue().ifPresent(onIt -> onIt.storage().insertAt(
-                onIt.storage().length() + 1,
-                new EventValue(EventCatalogue.typeIndexOf(happened).orElseThrow(),
-                        Set.of(), EventValue.Model.PORT, 0, port)));
+        evaluator.queueOnTheSystemPort(new EventValue(EventCatalogue.typeIndexOf(happened).orElseThrow(),
+                Set.of(), EventValue.Model.PORT, 0, port));
     }
 
     public Value readFromTheFileBehind(PortValue port, Evaluator evaluator, PortRequest asked) {

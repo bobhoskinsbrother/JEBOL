@@ -293,16 +293,19 @@ ScriptOutcome outcome = interpreter.run("while [true] [1]");
 ```
 
 Bounds are enforced, and cancellation is cooperative so
-a stopped script never leaves a series half-changed. What a script may reach is
-a `HostAccess` policy that defaults to nothing:
+a stopped script never leaves a series half-changed. A script calls into the
+host only through an extension the bounds carry, the way R3's hosted
+extensions work:
 
 ```java
-Interpreter interpreter = Interpreter.withBounds(
-        Bounds.standard().withHostAccess(HostAccess.READING_AND_CALLING));
-interpreter.define("vatRate", 0.2);
-interpreter.defineFunction("lookupPrice", 1, args -> priceOf(args.get(0)));
+Extension shop = new Extension("shop", "1.0.0", List.of(new ExtensionCommand(
+        "lookup-price", "{The price of one item.} item [string!]",
+        call -> DecimalValue.of(priceOf(((StringValue) call.arguments().getFirst()).text())))));
 
-Object total = interpreter.run("multiply lookupPrice \"widget\" add 1 vatRate")
+Interpreter interpreter = Interpreter.withBounds(Bounds.standard().adding(shop));
+interpreter.define("vatRate", 0.2);
+
+Object total = interpreter.run("multiply lookup-price {widget} add 1 vatRate")
         .asHostValue();
 ```
 

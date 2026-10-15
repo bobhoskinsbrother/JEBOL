@@ -110,15 +110,6 @@ public interface FilePort {
      */
     String canonicalPathOf(String path);
 
-    /**
-     * Where a path really leads, in the port's own terms, every symbolic link
-     * along it followed -- a link that dangles leads where its target would
-     * be. A directory, or a path written as one, ends with a slash.
-     *
-     * <p>Answered for a path that names nothing too, because a write lands
-     * there. Refused with {@code security} where the path leads out of what
-     * the port may reach.
-     */
     String realLocationOf(String path);
 
     /**

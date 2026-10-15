@@ -3,13 +3,13 @@ package org.jebol.domain.eval.actions;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.Add;
 import org.jebol.domain.value.ActionValue;
-import org.jebol.domain.value.DefaultNative;
+import org.jebol.domain.value.ArithmeticNative;
 import org.jebol.domain.value.Parameter;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
 
-public class AddAction extends DefaultNative implements ActionValue {
+public class AddAction extends ArithmeticNative implements ActionValue {
     @Override
     public String nativeName() {
         return "add";

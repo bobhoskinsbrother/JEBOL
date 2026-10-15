@@ -1,13 +1,13 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.DefaultNative;
+import org.jebol.domain.value.ArithmeticNative;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
 
-public abstract class ShiftingNative extends DefaultNative {
+public abstract class ShiftingNative extends ArithmeticNative {
 
     protected abstract long movedBy(long bits, long places);
 

@@ -2,12 +2,12 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Arithmetic;
 import org.jebol.domain.eval.RefinedCallable;
-import org.jebol.domain.value.DefaultNative;
+import org.jebol.domain.value.ArithmeticNative;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
 
-public class ModNative extends DefaultNative {
+public class ModNative extends ArithmeticNative {
 
     @Override
     public String nativeName() {

@@ -57,6 +57,12 @@ public final class Evaluator {
 
     private final PolicyEnforcement policies = new PolicyEnforcement(this);
 
+    private final Postbox postbox = new Postbox();
+
+    private int extensionsNumbered;
+
+    private static final String THE_EVENT_A_CALLBACK_IS = "callback";
+
     public Trace tracing() {
         return trace;
     }
@@ -519,6 +525,29 @@ public final class Evaluator {
 
     public PolicyEnforcement policies() {
         return policies;
+    }
+
+    public Postbox postbox() {
+        return postbox;
+    }
+
+    public int theNextExtensionsNumber() {
+        return ++extensionsNumbered;
+    }
+
+    public void deliverWhatWasPosted() {
+        postbox.deliverEachEvent(posted -> EventCatalogue.typeIndexOf(posted.eventType())
+                .ifPresent(type -> queueOnTheSystemPort(
+                        new EventValue(type, Set.of(), EventValue.Model.PORT, 0, posted.port()))));
+        postbox.deliverEachCallback(callback -> EventCatalogue.typeIndexOf(THE_EVENT_A_CALLBACK_IS)
+                .ifPresent(type -> queueOnTheSystemPort(new EventValue(type, Set.of(),
+                        EventValue.Model.CALLBACK, 0, JavaObjectValue.of(callback)))));
+    }
+
+    public void queueOnTheSystemPort(EventValue event) {
+        if (hostPort("system") instanceof PortValue queue) {
+            queue.eventQueue().ifPresent(onIt -> onIt.storage().insertAt(onIt.storage().length() + 1, event));
+        }
     }
 
     public SymbolTable symbols() {

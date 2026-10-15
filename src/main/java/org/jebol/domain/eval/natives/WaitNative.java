@@ -76,13 +76,23 @@ public class WaitNative extends PortWakingNative {
                         .map(milliseconds -> waitedOnTheScreenFor(eventPort.get(), milliseconds, evaluator))
                         .orElseGet(() -> waitedOnTheScreen(eventPort.get(), evaluator));
             }
+            return theFirstToWakeWithin(waitedOn, howLongToWaitAmong(waitedOn), evaluator);
+        };
+    }
+
+    private Value theFirstToWakeWithin(List<Value> waitedOn, Optional<Long> milliseconds, Evaluator evaluator) {
+        long left = milliseconds.map(asked -> Math.max(0, asked)).orElse(0L);
+        while (true) {
+            evaluator.deliverWhatWasPosted();
             if (whicheverPortWoke(waitedOn, evaluator) instanceof PortValue woken) {
                 return woken;
             }
-            howLongToWaitAmong(waitedOn).ifPresent(milliseconds ->
-                    sleptWithoutBeingInterrupted(Math.max(0, milliseconds), evaluator));
-            return NoneValue.none();
-        };
+            long slice = Math.min(PAUSE_SLICE_MILLISECONDS, left);
+            if (left <= 0 || !sleptWithoutBeingInterrupted(slice, evaluator)) {
+                return NoneValue.none();
+            }
+            left -= slice;
+        }
     }
 
     private Optional<Long> howLongToWaitAmong(List<Value> waitedOn) {

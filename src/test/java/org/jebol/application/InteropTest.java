@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.domain.value.IntegerValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -115,125 +116,17 @@ class InteropTest {
     }
 
     @Nested
-    @DisplayName("calling the host")
-    class CallingTheHost {
-
-        private static Interpreter allowingCalls() {
-            return Interpreter.withBounds(
-                    Bounds.standard().withHostAccess(HostAccess.READING_AND_CALLING));
-        }
-
-        @Test
-        @DisplayName("REBOL can call something the host handed it")
-        void rebolCanCallAHostFunction() {
-            Interpreter interpreter = allowingCalls();
-            interpreter.defineFunction("shout", 1, arguments ->
-                    arguments.get(0).toString().toUpperCase(java.util.Locale.ROOT));
-
-            assertThat(interpreter.run("shout \"quiet\"").display()).isEqualTo("\"QUIET\"");
-        }
-
-        @Test
-        @DisplayName("a host function can be given several arguments")
-        void hostFunctionsTakeSeveralArguments() {
-            Interpreter interpreter = allowingCalls();
-            interpreter.defineFunction("combine", 2, arguments ->
-                    arguments.get(0).toString() + "|" + arguments.get(1).toString());
-
-            assertThat(interpreter.run("combine \"a\" \"b\"").display()).isEqualTo("\"a|b\"");
-        }
-
-        @Test
-        @DisplayName("a host function that throws becomes a catchable error")
-        void hostThrowablesBecomeErrors() {
-            Interpreter interpreter = allowingCalls();
-            interpreter.defineFunction("explode", 1, arguments -> {
-                throw new IllegalStateException("the host gave up");
-            });
-
-            ScriptOutcome outcome = interpreter.run("explode 1");
-
-            assertThat(outcome.conclusion()).isEqualTo(Conclusion.RAISED);
-            assertThat(outcome.errorId()).contains("host-error");
-        }
-
-        @Test
-        @DisplayName("and the script can catch it, because it is an ordinary error")
-        void aScriptCanCatchAHostThrowable() {
-            Interpreter interpreter = allowingCalls();
-            interpreter.defineFunction("explode", 1, arguments -> {
-                throw new IllegalStateException("the host gave up");
-            });
-
-            assertThat(interpreter.run("error? try [explode 1]").display()).isEqualTo("#(true)");
-        }
-
-        @Test
-        @DisplayName("a host function named like a native leaves the native as it was")
-        void aHostFunctionNeverReplacesANative() {
-            StringBuilder written = new StringBuilder();
-            Interpreter interpreter = Interpreter.writingTo(written::append,
-                    Bounds.standard().withHostAccess(HostAccess.READING_AND_CALLING));
-            interpreter.defineFunction("print", 1, arguments -> "from the host");
-
-            interpreter.run("lib/print {from lib}");
-
-            assertThat(written.toString()).isEqualTo("from lib" + System.lineSeparator());
-            assertThat(interpreter.run("print {anything}").asHostValue()).isEqualTo("from the host");
-        }
-    }
-
-    @Nested
-    @DisplayName("host access is a policy, not a warning in a file")
-    class AccessPolicy {
-
-        @Test
-        @DisplayName("by default a script reaches nothing of the host")
-        void nothingIsReachableByDefault() {
-            Interpreter interpreter = Interpreter.create();
-
-            assertThat(interpreter.bounds().hostAccess()).isEqualTo(HostAccess.NONE_AT_ALL);
-        }
-
-        @Test
-        @DisplayName("with no access, a host value handed in cannot be called")
-        void callingIsRefusedWithoutAccess() {
-            Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().withHostAccess(HostAccess.NONE_AT_ALL));
-            interpreter.defineFunction("shout", 1, arguments -> "never");
-
-            ScriptOutcome outcome = interpreter.run("shout \"quiet\"");
-
-            assertThat(outcome.conclusion()).isEqualTo(Conclusion.RAISED);
-            assertThat(outcome.errorId()).contains("host-access");
-        }
-
-        @Test
-        @DisplayName("reading is allowed without calling being allowed")
-        void readingWithoutCalling() {
-            Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().withHostAccess(HostAccess.READING));
-            interpreter.define("supplied", 42L);
-            interpreter.defineFunction("shout", 1, arguments -> "never");
-
-            assertThat(interpreter.run("supplied").display()).isEqualTo("42");
-            assertThat(interpreter.run("shout \"quiet\"").conclusion())
-                    .isEqualTo(Conclusion.RAISED);
-        }
-    }
-
-    @Nested
     @DisplayName("the hole in the isolation story, which is deliberate")
     class HostObjectMutability {
 
         @Test
         @DisplayName("a host object handed in can be changed by the host afterwards")
         void hostObjectsAreNotFrozen() {
-            Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().withHostAccess(HostAccess.READING_AND_CALLING));
             List<String> shared = new ArrayList<>(List.of("first"));
+            Extension counting = new Extension("counting", "1.0.0", List.of(new ExtensionCommand(
+                    "count-of", "anything", call -> IntegerValue.of(shared.size()))));
+            Interpreter interpreter = Interpreter.withBounds(Bounds.standard().adding(counting));
             interpreter.define("shared", shared);
-            interpreter.defineFunction("count-of", 1, arguments -> (long) shared.size());
 
             assertThat(interpreter.run("count-of 0").display()).isEqualTo("1");
             shared.add("second");

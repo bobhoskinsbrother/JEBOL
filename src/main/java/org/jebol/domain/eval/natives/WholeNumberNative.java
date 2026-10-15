@@ -1,10 +1,10 @@
 package org.jebol.domain.eval.natives;
 
-import org.jebol.domain.value.DefaultNative;
+import org.jebol.domain.value.ArithmeticNative;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Value;
 
-public abstract class WholeNumberNative extends DefaultNative {
+public abstract class WholeNumberNative extends ArithmeticNative {
 
     protected long wholeNumberOf(Value given) {
         return ((IntegerValue) given).magnitude();

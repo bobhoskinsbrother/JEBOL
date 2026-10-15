@@ -78,14 +78,9 @@ class HostServiceGrantTest {
     }
 
     @Test
-    @DisplayName("the three natives that load C of their own are refused whatever is granted")
-    void theExtensionPointsAreNeverAvailable() {
-        for (String native0 : new String[] {
-                "load-extension %a", "do-callback make event! []", "do-commands []"}) {
-            assertThat(errorIdOf(everythingGranted(), native0))
-                    .as("%s must always be refused", native0)
-                    .isEqualTo("no-service");
-        }
+    @DisplayName("loading native code from a file is refused whatever is granted, as never portable")
+    void nativeCodeIsNeverAvailable() {
+        assertThat(errorIdOf(everythingGranted(), "load-extension %a")).isEqualTo("no-extension");
     }
 
     @Test

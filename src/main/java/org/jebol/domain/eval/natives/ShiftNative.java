@@ -6,7 +6,7 @@ import org.jebol.domain.value.*;
 import java.util.List;
 import java.util.Set;
 
-public class ShiftNative extends DefaultNative {
+public class ShiftNative extends ArithmeticNative {
 
     @Override
     public String nativeName() {

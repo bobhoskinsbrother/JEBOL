@@ -55,6 +55,8 @@ public final class Interpreter {
 
     private final Context systemInternals;
 
+    private final List<ExtensionReport> extensionReports;
+
     private Interpreter(OutputPort output, Bounds bounds) {
         Set<HostService> duringTheBoot =
                 EnumSet.of(HostService.CLOCK, HostService.WINDOWS);
@@ -97,6 +99,10 @@ public final class Interpreter {
         boot.lackOnly(bounds.lackingServices());
         boot.useHostName(bounds.hostName());
         system.forgetStartupState();
+        SealedLibrary library = new SealedLibrary(systemContext);
+        library.seal();
+        ExtensionInstallation installation = new ExtensionInstallation(evaluator, library);
+        this.extensionReports = bounds.extensions().stream().map(installation::installed).toList();
         evaluator.symbols().startCountingWhatTheSessionReads();
     }
 
@@ -557,6 +563,10 @@ public final class Interpreter {
         return userContext;
     }
 
+    public List<ExtensionReport> extensions() {
+        return extensionReports;
+    }
+
     /**
      * Reads a script and runs it, within the bounds this interpreter was
      * given. Never throws for anything the script did.
@@ -815,38 +825,6 @@ public final class Interpreter {
         userContext.register(name, JavaObjectValue.hostNull(type.getName()));
     }
 
-    /**
-     * Hands the script something it can call, if the bounds allow calling.
-     *
-     * <p>Whatever the host function throws becomes an ordinary {@code error!}
-     * the script could catch. Nothing crosses back into REBOL as an
-     * exception, which keeps the promise that a script can catch anything a
-     * script can cause; the cost is that a caught-and-rethrown host exception
-     * arrives as an error value rather than the throwable it started as.
-     */
-    public void defineFunction(String name, int arity, HostFunction function) {
-        userContext.register(name, new HostFunctionNative(name, arity,
-                (arguments, ignored, context, refinements) -> runHostFunction(name, function, arguments)));
-    }
-
-    private Value runHostFunction(
-            String name, HostFunction function, List<Value> arguments) {
-
-        if (!bounds.hostAccess().allowsCalling()) {
-            throw new Raised(ErrorValue.of(
-                    ErrorCategory.ACCESS, "host-access",
-                    "this interpreter may not call out to " + name));
-        }
-        List<Object> supplied = arguments.stream().map(HostValues::toHost).toList();
-        try {
-            return HostValues.fromHost(function.call(supplied));
-        } catch (RuntimeException | Error thrown) {
-            throw new Raised(ErrorValue.of(
-                    ErrorCategory.USER, "host-error",
-                    name + " failed: " + thrown.getMessage()));
-        }
-    }
-
     /** Tells this interpreter where its script's network may reach. */
     public void useNetwork(NetworkPort port) {
         evaluator.useNetwork(port);
@@ -959,8 +937,7 @@ public final class Interpreter {
      * Gives the script a filesystem to reach.
      *
      * <p>Until this is called, a script reaches nothing: reading and writing
-     * both refuse. That is the same default as {@link HostAccess}, for the
-     * same reason.
+     * both refuse.
      */
     public void useFileSystem(FilePort port) {
         evaluator.useFiles(port);

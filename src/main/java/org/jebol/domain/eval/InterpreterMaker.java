@@ -5,11 +5,18 @@ import org.jebol.domain.value.AnyFunctionValue;
 import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.BinaryValue;
 import org.jebol.domain.value.BlockValue;
+import org.jebol.domain.value.CommandValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.ContextSlot;
 import org.jebol.domain.value.DefinedFunctionValue;
+import org.jebol.domain.value.DispatcherHandle;
 import org.jebol.domain.value.ErrorValue;
+import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.FunctionValue;
+import org.jebol.domain.value.HandleValue;
+import org.jebol.domain.value.IntegerValue;
+import org.jebol.domain.value.PathTargetWithFields;
+import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Maker;
 import org.jebol.domain.value.NativeValue;
 import org.jebol.domain.value.ObjectValue;
@@ -138,6 +145,35 @@ public final class InterpreterMaker implements Maker {
                     .<AnyFunctionValue>map(given -> operatorRespecified(operator, given))
                     .orElse(operator);
         };
+    }
+
+    @Override
+    public Value makeCommandFrom(AnyBlockValue definition) {
+        List<Value> parts = definition.remaining();
+        if (parts.size() != PARTS_OF_A_COMMAND_DEFINITION
+                || !(parts.getFirst() instanceof AnyBlockValue spec)
+                || !(parts.get(1) instanceof PathTargetWithFields extension)
+                || !theFirstFieldIsAnExtensionHandle(extension)
+                || !(parts.get(2) instanceof IntegerValue(long index))
+                || index > THE_LARGEST_COMMAND_INDEX) {
+            throw Raised.of(EvaluationFailure.BAD_FUNC_DEF, definition);
+        }
+        CommandValue made = new CommandValue(spec, FunctionSpec.parametersIn(spec), extension, index);
+        if (made.theDispatcher().isEmpty()) {
+            throw Raised.of(EvaluationFailure.BAD_EXTENSION, definition);
+        }
+        return made;
+    }
+
+    private static final int PARTS_OF_A_COMMAND_DEFINITION = 3;
+
+    private static final long THE_LARGEST_COMMAND_INDEX = 0xFFFF;
+
+    private boolean theFirstFieldIsAnExtensionHandle(PathTargetWithFields extension) {
+        List<ContextSlot> fields = extension.context().slots();
+        return !fields.isEmpty()
+                && fields.getFirst().value() instanceof HandleValue handle
+                && handle.typeName().equals(DispatcherHandle.THE_KIND_A_DISPATCHER_IS);
     }
 
     private boolean takesTheBody(AnyFunctionValue prototype, Value body) {

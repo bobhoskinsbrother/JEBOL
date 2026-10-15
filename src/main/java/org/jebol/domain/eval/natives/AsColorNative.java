@@ -5,7 +5,7 @@ import org.jebol.domain.value.*;
 
 import java.util.List;
 
-public class AsColorNative extends DefaultNative {
+public class AsColorNative extends ArithmeticNative {
 
     private static final double A_HALF_THAT_ROUNDS_UP = 0.5;
 

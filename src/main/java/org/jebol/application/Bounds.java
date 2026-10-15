@@ -4,7 +4,9 @@ import org.jebol.domain.host.HostService;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -13,10 +15,10 @@ public record Bounds(
         Duration wallClockLimit,
         int maximumNesting,
         int checkEvery,
-        HostAccess hostAccess,
         Set<HostService> grantedServices,
         Set<HostService> lackingServices,
-        String hostName) {
+        String hostName,
+        List<Extension> extensions) {
 
     private static final Duration DEFAULT_WALL_CLOCK_LIMIT = Duration.ofSeconds(5);
     private static final int DEFAULT_MAXIMUM_NESTING = 10_000;
@@ -43,26 +45,27 @@ public record Bounds(
         }
         grantedServices = Set.copyOf(grantedServices);
         lackingServices = Set.copyOf(lackingServices);
-        if (hostAccess == null) {
-            throw new IllegalArgumentException(
-                    "host access is a decision; use HostAccess.NONE_AT_ALL to decide against");
-        }
         if (hostName == null || hostName.isBlank()) {
             throw new IllegalArgumentException(
                     "a host names itself in a refusal; it may not be nameless");
         }
+        if (extensions == null) {
+            throw new IllegalArgumentException(
+                    "extensions is a decision; use an empty list to add none");
+        }
+        extensions = List.copyOf(extensions);
     }
 
     /** Long enough for ordinary work, short enough not to hold a request open. */
     public static Bounds standard() {
         return new Bounds(
                 DEFAULT_WALL_CLOCK_LIMIT, DEFAULT_MAXIMUM_NESTING, DEFAULT_CHECK_EVERY,
-                HostAccess.NONE_AT_ALL, Set.of(), Set.of(), DEFAULT_HOST_NAME);
+                Set.of(), Set.of(), DEFAULT_HOST_NAME, List.of());
     }
 
     public Bounds withWallClockLimit(Duration limit) {
-        return new Bounds(limit, maximumNesting, checkEvery, hostAccess, grantedServices,
-                lackingServices, hostName);
+        return new Bounds(limit, maximumNesting, checkEvery, grantedServices,
+                lackingServices, hostName, extensions);
     }
 
     /** No limit on how long a script may run: what a person running their own script expects. */
@@ -80,19 +83,13 @@ public record Bounds(
     }
 
     public Bounds withMaximumNesting(int nesting) {
-        return new Bounds(wallClockLimit, nesting, checkEvery, hostAccess, grantedServices,
-                lackingServices, hostName);
+        return new Bounds(wallClockLimit, nesting, checkEvery, grantedServices,
+                lackingServices, hostName, extensions);
     }
 
     public Bounds withCheckEvery(int steps) {
-        return new Bounds(wallClockLimit, maximumNesting, steps, hostAccess, grantedServices,
-                lackingServices, hostName);
-    }
-
-    /** What the script may reach outside itself. Nothing, by default. */
-    public Bounds withHostAccess(HostAccess access) {
-        return new Bounds(wallClockLimit, maximumNesting, checkEvery, access, grantedServices,
-                lackingServices, hostName);
+        return new Bounds(wallClockLimit, maximumNesting, steps, grantedServices,
+                lackingServices, hostName, extensions);
     }
 
     /**
@@ -114,8 +111,8 @@ public record Bounds(
                 EnumSet.noneOf(HostService.class);
         wider.addAll(grantedServices);
         wider.add(service);
-        return new Bounds(wallClockLimit, maximumNesting, checkEvery, hostAccess, wider,
-                lackingServices, hostName);
+        return new Bounds(wallClockLimit, maximumNesting, checkEvery, wider,
+                lackingServices, hostName, extensions);
     }
 
     /**
@@ -136,14 +133,21 @@ public record Bounds(
                 EnumSet.noneOf(HostService.class);
         fewer.addAll(lackingServices);
         fewer.add(service);
-        return new Bounds(wallClockLimit, maximumNesting, checkEvery, hostAccess, grantedServices,
-                fewer, hostName);
+        return new Bounds(wallClockLimit, maximumNesting, checkEvery, grantedServices,
+                fewer, hostName, extensions);
     }
 
     /** What this host calls itself when it refuses. */
     public Bounds called(String name) {
-        return new Bounds(wallClockLimit, maximumNesting, checkEvery, hostAccess, grantedServices,
-                lackingServices, name);
+        return new Bounds(wallClockLimit, maximumNesting, checkEvery, grantedServices,
+                lackingServices, name, extensions);
+    }
+
+    public Bounds adding(Extension extension) {
+        List<Extension> more = new ArrayList<>(extensions);
+        more.add(extension);
+        return new Bounds(wallClockLimit, maximumNesting, checkEvery, grantedServices,
+                lackingServices, hostName, more);
     }
 
     /** Whether a script under these bounds may ask for this kind of service. */

@@ -17,7 +17,7 @@ Measured on 2026-10-12, and the test count and timing rows on 2026-10-13.
 | `fails-on-rebol-too.txt` | 169 a real 3.22.5 also fails or never runs |
 | `scripts/c-parity.py` | 277 of 279 C functions match R3's surface; the 2 are in goal 8 |
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
-| `scripts/error-parity.py` | 114 of Rebol's 142 error ids can be raised |
+| `scripts/error-parity.py` | 120 of Rebol's 142 error ids can be raised |
 | `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 11 |
 | `./gradlew check` | 27,487 tests |
 | `corpus/` | 1,140 of 1,140 entries pass |
@@ -55,53 +55,10 @@ Read `CLAUDE.md` first.
 
 ## The goals
 
-Ordered by importance. The first three take JEBOL to Android, then to iOS, with
+Ordered by importance. The first two take JEBOL to Android, then to iOS, with
 the defects that would hurt there fixed before each stage. Agreeing with the C
 comes before improving on it: a place where JEBOL answers something a real
 3.22.5 does not is a defect.
-
-### 4. One way to plug in extra functions, and know what is plugged in
-
-Today a host can add a Java function to JEBOL with
-`Interpreter.defineFunction`. But JEBOL only gets the function, not what it
-is. So nothing can list what has been added, allow one addition while
-blocking another, or report that an addition failed to start. Goals 5 and 6
-reach the phones' own features: the camera, location, notifications.  One
-port per feature, and those are plug-ins of exactly this kind, so this comes
-first. When the feature can be backported to web or desktop app (like camera 
-or location access for example) the feature should also be added for those 
-platforms
-
-The aim: something a library adds should look and behave exactly like
-something JEBOL ships with. A script should not be able to tell the
-difference.
-
-1. **Move the shared helpers somewhere sensible.** `DefaultNative` holds
-   `acceptsAllNumbers`, a helper only arithmetic needs. Because everything
-   builds on `DefaultNative`, even a network scheme inherits it. Move it to a
-   class only the arithmetic functions use.
-2. **Stop an extension taking a built-in's name.** If a library tries to add
-   a function called `add`, refuse it with the `already-used` error. Lock the
-   built-in names once start-up finishes, and look in libraries only after
-   the built-ins. (A script can already define its own `add` without
-   touching the built-in one. That works and is tested.)
-3. **Describe the other kinds of plug-in.** A function is not the only thing
-   a library might add. A scheme (like `http`) needs a spec, a start-up step,
-   a wake-up handler and an actor. A codec (like `png`) needs a name, the
-   file suffixes it handles and three functions. Decide what each must
-   provide before writing the first one.
-4. **Decide how a library gets loaded.** Two choices: the host declares and adds it 
-   explicitly declares and adds it, or the core platform JEBOL itself adds an override 
-   (perhaps per platform).
-
-What this makes possible:
-- the `serial` scheme, and the `callback` scheme, which nothing can send to
-  yet;
-- six extension errors JEBOL can never raise today: `bad-extension`,
-  `extension-init`, `no-extension`, `command-fail`, `bad-command` and
-  `handle-exists`;
-- fourteen compiled modules that are left out of `system/modules`, because
-  loading them means fetching a native library.
 
 ### 5. Android, with the interpreter running on Android's own Java
 
@@ -119,7 +76,9 @@ What this makes possible:
    field brings up the keyboard; layouts scale with the screen's size and
    density. This is done once, in the GUI's REBOL, and iOS and the web on a
    phone use it too.
-5. **Android's own features**, one plug-in each in goal 4's shape.
+5. **Android's own features**, one extension each (using-jebol.md, section
+   4): the camera, location, notifications. Where a feature can come to the
+   web or the desktop too -- the camera, location -- it comes there as well.
 6. **A gate on an emulator.** The examples are driven on an Android emulator
    the way the browser gate drives Chrome: a gate of its own, never a skipped
    test.
@@ -145,7 +104,7 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
    refused: Apple does not allow an app to start another program.
 5. **A way to call iOS itself.** JEBOL reaches iOS's own features -- the
    camera, location, notifications, background work -- through GraalVM's
-   direct calls into native code, one plug-in per feature in goal 4's shape.
+   direct calls into native code, one extension per feature.
    Whether the same compiled JEBOL fits inside a widget or an extension,
    within the memory iOS allows them, is measured here.
 6. **A gate on the simulator**, as on Android: the examples driven in the app,
@@ -242,9 +201,13 @@ interpreters -- reads as missing.
   its own in a fresh interpreter on the JVM, which the console wires, and
   never in a browser. Decided with the web worker; the rule is
   `TheFateOfATasksBodyIsTheHostsToDecide` in `spec/natives.allium`.
+- **Fourteen compiled modules are left out of `system/modules`** -- sqlite,
+  zstd, webp and the rest -- because importing them fetches native code. Each
+  can come back as an extension written in Java, one at a time, when one is
+  wanted. The `serial` scheme is the same: an extension can provide it now.
 - **`access-os` answers `not-here` for `uid`, `euid`, `gid` and `egid`.** The
   JVM has no portable way to ask.
-- **65 open questions across the spec files**, 28 of them in
+- **64 open questions across the spec files**, 27 of them in
   `natives.allium`. Unowned by any goal: the three in `parse.allium`, the five
   in `embed.allium`, and the design questions in `natives.allium` (whether a
   `struct!` is more than its layout, which verbs reach a port's actor, whether

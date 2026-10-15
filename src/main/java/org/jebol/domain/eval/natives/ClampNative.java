@@ -5,7 +5,7 @@ import org.jebol.domain.value.*;
 
 import java.util.List;
 
-public class ClampNative extends DefaultNative {
+public class ClampNative extends ArithmeticNative {
 
     @Override
     public String nativeName() {

@@ -15,15 +15,15 @@ class LoadExtensionSurfaceFromTheSourceTest {
     }
 
     @Test
-    @DisplayName("a file name reaches the refusal")
-    void aFileReachesTheRefusal() {
-        assertThat(errorIdOf("load-extension %a.so")).isEqualTo("no-service");
+    @DisplayName("a file name is no-extension, as r3 answers a library it cannot open")
+    void aFileIsNoExtension() {
+        assertThat(errorIdOf("load-extension %a.so")).isEqualTo("no-extension");
     }
 
     @Test
-    @DisplayName("a binary is UTF-8 source in the C, and reaches the refusal too")
-    void aBinaryReachesTheRefusal() {
-        assertThat(errorIdOf("load-extension #{00}")).isEqualTo("no-service");
+    @DisplayName("a binary without /DISPATCH is invalid-arg, as r3 answers")
+    void aBinaryIsAnInvalidArgument() {
+        assertThat(errorIdOf("load-extension #{00}")).isEqualTo("invalid-arg");
     }
 
     @Test

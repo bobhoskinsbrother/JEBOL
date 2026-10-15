@@ -109,15 +109,18 @@ cat my-script.reb | jebol
 Five calls do the whole job.
 
 ```java
+Extension shop = new Extension("shop", "1.0.0", List.of(new ExtensionCommand(
+        "lookup-price", "{The price of one item.} item [string!]",
+        call -> DecimalValue.of(priceOf(((StringValue) call.arguments().getFirst()).text())))));
+
 Interpreter interpreter = Interpreter.withBounds(
         Bounds.standard()
               .withWallClockLimit(Duration.ofMillis(200))
-              .withHostAccess(HostAccess.READING_AND_CALLING));
+              .adding(shop));
 
 interpreter.define("vatRate", 0.2);
-interpreter.defineFunction("lookupPrice", 1, arguments -> priceOf(arguments.get(0)));
 
-ScriptOutcome outcome = interpreter.run("multiply lookupPrice {widget} add 1 vatRate");
+ScriptOutcome outcome = interpreter.run("multiply lookup-price {widget} add 1 vatRate");
 Object total = outcome.asHostValue();
 ```
 
@@ -127,10 +130,8 @@ whether to stop after every 1000 steps. The exception is the set of host
 services, which starts empty, because the correct set is the one that nobody
 guesses.
 
-`HostAccess` has three values and the default is `NONE_AT_ALL`. With
-`NONE_AT_ALL` the script sees only REBOL. With `READING` the script can read
-host values that it was given. With `READING_AND_CALLING` the script can also
-call functions that the host defined.
+A script calls into the host only through an extension the bounds carry.
+Section 4 says what an extension is.
 
 Braces mark a REBOL string. Write `{widget}` inside a Java string and no
 character needs an escape. Do not write `\"widget\"`.
@@ -194,6 +195,94 @@ ever offer it.
 
 This error is more important than it looks. A read that quietly answered none
 would read as an empty file. A script could not tell the two apart.
+
+### Adding your own words: extensions
+
+A step-by-step guide, with a worked example and a map of the tests that
+cover each part, is in `docs/writing-an-extension.md`. What follows is the
+short version.
+
+An extension is the one way a host adds words a script can call. It has the
+shape R3's own hosted extensions have: a name, a version, and commands, each
+with a REBOL spec and Java behind it. Add it to the bounds, and every
+interpreter built with those bounds installs it, a task's included.
+
+```java
+Extension camera = new Extension("camera", "1.0.0", List.of(
+        new ExtensionCommand("snap", "{Takes a photo.} quality [integer!] /flash", call -> {
+            boolean flash = call.refinements().contains("flash");
+            return call.handleOf("photo", takeAPhoto(call.arguments().getFirst(), flash));
+        }),
+        new ExtensionCommand("photo-size", "photo [handle!]",
+                call -> IntegerValue.of(call.heldBy(call.arguments().getFirst(), Photo.class).bytes()))))
+        .withHandleKind(new HandleKind("photo", Photo.class))
+        .startingWith(postbox -> requireACamera());
+
+Interpreter interpreter = Interpreter.withBounds(Bounds.standard().adding(camera));
+```
+
+What a script then sees:
+
+- `snap` and `photo-size` are words in `lib`, of datatype `command!` as an
+  R3 extension's words are. `spec-of :snap` is the spec you wrote, and `help`
+  shows it.
+- A wrong datatype is refused before your Java runs, in REBOL's words:
+  `snap {x}` is `expect-arg` naming `snap`, `quality` and `string!`.
+- Your Java receives the REBOL values themselves. A `file!` arrives as a
+  `FileValue` and a block as a block, and you answer with any value.
+- `throw call.failure(ErrorCategory.ACCESS, "cannot-open", FileValue.of("camera"))`
+  raises that error, with its id and arguments. Anything else your Java
+  throws becomes `command-fail` carrying its message:
+  `** Command error: "the camera fell over"`.
+- `call.evaluated(block)` evaluates a block the script gave you, in the
+  script's interpreter.
+- The module is in `system/modules` under its name, and `import 'camera`
+  answers it.
+
+The extension can carry REBOL of its own, run in its module after the
+commands are made. That is where it makes a scheme or registers a codec, so
+a library's scheme is built exactly the way Rebol builds `http`:
+
+```java
+.withScript("""
+        sys/make-scheme [
+            name: 'greet
+            title: "Greetings"
+            actor: [read: func [port] [greeting-for port/spec/host]]
+        ]""")
+```
+
+`read greet://world` then answers whatever `greeting-for` answers.
+
+**From another thread.** Starting an extension hands it the interpreter's
+`Postbox`, which it may keep. From any thread, at any time,
+`postbox.post(port, "read")` queues an event for a port, and
+`postbox.callBack(object, "heard", arguments, answer)` asks for a function in
+an object to be called. Both arrive the next time the script waits: `wait [port 5]`
+wakes on the posted event, and a callback runs on the script's own thread,
+handing its answer, or its failure, to your `CallbackAnswer`.
+
+**What is refused.** Installing is all or nothing: a refused extension leaves
+no word, no module and no handle kind behind. Ask
+`interpreter.extensions()` what happened:
+
+| Refusal | Why |
+| --- | --- |
+| `already-used` | A command is named like a word `lib` already holds: a native, an action, or one of Rebol's own functions such as `secure`. Between two extensions, the first installed wins. |
+| `bad-extension` | The name is blank, the version is not a tuple, a spec does not read, or two commands share a name. |
+| `handle-exists` | A handle kind another extension declared holding a different class. |
+| `extension-init` | Your start step threw. |
+
+```java
+Extension clash = new Extension("clash", "1.0.0", List.of(
+        new ExtensionCommand("add", "a b", call -> StringValue.of("mine"))));
+
+Interpreter.withBounds(Bounds.standard().adding(clash)).extensions();
+// [ExtensionReport[name=clash, refusal=Optional[already-used]]]
+```
+
+`lib` is sealed against extensions, not against scripts. A script may still
+write `lib/add: func [a b] [{mine}]`, as it may in r3.
 
 ### Two layers decide what a file access may do
 
@@ -499,8 +588,7 @@ The mappings are the obvious ones and nothing more. A value with no obvious
 counterpart stays what it is, because an incorrect conversion is worse than no
 conversion.
 
-Into the script, through `define` and through the arguments of a
-`defineFunction` result:
+Into the script, through `define`:
 
 | Java | REBOL |
 | --- | --- |

@@ -44,6 +44,12 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
+        public Value makeCommandFrom(AnyBlockValue definition) {
+            asked.add("a command");
+            return whatAPrototypeMade;
+        }
+
+        @Override
         public Value makeStructFrom(StructValue prototype, Value spec) {
             asked.add("struct like");
             return whatAPrototypeMade;

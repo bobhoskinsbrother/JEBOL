@@ -16,7 +16,6 @@ public enum ErrorCategory {
     SCRIPT("script"),
     MATH("math"),
     ACCESS("access"),
-    /** What a native extension fails with, and JEBOL has no extensions. */
     COMMAND("command"),
     USER("user"),
     INTERNAL("internal"),

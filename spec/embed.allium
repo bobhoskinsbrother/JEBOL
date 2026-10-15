@@ -28,12 +28,6 @@ enum Conclusion {
     | quit_early        -- the script itself asked to stop, and may say with what
 }
 
--- What a script is allowed to reach outside itself.
-enum HostAccess {
-    none_at_all         -- the script sees only REBOL
-    | reading           -- the script may read host values it was handed
-    | reading_and_calling  -- the script may also call host methods
-}
 
 -- The kinds of thing outside the interpreter that a script can ask for.
 -- Named as kinds rather than as single functions because a host grants or
@@ -97,7 +91,6 @@ enum ServiceRefusal {
 value Bounds {
     wall_clock_limit: Duration
     maximum_nesting: Integer
-    host_access: HostAccess
     -- Empty by default. A host that says nothing gets a script that can
     -- compute and cannot reach out, thus a host must name each service it
     -- wants, one at a time. The other bounds have useful defaults because
@@ -122,6 +115,54 @@ value Bounds {
     -- script that got one can say what it asked and who said no without
     -- JEBOL knowing a browser from a phone.
     host_name: String = "this host"
+
+    -- The libraries every interpreter built with these bounds gets, in the
+    -- order they were added. Carrying them in the bounds rather than
+    -- adding them to one interpreter is what makes a task, or any other
+    -- interpreter the host builds the same way, get the same ones. Adding
+    -- an extension is granting it: one the bounds do not carry is not
+    -- there for the script to call.
+    extensions: List<Extension> = empty
+}
+
+-- A library a host adds: Java behind REBOL words, in the shape R3's own
+-- hosted extensions take. R3's `load-boot-exts` takes a REBOL source and a
+-- dispatcher for each one, makes a module whose words are `command!`
+-- values, and lists it in `system/modules`; an extension here is the same
+-- two halves, written by the host.
+value Extension {
+    name: String                 -- the module's name, as `import` names it
+    version: String              -- a tuple, as a REBOL header writes one
+    commands: List<ExtensionCommand>
+    -- REBOL that runs after the commands are made, in the module: where a
+    -- scheme is made with `make-scheme` or a codec registered with
+    -- `register-codec`, using the commands. A library's scheme is then
+    -- built exactly as `http` is.
+    script: String = ""
+    -- Kinds of handle the commands hand to scripts, each naming the Java
+    -- class it holds.
+    handle_kinds: List<HandleKind> = empty
+}
+
+-- One word the extension exports, with the spec a script sees: help text,
+-- arguments, their datatypes and refinements, written as a REBOL spec
+-- block is written.
+value ExtensionCommand {
+    name: String
+    spec: String
+}
+
+value HandleKind {
+    name: String
+    holds: String                -- the Java class of what a handle of this kind carries
+}
+
+-- What the host can learn about each extension after building an
+-- interpreter: installed, or refused with the error that refused it.
+value ExtensionReport {
+    name: String
+    installed: Boolean
+    refusal: String?             -- the error id when it was not installed
 }
 
 -- What the host can tell the interpreter about one thing on its filesystem.
@@ -368,25 +409,6 @@ rule ARefusalNamesTheServiceAndTheHost {
         run.interpreter.bounds.host_name
 }
 
--- Three things exist to call code written in C, thus no host can offer
--- them and no grant can turn them on. They are refused before the grant
--- is even looked at, and before their arguments are looked at beyond
--- their declared datatypes, and the reason says so.
---
--- The three are LOAD-EXTENSION, DO-CALLBACK and DO-COMMANDS. ACCESS-OS
--- was once the fourth; it loads no C of its own and asks the host, as
--- natives.allium says. A
--- JVM can be made to do all of them, and the result stops being portable,
--- which is the one thing JEBOL is for -- so this is the refusal that never
--- changes, where the other two are a host's decision on the day.
-rule ExtensionServicesAreNeverAvailable {
-    when: script_asks_for(run, service)
-    requires: service.is_an_extension_point
-    ensures:
-        run.status = finished
-        run.conclusion = raised
-        run.refusal_reason = never_portable
-}
 
 -- The current directory belongs to the interpreter and not to the process
 -- that holds it. A host runs many interpreters at once and each one must
@@ -768,22 +790,134 @@ rule QuitEndsTheRunWithoutEndingTheHost {
         -- choose whether there is one.
 }
 
--- A host function is a native of its own, set in the script's context under
--- the name the host gave it. It never replaces a native that already carries
--- that name: `lib/print` still prints after a host defines a function called
--- print, and only the word `print` in the script's context now reaches the
--- host's function.
---
--- A native carries its own behaviour, so nothing a host defines can change
--- what another native value does. JEBOL used to look each native's behaviour
--- up by name at every call, and a host function named print replaced the
--- behaviour of every print, the one in lib included.
-rule AHostFunctionNeverReplacesANative {
-    when: DefineHostFunction(host, interpreter, name, arity)
+-- === Extensions: what a library adds ========================
 
-    ensures: the_script_context_of(interpreter).name = a_native_running_the_host_function
-    ensures: for existing in natives_named(name):
-        existing.behaviour = existing.behaviour_before_the_definition
+-- One way in. A host function used to be a nameless native set in the
+-- script's context by `defineFunction`: it shadowed built-ins silently, had
+-- no spec, converted every value to a Java type, reported every failure as
+-- host-error, was gated by one switch, was recorded nowhere, reached one
+-- interpreter, and could not call back. All nine are what an extension is
+-- built to answer, and `defineFunction` is gone.
+
+-- The library is sealed once it is complete, and that is when an
+-- interpreter has been built: Rebol's own REBOL files have replaced the
+-- natives they replace, and start, which runs later on the command line,
+-- adds no word to `lib` (775 words before it and after, measured on
+-- 2026-10-15). Every word `lib` holds at that moment is sealed -- the
+-- natives and actions, and Rebol's own REBOL functions like `split`,
+-- `exists?` and `secure` too, because a library replacing `secure` would be
+-- as bad as one replacing `add`.
+--
+-- The seal is on registration, never on assignment. A script may still
+-- write `lib/add: func [a b] ["mine"]`, as it may in r3.
+rule TheLibraryIsSealedOnceBuilt {
+    when: interpreter: Interpreter.built
+    ensures: the_sealed_names(interpreter) = every_word_lib_holds(interpreter)
+    ensures: a_script_may_still_assign_into_lib(interpreter)
+}
+
+-- Then each extension the bounds carry is installed, in the order added.
+-- Installing is all or nothing: an extension refused at any step leaves no
+-- word in `lib`, no entry in `system/modules`, and no handle kind behind.
+rule ExtensionsAreInstalledInOrderAfterTheSeal {
+    when: interpreter: Interpreter.built
+    ensures: for extension in interpreter.bounds.extensions:
+        InstallExtension(interpreter, extension)
+}
+
+-- A name the library already holds is refused with `already-used`, naming
+-- the word. Between two extensions the first to install wins, because its
+-- words are in `lib` when the second arrives.
+--
+-- r3 keeps existing names over a REBOL module's exports silently. This is
+-- louder because it is the host's call, made before any script runs: no
+-- script can see the difference, and a host that named a word twice needs
+-- telling.
+rule AnExtensionMayNotTakeANameTheLibraryHolds {
+    when: InstallExtension(interpreter, extension)
+    requires: some_command_name_is_held_by_lib(extension, interpreter)
+    ensures: ExtensionRefused(interpreter, extension, error: already_used)
+}
+
+-- Its source must read as a REBOL module, and every command's spec as a
+-- function spec. Either failing is `bad-extension` naming the extension, as
+-- R3 names the library that gave it a bad definition.
+rule AnExtensionThatDoesNotReadIsABadExtension {
+    when: InstallExtension(interpreter, extension)
+    requires: not the_source_reads_as_a_module(extension)
+        or some_command_spec_does_not_read(extension)
+    ensures: ExtensionRefused(interpreter, extension, error: bad_extension)
+}
+
+-- A kind of handle names the Java class it carries. A kind already known
+-- holding a different class is refused with `handle-exists`, as R3 refuses a
+-- handle registered again with a different size; the same kind holding the
+-- same class is shared.
+rule AHandleKindIsOneClass {
+    when: InstallExtension(interpreter, extension)
+    requires: some_handle_kind_is_known_with_another_class(extension, interpreter)
+    ensures: ExtensionRefused(interpreter, extension, error: handle_exists)
+}
+
+-- An extension may need starting, and starting may fail: no camera on this
+-- machine, a library the platform lacks. A failed start is
+-- `extension-init`, R3's error for a library whose initialisation did not
+-- complete, and the extension is not installed.
+rule AnExtensionThatCannotStartIsNotInstalled {
+    when: InstallExtension(interpreter, extension)
+    requires: the_start_step_fails(extension)
+    ensures: ExtensionRefused(interpreter, extension, error: extension_init)
+}
+
+-- Installed, an extension is what R3's `load-boot-exts` makes of a hosted
+-- extension: `load-extension/dispatch` with its source and its dispatcher,
+-- `load-ext-module` and `make module!` on the result, an entry in
+-- `system/modules` under its name, and its commands exported into `lib`.
+rule AnInstalledExtensionIsAModuleInLib {
+    when: InstallExtension(interpreter, extension)
+    requires: not ExtensionRefused(interpreter, extension)
+    ensures: system_modules_entry(interpreter, extension.name) = the_module_made(extension)
+    ensures: for command in extension.commands:
+        lib_word(interpreter, command.name) = a_command_value(command)
+}
+
+-- The host can ask what was installed and what was refused, and why.
+rule TheHostCanListItsExtensions {
+    when: AskForExtensions(host, interpreter)
+    ensures: ExtensionsListed(reports: a_report_for_each_extension_in_order(interpreter))
+}
+
+-- A command is called as any function is: arguments gathered and checked
+-- against its spec, so a wrong datatype is `expect-arg` naming the word, the
+-- argument and the datatype, before the extension is reached.
+--
+-- The extension receives the values themselves, a file! as a file! and a
+-- block as a block, and answers a value. It may raise any error the
+-- catalogue holds, with its own id and arguments. A failure that is not a
+-- REBOL error -- the Java behind it throwing -- is `command-fail` carrying
+-- its message, as R3 reports a command that answered RXR_ERROR.
+rule ACommandFailsInCatalogueTerms {
+    when: CallCommand(command, arguments)
+    requires: the_extension_fails_without_a_rebol_error(command, arguments)
+    ensures: CallFails(error: command_fail, about: the_failure_message())
+}
+
+-- A command may reach the interpreter it runs in: evaluate a block it was
+-- given, and hand a script a handle of a kind its extension declared.
+rule ACommandCanReachItsInterpreter {
+    when: CallCommand(command, arguments)
+    ensures: the_command_may_evaluate_a_block_in(the_calling_interpreter())
+}
+
+-- And from any thread, at any time, an extension may post: an event to a
+-- port, which the port's awake sees when the script next waits, or a
+-- callback -- a function in an object called with arguments -- which
+-- DO-CALLBACK runs on the script's own thread and whose answer goes back to
+-- the extension. R3 carries a callback the same way, as an event of type
+-- callback on the callback port.
+rule AnExtensionPostsFromAnyThread {
+    when: ExtensionPosts(extension, interpreter, event)
+    ensures: the_event_waits_for_the_next_wait(interpreter, event)
 }
 
 -- A run that passes its deadline is stopped whether or not it was going to
@@ -834,13 +968,19 @@ surface Embedding {
         Run(host, interpreter, source_text)
         RunNext(host, interpreter, source_text)
         Cancel(host, interpreter)
-        DefineHostFunction(host, interpreter, name, arity)
+        AskForExtensions(host, interpreter)
+        CallCommand(command, arguments)
+        ExtensionPosts(extension, interpreter, event)
 
     exposes:
         Conclusion
         Bounds
         HostService
         ServiceRefusal
+        Extension
+        ExtensionCommand
+        HandleKind
+        ExtensionReport
         FileInformation
         WindowRequest
         ProgramInput

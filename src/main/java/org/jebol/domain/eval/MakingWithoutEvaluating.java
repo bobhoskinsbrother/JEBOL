@@ -56,6 +56,11 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
     }
 
     @Override
+    public Value makeCommandFrom(AnyBlockValue definition) {
+        throw Raised.cannotUseTheAction(definition, "make");
+    }
+
+    @Override
     public Value makeStructFrom(StructValue prototype, Value spec) {
         throw Raised.cannotUseTheAction(spec, "make");
     }

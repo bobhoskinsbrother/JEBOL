@@ -253,10 +253,13 @@ isolation story has a hole, and it is deliberate: closing it would mean
 copying or freezing everything crossing the boundary, which would make
 interop useless for the things people want it for.
 
-That last one is not a footnote, and it is no longer only a note: host
-access is a `HostAccess` policy the embedder sets, defaulting to
-`NONE_AT_ALL`. A host that has not thought about what a script may reach
-has not thereby decided it may reach everything. Mutability of an object
+That last one is not a footnote, and it is no longer only a note. A script
+calls into the host only through an extension the embedder adds to the
+bounds, and the bounds carry none by default. A host that has not thought
+about what a script may reach has not thereby decided it may reach
+everything. (This was a `HostAccess` policy until goal 4 replaced
+`defineFunction` with extensions; the policy gated only that, so it went
+with it.) Mutability of an object
 that does cross remains the caller's, and `InteropTest` has a test that
 demonstrates it rather than a comment that warns about it.
 

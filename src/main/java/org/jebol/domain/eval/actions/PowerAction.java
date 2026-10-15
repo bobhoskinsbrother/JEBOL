@@ -6,7 +6,7 @@ import org.jebol.domain.value.*;
 
 import java.util.List;
 
-public class PowerAction extends DefaultNative implements ActionValue {
+public class PowerAction extends ArithmeticNative implements ActionValue {
 
     @Override
     public String nativeName() {

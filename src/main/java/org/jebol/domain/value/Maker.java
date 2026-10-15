@@ -11,6 +11,8 @@ public interface Maker {
 
     Value makeFunctionFrom(AnyFunctionValue prototype, AnyBlockValue spec);
 
+    Value makeCommandFrom(AnyBlockValue definition);
+
     Value makeStructFrom(StructValue prototype, Value spec);
 
     ObjectValue objectEvaluatedFrom(AnyBlockValue body);

@@ -3,12 +3,12 @@ package org.jebol.domain.eval.actions;
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.value.BitwiseOperation;
 import org.jebol.domain.value.ActionValue;
-import org.jebol.domain.value.DefaultNative;
+import org.jebol.domain.value.ArithmeticNative;
 import org.jebol.domain.value.Parameter;
 
 import java.util.List;
 
-public abstract class BitwiseAction extends DefaultNative implements ActionValue {
+public abstract class BitwiseAction extends ArithmeticNative implements ActionValue {
 
     protected abstract BitwiseOperation operation();
 

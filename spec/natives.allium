@@ -1194,9 +1194,10 @@ rule MakingFromAnOperatorPrototypeIsRefused {
     ensures: CallFails(error: cannot_use, about: definition)
 }
 
--- Six datatypes have no values: end!, frame!, rebcode!, command!, library!
--- and utype!. Every way of building one is refused, and a real R3 refuses
--- them the same way. MAKE and TO answer bad-make-arg naming the datatype and
+-- Five datatypes have no values: end!, frame!, rebcode!, library! and
+-- utype!. Every way of building one is refused, and a real R3 refuses them
+-- the same way. command! was the sixth until extensions existed;
+-- MakingACommandChecksItsDefinition is what it does now. MAKE and TO answer bad-make-arg naming the datatype and
 -- what was offered, whether the offer is a block, a number or none: `make
 -- frame! []` gives arg1 frame! and arg2 [].
 --
@@ -1245,7 +1246,6 @@ rule ConstructingADatatypeWithNoValuesIsMalconstructed {
 
 open question "A real R3 answers `make utype! [[x] [x]]` with a value rather than a refusal -- a spec and a body make a user-defined type there, a feature R3-Alpha started and never finished. JEBOL refuses it as an invalid argument, as it does every other offer. Is a user-defined type something JEBOL should ever build, or is utype! a name kept only so scripts that mention it still read?"
 
-open question "A real R3 answers `make command! [[x] [x]]` and `to command! [[x] [x]]` with bad-func-def, because the command arm tries to read the block as a function definition before it finds it has no extension to bind to. JEBOL answers bad-make-arg naming command!, as it does for every other offer. Should JEBOL reproduce the C's attempt, or keep the one refusal on the grounds that no command can exist?"
 
 -- === Making a module ========================================
 
@@ -6501,9 +6501,10 @@ rule FormingAnErrorTakesItsWordsFromTheCatalogue {
     ensures: a_near_line_follows when subject.near != none
 }
 
--- JEBOL raises four ids Rebol's catalogue does not name -- no-service,
--- host-access, host-error and no-such-action -- for the host grants and the
--- browser view R3 has no equivalent of. With nothing in `errors.reb` to look
+-- JEBOL raises two ids Rebol's catalogue does not name -- no-service and
+-- no-such-action -- for the host grants and the browser view R3 has no
+-- equivalent of. host-access and host-error went with `defineFunction`: an
+-- extension's commands fail in R3's own words. With nothing in `errors.reb` to look
 -- up, such an error is worded by the sentence it was raised with, so the
 -- console says what went wrong: `** Access error: a host service the script
 -- was not granted, or that nothing can offer: ...`. It used to say
@@ -10771,6 +10772,135 @@ rule TheUsageLimitsAreNeverConsulted {
 }
 
 open question "The six natives that wait on a datatype -- AS-COLOR on image!, MAP-GOB-OFFSET on gob!, MAP-EVENT and WAKE-UP on event!, DO-CODEC and RELEASE on handle! -- have nothing to specify until the datatype they take exists, because each is a small arm over a value JEBOL cannot make. They are recorded in Goal 1 of TODO.md in the order boot/types.reb declares the datatypes, which is the order they will be built. What is not yet decided is whether handle! should carry a Java object directly, since that is what a JVM codec would need to hold, or stay opaque the way the C's does."
+
+-- === Extensions, from the script's side =====================
+
+-- spec/embed.allium says how a host adds an extension. These are the
+-- natives a script meets doing it R3's way.
+
+-- Loading a library of native code from a file is the one thing left that
+-- no host can offer. `load-extension %camera.so` asks the operating system
+-- to load compiled code, and a JVM made to do that stops being portable,
+-- which is the one thing JEBOL is for.
+--
+-- It is refused as R3 refuses a library it cannot open: SECURE's extension
+-- policy first (LoadingAnExtensionChecksExtension), then `no-extension`
+-- naming the file, with "never portable" as the reason where R3 gives the
+-- loader's error number.
+rule LoadingNativeCodeFromAFileIsNeverPortable {
+    when: EvaluateCall(load_extension, path)
+    requires: is_file(path)
+    requires: not refinement_asked(dispatch)
+    ensures: CallFails(error: no_extension, about: path, and: "never portable")
+}
+
+-- LOAD-EXTENSION/DISPATCH is R3's hosted extension: a REBOL source as a
+-- binary and a handle to the dispatcher that serves its commands. It answers
+-- a copy of `system/standard/extension` with `lib-boot` the source and
+-- `lib-base` a fresh handle of kind `extension`, which `load-ext-module`
+-- turns into a module. The C takes any handle at all and stores it as the
+-- dispatcher -- `load-extension/dispatch #{00} rc4/key #{0102}` answers an
+-- object in a real 3.22.5 -- so JEBOL takes any handle too; one that is not
+-- a dispatcher leaves the extension with none, and a command made from it is
+-- `bad-extension` (MakingACommandChecksItsDefinition), where the C would
+-- call through whatever it was given.
+rule LoadExtensionDispatchAnswersAnExtensionObject {
+    when: EvaluateCall(load_extension, source, dispatcher)
+    requires: refinement_asked(dispatch)
+    ensures: CallResult(value: an_extension_object(lib_base: a_fresh_extension_handle_for(dispatcher), lib_boot: source))
+}
+
+-- MAKE COMMAND! takes `[spec extension index]`, which is what an
+-- extension's own COMMAND function builds. Two checks run, in the C's
+-- order. Make_Function first wants a block of at least two items whose
+-- first is a spec block; anything short of that -- `[]`, `[1 2]`, `[a: 1]`,
+-- or no block at all -- is `bad-make-arg` naming command! and what was
+-- given, as for any other datatype. Make_Command then wants three items, an
+-- object or module whose first field is a dispatcher handle, and a whole
+-- number no larger than 65535; a definition that opens with a spec but
+-- fails any of those is `bad-func-def` naming the whole definition. An
+-- extension whose dispatcher is gone is `bad-extension`.
+--
+-- TO COMMAND! answers the same as MAKE, as it does in R3.
+rule MakingACommandChecksItsDefinition {
+    when: EvaluateCall(make, command, definition)
+    requires: is_block(definition) and opens_with_a_spec(definition)
+    requires: not is_a_command_definition(definition)
+    ensures: CallFails(error: bad_func_def, about: definition)
+}
+
+rule MakingACommandFromAnythingElseIsABadMakeArg {
+    when: EvaluateCall(make, command, definition)
+    requires: not (is_block(definition) and opens_with_a_spec(definition))
+    ensures: CallFails(error: bad_make_arg, about: command, and: definition)
+}
+
+-- A command is a function of its own datatype, `command!`, as in R3: an
+-- extension's words behave as built-ins do, and say what they are when
+-- asked, as R3's do.
+--
+-- R3 also refuses a spec naming a datatype its C interface cannot carry.
+-- JEBOL hands the extension REBOL values themselves, so every datatype can
+-- cross and no spec is refused for that -- a deliberate difference.
+--
+-- More than fifteen arguments is `bad-command` when called, R3's
+-- MAX_RXI_ARGS.
+rule ACommandIsItsOwnDatatype {
+    when: EvaluateCall(type_of, command_value)
+    ensures: CallResult(value: command)
+}
+
+rule ACommandOfTooManyArgumentsIsABadCommand {
+    when: EvaluateCall(command_value, arguments)
+    requires: arguments.count > 15
+    ensures: CallFails(error: bad_command)
+}
+
+-- DO-COMMANDS evaluates a block of commands the C's quick way: each word
+-- must name a command, else `expect-val` naming the word -- with `command!:`
+-- as its first argument, a set-word, which is what the C's Get_Type_Word
+-- hands Trap2 and what a real 3.22.5 shows; its
+-- arguments are the values that follow, a word or path fetched rather than
+-- called and a paren evaluated; a set-word before a command takes its
+-- answer. A missing argument is `no-arg` and a wrong datatype `expect-arg`.
+-- It answers what the last command answered, and a command that fails
+-- answers unset rather than raising, as Do_Commands sets unset for
+-- RXR_ERROR.
+rule DoCommandsRunsCommandsInTurn {
+    when: EvaluateCall(do_commands, block)
+    ensures: CallResult(value: the_last_command_answer(block))
+}
+
+rule DoCommandsRefusesAWordThatIsNotACommand {
+    when: EvaluateCall(do_commands, block)
+    requires: some_word_in_command_position_is_not_a_command(block)
+    ensures: CallFails(error: expect_val, about: command, and: the_word())
+}
+
+-- DO-CALLBACK runs a callback an extension posted: the event carries a
+-- function in an object and its arguments, and the answer goes back to the
+-- extension and is the result. Any other event answers none, as the C's
+-- sanity check does.
+rule DoCallbackRunsWhatTheEventCarries {
+    when: EvaluateCall(do_callback, event)
+    ensures:
+        if is_a_callback_event(event):
+            CallResult(value: the_answer_of_the_callback(event))
+        else:
+            CallResult(value: none)
+}
+
+-- WAIT takes what an extension posted, before each look at the ports. Given
+-- a time, it looks again after every slice of that time until a port wakes,
+-- the time is up or the run is stopped. The time is counted in the slices
+-- the host's pause lets pass, never by the wall clock: a host whose pause
+-- passes no real time still ends the wait after the slices it was asked for.
+-- Given no time, it looks once, as it did before extensions existed.
+rule WaitTakesWhatWasPosted {
+    when: EvaluateCall(wait, ports)
+    ensures: every_posted_event_reaches_the_system_queue_before_awake_runs()
+    ensures: a_wait_with_nothing_woken_lets_time_pass()
+}
 
 -- === Rebol's own scrambler, and changing character set ======
 

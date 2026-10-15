@@ -193,11 +193,10 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and DO-CALLBACK, which is the only thing that would drive it")
-        void doCallbackIsRefused() {
+        @DisplayName("and DO-CALLBACK, which drives it, answers none for an event carrying no callback")
+        void doCallbackOfAnOrdinaryEvent() {
             assertThat(answerTo("""
-                    failure: try [do-callback make event! []] failure/id"""))
-                    .isEqualTo("no-service");
+                    do-callback make event! []""")).isEqualTo("_");
         }
 
         @Test

@@ -219,21 +219,21 @@ class WhatEachRemainingNativeDeclaresTest {
     }
 
     @Nested
-    @DisplayName("the three extension points are refused whatever is granted, once their arguments pass")
+    @DisplayName("the three natives that serve extensions answer as r3 does, once their arguments pass")
     class TheExtensionPoints {
 
-        @ParameterizedTest(name = "{0} is refused as never portable")
+        @ParameterizedTest(name = "{0} answers {1}")
         @CsvSource(delimiter = '|', textBlock = """
-                load-extension %a.so
-                load-extension #{00}
-                load-extension/dispatch #{00} rc4/key #{0102}
-                do-callback make event! [type: 'key]
-                do-commands []
-                do-commands [a]
+                load-extension %a.so                                                  | [no-extension %a.so]
+                load-extension #{00}                                                  | [invalid-arg #{00}]
+                object? load-extension/dispatch #{00} rc4/key #{0102}                 | #(true)
+                do-callback make event! [type: 'key]                                  | _
+                unset? do-commands []                                                 | #(true)
+                do-commands [a]                                                       | [expect-val command!:]
                 """)
-        void eachIsRefused(String source) {
-            assertThat(answerTo("e: try [" + source + "] reduce [e/id true? find form e/arg1 {never portable}]"))
-                    .isEqualTo("[no-service #(true)]");
+        void eachAnswersAsR3Does(String source, String expected) {
+            assertThat(answerTo("e: try [" + source + "] either error? e [reduce [e/id e/arg1]] [e]"))
+                    .isEqualTo(expected);
         }
 
         @Test

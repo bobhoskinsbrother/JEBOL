@@ -31,32 +31,20 @@ class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
     }
 
     @Test
-    @DisplayName("a host call the bounds forbid says so, as host-access")
-    void aForbiddenHostCallSaysWhy() {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard());
-        interpreter.defineFunction("ask-the-host", 0, arguments -> 1);
+    @DisplayName("a command whose extension fails says how, in the catalogue's words for command-fail")
+    void aFailingCommandSaysHow() {
+        Extension breaking = new Extension("breaking", "1.0.0", List.of(new ExtensionCommand(
+                "break-the-host", "", call -> {
+                    throw new IllegalStateException("the host fell over");
+                })));
 
-        String formed = formedIn(interpreter, "form try [ask-the-host]");
-
-        assertThat(formed)
-                .contains("** Access error: ")
-                .contains("may not call out to ask-the-host")
-                .doesNotContain(ErrorWording.NOTHING_IN_THE_CATALOGUE);
-    }
-
-    @Test
-    @DisplayName("a host call that fails says how, as host-error")
-    void aFailingHostCallSaysHow() {
-        Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().withHostAccess(HostAccess.READING_AND_CALLING));
-        interpreter.defineFunction("break-the-host", 0, arguments -> {
-            throw new IllegalStateException("the host fell over");
-        });
-
-        String formed = formedIn(interpreter, "form try [break-the-host]");
+        String formed = formedIn(Interpreter.withBounds(Bounds.standard().adding(breaking)),
+                "form try [break-the-host]");
 
         assertThat(formed)
-                .contains("break-the-host failed: the host fell over")
+                .contains("""
+                        ** Command error: "the host fell over"
+                        """)
                 .doesNotContain(ErrorWording.NOTHING_IN_THE_CATALOGUE);
     }
 
@@ -81,12 +69,10 @@ class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
     }
 
     @Test
-    @DisplayName("each of the four ids only JEBOL raises is worded, never left improperly formatted")
-    void noneOfTheFourIsLeftImproperlyFormatted() {
+    @DisplayName("each of the two ids only JEBOL raises is worded, never left improperly formatted")
+    void neitherIsLeftImproperlyFormatted() {
         for (List<String> raised : List.of(
                 List.of("ACCESS", "no-service"),
-                List.of("ACCESS", "host-access"),
-                List.of("USER", "host-error"),
                 List.of("SCRIPT", "no-such-action"))) {
             String formed = Molder.form(ErrorValue.of(
                     ErrorCategory.valueOf(raised.getFirst()), raised.getLast(), "the sentence it was raised with"));
