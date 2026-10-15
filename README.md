@@ -49,7 +49,7 @@ Java: an ordinary jar with no dependencies, running on any JDK 25.
 
 ```
 $ ./gradlew jar
-$ java -jar build/libs/jebol-1.0.0.jar
+$ java -jar build/libs/jebol-3.22.5.jar
 ╔══════════════════════════════════════════════════════════════════════════╗
 ║  REBOL/core 3.22.5 (JEBOL port)                                          ║
 ...
@@ -69,10 +69,10 @@ A script file goes on the command line, one expression goes after `--do`, and
 standard input pipes into the console.
 
 ```
-$ java -jar build/libs/jebol-1.0.0.jar my-script.reb
-$ java -jar build/libs/jebol-1.0.0.jar my-app/
-$ java -jar build/libs/jebol-1.0.0.jar --do "print 1 + 2"
-$ cat my-script.reb | java -jar build/libs/jebol-1.0.0.jar
+$ java -jar build/libs/jebol-3.22.5.jar my-script.reb
+$ java -jar build/libs/jebol-3.22.5.jar my-app/
+$ java -jar build/libs/jebol-3.22.5.jar --do "print 1 + 2"
+$ cat my-script.reb | java -jar build/libs/jebol-3.22.5.jar
 ```
 
 A directory is an app: it runs the `main.reb` inside it, with the app as the
@@ -139,7 +139,7 @@ app, and the driver that used to live in the page's tag is now just
 **The JVM Host Option.** The front end can also be served through a Swing window from the Java interpreter.
 
 ```
-$ java -jar build/libs/jebol-1.0.0.jar --screen=web
+$ java -jar build/libs/jebol-3.22.5.jar --screen=web
 Screen: a page at http://127.0.0.1:54463/ -- open it, then VIEW.
 ```
 
@@ -367,7 +367,7 @@ no runtime dependencies; the jar carries everything it needs.
 
 ```
 ./gradlew build          # compile, run the gates, and write the jar
-./gradlew jar            # just the jar: build/libs/jebol-1.0.0.jar
+./gradlew jar            # just the jar: build/libs/jebol-3.22.5.jar
 ./gradlew check          # the spec gate and the whole test suite
 ./gradlew browserCheck   # the second gate: the web build in a real browser
 ./gradlew assembleTheSite  # the static site in build/site (see JEBOL Web)
@@ -378,7 +378,7 @@ no runtime dependencies; the jar carries everything it needs.
 The jar it writes runs itself:
 
 ```
-$ java -jar build/libs/jebol-1.0.0.jar --do "print 1 + 2"
+$ java -jar build/libs/jebol-3.22.5.jar --do "print 1 + 2"
 ```
 
 `check` also runs the spec gate, so the specifications in `spec/` are validated
