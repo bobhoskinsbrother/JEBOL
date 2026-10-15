@@ -50,7 +50,9 @@ Java: an ordinary jar with no dependencies, running on any JDK 25.
 ```
 $ ./gradlew jar
 $ java -jar build/libs/jebol-1.0.0.jar
-JEBOL -- REBOL 3 on the JVM. Type quit to leave.
+╔══════════════════════════════════════════════════════════════════════════╗
+║  REBOL/core 3.22.5 (Oldes branch)                                        ║
+...
 >> 2 + 3 * 4
 == 20
 >> any [none none 100]

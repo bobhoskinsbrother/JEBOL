@@ -33,13 +33,12 @@ class ConsoleAsRebolPrintsItEndToEndTest {
         }
     }
 
-    private String whatTheConsolePrintsAfterItsBanner(String typed) {
+    private String whatTheConsolePrints(String typed) {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
         Interpreter interpreter = Interpreter.writingTo(new StreamOutput(output));
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
-        String printed = captured.toString(StandardCharsets.UTF_8);
-        return printed.substring(printed.indexOf('\n') + 1);
+        return captured.toString(StandardCharsets.UTF_8);
     }
 
     @Nested
@@ -49,7 +48,7 @@ class ConsoleAsRebolPrintsItEndToEndTest {
         @Test
         @DisplayName("results, errors raised and errors held, unprinted types, a cut string and a halt")
         void printsWhatRebolPrinted() throws IOException {
-            assertThat(whatTheConsolePrintsAfterItsBanner(readFromTheClasspath(WHAT_WAS_TYPED)))
+            assertThat(whatTheConsolePrints(readFromTheClasspath(WHAT_WAS_TYPED)))
                     .isEqualTo(readFromTheClasspath(WHAT_A_REAL_3_22_5_PRINTED));
         }
     }
@@ -61,7 +60,7 @@ class ConsoleAsRebolPrintsItEndToEndTest {
         @Test
         @DisplayName("a molded result of 499 and 500 characters is whole, and one of 501 is cut with an ellipsis")
         void aResultIsCutPastFiveHundred() {
-            assertThat(whatTheConsolePrintsAfterItsBanner("""
+            assertThat(whatTheConsolePrints("""
                     append/dup copy "" "x" 497
                     append/dup copy "" "x" 498
                     append/dup copy "" "x" 499
@@ -75,7 +74,7 @@ class ConsoleAsRebolPrintsItEndToEndTest {
         @Test
         @DisplayName("an error formed to 640 characters is whole, and to 641 or 642 is cut with an ellipsis")
         void anErrorIsCutPastSixHundredAndForty() {
-            assertThat(whatTheConsolePrintsAfterItsBanner("""
+            assertThat(whatTheConsolePrints("""
                     make error! append/dup copy "" "x" 621
                     make error! append/dup copy "" "x" 622
                     make error! append/dup copy "" "x" 623
@@ -94,7 +93,7 @@ class ConsoleAsRebolPrintsItEndToEndTest {
         @Test
         @DisplayName("each kind of opening, and the ones a string, a comment or a character hide")
         void waitsAsRebolsHostWaits() {
-            assertThat(whatTheConsolePrintsAfterItsBanner("""
+            assertThat(whatTheConsolePrints("""
                     (1 +
                     2)
                     {abc
@@ -137,7 +136,7 @@ class ConsoleAsRebolPrintsItEndToEndTest {
         @Test
         @DisplayName("input that ends while something is open is dropped, and the prompt comes back once more")
         void anOpenBlockAtTheEndIsDropped() {
-            assertThat(whatTheConsolePrintsAfterItsBanner("""
+            assertThat(whatTheConsolePrints("""
                     [1
                     """)).isEqualTo(">>  [ >> ");
         }

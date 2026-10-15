@@ -853,6 +853,17 @@ public final class Interpreter {
     }
 
     /**
+     * Tells this interpreter who judges a server's certificates.
+     *
+     * <p>A host that never calls this has an authority that trusts nothing,
+     * so a script granted certificates still reaches no server over TLS
+     * until the host says whose judgement to use.
+     */
+    public void useCertificateAuthority(CertificateAuthority authority) {
+        evaluator.useCertificateAuthority(authority);
+    }
+
+    /**
      * Tells this interpreter to fetch a script's HTTP itself.
      *
      * <p>A host with no fetching of its own leaves this alone and the http

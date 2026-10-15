@@ -1671,3 +1671,98 @@ every file is fetched into the worker's store before the entry runs. So
 directory with an `index.html` in it keeps that page instead, and the shipped
 demo is the same with `examples/r3-gui` as the directory: its driver, once the
 page's own script tag, is now just `examples/r3-gui/main.reb`.
+
+## 42. The bare console runs start, and the command line grants the machine
+
+**`jebol` with nothing on the command line runs `sys/start` like every other
+run.** It used to skip start and print a banner of its own, so the box, the
+home and data paths, the user context and the colours a real 3.22.5 console
+shows were all missing. R3's host calls `RL_Start` before it opens the console
+whether or not anything was asked, and `host-main.c` says so; now JEBOL has
+one path through `runTheCommandLine`, and the console is what
+`TheHostDecidesAfterStart` in `spec/repl.allium` opens when no script was
+named.
+
+**The plain console does not keep its sandbox.** It was built on
+`Bounds.standard()`, which reaches nothing, and that is why it could not run
+start at all: the first `get-env "HOME"` in `sys-start.reb` raised
+`no-service` before the banner. The console is the same command line with
+nothing to run first, so it takes the same grants a script does, and
+`TheCommandLineGrantsEveryService` in `spec/repl.allium` now says so for both.
+A person at a keyboard can already run `jebol --do "..."` or a script, so the
+sandbox was not a boundary; it was an inconsistency that made `read
+%README.md` answer `no-service` at the prompt. That resolves the loose end
+goal 13 carried.
+
+**What start prints is R3's banner, not JEBOL's.** The old line, "JEBOL --
+REBOL 3 on the JVM. Type quit to leave.", is gone from the command line. What
+JEBOL calls itself in the banner (`Rebol/core` against `Rebol/Bulk`) and the
+empty build fields are goal 17's next part, not this one.
+
+**One difference this leaves open.** A `quit/return 42` typed at the prompt
+leaves the process with nought here and with 42 in R3, because the console
+loop returns without carrying what QUIT held. It is written down in goal 17
+rather than fixed here, since nothing asked for it and the fix is a behaviour
+of its own.
+
+## 43. JEBOL checks TLS certificates, and differs from R3 on purpose to do it
+
+**A secure connection is refused unless the host's authority trusts the chain
+and the certificate names the host.** That is `spec/embed.allium`'s "Trusting
+a server" section, and the R3 behaviour it replaces is finding 222. It is the
+one deliberate place JEBOL answers differently from the C, because the
+alternative is that every Android or iOS app built on JEBOL can be read and
+rewritten by anyone on its network.
+
+**The split.** `CertificateAuthority` is a host port: given the chain as the
+server sent it, it answers the names the leaf vouches for or why it is not
+trusted. `JavaCertificateAuthority` is the JVM's, over `CertPathValidator` and
+the JDK's own trust store, with an injectable clock and revocation off.
+Whether the names cover the host is `VouchedNames` in the domain, the same on
+every host: subject alternative names only, wildcards as one whole leftmost
+label with two labels after it, addresses compared as addresses.
+`TrustingNoAuthority` is what an interpreter has until the host supplies one.
+
+**The grant.** `HostService.CERTIFICATES`, refused by `Bounds.standard()`
+like every other grant, and lacking in a browser, which judges certificates
+itself inside fetch. The command line and the suite grant it and use the
+JDK's store.
+
+**The hook is an edit to the vendored `prot-tls.reb`, not the CRT codec.**
+Goal 1 had planned the codec, and it cannot work: the codec decodes one
+certificate at a time and never sees the host, and the TLS 1.3 signature hole
+is not in the codec at all. Four edits, each the smallest that closes its
+hole:
+
+- `do-TLS-open` calls `require-certificate-checks` for a client, so a script
+  without the grant is refused by the open itself. Asked any later, the
+  refusal would land inside the handshake, where HTTP turns it into
+  `no-connect`.
+- `decode-certificates` keeps the raw chain and calls `check-certificates`
+  with it and `ctx/tcp-port/spec/host`, for a client only.
+- `decode-certificate-verify` checks RSA-PSS at all three hashes and ECDSA at
+  all three curves, and ends the handshake with `Decrypt_error` when the
+  signature does not verify or the scheme is one it cannot check. Ed25519 is
+  offered and has no native, so a server choosing it is refused.
+- `decode-server-key-exchange` reads RFC 5246's signature algorithm and
+  keeps ECDSA's answer.
+
+`require-certificate-checks` and `check-certificates` are natives JEBOL adds
+and R3 has not got, registered as extensions beside `size-text`.
+
+**What is not done, and is in the spec as open questions:** revocation, the
+repair of a chain sent out of order or missing an intermediate, and Unicode
+host names.
+
+**The fixtures** are made by `scripts/make-test-certificates.sh` and checked
+in under `src/test/resources/org/jebol/tls/`. It needs OpenSSL 3.4 or later
+for `-not_before`. Running it again replaces every key, which is harmless,
+since the tests read only what is checked in. `LocalTlsServer` serves any of
+them over TLS 1.2 or 1.3. It can also present a chain with a key that does
+not belong to it, which is how the impostor tests stand in for someone in
+between.
+
+**A third gate, `./gradlew networkCheck`,** puts the command line to
+badssl.com: three hosts a browser trusts and four it refuses. Like
+`browserCheck` it is out of `check` because it needs something the ordinary
+gate should not, and everything tagged `network` runs every time it runs.

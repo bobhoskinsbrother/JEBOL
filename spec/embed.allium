@@ -49,7 +49,10 @@ enum HostService {
     | clock             -- what the time is now
     | network           -- open a connection to another machine
     | windows           -- ask the operator with a window on a screen
+    | clipboard         -- read and write what the operator last copied
     | web               -- fetch a url through the host's own HTTP machinery
+    | certificates      -- judge whether a server's certificates are to be
+                        -- trusted, against the authorities the host trusts
 }
 
 -- What feeds a started program's standard input.
@@ -259,6 +262,11 @@ entity Interpreter {
     bounds: Bounds
     user_context: values/Context
     network: NetworkPort
+
+    -- Who judges a server's certificates. Every interpreter has one: a host
+    -- that supplies none gets the authority that trusts nothing, so a grant
+    -- of certificates on its own never lets an unchecked server through.
+    certificate_authority: CertificateAuthority
 
     -- Where a script's HTTP goes on a host that fetches for it. Absent on
     -- a host that leaves HTTP to Rebol's own protocol, which is every JVM
@@ -970,9 +978,11 @@ value HttpResponse {
 -- interpreter's own and costs the page nothing, since it lives inside the
 -- store the host already has. It has no raw connection, no way to start a
 -- program and no environment it was launched with, because a page has none
--- of those.
+-- of those. Nor does it have a list of authorities to judge a certificate
+-- against: the browser judges every certificate itself, inside fetch, and a
+-- page is never shown one.
 --
--- So a browser's bounds lack those three and may grant any of the others.
+-- So a browser's bounds lack those four and may grant any of the others.
 -- Asking for a lacking one is refused not_present with the browser named,
 -- which is a different answer from the same script on a machine where the
 -- operator simply did not grant it. The three are refused before anything is
@@ -982,7 +992,7 @@ rule ABrowserOffersWhatItsPageCan {
     when: interpreter: Interpreter.created
 
     ensures: interpreter.bounds.lacking_services =
-        {network, processes, environment}
+        {network, processes, environment, certificates}
     ensures: interpreter.bounds.host_name = "a browser"
 }
 
@@ -1004,3 +1014,164 @@ rule ABrowserWithTheWebServiceAnswersHttpItself {
     ensures: if the_host_could_not_reach_it():
         CallFails(error: cannot_connect)
 }
+
+-- === Trusting a server ========================================
+
+-- A real 3.22.5 trusts every server. It decodes the certificates a server
+-- sends and never asks who signed them, whether they are still in date, or
+-- whose name they carry, so an expired certificate, a self-signed one, one
+-- for another host and one from an authority nobody trusts all read as
+-- though nothing were wrong. A connection that anyone between the two ends
+-- can read and rewrite is what that buys, and on a phone, where the app's
+-- traffic is JEBOL's own TLS rather than a browser's, that is every
+-- connection the app makes. This is the one place JEBOL deliberately
+-- answers differently from the C.
+--
+-- Two questions decide trust, and they belong to different owners. Whether
+-- the chain leads to an authority worth trusting is the host's, because the
+-- list of authorities is the host's: a JVM's own store, a phone's, or one a
+-- company issues. Whether the certificate names the server the script
+-- asked for is the domain's, because the answer is the same on every host
+-- and a host that got it wrong would be wrong silently.
+
+-- Why a server is not trusted. The script sees which one, so an operator
+-- can tell a clock that is wrong from a server that is.
+enum CertificateMistrust {
+    expired               -- a certificate in the chain is past its end
+    | not_yet_valid       -- a certificate in the chain has not begun yet
+    | unknown_authority   -- the chain leads to no authority the host trusts;
+                          -- a self-signed certificate is the shortest case
+    | broken_chain        -- a certificate does not sign the one before it,
+                          -- or cannot be read as a certificate at all
+    | no_certificate      -- the server sent none
+    | wrong_host          -- the chain is trusted and names another server
+}
+
+-- What a host's authority knows about one chain: whether it is trusted,
+-- and the names the first certificate in it vouches for. The names come
+-- back with the verdict because reading them needs the same certificate
+-- parsing the judgement does, and a host already has that.
+--
+-- Judged at the moment the handshake reaches it, by the host's own clock.
+entity CertificateAuthority {
+    judges: ChainVerdict
+}
+
+value ChainVerdict {
+    trusted: Boolean
+    mistrust: CertificateMistrust when not trusted
+    -- The leaf's subject alternative names, as the certificate writes them.
+    dns_names: Set<String> when trusted
+    ip_addresses: Set<String> when trusted
+}
+
+-- Opening a secure connection asks for the service before a byte is sent,
+-- so a script without the grant learns that from the open itself, as a
+-- refusal naming the service. Asked any later and the refusal would arrive
+-- inside the handshake, where HTTP reports every failure as one it could
+-- not connect, and the reason would be lost.
+--
+-- Only a client asks. A server listening for connections is sent no
+-- certificate to judge.
+rule ASecureConnectionAsksForTheService {
+    when: script_opens_a_secure_connection(run, host)
+    requires: host != null
+    ensures: script_asks_for(run, certificates)
+}
+
+-- The host's authority judges the chain in the order the server sent it,
+-- first certificate first. Each certificate must be issued by the one after
+-- it, or the chain is broken before any authority is asked about it.
+--
+-- The chain ends at the first certificate carrying the name and key of a
+-- root the host trusts, whatever follows it and whoever signed that copy.
+-- Servers still send an old copy of a trusted root signed by a root since
+-- retired, and a browser stops at the root it trusts; judging past it would
+-- blame the retired root for a certificate that is, say, merely expired.
+--
+-- A host that supplied no authority has one that trusts nothing, so every
+-- chain is unknown_authority.
+rule TheHostJudgesTheChain {
+    when: server_sends_its_certificates(run, host, chain)
+    requires: certificates in run.interpreter.bounds.granted_services
+    requires: chain.count > 0
+    let verdict = run.interpreter.certificate_authority.judge(chain)
+    ensures: if not verdict.trusted:
+        TheHandshakeEnds(run: run, mistrust: verdict.mistrust)
+    ensures: if verdict.trusted and not names_cover(verdict, host):
+        TheHandshakeEnds(run: run, mistrust: wrong_host)
+}
+
+rule NoCertificateIsNoTrust {
+    when: server_sends_its_certificates(run, host, chain)
+    requires: chain.count = 0
+    ensures: TheHandshakeEnds(run: run, mistrust: no_certificate)
+}
+
+-- A handshake that ends this way sends nothing further; no request is
+-- written, so nothing the script meant for the server reaches whoever
+-- answered in its place. The TLS port's error is an access error, id
+-- protocol, and says the reason in words and the host it was about. HTTP
+-- reports it as it reports every handshake that fails -- could not connect,
+-- with the url -- which is what a real 3.22.5 does for a failed handshake
+-- too.
+rule AMistrustedServerEndsTheHandshake {
+    when: TheHandshakeEnds(run, mistrust)
+    ensures: no_request_was_written(run)
+    ensures: CallFails(error: protocol, about: mistrust)
+}
+
+-- Which names a certificate vouches for. Only the subject alternative
+-- names count; the subject's common name is never read, as no browser has
+-- read it since 2017, because two places to put a name is one more than a
+-- check can be sure it looked in.
+--
+-- A name is compared without regard to letter case and with one trailing
+-- dot ignored on either side, since `Example.COM.` and `example.com` are
+-- the same server.
+--
+-- A wildcard stands only as the whole of the leftmost label, and stands
+-- for exactly one label that is not empty: `*.example.com` covers
+-- `www.example.com` and not `example.com` or `a.b.example.com`. Anything
+-- else with a star in it -- `w*.example.com`, `*.*.example.com`,
+-- `www.*.com` -- covers nothing. Nor does a wildcard with fewer than two
+-- labels after it, `*.com` or a bare `*`, since that would vouch for a
+-- whole top-level domain.
+--
+-- A host written as an address is matched only against the addresses the
+-- certificate names, compared as addresses, and never against a name or a
+-- wildcard.
+rule TheNamesCoverTheHost {
+    when: names_cover(verdict, host)
+    ensures: if host.is_an_address:
+        host in verdict.ip_addresses
+    else:
+        verdict.dns_names.any(name => name_covers(name, host))
+}
+
+-- The signature the server makes over the handshake proves it holds the
+-- key its first certificate is for. Without that check the chain proves
+-- nothing, because a chain is public: anyone can send a real server's
+-- certificates. A real 3.22.5 checks the TLS 1.3 signature only for one RSA
+-- scheme and logs a failure instead of stopping, and its TLS 1.2 elliptic
+-- curve check never records its own answer, so every such server fails.
+--
+-- Every scheme the client can check is checked, and a signature that does
+-- not verify ends the handshake. A scheme it cannot check ends it too --
+-- one it never offered, or Ed25519, which it offers and has no native to
+-- verify -- because a signature nobody checked proves nothing.
+rule TheServerProvesItHoldsTheKey {
+    when: server_signs_the_handshake(run, scheme, signature)
+    ensures: if not scheme in the_schemes_the_client_can_check(run)
+        or not signature_verifies(run, scheme, signature):
+        CallFails(error: protocol, about: signature)
+    ensures: if not scheme in the_schemes_the_client_can_check(run)
+        or not signature_verifies(run, scheme, signature):
+        no_request_was_written(run)
+}
+
+open question "Revocation is not checked. A browser asks an authority whether a certificate has been withdrawn, or reads a list it was stapled, and fails open when it cannot find out; JEBOL does neither. Is a withdrawn certificate worth a network round trip per handshake, and which way should it fail?"
+
+open question "A server that sends its chain out of order is broken_chain here, and one that leaves out an intermediate authority a browser would fetch from the address the certificate names is unknown_authority. Browsers repair both. Is that repair JEBOL's to make?"
+
+open question "A host name in Unicode is compared as written. A certificate names such a host in its ASCII form, so the two never match until the url is converted first. Where should that conversion live?"

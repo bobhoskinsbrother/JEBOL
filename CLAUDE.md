@@ -198,6 +198,14 @@ makes it a second gate rather than a skipped test: everything it holds runs
 every time it runs, and it is never quietly excluded. Run it after any change to
 the core, to `PaintList`, to either renderer, or to the page.
 
+**`./gradlew networkCheck` is the third gate, and it needs the internet.** It
+puts the command line to badssl.com: three hosts a browser trusts must be
+read, and four it refuses must be refused with their reason printed. Run it
+after any change to `prot-tls.reb`, the certificate natives or
+`JavaCertificateAuthority`. Everything about TLS that does not need the
+internet is in `check`, against `LocalTlsServer` and the fixtures from
+`scripts/make-test-certificates.sh`.
+
 Selenium is a `testImplementation` dependency and nothing else. **The shipped jar
 has no dependencies and this does not change that** -- about 3,090 KB, of which
 556 KB is the carried font, 228 KB the borrowed REBOL library, and about 190 KB

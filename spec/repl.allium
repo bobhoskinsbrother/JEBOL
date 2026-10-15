@@ -449,21 +449,26 @@ rule ARootedScriptReadsEveryPathInsideItsRoot {
         the_script_read() = the_path_resolved_inside(the_root_named(), run.path)
 }
 
--- The console grants every host service, and that is a decision rather than
--- an oversight.
+-- The command line grants every host service, and that is a decision rather
+-- than an oversight.
 --
 -- A person typing `jebol script.r3` means what they mean typing `r3
 -- script.r3`: the script may read their files, start their programs and open
--- their sockets, because they chose to run it. Confinement is for the other
--- way in -- a host embedding the interpreter and handing it somebody else's
--- script -- and that host builds its own bounds and grants nothing by
--- default.
+-- their sockets, because they chose to run it. A person typing `jebol` alone
+-- means the same, because that is the same command line with nothing to run
+-- first: the console that opens is a shell, and a shell that cannot read a
+-- file is not a shell. It was sandboxed once, and start stopped at its first
+-- `get-env` rather than printing the banner.
+--
+-- Confinement is for the other way in -- a host embedding the interpreter and
+-- handing it somebody else's script -- and that host builds its own bounds and
+-- grants nothing by default.
 --
 -- So the two defaults are opposite on purpose. Embedding grants nothing
 -- because the useful set is the one nobody guessed; the command line grants
 -- everything because a shell tool that cannot read a file is not a tool.
-rule TheConsoleGrantsEveryService {
-    when: run: ScriptRun.created
+rule TheCommandLineGrantsEveryService {
+    when: line: CommandLine.created
 
     ensures: the_granted_services() = every_host_service()
 }
@@ -602,11 +607,15 @@ rule TheSystemIsToldWhatWasAsked {
 -- an error raised by a script reports `-apply-` as the outermost call, exactly
 -- as r3 does.
 --
+-- With nothing asked, start still runs. That is where the banner a bare
+-- console prints comes from: there is no script and no --do to make it quiet,
+-- so it prints the box, works out home and data from the environment and makes
+-- the user's context the console then opens in.
+--
 -- A boot level below mods given with --boot stops short of start altogether, as
 -- Init_Mezz does.
 rule RebolsOwnStartRunsTheRest {
     when: line: CommandLine.created
-    requires: anything_was_asked(line)
     requires: not boot_level_below_mods(line)
 
     ensures: sys_start_applied_as_the_host_applies_it()

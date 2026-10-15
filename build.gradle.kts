@@ -188,9 +188,19 @@ val browserCheck by tasks.registering(Test::class) {
     outputs.upToDateWhen { false }
 }
 
+val networkCheck by tasks.registering(Test::class) {
+    group = "verification"
+    description = "Put JEBOL's TLS to real servers on the internet that a browser would refuse"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform { includeTags("network") }
+    systemProperty("java.awt.headless", "true")
+    outputs.upToDateWhen { false }
+}
+
 tasks.test {
     useJUnitPlatform {
-        excludeTags("browser")
+        excludeTags("browser", "network")
     }
 
     systemProperty("jqwik.database", layout.buildDirectory.file("jqwik-database").get().asFile.path)
@@ -228,6 +238,15 @@ val checkSpec by tasks.registering(Exec::class) {
 tasks.check {
     dependsOn(checkSpec)
 }
+
+val allTests by tasks.registering {
+    group = "verification"
+    description = "Run all three gates: check, browserCheck and networkCheck"
+    dependsOn(tasks.check, browserCheck, networkCheck)
+}
+
+browserCheck { mustRunAfter(tasks.check) }
+networkCheck { mustRunAfter(browserCheck) }
 
 tasks.named<JavaExec>("run") {
     standardInput = System.`in`

@@ -873,14 +873,17 @@ decode-certificates: function [
         log-error ["Improper certificate list end?" len "<>" length? msg/buffer]
         cause-TLS-error 'Handshake_failure
     ]
+    chain: copy []
     while [3 < length? msg/buffer] [
         cert: binary/read msg 'UI24BYTES
+        append chain cert
         if ctx/TLS13? [
             cert-extensions: binary/read msg 'UI16BYTES
         ]
         append ctx/server-certs cert: attempt [decode 'CRT cert]
         log-more ["Certificate subject:^[[1m" mold/only/flat cert/subject]
     ]
+    unless ctx/server? [check-certificates chain ctx/tcp-port/spec/host]
     try/with [
         key: ctx/server-certs/1/public-key
         switch key/1 [
@@ -908,19 +911,21 @@ decode-certificate-verify: function [
         signature: UI16BYTES
     ]
     log-debug ["Verify certificate using type:^[[1m" *SignatureScheme/name signature-type]
-    if signature-type == 2052 [
-        either system/version < 3.19.7 [
-            log-error {Current Rebol version is not able to validate this certificate!}
-        ] [
-            to-sign: rejoin [
-                server-certificate-verify-context
-                get-transcript-hash ctx 'CERTIFICATE
-            ]
-            key: rsa-init ctx/pub-key ctx/pub-exp
-            unless rsa/verify/pss :key :to-sign :signature [
-                log-error "Certificate validation failed!"
-            ]
-        ]
+    to-sign: rejoin [
+        server-certificate-verify-context
+        get-transcript-hash ctx 'CERTIFICATE
+    ]
+    valid?: switch signature-type [
+        2052 [rsa/verify/pss/hash rsa-init ctx/pub-key ctx/pub-exp to-sign signature 'sha256]
+        2053 [rsa/verify/pss/hash rsa-init ctx/pub-key ctx/pub-exp to-sign signature 'sha384]
+        2054 [rsa/verify/pss/hash rsa-init ctx/pub-key ctx/pub-exp to-sign signature 'sha512]
+        1027 [ecdsa/verify/curve ctx/pub-key checksum to-sign 'sha256 signature ctx/pub-exp]
+        1283 [ecdsa/verify/curve ctx/pub-key checksum to-sign 'sha384 signature ctx/pub-exp]
+        1539 [ecdsa/verify/curve ctx/pub-key checksum to-sign 'sha512 signature ctx/pub-exp]
+    ]
+    unless valid? [
+        log-error "Certificate validation failed!"
+        cause-TLS-error 'Decrypt_error
     ]
 ]
 decode-certificate-request: function [
@@ -1743,7 +1748,7 @@ decode-server-key-exchange: function [
         ]
     ] [
         hash-algorithm: *HashAlgorithm/name :hash-algorithm
-        sign-algorithm: *ClientCertificateType/name :sign-algorithm
+        sign-algorithm: select [1 rsa_sign 3 ecdsa_sign] sign-algorithm
     ]
     log-more ["R[" ctx/seq-read "] Using algorithm:" hash-algorithm "with" sign-algorithm]
     key: ctx/server-certs/1/public-key
@@ -1751,7 +1756,7 @@ decode-server-key-exchange: function [
         ecdsa_sign [
             log-more "Checking signature using ECDSA"
             message-hash: checksum verify-data hash-algorithm
-            ecdsa/verify/curve ctx/pub-key message-hash signature ctx/pub-exp
+            valid?: ecdsa/verify/curve ctx/pub-key message-hash signature ctx/pub-exp
         ]
         rsa_sign [
             log-more "Checking signature using RSA"
@@ -2237,6 +2242,7 @@ do-TLS-open: func [
         conn/parent: port
     ]
     either spec/host [
+        require-certificate-checks
         port/extra: conn/extra: make TLS-context [
             tcp-port: conn
             tls-port: port

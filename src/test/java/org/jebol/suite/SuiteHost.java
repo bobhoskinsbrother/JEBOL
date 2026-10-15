@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.stream.Stream;
 
+import org.jebol.adapter.host.JavaCertificateAuthority;
 import org.jebol.adapter.host.JavaImages;
 import org.jebol.adapter.host.JavaProcesses;
 import org.jebol.adapter.host.JavaSockets;
@@ -42,6 +43,7 @@ final class SuiteHost {
         interpreter.useProcesses(new JavaProcesses());
         interpreter.useImages(new JavaImages());
         interpreter.useNetwork(new JavaSockets());
+        interpreter.useCertificateAuthority(new JavaCertificateAuthority());
         putHomeInsideTheDirectoryTheRunCanReach(interpreter);
         putTheApplicationDataDirectoryThereToo(interpreter);
         try {

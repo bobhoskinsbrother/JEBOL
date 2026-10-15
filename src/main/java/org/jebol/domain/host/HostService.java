@@ -21,5 +21,7 @@ public enum HostService {
 
     CLIPBOARD,
 
-    WEB
+    WEB,
+
+    CERTIFICATES
 }

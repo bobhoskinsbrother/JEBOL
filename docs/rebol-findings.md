@@ -6637,3 +6637,49 @@ this one file by name. A script importing unicode-utils therefore runs here
 and cannot run in a real 3.22.5, which is the wrong direction for this
 project to differ in, and it was taken because the file is otherwise dead
 code that only a build error can reach.
+
+## 222. A real 3.22.5 trusts every TLS server, and three of its checks are broken
+
+Put to `./r3-head` on 2026-10-15, one `read` each:
+
+| url | r3-head | JEBOL before goal 1 |
+| --- | --- | --- |
+| `https://badssl.com` | 11625 bytes | the same |
+| `https://expired.badssl.com` | 494 bytes | the same |
+| `https://self-signed.badssl.com` | 502 bytes | the same |
+| `https://wrong.host.badssl.com` | 500 bytes | the same |
+| `https://untrusted-root.badssl.com` | 600 bytes | the same |
+| `https://ecc256.badssl.com` | `no-connect`, after `Failed to validate signature` | the same |
+
+Four separate defects in `prot-tls.reb` make that table:
+
+1. **Nothing asks whether the chain is trusted or names the host.**
+   `decode-certificates` decodes each certificate with the `CRT` codec and
+   keeps the first one's public key. No authority is consulted, no date is
+   compared and the url's host is never looked at.
+2. **The TLS 1.3 server signature is checked for one scheme and a failure is
+   only logged.** `decode-certificate-verify` verifies only when the scheme is
+   2052 (`rsa_pss_rsae_sha256`) and answers a bad signature with
+   `log-error "Certificate validation failed!"` and nothing else. An elliptic
+   curve server's signature is never checked at all. So a server that sends a
+   real site's certificates without holding its key is read without
+   complaint: `TrustingAServerEndToEndTest` showed it before the fix.
+3. **The TLS 1.2 ECDSA check can never pass.** `decode-server-key-exchange`
+   reads the signature algorithm byte through `*ClientCertificateType`, where
+   3 is `rsa_fixed_dh`, instead of RFC 5246's SignatureAlgorithm, where 3 is
+   `ecdsa`. So the `ecdsa_sign` branch never runs, and the line inside it
+   discards its answer anyway (`ecdsa/verify/curve ...` with no `valid?:`).
+   Every TLS 1.2 elliptic curve server fails with `Decode error`.
+4. **HTTP hides why a handshake failed.** The TLS port keeps its error in
+   `port/extra/error`, and `prot-http.reb` looks for it in
+   `connection/state/error`, so every handshake failure reaches the script as
+   `no-connect` with the url. The reason reaches the operator only because
+   `log-error` prints it. JEBOL keeps this: a script sees `no-connect`, as it
+   does in R3, and the printed line names the reason.
+
+The fixes are decision 43. The vendored `prot-tls.reb` is edited in four
+places, and the CRT codec is untouched. One thing the Brotli rule predicted
+held here too: the
+public badssl.com corpus found a fault the project's own fixtures did not. Its expired
+host ends its chain in a cross-signed copy of a root the JDK trusts, and
+judging past that copy reported the wrong reason.

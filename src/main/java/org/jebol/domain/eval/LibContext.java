@@ -400,6 +400,8 @@ public final class LibContext {
         registerExtension(new CaretToOffsetNative(grantedServices));
         registerExtension(new OffsetToCaretNative(grantedServices));
         registerExtension(new SizeTextNative(grantedServices));
+        registerExtension(new RequireCertificateChecksNative(grantedServices));
+        registerExtension(new CheckCertificatesNative(grantedServices));
     }
 
     private void registerOperators() {

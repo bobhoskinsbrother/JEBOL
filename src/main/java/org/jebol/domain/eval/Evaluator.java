@@ -42,6 +42,7 @@ public final class Evaluator {
     private ProcessPort processes = ProcessPort.none();
 
     private NetworkPort network = NetworkPort.none();
+    private CertificateAuthority certificateAuthority = new TrustingNoAuthority();
     private BundledModules bundledModules = BundledModules.none();
     private final Construction construction;
     private final MakerSource makerSource;
@@ -202,6 +203,14 @@ public final class Evaluator {
 
     public void useNetwork(NetworkPort port) {
         this.network = port;
+    }
+
+    public CertificateAuthority certificateAuthority() {
+        return certificateAuthority;
+    }
+
+    public void useCertificateAuthority(CertificateAuthority authority) {
+        this.certificateAuthority = authority;
     }
 
     /**

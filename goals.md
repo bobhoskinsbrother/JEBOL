@@ -10,7 +10,7 @@ and `using-jebol.md` point here for them.
 
 ## Where the port stands
 
-Measured on 2026-10-12, and the timing rows on 2026-10-13.
+Measured on 2026-10-12, and the test count and timing rows on 2026-10-13.
 
 | Measure | Reads |
 | --- | --- |
@@ -19,7 +19,7 @@ Measured on 2026-10-12, and the timing rows on 2026-10-13.
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 114 of Rebol's 142 error ids can be raised |
 | `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 11 |
-| `./gradlew check` | 27,405 tests |
+| `./gradlew check` | 27,487 tests |
 | `corpus/` | 1,140 of 1,140 entries pass |
 | the shipped jar | about 3,090 KB at its last build (the carried font, 556 KB, is most of what the last two batches added), and no dependencies |
 | the web build | 13.7 MB of WebAssembly (4.1 MB gzipped) beside a 38 KB loader, a 5.9 KB worker and a 556 KB font; the whole site 14.3 MB, 4.4 MB gzipped |
@@ -55,32 +55,10 @@ Read `CLAUDE.md` first.
 
 ## The goals
 
-Ordered by importance. The first six take JEBOL to Android, then to iOS, with
+Ordered by importance. The first five take JEBOL to Android, then to iOS, with
 the defects that would hurt there fixed before each stage. Agreeing with the C
 comes before improving on it: a place where JEBOL answers something a real
 3.22.5 does not is a defect.
-
-### 1. Check the TLS certificate
-
-Every certificate a browser would refuse is accepted, by R3 and by JEBOL:
-expired, self-signed, wrong host and untrusted root all read. The web build
-does not reach this -- `fetch` checks certificates itself -- but an Android or
-iOS app uses JEBOL's own TLS, so until this is done any app's traffic can be
-intercepted. Decided: a host port, refusing by default, checked in the domain,
-hooked in through the `CRT` codec rather than by editing `prot-tls.reb`.
-
-1. A `CertificateAuthority` port: given a chain and a hostname, trusted or why
-   not. One adapter over `CertPathValidator` and the JDK trust store; one that
-   refuses everything for an ungranted host.
-2. A grant beside the others, refused by `Bounds.standard()`.
-3. The hostname check against the subject alternative names, wildcards
-   included.
-4. A failure ends the handshake rather than logging.
-5. A test against badssl.com for each refusal, one good host, and the same put
-   to `./r3-head`. These reach the network -- see goal 18.
-
-Until then, `read https://` should be described as unauthenticated wherever it
-matters.
 
 ### 2. Running out of memory escapes as a host exception
 
@@ -285,8 +263,6 @@ interpreters -- reads as missing.
   its own in a fresh interpreter on the JVM, which the console wires, and
   never in a browser. Decided with the web worker; the rule is
   `TheFateOfATasksBodyIsTheHostsToDecide` in `spec/natives.allium`.
-- **The command-line console grants only WINDOWS**, so `read %README.md`
-  answers `no-service` there. Decide whether that is the design.
 - **`access-os` answers `not-here` for `uid`, `euid`, `gid` and `egid`.** The
   JVM has no portable way to ask.
 - **65 open questions across the spec files**, 30 of them in
@@ -337,13 +313,13 @@ grants it runs under; and whether a script may debug itself.
 
 ### 17. What the command line does differently from r3
 
-1. **The bare console does not run `start`**: its own banner, sandboxed
-   bounds, no colours. Deciding it means deciding whether the plain console
-   keeps its sandbox.
-2. **`--trace` does not trace the boot.** Do with goal 15.
-3. **The version and build differ.** `Rebol/core 3.22.5` here against
+1. **`--trace` does not trace the boot.** Do with goal 15.
+2. **The version and build differ.** `Rebol/core 3.22.5` here against
    `Rebol/Bulk 3.22.5 (...)` and its copyright lines, and `system/build` is none
    in every field. What JEBOL should claim is a decision.
+3. **A `quit/return 42` typed at the console leaves with nought.** R3 leaves
+   with 42, because its console carries what QUIT held out to the process. The
+   console loop here returns without it.
 
 SECURE not being enforced is part of goal 3.
 
@@ -351,7 +327,8 @@ SECURE not being enforced is part of goal 3.
 
 `thru-cache-test.r3` reads `raw.githubusercontent.com` and `httpbin.org`, so
 `./gradlew check` depends on two outside services. Replace them -- a recorded
-exchange, a local server, or a second gate allowed a network -- so the gate
+exchange, a local server, or `./gradlew networkCheck`, the gate that is
+allowed a network and already holds the badssl.com checks -- so the gate
 needs nothing but a JDK.
 
 ### 19. A drag still lags, and the interpreter has a next tier
@@ -391,6 +368,11 @@ still reads slow after the paint work:
   answers `function!`, on purpose.** R3 shells out to `osascript` on macOS
   only; JEBOL serves them through its own port. See `mezz/ORDER.txt` before
   changing it.
+- **A TLS server must be trusted, where R3 trusts every one, on purpose.** An
+  expired, self-signed, wrong-host or untrusted-root certificate reads in a
+  real 3.22.5 and is refused here, and a TLS 1.2 elliptic curve server reads
+  here and fails there. The vendored `prot-tls.reb` carries four edits for
+  it. Decision 43 and finding 222 say what and why.
 - **No Java PDF implementation.** The borrowed codec is what Rebol has; more
   than that is a library the caller adds.
 

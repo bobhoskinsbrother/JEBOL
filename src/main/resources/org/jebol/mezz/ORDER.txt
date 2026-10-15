@@ -42,6 +42,12 @@
 #   mezz-osx-dialogs.reb macOS only in Rebol. JEBOL's WINDOWS service covers
 #                        what it provides, per platform, in DesktopWindows.
 #
+# What is changed from Rebol's copy:
+#
+#   prot-tls.reb         four edits that make a server's certificate and
+#                        signature count. Read decision 43 before taking a
+#                        newer copy, or the checks silently go.
+#
 # BorrowedFilesLoadWholeTest fails if any file stops partway, and its list
 # of known stops is empty. A file that stops defines nothing below the line
 # it stopped on and says so nowhere else.

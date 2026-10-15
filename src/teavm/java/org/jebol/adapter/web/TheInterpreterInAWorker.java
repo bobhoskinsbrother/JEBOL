@@ -54,6 +54,7 @@ public class TheInterpreterInAWorker {
                 .lacking(HostService.NETWORK)
                 .lacking(HostService.PROCESSES)
                 .lacking(HostService.ENVIRONMENT)
+                .lacking(HostService.CERTIFICATES)
                 .called("a browser");
     }
 

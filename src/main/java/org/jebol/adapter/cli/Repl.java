@@ -3,6 +3,7 @@ package org.jebol.adapter.cli;
 import org.jebol.adapter.host.JavaClipboard;
 import org.jebol.adapter.host.JavaImages;
 import org.jebol.adapter.host.JavaProcesses;
+import org.jebol.adapter.host.JavaCertificateAuthority;
 import org.jebol.adapter.host.JavaSockets;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.adapter.host.TasksOnThreads;
@@ -111,10 +112,6 @@ public final class Repl {
         asked.script().ifPresent(script -> asked.theScriptIs(anAppsEntryFor(script)));
         boolean anythingWasAsked = asked.script().isPresent() || !asked.flags().isEmpty();
         Interpreter interpreter = anInterpreterFor(arguments, out, anythingWasAsked, root);
-        if (!anythingWasAsked) {
-            new Repl(interpreter, typed, out).run();
-            return KEEP_THE_PROCESS;
-        }
         return new TheCommandLine(asked, startedIn, root)
                 .runThrough(interpreter, typed, out, errors);
     }
@@ -164,27 +161,23 @@ public final class Repl {
     }
 
     private static Interpreter anInterpreterFor(
-            String[] arguments, PrintStream out, boolean forAScript, Path root) {
+            String[] arguments, PrintStream out, boolean anythingWasAsked, Path root) {
 
-        Bounds bounds = (forAScript ? everyHostService() : Bounds.standard()).withoutAWallClockLimit();
-        if (ChosenScreen.wasAskedFor(arguments)) {
-            bounds = bounds.granting(HostService.WINDOWS);
-        }
+        Bounds bounds = everyHostService().withoutAWallClockLimit();
         Interpreter interpreter =
                 Interpreter.writingTo(new StreamOutput(out), bounds);
         interpreter.useTasks(new TasksOnThreads(bounds));
         giveItTheImageCodecWhichReachesNothingAndIsNotAGrant(interpreter);
-        if (forAScript) {
-            ProcessEnvironment environment = new ProcessEnvironment();
-            interpreter.useFileSystem(FileSystemPort.rootedAt(root));
-            interpreter.useEnvironment(environment);
-            interpreter.useProcesses(new JavaProcesses());
-            interpreter.useClipboard(new JavaClipboard());
-            interpreter.useNetwork(new JavaSockets());
-            putTheApplicationDataWhereTheParentKeepsIt(interpreter, environment, arguments);
-        }
+        ProcessEnvironment environment = new ProcessEnvironment();
+        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useEnvironment(environment);
+        interpreter.useProcesses(new JavaProcesses());
+        interpreter.useClipboard(new JavaClipboard());
+        interpreter.useNetwork(new JavaSockets());
+        interpreter.useCertificateAuthority(new JavaCertificateAuthority());
+        putTheApplicationDataWhereTheParentKeepsIt(interpreter, environment, arguments);
         if (ChosenScreen.wasAskedFor(arguments)) {
-            ChosenScreen.attachTo(interpreter, arguments, out, forAScript);
+            ChosenScreen.attachTo(interpreter, arguments, out, anythingWasAsked);
         }
         return interpreter;
     }
@@ -235,7 +228,7 @@ public final class Repl {
                 interpreter.run(SAYING_IT_IS_CLOSING_UNLESS_QUIET);
                 return -reported;
             }
-            new Repl(interpreter, typed, out).readEvaluatePrint();
+            new Repl(interpreter, typed, out).run();
             return KEEP_THE_PROCESS;
         }
 
@@ -347,11 +340,6 @@ public final class Repl {
 
     /** Runs until the input ends or the user asks to stop. */
     public void run() {
-        output.println("JEBOL -- REBOL 3 on the JVM. Type quit to leave.");
-        readEvaluatePrint();
-    }
-
-    private void readEvaluatePrint() {
         StringBuilder pending = new StringBuilder();
         ConsoleContinuation continuation = new ConsoleContinuation();
 

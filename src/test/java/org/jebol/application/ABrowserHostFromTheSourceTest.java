@@ -20,6 +20,7 @@ class ABrowserHostFromTheSourceTest {
                 .lacking(HostService.NETWORK)
                 .lacking(HostService.PROCESSES)
                 .lacking(HostService.ENVIRONMENT)
+                .lacking(HostService.CERTIFICATES)
                 .called("a browser");
     }
 
@@ -64,6 +65,13 @@ class ABrowserHostFromTheSourceTest {
                 .isEqualTo("no-service");
         assertThat(answerTo(browser, "e: try [open udp://127.0.0.1:9] e/id"))
                 .isEqualTo("no-service");
+    }
+
+    @Test
+    @DisplayName("a secure connection is refused for want of authorities, since the browser judges certificates itself")
+    void aSecureConnectionIsRefusedAsNotPresent() {
+        assertThat(theSentenceFor(aBrowser(), "open tls://example.com:443"))
+                .contains("a browser does not allow certificates, which is not present");
     }
 
     @Test

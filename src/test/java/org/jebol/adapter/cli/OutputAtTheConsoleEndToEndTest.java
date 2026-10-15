@@ -14,19 +14,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class OutputAtTheConsoleEndToEndTest {
 
-    private String whatTheConsolePrintsAfterItsBanner(String typed) {
+    private String whatTheConsolePrints(String typed) {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
         Interpreter interpreter = Interpreter.writingTo(new StreamOutput(output));
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
-        String printed = captured.toString(StandardCharsets.UTF_8);
-        return printed.substring(printed.indexOf('\n') + 1);
+        return captured.toString(StandardCharsets.UTF_8);
     }
 
     @Test
     @DisplayName("a path and a paren are printed as they stand, and a block is reduced and formed")
     void printsWhatFormGives() {
-        assertThat(whatTheConsolePrintsAfterItsBanner("""
+        assertThat(whatTheConsolePrints("""
                 print 'a/b
                 print quote (1 + 2)
                 print [quote (1 2) [3] "x"]
@@ -42,7 +41,7 @@ class OutputAtTheConsoleEndToEndTest {
     @Test
     @DisplayName("form drops a paren's parens, mold/part takes the largest integer, and quit/return none carries unset")
     void formsMoldsAndQuitsAsRebolDoes() {
-        assertThat(whatTheConsolePrintsAfterItsBanner("""
+        assertThat(whatTheConsolePrints("""
                 form [1 () (2 3)]
                 mold/part "abc" 9223372036854775807
                 mold/part "abc" -9223372036854775808
@@ -62,7 +61,7 @@ class OutputAtTheConsoleEndToEndTest {
     @Test
     @DisplayName("a wrong limit, an unknown word in a printed block, and make-error are refused as r3 refuses them")
     void refusesAsRebolDoes() {
-        assertThat(whatTheConsolePrintsAfterItsBanner("""
+        assertThat(whatTheConsolePrints("""
                 mold/part "abc" 2.5
                 print [no-such-word-here]
                 make-error 1 2

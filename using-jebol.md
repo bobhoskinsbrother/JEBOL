@@ -62,10 +62,13 @@ JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1) \
     ./build/install/jebol/bin/jebol
 ```
 
-Both start the console. Type an expression and press enter.
+Both start the console, which runs REBOL's own `start` first, as `r3` does:
+that is where the banner comes from. Type an expression and press enter.
 
 ```
-JEBOL -- REBOL 3 on the JVM. Type quit to leave.
+╔══════════════════════════════════════════════════════════════════════════╗
+║  REBOL/core 3.22.5 (Oldes branch)                                        ║
+...
 >> 2 + 3 * 4
 == 20
 >> name: "world"  append name "!"
@@ -313,11 +316,6 @@ stock 3.22.5 has no `draw` at all — so the check is that Java2D and a real
 browser draw the same paint list the same way, which `./gradlew browserCheck`
 does on every run. The same gate builds the interpreter for the web and runs a
 script that sits in a page's tag.
-
-**The console grants only WINDOWS.** `read %README.md` typed at the prompt
-answers `no-service`, where the same word in a script named on the command
-line reads the file. Run a program from a file, or give the console what it
-needs through `--do`.
 
 Every count here comes from `goals.md` and changes with the work. Take the
 current numbers from a run of `./gradlew check` rather than from this page.
