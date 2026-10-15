@@ -38,9 +38,7 @@ public final class ObjectActions implements Actions {
         }
         object.refuseHiddenFieldsIn(asked.given());
         if (asked.given() instanceof AnyWordValue only) {
-            if (object.context().hasItsOwnSelf()) {
-                only.refuseToBeWrittenWhenItNamesSelf();
-            }
+            object.context().refuseAFieldSpeltLikeItsOwnSelf(only);
             object.context().register(only.canonical(), UnsetValue.unset());
             return object;
         }
@@ -48,9 +46,7 @@ public final class ObjectActions implements Actions {
                 ? asked.theWantedItemsOf(added)
                 : List.of(asked.given());
         for (int at1 = 0; at1 + 1 < pairs.size(); at1 += 2) {
-            if (object.context().hasItsOwnSelf()) {
-                pairs.get(at1).refuseToBeWrittenWhenItNamesSelf();
-            }
+            object.context().refuseAFieldSpeltLikeItsOwnSelf(pairs.get(at1));
         }
         for (int at = 0; at + 1 < pairs.size(); at += 2) {
             if (pairs.get(at) instanceof AnyWordValue field) {

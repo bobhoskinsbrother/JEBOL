@@ -46,6 +46,48 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
     }
 
     @Nested
+    @DisplayName("a script works in the user context start made")
+    class TheScriptsOwnContext {
+
+        @Test
+        @DisplayName("a word DO of a string sets is set for the script")
+        void aWordDoOfAStringSetsIsSetForTheScript() throws IOException {
+            String script = aScript("d.r3", """
+                    Rebol []
+                    do {zz: 5}
+                    probe select system/contexts/user 'zz
+                    probe value? 'zz
+                    """);
+
+            assertThat(running(script).printed()).isEqualTo("""
+                    5
+                    #(true)
+                    """);
+        }
+
+        @Test
+        @DisplayName("self is the user context, written in the script or in a string it does")
+        void selfIsTheUserContext() throws IOException {
+            String script = aScript("u.r3", """
+                    Rebol []
+                    probe same? self system/contexts/user
+                    probe same? self lib-local
+                    probe same? system/contexts/user do {self}
+                    probe find words-of system/contexts/user 'self
+                    probe error? try [set 'self 5]
+                    """);
+
+            assertThat(running(script).printed()).isEqualTo("""
+                    #(true)
+                    #(true)
+                    #(true)
+                    _
+                    #(true)
+                    """);
+        }
+    }
+
+    @Nested
     @DisplayName("a script sees the system object as r3's start leaves it")
     class WhatAScriptSees {
 

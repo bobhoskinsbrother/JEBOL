@@ -127,8 +127,22 @@ public final class Context {
         return holds(canonicalName) || itsOwnSelfAnswersTo(canonicalName);
     }
 
+    public boolean alreadyAnswersTo(String canonicalName) {
+        return hasItsOwnSlotFor(canonicalName) || itsOwnSelfAnswersTo(canonicalName);
+    }
+
     public boolean hasItsOwnSelf() {
         return itsOwnSelf.isPresent();
+    }
+
+    public boolean isItsOwnSelf(ContextSlot slot) {
+        return itsOwnSelf.filter(self -> self == slot).isPresent();
+    }
+
+    public void refuseAFieldSpeltLikeItsOwnSelf(Value named) {
+        if (named instanceof AnyWordValue word && itsOwnSelfAnswersTo(word.canonical())) {
+            throw Raised.of(EvaluationFailure.SELF_PROTECTED);
+        }
     }
 
     private boolean itsOwnSelfAnswersTo(String canonicalName) {

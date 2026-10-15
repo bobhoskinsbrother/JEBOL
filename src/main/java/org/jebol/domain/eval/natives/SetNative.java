@@ -34,7 +34,7 @@ public class SetNative extends DefaultNative {
             Value target = arguments.getFirst();
             Value supplied = arguments.get(1);
             refuseUnassignable(target, EvaluationFailure.EXPECT_ARG);
-            target.refuseToBeWrittenWhenItNamesSelf();
+            target.refuseToBeWrittenWhenItReachesItsContextsOwnSelf();
             if (!refinements.contains("any") && supplied instanceof UnsetValue) {
                 throw Raised.of(EvaluationFailure.NEED_VALUE, target);
             }
@@ -101,7 +101,7 @@ public class SetNative extends DefaultNative {
 
     private void refuseEachUnassignable(List<Value> words) {
         words.forEach(word -> refuseUnassignable(word, EvaluationFailure.INVALID_ARG));
-        words.forEach(Value::refuseToBeWrittenWhenItNamesSelf);
+        words.forEach(Value::refuseToBeWrittenWhenItReachesItsContextsOwnSelf);
     }
 
     private void refuseUnassignable(Value word, EvaluationFailure failure) {

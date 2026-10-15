@@ -15,7 +15,7 @@ Measured on 2026-10-12, and the test count and timing rows on 2026-10-13.
 | Measure | Reads |
 | --- | --- |
 | `fails-on-rebol-too.txt` | 169 a real 3.22.5 also fails or never runs |
-| `scripts/c-parity.py` | 277 of 279 C functions match R3's surface; the 2 are in goal 8 |
+| `scripts/c-parity.py` | 279 of 279 C functions match R3's surface |
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 120 of Rebol's 142 error ids can be raised |
 | `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 11 |
@@ -121,16 +121,6 @@ before the first borrowed protocol file calls it (`prot-mysql.reb`), and
 before `mezz-tail.reb` protects `system/schemes`. Making MIDI actually work
 through `javax.sound.midi` is a further step and a separate goal.
 
-### 8. Two divergences
-
-1. **WORDS-OF cannot tell a field named SELF from an object's own SELF.**
-   `c: use [x] [x: 1 context? 'x] append c 'self words-of c` is `[x self]` in R3
-   and `[x]` here. JEBOL marks the pointer by the slot's name, so about twenty
-   places filter on `canonical().equals("self")`; R3 marks it by position. The
-   slot should say what it is.
-2. **`to-degrees` and `to-radians` take a percent.** R3 declares both
-   `[integer! decimal!]` and refuses `10%` with `expect-arg`.
-
 ### 9. MAKE and TO answers no assertion asks
 
 - **`to paren! any-string!`** is a block in R3, because `Set_Block` writes
@@ -142,9 +132,8 @@ through `javax.sound.midi` is a further step and a separate goal.
   `"a b"` refusing as `bad-make-arg` where R3 says `invalid-chars`. Two are R3
   oddities (`to url! []` naming `email!`, `make percent!` errors naming
   `decimal!`).
-- **`make utype! [[x] [x]]` and `make command! [[x] [x]]`** -- R3 builds
-  something for the first and answers `bad-func-def` for the second. Both are
-  open questions in `spec/natives.allium`.
+- **`make utype! [[x] [x]]`** -- R3 builds something, and what it builds is
+  an open question in `spec/natives.allium`.
 
 ### 10. Two found in Rebol's own declarations
 
@@ -207,6 +196,12 @@ interpreters -- reads as missing.
   wanted. The `serial` scheme is the same: an extension can provide it now.
 - **`access-os` answers `not-here` for `uid`, `euid`, `gid` and `egid`.** The
   JVM has no portable way to ask.
+- **An error's `near` and `where` differ from R3's in form.** R3 writes `near`
+  as the whole block positioned at the failing value,
+  `#(block! [o: make object! [self: 3] o/self] 2)`, where JEBOL writes the
+  block from that value on; and R3's `where` names `catch` between a native
+  and the TRY that caught it, which JEBOL's leaves out. Found by the goal 8
+  sweeps on 2026-10-15; no suite assertion asks.
 - **64 open questions across the spec files**, 27 of them in
   `natives.allium`. Unowned by any goal: the three in `parse.allium`, the five
   in `embed.allium`, and the design questions in `natives.allium` (whether a

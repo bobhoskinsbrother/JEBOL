@@ -35,7 +35,7 @@ public class UnsetNative extends DefaultNative {
     }
 
     private void unsetEach(List<Value> names) {
-        names.forEach(Value::refuseToBeWrittenWhenItNamesSelf);
+        names.forEach(Value::refuseToBeWrittenWhenItReachesItsContextsOwnSelf);
         names.stream()
                 .filter(AnyWordValue.class::isInstance)
                 .map(AnyWordValue.class::cast)

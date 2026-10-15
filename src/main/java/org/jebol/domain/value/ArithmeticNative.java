@@ -26,8 +26,7 @@ public abstract class ArithmeticNative extends DefaultNative {
     }
 
     protected List<Parameter> acceptsWholeNumbersAndDecimals(String... names) {
-        return each(names, Set.of(
-                IntegerValue.TYPE, DecimalValue.TYPE, PercentValue.TYPE));
+        return each(names, Set.of(IntegerValue.TYPE, DecimalValue.TYPE));
     }
 
     protected List<Parameter> acceptsAnythingMeasurable(String... names) {

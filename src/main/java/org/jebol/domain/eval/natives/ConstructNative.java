@@ -34,15 +34,25 @@ public class ConstructNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Context built = Context.childOf(evaluator.systemContext());
+            ObjectValue constructed = new ObjectValue(built);
+            built.pointItsOwnSelfAt(constructed);
+            List<Value> items = itemsOf(arguments.getFirst());
+            refuseAnyFieldSpeltLikeItsOwnSelf(built, items);
             if (refinements.contains("with")
                     && arguments.size() > WHERE_THE_PROTOTYPE_ARRIVES
                     && arguments.get(WHERE_THE_PROTOTYPE_ARRIVES)
                             instanceof ObjectValue(Context prototype)) {
                 prototype.fieldsExcludingSelf().forEach(built::register);
             }
-            constructInto(built, itemsOf(arguments.getFirst()), refinements.contains("only"));
-            return new ObjectValue(built);
+            constructInto(built, items, refinements.contains("only"));
+            return constructed;
         };
+    }
+
+    private void refuseAnyFieldSpeltLikeItsOwnSelf(Context built, List<Value> items) {
+        items.stream()
+                .filter(SetWordValue.class::isInstance)
+                .forEach(built::refuseAFieldSpeltLikeItsOwnSelf);
     }
 
     private List<Value> itemsOf(Value body) {

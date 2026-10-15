@@ -77,8 +77,10 @@ public class BindNative extends DefaultNative {
 
         boolean deeply = !refinements.contains("only");
         if (addsWhatIsMissing) {
-            block.wordsWritten(deeply, refinements.contains("set"))
-                    .forEach(word -> target.register(((AnyWordValue) word).canonical()));
+            block.wordsWritten(deeply, refinements.contains("set")).stream()
+                    .map(word -> ((AnyWordValue) word).canonical())
+                    .filter(canonical -> !target.alreadyAnswersTo(canonical))
+                    .forEach(target::register);
         }
         return refinements.contains("copy")
                 ? Binder.bindACopyOfWhatTheTargetHoldsItself(block, target, deeply)

@@ -53,7 +53,7 @@ public sealed interface Value permits
                 "cannot walk " + datatype().literalSpelling() + " value");
     }
 
-    default void refuseToBeWrittenWhenItNamesSelf() {
+    default void refuseToBeWrittenWhenItReachesItsContextsOwnSelf() {
     }
 
     default byte[] asOctets() {

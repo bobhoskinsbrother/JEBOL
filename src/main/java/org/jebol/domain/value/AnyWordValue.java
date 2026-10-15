@@ -6,8 +6,6 @@ import java.util.Optional;
 public abstract sealed class AnyWordValue implements Value
         permits WordValue, SetWordValue, GetWordValue, LitWordValue, RefinementValue, IssueValue {
 
-    private static final String THE_NAME_AN_OBJECT_ANSWERS_TO_ITSELF_BY = "self";
-
     private final String spelling;
     private final String canonical;
     private final Context binding;
@@ -149,8 +147,9 @@ public abstract sealed class AnyWordValue implements Value
     }
 
     @Override
-    public void refuseToBeWrittenWhenItNamesSelf() {
-        if (canonical.equals(THE_NAME_AN_OBJECT_ANSWERS_TO_ITSELF_BY)) {
+    public void refuseToBeWrittenWhenItReachesItsContextsOwnSelf() {
+        ContextSlot reached = binding.slotOrNone(canonical);
+        if (reached != null && reached.isItsContextsOwnSelf()) {
             throw Raised.of(EvaluationFailure.SELF_PROTECTED);
         }
     }

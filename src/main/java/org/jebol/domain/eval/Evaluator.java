@@ -565,8 +565,15 @@ public final class Evaluator {
         if (!read.succeeded()) {
             throw new Raised(read.error().orElseThrow());
         }
-        Context into = runtimeContext == null ? systemContext : runtimeContext;
+        Context into = theContextAStringIsDoneIn();
         return walk(Binder.bindAndDefine(read.values().orElseThrow(), into), into, 1);
+    }
+
+    private Context theContextAStringIsDoneIn() {
+        if (systemContext.valueAt("system", "contexts", "user") instanceof ObjectValue(Context user)) {
+            return user;
+        }
+        return runtimeContext == null ? systemContext : runtimeContext;
     }
 
     public void putRuntimeWordsIn(Context context) {
@@ -617,6 +624,7 @@ public final class Evaluator {
 
     public ObjectValue evaluatedInto(ObjectValue built, AnyBlockValue body) {
         Context fields = built.context();
+        body.setWordsFromHere().forEach(fields::refuseAFieldSpeltLikeItsOwnSelf);
         body.setWordsFromHere().stream().map(AnyWordValue::spelling).forEach(fields::register);
         evaluateOrRaise(Binder.bindOnly(body, fields, fields.theNamesItBinds()), fields);
         return built;
@@ -1054,7 +1062,7 @@ public final class Evaluator {
         if (frame.atEnd()) {
             throw Raised.of(EvaluationFailure.NEED_VALUE, word);
         }
-        word.refuseToBeWrittenWhenItNamesSelf();
+        word.refuseToBeWrittenWhenItReachesItsContextsOwnSelf();
         frame.pendingCalls.push(PendingCall.assignment(slot));
         return StepOutcome.waiting();
     }
@@ -1109,15 +1117,6 @@ public final class Evaluator {
     private static boolean aCallNeedingNothingNeverReachesThePendingStack(
             PendingCall call) {
         return call.isSatisfied();
-    }
-
-    private static void refuseSelfAsAnInvalidPathRatherThanAGuardedSlot(
-            Value lastSegment) {
-        if (lastSegment instanceof AnyWordValue word
-                && word.canonical().equals("self")) {
-            throw Raised.of(EvaluationFailure.INVALID_PATH,
-                    "self is what a context calls itself and cannot be assigned");
-        }
     }
 
     private static final int AN_OPERATOR_TAKES_NO_REFINEMENT = 0;
@@ -1460,7 +1459,6 @@ public final class Evaluator {
         List<Value> segments = path.remaining();
         Value target = place.value();
         Value lastSegment = segments.get(segments.size() - 1);
-        refuseSelfAsAnInvalidPathRatherThanAGuardedSlot(lastSegment);
 
         if (segments.size() == 3 && lastSegment instanceof IntegerValue(long magnitude1)
                 && select(PathValue.of(segments.subList(0, 1)),

@@ -388,14 +388,16 @@ public final class Interpreter {
                         instanceof ObjectValue system
                 && system.context().holds("contexts")
                 && system.context().ownSlotFor("contexts").value() instanceof ObjectValue(Context context)) {
-            context.register("user", new ObjectValue(userContext));
-            openTheUserContextWithRebolAndItself(system);
+            ObjectValue user = new ObjectValue(userContext);
+            userContext.pointItsOwnSelfAt(user);
+            context.register("user", user);
+            openTheUserContextWithRebolAndItself(system, user);
         }
     }
 
-    private void openTheUserContextWithRebolAndItself(ObjectValue system) {
+    private void openTheUserContextWithRebolAndItself(ObjectValue system, ObjectValue user) {
         userContext.register("REBOL", system);
-        userContext.register("lib-local", new ObjectValue(userContext));
+        userContext.register("lib-local", user);
     }
 
     /**
@@ -796,7 +798,7 @@ public final class Interpreter {
         for (Value item : block.remaining()) {
             switch (item) {
                 case AnyWordValue word -> {
-                    if (!into.hasItsOwnSlotFor(word.canonical())) {
+                    if (!into.alreadyAnswersTo(word.canonical())) {
                         giveItAUserSlotHoldingWhatLibHolds(word, into);
                     }
                 }

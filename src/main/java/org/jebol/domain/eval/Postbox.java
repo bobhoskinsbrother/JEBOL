@@ -5,8 +5,8 @@ import org.jebol.domain.value.PortValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 
 public final class Postbox {
@@ -24,9 +24,9 @@ public final class Postbox {
     public record Callback(ObjectValue target, String word, List<Value> arguments, CallbackAnswer answer) {
     }
 
-    private final BlockingQueue<PortEvent> events = new LinkedBlockingDeque<>();
+    private final Queue<PortEvent> events = new ConcurrentLinkedQueue<>();
 
-    private final BlockingQueue<Callback> callbacks = new LinkedBlockingDeque<>();
+    private final Queue<Callback> callbacks = new ConcurrentLinkedQueue<>();
 
     public void post(PortValue port, String eventType) {
         events.add(new PortEvent(port, eventType));

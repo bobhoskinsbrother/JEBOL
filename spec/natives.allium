@@ -5531,6 +5531,20 @@ rule TheTrigonometricAndLogarithmicFamilyTakesANumberAlone {
     ensures: CallFails(error: expect_arg, about: argument)
 }
 
+-- TO-DEGREES and TO-RADIANS are narrower than the family: R3 declares both
+-- `[integer! decimal!]`, so a percent is refused with expect-arg naming the
+-- function, its argument and percent!, as a string, none, a pair, a logic, a
+-- block and a money are. JEBOL's own declaration of the two let a percent in
+-- until 2026-10-15; Rebol's catalogue spec always refused it, so a script
+-- never saw the difference, but the surface JEBOL reports did.
+rule ToDegreesAndToRadiansTakeAnIntegerOrADecimal {
+    when: EvaluateCall(function, argument)
+    requires: function in {to_degrees, to_radians}
+    requires: not (is_integer(argument) or is_decimal(argument))
+
+    ensures: CallFails(error: expect_arg, about: argument)
+}
+
 -- AS-PAIR takes a number for each half, on the same terms and for the same
 -- reason. Both arguments are checked, so `as-pair 1 #"a"` is refused as
 -- readily as `as-pair #"a" 1`.
@@ -11311,12 +11325,34 @@ rule SelfIsNotAFieldToFind {
 -- of pairs or by a bare word on its own, which adds it holding nothing. All
 -- four combinations refuse.
 --
--- That fourth door refuses only where there is a SELF to overwrite. A
--- context made by USE or by a function's own frame has no SELF slot, and
--- `append that 'self` adds an ordinary field of that name -- there was no
--- pointer there to break. The other three doors refuse wherever they are
--- written, because an assignment to SELF is refused by the evaluator before
--- anything asks which context it lands in.
+-- Every door refuses only where there is a SELF to overwrite: what decides
+-- it is the slot a word reaches, never how the word is spelt. A context made
+-- by USE or by a function's own frame has no SELF slot, so a field or an
+-- argument spelt `self` there is ordinary. `append that 'self` adds such a
+-- field; `that/self: 5`, `set in that 'self 8`, `do bind [self: 8] that`,
+-- `set that [8 9]` and `unset in that 'self` all write or clear it; and
+-- `f: func [self] [self: 4 self]` answers 4. A real 3.22.5 answers all of
+-- these so. JEBOL refused every one of them until 2026-10-15, because it
+-- asked the word's spelling.
+--
+-- The script's own context is an object like any other, so it has a SELF:
+-- at the top level, and inside USE or a function that does not declare the
+-- word, `self` is `system/contexts/user`, and writing it is self-protected.
+-- JEBOL left it with no value until 2026-10-15.
+--
+-- BIND/NEW and BIND/SET of a block add the words an object lacks, and an
+-- object never lacks `self`: `bind/new [self b] o` adds only `b`, and the
+-- `self` in the block reaches the object. That is how a script's own words
+-- reach the user context through INTERN without `self` becoming a field of
+-- it. A context with no SELF of its own gains a field of that name, and so
+-- does any object given the single word `self` rather than a block -- R3's
+-- C takes another road for one word, and JEBOL follows it.
+--
+-- CONSTRUCT is an object spec too. Its object has a SELF slot, so
+-- `construct [self: 3]` is self-protected, as is CONSTRUCT/WITH.
+--
+-- A path cannot reach an object's own SELF at all, so writing one through a
+-- path is invalid-path naming the path and `self`, as reading one is.
 --
 -- The refusal comes before anything is added, so an object given
 -- `[b: 2 self: 5]` gains neither field. A block of pairs is read as a whole
@@ -11357,16 +11393,39 @@ rule AFieldSpeltSelfIsAnOrdinaryField {
 
 rule SettingSelfIsRefused {
     when: EvaluateCall(set, word, value)
-    requires: word = self
+    requires: reaches_its_contexts_own_self(word)
+
+    ensures: CallFails(error: self_protected)
+}
+
+rule AssigningSelfIsRefused {
+    when: EvaluateSetWord(word, value)
+    requires: reaches_its_contexts_own_self(word)
 
     ensures: CallFails(error: self_protected)
 }
 
 rule UnsettingSelfIsRefused {
     when: EvaluateCall(unset, word)
-    requires: word = self
+    requires: reaches_its_contexts_own_self(word)
 
     ensures: CallFails(error: self_protected)
+}
+
+rule AWordSpeltSelfThatReachesAFieldIsWritten {
+    when: EvaluateCall(set, word, value)
+    requires: word = self
+    requires: not reaches_its_contexts_own_self(word)
+
+    ensures: the_slot_it_reaches = value
+}
+
+rule AnArgumentSpeltSelfIsAnOrdinaryArgument {
+    when: EvaluateSetWord(word, value)
+    requires: word = self
+    requires: is_a_function_frame(binding_of(word))
+
+    ensures: the_slot_it_reaches = value
 }
 
 rule AnObjectSpecThatWritesSelfIsRefused {
@@ -11374,6 +11433,59 @@ rule AnObjectSpecThatWritesSelfIsRefused {
     requires: spec_writes_the_word(spec, self)
 
     ensures: CallFails(error: self_protected)
+}
+
+-- DO of a string works in whatever `system/contexts/user` holds when it is
+-- called, as R3's does. After start has made the user context afresh, a
+-- script's `do {zz: 5}` leaves `zz` set for the script, and `do {self}` is
+-- `system/contexts/user`. JEBOL kept binding such strings into the context
+-- it had before start until 2026-10-15, so the word was set where the script
+-- could not see it.
+rule DoOfAStringWorksInTheUserContext {
+    when: EvaluateCall(do, source_text)
+    requires: is_string(source_text)
+
+    ensures: the_words_of(source_text).context = the_user_context()
+}
+
+rule TheScriptsOwnSelfIsTheUserContext {
+    when: EvaluateWord(word)
+    requires: word = self
+    requires: binding_of(word) = the_user_context
+
+    ensures: the_answer_is(the_user_context)
+}
+
+rule BindingABlockAnewNeverAddsAnObjectsOwnSelf {
+    when: EvaluateCall(bind, block, object)
+    requires: refinement_asked(new) or refinement_asked(set)
+    requires: has_a_self_slot(object)
+    requires: block_mentions(block, self)
+
+    ensures: not has_a_field_spelt(object, self)
+}
+
+rule AConstructedSpecThatWritesSelfIsRefused {
+    when: EvaluateCall(construct, spec)
+    requires: spec_writes_the_word(spec, self)
+
+    ensures: CallFails(error: self_protected)
+}
+
+rule WritingAnObjectsOwnSelfThroughAPathIsAnInvalidPath {
+    when: WriteThroughPath(subject, self, written)
+    requires: is_any_object(subject)
+    requires: not has_a_field_spelt(subject, self)
+
+    ensures: CallFails(error: invalid_path)
+}
+
+rule WritingAFieldSpeltSelfThroughAPathStoresIt {
+    when: WriteThroughPath(subject, self, written)
+    requires: is_any_object(subject)
+    requires: has_a_field_spelt(subject, self)
+
+    ensures: select_from(subject, self) = written
 }
 
 rule AppendingASpecThatWritesSelfIsRefused {

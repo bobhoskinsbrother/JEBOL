@@ -23,6 +23,10 @@ public final class ContextSlot implements Slot {
         return context;
     }
 
+    public boolean isItsContextsOwnSelf() {
+        return context.isItsOwnSelf(this);
+    }
+
     /** As first written, case preserved. */
     public String spelling() {
         return spelling;
