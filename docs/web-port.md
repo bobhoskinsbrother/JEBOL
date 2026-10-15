@@ -13,7 +13,7 @@ The core compiles to WebAssembly with TeaVM 0.16.0 and runs in a real browser,
 inside the page's worker. The build is JEBOL's own: `./gradlew buildWasmGC`
 writes `jebol-web.wasm` and `jebol-web-runtime.js` into
 `build/generated/teavm/wasm-gc` (with `jebol-worker.js`, the shell the worker
-runs), and `./gradlew browserCheck` depends on that task and then drives a
+runs), and `./gradlew endToEndTests` depends on that task and then drives a
 page in Chrome.
 
 The pieces:

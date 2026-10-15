@@ -563,12 +563,12 @@ script's side".
 
 ## 13. Where the tests are
 
-All of these are in `src/test/java/org/jebol/application/` unless the table
-says otherwise. Each test's `@DisplayName` says what it checks, so a failure
-reads as a sentence. Run one class with, for example:
+All of these are functional tests, in `src/functionalTest/java/org/jebol/application/`
+unless the table says otherwise. Each test's `@DisplayName` says what it
+checks, so a failure reads as a sentence. Run one class with, for example:
 
 ```
-./gradlew test --tests 'org.jebol.application.ExtensionsFromTheSourceTest'
+./gradlew functionalTests --tests 'org.jebol.application.ExtensionsFromTheSourceTest'
 ```
 
 **`ExtensionsFromTheSourceTest`**: the host's side, through `Bounds` and

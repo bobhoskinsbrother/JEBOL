@@ -31,7 +31,7 @@ measuring tool telling a lie about the one function whose name it could not
 parse, which is the fault it exists to find in other things.
 
 Usage:
-    ./gradlew compileTestJava
+    ./gradlew testFixturesClasses
     python3 scripts/runtime-parity.py            # a summary and the groups
     python3 scripts/runtime-parity.py --all      # every differing function
 """
@@ -105,8 +105,8 @@ def main():
                              os.path.join(SCRATCH, "r3.out")))
     jebol = answers_from(run(
         [JAVA, "-cp",
-         "build/classes/java/main:build/classes/java/test:"
-         "build/resources/main:build/resources/test",
+         "build/classes/java/main:build/classes/java/testFixtures:"
+         "build/resources/main:build/resources/testFixtures",
          "org.jebol.suite.SweepRunner", probe],
         os.path.join(SCRATCH, "jebol.out")))
 

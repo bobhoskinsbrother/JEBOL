@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-out="$(cd "$(dirname "$0")/.." && pwd)/src/test/resources/org/jebol/tls"
+out="$(cd "$(dirname "$0")/.." && pwd)/src/testFixtures/resources/org/jebol/tls"
 mkdir -p "$out"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT

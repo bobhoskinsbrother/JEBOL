@@ -8,7 +8,7 @@ Three sources, and each answers a different question.
 here, by the layer rule in TODO: a function Rebol writes in REBOL is
 imported from its file instead, and one written in Java would be a fork.
 
-`src/test/resources/r3/c-surface.txt` holds the same declarations in the same
+`src/testFixtures/resources/r3/c-surface.txt` holds the same declarations in the same
 shape, written from Rebol's source by `scripts/c-surface.py`. That is what a
 JEBOL surface is compared against.
 
@@ -54,8 +54,8 @@ measure to reach for when the question is about behaviour rather than about
 what was declared. Quote the two together or neither.
 
 Usage:
-    ./gradlew test --tests 'org.jebol.suite.SurfaceReportTest' \
-                   --tests 'org.jebol.suite.PortingBacklogTest'
+    ./gradlew unitTests --tests 'org.jebol.suite.SurfaceReportTest' \
+              functionalTests --tests 'org.jebol.suite.PortingBacklogTest'
     python3 scripts/c-parity.py            # the whole audit
     python3 scripts/c-parity.py --summary  # counts only
 """
@@ -67,7 +67,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 REBOL_SOURCE = Path.home() / "Code" / "personal" / "rebol3-source" / "src" / "boot"
 C_DECLARATIONS_KINDS = ("ACTION ", "NATIVE ")
-C_SURFACE = REPO / "src" / "test" / "resources" / "r3" / "c-surface.txt"
+C_SURFACE = REPO / "src" / "testFixtures" / "resources" / "r3" / "c-surface.txt"
 JEBOL_SURFACE = REPO / "build" / "jebol-surface.txt"
 JEBOL_LIBRARY = REPO / "build" / "jebol-library.txt"
 
@@ -285,7 +285,7 @@ def verdicts(name, theirs, ours):
 def main():
     summary_only = "--summary" in sys.argv
     if not JEBOL_SURFACE.exists():
-        sys.exit("run ./gradlew test --tests 'org.jebol.suite.SurfaceReportTest' first")
+        sys.exit("run ./gradlew unitTests --tests 'org.jebol.suite.SurfaceReportTest' first")
 
     in_c = c_implemented()
     theirs = c_declared_surfaces()

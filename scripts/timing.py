@@ -6,13 +6,13 @@
 `boot` builds interpreters on the JVM and prints the first call, then the
 median, p95, min and max of `runs` (default 20) warm `Interpreter.create()`.
 
-`speed` runs every workload in `src/test/resources/timing` through a real
+`speed` runs every workload in `src/testFixtures/resources/timing` through a real
 Rebol 3.22.5 (`./r3-head`) and through JEBOL on the JVM, and prints one table:
 the milliseconds each took as each interpreter measures itself (`stats/timer`
 around the timed expression), the values each walked (`stats/evals`), and the
 ratio.
 
-Both verbs need a compiled test tree first: `./gradlew compileTestJava`.
+Both verbs need the test fixtures compiled first: `./gradlew testFixturesClasses`.
 
 What the workload files isolate, one each:
 
@@ -47,11 +47,11 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CLASSES = ":".join(os.path.join(REPO, part) for part in [
     "build/classes/java/main",
-    "build/classes/java/test",
+    "build/classes/java/testFixtures",
     "build/resources/main",
-    "build/resources/test",
+    "build/resources/testFixtures",
 ])
-WORKLOADS = os.path.join(REPO, "src", "test", "resources", "timing")
+WORKLOADS = os.path.join(REPO, "src", "testFixtures", "resources", "timing")
 ANSWER = re.compile(r"workload (\S+) evals (\d+) ms (\d+)")
 
 

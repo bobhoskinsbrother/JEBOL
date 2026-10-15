@@ -155,7 +155,7 @@ All of these stay where they are. A change that moves one is wrong.
   and an assertion inside a FOREACH was never run at all.
 
   ```
-  ./gradlew test --tests 'org.jebol.suite.RebolSuiteTest'
+  ./gradlew functionalTests --tests 'org.jebol.suite.RebolSuiteTest'
   ```
 
 - **`ActionParityTest`** -- the datatype table times the arms table, ratchet at
@@ -179,14 +179,12 @@ answered: this file carried a count of raisable error ids that was both stale
 and the wrong way round, against a count file that was right, and a reader had
 no way to tell which to believe.
 
-`./gradlew check` is the gate before a commit: 0 failed, 0 skipped, and five to
-twenty-five minutes depending on what it has to recompile.
-
-`./gradlew browserCheck` is the second gate and is not optional, only
-separate: it builds the core for the web with TeaVM, drives a real Chrome, runs
-a script from a page, and compares what the renderers paint against each other,
-pixel for pixel. Run it after any change to the core, to `PaintList`, to either
-renderer, or to the page.
+`./gradlew allTests` is the gate before a commit: 0 failed, 0 skipped. It runs
+the spec check and three suites -- `unitTests`, `functionalTests` and
+`endToEndTests` -- each one a source set of its own under `src/`. The end to
+end suite builds the core for the web with TeaVM, drives a real Chrome, runs a
+script from a page, compares what the renderers paint pixel for pixel, and puts
+the command line's TLS to real servers, so it needs Chrome and the internet.
 
 `scripts/c-surface.py` rebuilds `c-surface.txt` when Rebol's tree changes.
 
@@ -284,7 +282,7 @@ Each of these cost time once.
   wrong for this reason before the code was.
 - **Do not `rm -rf build/test-results`** to force a re-run; Gradle then fails
   with `NoSuchFileException` on its own binary results directory. Use
-  `./gradlew cleanTest`.
+  `./gradlew cleanFunctionalTests`, or the same for the other two suites.
 
 ## Ordering rules learned the hard way
 

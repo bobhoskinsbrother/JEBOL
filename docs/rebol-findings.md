@@ -5236,7 +5236,7 @@ taken.
 ## How this list is used
 
 Wherever JEBOL matches, the finding is also a corpus entry under `corpus/` or a
-test under `src/test/`, so the claim is rechecked on every build rather than
+test under `src/functionalTest/`, so the claim is rechecked on every build rather than
 believed. Entries 3 to 16 are pinned that way. That pinning is what keeps the
 findings useful now the binary is gone: the record cannot be retaken, but the
 tests fail if JEBOL drifts away from it.

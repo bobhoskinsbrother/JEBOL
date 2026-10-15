@@ -19,11 +19,11 @@ Measured on 2026-10-12, and the test count and timing rows on 2026-10-13.
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 120 of Rebol's 142 error ids can be raised |
 | `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 11 |
-| `./gradlew check` | 27,487 tests |
+| `./gradlew allTests` | 27,943 tests on 2026-10-15: `unitTests` 2,536, `functionalTests` 23,501, `endToEndTests` 1,906 |
 | `corpus/` | 1,140 of 1,140 entries pass |
 | the shipped jar | about 3,090 KB at its last build (the carried font, 556 KB, is most of what the last two batches added), and no dependencies |
 | the web build | 13.7 MB of WebAssembly (4.1 MB gzipped) beside a 38 KB loader, a 5.9 KB worker and a 556 KB font; the whole site 14.3 MB, 4.4 MB gzipped |
-| a warm `Interpreter.create()` | 44 to 57ms median across runs, 66ms p95, the first call 427ms; 16,300 of them per `./gradlew test` (`scripts/timing.py boot`) |
+| a warm `Interpreter.create()` | 44 to 57ms median across runs, 66ms p95, the first call 427ms; 16,300 of them per `./gradlew functionalTests` (`scripts/timing.py boot`) |
 | the interpreter's speed | 8x to 14x slower than a real 3.22.5 on `scripts/timing.py speed`; about 2x more again in the browser |
 
 ---
@@ -47,7 +47,8 @@ Read `CLAUDE.md` first.
 - An assertion a real Rebol does not pass either goes in
   `fails-on-rebol-too.txt` with the `./r3-head` session that settles it. Never
   because it is hard.
-- Every fix gets a JEBOL test in `src/test/java` that stands on its own, with
+- Every fix gets a JEBOL test in `src/functionalTest/java` (or `src/unitTest/java`
+  where no interpreter is needed) that stands on its own, with
   expectations read off `./r3-head`.
 - Commit to `main`, never branch, no attribution trailers.
 
@@ -261,10 +262,10 @@ grants it runs under; and whether a script may debug itself.
 ### 18. Take the network out of the gate
 
 `thru-cache-test.r3` reads `raw.githubusercontent.com` and `httpbin.org`, so
-`./gradlew check` depends on two outside services. Replace them -- a recorded
-exchange, a local server, or `./gradlew networkCheck`, the gate that is
-allowed a network and already holds the badssl.com checks -- so the gate
-needs nothing but a JDK.
+`./gradlew functionalTests` depends on two outside services. Replace them -- a
+recorded exchange, a local server, or a move to `./gradlew endToEndTests`, the
+suite that is allowed a network and already holds the badssl.com checks -- so
+the functional tests need nothing but a JDK.
 
 ### 19. A drag still lags, and the interpreter has a next tier
 

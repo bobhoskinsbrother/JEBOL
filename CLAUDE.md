@@ -67,7 +67,7 @@ finds `rebol3-source/src/tests/units/lexer-test.r3`. Run `ide_sync_files` if a
 search comes back empty for something that is certainly there.
 
 One thing to expect from it: JEBOL vendors copies of the mezz and the suite under
-`src/main/resources/org/jebol/mezz/` and `src/test/resources/rebol-suite/`, so a
+`src/main/resources/org/jebol/mezz/` and `src/testFixtures/resources/rebol-suite/`, so a
 search often returns the same line twice, once from each. The `rebol3-source/` hit
 is the authority; the vendored one is what JEBOL currently runs, and where they
 differ that difference is itself worth knowing.
@@ -99,7 +99,7 @@ will be deleted when it goes green. Coverage that lives only there does not surv
 that.
 
 **So every behaviour fixed because of a suite assertion gets a JEBOL test too**, in
-`src/test/java`, standing on its own: it builds an interpreter, asserts on JEBOL, and
+`src/functionalTest/java`, standing on its own: it builds an interpreter, asserts on JEBOL, and
 reads no `.r3` file. Quote the suite in the comments -- "Rebol's own test asserts
 this twice" is worth knowing -- but never depend on it.
 
@@ -170,8 +170,30 @@ nothing else in the build will ever notice.
 
 ## Running the suite
 
-`./gradlew check` is the gate. It takes about five minutes for 27,405 tests,
-and its floor is `Interpreter.create()`: about 54ms warm, and one full run
+**`./gradlew allTests` is the gate.** It runs the spec check, then three suites,
+each its own source set and its own task:
+
+| Task | Source set | What is in it |
+| --- | --- | --- |
+| `unitTests` | `src/unitTest` | Tests that never build an interpreter: values, codecs, the reader, the domain on its own |
+| `functionalTests` | `src/functionalTest` | Tests that build an interpreter and run REBOL through it, Rebol's own suite included |
+| `endToEndTests` | `src/endToEndTest` | Tests that drive a real interface: the command line, a real Chrome, real servers on the internet |
+
+Where a test lives says what it is: put a new one in the source set that
+matches. Helpers and every resource the three share are in `src/testFixtures`.
+`./gradlew test` and `./gradlew check` both run `allTests`, so no name runs
+less than it sounds like.
+
+`endToEndTests` needs Chrome installed and the internet, the first time for a
+browser driver and every time for badssl.com. It builds the core for the web
+with TeaVM, drives a real Chrome through WebDriver, compares the same paint list
+rendered in Java2D and in the browser pixel for pixel, and puts the command
+line's TLS to hosts a browser trusts and hosts it refuses. Run it after any
+change to the core, to `PaintList`, to either renderer, to the page, to
+`prot-tls.reb`, the certificate natives or `JavaCertificateAuthority`.
+
+The functional tests take about five minutes, and their floor is
+`Interpreter.create()`: about 54ms warm, and one full run
 builds about 16,300 interpreters. Ask `scripts/timing.py boot` for the current
 boot figures, `scripts/timing.py speed` for the interpreter's own speed against
 a real 3.22.5, and goals.md for both. It used to be 86ms and twenty-two
@@ -183,30 +205,9 @@ remaining 54ms goes, and what is slow in the interpreter itself, is decisions
 
 Do not `rm -rf build/test-results` to force a re-run -- it makes Gradle fail with
 `NoSuchFileException` on its own binary results directory. Use `./gradlew
-cleanTest` instead.
+cleanFunctionalTests` (or `cleanUnitTests`, `cleanEndToEndTests`) instead.
 
-**`./gradlew browserCheck` is the second gate, and it is not optional -- it is
-separate.** It builds the core for the web with TeaVM (`buildWasmGC`), drives a
-real Chrome through WebDriver, runs a script that sits in a page's tag, renders
-the same paint list in Java2D and in the browser, and compares the two pixel for
-pixel. That is how "a page and a window show the same picture" is a thing the
-build knows rather than a thing anybody says.
-
-It is out of `check` because it needs a browser installed and a network the
-first time it fetches a driver, and the ordinary gate should need neither. That
-makes it a second gate rather than a skipped test: everything it holds runs
-every time it runs, and it is never quietly excluded. Run it after any change to
-the core, to `PaintList`, to either renderer, or to the page.
-
-**`./gradlew networkCheck` is the third gate, and it needs the internet.** It
-puts the command line to badssl.com: three hosts a browser trusts must be
-read, and four it refuses must be refused with their reason printed. Run it
-after any change to `prot-tls.reb`, the certificate natives or
-`JavaCertificateAuthority`. Everything about TLS that does not need the
-internet is in `check`, against `LocalTlsServer` and the fixtures from
-`scripts/make-test-certificates.sh`.
-
-Selenium is a `testImplementation` dependency and nothing else. **The shipped jar
+Selenium is a test dependency and nothing else. **The shipped jar
 has no dependencies and this does not change that** -- about 3,090 KB, of which
 556 KB is the carried font, 228 KB the borrowed REBOL library, and about 190 KB
 Brotli's static dictionary and the three tables that index it, all carried in

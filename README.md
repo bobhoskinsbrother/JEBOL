@@ -147,7 +147,7 @@ Open the address it prints; `VIEW/no-wait [...]` in the console then draws into
 the page. `--screen=window` is the default arrangement and puts that picture in
 a native window instead.
 
-**The end to end tests** `./gradlew browserCheck` builds the web module, drives the
+**The end to end tests** `./gradlew endToEndTests` builds the web module, drives the
 assembled site in a real Chrome, and compares what the page draws against what
 Java2D draws from the same paint list, pixel for pixel. It is the reason a page
 and a window showing the same picture is a thing the build knows. `docs/web-port.md`
@@ -338,7 +338,11 @@ examples/r3-gui/ the shipped demo app: the 2010 R3 GUI, with main.reb as its ent
 editors/         a TextMate bundle: REBOL highlighting for IntelliJ and VS Code
 corpus/          published REBOL examples with their published results
   sources/       fourteen complete programs, fetched byte for byte
-src/test/resources/rebol-suite/
+src/unitTest/       tests that never build an interpreter
+src/functionalTest/ tests that build an interpreter and run REBOL through it
+src/endToEndTest/   tests that drive the command line, a real browser and real servers
+src/testFixtures/   what the three share: helpers, and every test resource
+src/testFixtures/resources/rebol-suite/
                  Rebol's own test files, and what a real Rebol fails too
 scripts/         the measures, which are run rather than remembered:
                  c-parity (declarations) and runtime-parity (two running
@@ -369,33 +373,35 @@ Java 25 toolchain and downloads one itself (the toolchain resolver in
 no runtime dependencies; the jar carries everything it needs.
 
 ```
-./gradlew build          # compile, run the gates, and write the jar
-./gradlew jar            # just the jar: build/libs/jebol-3.22.5.jar
-./gradlew check          # the spec gate and the whole test suite
-./gradlew browserCheck   # the second gate: the web build in a real browser
+./gradlew allTests         # the spec check and all three suites below
+./gradlew unitTests        # tests that never build an interpreter
+./gradlew functionalTests  # tests that run REBOL through an interpreter
+./gradlew endToEndTests    # the command line, a real browser, real servers
+./gradlew jar              # just the jar: build/libs/jebol-3.22.5.jar
+./gradlew build            # allTests, then the jar
 ./gradlew assembleTheSite  # the static site in build/site (see JEBOL Web)
-./gradlew run            # the console, from source
+./gradlew run              # the console, from source
 ```
 
-`build` depends on `check`, so it is the whole ordinary gate in one command.
-The jar it writes runs itself:
+`test` and `check` both run `allTests`, so no task runs less than its name
+suggests. The jar `build` writes runs itself:
 
 ```
 $ java -jar build/libs/jebol-3.22.5.jar --do "print 1 + 2"
 ```
 
-`check` also runs the spec gate, so the specifications in `spec/` are validated
-by the same command as the code. It fails on any error, any analysis finding, and
-any warning not on the allowlist. It needs nothing but a JDK — no network, no
-browser, no other program.
+`allTests` runs the spec check too, so the specifications in `spec/` are
+validated by the same command as the code. It fails on any error, any analysis
+finding, and any warning not on the allowlist.
 
-`browserCheck` is separate rather than skipped. It builds the interpreter for
-the web with TeaVM, drives a real Chrome through WebDriver, runs a script that
-sits in a page's tag, renders the same paint list in Java2D and in the browser,
-and compares the two pixel for pixel — which is how "a page and a window show
-the same picture" is a thing the build knows rather than a thing somebody says.
-It is out of `check` because it needs a browser installed and a network the
-first time it fetches a driver, and the ordinary gate should need neither.
+`unitTests` and `functionalTests` need nothing but a JDK. `endToEndTests` needs
+Chrome installed and the internet. It builds the interpreter for the web with
+TeaVM, drives a real Chrome through WebDriver, runs a script that sits in a
+page's tag, renders the same paint list in Java2D and in the browser, and
+compares the two pixel for pixel — which is how "a page and a window show the
+same picture" is a thing the build knows rather than a thing somebody says. It
+also puts the command line's TLS to real servers that a browser trusts and
+real servers it refuses.
 
 **The measures are scripts, and they are run rather than remembered.**
 `./r3-head` is a real Rebol 3.22.5 built from the checkout beside it

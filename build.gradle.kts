@@ -2,6 +2,7 @@ plugins {
     java
     application
     jacoco
+    `java-test-fixtures`
     id("org.teavm") version "0.16.0"
 }
 
@@ -27,19 +28,6 @@ repositories {
 }
 
 dependencies {
-    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
-    testImplementation("net.jqwik:jqwik:1.9.2")
-    testImplementation("org.assertj:assertj-core:3.26.3")
-    testImplementation("com.tngtech.archunit:archunit-junit5:1.4.1")
-
-    // Drives a real browser, so that "the page and the window show the same
-    // picture" is a thing the build checks rather than a thing anybody says.
-    // testImplementation and not implementation: the shipped jar has no
-    // dependencies and this does not change that.
-    testImplementation("org.seleniumhq.selenium:selenium-java:4.27.0")
-
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-
     // The web build's substitution targets and library resources are written
     // against these, and they are never on the shipped jar's classpath.
     "teavmCompileOnly"("org.teavm:teavm-classlib:0.16.0")
@@ -71,7 +59,7 @@ tasks.named<JavaCompile>("compileTeavmJava") {
 
 // The worker's shell script is the page's other half and is served beside the
 // module it loads, so it is copied where the WebAssembly build writes.
-val copyTheWorkerScript by tasks.registering(Copy::class) {
+val copyTheWorkerScript = tasks.register<Copy>("copyTheWorkerScript") {
     group = "build"
     description = "Put the worker's shell script beside the WebAssembly module"
     from("src/teavm/js/jebol-worker.js")
@@ -80,7 +68,7 @@ val copyTheWorkerScript by tasks.registering(Copy::class) {
 
 // The font this build carries is fetched by the page and drawn with, so it is
 // served beside the page that asks for it.
-val copyTheCarriedFont by tasks.registering(Copy::class) {
+val copyTheCarriedFont = tasks.register<Copy>("copyTheCarriedFont") {
     group = "build"
     description = "Put the font this build carries beside the WebAssembly module"
     from("src/main/resources/org/jebol/fonts/NotoSans-Regular.ttf")
@@ -97,7 +85,7 @@ tasks.named("buildWasmGC") {
 // whose main.reb is the entry and whose every file is fetched into the
 // worker's store before it runs; the shipped demo is examples/r3-gui, served
 // the same way. A directory with an index.html of its own keeps it.
-val assembleTheSite by tasks.registering(Sync::class) {
+val assembleTheSite = tasks.register<Sync>("assembleTheSite") {
     group = "build"
     description = "Assemble the static site: a runner page and the app it runs"
     dependsOn(tasks.named("buildWasmGC"))
@@ -133,7 +121,7 @@ val assembleTheSite by tasks.registering(Sync::class) {
 
 // TeaVM only embeds a resource it is told about. The list is written from the
 // resources themselves so it cannot drift from them.
-val writeTheWebResourceList by tasks.registering {
+val writeTheWebResourceList = tasks.register("writeTheWebResourceList") {
     group = "build"
     description = "List the library files the web build must carry"
     val library = fileTree("src/main/resources/org/jebol")
@@ -160,22 +148,87 @@ tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror", "-proc:none"))
 }
 
-// Drives a real browser, so it needs one, and it needs the network the first
-// time it fetches a driver. Kept out of `check` for that reason and for no
-// other: it is a second gate rather than a skipped test, it runs everything it
-// holds every time it runs, and `./gradlew browserCheck` is the whole of how.
-//
-// What it is for: proving that the page and the desktop window show the same
-// picture. They are handed the same paint list, so the only way they can
-// differ is in how one of them draws a stated rectangle in a stated place --
-// and this is what looks.
-val browserCheck by tasks.registering(Test::class) {
+val unitTest = sourceSets.create("unitTest")
+val functionalTest = sourceSets.create("functionalTest")
+val endToEndTest = sourceSets.create("endToEndTest")
+val testSuites = listOf(unitTest, functionalTest, endToEndTest)
+
+val testLibraries = listOf(
+    "org.junit.jupiter:junit-jupiter:5.11.4",
+    "net.jqwik:jqwik:1.9.2",
+    "org.assertj:assertj-core:3.26.3",
+    "com.tngtech.archunit:archunit-junit5:1.4.1",
+    "org.seleniumhq.selenium:selenium-java:4.27.0",
+)
+
+dependencies {
+    testLibraries.forEach { "testFixturesImplementation"(it) }
+    testSuites.forEach { suite ->
+        add(suite.implementationConfigurationName, testFixtures(project(project.path)))
+        testLibraries.forEach { add(suite.implementationConfigurationName, it) }
+        add(suite.runtimeOnlyConfigurationName, "org.junit.platform:junit-platform-launcher")
+    }
+}
+
+testSuites.forEach { suite ->
+    suite.compileClasspath += sourceSets.main.get().output
+    suite.runtimeClasspath += sourceSets.main.get().output
+}
+
+fun Test.runsTheTestsIn(suite: SourceSet) {
     group = "verification"
-    description = "Render the same paint list in Java2D and in a real browser, and compare"
-    testClassesDirs = sourceSets["test"].output.classesDirs
-    classpath = sourceSets["test"].runtimeClasspath
-    useJUnitPlatform { includeTags("browser") }
+    testClassesDirs = suite.output.classesDirs
+    classpath = suite.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty("jqwik.database", layout.buildDirectory.file("jqwik-database").get().asFile.path)
     systemProperty("java.awt.headless", "true")
+    systemProperty("junit.jupiter.execution.parallel.enabled", "true")
+    systemProperty("jebol.mainClassesDirs", sourceSets.main.get().output.classesDirs.asPath)
+    systemProperty(
+        "jebol.testClassesDirs",
+        testSuites.joinToString(File.pathSeparator) { it.output.classesDirs.asPath },
+    )
+    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+    inputs.dir(layout.projectDirectory.dir("corpus"))
+        .withPropertyName("corpus")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    testLogging {
+        events("failed")
+        showStackTraces = true
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
+
+fun Test.readsAlsoFrom(what: String, vararg files: Any) {
+    inputs.files(*files)
+        .withPropertyName(what)
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
+val unitTests = tasks.register<Test>("unitTests") {
+    description = "Tests that never build an interpreter: values, codecs, the reader, the domain on its own"
+    runsTheTestsIn(unitTest)
+    dependsOn(functionalTest.classesTaskName, endToEndTest.classesTaskName)
+    readsAlsoFrom("the other suites' classes", functionalTest.output.classesDirs, endToEndTest.output.classesDirs)
+    readsAlsoFrom("the editor grammar", fileTree("editors"))
+    readsAlsoFrom("the shipped examples", fileTree("examples"))
+}
+
+val functionalTests = tasks.register<Test>("functionalTests") {
+    description = "Tests that build an interpreter and run REBOL through it, Rebol's own suite included"
+    runsTheTestsIn(functionalTest)
+    readsAlsoFrom(
+        "Rebol's own source",
+        fileTree("rebol3-source/src/boot"),
+        fileTree("rebol3-source/src/modules"),
+        fileTree("rebol3-source/src/tests"),
+    )
+    mustRunAfter(unitTests)
+}
+
+val endToEndTests = tasks.register<Test>("endToEndTests") {
+    description = "Tests that drive a real interface: the command line, a real browser, and real servers on the internet"
+    runsTheTestsIn(endToEndTest)
     systemProperty(
         "jebol.webBuild",
         layout.buildDirectory.dir("generated/teavm/wasm-gc").get().asFile.path,
@@ -186,68 +239,41 @@ val browserCheck by tasks.registering(Test::class) {
     )
     dependsOn(tasks.named("buildWasmGC"), assembleTheSite)
     outputs.upToDateWhen { false }
+    mustRunAfter(functionalTests)
 }
 
-val networkCheck by tasks.registering(Test::class) {
-    group = "verification"
-    description = "Put JEBOL's TLS to real servers on the internet that a browser would refuse"
-    testClassesDirs = sourceSets["test"].output.classesDirs
-    classpath = sourceSets["test"].runtimeClasspath
-    useJUnitPlatform { includeTags("network") }
-    systemProperty("java.awt.headless", "true")
-    outputs.upToDateWhen { false }
-}
-
-tasks.test {
-    useJUnitPlatform {
-        excludeTags("browser", "network")
-    }
-
-    systemProperty("jqwik.database", layout.buildDirectory.file("jqwik-database").get().asFile.path)
-    systemProperty("java.awt.headless", "true")
-    systemProperty("junit.jupiter.execution.parallel.enabled", "true")
-    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
-    inputs.dir(layout.projectDirectory.dir("corpus"))
-        .withPropertyName("corpus")
-        .withPathSensitivity(PathSensitivity.RELATIVE)
-
-    systemProperty(
-        "jebol.mainClassesDirs",
-        sourceSets.main.get().output.classesDirs.asPath,
-    )
-    testLogging {
-        events("failed")
-        showStackTraces = true
-        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-    }
-}
-
-tasks.jacocoTestReport {
-    dependsOn(tasks.test)
-    reports {
-        xml.required = true
-        html.required = true
-    }
-}
-
-val checkSpec by tasks.registering(Exec::class) {
+val checkSpec = tasks.register<Exec>("checkSpec") {
     group = "verification"
     description = "Validate the Allium specifications in spec/"
     commandLine("./scripts/check-spec.sh")
 }
 
-tasks.check {
-    dependsOn(checkSpec)
-}
-
-val allTests by tasks.registering {
+val allTests = tasks.register("allTests") {
     group = "verification"
-    description = "Run all three gates: check, browserCheck and networkCheck"
-    dependsOn(tasks.check, browserCheck, networkCheck)
+    description = "The spec check, then unitTests, functionalTests and endToEndTests"
+    dependsOn(checkSpec, unitTests, functionalTests, endToEndTests)
 }
 
-browserCheck { mustRunAfter(tasks.check) }
-networkCheck { mustRunAfter(browserCheck) }
+unitTests { mustRunAfter(checkSpec) }
+
+tasks.test {
+    description = "The same as allTests"
+    dependsOn(allTests)
+}
+
+tasks.check {
+    description = "The same as allTests"
+    dependsOn(allTests)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(unitTests, functionalTests, endToEndTests)
+    executionData(unitTests.get(), functionalTests.get(), endToEndTests.get())
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
 
 tasks.named<JavaExec>("run") {
     standardInput = System.`in`

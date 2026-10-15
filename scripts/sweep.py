@@ -9,7 +9,7 @@ wrong, because it shows both answers side by side rather than a pass or a
 fail.
 
 Needs `./r3-head` (a built 3.22.5) and a compiled JEBOL:
-`./gradlew compileTestJava` first, since the JEBOL side runs through
+`./gradlew testFixturesClasses` first, since the JEBOL side runs through
 `org.jebol.suite.SweepRunner`.
 
 Two things it will not tell you:
@@ -135,8 +135,8 @@ def main():
     name = sys.argv[1]
     if not name.endswith(".r3"):
         name += "-test.r3"
-    script, sources = probe_script(REPO + "/src/test/resources/rebol-suite/" + name)
-    suite = REPO + "/src/test/resources/rebol-suite"
+    script, sources = probe_script(REPO + "/src/testFixtures/resources/rebol-suite/" + name)
+    suite = REPO + "/src/testFixtures/resources/rebol-suite"
     probe = SCRATCH + "/probe-" + name
     open(probe, "w").write(script.replace(
         "Rebol []", "Rebol []\nchange-dir %" + suite + "/", 1))
@@ -146,14 +146,14 @@ def main():
     with open(r3out, "w") as writing:
         subprocess.run([REPO + "/r3-head", probe], stdout=writing,
                        stderr=subprocess.STDOUT,
-                       cwd=REPO + "/src/test/resources/rebol-suite")
+                       cwd=REPO + "/src/testFixtures/resources/rebol-suite")
     with open(jbout, "w") as writing:
         script_file = os.path.join(SCRATCH, "sweep-script.r3")
         with open(script_file, "w") as handle:
             handle.write(script)
         subprocess.run([JAVA, "-cp",
-                        "build/classes/java/main:build/classes/java/test:"
-                        "build/resources/main:build/resources/test",
+                        "build/classes/java/main:build/classes/java/testFixtures:"
+                        "build/resources/main:build/resources/testFixtures",
                         "org.jebol.suite.SweepRunner", script_file],
                        stdout=writing, stderr=subprocess.STDOUT, cwd=REPO)
 

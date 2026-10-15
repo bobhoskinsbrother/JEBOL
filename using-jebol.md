@@ -656,12 +656,12 @@ runs untrusted scripts.
 **Graphics.** DRAW paints every command its dialect table declares except
 `effect`. VID is absent. There is no Rebol to compare a picture against — a
 stock 3.22.5 has no `draw` at all — so the check is that Java2D and a real
-browser draw the same paint list the same way, which `./gradlew browserCheck`
-does on every run. The same gate builds the interpreter for the web and runs a
+browser draw the same paint list the same way, which `./gradlew endToEndTests`
+does on every run. The same suite builds the interpreter for the web and runs a
 script that sits in a page's tag.
 
 Every count here comes from `goals.md` and changes with the work. Take the
-current numbers from a run of `./gradlew check` rather than from this page.
+current numbers from a run of `./gradlew allTests` rather than from this page.
 
 ---
 

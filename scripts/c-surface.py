@@ -22,7 +22,7 @@ every argument's datatypes and every refinement. 60 actions and 164 natives.
 `REBTYPE(Name)` block. A declaration says APPEND takes a `map!`; only the arm
 says whether anything happens.
 
-Writes `src/test/resources/r3/c-surface.txt`, which is checked in so that a
+Writes `src/testFixtures/resources/r3/c-surface.txt`, which is checked in so that a
 change to it shows up in a diff and so the audit runs without Rebol's tree on
 disk.
 
@@ -37,7 +37,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 REBOL = Path.home() / "Code" / "personal" / "rebol3-source" / "src"
-OUT = REPO / "src" / "test" / "resources" / "r3" / "c-surface.txt"
+OUT = REPO / "src" / "testFixtures" / "resources" / "r3" / "c-surface.txt"
 
 # A word in a spec block that is not an argument.
 NOT_AN_ARGUMENT = {"return:", "local"}

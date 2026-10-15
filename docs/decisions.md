@@ -317,7 +317,7 @@ source instead:
 
 - `scripts/c-surface.py` records the C surface -- the datatype table, the
   declared specs of all 224 C functions, and which actions each typeclass
-  actually implements -- into `src/test/resources/r3/c-surface.txt`.
+  actually implements -- into `src/testFixtures/resources/r3/c-surface.txt`.
 - `scripts/c-parity.py` compares that against JEBOL's registry.
 - `ActionParityTest` multiplies the datatype table by the arms table and calls
   every pair, which is how a missing arm is found at all.
@@ -355,7 +355,7 @@ which reads directly as a specification of what those functions do.
 The fork also ships `src/tests/units/`: 77 files, 3,290 named tests and
 11,899 assertions, written by the people who maintain the implementation.
 That is a far better source of cases than boundaries we invent. Sixty-seven of
-those files are now imported under `src/test/resources/rebol-suite/` and run on
+those files are now imported under `src/testFixtures/resources/rebol-suite/` and run on
 every build as `RebolSuiteTest`: 10,133 assertions, none of them skipped.
 
 The C is a reference, not a thing to translate. Its `REBVAL` is a tagged
@@ -1758,7 +1758,7 @@ repair of a chain sent out of order or missing an intermediate, and Unicode
 host names.
 
 **The fixtures** are made by `scripts/make-test-certificates.sh` and checked
-in under `src/test/resources/org/jebol/tls/`. It needs OpenSSL 3.4 or later
+in under `src/testFixtures/resources/org/jebol/tls/`. It needs OpenSSL 3.4 or later
 for `-not_before`. Running it again replaces every key, which is harmless,
 since the tests read only what is checked in. `LocalTlsServer` serves any of
 them over TLS 1.2 or 1.3. It can also present a chain with a key that does
@@ -1816,3 +1816,43 @@ every stored key in turn, so filling a map took time in proportion to the
 square of its size. `KeysAlikeApartFromCase` now indexes each stored key by
 its case-folded form, and `MapKeysAlikeApartFromCaseTest` holds a hundred
 thousand writes to the interpreter's five-second limit.
+
+## 45. Three test suites, named for what they hold, each a source set
+
+**The tasks used to be named for history rather than content.** `test` and
+`check` sounded like everything and ran neither the browser nor the network
+tests; `browserCheck` and `networkCheck` were separate gates; only `allTests`
+ran the lot. A run of `test` came back green while the browser gate was red,
+and nothing in the name said it would.
+
+**Now there are three suites and one gate.**
+
+| Task | Source set | What decides membership |
+| --- | --- | --- |
+| `unitTests` | `src/unitTest` | The test never builds an interpreter |
+| `functionalTests` | `src/functionalTest` | The test builds one and runs REBOL through it; Rebol's own suite is here |
+| `endToEndTests` | `src/endToEndTest` | The test drives a real interface: the command line, a real Chrome, real servers on the internet |
+
+`allTests` runs the spec check and all three. `test` and `check` both run
+`allTests`, so no task runs less than its name suggests -- which means `build`
+needs Chrome and the internet too, and that is the price of the names being
+true.
+
+**A test's kind is where it lives, not an annotation on it.** Each suite is a
+Gradle source set, so a new test is filed by the directory it is written in and
+there is no tag to forget. An untagged class used to fall into whichever task
+excluded nothing; now there is no such task. The browser and network tags went
+with the gates they selected for.
+
+**What the three share is a fourth source set, `src/testFixtures`** -- the
+suite host, the corpus runner, the TLS server and its certificates, the timing
+programs, and every test resource. The scripts that run those programs
+(`sweep.py`, `runtime-parity.py`, `timing.py`) put `testFixtures` on their
+classpath. Three programs that read `RebolSuiteTest` -- `ShowAssertion`,
+`ShowFailures`, `SuiteStops` -- live with it in `functionalTest`.
+
+**One check had to learn where the suites are.** `EveryPropertyIsActuallyRunTest`
+found the test classes by asking where its own class was compiled, which after
+the split would have been the unit suite alone, and the rule would have held
+for a third of the tests while reporting green for all of them. It is now
+handed all three directories by the build, and asserts that it was.
