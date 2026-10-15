@@ -75,7 +75,7 @@ public final class FileSystemPort implements FilePort {
     @Override
     public void changeDirectory(String path) {
         Path target = within(path);
-        if (!Files.isDirectory(target)) {
+        if (!Files.isDirectory(reached(path))) {
             throw new Denied("cannot-open", path + " is not a directory",
                     asADirectoryNameFromTheRoot(target),
                     Optional.of(Files.exists(target) ? -NOT_A_DIRECTORY : -NO_SUCH_ENTRY));
@@ -86,7 +86,7 @@ public final class FileSystemPort implements FilePort {
     @Override
     public void makeDirectory(String path, boolean andItsParents) {
         requireWritable();
-        Path target = within(path);
+        Path target = theEntryItself(path);
         if (Files.exists(target) && !Files.isDirectory(target)) {
             throw new Denied("no-create", "cannot make a directory at " + path, path, Optional.empty());
         }
@@ -104,7 +104,7 @@ public final class FileSystemPort implements FilePort {
     @Override
     public boolean delete(String path) {
         requireWritable();
-        Path target = within(path);
+        Path target = theEntryItself(path);
         if (namesADirectory(path) && !Files.isDirectory(target)) {
             if (Files.exists(target)) {
                 throw new Denied("no-delete", "cannot delete " + path, path);
@@ -122,7 +122,7 @@ public final class FileSystemPort implements FilePort {
     public void rename(String from, String to) {
         requireWritable();
         try {
-            Files.move(within(from), within(to));
+            Files.move(theEntryItself(from), theEntryItself(to));
         } catch (IOException refused) {
             throw new Denied("cannot-open", "cannot rename " + from);
         }
@@ -130,7 +130,7 @@ public final class FileSystemPort implements FilePort {
 
     @Override
     public java.util.List<String> namesIn(String path) {
-        Path target = within(path);
+        Path target = reached(path);
         try (java.util.stream.Stream<Path> names = Files.list(target)) {
             return names.map(one -> Files.isDirectory(one)
                             ? one.getFileName() + "/"
@@ -144,7 +144,7 @@ public final class FileSystemPort implements FilePort {
 
     @Override
     public boolean isDirectory(String path) {
-        return Files.isDirectory(within(path));
+        return whatTheNameClaimsIsThere(path).filter(Files::isDirectory).isPresent();
     }
 
     @Override
@@ -156,14 +156,28 @@ public final class FileSystemPort implements FilePort {
             return path;
         }
         try {
-            java.nio.file.Path real = within(path).toRealPath();
-            java.nio.file.Path relative = root.toRealPath().relativize(real);
-            String written = "/" + relative.toString().replace(
-                    File.separatorChar, '/');
-            return Files.isDirectory(real) ? dirized(written) : written;
-        } catch (java.io.IOException | Denied cannotBeResolved) {
+            Path real = reached(path);
+            return Files.exists(real) ? asALocationFromTheRoot(real, theNameWithoutASlash(path)) : null;
+        } catch (Denied cannotBeResolved) {
             return null;
         }
+    }
+
+    @Override
+    public String realLocationOf(String path) {
+        if (hostFilesSeenAtTheirOwnPath.contains(path)) {
+            return path;
+        }
+        return asALocationFromTheRoot(reached(path), path);
+    }
+
+    private String theNameWithoutASlash(String path) {
+        return namesADirectory(path) ? path.substring(0, path.length() - 1) : path;
+    }
+
+    private String asALocationFromTheRoot(Path real, String asWritten) {
+        String written = "/" + theRealRoot().relativize(real).toString().replace(File.separatorChar, '/');
+        return namesADirectory(asWritten) || Files.isDirectory(real) ? dirized(written) : written;
     }
 
     private static String dirized(String written) {
@@ -180,7 +194,7 @@ public final class FileSystemPort implements FilePort {
         try {
             java.nio.file.attribute.BasicFileAttributes read = Files.readAttributes(
                     target, java.nio.file.attribute.BasicFileAttributes.class);
-            String name = asRebolPath(target, read.isDirectory());
+            String name = asRebolPath(within(path), read.isDirectory());
             java.util.Optional<java.time.Instant> modified =
                     java.util.Optional.of(read.lastModifiedTime().toInstant());
             java.util.Optional<java.time.Instant> accessed =
@@ -214,7 +228,7 @@ public final class FileSystemPort implements FilePort {
             throw new Denied("cannot-open", "cannot read " + path, path);
         }
         try {
-            return Files.readAllBytes(within(path));
+            return Files.readAllBytes(reached(path));
         } catch (IOException unreadable) {
             throw new Denied("cannot-open", "cannot read " + path, path);
         }
@@ -224,7 +238,7 @@ public final class FileSystemPort implements FilePort {
     public void appendTo(String path, byte[] contents) {
         refuseWhenReadOnly();
         try {
-            Files.write(within(path), contents,
+            Files.write(reached(path), contents,
                     java.nio.file.StandardOpenOption.CREATE,
                     java.nio.file.StandardOpenOption.APPEND);
         } catch (IOException unwritable) {
@@ -236,7 +250,7 @@ public final class FileSystemPort implements FilePort {
     public void write(String path, byte[] contents) {
         refuseWhenReadOnly();
         try {
-            Files.write(within(path), contents);
+            Files.write(reached(path), contents);
         } catch (IOException unwritable) {
             throw new Denied("cannot-open", "cannot write " + path);
         }
@@ -246,7 +260,7 @@ public final class FileSystemPort implements FilePort {
     public void writeAt(String path, long position, byte[] contents) {
         refuseWhenReadOnly();
         try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(
-                within(path),
+                reached(path),
                 java.nio.file.StandardOpenOption.CREATE,
                 java.nio.file.StandardOpenOption.WRITE)) {
             channel.position(position);
@@ -268,11 +282,24 @@ public final class FileSystemPort implements FilePort {
     }
 
     private java.util.Optional<Path> whatTheNameClaimsIsThere(String path) {
-        Path target = within(path);
-        if (namesADirectory(path) ? Files.isDirectory(target) : Files.exists(target)) {
-            return java.util.Optional.of(target);
+        Optional<Path> target = reachedFromInside(path);
+        if (target.isPresent() && (namesADirectory(path)
+                ? Files.isDirectory(target.get())
+                : Files.exists(target.get()))) {
+            return target;
         }
         return java.util.Optional.empty();
+    }
+
+    private Optional<Path> reachedFromInside(String path) {
+        try {
+            return Optional.of(reached(path));
+        } catch (Denied refused) {
+            if (refused.isASecurityRefusal()) {
+                return Optional.empty();
+            }
+            throw refused;
+        }
     }
 
     private static boolean namesADirectory(String path) {
@@ -297,6 +324,116 @@ public final class FileSystemPort implements FilePort {
             return resolved;
         } catch (InvalidPathException malformed) {
             throw new Denied("outside-root", path + " is not a path this port can resolve");
+        }
+    }
+
+    private Path reached(String path) {
+        if (hostFilesSeenAtTheirOwnPath.contains(path)) {
+            return Path.of(path);
+        }
+        return reachedThrough(within(path), path);
+    }
+
+    private Path reachedThrough(Path lexical, String asWritten) {
+        Path realRoot = theRealRoot();
+        Path landed = new LinksFollowed(asWritten).from(realRoot, root.relativize(lexical));
+        if (!landed.startsWith(realRoot)) {
+            throw outsideTheRoot(asWritten);
+        }
+        return landed;
+    }
+
+    private Path theEntryItself(String path) {
+        Path lexical = within(path);
+        if (hostFilesSeenAtTheirOwnPath.contains(path) || lexical.equals(root)) {
+            return reached(path);
+        }
+        return reachedThrough(lexical.getParent(), path).resolve(lexical.getFileName().toString());
+    }
+
+    private Path theRealRoot() {
+        try {
+            return root.toRealPath();
+        } catch (IOException notThereYet) {
+            return root;
+        }
+    }
+
+    private Denied outsideTheRoot(String path) {
+        return new Denied(Denied.SECURITY, path + " leads out of what this script may reach",
+                path, Optional.empty());
+    }
+
+    private final class LinksFollowed {
+
+        private static final int THE_MOST_LINKS_FOLLOWED = 40;
+
+        private final String asWritten;
+
+        private final Deque<String> namesStillToWalk = new ArrayDeque<>();
+
+        private int linksFollowed;
+
+        private LinksFollowed(String asWritten) {
+            this.asWritten = asWritten;
+        }
+
+        private Path from(Path start, Path names) {
+            putInFront(names);
+            Path current = start;
+            while (!namesStillToWalk.isEmpty()) {
+                current = oneStepFrom(current, namesStillToWalk.removeFirst());
+            }
+            return withTheNamesTheMachineGivesIt(current);
+        }
+
+        private Path oneStepFrom(Path current, String name) {
+            if (name.isEmpty() || name.equals(".")) {
+                return current;
+            }
+            if (name.equals("..")) {
+                return current.getParent() == null ? current : current.getParent();
+            }
+            Path next = current.resolve(name);
+            if (!Files.isSymbolicLink(next)) {
+                return next;
+            }
+            Path target = whereTheLinkPoints(next);
+            putInFront(target);
+            return target.isAbsolute() ? target.getRoot() : current;
+        }
+
+        private Path whereTheLinkPoints(Path link) {
+            linksFollowed++;
+            if (linksFollowed > THE_MOST_LINKS_FOLLOWED) {
+                throw outsideTheRoot(asWritten);
+            }
+            try {
+                return Files.readSymbolicLink(link);
+            } catch (IOException unreadable) {
+                throw outsideTheRoot(asWritten);
+            }
+        }
+
+        private void putInFront(Path names) {
+            for (int at = names.getNameCount() - 1; at >= 0; at--) {
+                namesStillToWalk.addFirst(names.getName(at).toString());
+            }
+        }
+
+        private Path withTheNamesTheMachineGivesIt(Path walked) {
+            Path existing = walked;
+            while (existing != null && !Files.exists(existing)) {
+                existing = existing.getParent();
+            }
+            if (existing == null) {
+                return walked;
+            }
+            try {
+                return existing.toRealPath().resolve(existing.relativize(walked));
+            } catch (IOException unresolvable) {
+                return walked;
+            }
         }
     }
 

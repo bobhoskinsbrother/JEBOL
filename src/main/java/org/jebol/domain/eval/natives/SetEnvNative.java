@@ -2,6 +2,8 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.security.PolicyAccess;
+import org.jebol.domain.eval.security.PolicyClass;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.NoneValue;
 import org.jebol.domain.value.StringValue;
@@ -10,6 +12,7 @@ import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.Value;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public class SetEnvNative extends EnvironmentNative {
@@ -34,6 +37,7 @@ public class SetEnvNative extends EnvironmentNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.ENVIRONMENT);
+            evaluator.policies().require(PolicyClass.ENVR, PolicyAccess.WRITE, Optional.of(arguments.getFirst()));
             Value given = arguments.get(1);
             String variable = theVariableNamedBy(arguments.getFirst());
             return throughTheFileSystem(() -> {

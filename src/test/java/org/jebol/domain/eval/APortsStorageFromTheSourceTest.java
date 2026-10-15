@@ -3,7 +3,7 @@ package org.jebol.domain.eval;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.List;
+import java.util.Optional;
 
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
@@ -26,8 +26,18 @@ class APortsStorageFromTheSourceTest {
         }
 
         @Override
-        public List<String> addressesFor(String hostName) {
-            return List.of("203.0.113.1");
+        public Optional<String> theFirstIpv4AddressOf(String hostName) {
+            return Optional.of("203.0.113.1");
+        }
+
+        @Override
+        public Optional<String> theNameAt(String ipv4Address) {
+            return Optional.empty();
+        }
+
+        @Override
+        public String thisMachinesName() {
+            return "a-canned-server";
         }
 
         @Override

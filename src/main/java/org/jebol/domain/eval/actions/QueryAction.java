@@ -7,6 +7,7 @@ import org.jebol.domain.host.FilePort;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.security.PolicyAccess;
 import org.jebol.domain.eval.VectorQuery;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.AnyBlockValue;
@@ -117,6 +118,9 @@ public class QueryAction extends PortAction {
         granted.require(HostService.FILES);
         if (path.isEmpty()) {
             return NoneValue.none();
+        }
+        if (ports.namesADirectory(path, evaluator)) {
+            ports.requireTheFilePolicy(path, evaluator, Set.of(PolicyAccess.READ));
         }
         FilePort files = evaluator.files();
         return ports.throughTheFileSystem(() -> files.informationAbout(path)

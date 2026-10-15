@@ -1,6 +1,5 @@
 package org.jebol.domain.host;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -20,14 +19,20 @@ import java.util.Optional;
 public interface NetworkPort {
 
     /**
-     * The addresses a name stands for, or an empty list.
+     * The first IPv4 address a name stands for, written with dots, or empty.
      *
      * <p>Empty rather than a thrown failure, because "there is no such host"
      * is a true answer a script has to act on and one it will meet often. The
      * refusal is for the service not being granted, and it happens before
      * this is reached.
      */
-    List<String> addressesFor(String hostName);
+    Optional<String> theFirstIpv4AddressOf(String hostName);
+
+    /** The name an IPv4 address, written with dots, belongs to, or empty. */
+    Optional<String> theNameAt(String ipv4Address);
+
+    /** What this machine calls itself. */
+    String thisMachinesName();
 
     /**
      * A connection to a host and port, or a refusal saying why it could not
@@ -98,8 +103,18 @@ public interface NetworkPort {
         return new NetworkPort() {
 
             @Override
-            public List<String> addressesFor(String hostName) {
+            public Optional<String> theFirstIpv4AddressOf(String hostName) {
                 throw refuse(hostName);
+            }
+
+            @Override
+            public Optional<String> theNameAt(String ipv4Address) {
+                throw refuse(ipv4Address);
+            }
+
+            @Override
+            public String thisMachinesName() {
+                throw refuse("");
             }
 
             @Override

@@ -67,7 +67,7 @@ that is where the banner comes from. Type an expression and press enter.
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════╗
-║  REBOL/core 3.22.5 (Oldes branch)                                        ║
+║  REBOL/core 3.22.5 (JEBOL port)                                          ║
 ...
 >> 2 + 3 * 4
 == 20
@@ -181,11 +181,8 @@ http and https schemes answer through it. A host that supplies no HTTP port
 leaves those schemes to Rebol's own protocol, which opens a `NETWORK`
 connection of its own.
 
-The file port is rooted at one directory and that root is a boundary. A path
-that goes outside the root is refused. This is true whether the path climbs
-with `..` or names an absolute path from the start.
-
-Each interpreter keeps its own working directory inside that root. A Java
+Each interpreter keeps its own working directory inside the file port's root.
+A Java
 process cannot change its own working directory, thus the port holds it. One
 interpreter can never move another.
 
@@ -197,6 +194,264 @@ ever offer it.
 
 This error is more important than it looks. A read that quietly answered none
 would read as an empty file. A script could not tell the two apart.
+
+### Two layers decide what a file access may do
+
+Every file access passes two checks, in this order.
+
+1. **The host's root.** The file port is rooted at one folder, and nothing
+   outside that folder can be read, written, listed, deleted or renamed. The
+   host decides this, and the script cannot change it.
+2. **Rebol's security policies.** Rebol's own SECURE function records what
+   the script may touch, and JEBOL checks those records where R3 checks them.
+   SECURE can only narrow what the root and the grants allow. It can never
+   widen them.
+
+The same order holds for every other service. A service the host did not
+grant is refused before any policy is read, so `secure allow` does not bring
+it back.
+
+The examples below use this folder. Every one was run through JEBOL. In the
+output, the folder is shortened to `/work/projects` and the home folder to
+`/Users/ana`. Each error also prints its `** Where:` and `** Near:` lines,
+which are left out here.
+
+```
+/work/projects/
+    secret.txt
+    shared/logo.txt
+    app/
+        main.r3
+        notes.txt               "app notes"
+        again.txt         ->    notes.txt                 (a link inside app)
+        logo.txt          ->    ../shared/logo.txt        (a link out of app)
+        assets/door.txt   ->    ../../secret.txt          (a link out of app)
+        dangling.txt      ->    ../../outside-new.txt     (points at nothing yet)
+```
+
+### The root
+
+The script sees the root as `/`. A path that climbs with `..` stops at the
+root, because `/..` is `/` on any machine. An absolute path names a file
+inside the root, never one on the machine.
+
+Symbolic links are followed. A link that lands inside the root works like any
+other path. A link that leads out of the root is refused with a `security`
+error that names the path as the script wrote it, so the script never learns
+where the root sits. A link that points at nothing yet is judged by where a
+write through it would land, so a script cannot use one to make a file
+outside. More than forty links in a row are refused, which is where a POSIX
+kernel gives up too.
+
+With the command line, `--root /work/projects/app` gives a script that root.
+The script is then named inside the root, as `/main.r3`. With `-s`, every
+policy allows, so only the root decides:
+
+```
+>> what-dir
+== %/
+>> read/string %again.txt
+== "app notes^/"
+>> read/string %../secret.txt          ; .. stops at the root: this is /secret.txt
+** Access error: cannot open: %../secret.txt reason: 3
+>> read/string %logo.txt               ; a link out of the root
+** Access error: security violation: %logo.txt  (refer to SECURE function)
+>> read/string %assets/door.txt        ; the same, one folder down
+** Access error: security violation: %assets/door.txt  (refer to SECURE function)
+>> write %dangling.txt "x"             ; writing through a link to nothing yet
+** Access error: security violation: %dangling.txt  (refer to SECURE function)
+>> exists? %logo.txt                   ; a link out looks like nothing there
+== _
+>> delete %logo.txt                    ; removes the link; shared/logo.txt stays
+```
+
+From Java, a host gets the same behaviour by rooting the port:
+
+```java
+Interpreter interpreter = Interpreter.withBounds(
+        Bounds.standard().granting(HostService.FILES));
+interpreter.useFileSystem(FileSystemPort.rootedAt(Path.of("/work/projects/app")));
+
+ScriptOutcome linked = interpreter.run("read %assets/door.txt");
+// RAISED: ** Access error: security violation: %assets/door.txt
+```
+
+Deleting, renaming and making a folder act on the entry the path names. They
+do not act on what a link points to. The folders above that entry are still
+followed, and they must still land inside the root.
+
+### Rebol's security policies
+
+An embedded interpreter starts with every policy at allow. Only the root and
+the grants limit it until the script, or the host, calls SECURE.
+
+The command line runs Rebol's own start, as r3 does, and start sets Rebol's
+default policy. A script may read and write in its own folder and in the data
+folder. It may read in the home folder but not write there. Anything else
+asks first. No one can answer a question while a script runs, so the answer
+is no. `secure query` shows what is in force:
+
+```
+[
+    file ask
+    %/work/projects/app/ allow
+    %/Users/ana/.rebol/ allow
+    %/Users/ana/ [allow read ask write allow execute]
+    net allow
+    secure allow
+    protect allow
+    debug allow
+    envr allow
+    call allow
+    browse allow
+    extension allow
+]
+```
+
+So `jebol main.r3`, run in `/work/projects/app`:
+
+```
+>> read/string %notes.txt
+== "app notes^/"
+>> read/string %again.txt             ; a link inside the folder is followed
+== "app notes^/"
+>> read/string %../secret.txt
+** Access error: security violation: %/work/projects/secret.txt  (refer to SECURE function)
+>> write %../written.txt "x"          ; refused, and nothing is written
+** Access error: security violation: %/work/projects/written.txt  (refer to SECURE function)
+>> read/string %logo.txt              ; judged by where the link leads
+** Access error: security violation: %/work/projects/shared/logo.txt  (refer to SECURE function)
+>> read/string %assets/door.txt
+** Access error: security violation: %/work/projects/secret.txt  (refer to SECURE function)
+```
+
+A bare `jebol`, with no script, has no folder of its own. A file in the
+folder where it started therefore asks first. At a terminal, you answer, and
+yes is remembered. With input piped in, the answer is no. This is the same as
+r3. Start it with `-s` to reach everything.
+
+A script that does not catch the violation stops there, and the command line
+exits with status 1. A script can catch it like any error. The error is
+`access`/`security`, and `arg1` names the file.
+
+**Here JEBOL differs from R3 on purpose.** R3 checks the path as it is
+written and never looks at where a link points. In R3, `logo.txt` and
+`assets/door.txt` above are read. JEBOL checks where the link really leads,
+and the violation names that place.
+
+#### The switches
+
+| Command | What happens |
+| --- | --- |
+| `jebol main.r3` | Rebol's default policy, as above. |
+| `jebol -s main.r3` | Every policy allows. The script reads `../secret.txt`. |
+| `jebol --secure allow main.r3` | The same as `-s`. |
+| `jebol +s main.r3` | Every policy asks, so start's own PROTECT is refused. The script never runs. The command line prints `security violation: system/options/boot-level` and exits with 1. |
+| `jebol --secure throw main.r3` | The same as `+s`. |
+| `jebol --secure quit main.r3` | Start's own PROTECT ends the process at once. Nothing is printed, and the exit status is 101. |
+
+The `+s` result surprises people. It is what a real r3 3.22.5 does, and
+JEBOL agrees with it.
+
+#### A script can narrow its own policy
+
+A script can only narrow its own policy. It can never get past the root or
+the grants:
+
+```
+>> secure [file [allow read throw write]]
+>> read/string %notes.txt
+== "app notes^/"
+>> write %notes.txt "changed"
+** Access error: security violation: %/work/projects/app/notes.txt  (refer to SECURE function)
+
+>> secure [envr throw call throw net throw debug throw]
+>> get-env "HOME"
+** Access error: security violation: "HOME"  (refer to SECURE function)
+>> call/wait "true"
+** Access error: security violation: "true"  (refer to SECURE function)
+>> open tcp://example.com:80
+** Access error: security violation: tcp://example.com:80  (refer to SECURE function)
+>> trace on                            ; no subject, so the class is named
+** Access error: security violation: debug  (refer to SECURE function)
+
+>> secure [file 5]
+** access error: invalid file security policy: 5
+```
+
+Note the parentheses when the policy is built. SECURE takes its argument
+unevaluated, so write `secure (compose [file throw (folder) allow])`, as
+Rebol's own start does. Without them, SECURE receives the word `compose`:
+
+```
+>> secure compose [file throw (folder) allow]
+** access error: invalid all security policy: compose
+```
+
+Each level means one thing:
+
+| Level | What happens |
+| --- | --- |
+| `allow` | The access goes ahead. |
+| `ask` | Rebol's own `confirm-policy` asks at the terminal: yes, no, once or quit. Yes is remembered as a policy for that file. With no terminal, the answer is no. |
+| `throw` | A `security` error, naming the file, url or variable. Where nothing is named, as for TRACE, it names the class. |
+| `quit` | The run ends at once with 101. TRY does not catch it. A host sees `QUIT_EARLY` with the value 101. |
+
+A host can set a policy for the script before it runs. The host's grants are
+still the ceiling:
+
+```java
+interpreter.run("secure [file [allow read throw write]]");
+interpreter.run("write %notes.txt {changed}");
+// RAISED: ** Access error: security violation: %/notes.txt
+
+interpreter.run("secure allow");
+interpreter.run("call/wait {true}");
+// RAISED: processes is not granted. SECURE cannot grant what the host held back.
+```
+
+#### What is checked and what is not
+
+JEBOL checks a policy at the same points the C does, and nowhere else.
+
+| Checked | Against |
+| --- | --- |
+| READ, LOAD and DO of a file. OPEN without /write, and OPEN/read. | `file` read |
+| WRITE, WRITE/append, CREATE. OPEN without /read, OPEN/write and OPEN/new. | `file` write |
+| READ, OPEN, QUERY and EXISTS? of a folder | `file` read |
+| MAKE-DIR, DELETE and RENAME of a folder | `file` write |
+| OPEN of a tcp or udp port. HTTP and HTTPS are checked through the tcp port they open. | `net` execute, naming the address |
+| CALL | `call` execute |
+| BROWSE | `browse` execute |
+| GET-ENV / SET-ENV | `envr` read / write |
+| PROTECT / UNPROTECT | `protect` write / read |
+| EVOKE, STACK, TRACE | `debug` read |
+| LOAD-EXTENSION of a file | `extension` execute |
+
+The C does not check these, so JEBOL does not check them either. Under the
+default policy, each one works one folder up:
+
+```
+>> size? %../secret.txt
+== 7
+>> rename %../secret.txt %../renamed.txt    ; goes ahead
+>> delete %../renamed.txt                   ; goes ahead
+>> exists? %../shared/                      ; a folder: queried, refused, so none
+== _
+```
+
+- DELETE, RENAME, QUERY and MODIFY of a file. This includes SIZE?,
+  MODIFIED? and EXISTS? of a file.
+- ECHO and IMAGE/SAVE, which write without the file actor.
+- A port that is already open. OPEN was checked, and reads and writes after
+  it are not.
+- LIST-ENV, PROTECTED? and reading a `dns://` url.
+- The `eval` and `memory` limits. LIMIT-USAGE is gone before any script runs,
+  in R3 as here, so `secure [eval 1000]` fails with `limit-usage has no
+  value`.
+
+The root still bounds every one of these. A host that roots a script in its
+own folder keeps it there, whatever the policy allows.
 
 ---
 

@@ -1,7 +1,10 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.security.PolicyAccess;
+import org.jebol.domain.eval.security.PolicyClass;
 
+import java.util.Optional;
 import java.util.Set;
 
 public class UnprotectNative extends ProtectingNative {
@@ -21,6 +24,7 @@ public class UnprotectNative extends ProtectingNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
+            evaluator.policies().require(PolicyClass.PROTECT, PolicyAccess.READ, Optional.of(arguments.getFirst()));
             protectionChanged(arguments.getFirst(), UNPROTECTED, refinements);
             return arguments.getFirst();
         };

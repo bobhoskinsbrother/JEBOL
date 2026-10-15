@@ -467,6 +467,12 @@ rule ARootedScriptReadsEveryPathInsideItsRoot {
 -- So the two defaults are opposite on purpose. Embedding grants nothing
 -- because the useful set is the one nobody guessed; the command line grants
 -- everything because a shell tool that cannot read a file is not a tool.
+--
+-- Granting is not the same as allowing. Rebol's own start then sets its
+-- default policy -- TheSecurityFlagsSetTheFirstPolicy -- and a bare console,
+-- having no script, gets no folder of its own: reading a file where it was
+-- started asks at the terminal, and with nothing to answer is a security
+-- violation, exactly as in r3. `-s` allows everything.
 rule TheCommandLineGrantsEveryService {
     when: line: CommandLine.created
 
@@ -668,6 +674,39 @@ rule TheDataSwitchIsRebolHome {
     requires: the_command_line_named_a_data_directory()
 
     ensures: environment_variable("REBOL_HOME") = the_data_directory_named()
+}
+
+-- The banner names this as the JEBOL port, where Rebol's own says "Oldes
+-- branch". The line is `mezz-banner.reb`'s, borrowed with that one edit:
+-- everything else in the box is Rebol's, and the version stays 3.22.5
+-- because that is the Rebol this ports.
+rule TheBannerNamesTheJebolPort {
+    when: line: CommandLine.created
+    requires: the_banner_is_printed()
+
+    ensures: the_banners_title_line() = "REBOL/core 3.22.5 (JEBOL port)"
+}
+
+-- `-s`, `+s` and `--secure` reach start as flags, and start turns them into
+-- the first SECURE call, as `sys-start.reb` does: `-s` allows everything,
+-- `+s` asks about everything, and `--secure` sets every class to the level
+-- named. Without any of them start makes the default policy, which lets a
+-- script reach its own folder and asks about the rest.
+--
+-- What follows is then the policies' doing and not the host's. Start's own
+-- next step protects `system/options/boot-level`, so under `+s` or
+-- `--secure throw` that PROTECT is refused and start ends with a security
+-- violation and exit status 1 before the script is read -- exactly what a
+-- real 3.22.5 prints. Under `--secure quit` the same PROTECT ends the process
+-- with 101 and prints nothing.
+rule TheSecurityFlagsSetTheFirstPolicy {
+    when: line: CommandLine.created
+    requires: secure_min in line.flags or secure_max in line.flags or secure in line.flags
+
+    ensures: the_first_secure_call() =
+        if secure_min in line.flags: allow
+        else if secure_max in line.flags: ask
+        else: the_level_named(line)
 }
 
 actor ConsoleUser {

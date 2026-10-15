@@ -1,6 +1,8 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.security.PolicyAccess;
+import org.jebol.domain.eval.security.PolicyClass;
 import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.AnyPathValue;
 import org.jebol.domain.value.BlockValue;
@@ -9,6 +11,7 @@ import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
 
+import java.util.Optional;
 import java.util.Set;
 
 public class ProtectNative extends ProtectingNative {
@@ -29,6 +32,7 @@ public class ProtectNative extends ProtectingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value target = arguments.getFirst();
+            evaluator.policies().require(PolicyClass.PROTECT, PolicyAccess.WRITE, Optional.of(target));
             if (refinements.contains("hide") && target instanceof AnyWordValue word) {
                 word.boundSlot().hide(true);
                 return target;

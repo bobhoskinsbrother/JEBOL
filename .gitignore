@@ -43,3 +43,4 @@
 .idea/
 *.iml
 .vscode/
+/rebol3-source/

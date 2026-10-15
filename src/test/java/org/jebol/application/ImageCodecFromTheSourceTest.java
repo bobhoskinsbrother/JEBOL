@@ -75,6 +75,24 @@ class ImageCodecFromTheSourceTest {
     }
 
     @Test
+    @DisplayName("with no codec named, saving to none writes PNG, as the C's cleared codec type is PNG")
+    void noCodecNamedWritesPngToABinary(@TempDir Path directory) {
+        assertThat(answerTo(reaching(directory), """
+                copy/part image/save none make image! 2x2 8""")).isEqualTo("#{89504E470D0A1A0A}");
+    }
+
+    @Test
+    @DisplayName("and saving to a file writes PNG there, whatever the file's suffix says")
+    void noCodecNamedWritesPngToAFile(@TempDir Path directory) throws IOException {
+        answerTo(reaching(directory), """
+                image/save %saved.png make image! 2x2
+                image/save %saved.jpg make image! 2x2""");
+
+        assertThat(Files.readAllBytes(directory.resolve("saved.png"))).startsWith(0x89, 'P', 'N', 'G');
+        assertThat(Files.readAllBytes(directory.resolve("saved.jpg"))).startsWith(0x89, 'P', 'N', 'G');
+    }
+
+    @Test
     @DisplayName("saving to none answers a binary, and every format reads back")
     void savingToNoneAnswersABinaryThatReadsBack(@TempDir Path directory)
             throws IOException {

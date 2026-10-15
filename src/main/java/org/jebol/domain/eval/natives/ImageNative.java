@@ -14,6 +14,8 @@ public class ImageNative extends DefaultNative {
 
     private static final int THE_FIRST_FRAME = 1;
 
+    private static final String THE_CODEC_NOBODY_NAMED_IS = "png";
+
     @Override
     public String nativeName() {
         return "image";
@@ -108,7 +110,9 @@ public class ImageNative extends DefaultNative {
     private Value imageSaved(List<Value> arguments, Evaluator evaluator,
             Set<String> refinements) {
 
-        String type = codecNamed(arguments, evaluator, refinements);
+        String type = Optional.of(codecNamed(arguments, evaluator, refinements))
+                .filter(named -> !named.isEmpty())
+                .orElse(THE_CODEC_NOBODY_NAMED_IS);
         Value destination = argumentOf("save", 0, arguments, refinements)
                 .orElseGet(NoneValue::none);
         Value given = argumentOf("save", 1, arguments, refinements)

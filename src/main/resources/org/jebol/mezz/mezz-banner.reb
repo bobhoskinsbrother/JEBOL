@@ -55,7 +55,7 @@ if all [
 
 sys/boot-banner: make-banner [
 	-
-	["REBOL/" system/product #" " system/version " (Oldes branch)"]
+	["REBOL/" system/product #" " system/version " (JEBOL port)"]
 	-
 	= Copyright: "2012 REBOL Technologies"
 	= "" "2012-2026 Rebol Open Source Contributors"

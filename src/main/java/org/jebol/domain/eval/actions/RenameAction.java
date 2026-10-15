@@ -5,6 +5,7 @@ import org.jebol.domain.host.FilePort;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.security.PolicyAccess;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.Datatype;
 import org.jebol.domain.value.BlockValue;
@@ -54,9 +55,15 @@ public class RenameAction extends PortAction {
             throw Raised.of(EvaluationFailure.NO_RENAME, asked);
         }
         granted.require(HostService.FILES);
+        if (from.schemeName().equals("dir")) {
+            ports.requireTheFilePolicy(ports.pathOf(from), evaluator, Set.of(PolicyAccess.WRITE));
+        }
         try {
             evaluator.files().rename(ports.pathOf(from), to.text());
         } catch (FilePort.Denied refused) {
+            if (refused.isASecurityRefusal()) {
+                throw refused.raised();
+            }
             throw Raised.of(EvaluationFailure.NO_RENAME, asked);
         }
         return from;

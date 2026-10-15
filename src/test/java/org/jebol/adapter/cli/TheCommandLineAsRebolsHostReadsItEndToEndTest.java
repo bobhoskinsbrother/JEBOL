@@ -270,7 +270,7 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
         @Test
         @DisplayName("the launcher is visible and readable inside a root, so start resolves it and says nothing")
         void theLauncherIsReadableInsideARoot() {
-            Ran ran = running("--root", directory.toString(), "--do", """
+            Ran ran = running("-s", "--root", directory.toString(), "--do", """
                     b: system/options/boot
                     probe exists? b
                     probe (file-checksum b 'md5) = checksum read b 'md5

@@ -7,7 +7,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.*;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Optional;
 
 /** The network as the JDK already provides it, with nothing cached. */
 public final class JavaSockets implements NetworkPort {
@@ -17,13 +17,33 @@ public final class JavaSockets implements NetworkPort {
     private static final int MOST_BYTES_AT_ONCE = 65_536;
 
     @Override
-    public List<String> addressesFor(String hostName) {
+    public Optional<String> theFirstIpv4AddressOf(String hostName) {
         try {
             return Arrays.stream(InetAddress.getAllByName(hostName))
+                    .filter(Inet4Address.class::isInstance)
                     .map(InetAddress::getHostAddress)
-                    .toList();
+                    .findFirst();
         } catch (UnknownHostException noSuchHost) {
-            return List.of();
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<String> theNameAt(String ipv4Address) {
+        try {
+            String named = InetAddress.getByName(ipv4Address).getHostName();
+            return named.equals(ipv4Address) ? Optional.empty() : Optional.of(named);
+        } catch (UnknownHostException notAnAddress) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public String thisMachinesName() {
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException unnamed) {
+            return InetAddress.getLoopbackAddress().getHostName();
         }
     }
 

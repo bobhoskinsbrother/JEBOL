@@ -4,6 +4,7 @@ import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.security.PolicyAccess;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.UrlValue;
@@ -47,6 +48,7 @@ public class CreateAction extends PortAction {
         }
         granted.require(HostService.FILES);
         String path = ports.pathOf(port);
+        ports.requireTheFilePolicy(path, evaluator, Set.of(PolicyAccess.WRITE));
         return ports.throughTheFileSystem(() -> {
             if (path.endsWith("/")) {
                 evaluator.files().makeDirectory(path, NOT_ITS_PARENTS);

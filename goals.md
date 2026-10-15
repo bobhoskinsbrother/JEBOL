@@ -55,24 +55,10 @@ Read `CLAUDE.md` first.
 
 ## The goals
 
-Ordered by importance. The first four take JEBOL to Android, then to iOS, with
+Ordered by importance. The first three take JEBOL to Android, then to iOS, with
 the defects that would hurt there fixed before each stage. Agreeing with the C
 comes before improving on it: a place where JEBOL answers something a real
 3.22.5 does not is a defect.
-
-### 3. What a script may touch
-
-Apps will run scripts with the phone's files and features in reach, so how
-much a script is allowed is settled before goal 5.
-
-1. **A script reads and writes outside its own folder.** `read %../outside.txt`,
-   `read %/etc/hosts` and `write %../written.txt "x"` all work here; R3 refuses
-   each with `Access security`, naming the folder or file. Checked against
-   `./r3-head` on 2026-10-10.
-2. **SECURE is not enforced.** `+s script.r3` runs here where r3 stops with a
-   security violation, and SECURE's settings are not consulted. Where SECURE's
-   boundary sits is an open question in `natives.allium`, and it sits beside
-   JEBOL's own grants in `Bounds`: decide how the two combine first.
 
 ### 4. One way to plug in extra functions, and know what is plugged in
 
@@ -258,12 +244,11 @@ interpreters -- reads as missing.
   `TheFateOfATasksBodyIsTheHostsToDecide` in `spec/natives.allium`.
 - **`access-os` answers `not-here` for `uid`, `euid`, `gid` and `egid`.** The
   JVM has no portable way to ask.
-- **65 open questions across the spec files**, 30 of them in
+- **65 open questions across the spec files**, 28 of them in
   `natives.allium`. Unowned by any goal: the three in `parse.allium`, the five
   in `embed.allium`, and the design questions in `natives.allium` (whether a
   `struct!` is more than its layout, which verbs reach a port's actor, whether
-  values may cross between interpreters). Where SECURE's boundary sits belongs
-  to goal 3.
+  values may cross between interpreters).
 
 ### 14. Verify a fetched module
 
@@ -309,12 +294,11 @@ grants it runs under; and whether a script may debug itself.
 1. **`--trace` does not trace the boot.** Do with goal 15.
 2. **The version and build differ.** `Rebol/core 3.22.5` here against
    `Rebol/Bulk 3.22.5 (...)` and its copyright lines, and `system/build` is none
-   in every field. What JEBOL should claim is a decision.
+   in every field. The banner's title line is decided -- it says "(JEBOL
+   port)" -- and the rest of what JEBOL claims is still a decision.
 3. **A `quit/return 42` typed at the console leaves with nought.** R3 leaves
    with 42, because its console carries what QUIT held out to the process. The
    console loop here returns without it.
-
-SECURE not being enforced is part of goal 3.
 
 ### 18. Take the network out of the gate
 
@@ -366,6 +350,13 @@ still reads slow after the paint work:
   real 3.22.5 and is refused here, and a TLS 1.2 elliptic curve server reads
   here and fails there. The vendored `prot-tls.reb` carries four edits for
   it. Decision 43 and finding 222 say what and why.
+- **A file is judged by where it really leads, where R3 judges the path as
+  written, on purpose.** A symbolic link in a script's own folder pointing out
+  of it reads in a real 3.22.5 and is a security violation here, naming where
+  it leads; a link leaving a host's `--root` is refused even with every policy
+  at allow. Links that stay inside are followed. `AFileIsJudgedByWhereItReallyLeads`
+  in `spec/natives.allium` and `ALinkLeavingTheRootIsRefused` in
+  `spec/embed.allium`.
 - **No Java PDF implementation.** The borrowed codec is what Rebol has; more
   than that is a library the caller adds.
 

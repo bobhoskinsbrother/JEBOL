@@ -47,6 +47,9 @@
 #   prot-tls.reb         four edits that make a server's certificate and
 #                        signature count. Read decision 43 before taking a
 #                        newer copy, or the checks silently go.
+#   mezz-banner.reb      the banner's title line says "(JEBOL port)" where
+#                        Rebol's says "(Oldes branch)". Keep the edit when
+#                        taking a newer copy.
 #
 # BorrowedFilesLoadWholeTest fails if any file stops partway, and its list
 # of known stops is empty. A file that stops defines nothing below the line

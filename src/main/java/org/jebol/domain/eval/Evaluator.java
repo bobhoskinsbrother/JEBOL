@@ -3,6 +3,7 @@ package org.jebol.domain.eval;
 import org.jebol.domain.host.*;
 import org.jebol.domain.eval.ports.HttpSchemeActor;
 import org.jebol.domain.eval.ports.ServesPortActions;
+import org.jebol.domain.eval.security.PolicyEnforcement;
 import org.jebol.domain.value.Construction;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.read.Transcoder;
@@ -53,6 +54,8 @@ public final class Evaluator {
     private int framesOpen;
 
     private final Trace trace = new Trace();
+
+    private final PolicyEnforcement policies = new PolicyEnforcement(this);
 
     public Trace tracing() {
         return trace;
@@ -512,6 +515,10 @@ public final class Evaluator {
 
     public Context systemContext() {
         return systemContext;
+    }
+
+    public PolicyEnforcement policies() {
+        return policies;
     }
 
     public SymbolTable symbols() {

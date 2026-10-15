@@ -2,9 +2,12 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.security.PolicyAccess;
+import org.jebol.domain.eval.security.PolicyClass;
 import org.jebol.domain.value.*;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public class EvokeNative extends DefaultNative {
@@ -43,6 +46,7 @@ public class EvokeNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
+            evaluator.policies().require(PolicyClass.DEBUG, PolicyAccess.READ, Optional.empty());
             List<Value> chants = arguments.getFirst() instanceof AnyBlockValue several
                     ? several.remaining()
                     : List.of(arguments.getFirst());

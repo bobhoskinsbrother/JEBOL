@@ -1,9 +1,11 @@
 package org.jebol.domain.eval.ports;
 
+import org.jebol.domain.eval.security.PolicyAccess;
 import org.jebol.domain.value.EvaluationFailure;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.FileValue;
 
+import java.util.EnumSet;
 import java.util.Set;
 
 record OpeningAFile(Set<String> refinements) {
@@ -24,6 +26,17 @@ record OpeningAFile(Set<String> refinements) {
 
     private boolean namesNeitherWay() {
         return !refinements.contains("read") && !refinements.contains("write");
+    }
+
+    Set<PolicyAccess> theAccessesItAsksFor() {
+        Set<PolicyAccess> asked = EnumSet.noneOf(PolicyAccess.class);
+        if (mayRead()) {
+            asked.add(PolicyAccess.READ);
+        }
+        if (mayWrite()) {
+            asked.add(PolicyAccess.WRITE);
+        }
+        return asked;
     }
 
     boolean emptiesWhatIsThere() {

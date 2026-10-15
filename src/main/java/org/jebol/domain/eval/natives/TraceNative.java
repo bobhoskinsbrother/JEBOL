@@ -2,9 +2,12 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.Trace;
+import org.jebol.domain.eval.security.PolicyAccess;
+import org.jebol.domain.eval.security.PolicyClass;
 import org.jebol.domain.value.*;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public class TraceNative extends DefaultNative {
@@ -27,6 +30,7 @@ public class TraceNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
+            evaluator.policies().require(PolicyClass.DEBUG, PolicyAccess.READ, Optional.empty());
             Value mode = arguments.getFirst();
             Trace tracing = evaluator.tracing();
             tracing.writeTo(evaluator.output());

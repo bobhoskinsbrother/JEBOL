@@ -3,6 +3,8 @@ package org.jebol.domain.eval.natives;
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.security.PolicyAccess;
+import org.jebol.domain.eval.security.PolicyClass;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.GetPathValue;
 import org.jebol.domain.value.BlockValue;
@@ -23,6 +25,7 @@ import org.jebol.domain.value.GetWordValue;
 import org.jebol.domain.value.WordValue;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public class CallNative extends HostNative {
@@ -55,6 +58,7 @@ public class CallNative extends HostNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.PROCESSES);
+            evaluator.policies().require(PolicyClass.CALL, PolicyAccess.EXECUTE, Optional.of(arguments.getFirst()));
             ProgramCalling calling = new ProgramCalling(
                     commandWordsOf(arguments.getFirst(), evaluator, context), refinements,
                     argumentOf("input", 0, arguments, refinements),

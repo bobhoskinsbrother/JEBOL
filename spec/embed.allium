@@ -467,6 +467,63 @@ rule TheDotsAreWorkedOutAndClampAtTheRoot {
     ensures: not is_outside(the_root, the_file_reached(path))
 }
 
+-- Symbolic links are followed, and a link that leads out of the root is
+-- refused.
+--
+-- The dots alone are not the whole of confinement. A link inside the root
+-- pointing at `/etc` is a door the dots never see, and a filesystem that
+-- followed it would hand a confined script the machine. Refusing to follow
+-- links at all would be safe and wrong: an app that keeps a folder of
+-- shared assets linked into each user's space is an ordinary app.
+--
+-- So every access is judged by where the path really lands, each link along
+-- it followed as the operating system would follow it, and anywhere outside
+-- the root is refused with `security`, naming the path as the script wrote
+-- it -- the real location is the host's to know, and naming it would tell
+-- the script where its root sits. Inside the root, a link is followed like
+-- any other path.
+--
+-- A link that dangles is judged by where its target would be, because that
+-- is where a write through it lands. A chain of more than forty links is
+-- refused the same way rather than followed for ever: forty is the limit a
+-- POSIX kernel gives up at.
+rule ALinkLeavingTheRootIsRefused {
+    when: a_confined_script_names(path)
+    requires: is_outside(the_root, the_real_location_of(path))
+        or more_than_forty_links_lie_along(path)
+
+    ensures: CallFails(error: security, arg1: path)
+    ensures: nothing_outside_the_root_is_read_or_written()
+}
+
+rule ALinkLandingInsideTheRootIsFollowed {
+    when: a_confined_script_names(path)
+    requires: not is_outside(the_root, the_real_location_of(path))
+
+    ensures: the_file_reached(path) = the_real_location_of(path)
+}
+
+-- Deleting, renaming and making a directory act on the entry the path names,
+-- not on what it points to. Deleting a link removes the link and leaves its
+-- target alone, as `rm` does; only the folders above the entry are followed,
+-- and those must still land inside the root.
+rule RemovingALinkRemovesTheLinkItself {
+    when: script_changes_the_entry(path, action)
+    requires: action in {delete, rename, make_directory}
+    requires: not is_outside(the_root, the_real_location_of(the_folder_holding(path)))
+
+    ensures: the_entry_acted_on(path) =
+        the_real_location_of(the_folder_holding(path)) + the_last_name_in(path)
+}
+
+-- And the check and the access are the same path. What is opened is the
+-- location the check resolved, never the path resolved a second time, so a
+-- link swapped between the two cannot redirect the access.
+rule TheLocationCheckedIsTheLocationOpened {
+    when: a_confined_script_names(path)
+    ensures: the_file_reached(path) = the_location_checked_for(path)
+}
+
 -- And the directory the program starts in, which is the one the script is
 -- standing in rather than the one the host process happens to be in.
 --

@@ -5,6 +5,7 @@ import org.jebol.domain.host.FilePort;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.security.PolicyAccess;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.UrlValue;
@@ -49,9 +50,15 @@ public class DeleteAction extends PortAction {
             throw ports.noActionFor(nativeName());
         }
         granted.require(HostService.FILES);
+        if (port.schemeName().equals("dir")) {
+            ports.requireTheFilePolicy(ports.pathOf(port), evaluator, Set.of(PolicyAccess.WRITE));
+        }
         try {
             return evaluator.files().delete(ports.pathOf(port)) ? port : LogicValue.of(false);
         } catch (FilePort.Denied refused) {
+            if (refused.isASecurityRefusal()) {
+                throw refused.raised();
+            }
             throw Raised.of(EvaluationFailure.NO_DELETE, target);
         }
     }

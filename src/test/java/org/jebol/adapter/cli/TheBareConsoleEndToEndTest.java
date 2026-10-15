@@ -20,9 +20,13 @@ class TheBareConsoleEndToEndTest {
     }
 
     private static Session aSessionIn(Path directory, String typed) {
+        return aSessionIn(directory, typed, new String[0]);
+    }
+
+    private static Session aSessionIn(Path directory, String typed, String... switches) {
         ByteArrayOutputStream printed = new ByteArrayOutputStream();
         ByteArrayOutputStream reported = new ByteArrayOutputStream();
-        int status = Repl.runTheCommandLine(new String[0],
+        int status = Repl.runTheCommandLine(switches,
                 new BufferedReader(new StringReader(typed)),
                 new PrintStream(printed, true, StandardCharsets.UTF_8),
                 new PrintStream(reported, true, StandardCharsets.UTF_8),
@@ -52,8 +56,20 @@ class TheBareConsoleEndToEndTest {
     }
 
     @Test
-    @DisplayName("the machine is in reach, as it is for a script")
-    void theMachineIsInReach(@TempDir Path directory) throws Exception {
+    @DisplayName("the banner names the JEBOL port rather than Rebol's own branch")
+    void theBannerNamesTheJebolPort(@TempDir Path directory) {
+        Session session = aSessionIn(directory, """
+                quit
+                """);
+
+        assertThat(session.printed())
+                .contains("REBOL/core 3.22.5 (JEBOL port)")
+                .doesNotContain("Oldes branch");
+    }
+
+    @Test
+    @DisplayName("every service is granted, and a file where it started asks first, which no one can answer, as in r3")
+    void everyServiceButAFileThatAsks(@TempDir Path directory) throws Exception {
         Files.writeString(directory.resolve("data.txt"), "found it");
 
         Session session = aSessionIn(directory, """
@@ -61,6 +77,23 @@ class TheBareConsoleEndToEndTest {
                 not error? try [get-env "HOME"]
                 quit
                 """);
+
+        assertThat(session.printed())
+                .contains("** Access error: security violation: %"
+                        + directory.resolve("data.txt").toRealPath())
+                .contains("== #(true)");
+    }
+
+    @Test
+    @DisplayName("with -s the machine is in reach, as it is for a script")
+    void theMachineIsInReachWithSecurityOff(@TempDir Path directory) throws Exception {
+        Files.writeString(directory.resolve("data.txt"), "found it");
+
+        Session session = aSessionIn(directory, """
+                read/string %data.txt
+                not error? try [get-env "HOME"]
+                quit
+                """, "-s");
 
         assertThat(session.printed())
                 .contains("== \"found it\"")

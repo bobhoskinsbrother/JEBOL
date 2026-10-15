@@ -202,6 +202,12 @@ public final class WebFiles implements FilePort {
     }
 
     @Override
+    public String realLocationOf(String path) {
+        String target = absolute(path);
+        return path.endsWith("/") || directories.contains(target) ? directoryNameOf(target) : target;
+    }
+
+    @Override
     public Optional<FileInformation> informationAbout(String path) {
         String target = absolute(path);
         if (directories.contains(target)) {

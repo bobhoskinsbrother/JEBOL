@@ -27,19 +27,25 @@ import org.jebol.domain.value.AnyStringValue;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.StringValue;
 import org.jebol.domain.value.TextLines;
+import org.jebol.domain.value.TupleValue;
 import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.AnyWordValue;
 import org.jebol.domain.value.SetWordValue;
 
+import org.jebol.domain.eval.security.PolicyAccess;
+import org.jebol.domain.eval.security.PolicyClass;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.SequencedSet;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 public final class Ports {
 
@@ -48,6 +54,12 @@ public final class Ports {
     private static final int OPEN_FAILED = 3;
 
     private static final int WHATEVER_NUMBER_THE_MACHINE_HAS_FREE = 0;
+
+    private static final Set<String> SCHEMES_CHECKED_AGAINST_THE_NET_POLICY = Set.of("tcp", "udp");
+
+    private static final Pattern WRITTEN_AS_AN_ADDRESS = Pattern.compile("\\d+(\\.\\d+){2,}");
+
+    private static final int IPV4_PARTS = 4;
 
     private static final Set<String> SCHEMES_WHOSE_ACTOR_TAKES_AN_UPDATE = Set.of(
             "console", "dns", "clipboard", "tcp", "udp", "event", "system", "callback");
@@ -107,6 +119,20 @@ public final class Ports {
 
     public Value throughTheFileSystem(Supplier<Value> operation) {
         return fileSystem.answeredOrRaised(operation);
+    }
+
+    public void requireTheFilePolicy(String path, Evaluator evaluator, Set<PolicyAccess> accesses) {
+        Value subject = throughTheFileSystem(() -> FileValue.of(evaluator.files().realLocationOf(path)));
+        for (PolicyAccess access : PolicyAccess.values()) {
+            if (accesses.contains(access)) {
+                evaluator.policies().require(PolicyClass.FILE, access, Optional.of(subject));
+            }
+        }
+    }
+
+    public boolean namesADirectory(String path, Evaluator evaluator) {
+        return path.endsWith("/") || throughTheFileSystem(() ->
+                LogicValue.of(evaluator.files().isDirectory(path))).isTruthy();
     }
 
     public boolean routesToAScheme(Value source) {
@@ -184,7 +210,7 @@ public final class Ports {
             case "bundled" -> theSourceOfABundledModule(port, evaluator);
             case "tcp" -> bytesReadFromTheConnection(port, evaluator);
             case "udp" -> oneDatagramReadInto(port, evaluator);
-            case "dns" -> addressesOfTheNameThePortNames(port, evaluator);
+            case "dns" -> whatTheDnsUrlAsks(port, evaluator);
             case "checksum" -> checksumPort.digestSoFarLeftInTheDataFieldAsWell(port);
             case "crypt" -> {
                 cryptPort.refuseWhenClosed(port);
@@ -276,15 +302,32 @@ public final class Ports {
         }
     }
 
-    private Value addressesOfTheNameThePortNames(PortValue port, Evaluator evaluator) {
+    private Value whatTheDnsUrlAsks(PortValue port, Evaluator evaluator) {
         granted.require(HostService.NETWORK);
-        String hostName = hostNamedBy(port);
+        String host = hostNamedBy(port);
+        NetworkPort network = evaluator.network();
         return throughTheNetwork(() -> {
-            List<String> found = evaluator.network().addressesFor(hostName);
-            return found.isEmpty()
-                    ? NoneValue.none()
-                    : BlockValue.block(found.stream().<Value>map(StringValue::of).toList());
+            if (host.isEmpty()) {
+                return StringValue.of(network.thisMachinesName());
+            }
+            if (WRITTEN_AS_AN_ADDRESS.matcher(host).matches()) {
+                return theNameAtAnAddressOfFourParts(host, network);
+            }
+            return network.theFirstIpv4AddressOf(host)
+                    .<Value>map(this::asATuple)
+                    .orElseGet(NoneValue::none);
         });
+    }
+
+    private Value theNameAtAnAddressOfFourParts(String address, NetworkPort network) {
+        if (address.split("\\.").length != IPV4_PARTS) {
+            return NoneValue.none();
+        }
+        return network.theNameAt(address).<Value>map(StringValue::of).orElseGet(NoneValue::none);
+    }
+
+    private Value asATuple(String dotted) {
+        return TupleValue.of(Arrays.stream(dotted.split("\\.")).mapToInt(Integer::parseInt).toArray());
     }
 
     private void queueWhatHappenedTo(PortValue port, String happened, Evaluator evaluator) {
@@ -301,10 +344,12 @@ public final class Ports {
         granted.require(HostService.FILES);
         SeekableFilePort seekable = new SeekableFilePort(port);
         if (port.schemeName().equals("dir")) {
+            requireTheFilePolicy(seekable.path(), evaluator, Set.of(PolicyAccess.READ));
             return throughTheFileSystem(() -> namesIn(evaluator.files(), seekable.path()));
         }
         boolean wasClosed = !port.isOpen();
         if (wasClosed) {
+            requireTheFilePolicy(seekable.path(), evaluator, Set.of(PolicyAccess.READ));
             port.markOpen(true);
             seekable.moveTo(0);
         }
@@ -345,11 +390,13 @@ public final class Ports {
 
     public Value readTheFile(String path, Evaluator evaluator, PortRequest asked) {
         granted.require(HostService.FILES);
+        requireTheFilePolicy(path, evaluator, Set.of(PolicyAccess.READ));
         return throughTheFileSystem(() -> new FileReading(path, asked).answerThrough(evaluator.files()));
     }
 
     public Value writeTheFile(Value destination, Value data, Evaluator evaluator, PortRequest asked) {
         granted.require(HostService.FILES);
+        requireTheFilePolicy(((AnyStringValue) destination).text(), evaluator, Set.of(PolicyAccess.WRITE));
         return throughTheFileSystem(() -> {
             new FileWriting(((AnyStringValue) destination).text(), data, asked)
                     .performThrough(evaluator.files());
@@ -370,8 +417,13 @@ public final class Ports {
             case "udp" -> oneDatagramSentFrom(port, data, evaluator);
             case "checksum" -> summedIntoThePort(port, data, asked);
             case "crypt" -> encipheredIntoThePort(port, data);
-            case "file" -> new OpenFile(port, evaluator.files(), granted)
-                    .written(data, asked.seek(), asked.part(), asked.refinements().contains("append"));
+            case "file" -> {
+                if (!port.isOpen()) {
+                    requireTheFilePolicy(pathOf(port), evaluator, Set.of(PolicyAccess.WRITE));
+                }
+                yield new OpenFile(port, evaluator.files(), granted)
+                        .written(data, asked.seek(), asked.part(), asked.refinements().contains("append"));
+            }
             default -> throw noActionFor("write");
         };
     }
@@ -440,6 +492,9 @@ public final class Ports {
 
     public Value opened(PortValue port, Evaluator evaluator, Set<String> refinements) {
         requireServiceForScheme(port.schemeName());
+        if (SCHEMES_CHECKED_AGAINST_THE_NET_POLICY.contains(port.schemeName())) {
+            evaluator.policies().require(PolicyClass.NET, PolicyAccess.EXECUTE, Optional.of(theReferenceOf(port)));
+        }
         if (port.schemeName().equals("tcp")) {
             return connectedOrLeftClosed(port, evaluator);
         }
@@ -480,6 +535,7 @@ public final class Ports {
         SeekableFilePort seekable = new SeekableFilePort(port);
         String path = seekable.path();
         if (port.schemeName().equals("dir")) {
+            requireTheFilePolicy(path, evaluator, Set.of(PolicyAccess.READ));
             if (!throughTheFileSystem(() -> LogicValue.of(
                     somethingIsThereFor(path, evaluator.files()))).isTruthy()) {
                 throw Raised.of(EvaluationFailure.CANNOT_OPEN,
@@ -490,6 +546,7 @@ public final class Ports {
         }
         OpeningAFile asked = new OpeningAFile(refinements);
         asked.refuseANewFileNobodyMayWriteTo(path);
+        requireTheFilePolicy(path, evaluator, asked.theAccessesItAsksFor());
         boolean alreadyThere = throughTheFileSystem(() ->
                 LogicValue.of(evaluator.files().exists(path))).isTruthy();
         if (!asked.mayWrite()) {

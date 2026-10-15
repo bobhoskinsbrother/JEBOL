@@ -10434,11 +10434,12 @@ rule EvokeTakesABlockOfChantsInTurn {
 -- exceeding the limit has no effect at all, and SECURE is what changes that:
 -- `secure [eval throw]` makes the same overrun raise `security`.
 --
--- JEBOL has no SECURE. It is on the porting backlog under the host, because
--- where its boundary sits is a decision nobody has taken. Until it exists, this
--- native records what a script asked for and enforces nothing -- which is what a
--- stock Rebol does, and the alternative would be JEBOL stopping a script where
--- Rebol would not.
+-- And SECURE can never reach it. `mezz-secure.reb` ends the boot with
+-- `unset in lib 'limit-usage`, and SECURE's own `make-policy` calls the word
+-- through lib, so `secure [eval 100000]` in a real 3.22.5 fails with
+-- `limit-usage has no value` before anything is recorded. The eval and memory
+-- policies are therefore never consulted -- TheUsageLimitsAreNeverConsulted
+-- below -- and this native records and enforces nothing for a script.
 --
 -- The host can read the request even so. A script asking to be limited is worth
 -- an embedder knowing about, and telling the embedder changes nothing the script
@@ -10490,7 +10491,284 @@ rule LimitUsageRefusesAnythingElse {
     ensures: CallFails(error: expect_arg)
 }
 
-open question "Enforcing a recorded limit needs SECURE, and SECURE needs a decision about where its boundary sits: Rebol's policies cover file, net, eval, memory, secure, protect, debug, envr, call, browse and extension, and JEBOL has host grants for some of that ground already. Are policies a second mechanism beside the grants, or does SECURE narrow the grants a host gave? Until that is answered, a limit recorded here is inert -- which is what a stock Rebol does, since every policy defaults to ALLOW."
+-- === What a script may touch: Rebol's security policies ======
+
+-- SECURE is Rebol's own REBOL, borrowed whole from `mezz-secure.reb`, and it
+-- writes its decisions into `system/state/policies`. What it cannot do is
+-- enforce them: in the C a native that reaches outside asks
+-- `Check_Security` or `Secure_Port` first, and that question is what this
+-- section is.
+--
+-- **The host's grants are the ceiling and SECURE only narrows beneath it.**
+-- That settles the question of where SECURE's boundary sits. The two are not
+-- rival mechanisms: a grant is what the host is able and willing to offer
+-- at all, and a policy is what this script, or the person running it, has
+-- said it may use of that. A service the host never granted is refused as
+-- not granted before any policy is read, so no SECURE call -- the script's
+-- own, or one a command-line flag makes -- can reach anything the host held
+-- back. And a policy saying throw stops a script even where the host granted
+-- everything, which is what the command line does.
+--
+-- Start makes the first policy, in Rebol's `sys-start.reb`: files ask,
+-- except the data folder and the folder the script is in, which allow, and
+-- the home folder, which allows reading and asks before writing. Every other
+-- class allows. So by default a script reads and writes beside itself and is
+-- stopped one folder up -- `read %../outside.txt` is a security violation
+-- naming that file -- and nothing else changes.
+
+enum PolicyClass {
+    file | net | eval | memory | secure | protect | debug | envr | call
+    | browse | extension
+}
+
+-- Index-ordered as the C's `SEC_` constants: a policy tuple holds the number,
+-- one byte per access.
+enum PolicyLevel {
+    allow   -- 0: nothing happens
+    | ask   -- 1: CONFIRM-POLICY decides
+    | throw -- 2: a security violation is raised
+    | quit  -- 3: the process ends
+}
+
+-- And the three accesses, in the order a policy tuple holds them.
+enum PolicyAccess {
+    read | write | execute
+}
+
+-- One question put to the policies: may this class be reached in this way,
+-- for this subject? The subject is absent for the debug natives, which have
+-- nothing to name.
+entity PolicyCheck {
+    class: PolicyClass
+    access: PolicyAccess
+    subject: String?
+    level_applied: PolicyLevel
+}
+
+-- A service the host never granted is refused as that, before any policy is
+-- read. The policy can only narrow what is there.
+rule AServiceTheHostWithheldIsRefusedBeforeAnyPolicy {
+    when: script_reaches_outside(run, service, class, access, subject)
+    requires: not (service in run.interpreter.bounds.granted_services)
+    ensures: the_hosts_refusal_is_raised(service)
+    ensures: no_policy_is_consulted()
+}
+
+-- Where the class holds a single tuple, that tuple is the policy, whatever
+-- the subject.
+rule AClassWithOneTupleHasOnePolicy {
+    when: CheckPolicy(class, access, subject)
+    requires: is_tuple(the_policies_field(class))
+    ensures: the_level_applied() = the_byte_for(access, the_policies_field(class))
+}
+
+-- Where it holds a block, the block is pairs of a name or a word and a tuple.
+-- The first pair whose name the subject starts with decides; SECURE sorts the
+-- block longest name first, so the first match is the most specific folder.
+-- The match is the C's `Match_Sub_Path`: character by character from the
+-- front, so `%/app/` covers `%/app/inside.txt` and does not cover `%/app`.
+rule TheFirstNameASubjectStartsWithDecides {
+    when: CheckPolicy(class, access, subject)
+    requires: is_block(the_policies_field(class))
+    requires: some_name_in_covers(the_policies_field(class), subject)
+    ensures: the_level_applied() =
+        the_byte_for(access, the_tuple_after(first_name_the_subject_starts_with(subject, the_policies_field(class))))
+}
+
+-- No name matching, the word's tuple is the default.
+rule AClassDefaultCoversWhatNoNameDoes {
+    when: CheckPolicy(class, access, subject)
+    requires: is_block(the_policies_field(class))
+    requires: not some_name_in_covers(the_policies_field(class), subject)
+    requires: has_a_word_entry(the_policies_field(class))
+    ensures: the_level_applied() = the_byte_for(access, the_tuple_after_the_word(the_policies_field(class)))
+}
+
+-- And with no default either, the subject is refused outright.
+rule NoMatchAndNoDefaultIsAViolation {
+    when: CheckPolicy(class, access, subject)
+    requires: is_block(the_policies_field(class))
+    requires: not some_name_in_covers(the_policies_field(class), subject)
+    requires: not has_a_word_entry(the_policies_field(class))
+    ensures: CallFails(error: security, arg1: subject)
+}
+
+-- A file name matches by case on every machine but Windows, and a url never
+-- does: `#ifdef TO_WINDOWS ... uncase = !IS_FILE(policy)`. JEBOL runs where
+-- it is put, so it asks the machine the way the C asks its build.
+rule FileNamesMatchByCaseAndUrlsDoNot {
+    when: CheckPolicy(class, access, subject)
+    requires: is_block(the_policies_field(class))
+    ensures: case_matters_for(entry) =
+        (is_file(entry) and not running_on_windows())
+}
+
+-- A policy that is not one of those shapes is refused as a broken policy:
+-- the field missing, a value that is neither tuple nor block, a pair without
+-- a tuple after it, or a name in a class that was asked with no subject.
+-- `security-error` names what was wrong, as `Security_Policy` does.
+rule AMalformedPolicyIsASecurityError {
+    when: CheckPolicy(class, access, subject)
+    requires: the_policy_for_is_malformed(class, subject)
+    ensures: CallFails(error: security_error)
+}
+
+rule AllowLetsTheAccessHappen {
+    when: CheckPolicy(class, access, subject)
+    requires: the_level_applied() = allow
+    ensures: the_access_proceeds()
+}
+
+-- Ask puts the question to `system/state/confirm-policy`, with the class as a
+-- word, the access as one, two or three, and the subject. True allows and
+-- anything else throws, as `Trap_Security` reads the answer. Rebol's own
+-- confirm-policy refuses without asking where no terminal can answer, which is
+-- the case for every script a host embeds.
+rule AskPutsTheQuestionToConfirmPolicy {
+    when: CheckPolicy(class, access, subject)
+    requires: the_level_applied() = ask
+    ensures: confirm_policy_applied_to(class, the_index_of(access) + 1, subject)
+    ensures:
+        if the_answer_is_true(): the_access_proceeds()
+        else: CallFails(error: security, arg1: the_subject_or_the_class(subject, class))
+}
+
+-- Throw raises `security`, naming the subject, or the class's word where the
+-- access has no subject: `trace on` under `secure [debug throw]` names `debug`.
+rule ThrowRaisesSecurity {
+    when: CheckPolicy(class, access, subject)
+    requires: the_level_applied() = throw
+    ensures: CallFails(error: security, arg1: the_subject_or_the_class(subject, class))
+}
+
+-- Quit ends the process with 101, at once and saying nothing: `OS_Exit(101)`.
+rule QuitEndsTheRunWith101 {
+    when: CheckPolicy(class, access, subject)
+    requires: the_level_applied() = quit
+    ensures: the_run_quits_with(101)
+}
+
+-- A file is judged by where it really leads, symbolic links followed.
+--
+-- **This is a deliberate difference from R3.** R3 matches the path as the
+-- script wrote it, made absolute and its dots worked out, and never asks
+-- where a link points. So a link sitting inside the script's own folder and
+-- pointing at `/etc` passes R3's check and reads `/etc`. Here the subject is
+-- the real location -- every link followed, including one that dangles,
+-- whose target is where a write would land -- and the violation names that
+-- location, because that is what was refused.
+--
+-- Following links is otherwise allowed. A link from one place in the folder
+-- to another place in it is followed and read, as anywhere else.
+rule AFileIsJudgedByWhereItReallyLeads {
+    when: CheckPolicy(file, access, path)
+    ensures: the_subject_matched() = the_real_location_of(path)
+}
+
+-- The file actor checks what Setup_File asks for, and nothing more. READ
+-- asks read; WRITE asks write, appending included; CREATE asks write; OPEN
+-- asks read and write unless /read or /write narrows it, and /new is a write.
+rule OpeningAFileChecksTheAccessesItAsksFor {
+    when: file_actor_acts(action, path, modes)
+    requires: action in {read, write, open, create}
+    ensures: for access in modes: CheckPolicy(file, access, path)
+}
+
+-- DELETE, RENAME, QUERY and MODIFY on a file set no mode, so the C's
+-- `Secure_Port` checks neither access, and a real 3.22.5 deletes a file one
+-- folder up, or renames a file in its own folder to a name outside it, under
+-- the default policy. Agreeing with the C comes first: these pass, and only
+-- the host's root -- TheDotsAreWorkedOutAndClampAtTheRoot and
+-- ALinkLeavingTheRootIsRefused in spec/embed.allium -- bounds them.
+rule DeletingRenamingAndAskingAboutAFileAreNotChecked {
+    when: file_actor_acts(action, path, modes)
+    requires: action in {delete, rename, query, modify}
+    ensures: no_policy_is_consulted()
+}
+
+-- ECHO and IMAGE reach files without the file actor, through
+-- `Value_To_OS_Path` and the OS directly, so they never meet a policy either:
+-- `echo %../echoed.txt` and `image/save %../img.png` both write one folder up
+-- in a real 3.22.5 under the default policy. The same agreement with the C,
+-- and the same bound: the host's root.
+rule EchoAndImageAreNotChecked {
+    when: EvaluateCall(native, path)
+    requires: native in {echo, image}
+    ensures: no_policy_is_consulted()
+}
+
+-- The directory actor checks every action it has, `Init_Dir_Path` passing its
+-- policy as the mode: READ, OPEN and QUERY ask read; CREATE, RENAME and
+-- DELETE ask write. So `exists? %../outdir/`, which queries, answers none
+-- under the default policy where `exists? %../outside.txt` answers `file`.
+rule ADirectoryIsCheckedForEveryAction {
+    when: directory_actor_acts(action, path)
+    ensures:
+        if action in {read, open, query}: CheckPolicy(file, read, path)
+        else: CheckPolicy(file, write, path)
+}
+
+-- Opening a tcp or udp port checks net execute, naming the port's address.
+-- HTTP runs over tcp, so `read http://...` is checked through it and names
+-- the tcp address. DNS is never checked: p-dns.c has no call.
+rule OpeningANetworkPortChecksNet {
+    when: network_port_opens(port)
+    requires: port.scheme in {tcp, udp}
+    ensures: CheckPolicy(net, execute, port.spec.ref)
+}
+
+rule CallChecksCall {
+    when: EvaluateCall(call, command)
+    ensures: CheckPolicy(call, execute, command)
+}
+
+rule BrowseChecksBrowse {
+    when: EvaluateCall(browse, address)
+    ensures: CheckPolicy(browse, execute, address)
+}
+
+-- GET-ENV reads and SET-ENV writes, each naming the variable as it was given:
+-- a string stays a string and a word stays a word. LIST-ENV is not checked.
+rule TheEnvironmentIsCheckedByName {
+    when: EvaluateCall(native, name)
+    requires: native in {get_env, set_env}
+    ensures:
+        if native = get_env: CheckPolicy(envr, read, name)
+        else: CheckPolicy(envr, write, name)
+}
+
+-- PROTECT is a write and UNPROTECT a read, as the C's flags make them, naming
+-- the target. PROTECTED? is not checked.
+rule ProtectingIsChecked {
+    when: EvaluateCall(native, target)
+    requires: native in {protect, unprotect}
+    ensures:
+        if native = protect: CheckPolicy(protect, write, target)
+        else: CheckPolicy(protect, read, target)
+}
+
+-- EVOKE, STACK and TRACE read debug, with no subject.
+rule TheDebuggingNativesCheckDebug {
+    when: EvaluateCall(native)
+    requires: native in {evoke, stack, trace}
+    ensures: CheckPolicy(debug, read, nothing)
+}
+
+-- LOAD-EXTENSION given a file checks extension execute before it is refused
+-- as never portable, so a script under `secure [extension throw]` sees the
+-- violation R3 would.
+rule LoadingAnExtensionChecksExtension {
+    when: EvaluateCall(load_extension, path)
+    requires: is_file(path)
+    ensures: CheckPolicy(extension, execute, path)
+}
+
+-- The eval and memory classes are never consulted, because no limit can be
+-- set: LIMIT-USAGE is unset before a script runs. See LimitUsageAnswersNothing.
+rule TheUsageLimitsAreNeverConsulted {
+    when: check: PolicyCheck.created
+    ensures: not (check.class in {eval, memory})
+}
 
 open question "The six natives that wait on a datatype -- AS-COLOR on image!, MAP-GOB-OFFSET on gob!, MAP-EVENT and WAKE-UP on event!, DO-CODEC and RELEASE on handle! -- have nothing to specify until the datatype they take exists, because each is a small arm over a value JEBOL cannot make. They are recorded in Goal 1 of TODO.md in the order boot/types.reb declares the datatypes, which is the order they will be built. What is not yet decided is whether handle! should carry a Java object directly, since that is what a JVM codec would need to hold, or stay opaque the way the C's does."
 
@@ -14614,6 +14892,19 @@ rule SavingIntoABinaryFillsTheOneItWasGiven {
     ensures: CallResult(value: the_very_same_binary_that_was_given())
 }
 
+-- With no /AS, saving writes PNG. The C clears the codec description before
+-- it reads /AS (`CLEARS(&codi)`), and PNG is the first of the codec types, so
+-- a type nobody named is PNG -- `image/save none make image! 2x2` starts with
+-- the PNG signature in a real 3.22.5, and `image/save %x.png` writes one. The
+-- file's suffix plays no part: `image/save %x.jpg` writes PNG too.
+rule ImageSaveWithNoCodecNamedWritesPng {
+    when: EvaluateCall(image)
+    requires: refinement_asked(save)
+    requires: not refinement_asked(as)
+
+    ensures: the_encoded_bytes() = encoded_as(png)
+}
+
 -- /AS names the codec rather than letting the bytes say. A word this build
 -- has not got is refused by name, which is `Trap1(RE_BAD_FUNC_ARG, val_type)`
 -- in the C's own switch, and not the same thing as bytes it cannot read.
@@ -15510,21 +15801,50 @@ invariant EverythingInTheSchemesIsAScheme {
         named.value.is_a_scheme_object = true
 }
 
--- Looking a name up answers the addresses it stands for, or nothing.
+-- Reading a dns url asks one of three questions, chosen by its host, as
+-- p-dns.c chooses: a name answers its first IPv4 address as a tuple, an
+-- address answers the name it belongs to as a string, and no host at all
+-- answers this machine's own name. `read dns://localhost` is `127.0.0.1` and
+-- `read dns://127.0.0.1` is "localhost".
 --
--- Nothing rather than a failure, because "there is no such host" is a true
--- answer a script has to act on, and one it will meet often. A refusal is for
--- the service not being granted, which is a different thing and happens
--- before the lookup.
-rule ResolvingANameAnswersItsAddressesOrNothing {
+-- Any lookup that finds nothing answers none rather than failing, because
+-- "there is no such host" is a true answer a script has to act on, and one it
+-- will meet often. A refusal is for the service not being granted, which is a
+-- different thing and happens before the lookup.
+--
+-- Only IPv4, because the C copies four bytes out of `gethostbyname`. A name
+-- with only an IPv6 address answers none. A host written as a tuple of three
+-- parts scans as an address and finds no name, so it answers none too.
+rule ResolvingANameAnswersItsFirstAddress {
     when: EvaluateCall(read, a_dns_url)
     requires: service_granted(network)
+    requires: the_host_is_a_name()
 
     ensures:
-        if the_name_is_known():
-            CallResult(value: the_addresses_it_stands_for())
+        if the_name_has_an_ipv4_address():
+            CallResult(value: the_first_ipv4_address_as_a_tuple())
         else:
             CallResult(value: none)
+}
+
+rule ResolvingAnAddressAnswersItsName {
+    when: EvaluateCall(read, a_dns_url)
+    requires: service_granted(network)
+    requires: the_host_scans_as_a_tuple()
+
+    ensures:
+        if the_address_has_a_name():
+            CallResult(value: the_name_as_a_string())
+        else:
+            CallResult(value: none)
+}
+
+rule ResolvingNoHostAnswersThisMachinesName {
+    when: EvaluateCall(read, a_dns_url)
+    requires: service_granted(network)
+    requires: the_url_has_no_host()
+
+    ensures: CallResult(value: this_machines_name_as_a_string())
 }
 
 -- Opening a connection is a port like any other, so it is opened, read,
