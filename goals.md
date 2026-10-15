@@ -55,18 +55,10 @@ Read `CLAUDE.md` first.
 
 ## The goals
 
-Ordered by importance. The first five take JEBOL to Android, then to iOS, with
+Ordered by importance. The first four take JEBOL to Android, then to iOS, with
 the defects that would hurt there fixed before each stage. Agreeing with the C
 comes before improving on it: a place where JEBOL answers something a real
 3.22.5 does not is a defect.
-
-### 2. Running out of memory escapes as a host exception
-
-MAKE turns an allocation the heap cannot serve into `no-memory`. Appending in a
-loop, reading a large file and joining strings do not, and an
-`OutOfMemoryError` there breaks `ErrorsAreValuesNotHostExceptions` in
-`eval.allium`. On a phone, with far less memory, that ends the app. Needs a
-sweep of everywhere JEBOL allocates on a script's say-so.
 
 ### 3. What a script may touch
 
@@ -88,9 +80,11 @@ Today a host can add a Java function to JEBOL with
 `Interpreter.defineFunction`. But JEBOL only gets the function, not what it
 is. So nothing can list what has been added, allow one addition while
 blocking another, or report that an addition failed to start. Goals 5 and 6
-reach the phones' own features -- the camera, location, notifications -- one
+reach the phones' own features: the camera, location, notifications.  One
 port per feature, and those are plug-ins of exactly this kind, so this comes
-first.
+first. When the feature can be backported to web or desktop app (like camera 
+or location access for example) the feature should also be added for those 
+platforms
 
 The aim: something a library adds should look and behave exactly like
 something JEBOL ships with. A script should not be able to tell the
@@ -110,10 +104,9 @@ difference.
    a wake-up handler and an actor. A codec (like `png`) needs a name, the
    file suffixes it handles and three functions. Decide what each must
    provide before writing the first one.
-4. **Decide how a library gets loaded.** Three choices: JEBOL finds it on the
-   classpath by itself; the host hands it over; or JEBOL finds it but a
-   script still needs permission before using it. The third is the default
-   unless there is a reason against it.
+4. **Decide how a library gets loaded.** Two choices: the host declares and adds it 
+   explicitly declares and adds it, or the core platform JEBOL itself adds an override 
+   (perhaps per platform).
 
 What this makes possible:
 - the `serial` scheme, and the `callback` scheme, which nothing can send to

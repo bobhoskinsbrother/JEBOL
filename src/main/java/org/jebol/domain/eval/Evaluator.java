@@ -720,6 +720,14 @@ public final class Evaluator {
     }
 
     private Value walkFrames(Deque<Frame> frames) {
+        try {
+            return walkFramesUntilDone(frames);
+        } catch (OutOfMemoryError exhausted) {
+            throw Raised.of(EvaluationFailure.NO_MEMORY);
+        }
+    }
+
+    private Value walkFramesUntilDone(Deque<Frame> frames) {
         while (true) {
             stopIfAsked();
             Frame frame = frames.peek();
@@ -1198,6 +1206,8 @@ public final class Evaluator {
             throw Raised.of(EvaluationFailure.LOCKED_WORD, refused.spelling());
         } catch (StackOverflowError aStructureWithNoEnd) {
             throw Raised.of(EvaluationFailure.STACK_OVERFLOW);
+        } catch (OutOfMemoryError exhausted) {
+            throw Raised.of(EvaluationFailure.NO_MEMORY);
         }
         if (produced == null) {
             throw new IllegalStateException(

@@ -13,10 +13,12 @@ import java.util.Set;
 public final class MapValue implements Value, PathTarget {
 
     private final Map<Value, Value> entries;
+    private final KeysAlikeApartFromCase keysAlikeApartFromCase;
     private boolean protectedFromChange;
 
     private MapValue(Map<Value, Value> entries) {
         this.entries = entries;
+        this.keysAlikeApartFromCase = new KeysAlikeApartFromCase(entries.keySet());
     }
 
     private static final boolean MINDING_CASE = true;
@@ -117,28 +119,7 @@ public final class MapValue implements Value, PathTarget {
         if (mindingCase) {
             return entries.containsKey(wanted) ? wanted : NoneValue.none();
         }
-        for (Value held : entries.keySet()) {
-            if (held.equals(wanted) || alikeApartFromCase(held, wanted)) {
-                return held;
-            }
-        }
-        return NoneValue.none();
-    }
-
-    private static boolean alikeApartFromCase(Value held, Value wanted) {
-        if (held instanceof AnyStringValue one && wanted instanceof AnyStringValue other) {
-            return one.datatype() == other.datatype()
-                    && one.text().equalsIgnoreCase(other.text());
-        }
-        if (held instanceof AnyWordValue one && wanted instanceof AnyWordValue other) {
-            return one.datatype() == other.datatype()
-                    && one.canonical().equals(other.canonical());
-        }
-        if (held instanceof CharacterValue(int codepoint1) && wanted instanceof CharacterValue(int codepoint)) {
-            return Character.toLowerCase(codepoint1)
-                    == Character.toLowerCase(codepoint);
-        }
-        return false;
+        return keysAlikeApartFromCase.firstStoredLike(wanted);
     }
 
     public Value select(Value key) {
@@ -201,19 +182,28 @@ public final class MapValue implements Value, PathTarget {
 
     public void putWhetherProtectedOrNot(Value key, Value value, boolean mindingCase) {
         Value existing = theFirstStoredKeyMatchingNotTheExactOne(key, mindingCase);
-        entries.put(existing instanceof NoneValue
-                ? copiedAndLockedIfItIsText(anyWordStoredAsTheSetWordItNames(key))
-                : existing, value);
+        if (existing instanceof NoneValue) {
+            Value added = copiedAndLockedIfItIsText(anyWordStoredAsTheSetWordItNames(key));
+            entries.put(added, value);
+            keysAlikeApartFromCase.add(added);
+        } else {
+            entries.put(existing, value);
+        }
     }
 
     public void clear() {
         refuseChangeIfProtected();
         entries.clear();
+        keysAlikeApartFromCase.clear();
     }
 
     public void remove(Value key) {
         refuseChangeIfProtected();
-        entries.remove(anyWordStoredAsTheSetWordItNames(key));
+        Value stored = anyWordStoredAsTheSetWordItNames(key);
+        if (entries.containsKey(stored)) {
+            entries.remove(stored);
+            keysAlikeApartFromCase.remove(stored);
+        }
     }
 
     public int pairCount() {

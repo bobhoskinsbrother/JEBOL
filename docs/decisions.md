@@ -1766,3 +1766,50 @@ between.
 badssl.com: three hosts a browser trusts and four it refuses. Like
 `browserCheck` it is out of `check` because it needs something the ordinary
 gate should not, and everything tagged `network` runs every time it runs.
+
+## 44. Running out of memory is `no-memory`, raised where the work asked for it
+
+**An `OutOfMemoryError` becomes R3's `no-memory`, an internal error worded
+"not enough memory", in two places in the evaluator and nowhere else.**
+`runNative` converts it beside `StackOverflowError`, so every native and
+action is covered. `walkFrames` converts it as well, so the walk of a block,
+which is where a function's body runs, raises it too. Both are the innermost
+place the work happens, which is what lets the nearest `try` around the work
+catch it. `ErrorsAreValuesNotHostExceptions` in `spec/eval.allium` now names
+it.
+
+**One mechanism rather than a sweep.** The goal asked for a sweep of
+everywhere JEBOL allocates on a script's say-so. That would be hundreds of
+sites, and one forgotten site is a crash on a phone. Every one of them runs
+inside a native or a walk, so converting there covers the ones nobody has
+written yet. TABBING's own catch is gone for that reason. `Datatype`'s stays,
+because the value layer can be reached without the evaluator, through a host
+building values.
+
+**The error gives nothing back.** A series that grew keeps what it got, so a
+script still holding it can meet `no-memory` again. Recovery is the script's
+part: let go of the series, and the next allocation succeeds. The tests
+release it and then do more work, and that is what makes them a test of
+recovery rather than of reporting.
+
+**The tests run out of memory in a child JVM, never in the test JVM.**
+`RunningOutOfMemoryEndToEndTest` starts the command line with a 48 MB heap
+and the serial collector, which gives up in about two seconds where G1 and
+the parallel collector can take twenty. Exhausting the heap of the shared
+test JVM would make whatever test ran beside it fail, which is a flake by
+construction. Each case is one growth path: appending to a block, string,
+binary or map, joining, rejoining, ajoin, molding, forming, copying, inserting
+many times, expanding a tab, and reading a file larger than the heap. One more
+case leaves the error uncaught and checks that the console reports REBOL's
+error rather than Java's.
+
+**The cases run side by side, and they found a slow map.** Each child JVM is
+independent, so the class asks JUnit to run its cases concurrently; `test`
+switches JUnit's parallel mode on, and every other class still runs one case
+at a time because that stays the default. The class takes about fourteen
+seconds. Before that it took about two hundred, and a hundred and seventy of
+them were filling a map: a lookup that ignores case compared the key with
+every stored key in turn, so filling a map took time in proportion to the
+square of its size. `KeysAlikeApartFromCase` now indexes each stored key by
+its case-folded form, and `MapKeysAlikeApartFromCaseTest` holds a hundred
+thousand writes to the interpreter's five-second limit.

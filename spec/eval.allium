@@ -1502,7 +1502,16 @@ surface Evaluating {
         -- Every failure a script can cause arrives as a REBOL error!
         -- value the script could catch. No evaluation failure escapes as
         -- a host-language exception, including running out of stack,
-        -- which is reported as stack_overflow, the id R3 gives it.
+        -- which is reported as stack_overflow, and running out of memory,
+        -- which is reported as no_memory -- the ids R3 gives them.
+        --
+        -- Out of memory is raised wherever the script's own work asked for
+        -- the room: growing a series, joining, molding, reading a file,
+        -- copying. It is raised at the innermost native or block being
+        -- evaluated, so the nearest TRY around the work catches it. The
+        -- error gives nothing back: a series that grew stays as large as it
+        -- got, and a script still holding it may meet no_memory again until
+        -- it lets go.
 
     @guarantee EvaluationOrderIsLeftToRight
         -- Values are taken from the block in order and arguments are

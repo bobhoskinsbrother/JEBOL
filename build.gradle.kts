@@ -205,6 +205,7 @@ tasks.test {
 
     systemProperty("jqwik.database", layout.buildDirectory.file("jqwik-database").get().asFile.path)
     systemProperty("java.awt.headless", "true")
+    systemProperty("junit.jupiter.execution.parallel.enabled", "true")
     maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
     inputs.dir(layout.projectDirectory.dir("corpus"))
         .withPropertyName("corpus")

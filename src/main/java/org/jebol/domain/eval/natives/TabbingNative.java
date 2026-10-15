@@ -42,11 +42,7 @@ public abstract class TabbingNative extends DefaultNative {
     }
 
     private String aTabsWorthOf(int spaces) {
-        try {
-            return " ".repeat(spaces);
-        } catch (OutOfMemoryError nothingLeftToGive) {
-            throw Raised.of(EvaluationFailure.NO_MEMORY);
-        }
+        return " ".repeat(spaces);
     }
 
     private int spacesATabStandsFor(Value asked) {
