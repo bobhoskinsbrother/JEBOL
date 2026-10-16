@@ -76,8 +76,8 @@ class APortsStorageFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                .granting(HostService.NETWORK)
-                .granting(HostService.CLOCK));
+                .grant(HostService.NETWORK)
+                .grant(HostService.CLOCK));
         interpreter.useNetwork(new ACannedServer().willReply("what came back"));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));

@@ -95,7 +95,7 @@ class SmallSuiteBehavioursFromTheSourceTest {
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) {
         Interpreter interpreter = Interpreter.withBounds(
                 org.jebol.application.Bounds.standard()
-                        .granting(org.jebol.domain.host.HostService.FILES));
+                        .grant(org.jebol.domain.host.HostService.FILES));
         interpreter.useFileSystem(
                 org.jebol.application.FileSystemPort.rootedAt(directory));
         String source = """

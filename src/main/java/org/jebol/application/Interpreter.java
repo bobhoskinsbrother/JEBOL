@@ -167,8 +167,6 @@ public final class Interpreter {
         return block;
     }
 
-
-
     private boolean theSchemesAreRegistered;
 
     private void registerTheSchemesRebolDeclares() {
@@ -857,6 +855,10 @@ public final class Interpreter {
 
     public void useClipboard(ClipboardPort port) {
         evaluator.useClipboard(port);
+    }
+
+    public void useMidiDevices(MidiDevices devices) {
+        evaluator.useMidiDevices(devices);
     }
 
     /** Gives the script a way to start another program. */

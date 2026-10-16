@@ -20,7 +20,7 @@ class DrawDialectFromTheSourceTest {
 
     private static AGobAndItsDialect gobAndDialectFrom(String source) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
+                Bounds.standard().grant(HostService.WINDOWS));
         interpreter.defineFreshWordsIn(source);
         GobValue gob = (GobValue) interpreter.run(source).value();
         return new AGobAndItsDialect(gob,

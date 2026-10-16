@@ -41,7 +41,7 @@ class CallNativeTest {
 
     private static Interpreter reaching(boolean granted, Recorded port) {
         Bounds bounds = granted
-                ? Bounds.standard().granting(HostService.PROCESSES)
+                ? Bounds.standard().grant(HostService.PROCESSES)
                 : Bounds.standard();
         Interpreter interpreter = Interpreter.withBounds(bounds);
         interpreter.useProcesses(port);
@@ -211,8 +211,8 @@ class CallNativeTest {
             java.nio.file.Files.createDirectory(directory.resolve("sub"));
             Recorded port = new Recorded();
             Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                    .granting(HostService.PROCESSES)
-                    .granting(HostService.WORKING_DIRECTORY));
+                    .grant(HostService.PROCESSES)
+                    .grant(HostService.WORKING_DIRECTORY));
             interpreter.useProcesses(port);
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
 
@@ -411,7 +411,7 @@ class CallNativeTest {
                     1, Optional.empty(), Optional.empty(), Optional.empty(),
                     Optional.empty());
             Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.PROCESSES));
+                    Bounds.standard().grant(HostService.PROCESSES));
             interpreter.useProcesses(broken);
             assertThat(errorIdOf(interpreter, """
                     call/wait [{x}]""")).isEqualTo("call-fail");
@@ -429,7 +429,7 @@ class CallNativeTest {
     @DisplayName("with the grant and no port, CALL still fails")
     void aPortIsAlsoNeeded() {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.PROCESSES));
+                Bounds.standard().grant(HostService.PROCESSES));
         assertThat(errorIdOf(interpreter, """
                 call [{ls}]""")).isEqualTo("no-port");
     }

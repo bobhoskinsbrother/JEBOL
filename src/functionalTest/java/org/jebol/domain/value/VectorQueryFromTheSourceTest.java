@@ -276,7 +276,11 @@ class VectorQueryFromTheSourceTest {
         @DisplayName("a block of words answers them as a record")
         void ablockOfWords() {
             assertThat(moldOf(MAKES + "query v [signed length]"))
-                    .isEqualTo("[signed: #(false) length: 2]");
+                    .isEqualTo("""
+                            [
+                                signed: #(false)
+                                length: 2
+                            ]""");
         }
 
         @Test

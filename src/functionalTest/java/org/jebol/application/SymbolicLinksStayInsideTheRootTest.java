@@ -34,8 +34,8 @@ class SymbolicLinksStayInsideTheRootTest {
         Files.writeString(root.resolve("inside.txt"), "inside");
         Files.writeString(outside.resolve("secret.txt"), "secret");
         interpreter = Interpreter.withBounds(Bounds.standard()
-                .granting(HostService.FILES)
-                .granting(HostService.WORKING_DIRECTORY));
+                .grant(HostService.FILES)
+                .grant(HostService.WORKING_DIRECTORY));
         interpreter.useFileSystem(FileSystemPort.rootedAt(root));
     }
 

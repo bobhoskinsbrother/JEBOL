@@ -17,7 +17,7 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
 
     private static List<PaintInstruction> drawingOf(String setUp, String drawBlock) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
+                Bounds.standard().grant(HostService.WINDOWS));
         String source = setUp + """
 
                 shown: make gob! [size: 200x100]

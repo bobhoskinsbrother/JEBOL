@@ -13,7 +13,7 @@ class TopWindowFromTheSourceTest {
 
     private static Interpreter withAScreen(RecordingScreen screen) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
+                Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useScreen(screen);
         return interpreter;
     }
@@ -117,7 +117,7 @@ class TopWindowFromTheSourceTest {
         @DisplayName("and the root is re-measured, so it is not left at nothing")
         void theRootIsRemeasured() {
             Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.WINDOWS));
+                    Bounds.standard().grant(HostService.WINDOWS));
 
             assertThat(interpreter.display(interpreter.run(
                     "system/view/screen-gob/size")))
@@ -136,7 +136,7 @@ class TopWindowFromTheSourceTest {
         @DisplayName("a second screen moves it again")
         void asecondScreenMovesItAgain() {
             Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.WINDOWS));
+                    Bounds.standard().grant(HostService.WINDOWS));
             interpreter.useScreen(RecordingScreen.measuring(1024, 768));
             interpreter.useScreen(RecordingScreen.measuring(640, 480));
 

@@ -12,7 +12,7 @@ class EndingAProcessThatIsNotThereFromTheSourceTest {
 
     private static Interpreter granted() {
         return Interpreter.withBounds(
-                Bounds.standard().granting(HostService.PROCESSES));
+                Bounds.standard().grant(HostService.PROCESSES));
     }
 
     private static String answerTo(Interpreter interpreter, String source) {

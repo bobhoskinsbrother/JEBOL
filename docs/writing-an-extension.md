@@ -25,7 +25,7 @@ Extension greeter = new Extension("greeter", "1.0.0", List.of(
         new ExtensionCommand("greet", "{Says hello.} who [string!]",
                 call -> StringValue.of("hello " + ((StringValue) call.arguments().getFirst()).text()))));
 
-Interpreter interpreter = Interpreter.withBounds(Bounds.standard().adding(greeter));
+Interpreter interpreter = Interpreter.withBounds(Bounds.standard().add(greeter));
 ```
 
 The script can now call it:
@@ -365,8 +365,8 @@ Add an extension to the bounds you build interpreters with:
 
 ```java
 Bounds bounds = Bounds.standard()
-        .adding(timers)
-        .adding(camera);
+        .add(timers)
+        .add(camera);
 
 Interpreter interpreter = Interpreter.withBounds(bounds);
 ```
@@ -397,7 +397,7 @@ holds the reason:
 Extension clash = new Extension("clash", "1.0.0", List.of(
         new ExtensionCommand("add", "a b", call -> StringValue.of("mine"))));
 
-Interpreter.withBounds(Bounds.standard().adding(clash)).extensions();
+Interpreter.withBounds(Bounds.standard().add(clash)).extensions();
 // [ExtensionReport[name=clash, refusal=Optional[already-used]]]
 ```
 
@@ -432,7 +432,7 @@ REBOL, and look at the answer.
 class TimersTest {
 
     private final Interpreter interpreter = Interpreter.withBounds(
-            Bounds.standard().adding(new Timers().extension()));
+            Bounds.standard().add(new Timers().extension()));
 
     private String answerTo(String source) {
         interpreter.defineFreshWordsIn(source);
@@ -551,7 +551,7 @@ And a session using it:
 | `CommandCall` | What a command's Java receives (section 3). |
 | `HandleKind(name, class)` | A kind of handle and the class it carries. |
 | `Postbox` | Where to post events and callbacks from any thread (section 6). |
-| `Bounds.adding(extension)` | Adds it to every interpreter built with these bounds. |
+| `Bounds.add(extension)` | Adds it to every interpreter built with these bounds. |
 | `Interpreter.extensions()` | Whether each one was installed, and why not. |
 | `ExtensionReport` | One extension's outcome: `installed()`, `refusal()`. |
 

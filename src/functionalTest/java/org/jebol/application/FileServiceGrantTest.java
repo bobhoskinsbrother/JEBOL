@@ -40,7 +40,7 @@ class FileServiceGrantTest {
     @DisplayName("with the grant and an adapter, a file can be written and read")
     void theWholePathWorks(@TempDir Path directory) {
         Interpreter interpreter = readingUnder(
-                Bounds.standard().granting(HostService.FILES), directory);
+                Bounds.standard().grant(HostService.FILES), directory);
         assertThat(answerTo(interpreter, "write %a.txt {hello} read/string %a.txt"))
                 .isEqualTo("\"hello\"");
     }
@@ -49,7 +49,7 @@ class FileServiceGrantTest {
     @DisplayName("EXISTS? answers before and after a write")
     void existsFollowsTheWrite(@TempDir Path directory) {
         Interpreter interpreter = readingUnder(
-                Bounds.standard().granting(HostService.FILES), directory);
+                Bounds.standard().grant(HostService.FILES), directory);
         assertThat(answerTo(interpreter,
                 "before: exists? %b.txt write %b.txt \"x\" "
                 + "reduce [true? before  true? exists? %b.txt]"))
@@ -60,7 +60,7 @@ class FileServiceGrantTest {
     @DisplayName("a relative path counts from the interpreter's own directory")
     void thePathIsRelativeToTheAdapter(@TempDir Path directory) throws Exception {
         Interpreter interpreter = readingUnder(
-                Bounds.standard().granting(HostService.FILES), directory);
+                Bounds.standard().grant(HostService.FILES), directory);
         answerTo(interpreter, "write %c.txt \"there\"");
         assertThat(Files.readString(directory.resolve("c.txt"))).isEqualTo("there");
     }
@@ -69,7 +69,7 @@ class FileServiceGrantTest {
     @DisplayName("a path climbing out of the directory reaches nothing inside it")
     void theAdapterKeepsTheScriptInside(@TempDir Path directory) throws Exception {
         Interpreter interpreter = readingUnder(
-                Bounds.standard().granting(HostService.FILES), directory);
+                Bounds.standard().grant(HostService.FILES), directory);
         Files.writeString(directory.getParent().resolve("secret.txt"), "not yours");
         assertThat(errorIdOf(interpreter, "read %../secret.txt")).isEqualTo("cannot-open");
     }
@@ -78,7 +78,7 @@ class FileServiceGrantTest {
     @DisplayName("reading a file that is not there raises")
     void theMissingFileRaises(@TempDir Path directory) {
         Interpreter interpreter = readingUnder(
-                Bounds.standard().granting(HostService.FILES), directory);
+                Bounds.standard().grant(HostService.FILES), directory);
         assertThat(errorIdOf(interpreter, "read %nothing.txt")).isEqualTo("cannot-open");
     }
 
@@ -86,7 +86,7 @@ class FileServiceGrantTest {
     @DisplayName("with the grant and no adapter, reading still raises")
     void anAdapterIsAlsoNeeded() {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.FILES));
+                Bounds.standard().grant(HostService.FILES));
         assertThat(errorIdOf(interpreter, "read %a.txt")).isNotEqualTo("no-error");
     }
 }

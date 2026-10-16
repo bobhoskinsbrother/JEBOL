@@ -22,7 +22,7 @@ class DesktopScreenFromTheSourceTest {
 
     private static GobValue gobFrom(String source) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
+                Bounds.standard().grant(HostService.WINDOWS));
         interpreter.defineFreshWordsIn(source);
         return (GobValue) interpreter.run(source).value();
     }
@@ -222,7 +222,7 @@ class DesktopScreenFromTheSourceTest {
         @DisplayName("and an interpreter given this screen refuses to view, by that name")
         void anInterpreterRefusesToView() {
             Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.WINDOWS));
+                    Bounds.standard().grant(HostService.WINDOWS));
             interpreter.useScreen(DesktopScreen.onThisMachine());
             String script = """
                     e: try [view/no-wait make gob! [size: 100x100]]
@@ -237,7 +237,7 @@ class DesktopScreenFromTheSourceTest {
         @DisplayName("and the root gob it is given is sized at nothing")
         void theRootIsSizedAtNothing() {
             Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.WINDOWS));
+                    Bounds.standard().grant(HostService.WINDOWS));
             interpreter.useScreen(DesktopScreen.onThisMachine());
 
             assertThat(interpreter.display(interpreter.run(

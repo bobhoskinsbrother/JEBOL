@@ -278,7 +278,7 @@ public final class LibContext {
         registerNative(new IsLatin1Native());
         registerNative(new StatsNative());
         registerNative(new DoCodecNative());
-        registerNative(new SetSchemeNative());
+        registerNative(new SetSchemeNative(grantedServices));
         registerNative(new LoadExtensionNative());
         registerNative(new DoCommandsNative());
         registerNative(new DsNative());

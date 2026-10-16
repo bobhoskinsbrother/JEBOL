@@ -44,6 +44,8 @@ enum HostService {
     | network           -- open a connection to another machine
     | windows           -- ask the operator with a window on a screen
     | clipboard         -- read and write what the operator last copied
+    | midi              -- list, hear and play the instruments the operator
+                        -- has attached
     | web               -- fetch a url through the host's own HTTP machinery
     | certificates      -- judge whether a server's certificates are to be
                         -- trusted, against the authorities the host trusts

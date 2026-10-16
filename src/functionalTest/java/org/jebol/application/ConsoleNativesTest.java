@@ -34,7 +34,7 @@ class ConsoleNativesTest {
 
     private static Interpreter reaching(boolean granted, String... lines) {
         Bounds bounds = granted
-                ? Bounds.standard().granting(HostService.CONSOLE)
+                ? Bounds.standard().grant(HostService.CONSOLE)
                 : Bounds.standard();
         Interpreter interpreter = Interpreter.withBounds(bounds);
         interpreter.useConsole(new Prepared(lines));
@@ -93,7 +93,7 @@ class ConsoleNativesTest {
     @DisplayName("with the grant and no console, reading still fails")
     void aPortIsAlsoNeeded() {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.CONSOLE));
+                Bounds.standard().grant(HostService.CONSOLE));
         assertThat(errorIdOf(interpreter, "input")).isEqualTo("no-port");
     }
 }

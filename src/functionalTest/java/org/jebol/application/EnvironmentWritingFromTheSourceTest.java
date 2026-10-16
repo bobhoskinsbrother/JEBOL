@@ -12,7 +12,7 @@ class EnvironmentWritingFromTheSourceTest {
 
     private static Interpreter reaching() {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.ENVIRONMENT));
+                Bounds.standard().grant(HostService.ENVIRONMENT));
         interpreter.useEnvironment(new ProcessEnvironment());
         return interpreter;
     }
@@ -125,7 +125,7 @@ class EnvironmentWritingFromTheSourceTest {
     @DisplayName("a program started afterwards inherits what was set")
     void aStartedProgramInheritsIt() {
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                .granting(HostService.ENVIRONMENT).granting(HostService.PROCESSES));
+                .grant(HostService.ENVIRONMENT).grant(HostService.PROCESSES));
         interpreter.useEnvironment(new ProcessEnvironment());
         interpreter.useProcesses(new JavaProcesses());
         assertThat(answerTo(interpreter, """

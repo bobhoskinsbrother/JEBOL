@@ -46,16 +46,16 @@ public class TheInterpreterInAWorker {
     private static Bounds aWorkerRunsWhereTheScreenIs() {
         return Bounds.standard()
                 .withoutAWallClockLimit()
-                .granting(HostService.CONSOLE)
-                .granting(HostService.FILES)
-                .granting(HostService.WINDOWS)
-                .granting(HostService.WEB)
-                .granting(HostService.WORKING_DIRECTORY)
+                .grant(HostService.CONSOLE)
+                .grant(HostService.FILES)
+                .grant(HostService.WINDOWS)
+                .grant(HostService.WEB)
+                .grant(HostService.WORKING_DIRECTORY)
                 .lacking(HostService.NETWORK)
                 .lacking(HostService.PROCESSES)
                 .lacking(HostService.ENVIRONMENT)
                 .lacking(HostService.CERTIFICATES)
-                .called("a browser");
+                .calls("a browser");
     }
 
     @JSExport

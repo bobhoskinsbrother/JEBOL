@@ -82,8 +82,8 @@ class WaitingOnAPortFromTheSourceTest {
 
     private static Interpreter reaching(ACannedServer server) {
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                .granting(HostService.NETWORK)
-                .granting(HostService.CLOCK));
+                .grant(HostService.NETWORK)
+                .grant(HostService.CLOCK));
         interpreter.useNetwork(server);
         return interpreter;
     }

@@ -26,7 +26,7 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
     private static final Color WHITE = new Color(255, 255, 255);
 
     private final Interpreter interpreter = Interpreter.withBounds(
-            Bounds.standard().granting(HostService.WINDOWS));
+            Bounds.standard().grant(HostService.WINDOWS));
 
     private record Ink(int left, int top, int right, int bottom) {
 

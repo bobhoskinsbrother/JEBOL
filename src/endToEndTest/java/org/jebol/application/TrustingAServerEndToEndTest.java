@@ -51,10 +51,10 @@ class TrustingAServerEndToEndTest {
     private Bounds tlsBounds() {
         return Bounds.standard()
                 .withWallClockLimit(HANDSHAKE_TIMEOUT)
-                .granting(HostService.NETWORK)
-                .granting(HostService.WEB)
-                .granting(HostService.CLOCK)
-                .granting(HostService.CERTIFICATES);
+                .grant(HostService.NETWORK)
+                .grant(HostService.WEB)
+                .grant(HostService.CLOCK)
+                .grant(HostService.CERTIFICATES);
     }
 
     private Interpreter trustingTestRoot(Instant now) {
@@ -280,9 +280,9 @@ class TrustingAServerEndToEndTest {
         void notGrantedByDefault() throws Exception {
             Bounds withoutCertificates = Bounds.standard()
                     .withWallClockLimit(HANDSHAKE_TIMEOUT)
-                    .granting(HostService.NETWORK)
-                    .granting(HostService.WEB)
-                    .granting(HostService.CLOCK);
+                    .grant(HostService.NETWORK)
+                    .grant(HostService.WEB)
+                    .grant(HostService.CLOCK);
             try (LocalTlsServer server = new LocalTlsServer(rsaIdentity(), TLS_1_3)) {
                 Interpreter interpreter = networked(withoutCertificates);
                 interpreter.useCertificateAuthority(new JavaCertificateAuthority(
@@ -301,7 +301,7 @@ class TrustingAServerEndToEndTest {
         @DisplayName("is not asked for by a server listening for connections, which is sent no certificate to judge")
         void listeningServerDoesNotAsk() {
             Interpreter interpreter = networked(
-                    Bounds.standard().granting(HostService.NETWORK).granting(HostService.CLOCK));
+                    Bounds.standard().grant(HostService.NETWORK).grant(HostService.CLOCK));
             assertThat(run(interpreter, """
                     listening: open tls://:0
                     close listening/state/tcp-port

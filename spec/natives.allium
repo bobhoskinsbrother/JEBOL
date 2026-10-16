@@ -1829,6 +1829,16 @@ rule QueryingWithABlockLabelsAPlainWordAndNotAGetWord {
             else: [as_set_word(word), fact_of(target, word)]))
 }
 
+-- Each set-word in the answer starts a new line, so MOLD writes one field
+-- to a line as a real 3.22.5 does: `mold query 1-Jan-2020 [year month]` is
+-- three lines, not `[year: 2020 month: 1]`. The C sets the line mark on each
+-- set-word it appends.
+rule EachLabelInABlockQueryStartsALine {
+    when: EvaluateQuery(target, field)
+    requires: is_block(field)
+    ensures: every_set_word_in_the_answer_starts_a_new_line()
+}
+
 -- A field the host does not report is refused rather than answered none,
 -- because a misspelled field name is a mistake in the script and a script
 -- that got none for it would read the mistake as a missing file.
@@ -3074,6 +3084,267 @@ rule TheClipboardNeedsItsGrant {
     requires: clipboard not in granted_services()
 
     ensures: CallFails(error: no_service)
+}
+
+-- === MIDI ==================================================
+
+-- MIDI is the instruments the operator has attached: inputs a script hears
+-- and outputs it plays. The scheme is Rebol's own declaration,
+-- sys-ports-midi.reb, loaded where Rebol's include-midi option puts it --
+-- the last of the sys files -- so INIT-SCHEMES registers it after SERIAL,
+-- in the order a real 3.22.5 lists it. What the port does with a device is
+-- p-midi.c's MIDI_Actor; what a device is belongs to the host.
+rule TheMidiSchemeIsRegisteredAfterSerial {
+    when: ReadSystemField(schemes)
+
+    ensures: the_schemes_hold_a_field_called(midi)
+    ensures: the_field_after(serial) = midi
+}
+
+-- A url names the devices by number, input first: `midi://1/2` is input
+-- one and output two, `midi:7` and `midi://device:7` are input seven. The
+-- reading is the scheme's own INIT in REBOL, and it copies one digit of
+-- each, so `midi://12` is input one and `midi://1/x` has no output. That is
+-- Rebol's answer, kept because it is Rebol's file.
+rule AMidiUrlNamesTheDevicesByNumber {
+    when: EvaluateCall(make, port, specification)
+    requires: names_the_midi_scheme(specification)
+    requires: specification.datatype = url
+
+    ensures: the_spec_field(device_in) = the_first_digit_after_the_scheme_or_none()
+    ensures: the_spec_field(device_out) = the_first_digit_after_a_slash_or_none()
+}
+
+-- A spec block names them by number or by name. A name is matched with
+-- wildcards against what QUERY lists, and a name nothing matches leaves
+-- that device unnamed rather than failing.
+rule AMidiSpecNamesTheDevicesByNumberOrByName {
+    when: EvaluateCall(make, port, specification)
+    requires: names_the_midi_scheme(specification)
+    requires: specification.datatype = block
+
+    ensures: the_spec_field(device_in) =
+        the_number_given_or_the_position_of_the_first_listed_input_the_name_matches()
+    ensures: the_spec_field(device_out) =
+        the_number_given_or_the_position_of_the_first_listed_output_the_name_matches()
+}
+
+-- QUERY lists the devices. A field alone answers one list of names; a block
+-- answers each field as a set-word and its list, and a get-word in the block
+-- answers the list with no name before it; none answers the names of the
+-- fields. A datatype answers both lists in one object.
+rule QueryingMidiListsTheDevices {
+    when: EvaluateCall(query, target, field)
+    requires: names_the_midi_scheme(target)
+    requires: midi in granted_services()
+    requires: field in {devices_in, devices_out}
+
+    ensures: CallResult(datatype: block)
+    ensures: every_entry_is_the_name_of_an_attached(field)
+}
+
+rule QueryingMidiForNoFieldNamesTheFields {
+    when: EvaluateCall(query, target, field)
+    requires: names_the_midi_scheme(target)
+    requires: field = none
+
+    ensures: CallResult(value: [devices_in, devices_out])
+}
+
+-- The field names are matched exactly, case included: `'Devices-In` is
+-- not a field. Alone, an unknown word cannot be used on a port; inside a
+-- block it, and anything that is not a word, is an invalid argument.
+rule QueryingMidiForAnUnknownFieldRefuses {
+    when: EvaluateCall(query, target, field)
+    requires: names_the_midi_scheme(target)
+    requires: midi in granted_services()
+    requires: field.datatype = word
+    requires: field not in {devices_in, devices_out}
+
+    ensures: CallFails(error: cannot_use, about: field, and: port)
+}
+
+rule QueryingMidiWithAnUnknownEntryInABlockRefuses {
+    when: EvaluateCall(query, target, fields)
+    requires: names_the_midi_scheme(target)
+    requires: midi in granted_services()
+    requires: some_entry_is_not_a_word_naming_a_field(fields)
+
+    ensures: CallFails(error: invalid_arg, about: the_first_such_entry(fields))
+}
+
+-- Opening asks the host for the devices the spec names. The refusals carry
+-- the device's own number as their second argument, and these are the
+-- numbers the macOS device in a real 3.22.5 gives, since that is the build
+-- consulted: 1 when neither device is named (none, zero, or anything that
+-- is not an integer), 3 when a device named is not one the host lists. A
+-- negative number is a device the host does not list.
+rule OpeningMidiWithNoDeviceNamedRefuses {
+    when: EvaluateCall(open, target)
+    requires: names_the_midi_scheme(target)
+    requires: midi in granted_services()
+    requires: neither_device_is_a_positive_integer(target)
+
+    ensures: CallFails(error: cannot_open, about: the_ref_of(target), and: 1)
+}
+
+rule OpeningMidiWithADeviceTheHostDoesNotListRefuses {
+    when: EvaluateCall(open, target)
+    requires: names_the_midi_scheme(target)
+    requires: midi in granted_services()
+    requires: a_device_named_is_beyond_what_the_host_lists(target)
+
+    ensures: CallFails(error: cannot_open, about: the_ref_of(target), and: 3)
+}
+
+rule OpeningMidiConnectsTheDevices {
+    when: EvaluateCall(open, target)
+    requires: names_the_midi_scheme(target)
+    requires: midi in granted_services()
+    requires: every_device_named_is_one_the_host_lists(target)
+
+    ensures: CallResult(value: target)
+    ensures: the_port_is_open(target)
+    ensures: an_open_event_is_queued_for(target)
+}
+
+-- A host that lists the devices may still fail to start them, and then the
+-- refusal carries the number the host gives, and the port stays closed.
+rule AMidiDeviceThatWillNotStartRefuses {
+    when: EvaluateCall(open, target)
+    requires: names_the_midi_scheme(target)
+    requires: midi in granted_services()
+    requires: every_device_named_is_one_the_host_lists(target)
+    requires: the_host_will_not_start_them()
+
+    ensures: CallFails(error: cannot_open, about: the_ref_of(target), and: the_devices_own_number())
+    ensures: not the_port_is_open(target)
+}
+
+open question "What does opening a MIDI port that is already open do? MIDI_Actor has no ALREADY-OPEN check: it asks the device to open again, and the macOS device takes a fresh slot and connects again, leaving the first connection held and no longer reachable from the port. JEBOL does what the C does and asks the host again. Refusing with already-open, as the crypt port does, or closing the first connection before making the second, would each be kinder, and each would be a place JEBOL answers what a real 3.22.5 does not."
+
+-- OPEN/WRITE with only one device named means that device is an output:
+-- the number moves from device-in to device-out before the host is asked,
+-- and stays moved if the open fails.
+rule OpeningMidiForWritingOnlyMakesTheOneDeviceAnOutput {
+    when: EvaluateCall(open, target)
+    requires: names_the_midi_scheme(target)
+    requires: asked_for(write) and not asked_for(read)
+    requires: the_spec_field(device_out).datatype != integer
+
+    ensures: the_spec_field(device_out) = the_earlier_spec_field(device_in)
+    ensures: the_spec_field(device_in) = none
+}
+
+-- READ, WRITE and CLOSE need an open port, and READ and WRITE do not open
+-- one for themselves, so `read midi://1` is refused. The second argument is
+-- 12, as the C gives it.
+rule MidiNeedsAnOpenPortToReadWriteOrClose {
+    when: EvaluateCall(verb, target)
+    requires: verb in {read, write, close}
+    requires: names_the_midi_scheme(target)
+    requires: not the_port_is_open(target)
+
+    ensures: CallFails(error: not_open, about: the_ref_of(target), and: 12)
+}
+
+-- READ answers the bytes that have arrived from the input since the last
+-- read, as a binary, which is empty when nothing has.
+rule ReadingMidiAnswersWhatHasArrived {
+    when: EvaluateCall(read, target)
+    requires: names_the_midi_scheme(target)
+    requires: the_port_is_open(target)
+
+    ensures: CallResult(datatype: binary)
+    ensures: result = the_bytes_arrived_since_the_last_read()
+}
+
+-- WRITE sends a binary to the output and answers the port. Anything that is
+-- not a binary is not sent and is not refused either: the C writes only
+-- when the argument is a binary and answers the port whatever it was.
+rule WritingMidiSendsABinary {
+    when: EvaluateCall(write, target, data)
+    requires: names_the_midi_scheme(target)
+    requires: the_port_is_open(target)
+
+    ensures: CallResult(value: target)
+    ensures: if data.datatype = binary:
+                 the_output_was_sent(data)
+             else:
+                 nothing_was_sent()
+}
+
+-- A device that fails while reading or writing refuses with its own number.
+rule AMidiDeviceThatFailsRefuses {
+    when: EvaluateCall(verb, target)
+    requires: verb in {read, write}
+    requires: names_the_midi_scheme(target)
+    requires: the_port_is_open(target)
+    requires: the_device_fails()
+
+    ensures: CallFails(error: read_error_or_write_error, about: the_ref_of(target),
+        and: the_devices_own_number())
+}
+
+rule ClosingMidiLetsTheDevicesGo {
+    when: EvaluateCall(close, target)
+    requires: names_the_midi_scheme(target)
+    requires: the_port_is_open(target)
+
+    ensures: CallResult(value: target)
+    ensures: not the_port_is_open(target)
+    ensures: a_close_event_is_queued_for(target)
+}
+
+-- OPEN? says whether the devices are connected, and UPDATE answers none
+-- whether they are or not.
+rule MidiAnswersOpenAndUpdate {
+    when: EvaluateCall(verb, target)
+    requires: verb in {open?, update}
+    requires: names_the_midi_scheme(target)
+
+    ensures: if verb = open?:
+                 CallResult(value: the_port_is_open(target))
+             else:
+                 CallResult(value: none)
+}
+
+-- Seven verbs and no more; every other verb that reaches a port's actor is
+-- refused by name.
+rule MidiServesSevenVerbs {
+    when: EvaluateCall(verb, target)
+    requires: names_the_midi_scheme(target)
+    requires: reaches_a_ports_actor(verb)
+    requires: verb not in {open, close, read, write, query, open?, update}
+
+    ensures: CallFails(error: no_port_action, about: verb)
+}
+
+-- MIDI needs a grant of its own. Reading hears what the operator plays and
+-- writing plays their instruments, and a script that may print is not
+-- thereby a script that may do either. The verbs that ask the host need it;
+-- OPEN?, UPDATE and CLOSE act only on what an open, already granted, made,
+-- and naming the fields asks nothing of the host.
+rule MidiNeedsItsGrant {
+    when: EvaluateCall(verb, target)
+    requires: verb in {open, read, write, query}
+    requires: names_the_midi_scheme(target)
+    requires: midi not in granted_services()
+    requires: not (verb = query and the_field_asked_for() = none)
+
+    ensures: CallFails(error: no_service)
+}
+
+-- A host that gives the interpreter no MIDI lists no devices, so every open
+-- that names one is refused as a device it does not list.
+rule AHostWithNoMidiListsNothing {
+    when: EvaluateCall(query, target, field)
+    requires: names_the_midi_scheme(target)
+    requires: midi in granted_services()
+    requires: not the_host_provides_midi()
+    requires: field in {devices_in, devices_out}
+
+    ensures: CallResult(value: [])
 }
 
 -- === Routing to a scheme this host does not serve ==========
@@ -7236,6 +7507,41 @@ rule AjoinEvaluatesItsBlockOnce {
 -- match beyond the bound is not found; /case stops folding case; /tail
 -- answers the position after the match instead of at it; /only treats a
 -- block needle as one value rather than as a run to match.
+
+-- In a block, a needle that is any kind of block -- a block, a paren, a
+-- path -- is a run of values to match, not one value, unless /ONLY makes
+-- it one. `find [a b c] quote (b c)` is `[b c]` and `find [a (b c)] quote
+-- (b c)` is none in a real 3.22.5; `find/only [a (b c)] quote (b c)` is
+-- `[(b c)]`. The C takes the run's length for every ANY_BLOCK needle.
+rule ABlockLikeNeedleIsARunInABlock {
+    when: EvaluateCall(verb, series, wanted)
+    requires: verb in {find, select}
+    requires: series.datatype in [block, paren, path]
+    requires: wanted.datatype in [block, paren, path]
+    requires: not asked_for(only)
+
+    ensures: the_search_matches_the_values_of(wanted, in_order)
+}
+
+-- Looking for an empty run finds nothing. In a string or a binary, an empty
+-- string or binary is looked for as a run of characters or bytes; in a
+-- block, an empty block or paren is looked for as a run of values unless
+-- /ONLY makes it one value. An empty run is found nowhere, by FIND or by
+-- SELECT, whatever the refinements: `find "abc" ""` and `find [a b] []` are
+-- none in a real 3.22.5, where an empty run could be said to match at
+-- every position.
+--
+-- An empty value that is not a run is an ordinary value and is found where
+-- it is: `find [a ""] ""` is `[""]`, and `find/only [a ()] quote ()` is
+-- `[()]`.
+rule LookingForAnEmptyRunFindsNothing {
+    when: EvaluateCall(verb, series, wanted)
+    requires: verb in {find, select}
+    requires: is_searched_as_a_run(series, wanted)
+    requires: length_of(wanted) = 0
+
+    ensures: CallResult(value: none)
+}
 
 -- Resolved against a real R3: FIND/SAME matches by series identity rather
 -- than by content, so two strings that are equal but are not the same series

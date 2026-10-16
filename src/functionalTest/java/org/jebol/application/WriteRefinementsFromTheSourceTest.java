@@ -15,7 +15,7 @@ class WriteRefinementsFromTheSourceTest {
 
     private static Interpreter writingUnder(Path directory) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.FILES));
+                Bounds.standard().grant(HostService.FILES));
         interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
         return interpreter;
     }
@@ -490,7 +490,7 @@ class WriteRefinementsFromTheSourceTest {
     @DisplayName("a read-only port refuses the seeking and appending forms too")
     void aReadOnlyPortRefusesEveryForm(@TempDir Path directory) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.FILES));
+                Bounds.standard().grant(HostService.FILES));
         interpreter.useFileSystem(FileSystemPort.rootedAt(directory).readOnly());
         assertThat(errorIdOf(interpreter, """
                 write/append %a.txt {x}""")).isEqualTo("read-only");

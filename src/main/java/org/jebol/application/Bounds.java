@@ -101,7 +101,7 @@ public record Bounds(
      * and saying so here is what keeps the two sets from contradicting
      * each other.
      */
-    public Bounds granting(HostService service) {
+    public Bounds grant(HostService service) {
         if (lackingServices.contains(service)) {
             throw new IllegalArgumentException(hostName + " cannot grant "
                     + service.name().toLowerCase(Locale.ROOT)
@@ -138,12 +138,12 @@ public record Bounds(
     }
 
     /** What this host calls itself when it refuses. */
-    public Bounds called(String name) {
+    public Bounds calls(String name) {
         return new Bounds(wallClockLimit, maximumNesting, checkEvery, grantedServices,
                 lackingServices, name, extensions);
     }
 
-    public Bounds adding(Extension extension) {
+    public Bounds add(Extension extension) {
         List<Extension> more = new ArrayList<>(extensions);
         more.add(extension);
         return new Bounds(wallClockLimit, maximumNesting, checkEvery, grantedServices,

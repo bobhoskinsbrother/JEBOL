@@ -53,7 +53,7 @@ class WhatEachRemainingNativeDeclaresTest {
     private Bounds everythingGranted() {
         Bounds everything = Bounds.standard();
         for (HostService service : HostService.values()) {
-            everything = everything.granting(service);
+            everything = everything.grant(service);
         }
         return everything;
     }

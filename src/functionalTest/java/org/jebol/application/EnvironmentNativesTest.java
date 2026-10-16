@@ -44,7 +44,7 @@ class EnvironmentNativesTest {
 
     private static Interpreter reaching(boolean granted) {
         Bounds bounds = granted
-                ? Bounds.standard().granting(HostService.ENVIRONMENT)
+                ? Bounds.standard().grant(HostService.ENVIRONMENT)
                 : Bounds.standard();
         Interpreter interpreter = Interpreter.withBounds(bounds);
         interpreter.useEnvironment(madeUp());

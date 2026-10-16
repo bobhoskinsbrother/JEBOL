@@ -75,7 +75,7 @@ class BrowserScreenFromTheSourceTest {
 
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
-                        .granting(HostService.WINDOWS)
+                        .grant(HostService.WINDOWS)
                         .withWallClockLimit(Duration.ofSeconds(10)));
         interpreter.useScreen(screen);
         screen.theBrowserMeasures(wide, high);
@@ -84,7 +84,7 @@ class BrowserScreenFromTheSourceTest {
 
     private static Interpreter withASilentBrowser(BrowserScreen screen) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
+                Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useScreen(screen);
         return interpreter;
     }
@@ -342,7 +342,7 @@ class BrowserScreenFromTheSourceTest {
         void aResizeWhileWaitingIsTaken() throws Exception {
             BrowserScreen screen = BrowserScreen.seenBy(new SomebodyLooking());
             Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.WINDOWS));
+                    Bounds.standard().grant(HostService.WINDOWS));
             interpreter.useScreen(screen);
             screen.theBrowserMeasures(800, 600);
             interpreter.run("view/no-wait make gob! [size: 100x100 color: 1.1.1]");
@@ -656,7 +656,7 @@ class BrowserScreenFromTheSourceTest {
         private final BrowserScreen screen = BrowserScreen.seenBy(new SomebodyLooking());
 
         private Interpreter withAWindowOpenUnder(Bounds bounds) {
-            Interpreter interpreter = Interpreter.withBounds(bounds.granting(HostService.WINDOWS));
+            Interpreter interpreter = Interpreter.withBounds(bounds.grant(HostService.WINDOWS));
             interpreter.useScreen(screen);
             screen.theBrowserMeasures(800, 600);
             String opening = """

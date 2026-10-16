@@ -111,16 +111,16 @@ JEBOL runs under the same rules as any iOS app and calls iOS directly.
 6. **A gate on the simulator**, as on Android: the examples driven in the app,
    a gate of its own.
 
-### 7. Register the MIDI scheme
+### 7. A real MIDI device through `javax.sound.midi`
 
-`open midi://` is `cannot-open` in R3 (no device on that build) and
-`no-scheme` here. Its declaration is `sys-ports-midi.reb`, in `rebol3-source`
-and not among the files this build loads. It works by `append/only
-system/schemes [...]` while SCHEMES is still a block, so it has to load in the
-window `INIT-SCHEMES` leaves: after `sys-ports.reb` defines `MAKE-SCHEME`,
-before the first borrowed protocol file calls it (`prot-mysql.reb`), and
-before `mezz-tail.reb` protects `system/schemes`. Making MIDI actually work
-through `javax.sound.midi` is a further step and a separate goal.
+The `midi` scheme is registered and its actor is `MidiSchemeActor`, behind
+the `MidiDevices` host port; every interpreter starts with `NoMidiDevices`,
+which lists nothing. What is left is an adapter behind `MidiDevices` over
+`javax.sound.midi`, wired by the command line as the clipboard is. Input
+arrives on another thread and reaches the port's `awake` through the
+interpreter's postbox, as a `read` event; the C sends one for each message
+that arrives. Whether opening an open port should do what the C does is an
+open question in `spec/natives.allium`.
 
 ### 9. MAKE and TO answers no assertion asks
 
@@ -203,7 +203,7 @@ interpreters -- reads as missing.
   block from that value on; and R3's `where` names `catch` between a native
   and the TRY that caught it, which JEBOL's leaves out. Found by the goal 8
   sweeps on 2026-10-15; no suite assertion asks.
-- **64 open questions across the spec files**, 27 of them in
+- **65 open questions across the spec files**, 28 of them in
   `natives.allium`. Unowned by any goal: the three in `parse.allium`, the five
   in `embed.allium`, and the design questions in `natives.allium` (whether a
   `struct!` is more than its layout, which verbs reach a port's actor, whether

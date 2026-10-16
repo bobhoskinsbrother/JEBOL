@@ -13,18 +13,21 @@ REBOL, Copyright 2012 REBOL Technologies. Copyright 2012-2026 Rebol Open
 Source Contributors. Both are licensed under the Apache License,
 Version 2.0, and each file carries its own copyright and licence header.
 
-The files under src/main/resources/org/jebol/mezz/ are unmodified copies
-of Rebol's own library, taken from src/mezz/ upstream. They are loaded
+The files under src/main/resources/org/jebol/mezz/ are copies of Rebol's
+own library, taken from src/mezz/ upstream. Two are modified: prot-tls.reb
+carries four edits that make it check a server's certificates, and
+mezz-banner.reb one that names the JEBOL port in the banner. Every other
+file is unmodified. They are loaded
 and evaluated at startup, and they are the part of the borrowed code that
 ships: they are inside the jar under org/jebol/mezz/, and thus inside the
 distribution archive. They are the larger part of that jar.
 
-The files under src/test/resources/rebol-suite/ are unmodified test
+The files under src/testFixtures/resources/rebol-suite/ are unmodified test
 scripts, taken from src/tests/ upstream. They do not ship.
 
 They are vendored rather than fetched so the suite is reproducible
-without a network, and they are kept byte-for-byte as published so that
-a failure is unambiguously ours.
+without a network, and the test scripts are kept byte-for-byte as
+published so that a failure is unambiguously ours.
 
 REBOL is a trademark of REBOL Technologies. JEBOL is not associated with
 or endorsed by REBOL Technologies or by the maintainers of Oldes/Rebol3.

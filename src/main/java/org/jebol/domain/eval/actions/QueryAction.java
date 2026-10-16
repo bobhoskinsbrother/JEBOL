@@ -2,6 +2,8 @@ package org.jebol.domain.eval.actions;
 
 import org.jebol.domain.date.part.DatePart;
 import org.jebol.domain.eval.Evaluator;
+import org.jebol.domain.eval.QueriedFields;
+import org.jebol.domain.eval.ports.ServesPortActions;
 import org.jebol.domain.host.FileInformation;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.eval.GrantedServices;
@@ -10,7 +12,6 @@ import org.jebol.domain.eval.RefinedCallable;
 import org.jebol.domain.eval.security.PolicyAccess;
 import org.jebol.domain.eval.VectorQuery;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.value.AnyBlockValue;
 import org.jebol.domain.value.BlockValue;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Datatype;
@@ -30,13 +31,11 @@ import org.jebol.domain.value.UnsetValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.VectorValue;
 import org.jebol.domain.value.AnyWordValue;
-import org.jebol.domain.value.GetWordValue;
 import org.jebol.domain.value.WordValue;
 
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -49,8 +48,6 @@ public class QueryAction extends PortAction {
     private static final int COLUMNS_A_TERMINAL_IS_ASSUMED_TO_HAVE = 80;
 
     private static final int SECONDS_A_MINUTE = 60;
-
-    private static final String THE_NAMES_THEMSELVES = "words";
 
     public QueryAction(GrantedServices granted, Ports ports) {
         super(granted, ports);
@@ -131,7 +128,20 @@ public class QueryAction extends PortAction {
     }
 
     private Value theNamesThatPortMayBeAskedFor(Value target, Evaluator evaluator, Context context) {
-        Value described = ports.portMadeFor(target, evaluator, context).context().valueAt("scheme", "info");
+        PortValue port = ports.portMadeFor(target, evaluator, context);
+        return theNamesItsJavaActorGives(port, evaluator)
+                .orElseGet(() -> theNamesInTheSchemesInfo(port));
+    }
+
+    private Optional<Value> theNamesItsJavaActorGives(PortValue port, Evaluator evaluator) {
+        if (!(port.fieldValue("actor") instanceof ServesPortActions served)) {
+            return Optional.empty();
+        }
+        return served.answers(nativeName(), List.of(port, NoneValue.none()), Set.of(), evaluator);
+    }
+
+    private Value theNamesInTheSchemesInfo(PortValue port) {
+        Value described = port.context().valueAt("scheme", "info");
         if (!(described instanceof ObjectValue(Context info))) {
             return BlockValue.block(List.of());
         }
@@ -140,82 +150,15 @@ public class QueryAction extends PortAction {
                 .toList());
     }
 
-    private abstract static class TheFields {
-
-        abstract List<String> names();
-
-        abstract Optional<Value> fieldNamed(String asked);
-
-        abstract Value unknownAlone(AnyWordValue asked);
-
-        Value unknownInABlock(AnyWordValue asked) {
-            throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
-        }
-
-        boolean answersItsNames() {
-            return false;
-        }
-
-        Value answering(Value field, Evaluator evaluator) {
-            return switch (field) {
-                case AnyWordValue asked when asked.canonical().equals(THE_NAMES_THEMSELVES)
-                        && answersItsNames() -> theNames();
-                case AnyWordValue asked -> fieldNamed(asked.canonical()).orElseGet(() -> unknownAlone(asked));
-                case AnyBlockValue several -> eachOf(several);
-                case NoneValue nothing -> theNames();
-                default -> everyFieldAsAnObject(evaluator);
-            };
-        }
-
-        private Value theNames() {
-            return BlockValue.block(names().stream().<Value>map(WordValue::of).toList());
-        }
-
-        private Value eachOf(AnyBlockValue several) {
-            List<Value> answer = new ArrayList<>();
-            for (Value item : several.remaining()) {
-                if (!(item instanceof AnyWordValue asked)) {
-                    throw Raised.of(EvaluationFailure.INVALID_ARG, item);
-                }
-                if (!(asked instanceof GetWordValue)) {
-                    answer.add(asked.asSetWord());
-                }
-                answer.add(fieldNamed(asked.canonical()).orElseGet(() -> unknownInABlock(asked)));
-            }
-            return BlockValue.block(answer);
-        }
-
-        Value everyFieldAsAnObject(Evaluator evaluator) {
-            ObjectValue described = new ObjectValue(Context.childOf(evaluator.systemContext()));
-            described.context().pointItsOwnSelfAt(described);
-            return withEveryFieldIn(described);
-        }
-
-        ObjectValue withEveryFieldIn(ObjectValue described) {
-            for (String part : names()) {
-                described.context().register(part, fieldInTheObject(part));
-            }
-            return described;
-        }
-
-        Value fieldInTheObject(String part) {
-            return fieldNamed(part).orElseGet(NoneValue::none);
-        }
-
-        Raised cannotUse(AnyWordValue asked, Datatype datatype) {
-            return Raised.of(EvaluationFailure.CANNOT_USE, asked, datatype);
-        }
-    }
-
-    private abstract static class TheFieldsOfAnObjectWithoutASelf extends TheFields {
+    private abstract static class TheFieldsOfAnObjectWithoutASelf extends QueriedFields {
 
         @Override
-        Value everyFieldAsAnObject(Evaluator evaluator) {
+        protected Value everyFieldAsAnObject(Evaluator evaluator) {
             return withEveryFieldIn(new ObjectValue(Context.root()));
         }
     }
 
-    private static final class TheFieldsOfAVector extends TheFields {
+    private static final class TheFieldsOfAVector extends QueriedFields {
 
         private final VectorValue vector;
 
@@ -224,22 +167,22 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        List<String> names() {
+        protected List<String> names() {
             return VectorQuery.FIELDS;
         }
 
         @Override
-        Optional<Value> fieldNamed(String asked) {
+        protected Optional<Value> fieldNamed(String asked) {
             return VectorQuery.field(vector, asked);
         }
 
         @Override
-        Value unknownAlone(AnyWordValue asked) {
+        protected Value unknownAlone(AnyWordValue asked) {
             throw cannotUse(asked, VectorValue.TYPE);
         }
     }
 
-    private static final class TheFieldsOfADate extends TheFields {
+    private static final class TheFieldsOfADate extends QueriedFields {
 
         private final DateValue date;
 
@@ -248,34 +191,34 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        List<String> names() {
+        protected List<String> names() {
             return DatePart.partNames();
         }
 
         @Override
-        Optional<Value> fieldNamed(String asked) {
+        protected Optional<Value> fieldNamed(String asked) {
             return names().contains(asked)
                     ? Optional.of(DatePart.readFrom(date, WordValue.of(asked)))
                     : Optional.empty();
         }
 
         @Override
-        Value unknownAlone(AnyWordValue asked) {
+        protected Value unknownAlone(AnyWordValue asked) {
             return UnsetValue.unset();
         }
 
         @Override
-        Value unknownInABlock(AnyWordValue asked) {
+        protected Value unknownInABlock(AnyWordValue asked) {
             return NoneValue.none();
         }
 
         @Override
-        boolean answersItsNames() {
+        protected boolean answersItsNames() {
             return true;
         }
     }
 
-    private static final class TheFieldsOfAHandle extends TheFields {
+    private static final class TheFieldsOfAHandle extends QueriedFields {
 
         private final HandleValue handle;
 
@@ -284,22 +227,22 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        List<String> names() {
+        protected List<String> names() {
             return List.of("type");
         }
 
         @Override
-        Optional<Value> fieldNamed(String asked) {
+        protected Optional<Value> fieldNamed(String asked) {
             return names().contains(asked) ? Optional.of(WordValue.of(handle.typeName())) : Optional.empty();
         }
 
         @Override
-        Value unknownAlone(AnyWordValue asked) {
+        protected Value unknownAlone(AnyWordValue asked) {
             throw cannotUse(asked, HandleValue.TYPE);
         }
 
         @Override
-        boolean answersItsNames() {
+        protected boolean answersItsNames() {
             return true;
         }
     }
@@ -309,12 +252,12 @@ public class QueryAction extends PortAction {
         private static final int A_MEASURE_THE_HOST_DOES_NOT_REPORT = 0;
 
         @Override
-        List<String> names() {
+        protected List<String> names() {
             return CONSOLE_MEASUREMENTS;
         }
 
         @Override
-        Optional<Value> fieldNamed(String asked) {
+        protected Optional<Value> fieldNamed(String asked) {
             if (!names().contains(asked)) {
                 return Optional.empty();
             }
@@ -324,12 +267,12 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        Value fieldInTheObject(String part) {
+        protected Value fieldInTheObject(String part) {
             return IntegerValue.of(A_MEASURE_THE_HOST_DOES_NOT_REPORT);
         }
 
         @Override
-        Value unknownAlone(AnyWordValue asked) {
+        protected Value unknownAlone(AnyWordValue asked) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
     }
@@ -345,12 +288,12 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        List<String> names() {
+        protected List<String> names() {
             return List.of("name", "size", "type", "date", "modified", "accessed", "created");
         }
 
         @Override
-        Optional<Value> fieldNamed(String asked) {
+        protected Optional<Value> fieldNamed(String asked) {
             return switch (asked) {
                 case "name" -> Optional.of(FileValue.of(wholePath));
                 case "size" -> Optional.of(about.size().<Value>map(IntegerValue::of).orElseGet(NoneValue::none));
@@ -363,12 +306,12 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        Value unknownAlone(AnyWordValue asked) {
+        protected Value unknownAlone(AnyWordValue asked) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
 
         @Override
-        Value fieldInTheObject(String part) {
+        protected Value fieldInTheObject(String part) {
             return part.equals("date") ? NoneValue.none() : super.fieldInTheObject(part);
         }
 

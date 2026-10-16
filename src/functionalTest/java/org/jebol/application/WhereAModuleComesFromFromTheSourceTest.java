@@ -14,8 +14,8 @@ class WhereAModuleComesFromFromTheSourceTest {
     private static Interpreter withAFilesystemAt(Path root) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
-                        .granting(HostService.FILES)
-                        .granting(HostService.WORKING_DIRECTORY));
+                        .grant(HostService.FILES)
+                        .grant(HostService.WORKING_DIRECTORY));
         interpreter.useFileSystem(FileSystemPort.rootedAt(root));
         return interpreter;
     }

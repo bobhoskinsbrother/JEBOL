@@ -45,9 +45,9 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
     private static String answerTo(Path root, EnvironmentPort environment, String source) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
-                        .granting(HostService.FILES)
-                        .granting(HostService.WORKING_DIRECTORY)
-                        .granting(HostService.ENVIRONMENT));
+                        .grant(HostService.FILES)
+                        .grant(HostService.WORKING_DIRECTORY)
+                        .grant(HostService.ENVIRONMENT));
         interpreter.useFileSystem(FileSystemPort.rootedAt(root));
         interpreter.useEnvironment(environment);
         interpreter.defineFreshWordsIn(source);
@@ -123,8 +123,8 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
     void aHostThatGrantedNoEnvironmentStillMoves(@TempDir Path root) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
-                        .granting(HostService.FILES)
-                        .granting(HostService.WORKING_DIRECTORY));
+                        .grant(HostService.FILES)
+                        .grant(HostService.WORKING_DIRECTORY));
         interpreter.useFileSystem(FileSystemPort.rootedAt(root));
         String source = """
                 make-dir %inner/

@@ -39,7 +39,7 @@ class TheClipboardPortFromTheSourceTest {
     private static String answerWith(ClipboardPort clipboard, String source) {
         Interpreter interpreter = Interpreter.writingTo(
                 message -> { },
-                Bounds.standard().granting(HostService.CLIPBOARD));
+                Bounds.standard().grant(HostService.CLIPBOARD));
         interpreter.useClipboard(clipboard);
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));

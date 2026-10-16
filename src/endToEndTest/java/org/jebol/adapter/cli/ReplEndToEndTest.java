@@ -64,7 +64,7 @@ class ReplEndToEndTest {
 
         Interpreter interpreter = Interpreter.writingTo(new StreamOutput(output),
                 org.jebol.application.Bounds.standard()
-                        .granting(org.jebol.domain.host.HostService.FILES));
+                        .grant(org.jebol.domain.host.HostService.FILES));
         interpreter.useFileSystem(
                 org.jebol.application.FileSystemPort.rootedAt(directory));
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
@@ -387,7 +387,7 @@ class ReplEndToEndTest {
 
         Interpreter interpreter = Interpreter.writingTo(new StreamOutput(output),
                 org.jebol.application.Bounds.standard()
-                        .granting(org.jebol.domain.host.HostService.PROCESSES));
+                        .grant(org.jebol.domain.host.HostService.PROCESSES));
         interpreter.useProcesses(new org.jebol.adapter.host.JavaProcesses());
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
 

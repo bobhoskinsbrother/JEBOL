@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ARichTextCaretIsDrawnFromTheSourceTest {
 
     private final Interpreter interpreter = Interpreter.withBounds(
-            Bounds.standard().granting(HostService.WINDOWS));
+            Bounds.standard().grant(HostService.WINDOWS));
 
     private PaintInstruction.Writing theLineWrittenFor(String caretFields) {
         String source = """

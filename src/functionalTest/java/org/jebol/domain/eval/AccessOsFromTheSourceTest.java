@@ -17,7 +17,7 @@ class AccessOsFromTheSourceTest {
 
     private static String answerAllowingProcesses(String source) {
         return answerFrom(Interpreter.withBounds(
-                Bounds.standard().granting(HostService.PROCESSES)), source);
+                Bounds.standard().grant(HostService.PROCESSES)), source);
     }
 
     private static String answerFrom(Interpreter interpreter, String source) {

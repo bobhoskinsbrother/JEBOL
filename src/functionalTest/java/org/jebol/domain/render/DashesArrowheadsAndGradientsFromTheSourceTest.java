@@ -20,7 +20,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
 
     private static List<PaintInstruction> drawingOf(String drawBlock) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
+                Bounds.standard().grant(HostService.WINDOWS));
         String source = "make gob! [size: 100x100 draw: [" + drawBlock + "]]";
         interpreter.defineFreshWordsIn(source);
         GobValue gob = (GobValue) interpreter.run(source).value();

@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ARichTextBlockWritesOnlyItsStringsFromTheSourceTest {
 
     private final Interpreter interpreter = Interpreter.withBounds(
-            Bounds.standard().granting(HostService.WINDOWS));
+            Bounds.standard().grant(HostService.WINDOWS));
 
     private List<PaintInstruction.Writing> writtenFor(String gobBuiltBy) {
         interpreter.defineFreshWordsIn(gobBuiltBy);

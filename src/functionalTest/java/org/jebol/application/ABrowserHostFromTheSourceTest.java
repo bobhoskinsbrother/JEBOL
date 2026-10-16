@@ -12,16 +12,16 @@ class ABrowserHostFromTheSourceTest {
     private static Bounds aBrowsersBounds() {
         return Bounds.standard()
                 .withoutAWallClockLimit()
-                .granting(HostService.CONSOLE)
-                .granting(HostService.FILES)
-                .granting(HostService.WINDOWS)
-                .granting(HostService.WEB)
-                .granting(HostService.WORKING_DIRECTORY)
+                .grant(HostService.CONSOLE)
+                .grant(HostService.FILES)
+                .grant(HostService.WINDOWS)
+                .grant(HostService.WEB)
+                .grant(HostService.WORKING_DIRECTORY)
                 .lacking(HostService.NETWORK)
                 .lacking(HostService.PROCESSES)
                 .lacking(HostService.ENVIRONMENT)
                 .lacking(HostService.CERTIFICATES)
-                .called("a browser");
+                .calls("a browser");
     }
 
     private static Interpreter aBrowser() {
@@ -95,9 +95,9 @@ class ABrowserHostFromTheSourceTest {
     @DisplayName("a host that lacks a service cannot also grant it")
     void grantingWhatIsLackingIsARefusalAtTheHost() {
         assertThatThrownBy(() -> Bounds.standard()
-                .called("a browser")
+                .calls("a browser")
                 .lacking(HostService.NETWORK)
-                .granting(HostService.NETWORK))
+                .grant(HostService.NETWORK))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("a browser cannot grant network");
     }
@@ -105,9 +105,9 @@ class ABrowserHostFromTheSourceTest {
     @Test
     @DisplayName("a host names itself, and may not be nameless")
     void aHostNameIsRequired() {
-        assertThatThrownBy(() -> Bounds.standard().called(" "))
+        assertThatThrownBy(() -> Bounds.standard().calls(" "))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("names itself");
-        assertThat(Bounds.standard().called("a browser").hostName()).isEqualTo("a browser");
+        assertThat(Bounds.standard().calls("a browser").hostName()).isEqualTo("a browser");
     }
 }

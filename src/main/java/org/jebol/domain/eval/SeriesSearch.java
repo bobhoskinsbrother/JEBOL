@@ -51,11 +51,34 @@ public final class SeriesSearch {
     }
 
     public int position() {
+        if (seeksAnEmptyRun()) {
+            return -1;
+        }
         boolean forcedToSingleStep = refinements.contains("reverse")
                 || refinements.contains("last");
         return forcedToSingleStep || stride == 1 || stride == 0
                 ? positionOfMatch()
                 : positionOfMatchInRecords();
+    }
+
+    private boolean seeksAnEmptyRun() {
+        if (looksForARunOfValues()) {
+            return theRunOfValues().isEmpty();
+        }
+        boolean aSeriesOfCharactersOrBytes = series instanceof AnyStringValue || series instanceof BinaryValue;
+        boolean aRunOfCharactersOrBytes = wanted instanceof AnyStringValue || wanted instanceof BinaryValue;
+        return aSeriesOfCharactersOrBytes && aRunOfCharactersOrBytes
+                && ((RebolSeries) wanted).lengthFromHere() == 0;
+    }
+
+    private boolean looksForARunOfValues() {
+        return !refinements.contains("only")
+                && (wanted instanceof BlockValue
+                        || series instanceof AnyBlockValue && wanted instanceof AnyBlockValue);
+    }
+
+    private List<Value> theRunOfValues() {
+        return ((AnyBlockValue) wanted).remaining();
     }
 
     public int end() {
@@ -82,10 +105,8 @@ public final class SeriesSearch {
                 && (wanted instanceof CharacterValue || wanted instanceof AnyStringValue)) {
             return theBytesThatSpell().size();
         }
-        if (series instanceof AnyBlockValue
-                && wanted instanceof BlockValue run
-                && !refinements.contains("only")) {
-            return run.remaining().size();
+        if (series instanceof AnyBlockValue && looksForARunOfValues()) {
+            return theRunOfValues().size();
         }
         return series instanceof AnyStringValue && !refinements.contains("only")
                 ? theCharactersIn(Molder.form(wanted))
@@ -126,8 +147,8 @@ public final class SeriesSearch {
             return 1;
         }
         if (series instanceof AnyBlockValue) {
-            return wanted instanceof BlockValue run
-                    ? run.remaining().size()
+            return looksForARunOfValues()
+                    ? theRunOfValues().size()
                     : 1;
         }
         if (wanted instanceof BitsetValue) {
@@ -150,9 +171,8 @@ public final class SeriesSearch {
                     ? items.get(at).datatype() == represents
                     : ((TypesetValue) wanted).holds(items.get(at).datatype());
         }
-        if (wanted instanceof BlockValue run
-                && !refinements.contains("only")) {
-            return runMatchesAt(items, at, run.remaining(), refinements.contains("same"));
+        if (looksForARunOfValues()) {
+            return runMatchesAt(items, at, theRunOfValues(), refinements.contains("same"));
         }
         if (refinements.contains("same")
                 && !(series instanceof AnyStringValue)
@@ -241,8 +261,8 @@ public final class SeriesSearch {
     }
 
     private boolean sameRunAt(List<Value> items, int at) {
-        List<Value> run = wanted instanceof BlockValue block
-                ? block.remaining()
+        List<Value> run = looksForARunOfValues()
+                ? theRunOfValues()
                 : List.of(wanted);
         return runMatchesAt(items, at, run, true);
     }
@@ -271,9 +291,8 @@ public final class SeriesSearch {
             return items.get(at) instanceof CharacterValue(int codepoint)
                     && members.holds(codepoint);
         }
-        if (wanted instanceof BlockValue run
-                && !refinements.contains("only")) {
-            return runMatchesAt(items, at, run.remaining(), refinements.contains("same"));
+        if (looksForARunOfValues()) {
+            return runMatchesAt(items, at, theRunOfValues(), refinements.contains("same"));
         }
         if (wanted instanceof AnyStringValue needle && !refinements.contains("only")) {
             return theTextRunMatchesIgnoringCaseAt(items, at, needle);

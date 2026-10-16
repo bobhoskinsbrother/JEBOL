@@ -14,8 +14,8 @@ class ToRealFileEndsADirectoryFromTheSourceTest {
     private static String answerTo(Path root, String source) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
-                        .granting(HostService.FILES)
-                        .granting(HostService.WORKING_DIRECTORY));
+                        .grant(HostService.FILES)
+                        .grant(HostService.WORKING_DIRECTORY));
         interpreter.useFileSystem(FileSystemPort.rootedAt(root));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));

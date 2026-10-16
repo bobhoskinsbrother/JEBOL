@@ -249,7 +249,10 @@ class SurfaceTypesFromTheSourceTest {
         @DisplayName("a block field answers parts, labeled or bare per word")
         void aBlockFieldAnswersParts() {
             assertThat(answerTo("""
-                    query 1-Jan-2000 [year: :month]""")).isEqualTo("[year: 2000 1]");
+                    query 1-Jan-2000 [year: :month]""")).isEqualTo("""
+                    [
+                        year: 2000 1
+                    ]""");
         }
 
         @Test

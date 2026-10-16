@@ -41,8 +41,12 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
     }
 
     private static String theBorrowedPortFile() {
+        return theBorrowedFile("sys-ports.reb");
+    }
+
+    private static String theBorrowedFile(String name) {
         try (InputStream open = TheSchemesRebolDeclaresFromTheSourceTest.class
-                .getResourceAsStream("/org/jebol/mezz/sys-ports.reb")) {
+                .getResourceAsStream("/org/jebol/mezz/" + name)) {
             return new String(open.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException unreadable) {
             throw new UncheckedIOException(unreadable);
@@ -80,6 +84,7 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
         @DisplayName("nothing is registered that Rebol does not declare, bar the protocols and BUNDLED")
         void nothingIsInventedBesideBundled() {
             List<String> allowed = new ArrayList<>(theSchemesTheLibraryDeclares());
+            allowed.addAll(theSchemesTheOptionalSysFilesDeclare());
             allowed.add(THE_BUILDS_OWN_SCHEME);
             String registered = answerTo("mold sort copy words-of system/schemes");
             for (String name : registered
@@ -88,6 +93,23 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
                         each -> assertThat(allowed).contains(each),
                         each -> assertThat(theProtocolsTheLibraryBrings()).contains(each));
             }
+        }
+
+        @Test
+        @DisplayName("the optional MIDI file declares midi, and it is registered")
+        void theMidiFileDeclaresMidi() {
+            assertThat(theSchemesTheOptionalSysFilesDeclare()).containsExactly("midi");
+            assertThat(answerTo("object? get in system/schemes (quote midi)")).isEqualTo("#(true)");
+        }
+
+        private List<String> theSchemesTheOptionalSysFilesDeclare() {
+            List<String> declared = new ArrayList<>();
+            for (String line : theBorrowedFile("sys-ports-midi.reb").split("\n")) {
+                if (line.startsWith("\tname: '")) {
+                    declared.add(line.substring("\tname: '".length()).trim());
+                }
+            }
+            return declared;
         }
 
         private static List<String> theProtocolsTheLibraryBrings() {

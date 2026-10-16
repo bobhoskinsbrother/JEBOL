@@ -60,11 +60,11 @@ class WhatEachPortNativeDeclaresTest {
 
     private String answerIn(Path directory, String source) {
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                .granting(HostService.FILES)
-                .granting(HostService.WORKING_DIRECTORY)
-                .granting(HostService.ENVIRONMENT)
-                .granting(HostService.PROCESSES)
-                .granting(HostService.CLOCK));
+                .grant(HostService.FILES)
+                .grant(HostService.WORKING_DIRECTORY)
+                .grant(HostService.ENVIRONMENT)
+                .grant(HostService.PROCESSES)
+                .grant(HostService.CLOCK));
         interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
         interpreter.useEnvironment(new AnEnvironmentOfItsOwn());
         interpreter.useProcesses(new JavaProcesses());
@@ -99,7 +99,7 @@ class WhatEachPortNativeDeclaresTest {
                 Arguments.of(new DeleteAction(granted, ports), "delete", Set.of()),
                 Arguments.of(new RenameAction(granted, ports), "rename", Set.of()),
                 Arguments.of(new IsDirectoryNative(granted), "dir?", Set.of("check")),
-                Arguments.of(new SetSchemeNative(), "set-scheme", Set.of()),
+                Arguments.of(new SetSchemeNative(granted), "set-scheme", Set.of()),
                 Arguments.of(new OpenAction(granted, ports), "open", Set.of("new", "read", "write", "seek", "allow")),
                 Arguments.of(new UpdateAction(granted, ports), "update", Set.of()),
                 Arguments.of(new FlushAction(), "flush", Set.of()),

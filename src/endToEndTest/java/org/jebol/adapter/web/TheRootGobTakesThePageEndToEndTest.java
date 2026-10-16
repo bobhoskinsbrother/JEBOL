@@ -113,7 +113,7 @@ class TheRootGobTakesThePageEndToEndTest {
 
     private Interpreter aScriptOnThisPage(String source) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
+                Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useScreen(screen);
         interpreter.defineFreshWordsIn(source);
         interpreter.run(source);

@@ -34,7 +34,7 @@ class CheckingCertificatesFromTheSourceTest {
     }
 
     private Interpreter grantedWithoutAuthority() {
-        return Interpreter.writingTo(printed::append, Bounds.standard().granting(HostService.CERTIFICATES));
+        return Interpreter.writingTo(printed::append, Bounds.standard().grant(HostService.CERTIFICATES));
     }
 
     private Interpreter ungranted() {
@@ -89,7 +89,7 @@ class CheckingCertificatesFromTheSourceTest {
         @DisplayName("is refused as not present by a host that has no authorities to offer")
         void lackingIsNotPresent() {
             Interpreter browser = Interpreter.writingTo(printed::append, Bounds.standard()
-                    .lacking(HostService.CERTIFICATES).called("a browser"));
+                    .lacking(HostService.CERTIFICATES).calls("a browser"));
             assertThat(outcome(browser, "require-certificate-checks"))
                     .isEqualTo("Access no-service | a browser does not allow certificates, which is not present");
         }

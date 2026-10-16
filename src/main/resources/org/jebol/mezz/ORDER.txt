@@ -69,6 +69,7 @@ sys-ports.reb -> sys
 sys-codec.reb -> sys
 sys-load.reb -> sys
 sys-start.reb -> sys
+sys-ports-midi.reb -> sys
 
 # -- lib: the mezzanine, into lib --------------------------------------
 mezz-ansi.reb
@@ -194,17 +195,13 @@ repl-line-editor.reb
 repl-rebol-console.reb
 view-funcs.reb
 
-# sys-ports-audio.reb and sys-ports-midi.reb are deliberately not loaded,
-# for the same reason mezz-osx-dialogs.reb is not.
+# sys-ports-midi.reb is the last sys file because Rebol's include-midi
+# option appends it to mezz-sys-files. It ends with `append/only
+# system/schemes [...]`, which only works while system/schemes is still a
+# block: init-schemes, run just before prot-mysql.reb, moves the pending
+# schemes aside, makes system/schemes an object, registers the common ones
+# and then the pending ones. Loaded any later, appending a block of
+# set-words to the object writes each set-word in as though it were a
+# scheme.
 #
-# Both end with `append/only system/schemes [title: ... name: ...]`, and in
-# a real R3 that appends to a BLOCK: init-schemes moves the pending schemes
-# aside, makes system/schemes an object, registers the common schemes and
-# only then works through what the optional files collected. JEBOL does not
-# run init-schemes -- it registers the one scheme it has an actor for --
-# so system/schemes is already an object when these load, and appending a
-# block of set-words to an object writes each set-word in as though it were
-# a scheme. That is how system/schemes/title came to answer "MIDI".
-#
-# Loading them would only be worth the trouble if JEBOL served audio or
-# MIDI ports, and it serves neither.
+# sys-ports-audio.reb is not loaded: JEBOL serves no audio port.

@@ -19,7 +19,7 @@ class TheHostsOwnHttpFromTheSourceTest {
     private static Interpreter aHostThatFetches(HttpPort port) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().withoutAWallClockLimit()
-                        .granting(HostService.WEB).granting(HostService.CONSOLE));
+                        .grant(HostService.WEB).grant(HostService.CONSOLE));
         interpreter.useHttp(port);
         return interpreter;
     }
@@ -193,7 +193,7 @@ class TheHostsOwnHttpFromTheSourceTest {
     @DisplayName("a host that supplies no fetching keeps Rebol's own protocol")
     void withoutAHostPortTheProtocolStands() {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().withoutAWallClockLimit().granting(HostService.WEB));
+                Bounds.standard().withoutAWallClockLimit().grant(HostService.WEB));
 
         assertThat(answerTo(interpreter, "type? :system/schemes/http/actor"))
                 .isEqualTo("#(object!)");

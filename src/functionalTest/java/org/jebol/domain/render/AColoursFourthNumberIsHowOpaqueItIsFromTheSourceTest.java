@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AColoursFourthNumberIsHowOpaqueItIsFromTheSourceTest {
 
     private final Interpreter interpreter = Interpreter.withBounds(
-            Bounds.standard().granting(HostService.WINDOWS));
+            Bounds.standard().grant(HostService.WINDOWS));
 
     private PaintInstruction.Drawn theOnlyShapeOf(String drawBlock) {
         String source = "make gob! [size: 100x100 draw: [" + drawBlock + "]]";

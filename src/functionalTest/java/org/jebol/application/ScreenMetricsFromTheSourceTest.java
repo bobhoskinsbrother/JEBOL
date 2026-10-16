@@ -15,7 +15,7 @@ class ScreenMetricsFromTheSourceTest {
 
     private static Interpreter withAScreen(RecordingScreen screen) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
+                Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useScreen(screen);
         return interpreter;
     }

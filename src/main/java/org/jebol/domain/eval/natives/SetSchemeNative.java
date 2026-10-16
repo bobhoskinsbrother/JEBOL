@@ -1,6 +1,8 @@
 package org.jebol.domain.eval.natives;
 
+import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.RefinedCallable;
+import org.jebol.domain.eval.ports.MidiSchemeActor;
 import org.jebol.domain.eval.ports.SchemeActorNative;
 import org.jebol.domain.value.*;
 
@@ -16,6 +18,12 @@ public class SetSchemeNative extends DefaultNative {
     private static final int WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_NAME = 0;
 
     private static final int WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_ACTOR = 4;
+
+    private final GrantedServices granted;
+
+    public SetSchemeNative(GrantedServices granted) {
+        this.granted = granted;
+    }
 
     @Override
     public String nativeName() {
@@ -43,6 +51,9 @@ public class SetSchemeNative extends DefaultNative {
     }
 
     private Value theNativeActorFor(AnyWordValue named) {
+        if (named.canonical().equals("midi")) {
+            return new MidiSchemeActor(granted);
+        }
         return new SchemeActorNative(named.canonical());
     }
 }

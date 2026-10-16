@@ -125,7 +125,7 @@ class InteropTest {
             List<String> shared = new ArrayList<>(List.of("first"));
             Extension counting = new Extension("counting", "1.0.0", List.of(new ExtensionCommand(
                     "count-of", "anything", call -> IntegerValue.of(shared.size()))));
-            Interpreter interpreter = Interpreter.withBounds(Bounds.standard().adding(counting));
+            Interpreter interpreter = Interpreter.withBounds(Bounds.standard().add(counting));
             interpreter.define("shared", shared);
 
             assertThat(interpreter.run("count-of 0").display()).isEqualTo("1");

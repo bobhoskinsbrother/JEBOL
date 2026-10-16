@@ -16,7 +16,7 @@ class BlurringARealPictureFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.FILES));
+                Bounds.standard().grant(HostService.FILES));
         interpreter.useFileSystem(FileSystemPort.rootedAt(VENDORED));
         interpreter.useImages(new JavaImages());
         interpreter.defineFreshWordsIn(source);

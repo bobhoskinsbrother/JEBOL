@@ -13,7 +13,7 @@ class ALongStringThroughTheReaderFromTheSourceTest {
 
     private static String answerTo(Path directory, String source) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.FILES));
+                Bounds.standard().grant(HostService.FILES));
         interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));

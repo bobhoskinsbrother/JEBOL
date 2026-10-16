@@ -25,7 +25,7 @@ final class SuiteHost {
     static Bounds grantingEverything() {
         Bounds bounds = Bounds.standard();
         for (HostService service : HostService.values()) {
-            bounds = bounds.granting(service);
+            bounds = bounds.grant(service);
         }
         return bounds;
     }

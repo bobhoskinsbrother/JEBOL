@@ -63,7 +63,7 @@ class ExtensionsFromTheSourceTest {
     private Interpreter with(Extension... extensions) {
         Bounds bounds = Bounds.standard();
         for (Extension extension : extensions) {
-            bounds = bounds.adding(extension);
+            bounds = bounds.add(extension);
         }
         return Interpreter.withBounds(bounds);
     }
@@ -214,7 +214,7 @@ class ExtensionsFromTheSourceTest {
         @Test
         @DisplayName("every interpreter built with the same bounds gets it")
         void everyInterpreterWithTheBoundsGetsIt() {
-            Bounds bounds = Bounds.standard().adding(demo());
+            Bounds bounds = Bounds.standard().add(demo());
 
             assertThat(answerTo(Interpreter.withBounds(bounds), "twice 1")).isEqualTo("2");
             assertThat(answerTo(Interpreter.withBounds(bounds), "twice 2")).isEqualTo("4");

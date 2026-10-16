@@ -40,7 +40,7 @@ class SecurityPoliciesFromTheSourceTest {
     private Interpreter grantedEverything(Bounds bounds) {
         Bounds everything = bounds;
         for (HostService service : HostService.values()) {
-            everything = everything.granting(service);
+            everything = everything.grant(service);
         }
         return withTheHostsAdapters(Interpreter.withBounds(everything));
     }
@@ -142,7 +142,7 @@ class SecurityPoliciesFromTheSourceTest {
         private Interpreter askingThrough(String keys) {
             Bounds everything = Bounds.standard();
             for (HostService service : HostService.values()) {
-                everything = everything.granting(service);
+                everything = everything.grant(service);
             }
             Interpreter asking = withTheHostsAdapters(Interpreter.writingTo(printed::append, everything));
             asking.useConsole(new KeysTypedAtATerminal(keys));
@@ -601,7 +601,7 @@ class SecurityPoliciesFromTheSourceTest {
         @DisplayName("a service the host withheld is refused as not granted, whatever the policy says")
         void aWithheldServiceIsRefusedAsThat() {
             Interpreter withoutProcesses = withTheHostsAdapters(Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.FILES)));
+                    Bounds.standard().grant(HostService.FILES)));
             answerTo(withoutProcesses, "secure [call throw]");
 
             assertThat(answerTo(withoutProcesses, "e: try [call/wait {true}] e/id")).isEqualTo("no-service");
@@ -611,7 +611,7 @@ class SecurityPoliciesFromTheSourceTest {
         @DisplayName("and allowing everything does not reach what the host held back")
         void allowDoesNotReachIt() {
             Interpreter withoutProcesses = withTheHostsAdapters(Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.FILES)));
+                    Bounds.standard().grant(HostService.FILES)));
             answerTo(withoutProcesses, "secure allow");
 
             assertThat(answerTo(withoutProcesses, "e: try [call/wait {true}] e/id")).isEqualTo("no-service");

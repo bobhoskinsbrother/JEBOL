@@ -13,7 +13,7 @@ class NowFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter =
-                Interpreter.withBounds(Bounds.standard().granting(HostService.CLOCK));
+                Interpreter.withBounds(Bounds.standard().grant(HostService.CLOCK));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

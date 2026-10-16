@@ -72,7 +72,7 @@ class CleanPathTest {
     void theCurrentDirectoryGoesInFront() {
         String source = "#\"/\" = first clean-path %a/b";
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WORKING_DIRECTORY));
+                Bounds.standard().grant(HostService.WORKING_DIRECTORY));
         interpreter.useFileSystem(org.jebol.application.FileSystemPort.rootedAt(
                 java.nio.file.Path.of(".")));
         interpreter.defineFreshWordsIn(source);

@@ -38,7 +38,7 @@ class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
                     throw new IllegalStateException("the host fell over");
                 })));
 
-        String formed = formedIn(Interpreter.withBounds(Bounds.standard().adding(breaking)),
+        String formed = formedIn(Interpreter.withBounds(Bounds.standard().add(breaking)),
                 "form try [break-the-host]");
 
         assertThat(formed)

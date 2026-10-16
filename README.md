@@ -261,8 +261,11 @@ Things to note:
 - **Twenty-eight of Rebol's error ids cannot be raised here**, and every one of
   them has a written reason — twenty-four are ids a real 3.22.5 cannot raise
   either.
-- **`midi` is the one scheme name a real 3.22.5 has and JEBOL does not**
-  (goal 7). `callback`, `clipboard`, `serial` and `udp` are registered even
+- **`midi` is registered and has no instrument behind it yet** (goal 7).
+  `query midi:// 'devices-in` lists nothing and `open midi://1` is refused, as
+  in a real 3.22.5 with nothing attached; a host can supply devices through
+  `Interpreter.useMidiDevices`, and MIDI needs a grant of its own.
+  `callback`, `clipboard`, `serial` and `udp` are registered even
   where the device behind them is not, which is what Rebol does on a build with
   no such device compiled into it: the name opens to a refusal that says what
   is missing. JEBOL registers seven scheme names R3 has not, `bundled` and six
@@ -302,7 +305,7 @@ Extension shop = new Extension("shop", "1.0.0", List.of(new ExtensionCommand(
         "lookup-price", "{The price of one item.} item [string!]",
         call -> DecimalValue.of(priceOf(((StringValue) call.arguments().getFirst()).text())))));
 
-Interpreter interpreter = Interpreter.withBounds(Bounds.standard().adding(shop));
+Interpreter interpreter = Interpreter.withBounds(Bounds.standard().add(shop));
 interpreter.define("vatRate", 0.2);
 
 Object total = interpreter.run("multiply lookup-price {widget} add 1 vatRate")

@@ -26,7 +26,7 @@ class ImageCodecFromTheSourceTest {
 
     private static Interpreter withAFilesystemOn(Path directory) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.FILES));
+                Bounds.standard().grant(HostService.FILES));
         interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
         return interpreter;
     }

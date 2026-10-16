@@ -32,7 +32,7 @@ class HostServiceGrantTest {
     @Test
     @DisplayName("a grant adds one kind and leaves the others alone")
     void oneGrantAtATime() {
-        Bounds bounds = Bounds.standard().granting(HostService.CLOCK);
+        Bounds bounds = Bounds.standard().grant(HostService.CLOCK);
         assertThat(bounds.grants(HostService.CLOCK)).isTrue();
         assertThat(bounds.grants(HostService.FILES)).isFalse();
     }
@@ -41,8 +41,8 @@ class HostServiceGrantTest {
     @DisplayName("two grants both hold")
     void grantsAccumulate() {
         Bounds bounds = Bounds.standard()
-                .granting(HostService.CLOCK)
-                .granting(HostService.FILES);
+                .grant(HostService.CLOCK)
+                .grant(HostService.FILES);
         assertThat(bounds.grants(HostService.CLOCK)).isTrue();
         assertThat(bounds.grants(HostService.FILES)).isTrue();
     }
@@ -51,7 +51,7 @@ class HostServiceGrantTest {
     @DisplayName("a grant makes new bounds and does not change the old ones")
     void theOldBoundsAreUnchanged() {
         Bounds first = Bounds.standard();
-        first.granting(HostService.CLOCK);
+        first.grant(HostService.CLOCK);
         assertThat(first.grants(HostService.CLOCK))
                 .as("granting must answer new bounds")
                 .isFalse();
@@ -73,7 +73,7 @@ class HostServiceGrantTest {
     @Test
     @DisplayName("the same script works once the service is granted")
     void aGrantedServiceAnswers() {
-        assertThat(answerTo(Bounds.standard().granting(HostService.CLOCK),
+        assertThat(answerTo(Bounds.standard().grant(HostService.CLOCK),
                 "date? now")).isEqualTo("#(true)");
     }
 
@@ -96,7 +96,7 @@ class HostServiceGrantTest {
     private static Bounds everythingGranted() {
         Bounds everything = Bounds.standard();
         for (HostService service : HostService.values()) {
-            everything = everything.granting(service);
+            everything = everything.grant(service);
         }
         return everything;
     }

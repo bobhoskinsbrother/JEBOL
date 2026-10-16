@@ -12,8 +12,9 @@ not.
 
 ## 1. What JEBOL is
 
-JEBOL is REBOL 3 (R3-Alpha) ported from C to work on the Java Virtual Machine. A Java program holds
-an interpreter, gives it a script, and gets a value back.
+JEBOL is Rebol 3, as Oldes/Rebol3 3.22.5, ported from C to the Java Virtual
+Machine. A Java program holds an interpreter, gives it a script, and gets a
+value back.
 
 Two limits make JEBOL different from most embedded languages. A script stops
 when its time limit passes. A script reaches nothing outside itself until the
@@ -116,7 +117,7 @@ Extension shop = new Extension("shop", "1.0.0", List.of(new ExtensionCommand(
 Interpreter interpreter = Interpreter.withBounds(
         Bounds.standard()
               .withWallClockLimit(Duration.ofMillis(200))
-              .adding(shop));
+              .add(shop));
 
 interpreter.define("vatRate", 0.2);
 
@@ -140,9 +141,10 @@ One interpreter belongs to one thread. A host that wants more than one thread
 makes more than one interpreter. The exception is `cancel()`, which another
 thread calls to stop a script that is executing.
 
-The first interpreter takes about 343 milliseconds to start, and about 72
+The first interpreter takes about 430 milliseconds to start, and about 50
 milliseconds once the JVM has settled. A service that makes a new interpreter
-for every request must know those numbers before it is deployed.
+for every request must know those numbers before it is deployed. `goals.md`
+has the current figures, and `scripts/timing.py boot` measures them.
 
 ---
 
@@ -164,18 +166,20 @@ the port that serves it.
 | Ask what the time is | `CLOCK` | none |
 | Open a connection to another machine | `NETWORK` | `useNetwork(port)` |
 | Fetch a url with HTTP or HTTPS | `WEB` | `useHttp(port)` |
+| Trust a server's certificates over TLS | `CERTIFICATES` | `useCertificateAuthority(authority)` |
 | Ask the operator through a window | `WINDOWS` | `useWindows(port)` and `useScreen(port)` |
-
+| Read and write what the operator copied | `CLIPBOARD` | `useClipboard(port)` |
+| List, hear and play MIDI instruments | `MIDI` | `useMidiDevices(devices)` |
 ```java
 Interpreter interpreter = Interpreter.withBounds(
-        Bounds.standard().granting(HostService.FILES));
+        Bounds.standard().grant(HostService.FILES));
 interpreter.useFileSystem(FileSystemPort.rootedAt(Path.of("/srv/scripts")).readOnly());
 ```
 
 A host that has no way to offer a service at all says so once, on the bounds.
 `lacking(NETWORK)` means this host has no network, whatever it grants later.
 A script that asks for one reads `not_present` rather than `not_granted`. Use
-`called("a phone")` to name the host in that sentence.
+`calls("a phone")` to name the host in that sentence.
 
 `useHttp(port)` is the web build's shape of `WEB`: the host fetches, and the
 http and https schemes answer through it. A host that supplies no HTTP port
@@ -218,7 +222,7 @@ Extension camera = new Extension("camera", "1.0.0", List.of(
         .withHandleKind(new HandleKind("photo", Photo.class))
         .startingWith(postbox -> requireACamera());
 
-Interpreter interpreter = Interpreter.withBounds(Bounds.standard().adding(camera));
+Interpreter interpreter = Interpreter.withBounds(Bounds.standard().add(camera));
 ```
 
 What a script then sees:
@@ -277,7 +281,7 @@ no word, no module and no handle kind behind. Ask
 Extension clash = new Extension("clash", "1.0.0", List.of(
         new ExtensionCommand("add", "a b", call -> StringValue.of("mine"))));
 
-Interpreter.withBounds(Bounds.standard().adding(clash)).extensions();
+Interpreter.withBounds(Bounds.standard().add(clash)).extensions();
 // [ExtensionReport[name=clash, refusal=Optional[already-used]]]
 ```
 
@@ -358,7 +362,7 @@ From Java, a host gets the same behaviour by rooting the port:
 
 ```java
 Interpreter interpreter = Interpreter.withBounds(
-        Bounds.standard().granting(HostService.FILES));
+        Bounds.standard().grant(HostService.FILES));
 interpreter.useFileSystem(FileSystemPort.rootedAt(Path.of("/work/projects/app")));
 
 ScriptOutcome linked = interpreter.run("read %assets/door.txt");
@@ -598,6 +602,8 @@ Into the script, through `define`:
 | `BigDecimal` | `money!` |
 | `String`, `Character` | `string!` |
 | `List<?>` | `block!` |
+| a REBOL value | itself |
+| `null` | a `java-object!` holding a host null, which is not `none` |
 | anything else | `java-object!`, held and not converted |
 
 Out of the script, through `asHostValue()`:
@@ -605,11 +611,12 @@ Out of the script, through `asHostValue()`:
 | REBOL | Java |
 | --- | --- |
 | `integer!` | `long` |
-| `decimal!` | `double` |
+| `decimal!`, `percent!` | `double` |
 | `money!` | `BigDecimal` |
 | `logic!` | `boolean` |
-| `string!` | `String` |
-| `block!` | `List<Object>` |
+| `string!`, `file!`, `url!`, `tag!`, `email!` and every other string | `String` |
+| `block!`, `paren!`, `path!` and every other block | `List<Object>` |
+| `java-object!` | the object it holds |
 | `none!`, `unset!` | `null` |
 | anything else | the molded text, as a `String` |
 
@@ -624,34 +631,34 @@ the absence of a value. REBOL's `none` is a value that means nothing. Use
 Read this section before you build on JEBOL. Some of what is here is absent,
 and some of it answers incorrectly, which is worse.
 
-**Words that answer incorrectly.** Rebol's own suite runs every assertion in
-its sixty-seven files here, and one fails — an assertion that asks to read the
-launcher a confined child interpreter is started from, which has to sit outside
-what a script can see. Take the current number from a run rather than from this
-page, because it is the number that moves.
+**Rebol's own suite.** Every assertion in its sixty-seven files either holds
+here or fails on a real 3.22.5 too; those are listed in
+`fails-on-rebol-too.txt` with the `./r3-head` session that settles each one.
+Where JEBOL differs from Rebol on purpose is in `goals.md` under "Standing".
 
-**Words and types that are absent.** Every datatype R3 has is here, `task!`
-included — though a task is made, read and answered by DO without ever running
-on a thread. Four fields of `access-os` (`uid`, `euid`, `gid`, `egid`) answer
-`not-here`, because the JVM cannot ask a portable question. Five scheme names
-are not registered: `callback`, `clipboard`, `midi`, `serial` and `udp`. A
-scheme name in R3 promises less than it looks — it registers whether or not
-the build can serve it, and refuses at open time — so what is missing here is
-mostly the registration.
+**Words and types that are absent.** Every datatype R3 has is here. A
+`task!`'s body runs only where the host supplies a way to run it with
+`useTasks`: the command line runs it on a thread of its own in a fresh
+interpreter, an embedded interpreter runs nothing unless told to, and a
+browser never runs it. Four fields of `access-os` (`uid`, `euid`, `gid`,
+`egid`) answer `not-here`, because the JVM cannot ask a portable question.
+Every scheme name R3 registers is registered here too. A scheme name in R3
+promises less than it looks — it registers whether or not the build can serve
+it, and refuses at open time. `midi` is one such: the command line lists no
+instruments and refuses to open one, as a real 3.22.5 with nothing attached
+does.
 
-**Transport.** `read https://` works and `import` fetches over it. The TLS
-client does not authenticate the server: an expired certificate, a self-signed
-one, one issued for another host and one from an untrusted root are all read
-without complaint. A fetched module is not checksummed either. A real 3.22.5
-does neither check, so this is a divergence from good practice rather than
-from Rebol — and both are things to weigh before fetching code over a network
-you do not control.
+**Transport.** `read https://` works. Unlike a real 3.22.5, the TLS client
+checks the server: an expired certificate, a self-signed one, one issued for
+another host and one from an untrusted root are refused. A host must grant
+`CERTIFICATES` and supply an authority; the command line uses the JDK's own
+trust store. Every module this build imports is bundled inside it, so nothing
+is fetched over the network.
 
-**Memory.** A script that asks for more than the heap can give is refused as
-`no-memory` where it asks MAKE for it, and can still take the host down with a
-`java.lang.OutOfMemoryError` on any other path that allocates — appending in a
-loop, reading a large file, joining strings. Bound the heap of a process that
-runs untrusted scripts.
+**Memory.** Running out of memory is Rebol's `no-memory` error, raised where
+the script's work asked for the memory, and a script can catch it and carry
+on. The heap is still shared with the host, so bound the heap of a process
+that runs untrusted scripts.
 
 **Graphics.** DRAW paints every command its dialect table declares except
 `effect`. VID is absent. There is no Rebol to compare a picture against — a
@@ -712,8 +719,8 @@ them.
 | How source text becomes values | `spec/load.allium` |
 | How a block is evaluated | `spec/eval.allium` |
 
-Every claim in those files was put to a real REBOL 3.22.1 before it was
-written down. They say what the language must do. This build does not agree
+Every claim in those files was put to a real Rebol, built from the source
+JEBOL ports, before it was written down. They say what the language must do. This build does not agree
 with them everywhere, and section 7 names where.
 
 ---
@@ -728,13 +735,14 @@ https://github.com/Oldes/Rebol3, and that project is itself a continuation of
 REBOL, Copyright 2012 REBOL Technologies, with Copyright 2012-2026 Rebol Open
 Source Contributors. It is under the Apache License, Version 2.0. Every
 function that JEBOL writes in Java was read from that project's C, and the
-behavior was put to a real REBOL 3.22.1 built from it.
+behavior was put to a real Rebol built from it.
 
-**Part of that project ships inside this jar, unmodified.** Rebol writes about
-a third of its library in C and the rest in REBOL. JEBOL ports the C and
-borrows the REBOL. The files under `org/jebol/mezz/` in the jar are byte for
-byte as published upstream, and each one carries its own copyright and licence
-header. They are the larger part of the jar. JEBOL loads and evaluates them at
+**Part of that project ships inside this jar.** Rebol writes about a third of
+its library in C and the rest in REBOL. JEBOL ports the C and borrows the
+REBOL. The files under `org/jebol/mezz/` in the jar are as published upstream,
+with two exceptions: `prot-tls.reb` carries four edits that make it check a
+server's certificates, and `mezz-banner.reb` one that names the JEBOL port in
+the banner. Each file carries its own copyright and licence header. They are the larger part of the jar. JEBOL loads and evaluates them at
 startup, thus much of what a script calls is Rebol's own code and not a
 rewrite of it.
 

@@ -20,7 +20,7 @@ class SurfaceCallsAsJsonFromTheSourceTest {
 
     private static GobValue gobFrom(String source) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
+                Bounds.standard().grant(HostService.WINDOWS));
         interpreter.defineFreshWordsIn(source);
         return (GobValue) interpreter.run(source).value();
     }

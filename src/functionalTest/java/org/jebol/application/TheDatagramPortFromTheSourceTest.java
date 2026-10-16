@@ -23,7 +23,7 @@ class TheDatagramPortFromTheSourceTest {
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.writingTo(
                 message -> { },
-                Bounds.standard().granting(HostService.NETWORK));
+                Bounds.standard().grant(HostService.NETWORK));
         interpreter.useNetwork(new JavaSockets());
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));

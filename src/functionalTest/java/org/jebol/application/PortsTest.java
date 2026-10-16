@@ -16,7 +16,7 @@ class PortsTest {
 
     private static Interpreter grantedFiles() {
         return Interpreter.withBounds(
-                Bounds.standard().granting(org.jebol.domain.host.HostService.FILES));
+                Bounds.standard().grant(org.jebol.domain.host.HostService.FILES));
     }
 
     @Nested

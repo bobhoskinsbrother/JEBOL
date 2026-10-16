@@ -23,7 +23,7 @@ class BootProcessFromTheSourceTest {
     private static Interpreter interpreterWithAHost() {
         Bounds bounds = Bounds.standard();
         for (HostService service : HostService.values()) {
-            bounds = bounds.granting(service);
+            bounds = bounds.grant(service);
         }
         Interpreter interpreter = Interpreter.withBounds(bounds);
         try {

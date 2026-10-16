@@ -21,8 +21,8 @@ class QueryFromTheSourceTest {
 
     private Interpreter reachingTheFilesystem() {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.FILES)
-                        .granting(HostService.WORKING_DIRECTORY));
+                Bounds.standard().grant(HostService.FILES)
+                        .grant(HostService.WORKING_DIRECTORY));
         interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
         return interpreter;
     }
@@ -119,8 +119,12 @@ class QueryFromTheSourceTest {
         @DisplayName("a block of plain words labels each value with a set-word")
         void aBlockOfPlainWordsIsLabelled() throws Exception {
             givenAFile("five.txt", "12345");
-            assertThat(answerTo("mold query %five.txt [type size]"))
-                    .isEqualTo("\"[type: file size: 5]\"");
+            assertThat(answerTo("query %five.txt [type size]"))
+                    .isEqualTo("""
+                            [
+                                type: file
+                                size: 5
+                            ]""");
             assertThat(answerTo("block? query %five.txt [type size]")).isEqualTo(TRUE);
         }
 
@@ -136,8 +140,11 @@ class QueryFromTheSourceTest {
         @DisplayName("the two may be mixed in one block")
         void aMixedBlockLabelsOnlyThePlainWords() throws Exception {
             givenAFile("five.txt", "12345");
-            assertThat(answerTo("mold query %five.txt [type :size]"))
-                    .isEqualTo("\"[type: file 5]\"");
+            assertThat(answerTo("query %five.txt [type :size]"))
+                    .isEqualTo("""
+                            [
+                                type: file 5
+                            ]""");
         }
 
         @Test

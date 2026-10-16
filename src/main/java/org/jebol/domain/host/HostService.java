@@ -21,6 +21,8 @@ public enum HostService {
 
     CLIPBOARD,
 
+    MIDI,
+
     WEB,
 
     CERTIFICATES

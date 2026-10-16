@@ -188,6 +188,7 @@ public final class Ports {
             case "http", "https" -> granted.require(HostService.WEB);
             case "event" -> granted.require(HostService.WINDOWS);
             case "clipboard" -> granted.require(HostService.CLIPBOARD);
+            case "midi" -> granted.require(HostService.MIDI);
             default -> throw Raised.of(EvaluationFailure.NO_SERVICE,
                     scheme.isEmpty()
                             ? "that port has no scheme"

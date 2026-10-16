@@ -262,6 +262,16 @@ public final class Evaluator {
         this.clipboard = port;
     }
 
+    private MidiDevices midiDevices = new NoMidiDevices();
+
+    public MidiDevices midiDevices() {
+        return midiDevices;
+    }
+
+    public void useMidiDevices(MidiDevices devices) {
+        this.midiDevices = devices;
+    }
+
     private TaskPort tasks = TaskPort.none();
 
     public TaskPort tasks() {

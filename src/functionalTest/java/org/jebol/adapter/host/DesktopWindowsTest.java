@@ -59,7 +59,7 @@ class DesktopWindowsTest {
         @DisplayName("and reaches a script as a catchable error, not a throwable")
         void theRefusalReachesTheScriptAsAnError() {
             Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.WINDOWS));
+                    Bounds.standard().grant(HostService.WINDOWS));
             interpreter.useWindows(DesktopWindows.onThisMachine());
 
             String source = "e: try [request-color] either error? e [e/id] ['no-error]";
@@ -84,7 +84,7 @@ class DesktopWindowsTest {
         @DisplayName("granting the service without handing over a screen still refuses")
         void theGrantAloneIsNotEnough() {
             Interpreter granted = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.WINDOWS));
+                    Bounds.standard().grant(HostService.WINDOWS));
 
             String source = "e: try [request-dir] either error? e [e/id] ['no-error]";
             granted.defineFreshWordsIn(source);
@@ -126,7 +126,7 @@ class DesktopWindowsTest {
             };
 
             Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.WINDOWS));
+                    Bounds.standard().grant(HostService.WINDOWS));
             interpreter.useWindows(declining);
 
             String source = "none? request-color";

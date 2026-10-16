@@ -27,7 +27,7 @@ class InterpreterStateFromTheSourceTest {
 
     private static String withFilesUnder(Path directory, String source) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.FILES));
+                Bounds.standard().grant(HostService.FILES));
         interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
@@ -267,7 +267,7 @@ class InterpreterStateFromTheSourceTest {
         void itCopiesRatherThanRedirects(@TempDir Path directory) throws Exception {
             StringBuilder printed = new StringBuilder();
             Interpreter interpreter = Interpreter.writingTo(
-                    printed::append, Bounds.standard().granting(HostService.FILES));
+                    printed::append, Bounds.standard().grant(HostService.FILES));
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
 
             interpreter.run("echo %log.txt print \"hello\"");
@@ -281,7 +281,7 @@ class InterpreterStateFromTheSourceTest {
         @DisplayName("ECHO of none stops it, and what follows is not in the file")
         void noneStopsIt(@TempDir Path directory) throws Exception {
             Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.FILES));
+                    Bounds.standard().grant(HostService.FILES));
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
 
             interpreter.run("echo %log.txt print \"kept\" echo none print \"dropped\"");
@@ -295,7 +295,7 @@ class InterpreterStateFromTheSourceTest {
         @DisplayName("echoing again replaces rather than stacking")
         void echoingAgainReplaces(@TempDir Path directory) throws Exception {
             Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.FILES));
+                    Bounds.standard().grant(HostService.FILES));
             interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
 
             interpreter.run(

@@ -37,7 +37,7 @@ class AScreenEventCarriesItsPositionOrKeyFromTheSourceTest {
 
     private Interpreter anInterpreterOn(RecordingScreen watched) {
         Interpreter made = Interpreter.withBounds(Bounds.standard()
-                .granting(HostService.WINDOWS)
+                .grant(HostService.WINDOWS)
                 .withWallClockLimit(Duration.ofSeconds(10)));
         made.useScreen(watched);
         made.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);

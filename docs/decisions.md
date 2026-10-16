@@ -1295,7 +1295,7 @@ says this host has no such service at all, and `granting` refuses a service
 the same bounds lack, because a host that could change its mind should have
 granted it. A refusal picks its reason from the two sets: in `lacking`, it
 is `not_present`; merely ungranted, it stays `not_granted`. The sentence
-names the host, which names itself once with `called("a browser")`, because
+names the host, which names itself once with `calls("a browser")`, because
 the domain knows nothing about browsers and should not learn.
 
 **The two are refused before anything is attempted**, so a script cannot

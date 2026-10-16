@@ -27,7 +27,7 @@ class CommandsFromTheSourceTest {
                     throw new IllegalStateException("fell over");
                 }),
                 new ExtensionCommand("nothing", "", call -> UnsetValue.unset())));
-        return Interpreter.withBounds(Bounds.standard().adding(demo));
+        return Interpreter.withBounds(Bounds.standard().add(demo));
     }
 
     private String answerTo(Interpreter interpreter, String source) {
@@ -156,7 +156,7 @@ class CommandsFromTheSourceTest {
         @Test
         @DisplayName("SECURE's extension policy is checked first")
         void secureComesFirst(@TempDir Path root) {
-            Interpreter interpreter = Interpreter.withBounds(Bounds.standard().granting(HostService.FILES));
+            Interpreter interpreter = Interpreter.withBounds(Bounds.standard().grant(HostService.FILES));
             interpreter.useFileSystem(FileSystemPort.rootedAt(root));
             answerTo(interpreter, "secure [extension throw]");
 

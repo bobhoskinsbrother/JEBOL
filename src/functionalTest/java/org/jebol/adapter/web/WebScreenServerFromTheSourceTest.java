@@ -76,7 +76,7 @@ class WebScreenServerFromTheSourceTest {
 
     private Interpreter anInterpreterOnThisScreen() {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
+                Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useScreen(screen);
         return interpreter;
     }

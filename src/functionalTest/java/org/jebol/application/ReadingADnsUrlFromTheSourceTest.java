@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ReadingADnsUrlFromTheSourceTest {
 
     private String answerTo(NetworkPort network, String source) {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard().granting(HostService.NETWORK));
+        Interpreter interpreter = Interpreter.withBounds(Bounds.standard().grant(HostService.NETWORK));
         interpreter.useNetwork(network);
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));

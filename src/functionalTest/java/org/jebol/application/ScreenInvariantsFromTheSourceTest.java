@@ -20,7 +20,7 @@ class ScreenInvariantsFromTheSourceTest {
     private static Interpreter withAScreen(RecordingScreen screen) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
-                        .granting(HostService.WINDOWS)
+                        .grant(HostService.WINDOWS)
                         .withWallClockLimit(Duration.ofSeconds(10)));
         interpreter.useScreen(screen);
         return interpreter;

@@ -31,7 +31,7 @@ class PortDatatypeTest {
 
     private static Interpreter withAConsole(String... lines) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.CONSOLE));
+                Bounds.standard().grant(HostService.CONSOLE));
         interpreter.useConsole(new Lines(lines));
         return interpreter;
     }

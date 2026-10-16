@@ -16,9 +16,9 @@ class TheSafeSchemeFromTheSourceTest {
     private static Interpreter reaching(Path directory) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
-                        .granting(HostService.FILES)
-                        .granting(HostService.ENVIRONMENT)
-                        .granting(HostService.CLOCK));
+                        .grant(HostService.FILES)
+                        .grant(HostService.ENVIRONMENT)
+                        .grant(HostService.CLOCK));
         interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
         interpreter.useEnvironment(new ProcessEnvironment());
         return interpreter;

@@ -82,7 +82,7 @@ class WindowServiceTest {
 
     private static Interpreter withAScreen(WindowPort screen) {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
+                Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useWindows(screen);
         return interpreter;
     }
@@ -275,12 +275,12 @@ class WindowServiceTest {
         @DisplayName("granted with no screen behind it is not-present, not not-granted")
         void grantedWithNoScreenIsNotPresent() {
             Interpreter granted = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.WINDOWS));
+                    Bounds.standard().grant(HostService.WINDOWS));
 
             assertThat(errorIdFrom(granted, "request-file")).isEqualTo("no-service");
 
             Interpreter again = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.WINDOWS));
+                    Bounds.standard().grant(HostService.WINDOWS));
             assertThat(answerFrom(again,
                     "e: try [request-file] find form disarm e \"no screen\""))
                     .as("the refusal says the host has no screen rather than that it withheld one")
@@ -291,7 +291,7 @@ class WindowServiceTest {
         @DisplayName("the windows grant does not open anything else")
         void oneGrantIsOneService() {
             Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().granting(HostService.WINDOWS));
+                    Bounds.standard().grant(HostService.WINDOWS));
             interpreter.useWindows(Screen.answering("x"));
 
             assertThat(errorIdFrom(interpreter, "read %a.txt")).isEqualTo("no-service");

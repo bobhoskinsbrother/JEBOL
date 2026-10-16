@@ -15,7 +15,7 @@ class ToLocalFileFromTheSourceTest {
     private static Interpreter reaching(Path directory, HostService... granted) {
         Bounds bounds = Bounds.standard();
         for (HostService service : granted) {
-            bounds = bounds.granting(service);
+            bounds = bounds.grant(service);
         }
         Interpreter interpreter = Interpreter.withBounds(bounds);
         interpreter.useFileSystem(FileSystemPort.rootedAt(directory));

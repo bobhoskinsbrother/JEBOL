@@ -246,7 +246,7 @@ class BothRenderersSideBySideTest {
 
     private Interpreter anInterpreterOnThisPage() {
         Interpreter interpreter = Interpreter.withBounds(
-                Bounds.standard().granting(HostService.WINDOWS));
+                Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useScreen(screen);
         theDrawDialect = (ObjectValue) interpreter.run("system/dialects/draw").value();
         return interpreter;

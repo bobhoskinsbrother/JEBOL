@@ -65,7 +65,7 @@ class TheSurveyExampleTakesAnOperatorsAnswersEndToEndTest {
     void openTheExample() {
         Bounds everything = Bounds.standard().withWallClockLimit(Duration.ofSeconds(100));
         for (HostService service : HostService.values()) {
-            everything = everything.granting(service);
+            everything = everything.grant(service);
         }
         interpreter = Interpreter.withBounds(everything);
         interpreter.useScreen(screen);
