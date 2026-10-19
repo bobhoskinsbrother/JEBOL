@@ -1,13 +1,41 @@
 package org.jebol.application;
 
+import org.jebol.domain.eval.BootSources;
 import org.jebol.domain.host.FilePort;
 
-final class RebolFiles {
+import java.util.List;
+
+final class RebolFiles implements BootSources {
 
     private final FilePort files;
 
     RebolFiles(FilePort files) {
         this.files = files;
+    }
+
+    @Override
+    public String errorCatalogue() {
+        return errors().textSource();
+    }
+
+    @Override
+    public String datatypeSpecs() {
+        return typespec().textSource();
+    }
+
+    @Override
+    public String operatorTable() {
+        return ops().textSource();
+    }
+
+    @Override
+    public String modeTable() {
+        return modes().textSource();
+    }
+
+    @Override
+    public List<String> functionDeclarations() {
+        return List.of(actions().textSource(), natives().textSource(), genNatives().textSource());
     }
 
     RebolFile errors() {

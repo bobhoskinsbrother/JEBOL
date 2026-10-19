@@ -2,8 +2,6 @@ package org.jebol.application;
 
 import org.jebol.domain.eval.*;
 import org.jebol.domain.host.*;
-import org.jebol.domain.read.LibraryFile;
-import org.jebol.domain.read.LibraryFileHeader;
 import org.jebol.domain.read.TranscodeResult;
 import org.jebol.domain.value.*;
 
@@ -35,43 +33,31 @@ public final class Interpreter {
     private static final int CONSOLE_PRINT_MAX_LENGTH = 500;
     private static final int CONSOLE_PRINT_MAX_ERROR_LENGTH = 640;
 
-    private static final String DECLARATION = "the-declaration";
-    private static final String BOOT_MEZZ = "boot-mezz";
     private static final String RESULT_MARKER = "== ";
-    private static final String INTO_SYS = "-> sys";
 
-    private final RebolFiles rebolFiles = new RebolFiles(new ClasspathFiles());
     private final Context systemContext;
+    private final SystemPaths systemPaths;
     private final Evaluator evaluator;
+    private final RebolLibraryLoader library;
     private final Bounds bounds;
     private final MachinePort machine;
-    private final Map<String, String> borrowedLoadFailures = new LinkedHashMap<>();
     private final AtomicBoolean cancellationRequested = new AtomicBoolean();
     private volatile long deadlineNanos = Long.MAX_VALUE;
-    private final Context systemInternals;
     private final List<ExtensionReport> extensionReports;
 
     private Context userContext;
-    private boolean schemesAreRegistered;
     private String sharedRoot = "";
 
     private Interpreter(MachinePort machine, OutputPort output, Bounds bounds) {
         this.machine = refuseUnknownOperatingSystem(machine);
         Set<HostService> duringBoot = EnumSet.of(HostService.CLOCK, HostService.WINDOWS);
         duringBoot.addAll(bounds.grantedServices());
-        Boot boot = Boot.makeStandard(machine, duringBoot);
-        boot.useErrorCatalogue(rebolFiles.errors().textSource());
-        boot.useDatatypeSpecs(rebolFiles.typespec().textSource());
-        boot.useOperatorTable(rebolFiles.ops().textSource());
-        boot.useModeTable(rebolFiles.modes().textSource());
-        boot.useFunctionDeclarations(
-                rebolFiles.actions().textSource(),
-                rebolFiles.natives().textSource(),
-                rebolFiles.genNatives().textSource());
+        RebolFiles rebolFiles = new RebolFiles(new ClasspathFiles());
+        Boot boot = Boot.makeStandard(machine, rebolFiles, duringBoot);
         this.bounds = bounds;
         SystemObject system = boot.start();
         this.systemContext = system.lib();
-        this.systemInternals = system.internals();
+        this.systemPaths = new SystemPaths(systemContext);
         this.userContext = Context.makeChildOf(systemContext);
         this.evaluator = new Evaluator(
                 systemContext,
@@ -84,14 +70,13 @@ public final class Interpreter {
         evaluator.usePause(new ThreadPause());
         evaluator.useMachine(machine);
         evaluator.putRuntimeWordsIn(userContext);
-        evaluator.symbols().useBootSymbols(rebolFiles.bootSymbolsTxt().textSource());
-        evaluator.useBundledModules(this::readBundledModule);
-        declareRebolSequentially();
+        this.library = new RebolLibraryLoader(rebolFiles, evaluator, systemContext, system.internals(), this::run);
+        library.supplySymbolsAndModules();
+        library.declareSystemObject();
         publishUserContext();
-        putAddressesOfModulesRebolPublishes();
-        loadRebolsOwnLibrary();
+        library.load();
         nameLauncherOnceLibraryLoads();
-        registerSchemesRebolDeclares();
+        library.registerSchemes();
         boot.grantOnly(bounds.grantedServices());
         boot.markOnlyUnavailable(bounds.unavailableServices());
         boot.useHostName(bounds.hostName());
@@ -145,8 +130,7 @@ public final class Interpreter {
     }
 
     public ScriptOutcome start() {
-        runBootStep(rebolFiles.handOverToStart());
-        leaveBannerForStartToBuild();
+        library.handOverToStart();
         ScriptOutcome outcome =
                 concludeWithinBounds(() -> evaluator.applyAsHostApplies("start"));
         adoptUserContextStartMade();
@@ -165,221 +149,6 @@ public final class Interpreter {
             return;
         }
         pointBootAt(machine.launcherFor("/", ""));
-    }
-
-    private void putAddressesOfModulesRebolPublishes() {
-        runBootStep(rebolFiles.modules());
-    }
-
-    private void declareRebolSequentially() {
-        AnyBlockValue body = rebolFiles.sysobj().readLibraryFile().body();
-        Context whereDeclarationsOwnWordsLand = Context.makeChildOf(systemContext);
-        declareSetWordsOf(body, whereDeclarationsOwnWordsLand, AssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
-        AnyBlockValue step = rebolFiles.systemObject().readLibraryFile().body();
-        Context whereStepsOwnWordsLand = Context.makeChildOf(systemContext);
-        whereStepsOwnWordsLand.register(DECLARATION, withoutFileLineBreaks(
-                Binder.bind(body, whereDeclarationsOwnWordsLand)));
-        declareSetWordsOf(step, whereStepsOwnWordsLand, AssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
-        Outcome outcome = evaluator.evaluate(Binder.bind(step, whereStepsOwnWordsLand), whereStepsOwnWordsLand);
-        if (outcome instanceof Outcome.Raised(ErrorValue failure)) {
-            throw new IllegalStateException( "the system object would not build from Rebol's declaration: " + failure);
-        }
-    }
-
-    private AnyBlockValue withoutFileLineBreaks(AnyBlockValue block) {
-        for (int at = block.index(); at <= block.storageLength(); at++) {
-            block.storage().setLineBreakAt(at, false);
-        }
-        for (Value each : block.remaining()) {
-            if (each instanceof AnyBlockValue nested) {
-                withoutFileLineBreaks(nested);
-            }
-        }
-        return block;
-    }
-
-    private void registerSchemesRebolDeclares() {
-        if (schemesAreRegistered || !systemInternals.knows("make-scheme")) {
-            return;
-        }
-        schemesAreRegistered = true;
-        runBootStep(rebolFiles.schemes());
-    }
-
-    private void runBootStep(RebolFile step) {
-        run(step.textSource());
-    }
-
-    private AnyBlockValue readPrelude() {
-        return rebolFiles.prelude().readLibraryFile().body();
-    }
-
-    private void declareWordsPreludeSets() {
-        declareSetWordsOf(readPrelude(), systemContext,
-                AssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
-    }
-
-    private void loadPrelude() {
-        AnyBlockValue body = readPrelude();
-        Outcome outcome = evaluator.evaluate(Binder.bind(body, systemContext), systemContext);
-        if (outcome instanceof Outcome.Raised(ErrorValue failure)) {
-            throw new IllegalStateException("the prelude failed to load: " + failure);
-        }
-    }
-
-    private void loadRebolsOwnLibrary() {
-        declareEverySystemWordBeforeBindingAny();
-        declareEveryLibraryWordBeforeBindingAny();
-        declareWordsPreludeSets();
-        for (String entry : borrowedFileNames()) {
-            String name = readFileNameIn(entry);
-            RebolFile borrowed = rebolFiles.mezzDir(name);
-            if (borrowed.equals(rebolFiles.protMysql())) {
-                registerSchemesRebolDeclares();
-            }
-            if (!borrowed.exists()) {
-                continue;
-            }
-            TranscodeResult read = borrowed.readTranscoded();
-            if (read.values().isEmpty()) {
-                borrowedLoadFailures.put(name, read.error().orElseThrow().toString());
-                continue;
-            }
-            LibraryFile file = LibraryFile.readFrom(read.values().orElseThrow());
-            LibraryFileHeader header = file.header();
-            AnyBlockValue body = file.body();
-
-            Outcome outcome = header.declaresModule()
-                    || isProtocolAndSoModuleWhateverItsHeaderSays(name)
-                    ? loadAsModule(body, header)
-                    : entry.endsWith(INTO_SYS)
-                            ? loadAsSystemFile(body)
-                            : loadInto(body, systemContext);
-            if (outcome instanceof Outcome.Raised(ErrorValue failure)) {
-                borrowedLoadFailures.put(name, failure.toString());
-            }
-            if (borrowed.equals(rebolFiles.baseFuncs())) {
-                loadPrelude();
-            }
-        }
-        describeQoiCodec();
-    }
-
-    private void describeQoiCodec() {
-        runBootStep(rebolFiles.qoiCodec());
-    }
-
-    private Outcome loadAsSystemFile(AnyBlockValue body) {
-        declareSetWordsOf(body, systemInternals,
-                AssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
-        return evaluator.evaluate(
-                Binder.bind(body, systemInternals), systemInternals);
-    }
-
-    private void declareEveryLibraryWordBeforeBindingAny() {
-        for (String entry : borrowedFileNames()) {
-            String name = readFileNameIn(entry);
-            if (entry.endsWith(INTO_SYS) || isProtocolAndSoModuleWhateverItsHeaderSays(name)) {
-                continue;
-            }
-            RebolFile borrowed = rebolFiles.mezzDir(name);
-            if (borrowed.readsAsLibraryFile() && !borrowed.readLibraryFile().header().declaresModule()) {
-                declareSetWordsOf(borrowed.readLibraryFile().body(), systemContext,
-                        AssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
-            }
-        }
-    }
-
-    private void declareEverySystemWordBeforeBindingAny() {
-        for (String entry : borrowedFileNames()) {
-            if (!entry.endsWith(INTO_SYS)) {
-                continue;
-            }
-            RebolFile borrowed = rebolFiles.mezzDir(readFileNameIn(entry));
-            if (borrowed.readsAsLibraryFile()) {
-                declareSetWordsOf(borrowed.readLibraryFile().body(), systemInternals,
-                        AssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
-            }
-        }
-    }
-
-    private enum AssignmentMayLand {
-        HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE,
-        HERE_OR_IN_WHATEVER_IS_ABOVE
-    }
-
-    private void declareSetWordsOf(
-            AnyBlockValue body, Context into, AssignmentMayLand mayLand) {
-
-        for (AnyWordValue word : body.setWordsFromHere()) {
-            if (!isAlreadyAnswered(into, word.canonical(), mayLand)) {
-                into.register(word.spelling());
-            }
-        }
-    }
-
-    private boolean isAlreadyAnswered(
-            Context into, String canonical, AssignmentMayLand mayLand) {
-
-        return mayLand == AssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE
-                ? into.holds(canonical)
-                : into.knows(canonical);
-    }
-
-    private Outcome loadInto(AnyBlockValue body, Context target) {
-        declareSetWordsOf(body, target,
-                AssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
-        return evaluator.evaluate(Binder.bind(body, target), target);
-    }
-
-    private Outcome loadAsModule(AnyBlockValue body, LibraryFileHeader header) {
-        Context own = Context.makeChildOf(systemContext);
-        for (String exported : header.exportedNames()) {
-            if (!own.holds(exported)) {
-                own.register(exported);
-            }
-        }
-        declareSetWordsOf(body, own,
-                AssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
-        Outcome outcome = evaluator.evaluate(Binder.bind(body, own), own);
-        if (outcome instanceof Outcome.Raised) {
-            return outcome;
-        }
-        for (String exported : header.exportedNames()) {
-            if (own.holds(exported)) {
-                systemContext.register(exported, own.ownSlotFor(exported).value());
-            }
-        }
-        registerModule(header, own);
-        return outcome;
-    }
-
-    private void registerModule(LibraryFileHeader header, Context own) {
-        String name = header.moduleName();
-        if (name.isEmpty()
-                || !(followPathInto("system", "modules") instanceof ObjectValue(Context context))) {
-            return;
-        }
-        Context spec = Context.root();
-        spec.register("name", WordValue.of(name));
-        spec.register("type", WordValue.of("module"));
-        spec.register("exports", BlockValue.of(header.exportedNames().stream()
-                .<Value>map(WordValue::of).toList()));
-        context.register(name, new ModuleValue(own, new ObjectValue(spec)));
-    }
-
-    private Value followPathInto(String... names) {
-        Value here = systemContext.knows(names[0])
-                ? systemContext.findSlotFor(names[0]).value()
-                : UnsetValue.unset();
-        for (int at = 1; at < names.length; at++) {
-            if (!(here instanceof ObjectValue(Context context))
-                    || !context.holds(names[at])) {
-                return UnsetValue.unset();
-            }
-            here = context.ownSlotFor(names[at]).value();
-        }
-        return here;
     }
 
     private void publishUserContext() {
@@ -401,34 +170,11 @@ public final class Interpreter {
     }
 
     public Map<String, String> borrowedLoadFailures() {
-        return Map.copyOf(borrowedLoadFailures);
+        return library.borrowedLoadFailures();
     }
-
-    private boolean isProtocolAndSoModuleWhateverItsHeaderSays(
-            String fileName) {
-        return fileName.startsWith("prot-");
-    }
-
-    private List<String> borrowedFileNames() {
-        return TextLines.of(rebolFiles.orderTxt().textSource()).stream()
-                .map(String::strip)
-                .filter(line -> !line.isEmpty() && !line.startsWith("#"))
-                .toList();
-    }
-
-    private String readFileNameIn(String entry) {
-        int marker = entry.indexOf("->");
-        return marker < 0 ? entry : entry.substring(0, marker).strip();
-    }
-
-    private Optional<byte[]> readBundledModule(String name) {
-        RebolFile module = rebolFiles.modulesDir(name);
-        return module.exists() ? Optional.of(module.readBytes()) : Optional.empty();
-    }
-
 
     private void adoptUserContextStartMade() {
-        if (followPathInto("system", "contexts", "user") instanceof ObjectValue(Context made)
+        if (systemPaths.follow("system", "contexts", "user") instanceof ObjectValue(Context made)
                 && made != userContext) {
             userContext = made;
         }
@@ -447,18 +193,6 @@ public final class Interpreter {
                 : UnsetValue.unset();
     }
 
-    private void leaveBannerForStartToBuild() {
-        if (!(systemInternals.readValueAt(BOOT_MEZZ) instanceof AnyBlockValue protecting)) {
-            return;
-        }
-        RebolFile banner = rebolFiles.mezzBanner();
-        if (!banner.readsAsLibraryFile()) {
-            return;
-        }
-        List<Value> runFirst = new ArrayList<>(banner.readLibraryFile().body().remaining());
-        runFirst.addAll(protecting.remaining());
-        systemInternals.register(BOOT_MEZZ, BlockValue.of(runFirst));
-    }
 
     private ScriptOutcome concludeWithinBounds(Supplier<Outcome> evaluating) {
         cancellationRequested.set(false);
@@ -671,14 +405,14 @@ public final class Interpreter {
     }
 
     private void handOverDrawDialectTo(ScreenPort port) {
-        Value declared = followPathInto("system", "dialects", "draw");
+        Value declared = systemPaths.follow("system", "dialects", "draw");
         if (!(declared instanceof UnsetValue)) {
             port.useDrawDialect(declared);
         }
     }
 
     private void handOverRootGobTo(ScreenPort port) {
-        if (followPathInto("system", "view", "screen-gob") instanceof GobValue root) {
+        if (systemPaths.follow("system", "view", "screen-gob") instanceof GobValue root) {
             port.takeAsRoot(root);
         }
     }
@@ -698,7 +432,7 @@ public final class Interpreter {
     }
 
     public void followApplicationDataDirectory() {
-        runBootStep(rebolFiles.modulesDirectory());
+        library.placeModulesDirectory();
         confineAnyInterpreterThisOneStarts();
     }
 
@@ -725,13 +459,13 @@ public final class Interpreter {
     }
 
     private void pointBootAt(Value launcher) {
-        if (followPathInto("system", "options") instanceof ObjectValue(Context options)) {
+        if (systemPaths.follow("system", "options") instanceof ObjectValue(Context options)) {
             options.register("boot", launcher);
         }
     }
 
     private String findDataDirectory() {
-        return followPathInto("system", "options", "data") instanceof AnyStringValue written
+        return systemPaths.follow("system", "options", "data") instanceof AnyStringValue written
                 ? written.text()
                 : "";
     }
@@ -752,7 +486,7 @@ public final class Interpreter {
     }
 
     private boolean showsResultsOfType(Datatype type) {
-        return followPathInto("system", "options", "result-types") instanceof TypesetValue shown
+        return systemPaths.follow("system", "options", "result-types") instanceof TypesetValue shown
                 && shown.holds(type);
     }
 
@@ -772,10 +506,6 @@ public final class Interpreter {
             return "";
         }
         return outcome.display();
-    }
-
-    public Value produceNothing() {
-        return UnsetValue.unset();
     }
 
     public String show(Value value) {

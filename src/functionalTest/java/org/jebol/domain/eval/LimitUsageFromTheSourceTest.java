@@ -59,7 +59,7 @@ class LimitUsageFromTheSourceTest {
         }
 
         private static Evaluator makeAnEvaluator() {
-            Boot boot = Boot.makeStandard(new JavaMachine(), Set.of());
+            Boot boot = Boot.makeStandard(new JavaMachine(), BootSources.none(), Set.of());
             return new Evaluator(boot.start().lib(), line -> { });
         }
 

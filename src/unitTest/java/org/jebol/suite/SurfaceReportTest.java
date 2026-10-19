@@ -2,6 +2,7 @@ package org.jebol.suite;
 
 import org.jebol.application.JavaMachine;
 import org.jebol.domain.eval.Boot;
+import org.jebol.domain.eval.BootSources;
 import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,7 +20,7 @@ class SurfaceReportTest {
     @DisplayName("every function JEBOL has, with its arguments and refinements")
     void printsTheSurface() {
         TreeMap<String, String> byName = new TreeMap<>();
-        for (ContextSlot slot : Boot.makeStandard(new JavaMachine()).start().lib().slots()) {
+        for (ContextSlot slot : Boot.makeStandard(new JavaMachine(), BootSources.none()).start().lib().slots()) {
             describe(slot.value()).ifPresent(
                     shape -> byName.put(slot.canonical(), slot.canonical() + " |" + shape));
         }

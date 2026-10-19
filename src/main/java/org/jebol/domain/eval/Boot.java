@@ -21,39 +21,24 @@ public final class Boot {
     private final Ports ports = new Ports(grantedServices);
     private final LocalFileSeparator localFileSeparator = new LocalFileSeparator();
 
-    private Boot(MachinePort machine) {
+    private Boot(MachinePort machine, BootSources sources) {
         this.machine = machine;
         localFileSeparator.use(machine.fileSeparator());
+        bootDeclarations.useErrorCatalogue(sources.errorCatalogue());
+        bootDeclarations.useDatatypeSpecs(sources.datatypeSpecs());
+        bootDeclarations.useOperatorTable(sources.operatorTable());
+        bootDeclarations.useFunctionDeclarations(String.join("\n", sources.functionDeclarations()));
+        ports.useModeTable(sources.modeTable());
     }
 
-    public static Boot makeStandard(MachinePort machine) {
-        return new Boot(machine);
+    public static Boot makeStandard(MachinePort machine, BootSources sources) {
+        return new Boot(machine, sources);
     }
 
-    public static Boot makeStandard(MachinePort machine, Set<HostService> granted) {
-        Boot boot = makeStandard(machine);
+    public static Boot makeStandard(MachinePort machine, BootSources sources, Set<HostService> granted) {
+        Boot boot = makeStandard(machine, sources);
         boot.grantOnly(granted);
         return boot;
-    }
-
-    public void useOperatorTable(String source) {
-        bootDeclarations.useOperatorTable(source);
-    }
-
-    public void useErrorCatalogue(String source) {
-        bootDeclarations.useErrorCatalogue(source);
-    }
-
-    public void useDatatypeSpecs(String source) {
-        bootDeclarations.useDatatypeSpecs(source);
-    }
-
-    public void useModeTable(String source) {
-        ports.useModeTable(source);
-    }
-
-    public void useFunctionDeclarations(String... sources) {
-        bootDeclarations.useFunctionDeclarations(String.join("\n", sources));
     }
 
     public void grantOnly(Set<HostService> granted) {
