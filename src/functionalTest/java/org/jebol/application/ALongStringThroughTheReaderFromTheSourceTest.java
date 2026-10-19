@@ -15,7 +15,7 @@ class ALongStringThroughTheReaderFromTheSourceTest {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES));
         interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

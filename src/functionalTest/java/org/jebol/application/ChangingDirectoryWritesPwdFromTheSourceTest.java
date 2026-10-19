@@ -50,7 +50,7 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
                         .grant(HostService.ENVIRONMENT));
         interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         interpreter.useEnvironment(environment);
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
@@ -130,7 +130,7 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
                 make-dir %inner/
                 change-dir %inner/
                 pwd""";
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         assertThat(interpreter.display(interpreter.run(source))).isEqualTo("%/inner/");
     }
 

@@ -36,7 +36,7 @@ class TheThreeTextCommandsFromTheSourceTest {
 
     private String answerTo(String source) {
         Interpreter interpreter = makeAnInterpreterOn(RecordingScreen.measure(1024, 768));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
@@ -184,7 +184,7 @@ class TheThreeTextCommandsFromTheSourceTest {
     void refuseWithNoScreen() {
         Interpreter interpreter = makeAnInterpreterOn(RecordingScreen.absent());
         String asked = A_PLAIN_GOB + "e: try [size-text plain] e/id";
-        interpreter.defineFreshWordsIn(asked);
+        interpreter.defineNewWordsIn(asked);
 
         assertThat(interpreter.display(interpreter.run(asked))).isEqualTo("no-service");
     }

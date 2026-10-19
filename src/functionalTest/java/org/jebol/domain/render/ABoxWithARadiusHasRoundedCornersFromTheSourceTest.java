@@ -21,7 +21,7 @@ class ABoxWithARadiusHasRoundedCornersFromTheSourceTest {
 
     private List<PathStep> traceThePathOf(String box) {
         String source = "make gob! [size: 100x100 draw: [" + box + "]]";
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         GobValue gob = (GobValue) interpreter.run(source).value();
         ObjectValue dialect = (ObjectValue) interpreter.run("system/dialects/draw").value();
         List<PaintInstruction> painted = PaintList.of(gob, dialect).instructions();

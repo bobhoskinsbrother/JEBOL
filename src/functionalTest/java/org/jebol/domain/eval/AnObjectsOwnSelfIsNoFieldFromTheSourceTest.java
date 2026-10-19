@@ -14,7 +14,7 @@ class AnObjectsOwnSelfIsNoFieldFromTheSourceTest {
     private final Interpreter interpreter = Interpreter.create();
 
     private String answerTo(String source) {
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

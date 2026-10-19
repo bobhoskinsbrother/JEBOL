@@ -75,7 +75,7 @@ public class BinaryNative extends DefaultNative {
 
     private ObjectValue findTheDialectContextOf(Value given) {
         if (given instanceof ObjectValue existing
-                && existing.context().knows("buffer")
+                && existing.context().contains("buffer")
                 && existing.context().findSlotFor("buffer").value() instanceof BinaryValue) {
             return existing;
         }
@@ -87,7 +87,7 @@ public class BinaryNative extends DefaultNative {
             return bytes;
         }
         if (given instanceof ObjectValue(Context context)
-                && context.knows("buffer")
+                && context.contains("buffer")
                 && context.findSlotFor("buffer").value() instanceof BinaryValue held) {
             return held;
         }
@@ -128,7 +128,7 @@ public class BinaryNative extends DefaultNative {
     }
 
     private BinaryValue findTheCursorNamed(ObjectValue held, String field) {
-        return held.context().knows(field)
+        return held.context().contains(field)
                 && held.context().findSlotFor(field).value() instanceof BinaryValue at
                 ? at
                 : BinaryValue.of();
@@ -200,14 +200,14 @@ public class BinaryNative extends DefaultNative {
     }
 
     private int countTheBitsAlreadyTakenIn(ObjectValue held) {
-        return held.context().knows("r-mask")
+        return held.context().contains("r-mask")
                 && held.context().findSlotFor("r-mask").value() instanceof IntegerValue(long magnitude)
                 ? (int) magnitude
                 : 0;
     }
 
     private void nameTheValueRead(AnyWordValue word, Value read) {
-        if (!word.isBound() || !word.binding().knows(word.canonical())) {
+        if (!word.isBound() || !word.binding().contains(word.canonical())) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
         }
         ContextSlot slot = word.binding().findSlotFor(word.canonical());

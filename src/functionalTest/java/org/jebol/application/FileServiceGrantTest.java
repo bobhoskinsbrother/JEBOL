@@ -14,7 +14,7 @@ class FileServiceGrantTest {
 
     private static String readTheErrorIdOf(Interpreter interpreter, String source) {
         String wrapped = "e: try [" + source + "] either error? e [e/id] ['no-error]";
-        interpreter.defineFreshWordsIn(wrapped);
+        interpreter.defineNewWordsIn(wrapped);
         return interpreter.display(interpreter.run(wrapped));
     }
 
@@ -25,7 +25,7 @@ class FileServiceGrantTest {
     }
 
     private static String answerTo(Interpreter interpreter, String source) {
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

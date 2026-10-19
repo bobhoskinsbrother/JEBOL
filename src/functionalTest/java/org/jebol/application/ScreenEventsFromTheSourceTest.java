@@ -26,7 +26,7 @@ class ScreenEventsFromTheSourceTest {
 
     private static String answerFrom(RecordingScreen screen, String source) {
         Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
@@ -82,7 +82,7 @@ class ScreenEventsFromTheSourceTest {
         void queuesRatherThanDelivers() {
             RecordingScreen screen = makeAScreen();
             Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
-            interpreter.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
+            interpreter.defineNewWordsIn(A_WINDOW_AND_A_WATCHER);
             interpreter.run(A_WINDOW_AND_A_WATCHER);
 
             screen.actAsTheOperator(ScreenEventType.KEY, screen.listWhatOpened().getFirst());
@@ -98,7 +98,7 @@ class ScreenEventsFromTheSourceTest {
         void deliversOnWaiting() {
             RecordingScreen screen = makeAScreen();
             Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
-            interpreter.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
+            interpreter.defineNewWordsIn(A_WINDOW_AND_A_WATCHER);
             interpreter.run(A_WINDOW_AND_A_WATCHER);
 
             screen.actAsTheOperator(ScreenEventType.KEY, screen.listWhatOpened().getFirst());
@@ -116,7 +116,7 @@ class ScreenEventsFromTheSourceTest {
         void keepsTheOrder() {
             RecordingScreen screen = makeAScreen();
             Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
-            interpreter.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
+            interpreter.defineNewWordsIn(A_WINDOW_AND_A_WATCHER);
             interpreter.run(A_WINDOW_AND_A_WATCHER);
 
             var window = screen.listWhatOpened().getFirst();
@@ -140,7 +140,7 @@ class ScreenEventsFromTheSourceTest {
         private final Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
 
         private String runAndReport(String source) {
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             return interpreter.display(interpreter.run(source));
         }
 
@@ -305,7 +305,7 @@ class ScreenEventsFromTheSourceTest {
             for (ScreenEventType kind : ScreenEventType.values()) {
                 RecordingScreen screen = makeAScreen();
                 Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
-                interpreter.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
+                interpreter.defineNewWordsIn(A_WINDOW_AND_A_WATCHER);
                 interpreter.run(A_WINDOW_AND_A_WATCHER);
 
                 var window = screen.listWhatOpened().getFirst();

@@ -67,7 +67,7 @@ class ScreenInvariantsFromTheSourceTest {
         void letsAnotherThreadRunNothing() throws InterruptedException {
             RecordingScreen screen = RecordingScreen.measure(1024, 768);
             Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
-            interpreter.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
+            interpreter.defineNewWordsIn(A_WINDOW_AND_A_WATCHER);
             interpreter.run(A_WINDOW_AND_A_WATCHER);
 
             screen.reportFromAnotherThread(
@@ -84,7 +84,7 @@ class ScreenInvariantsFromTheSourceTest {
         void actsOnTheInterpretersThread() throws InterruptedException {
             RecordingScreen screen = RecordingScreen.measure(1024, 768);
             Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
-            interpreter.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
+            interpreter.defineNewWordsIn(A_WINDOW_AND_A_WATCHER);
             interpreter.run(A_WINDOW_AND_A_WATCHER);
 
             screen.reportFromAnotherThread(
@@ -104,7 +104,7 @@ class ScreenInvariantsFromTheSourceTest {
         void losesNothingAcrossThreads() throws InterruptedException {
             RecordingScreen screen = RecordingScreen.measure(1024, 768);
             Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
-            interpreter.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
+            interpreter.defineNewWordsIn(A_WINDOW_AND_A_WATCHER);
             interpreter.run(A_WINDOW_AND_A_WATCHER);
 
             GobValue window = screen.listWhatOpened().getFirst();
@@ -132,7 +132,7 @@ class ScreenInvariantsFromTheSourceTest {
         void takesAnEventPostedDuringTheWait() throws InterruptedException {
             RecordingScreen screen = RecordingScreen.measure(1024, 768);
             Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
-            interpreter.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
+            interpreter.defineNewWordsIn(A_WINDOW_AND_A_WATCHER);
             interpreter.run(A_WINDOW_AND_A_WATCHER);
             GobValue window = screen.listWhatOpened().getFirst();
 

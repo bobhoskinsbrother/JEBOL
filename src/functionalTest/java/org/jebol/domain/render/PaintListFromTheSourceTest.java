@@ -19,7 +19,7 @@ class PaintListFromTheSourceTest {
     private static GobValue makeAGobFrom(String source) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return (GobValue) interpreter.run(source).value();
     }
 

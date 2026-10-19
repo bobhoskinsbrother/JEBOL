@@ -16,7 +16,7 @@ public final class Markup {
 
     /** Runs the source and renders whatever layout it produced. */
     public static String render(Interpreter interpreter, String source) {
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         ScriptOutcome outcome = interpreter.run(source);
 
         if (!outcome.succeeded() || !(outcome.value() instanceof AnyBlockValue block)) {

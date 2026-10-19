@@ -130,11 +130,11 @@ public final class Trace {
     }
 
     private String describeWhatTheWordHolds(AnyWordValue word, Context context) {
-        if (!word.isBound() && !context.knows(word.canonical())) {
+        if (!word.isBound() && !context.contains(word.canonical())) {
             return "";
         }
         Context holder = word.isBound() ? word.binding() : context;
-        if (!holder.knows(word.canonical())) {
+        if (!holder.contains(word.canonical())) {
             return "";
         }
         Value held = holder.findSlotFor(word.canonical()).value();

@@ -25,13 +25,13 @@ class TheDatagramPortFromTheSourceTest {
                 message -> { },
                 Bounds.standard().grant(HostService.NETWORK));
         interpreter.useNetwork(new JavaSocket());
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
     private static String runWithoutTheGrant(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

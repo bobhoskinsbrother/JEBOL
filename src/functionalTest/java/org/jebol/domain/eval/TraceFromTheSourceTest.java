@@ -12,7 +12,7 @@ class TraceFromTheSourceTest {
     private static String outputOf(String source) {
         StringBuilder captured = new StringBuilder();
         Interpreter interpreter = Interpreter.createWithOutput(captured::append);
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         interpreter.run(source);
         return captured.toString();
     }
@@ -96,7 +96,7 @@ class TraceFromTheSourceTest {
         void itAnswersUnset() {
             Interpreter interpreter = Interpreter.create();
             String source = "reduce [unset? trace off unset? trace/back false]";
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             assertThat(interpreter.display(interpreter.run(source)))
                     .isEqualTo("[#(true) #(true)]");
         }

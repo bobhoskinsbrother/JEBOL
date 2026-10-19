@@ -84,7 +84,7 @@ public class ConstructNative extends DefaultNative {
         for (AnyWordValue name : waiting) {
             if (!asWritten) {
                 built.register(name.spelling(), NoneValue.none());
-            } else if (!built.knows(name.canonical())) {
+            } else if (!built.contains(name.canonical())) {
                 built.register(name.spelling());
             }
         }

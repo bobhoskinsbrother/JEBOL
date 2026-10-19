@@ -22,7 +22,7 @@ class APortNeedsAnObjectForItsSpecFromTheSourceTest {
     }
 
     private static String answerTo(Interpreter interpreter, String source) {
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

@@ -175,7 +175,7 @@ public final class Parser implements ParseWalk {
 
     Integer countBehind(AnyWordValue word) {
         Context target = word.isBound() ? word.binding() : context;
-        return target.knows(word.canonical()) && target.findSlotFor(word.canonical()).value() instanceof IntegerValue(
+        return target.contains(word.canonical()) && target.findSlotFor(word.canonical()).value() instanceof IntegerValue(
                 long magnitude
         ) ? (int) magnitude : null;
     }
@@ -186,12 +186,12 @@ public final class Parser implements ParseWalk {
             return wanted;
         }
         Context target = word.isBound() ? word.binding() : context;
-        return target.knows(word.canonical()) ? target.findSlotFor(word.canonical()).value() : wanted;
+        return target.contains(word.canonical()) ? target.findSlotFor(word.canonical()).value() : wanted;
     }
 
     boolean matchNamedRule(AnyWordValue word) {
         Context target = word.isBound() ? word.binding() : context;
-        if (!target.knows(word.canonical())) {
+        if (!target.contains(word.canonical())) {
             return false;
         }
         Value held = target.findSlotFor(word.canonical()).value();
@@ -335,7 +335,7 @@ public final class Parser implements ParseWalk {
             return null;
         }
         Context holder = word.isBound() ? word.binding() : context;
-        if (!holder.knows(word.canonical())) {
+        if (!holder.contains(word.canonical())) {
             return null;
         }
         return holder.findSlotFor(word.canonical()).value() instanceof RebolSeries marked && marked.sharesStorageWith(source) ? marked.index() - source.index() : null;
@@ -516,7 +516,7 @@ public final class Parser implements ParseWalk {
 
     private int seekToMark(AnyWordValue back) {
         Context holder = back.isBound() ? back.binding() : context;
-        Value held = holder.knows(back.canonical()) ? holder.findSlotFor(back.canonical()).value() : NoneValue.none();
+        Value held = holder.contains(back.canonical()) ? holder.findSlotFor(back.canonical()).value() : NoneValue.none();
         ParseTargets.refuseAnInputThatIsNotASeries(back, held);
         if (!(held instanceof AnyBlockValue marked)) {
             return NO_MATCH;
@@ -655,15 +655,15 @@ public final class Parser implements ParseWalk {
 
     private Value valueOf(AnyWordValue word) {
         Context target = word.isBound() ? word.binding() : context;
-        return target.knows(word.canonical()) ? target.findSlotFor(word.canonical()).value() : NoneValue.none();
+        return target.contains(word.canonical()) ? target.findSlotFor(word.canonical()).value() : NoneValue.none();
     }
 
     private void assignOverABlock(AnyWordValue word, Value value) {
         Context target = word.isBound() ? word.binding() : context;
-        if (!target.knows(word.canonical())) {
+        if (!target.contains(word.canonical())) {
             target.register(word.spelling());
         }
-        ContextSlot slot = target.knows(word.canonical()) ? target.findSlotFor(word.canonical()) : target.register(word.spelling());
+        ContextSlot slot = target.contains(word.canonical()) ? target.findSlotFor(word.canonical()) : target.register(word.spelling());
         slot.setValue(value);
     }
 
@@ -805,7 +805,7 @@ public final class Parser implements ParseWalk {
         }
         if (replacement instanceof WordValue word) {
             Context holder = word.isBound() ? word.binding() : context;
-            if (!holder.knows(word.canonical()) || holder.findSlotFor(word.canonical()).value() instanceof UnsetValue) {
+            if (!holder.contains(word.canonical()) || holder.findSlotFor(word.canonical()).value() instanceof UnsetValue) {
                 throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
             }
             return holder.findSlotFor(word.canonical()).value();
@@ -872,7 +872,7 @@ public final class Parser implements ParseWalk {
     }
 
     private static Value readWhatTheSlotHolds(Context holder, AnyWordValue word) {
-        return holder.knows(word.canonical()) ? holder.findSlotFor(word.canonical()).value() : NoneValue.none();
+        return holder.contains(word.canonical()) ? holder.findSlotFor(word.canonical()).value() : NoneValue.none();
     }
 
     private int repeatACount(List<Value> rules, int ruleAt, int least, int most, int countWidth) {

@@ -11,7 +11,7 @@ class ThruCacheModuleLoadsTest {
     private static String answerTo(String source) {
         Interpreter interpreter = SuiteHost.installOn(
                 Interpreter.withBounds(SuiteHost.grantEverything()));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

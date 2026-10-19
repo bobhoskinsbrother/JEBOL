@@ -12,7 +12,7 @@ class ProtectByNameTest {
         String source = setup + " e: try [" + attempt + "] "
                 + "either error? e [e/id] ['no-error]";
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
@@ -68,7 +68,7 @@ class ProtectByNameTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

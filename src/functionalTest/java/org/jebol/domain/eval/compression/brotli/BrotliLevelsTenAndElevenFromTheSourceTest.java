@@ -15,7 +15,7 @@ class BrotliLevelsTenAndElevenFromTheSourceTest {
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
                 .withTimeLimit(Duration.ofMinutes(1)));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

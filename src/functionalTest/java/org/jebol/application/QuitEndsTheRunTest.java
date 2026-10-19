@@ -9,7 +9,7 @@ class QuitEndsTheRunTest {
 
     private static ScriptOutcome runAQuit(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.run(source);
     }
 
@@ -106,7 +106,7 @@ class QuitEndsTheRunTest {
     @DisplayName("the interpreter still works after a script quits")
     void letsTheHostSurviveAQuit() {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn("kept: 7 quit/return 1");
+        interpreter.defineNewWordsIn("kept: 7 quit/return 1");
         interpreter.run("kept: 7 quit/return 1");
 
         assertThat(interpreter.display(interpreter.run("kept + 1")))

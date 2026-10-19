@@ -16,7 +16,7 @@ class WritingADatesPartsFromTheSourceTest {
                     either error? answer [ajoin ["!" answer/id]] [mold answer]
                 ]
                 """ + source;
-        interpreter.defineFreshWordsIn(whole);
+        interpreter.defineNewWordsIn(whole);
         return interpreter.display(interpreter.run(whole));
     }
 

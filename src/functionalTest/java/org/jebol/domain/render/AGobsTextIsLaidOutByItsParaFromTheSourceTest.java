@@ -21,7 +21,7 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
             Bounds.standard().grant(HostService.WINDOWS));
 
     private List<PaintInstruction.Writing> writeFor(String gobBuiltBy) {
-        interpreter.defineFreshWordsIn(gobBuiltBy);
+        interpreter.defineNewWordsIn(gobBuiltBy);
         GobValue gob = (GobValue) interpreter.run(gobBuiltBy).value();
         ObjectValue dialect = (ObjectValue) interpreter.run("system/dialects/draw").value();
         return PaintList.of(gob, dialect).instructions().stream()

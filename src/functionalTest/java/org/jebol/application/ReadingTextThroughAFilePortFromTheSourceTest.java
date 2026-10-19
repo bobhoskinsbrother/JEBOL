@@ -25,7 +25,7 @@ class ReadingTextThroughAFilePortFromTheSourceTest {
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
         interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

@@ -13,7 +13,7 @@ class TheBundledSchemeFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
@@ -26,10 +26,10 @@ class TheBundledSchemeFromTheSourceTest {
         String makingIt = """
                 system/options/data: %/data/
                 make-dir/deep system/options/data""";
-        interpreter.defineFreshWordsIn(makingIt);
+        interpreter.defineNewWordsIn(makingIt);
         interpreter.run(makingIt);
         interpreter.followApplicationDataDirectory();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

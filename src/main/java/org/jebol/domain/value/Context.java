@@ -100,16 +100,16 @@ public final class Context {
         this.closedToNewNames = closed;
     }
 
-    public boolean knows(String canonicalName) {
+    public boolean contains(String canonicalName) {
         if (unbound || lacksALentFrame()) {
             return false;
         }
         if (supersededBy != null) {
-            return findTheResolvingFrame().knows(canonicalName);
+            return findTheResolvingFrame().contains(canonicalName);
         }
         return slotsByCanonicalName.containsKey(canonicalName)
                 || answersToItsOwnSelf(canonicalName)
-                || (parent != null && parent.knows(canonicalName));
+                || (parent != null && parent.contains(canonicalName));
     }
 
     public void pointItsOwnSelfAt(Value object) {
@@ -240,7 +240,7 @@ public final class Context {
     }
 
     public Value readValueAt(String first, String... fieldsAfter) {
-        Value reached = knows(first) ? findSlotFor(first).value() : NoneValue.none();
+        Value reached = contains(first) ? findSlotFor(first).value() : NoneValue.none();
         for (String field : fieldsAfter) {
             if (!(reached instanceof ObjectValue(Context object)) || !object.holds(field)) {
                 return NoneValue.none();
@@ -254,7 +254,7 @@ public final class Context {
         if (!(readValueAt("system", "contexts", "sys") instanceof ObjectValue(Context sys))) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
         }
-        if (!sys.knows(name)) {
+        if (!sys.contains(name)) {
             throw Raised.of(EvaluationFailure.BAD_SYS_FUNC, UnsetValue.unset());
         }
         Value held = sys.findSlotFor(name).value();

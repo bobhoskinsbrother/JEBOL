@@ -36,7 +36,7 @@ public class FirstPlusNative extends DefaultNative {
     private ContextSlot findTheSlotNamedBy(Value given) {
         if (!(given instanceof AnyWordValue word)
                 || !word.isBound()
-                || !word.binding().knows(word.canonical())) {
+                || !word.binding().contains(word.canonical())) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, given);
         }
         return word.binding().findSlotFor(word.canonical());

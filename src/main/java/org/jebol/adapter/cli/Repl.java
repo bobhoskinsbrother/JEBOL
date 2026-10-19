@@ -186,7 +186,7 @@ public final class Repl {
             return;
         }
         environment.assign(REBOL_HOME, written);
-        interpreter.tellSystem("data", FileValue.of(written));
+        interpreter.setSystemValue("data", FileValue.of(written));
         interpreter.followApplicationDataDirectory();
     }
 
@@ -250,33 +250,33 @@ public final class Repl {
 
         private void tellItWhatWasAsked(Interpreter interpreter) {
             tellItWhereItStarted(interpreter);
-            interpreter.tellSystem("flags", listTheFlagsGiven());
+            interpreter.setSystemValue("flags", listTheFlagsGiven());
             if (arguments.has(RebolArguments.Flag.QUIET)) {
-                interpreter.tellSystem("quiet", LogicValue.yes());
+                interpreter.setSystemValue("quiet", LogicValue.yes());
             }
             if (arguments.has(RebolArguments.Flag.NO_COLOR)) {
-                interpreter.tellSystem("no-color", LogicValue.yes());
+                interpreter.setSystemValue("no-color", LogicValue.yes());
             }
             arguments.script().ifPresent(script ->
-                    interpreter.tellSystem("script", FileValue.of(script)));
+                    interpreter.setSystemValue("script", FileValue.of(script)));
             arguments.valueOf(RebolArguments.Flag.BOOT).ifPresent(level ->
-                    interpreter.tellSystem("boot-level", WordValue.of(level)));
-            interpreter.tellSystem("args", listTheArgumentsForTheScript());
+                    interpreter.setSystemValue("boot-level", WordValue.of(level)));
+            interpreter.setSystemValue("args", listTheArgumentsForTheScript());
             tellAsText(interpreter, "do-arg", RebolArguments.Flag.DO);
             tellAsText(interpreter, "debug", RebolArguments.Flag.DEBUG);
             tellAsText(interpreter, "version", RebolArguments.Flag.VERSION);
             tellAsText(interpreter, "import", RebolArguments.Flag.IMPORT);
             arguments.valueOf(RebolArguments.Flag.SECURE).ifPresent(policy ->
-                    interpreter.tellSystem("secure", WordValue.of(policy)));
+                    interpreter.setSystemValue("secure", WordValue.of(policy)));
         }
 
         private void tellAsText(Interpreter interpreter, String option, RebolArguments.Flag flag) {
             arguments.valueOf(flag).ifPresent(text ->
-                    interpreter.tellSystem(option, StringValue.of(text)));
+                    interpreter.setSystemValue(option, StringValue.of(text)));
         }
 
         private void tellItWhereItStarted(Interpreter interpreter) {
-            interpreter.tellSystem("path", FileValue.of(
+            interpreter.setSystemValue("path", FileValue.of(
                     dirize(asTheScriptSeesIt(Path.of(startedIn)))));
             interpreter.run("change-dir system/options/path");
         }
@@ -370,7 +370,7 @@ public final class Repl {
     }
 
     private ScriptOutcome evaluate(String source) {
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.run(source);
     }
 

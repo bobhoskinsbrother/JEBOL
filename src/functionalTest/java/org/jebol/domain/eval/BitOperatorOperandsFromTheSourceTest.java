@@ -50,7 +50,7 @@ class BitOperatorOperandsFromTheSourceTest {
         String asked = "e: try [" + operator + " (" + left + ") (" + right + ")] "
                 + "either error? e [rejoin [{!} e/id]] [mold e]";
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(asked);
+        interpreter.defineNewWordsIn(asked);
         String answered = interpreter.display(interpreter.run(asked));
         return answered.startsWith("\"") && answered.endsWith("\"")
                 ? answered.substring(1, answered.length() - 1)
@@ -362,7 +362,7 @@ class BitOperatorOperandsFromTheSourceTest {
         private static String readTheDatatypeAnsweredFor(String left, String right) {
             String asked = "mold type? and~ (" + left + ") (" + right + ")";
             Interpreter interpreter = Interpreter.create();
-            interpreter.defineFreshWordsIn(asked);
+            interpreter.defineNewWordsIn(asked);
             String shown = interpreter.display(interpreter.run(asked));
             return shown.replace("\"", "");
         }
@@ -429,7 +429,7 @@ class BitOperatorOperandsFromTheSourceTest {
             String asked = "left: (" + left + ") right: (" + right + ") "
                     + "and~ left right mold " + read;
             Interpreter interpreter = Interpreter.create();
-            interpreter.defineFreshWordsIn(asked);
+            interpreter.defineNewWordsIn(asked);
             return interpreter.display(interpreter.run(asked)).replace("\"", "");
         }
 
@@ -490,7 +490,7 @@ class BitOperatorOperandsFromTheSourceTest {
         private static String moldOf(String source) {
             String asked = "mold (" + source + ")";
             Interpreter interpreter = Interpreter.create();
-            interpreter.defineFreshWordsIn(asked);
+            interpreter.defineNewWordsIn(asked);
             return interpreter.display(interpreter.run(asked)).replace("\"", "");
         }
     }
@@ -503,7 +503,7 @@ class BitOperatorOperandsFromTheSourceTest {
         @MethodSource("listTheDegenerateOnes")
         void answerAsOrdinaryOperandsDo(String source, String expected) {
             Interpreter interpreter = Interpreter.create();
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             assertThat(interpreter.display(interpreter.run(source)))
                     .as(source)
                     .isEqualTo(expected);
@@ -548,7 +548,7 @@ class BitOperatorOperandsFromTheSourceTest {
 
         private static String answerTo(String source) {
             Interpreter interpreter = Interpreter.create();
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             return interpreter.display(interpreter.run(source));
         }
 

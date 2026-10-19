@@ -25,7 +25,7 @@ class FilePortFromTheSourceTest {
 
     private static String answerTo(Path root, String source) {
         Interpreter interpreter = makeAnInterpreterGrantedFilesUnder(root);
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

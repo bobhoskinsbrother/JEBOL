@@ -49,7 +49,7 @@ class TheModuleTableIsRebolsFromTheSourceTest {
     private static String listWhatJebolHolds(String name) {
         Interpreter interpreter = Interpreter.create();
         String asking = "mold select system/modules '" + name;
-        interpreter.defineFreshWordsIn(asking);
+        interpreter.defineNewWordsIn(asking);
         return interpreter.display(interpreter.run(asking));
     }
 
@@ -93,7 +93,7 @@ class TheModuleTableIsRebolsFromTheSourceTest {
         Interpreter interpreter = Interpreter.create();
         for (String name : listWhatThisBuildOffers()) {
             String asking = "binary? read bundled://" + name + ".reb";
-            interpreter.defineFreshWordsIn(asking);
+            interpreter.defineNewWordsIn(asking);
             assertThat(interpreter.display(interpreter.run(asking)))
                     .as("bundled://%s.reb", name)
                     .isEqualTo("#(true)");
@@ -108,7 +108,7 @@ class TheModuleTableIsRebolsFromTheSourceTest {
                         if url? select system/modules name [keep name]
                     ]
                 ]""";
-        interpreter.defineFreshWordsIn(asking);
+        interpreter.defineNewWordsIn(asking);
         String held = interpreter.display(interpreter.run(asking));
         return List.of(held.substring(1, held.length() - 1).trim().split("\\s+"));
     }

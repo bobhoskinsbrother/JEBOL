@@ -79,7 +79,7 @@ class APortsStorageFromTheSourceTest {
                 .grant(HostService.NETWORK)
                 .grant(HostService.CLOCK));
         interpreter.useNetwork(new ACannedServer().reply("what came back"));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

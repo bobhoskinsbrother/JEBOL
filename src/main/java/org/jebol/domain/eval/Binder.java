@@ -240,7 +240,7 @@ public final class Binder {
 
         return switch (value) {
             case AnyWordValue word when names.contains(word.canonical()) ->
-                    word.bindTo(context.knows(word.canonical())
+                    word.bindTo(context.contains(word.canonical())
                             ? context.findTheHolderOf(word.canonical())
                             : context);
             case AnyWordValue word -> word;
@@ -257,7 +257,7 @@ public final class Binder {
 
     private static Value bindValue(Value value, Context context) {
         return switch (value) {
-            case AnyWordValue word -> context.knows(word.canonical())
+            case AnyWordValue word -> context.contains(word.canonical())
                     ? word.bindTo(context.findTheHolderOf(word.canonical()))
                     : word;
             case AnyBlockValue block -> bind(block, context);
@@ -281,7 +281,7 @@ public final class Binder {
     private static void defineWordsIn(Value value, Context context) {
         switch (value) {
             case AnyWordValue word -> {
-                if (!context.knows(word.canonical())) {
+                if (!context.contains(word.canonical())) {
                     context.register(word.spelling());
                 }
             }

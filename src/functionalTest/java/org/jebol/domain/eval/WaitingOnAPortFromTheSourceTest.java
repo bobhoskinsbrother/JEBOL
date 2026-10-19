@@ -90,7 +90,7 @@ class WaitingOnAPortFromTheSourceTest {
 
     private static String answerFrom(ACannedServer server, String source) {
         Interpreter interpreter = reaching(server);
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

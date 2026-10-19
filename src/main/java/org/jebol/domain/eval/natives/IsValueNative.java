@@ -26,7 +26,7 @@ public class IsValueNative extends DefaultNative {
 
     private boolean holdsAValue(AnyWordValue word) {
         return word.isBound()
-                && word.binding().knows(word.canonical())
+                && word.binding().contains(word.canonical())
                 && !word.binding().findSlotFor(word.canonical()).holdsUnset();
     }
 }

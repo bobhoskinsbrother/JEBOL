@@ -105,7 +105,7 @@ class BindingNamesTheHolderTest {
                 + " made: make word! \"borrowed-name\""
                 + " made: bind/new made 'append"
                 + " set made 7]";
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         interpreter.run(source);
 
         assertThat(interpreter.display(interpreter.run("borrowed-name")))
@@ -117,13 +117,13 @@ class BindingNamesTheHolderTest {
     @DisplayName("BIND given one word places it where BIND given a block would")
     void agreesBetweenTheWordAndBlockBranches() {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn("outer-value: 10 holder: make object! [a: 1]");
+        interpreter.defineNewWordsIn("outer-value: 10 holder: make object! [a: 1]");
         interpreter.run("outer-value: 10 holder: make object! [a: 1]");
 
         String throughAWord = "bind/new 'left-by-word bind 'outer-value holder";
         String throughABlock = "bind/new 'left-by-block first bind [outer-value] holder";
         for (String each : List.of(throughAWord, throughABlock)) {
-            interpreter.defineFreshWordsIn(each);
+            interpreter.defineNewWordsIn(each);
             interpreter.run(each);
         }
 
@@ -138,11 +138,11 @@ class BindingNamesTheHolderTest {
     @DisplayName("BIND on a word the target itself holds still names the target")
     void stillNamesTheTargetFromTheWordBranchWhenItHolds() {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn("holder: make object! [a: 1]");
+        interpreter.defineNewWordsIn("holder: make object! [a: 1]");
         interpreter.run("holder: make object! [a: 1]");
 
         String hangANameOffA = "bind/new 'added-here bind 'a holder";
-        interpreter.defineFreshWordsIn(hangANameOffA);
+        interpreter.defineNewWordsIn(hangANameOffA);
         interpreter.run(hangANameOffA);
 
         assertThat(interpreter.display(interpreter.run(

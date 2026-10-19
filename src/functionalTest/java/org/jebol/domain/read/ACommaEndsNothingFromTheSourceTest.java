@@ -25,7 +25,7 @@ class ACommaEndsNothingFromTheSourceTest {
                     ]
                 ]
                 """ + source;
-        interpreter.defineFreshWordsIn(whole);
+        interpreter.defineNewWordsIn(whole);
         return interpreter.display(interpreter.run(whole));
     }
 

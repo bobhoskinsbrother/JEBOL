@@ -14,7 +14,7 @@ class NowFromTheSourceTest {
     private static String answerTo(String source) {
         Interpreter interpreter =
                 Interpreter.withBounds(Bounds.standard().grant(HostService.CLOCK));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

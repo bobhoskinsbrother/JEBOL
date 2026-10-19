@@ -101,7 +101,7 @@ class EveryBuiltInNativeIsRegisteredTest {
         String asked = "collect [foreach name [" + String.join(" ", names)
                 + "] [unless any [value? name find system/catalog/natives name] [keep mold name]]]";
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(asked);
+        interpreter.defineNewWordsIn(asked);
         return interpreter.display(interpreter.run(asked));
     }
 

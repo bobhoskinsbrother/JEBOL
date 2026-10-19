@@ -77,7 +77,7 @@ public class AssertNative extends DefaultNative {
             case Datatype wanted -> held.datatype() == wanted;
             case TypesetValue set -> set.holds(held.datatype());
             case AnyWordValue word -> {
-                Value resolved = context.knows(word.canonical())
+                Value resolved = context.contains(word.canonical())
                         ? context.findSlotFor(word.canonical()).value()
                         : NoneValue.none();
                 yield resolved != type && isOfType(held, resolved, context);

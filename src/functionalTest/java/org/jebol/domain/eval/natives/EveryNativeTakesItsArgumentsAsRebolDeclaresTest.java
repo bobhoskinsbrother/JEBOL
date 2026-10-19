@@ -23,7 +23,7 @@ class EveryNativeTakesItsArgumentsAsRebolDeclaresTest {
     private final Interpreter interpreter = Interpreter.create();
 
     private Value answerTo(String source) {
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.run(source).value();
     }
 

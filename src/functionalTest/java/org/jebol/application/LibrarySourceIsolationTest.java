@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LibrarySourceIsolationTest {
 
     private static String answerTo(Interpreter interpreter, String source) {
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

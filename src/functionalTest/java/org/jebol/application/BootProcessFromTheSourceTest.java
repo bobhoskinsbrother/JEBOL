@@ -16,7 +16,7 @@ class BootProcessFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = makeAnInterpreterWithAHost();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
@@ -73,7 +73,7 @@ class BootProcessFromTheSourceTest {
         String moving = """
                 system/options/data: %/data/
                 make-dir/deep system/options/data""";
-        interpreter.defineFreshWordsIn(moving);
+        interpreter.defineNewWordsIn(moving);
         interpreter.run(moving);
         interpreter.followApplicationDataDirectory();
         return interpreter;
@@ -91,7 +91,7 @@ class BootProcessFromTheSourceTest {
                     to-local-file system/options/boot %%child.r3] heard
                 either {%s} = heard ['%s] [heard]"""
                 .formatted(childScript, expected, AGREED);
-        interpreter.defineFreshWordsIn(asking);
+        interpreter.defineNewWordsIn(asking);
         return interpreter.display(interpreter.run(asking));
     }
 
@@ -112,7 +112,7 @@ class BootProcessFromTheSourceTest {
         String installing = """
                 write system/options/modules/whisper.reb
                     {Rebol [name: whisper type: module] export whispered: 42}""";
-        interpreter.defineFreshWordsIn(installing);
+        interpreter.defineNewWordsIn(installing);
         interpreter.run(installing);
 
         assertThat(doesTheChildSay(interpreter, """
@@ -126,7 +126,7 @@ class BootProcessFromTheSourceTest {
     void givesOnlyTheChildAModulesDirectoryWhereTheHostMovedNothing() {
         Interpreter interpreter = makeAnInterpreterWithAHost();
         String asking = "none? system/options/modules";
-        interpreter.defineFreshWordsIn(asking);
+        interpreter.defineNewWordsIn(asking);
 
         assertThat(interpreter.display(interpreter.run(asking))).isEqualTo("#(true)");
         assertThat(doesTheChildSay(interpreter, """

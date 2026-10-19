@@ -19,7 +19,7 @@ class MalformedSourceAsRebolReportsItFromTheSourceTest {
                 either error? :e [mold/flat reduce [e/id e/arg1 e/arg2]][mold/flat/all reduce [type? :e :e]]
                 """.formatted(written);
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(asked);
+        interpreter.defineNewWordsIn(asked);
         return ((AnyStringValue) interpreter.run(asked).value()).text();
     }
 

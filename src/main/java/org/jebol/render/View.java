@@ -38,7 +38,7 @@ public final class View {
     /** Runs the source once and holds the layout it produced. */
     public static View of(Interpreter interpreter, String source) {
         View view = new View(interpreter);
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         ScriptOutcome outcome = runOnceBecauseItSetsUpTheStateAsWellAsDescribingIt(
                 interpreter, source);
 
@@ -96,7 +96,7 @@ public final class View {
 
     private Optional<Value> valueOf(String canonical) {
         Context context = interpreter.userContext();
-        if (!context.knows(canonical)) {
+        if (!context.contains(canonical)) {
             return Optional.empty();
         }
         Value held = context.findSlotFor(canonical).value();

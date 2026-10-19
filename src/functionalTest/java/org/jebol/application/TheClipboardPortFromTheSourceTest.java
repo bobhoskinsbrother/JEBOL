@@ -41,14 +41,14 @@ class TheClipboardPortFromTheSourceTest {
                 message -> { },
                 Bounds.standard().grant(HostService.CLIPBOARD));
         interpreter.useClipboard(clipboard);
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
     private static String runWithoutTheGrant(String source) {
         Interpreter interpreter = Interpreter.create();
         interpreter.useClipboard(new ARememberedClipboard("secret"));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

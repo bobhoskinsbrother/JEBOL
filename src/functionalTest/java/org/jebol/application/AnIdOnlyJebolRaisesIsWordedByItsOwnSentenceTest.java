@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
 
     private String formIn(Interpreter interpreter, String source) {
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

@@ -35,6 +35,6 @@ public class ContextOfWordNative extends DefaultNative {
     }
 
     private Value findWhatDoIsInLibrary(Context library) {
-        return library.knows("do") ? library.findSlotFor("do").value() : NoneValue.none();
+        return library.contains("do") ? library.findSlotFor("do").value() : NoneValue.none();
     }
 }

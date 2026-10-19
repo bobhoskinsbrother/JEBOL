@@ -63,7 +63,7 @@ class DesktopWindowsTest {
             interpreter.useWindows(DesktopWindows.onThisMachine());
 
             String source = "e: try [request-color] either error? e [e/id] ['no-error]";
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
 
             assertThat(interpreter.display(interpreter.run(source)))
                     .isEqualTo("no-service");
@@ -87,7 +87,7 @@ class DesktopWindowsTest {
                     Bounds.standard().grant(HostService.WINDOWS));
 
             String source = "e: try [request-dir] either error? e [e/id] ['no-error]";
-            granted.defineFreshWordsIn(source);
+            granted.defineNewWordsIn(source);
 
             assertThat(granted.display(granted.run(source))).isEqualTo("no-service");
         }
@@ -130,7 +130,7 @@ class DesktopWindowsTest {
             interpreter.useWindows(declining);
 
             String source = "none? request-color";
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             assertThat(interpreter.display(interpreter.run(source))).isEqualTo("#(true)");
         }
     }

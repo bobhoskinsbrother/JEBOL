@@ -27,7 +27,7 @@ public final class SuiteStops {
                 "--test--: func [n [any-type!]][]",
                 "~~~start-file~~~: func [n [any-type!]][]",
                 "~~~end-file~~~: does []");
-        interpreter.defineFreshWordsIn(dialect);
+        interpreter.defineNewWordsIn(dialect);
         interpreter.run(dialect);
         return interpreter;
     }
@@ -57,7 +57,7 @@ public final class SuiteStops {
             }
             String went;
             try {
-                interpreter.defineFreshWordsIn(source);
+                interpreter.defineNewWordsIn(source);
                 ScriptOutcome ran = interpreter.run(source);
                 went = ran.succeeded() ? null : interpreter.display(ran);
             } catch (RuntimeException | StackOverflowError broke) {

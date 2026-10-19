@@ -23,7 +23,7 @@ class AccessOsFromTheSourceTest {
     }
 
     private static String answerFrom(Interpreter interpreter, String source) {
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

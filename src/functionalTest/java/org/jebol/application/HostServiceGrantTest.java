@@ -10,7 +10,7 @@ class HostServiceGrantTest {
 
     private static String answerTo(Bounds bounds, String source) {
         Interpreter interpreter = Interpreter.withBounds(bounds);
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

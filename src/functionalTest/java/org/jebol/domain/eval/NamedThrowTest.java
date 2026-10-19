@@ -12,7 +12,7 @@ class NamedThrowTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         ScriptOutcome outcome = interpreter.run(source);
         assertThat(outcome.conclusion())
                 .as("%s must not escape as a host exception", source)
@@ -108,7 +108,7 @@ class NamedThrowTest {
     void quitNeedsTheRefinement() {
         Interpreter interpreter = Interpreter.create();
         String source = "catch [quit/return 7] 99";
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
 
         assertThat(interpreter.run(source).conclusion())
                 .as("stopping the script is not a throw")

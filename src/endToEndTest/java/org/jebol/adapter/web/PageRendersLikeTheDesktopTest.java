@@ -83,7 +83,7 @@ class PageRendersLikeTheDesktopTest {
     @DisplayName("what the browser paints is what Java2D paints, pixel for pixel")
     void matchesTheWindow() throws Exception {
         Interpreter interpreter = makeAnInterpreterOnThisPage();
-        interpreter.defineFreshWordsIn(A_PICTURE_WORTH_COMPARING);
+        interpreter.defineNewWordsIn(A_PICTURE_WORTH_COMPARING);
         GobValue root = (GobValue) interpreter.run(A_PICTURE_WORTH_COMPARING).value();
 
         BufferedImage fromTheBrowser = captureWhatTheCanvasShows();
@@ -144,7 +144,7 @@ class PageRendersLikeTheDesktopTest {
     @DisplayName("and a gob outside its parent is clipped away in both")
     void clipsTheSameWay() throws Exception {
         Interpreter interpreter = makeAnInterpreterOnThisPage();
-        interpreter.defineFreshWordsIn(A_PICTURE_WORTH_COMPARING);
+        interpreter.defineNewWordsIn(A_PICTURE_WORTH_COMPARING);
         interpreter.run(A_PICTURE_WORTH_COMPARING);
 
         BufferedImage shown = captureWhatTheCanvasShows();
@@ -184,7 +184,7 @@ class PageRendersLikeTheDesktopTest {
     @DisplayName("and a DRAW block paints the same in both, shape for shape")
     void adrawBlockMatchesToo() throws Exception {
         Interpreter interpreter = makeAnInterpreterOnThisPage();
-        interpreter.defineFreshWordsIn(A_DRAWING_WORTH_COMPARING);
+        interpreter.defineNewWordsIn(A_DRAWING_WORTH_COMPARING);
         GobValue root = (GobValue) interpreter.run(A_DRAWING_WORTH_COMPARING).value();
 
         BufferedImage fromTheBrowser = captureWhatTheCanvasShows();
@@ -217,7 +217,7 @@ class PageRendersLikeTheDesktopTest {
     @DisplayName("and a see-through colour and a rounded box paint the same in both")
     void matchesOpacityAndRoundedCorners() throws Exception {
         Interpreter interpreter = makeAnInterpreterOnThisPage();
-        interpreter.defineFreshWordsIn(SEE_THROUGH_COLOURS_AND_ROUNDED_CORNERS);
+        interpreter.defineNewWordsIn(SEE_THROUGH_COLOURS_AND_ROUNDED_CORNERS);
         GobValue root = (GobValue) interpreter.run(SEE_THROUGH_COLOURS_AND_ROUNDED_CORNERS).value();
 
         BufferedImage fromTheBrowser = captureWhatTheCanvasShows();
@@ -252,7 +252,7 @@ class PageRendersLikeTheDesktopTest {
     @DisplayName("and a centred label's ink is in the middle of its gob in the browser too")
     void centresACentredLabel() throws Exception {
         Interpreter interpreter = makeAnInterpreterOnThisPage();
-        interpreter.defineFreshWordsIn(A_CENTRED_LABEL);
+        interpreter.defineNewWordsIn(A_CENTRED_LABEL);
         interpreter.run(A_CENTRED_LABEL);
 
         BufferedImage shown = captureWhatTheCanvasShows();
@@ -296,7 +296,7 @@ class PageRendersLikeTheDesktopTest {
     @DisplayName("and a label too long for its gob wraps inside it in the browser too, onto more than one line")
     void wrapsALongLabel() throws Exception {
         Interpreter interpreter = makeAnInterpreterOnThisPage();
-        interpreter.defineFreshWordsIn(A_LABEL_TOO_LONG_FOR_ITS_GOB);
+        interpreter.defineNewWordsIn(A_LABEL_TOO_LONG_FOR_ITS_GOB);
         interpreter.run(A_LABEL_TOO_LONG_FOR_ITS_GOB);
 
         BufferedImage shown = captureWhatTheCanvasShows();
@@ -333,7 +333,7 @@ class PageRendersLikeTheDesktopTest {
     @DisplayName("and a white label's shadow is the only ink on white in the browser too")
     void writesAShadow() throws Exception {
         Interpreter interpreter = makeAnInterpreterOnThisPage();
-        interpreter.defineFreshWordsIn(A_WHITE_LABEL_WITH_A_SHADOW);
+        interpreter.defineNewWordsIn(A_WHITE_LABEL_WITH_A_SHADOW);
         interpreter.run(A_WHITE_LABEL_WITH_A_SHADOW);
 
         BufferedImage shown = captureWhatTheCanvasShows();

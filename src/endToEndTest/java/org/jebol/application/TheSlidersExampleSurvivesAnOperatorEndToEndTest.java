@@ -91,7 +91,7 @@ class TheSlidersExampleSurvivesAnOperatorEndToEndTest {
         interpreter.useScreen(screen);
         interpreter.useEnvironment(new ProcessEnvironment());
         interpreter.useFileSystem(FileSystemPort.rootFileSystem(Path.of("src/testFixtures/resources").toAbsolutePath()));
-        interpreter.defineFreshWordsIn(OPEN_THE_EXAMPLE);
+        interpreter.defineNewWordsIn(OPEN_THE_EXAMPLE);
         assertThat(interpreter.display(interpreter.run(OPEN_THE_EXAMPLE)))
                 .as("the example opens its window")
                 .startsWith("make gob!");
@@ -103,7 +103,7 @@ class TheSlidersExampleSurvivesAnOperatorEndToEndTest {
 
     private String actAsTheOperator(ScreenEventType kind, ScreenEventDetail detail) {
         screen.actAsTheOperator(kind, findTheWindow(), detail);
-        interpreter.defineFreshWordsIn(TAKE_WHAT_IS_WAITING);
+        interpreter.defineNewWordsIn(TAKE_WHAT_IS_WAITING);
         return interpreter.display(interpreter.run(TAKE_WHAT_IS_WAITING));
     }
 

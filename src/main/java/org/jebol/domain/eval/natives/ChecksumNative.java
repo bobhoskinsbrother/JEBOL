@@ -116,7 +116,7 @@ public class ChecksumNative extends EncodingNative {
             throw Raised.of(EvaluationFailure.BAD_REFINES);
         }
         Context library = evaluator.systemContext();
-        if (!library.knows(FILE_CHECKSUM)) {
+        if (!library.contains(FILE_CHECKSUM)) {
             throw Raised.of(EvaluationFailure.FEATURE_NA);
         }
         return evaluator.applyFunction(library.findSlotFor(FILE_CHECKSUM).value(),

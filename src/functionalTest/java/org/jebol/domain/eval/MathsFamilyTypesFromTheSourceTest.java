@@ -19,7 +19,7 @@ class MathsFamilyTypesFromTheSourceTest {
 
     private static String errorIdOf(Interpreter interpreter, String source) {
         String wrapped = "e: try [" + source + "] either error? e [e/id] ['no-error]";
-        interpreter.defineFreshWordsIn(wrapped);
+        interpreter.defineNewWordsIn(wrapped);
         return interpreter.display(interpreter.run(wrapped));
     }
 

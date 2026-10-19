@@ -14,7 +14,7 @@ class AjoinEvaluatesItsBlockOnceFromTheSourceTest {
                 counted: 0
                 bump: does [counted: counted + 1 ajoin ["#" counted]]
                 """ + source;
-        interpreter.defineFreshWordsIn(whole);
+        interpreter.defineNewWordsIn(whole);
         return interpreter.display(interpreter.run(whole));
     }
 

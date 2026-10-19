@@ -56,7 +56,7 @@ public abstract sealed class AnyPathValue extends AnyBlockValue
         List<Value> segments = remaining();
         if (segments.size() < 2
                 || !(segments.getFirst() instanceof AnyWordValue start)
-                || !start.isBound() || !start.binding().knows(start.canonical())) {
+                || !start.isBound() || !start.binding().contains(start.canonical())) {
             return Optional.empty();
         }
         Value reached = start.binding().findSlotFor(start.canonical()).value();

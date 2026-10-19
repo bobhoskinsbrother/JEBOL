@@ -43,7 +43,7 @@ class CheckingCertificatesFromTheSourceTest {
 
     private String print(Interpreter interpreter, String source) {
         String printing = "print " + source;
-        interpreter.defineFreshWordsIn(printing);
+        interpreter.defineNewWordsIn(printing);
         interpreter.run(printing);
         return printed.toString().strip();
     }

@@ -31,7 +31,6 @@ final class RebolLibraryLoader {
     private static final String INTO_SYS = "-> sys";
 
     private final RebolFiles rebolFiles;
-    private final Evaluator evaluator;
     private final Context systemContext;
     private final Context systemInternals;
     private final SystemPaths systemPaths;
@@ -39,22 +38,21 @@ final class RebolLibraryLoader {
     private final Map<String, String> borrowedLoadFailures = new LinkedHashMap<>();
     private boolean schemesAreRegistered;
 
-    RebolLibraryLoader(RebolFiles rebolFiles, Evaluator evaluator, Context systemContext,
+    RebolLibraryLoader(RebolFiles rebolFiles, Context systemContext,
                        Context systemInternals, Consumer<String> runStep) {
         this.rebolFiles = rebolFiles;
-        this.evaluator = evaluator;
         this.systemContext = systemContext;
         this.systemInternals = systemInternals;
         this.systemPaths = new SystemPaths(systemContext);
         this.runStep = runStep;
     }
 
-    void supplySymbolsAndModules() {
+    void supplySymbolsAndModules(Evaluator evaluator) {
         evaluator.symbols().useBootSymbols(rebolFiles.bootSymbolsTxt().textSource());
         evaluator.useBundledModules(this::readBundledModule);
     }
 
-    void declareSystemObject() {
+    void declareSystemObject(Evaluator evaluator) {
         AnyBlockValue sysobjs = rebolFiles.sysobj().readLibraryFile().body();
         Context sysobjsContext = Context.makeChildOf(systemContext);
         declareSetWordsOf(sysobjs, sysobjsContext, AssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
@@ -68,19 +66,19 @@ final class RebolLibraryLoader {
         }
     }
 
-    void load() {
+    void load(Evaluator evaluator) {
         runBootStep(rebolFiles.modules());
         declareEverySystemWordBeforeBindingAny();
         declareEveryLibraryWordBeforeBindingAny();
         declareWordsPreludeSets();
         for (String entry : borrowedFileNames()) {
-            loadBorrowed(entry);
+            loadBorrowed(evaluator, entry);
         }
         runBootStep(rebolFiles.qoiCodec());
     }
 
     void registerSchemes() {
-        if (schemesAreRegistered || !systemInternals.knows("make-scheme")) {
+        if (schemesAreRegistered || !systemInternals.contains("make-scheme")) {
             return;
         }
         schemesAreRegistered = true;
@@ -100,7 +98,7 @@ final class RebolLibraryLoader {
         return Map.copyOf(borrowedLoadFailures);
     }
 
-    private void loadBorrowed(String entry) {
+    private void loadBorrowed(Evaluator evaluator, String entry) {
         String name = readFileNameIn(entry);
         RebolFile borrowed = rebolFiles.mezzDir(name);
         if (borrowed.equals(rebolFiles.protMysql())) {
@@ -118,15 +116,15 @@ final class RebolLibraryLoader {
         LibraryFileHeader header = file.header();
         AnyBlockValue body = file.body();
         Outcome outcome = header.declaresModule() || isProtocolAndSoModuleWhateverItsHeaderSays(name)
-                ? loadAsModule(body, header)
+                ? loadAsModule(evaluator, body, header)
                 : entry.endsWith(INTO_SYS)
-                        ? loadAsSystemFile(body)
-                        : loadInto(body, systemContext);
+                        ? loadAsSystemFile(evaluator, body)
+                        : loadInto(evaluator, body, systemContext);
         if (outcome instanceof Outcome.Raised(ErrorValue failure)) {
             borrowedLoadFailures.put(name, failure.toString());
         }
         if (borrowed.equals(rebolFiles.baseFuncs())) {
-            loadPrelude();
+            loadPrelude(evaluator);
         }
     }
 
@@ -154,7 +152,7 @@ final class RebolLibraryLoader {
         declareSetWordsOf(readPrelude(), systemContext, AssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
     }
 
-    private void loadPrelude() {
+    private void loadPrelude(Evaluator evaluator) {
         AnyBlockValue body = readPrelude();
         Outcome outcome = evaluator.evaluate(Binder.bind(body, systemContext), systemContext);
         if (outcome instanceof Outcome.Raised(ErrorValue failure)) {
@@ -162,7 +160,7 @@ final class RebolLibraryLoader {
         }
     }
 
-    private Outcome loadAsSystemFile(AnyBlockValue body) {
+    private Outcome loadAsSystemFile(Evaluator evaluator, AnyBlockValue body) {
         declareSetWordsOf(body, systemInternals, AssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
         return evaluator.evaluate(Binder.bind(body, systemInternals), systemInternals);
     }
@@ -210,15 +208,15 @@ final class RebolLibraryLoader {
     private boolean isAlreadyAnswered(Context into, String canonical, AssignmentMayLand mayLand) {
         return mayLand == AssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE
                 ? into.holds(canonical)
-                : into.knows(canonical);
+                : into.contains(canonical);
     }
 
-    private Outcome loadInto(AnyBlockValue body, Context target) {
+    private Outcome loadInto(Evaluator evaluator, AnyBlockValue body, Context target) {
         declareSetWordsOf(body, target, AssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
         return evaluator.evaluate(Binder.bind(body, target), target);
     }
 
-    private Outcome loadAsModule(AnyBlockValue body, LibraryFileHeader header) {
+    private Outcome loadAsModule(Evaluator evaluator, AnyBlockValue body, LibraryFileHeader header) {
         Context own = Context.makeChildOf(systemContext);
         for (String exported : header.exportedNames()) {
             if (!own.holds(exported)) {
@@ -247,8 +245,7 @@ final class RebolLibraryLoader {
         Context spec = Context.root();
         spec.register("name", WordValue.of(name));
         spec.register("type", WordValue.of("module"));
-        spec.register("exports", BlockValue.of(header.exportedNames().stream()
-                .<Value>map(WordValue::of).toList()));
+        spec.register("exports", BlockValue.of(header.exportedNames().stream().<Value>map(WordValue::of).toList()));
         context.register(name, new ModuleValue(own, new ObjectValue(spec)));
     }
 

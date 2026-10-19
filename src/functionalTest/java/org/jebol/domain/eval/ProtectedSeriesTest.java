@@ -14,7 +14,7 @@ class ProtectedSeriesTest {
         String source = setup + " e: try [" + attempt + "] "
                 + "either error? e [e/id] ['no-error]";
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         ScriptOutcome outcome = interpreter.run(source);
         assertThat(outcome.conclusion())
                 .as("`%s` must arrive as an outcome, never as a host exception", attempt)
@@ -24,7 +24,7 @@ class ProtectedSeriesTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

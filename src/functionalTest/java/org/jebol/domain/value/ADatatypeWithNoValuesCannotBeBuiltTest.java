@@ -15,7 +15,7 @@ class ADatatypeWithNoValuesCannotBeBuiltTest {
 
     private String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return Molder.form(interpreter.run(source).value());
     }
 

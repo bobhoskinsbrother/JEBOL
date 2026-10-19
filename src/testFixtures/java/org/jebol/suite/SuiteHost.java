@@ -58,7 +58,7 @@ final class SuiteHost {
             Interpreter interpreter) {
 
         String sayingSo = "system/options/home: %./";
-        interpreter.defineFreshWordsIn(sayingSo);
+        interpreter.defineNewWordsIn(sayingSo);
         interpreter.run(sayingSo);
     }
 
@@ -67,7 +67,7 @@ final class SuiteHost {
                 system/options/data: %/data/
                 make-dir/deep system/options/data
                 set '~ system/options/data""";
-        interpreter.defineFreshWordsIn(sayingSo);
+        interpreter.defineNewWordsIn(sayingSo);
         interpreter.run(sayingSo);
         interpreter.followApplicationDataDirectory();
     }

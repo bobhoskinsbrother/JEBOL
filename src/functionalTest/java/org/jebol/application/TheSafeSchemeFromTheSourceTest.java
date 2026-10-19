@@ -30,7 +30,7 @@ class TheSafeSchemeFromTheSourceTest {
                 set-env "REBOL_SAFE_PASS" "my-pass"
                 system/options/home: %./
                 """ + source;
-        interpreter.defineFreshWordsIn(withAPassword);
+        interpreter.defineNewWordsIn(withAPassword);
         return interpreter.display(interpreter.run(withAPassword));
     }
 

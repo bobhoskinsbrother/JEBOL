@@ -123,7 +123,7 @@ class PortingBacklogTest {
                 ]
                 mold sort unique names
                 """;
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         String listed = interpreter.display(interpreter.run(source));
         return java.util.Arrays.stream(
                         listed.replace("\"", "").replace("[", "").replace("]", "").split("\\s+"))

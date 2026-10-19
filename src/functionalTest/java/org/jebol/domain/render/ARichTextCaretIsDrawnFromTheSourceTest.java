@@ -29,7 +29,7 @@ class ARichTextCaretIsDrawnFromTheSourceTest {
                 the-caret: select labelled/text 'caret
                 do bind [%s] the-caret
                 labelled""".formatted(caretFields);
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         GobValue gob = (GobValue) interpreter.run(source).value();
         ObjectValue dialect = (ObjectValue) interpreter.run("system/dialects/draw").value();
         List<PaintInstruction.Writing> text = PaintList.of(gob, dialect).instructions().stream()
@@ -92,7 +92,7 @@ class ARichTextCaretIsDrawnFromTheSourceTest {
     void drawsNoneWithNoCaret() {
         String source = """
                 make gob! [size: 100x20 text: {plain}]""";
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         GobValue gob = (GobValue) interpreter.run(source).value();
         PaintInstruction.Writing text = (PaintInstruction.Writing) PaintList.of(gob).instructions().getFirst();
 

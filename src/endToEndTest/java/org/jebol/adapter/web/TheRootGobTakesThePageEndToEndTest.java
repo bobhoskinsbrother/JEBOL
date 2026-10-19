@@ -115,7 +115,7 @@ class TheRootGobTakesThePageEndToEndTest {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useScreen(screen);
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         interpreter.run(source);
         return interpreter;
     }

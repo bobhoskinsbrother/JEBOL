@@ -83,7 +83,7 @@ class MezzanineLoadTest {
 
         Interpreter interpreter = Interpreter.create();
         try {
-            interpreter.defineFreshWordsIn(body);
+            interpreter.defineNewWordsIn(body);
             ScriptOutcome outcome = interpreter.run(body);
             if (outcome.succeeded()) {
                 return new Attempt(file.getFileName().toString(), definitions, "loaded");

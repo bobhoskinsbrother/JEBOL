@@ -11,7 +11,7 @@ class SmallSuiteBehavioursFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
@@ -100,7 +100,7 @@ class SmallSuiteBehavioursFromTheSourceTest {
                 org.jebol.application.FileSystemPort.rootFileSystem(directory));
         String source = """
                 e: try [read %nonsense] reduce [e/id = 'cannot-open e/arg1 = %nonsense]""";
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         assertThat(interpreter.display(interpreter.run(source)))
                 .isEqualTo("[#(true) #(true)]");
     }

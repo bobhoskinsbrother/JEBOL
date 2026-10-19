@@ -13,7 +13,7 @@ class BinarySearchBoundsTest {
     private static String readTheErrorIdOf(String source) {
         String probe = "e: try [" + source + "] either error? e [e/id] ['no-error]";
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(probe);
+        interpreter.defineNewWordsIn(probe);
         ScriptOutcome outcome = interpreter.run(probe);
         assertThat(outcome.conclusion())
                 .as("%s must not escape as a host exception", source)
@@ -23,7 +23,7 @@ class BinarySearchBoundsTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

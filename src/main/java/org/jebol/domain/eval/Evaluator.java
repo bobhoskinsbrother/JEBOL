@@ -252,7 +252,7 @@ public final class Evaluator {
     }
 
     private Optional<ObjectValue> findTheSchemeNamed(String name) {
-        if (!systemContext.knows("system")) {
+        if (!systemContext.contains("system")) {
             return Optional.empty();
         }
         Value definition = systemContext.findSlotFor("system").value()
@@ -1410,7 +1410,7 @@ public final class Evaluator {
             if (!built.declares(mentioned.get(index))) {
                 String refinedName = built.nativeName() + "/"
                         + String.join("/", selection.refinements());
-                if (systemContext.knows(refinedName)) {
+                if (systemContext.contains(refinedName)) {
                     return systemContext.findSlotFor(refinedName).value();
                 }
                 throw refuseAnUnknownRefinement(selection, index);
@@ -1863,7 +1863,7 @@ public final class Evaluator {
     }
 
     public Value findTheHostPort(String scheme) {
-        if (!systemContext.knows("system")) {
+        if (!systemContext.contains("system")) {
             return NoneValue.none();
         }
         if (!(systemContext.findSlotFor("system").value() instanceof ObjectValue(Context context1))

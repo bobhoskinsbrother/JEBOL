@@ -142,7 +142,7 @@ class ActionParityTest {
                         + "] either error? e [e/id] ['worked]";
                 String answered;
                 try {
-                    interpreter.defineFreshWordsIn(source);
+                    interpreter.defineNewWordsIn(source);
                     answered = interpreter.display(interpreter.run(source)).trim();
                 } catch (RuntimeException escaped) {
                     answered = "threw " + escaped.getClass().getSimpleName();

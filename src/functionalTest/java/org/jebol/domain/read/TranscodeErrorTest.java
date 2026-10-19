@@ -12,7 +12,7 @@ class TranscodeErrorTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         ScriptOutcome outcome = interpreter.run(source);
         assertThat(outcome.conclusion())
                 .as("%s must not raise", source)
@@ -43,7 +43,7 @@ class TranscodeErrorTest {
     void raisesWithoutTheRefinement() {
         Interpreter interpreter = Interpreter.create();
         String source = "transcode/one \"2#12\"";
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
 
         assertThat(interpreter.run(source).conclusion())
                 .as("the refinement is what changes it, not the reader")

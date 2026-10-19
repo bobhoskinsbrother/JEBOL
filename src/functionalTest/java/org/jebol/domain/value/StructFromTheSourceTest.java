@@ -14,7 +14,7 @@ class StructFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         String shown = interpreter.display(interpreter.run(source));
         boolean quoted = shown.length() >= 2
                 && ((shown.charAt(0) == '"' && shown.endsWith("\""))

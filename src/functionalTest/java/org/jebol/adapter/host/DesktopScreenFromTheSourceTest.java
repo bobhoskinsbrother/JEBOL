@@ -23,7 +23,7 @@ class DesktopScreenFromTheSourceTest {
     private static GobValue makeAGobFrom(String source) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return (GobValue) interpreter.run(source).value();
     }
 
@@ -227,7 +227,7 @@ class DesktopScreenFromTheSourceTest {
             String script = """
                     e: try [view/no-wait make gob! [size: 100x100]]
                     either error? e [form e/arg1] ["no error at all"]""";
-            interpreter.defineFreshWordsIn(script);
+            interpreter.defineNewWordsIn(script);
 
             assertThat(interpreter.display(interpreter.run(script)))
                     .contains("not present");

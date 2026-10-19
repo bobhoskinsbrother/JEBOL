@@ -33,7 +33,7 @@ class BindingLeavesOtherWordsAloneFromTheSourceTest {
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
         String whole = A_MODULE_SHADOWING_THE_LIBRARY + source;
-        interpreter.defineFreshWordsIn(whole);
+        interpreter.defineNewWordsIn(whole);
         return interpreter.display(interpreter.run(whole));
     }
 

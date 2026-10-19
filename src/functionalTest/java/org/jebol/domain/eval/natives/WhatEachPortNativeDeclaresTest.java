@@ -68,7 +68,7 @@ class WhatEachPortNativeDeclaresTest {
         interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         interpreter.useEnvironment(new AnEnvironmentOfItsOwn());
         interpreter.useProcesses(new JavaProcess());
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return Molder.moldFlat(interpreter.run(source).value());
     }
 

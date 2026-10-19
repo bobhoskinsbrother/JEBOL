@@ -40,7 +40,7 @@ class AScreenEventCarriesItsPositionOrKeyFromTheSourceTest {
                 .grant(HostService.WINDOWS)
                 .withTimeLimit(Duration.ofSeconds(10)));
         made.useScreen(watched);
-        made.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
+        made.defineNewWordsIn(A_WINDOW_AND_A_WATCHER);
         made.run(A_WINDOW_AND_A_WATCHER);
         return made;
     }

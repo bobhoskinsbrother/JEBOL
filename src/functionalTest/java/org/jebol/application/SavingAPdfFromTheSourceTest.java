@@ -29,7 +29,7 @@ class SavingAPdfFromTheSourceTest {
     private static String answerTo(Path directory, String source) {
         Interpreter interpreter = makeAnInterpreterReaching(directory);
         String whole = "try [import 'pdf]\n" + source;
-        interpreter.defineFreshWordsIn(whole);
+        interpreter.defineNewWordsIn(whole);
         return interpreter.display(interpreter.run(whole));
     }
 

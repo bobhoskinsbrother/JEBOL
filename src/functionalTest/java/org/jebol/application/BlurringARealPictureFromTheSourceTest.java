@@ -19,7 +19,7 @@ class BlurringARealPictureFromTheSourceTest {
                 Bounds.standard().grant(HostService.FILES));
         interpreter.useFileSystem(FileSystemPort.rootFileSystem(VENDORED));
         interpreter.useImages(new JavaImage());
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

@@ -24,7 +24,7 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
                 shown/draw: compose [""" + drawBlock + """
                 ]
                 shown""";
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         GobValue gob = (GobValue) interpreter.run(source).value();
         ObjectValue dialect =
                 (ObjectValue) interpreter.run("system/dialects/draw").value();

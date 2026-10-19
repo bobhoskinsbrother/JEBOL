@@ -26,7 +26,7 @@ class MakeAndToAnswerAsR3DoesTest {
         String asked = "set/any 'r try [" + expression + "] either error? :r ["
                 + "rejoin [{E } r/id { } copy/part replace/all mold/all :r/arg1 newline { } 50]] ["
                 + "copy/part replace/all mold/all :r newline { } 80]";
-        interpreter.defineFreshWordsIn(asked);
+        interpreter.defineNewWordsIn(asked);
         return Molder.form(interpreter.run(asked).value());
     }
 

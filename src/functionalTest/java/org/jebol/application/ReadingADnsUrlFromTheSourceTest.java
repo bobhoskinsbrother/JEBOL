@@ -17,7 +17,7 @@ class ReadingADnsUrlFromTheSourceTest {
     private String answerTo(NetworkPort network, String source) {
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard().grant(HostService.NETWORK));
         interpreter.useNetwork(network);
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

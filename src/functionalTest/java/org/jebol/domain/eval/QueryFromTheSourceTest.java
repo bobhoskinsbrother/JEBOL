@@ -29,7 +29,7 @@ class QueryFromTheSourceTest {
 
     private String answerTo(String source) {
         Interpreter interpreter = reachingTheFilesystem();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
@@ -261,7 +261,7 @@ class QueryFromTheSourceTest {
         void anUngrantedScriptIsRefused() {
             Interpreter walled = Interpreter.create();
             String source = "e: try [query %a.txt 'size] either error? e [e/id] ['no-error]";
-            walled.defineFreshWordsIn(source);
+            walled.defineNewWordsIn(source);
             assertThat(walled.display(walled.run(source))).isNotEqualTo("no-error");
         }
     }

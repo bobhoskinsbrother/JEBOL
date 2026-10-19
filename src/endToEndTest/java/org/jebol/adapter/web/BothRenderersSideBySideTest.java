@@ -185,7 +185,7 @@ class BothRenderersSideBySideTest {
                     system/view/screen-gob
                     """;
             Interpreter interpreter = makeAnInterpreterOnThisPage();
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             GobValue root = (GobValue) interpreter.run(source).value();
 
             BufferedImage fromTheBrowser = captureWhatTheCanvasShows();

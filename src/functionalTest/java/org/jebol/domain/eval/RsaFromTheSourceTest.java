@@ -31,7 +31,7 @@ class RsaFromTheSourceTest {
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
         String whole = KEY + source;
-        interpreter.defineFreshWordsIn(whole);
+        interpreter.defineNewWordsIn(whole);
         return interpreter.display(interpreter.run(whole));
     }
 

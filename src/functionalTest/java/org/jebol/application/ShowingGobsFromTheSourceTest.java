@@ -44,7 +44,7 @@ class ShowingGobsFromTheSourceTest {
         void opensAWindow() {
             RecordingScreen screen = makeAScreen();
             Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
-            interpreter.defineFreshWordsIn(A_ROOT_WITH_ONE_WINDOW + "show w");
+            interpreter.defineNewWordsIn(A_ROOT_WITH_ONE_WINDOW + "show w");
             interpreter.run(A_ROOT_WITH_ONE_WINDOW + "show w");
 
             assertThat(screen.listWhatOpened()).hasSize(1);
@@ -60,7 +60,7 @@ class ShowingGobsFromTheSourceTest {
                     append root make gob! [size: 200x100]
                     append root make gob! [size: 300x200]
                     show root""";
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             interpreter.run(source);
 
             assertThat(screen.listWhatOpened())
@@ -82,7 +82,7 @@ class ShowingGobsFromTheSourceTest {
                     show w
                     w/text: "changed"
                     show w""";
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             interpreter.run(source);
 
             assertThat(screen.listWhatWasRefreshed())
@@ -97,7 +97,7 @@ class ShowingGobsFromTheSourceTest {
             Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
             String source = A_ROOT_WITH_ONE_WINDOW + """
                     show w  show w  show w""";
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             interpreter.run(source);
 
             assertThat(screen.listWhatOpened())
@@ -113,7 +113,7 @@ class ShowingGobsFromTheSourceTest {
             Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
             String source = A_ROOT_WITH_ONE_WINDOW + """
                     show root  show root""";
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             interpreter.run(source);
 
             assertThat(screen.listWhatOpened()).hasSize(1);
@@ -129,7 +129,7 @@ class ShowingGobsFromTheSourceTest {
         private final Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
 
         private void run(String source) {
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             interpreter.run(source);
         }
 
@@ -240,7 +240,7 @@ class ShowingGobsFromTheSourceTest {
                     show w
                     remove find root w
                     show w""";
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             interpreter.run(source);
 
             assertThat(screen.listWhatClosed())
@@ -258,7 +258,7 @@ class ShowingGobsFromTheSourceTest {
                     show w
                     remove find root w
                     show w  show w  show w""";
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             interpreter.run(source);
 
             assertThat(screen.listWhatClosed())
@@ -277,7 +277,7 @@ class ShowingGobsFromTheSourceTest {
                     show root
                     remove find root w
                     show root""";
-            interpreter.defineFreshWordsIn(source);
+            interpreter.defineNewWordsIn(source);
             interpreter.run(source);
 
             assertThat(screen.listWhatClosed()).hasSize(1);

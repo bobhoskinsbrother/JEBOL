@@ -22,7 +22,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         String source = "make gob! [size: 100x100 draw: [" + drawBlock + "]]";
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         GobValue gob = (GobValue) interpreter.run(source).value();
         ObjectValue dialect =
                 (ObjectValue) interpreter.run("system/dialects/draw").value();

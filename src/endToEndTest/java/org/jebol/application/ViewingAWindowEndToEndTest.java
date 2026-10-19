@@ -25,7 +25,7 @@ class ViewingAWindowEndToEndTest {
 
     private static String sessionOn(RecordingScreen screen, String script) {
         Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
-        interpreter.defineFreshWordsIn(script);
+        interpreter.defineNewWordsIn(script);
         return interpreter.display(interpreter.run(script));
     }
 
@@ -128,7 +128,7 @@ class ViewingAWindowEndToEndTest {
             Interpreter walled = Interpreter.create();
             String script = """
                     error? try [view/no-wait make gob! [size: 320x200]]""";
-            walled.defineFreshWordsIn(script);
+            walled.defineNewWordsIn(script);
 
             assertThat(walled.display(walled.run(script))).isEqualTo(TRUE);
         }
@@ -148,7 +148,7 @@ class ViewingAWindowEndToEndTest {
             String script = """
                     e: try [view/no-wait make gob! [size: 320x200]]
                     either error? e [form e/arg1] ["no error at all"]""";
-            interpreter.defineFreshWordsIn(script);
+            interpreter.defineNewWordsIn(script);
             return interpreter.display(interpreter.run(script));
         }
     }

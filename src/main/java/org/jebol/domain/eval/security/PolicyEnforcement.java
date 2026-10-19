@@ -48,7 +48,7 @@ public final class PolicyEnforcement {
 
     private Optional<Context> findTheSystemState() {
         Context lib = evaluator.systemContext();
-        if (!lib.knows("system")
+        if (!lib.contains("system")
                 || !(lib.readValueAt("system", "state") instanceof ObjectValue(Context state))) {
             return Optional.empty();
         }

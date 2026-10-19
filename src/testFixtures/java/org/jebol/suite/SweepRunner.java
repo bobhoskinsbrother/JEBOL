@@ -24,7 +24,7 @@ public final class SweepRunner {
                     }
                 }, SuiteHost.grantEverything()));
         String source = Files.readString(Path.of(argued[0]));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         interpreter.run(source);
     }
 }

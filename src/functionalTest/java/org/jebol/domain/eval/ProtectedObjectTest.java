@@ -16,7 +16,7 @@ class ProtectedObjectTest {
         String source = setup + "e: try [" + attempt + "] "
                 + "either error? e [e/id] ['no-error]";
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         ScriptOutcome outcome = interpreter.run(source);
         assertThat(outcome.conclusion())
                 .as("`%s` must arrive as an outcome, never as a host exception", attempt)
@@ -48,7 +48,7 @@ class ProtectedObjectTest {
         Interpreter interpreter = Interpreter.create();
         String source = PROTECTED
                 + "try [set in p 'a 99] try [p/a: 5] try [append p [a: 2]] p/a";
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
 
         assertThat(interpreter.display(interpreter.run(source)))
                 .as("a refused change must leave nothing half-done")

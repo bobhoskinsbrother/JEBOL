@@ -59,7 +59,7 @@ class SecurityPoliciesFromTheSourceTest {
     }
 
     private String answerTo(Interpreter asked, String source) {
-        asked.defineFreshWordsIn(source);
+        asked.defineNewWordsIn(source);
         return asked.display(asked.run(source));
     }
 
@@ -103,7 +103,7 @@ class SecurityPoliciesFromTheSourceTest {
         @DisplayName("quit ends the run with 101")
         void quitEndsTheRun() {
             answerTo("secure [file quit]");
-            interpreter.defineFreshWordsIn("read %in.txt print {after}");
+            interpreter.defineNewWordsIn("read %in.txt print {after}");
 
             ScriptOutcome outcome = interpreter.run("read %in.txt print {after}");
 
@@ -115,7 +115,7 @@ class SecurityPoliciesFromTheSourceTest {
         @DisplayName("quit is not something TRY can catch")
         void quitIsNotCaught() {
             answerTo("secure [file quit]");
-            interpreter.defineFreshWordsIn("try [read %in.txt] print {after}");
+            interpreter.defineNewWordsIn("try [read %in.txt] print {after}");
 
             ScriptOutcome outcome = interpreter.run("try [read %in.txt] print {after}");
 
@@ -207,7 +207,7 @@ class SecurityPoliciesFromTheSourceTest {
         @DisplayName("quit ends the run with 101")
         void quit() {
             Interpreter asking = makeAnInterpreterAskingThrough("q");
-            asking.defineFreshWordsIn("read %in.txt");
+            asking.defineNewWordsIn("read %in.txt");
 
             ScriptOutcome outcome = asking.run("read %in.txt");
 

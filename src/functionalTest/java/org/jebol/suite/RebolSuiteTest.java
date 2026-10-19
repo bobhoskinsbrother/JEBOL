@@ -101,7 +101,7 @@ class RebolSuiteTest {
 
     private static void runFile(SuiteFile file) {
         Interpreter interpreter = makeAnInterpreterWithAHost();
-        interpreter.defineFreshWordsIn(THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION);
+        interpreter.defineNewWordsIn(THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION);
         interpreter.run(THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION);
         Map<Integer, Boolean> reports = new LinkedHashMap<>();
         Map<String, String> whyItsStepStopped = new LinkedHashMap<>();
@@ -113,7 +113,7 @@ class RebolSuiteTest {
             }
             Verdict verdict = new Verdict(false, "never ran");
             try {
-                interpreter.defineFreshWordsIn(step.sourceToRun());
+                interpreter.defineNewWordsIn(step.sourceToRun());
                 if (step.isAssertion()) {
                     Interpreter.Step taken =
                             interpreter.runNext(step.sourceToRun());
@@ -121,14 +121,14 @@ class RebolSuiteTest {
                             ? Verdict.passed()
                             : new Verdict(false, readTheReasonFrom(taken.outcome()));
                     if (!taken.rest().isBlank()) {
-                        interpreter.defineFreshWordsIn(taken.rest());
+                        interpreter.defineNewWordsIn(taken.rest());
                         ScriptOutcome after = interpreter.run(taken.rest());
                         recordWhatRanInside(interpreter, step,
                                 after.succeeded() ? "" : readTheReasonFrom(after));
                     }
                 } else {
                     String toRun = step.sourceToRun();
-                    interpreter.defineFreshWordsIn(toRun);
+                    interpreter.defineNewWordsIn(toRun);
                     ScriptOutcome ran = interpreter.run(toRun);
                     verdict = new Verdict(ran.succeeded(), "");
                     recordWhatRanInside(interpreter, step,

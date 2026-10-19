@@ -181,7 +181,7 @@ class WebScreenServerFromTheSourceTest {
             Interpreter interpreter = makeAnInterpreterOnThisScreen();
             String script = """
                     view/no-wait make gob! [size: 200x100 color: 10.20.30]""";
-            interpreter.defineFreshWordsIn(script);
+            interpreter.defineNewWordsIn(script);
             interpreter.run(script);
 
             String message = waitForTheNextPicture();
@@ -207,7 +207,7 @@ class WebScreenServerFromTheSourceTest {
             String opening = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     system/view/screen-gob/1/offset: %dx%d""".formatted(across, down);
-            interpreter.defineFreshWordsIn(opening);
+            interpreter.defineNewWordsIn(opening);
             interpreter.run(opening);
             theWindow = findTheFirstWindowIn(interpreter);
         }
@@ -449,7 +449,7 @@ class WebScreenServerFromTheSourceTest {
                     lower/offset: 10x20
                     upper: view/no-wait make gob! [size: 100x100 color: 2.2.2]
                     upper/offset: 60x70""";
-            interpreter.defineFreshWordsIn(opening);
+            interpreter.defineNewWordsIn(opening);
             interpreter.run(opening);
             lower = findTheGobIn(interpreter, "lower");
             upper = findTheGobIn(interpreter, "upper");
@@ -544,7 +544,7 @@ class WebScreenServerFromTheSourceTest {
                         priority: 90
                         handler: func [event] [append seen event/type  event]
                     ]""";
-            interpreter.defineFreshWordsIn(setUp);
+            interpreter.defineNewWordsIn(setUp);
             interpreter.run(setUp);
 
             post("event", """

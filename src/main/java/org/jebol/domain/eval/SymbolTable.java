@@ -29,7 +29,7 @@ public final class SymbolTable {
         }
     }
 
-    public void startCountingWhatSessionReads() {
+    public void startCountingSessionReads() {
         countingWhatTheSessionReads = true;
     }
 

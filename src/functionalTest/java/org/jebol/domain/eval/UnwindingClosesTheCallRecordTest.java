@@ -16,14 +16,14 @@ class UnwindingClosesTheCallRecordTest {
     }
 
     private static String answerTo(Interpreter interpreter, String source) {
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
     private static String printedBy(String source) {
         StringBuilder captured = new StringBuilder();
         Interpreter interpreter = Interpreter.createWithOutput(captured::append);
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         interpreter.run(source);
         return captured.toString();
     }

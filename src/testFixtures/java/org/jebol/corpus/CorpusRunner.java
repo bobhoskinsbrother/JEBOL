@@ -86,7 +86,7 @@ final class CorpusRunner {
     static Result run(CorpusEntry entry) {
         Captured captured = new Captured();
         Interpreter interpreter = Interpreter.createWithOutput(captured);
-        interpreter.defineFreshWordsIn(entry.code());
+        interpreter.defineNewWordsIn(entry.code());
 
         ScriptOutcome outcome = interpreter.run(entry.code());
 

@@ -36,7 +36,7 @@ class SeriesMemoryFromTheSourceTest {
     @DisplayName("a string made with room for five million characters is visible in STATS")
     void alargeStringIsVisible() {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn("held: 0 before: 0");
+        interpreter.defineNewWordsIn("held: 0 before: 0");
         long before = readSettledStats(interpreter);
         interpreter.run("held: make string! " + A_LARGE_STRING);
         long after = answerToNumber(interpreter, "stats");
@@ -51,7 +51,7 @@ class SeriesMemoryFromTheSourceTest {
     @DisplayName("and the string is still empty, because the size was room and not length")
     void leavesTheStringEmpty() {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn("held: 0");
+        interpreter.defineNewWordsIn("held: 0");
         assertThat(answerToNumber(interpreter, "length? held: make string! " + A_LARGE_STRING))
                 .isZero();
     }
@@ -60,7 +60,7 @@ class SeriesMemoryFromTheSourceTest {
     @DisplayName("letting go of it and recycling gives the bytes back")
     void givesTheBytesBackWhenLetGo() {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn("held: 0 before: 0");
+        interpreter.defineNewWordsIn("held: 0 before: 0");
         interpreter.run("recycle before: stats");
         interpreter.run("held: make string! " + A_LARGE_STRING);
         interpreter.run("held: none recycle");
@@ -75,7 +75,7 @@ class SeriesMemoryFromTheSourceTest {
     @DisplayName("Rebol's own assertion, run whole")
     void passesRebolsOwnAssertion() {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn("held: 0 before: 0");
+        interpreter.defineNewWordsIn("held: 0 before: 0");
         interpreter.run("recycle before: stats held: make string! " + A_LARGE_STRING);
 
         assertThat(answerIsTrue(interpreter, """
@@ -92,7 +92,7 @@ class SeriesMemoryFromTheSourceTest {
     @DisplayName("a binary made with room reserves it too")
     void abinaryReservesItsRoom() {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn("held: 0 before: 0");
+        interpreter.defineNewWordsIn("held: 0 before: 0");
         long before = readSettledStats(interpreter);
         interpreter.run("held: make binary! 2000000");
 
@@ -104,7 +104,7 @@ class SeriesMemoryFromTheSourceTest {
     @DisplayName("a string that grows past its room is counted again as it grows")
     void countsAGrowingStringAgain() {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn("held: 0 before: 0");
+        interpreter.defineNewWordsIn("held: 0 before: 0");
         interpreter.run("held: copy {}");
         long before = readSettledStats(interpreter);
         interpreter.run("loop 200000 [append held {x}]");
@@ -118,7 +118,7 @@ class SeriesMemoryFromTheSourceTest {
     @DisplayName("RECYCLE answers how many bytes it took back")
     void recycleAnswersWhatItFreed() {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn("held: 0");
+        interpreter.defineNewWordsIn("held: 0");
         interpreter.run("recycle held: make string! " + A_LARGE_STRING + " held: none");
 
         assertThat(answerToNumber(interpreter, "recycle"))

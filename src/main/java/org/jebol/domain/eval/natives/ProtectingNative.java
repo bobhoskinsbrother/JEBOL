@@ -98,7 +98,7 @@ public abstract class ProtectingNative extends DefaultNative {
             return path.fieldThePathNames();
         }
         if (item instanceof AnyWordValue word && word.isBound()
-                && word.binding().knows(word.canonical())) {
+                && word.binding().contains(word.canonical())) {
             return Optional.of(word.binding().findSlotFor(word.canonical()));
         }
         return Optional.empty();

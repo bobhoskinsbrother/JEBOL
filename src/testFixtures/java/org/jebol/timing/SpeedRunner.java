@@ -25,7 +25,7 @@ public final class SpeedRunner {
             }
         }, Bounds.standard());
         String source = Files.readString(Path.of(argued[0]));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         interpreter.run(source);
     }
 }

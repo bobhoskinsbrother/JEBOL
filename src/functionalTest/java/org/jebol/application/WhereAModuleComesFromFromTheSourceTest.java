@@ -22,13 +22,13 @@ class WhereAModuleComesFromFromTheSourceTest {
 
     private static String answerTo(Path root, String source) {
         Interpreter interpreter = makeAnInterpreterWithAFilesystemAt(root);
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
     private static String answerWithNoFilesystem(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
@@ -39,7 +39,7 @@ class WhereAModuleComesFromFromTheSourceTest {
         String makingIt = """
                 system/options/data: %/data/
                 make-dir/deep system/options/data""";
-        interpreter.defineFreshWordsIn(makingIt);
+        interpreter.defineNewWordsIn(makingIt);
         interpreter.run(makingIt);
         interpreter.followApplicationDataDirectory();
 
@@ -66,7 +66,7 @@ class WhereAModuleComesFromFromTheSourceTest {
         String moving = """
                 system/options/data: %/elsewhere/
                 make-dir/deep system/options/data""";
-        interpreter.defineFreshWordsIn(moving);
+        interpreter.defineNewWordsIn(moving);
         interpreter.run(moving);
         interpreter.followApplicationDataDirectory();
 

@@ -91,7 +91,7 @@ class BrowserScreenFromTheSourceTest {
 
     private static String sessionOn(BrowserScreen screen, String script) {
         Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
-        interpreter.defineFreshWordsIn(script);
+        interpreter.defineNewWordsIn(script);
         return interpreter.display(interpreter.run(script));
     }
 
@@ -125,7 +125,7 @@ class BrowserScreenFromTheSourceTest {
                     append parent make gob! [offset: 5x5 size: 40x40 color: 200.0.0]
                     window: view/no-wait parent
                     window""";
-            interpreter.defineFreshWordsIn(describing);
+            interpreter.defineNewWordsIn(describing);
             GobValue window = (GobValue) interpreter.run(describing).value();
 
             assertThat(viewer.readTheLastPainted())
@@ -142,7 +142,7 @@ class BrowserScreenFromTheSourceTest {
             String opening = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     view/no-wait make gob! [size: 100x100 color: 2.2.2]""";
-            interpreter.defineFreshWordsIn(opening);
+            interpreter.defineNewWordsIn(opening);
             interpreter.run(opening);
             GobValue root = (GobValue) interpreter.run("system/view/screen-gob").value();
 
@@ -164,7 +164,7 @@ class BrowserScreenFromTheSourceTest {
                     keep: view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     closing: view/no-wait make gob! [size: 50x50 color: 2.2.2]
                     unview closing""";
-            interpreter.defineFreshWordsIn(opening);
+            interpreter.defineNewWordsIn(opening);
             interpreter.run(opening);
             GobValue root = (GobValue) interpreter.run("system/view/screen-gob").value();
 
@@ -199,7 +199,7 @@ class BrowserScreenFromTheSourceTest {
                             event
                         ]
                     ]""";
-            interpreter.defineFreshWordsIn(setUp);
+            interpreter.defineNewWordsIn(setUp);
             interpreter.run(setUp);
             int paintedBefore = viewer.timesPainted();
 
@@ -409,7 +409,7 @@ class BrowserScreenFromTheSourceTest {
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String script = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]""";
-            interpreter.defineFreshWordsIn(script);
+            interpreter.defineNewWordsIn(script);
             interpreter.run(script);
 
             viewer.wentAway();
@@ -438,7 +438,7 @@ class BrowserScreenFromTheSourceTest {
                         priority: 90
                         handler: func [event] [append seen event/type  event]
                     ]""";
-            interpreter.defineFreshWordsIn(setUp);
+            interpreter.defineNewWordsIn(setUp);
             interpreter.run(setUp);
 
             screen.report(ScreenEventType.DOWN, new ScreenEventDetail.At(5, 5));
@@ -460,7 +460,7 @@ class BrowserScreenFromTheSourceTest {
             Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String opening = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]""";
-            interpreter.defineFreshWordsIn(opening);
+            interpreter.defineNewWordsIn(opening);
             interpreter.run(opening);
 
             screen.report(ScreenEventType.CLOSE, new ScreenEventDetail.NothingMore());
@@ -489,7 +489,7 @@ class BrowserScreenFromTheSourceTest {
                         priority: 90
                         handler: func [event] [append seen event/offset  event]
                     ]""";
-            interpreter.defineFreshWordsIn(setUp);
+            interpreter.defineNewWordsIn(setUp);
             interpreter.run(setUp);
 
             screen.report(ScreenEventType.DOWN, new ScreenEventDetail.At(35, 47));
@@ -523,7 +523,7 @@ class BrowserScreenFromTheSourceTest {
                             event
                         ]
                     ]""";
-            interpreter.defineFreshWordsIn(setUp);
+            interpreter.defineNewWordsIn(setUp);
             interpreter.run(setUp);
 
             screen.report(ScreenEventType.DOWN, new ScreenEventDetail.At(250, 50));
@@ -552,7 +552,7 @@ class BrowserScreenFromTheSourceTest {
                         priority: 90
                         handler: func [event] [append seen event/offset  event]
                     ]""";
-            interpreter.defineFreshWordsIn(setUp);
+            interpreter.defineNewWordsIn(setUp);
             interpreter.run(setUp);
 
             screen.report(ScreenEventType.DOWN, new ScreenEventDetail.At(450, 450));
@@ -577,7 +577,7 @@ class BrowserScreenFromTheSourceTest {
                         priority: 90
                         handler: func [event] [append seen event/type  event]
                     ]""";
-            interpreter.defineFreshWordsIn(setUp);
+            interpreter.defineNewWordsIn(setUp);
             interpreter.run(setUp);
 
             screen.report(ScreenEventType.DOWN, new ScreenEventDetail.At(50, 50));
@@ -613,7 +613,7 @@ class BrowserScreenFromTheSourceTest {
                             event
                         ]
                     ]""";
-            interpreter.defineFreshWordsIn(setUp);
+            interpreter.defineNewWordsIn(setUp);
             interpreter.run(setUp);
 
             screen.report(ScreenEventType.CLOSE, new ScreenEventDetail.NothingMore());
@@ -638,7 +638,7 @@ class BrowserScreenFromTheSourceTest {
                         priority: 90
                         handler: func [event] [append seen event/type  event]
                     ]""";
-            interpreter.defineFreshWordsIn(setUp);
+            interpreter.defineNewWordsIn(setUp);
             interpreter.run(setUp);
 
             screen.report(ScreenEventType.RESIZE, new ScreenEventDetail.NothingMore());
@@ -661,7 +661,7 @@ class BrowserScreenFromTheSourceTest {
             screen.measure(800, 600);
             String opening = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]""";
-            interpreter.defineFreshWordsIn(opening);
+            interpreter.defineNewWordsIn(opening);
             interpreter.run(opening);
             return interpreter;
         }

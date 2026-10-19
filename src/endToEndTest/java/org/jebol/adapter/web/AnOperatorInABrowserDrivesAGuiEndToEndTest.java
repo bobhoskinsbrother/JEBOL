@@ -65,7 +65,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
     }
 
     private String answerTo(String source) {
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 

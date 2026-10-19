@@ -66,7 +66,7 @@ public class BindNative extends DefaultNative {
         if (target.declaresItRelatively(word.canonical())) {
             return word.bindTo(target);
         }
-        if (!target.knows(word.canonical())) {
+        if (!target.contains(word.canonical())) {
             throw Raised.of(EvaluationFailure.NOT_IN_CONTEXT, word.spelling());
         }
         return word.bindTo(target.findTheHolderOf(word.canonical()));

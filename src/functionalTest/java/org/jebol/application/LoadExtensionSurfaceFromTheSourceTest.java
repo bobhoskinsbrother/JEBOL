@@ -10,7 +10,7 @@ class LoadExtensionSurfaceFromTheSourceTest {
     private static String readTheErrorIdOf(String source) {
         Interpreter interpreter = Interpreter.create();
         String wrapped = "e: try [" + source + "] either error? e [e/id] ['no-error]";
-        interpreter.defineFreshWordsIn(wrapped);
+        interpreter.defineNewWordsIn(wrapped);
         return interpreter.display(interpreter.run(wrapped));
     }
 

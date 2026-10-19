@@ -20,7 +20,7 @@ class ADrawBlocksCoordinatesAreTheGobsOwnFromTheSourceTest {
             Bounds.standard().grant(HostService.WINDOWS));
 
     private List<PaintInstruction> paintFrom(String treeBuiltBy) {
-        interpreter.defineFreshWordsIn(treeBuiltBy);
+        interpreter.defineNewWordsIn(treeBuiltBy);
         GobValue root = (GobValue) interpreter.run(treeBuiltBy).value();
         ObjectValue dialect = (ObjectValue) interpreter.run("system/dialects/draw").value();
         return PaintList.of(root, dialect).instructions();

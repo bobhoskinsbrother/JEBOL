@@ -12,7 +12,7 @@ class SeriesIndexBoundsTest {
 
     private static ScriptOutcome ran(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.run(source);
     }
 

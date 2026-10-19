@@ -12,7 +12,7 @@ class CleanPathTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
@@ -63,7 +63,7 @@ class CleanPathTest {
     void needsTheWorkingDirectoryGrant() {
         String source = "e: try [clean-path %a/b] either error? e [e/id] ['no-error]";
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard());
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         assertThat(interpreter.display(interpreter.run(source))).isEqualTo("no-service");
     }
 
@@ -75,7 +75,7 @@ class CleanPathTest {
                 Bounds.standard().grant(HostService.WORKING_DIRECTORY));
         interpreter.useFileSystem(org.jebol.application.FileSystemPort.rootFileSystem(
                 java.nio.file.Path.of(".")));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         assertThat(interpreter.display(interpreter.run(source))).isEqualTo("#(true)");
     }
 }

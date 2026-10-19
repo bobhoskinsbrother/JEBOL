@@ -21,7 +21,7 @@ class DrawDialectFromTheSourceTest {
     private static AGobAndItsDialect readTheGobAndDialectFrom(String source) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         GobValue gob = (GobValue) interpreter.run(source).value();
         return new AGobAndItsDialect(gob,
                 (org.jebol.domain.value.ObjectValue)

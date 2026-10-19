@@ -40,7 +40,7 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
     }
 
     private BufferedImage paint(String source) {
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         GobValue gob = (GobValue) interpreter.run(source).value();
         ObjectValue dialect = (ObjectValue) interpreter.run("system/dialects/draw").value();
         BufferedImage surface = new BufferedImage(WIDE, HIGH, BufferedImage.TYPE_INT_ARGB);

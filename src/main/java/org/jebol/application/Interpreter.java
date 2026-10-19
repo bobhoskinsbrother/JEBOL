@@ -65,17 +65,17 @@ public final class Interpreter {
                 boot::makeMakerFor,
                 output,
                 bounds.maximumNesting(),
-                this::findReasonToStop,
+                this::reasonToStop,
                 bounds.checkEvery());
         evaluator.usePause(new ThreadPause());
         evaluator.useMachine(machine);
         evaluator.putRuntimeWordsIn(userContext);
-        this.library = new RebolLibraryLoader(rebolFiles, evaluator, systemContext, system.internals(), this::run);
-        library.supplySymbolsAndModules();
-        library.declareSystemObject();
+        this.library = new RebolLibraryLoader(rebolFiles, systemContext, system.internals(), this::run);
+        library.supplySymbolsAndModules(evaluator);
+        library.declareSystemObject(evaluator);
         publishUserContext();
-        library.load();
-        nameLauncherOnceLibraryLoads();
+        library.load(evaluator);
+        declareLauncherAfterLibraryLoads();
         library.registerSchemes();
         boot.grantOnly(bounds.grantedServices());
         boot.markOnlyUnavailable(bounds.unavailableServices());
@@ -85,7 +85,7 @@ public final class Interpreter {
         library.seal();
         ExtensionInstallation installation = new ExtensionInstallation(evaluator, library);
         this.extensionReports = bounds.extensions().stream().map(installation::installAndReport).toList();
-        evaluator.symbols().startCountingWhatSessionReads();
+        evaluator.symbols().startCountingSessionReads();
     }
 
 
@@ -125,7 +125,7 @@ public final class Interpreter {
         return concludeWithinBounds(() -> evaluate(source));
     }
 
-    public void tellSystem(String option, Value value) {
+    public void setSystemValue(String option, Value value) {
         evaluator.setSystemOption(option, value);
     }
 
@@ -144,7 +144,7 @@ public final class Interpreter {
         return machine;
     }
 
-    private void nameLauncherOnceLibraryLoads() {
+    private void declareLauncherAfterLibraryLoads() {
         if (!bounds.grantedServices().contains(HostService.PROCESSES)) {
             return;
         }
@@ -152,7 +152,7 @@ public final class Interpreter {
     }
 
     private void publishUserContext() {
-        if (systemContext.knows("system")
+        if (systemContext.contains("system")
                 && systemContext.findSlotFor("system").value()
                         instanceof ObjectValue system
                 && system.context().holds("contexts")
@@ -160,11 +160,11 @@ public final class Interpreter {
             ObjectValue user = new ObjectValue(userContext);
             userContext.pointItsOwnSelfAt(user);
             context.register("user", user);
-            openUserContextWithRebolAndItself(system, user);
+            registerContextWithRebolAndLibLocal(system, user);
         }
     }
 
-    private void openUserContextWithRebolAndItself(ObjectValue system, ObjectValue user) {
+    private void registerContextWithRebolAndLibLocal(ObjectValue system, ObjectValue user) {
         userContext.register("REBOL", system);
         userContext.register("lib-local", user);
     }
@@ -180,15 +180,15 @@ public final class Interpreter {
         }
     }
 
-    private void giveItUserSlotHoldingWhatLibHolds(AnyWordValue word, Context into) {
-        into.register(word.spelling(), readWhatLibHolds(word, into));
+    private void giveItUserSlotHoldingWhatLibHolds(AnyWordValue word, Context context) {
+        context.register(word.spelling(), libValueFromContext(word, context));
     }
 
-    private Value readWhatLibHolds(AnyWordValue word, Context into) {
-        if (into.knows(word.canonical())) {
-            return into.findSlotFor(word.canonical()).value();
+    private Value libValueFromContext(AnyWordValue word, Context context) {
+        if (context.contains(word.canonical())) {
+            return context.findSlotFor(word.canonical()).value();
         }
-        return systemContext.knows(word.canonical())
+        return systemContext.contains(word.canonical())
                 ? systemContext.findSlotFor(word.canonical()).value()
                 : UnsetValue.unset();
     }
@@ -300,7 +300,7 @@ public final class Interpreter {
         };
     }
 
-    private Optional<String> findReasonToStop() {
+    private Optional<String> reasonToStop() {
         if (System.nanoTime() >= deadlineNanos) {
             return Optional.of("the script ran longer than "
                     + bounds.timeLimit().toMillis() + "ms");
@@ -326,7 +326,7 @@ public final class Interpreter {
         return concludeFrom(stopped) == Conclusion.CANCELLED ? "cancelled" : "timeout";
     }
 
-    public void defineFreshWordsIn(String source) {
+    public void defineNewWordsIn(String source) {
         TranscodeResult read = evaluator.read(source);
         read.values().ifPresent(this::defineWordsIn);
     }

@@ -17,7 +17,7 @@ class InterpreterStateFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
@@ -29,7 +29,7 @@ class InterpreterStateFromTheSourceTest {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES));
         interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
@@ -345,7 +345,7 @@ class InterpreterStateFromTheSourceTest {
         @DisplayName("nothing after the halt runs")
         void runsNothingAfterIt() {
             Interpreter interpreter = Interpreter.create();
-            interpreter.defineFreshWordsIn("n: 0 halt n: 9");
+            interpreter.defineNewWordsIn("n: 0 halt n: 9");
             interpreter.run("n: 0 halt n: 9");
             assertThat(interpreter.display(interpreter.run("n"))).isEqualTo("0");
         }

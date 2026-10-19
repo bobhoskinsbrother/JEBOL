@@ -12,7 +12,7 @@ class AssignmentSafetyTest {
     private static Interpreter makeAFreshInterpreter(String... lines) {
         Interpreter interpreter = Interpreter.create();
         for (String line : lines) {
-            interpreter.defineFreshWordsIn(line);
+            interpreter.defineNewWordsIn(line);
             interpreter.run(line);
         }
         return interpreter;
@@ -23,7 +23,7 @@ class AssignmentSafetyTest {
     void leavesTheSlotAloneWhenAnAssignmentFails() {
         Interpreter interpreter = makeAFreshInterpreter("total: 42");
 
-        interpreter.defineFreshWordsIn("total: divide 1 0");
+        interpreter.defineNewWordsIn("total: divide 1 0");
         ScriptOutcome failed = interpreter.run("total: divide 1 0");
 
         assertThat(failed.succeeded()).as("the assignment should have raised").isFalse();
@@ -37,7 +37,7 @@ class AssignmentSafetyTest {
     void leavesTheSlotUnsetWhenTheFirstAssignmentFails() {
         Interpreter interpreter = Interpreter.create();
 
-        interpreter.defineFreshWordsIn("fresh: divide 1 0");
+        interpreter.defineNewWordsIn("fresh: divide 1 0");
         ScriptOutcome failed = interpreter.run("fresh: divide 1 0");
 
         assertThat(failed.succeeded()).isFalse();
@@ -52,7 +52,7 @@ class AssignmentSafetyTest {
         Interpreter interpreter = Interpreter.create();
         String source = "first-word: 1 second-word: divide 1 0 third-word: 3";
 
-        interpreter.defineFreshWordsIn(source);
+        interpreter.defineNewWordsIn(source);
         ScriptOutcome failed = interpreter.run(source);
 
         assertThat(failed.succeeded()).isFalse();
@@ -69,7 +69,7 @@ class AssignmentSafetyTest {
     void keepsTheValueOfAProtectedWord() {
         Interpreter interpreter = makeAFreshInterpreter("kept: \"original\"", "protect 'kept");
 
-        interpreter.defineFreshWordsIn("kept: \"replacement\"");
+        interpreter.defineNewWordsIn("kept: \"replacement\"");
         ScriptOutcome refused = interpreter.run("kept: \"replacement\"");
 
         assertThat(refused.succeeded()).as("assigning to a protected word must raise").isFalse();

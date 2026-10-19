@@ -13,7 +13,7 @@ class AFailedPathNamesThePathFromTheSourceTest {
     private String readWhatComesBackFrom(String code) {
         Interpreter interpreter = Interpreter.create();
         String asking = "e: try [" + code + "] either error? e [reduce [e/id e/arg1 e/arg2]] [e]";
-        interpreter.defineFreshWordsIn(asking);
+        interpreter.defineNewWordsIn(asking);
         return interpreter.display(interpreter.run(asking));
     }
 

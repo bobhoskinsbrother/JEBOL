@@ -11,7 +11,7 @@ class UnbindLoosensTheBlockItWasGivenFromTheSourceTest {
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
         String whole = "target: make object! [held: 99]\n" + source;
-        interpreter.defineFreshWordsIn(whole);
+        interpreter.defineNewWordsIn(whole);
         return interpreter.display(interpreter.run(whole));
     }
 
