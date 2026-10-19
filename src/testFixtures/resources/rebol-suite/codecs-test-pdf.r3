@@ -118,13 +118,13 @@ S
 [] 0 d              % Reset dash pattern to solid line.
 1 w                 % Reset line width to 1 unit.
 
-% Draw a rectangle with 1-unit red border, fill with light blue.
+% Draw a rectangle with 1-unit red border, filled with light blue.
 1.0 0.0  0.0 RG     % Red for stroke color
 0.5 0.75 1.0 rg     % Fill color
 200 300 50 75 re
 B
 
-% Draw a curve fill with gray and with colored border.
+% Draw a curve filled with gray and with colored border.
 0.5 0.1 0.2 RG
 0.7 g
 300 300 m
