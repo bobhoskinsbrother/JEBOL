@@ -26,13 +26,13 @@ import java.util.List;
  * <p>{@code equal?} is <em>type only, and only for context handles</em>:
  * {@code IS_CONTEXT_HANDLE(a) && IS_CONTEXT_HANDLE(b) && (VAL_HANDLE_SYM(a) ==
  * VAL_HANDLE_SYM(b))}. Two ciphers with different keys are equal because both are
- * ciphers of the same kind -- and a function handle is equal to nothing at all,
+ * ciphers of the same type -- and a function handle is equal to nothing at all,
  * <em>including itself</em>. `equal? h h` is false for a codec.
  *
  * <p>And the ordering puts every context handle before every function handle,
  * sorts context handles of different kinds by name, and everything else by
  * identity. Which is what makes {@code sort} on a block of handles group them by
- * kind.
+ * type.
  */
 public record HandleValue(
         String typeName,
@@ -41,7 +41,7 @@ public record HandleValue(
         Value payload) implements Value {
 
     @Override
-    public boolean equalTo(Value other, Sameness how) {
+    public boolean isEqualTo(Value other, Sameness how) {
         return other instanceof HandleValue theirs && isEqualHandleTo(theirs);
     }
 
@@ -56,20 +56,20 @@ public record HandleValue(
 
     /**
      * A handle wrapping state a script holds and cannot look inside, named by
-     * kind.
+     * type.
      *
      * <p>{@code MAKE_HANDLE(ret, SYM_RC4)} and its like. A cipher context is
      * the example: the caller needs to keep it between calls, because the
      * permutation advances, and must not be able to read or write it, because
      * that is the key material. So the payload goes behind the handle and the
-     * only thing published is which kind it is.
+     * only thing published is which type it is.
      */
-    public static HandleValue context(String typeName, int identity, Value payload) {
+    public static HandleValue wrapAContext(String typeName, int identity, Value payload) {
         return new HandleValue(typeName, Kind.CONTEXT, identity, payload);
     }
 
-    /** A handle wrapping something callable, named by kind. */
-    public static HandleValue function(String typeName, int identity, Value payload) {
+    /** A handle wrapping something callable, named by type. */
+    public static HandleValue wrapAFunction(String typeName, int identity, Value payload) {
         return new HandleValue(typeName, Kind.FUNCTION, identity, payload);
     }
 
@@ -81,17 +81,17 @@ public record HandleValue(
     public static final Datatype TYPE = new Datatype("handle") {
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
-            throw refusingConstruction(contents);
+        public Value construct(List<Value> contents, Construction construction) {
+            throw refuseTheConstruction(contents);
         }
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             throw Raised.of(EvaluationFailure.CANNOT_USE, SetWordValue.of("make"), this);
         }
 
         @Override
-        public Value convertedFrom(Value value, Maker maker) {
+        public Value convert(Value value, Maker maker) {
             throw Raised.of(EvaluationFailure.CANNOT_USE, SetWordValue.of("to"), this);
         }
     };
@@ -101,10 +101,10 @@ public record HandleValue(
     }
 
     @Override
-    public Value reflected(AnyWordValue field) {
+    public Value reflect(AnyWordValue field) {
         return switch (field.canonical()) {
-            case "words" -> BlockValue.block(WordValue.of("type"));
-            case "values" -> BlockValue.block(isContext()
+            case "words" -> BlockValue.of(WordValue.of("type"));
+            case "values" -> BlockValue.of(isContext()
                     ? WordValue.of(typeName)
                     : NoneValue.none());
             default -> NoneValue.none();
@@ -127,7 +127,7 @@ public record HandleValue(
      *
      * <p>Both must be context handles and their types must match. So this answers
      * false for every function handle, which reads like a bug and is the C's
-     * decision: a function handle has no kind a script can ask about, so there is
+     * decision: a function handle has no type a script can ask about, so there is
      * nothing for equality to compare.
      */
     public boolean isEqualHandleTo(HandleValue other) {

@@ -23,7 +23,7 @@ public class SubtractAction extends ArithmeticNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                Arithmetic.difference(arguments.get(0), arguments.get(1));
+                Arithmetic.subtract(arguments.get(0), arguments.get(1));
     }
 
     @Override

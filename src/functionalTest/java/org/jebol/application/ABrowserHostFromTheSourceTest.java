@@ -9,23 +9,23 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ABrowserHostFromTheSourceTest {
 
-    private static Bounds aBrowsersBounds() {
+    private static Bounds measureABrowsersBounds() {
         return Bounds.standard()
-                .withoutAWallClockLimit()
+                .withoutATimeLimit()
                 .grant(HostService.CONSOLE)
                 .grant(HostService.FILES)
                 .grant(HostService.WINDOWS)
                 .grant(HostService.WEB)
                 .grant(HostService.WORKING_DIRECTORY)
-                .lacking(HostService.NETWORK)
-                .lacking(HostService.PROCESSES)
-                .lacking(HostService.ENVIRONMENT)
-                .lacking(HostService.CERTIFICATES)
+                .markUnavailable(HostService.NETWORK)
+                .markUnavailable(HostService.PROCESSES)
+                .markUnavailable(HostService.ENVIRONMENT)
+                .markUnavailable(HostService.CERTIFICATES)
                 .calls("a browser");
     }
 
-    private static Interpreter aBrowser() {
-        return Interpreter.withBounds(aBrowsersBounds());
+    private static Interpreter makeABrowser() {
+        return Interpreter.withBounds(measureABrowsersBounds());
     }
 
     private static String answerTo(Interpreter interpreter, String source) {
@@ -33,33 +33,33 @@ class ABrowserHostFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String theSentenceFor(Interpreter interpreter, String source) {
+    private static String readTheSentenceFor(Interpreter interpreter, String source) {
         return answerTo(interpreter, "e: try [" + source + "] mold e");
     }
 
     @Test
     @DisplayName("a service a browser has not got is refused as not present, with the browser named")
-    void whatABrowserCannotDoIsNotPresent() {
-        Interpreter browser = aBrowser();
+    void callsWhatABrowserCannotDoNotPresent() {
+        Interpreter browser = makeABrowser();
 
-        assertThat(theSentenceFor(browser, "call {ls}"))
+        assertThat(readTheSentenceFor(browser, "call {ls}"))
                 .contains("a browser does not allow processes, which is not present");
-        assertThat(theSentenceFor(browser, "read tcp://127.0.0.1:9"))
+        assertThat(readTheSentenceFor(browser, "read tcp://127.0.0.1:9"))
                 .contains("a browser does not allow network, which is not present");
     }
 
     @Test
     @DisplayName("and the id is no-service, so a script acts on it as any refusal")
-    void theRefusedIdIsNoService() {
-        assertThat(answerTo(aBrowser(),
+    void refusesWithNoService() {
+        assertThat(answerTo(makeABrowser(),
                 "e: try [call {ls}] either error? e [e/id] ['no-error]"))
                 .isEqualTo("no-service");
     }
 
     @Test
     @DisplayName("DNS and UDP are refused the same way, before anything is attempted")
-    void everyTransportABrowserHasNotIsRefused() {
-        Interpreter browser = aBrowser();
+    void refusesEveryTransportABrowserLacks() {
+        Interpreter browser = makeABrowser();
 
         assertThat(answerTo(browser, "e: try [read dns://example.com] e/id"))
                 .isEqualTo("no-service");
@@ -69,42 +69,53 @@ class ABrowserHostFromTheSourceTest {
 
     @Test
     @DisplayName("a secure connection is refused for want of authorities, since the browser judges certificates itself")
-    void aSecureConnectionIsRefusedAsNotPresent() {
-        assertThat(theSentenceFor(aBrowser(), "open tls://example.com:443"))
+    void refusesASecureConnectionAsNotPresent() {
+        assertThat(readTheSentenceFor(makeABrowser(), "open tls://example.com:443"))
                 .contains("a browser does not allow certificates, which is not present");
     }
 
     @Test
     @DisplayName("a network port cannot be opened by hand either")
-    void openingATcpPortIsRefused() {
-        assertThat(answerTo(aBrowser(), "e: try [open tcp://127.0.0.1:9] e/id"))
+    void refusesOpeningATcpPort() {
+        assertThat(answerTo(makeABrowser(), "e: try [open tcp://127.0.0.1:9] e/id"))
                 .isEqualTo("no-service");
     }
 
     @Test
     @DisplayName("a host that has the service and did not grant it says not granted instead")
-    void aServiceMerelyNotGrantedIsADifferentSentence() {
+    void saysSomethingElseForAServiceMerelyNotGranted() {
         Interpreter host = Interpreter.withBounds(Bounds.standard());
 
-        assertThat(theSentenceFor(host, "read tcp://127.0.0.1:9"))
+        assertThat(readTheSentenceFor(host, "read tcp://127.0.0.1:9"))
                 .contains("network is not granted")
                 .doesNotContain("not present");
     }
 
     @Test
-    @DisplayName("a host that lacks a service cannot also grant it")
-    void grantingWhatIsLackingIsARefusalAtTheHost() {
+    @DisplayName("a host that has a service unavailable cannot also grant it")
+    void refusesToGrantWhatIsUnavailable() {
         assertThatThrownBy(() -> Bounds.standard()
                 .calls("a browser")
-                .lacking(HostService.NETWORK)
+                .markUnavailable(HostService.NETWORK)
                 .grant(HostService.NETWORK))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("a browser cannot grant network");
     }
 
     @Test
+    @DisplayName("and a host that granted a service cannot then mark it unavailable")
+    void refusesToMarkUnavailableWhatIsGranted() {
+        assertThatThrownBy(() -> Bounds.standard()
+                .calls("a browser")
+                .grant(HostService.NETWORK)
+                .markUnavailable(HostService.NETWORK))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("a browser cannot mark network unavailable");
+    }
+
+    @Test
     @DisplayName("a host names itself, and may not be nameless")
-    void aHostNameIsRequired() {
+    void requiresAHostName() {
         assertThatThrownBy(() -> Bounds.standard().calls(" "))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("names itself");

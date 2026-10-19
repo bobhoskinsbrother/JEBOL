@@ -43,11 +43,11 @@ public final class LibContext {
     }
 
     public AnyBlockValue actionsInOrder() {
-        return BlockValue.block(actionsInOrder);
+        return BlockValue.of(actionsInOrder);
     }
 
     public AnyBlockValue nativesInOrder() {
-        return BlockValue.block(nativesInOrder);
+        return BlockValue.of(nativesInOrder);
     }
 
     public VersionNative version() {
@@ -56,12 +56,12 @@ public final class LibContext {
 
     private void registerConstants() {
         lib.register("true", LogicValue.yes());
-        lib.register("false", LogicValue.no());
+        lib.register("false", LogicValue.answerNo());
         lib.register("none", NoneValue.none());
         lib.register("on", LogicValue.yes());
-        lib.register("off", LogicValue.no());
+        lib.register("off", LogicValue.answerNo());
         lib.register("yes", LogicValue.yes());
-        lib.register("no", LogicValue.no());
+        lib.register("no", LogicValue.answerNo());
         lib.register("pi", DecimalValue.of(Math.PI));
     }
 
@@ -382,7 +382,7 @@ public final class LibContext {
     private void registerDatatypePredicates() {
         for (Datatype datatype : Catalogue.DATATYPES.entries()) {
             DatatypePredicateAction predicate = new DatatypePredicateAction(datatype);
-            declare(predicate, declarations.theSpecEveryDatatypeTestHas());
+            declare(predicate, declarations.makeTheSpecEveryDatatypeTestHas());
             lib.register(predicate.nativeName(), predicate);
         }
     }
@@ -409,7 +409,7 @@ public final class LibContext {
         for (int at = 0; at + 1 < written.size(); at += 2) {
             if (written.get(at) instanceof AnyWordValue operator && written.get(at + 1) instanceof AnyWordValue twin) {
                 lib.register(operator.spelling(), new OperatorValue(operator.spelling(),
-                        thePrefixTwinOf(operator, twin)));
+                        findThePrefixTwinOf(operator, twin)));
             }
         }
     }
@@ -429,15 +429,15 @@ public final class LibContext {
     }
 
     private void registerWithItsDeclaredSpec(DefaultNative built) {
-        declare(built, declarations.specOf(built));
+        declare(built, declarations.findTheSpecOf(built));
         lib.register(built.nativeName(), built);
     }
 
     private void declare(DefaultNative built, AnyBlockValue spec) {
-        built.declaredBy(spec, new DeclaredArguments(spec).inPlaceOf(built.parametersAsWritten()));
+        built.declare(spec, new DeclaredArguments(spec).standInFor(built.parametersAsWritten()));
     }
 
-    private AnyFunctionValue thePrefixTwinOf(AnyWordValue operator, AnyWordValue twin) {
+    private AnyFunctionValue findThePrefixTwinOf(AnyWordValue operator, AnyWordValue twin) {
         String canonical = Context.canonicalise(twin.spelling());
         if (!lib.holds(canonical)
                 || !(lib.ownSlotFor(canonical).value() instanceof AnyFunctionValue function)) {

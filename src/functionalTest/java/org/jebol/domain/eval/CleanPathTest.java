@@ -18,49 +18,49 @@ class CleanPathTest {
 
     @Test
     @DisplayName("a single dot names the directory it is in, thus it goes")
-    void oneDotIsDropped() {
+    void dropsOneDot() {
         assertThat(answerTo("(clean-path/only %a/./b) = %a/b")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a double dot takes the part above it with it")
-    void twoDotsRemoveThePartBefore() {
+    void removesThePartBeforeTwoDots() {
         assertThat(answerTo("(clean-path/only %a/b/../c) = %a/c")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a double dot with nothing above it is dropped")
-    void aPathCannotClimbAboveItsStart() {
+    void stopsAPathClimbingAboveItsStart() {
         assertThat(answerTo("(clean-path/only %../a) = %a")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("two slashes together are one slash")
-    void theEmptyPartGoes() {
+    void dropsTheEmptyPart() {
         assertThat(answerTo("(clean-path/only %a//b) = %a/b")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("/DIR puts a slash at the end")
-    void theDirectorySlashIsAdded() {
+    void addsTheDirectorySlash() {
         assertThat(answerTo("(clean-path/only/dir %a/b) = %a/b/")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a path with nothing to work out is unchanged")
-    void theOrdinaryPathIsLeftAlone() {
+    void leavesTheOrdinaryPathAlone() {
         assertThat(answerTo("(clean-path/only %a/b) = %a/b")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a path that starts at the root keeps its first slash")
-    void theRootIsKept() {
+    void keepsTheRoot() {
         assertThat(answerTo("(clean-path/only %/a/./b) = %/a/b")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("without /ONLY the current directory is needed")
-    void theWorkingDirectoryGrantIsNeeded() {
+    void needsTheWorkingDirectoryGrant() {
         String source = "e: try [clean-path %a/b] either error? e [e/id] ['no-error]";
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard());
         interpreter.defineFreshWordsIn(source);
@@ -69,11 +69,11 @@ class CleanPathTest {
 
     @Test
     @DisplayName("with the grant, a relative path is made whole")
-    void theCurrentDirectoryGoesInFront() {
+    void putsTheCurrentDirectoryInFront() {
         String source = "#\"/\" = first clean-path %a/b";
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(org.jebol.application.FileSystemPort.rootedAt(
+        interpreter.useFileSystem(org.jebol.application.FileSystemPort.rootFileSystem(
                 java.nio.file.Path.of(".")));
         interpreter.defineFreshWordsIn(source);
         assertThat(interpreter.display(interpreter.run(source))).isEqualTo("#(true)");

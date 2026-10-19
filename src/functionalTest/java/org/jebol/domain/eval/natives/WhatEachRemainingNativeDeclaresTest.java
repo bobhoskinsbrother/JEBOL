@@ -1,6 +1,7 @@
 package org.jebol.domain.eval.natives;
 
 import org.jebol.application.Bounds;
+import org.jebol.adapter.host.JavaProcess;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.GrantedServices;
@@ -35,12 +36,12 @@ class WhatEachRemainingNativeDeclaresTest {
     private final class AHostThatKnowsWhoItRunsAs implements ProcessPort {
 
         @Override
-        public ProgramResult run(ProgramToStart program) {
+        public ProgramResult run(Program program) {
             throw new UnsupportedOperationException("no program is started by ACCESS-OS");
         }
 
         @Override
-        public OptionalLong identity(WhoTheProcessRunsAs asked) {
+        public OptionalLong identify(WhoTheProcessRunsAs asked) {
             return OptionalLong.of(switch (asked) {
                 case REAL_USER -> REAL_USER;
                 case EFFECTIVE_USER -> EFFECTIVE_USER;
@@ -70,6 +71,12 @@ class WhatEachRemainingNativeDeclaresTest {
 
     private String argumentsOfTheErrorFrom(String source) {
         return answerTo("e: try [" + source + "] reduce [e/id e/arg1 e/arg2 e/arg3]");
+    }
+
+    private String errorArgumentsWithProcesses(String source) {
+        Interpreter interpreter = Interpreter.withBounds(everythingGranted());
+        interpreter.useProcesses(new JavaProcess());
+        return Molder.moldFlat(interpreter.run("e: try [" + source + "] reduce [e/id e/arg1 e/arg2 e/arg3]").value());
     }
 
     Stream<Arguments> eachNameAndItsRefinements() {
@@ -299,13 +306,13 @@ class WhatEachRemainingNativeDeclaresTest {
                 access-os/set 'pid [99999999 9]   | [process-not-found 99999999 _ _]
                 """)
         void refusesAsTheCDoes(String source, String expected) {
-            assertThat(argumentsOfTheErrorFrom(source)).isEqualTo(expected);
+            assertThat(errorArgumentsWithProcesses(source)).isEqualTo(expected);
         }
 
         @Test
         @DisplayName("ending a process the operator may not signal is permission-denied, naming nothing")
         void permissionDeniedNamesNothing() {
-            assertThat(argumentsOfTheErrorFrom("access-os/set 'pid 1"))
+            assertThat(errorArgumentsWithProcesses("access-os/set 'pid 1"))
                     .isEqualTo("[permission-denied _ _ _]");
         }
     }

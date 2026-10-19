@@ -44,11 +44,11 @@ final class BinaryTreeMatchFinder extends MatchFinder {
         advanceOneByte(input, base, position, niceLength, niceLength, maxSearchDepth, cache, 0, false);
     }
 
-    private int leftChildOf(int node) {
+    private int findTheLeftChildOf(int node) {
         return 2 * (node & WINDOW_MASK);
     }
 
-    private int rightChildOf(int node) {
+    private int findTheRightChildOf(int node) {
         return 2 * (node & WINDOW_MASK) + 1;
     }
 
@@ -62,7 +62,7 @@ final class BinaryTreeMatchFinder extends MatchFinder {
         int nextSequence = load32(input, next + 1);
         int bucket3 = nextHash3 * HASH3_WAYS;
         int hash4 = nextHash4;
-        nextHash3 = hash(lowThreeBytes(nextSequence), HASH3_ORDER);
+        nextHash3 = hash(takeTheLowThreeBytes(nextSequence), HASH3_ORDER);
         nextHash4 = hash(nextSequence, HASH4_ORDER);
         int node = hash3Table[bucket3];
         hash3Table[bucket3] = (short) position;
@@ -78,8 +78,8 @@ final class BinaryTreeMatchFinder extends MatchFinder {
         }
         node = hash4Table[hash4];
         hash4Table[hash4] = (short) position;
-        int pendingLess = leftChildOf(position);
-        int pendingGreater = rightChildOf(position);
+        int pendingLess = findTheLeftChildOf(position);
+        int pendingGreater = findTheRightChildOf(position);
         if (node <= cutoff) {
             childTable[pendingLess] = NO_POSITION;
             childTable[pendingGreater] = NO_POSITION;
@@ -98,15 +98,15 @@ final class BinaryTreeMatchFinder extends MatchFinder {
                         cache.record(cacheAt++, length, next - match);
                     }
                     if (length >= niceLength) {
-                        childTable[pendingLess] = childTable[leftChildOf(node)];
-                        childTable[pendingGreater] = childTable[rightChildOf(node)];
+                        childTable[pendingLess] = childTable[findTheLeftChildOf(node)];
+                        childTable[pendingGreater] = childTable[findTheRightChildOf(node)];
                         return cacheAt;
                     }
                 }
             }
             if ((input[match + length] & 0xFF) < (input[next + length] & 0xFF)) {
                 childTable[pendingLess] = (short) node;
-                pendingLess = rightChildOf(node);
+                pendingLess = findTheRightChildOf(node);
                 node = childTable[pendingLess];
                 bestLessLength = length;
                 if (bestGreaterLength < length) {
@@ -114,7 +114,7 @@ final class BinaryTreeMatchFinder extends MatchFinder {
                 }
             } else {
                 childTable[pendingGreater] = (short) node;
-                pendingGreater = leftChildOf(node);
+                pendingGreater = findTheLeftChildOf(node);
                 node = childTable[pendingGreater];
                 bestGreaterLength = length;
                 if (bestLessLength < length) {

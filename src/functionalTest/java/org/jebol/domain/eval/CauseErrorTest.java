@@ -14,27 +14,27 @@ class CauseErrorTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("CAUSE-ERROR raises the error it was named")
-    void theErrorIsTheOneAskedFor() {
-        assertThat(errorIdOf("cause-error 'script 'invalid-arg 5")).isEqualTo("invalid-arg");
-        assertThat(errorIdOf("cause-error 'math 'zero-divide []")).isEqualTo("zero-divide");
+    void raisesTheErrorAskedFor() {
+        assertThat(readTheErrorIdOf("cause-error 'script 'invalid-arg 5")).isEqualTo("invalid-arg");
+        assertThat(readTheErrorIdOf("cause-error 'math 'zero-divide []")).isEqualTo("zero-divide");
     }
 
     @Test
     @DisplayName("the arguments reach the error")
-    void theArgumentsAreCarried() {
+    void carriesTheArguments() {
         assertThat(answerTo(
                 "e: try [cause-error 'script 'invalid-arg 5] e/arg1")).isEqualTo("5");
     }
 
     @Test
     @DisplayName("all three arguments are carried, because a catalogue entry words three")
-    void allThreeArgumentsAreCarried() {
+    void carriesAllThreeArguments() {
         assertThat(answerTo(
                 "e: try [cause-error 'script 'invalid-arg [1 2]] e/arg1")).isEqualTo("1");
         assertThat(answerTo(
@@ -46,13 +46,13 @@ class CauseErrorTest {
 
     @Test
     @DisplayName("no arguments at all still raises")
-    void theDegenerateCallStillRaises() {
-        assertThat(errorIdOf("cause-error 'math 'zero-divide []")).isEqualTo("zero-divide");
+    void stillRaisesForTheDegenerateCall() {
+        assertThat(readTheErrorIdOf("cause-error 'math 'zero-divide []")).isEqualTo("zero-divide");
     }
 
     @Test
     @DisplayName("MAKE ERROR! evaluates its spec")
-    void theSpecIsEvaluated() {
+    void evaluatesTheSpec() {
         assertThat(answerTo(
                 "kind: 'math which: 'zero-divide "
                         + "e: make error! [type: kind id: which] e/id"))
@@ -61,7 +61,7 @@ class CauseErrorTest {
 
     @Test
     @DisplayName("MAKE ERROR! with literal words is unaffected")
-    void theOrdinarySpecStillWorks() {
+    void stillTakesTheOrdinarySpec() {
         assertThat(answerTo(
                 "e: make error! [type: 'script id: 'invalid-arg] e/id"))
                 .isEqualTo("invalid-arg");

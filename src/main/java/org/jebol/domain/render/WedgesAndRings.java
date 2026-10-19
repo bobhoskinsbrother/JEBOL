@@ -16,13 +16,13 @@ final class WedgesAndRings {
     }
 
     static List<Piece> of(Gradient gradient, ClipRectangle covering) {
-        double reach = howFarItHasToReach(gradient, covering);
+        double reach = measureHowFarItHasToReach(gradient, covering);
         return gradient.shape() == GradientShape.CONIC
-                ? aFanOfWedges(gradient, reach)
-                : ringsOfDiamonds(gradient, reach);
+                ? makeAFanOfWedges(gradient, reach)
+                : makeRingsOfDiamonds(gradient, reach);
     }
 
-    private static double howFarItHasToReach(Gradient gradient, ClipRectangle covering) {
+    private static double measureHowFarItHasToReach(Gradient gradient, ClipRectangle covering) {
         double acrossOne = Math.abs(gradient.acrossOffset() - covering.across());
         double acrossOther =
                 Math.abs(covering.across() + covering.wide() - gradient.acrossOffset());
@@ -31,22 +31,22 @@ final class WedgesAndRings {
                 Math.abs(covering.down() + covering.high() - gradient.downOffset());
         double corner = Math.hypot(Math.max(acrossOne, acrossOther),
                 Math.max(downOne, downOther));
-        return Math.max(corner, gradient.radius());
+        return Math.max(corner, gradient.measureTheRadius());
     }
 
-    private static List<Piece> aFanOfWedges(Gradient gradient, double reach) {
+    private static List<Piece> makeAFanOfWedges(Gradient gradient, double reach) {
         List<Piece> pieces = new ArrayList<>();
         for (int wedge = 0; wedge < WEDGES_ROUND; wedge++) {
             double from = wedge * 360.0 / WEDGES_ROUND + gradient.angle();
             double to = (wedge + 1) * 360.0 / WEDGES_ROUND + gradient.angle();
             pieces.add(new Piece(
-                    aWedge(gradient, from, to, reach),
-                    colourAlong(gradient, wedge / (double) (WEDGES_ROUND - 1))));
+                    makeAWedge(gradient, from, to, reach),
+                    findTheColourAlong(gradient, wedge / (double) (WEDGES_ROUND - 1))));
         }
         return List.copyOf(pieces);
     }
 
-    private static List<PathStep> aWedge(
+    private static List<PathStep> makeAWedge(
             Gradient gradient, double from, double to, double reach) {
 
         double overlap = (to - from) * 0.5;
@@ -65,18 +65,18 @@ final class WedgesAndRings {
                 new PathStep.Close());
     }
 
-    private static List<Piece> ringsOfDiamonds(Gradient gradient, double reach) {
+    private static List<Piece> makeRingsOfDiamonds(Gradient gradient, double reach) {
         List<Piece> pieces = new ArrayList<>();
         for (int ring = RINGS_OUT; ring >= 1; ring--) {
             double howFar = reach * ring / RINGS_OUT;
             pieces.add(new Piece(
-                    aDiamond(gradient, howFar),
-                    colourAlong(gradient, (ring - 1) / (double) (RINGS_OUT - 1))));
+                    makeADiamond(gradient, howFar),
+                    findTheColourAlong(gradient, (ring - 1) / (double) (RINGS_OUT - 1))));
         }
         return List.copyOf(pieces);
     }
 
-    private static List<PathStep> aDiamond(Gradient gradient, double howFar) {
+    private static List<PathStep> makeADiamond(Gradient gradient, double howFar) {
         double across = gradient.acrossOffset();
         double down = gradient.downOffset();
         return List.of(
@@ -87,7 +87,7 @@ final class WedgesAndRings {
                 new PathStep.Close());
     }
 
-    private static Colour colourAlong(Gradient gradient, double share) {
+    private static Colour findTheColourAlong(Gradient gradient, double share) {
         List<Colour> colours = gradient.colours();
         List<Double> stops = gradient.stops();
         double along = Math.clamp(share, 0, 1);
@@ -95,20 +95,20 @@ final class WedgesAndRings {
             if (along <= stops.get(at)) {
                 double span = stops.get(at) - stops.get(at - 1);
                 double intoIt = span <= 0 ? 0 : (along - stops.get(at - 1)) / span;
-                return blended(colours.get(at - 1), colours.get(at), intoIt);
+                return blend(colours.get(at - 1), colours.get(at), intoIt);
             }
         }
         return colours.getLast();
     }
 
-    private static Colour blended(Colour from, Colour to, double intoIt) {
+    private static Colour blend(Colour from, Colour to, double intoIt) {
         return new Colour(
-                mixed(from.red(), to.red(), intoIt),
-                mixed(from.green(), to.green(), intoIt),
-                mixed(from.blue(), to.blue(), intoIt));
+                mix(from.red(), to.red(), intoIt),
+                mix(from.green(), to.green(), intoIt),
+                mix(from.blue(), to.blue(), intoIt));
     }
 
-    private static int mixed(int from, int to, double intoIt) {
+    private static int mix(int from, int to, double intoIt) {
         return Math.clamp((int) Math.round(from + (to - from) * intoIt), 0, 255);
     }
 }

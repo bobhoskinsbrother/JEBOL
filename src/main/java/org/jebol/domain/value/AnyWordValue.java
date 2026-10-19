@@ -26,7 +26,7 @@ public abstract sealed class AnyWordValue implements Value
     @Override
     public abstract Datatype datatype();
 
-    public abstract AnyWordValue boundTo(Context context);
+    public abstract AnyWordValue bindTo(Context context);
 
     public abstract String mold();
 
@@ -52,17 +52,17 @@ public abstract sealed class AnyWordValue implements Value
             super(spelling);
         }
 
-        public abstract AnyWordValue spelt(String spelling, Context binding);
+        public abstract AnyWordValue spell(String spelling, Context binding);
 
-        public AnyWordValue spelt(String spelling) {
-            return spelt(spelling, Context.unbound());
+        public AnyWordValue spell(String spelling) {
+            return spell(spelling, Context.unbound());
         }
 
         String asTheScannerReadsIt(String spelling) {
             return spelling;
         }
 
-        Datatype theDatatypeTheScannerReadsItAs() {
+        Datatype findTheDatatypeTheScannerReads() {
             return WordValue.TYPE;
         }
 
@@ -71,30 +71,30 @@ public abstract sealed class AnyWordValue implements Value
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
-            throw refusingConstruction(contents);
+        public Value construct(List<Value> contents, Construction construction) {
+            throw refuseTheConstruction(contents);
         }
 
         @Override
         public Value as(Value value) {
             return value instanceof AnyWordValue word
-                    ? spelt(word.spelling(), word.binding())
+                    ? spell(word.spelling(), word.binding())
                     : super.as(value);
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
-                case AnyWordValue word -> spelt(word.spelling(), word.binding());
-                case LogicValue(boolean truth) -> spelt(Boolean.toString(truth));
-                case CharacterValue letter -> spelt(theWordASingleCharacterSpells(letter));
-                case AnyStringValue text -> spelt(spellingReadFrom(text.text(), maker));
-                case Datatype asked -> spelt(spellingReadFrom(asked.literalSpelling(), maker));
+                case AnyWordValue word -> spell(word.spelling(), word.binding());
+                case LogicValue(boolean truth) -> spell(Boolean.toString(truth));
+                case CharacterValue letter -> spell(spellTheWordOfACharacter(letter));
+                case AnyStringValue text -> spell(readTheSpellingFrom(text.text(), maker));
+                case Datatype asked -> spell(readTheSpellingFrom(asked.literalSpelling(), maker));
                 default -> throw Raised.of(EvaluationFailure.EXPECT_VAL, WordValue.TYPE, from.datatype());
             };
         }
 
-        private String theWordASingleCharacterSpells(CharacterValue letter) {
+        private String spellTheWordOfACharacter(CharacterValue letter) {
             if (!spellsAWordAlone(letter.codepoint())) {
                 throw Raised.of(EvaluationFailure.BAD_CHAR, letter);
             }
@@ -107,16 +107,16 @@ public abstract sealed class AnyWordValue implements Value
                     || THE_PUNCTUATION_THAT_SPELLS_A_WORD_ALONE.indexOf(codepoint) >= 0;
         }
 
-        private String spellingReadFrom(String text, Maker maker) {
-            String trimmed = new WrittenText(text).theOneWordIn();
+        private String readTheSpellingFrom(String text, Maker maker) {
+            String trimmed = new WrittenText(text).findTheOneWord();
             List<Value> read;
             try {
-                read = maker.valuesReadFrom(asTheScannerReadsIt(trimmed)).orElse(List.of());
+                read = maker.readTheValuesFrom(asTheScannerReadsIt(trimmed)).orElse(List.of());
             } catch (RuntimeException unreadable) {
                 throw Raised.of(EvaluationFailure.INVALID_CHARS);
             }
             if (read.size() != 1 || !(read.getFirst() instanceof AnyWordValue word)
-                    || word.datatype() != theDatatypeTheScannerReadsItAs()
+                    || word.datatype() != findTheDatatypeTheScannerReads()
                     || !word.spelling().equals(trimmed)) {
                 throw Raised.of(EvaluationFailure.INVALID_CHARS);
             }
@@ -137,18 +137,18 @@ public abstract sealed class AnyWordValue implements Value
     }
 
     @Override
-    public boolean equalTo(Value other, Sameness how) {
+    public boolean isEqualTo(Value other, Sameness how) {
         return other instanceof AnyWordValue theirs && namesSameAs(theirs);
     }
 
     @Override
-    public Optional<Value[]> broughtTogetherWith(Value other) {
-        return other instanceof AnyWordValue ? both(this, other) : Optional.empty();
+    public Optional<Value[]> bringTogetherWith(Value other) {
+        return other instanceof AnyWordValue ? pairUp(this, other) : Optional.empty();
     }
 
     @Override
     public void refuseToBeWrittenWhenItReachesItsContextsOwnSelf() {
-        ContextSlot reached = binding.slotOrNone(canonical);
+        ContextSlot reached = binding.findTheSlotOrNone(canonical);
         if (reached != null && reached.isItsContextsOwnSelf()) {
             throw Raised.of(EvaluationFailure.SELF_PROTECTED);
         }
@@ -158,8 +158,8 @@ public abstract sealed class AnyWordValue implements Value
         return !binding.isUnbound();
     }
 
-    public ContextSlot boundSlot() {
-        ContextSlot slot = binding.slotOrNone(canonical);
+    public ContextSlot findTheBoundSlot() {
+        ContextSlot slot = binding.findTheSlotOrNone(canonical);
         if (slot == null) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, spelling);
         }

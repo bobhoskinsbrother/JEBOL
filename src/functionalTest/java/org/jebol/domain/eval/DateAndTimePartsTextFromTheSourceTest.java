@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class DateAndTimePartsWrittenFromTheSourceTest {
+class DateAndTimePartsTextFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
@@ -15,7 +15,7 @@ class DateAndTimePartsWrittenFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("failure: try [" + source + "] failure/id");
     }
 
@@ -25,7 +25,7 @@ class DateAndTimePartsWrittenFromTheSourceTest {
 
         @Test
         @DisplayName("writing the hour makes it that hour of the morning")
-        void writingTheHour() {
+        void startsWhenTheHourIsWritten() {
             assertThat(answerTo("""
                     d: 1-1-2000
                     d/hour: 2
@@ -34,7 +34,7 @@ class DateAndTimePartsWrittenFromTheSourceTest {
 
         @Test
         @DisplayName("and writing the minute leaves the hour at nothing")
-        void writingTheMinute() {
+        void startsWhenTheMinuteIsWritten() {
             assertThat(answerTo("""
                     d: 1-1-2000
                     d/minute: 10
@@ -44,7 +44,7 @@ class DateAndTimePartsWrittenFromTheSourceTest {
 
         @Test
         @DisplayName("the clock parts read as none until one of them is written")
-        void theyReadAsNoneUntilWritten() {
+        void readsNoneUntilWritten() {
             assertThat(answerTo("""
                     d: 1-1-2000
                     reduce [
@@ -56,11 +56,11 @@ class DateAndTimePartsWrittenFromTheSourceTest {
 
     @Nested
     @DisplayName("the parts of a date, written")
-    class TheWrittenParts {
+    class TheTextParts {
 
         @Test
         @DisplayName("the three numbers of the day")
-        void theThreeNumbers() {
+        void setTheThreeNumbers() {
             assertThat(answerTo("""
                     d: 1-Jan-2000
                     d/year: 2020
@@ -71,7 +71,7 @@ class DateAndTimePartsWrittenFromTheSourceTest {
 
         @Test
         @DisplayName("a month past twelve rolls into the year after")
-        void aMonthPastTwelveRolls() {
+        void rollAMonthPastTwelve() {
             assertThat(answerTo("""
                     d: 1-Jan-2000
                     d/month: 13
@@ -80,7 +80,7 @@ class DateAndTimePartsWrittenFromTheSourceTest {
 
         @Test
         @DisplayName("and a day past the end of the month rolls into the next")
-        void aDayPastTheMonthRolls() {
+        void rollADayPastTheMonth() {
             assertThat(answerTo("""
                     d: 1-Jan-2000
                     d/day: 32
@@ -89,7 +89,7 @@ class DateAndTimePartsWrittenFromTheSourceTest {
 
         @Test
         @DisplayName("TIME written as none takes the offset away with it")
-        void timeWrittenAsNone() {
+        void clearTheTimeWhenWrittenAsNone() {
             assertThat(answerTo("""
                     d: 1-Jan-2000/5:00+2:00
                     d/time: none
@@ -98,7 +98,7 @@ class DateAndTimePartsWrittenFromTheSourceTest {
 
         @Test
         @DisplayName("DATE written takes the day and leaves the clock")
-        void dateWrittenLeavesTheClock() {
+        void leaveTheClockWhenTheDateIsWritten() {
             assertThat(answerTo("""
                     d: 1-Jan-2000/5:00
                     d/date: 25-Dec-2020
@@ -116,8 +116,8 @@ class DateAndTimePartsWrittenFromTheSourceTest {
 
         @Test
         @DisplayName("and a name that is no part of a date at all is a bad path")
-        void aNameThatIsNoPart() {
-            assertThat(errorIdFrom("""
+        void refuseANameThatIsNoPart() {
+            assertThat(readTheErrorIdFrom("""
                     d: 1-Jan-2000
                     d/fortnight: 2""")).isEqualTo("invalid-path");
         }
@@ -129,7 +129,7 @@ class DateAndTimePartsWrittenFromTheSourceTest {
 
         @Test
         @DisplayName("one, two and three are the hour, the minute and the second")
-        void oneTwoAndThree() {
+        void writeOneTwoAndThree() {
             assertThat(answerTo("""
                     t: 5:06:07
                     reduce [t/1 t/2 t/3 t/hour t/minute t/second]"""))
@@ -138,7 +138,7 @@ class DateAndTimePartsWrittenFromTheSourceTest {
 
         @Test
         @DisplayName("the second turns decimal the moment there is a fraction")
-        void theSecondTurnsDecimal() {
+        void turnTheSecondDecimal() {
             assertThat(answerTo("""
                     t: 5:06:07.5
                     reduce [t/3 t/second pick t 3]""")).isEqualTo("[7.5 7.5 7.5]");
@@ -146,7 +146,7 @@ class DateAndTimePartsWrittenFromTheSourceTest {
 
         @Test
         @DisplayName("a number outside the three is nothing, not a mistake")
-        void aNumberOutsideIsNothing() {
+        void ignoreANumberOutside() {
             assertThat(answerTo("""
                     t: 5:06:07
                     reduce [none? t/0 none? t/-1 none? t/100]"""))
@@ -155,15 +155,15 @@ class DateAndTimePartsWrittenFromTheSourceTest {
 
         @Test
         @DisplayName("where a word outside the three is one")
-        void aWordOutsideIsAMistake() {
-            assertThat(errorIdFrom("""
+        void refuseAWordOutside() {
+            assertThat(readTheErrorIdFrom("""
                     t: 5:06:07
                     t/hours""")).isEqualTo("invalid-path");
         }
 
         @Test
         @DisplayName("and a number outside a date's parts is nothing too")
-        void aDateTakesNumbersTheSameWay() {
+        void takeNumbersTheSameWayOnADate() {
             assertThat(answerTo("""
                     d: 1-Jan-2000/5:00
                     reduce [none? d/0 none? d/-1 none? d/100]"""))

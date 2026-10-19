@@ -5,7 +5,6 @@ import org.jebol.domain.value.*;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.IntPredicate;
@@ -57,13 +56,13 @@ public final class Comparison {
         }
     }
 
-    private static final Set<Datatype> REFUSE_TO_BE_ORDERED = everythingIn(
+    private static final Set<Datatype> REFUSE_TO_BE_ORDERED = collectEverythingIn(
             TypesetValue.ANY_OBJECT, TypesetValue.ANY_FUNCTION,
             UnsetValue.TYPE, EndValue.TYPE, NoneValue.TYPE, LogicValue.TYPE,
             BitsetValue.TYPE, MapValue.TYPE, TypesetValue.TYPE,
             FrameValue.TYPE, ImageValue.TYPE, JavaObjectValue.TYPE);
 
-    private static Set<Datatype> everythingIn(
+    private static Set<Datatype> collectEverythingIn(
             TypesetValue first, TypesetValue second, Datatype... alsoRefusing) {
 
         Set<Datatype> refusing = new HashSet<>(first.members());
@@ -80,12 +79,12 @@ public final class Comparison {
             if (strictness.mindsTheDatatype()) {
                 return false;
             }
-            Optional<Value[]> brought = broughtTogether(left, right);
+            Optional<Value[]> brought = bringTogether(left, right);
             if (brought.isEmpty()) {
                 if (!strictness.isAboutOrder()) {
                     return false;
                 }
-                throw refusal(left, right);
+                throw refuse(left, right);
             }
             first = brought.get()[0];
             second = brought.get()[1];
@@ -93,27 +92,27 @@ public final class Comparison {
         return atOneDatatype(first, second, strictness);
     }
 
-    private static Optional<Value[]> broughtTogether(Value left, Value right) {
-        return left.broughtTogetherWith(right)
-                .or(() -> right.broughtTogetherWith(left).map(Comparison::theOtherWayRound));
+    private static Optional<Value[]> bringTogether(Value left, Value right) {
+        return left.bringTogetherWith(right)
+                .or(() -> right.bringTogetherWith(left).map(Comparison::turnRound));
     }
 
-    private static Value[] theOtherWayRound(Value[] pair) {
+    private static Value[] turnRound(Value[] pair) {
         return new Value[] {pair[1], pair[0]};
     }
 
-    private static Raised refusal(Value left, Value right) {
+    private static Raised refuse(Value left, Value right) {
         return Raised.of(EvaluationFailure.INVALID_COMPARE,
                 left.datatype(), right.datatype());
     }
 
     private static boolean atOneDatatype(Value left, Value right, Strictness strictness) {
         return switch (strictness) {
-            case EQUAL -> equalValues(left, right, STEPS_ALLOWED_BETWEEN_DECIMALS,
+            case EQUAL -> areEqualValues(left, right, STEPS_ALLOWED_BETWEEN_DECIMALS,
                     THE_COERCION_TABLE_APPROVED_THIS_PAIRING);
-            case EQUIV -> equalValues(left, right, 0,
+            case EQUIV -> areEqualValues(left, right, 0,
                     THE_COERCION_TABLE_APPROVED_THIS_PAIRING);
-            case STRICT_EQUAL -> strictlyEqual(left, right);
+            case STRICT_EQUAL -> areStrictlyEqual(left, right);
             case SAME -> isSameValue(left, right);
             case GREATER_OR_EQUAL -> ordersAs(left, right, ordering -> ordering >= 0);
             case GREATER -> ordersAs(left, right, ordering -> ordering > 0);
@@ -137,8 +136,8 @@ public final class Comparison {
      * SELECT, SWITCH, SORT, UNIQUE and the object field walk use, and it is
      * stricter about datatypes than the comparison natives are.
      */
-    public static boolean looselyEqual(Value left, Value right) {
-        return equalValues(left, right, STEPS_ALLOWED_INSIDE_A_SERIES, IT_DID_NOT);
+    public static boolean areLooselyEqual(Value left, Value right) {
+        return areEqualValues(left, right, STEPS_ALLOWED_INSIDE_A_SERIES, IT_DID_NOT);
     }
 
     /**
@@ -146,16 +145,16 @@ public final class Comparison {
      * EQUIV? needs zero: it folds case and lets an integer meet a decimal
      * exactly as {@code =} does, and then insists on the bits.
      */
-    public static boolean looselyEqual(Value left, Value right, long stepsAllowed) {
-        return equalValues(left, right, stepsAllowed, IT_DID_NOT);
+    public static boolean areLooselyEqual(Value left, Value right, long stepsAllowed) {
+        return areEqualValues(left, right, stepsAllowed, IT_DID_NOT);
     }
 
-    private static boolean equalValues(
+    private static boolean areEqualValues(
             Value left, Value right, long stepsAllowed, boolean approved) {
 
-        return left.equalTo(right, approved
+        return left.isEqualTo(right, approved
                 ? new Sameness(stepsAllowed, true)
-                : Sameness.insideASeriesAllowing(stepsAllowed));
+                : Sameness.allowStepsInsideASeries(stepsAllowed));
     }
 
 
@@ -163,8 +162,8 @@ public final class Comparison {
 
 
 
-    private static boolean strictFields(ObjectValue left, ObjectValue right) {
-        return left.everyFieldAgrees(right, Comparison::identicallyEqual);
+    private static boolean haveStrictlyEqualFields(ObjectValue left, ObjectValue right) {
+        return left.agreesInEveryField(right, Comparison::areIdenticallyEqual);
     }
 
     /**
@@ -172,7 +171,7 @@ public final class Comparison {
      * excluded by name -- so the two zeroes are not equal and neither are two
      * NaNs. Loose equality and SAME? each answer both of those differently.
      */
-    public static boolean strictlyEqual(Value left, Value right) {
+    public static boolean areStrictlyEqual(Value left, Value right) {
         if (left.datatype() != right.datatype()) {
             return false;
         }
@@ -184,16 +183,16 @@ public final class Comparison {
             return first.asDeci().isEqualTo(second.asDeci());
         }
         if (left instanceof PairValue && right instanceof PairValue) {
-            return ordering(left, right) == 0;
+            return compareTheOrder(left, right) == 0;
         }
         if (left instanceof TupleValue first && right instanceof TupleValue second) {
             return first.equals(second) && first.segmentCount() == second.segmentCount();
         }
         if (left instanceof DateValue first && right instanceof DateValue second) {
-            return DateOrder.writtenTheSameWay(first, second);
+            return DateOrder.isWrittenTheSameWay(first, second);
         }
         if (left instanceof ObjectValue first && right instanceof ObjectValue second) {
-            return strictFields(first, second);
+            return haveStrictlyEqualFields(first, second);
         }
         if (left instanceof AnyBlockValue first && right instanceof AnyBlockValue second) {
             List<Value> ours = first.remaining();
@@ -202,7 +201,7 @@ public final class Comparison {
                 return false;
             }
             for (int at = 0; at < ours.size(); at++) {
-                if (!identicallyEqual(ours.get(at), theirs.get(at))) {
+                if (!areIdenticallyEqual(ours.get(at), theirs.get(at))) {
                     return false;
                 }
             }
@@ -219,19 +218,19 @@ public final class Comparison {
      * {@code [1.0] == [1.0000000000000022]} is true where
      * {@code 1.0 == 1.0000000000000022} is false.
      */
-    public static boolean identicallyEqual(Value left, Value right) {
+    public static boolean areIdenticallyEqual(Value left, Value right) {
         if (left.datatype() != right.datatype()) {
             return false;
         }
         if (left instanceof AnyDecimalValue first && right instanceof AnyDecimalValue second) {
-            return bothAreNotANumber(first, second)
-                    || nearlyTheSameNumber(first.quantity(), second.quantity(),
+            return areBothNotANumber(first, second)
+                    || areNearlyTheSameNumber(first.quantity(), second.quantity(),
                             STEPS_ALLOWED_INSIDE_A_SERIES);
         }
-        return strictlyEqual(left, right);
+        return areStrictlyEqual(left, right);
     }
 
-    private static boolean bothAreNotANumber(AnyDecimalValue first, AnyDecimalValue second) {
+    private static boolean areBothNotANumber(AnyDecimalValue first, AnyDecimalValue second) {
         return Double.isNaN(first.quantity()) && Double.isNaN(second.quantity());
     }
 
@@ -270,7 +269,7 @@ public final class Comparison {
             return first.equals(second) && first.segmentCount() == second.segmentCount();
         }
         if (left instanceof PairValue && right instanceof PairValue) {
-            return ordering(left, right) == 0;
+            return compareTheOrder(left, right) == 0;
         }
         return left.equals(right);
     }
@@ -283,35 +282,35 @@ public final class Comparison {
     public static boolean ordersAs(Value left, Value right, IntPredicate wanted) {
         if (REFUSE_TO_BE_ORDERED.contains(left.datatype())
                 || REFUSE_TO_BE_ORDERED.contains(right.datatype())) {
-            throw refusal(left, right);
+            throw refuse(left, right);
         }
-        return wanted.test(ordering(left, right));
+        return wanted.test(compareTheOrder(left, right));
     }
 
-    private static int ordering(Value left, Value right) {
+    private static int compareTheOrder(Value left, Value right) {
         if (left instanceof HandleValue first && right instanceof HandleValue second) {
             return first.compareWith(second);
         }
         if (left instanceof VectorValue first && right instanceof VectorValue second) {
-            return orderingOfVectors(first, second);
+            return compareVectors(first, second);
         }
         if (left instanceof PairValue leftPair && right instanceof PairValue rightPair) {
-            return orderingOfPairs(leftPair, rightPair);
+            return comparePairs(leftPair, rightPair);
         }
         if (left instanceof TupleValue leftTuple && right instanceof TupleValue rightTuple) {
-            return orderingOfTuples(leftTuple, rightTuple);
+            return compareTuples(leftTuple, rightTuple);
         }
         if (left instanceof AnyBlockValue leftBlock && right instanceof AnyBlockValue rightBlock) {
-            return orderingOfBlocks(leftBlock, rightBlock);
+            return compareBlocks(leftBlock, rightBlock);
         }
         if (left instanceof CharacterValue) {
-            return Integer.compare(codepointOf(left), codepointOf(right));
+            return Integer.compare(readTheCodepointOf(left), readTheCodepointOf(right));
         }
         if (left instanceof IntegerValue(long magnitude1) && right instanceof IntegerValue(long magnitude)) {
             return Long.compare(magnitude1, magnitude);
         }
         if (MONEY.meetsMoney(left, right)) {
-            return MONEY.ordering(left, right);
+            return MONEY.compareTheOrder(left, right);
         }
         if (isNumeric(left) && isNumeric(right)) {
             double first = asDouble(left);
@@ -326,7 +325,7 @@ public final class Comparison {
 
     private static final MoneyCoercion MONEY = new MoneyCoercion();
 
-    private static int orderingOfBlocks(AnyBlockValue left, AnyBlockValue right) {
+    private static int compareBlocks(AnyBlockValue left, AnyBlockValue right) {
         List<Value> ours = left.remaining();
         List<Value> theirs = right.remaining();
         for (int at = 0; at < ours.size(); at++) {
@@ -334,20 +333,20 @@ public final class Comparison {
                 return 1;
             }
             int theFirstItemThatTellsThemApart =
-                    orderingInsideASeries(ours.get(at), theirs.get(at));
+                    compareInsideASeries(ours.get(at), theirs.get(at));
             if (theFirstItemThatTellsThemApart != 0) {
                 return theFirstItemThatTellsThemApart;
             }
         }
-        return theShorterBlockIsTheLesserOne(ours, theirs);
+        return compareByLength(ours, theirs);
     }
 
-    private static int theShorterBlockIsTheLesserOne(
+    private static int compareByLength(
             List<Value> ours, List<Value> theirs) {
         return ours.size() == theirs.size() ? 0 : -1;
     }
 
-    private static int orderingInsideASeries(Value left, Value right) {
+    private static int compareInsideASeries(Value left, Value right) {
         if (!ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(left.datatype())
                 || !ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(right.datatype())) {
             return compareForSorting(left, right, false);
@@ -355,25 +354,25 @@ public final class Comparison {
         if (left instanceof AnyDecimalValue || right instanceof AnyDecimalValue) {
             double first = asDouble(left);
             double second = asDouble(right);
-            return nearlyTheSameNumber(first, second, STEPS_ALLOWED_INSIDE_A_SERIES)
+            return areNearlyTheSameNumber(first, second, STEPS_ALLOWED_INSIDE_A_SERIES)
                     ? 0
                     : Double.compare(first, second);
         }
-        return ordering(left, right);
+        return compareTheOrder(left, right);
     }
 
-    private static int orderingOfPairs(PairValue left, PairValue right) {
+    private static int comparePairs(PairValue left, PairValue right) {
         int theXHalvesDecideItFirst = signOfTheDifference(left.x(), right.x());
         return theXHalvesDecideItFirst != 0
                 ? theXHalvesDecideItFirst
                 : signOfTheDifference(left.y(), right.y());
     }
 
-    private static int orderingOfTuples(TupleValue left, TupleValue right) {
+    private static int compareTuples(TupleValue left, TupleValue right) {
         int asFarAsTheLongerOfThem =
                 Math.max(left.segmentCount(), right.segmentCount());
         for (int at = 1; at <= asFarAsTheLongerOfThem; at++) {
-            int difference = left.octetAt(at) - right.octetAt(at);
+            int difference = left.readTheOctetAt(at) - right.readTheOctetAt(at);
             if (difference != 0) {
                 return difference > 0 ? 1 : -1;
             }
@@ -381,7 +380,7 @@ public final class Comparison {
         return 0;
     }
 
-    private static int orderingOfVectors(VectorValue left, VectorValue right) {
+    private static int compareVectors(VectorValue left, VectorValue right) {
         if (left.kind().measures() != right.kind().measures()) {
             throw Raised.of(EvaluationFailure.NOT_SAME_TYPE,
                     left.kind().spelling() + " against " + right.kind().spelling());
@@ -405,16 +404,16 @@ public final class Comparison {
      */
     public static int compareForSorting(Value left, Value right, boolean mindingCase) {
         if (left instanceof DateValue first && right instanceof DateValue second) {
-            return DateOrder.comparing(first, second);
+            return DateOrder.compare(first, second);
         }
         if (left instanceof PairValue first && right instanceof PairValue second) {
-            return orderingOfPairs(first, second);
+            return comparePairs(first, second);
         }
         if (left instanceof TupleValue first && right instanceof TupleValue second) {
-            return orderingOfTuples(first, second);
+            return compareTuples(first, second);
         }
         if (MONEY.meetsMoney(left, right)) {
-            return MONEY.sortingOrder(left, right);
+            return MONEY.compareTheSortingOrder(left, right);
         }
         if (isNumeric(left) && isNumeric(right)) {
             boolean leftIsNaN = Double.isNaN(asDouble(left));
@@ -432,17 +431,17 @@ public final class Comparison {
                 : Molder.form(left).compareToIgnoreCase(Molder.form(right));
     }
 
-    private static boolean nearlyTheSameNumber(double first, double second, long stepsAllowed) {
-        long steps = inRunningOrder(first) - inRunningOrder(second);
+    private static boolean areNearlyTheSameNumber(double first, double second, long stepsAllowed) {
+        long steps = placeInRunningOrder(first) - placeInRunningOrder(second);
         return Math.abs(steps) <= stepsAllowed;
     }
 
-    private static long inRunningOrder(double number) {
+    private static long placeInRunningOrder(double number) {
         long bits = Double.doubleToRawLongBits(number);
         return bits < 0 ? Long.MIN_VALUE - bits : bits;
     }
 
-    private static int codepointOf(Value value) {
+    private static int readTheCodepointOf(Value value) {
         return value instanceof CharacterValue(int codepoint)
                 ? codepoint
                 : (int) ((IntegerValue) value).magnitude();

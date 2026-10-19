@@ -24,7 +24,7 @@ The pieces:
 | The worker's shell | `src/teavm/js/jebol-worker.js`, copied beside the module by the `copyTheWorkerScript` task |
 | The web's substitutions and the library-file list | `src/teavm/java` and `src/teavm/resources`, wired in `build.gradle.kts` |
 | The library files TeaVM must embed | listed by the `writeTheWebResourceList` task from `src/main/resources/org/jebol`, so the list cannot drift |
-| The page and its scripts | `site/runner.html` is the runner every site is built around -- canvas, the replayer of the surface's calls copied from `WebScreenPage`, and the worker hookup -- filled in with an app's file list and entry; `src/test/resources/web/rebol-on-a-page.html` and `rebol-adapters-on-a-page.html` are the gate's own |
+| The page and its scripts | `site/runner.html` is the runner every site is built around -- canvas, the replayer of the surface's calls copied from `WebScreenPage`, and the worker hookup -- fill in with an app's file list and entry; `src/test/resources/web/rebol-on-a-page.html` and `rebol-adapters-on-a-page.html` are the gate's own |
 | The site a host serves | `assembleTheSite` copies the app (`examples/r3-gui` by default, `-PsiteDir=my-app`), the module, its loader, the worker's shell and the font with its licence into `build/site`, and writes `index.html` from `site/runner.html` around the app's file list; `TheExamplesWithNoServerEndToEndTest` serves that directory and nothing else, so the gate drives the artifact itself |
 | The unit level | `AScriptInAPageTagFromTheSourceTest` runs the first tag's script on the JVM and pins its eight printed lines; `AFilesystemInTheWorkersMemoryTest` and `ThePageConsoleFromTheSourceTest` cover the browser's files and console |
 | The end-to-end level | `AScriptInAPageTagRunsInABrowserEndToEndTest` serves the build and the page, drives Chrome, and checks the eight lines, the canvas, a click, and a resize; `TheBrowserAdaptersEndToEndTest` fetches from the test's own server, writes and reads a file, types into the console element, and catches the refusals; `TheExamplesWithNoServerEndToEndTest` drives the assembled site -- a real drag changes the slider, a real click and real keys put a name in the survey's field |
@@ -50,7 +50,7 @@ fifty millisecond slice at a time, so it can still end a wait at its own
 deadline between slices; an interpreter is built with `ThreadPause` and a host
 replaces it through `Interpreter.usePause`. And `ScreenEventQueue` is plain
 storage again: an adapter that hears a toolkit's listener leaves the event in a
-`ConcurrentLinkedQueue` through `GobScreen.posted`, and `takeTheNextEvent`
+`ConcurrentLinkedQueue` through `GobScreen.posted`, and `acceptNextEvent`
 moves what was posted into the interpreter's own queue on the interpreter's
 own thread. `BrowserScreen` already worked this way; `DesktopScreen` now does
 too.
@@ -155,7 +155,7 @@ return switch (value) {
 The workaround is a bare pattern with the accessor in the guard
 (`case Whole whole when whole.magnitude() == 1`), and it compiles and runs.
 Five switches in the core needed it: `WritingIntoText`, `TimeValue`,
-`RemoveAction`, `EncodingNative` and `ParityAction`, each now written with
+`RemoveAction`, `EncodingNative` and `ParityAction`, each now text with
 `case IntegerValue whole` and the accessor in the guard. Nobody has reported it
 upstream yet.
 
@@ -173,7 +173,7 @@ and a stub without a hierarchy is invalid wasm wherever a cast touches it.
 **A page has less outside it than a machine, and the worker says so once.**
 `TheInterpreterInAWorker` builds the browser's bounds: console, files,
 windows, web and a working directory are granted, because each of those the
-page can supply; network, processes and environment are `lacking`, so a
+page can supply; network, processes and environment are `unavailable`, so a
 script that reaches for a raw connection or another program reads
 `not_present` with the browser named rather than `not_granted`. That is
 decision 31 in `docs/decisions.md`, and `ABrowserHostFromTheSourceTest` pins
@@ -187,7 +187,7 @@ describes. Decision 32 has the shape; a page that fetches outside its own
 origin is subject to the browser's CORS rules like any other page.
 
 **Files are the page's private store for the site, and the console is the
-page's element** - `WebFiles`, `TheBrowsersStore` and `WebConsole`
+page's element** - `WebFiles`, `BrowserStore` and `WebConsole`
 (`org.jebol.adapter.web`). The whole store is loaded once at boot and every
 change is awaited into it, so a reload finds what a script wrote; a browser
 without OPFS falls back to memory. Decision 33.

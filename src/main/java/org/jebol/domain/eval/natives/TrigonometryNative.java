@@ -27,10 +27,10 @@ public abstract class TrigonometryNative extends ArithmeticNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                DecimalValue.of(ratioOf(radiansOf(arguments.getFirst(), refinements)));
+                DecimalValue.of(ratioOf(convertToRadians(arguments.getFirst(), refinements)));
     }
 
-    private double radiansOf(Value angle, Set<String> refinements) {
+    private double convertToRadians(Value angle, Set<String> refinements) {
         double given = Comparison.asDouble(angle);
         return refinements.contains("radians") ? given : Math.toRadians(given);
     }

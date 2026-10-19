@@ -10,20 +10,20 @@ class SuiteHostTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = SuiteHost.installOn(
-                Interpreter.withBounds(SuiteHost.grantingEverything()));
+                Interpreter.withBounds(SuiteHost.grantEverything()));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("failure: try [" + source + "] "
                 + "either error? failure [failure/id] ['no-error]");
     }
 
     @Test
     @DisplayName("the environment can be read, rather than refused")
-    void theEnvironmentCanBeRead() {
-        assertThat(errorIdFrom("get-env \"PATH\""))
+    void readsTheEnvironment() {
+        assertThat(readTheErrorIdFrom("get-env \"PATH\""))
                 .as("a suite file reads PWD and HOME; answering 'no environment' "
                         + "makes a stop the gate never sees")
                 .isEqualTo("no-error");
@@ -31,14 +31,14 @@ class SuiteHostTest {
 
     @Test
     @DisplayName("and listed")
-    void theEnvironmentCanBeListed() {
-        assertThat(errorIdFrom("list-env")).isEqualTo("no-error");
+    void listsTheEnvironment() {
+        assertThat(readTheErrorIdFrom("list-env")).isEqualTo("no-error");
     }
 
     @Test
     @DisplayName("a process can be started, rather than refused")
     void aprocessCanBeStarted() {
-        assertThat(errorIdFrom("call/shell/wait \"exit 0\""))
+        assertThat(readTheErrorIdFrom("call/shell/wait \"exit 0\""))
                 .as("evaluation-test and module-test shell out; 'no way to start "
                         + "a program' was this tool's answer, never the gate's")
                 .isEqualTo("no-error");

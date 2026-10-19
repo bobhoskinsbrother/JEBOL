@@ -22,22 +22,22 @@ public abstract class WindowNative extends HostNative {
         super(granted);
     }
 
-    protected Value throughTheWindows(Supplier<Value> operation) {
+    protected Value runThroughTheWindows(Supplier<Value> operation) {
         try {
             return operation.get();
         } catch (WindowPort.Denied denied) {
-            throw refusedByTheHost(denied.errorId(), denied.getMessage());
+            throw refuseForTheHost(denied.errorId(), denied.getMessage());
         }
     }
 
-    protected Raised refusedByTheHost(String errorId, String because) {
+    protected Raised refuseForTheHost(String errorId, String because) {
         String reason = because + ", which is "
                 + ServiceRefusal.NOT_PRESENT.name().toLowerCase(Locale.ROOT).replace('_', ' ');
-        return new Raised(ErrorValue.about(ErrorCategory.ACCESS, errorId, reason, StringValue.of(reason)));
+        return new Raised(ErrorValue.of(ErrorCategory.ACCESS, errorId, reason, StringValue.of(reason)));
     }
 
     protected Optional<String> textGivenFor(String refinement, List<Value> arguments, Set<String> refinements) {
-        return argumentOf(refinement, 0, arguments, refinements)
+        return readTheArgumentOf(refinement, 0, arguments, refinements)
                 .filter(AnyStringValue.class::isInstance)
                 .map(given -> ((AnyStringValue) given).text());
     }

@@ -7,7 +7,7 @@ final class BrotliMatches {
     private long[] distance = new long[0];
     private int[] lengthAndCode = new int[0];
 
-    private void room(int wanted) {
+    private void makeRoom(int wanted) {
         if (wanted <= distance.length) {
             return;
         }
@@ -17,28 +17,28 @@ final class BrotliMatches {
     }
 
     void addCopy(int which, long howFarBack, int length) {
-        room(which + 1);
+        makeRoom(which + 1);
         distance[which] = howFarBack;
         lengthAndCode[which] = length << 5;
     }
 
     void addWord(int which, long howFarBack, int length, int lengthCode) {
-        room(which + 1);
+        makeRoom(which + 1);
         distance[which] = howFarBack;
         lengthAndCode[which] = (length << 5) | (length == lengthCode ? 0 : lengthCode);
     }
 
-    long distanceAt(int which) {
+    long readTheDistanceAt(int which) {
         return distance[which];
     }
 
-    int lengthAt(int which) {
+    int readTheLengthAt(int which) {
         return lengthAndCode[which] >>> 5;
     }
 
-    int lengthCodeAt(int which) {
+    int readTheLengthCodeAt(int which) {
         int code = lengthAndCode[which] & 31;
-        return code != 0 ? code : lengthAt(which);
+        return code != 0 ? code : readTheLengthAt(which);
     }
 
     void keepOnly(int which) {
@@ -47,7 +47,7 @@ final class BrotliMatches {
     }
 
     void copyOneOverFrom(int to, BrotliMatches other, int from) {
-        room(to + 1);
+        makeRoom(to + 1);
         distance[to] = other.distance[from];
         lengthAndCode[to] = other.lengthAndCode[from];
     }

@@ -14,7 +14,7 @@ class ALongStringThroughTheReaderFromTheSourceTest {
     private static String answerTo(Path directory, String source) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -51,7 +51,7 @@ class ALongStringThroughTheReaderFromTheSourceTest {
 
     @Test
     @DisplayName("a string either side of the same size reads back whole too")
-    void eitherSideOfTheSameSize(@TempDir Path directory) {
+    void readsEitherSideOfTheSameSize(@TempDir Path directory) {
         for (String howMany : new String[] {"9999", "10001"}) {
             assertThat(answerTo(directory, """
                     data: copy {}

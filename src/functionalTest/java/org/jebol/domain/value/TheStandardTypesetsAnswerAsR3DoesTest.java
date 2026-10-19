@@ -35,20 +35,20 @@ class TheStandardTypesetsAnswerAsR3DoesTest {
             "any-type!     | unset! none! logic! integer! decimal! percent! money! char! pair! tuple! time! date! binary! string! file! email! ref! url! tag! bitset! image! vector! block! paren! path! set-path! get-path! lit-path! hash! map! datatype! typeset! word! set-word! get-word! lit-word! refinement! issue! native! action! rebcode! command! op! closure! function! frame! object! module! error! task! port! gob! event! handle! struct! library! utype! java-object!",
     })
     @DisplayName("each standard typeset holds what r3 gives it, in the catalogue's order")
-    void eachStandardTypesetHoldsWhatR3GivesIt(String typeset, String members) {
+    void holdWhatR3Gives(String typeset, String members) {
         assertThat(answerTo("mold " + typeset)).isEqualTo("make typeset! [" + members + "]");
     }
 
     @ParameterizedTest(name = "type? {0} is typeset!")
     @CsvSource({"number!", "any-string!", "any-type!", "internal!"})
     @DisplayName("a standard typeset is a value of typeset!")
-    void aStandardTypesetIsAValueOfTypeset(String typeset) {
+    void areValuesOfTypeset(String typeset) {
         assertThat(answerTo("mold type? " + typeset)).isEqualTo("#(typeset!)");
     }
 
     @Test
     @DisplayName("a standard typeset is equal to one made from the same datatypes")
-    void aStandardTypesetEqualsOneMadeFromTheSameDatatypes() {
+    void equalOnesMadeFromTheSameDatatypes() {
         assertThat(answerTo("any-path! = make typeset! [path! set-path! get-path! lit-path!]"))
                 .isEqualTo("true");
         assertThat(answerTo("any-path! = make typeset! [path! set-path! get-path!]"))
@@ -57,23 +57,23 @@ class TheStandardTypesetsAnswerAsR3DoesTest {
 
     @Test
     @DisplayName("a datatype is a value of datatype!")
-    void aDatatypeIsAValue() {
+    void treatADatatypeAsAValue() {
         assertThat(answerTo("mold type? integer!")).isEqualTo("#(datatype!)");
     }
 
     @Test
     @DisplayName("the catalogue finds each standard typeset by its name, with or without the mark")
-    void theCatalogueFindsEachStandardTypesetByName() {
-        assertThat(Catalogue.DATATYPES.typesetNamed("any-string")).contains(TypesetValue.ANY_STRING);
-        assertThat(Catalogue.DATATYPES.typesetNamed("Any-String!")).contains(TypesetValue.ANY_STRING);
-        assertThat(Catalogue.DATATYPES.typesetNamed("internal")).contains(TypesetValue.INTERNAL);
-        assertThat(Catalogue.DATATYPES.typesetNamed("string")).isEmpty();
-        assertThat(Catalogue.DATATYPES.typesetNamed("")).isEmpty();
+    void areFoundByNameInTheCatalogue() {
+        assertThat(Catalogue.DATATYPES.findTheTypesetNamed("any-string")).contains(TypesetValue.ANY_STRING);
+        assertThat(Catalogue.DATATYPES.findTheTypesetNamed("Any-String!")).contains(TypesetValue.ANY_STRING);
+        assertThat(Catalogue.DATATYPES.findTheTypesetNamed("internal")).contains(TypesetValue.INTERNAL);
+        assertThat(Catalogue.DATATYPES.findTheTypesetNamed("string")).isEmpty();
+        assertThat(Catalogue.DATATYPES.findTheTypesetNamed("")).isEmpty();
     }
 
     @Test
     @DisplayName("the catalogue lists the thirteen standard typesets")
-    void theCatalogueListsTheThirteenStandardTypesets() {
+    void numberThirteenInTheCatalogue() {
         assertThat(Catalogue.DATATYPES.standardTypesets()).containsExactly(
                 TypesetValue.ANY_TYPE, TypesetValue.NUMBER, TypesetValue.SCALAR, TypesetValue.SERIES,
                 TypesetValue.ANY_STRING, TypesetValue.ANY_BLOCK, TypesetValue.ANY_PATH,
@@ -83,14 +83,14 @@ class TheStandardTypesetsAnswerAsR3DoesTest {
 
     @Test
     @DisplayName("a standard typeset is spelt with its name, and one made by a script has none")
-    void aStandardTypesetIsSpeltWithItsName() {
+    void areSpeltWithTheirNames() {
         assertThat(TypesetValue.ANY_FUNCTION.spelling()).contains("any-function");
         assertThat(TypesetValue.of(Set.of(IntegerValue.TYPE)).spelling()).isEmpty();
     }
 
     @Test
-    @DisplayName("a datatype of the scalar kind is a scalar! though it is in no catalogue")
-    void aScalarDatatypeOutsideTheCatalogueIsStillAScalar() {
+    @DisplayName("a datatype of the scalar type is a scalar! though it is in no catalogue")
+    void stillHoldAScalarOutsideTheCatalogue() {
         Datatype probe = new ScalarDatatype("probe") {
         };
         assertThat(TypesetValue.SCALAR.holds(probe)).isTrue();
@@ -99,8 +99,8 @@ class TheStandardTypesetsAnswerAsR3DoesTest {
     }
 
     @Test
-    @DisplayName("a datatype of the number kind is both a number! and a scalar!")
-    void aNumberDatatypeOutsideTheCatalogueIsANumberAndAScalar() {
+    @DisplayName("a datatype of the number type is both a number! and a scalar!")
+    void holdANumberOutsideTheCatalogueAsANumberAndAScalar() {
         Datatype probe = new NumberDatatype("probe") {
         };
         assertThat(TypesetValue.NUMBER.holds(probe)).isTrue();
@@ -108,8 +108,8 @@ class TheStandardTypesetsAnswerAsR3DoesTest {
     }
 
     @Test
-    @DisplayName("a datatype of the series kind is a series! and nothing narrower")
-    void aSeriesDatatypeOutsideTheCatalogueIsASeries() {
+    @DisplayName("a datatype of the series type is a series! and nothing narrower")
+    void holdASeriesOutsideTheCatalogue() {
         Datatype probe = new SeriesDatatype("probe") {
         };
         assertThat(TypesetValue.SERIES.holds(probe)).isTrue();
@@ -118,8 +118,8 @@ class TheStandardTypesetsAnswerAsR3DoesTest {
     }
 
     @Test
-    @DisplayName("a datatype of the function kind is an any-function!")
-    void aFunctionDatatypeOutsideTheCatalogueIsAFunction() {
+    @DisplayName("a datatype of the function type is an any-function!")
+    void holdAFunctionOutsideTheCatalogue() {
         Datatype probe = new AnyFunctionDatatype("probe") {
         };
         assertThat(TypesetValue.ANY_FUNCTION.holds(probe)).isTrue();
@@ -127,8 +127,8 @@ class TheStandardTypesetsAnswerAsR3DoesTest {
     }
 
     @Test
-    @DisplayName("a datatype of the object kind is an any-object!")
-    void anObjectDatatypeOutsideTheCatalogueIsAnObject() {
+    @DisplayName("a datatype of the object type is an any-object!")
+    void holdAnObjectOutsideTheCatalogue() {
         Datatype probe = new AnyObjectDatatype("probe") {
         };
         assertThat(TypesetValue.ANY_OBJECT.holds(probe)).isTrue();
@@ -137,7 +137,7 @@ class TheStandardTypesetsAnswerAsR3DoesTest {
 
     @Test
     @DisplayName("a plain datatype is in any-type! and in none of the families")
-    void aPlainDatatypeIsInAnyTypeAndNoFamily() {
+    void holdAPlainDatatypeOnlyInAnyType() {
         Datatype probe = new Datatype("probe") {
         };
         assertThat(TypesetValue.ANY_TYPE.holds(probe)).isTrue();
@@ -156,7 +156,7 @@ class TheStandardTypesetsAnswerAsR3DoesTest {
 
     @Test
     @DisplayName("the datatypes with no values still belong to the typesets r3 puts them in")
-    void theNeverBuiltDatatypesKeepTheirTypesets() {
+    void keepTheNeverBuiltDatatypes() {
         assertThat(TypesetValue.ANY_FUNCTION.holds(RebcodeValue.TYPE)).isTrue();
         assertThat(TypesetValue.ANY_FUNCTION.holds(CommandValue.TYPE)).isTrue();
         assertThat(TypesetValue.INTERNAL.holds(FrameValue.TYPE)).isTrue();

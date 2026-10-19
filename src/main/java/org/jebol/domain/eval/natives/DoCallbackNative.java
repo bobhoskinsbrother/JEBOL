@@ -22,7 +22,7 @@ public class DoCallbackNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("event", Set.of(EventValue.TYPE)));
+        return List.of(Parameter.of("event", Set.of(EventValue.TYPE)));
     }
 
     @Override
@@ -32,20 +32,20 @@ public class DoCallbackNative extends DefaultNative {
             if (event.model() == EventValue.Model.CALLBACK
                     && event.attached() instanceof JavaObjectValue carried
                     && carried.held().orElse(null) instanceof Postbox.Callback callback) {
-                return answered(callback, evaluator);
+                return answer(callback, evaluator);
             }
             return NoneValue.none();
         };
     }
 
-    private Value answered(Postbox.Callback callback, Evaluator evaluator) {
+    private Value answer(Postbox.Callback callback, Evaluator evaluator) {
         try {
             Value answer = evaluator.applyFunction(
-                    callback.target().context().valueAt(callback.word()), callback.arguments());
-            callback.answer().answered(answer);
+                    callback.target().context().readValueAt(callback.word()), callback.arguments());
+            callback.answer().answer(answer);
             return answer;
         } catch (RuntimeException failed) {
-            callback.answer().failed(failed);
+            callback.answer().fail(failed);
             throw failed;
         }
     }

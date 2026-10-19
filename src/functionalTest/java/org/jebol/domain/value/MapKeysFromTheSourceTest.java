@@ -20,7 +20,7 @@ class MapKeysFromTheSourceTest {
 
     @Test
     @DisplayName("a lookup does not mind case, and answers the key stored first")
-    void aLookupAnswersTheFirstStored() {
+    void answerTheFirstStoredOnLookup() {
         assertThat(answerTo(MIXED + """
                 reduce [select m <A> select m "A" select m 'A select m #"A"]"""))
                 .isEqualTo("[1 9 13 21]");
@@ -40,7 +40,7 @@ class MapKeysFromTheSourceTest {
 
     @Test
     @DisplayName("a binary key is exact either way, because bytes have no case")
-    void aBinaryKeyIsAlwaysExact() {
+    void matchABinaryKeyExactly() {
         assertThat(answerTo(MIXED + """
                 reduce [select m #{41} select/case m #{41}]""")).isEqualTo("[24 24]");
     }
@@ -87,7 +87,7 @@ class MapKeysFromTheSourceTest {
 
     @Test
     @DisplayName("STRICT-EQUAL? still ignores order but does mind case")
-    void strictEqualityMindsCase() {
+    void mindCaseUnderStrictEquality() {
         assertThat(answerTo("""
                 reduce [
                     strict-equal? #[a: 1 b: 2] #[b: 2 a: 1]
@@ -97,7 +97,7 @@ class MapKeysFromTheSourceTest {
 
     @Test
     @DisplayName("a text key is copied, so the caller's own string is left alone")
-    void aTextKeyIsCopied() {
+    void copyATextKey() {
         assertThat(answerTo("""
                 k: ["a" 1]
                 n: make map! k
@@ -110,7 +110,7 @@ class MapKeysFromTheSourceTest {
 
     @Test
     @DisplayName("and the copy is locked, because the map is hashed on it")
-    void theCopyIsLocked() {
+    void lockTheCopy() {
         assertThat(answerTo("""
                 n: make map! ["a" 1]
                 raised: try [append first keys-of n "x"]
@@ -119,7 +119,7 @@ class MapKeysFromTheSourceTest {
 
     @Test
     @DisplayName("a block key is not copied, which the suite points out in a comment")
-    void aBlockKeyIsShared() {
+    void shareABlockKey() {
         assertThat(answerTo("""
                 b: [c]
                 p: make map! reduce [b 1]

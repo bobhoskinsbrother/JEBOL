@@ -14,20 +14,20 @@ class BitsetConstructionFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("raised: try [" + source + "] raised/id");
     }
 
     @Test
     @DisplayName("a number given to MAKE asks for room, and turns no bit on")
-    void aNumberAsksForRoom() {
+    void makesRoomForANumber() {
         assertThat(answerTo("""
                 make bitset! 8""")).isEqualTo("#(bitset! #{00})");
     }
 
     @Test
     @DisplayName("the room rounds up to whole octets at each boundary")
-    void theRoomRoundsUpToWholeOctets() {
+    void roundsTheRoomUpToWholeOctets() {
         assertThat(answerTo("""
                 collect [
                     foreach wanted [0 1 7 8 9 15 16 17] [
@@ -41,7 +41,7 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("the room asked for is the length, counted in bits")
-    void theRoomAskedForIsTheLength() {
+    void answersTheRoomAskedForAsTheLength() {
         assertThat(answerTo("""
                 reduce [length? make bitset! 0 length? make bitset! 9]"""))
                 .isEqualTo("[0 16]");
@@ -49,7 +49,7 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("no bit in the room asked for is on")
-    void theRoomStartsEmpty() {
+    void startsTheRoomEmpty() {
         assertThat(answerTo("""
                 reduce [pick make bitset! 8 0 pick make bitset! 8 7]"""))
                 .isEqualTo("[#(false) #(false)]");
@@ -57,7 +57,7 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("TO reads a number as room, exactly as MAKE does")
-    void toReadsANumberAsRoomAsWell() {
+    void readsANumberAsRoomThroughToAsWell() {
         assertThat(answerTo("""
                 reduce [to bitset! 8 to bitset! 1]"""))
                 .isEqualTo("[#(bitset! #{00}) #(bitset! #{00})]");
@@ -65,14 +65,14 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("a number given to APPEND names the bit rather than the room")
-    void aNumberAppendedNamesTheBit() {
+    void setsTheBitAnAppendedNumberNames() {
         assertThat(answerTo("""
                 append make bitset! 8 5""")).isEqualTo("#(bitset! #{04})");
     }
 
     @Test
     @DisplayName("a run given to APPEND turns on every bit it spans")
-    void aRunAppendedTurnsOnEveryBit() {
+    void turnsOnEveryBitInAnAppendedRun() {
         assertThat(answerTo("""
                 append make bitset! 8 [1 - 3]""")).isEqualTo("#(bitset! #{70})");
     }
@@ -105,14 +105,14 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("two binaries in a block fall together rather than replacing")
-    void twoBinariesFallTogether() {
+    void mergesTwoBinaries() {
         assertThat(answerTo("""
                 make bitset! [#{0002} #{0100}]""")).isEqualTo("#(bitset! #{0102})");
     }
 
     @Test
     @DisplayName("three binaries fall together the same way")
-    void threeBinariesFallTogether() {
+    void mergesThreeBinaries() {
         assertThat(answerTo("""
                 make bitset! [#{0002} #{0100} #{0010}]"""))
                 .isEqualTo("#(bitset! #{0112})");
@@ -120,21 +120,21 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("a run and a binary in one block are both kept")
-    void aRunAndABinaryAreBothKept() {
+    void keepsARunAndABinary() {
         assertThat(answerTo("""
                 make bitset! [1 - 3 #{80}]""")).isEqualTo("#(bitset! #{F0})");
     }
 
     @Test
     @DisplayName("the word BITS in front of a binary supplies the octets whole")
-    void theWordBitsSuppliesTheOctets() {
+    void takesTheOctetsFromTheWordBits() {
         assertThat(answerTo("""
                 make bitset! [bits #{0102}]""")).isEqualTo("#(bitset! #{0102})");
     }
 
     @Test
     @DisplayName("a binary and a string in one block are both kept")
-    void aBinaryAndAStringAreBothKept() {
+    void keepsABinaryAndAString() {
         assertThat(answerTo("""
                 make bitset! [#{01} "a"]"""))
                 .isEqualTo("#(bitset! #{01000000000000000000000040})");
@@ -142,7 +142,7 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("NOT at the head complements what the rest of the block names")
-    void notAtTheHeadComplements() {
+    void complementsForNotAtTheHead() {
         assertThat(answerTo("""
                 reduce [make bitset! [not] make bitset! [not 1]]"""))
                 .isEqualTo("[#(bitset! not #{}) #(bitset! not #{40})]");
@@ -150,7 +150,7 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("a run of characters holds its ends and its middle, and nothing outside")
-    void aRunOfCharactersHoldsWhatItSpans() {
+    void holdsWhatARunOfCharactersSpans() {
         assertThat(answerTo("""
                 bs: charset [#"c" - #"f"]
                 reduce [
@@ -164,7 +164,7 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("a run of one character is that character alone")
-    void aRunOfOneCharacter() {
+    void holdsARunOfOneCharacter() {
         assertThat(answerTo("""
                 bs: charset [#"c" - #"c"]
                 reduce [find bs #"c" find bs #"b" find bs #"d"]"""))
@@ -173,61 +173,61 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("a word the walk does not recognise is an invalid argument")
-    void anUnrecognisedWordRaises() {
-        assertThat(errorIdFrom("""
+    void raisesForAnUnrecognisedWord() {
+        assertThat(readTheErrorIdFrom("""
                 make bitset! [zzz]""")).isEqualTo("invalid-arg");
     }
 
     @Test
     @DisplayName("NOT anywhere but the head names nothing, so it raises")
-    void notAwayFromTheHeadRaises() {
-        assertThat(errorIdFrom("""
+    void raisesForNotAwayFromTheHead() {
+        assertThat(readTheErrorIdFrom("""
                 make bitset! [#{0002} #{0100} not]""")).isEqualTo("invalid-arg");
     }
 
     @Test
     @DisplayName("BITS with nothing usable after it raises")
-    void bitsWithoutABinaryRaises() {
-        assertThat(errorIdFrom("""
+    void raisesForBitsWithoutABinary() {
+        assertThat(readTheErrorIdFrom("""
                 make bitset! [bits]""")).isEqualTo("invalid-arg");
-        assertThat(errorIdFrom("""
+        assertThat(readTheErrorIdFrom("""
                 make bitset! [bits "x"]""")).isEqualTo("invalid-arg");
     }
 
     @Test
-    @DisplayName("a run whose far end is a different kind raises")
-    void aMismatchedRunRaises() {
-        assertThat(errorIdFrom("""
+    @DisplayName("a run whose far end is a different type raises")
+    void raisesForAMismatchedRun() {
+        assertThat(readTheErrorIdFrom("""
                 make bitset! [#"a" - 5]""")).isEqualTo("invalid-arg");
-        assertThat(errorIdFrom("""
+        assertThat(readTheErrorIdFrom("""
                 make bitset! [1 - "x"]""")).isEqualTo("invalid-arg");
     }
 
     @Test
     @DisplayName("a dash with nothing after it raises against the end of the block")
-    void aRunWithNoFarEndRaises() {
-        assertThat(errorIdFrom("""
+    void raisesForARunWithNoFarEnd() {
+        assertThat(readTheErrorIdFrom("""
                 make bitset! [1 -]""")).isEqualTo("invalid-arg");
     }
 
     @Test
     @DisplayName("a run that ends before it starts is past the end")
-    void aBackwardsRunRaises() {
-        assertThat(errorIdFrom("""
+    void raisesForABackwardsRun() {
+        assertThat(readTheErrorIdFrom("""
                 make bitset! [3 - 1]""")).isEqualTo("past-end");
     }
 
     @Test
     @DisplayName("a bit below zero names nothing a set could hold")
-    void aNegativeBitRaises() {
-        assertThat(errorIdFrom("""
+    void raisesForANegativeBit() {
+        assertThat(readTheErrorIdFrom("""
                 make bitset! -1""")).isEqualTo("out-of-range");
     }
 
     @Test
     @DisplayName("a fraction is no answer to how much room to make")
-    void aFractionRaises() {
-        assertThat(errorIdFrom("""
+    void raisesForAFraction() {
+        assertThat(readTheErrorIdFrom("""
                 make bitset! 1.5""")).isEqualTo("invalid-arg");
     }
 
@@ -253,7 +253,7 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("a set and its complement are never equal, however the question is put")
-    void aSetNeverEqualsItsComplement() {
+    void neverEqualsItsComplement() {
         assertThat(answerTo("""
                 b: make bitset! #{00}
                 reduce [
@@ -266,7 +266,7 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("two complements of the same set are equal to each other")
-    void twoComplementsAreEqual() {
+    void findsTwoComplementsEqual() {
         assertThat(answerTo("""
                 (complement make bitset! #{00}) = (complement make bitset! #{00})"""))
                 .isEqualTo("#(true)");
@@ -294,7 +294,7 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("a number naming the same code point is always asked exactly")
-    void aNumberIsAlwaysCased() {
+    void alwaysTreatsANumberAsCased() {
         assertThat(answerTo("""
                 letters: charset [#"A" #"B" #"C"]
                 reduce [find letters to-integer #"A" find letters to-integer #"a"]"""))
@@ -312,10 +312,10 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("a logic is no index into a bitset, for PICK or for POKE")
-    void aLogicIsNoIndex() {
-        assertThat(errorIdFrom("""
+    void refusesALogicAsAnIndex() {
+        assertThat(readTheErrorIdFrom("""
                 pick make bitset! #{C0} true""")).isEqualTo("invalid-type");
-        assertThat(errorIdFrom("""
+        assertThat(readTheErrorIdFrom("""
                 poke make bitset! #{C0} true none""")).isEqualTo("invalid-type");
     }
 
@@ -369,7 +369,7 @@ class BitsetConstructionFromTheSourceTest {
 
     @Test
     @DisplayName("so the copy answers the opposite of what the original answers")
-    void theCopyAnswersTheOpposite() {
+    void answersTheOppositeForTheCopy() {
         assertThat(answerTo("""
                 b: complement charset "a"
                 reduce [find b #"a" find copy b #"a"]""")).isEqualTo("[#(false) #(true)]");
@@ -380,9 +380,9 @@ class BitsetConstructionFromTheSourceTest {
     void clearLeavesNoRoom() {
         assertThat(answerTo("""
                 bs: charset "^(00)^(01)^(02)^(03)^(04)^(05)^(06)^(07)"
-                filled: copy bs
+                fill: copy bs
                 clear bs
-                reduce [filled length? bs bs]"""))
+                reduce [fill length? bs bs]"""))
                 .isEqualTo("[#(bitset! #{FF}) 0 #(bitset! #{})]");
     }
 }

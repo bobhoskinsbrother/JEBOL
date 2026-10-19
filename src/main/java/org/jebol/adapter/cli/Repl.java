@@ -1,12 +1,12 @@
 package org.jebol.adapter.cli;
 
 import org.jebol.adapter.host.JavaClipboard;
-import org.jebol.adapter.host.JavaImages;
-import org.jebol.adapter.host.JavaProcesses;
+import org.jebol.adapter.host.JavaImage;
+import org.jebol.adapter.host.JavaProcess;
 import org.jebol.adapter.host.JavaCertificateAuthority;
-import org.jebol.adapter.host.JavaSockets;
+import org.jebol.adapter.host.JavaSocket;
 import org.jebol.adapter.host.ProcessEnvironment;
-import org.jebol.adapter.host.TasksOnThreads;
+import org.jebol.adapter.host.ThreadTasks;
 import org.jebol.application.Bounds;
 import org.jebol.application.Conclusion;
 import org.jebol.application.FileSystemPort;
@@ -45,32 +45,32 @@ import java.util.Set;
 public final class Repl {
 
     private static final String PROMPT = ">> ";
-    private static final String CONTINUATION_AROUND_THE_BRACKET = " ";
+    private static final String CONTINUATION_AROUND_BRACKET = " ";
 
-    private static final Path THE_WHOLE_MACHINE = Path.of("/");
+    private static final Path WHOLE_MACHINE = Path.of("/");
 
-    static final int KEEP_THE_PROCESS = -1;
+    static final int KEEP_PROCESS = -1;
 
-    private static final int WHAT_A_HALT_REPORTS = -15;
+    private static final int REPORT_HALTED = -15;
 
-    private static final int WHAT_AN_ERROR_REPORTS = -1;
+    private static final int REPORT_ERROR = -1;
 
-    private static final int WHAT_A_FINISHED_START_REPORTS = 0;
+    private static final int REPORT_PRODUCED_VALUE = 0;
 
-    private static final int WHAT_A_MISUSED_COMMAND_LINE_REPORTS = 2;
+    private static final int REPORT_MISUSED_COMMAND_LINE = 2;
 
-    private static final String THE_ENTRY_AN_APP_DIRECTORY_RUNS = "main.reb";
+    private static final String MAIN_REBOL_FILE = "main.reb";
 
     private static final Set<String> LEVELS_THAT_STOP_SHORT_OF_START = Set.of("base", "sys");
 
-    private static final String SAYING_IT_IS_CLOSING_UNLESS_QUIET =
+    private static final String REBOL_CLOSE_PRINT_COMMAND =
             "unless system/options/quiet [print {^[[mClosing in 3s!} wait 3]";
 
-    static final String THE_ROOT_SWITCH = "--root";
+    static final String ROOT_SWITCH = "--root";
 
-    static final String THE_DATA_SWITCH = "--data";
+    static final String DATA_SWITCH = "--data";
 
-    private static final String WHERE_REBOL_IS_TOLD_ITS_DATA_LIVES = "REBOL_HOME";
+    private static final String REBOL_HOME = "REBOL_HOME";
 
     private final Interpreter interpreter;
     private final BufferedReader input;
@@ -85,38 +85,38 @@ public final class Repl {
     static void main(String[] arguments) {
         int status;
         try {
-            status = runTheCommandLine(arguments, System.out, System.err,
+            status = runCommandLine(arguments, System.out, System.err,
                     System.getProperty("user.dir", "."));
         } catch (IllegalArgumentException refused) {
             System.err.println(refused.getMessage());
-            status = WHAT_A_MISUSED_COMMAND_LINE_REPORTS;
+            status = REPORT_MISUSED_COMMAND_LINE;
         }
-        System.exit(status == KEEP_THE_PROCESS ? WHAT_A_FINISHED_START_REPORTS : status);
+        System.exit(status == KEEP_PROCESS ? REPORT_PRODUCED_VALUE : status);
     }
 
-    static int runTheCommandLine(
+    static int runCommandLine(
             String[] arguments, PrintStream out, PrintStream errors, String startedIn) {
 
-        return runTheCommandLine(arguments, new BufferedReader(
+        return runCommandLine(arguments, new BufferedReader(
                 new InputStreamReader(System.in, StandardCharsets.UTF_8)), out, errors, startedIn);
     }
 
-    static int runTheCommandLine(String[] arguments, BufferedReader typed,
-            PrintStream out, PrintStream errors, String startedIn) {
+    static int runCommandLine(String[] arguments, BufferedReader typed,
+                              PrintStream out, PrintStream errors, String startedIn) {
 
-        ChosenScreen.makeTheProcessSuitTheScreenAskedFor(arguments);
+        ChosenScreen.setHeadlessBasedOnWhetherAScreenIsNeeded(arguments);
 
-        Path root = theRootAskedFor(arguments);
+        Path root = readRoot(arguments);
         RebolArguments asked = new RebolArguments(List.of(
-                withoutTheSwitchesOnlyJebolTakes(ChosenScreen.withoutTheSwitch(arguments))));
-        asked.script().ifPresent(script -> asked.theScriptIs(anAppsEntryFor(script)));
+                argumentsWithoutJebolOnlySwitches(ChosenScreen.withoutTheSwitch(arguments))));
+        asked.script().ifPresent(script -> asked.nameTheScript(findTheAppsEntry(script)));
         boolean anythingWasAsked = asked.script().isPresent() || !asked.flags().isEmpty();
-        Interpreter interpreter = anInterpreterFor(arguments, out, anythingWasAsked, root);
+        Interpreter interpreter = buildAnInterpreter(arguments, out, anythingWasAsked, root);
         return new TheCommandLine(asked, startedIn, root)
                 .runThrough(interpreter, typed, out, errors);
     }
 
-    private static String anAppsEntryFor(String whereItPoints) {
+    private static String findTheAppsEntry(String whereItPoints) {
         if (whereItPoints.isEmpty()) {
             return whereItPoints;
         }
@@ -124,34 +124,33 @@ public final class Repl {
         if (!Files.isDirectory(asked)) {
             return whereItPoints;
         }
-        Path entry = asked.resolve(THE_ENTRY_AN_APP_DIRECTORY_RUNS);
+        Path entry = asked.resolve(MAIN_REBOL_FILE);
         if (!Files.isRegularFile(entry)) {
             throw new IllegalArgumentException(whereItPoints
                     + " is a directory, and an app is run from the "
-                    + THE_ENTRY_AN_APP_DIRECTORY_RUNS + " inside it, which is not there");
+                    + MAIN_REBOL_FILE + " inside it, which is not there");
         }
         return entry.toString();
     }
 
-    private static String[] withoutTheSwitchesOnlyJebolTakes(String[] arguments) {
-        List<String> kept = new ArrayList<>();
+    private static String[] argumentsWithoutJebolOnlySwitches(String[] arguments) {
+        List<String> reply = new ArrayList<>();
         for (int at = 0; at < arguments.length; at++) {
-            if (arguments[at].equals(THE_ROOT_SWITCH)
-                    || arguments[at].equals(THE_DATA_SWITCH)) {
+            if (arguments[at].equals(ROOT_SWITCH) || arguments[at].equals(DATA_SWITCH)) {
                 at++;
                 continue;
             }
-            kept.add(arguments[at]);
+            reply.add(arguments[at]);
         }
-        return kept.toArray(String[]::new);
+        return reply.toArray(String[]::new);
     }
 
-    private static Path theRootAskedFor(String[] arguments) {
-        String written = whatFollows(THE_ROOT_SWITCH, arguments);
-        return written.isEmpty() ? THE_WHOLE_MACHINE : Path.of(written);
+    private static Path readRoot(String[] arguments) {
+        String trailingArgument = readTrailingArgument(ROOT_SWITCH, arguments);
+        return trailingArgument.isEmpty() ? WHOLE_MACHINE : Path.of(trailingArgument);
     }
 
-    private static String whatFollows(String switchName, String[] arguments) {
+    private static String readTrailingArgument(String switchName, String[] arguments) {
         for (int at = 0; at + 1 < arguments.length; at++) {
             if (arguments[at].equals(switchName)) {
                 return arguments[at + 1];
@@ -160,23 +159,20 @@ public final class Repl {
         return "";
     }
 
-    private static Interpreter anInterpreterFor(
-            String[] arguments, PrintStream out, boolean anythingWasAsked, Path root) {
-
-        Bounds bounds = everyHostService().withoutAWallClockLimit();
-        Interpreter interpreter =
-                Interpreter.writingTo(new StreamOutput(out), bounds);
-        interpreter.useTasks(new TasksOnThreads(bounds));
-        giveItTheImageCodecWhichReachesNothingAndIsNotAGrant(interpreter);
+    private static Interpreter buildAnInterpreter(String[] arguments, PrintStream out, boolean anythingWasAsked, Path root) {
+        Bounds bounds = grantEveryHostService().withoutATimeLimit();
+        Interpreter interpreter = Interpreter.createWithOutput(new StreamOutput(out), bounds);
+        interpreter.useTasks(new ThreadTasks(bounds));
+        useJavaImagesCodecWhichReachesNothingAndIsNotAGrant(interpreter);
         ProcessEnvironment environment = new ProcessEnvironment();
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         interpreter.useEnvironment(environment);
-        interpreter.useProcesses(new JavaProcesses());
+        interpreter.useProcesses(new JavaProcess());
         interpreter.useClipboard(new JavaClipboard());
-        interpreter.useNetwork(new JavaSockets());
+        interpreter.useNetwork(new JavaSocket());
         interpreter.useCertificateAuthority(new JavaCertificateAuthority());
         putTheApplicationDataWhereTheParentKeepsIt(interpreter, environment, arguments);
-        if (ChosenScreen.wasAskedFor(arguments)) {
+        if (ChosenScreen.isAskedFor(arguments)) {
             ChosenScreen.attachTo(interpreter, arguments, out, anythingWasAsked);
         }
         return interpreter;
@@ -185,22 +181,21 @@ public final class Repl {
     private static void putTheApplicationDataWhereTheParentKeepsIt(
             Interpreter interpreter, ProcessEnvironment environment, String[] arguments) {
 
-        String written = whatFollows(THE_DATA_SWITCH, arguments);
+        String written = readTrailingArgument(DATA_SWITCH, arguments);
         if (written.isEmpty()) {
             return;
         }
-        environment.nameHolds(WHERE_REBOL_IS_TOLD_ITS_DATA_LIVES, written);
-        interpreter.tellTheSystem("data", FileValue.of(written));
-        interpreter.followTheApplicationDataDirectory();
+        environment.assign(REBOL_HOME, written);
+        interpreter.tellSystem("data", FileValue.of(written));
+        interpreter.followApplicationDataDirectory();
     }
 
-    private static void giveItTheImageCodecWhichReachesNothingAndIsNotAGrant(
+    private static void useJavaImagesCodecWhichReachesNothingAndIsNotAGrant(
             Interpreter interpreter) {
-
-        interpreter.useImages(new JavaImages());
+        interpreter.useImages(new JavaImage());
     }
 
-    private static Bounds everyHostService() {
+    private static Bounds grantEveryHostService() {
         Bounds everything = Bounds.standard();
         for (HostService service : HostService.values()) {
             everything = everything.grant(service);
@@ -208,110 +203,108 @@ public final class Repl {
         return everything;
     }
 
-    private record TheCommandLine(RebolArguments asked, String startedIn, Path root) {
+    private record TheCommandLine(RebolArguments arguments, String startedIn, Path root) {
 
-        private int runThrough(Interpreter interpreter, BufferedReader typed,
-                PrintStream out, PrintStream errors) {
+        private int runThrough(Interpreter interpreter, BufferedReader typed, PrintStream out, PrintStream errors) {
             tellItWhatWasAsked(interpreter);
-            int reported = WHAT_A_FINISHED_START_REPORTS;
-            if (!theBootStopsShortOfStart()) {
-                ScriptOutcome outcome = interpreter.started();
+            int reported = REPORT_PRODUCED_VALUE;
+            if (!stopsTheBootShortOfStart()) {
+                ScriptOutcome outcome = interpreter.start();
                 if (outcome.conclusion() == Conclusion.QUIT_EARLY) {
-                    return whatQuitCarried(outcome);
+                    return readWhatQuitCarries(outcome);
                 }
-                reported = whatStartReports(interpreter, outcome, errors);
+                reported = readStartReport(interpreter, outcome, errors);
             }
-            if (asked.has(RebolArguments.Flag.CGI) || !theConsoleFollows(reported)) {
+            if (arguments.has(RebolArguments.Flag.CGI) || !followsWithTheConsole(reported)) {
                 return 0;
             }
-            if (reported < 0 && !asked.has(RebolArguments.Flag.HALT)) {
-                interpreter.run(SAYING_IT_IS_CLOSING_UNLESS_QUIET);
+            if (reported < 0 && !arguments.has(RebolArguments.Flag.HALT)) {
+                interpreter.run(REBOL_CLOSE_PRINT_COMMAND);
                 return -reported;
             }
             new Repl(interpreter, typed, out).run();
-            return KEEP_THE_PROCESS;
+            return KEEP_PROCESS;
         }
 
-        private boolean theBootStopsShortOfStart() {
-            return asked.valueOf(RebolArguments.Flag.BOOT)
+        private boolean stopsTheBootShortOfStart() {
+            return arguments.valueOf(RebolArguments.Flag.BOOT)
                     .map(level -> LEVELS_THAT_STOP_SHORT_OF_START.contains(level.toLowerCase(Locale.ROOT)))
                     .orElse(false);
         }
 
-        private boolean theConsoleFollows(int reported) {
-            return asked.script().isEmpty() || reported < 0 || asked.has(RebolArguments.Flag.HALT);
+        private boolean followsWithTheConsole(int reported) {
+            return arguments.script().isEmpty() || reported < 0 || arguments.has(RebolArguments.Flag.HALT);
         }
 
-        private int whatStartReports(
-                Interpreter interpreter, ScriptOutcome outcome, PrintStream errors) {
+        private int readStartReport(Interpreter interpreter, ScriptOutcome outcome, PrintStream errors) {
 
             if (outcome.conclusion() == Conclusion.HALTED) {
-                return WHAT_A_HALT_REPORTS;
+                return REPORT_HALTED;
             }
-            if (threwPastEveryCatch(outcome) || outcome.succeeded()) {
-                return WHAT_A_FINISHED_START_REPORTS;
+            if (escapesEveryCatch(outcome) || outcome.succeeded()) {
+                return REPORT_PRODUCED_VALUE;
             }
-            errors.print(interpreter.whatTheConsolePrints(outcome));
-            return WHAT_AN_ERROR_REPORTS;
+            errors.print(interpreter.writeWhatConsolePrints(outcome));
+            return REPORT_ERROR;
         }
 
         private void tellItWhatWasAsked(Interpreter interpreter) {
             tellItWhereItStarted(interpreter);
-            interpreter.tellTheSystem("flags", theFlagsGiven());
-            if (asked.has(RebolArguments.Flag.QUIET)) {
-                interpreter.tellTheSystem("quiet", LogicValue.yes());
+            interpreter.tellSystem("flags", listTheFlagsGiven());
+            if (arguments.has(RebolArguments.Flag.QUIET)) {
+                interpreter.tellSystem("quiet", LogicValue.yes());
             }
-            if (asked.has(RebolArguments.Flag.NO_COLOR)) {
-                interpreter.tellTheSystem("no-color", LogicValue.yes());
+            if (arguments.has(RebolArguments.Flag.NO_COLOR)) {
+                interpreter.tellSystem("no-color", LogicValue.yes());
             }
-            asked.script().ifPresent(script ->
-                    interpreter.tellTheSystem("script", FileValue.of(script)));
-            asked.valueOf(RebolArguments.Flag.BOOT).ifPresent(level ->
-                    interpreter.tellTheSystem("boot-level", WordValue.of(level)));
-            interpreter.tellTheSystem("args", theArgumentsForTheScript());
+            arguments.script().ifPresent(script ->
+                    interpreter.tellSystem("script", FileValue.of(script)));
+            arguments.valueOf(RebolArguments.Flag.BOOT).ifPresent(level ->
+                    interpreter.tellSystem("boot-level", WordValue.of(level)));
+            interpreter.tellSystem("args", listTheArgumentsForTheScript());
             tellAsText(interpreter, "do-arg", RebolArguments.Flag.DO);
             tellAsText(interpreter, "debug", RebolArguments.Flag.DEBUG);
             tellAsText(interpreter, "version", RebolArguments.Flag.VERSION);
             tellAsText(interpreter, "import", RebolArguments.Flag.IMPORT);
-            asked.valueOf(RebolArguments.Flag.SECURE).ifPresent(policy ->
-                    interpreter.tellTheSystem("secure", WordValue.of(policy)));
+            arguments.valueOf(RebolArguments.Flag.SECURE).ifPresent(policy ->
+                    interpreter.tellSystem("secure", WordValue.of(policy)));
         }
 
         private void tellAsText(Interpreter interpreter, String option, RebolArguments.Flag flag) {
-            asked.valueOf(flag).ifPresent(text ->
-                    interpreter.tellTheSystem(option, StringValue.of(text)));
+            arguments.valueOf(flag).ifPresent(text ->
+                    interpreter.tellSystem(option, StringValue.of(text)));
         }
 
         private void tellItWhereItStarted(Interpreter interpreter) {
-            interpreter.tellTheSystem("path", FileValue.of(
-                    dirized(asTheScriptSeesIt(Path.of(startedIn)))));
+            interpreter.tellSystem("path", FileValue.of(
+                    dirize(asTheScriptSeesIt(Path.of(startedIn)))));
             interpreter.run("change-dir system/options/path");
         }
 
-        private AnyBlockValue theArgumentsForTheScript() {
+        private AnyBlockValue listTheArgumentsForTheScript() {
             List<Value> given = new ArrayList<>();
-            asked.argumentsForTheScript().forEach(each -> given.add(StringValue.of(each)));
-            return BlockValue.block(given);
+            arguments.listTheArgumentsForTheScript().forEach(each -> given.add(StringValue.of(each)));
+            return BlockValue.of(given);
         }
 
-        private AnyBlockValue theFlagsGiven() {
+        private AnyBlockValue listTheFlagsGiven() {
             List<Value> given = new ArrayList<>();
-            asked.flags().forEach(flag -> given.add(WordValue.of(flag.spelling())));
+            arguments.flags().forEach(flag -> given.add(WordValue.of(flag.spelling())));
             given.add(LogicValue.yes());
-            return BlockValue.block(given);
+            return BlockValue.of(given);
         }
 
         private String asTheScriptSeesIt(Path host) {
-            Path absolute = theRealPathOf(host);
-            Path realRoot = theRealPathOf(root);
+            Path absolute = findTheRealPathOf(host);
+            Path realRoot = findTheRealPathOf(root);
             if (!absolute.startsWith(realRoot)) {
-                return theRootItself();
+                return nameTheRoot();
             }
             String inside = realRoot.relativize(absolute).toString().replace('\\', '/');
-            return inside.isEmpty() ? theRootItself() : "/" + inside;
+            return inside.isEmpty() ? nameTheRoot() : "/" + inside;
         }
 
-        private Path theRealPathOf(Path host) {
+        private Path findTheRealPathOf(Path host) {
             try {
                 return host.toRealPath();
             } catch (IOException notThere) {
@@ -319,22 +312,22 @@ public final class Repl {
             }
         }
 
-        private static String theRootItself() {
+        private static String nameTheRoot() {
             return "/";
         }
 
-        private static String dirized(String path) {
+        private static String dirize(String path) {
             return path.endsWith("/") ? path : path + "/";
         }
     }
 
-    private static boolean threwPastEveryCatch(ScriptOutcome outcome) {
+    private static boolean escapesEveryCatch(ScriptOutcome outcome) {
         return outcome.conclusion() == Conclusion.RAISED
                 && outcome.value() instanceof ErrorValue error
                 && error.category() == ErrorCategory.THROW;
     }
 
-    private static int whatQuitCarried(ScriptOutcome outcome) {
+    private static int readWhatQuitCarries(ScriptOutcome outcome) {
         return outcome.value() instanceof IntegerValue(long magnitude) ? (int) magnitude : 0;
     }
 
@@ -344,39 +337,39 @@ public final class Repl {
         ConsoleContinuation continuation = new ConsoleContinuation();
 
         while (true) {
-            output.print(continuation.waitingForMore()
-                    ? CONTINUATION_AROUND_THE_BRACKET + continuation.whatIsStillOpen()
-                            + CONTINUATION_AROUND_THE_BRACKET
+            output.print(continuation.isWaitingForMore()
+                    ? CONTINUATION_AROUND_BRACKET + continuation.findWhatIsStillOpen()
+                            + CONTINUATION_AROUND_BRACKET
                     : PROMPT);
             output.flush();
 
             String line = readLine();
             if (line == null) {
-                if (!continuation.waitingForMore()) {
+                if (!continuation.isWaitingForMore()) {
                     return;
                 }
-                continuation.inputTaken();
+                continuation.takeTheInput();
                 pending.setLength(0);
                 continue;
             }
             String terminated = line + "\n";
             continuation.read(terminated);
             pending.append(terminated);
-            if (continuation.waitingForMore()) {
+            if (continuation.isWaitingForMore()) {
                 continue;
             }
             String source = pending.toString();
             pending.setLength(0);
-            continuation.inputTaken();
-            ScriptOutcome outcome = evaluated(source);
+            continuation.takeTheInput();
+            ScriptOutcome outcome = evaluate(source);
             if (outcome.conclusion() == Conclusion.QUIT_EARLY) {
                 return;
             }
-            output.print(interpreter.whatTheConsolePrints(outcome));
+            output.print(interpreter.writeWhatConsolePrints(outcome));
         }
     }
 
-    private ScriptOutcome evaluated(String source) {
+    private ScriptOutcome evaluate(String source) {
         interpreter.defineFreshWordsIn(source);
         return interpreter.run(source);
     }

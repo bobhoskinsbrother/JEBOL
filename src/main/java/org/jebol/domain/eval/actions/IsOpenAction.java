@@ -17,7 +17,7 @@ public class IsOpenAction extends ActorFirstPortAction {
     }
 
     @Override
-    Value answeredHere(PortValue port) {
+    Value answerHere(PortValue port) {
         return ports.isOpen(port);
     }
 }

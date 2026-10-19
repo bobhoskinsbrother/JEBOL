@@ -101,8 +101,8 @@ final class LzmaDecoder {
         this.output = new byte[wanted];
     }
 
-    static byte[] decoded(byte[] properties, byte[] input, int from, int length,
-            int wanted) {
+    static byte[] decode(byte[] properties, byte[] input, int from, int length,
+                         int wanted) {
 
         LzmaDecoder decoder =
                 new LzmaDecoder(properties, input, from, length, wanted);
@@ -155,11 +155,11 @@ final class LzmaDecoder {
     private void normalize() {
         if (Long.compareUnsigned(range, TOP_VALUE) < 0) {
             range = (range << 8) & 0xFFFFFFFFL;
-            code = ((code << 8) | (nextByte() & 0xFFL)) & 0xFFFFFFFFL;
+            code = ((code << 8) | (readTheNextByte() & 0xFFL)) & 0xFFFFFFFFL;
         }
     }
 
-    private int nextByte() {
+    private int readTheNextByte() {
         if (inputAt >= inputEnd) {
             throw new IllegalArgumentException("LZMA data ends part way through");
         }
@@ -189,7 +189,7 @@ final class LzmaDecoder {
         return at - (1 << howManyBits);
     }
 
-    private int positionStateFor(int howManyDone) {
+    private int findThePositionStateFor(int howManyDone) {
         return (howManyDone & positionMask) << POSITION_BITS_MAX;
     }
 
@@ -202,7 +202,7 @@ final class LzmaDecoder {
 
     private void decodeOneSymbol() {
         noteWhetherTheDictionaryRatherThanTheAnswerNowBoundsADistance();
-        int positionState = positionStateFor(processed);
+        int positionState = findThePositionStateFor(processed);
         if (decodeBit(isMatch, positionState + state) == 0) {
             decodeLiteral();
             return;

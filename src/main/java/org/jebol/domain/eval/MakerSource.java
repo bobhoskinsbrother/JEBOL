@@ -20,7 +20,7 @@ import java.util.Optional;
 @FunctionalInterface
 public interface MakerSource {
 
-    Maker makerFor(Evaluator evaluator, Context where);
+    Maker makeMakerFor(Evaluator evaluator, Context where);
 
     static MakerSource none() {
         return (evaluator, where) -> RefusingMaker.INSTANCE;
@@ -39,7 +39,7 @@ public interface MakerSource {
         }
 
         @Override
-        public Value objectMergedFrom(ObjectValue prototype, ObjectValue other) {
+        public Value mergeAnObject(ObjectValue prototype, ObjectValue other) {
             throw Raised.cannotUseTheAction(other, "make");
         }
 
@@ -59,27 +59,27 @@ public interface MakerSource {
         }
 
         @Override
-        public ObjectValue objectEvaluatedFrom(AnyBlockValue body) {
+        public ObjectValue evaluateAnObject(AnyBlockValue body) {
             throw Raised.cannotUseTheAction(body, "make");
         }
 
         @Override
-        public FunctionValue functionBoundFrom(AnyBlockValue spec, AnyBlockValue body) {
+        public FunctionValue bindAFunction(AnyBlockValue spec, AnyBlockValue body) {
             throw Raised.cannotUseTheAction(spec, "make");
         }
 
         @Override
-        public Value systemFunctionApplied(String name, Value argument) {
+        public Value applyASystemFunction(String name, Value argument) {
             throw Raised.cannotUseTheAction(argument, "make");
         }
 
         @Override
-        public Value simpleValueOf(Value piece) {
+        public Value readASimpleValue(Value piece) {
             return piece;
         }
 
         @Override
-        public ErrorValue spokenHere(ErrorValue error) {
+        public ErrorValue speakHere(ErrorValue error) {
             return error;
         }
 
@@ -89,12 +89,12 @@ public interface MakerSource {
         }
 
         @Override
-        public Optional<List<Value>> valuesReadFrom(String source) {
+        public Optional<List<Value>> readTheValuesFrom(String source) {
             return Optional.empty();
         }
 
         @Override
-        public AnyBlockValue sourceRead(String source) {
+        public AnyBlockValue readTheSource(String source) {
             throw Raised.cannotUseTheAction(StringValue.of(source), "to");
         }
     }

@@ -13,28 +13,28 @@ final class Dashes {
     private record Point(double across, double down) {
     }
 
-    static List<PathStep> theGapsIn(List<PathStep> path, List<Double> pattern) {
-        List<Point> walked = walkedOut(path);
+    static List<PathStep> findTheGapsIn(List<PathStep> path, List<Double> pattern) {
+        List<Point> walked = walkOut(path);
         if (walked.size() < 2 || pattern.isEmpty()) {
             return List.of();
         }
-        return piecesOf(walked, pattern, false);
+        return cutIntoPieces(walked, pattern, false);
     }
 
-    static List<PathStep> theDashesIn(List<PathStep> path, List<Double> pattern) {
-        List<Point> walked = walkedOut(path);
+    static List<PathStep> findTheDashesIn(List<PathStep> path, List<Double> pattern) {
+        List<Point> walked = walkOut(path);
         if (walked.size() < 2 || pattern.isEmpty()) {
             return List.of();
         }
-        return piecesOf(walked, pattern, true);
+        return cutIntoPieces(walked, pattern, true);
     }
 
-    private static List<PathStep> piecesOf(
+    private static List<PathStep> cutIntoPieces(
             List<Point> walked, List<Double> pattern, boolean wantTheDashes) {
 
         List<PathStep> pieces = new ArrayList<>();
         int inThePattern = 0;
-        double leftInThisPiece = lengthAt(pattern, 0);
+        double leftInThisPiece = readTheLengthAt(pattern, 0);
         boolean drawingADash = true;
         boolean penIsDown = false;
 
@@ -59,7 +59,7 @@ final class Dashes {
                 leftInThisPiece -= step;
                 if (leftInThisPiece <= A_LENGTH_TOO_SHORT_TO_MATTER) {
                     inThePattern = (inThePattern + 1) % pattern.size();
-                    leftInThisPiece = lengthAt(pattern, inThePattern);
+                    leftInThisPiece = readTheLengthAt(pattern, inThePattern);
                     drawingADash = !drawingADash;
                     penIsDown = false;
                 }
@@ -79,12 +79,12 @@ final class Dashes {
                 from.down() + (to.down() - from.down()) * share);
     }
 
-    private static double lengthAt(List<Double> pattern, int at) {
+    private static double readTheLengthAt(List<Double> pattern, int at) {
         double length = pattern.get(at % pattern.size());
         return length > 0 ? length : 1;
     }
 
-    private static List<Point> walkedOut(List<PathStep> path) {
+    private static List<Point> walkOut(List<PathStep> path) {
         List<Point> walked = new ArrayList<>();
         Point standing = new Point(0, 0);
         Point startedAt = standing;
@@ -100,10 +100,10 @@ final class Dashes {
                     walked.add(standing);
                 }
                 case PathStep.QuadraticTo to -> {
-                    standing = alongAQuadratic(walked, standing, to);
+                    standing = walkAlongAQuadratic(walked, standing, to);
                 }
                 case PathStep.CubicTo to -> {
-                    standing = alongACubic(walked, standing, to);
+                    standing = walkAlongACubic(walked, standing, to);
                 }
                 case PathStep.Close ignored -> walked.add(startedAt);
                 default -> {
@@ -113,7 +113,7 @@ final class Dashes {
         return walked;
     }
 
-    private static Point alongAQuadratic(
+    private static Point walkAlongAQuadratic(
             List<Point> walked, Point from, PathStep.QuadraticTo to) {
 
         for (int step = 1; step <= STEPS_ALONG_A_CURVE; step++) {
@@ -130,7 +130,7 @@ final class Dashes {
         return new Point(to.across(), to.down());
     }
 
-    private static Point alongACubic(
+    private static Point walkAlongACubic(
             List<Point> walked, Point from, PathStep.CubicTo to) {
 
         for (int step = 1; step <= STEPS_ALONG_A_CURVE; step++) {

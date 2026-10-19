@@ -30,7 +30,7 @@ public final class DeciReading {
         this.text = text;
     }
 
-    public Optional<Deci> theWholeOf() {
+    public Optional<Deci> readTheWhole() {
         Deci read = readFrom(0);
         return at == 0 || at != text.length() ? Optional.empty() : Optional.of(read);
     }
@@ -39,7 +39,7 @@ public final class DeciReading {
         return at;
     }
 
-    private char charAt(int position) {
+    private char readTheCharacterAt(int position) {
         return position < text.length() ? text.charAt(position) : '\0';
     }
 
@@ -50,13 +50,13 @@ public final class DeciReading {
     public Deci readFrom(int start) {
         at = start;
         boolean negative = false;
-        if (charAt(at) == '+') {
+        if (readTheCharacterAt(at) == '+') {
             at++;
-        } else if (charAt(at) == '-') {
+        } else if (readTheCharacterAt(at) == '-') {
             negative = true;
             at++;
         }
-        if (charAt(at) == '$') {
+        if (readTheCharacterAt(at) == '$') {
             at++;
         }
         BigInteger significand = BigInteger.ZERO;
@@ -65,7 +65,7 @@ public final class DeciReading {
         boolean pointSeen = false;
         int truncation = EXACT;
         while (true) {
-            char here = charAt(at);
+            char here = readTheCharacterAt(at);
             if (isDigit(here)) {
                 int digit = here - '0';
                 if (significand.compareTo(TEN_TO_THE_25) < 0) {
@@ -101,37 +101,37 @@ public final class DeciReading {
             }
             at++;
         }
-        int exponent = theExponentWritten();
+        int exponent = readTheExponent();
         exponent += shifted;
-        if (SIGNIFICANDS.theTruncationRoundsUp(truncation, significand) && exponent >= THE_SMALLEST_EXPONENT) {
+        if (SIGNIFICANDS.roundsTheTruncationUp(truncation, significand) && exponent >= THE_SMALLEST_EXPONENT) {
             if (significand.compareTo(THE_LARGEST_SIGNIFICAND) < 0) {
                 significand = significand.add(BigInteger.ONE);
             } else {
-                Shifted oneOff = SIGNIFICANDS.shiftedRight(significand, 1, truncation);
+                Shifted oneOff = SIGNIFICANDS.shiftRight(significand, 1, truncation);
                 truncation = oneOff.truncation();
                 exponent++;
-                significand = SIGNIFICANDS.roundedUpWhenTheTruncationSays(oneOff);
+                significand = SIGNIFICANDS.roundUpWhenTheTruncationSays(oneOff);
             }
         }
-        Scaled scaled = SIGNIFICANDS.timesTenToThe(significand, 0, exponent, truncation);
+        Scaled scaled = SIGNIFICANDS.multiplyByTenToThe(significand, 0, exponent, truncation);
         return new Deci(scaled.significand(), scaled.exponent(), negative);
     }
 
-    private int theExponentWritten() {
-        if (charAt(at) != 'e' && charAt(at) != 'E') {
+    private int readTheExponent() {
+        if (readTheCharacterAt(at) != 'e' && readTheCharacterAt(at) != 'E') {
             return 0;
         }
         at++;
         int sign = 1;
-        if (charAt(at) == '+') {
+        if (readTheCharacterAt(at) == '+') {
             at++;
-        } else if (charAt(at) == '-') {
+        } else if (readTheCharacterAt(at) == '-') {
             at++;
             sign = -1;
         }
         int exponent = 0;
-        while (isDigit(charAt(at))) {
-            exponent = exponent * 10 + (charAt(at) - '0');
+        while (isDigit(readTheCharacterAt(at))) {
+            exponent = exponent * 10 + (readTheCharacterAt(at) - '0');
             if (exponent > THE_LARGEST_EXPONENT_WRITTEN) {
                 if (sign == 1) {
                     throw Raised.of(EvaluationFailure.OVERFLOW);

@@ -7,7 +7,7 @@ public final class ParenValue extends AnyBlockValue {
     public static final AnyBlockDatatype TYPE = new AnyBlockDatatype("paren") {
 
         @Override
-        public AnyBlockValue holding(BlockStorage storage, int index) {
+        public AnyBlockValue wrap(BlockStorage storage, int index) {
             return new ParenValue(storage, index);
         }
 
@@ -41,7 +41,7 @@ public final class ParenValue extends AnyBlockValue {
     }
 
     @Override
-    ParenValue sameKindOver(BlockStorage storage, int index) {
+    ParenValue makeTheSameKindOver(BlockStorage storage, int index) {
         return new ParenValue(storage, index);
     }
 }

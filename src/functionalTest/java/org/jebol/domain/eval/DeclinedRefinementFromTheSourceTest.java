@@ -19,34 +19,34 @@ class DeclinedRefinementFromTheSourceTest {
         return interpreter.display(interpreter.run(whole));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("a refinement that is true behaves as though it were written plainly")
-    void grantedIsOrdinary() {
+    void behavesOrdinarilyWhenGranted() {
         assertThat(answerTo("ref1: yes (fce/:ref1 \"a\" 1) = fce/ref1 \"a\" 1"))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a refinement that is false leaves the function without it")
-    void declinedIsAbsent() {
+    void isAbsentWhenDeclined() {
         assertThat(answerTo("ref1: off (fce/:ref1 \"a\" 1) = fce \"a\""))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a declined refinement still eats its argument")
-    void theArgumentIsConsumed() {
+    void consumesTheArgument() {
         assertThat(answerTo("ref1: off (reduce [fce/:ref1 \"a\" 1]) = reduce [fce \"a\"]"))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("the argument it eats is evaluated all the same")
-    void theArgumentIsStillEvaluated() {
+    void stillEvaluatesTheArgument() {
         assertThat(answerTo("ref1: off fce/:ref1 \"a\" x: 1 + 1 x = 2"))
                 .isEqualTo("#(true)");
         assertThat(answerTo("ref1: yes fce/:ref1 \"a\" x: 1 + 1 x = 2"))
@@ -56,29 +56,29 @@ class DeclinedRefinementFromTheSourceTest {
 
     @Test
     @DisplayName("a declined refinement takes a wrong-typed argument without complaint")
-    void theTypeIsNotChecked() {
-        assertThat(errorIdOf("ref1: off fce/:ref1 \"a\" \"\"")).isEqualTo("no-error");
+    void skipsTheTypeCheck() {
+        assertThat(readTheErrorIdOf("ref1: off fce/:ref1 \"a\" \"\"")).isEqualTo("no-error");
     }
 
     @Test
     @DisplayName("a declined refinement still needs its argument to be there")
-    void theArgumentIsStillRequired() {
-        assertThat(errorIdOf("ref1: off fce/:ref1 \"a\"")).isEqualTo("no-arg");
-        assertThat(errorIdOf("ref1: yes fce/:ref1 \"a\""))
+    void stillRequiresTheArgument() {
+        assertThat(readTheErrorIdOf("ref1: off fce/:ref1 \"a\"")).isEqualTo("no-arg");
+        assertThat(readTheErrorIdOf("ref1: yes fce/:ref1 \"a\""))
                 .as("granted or not makes no difference to this")
                 .isEqualTo("no-arg");
     }
 
     @Test
     @DisplayName("a quoted argument of a declined refinement is taken as written")
-    void quotingStillApplies() {
+    void stillAppliesQuoting() {
         assertThat(answerTo("ref2: off (fce/:ref2 \"a\" never-set also-never) = fce \"a\""))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("two refinements, either of which may be declined")
-    void allFourCombinations() {
+    void coversAllFourCombinations() {
         assertThat(answerTo("""
                 ref1: yes ref2: yes
                 (fce/:ref1/:ref2 "a" 1 + 1 x y) = reduce ["a" true 2 true 'x 'y]
@@ -99,7 +99,7 @@ class DeclinedRefinementFromTheSourceTest {
 
     @Test
     @DisplayName("the same four written the other way round")
-    void theCombinationsInPathOrder() {
+    void takesTheCombinationsInPathOrder() {
         assertThat(answerTo("""
                 ref1: yes ref2: yes
                 (fce/:ref2/:ref1 "a" x y 1 + 1) = reduce ["a" true 2 true 'x 'y]

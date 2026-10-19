@@ -31,7 +31,7 @@ public class EchoNative extends HostNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("target",
+        return List.of(Parameter.of("target",
                 Set.of(FileValue.TYPE, NoneValue.TYPE, LogicValue.TYPE)));
     }
 
@@ -48,7 +48,7 @@ public class EchoNative extends HostNative {
                     ? address.text()
                     : WHERE_A_TRUE_ECHO_WRITES;
             FilePort files = evaluator.files();
-            return throughTheFileSystem(() -> {
+            return runThroughTheFileSystem(() -> {
                 files.write(path, new byte[0]);
                 evaluator.alsoWriteTo(text -> files.appendTo(
                         path, text.getBytes(StandardCharsets.UTF_8)));

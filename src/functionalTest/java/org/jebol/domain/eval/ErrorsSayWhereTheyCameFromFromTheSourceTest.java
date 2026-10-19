@@ -16,7 +16,7 @@ class ErrorsSayWhereTheyCameFromFromTheSourceTest {
 
     @Test
     @DisplayName("NEAR is the fragment the failing call started at")
-    void nearIsTheFragmentTheCallStartedAt() {
+    void putTheFragmentTheCallStartedAtInNear() {
         assertThat(answerTo("mold all [error? e: try [1 / 0] e/near]"))
                 .as("the block is [1 / 0] and the division starts at the slash")
                 .isEqualTo("\"[/ 0]\"");
@@ -24,7 +24,7 @@ class ErrorsSayWhereTheyCameFromFromTheSourceTest {
 
     @Test
     @DisplayName("and it is the innermost block, not the one that called it")
-    void nearIsTheInnermostBlock() {
+    void putTheInnermostBlockInNear() {
         assertThat(answerTo("""
                 mold all [f: does [1 / 0] error? e: try [f] e/near]"""))
                 .as("R3 answers the same: the fragment inside F, not [f]")
@@ -33,7 +33,7 @@ class ErrorsSayWhereTheyCameFromFromTheSourceTest {
 
     @Test
     @DisplayName("WHERE is a block, innermost first")
-    void whereIsAblockInnermostFirst() {
+    void listWhereInnermostFirst() {
         assertThat(answerTo("mold all [error? e: try [1 / 0] block? e/where]"))
                 .isEqualTo("\"#(true)\"");
         assertThat(answerTo("mold all [error? e: try [1 / 0] first e/where]"))

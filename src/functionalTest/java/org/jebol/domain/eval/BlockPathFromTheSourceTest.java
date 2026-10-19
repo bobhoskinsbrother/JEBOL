@@ -15,7 +15,7 @@ class BlockPathFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -27,7 +27,7 @@ class BlockPathFromTheSourceTest {
 
         @Test
         @DisplayName("counting from one, from where the block is")
-        void countingFromOne() {
+        void countsFromOne() {
             assertThat(answerTo("b: [a 1 c 2] b/1")).isEqualTo("a");
             assertThat(answerTo("b: [a 1 c 2] b/2")).isEqualTo("1");
             assertThat(answerTo("b: next [a 1 c 2] b/1")).isEqualTo("1");
@@ -35,26 +35,26 @@ class BlockPathFromTheSourceTest {
 
         @Test
         @DisplayName("and there is no position zero")
-        void thereIsNoPositionZero() {
+        void hasNoPositionZero() {
             assertThat(answerTo("b: [a 1] none? b/0")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a negative position counts back, and may reach behind the block")
-        void aNegativePositionCountsBack() {
+        void countsBackForANegativePosition() {
             assertThat(answerTo("b: next next [a 1 c 2] b/-1")).isEqualTo("1");
             assertThat(answerTo("b: [a 1 c 2] none? b/-1")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a decimal is truncated rather than refused")
-        void aDecimalIsTruncated() {
+        void truncatesADecimal() {
             assertThat(answerTo("b: [a 1 c 2] b/2.7")).isEqualTo("1");
         }
 
         @Test
         @DisplayName("and a position past the tail answers none")
-        void pastTheTailIsNone() {
+        void answersNonePastTheTail() {
             assertThat(answerTo("b: [a 1] none? b/9")).isEqualTo(TRUE);
             assertThat(answerTo("b: [] none? b/1")).isEqualTo(TRUE);
         }
@@ -66,41 +66,41 @@ class BlockPathFromTheSourceTest {
 
         @Test
         @DisplayName("so a block is a lookup table")
-        void aBlockIsALookupTable() {
+        void treatsABlockAsALookupTable() {
             assertThat(answerTo("b: [a 1 c 2] b/a")).isEqualTo("1");
             assertThat(answerTo("b: [a 1 c 2] b/c")).isEqualTo("2");
         }
 
         @Test
         @DisplayName("and how the word in the block was written makes no difference")
-        void anyKindOfWordMatches() {
+        void matchesAnyKindOfWord() {
             assertThat(answerTo("b: [a: 1] b/a")).isEqualTo("1");
             assertThat(answerTo("b: reduce ['a 1] b/a")).isEqualTo("1");
         }
 
         @Test
         @DisplayName("the first match wins, and the search starts where the block is")
-        void theFirstMatchFromHere() {
+        void takesTheFirstMatchFromHere() {
             assertThat(answerTo("b: [a 1 a 2] b/a")).isEqualTo("1");
             assertThat(answerTo("b: next next [a 1 a 2] b/a")).isEqualTo("2");
         }
 
         @Test
         @DisplayName("a name the block has not got answers none")
-        void anUnknownNameIsNone() {
+        void answersNoneForAnUnknownName() {
             assertThat(answerTo("b: [a 1] none? b/zz")).isEqualTo(TRUE);
             assertThat(answerTo("b: [] none? b/a")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and a name at the tail with nothing after it answers none too")
-        void aNameWithNothingAfterItIsNone() {
+        void answersNoneForANameWithNothingAfterIt() {
             assertThat(answerTo("b: [a] none? b/a")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a path may go deeper, because what it finds may be a block")
-        void itGoesDeeper() {
+        void goesDeeper() {
             assertThat(answerTo("b: [a [c 3]] b/a/c")).isEqualTo("3");
         }
     }
@@ -111,7 +111,7 @@ class BlockPathFromTheSourceTest {
 
         @Test
         @DisplayName("a string, a character or a block, each answering what follows it")
-        void byValue() {
+        void findsByValue() {
             assertThat(answerTo("b: [\"k\" 5] b/(\"k\")")).isEqualTo("5");
             assertThat(answerTo("b: reduce [#\"x\" 5] b/(#\"x\")")).isEqualTo("5");
             assertThat(answerTo("b: reduce [[1 2] 5] b/([1 2])")).isEqualTo("5");
@@ -119,7 +119,7 @@ class BlockPathFromTheSourceTest {
 
         @Test
         @DisplayName("and a value the block has not got answers none")
-        void anAbsentValueIsNone() {
+        void answersNoneForAnAbsentValue() {
             assertThat(answerTo("b: [\"k\" 5] none? b/(\"other\")")).isEqualTo(TRUE);
             assertThat(answerTo("b: [a 1] none? b/(none)")).isEqualTo(TRUE);
         }
@@ -131,7 +131,7 @@ class BlockPathFromTheSourceTest {
 
         @Test
         @DisplayName("replaces what the read would have answered")
-        void itReplacesTheItem() {
+        void replacesTheItem() {
             assertThat(answerTo("b: [a 1] b/a: 9 b")).isEqualTo("[a 9]");
             assertThat(answerTo("b: [a 1] b/2: 9 b")).isEqualTo("[a 9]");
             assertThat(answerTo("b: [a [c 3]] b/a/c: 9 b")).isEqualTo("[a [c 9]]");
@@ -139,28 +139,28 @@ class BlockPathFromTheSourceTest {
 
         @Test
         @DisplayName("in place, so another name for the block sees it")
-        void itWritesInPlace() {
+        void writesInPlace() {
             assertThat(answerTo("b: [a 1] c: b b/a: 9 c")).isEqualTo("[a 9]");
         }
 
         @Test
         @DisplayName("a selector that finds nothing is refused rather than added")
-        void anUnknownSelectorIsRefused() {
-            assertThat(errorIdFrom("b: [a 1] b/zz: 5")).isEqualTo("invalid-path");
-            assertThat(errorIdFrom("b: [a 1] b/9: 5")).isEqualTo("invalid-path");
+        void refusesAnUnknownSelector() {
+            assertThat(readTheErrorIdFrom("b: [a 1] b/zz: 5")).isEqualTo("invalid-path");
+            assertThat(readTheErrorIdFrom("b: [a 1] b/9: 5")).isEqualTo("invalid-path");
         }
 
         @Test
         @DisplayName("except through position zero, which quietly does nothing")
-        void positionZeroDoesNothing() {
-            assertThat(errorIdFrom("b: [a 1] b/0: 5")).isEqualTo("no-error");
+        void doesNothingAtPositionZero() {
+            assertThat(readTheErrorIdFrom("b: [a 1] b/0: 5")).isEqualTo("no-error");
             assertThat(answerTo("b: [a 1] b/0: 5 b")).isEqualTo("[a 1]");
         }
 
         @Test
         @DisplayName("and a protected block is refused as an error a script can catch")
-        void aProtectedBlockIsRefused() {
-            assertThat(errorIdFrom("b: protect [a 1] b/a: 5")).isEqualTo("protected");
+        void refusesAProtectedBlock() {
+            assertThat(readTheErrorIdFrom("b: protect [a 1] b/a: 5")).isEqualTo("protected");
             assertThat(answerTo("b: protect [a 1] e: try [b/a: 5] b"))
                     .isEqualTo("[a 1]");
         }

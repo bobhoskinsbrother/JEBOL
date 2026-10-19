@@ -21,40 +21,40 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
     }
 
     @Override
-    public List<Value> items() {
-        return context.boundWordsAndValues();
+    public List<Value> listTheItems() {
+        return context.listTheBoundWordsAndValues();
     }
 
     public String schemeName() {
-        return fieldValue("scheme").fieldValue("name") instanceof AnyWordValue word
+        return readTheFieldValue("scheme").readTheFieldValue("name") instanceof AnyWordValue word
                 ? word.canonical()
                 : "";
     }
 
-    public Optional<AnyBlockValue> eventQueue() {
+    public Optional<AnyBlockValue> findTheEventQueue() {
         if (!THE_SCHEMES_THAT_ARE_QUEUES.contains(schemeName())) {
             return Optional.empty();
         }
-        if (!(fieldValue("state") instanceof AnyBlockValue queue)) {
-            AnyBlockValue made = BlockValue.block(List.of());
+        if (!(readTheFieldValue("state") instanceof AnyBlockValue queue)) {
+            AnyBlockValue made = BlockValue.of(List.of());
             setField("state", made);
             return Optional.of(made);
         }
         return Optional.of(queue);
     }
 
-    public Value queued(Value happening, boolean atTheEnd) {
+    public Value queue(Value happening, boolean atTheEnd) {
         if (!(happening instanceof EventValue)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, happening);
         }
-        AnyBlockValue queue = eventQueue().orElseThrow();
+        AnyBlockValue queue = findTheEventQueue().orElseThrow();
         queue.storage().insertAt(
                 atTheEnd ? queue.storage().length() + 1 : queue.index(), happening);
         return this;
     }
 
     public PortValue withItsQueueEmptied() {
-        eventQueue().ifPresent(queue -> {
+        findTheEventQueue().ifPresent(queue -> {
             while (queue.storage().length() > 0) {
                 queue.storage().removeAt(1);
             }
@@ -71,19 +71,19 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
     }
 
     public Optional<ObjectValue> actorWrittenInRebol() {
-        return fieldValue("actor") instanceof ObjectValue actor
+        return readTheFieldValue("actor") instanceof ObjectValue actor
                 ? Optional.of(actor)
                 : Optional.empty();
     }
 
     public void refuseASpecThatIsNotAnObject() {
-        if (!(fieldValue("spec") instanceof ObjectValue)) {
+        if (!(readTheFieldValue("spec") instanceof ObjectValue)) {
             throw Raised.of(EvaluationFailure.INVALID_PORT);
         }
     }
 
     public void refuseAnActorThatIsNeitherANativeNorAnObject() {
-        Value actor = fieldValue("actor");
+        Value actor = readTheFieldValue("actor");
         if (actor instanceof ObjectValue || actor instanceof NativeValue
                 || actor instanceof NoneValue) {
             return;
@@ -92,11 +92,11 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
     }
 
     public boolean hasNoActor() {
-        return fieldValue("actor") instanceof NoneValue;
+        return readTheFieldValue("actor") instanceof NoneValue;
     }
 
     public boolean isOpen() {
-        Value whatTheActorLeft = fieldValue("state");
+        Value whatTheActorLeft = readTheFieldValue("state");
         return !(whatTheActorLeft instanceof ObjectValue)
                 && whatTheActorLeft.isTruthy();
     }
@@ -119,16 +119,16 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
-            throw refusingConstruction(contents);
+        public Value construct(List<Value> contents, Construction construction) {
+            throw refuseTheConstruction(contents);
         }
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             if (!canNameAScheme(spec)) {
                 throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
             }
-            if (!(maker.systemFunctionApplied("make-port*", spec) instanceof PortValue port)) {
+            if (!(maker.applyASystemFunction("make-port*", spec) instanceof PortValue port)) {
                 throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
             }
             return port;
@@ -144,9 +144,9 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             if (!(from instanceof ObjectValue(Context fields))) {
-                throw refusing(from);
+                throw refuse(from);
             }
             return new PortValue(fields);
         }

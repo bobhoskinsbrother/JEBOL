@@ -24,12 +24,12 @@ class AScriptOnTheCommandLineRunsAsLongAsItNeedsEndToEndTest {
     private record Ran(int exitStatus, String printed, String reported) {
     }
 
-    private Ran runningTheScript(Path directory, String source) throws IOException {
+    private Ran runTheScript(Path directory, String source) throws IOException {
         Path script = directory.resolve("long.r3");
         Files.writeString(script, source);
         ByteArrayOutputStream printed = new ByteArrayOutputStream();
         ByteArrayOutputStream reported = new ByteArrayOutputStream();
-        int status = Repl.runTheCommandLine(new String[] {script.toString()},
+        int status = Repl.runCommandLine(new String[] {script.toString()},
                 new PrintStream(printed, true, StandardCharsets.UTF_8),
                 new PrintStream(reported, true, StandardCharsets.UTF_8),
                 directory.toString());
@@ -40,8 +40,8 @@ class AScriptOnTheCommandLineRunsAsLongAsItNeedsEndToEndTest {
     @Test
     @Timeout(30)
     @DisplayName("a script that waits past five seconds and then does something still finishes, as a window waiting for its operator does")
-    void aScriptThatWaitsAndThenWorksFinishes(@TempDir Path directory) throws IOException {
-        Ran ran = runningTheScript(directory, """
+    void finishesAScriptThatWaitsAndThenWorks(@TempDir Path directory) throws IOException {
+        Ran ran = runTheScript(directory, """
                 wait 6
                 answer: 2 + 2
                 print [{still running} answer]
@@ -55,8 +55,8 @@ class AScriptOnTheCommandLineRunsAsLongAsItNeedsEndToEndTest {
     @Test
     @Timeout(30)
     @DisplayName("a script that works for more than five seconds finishes")
-    void aScriptThatWorksForLongFinishes(@TempDir Path directory) throws IOException {
-        Ran ran = runningTheScript(directory, """
+    void finishesAScriptThatWorksForLong(@TempDir Path directory) throws IOException {
+        Ran ran = runTheScript(directory, """
                 total: 0
                 repeat round 70 [
                     wait 0.1
@@ -73,13 +73,13 @@ class AScriptOnTheCommandLineRunsAsLongAsItNeedsEndToEndTest {
     @Test
     @Timeout(30)
     @DisplayName("a run its bounds stop is reported in the catalogue's words, not as an improperly formatted error")
-    void aStoppedRunIsReportedInTheCataloguesWords() {
+    void reportsAStoppedRunInTheCataloguesWords() {
         Interpreter embedded = Interpreter.withBounds(
-                Bounds.standard().withWallClockLimit(Duration.ofMillis(200)));
+                Bounds.standard().withTimeLimit(Duration.ofMillis(200)));
 
         ScriptOutcome outcome = embedded.run("forever []");
 
-        assertThat(embedded.whatTheConsolePrints(outcome))
+        assertThat(embedded.writeWhatConsolePrints(outcome))
                 .contains("** Access error: port action timed out")
                 .doesNotContain(ErrorWording.NOTHING_IN_THE_CATALOGUE);
     }
@@ -87,9 +87,9 @@ class AScriptOnTheCommandLineRunsAsLongAsItNeedsEndToEndTest {
     @Test
     @Timeout(30)
     @DisplayName("an embedding host's own runs keep their time limit")
-    void anEmbeddedRunKeepsItsLimit() {
+    void keepsTheLimitOfAnEmbeddedRun() {
         Interpreter embedded = Interpreter.withBounds(
-                Bounds.standard().withWallClockLimit(Duration.ofMillis(200)));
+                Bounds.standard().withTimeLimit(Duration.ofMillis(200)));
 
         ScriptOutcome outcome = embedded.run("forever []");
 

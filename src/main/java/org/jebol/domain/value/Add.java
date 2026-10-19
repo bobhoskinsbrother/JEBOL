@@ -9,7 +9,7 @@ public final class Add implements ArithmeticOperation {
 
     @Override
     public Value onWholeNumbers(long left, long right) {
-        return Overflowing.reported(() -> IntegerValue.of(Math.addExact(left, right)));
+        return Overflowing.report(() -> IntegerValue.of(Math.addExact(left, right)));
     }
 
     @Override

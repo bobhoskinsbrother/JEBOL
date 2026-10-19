@@ -119,7 +119,7 @@ if true notice
 --- origin REBOL/Core User Guide 2.3 section 6.2
 --- requires control
 --- note ANY returns the value, not a logic. This is how defaulting is
---- note written in REBOL.
+--- note text in REBOL.
 --- code
 number: none
 any [number 100]

@@ -33,13 +33,13 @@ class ArithmeticUnaryEndToEndTest {
         }
     }
 
-    private String whatJebolPrintsForTheProbe() throws IOException {
+    private String runTheProbeInJebol() throws IOException {
         Path script = directory.resolve("unary.r3");
         Files.writeString(script, readFromTheClasspath(THE_PROBE), StandardCharsets.UTF_8);
 
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
-        Repl.runTheCommandLine(
+        Repl.runCommandLine(
                 new String[]{script.toString()}, output, output, directory.toString());
         output.flush();
         return captured.toString(StandardCharsets.UTF_8);
@@ -47,10 +47,10 @@ class ArithmeticUnaryEndToEndTest {
 
     @Test
     @DisplayName("every line JEBOL prints is the line a real 3.22.5 printed")
-    void everyLineAgreesWithTheRecording() throws IOException {
+    void agreesWithTheRecordingOnEveryLine() throws IOException {
         List<String> recorded =
                 readFromTheClasspath(WHAT_A_REAL_3_22_5_PRINTED).lines().toList();
-        List<String> answered = whatJebolPrintsForTheProbe().lines().toList();
+        List<String> answered = runTheProbeInJebol().lines().toList();
 
         int upToTheShorter = Math.min(recorded.size(), answered.size());
         for (int at = 0; at < upToTheShorter; at++) {
@@ -67,7 +67,7 @@ class ArithmeticUnaryEndToEndTest {
 
     @Test
     @DisplayName("the probe still asks after every datatype it claims to")
-    void theProbeAsksEveryQuestionItClaimsTo() throws IOException {
+    void asksEveryQuestionTheProbeClaims() throws IOException {
         List<String> recorded =
                 readFromTheClasspath(WHAT_A_REAL_3_22_5_PRINTED).lines().toList();
 

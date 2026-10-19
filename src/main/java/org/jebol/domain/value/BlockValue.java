@@ -8,7 +8,7 @@ public final class BlockValue extends AnyBlockValue {
     public static final AnyBlockDatatype TYPE = new AnyBlockDatatype("block") {
 
         @Override
-        public AnyBlockValue holding(BlockStorage storage, int index) {
+        public AnyBlockValue wrap(BlockStorage storage, int index) {
             return new BlockValue(storage, index);
         }
 
@@ -22,15 +22,15 @@ public final class BlockValue extends AnyBlockValue {
         super(storage, index);
     }
 
-    public static BlockValue block(Value... items) {
+    public static BlockValue of(Value... items) {
         return new BlockValue(BlockStorage.of(items), 1);
     }
 
-    public static BlockValue block(List<Value> items) {
+    public static BlockValue of(List<Value> items) {
         return new BlockValue(new BlockStorage(items), 1);
     }
 
-    public static BlockValue over(BlockStorage storage) {
+    public static BlockValue wrapTheStorage(BlockStorage storage) {
         return new BlockValue(storage, 1);
     }
 
@@ -40,17 +40,17 @@ public final class BlockValue extends AnyBlockValue {
     }
 
     @Override
-    BlockValue sameKindOver(BlockStorage storage, int index) {
+    BlockValue makeTheSameKindOver(BlockStorage storage, int index) {
         return new BlockValue(storage, index);
     }
 
     @Override
     public BlockValue atIndex(int oneBasedIndex) {
-        return sameKindOver(storage(), oneBasedIndex);
+        return makeTheSameKindOver(storage(), oneBasedIndex);
     }
 
     @Override
-    public Value randomised(RandomDraw draw) {
+    public Value randomise(RandomDraw draw) {
         List<Value> items = new ArrayList<>(remaining());
         draw.shuffle(items);
         for (int at = 0; at < items.size(); at++) {
@@ -60,13 +60,13 @@ public final class BlockValue extends AnyBlockValue {
     }
 
     @Override
-    public Value pickedAtRandom(RandomDraw draw) {
+    public Value pickAtRandom(RandomDraw draw) {
         List<Value> items = remaining();
         return items.isEmpty() ? NoneValue.none() : items.get(draw.below(items.size()));
     }
 
     @Override
-    public BlockValue repeatedInABlock(Value times) {
+    public BlockValue repeatInABlock(Value times) {
         long count = times.asCountOfRepetitions();
         BlockStorage repeated = new BlockStorage();
         for (long round = 0; round < count; round++) {

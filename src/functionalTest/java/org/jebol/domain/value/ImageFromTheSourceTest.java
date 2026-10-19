@@ -15,7 +15,7 @@ class ImageFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -27,7 +27,7 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("a pair is a size, and the image it makes is opaque white")
-        void aPairIsASize() {
+        void takesAPairAsASize() {
             assertThat(answerTo("img: make image! 2x2 img/size")).isEqualTo("2x2");
             assertThat(answerTo("img: make image! 2x2 length? img")).isEqualTo("4");
             assertThat(answerTo("img: make image! 2x2 img/1")).isEqualTo("255.255.255.255");
@@ -35,22 +35,22 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("and a negative side is clamped to nothing rather than refused")
-        void aNegativeSideIsClamped() {
+        void clampsANegativeSide() {
             assertThat(answerTo("img: make image! -2x2 img/size")).isEqualTo("0x2");
             assertThat(answerTo("length? make image! -2x-2")).isEqualTo("0");
         }
 
         @Test
         @DisplayName("a side past 65535 is refused, and the error names the limit")
-        void anOversizedImageIsRefused() {
-            assertThat(errorIdFrom("make image! 65536x1")).isEqualTo("size-limit");
-            assertThat(errorIdFrom("make image! 1x65536")).isEqualTo("size-limit");
+        void refusesAnOversizedImage() {
+            assertThat(readTheErrorIdFrom("make image! 65536x1")).isEqualTo("size-limit");
+            assertThat(readTheErrorIdFrom("make image! 1x65536")).isEqualTo("size-limit");
             assertThat(answerTo("img: make image! 65535x1 img/size")).isEqualTo("65535x1");
         }
 
         @Test
         @DisplayName("a block is a size and then its contents: a binary of RGB triples")
-        void aBlockWithABinary() {
+        void readsABlockWithABinary() {
             assertThat(answerTo("img: make image! [2x1 #{FF0000 00FF00}] img/1"))
                     .isEqualTo("255.0.0.255");
             assertThat(answerTo("img: make image! [2x1 #{FF0000 00FF00}] img/2"))
@@ -59,7 +59,7 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("and a second binary is the alpha channel, one byte a pixel")
-        void aBlockWithAnAlphaBinary() {
+        void readsASecondBinaryAsAlpha() {
             assertThat(answerTo("img: make image! [2x1 #{FF0000 00FF00} #{8000}] img/1"))
                     .isEqualTo("255.0.0.128");
             assertThat(answerTo("img: make image! [2x1 #{FF0000 00FF00} #{8000}] img/2"))
@@ -68,7 +68,7 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("and an integer after those two is where the image starts")
-        void aBlockWithAnIndex() {
+        void readsAnIntegerAsTheStart() {
             assertThat(answerTo(
                     "img: make image! [3x1 #{FF0000 00FF00 0000FF} #{808080} 3] index? img"))
                     .isEqualTo("3");
@@ -79,7 +79,7 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("a tuple fills every pixel with that colour")
-        void aBlockWithATuple() {
+        void fillsEveryPixelWithATuple() {
             assertThat(answerTo("img: make image! [2x2 255.0.0] img/1"))
                     .isEqualTo("255.0.0.255");
             assertThat(answerTo("img: make image! [2x2 255.0.0] img/4"))
@@ -88,14 +88,14 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("and an integer after the tuple fills the alpha")
-        void aBlockWithATupleAndAlpha() {
+        void fillsTheAlphaAfterATuple() {
             assertThat(answerTo("img: make image! [2x2 255.0.0 128] img/1"))
                     .isEqualTo("255.0.0.128");
         }
 
         @Test
         @DisplayName("a block of colours is read as pixels and then refused anyway")
-        void aBlockOfTuplesIsRefused() {
+        void refusesABlockOfTuples() {
             assertThat(answerTo("""
                     e: try [make image! [2x1 [255.0.0 0.255.0]]] e/id"""))
                     .isEqualTo("malconstruct");
@@ -103,7 +103,7 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("an image is copied")
-        void anImageIsCopied() {
+        void copiesAnImage() {
             assertThat(answerTo(
                     "a: make image! [1x1 #{FF0000}] b: make image! a b/1: 0.0.255 a/1"))
                     .isEqualTo("255.0.0.255");
@@ -111,9 +111,9 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("and anything else is malconstructed")
-        void anythingElseIsRefused() {
-            assertThat(errorIdFrom("make image! \"2x2\"")).isEqualTo("malconstruct");
-            assertThat(errorIdFrom("make image! 5")).isEqualTo("malconstruct");
+        void refusesAnythingElse() {
+            assertThat(readTheErrorIdFrom("make image! \"2x2\"")).isEqualTo("malconstruct");
+            assertThat(readTheErrorIdFrom("make image! 5")).isEqualTo("malconstruct");
         }
     }
 
@@ -123,14 +123,14 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("a size and a binary of RGB triples")
-        void theOrdinaryForm() {
+        void writesASizeAndABinary() {
             assertThat(answerTo("mold make image! [1x1 #{FF0000}]"))
                     .isEqualTo("\"make image! [1x1 #{FF0000}]\"");
         }
 
         @Test
         @DisplayName("with the alpha binary only when a pixel needs one")
-        void theAlphaBinaryIsConditional() {
+        void addsAlphaOnlyWhenNeeded() {
             assertThat(answerTo("mold make image! 1x1"))
                     .isEqualTo("\"make image! [1x1 #{FFFFFF}]\"");
             assertThat(answerTo("mold make image! [1x1 #{FF0000} #{80}]"))
@@ -139,21 +139,21 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("and MOLD/ALL writes the construction form instead of MAKE")
-        void theConstructionForm() {
+        void writesTheConstructionFormUnderAll() {
             assertThat(answerTo("mold/all make image! [1x1 #{FF0000}]"))
                     .isEqualTo("\"#(image! 1x1 #{FF0000})\"");
         }
 
         @Test
         @DisplayName("an empty image molds as an empty binary")
-        void theEmptyImage() {
+        void writesAnEmptyBinaryForAnEmptyImage() {
             assertThat(answerTo("mold make image! 0x0"))
                     .isEqualTo("\"make image! [0x0 #{}]\"");
         }
 
         @Test
         @DisplayName("and molding starts where the image stands, not at its head")
-        void moldingFollowsThePosition() {
+        void startsWhereTheImageStands() {
             assertThat(answerTo("mold skip make image! [2x1 #{FF0000 00FF00}] 1"))
                     .isEqualTo("\"make image! [2x1 #{00FF00}]\"");
         }
@@ -165,7 +165,7 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("an integer picks the nth pixel, counted from where the image stands")
-        void anIntegerPicksAPixel() {
+        void arePickedByInteger() {
             assertThat(answerTo("img: make image! [2x1 #{FF0000 00FF00}] img/2"))
                     .isEqualTo("0.255.0.255");
             assertThat(answerTo(
@@ -175,7 +175,7 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("a pair picks by coordinate, one-based in both directions")
-        void aPairPicksByCoordinate() {
+        void arePickedByCoordinate() {
             assertThat(answerTo(
                     "img: make image! [2x2 #{FF0000 00FF00 0000FF 000000}] img/1x2"))
                     .isEqualTo("0.0.255.255");
@@ -183,40 +183,40 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("a position outside the image answers none, and refuses a write")
-        void outsideTheImage() {
+        void answerNoneOutsideTheImage() {
             assertThat(answerTo("img: make image! 1x1 none? img/5")).isEqualTo(TRUE);
             assertThat(answerTo("img: make image! 1x1 none? img/0")).isEqualTo(TRUE);
-            assertThat(errorIdFrom("img: make image! 1x1 img/5: 255.0.0"))
+            assertThat(readTheErrorIdFrom("img: make image! 1x1 img/5: 255.0.0"))
                     .isEqualTo("bad-path-set");
         }
 
         @Test
         @DisplayName("writing a tuple sets the colour")
-        void writingATuple() {
+        void takeATupleAsColour() {
             assertThat(answerTo("img: make image! 1x1 img/1: 1.2.3 img/1"))
                     .isEqualTo("1.2.3.255");
         }
 
         @Test
         @DisplayName("and writing an integer sets the alpha alone")
-        void writingAnIntegerSetsTheAlpha() {
+        void takeAnIntegerAsAlpha() {
             assertThat(answerTo("img: make image! [1x1 #{FF0000}] img/1: 128 img/1"))
                     .isEqualTo("255.0.0.128");
         }
 
         @Test
         @DisplayName("and an integer outside a byte is refused")
-        void anIntegerOutsideAByte() {
-            assertThat(errorIdFrom("img: make image! 1x1 img/1: 300"))
+        void refuseAnIntegerOutsideAByte() {
+            assertThat(readTheErrorIdFrom("img: make image! 1x1 img/1: 300"))
                     .isEqualTo("invalid-arg");
         }
 
         @Test
         @DisplayName("and one byte of a pixel can be written by number")
-        void writingOneByteOfAPixel() {
+        void takeOneByteByNumber() {
             assertThat(answerTo("img: make image! [1x1 #{FF0000}] img/1/2: 100 img/1"))
                     .isEqualTo("255.100.0.255");
-            assertThat(errorIdFrom("img: make image! 1x1 img/1/5: 100"))
+            assertThat(readTheErrorIdFrom("img: make image! 1x1 img/1/5: 100"))
                     .isEqualTo("bad-path-set");
         }
     }
@@ -227,7 +227,7 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("size, width and height")
-        void theShapeWords() {
+        void includeTheShapeWords() {
             assertThat(answerTo("img: make image! 3x2 img/size")).isEqualTo("3x2");
             assertThat(answerTo("img: make image! 3x2 img/width")).isEqualTo("3");
             assertThat(answerTo("img: make image! 3x2 img/height")).isEqualTo("2");
@@ -235,7 +235,7 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("rgb answers three bytes a pixel and rgba four")
-        void theChannelWords() {
+        void includeTheChannelWords() {
             assertThat(answerTo("img: make image! [1x1 #{FF8000}] img/rgb"))
                     .isEqualTo("#{FF8000}");
             assertThat(answerTo("img: make image! [1x1 #{FF8000} #{40}] img/rgba"))
@@ -244,15 +244,15 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("and alpha answers one byte a pixel")
-        void theAlphaWord() {
+        void includeTheAlphaWord() {
             assertThat(answerTo("img: make image! [2x1 #{FF0000 00FF00} #{8040}] img/alpha"))
                     .isEqualTo("#{8040}");
         }
 
         @Test
         @DisplayName("a word it does not know is a bad selector")
-        void anUnknownWord() {
-            assertThat(errorIdFrom("img: make image! 1x1 img/nonsense"))
+        void refuseAnUnknownWord() {
+            assertThat(readTheErrorIdFrom("img: make image! 1x1 img/nonsense"))
                     .isEqualTo("invalid-path");
         }
     }
@@ -263,7 +263,7 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("counted in pixels, from where it stands")
-        void countedInPixels() {
+        void countsInPixels() {
             assertThat(answerTo("length? make image! 3x2")).isEqualTo("6");
             assertThat(answerTo("length? skip make image! 3x2 2")).isEqualTo("4");
             assertThat(answerTo("index? skip make image! 3x2 2")).isEqualTo("3");
@@ -271,13 +271,13 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("and skipping keeps the width, so the image does not change shape")
-        void skippingKeepsTheShape() {
+        void keepsTheShapeWhenSkipping() {
             assertThat(answerTo("img: skip make image! 3x2 2 img/size")).isEqualTo("3x2");
         }
 
         @Test
         @DisplayName("head, tail and the questions about them")
-        void theNavigationArms() {
+        void navigatesToHeadAndTail() {
             assertThat(answerTo("index? head skip make image! 3x2 2")).isEqualTo("1");
             assertThat(answerTo("index? tail make image! 3x2")).isEqualTo("7");
             assertThat(answerTo("tail? tail make image! 3x2")).isEqualTo(TRUE);
@@ -287,7 +287,7 @@ class ImageFromTheSourceTest {
 
         @Test
         @DisplayName("AT takes a pair as a coordinate as well as a number")
-        void atTakesAPair() {
+        void takesAPairForAt() {
             assertThat(answerTo("index? at make image! 3x2 2x2")).isEqualTo("5");
         }
 

@@ -11,7 +11,7 @@ class JavaClipboardOnAMachineWithoutOneTest {
 
     private static final String HEADLESS = "java.awt.headless";
 
-    private static <T> T withNoWindowingSystem(java.util.function.Supplier<T> asking) {
+    private static <T> T runWithNoWindowingSystem(java.util.function.Supplier<T> asking) {
         String before = System.getProperty(HEADLESS);
         System.setProperty(HEADLESS, "true");
         try {
@@ -27,8 +27,8 @@ class JavaClipboardOnAMachineWithoutOneTest {
 
     @Test
     @DisplayName("reading refuses rather than throwing something the domain cannot read")
-    void readingRefuses() {
-        assertThatThrownBy(() -> withNoWindowingSystem(
+    void refusesToRead() {
+        assertThatThrownBy(() -> runWithNoWindowingSystem(
                 () -> new JavaClipboard().read()))
                 .isInstanceOf(ClipboardPort.Unreachable.class)
                 .hasMessageContaining("no clipboard to reach");
@@ -36,16 +36,16 @@ class JavaClipboardOnAMachineWithoutOneTest {
 
     @Test
     @DisplayName("and the reason says what went wrong rather than the word null")
-    void theReasonIsReadable() {
-        assertThatThrownBy(() -> withNoWindowingSystem(
+    void givesAReadableReason() {
+        assertThatThrownBy(() -> runWithNoWindowingSystem(
                 () -> new JavaClipboard().read()))
                 .hasMessageNotContaining("null");
     }
 
     @Test
     @DisplayName("writing refuses the same way")
-    void writingRefuses() {
-        assertThatThrownBy(() -> withNoWindowingSystem(() -> {
+    void refusesToWrite() {
+        assertThatThrownBy(() -> runWithNoWindowingSystem(() -> {
             new JavaClipboard().write("anything");
             return null;
         })).isInstanceOf(ClipboardPort.Unreachable.class);
@@ -53,7 +53,7 @@ class JavaClipboardOnAMachineWithoutOneTest {
 
     @Test
     @DisplayName("the clipboard nobody gave refuses both ways too")
-    void theClipboardNobodyGave() {
+    void refusesTheClipboardNobodyGave() {
         assertThatThrownBy(() -> ClipboardPort.none().read())
                 .isInstanceOf(ClipboardPort.Unreachable.class);
         assertThatThrownBy(() -> ClipboardPort.none().write("x"))

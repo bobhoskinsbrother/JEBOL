@@ -156,21 +156,21 @@ public final class LocalTlsServer implements AutoCloseable {
 
         @Override
         public String chooseServerAlias(String keyType, Principal[] issuers, Socket socket) {
-            return alias(keyType);
+            return chooseTheAlias(keyType);
         }
 
         @Override
         public String chooseEngineServerAlias(String keyType, Principal[] issuers, SSLEngine engine) {
-            return alias(keyType);
+            return chooseTheAlias(keyType);
         }
 
-        private String alias(String keyType) {
+        private String chooseTheAlias(String keyType) {
             return keyType.equals(identity.key().getAlgorithm()) ? ALIAS : null;
         }
 
         @Override
         public String[] getServerAliases(String keyType, Principal[] issuers) {
-            String alias = alias(keyType);
+            String alias = chooseTheAlias(keyType);
             return alias == null ? new String[0] : new String[] {alias};
         }
 

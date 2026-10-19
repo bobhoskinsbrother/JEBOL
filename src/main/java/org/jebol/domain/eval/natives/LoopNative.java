@@ -19,8 +19,8 @@ public class LoopNative extends LoopingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("count", TypesetValue.NUMBER.members()),
-                Parameter.required("body", A_BLOCK));
+        return List.of(Parameter.of("count", TypesetValue.NUMBER.members()),
+                Parameter.of("body", A_BLOCK));
     }
 
     @Override
@@ -31,7 +31,7 @@ public class LoopNative extends LoopingNative {
             return answerOfTheLoop(() -> {
                 Value last = NoneValue.none();
                 for (long pass = 0; pass < passes; pass++) {
-                    last = oneRoundCatchingContinue(evaluator, body, evaluator.systemContext());
+                    last = runOneRoundCatchingContinue(evaluator, body, evaluator.systemContext());
                 }
                 return last;
             });

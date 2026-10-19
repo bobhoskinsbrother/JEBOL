@@ -21,26 +21,26 @@ public final class GobText {
 
     public GobText(GobValue gob, TextMeasure measure) {
         this.gob = gob;
-        this.line = theLineOf(gob);
-        this.lines = new TextLines(line.runs(), measure, line.layout().roomForEachLine(theGobsOwnBox()));
+        this.line = readTheLineOf(gob);
+        this.lines = new TextLines(line.runs(), measure, line.layout().measureTheRoomForEachLine(findTheGobsOwnBox()));
     }
 
-    private RichText.Line theLineOf(GobValue written) {
+    private RichText.Line readTheLineOf(GobValue written) {
         return switch (written.storage().contentKind()) {
-            case TEXT -> written.storage().contentIfKind(GobStorage.Content.TEXT) instanceof AnyBlockValue rich
+            case TEXT -> written.storage().readTheContentIfKind(GobStorage.Content.TEXT) instanceof AnyBlockValue rich
                     ? new RichText(Colour.BLACK).lineIn(rich)
-                    : nothingWritten();
-            case STRING -> written.storage().contentIfKind(GobStorage.Content.STRING) instanceof AnyStringValue plain
+                    : writeNothing();
+            case STRING -> written.storage().readTheContentIfKind(GobStorage.Content.STRING) instanceof AnyStringValue plain
                     ? new RichText.Line(
                             List.of(new TextRun(plain.text(), Colour.BLACK,
                                     PaintInstruction.Writing.THE_ORDINARY_SIZE, false, false)),
                             List.of(A_PLAIN_STRINGS_PLACE), TextLayout.STANDARD, TextCaret.NONE)
-                    : nothingWritten();
-            default -> nothingWritten();
+                    : writeNothing();
+            default -> writeNothing();
         };
     }
 
-    private RichText.Line nothingWritten() {
+    private RichText.Line writeNothing() {
         return new RichText.Line(List.of(), List.of(), TextLayout.STANDARD, TextCaret.NONE);
     }
 
@@ -52,33 +52,33 @@ public final class GobText {
         return line.layout();
     }
 
-    public Placement theGobsOwnBox() {
+    public Placement findTheGobsOwnBox() {
         int wide = (int) Math.round(gob.storage().size().x());
         int high = (int) Math.round(gob.storage().size().y());
-        return new Placement(0, 0, wide, high, ClipRectangle.wholeSurface(Math.max(1, wide), Math.max(1, high)),
+        return new Placement(0, 0, wide, high, ClipRectangle.coverTheWholeSurface(Math.max(1, wide), Math.max(1, high)),
                 Placement.OPAQUE);
     }
 
-    public int theRunAt(int placeInTheBlock) {
-        return line.theRunAt(placeInTheBlock).orElse(line.runs().size());
+    public int findTheRunAt(int placeInTheBlock) {
+        return line.findTheRunAt(placeInTheBlock).orElse(line.runs().size());
     }
 
-    public Optional<AnyBlockValue> theBlockAtTheCaret(TextLines.RunAndCharacter caret) {
+    public Optional<AnyBlockValue> findTheBlockAtTheCaret(TextLines.RunAndCharacter caret) {
         if (caret.isNowhere()) {
             return Optional.empty();
         }
         int place = line.placeOfEachRun().get(caret.run());
-        List<Value> copied = new ArrayList<>(theRichTextAsWritten());
+        List<Value> copied = new ArrayList<>(readTheRichTextAsWritten());
         if (copied.get(place - 1) instanceof AnyStringValue written) {
             copied.set(place - 1, written.atIndex(caret.character() + 1));
         }
-        return Optional.of(BlockValue.block(copied).atIndex(place));
+        return Optional.of(BlockValue.of(copied).atIndex(place));
     }
 
-    private List<Value> theRichTextAsWritten() {
+    private List<Value> readTheRichTextAsWritten() {
         Value content = gob.storage().contentKind() == GobStorage.Content.TEXT
-                ? gob.storage().contentIfKind(GobStorage.Content.TEXT)
-                : gob.storage().contentIfKind(GobStorage.Content.STRING);
+                ? gob.storage().readTheContentIfKind(GobStorage.Content.TEXT)
+                : gob.storage().readTheContentIfKind(GobStorage.Content.STRING);
         if (content instanceof AnyBlockValue rich) {
             return rich.storage().snapshot();
         }

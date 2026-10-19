@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ConsoleContinuationTest {
 
-    private ConsoleContinuation afterReading(String... lines) {
+    private ConsoleContinuation read(String... lines) {
         ConsoleContinuation continuation = new ConsoleContinuation();
         for (String line : lines) {
             continuation.read(line + "\n");
@@ -30,10 +30,10 @@ class ConsoleContinuationTest {
             `{a^}`       | {
             """)
     void waitsWithTheInnermostOpening(String line, char open) {
-        ConsoleContinuation continuation = afterReading(line);
+        ConsoleContinuation continuation = read(line);
 
-        assertThat(continuation.waitingForMore()).isTrue();
-        assertThat(continuation.whatIsStillOpen()).isEqualTo(open);
+        assertThat(continuation.isWaitingForMore()).isTrue();
+        assertThat(continuation.findWhatIsStillOpen()).isEqualTo(open);
     }
 
     @ParameterizedTest(name = "{0} is complete")
@@ -55,38 +55,38 @@ class ConsoleContinuationTest {
             `"[`
             """)
     void isComplete(String line) {
-        assertThat(afterReading(line).waitingForMore()).isFalse();
+        assertThat(read(line).isWaitingForMore()).isFalse();
     }
 
     @Test
     @DisplayName("a string spanning lines is followed to its close")
-    void aBraceSpansLines() {
-        assertThat(afterReading("{abc", "def").waitingForMore()).isTrue();
-        assertThat(afterReading("{abc", "def}").waitingForMore()).isFalse();
+    void spansLinesWithABrace() {
+        assertThat(read("{abc", "def").isWaitingForMore()).isTrue();
+        assertThat(read("{abc", "def}").isWaitingForMore()).isFalse();
     }
 
     @Test
     @DisplayName("a raw string closes only on as many percents as opened it")
-    void aRawStringNeedsItsPercents() {
-        assertThat(afterReading("%%{a", "}%").waitingForMore()).isTrue();
-        assertThat(afterReading("%%{a", "}%%").waitingForMore()).isFalse();
+    void needsTheRawStringsPercents() {
+        assertThat(read("%%{a", "}%").isWaitingForMore()).isTrue();
+        assertThat(read("%%{a", "}%%").isWaitingForMore()).isFalse();
     }
 
     @Test
     @DisplayName("1024 openings are each remembered, and the 1025th shows a dash")
     void deeperThanItRemembers() {
-        assertThat(afterReading("(".repeat(1024)).whatIsStillOpen()).isEqualTo('(');
-        assertThat(afterReading("[".repeat(1023) + "(").whatIsStillOpen()).isEqualTo('(');
-        assertThat(afterReading("(".repeat(1025)).whatIsStillOpen()).isEqualTo('-');
+        assertThat(read("(".repeat(1024)).findWhatIsStillOpen()).isEqualTo('(');
+        assertThat(read("[".repeat(1023) + "(").findWhatIsStillOpen()).isEqualTo('(');
+        assertThat(read("(".repeat(1025)).findWhatIsStillOpen()).isEqualTo('-');
     }
 
     @Test
     @DisplayName("taking the input forgets what was open")
-    void takingTheInputForgets() {
-        ConsoleContinuation continuation = afterReading("[[[");
+    void forgetsOnceTheInputIsTaken() {
+        ConsoleContinuation continuation = read("[[[");
 
-        continuation.inputTaken();
+        continuation.takeTheInput();
 
-        assertThat(continuation.waitingForMore()).isFalse();
+        assertThat(continuation.isWaitingForMore()).isFalse();
     }
 }

@@ -14,7 +14,7 @@ class LoadAndMoldFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -37,7 +37,7 @@ class LoadAndMoldFromTheSourceTest {
     @Test
     @DisplayName("LOAD of bytes that are not UTF-8 raises invalid-chars")
     void loadOfInvalidBytesRaises() {
-        assertThat(errorIdOf("""
+        assertThat(readTheErrorIdOf("""
                 load #{789DE3}""")).isEqualTo("invalid-chars");
     }
 

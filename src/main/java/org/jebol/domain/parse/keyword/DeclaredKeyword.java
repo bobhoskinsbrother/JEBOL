@@ -30,7 +30,7 @@ abstract class DeclaredKeyword implements ParseKeyword {
     }
 
     @Override
-    public final WhenNothingFollowsIt whenNothingFollowsIt() {
+    public final WhenNothingFollowsIt describeWhenNothingFollows() {
         return whenNothingFollowsIt;
     }
 }

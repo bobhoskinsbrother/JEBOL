@@ -28,7 +28,7 @@ class DesktopWindowsTest {
 
         @Test
         @DisplayName("every request refuses rather than throwing an AWTError")
-        void everyRequestRefuses() {
+        void refusesEveryRequest() {
             WindowPort screen = DesktopWindows.onThisMachine();
 
             assertThatExceptionOfType(WindowPort.Denied.class)
@@ -47,7 +47,7 @@ class DesktopWindowsTest {
 
         @Test
         @DisplayName("the refusal says there is no screen, not that one was withheld")
-        void theRefusalSaysWhy() {
+        void saysWhyItRefuses() {
             WindowPort screen = DesktopWindows.onThisMachine();
 
             assertThatExceptionOfType(WindowPort.Denied.class)
@@ -57,7 +57,7 @@ class DesktopWindowsTest {
 
         @Test
         @DisplayName("and reaches a script as a catchable error, not a throwable")
-        void theRefusalReachesTheScriptAsAnError() {
+        void raisesTheRefusalInTheScript() {
             Interpreter interpreter = Interpreter.withBounds(
                     Bounds.standard().grant(HostService.WINDOWS));
             interpreter.useWindows(DesktopWindows.onThisMachine());
@@ -76,13 +76,13 @@ class DesktopWindowsTest {
 
         @Test
         @DisplayName("the adapter is a WindowPort, so a host can hand it straight over")
-        void itFitsThePort() {
+        void fitsThePort() {
             assertThat(DesktopWindows.onThisMachine()).isInstanceOf(WindowPort.class);
         }
 
         @Test
         @DisplayName("granting the service without handing over a screen still refuses")
-        void theGrantAloneIsNotEnough() {
+        void needsMoreThanTheGrant() {
             Interpreter granted = Interpreter.withBounds(
                     Bounds.standard().grant(HostService.WINDOWS));
 
@@ -94,7 +94,7 @@ class DesktopWindowsTest {
 
         @Test
         @DisplayName("a declined dialog is an empty answer, which the port models as empty")
-        void decliningIsModelledAsEmpty() {
+        void modelsDecliningAsEmpty() {
             WindowPort declining = new WindowPort() {
                 @Override
                 public void browse(String target) {
@@ -137,7 +137,7 @@ class DesktopWindowsTest {
 
     @Test
     @DisplayName("this build knows whether it has a display, so the skips are honest")
-    void theHeadlessCheckIsMeaningful() {
+    void checksHeadlessnessMeaningfully() {
         assertThat(GraphicsEnvironment.isHeadless())
                 .as("headless here: %s", GraphicsEnvironment.isHeadless())
                 .isIn(true, false);

@@ -12,7 +12,7 @@ Two things follow, and between them they are most of the language.
 
 **The datatypes are in the notation.** A date, a time, money, an email
 address, a file, a URL, a tag, a pair of coordinates and a run of bytes are
-each written directly, and each behaves as itself:
+each text directly, and each behaves as itself:
 
 ```
 >> 12-Jan-2026 + 30
@@ -22,7 +22,7 @@ each written directly, and each behaves as itself:
 ```
 
 No parsing step and no date library, because the reader already knew what it
-was reading. Fifty-eight datatypes, most of them written like this.
+was reading. Fifty-eight datatypes, most of them text like this.
 
 **A block doesn't mean anything until meaning is given.** `[deposit 100
 withdraw 30]` is four values and nothing else until a function decides what
@@ -47,9 +47,9 @@ does with a block and a function.
 A port of [Oldes' Rebol3](https://github.com/Oldes/Rebol3), version 3.22.5, to
 Java: an ordinary jar with no dependencies, running on any JDK 25.
 
-```
-$ ./gradlew jar
-$ java -jar build/libs/jebol-3.22.5.jar
+```commandline
+./gradlew jar
+java -jar build/libs/jebol-3.22.5.jar
 ╔══════════════════════════════════════════════════════════════════════════╗
 ║  REBOL/core 3.22.5 (JEBOL port)                                          ║
 ...
@@ -68,11 +68,11 @@ $ java -jar build/libs/jebol-3.22.5.jar
 A script file goes on the command line, one expression goes after `--do`, and
 standard input pipes into the console.
 
-```
-$ java -jar build/libs/jebol-3.22.5.jar my-script.reb
-$ java -jar build/libs/jebol-3.22.5.jar my-app/
-$ java -jar build/libs/jebol-3.22.5.jar --do "print 1 + 2"
-$ cat my-script.reb | java -jar build/libs/jebol-3.22.5.jar
+```commandline
+java -jar build/libs/jebol-3.22.5.jar my-script.reb
+java -jar build/libs/jebol-3.22.5.jar my-app/
+java -jar build/libs/jebol-3.22.5.jar --do "print 1 + 2"
+cat my-script.reb | java -jar build/libs/jebol-3.22.5.jar
 ```
 
 A directory is an app: it runs the `main.reb` inside it, with the app as the
@@ -172,7 +172,7 @@ Rebol's own library: `join`, `collect`, `split`, the codecs, the port schemes,
 declaration does not say. `scripts/runtime-parity.py` asks two *running*
 interpreters instead — what datatype each function reports itself as, what
 `words-of` gives back, and its specification text for text — and when it was
-first written most of Rebol's library answered differently here. `goals.md`
+first text most of Rebol's library answered differently here. `goals.md`
 records what both last said, and they should be read together or not at all.
 
 That second script compared the *length* of a specification until September
@@ -259,7 +259,7 @@ Things to note:
   rather than from the C. That is confidentiality against somebody listening
   and nothing against somebody in the middle.
 - **Twenty-eight of Rebol's error ids cannot be raised here**, and every one of
-  them has a written reason — twenty-four are ids a real 3.22.5 cannot raise
+  them has a text reason — twenty-four are ids a real 3.22.5 cannot raise
   either.
 - **`midi` is registered and has no instrument behind it yet** (goal 7).
   `query midi:// 'devices-in` lists nothing and `open midi://1` is refused, as
@@ -289,7 +289,7 @@ running out of time.
 
 ```java
 Interpreter interpreter = Interpreter.withBounds(
-        Bounds.standard().withWallClockLimit(Duration.ofMillis(200)));
+        Bounds.standard().withTimeLimit(Duration.ofMillis(200)));
 
 ScriptOutcome outcome = interpreter.run("while [true] [1]");
 // outcome.conclusion() == Conclusion.TIMED_OUT, and the interpreter still works

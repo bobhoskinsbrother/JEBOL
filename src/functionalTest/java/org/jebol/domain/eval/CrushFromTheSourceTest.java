@@ -21,14 +21,14 @@ class CrushFromTheSourceTest {
 
         @Test
         @DisplayName("nothing is its own length and no more")
-        void nothingIsFourBytes() {
+        void takeFourBytesForNothing() {
             assertThat(answerTo("""
                     compress/level "" 'crush 0""")).isEqualTo("#{00000000}");
         }
 
         @Test
         @DisplayName("something with a pattern in it, at the lowest level")
-        void somethingWithAPattern() {
+        void shrinkSomethingWithAPattern() {
             assertThat(answerTo("""
                     compress/level "test test test" 'crush 0"""))
                     .isEqualTo("#{0E000000E894994307A40201}");
@@ -36,7 +36,7 @@ class CrushFromTheSourceTest {
 
         @Test
         @DisplayName("and text with no pattern comes out longer than it went in")
-        void noPatternComesOutLonger() {
+        void growWithNoPattern() {
             assertThat(answerTo("""
                     reduce [
                         compress "1234" 'crush
@@ -49,7 +49,7 @@ class CrushFromTheSourceTest {
 
         @Test
         @DisplayName("the first four bytes are the length, little endian")
-        void theFirstFourBytesAreTheLength() {
+        void startWithTheLength() {
             assertThat(answerTo("""
                     copy/part compress "123456789ABCDEFGH" 'crush 4"""))
                     .isEqualTo("#{11000000}");
@@ -62,7 +62,7 @@ class CrushFromTheSourceTest {
 
         @Test
         @DisplayName("what went in comes out, at every level")
-        void whatWentInComesOut() {
+        void givesBackWhatWentIn() {
             assertThat(answerTo("""
                     text: {Lorem ipsum dolor sit amet, consectetur adipisici elit,
                     sed eiusmod tempor incidunt ut labore et dolore magna aliqua.}
@@ -76,14 +76,14 @@ class CrushFromTheSourceTest {
 
         @Test
         @DisplayName("and nothing comes back as nothing")
-        void nothingComesBackAsNothing() {
+        void givesBackNothingForNothing() {
             assertThat(answerTo("""
                     decompress compress "" 'crush 'crush""")).isEqualTo("#{}");
         }
 
         @Test
         @DisplayName("/SIZE stops early, which is how the front is read on its own")
-        void sizeStopsEarly() {
+        void stopsEarlyForSize() {
             assertThat(answerTo("""
                     packed: compress "test test test" 'crush
                     decompress/size packed 'crush 4""")).isEqualTo("#{74657374}");
@@ -114,7 +114,7 @@ class CrushFromTheSourceTest {
 
         @Test
         @DisplayName("the catalogue lists it, and COMPRESS answers to it")
-        void theCatalogueListsIt() {
+        void isListedInTheCatalogue() {
             assertThat(answerTo("""
                     reduce [
                         true? find system/catalog/compressions 'crush
@@ -124,7 +124,7 @@ class CrushFromTheSourceTest {
 
         @Test
         @DisplayName("and the two this build has not got still say so")
-        void theOthersStillSayFeatureNa() {
+        void leavesTheOthersSayingFeatureNa() {
             assertThat(answerTo("""
                     collect [
                         foreach method [lz4 lzav][

@@ -27,10 +27,10 @@ public class UnfilterNative extends PngFilterNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("data", Set.of(BinaryValue.TYPE)),
-                Parameter.required("width", aWidth()),
-                Parameter.belongingTo("as", "type", aFilterType()),
-                Parameter.belongingTo("skip", "bpp", Set.of(IntegerValue.TYPE)));
+                Parameter.of("data", Set.of(BinaryValue.TYPE)),
+                Parameter.of("width", acceptAWidth()),
+                Parameter.belongTo("as", "type", acceptAFilterType()),
+                Parameter.belongTo("skip", "bpp", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -42,15 +42,15 @@ public class UnfilterNative extends PngFilterNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
-            int width = theWidthIn(arguments.get(1));
+            int width = readTheWidthIn(arguments.get(1));
             boolean filterGiven = refinements.contains("as");
             requireTheLinesFit(filterGiven ? width : width + THE_BYTE_NAMING_THE_FILTER,
                     data.length, arguments, refinements);
-            int filter = argumentOf("as", 0, arguments, refinements)
-                    .map(this::theFilterNamedBy)
+            int filter = readTheArgumentOf("as", 0, arguments, refinements)
+                    .map(this::readTheFilterNamedBy)
                     .orElse(EACH_LINE_NAMES_ITS_OWN_FILTER);
-            return BinaryValue.ofBytes(encodings.pngUnfiltered(
-                    data, width, filter, bytesPerPixelIn(arguments, refinements)));
+            return BinaryValue.ofBytes(encodings.pngUnfilter(
+                    data, width, filter, readTheBytesPerPixelIn(arguments, refinements)));
         };
     }
 }

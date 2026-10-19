@@ -25,7 +25,7 @@ public final class Transcoder {
         return new String(codepoints, begins, spans.get(last).to() - begins);
     }
 
-    public static List<SourceSpan> topLevelSpans(String source) {
+    public static List<SourceSpan> findTheTopLevelSpans(String source) {
         if (source == null) {
             throw new IllegalArgumentException("nothing to read: source was null");
         }
@@ -38,8 +38,8 @@ public final class Transcoder {
         List<SourceSpan> spans = new ArrayList<>();
         int[] codepoints = source.codePoints().toArray();
         for (int at = 0; at < reader.scanner.topStarts().size(); at++) {
-            int from = reader.codepointAt(reader.scanner.topStarts().get(at));
-            int to = reader.codepointAt(reader.scanner.topEnds().get(at));
+            int from = reader.readTheCodepointAt(reader.scanner.topStarts().get(at));
+            int to = reader.readTheCodepointAt(reader.scanner.topEnds().get(at));
             spans.add(new SourceSpan(new String(codepoints, from, to - from), from, to));
         }
         return List.copyOf(spans);
@@ -64,7 +64,7 @@ public final class Transcoder {
         if (errors == Errors.STAND_IN_FOR_THE_VALUE) {
             reader.scanner.relax();
         }
-        return reader.reading();
+        return reader.beginReading();
     }
 
     public enum Errors {
@@ -86,7 +86,7 @@ public final class Transcoder {
             Set<Integer> positionsThatBeginALine) {
 
         public AnyBlockValue asABlock() {
-            AnyBlockValue block = BlockValue.block(valuesReadBeforeStopping);
+            AnyBlockValue block = BlockValue.of(valuesReadBeforeStopping);
             for (int position : positionsThatBeginALine) {
                 block.storage().setLineBreakAt(position, true);
             }
@@ -127,30 +127,30 @@ public final class Transcoder {
         codepointAtByte[encoded.length] = codepoint;
     }
 
-    private int codepointAt(int byteOffset) {
+    private int readTheCodepointAt(int byteOffset) {
         return codepointAtByte[Math.max(0, Math.min(byteOffset, codepointAtByte.length - 1))];
     }
 
-    private Reading reading() {
+    private Reading beginReading() {
         try {
             SourceScanner.ScannedBlock whole = scanner.scanTheWholeSource();
-            return new Reading(whole.values(), Optional.empty(), codepointAt(scanner.end()),
+            return new Reading(whole.values(), Optional.empty(), readTheCodepointAt(scanner.end()),
                     scanner.lineCount(), scanner.topLineStarts());
         } catch (ScanFailure malformed) {
             return new Reading(List.copyOf(scanner.topValues()), Optional.of(malformed.asAFailure()),
-                    codepointAt(scanner.end()), scanner.lineCount(), scanner.topLineStarts());
+                    readTheCodepointAt(scanner.end()), scanner.lineCount(), scanner.topLineStarts());
         }
     }
 
     private static final class OnlyFindingWhereValuesAre implements Construction {
 
         @Override
-        public Value madeOf(Datatype datatype, Value specification) {
+        public Value make(Datatype datatype, Value specification) {
             return NoneValue.none();
         }
 
         @Override
-        public Value functionMadeFrom(AnyBlockValue spec, AnyBlockValue body) {
+        public Value makeAFunction(AnyBlockValue spec, AnyBlockValue body) {
             return NoneValue.none();
         }
     }

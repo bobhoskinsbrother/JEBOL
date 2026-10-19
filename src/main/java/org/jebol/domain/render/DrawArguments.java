@@ -12,30 +12,30 @@ import java.util.Optional;
 
 final class DrawArguments {
 
-    List<PairValue> everyPairIn(List<Value> arguments) {
+    List<PairValue> collectEveryPairIn(List<Value> arguments) {
         return arguments.stream()
                 .filter(PairValue.class::isInstance)
                 .map(PairValue.class::cast)
                 .toList();
     }
 
-    Optional<Colour> colourAt(List<Value> arguments, int slot) {
+    Optional<Colour> readTheColourAt(List<Value> arguments, int slot) {
         return slot < arguments.size() && arguments.get(slot) instanceof TupleValue parts
                 ? Optional.of(Colour.ofTuple(parts))
                 : Optional.empty();
     }
 
-    Optional<Colour> colourIn(List<Value> arguments) {
-        return colourAt(arguments, 0);
+    Optional<Colour> findTheColourIn(List<Value> arguments) {
+        return readTheColourAt(arguments, 0);
     }
 
-    Optional<PairValue> pairAt(List<Value> arguments, int slot) {
+    Optional<PairValue> readThePairAt(List<Value> arguments, int slot) {
         return slot < arguments.size() && arguments.get(slot) instanceof PairValue pair
                 ? Optional.of(pair)
                 : Optional.empty();
     }
 
-    Optional<Double> numberAt(List<Value> arguments, int slot) {
+    Optional<Double> readTheNumberAt(List<Value> arguments, int slot) {
         if (slot >= arguments.size()) {
             return Optional.empty();
         }
@@ -46,13 +46,13 @@ final class DrawArguments {
         };
     }
 
-    Optional<String> wordAt(List<Value> arguments, int slot) {
+    Optional<String> readTheWordAt(List<Value> arguments, int slot) {
         return slot < arguments.size() && arguments.get(slot) instanceof AnyWordValue word
                 ? Optional.of(word.canonical())
                 : Optional.empty();
     }
 
-    double numberIn(List<Value> arguments, double whenAbsent) {
+    double findTheNumberIn(List<Value> arguments, double whenAbsent) {
         for (Value each : arguments) {
             if (each instanceof AnyDecimalValue fraction) {
                 return fraction.quantity();
@@ -64,7 +64,7 @@ final class DrawArguments {
         return whenAbsent;
     }
 
-    List<Double> everyNumberIn(List<Value> arguments) {
+    List<Double> collectEveryNumberIn(List<Value> arguments) {
         return arguments.stream()
                 .filter(one -> one instanceof AnyDecimalValue || one instanceof IntegerValue)
                 .map(this::asNumber)

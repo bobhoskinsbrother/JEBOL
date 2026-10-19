@@ -14,7 +14,7 @@ public final class WebDigestPorts {
     private WebDigestPorts() {
     }
 
-    public static DigestPort theOneForThisBuild() {
+    public static DigestPort chooseTheOneForThisBuild() {
         return new TheBrowsersDigests();
     }
 
@@ -53,18 +53,18 @@ public final class WebDigestPorts {
         public byte[] digestOf(String method, byte[] octets) {
             require(method);
             WhatCameBack answer = jebolDigest(method, asATypedArray(octets)).await();
-            return theBytesOf(answer);
+            return readTheBytesOf(answer);
         }
 
         @Override
-        public byte[] keyedDigestOf(String method, byte[] octets, byte[] key) {
+        public byte[] digestWithAKey(String method, byte[] octets, byte[] key) {
             require(method);
             WhatCameBack answer =
                     jebolKeyedDigest(method, asATypedArray(key), asATypedArray(octets)).await();
-            return theBytesOf(answer);
+            return readTheBytesOf(answer);
         }
 
-        private static byte[] theBytesOf(WhatCameBack answer) {
+        private static byte[] readTheBytesOf(WhatCameBack answer) {
             if (answer.getFailed() != null) {
                 throw new Refused("feature-na", answer.getFailed());
             }

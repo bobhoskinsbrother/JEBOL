@@ -67,7 +67,7 @@ class ClampDistanceFactorialFromTheSourceTest {
 
         @Test
         @DisplayName("money, which is compared rather than clipped")
-        void money() {
+        void clampsMoney() {
             assertThat(answerTo("clamp $5 $1 $3")).isEqualTo("$3");
             assertThat(answerTo("clamp $0 $1 $3")).isEqualTo("$1");
             assertThat(answerTo("clamp $2 $1 $3")).isEqualTo("$2");
@@ -75,13 +75,13 @@ class ClampDistanceFactorialFromTheSourceTest {
 
         @Test
         @DisplayName("bounds written the wrong way round answer the lower one")
-        void reversedBoundsAnswerTheMinimum() {
+        void answersTheMinimumForReversedBounds() {
             assertThat(answerTo("clamp 5 3 1")).isEqualTo("3");
         }
 
         @Test
         @DisplayName("a bound of a different type is refused rather than converted")
-        void amixedBoundIsRefused() {
+        void refusesAMixedBound() {
             assertThat(answerTo("error? try [clamp 5 1.0 3]")).isEqualTo("#(true)");
             assertThat(answerTo("error? try [clamp 5 1 3.0]")).isEqualTo("#(true)");
             assertThat(answerTo("error? try [clamp 1x1 0 4]")).isEqualTo("#(true)");
@@ -103,7 +103,7 @@ class ClampDistanceFactorialFromTheSourceTest {
 
         @Test
         @DisplayName("as the crow flies")
-        void asTheCrowFlies() {
+        void measuresAsTheCrowFlies() {
             assertThat(answerTo("distance 0x0 3x4")).isEqualTo("5.0");
         }
 
@@ -171,13 +171,13 @@ class ClampDistanceFactorialFromTheSourceTest {
 
         @Test
         @DisplayName("a hundred and seventy still answers")
-        void ahundredAndSeventyAnswers() {
+        void answersForAHundredAndSeventy() {
             assertThat(answerTo("decimal? factorial 170")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and a hundred and seventy-one is refused rather than infinity")
-        void ahundredAndSeventyOneIsRefused() {
+        void refusesAHundredAndSeventyOne() {
             assertThat(answerTo("error? try [factorial 171]")).isEqualTo("#(true)");
         }
 
@@ -189,7 +189,7 @@ class ClampDistanceFactorialFromTheSourceTest {
 
         @Test
         @DisplayName("and both refusals say the value was out of range")
-        void bothRefusalsNameTheRange() {
+        void namesTheRangeInBothRefusals() {
             assertThat(answerTo("e: try [factorial 171] e/id")).isEqualTo("out-of-range");
             assertThat(answerTo("e: try [factorial -1] e/id")).isEqualTo("out-of-range");
         }

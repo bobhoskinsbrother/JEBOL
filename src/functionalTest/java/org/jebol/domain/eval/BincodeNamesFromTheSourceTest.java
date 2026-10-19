@@ -14,13 +14,13 @@ class BincodeNamesFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("raised: try [" + source + "] raised/id");
     }
 
     @Test
     @DisplayName("a get-word finds the caller's field, not the library's function")
-    void aGetWordFindsTheCallersFieldNotTheLibrarys() {
+    void findsTheCallersFieldForAGetWord() {
         assertThat(answerTo("""
                 keeper: context [
                     head: none
@@ -31,7 +31,7 @@ class BincodeNamesFromTheSourceTest {
 
     @Test
     @DisplayName("a get-path's head finds the caller's field too")
-    void aGetPathFindsTheCallersFieldNotTheLibrarys() {
+    void findsTheCallersFieldForAGetPath() {
         assertThat(answerTo("""
                 keeper: context [
                     dir: none
@@ -47,7 +47,7 @@ class BincodeNamesFromTheSourceTest {
 
     @Test
     @DisplayName("a name the library does not have is unaffected")
-    void aNameTheLibraryDoesNotHaveIsUnaffected() {
+    void leavesANameTheLibraryLacksUnaffected() {
         assertThat(answerTo("""
                 keeper: context [
                     spare-name: none
@@ -61,7 +61,7 @@ class BincodeNamesFromTheSourceTest {
 
     @Test
     @DisplayName("a function's local is found the same way a field is")
-    void aFunctionsLocalIsFoundToo() {
+    void findsAFunctionsLocal() {
         assertThat(answerTo("""
                 f: func [/local dir b][
                     dir: 7 b: binary 10 binary/write b [UI8 :dir] b/buffer
@@ -71,7 +71,7 @@ class BincodeNamesFromTheSourceTest {
 
     @Test
     @DisplayName("and a function's local reached through a path")
-    void aFunctionsLocalGetPathIsFoundToo() {
+    void findsAFunctionsLocalThroughAGetPath() {
         assertThat(answerTo("""
                 g: func [/local dir b][
                     dir: context [size: 8]
@@ -84,7 +84,7 @@ class BincodeNamesFromTheSourceTest {
 
     @Test
     @DisplayName("the same holds when reading rather than writing")
-    void theSameHoldsWhenReading() {
+    void holdsTheSameWhenReading() {
         assertThat(answerTo("""
                 keeper: context [
                     dir: none
@@ -95,7 +95,7 @@ class BincodeNamesFromTheSourceTest {
 
     @Test
     @DisplayName("the shape Rebol's own ZIP encoder writes its directory with")
-    void theShapeRebolsZipEncoderWrites() {
+    void writesTheShapeRebolsZipEncoderWrites() {
         assertThat(answerTo("""
                 h: func [/local dir bin][
                     dir: binary 100
@@ -109,8 +109,8 @@ class BincodeNamesFromTheSourceTest {
 
     @Test
     @DisplayName("a name nothing holds a value for is refused")
-    void aNameWithNoValueIsRefused() {
-        assertThat(errorIdFrom("""
+    void refusesANameWithNoValue() {
+        assertThat(readTheErrorIdFrom("""
                 b: binary 10
                 binary/write b [UI8 :nothing-holds-this]""")).isEqualTo("dialect");
     }

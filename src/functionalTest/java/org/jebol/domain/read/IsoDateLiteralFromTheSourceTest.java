@@ -16,7 +16,7 @@ class IsoDateLiteralFromTheSourceTest {
 
     @Test
     @DisplayName("a T stands where the slash does")
-    void aTStandsForTheSlash() {
+    void readsATAsTheSlash() {
         assertThat(answerTo("""
                 8-Nov-2013/17:01 = load {2013-11-08T17:01}""")).isEqualTo("#(true)");
     }
@@ -30,7 +30,7 @@ class IsoDateLiteralFromTheSourceTest {
 
     @Test
     @DisplayName("an offset with no colon counts, both ways round")
-    void anOffsetWithoutAColonCounts() {
+    void readsAnOffsetWithoutAColon() {
         assertThat(answerTo("""
                 reduce [
                     8-Nov-2013/17:01+1:00 = load "2013-11-08T17:01+0100"
@@ -40,7 +40,7 @@ class IsoDateLiteralFromTheSourceTest {
 
     @Test
     @DisplayName("and an offset with one reads the same")
-    void anOffsetWithAColonReadsTheSame() {
+    void readsAnOffsetWithAColonTheSame() {
         assertThat(answerTo("""
                 8-Nov-2013/17:01+1:00 = load {2013-11-08T17:01+01:00}"""))
                 .isEqualTo("#(true)");
@@ -60,7 +60,7 @@ class IsoDateLiteralFromTheSourceTest {
 
     @Test
     @DisplayName("a Z with digits after it is neither, and is refused")
-    void aZuluWithDigitsAfterItIsRefused() {
+    void refusesAZuluWithDigitsAfterIt() {
         assertThat(answerTo("""
                 reduce [
                     error? try [load "2013-11-08T17:01Z0100"]
@@ -69,15 +69,15 @@ class IsoDateLiteralFromTheSourceTest {
     }
 
     @Test
-    @DisplayName("one written with slashes is a date and not a path of three numbers")
-    void theSlashedFormIsNotAPath() {
+    @DisplayName("one text with slashes is a date and not a path of three numbers")
+    void readsTheSlashedFormAsNoPath() {
         assertThat(answerTo("""
                 date? load {2013/11/08T17:01}""")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("and it selects from a block through a path")
-    void itSelectsThroughAPath() {
+    void selectsThroughAPath() {
         assertThat(answerTo("""
                 b: [8-Nov-2013/17:01 "foo"]
                 "foo" = b/2013-11-08T17:01""")).isEqualTo("#(true)");
@@ -109,27 +109,27 @@ class IsoDateLiteralFromTheSourceTest {
 
     @Test
     @DisplayName("a path segment that reads as nothing and cannot be a word is refused")
-    void anUnreadableNumericSegmentIsRefused() {
+    void refusesAnUnreadableNumericSegment() {
         assertThat(answerTo("""
                 error? try [load "a/08T17:01Z0100"]""")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("but a segment that reads as several values is still a path and a word")
-    void aSegmentThatReadsAsSeveralIsKept() {
+    void keepsASegmentThatReadsAsSeveral() {
         assertThat(answerTo("""
                 mold load {a/3<}""")).isEqualTo("\"[a/3 <]\"");
     }
 
     @Test
     @DisplayName("a zone with no colon is an hour and a minute run together")
-    void aColonlessZoneIsHoursAndMinutes() {
+    void readsAColonlessZoneAsHoursAndMinutes() {
         assertThat(answerTo("""
                 collect [
-                    foreach written [
+                    foreach text [
                         "+5" "+20" "+29" "+30" "+200" "+220" "+1000" "+1500"
                     ][
-                        dated: load rejoin ["27-Jan-2009/13:50" written]
+                        dated: load rejoin ["27-Jan-2009/13:50" text]
                         keep dated/zone
                     ]
                 ]""")).isEqualTo(
@@ -138,15 +138,15 @@ class IsoDateLiteralFromTheSourceTest {
 
     @Test
     @DisplayName("and it is rounded down to a quarter rather than refused")
-    void aColonlessZoneRoundsDown() {
+    void roundsAColonlessZoneDown() {
         assertThat(answerTo("""
                 d: load "27-Jan-2009/13:50+220"
                 d/zone""")).isEqualTo("2:15");
     }
 
     @Test
-    @DisplayName("but a zone written with its colon has to name a quarter exactly")
-    void aColonZoneMustBeExact() {
+    @DisplayName("but a zone text with its colon has to name a quarter exactly")
+    void requiresAColonZoneToBeExact() {
         assertThat(answerTo("""
                 exact: load "1-Jan-2000/1:00+5:45"
                 reduce [error? try [load "1-Jan-2000/1:00+5:50"] exact/zone]""")).isEqualTo("[#(true) 5:45]");
@@ -154,7 +154,7 @@ class IsoDateLiteralFromTheSourceTest {
 
     @Test
     @DisplayName("the two spellings have different ceilings, which is what REBOL does")
-    void theTwoSpellingsHaveDifferentCeilings() {
+    void capsTheTwoSpellingsDifferently() {
         assertThat(answerTo("""
                 furthest: load "1-Jan-2000/1:00+15:45"
                 reduce [
@@ -166,7 +166,7 @@ class IsoDateLiteralFromTheSourceTest {
 
     @Test
     @DisplayName("a negative zone reads as far the other way")
-    void aNegativeZoneReadsToo() {
+    void readsANegativeZoneToo() {
         assertThat(answerTo("""
                 behind: load "27-Jan-2009/13:50-1500"
                 behind/zone""")).isEqualTo("-15:00");
@@ -174,41 +174,41 @@ class IsoDateLiteralFromTheSourceTest {
 
     @Test
     @DisplayName("a time inside a date is a clock, so it cannot be thirty o'clock")
-    void aTimeInADateIsAClock() {
+    void readsATimeInADateAsAClock() {
         assertThat(answerTo("""
                 collect [
-                    foreach written [
+                    foreach text [
                         "3-Jan-2010/30:00"
                         "3-Jan-2010/-30:00"
                         "3-Jan-2010/-10:00"
                         "3-Jan-2010/-30:00+1:0"
                     ][
-                        keep error? try [load written]
+                        keep error? try [load text]
                     ]
                 ]""")).isEqualTo("[#(true) #(true) #(true) #(true)]");
     }
 
     @Test
     @DisplayName("though a time on its own may be any length at all")
-    void aTimeOnItsOwnMayBeAnyLength() {
+    void readsATimeOnItsOwnAtAnyLength() {
         assertThat(answerTo("""
                 time? load {30:00}""")).isEqualTo("#(true)");
     }
 
     @Test
-    @DisplayName("no date has a negative year, however it is written")
-    void noDateHasANegativeYear() {
+    @DisplayName("no date has a negative year, however it is text")
+    void givesNoDateANegativeYear() {
         assertThat(answerTo("""
                 collect [
-                    foreach written ["1/11/-0" "1/11/-1" "1/11/-00"][
-                        keep error? try [load written]
+                    foreach text ["1/11/-0" "1/11/-1" "1/11/-00"][
+                        keep error? try [load text]
                     ]
                 ]""")).isEqualTo("[#(true) #(true) #(true)]");
     }
 
     @Test
     @DisplayName("but a year of nought is the year two thousand")
-    void aYearOfNoughtIsTwoThousand() {
+    void readsAYearOfNoughtAsTwoThousand() {
         assertThat(answerTo("""
                 1-Nov-2000 = load {1/11/0}""")).isEqualTo("#(true)");
     }

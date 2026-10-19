@@ -16,7 +16,7 @@ class CharsetAndTrimFromTheSourceTest {
 
     @Test
     @DisplayName("a charset from a block spreads a string member's characters")
-    void charsetSpreadsAStringMember() {
+    void spreadsAStringMemberForCharset() {
         assertThat(answerTo("""
                 reduce [
                     true? find charset [{abc}] #"b"

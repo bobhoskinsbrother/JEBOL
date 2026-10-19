@@ -1,6 +1,6 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.JavaProcesses;
+import org.jebol.adapter.host.JavaProcess;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
@@ -15,38 +15,38 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BootProcessFromTheSourceTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = interpreterWithAHost();
+        Interpreter interpreter = makeAnInterpreterWithAHost();
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
-    private static Interpreter interpreterWithAHost() {
+    private static Interpreter makeAnInterpreterWithAHost() {
         Bounds bounds = Bounds.standard();
         for (HostService service : HostService.values()) {
             bounds = bounds.grant(service);
         }
         Interpreter interpreter = Interpreter.withBounds(bounds);
         try {
-            interpreter.useFileSystem(FileSystemPort.rootedAt(
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(
                     Files.createTempDirectory("jebol-boot")));
         } catch (IOException noDirectory) {
             throw new UncheckedIOException(noDirectory);
         }
         interpreter.useEnvironment(new ProcessEnvironment());
-        interpreter.useProcesses(new JavaProcesses());
+        interpreter.useProcesses(new JavaProcess());
         return interpreter;
     }
 
     @Test
     @DisplayName("the boot option names a file a script can hand to the shell")
-    void theBootOptionIsAFile() {
+    void takesAFileAsTheBootOption() {
         assertThat(answerTo("""
                 file? system/options/boot""")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("and the child it starts is told to open no window, as a script run this way has none")
-    void theChildIsToldToOpenNoWindow() {
+    void tellsTheChildToOpenNoWindow() {
         assertThat(answerTo("""
                 not none? find read system/options/boot {-Djava.awt.headless=true}"""))
                 .isEqualTo("#(true)");
@@ -54,7 +54,7 @@ class BootProcessFromTheSourceTest {
 
     @Test
     @DisplayName("a child asked to quit leaves with a status of zero")
-    void aChildThatQuitsLeavesWithZero() {
+    void leavesWithZeroWhenAChildQuits() {
         assertThat(answerTo("""
                 0 = call/shell/wait append to-local-file system/options/boot
                     { --do "quit"}""")).isEqualTo("#(true)");
@@ -62,20 +62,20 @@ class BootProcessFromTheSourceTest {
 
     @Test
     @DisplayName("and one asked to quit with a number leaves with that number")
-    void aChildThatQuitsWithANumberReportsIt() {
+    void reportsTheNumberAChildQuitsWith() {
         assertThat(answerTo("""
                 100 = call/shell/wait append to-local-file system/options/boot
                     { --do "quit/return 100"}""")).isEqualTo("#(true)");
     }
 
-    private static Interpreter interpreterWithTheDataDirectoryMoved() {
-        Interpreter interpreter = interpreterWithAHost();
+    private static Interpreter makeAnInterpreterWithTheDataDirectoryMoved() {
+        Interpreter interpreter = makeAnInterpreterWithAHost();
         String moving = """
                 system/options/data: %/data/
                 make-dir/deep system/options/data""";
         interpreter.defineFreshWordsIn(moving);
         interpreter.run(moving);
-        interpreter.followTheApplicationDataDirectory();
+        interpreter.followApplicationDataDirectory();
         return interpreter;
     }
 
@@ -97,8 +97,8 @@ class BootProcessFromTheSourceTest {
 
     @Test
     @DisplayName("a child is told where its parent keeps application data")
-    void aChildIsToldWhereItsParentKeepsApplicationData() {
-        assertThat(doesTheChildSay(interpreterWithTheDataDirectoryMoved(), """
+    void tellsAChildWhereItsParentKeepsApplicationData() {
+        assertThat(doesTheChildSay(makeAnInterpreterWithTheDataDirectoryMoved(), """
                 Rebol []
                 probe system/options/data
                 probe system/options/modules""",
@@ -107,8 +107,8 @@ class BootProcessFromTheSourceTest {
 
     @Test
     @DisplayName("so it imports a module its parent installed a moment earlier")
-    void itImportsAModuleItsParentInstalledAMomentEarlier() {
-        Interpreter interpreter = interpreterWithTheDataDirectoryMoved();
+    void importsAModuleItsParentInstalledAMomentEarlier() {
+        Interpreter interpreter = makeAnInterpreterWithTheDataDirectoryMoved();
         String installing = """
                 write system/options/modules/whisper.reb
                     {Rebol [name: whisper type: module] export whispered: 42}""";
@@ -123,8 +123,8 @@ class BootProcessFromTheSourceTest {
 
     @Test
     @DisplayName("and where the host moved nothing it has no modules directory, while the child makes one as r3 does at start")
-    void whereTheHostMovedNothingOnlyTheChildHasAModulesDirectory() {
-        Interpreter interpreter = interpreterWithAHost();
+    void givesOnlyTheChildAModulesDirectoryWhereTheHostMovedNothing() {
+        Interpreter interpreter = makeAnInterpreterWithAHost();
         String asking = "none? system/options/modules";
         interpreter.defineFreshWordsIn(asking);
 

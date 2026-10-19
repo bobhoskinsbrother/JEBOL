@@ -14,7 +14,7 @@ public class ContextOfWordNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("word", TypesetValue.ANY_WORD.members()));
+        return List.of(Parameter.of("word", TypesetValue.ANY_WORD.members()));
     }
 
     @Override
@@ -29,12 +29,12 @@ public class ContextOfWordNative extends DefaultNative {
                 return new ObjectValue(binding);
             }
             return binding.callHasEnded()
-                    ? whatDoIsInLibrary(evaluator.systemContext())
+                    ? findWhatDoIsInLibrary(evaluator.systemContext())
                     : binding.functionOwningThisFrame();
         };
     }
 
-    private Value whatDoIsInLibrary(Context library) {
-        return library.knows("do") ? library.slotFor("do").value() : NoneValue.none();
+    private Value findWhatDoIsInLibrary(Context library) {
+        return library.knows("do") ? library.findSlotFor("do").value() : NoneValue.none();
     }
 }

@@ -15,7 +15,7 @@ public enum PaintKind {
     PICTURE,
     DRAWING;
 
-    /** The word this kind travels under. */
+    /** The word this type travels under. */
     public String spelling() {
         return name().toLowerCase(Locale.ROOT);
     }

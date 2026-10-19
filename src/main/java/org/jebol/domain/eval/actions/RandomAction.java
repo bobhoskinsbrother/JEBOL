@@ -43,17 +43,17 @@ public class RandomAction extends DefaultNative implements ActionValue {
         return (arguments, evaluator, context, refinements) -> {
             Value given = arguments.getFirst();
             if (refinements.contains("seed")) {
-                return seededBy(given);
+                return seedWith(given);
             }
             RandomDrawing drawing = refinements.contains("secure") ? secureRandomness : randomness;
             return refinements.contains("only")
-                    ? given.pickedAtRandom(drawing)
-                    : given.randomised(drawing);
+                    ? given.pickAtRandom(drawing)
+                    : given.randomise(drawing);
         };
     }
 
-    private Value seededBy(Value chosen) {
-        randomness.seed(chosen.asRandomSeed(encodings::checksumSeedOf));
+    private Value seedWith(Value chosen) {
+        randomness.seed(chosen.asRandomSeed(encodings::computeTheChecksumSeed));
         return UnsetValue.unset();
     }
 }

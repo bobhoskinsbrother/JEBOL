@@ -1,7 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.adapter.host.JavaCertificateAuthority;
-import org.jebol.adapter.host.JavaSockets;
+import org.jebol.adapter.host.JavaSocket;
 import org.jebol.domain.host.HostService;
 import org.jebol.tls.LocalTlsServer;
 import org.jebol.tls.LocalTlsServer.Identity;
@@ -36,37 +36,37 @@ class TrustingAServerEndToEndTest {
 
     private Identity rsaIdentity() {
         return new Identity(fixtures.chain("localhost-rsa", "test-intermediate"),
-                fixtures.key("localhost-rsa-key", "RSA"));
+                fixtures.readTheKey("localhost-rsa-key", "RSA"));
     }
 
     private Identity ecIdentity() {
         return new Identity(fixtures.chain("localhost-ec", "test-intermediate"),
-                fixtures.key("localhost-ec-key", "EC"));
+                fixtures.readTheKey("localhost-ec-key", "EC"));
     }
 
-    private Identity withRsaKey(String... chain) {
-        return new Identity(fixtures.chain(chain), fixtures.key("localhost-rsa-key", "RSA"));
+    private Identity makeAnIdentityWithAnRsaKey(String... chain) {
+        return new Identity(fixtures.chain(chain), fixtures.readTheKey("localhost-rsa-key", "RSA"));
     }
 
     private Bounds tlsBounds() {
         return Bounds.standard()
-                .withWallClockLimit(HANDSHAKE_TIMEOUT)
+                .withTimeLimit(HANDSHAKE_TIMEOUT)
                 .grant(HostService.NETWORK)
                 .grant(HostService.WEB)
                 .grant(HostService.CLOCK)
                 .grant(HostService.CERTIFICATES);
     }
 
-    private Interpreter trustingTestRoot(Instant now) {
-        Interpreter interpreter = networked(tlsBounds());
+    private Interpreter makeAnInterpreterTrustingTheTestRoot(Instant now) {
+        Interpreter interpreter = makeANetworkedInterpreter(tlsBounds());
         interpreter.useCertificateAuthority(new JavaCertificateAuthority(
-                fixtures.trusting("test-root"), Clock.fixed(now, ZoneOffset.UTC)));
+                fixtures.trustOnly("test-root"), Clock.fixed(now, ZoneOffset.UTC)));
         return interpreter;
     }
 
-    private Interpreter networked(Bounds bounds) {
-        Interpreter interpreter = Interpreter.writingTo(printed::append, bounds);
-        interpreter.useNetwork(new JavaSockets());
+    private Interpreter makeANetworkedInterpreter(Bounds bounds) {
+        Interpreter interpreter = Interpreter.createWithOutput(printed::append, bounds);
+        interpreter.useNetwork(new JavaSocket());
         return interpreter;
     }
 
@@ -103,7 +103,7 @@ class TrustingAServerEndToEndTest {
         @DisplayName("is read, with an RSA certificate")
         void rsa(String protocol) throws Exception {
             try (LocalTlsServer server = new LocalTlsServer(rsaIdentity(), protocol)) {
-                assertThat(readPage(trustingTestRoot(FIXTURE_TIME), localhostUrl(server))).isEqualTo(PAGE_WAS_READ);
+                assertThat(readPage(makeAnInterpreterTrustingTheTestRoot(FIXTURE_TIME), localhostUrl(server))).isEqualTo(PAGE_WAS_READ);
             }
         }
 
@@ -112,15 +112,15 @@ class TrustingAServerEndToEndTest {
         @DisplayName("is read, with an elliptic curve certificate, which a real 3.22.5 cannot do over TLS 1.2")
         void ellipticCurve(String protocol) throws Exception {
             try (LocalTlsServer server = new LocalTlsServer(ecIdentity(), protocol)) {
-                assertThat(readPage(trustingTestRoot(FIXTURE_TIME), localhostUrl(server))).isEqualTo(PAGE_WAS_READ);
+                assertThat(readPage(makeAnInterpreterTrustingTheTestRoot(FIXTURE_TIME), localhostUrl(server))).isEqualTo(PAGE_WAS_READ);
             }
         }
 
         @Test
         @DisplayName("is read when the url names it by its address and the certificate names that address")
-        void byAddress() throws Exception {
+        void isReadByAddress() throws Exception {
             try (LocalTlsServer server = new LocalTlsServer(rsaIdentity(), TLS_1_3)) {
-                assertThat(readPage(trustingTestRoot(FIXTURE_TIME), loopbackUrl(server))).isEqualTo(PAGE_WAS_READ);
+                assertThat(readPage(makeAnInterpreterTrustingTheTestRoot(FIXTURE_TIME), loopbackUrl(server))).isEqualTo(PAGE_WAS_READ);
             }
         }
 
@@ -128,8 +128,8 @@ class TrustingAServerEndToEndTest {
         @DisplayName("is read when the server also sends the root itself")
         void chainIncludingRoot() throws Exception {
             try (LocalTlsServer server = new LocalTlsServer(
-                    withRsaKey("localhost-rsa", "test-intermediate", "test-root"), TLS_1_3)) {
-                assertThat(readPage(trustingTestRoot(FIXTURE_TIME), localhostUrl(server))).isEqualTo(PAGE_WAS_READ);
+                    makeAnIdentityWithAnRsaKey("localhost-rsa", "test-intermediate", "test-root"), TLS_1_3)) {
+                assertThat(readPage(makeAnInterpreterTrustingTheTestRoot(FIXTURE_TIME), localhostUrl(server))).isEqualTo(PAGE_WAS_READ);
             }
         }
     }
@@ -150,18 +150,18 @@ class TrustingAServerEndToEndTest {
 
         @Test
         @DisplayName("when its certificate has expired")
-        void expired() throws Exception {
-            try (LocalTlsServer server = new LocalTlsServer(withRsaKey("one-day", "test-intermediate"), TLS_1_3)) {
-                assertRefused(server, trustingTestRoot(Instant.parse("2027-01-02T00:00:01Z")),
+        void isRefusedWhenExpired() throws Exception {
+            try (LocalTlsServer server = new LocalTlsServer(makeAnIdentityWithAnRsaKey("one-day", "test-intermediate"), TLS_1_3)) {
+                assertRefused(server, makeAnInterpreterTrustingTheTestRoot(Instant.parse("2027-01-02T00:00:01Z")),
                         localhostUrl(server), "a certificate for localhost has expired");
             }
         }
 
         @Test
         @DisplayName("when its certificate is not valid yet")
-        void notYetValid() throws Exception {
-            try (LocalTlsServer server = new LocalTlsServer(withRsaKey("one-day", "test-intermediate"), TLS_1_3)) {
-                assertRefused(server, trustingTestRoot(Instant.parse("2026-12-31T23:59:59Z")),
+        void isRefusedWhenNotYetValid() throws Exception {
+            try (LocalTlsServer server = new LocalTlsServer(makeAnIdentityWithAnRsaKey("one-day", "test-intermediate"), TLS_1_3)) {
+                assertRefused(server, makeAnInterpreterTrustingTheTestRoot(Instant.parse("2026-12-31T23:59:59Z")),
                         localhostUrl(server), "a certificate for localhost is not valid yet");
             }
         }
@@ -169,18 +169,18 @@ class TrustingAServerEndToEndTest {
         @Test
         @DisplayName("when its certificate signed itself")
         void selfSigned() throws Exception {
-            try (LocalTlsServer server = new LocalTlsServer(withRsaKey("self-signed"), TLS_1_3)) {
-                assertRefused(server, trustingTestRoot(FIXTURE_TIME),
+            try (LocalTlsServer server = new LocalTlsServer(makeAnIdentityWithAnRsaKey("self-signed"), TLS_1_3)) {
+                assertRefused(server, makeAnInterpreterTrustingTheTestRoot(FIXTURE_TIME),
                         localhostUrl(server), "no trusted authority vouches for localhost");
             }
         }
 
         @Test
         @DisplayName("when its chain leads to a root the host does not trust")
-        void untrustedRoot() throws Exception {
+        void isRefusedForAnUntrustedRoot() throws Exception {
             try (LocalTlsServer server = new LocalTlsServer(
-                    withRsaKey("from-a-stranger", "stranger-root"), TLS_1_3)) {
-                assertRefused(server, trustingTestRoot(FIXTURE_TIME),
+                    makeAnIdentityWithAnRsaKey("from-a-stranger", "stranger-root"), TLS_1_3)) {
+                assertRefused(server, makeAnInterpreterTrustingTheTestRoot(FIXTURE_TIME),
                         localhostUrl(server), "no trusted authority vouches for localhost");
             }
         }
@@ -188,8 +188,8 @@ class TrustingAServerEndToEndTest {
         @Test
         @DisplayName("when its trusted certificate names another host")
         void wrongHost() throws Exception {
-            try (LocalTlsServer server = new LocalTlsServer(withRsaKey("other-host", "test-intermediate"), TLS_1_3)) {
-                assertRefused(server, trustingTestRoot(FIXTURE_TIME),
+            try (LocalTlsServer server = new LocalTlsServer(makeAnIdentityWithAnRsaKey("other-host", "test-intermediate"), TLS_1_3)) {
+                assertRefused(server, makeAnInterpreterTrustingTheTestRoot(FIXTURE_TIME),
                         localhostUrl(server), "the certificate does not name localhost");
             }
         }
@@ -198,8 +198,8 @@ class TrustingAServerEndToEndTest {
         @DisplayName("when the host is named only in the subject's common name, which is never read")
         void commonNameOnly() throws Exception {
             try (LocalTlsServer server = new LocalTlsServer(
-                    withRsaKey("common-name-only", "test-intermediate"), TLS_1_3)) {
-                assertRefused(server, trustingTestRoot(FIXTURE_TIME),
+                    makeAnIdentityWithAnRsaKey("common-name-only", "test-intermediate"), TLS_1_3)) {
+                assertRefused(server, makeAnInterpreterTrustingTheTestRoot(FIXTURE_TIME),
                         localhostUrl(server), "the certificate does not name localhost");
             }
         }
@@ -207,26 +207,26 @@ class TrustingAServerEndToEndTest {
         @Test
         @DisplayName("when the url names an address the certificate does not")
         void wrongAddress() throws Exception {
-            try (LocalTlsServer server = new LocalTlsServer(withRsaKey("other-host", "test-intermediate"), TLS_1_3)) {
-                assertRefused(server, trustingTestRoot(FIXTURE_TIME),
+            try (LocalTlsServer server = new LocalTlsServer(makeAnIdentityWithAnRsaKey("other-host", "test-intermediate"), TLS_1_3)) {
+                assertRefused(server, makeAnInterpreterTrustingTheTestRoot(FIXTURE_TIME),
                         loopbackUrl(server), "the certificate does not name 127.0.0.1");
             }
         }
 
         @Test
         @DisplayName("when the chain leaves out the intermediate authority")
-        void missingIntermediate() throws Exception {
-            try (LocalTlsServer server = new LocalTlsServer(withRsaKey("localhost-rsa"), TLS_1_3)) {
-                assertRefused(server, trustingTestRoot(FIXTURE_TIME),
+        void isRefusedWithoutTheIntermediate() throws Exception {
+            try (LocalTlsServer server = new LocalTlsServer(makeAnIdentityWithAnRsaKey("localhost-rsa"), TLS_1_3)) {
+                assertRefused(server, makeAnInterpreterTrustingTheTestRoot(FIXTURE_TIME),
                         localhostUrl(server), "no trusted authority vouches for localhost");
             }
         }
 
         @Test
         @DisplayName("when the host granted certificates and supplied no authority, which trusts nothing")
-        void noAuthoritySupplied() throws Exception {
+        void isRefusedWithNoAuthoritySupplied() throws Exception {
             try (LocalTlsServer server = new LocalTlsServer(rsaIdentity(), TLS_1_3)) {
-                assertRefused(server, networked(tlsBounds()),
+                assertRefused(server, makeANetworkedInterpreter(tlsBounds()),
                         localhostUrl(server), "no trusted authority vouches for localhost");
             }
         }
@@ -238,7 +238,7 @@ class TrustingAServerEndToEndTest {
 
         private void assertRefused(Identity identity, String protocol) throws Exception {
             try (LocalTlsServer server = new LocalTlsServer(identity, protocol)) {
-                assertThat(readError(trustingTestRoot(FIXTURE_TIME), localhostUrl(server))).isEqualTo(NO_CONNECT);
+                assertThat(readError(makeAnInterpreterTrustingTheTestRoot(FIXTURE_TIME), localhostUrl(server))).isEqualTo(NO_CONNECT);
                 server.awaitAllConnectionsClosed(HANDSHAKE_TIMEOUT);
                 assertThat(server.requestsReceived()).isZero();
             }
@@ -250,7 +250,7 @@ class TrustingAServerEndToEndTest {
         void rsa(String protocol) throws Exception {
             assertRefused(new Identity(
                     fixtures.chain("localhost-rsa", "test-intermediate"),
-                    fixtures.key("impostor-rsa-key", "RSA")), protocol);
+                    fixtures.readTheKey("impostor-rsa-key", "RSA")), protocol);
         }
 
         @ParameterizedTest(name = "over {0}")
@@ -259,7 +259,7 @@ class TrustingAServerEndToEndTest {
         void ellipticCurve(String protocol) throws Exception {
             assertRefused(new Identity(
                     fixtures.chain("localhost-ec", "test-intermediate"),
-                    fixtures.key("impostor-ec-key", "EC")), protocol);
+                    fixtures.readTheKey("impostor-ec-key", "EC")), protocol);
         }
 
         @Test
@@ -267,7 +267,7 @@ class TrustingAServerEndToEndTest {
         void uncheckableSignature() throws Exception {
             assertRefused(new Identity(
                     fixtures.chain("localhost-ed25519", "test-intermediate"),
-                    fixtures.key("localhost-ed25519-key", "Ed25519")), TLS_1_3);
+                    fixtures.readTheKey("localhost-ed25519-key", "Ed25519")), TLS_1_3);
         }
     }
 
@@ -277,16 +277,16 @@ class TrustingAServerEndToEndTest {
 
         @Test
         @DisplayName("is not granted by the standard bounds, so a secure connection is refused before it is opened")
-        void notGrantedByDefault() throws Exception {
+        void isNotGrantedByDefault() throws Exception {
             Bounds withoutCertificates = Bounds.standard()
-                    .withWallClockLimit(HANDSHAKE_TIMEOUT)
+                    .withTimeLimit(HANDSHAKE_TIMEOUT)
                     .grant(HostService.NETWORK)
                     .grant(HostService.WEB)
                     .grant(HostService.CLOCK);
             try (LocalTlsServer server = new LocalTlsServer(rsaIdentity(), TLS_1_3)) {
-                Interpreter interpreter = networked(withoutCertificates);
+                Interpreter interpreter = makeANetworkedInterpreter(withoutCertificates);
                 interpreter.useCertificateAuthority(new JavaCertificateAuthority(
-                        fixtures.trusting("test-root"), Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC)));
+                        fixtures.trustOnly("test-root"), Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC)));
 
                 assertThat(readError(interpreter, localhostUrl(server))).isEqualTo("[Access no-service]");
                 assertThat(run(interpreter, """
@@ -299,8 +299,8 @@ class TrustingAServerEndToEndTest {
 
         @Test
         @DisplayName("is not asked for by a server listening for connections, which is sent no certificate to judge")
-        void listeningServerDoesNotAsk() {
-            Interpreter interpreter = networked(
+        void isNotAskedForByAListeningServer() {
+            Interpreter interpreter = makeANetworkedInterpreter(
                     Bounds.standard().grant(HostService.NETWORK).grant(HostService.CLOCK));
             assertThat(run(interpreter, """
                     listening: open tls://:0

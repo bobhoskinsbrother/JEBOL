@@ -36,13 +36,13 @@ class AnObjectThatRefersToItselfComparesFromTheSourceTest {
             "index? find reduce [1 o] o | 2",
     })
     @DisplayName("an object that points at itself is equal to itself, as a real 3.22.5 answers")
-    void anObjectEqualsItself(String asked, String answer) {
+    void equalsItself(String asked, String answer) {
         assertThat(answerTo(AN_OBJECT_POINTING_AT_ITSELF + asked)).isEqualTo(answer);
     }
 
     @Test
     @DisplayName("two such objects differing in a field before the one that loops are simply not equal")
-    void aDifferenceBeforeTheLoopEndsIt() {
+    void stopsAtADifferenceBeforeTheLoop() {
         assertThat(answerTo("""
                 o: object [a: 1 me: none] o/me: o
                 p: object [a: 2 me: none] p/me: p
@@ -56,7 +56,7 @@ class AnObjectThatRefersToItselfComparesFromTheSourceTest {
             "b: copy [1] append/only b b  c: copy [1] append/only c c  equal? b c",
     })
     @DisplayName("a comparison with no end raises stack-overflow, an error a script can catch")
-    void aComparisonWithNoEndRaisesStackOverflow(String compared) {
+    void raisesStackOverflowWithNoEnd(String compared) {
         assertThat(answerTo("""
                 e: try [%s]
                 reduce [e/type e/id]""".formatted(compared))).isEqualTo("[Internal stack-overflow]");
@@ -64,7 +64,7 @@ class AnObjectThatRefersToItselfComparesFromTheSourceTest {
 
     @Test
     @DisplayName("and the interpreter carries on afterwards")
-    void theInterpreterCarriesOn() {
+    void letsTheInterpreterCarryOn() {
         answerTo("""
                 b: copy [1] append/only b b  c: copy [1] append/only c c
                 try [equal? b c]""");

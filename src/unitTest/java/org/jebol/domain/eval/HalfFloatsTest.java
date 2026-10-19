@@ -16,7 +16,7 @@ class HalfFloatsTest {
 
         @Test
         @DisplayName("agrees with the JDK on all 65536 half values")
-        void everyHalf() {
+        void widensEveryHalf() {
             for (int bits = 0; bits < 0x1_0000; bits++) {
                 short half = (short) bits;
                 assertThat(Float.floatToRawIntBits(HalfFloats.asFloat(half)))
@@ -31,7 +31,7 @@ class HalfFloatsTest {
 
         @Test
         @DisplayName("gives back the half it came from")
-        void everyHalfSurvivesTheRoundTrip() {
+        void roundTripsEveryHalf() {
             for (int bits = 0; bits < 0x1_0000; bits++) {
                 short half = (short) bits;
                 if (Float.isNaN(HalfFloats.asFloat(half))) {
@@ -43,7 +43,7 @@ class HalfFloatsTest {
 
         @Test
         @DisplayName("agrees with the JDK on every half value and the four floats around it")
-        void everyHalfAndItsNeighbours() {
+        void narrowsEveryHalfAndItsNeighbours() {
             for (int bits = 0; bits < 0x1_0000; bits++) {
                 float widened = Float.float16ToFloat((short) bits);
                 for (float nearby : new float[] {
@@ -69,7 +69,7 @@ class HalfFloatsTest {
 
         @Test
         @DisplayName("at the overflow threshold, where a half becomes infinite")
-        void theOverflowThreshold() {
+        void overflowsAtTheThreshold() {
             for (float value : new float[] {
                     0x1.ffcp15f,
                     Math.nextDown(0x1.ffcp15f + 0x0.002p15f),
@@ -85,7 +85,7 @@ class HalfFloatsTest {
 
         @Test
         @DisplayName("at the smallest subnormal, and the midpoint below which even that goes")
-        void theUnderflowThreshold() {
+        void underflowsAtTheThreshold() {
             for (float value : new float[] {
                     Float.MIN_VALUE,
                     0x1.0p-25f,

@@ -28,20 +28,20 @@ class DirectoryQuestionFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static Interpreter reaching(Path directory, HostService... granted) {
+    private static Interpreter makeAnInterpreterReaching(Path directory, HostService... granted) {
         Bounds bounds = Bounds.standard();
         for (HostService service : granted) {
             bounds = bounds.grant(service);
         }
         Interpreter interpreter = Interpreter.withBounds(bounds);
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         return interpreter;
     }
 
-    private static Interpreter holdingADirectoryAndAFile(Path root) throws Exception {
+    private static Interpreter makeAnInterpreterHoldingADirectoryAndAFile(Path root) throws Exception {
         Files.createDirectories(root.resolve("sub"));
         Files.writeString(root.resolve("plain.txt"), "x");
-        return reaching(root, HostService.FILES);
+        return makeAnInterpreterReaching(root, HostService.FILES);
     }
 
     @Nested
@@ -66,7 +66,7 @@ class DirectoryQuestionFromTheSourceTest {
 
         @Test
         @DisplayName("a name ending in anything else does not")
-        void everythingElseSaysNo() {
+        void saysNoForEverythingElse() {
             assertThat(answerTo("dir? %a")).isEqualTo(FALSE);
             assertThat(answerTo("dir? http://a")).isEqualTo(FALSE);
         }
@@ -97,24 +97,24 @@ class DirectoryQuestionFromTheSourceTest {
         @Test
         @DisplayName("a real directory is one, whether or not its name says so")
         void arealDirectoryIsOne(@TempDir Path root) throws Exception {
-            assertThat(answerFrom(holdingADirectoryAndAFile(root), "dir?/check %sub"))
+            assertThat(answerFrom(makeAnInterpreterHoldingADirectoryAndAFile(root), "dir?/check %sub"))
                     .as("this is the case the prelude version could never answer")
                     .isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a real file is not, however it is named")
-        void arealFileIsNot(@TempDir Path root) throws Exception {
-            assertThat(answerFrom(holdingADirectoryAndAFile(root), "dir?/check %plain.txt"))
+        void aRealFileIsNot(@TempDir Path root) throws Exception {
+            assertThat(answerFrom(makeAnInterpreterHoldingADirectoryAndAFile(root), "dir?/check %plain.txt"))
                     .isEqualTo(FALSE);
         }
 
         @Test
         @DisplayName("a name that is on no disk falls back to the slash test")
         void anabsentNameFallsBack(@TempDir Path root) throws Exception {
-            assertThat(answerFrom(holdingADirectoryAndAFile(root),
+            assertThat(answerFrom(makeAnInterpreterHoldingADirectoryAndAFile(root),
                     "dir?/check %no-such-thing-here")).isEqualTo(FALSE);
-            assertThat(answerFrom(holdingADirectoryAndAFile(root),
+            assertThat(answerFrom(makeAnInterpreterHoldingADirectoryAndAFile(root),
                     "dir?/check %no-such-thing-here/"))
                     .as("the check can only say yes; saying no is left to the name")
                     .isEqualTo(TRUE);
@@ -123,25 +123,25 @@ class DirectoryQuestionFromTheSourceTest {
         @Test
         @DisplayName("a url is never looked for on a disk")
         void aurlIsNotLookedFor(@TempDir Path root) throws Exception {
-            assertThat(answerFrom(holdingADirectoryAndAFile(root), "dir?/check http://a/"))
+            assertThat(answerFrom(makeAnInterpreterHoldingADirectoryAndAFile(root), "dir?/check http://a/"))
                     .isEqualTo(TRUE);
-            assertThat(answerFrom(holdingADirectoryAndAFile(root), "dir?/check http://a"))
+            assertThat(answerFrom(makeAnInterpreterHoldingADirectoryAndAFile(root), "dir?/check http://a"))
                     .isEqualTo(FALSE);
         }
 
         @Test
         @DisplayName("and none is still none")
-        void noneIsStillFalse(@TempDir Path root) throws Exception {
-            assertThat(answerFrom(holdingADirectoryAndAFile(root), "dir?/check none"))
+        void stillAnswersFalseForNone(@TempDir Path root) throws Exception {
+            assertThat(answerFrom(makeAnInterpreterHoldingADirectoryAndAFile(root), "dir?/check none"))
                     .isEqualTo(FALSE);
         }
 
         @Test
         @DisplayName("a script not granted the file system is refused rather than told no")
-        void withoutTheGrantItRefuses(@TempDir Path root) throws Exception {
+        void refusesWithoutTheGrant(@TempDir Path root) throws Exception {
             Files.createDirectory(root.resolve("sub"));
 
-            assertThat(answerFrom(reaching(root),
+            assertThat(answerFrom(makeAnInterpreterReaching(root),
                     "either error? e: try [dir?/check %sub] [e/id] ['answered]"))
                     .as("reading the disk is reading the disk, and a false here "
                             + "would be a lie about a directory that is there")

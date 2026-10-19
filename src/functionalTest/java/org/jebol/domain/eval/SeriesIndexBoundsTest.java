@@ -20,7 +20,7 @@ class SeriesIndexBoundsTest {
         ScriptOutcome outcome = ran("e: try [" + source + "] either error? e [e/id] ['no-error]");
         assertThat(outcome.conclusion())
                 .as("%s must arrive as an outcome, never as a host exception", source)
-                .isEqualTo(Conclusion.PRODUCED_A_VALUE);
+                .isEqualTo(Conclusion.PRODUCED_VALUE);
         return Interpreter.create().display(outcome);
     }
 
@@ -28,7 +28,7 @@ class SeriesIndexBoundsTest {
         ScriptOutcome outcome = ran(source);
         assertThat(outcome.conclusion())
                 .as("%s must not escape as a host exception", source)
-                .isEqualTo(Conclusion.PRODUCED_A_VALUE);
+                .isEqualTo(Conclusion.PRODUCED_VALUE);
         return Interpreter.create().display(outcome);
     }
 

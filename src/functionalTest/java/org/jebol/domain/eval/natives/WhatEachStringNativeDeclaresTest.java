@@ -140,26 +140,26 @@ class WhatEachStringNativeDeclaresTest {
                 "0x2CE3, 0x2CE2, 0x2CE3",
                 "0x2D00, 0x10A0, 0x2D00"})
         void mapsOneToOne(int small, int capital, int smallAgain) {
-            assertThat(UnicodeCases.TABLES.upper(small)).isEqualTo(capital);
-            assertThat(UnicodeCases.TABLES.lower(capital)).isEqualTo(smallAgain);
+            assertThat(UnicodeCases.TABLES.toUpper(small)).isEqualTo(capital);
+            assertThat(UnicodeCases.TABLES.toLower(capital)).isEqualTo(smallAgain);
         }
 
         @Test
         @DisplayName("when two capitals share a small letter, the first one in the table wins going up")
         void theFirstMappingWinsGoingUp() {
-            assertThat(UnicodeCases.TABLES.upper(0x03B9)).isEqualTo(0x0345);
-            assertThat(UnicodeCases.TABLES.lower(0x0399)).isEqualTo(0x03B9);
-            assertThat(UnicodeCases.TABLES.lower(0x1FBE)).isEqualTo(0x03B9);
-            assertThat(UnicodeCases.TABLES.upper(0x0073)).isEqualTo(0x0053);
-            assertThat(UnicodeCases.TABLES.lower(0x017F)).isEqualTo(0x0073);
-            assertThat(UnicodeCases.TABLES.lower(0x212A)).isEqualTo(0x006B);
+            assertThat(UnicodeCases.TABLES.toUpper(0x03B9)).isEqualTo(0x0345);
+            assertThat(UnicodeCases.TABLES.toLower(0x0399)).isEqualTo(0x03B9);
+            assertThat(UnicodeCases.TABLES.toLower(0x1FBE)).isEqualTo(0x03B9);
+            assertThat(UnicodeCases.TABLES.toUpper(0x0073)).isEqualTo(0x0053);
+            assertThat(UnicodeCases.TABLES.toLower(0x017F)).isEqualTo(0x0073);
+            assertThat(UnicodeCases.TABLES.toLower(0x212A)).isEqualTo(0x006B);
         }
 
         @ParameterizedTest(name = "{0} is left alone")
         @CsvSource({"-1", "0", "0x0030", "0x0130", "0x2DFF", "0x2E00", "0xFF21", "0x1F600"})
         void leavesAloneWhatItDoesNotMap(int codepoint) {
-            assertThat(UnicodeCases.TABLES.upper(codepoint)).isEqualTo(codepoint);
-            assertThat(UnicodeCases.TABLES.lower(codepoint)).isEqualTo(codepoint);
+            assertThat(UnicodeCases.TABLES.toUpper(codepoint)).isEqualTo(codepoint);
+            assertThat(UnicodeCases.TABLES.toLower(codepoint)).isEqualTo(codepoint);
         }
 
         @Test

@@ -23,7 +23,7 @@ class TimeLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("without a fraction")
-        void theOrdinaryForm() {
+        void readWithoutAFraction() {
             assertThat(answerTo("""
                     12:34 = 12:34:00""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -46,7 +46,7 @@ class TimeLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("so the first number moves along one place")
-        void theFractionChangesTheMeaning() {
+        void moveTheFirstNumberAlongOnePlace() {
             assertThat(answerTo("""
                     12:34.5 = 0:12:34.5""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -55,7 +55,7 @@ class TimeLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("and the smallest one Rebol's own library writes")
-        void theOneInTheLibrary() {
+        void includeTheSmallestOneTheLibraryWrites() {
             assertThat(answerTo("""
                     0:0.001 = 0:00:00.001""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -64,7 +64,7 @@ class TimeLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("and a negative one keeps its sign")
-        void aNegativeOne() {
+        void keepANegativeSign() {
             assertThat(answerTo("""
                     -0:0.001 = negate 0:00:00.001""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -73,7 +73,7 @@ class TimeLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("but a fraction of zero does not count, so it is hours again")
-        void aZeroFraction() {
+        void becomeHoursAgainWithAZeroFraction() {
             assertThat(answerTo("""
                     12:34.0 = 12:34:00""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -87,7 +87,7 @@ class TimeLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("one sign is part of the time")
-        void oneSign() {
+        void isPartOfTheTimeOnce() {
             assertThat(answerTo("""
                     -1:23 = negate 1:23""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -96,7 +96,7 @@ class TimeLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("and two is a malformed time, which the C calls a hole")
-        void twoSigns() {
+        void makesAMalformedTimeWhenDoubled() {
             assertThat(answerTo("""
                     error? try [load {--1:23}]""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -105,7 +105,7 @@ class TimeLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("and any pairing of the two signs, not just two minuses")
-        void everyPairing() {
+        void makesAMalformedTimeInEveryPairing() {
             assertThat(answerTo("""
                     error? try [load {++1:23}]""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -116,7 +116,7 @@ class TimeLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("but a double sign without a time is still an ordinary word")
-        void whatStaysAWord() {
+        void leavesADoubleSignWithoutATimeAWord() {
             assertThat(answerTo("""
                     (load {--}) = to word! "--\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -132,7 +132,7 @@ class TimeLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("with or without a fraction on the seconds")
-        void theThreePartForms() {
+        void readWithOrWithoutAFractionOnTheSeconds() {
             assertThat(answerTo("""
                     time? load {12:34:56}""")).isEqualTo(TRUE);
             assertThat(answerTo("""

@@ -14,13 +14,13 @@ class ChecksumPortFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("raised: try [" + source + "] raised/id");
     }
 
     @Test
     @DisplayName("the port opens, and opens open")
-    void thePortOpens() {
+    void opens() {
         assertThat(answerTo("""
                 port: open checksum://
                 reduce [port? port open? port]""")).isEqualTo("[#(true) #(true)]");
@@ -28,7 +28,7 @@ class ChecksumPortFromTheSourceTest {
 
     @Test
     @DisplayName("the method defaults to MD5 however the port is named")
-    void theMethodDefaultsToMd5() {
+    void defaultsToMd5() {
         assertThat(answerTo("""
                 bare: open checksum://
                 named: open checksum:md5
@@ -39,7 +39,7 @@ class ChecksumPortFromTheSourceTest {
 
     @Test
     @DisplayName("a method in the URL is the method the port uses")
-    void aMethodInTheUrlIsUsed() {
+    void usesAMethodInTheUrl() {
         assertThat(answerTo("""
                 first-port: open checksum:sha1
                 second-port: open checksum:sha256
@@ -60,7 +60,7 @@ class ChecksumPortFromTheSourceTest {
 
     @Test
     @DisplayName("one write sums what CHECKSUM sums")
-    void oneWriteMatchesChecksum() {
+    void matchesChecksumAfterOneWrite() {
         assertThat(answerTo("""
                 port: open checksum://
                 write port #{0BAD}
@@ -69,7 +69,7 @@ class ChecksumPortFromTheSourceTest {
 
     @Test
     @DisplayName("two writes sum the two runs joined, which is the point of the port")
-    void twoWritesSumTheJoin() {
+    void sumsTheJoinOfTwoWrites() {
         assertThat(answerTo("""
                 port: open checksum://
                 write port #{0BAD}
@@ -79,7 +79,7 @@ class ChecksumPortFromTheSourceTest {
 
     @Test
     @DisplayName("reading twice answers the same thing, because READ copies the state")
-    void readingTwiceAnswersTheSame() {
+    void answersTheSameReadTwice() {
         assertThat(answerTo("""
                 port: open checksum://
                 write port #{0BAD}
@@ -90,7 +90,7 @@ class ChecksumPortFromTheSourceTest {
 
     @Test
     @DisplayName("and writing after a read carries on rather than starting again")
-    void writingAfterAReadCarriesOn() {
+    void carriesOnWritingAfterARead() {
         assertThat(answerTo("""
                 port: open checksum://
                 write port #{0BAD}
@@ -109,7 +109,7 @@ class ChecksumPortFromTheSourceTest {
 
     @Test
     @DisplayName("reading a closed port answers nothing rather than raising")
-    void readingAClosedPortAnswersNothing() {
+    void answersNothingWhenClosed() {
         assertThat(answerTo("""
                 port: open checksum://
                 write port #{0BAD}
@@ -119,7 +119,7 @@ class ChecksumPortFromTheSourceTest {
 
     @Test
     @DisplayName("opening an open port throws away what was written to it")
-    void openingAgainRestartsTheSum() {
+    void restartsTheSumWhenOpenedAgain() {
         assertThat(answerTo("""
                 port: open checksum://
                 write port #{CAFE}
@@ -139,7 +139,7 @@ class ChecksumPortFromTheSourceTest {
 
     @Test
     @DisplayName("every digest method this build has works through the port")
-    void everyMethodWorks() {
+    void worksForEveryMethod() {
         assertThat(answerTo("""
                 collect [
                     foreach method [
@@ -175,7 +175,7 @@ class ChecksumPortFromTheSourceTest {
 
     @Test
     @DisplayName("two counted writes together sum the whole")
-    void twoCountedWritesSumTheWhole() {
+    void sumsTheWholeOfTwoCountedWrites() {
         assertThat(answerTo("""
                 port: open checksum://
                 write/part port #{0BAD} 1
@@ -185,7 +185,7 @@ class ChecksumPortFromTheSourceTest {
 
     @Test
     @DisplayName("a count of nothing adds nothing")
-    void aCountOfNothingAddsNothing() {
+    void addsNothingForACountOfNothing() {
         assertThat(answerTo("""
                 port: open checksum://
                 write port #{0BAD}
@@ -195,7 +195,7 @@ class ChecksumPortFromTheSourceTest {
 
     @Test
     @DisplayName("a negative count reaches backwards, and stops at the head")
-    void aNegativeCountReachesBackwards() {
+    void reachesBackwardsForANegativeCount() {
         assertThat(answerTo("""
                 port: open checksum://
                 write port #{0BAD}
@@ -227,24 +227,24 @@ class ChecksumPortFromTheSourceTest {
 
     @Test
     @DisplayName("writing something that carries no bytes is an invalid argument")
-    void writingANumberRaises() {
-        assertThat(errorIdFrom("""
+    void raisesWhenWrittenANumber() {
+        assertThat(readTheErrorIdFrom("""
                 write checksum:md5 1""")).isEqualTo("invalid-arg");
     }
 
     @Test
     @DisplayName("a URL may be written to directly, port and all")
-    void aUrlMayBeWrittenTo() {
+    void acceptsAWriteThroughAUrl() {
         assertThat(answerTo("""
                 port? write checksum:md5 #{0BAD}""")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a scheme nothing serves has no scheme, whichever verb asks")
-    void anUnknownSchemeHasNoScheme() {
-        assertThat(errorIdFrom("""
+    void findsNoSchemeForAnUnknownOne() {
+        assertThat(readTheErrorIdFrom("""
                 read 'nowhere""")).isEqualTo("no-scheme");
-        assertThat(errorIdFrom("""
+        assertThat(readTheErrorIdFrom("""
                 write 'nowhere #{00}""")).isEqualTo("no-scheme");
     }
 }

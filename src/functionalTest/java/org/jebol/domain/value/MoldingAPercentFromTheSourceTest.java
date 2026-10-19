@@ -44,7 +44,7 @@ class MoldingAPercentFromTheSourceTest {
 
     @Test
     @DisplayName("a radix point with nothing after it is dropped, where a decimal keeps it")
-    void aRadixPointWithNothingAfterItIsDropped() {
+    void dropsARadixPointWithNothingAfterIt() {
         assertThat(answerTo("reduce [mold 3e34%  mold 3e34  mold 1e-8%  mold 1e-8]"))
                 .isEqualTo("""
                         ["3e34%" "3.0e34" "1e-8%" "1.0e-8"]""");
@@ -52,7 +52,7 @@ class MoldingAPercentFromTheSourceTest {
 
     @Test
     @DisplayName("and what it writes reads back as the value it was")
-    void whatItWritesReadsBackAsTheValueItWas() {
+    void readsBackAsTheValueItWas() {
         assertThat(answerTo(
                 "collect [foreach v " + THE_SPREAD_OF_SIZES + " ["
                         + "keep all [v = load mold v  v = load mold/all v]]]"))

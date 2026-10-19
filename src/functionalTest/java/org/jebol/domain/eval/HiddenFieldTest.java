@@ -17,32 +17,32 @@ class HiddenFieldTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String setup, String attempt) {
+    private static String readTheErrorIdOf(String setup, String attempt) {
         return answerTo(setup + "e: try [" + attempt + "] "
                 + "either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("a path to a hidden field fails as though there were no such field")
-    void aHiddenFieldCannotBeReached() {
-        assertThat(errorIdOf(CONCEALED, "o/f")).isEqualTo("invalid-path");
+    void cannotBeReached() {
+        assertThat(readTheErrorIdOf(CONCEALED, "o/f")).isEqualTo("invalid-path");
     }
 
     @Test
     @DisplayName("the object's own code still reaches it")
-    void theObjectKeepsUsingIt() {
+    void staysInUseByTheObject() {
         assertThat(answerTo(CONCEALED + "o/test")).isEqualTo("1");
     }
 
     @Test
     @DisplayName("the fields around it are unaffected")
-    void nothingElseIsConcealed() {
+    void concealsNothingElse() {
         assertThat(answerTo(CONCEALED + "o/g")).isEqualTo("2");
     }
 
     @Test
     @DisplayName("it is left out of WORDS-OF and BODY-OF")
-    void itIsNotListed() {
+    void staysOffTheList() {
         assertThat(answerTo(CONCEALED + "(words-of o) = [g test]")).isEqualTo("#(true)");
         assertThat(answerTo(CONCEALED + "find body-of o to set-word! 'f"))
                 .as("nor is it in the body")
@@ -51,7 +51,7 @@ class HiddenFieldTest {
 
     @Test
     @DisplayName("it is left out of the molded form")
-    void itIsNotMolded() {
+    void staysOutOfTheMold() {
         assertThat(answerTo(CONCEALED + "none? find mold o \"f:\"")).isEqualTo("#(true)");
         assertThat(answerTo(CONCEALED + "true? find mold o \"g:\""))
                 .as("and the visible one still is")
@@ -60,28 +60,28 @@ class HiddenFieldTest {
 
     @Test
     @DisplayName("adding a field over a hidden one is refused")
-    void nothingOutsideMayWriteOverIt() {
-        assertThat(errorIdOf(CONCEALED, "extend o 'f 2")).isEqualTo("hidden");
-        assertThat(errorIdOf(CONCEALED, "append o [f: 2]")).isEqualTo("hidden");
-        assertThat(errorIdOf(CONCEALED, "put o to-set-word 'f 2")).isEqualTo("hidden");
+    void refusesAWriteFromOutside() {
+        assertThat(readTheErrorIdOf(CONCEALED, "extend o 'f 2")).isEqualTo("hidden");
+        assertThat(readTheErrorIdOf(CONCEALED, "append o [f: 2]")).isEqualTo("hidden");
+        assertThat(readTheErrorIdOf(CONCEALED, "put o to-set-word 'f 2")).isEqualTo("hidden");
     }
 
     @Test
     @DisplayName("adding an ordinary field is still allowed")
-    void theObjectIsNotOtherwiseClosed() {
-        assertThat(errorIdOf(CONCEALED, "extend o 'h 3")).isEqualTo("no-error");
+    void leavesTheRestOfTheObjectOpen() {
+        assertThat(readTheErrorIdOf(CONCEALED, "extend o 'h 3")).isEqualTo("no-error");
     }
 
     @Test
     @DisplayName("an object with nothing hidden is unaffected")
-    void theOrdinaryObjectIsUntouched() {
+    void leavesTheOrdinaryObjectUntouched() {
         assertThat(answerTo("o: object [f: 1] o/f")).isEqualTo("1");
         assertThat(answerTo("o: object [f: 1] (words-of o) = [f]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("two objects hiding a field are equal whatever they hide")
-    void hidingIsNotComparable() {
+    void leavesComparisonAlone() {
         assertThat(answerTo(
                 "equal? context [a: 1 protect/hide 'a] context [a: 2 protect/hide 'a]"))
                 .isEqualTo("#(true)");
@@ -92,7 +92,7 @@ class HiddenFieldTest {
 
     @Test
     @DisplayName("hiding a field is still not the same as not having one")
-    void aHiddenFieldIsStillThere() {
+    void staysInTheObject() {
         assertThat(answerTo("equal? context [a: 1 protect/hide 'a] context [a: 1]"))
                 .isEqualTo("#(false)");
         assertThat(answerTo("equal? context [a: 1 protect/hide 'a] context []"))

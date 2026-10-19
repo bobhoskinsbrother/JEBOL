@@ -5,7 +5,7 @@ public final class LitWordValue extends AnyWordValue {
     public static final AnyWordDatatype TYPE = new AnyWordDatatype("lit-word") {
 
         @Override
-        public AnyWordValue spelt(String spelling, Context binding) {
+        public AnyWordValue spell(String spelling, Context binding) {
             return new LitWordValue(spelling, binding);
         }
     };
@@ -24,7 +24,7 @@ public final class LitWordValue extends AnyWordValue {
     }
 
     @Override
-    public LitWordValue boundTo(Context context) {
+    public LitWordValue bindTo(Context context) {
         return new LitWordValue(spelling(), context);
     }
 

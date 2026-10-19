@@ -37,7 +37,7 @@ class LibraryFileContextTest {
 
         @Test
         @DisplayName("but what the codec exports does reach the library")
-        void theCodecsExportsReachTheLibrary() {
+        void sendTheCodecsExportsToTheLibrary() {
             assertThat(answerTo("any-function? :to-json")).isEqualTo(TRUE);
             assertThat(answerTo("any-function? :load-json")).isEqualTo(TRUE);
         }
@@ -70,14 +70,14 @@ class LibraryFileContextTest {
 
         @Test
         @DisplayName("the library still holds the standard functions")
-        void libHoldsTheStandardFunctions() {
+        void leaveTheStandardFunctionsInLib() {
             assertThat(answerTo("any-function? get in system/contexts/lib 'append"))
                     .isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a sys file's own helper is in sys and not in the library")
-        void aSysHelperStaysInSys() {
+        void keepASysHelperInSys() {
             assertThat(answerTo("any-function? get in system/contexts/sys 'make-module*"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("none? in system/contexts/lib 'make-module*"))
@@ -91,7 +91,7 @@ class LibraryFileContextTest {
 
         @Test
         @DisplayName("lib, sys and user are all published")
-        void allThreeArePublished() {
+        void publishAllThree() {
             assertThat(answerTo("object? system/contexts/lib")).isEqualTo(TRUE);
             assertThat(answerTo("object? system/contexts/sys")).isEqualTo(TRUE);
             assertThat(answerTo("object? system/contexts/user")).isEqualTo(TRUE);
@@ -99,14 +99,14 @@ class LibraryFileContextTest {
 
         @Test
         @DisplayName("the user context is not the library either")
-        void userIsItsOwnContext() {
+        void keepUserApart() {
             assertThat(answerTo("same? system/contexts/user system/contexts/lib"))
                     .isEqualTo(FALSE);
         }
 
         @Test
         @DisplayName("the header prototype exists, because MAKE-MODULE* builds on it")
-        void theHeaderPrototypeExists() {
+        void includeTheHeaderPrototype() {
             assertThat(answerTo("object? system/standard/header")).isEqualTo(TRUE);
             assertThat(answerTo("0.0.0 = system/standard/header/version"))
                     .isEqualTo(TRUE);
@@ -114,7 +114,7 @@ class LibraryFileContextTest {
 
         @Test
         @DisplayName("and it has every field MAKE-MODULE* reads")
-        void theHeaderPrototypeHasTheFieldsThatAreRead() {
+        void giveTheHeaderPrototypeTheFieldsThatAreRead() {
             for (String field : new String[] {
                     "version", "title", "name", "type", "date", "file",
                     "author", "needs", "options", "checksum"}) {
@@ -131,7 +131,7 @@ class LibraryFileContextTest {
 
         @Test
         @DisplayName("all five log functions arrived")
-        void theLoggerFunctionsArrived() {
+        void bringsTheLoggerFunctions() {
             for (String name : new String[] {
                     "log-error", "log-warn", "log-info", "log-debug", "log-trace"}) {
                 assertThat(answerTo("any-function? :" + name))
@@ -142,7 +142,7 @@ class LibraryFileContextTest {
 
         @Test
         @DisplayName("and its private words did not come with them")
-        void theLoggersPrivateWordsStayedPrivate() {
+        void keepsTheLoggersPrivateWordsPrivate() {
             assertThat(answerTo("none? in system/contexts/lib 'verbosity"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("none? in system/contexts/lib 'log-levels"))
@@ -151,7 +151,7 @@ class LibraryFileContextTest {
 
         @Test
         @DisplayName("a lower-case type field says module just as well as an upper-case one")
-        void theTypeFieldIsCaseInsensitive() {
+        void readsTheTypeFieldInAnyCase() {
             assertThat(answerTo("any-function? :log-info")).isEqualTo(TRUE);
             assertThat(answerTo("any-function? :to-json")).isEqualTo(TRUE);
         }

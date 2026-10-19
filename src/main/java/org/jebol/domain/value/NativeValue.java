@@ -21,11 +21,11 @@ public sealed interface NativeValue extends DeclaresParameters
         return Optional.empty();
     }
 
-    default NativeValue askedFor(Set<String> refinements) {
+    default NativeValue askFor(Set<String> refinements) {
         return new AskedNative(this, Set.copyOf(refinements));
     }
 
-    default NativeValue derivedWith(AnyBlockValue spec, List<Parameter> declared) {
+    default NativeValue deriveWith(AnyBlockValue spec, List<Parameter> declared) {
         return new RespecifiedNative(this, spec, List.copyOf(declared));
     }
 
@@ -33,7 +33,7 @@ public sealed interface NativeValue extends DeclaresParameters
         return refinementsDeclaredApart().contains(refinement);
     }
 
-    default int arity() {
+    default int countTheArity() {
         long base = parameters().stream()
                 .filter(parameter -> parameter.owningRefinement().isEmpty())
                 .filter(Parameter::consumesAnArgument)

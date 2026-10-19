@@ -18,7 +18,7 @@ public class StatsNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.belongingTo("dump-series", "pool-id", Set.of(IntegerValue.TYPE)));
+        return List.of(Parameter.belongTo("dump-series", "pool-id", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -39,9 +39,9 @@ public class StatsNative extends DefaultNative {
                 return IntegerValue.of(evaluator.valuesWalked());
             }
             if (refinements.contains("profile")) {
-                return filledInProfile(evaluator);
+                return fillInTheProfile(evaluator);
             }
-            return IntegerValue.of(SeriesMemory.bytesHeld());
+            return IntegerValue.of(SeriesMemory.countTheBytesHeld());
         };
     }
 
@@ -49,8 +49,8 @@ public class StatsNative extends DefaultNative {
         return TimeValue.ofNanoseconds(System.nanoTime() - startedAt);
     }
 
-    private Value filledInProfile(Evaluator evaluator) {
-        Value standing = evaluator.systemContext().valueAt("system", "standard", "stats");
+    private Value fillInTheProfile(Evaluator evaluator) {
+        Value standing = evaluator.systemContext().readValueAt("system", "standard", "stats");
         if (!(standing instanceof ObjectValue profile)) {
             return NoneValue.none();
         }

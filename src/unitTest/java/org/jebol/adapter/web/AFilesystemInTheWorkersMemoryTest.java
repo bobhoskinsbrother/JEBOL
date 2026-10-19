@@ -2,6 +2,9 @@ package org.jebol.adapter.web;
 
 import org.jebol.domain.host.FileInformation;
 import org.jebol.domain.host.FilePort;
+import org.jebol.domain.value.FileValue;
+import org.jebol.domain.value.NoneValue;
+import org.jebol.domain.value.Value;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -19,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AFilesystemInTheWorkersMemoryTest {
 
-    private static byte[] bytesOf(String text) {
+    private static byte[] readTheBytesOf(String text) {
         return text.getBytes(StandardCharsets.UTF_8);
     }
 
@@ -27,7 +30,7 @@ class AFilesystemInTheWorkersMemoryTest {
         return new String(files.readBytes(path), StandardCharsets.UTF_8);
     }
 
-    private static String refusalIdOf(Runnable operation) {
+    private static String readTheRefusalIdOf(Runnable operation) {
         try {
             operation.run();
             return "no-refusal";
@@ -38,9 +41,9 @@ class AFilesystemInTheWorkersMemoryTest {
 
     @Test
     @DisplayName("a file written is a file read, exactly")
-    void writtenThenRead() {
+    void readsBackWhatItWrites() {
         WebFiles files = new WebFiles();
-        files.write("/a.txt", bytesOf("hello"));
+        files.write("/a.txt", readTheBytesOf("hello"));
 
         assertThat(textOf(files, "/a.txt")).isEqualTo("hello");
         assertThat(files.exists("/a.txt")).isTrue();
@@ -49,7 +52,7 @@ class AFilesystemInTheWorkersMemoryTest {
 
     @Test
     @DisplayName("bytes are bytes, not text")
-    void bytesAreBytes() {
+    void keepsBytesAsBytes() {
         WebFiles files = new WebFiles();
         files.write("/raw", new byte[] {(byte) 0xFF, 0, (byte) 0x80});
 
@@ -58,7 +61,7 @@ class AFilesystemInTheWorkersMemoryTest {
 
     @Test
     @DisplayName("reading what is not there, or a directory, is cannot-open")
-    void readingWhatIsNotAFileRaises() {
+    void raisesReadingWhatIsNotAFile() {
         WebFiles files = new WebFiles();
 
         assertThatThrownBy(() -> files.readBytes("/nothing"))
@@ -73,7 +76,7 @@ class AFilesystemInTheWorkersMemoryTest {
     void relativePathsCountFromTheScriptsDirectory() {
         WebFiles files = new WebFiles();
         files.makeDirectory("/sub/deeper", true);
-        files.write("/sub/deeper/a.txt", bytesOf("deep"));
+        files.write("/sub/deeper/a.txt", readTheBytesOf("deep"));
         files.changeDirectory("/sub/deeper");
 
         assertThat(textOf(files, "a.txt")).isEqualTo("deep");
@@ -83,9 +86,9 @@ class AFilesystemInTheWorkersMemoryTest {
 
     @Test
     @DisplayName("the dots are worked out, and one at the root stays at the root")
-    void theDotsClampAtTheRoot() {
+    void clampsTheDotsAtTheRoot() {
         WebFiles files = new WebFiles();
-        files.write("/a.txt", bytesOf("top"));
+        files.write("/a.txt", readTheBytesOf("top"));
 
         assertThat(textOf(files, "/../../a.txt")).isEqualTo("top");
         assertThat(textOf(files, "./a.txt")).isEqualTo("top");
@@ -93,9 +96,9 @@ class AFilesystemInTheWorkersMemoryTest {
 
     @Test
     @DisplayName("changing to what is not a directory raises and moves nothing")
-    void changingToWhatIsNotADirectoryRaises() {
+    void raisesChangingToWhatIsNotADirectory() {
         WebFiles files = new WebFiles();
-        files.write("/a.txt", bytesOf("x"));
+        files.write("/a.txt", readTheBytesOf("x"));
 
         assertThatThrownBy(() -> files.changeDirectory("/a.txt"))
                 .isInstanceOf(FilePort.Denied.class);
@@ -104,48 +107,48 @@ class AFilesystemInTheWorkersMemoryTest {
 
     @Test
     @DisplayName("a directory is made with its parents, and making one again says nothing")
-    void makingDirectories() {
+    void makesDirectories() {
         WebFiles files = new WebFiles();
         files.makeDirectory("/one/two", true);
 
         assertThat(files.isDirectory("/one/two")).isTrue();
-        assertThat(files.namesIn("/one")).containsExactly("two/");
+        assertThat(files.listFileNames("/one")).containsExactly("two/");
         files.makeDirectory("/one/two", false);
         assertThat(files.isDirectory("/one/two")).isTrue();
 
-        files.write("/plain.txt", bytesOf("x"));
-        assertThat(refusalIdOf(() -> files.makeDirectory("/plain.txt", false)))
+        files.write("/plain.txt", readTheBytesOf("x"));
+        assertThat(readTheRefusalIdOf(() -> files.makeDirectory("/plain.txt", false)))
                 .isEqualTo("no-create");
-        assertThat(refusalIdOf(() -> files.makeDirectory("/deep/one/two", false)))
+        assertThat(readTheRefusalIdOf(() -> files.makeDirectory("/deep/one/two", false)))
                 .isEqualTo("cannot-open");
     }
 
     @Test
     @DisplayName("a file cannot be written into a directory that is not there")
-    void writingIntoNowhereRaises() {
+    void raisesWritingIntoNowhere() {
         WebFiles files = new WebFiles();
 
-        assertThatThrownBy(() -> files.write("/nowhere/a.txt", bytesOf("x")))
+        assertThatThrownBy(() -> files.write("/nowhere/a.txt", readTheBytesOf("x")))
                 .isInstanceOf(FilePort.Denied.class);
     }
 
     @Test
     @DisplayName("appending joins, and writing at a position overlays without shortening")
-    void appendingAndWritingAt() {
+    void appendsAndWritesAt() {
         WebFiles files = new WebFiles();
-        files.write("/a.txt", bytesOf("one"));
-        files.appendTo("/a.txt", bytesOf("two"));
+        files.write("/a.txt", readTheBytesOf("one"));
+        files.appendTo("/a.txt", readTheBytesOf("two"));
         assertThat(textOf(files, "/a.txt")).isEqualTo("onetwo");
 
-        files.writeAt("/a.txt", 3, bytesOf("TWO"));
+        files.writeAt("/a.txt", 3, readTheBytesOf("TWO"));
         assertThat(textOf(files, "/a.txt")).isEqualTo("oneTWO");
     }
 
     @Test
     @DisplayName("deleting answers whether there was anything, and a directory must be empty")
-    void deleting() {
+    void deletes() {
         WebFiles files = new WebFiles();
-        files.write("/a.txt", bytesOf("x"));
+        files.write("/a.txt", readTheBytesOf("x"));
 
         assertThat(files.delete("/a.txt")).isTrue();
         assertThat(files.delete("/a.txt")).isFalse();
@@ -155,16 +158,16 @@ class AFilesystemInTheWorkersMemoryTest {
         assertThat(files.delete("/empty/")).isTrue();
 
         files.makeDirectory("/full", false);
-        files.write("/full/a.txt", bytesOf("x"));
-        assertThat(refusalIdOf(() -> files.delete("/full/")))
+        files.write("/full/a.txt", readTheBytesOf("x"));
+        assertThat(readTheRefusalIdOf(() -> files.delete("/full/")))
                 .isEqualTo("no-delete");
     }
 
     @Test
     @DisplayName("renaming moves the bytes, and a missing source raises")
-    void renaming() {
+    void renames() {
         WebFiles files = new WebFiles();
-        files.write("/a.txt", bytesOf("x"));
+        files.write("/a.txt", readTheBytesOf("x"));
         files.rename("/a.txt", "/b.txt");
 
         assertThat(files.exists("/a.txt")).isFalse();
@@ -175,47 +178,47 @@ class AFilesystemInTheWorkersMemoryTest {
 
     @Test
     @DisplayName("the names in a directory come sorted, with a slash on each directory")
-    void listing() {
+    void lists() {
         WebFiles files = new WebFiles();
         files.makeDirectory("/d", false);
-        files.write("/d/b.txt", bytesOf("x"));
-        files.write("/d/a.txt", bytesOf("x"));
+        files.write("/d/b.txt", readTheBytesOf("x"));
+        files.write("/d/a.txt", readTheBytesOf("x"));
 
-        assertThat(files.namesIn("/d")).containsExactly("a.txt", "b.txt");
+        assertThat(files.listFileNames("/d")).containsExactly("a.txt", "b.txt");
         files.makeDirectory("/d/nest", false);
-        assertThat(files.namesIn("/d")).containsExactly("a.txt", "b.txt", "nest/");
-        assertThat(files.namesIn("/")).containsExactly("d/");
+        assertThat(files.listFileNames("/d")).containsExactly("a.txt", "b.txt", "nest/");
+        assertThat(files.listFileNames("/")).containsExactly("d/");
     }
 
     @Test
     @DisplayName("a file answers its size and a directory answers none")
-    void information() {
+    void givesInformation() {
         WebFiles files = new WebFiles();
-        files.write("/a.txt", bytesOf("four"));
+        files.write("/a.txt", readTheBytesOf("four"));
         files.makeDirectory("/d", false);
 
-        assertThat(files.informationAbout("/a.txt"))
+        assertThat(files.describe("/a.txt"))
                 .map(FileInformation::size)
                 .contains(Optional.of(4L));
-        assertThat(files.informationAbout("/d"))
+        assertThat(files.describe("/d"))
                 .map(FileInformation::isDirectory)
                 .contains(true);
-        assertThat(files.informationAbout("/d"))
+        assertThat(files.describe("/d"))
                 .map(FileInformation::size)
                 .contains(Optional.empty());
-        assertThat(files.informationAbout("/nothing")).isEmpty();
+        assertThat(files.describe("/nothing")).isEmpty();
     }
 
     @Test
     @DisplayName("canonicalising answers a path only for something that is there")
-    void canonicalising() {
+    void canonicalises() {
         WebFiles files = new WebFiles();
-        files.write("/a.txt", bytesOf("x"));
+        files.write("/a.txt", readTheBytesOf("x"));
         files.makeDirectory("/d", false);
 
-        assertThat(files.canonicalPathOf("/a.txt")).isEqualTo("/a.txt");
-        assertThat(files.canonicalPathOf("/d")).isEqualTo("/d/");
-        assertThat(files.canonicalPathOf("/nothing")).isNull();
+        List<Value> answers = List.of(files.resolvedFile("/a.txt"), files.resolvedFile("/d"), files.resolvedFile("/nothing"));
+
+        assertThat(answers).containsExactly(FileValue.of("/a.txt"), FileValue.of("/d/"), NoneValue.none());
     }
 
     private static final class AStoreThatRemembers implements WebFiles.Store {
@@ -225,23 +228,23 @@ class AFilesystemInTheWorkersMemoryTest {
         private final List<String> events = new ArrayList<>();
         private String refusal;
 
-        AStoreThatRemembers holding(String path, String contents) {
-            files.put(path, bytesOf(contents));
+        AStoreThatRemembers hold(String path, String contents) {
+            files.put(path, readTheBytesOf(contents));
             return this;
         }
 
-        AStoreThatRemembers holdingADirectory(String path) {
+        AStoreThatRemembers holdADirectory(String path) {
             directories.add(path);
             return this;
         }
 
-        AStoreThatRemembers refusing(String because) {
+        AStoreThatRemembers refuse(String because) {
             this.refusal = because;
             return this;
         }
 
         @Override
-        public Tree everything() {
+        public Tree listAll() {
             return new Tree(files, directories);
         }
 
@@ -253,7 +256,7 @@ class AFilesystemInTheWorkersMemoryTest {
         }
 
         @Override
-        public void removed(String path) {
+        public void remove(String path) {
             refuseIfAsked();
             files.remove(path);
             directories.remove(path);
@@ -261,7 +264,7 @@ class AFilesystemInTheWorkersMemoryTest {
         }
 
         @Override
-        public void madeADirectory(String path) {
+        public void makeDirectory(String path) {
             refuseIfAsked();
             directories.add(path);
             events.add("made " + path);
@@ -276,25 +279,25 @@ class AFilesystemInTheWorkersMemoryTest {
 
     @Test
     @DisplayName("what the store already holds is a file the script can read")
-    void theStoreIsLoadedFirst() {
+    void loadsTheStoreFirst() {
         WebFiles files = new WebFiles(new AStoreThatRemembers()
-                .holding("/kept.txt", "kept")
-                .holdingADirectory("/d"));
+                .hold("/kept.txt", "kept")
+                .holdADirectory("/d"));
 
         assertThat(textOf(files, "/kept.txt")).isEqualTo("kept");
         assertThat(files.isDirectory("/d")).isTrue();
-        assertThat(files.namesIn("/")).containsExactly("d/", "kept.txt");
+        assertThat(files.listFileNames("/")).containsExactly("d/", "kept.txt");
     }
 
     @Test
     @DisplayName("every change is written back to the store")
-    void everyChangeGoesToTheStore() {
+    void sendsEveryChangeToTheStore() {
         AStoreThatRemembers store = new AStoreThatRemembers();
         WebFiles files = new WebFiles(store);
 
         files.makeDirectory("/d", false);
-        files.write("/d/a.txt", bytesOf("one"));
-        files.appendTo("/d/a.txt", bytesOf("two"));
+        files.write("/d/a.txt", readTheBytesOf("one"));
+        files.appendTo("/d/a.txt", readTheBytesOf("two"));
         files.rename("/d/a.txt", "/d/b.txt");
         files.delete("/d/b.txt");
 
@@ -309,21 +312,21 @@ class AFilesystemInTheWorkersMemoryTest {
 
     @Test
     @DisplayName("a store that refuses stops the change before the memory has it")
-    void aRefusingStoreStopsTheChange() {
-        AStoreThatRemembers store = new AStoreThatRemembers().refusing("no room in the store");
+    void stopsTheChangeWhenTheStoreRefuses() {
+        AStoreThatRemembers store = new AStoreThatRemembers().refuse("no room in the store");
         WebFiles files = new WebFiles(store);
 
-        assertThat(refusalIdOf(() -> files.write("/a.txt", bytesOf("x"))))
+        assertThat(readTheRefusalIdOf(() -> files.write("/a.txt", readTheBytesOf("x"))))
                 .isEqualTo("cannot-open");
         assertThat(files.exists("/a.txt")).isFalse();
     }
 
     @Test
     @DisplayName("an empty store is an empty filesystem")
-    void anEmptyStoreIsEmpty() {
+    void startsEmptyFromAnEmptyStore() {
         WebFiles files = new WebFiles(new AStoreThatRemembers());
 
-        assertThat(files.namesIn("/")).isEmpty();
+        assertThat(files.listFileNames("/")).isEmpty();
         assertThat(files.exists("/anything")).isFalse();
     }
 }

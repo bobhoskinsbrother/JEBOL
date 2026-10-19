@@ -16,10 +16,6 @@ public final class StreamOutput implements OutputPort {
         this.stream = stream;
     }
 
-    public static StreamOutput toStandardOut() {
-        return new StreamOutput(System.out);
-    }
-
     @Override
     public void write(String text) {
         stream.print(text);

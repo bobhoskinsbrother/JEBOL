@@ -51,7 +51,7 @@ public class WaitNative extends PortWakingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value",
+        return List.of(Parameter.of("value",
                 TypesetValue.NUMBER.membersAnd(TimeValue.TYPE, PortValue.TYPE, BlockValue.TYPE, NoneValue.TYPE)));
     }
 
@@ -65,111 +65,111 @@ public class WaitNative extends PortWakingNative {
         return (arguments, evaluator, context, refinements) -> {
             Value asked = arguments.getFirst();
             if (isAnEventPort(asked)) {
-                return waitedOnTheScreen((PortValue) asked, evaluator);
+                return waitOnTheScreen((PortValue) asked, evaluator);
             }
             List<Value> waitedOn = asked instanceof AnyBlockValue block
                     ? evaluator.evaluateEachOrRaise(block, context)
                     : List.of(asked);
-            Optional<PortValue> eventPort = theEventPortAmong(waitedOn);
+            Optional<PortValue> eventPort = findTheEventPortAmong(waitedOn);
             if (eventPort.isPresent()) {
-                return howLongToWaitAmong(waitedOn)
-                        .map(milliseconds -> waitedOnTheScreenFor(eventPort.get(), milliseconds, evaluator))
-                        .orElseGet(() -> waitedOnTheScreen(eventPort.get(), evaluator));
+                return findHowLongToWaitAmong(waitedOn)
+                        .map(milliseconds -> waitOnTheScreenFor(eventPort.get(), milliseconds, evaluator))
+                        .orElseGet(() -> waitOnTheScreen(eventPort.get(), evaluator));
             }
-            return theFirstToWakeWithin(waitedOn, howLongToWaitAmong(waitedOn), evaluator);
+            return waitForTheFirstToWakeWithin(waitedOn, findHowLongToWaitAmong(waitedOn), evaluator);
         };
     }
 
-    private Value theFirstToWakeWithin(List<Value> waitedOn, Optional<Long> milliseconds, Evaluator evaluator) {
+    private Value waitForTheFirstToWakeWithin(List<Value> waitedOn, Optional<Long> milliseconds, Evaluator evaluator) {
         long left = milliseconds.map(asked -> Math.max(0, asked)).orElse(0L);
         while (true) {
             evaluator.deliverWhatWasPosted();
-            if (whicheverPortWoke(waitedOn, evaluator) instanceof PortValue woken) {
+            if (findWhicheverPortWoke(waitedOn, evaluator) instanceof PortValue woken) {
                 return woken;
             }
             long slice = Math.min(PAUSE_SLICE_MILLISECONDS, left);
-            if (left <= 0 || !sleptWithoutBeingInterrupted(slice, evaluator)) {
+            if (left <= 0 || !sleepWithoutBeingInterrupted(slice, evaluator)) {
                 return NoneValue.none();
             }
             left -= slice;
         }
     }
 
-    private Optional<Long> howLongToWaitAmong(List<Value> waitedOn) {
+    private Optional<Long> findHowLongToWaitAmong(List<Value> waitedOn) {
         return waitedOn.stream()
                 .filter(each -> each instanceof IntegerValue
                         || each instanceof AnyDecimalValue
                         || each instanceof TimeValue)
                 .findFirst()
-                .map(this::millisecondsIn);
+                .map(this::countTheMillisecondsIn);
     }
 
-    private long millisecondsIn(Value duration) {
+    private long countTheMillisecondsIn(Value duration) {
         return duration instanceof TimeValue(long nanoseconds)
                 ? nanoseconds / NANOSECONDS_IN_A_MILLISECOND
                 : (long) (MILLISECONDS_IN_A_SECOND * Comparison.asDouble(duration));
     }
 
-    private Value whicheverPortWoke(List<Value> waitedOn, Evaluator evaluator) {
-        if (!(evaluator.hostPort("system") instanceof PortValue queue)
-                || !(queue.fieldValue("awake") instanceof AnyFunctionValue)) {
+    private Value findWhicheverPortWoke(List<Value> waitedOn, Evaluator evaluator) {
+        if (!(evaluator.findTheHostPort("system") instanceof PortValue queue)
+                || !(queue.readTheFieldValue("awake") instanceof AnyFunctionValue)) {
             return NoneValue.none();
         }
-        AnyBlockValue ports = BlockValue.block(new ArrayList<>(waitedOn));
+        AnyBlockValue ports = BlockValue.of(new ArrayList<>(waitedOn));
         while (true) {
-            Value said = evaluator.applyFunction(queue.fieldValue("awake"), List.of(queue, ports));
+            Value said = evaluator.applyFunction(queue.readTheFieldValue("awake"), List.of(queue, ports));
             if (said instanceof LogicValue(boolean truth) && truth) {
-                return theFirstWokenAmongEmptyingTheWakeList(waitedOn, queue);
+                return takeTheFirstWokenAndEmptyTheWakeList(waitedOn, queue);
             }
             if (!(said instanceof LogicValue)) {
-                theWakeListOf(queue).ifPresent(this::emptied);
+                findTheWakeListOf(queue).ifPresent(this::empty);
                 return NoneValue.none();
             }
         }
     }
 
-    private Value theFirstWokenAmongEmptyingTheWakeList(List<Value> waitedOn, PortValue queue) {
-        List<Value> woken = theWakeListOf(queue).map(AnyBlockValue::remaining).orElse(List.of());
+    private Value takeTheFirstWokenAndEmptyTheWakeList(List<Value> waitedOn, PortValue queue) {
+        List<Value> woken = findTheWakeListOf(queue).map(AnyBlockValue::remaining).orElse(List.of());
         Value answer = waitedOn.stream()
                 .filter(one -> one instanceof PortValue && woken.contains(one))
                 .findFirst()
                 .orElse(NoneValue.none());
-        theWakeListOf(queue).ifPresent(this::emptied);
+        findTheWakeListOf(queue).ifPresent(this::empty);
         return answer;
     }
 
-    private Optional<AnyBlockValue> theWakeListOf(PortValue queue) {
-        return queue.fieldValue("data") instanceof AnyBlockValue list
+    private Optional<AnyBlockValue> findTheWakeListOf(PortValue queue) {
+        return queue.readTheFieldValue("data") instanceof AnyBlockValue list
                 ? Optional.of(list)
                 : Optional.empty();
     }
 
-    private void emptied(AnyBlockValue list) {
+    private void empty(AnyBlockValue list) {
         while (list.storage().length() > 0) {
             list.storage().removeAt(1);
         }
     }
 
-    private Value waitedOnTheScreen(PortValue port, Evaluator evaluator) {
-        while (theScreenStillHasSomethingToSay(evaluator)) {
-            if (aQueuedEventWakes(port, evaluator)) {
+    private Value waitOnTheScreen(PortValue port, Evaluator evaluator) {
+        while (doesTheScreenStillHaveSomethingToSay(evaluator)) {
+            if (doesAQueuedEventWake(port, evaluator)) {
                 return NoneValue.none();
             }
-            if (!theScreenStillHasSomethingToSay(evaluator)
-                    || !sleptWithoutBeingInterrupted(SCREEN_POLL_MILLISECONDS, evaluator)) {
+            if (!doesTheScreenStillHaveSomethingToSay(evaluator)
+                    || !sleepWithoutBeingInterrupted(SCREEN_POLL_MILLISECONDS, evaluator)) {
                 return NoneValue.none();
             }
         }
         return NoneValue.none();
     }
 
-    private boolean aQueuedEventWakes(PortValue port, Evaluator evaluator) {
-        Optional<ScreenEvent> next = evaluator.screen().takeTheNextEvent();
+    private boolean doesAQueuedEventWake(PortValue port, Evaluator evaluator) {
+        Optional<ScreenEvent> next = evaluator.screen().acceptNextEvent();
         while (next.isPresent()) {
-            if (wakes(port, guiEventFor(next.get()), evaluator)) {
+            if (wakes(port, makeAGuiEventFor(next.get()), evaluator)) {
                 return true;
             }
-            next = evaluator.screen().takeTheNextEvent();
+            next = evaluator.screen().acceptNextEvent();
         }
         return false;
     }
@@ -178,52 +178,52 @@ public class WaitNative extends PortWakingNative {
         return asked instanceof PortValue port && port.schemeName().equals("event");
     }
 
-    private Optional<PortValue> theEventPortAmong(List<Value> waitedOn) {
+    private Optional<PortValue> findTheEventPortAmong(List<Value> waitedOn) {
         return waitedOn.stream()
                 .filter(this::isAnEventPort)
                 .map(PortValue.class::cast)
                 .findFirst();
     }
 
-    private Value waitedOnTheScreenFor(PortValue port, long milliseconds, Evaluator evaluator) {
+    private Value waitOnTheScreenFor(PortValue port, long milliseconds, Evaluator evaluator) {
         long deadline = System.nanoTime() + milliseconds * NANOSECONDS_IN_A_MILLISECOND;
         while (true) {
-            if (aQueuedEventWakes(port, evaluator)) {
+            if (doesAQueuedEventWake(port, evaluator)) {
                 return port;
             }
             long remainingNanoseconds = deadline - System.nanoTime();
             if (remainingNanoseconds <= 0
-                    || !sleptWithoutBeingInterrupted(Math.min(SCREEN_POLL_MILLISECONDS,
+                    || !sleepWithoutBeingInterrupted(Math.min(SCREEN_POLL_MILLISECONDS,
                             Math.ceilDiv(remainingNanoseconds, NANOSECONDS_IN_A_MILLISECOND)), evaluator)) {
                 return NoneValue.none();
             }
         }
     }
 
-    private boolean theScreenStillHasSomethingToSay(Evaluator evaluator) {
-        Value root = evaluator.systemContext().valueAt("system", "view", "screen-gob");
+    private boolean doesTheScreenStillHaveSomethingToSay(Evaluator evaluator) {
+        Value root = evaluator.systemContext().readValueAt("system", "view", "screen-gob");
         return root instanceof GobValue gob && gob.storage().length() > 0;
     }
 
-    private EventValue guiEventFor(ScreenEvent reported) {
+    private EventValue makeAGuiEventFor(ScreenEvent reported) {
         List<Value> spec = new ArrayList<>(List.of(
-                SetWordValue.of("type"), LitWordValue.of(reported.kind().spelling())));
+                SetWordValue.of("type"), LitWordValue.of(reported.type().spelling())));
         spec.addAll(reported.window() == null
                 ? List.of(SetWordValue.of("port"), NoneValue.none())
                 : List.of(SetWordValue.of("window"), reported.window()));
-        spec.addAll(whatTheDetailWrites(reported.detail()));
-        return EventPath.made(BlockValue.block(spec), UnaryOperator.identity()) instanceof EventValue made
+        spec.addAll(writeTheDetail(reported.detail()));
+        return EventPath.make(BlockValue.of(spec), UnaryOperator.identity()) instanceof EventValue made
                 ? made
                 : EventValue.fresh();
     }
 
-    private List<Value> whatTheDetailWrites(ScreenEventDetail detail) {
+    private List<Value> writeTheDetail(ScreenEventDetail detail) {
         return switch (detail) {
             case ScreenEventDetail.At(int across, int down) ->
                     List.of(SetWordValue.of("offset"), PairValue.of(across, down));
             case ScreenEventDetail.Typed(int codepoint) ->
                     List.of(SetWordValue.of("key"), CharacterValue.of(codepoint));
-            case ScreenEventDetail.NamedKey(String name) -> EventCatalogue.keyIndexOf(name)
+            case ScreenEventDetail.NamedKey(String name) -> EventCatalogue.findTheKeyIndexOf(name)
                     .<List<Value>>map(position -> List.of(
                             SetWordValue.of("code"), IntegerValue.of(position + 1)))
                     .orElse(List.of());
@@ -231,11 +231,11 @@ public class WaitNative extends PortWakingNative {
         };
     }
 
-    private boolean sleptWithoutBeingInterrupted(long milliseconds, Evaluator evaluator) {
+    private boolean sleepWithoutBeingInterrupted(long milliseconds, Evaluator evaluator) {
         long remaining = milliseconds;
         while (remaining > 0) {
             stopIfTheRunHasBeenStopped(evaluator);
-            if (!theHostLetsTimePass(evaluator, Math.min(PAUSE_SLICE_MILLISECONDS, remaining))) {
+            if (!letTheHostPassTime(evaluator, Math.min(PAUSE_SLICE_MILLISECONDS, remaining))) {
                 return false;
             }
             remaining -= PAUSE_SLICE_MILLISECONDS;
@@ -244,11 +244,11 @@ public class WaitNative extends PortWakingNative {
         return true;
     }
 
-    private boolean theHostLetsTimePass(Evaluator evaluator, long milliseconds) {
+    private boolean letTheHostPassTime(Evaluator evaluator, long milliseconds) {
         try {
             return evaluator.pause().pauseFor(milliseconds);
         } catch (FilePort.Denied refused) {
-            throw refused.raised();
+            throw refused.raise();
         }
     }
 

@@ -23,14 +23,14 @@ class BinaryParseTest {
 
     @Test
     @DisplayName("a count that does not match the length fails")
-    void theLengthStillHasToMatch() {
+    void stillMatchesTheLength() {
         assertThat(answerTo("parse #{0102} [3 skip]")).isEqualTo("#(false)");
         assertThat(answerTo("parse #{0102} [1 skip]")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("a rule written as a binary matches those bytes")
-    void aBinaryRuleMatchesBytes() {
+    void matchesBytesWithABinaryRule() {
         assertThat(answerTo("parse #{0102} [#{01} #{02}]")).isEqualTo("#(true)");
         assertThat(answerTo("parse #{0102} [#{0102}]")).isEqualTo("#(true)");
         assertThat(answerTo("parse #{0102} [#{02} #{01}]")).isEqualTo("#(false)");
@@ -62,14 +62,14 @@ class BinaryParseTest {
 
     @Test
     @DisplayName("TO and THRU work over bytes")
-    void seekingWorksOverBytes() {
+    void seeksOverBytes() {
         assertThat(answerTo("parse #{010203} [thru #{02} #{03}]")).isEqualTo("#(true)");
         assertThat(answerTo("parse #{010203} [to #{03} #{03}]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("an empty binary is at its end")
-    void theDegenerateInputIsEmpty() {
+    void parsesAnEmptyBinary() {
         assertThat(answerTo("parse #{} [end]")).isEqualTo("#(true)");
         assertThat(answerTo("parse #{} [skip]")).isEqualTo("#(false)");
     }
@@ -83,14 +83,14 @@ class BinaryParseTest {
 
     @Test
     @DisplayName("a high byte is an ordinary byte too")
-    void theTopOfTheRangeIsOrdinary() {
+    void treatsTheTopOfTheRangeAsOrdinary() {
         assertThat(answerTo("parse #{FF} [#{FF}]")).isEqualTo("#(true)");
         assertThat(answerTo("parse #{FF} [copy v skip] v = #{FF}")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("parsing a string is unaffected")
-    void theStringCaseStillWorks() {
+    void stillParsesAString() {
         assertThat(answerTo("parse \"ab\" [\"a\" \"b\"]")).isEqualTo("#(true)");
         assertThat(answerTo("parse \"ab\" [copy v skip skip] v = \"a\""))
                 .as("a string span is still a string")
@@ -102,7 +102,7 @@ class BinaryParseTest {
 
     @Test
     @DisplayName("parsing a binary minds case from the start")
-    void bytesAreBytes() {
+    void matchesBytesExactly() {
         assertThat(answerTo("parse to binary! \"aB\" [#{61} #{42}]")).isEqualTo("#(true)");
         assertThat(answerTo("parse to binary! \"aB\" [#{41} #{62}]")).isEqualTo("#(false)");
         assertThat(answerTo("parse \"aB\" [\"A\" \"b\"]"))
@@ -112,7 +112,7 @@ class BinaryParseTest {
 
     @Test
     @DisplayName("NO-CASE still turns the folding on inside a binary rule")
-    void foldingCanBeAskedFor() {
+    void foldsCaseWhenAsked() {
         assertThat(answerTo("parse to binary! \"aaaAB\" [thru #\"A\" no-case #\"b\"]"))
                 .isEqualTo("#(true)");
         assertThat(answerTo("parse to binary! \"aaaAB\" [thru #\"A\" #\"b\"]"))

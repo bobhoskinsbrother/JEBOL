@@ -24,65 +24,65 @@ public class ReflectAction extends DefaultNative implements ActionValue {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value"),
-                Parameter.required("field", Set.of(WordValue.TYPE)));
+        return List.of(Parameter.of("value"),
+                Parameter.of("field", Set.of(WordValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                reflected(arguments.getFirst(), (AnyWordValue) arguments.get(1));
+                reflect(arguments.getFirst(), (AnyWordValue) arguments.get(1));
     }
 
-    private Value reflected(Value subject, AnyWordValue field) {
+    private Value reflect(Value subject, AnyWordValue field) {
         return switch (subject) {
             case UnsetValue nothing -> throw Raised.cannotUse(nothing, this);
-            case VectorValue vector -> reflectedFrom(vector, field);
-            case Datatype represents -> declarations.specOf(represents)
-                    .map(described -> reflectedFrom(described, field.canonical()))
+            case VectorValue vector -> reflectFrom(vector, field);
+            case Datatype represents -> declarations.findTheSpecOf(represents)
+                    .map(described -> reflectFrom(described, field.canonical()))
                     .orElseGet(NoneValue::none);
-            case NativeValue built -> reflectedFrom(built, field.canonical());
-            case OperatorValue operator -> reflectedFromBehind(operator, field);
-            case Value anythingElse -> anythingElse.reflected(field);
+            case NativeValue built -> reflectFrom(built, field.canonical());
+            case OperatorValue operator -> reflectFromBehind(operator, field);
+            case Value anythingElse -> anythingElse.reflect(field);
         };
     }
 
-    private Value reflectedFrom(VectorValue vector, AnyWordValue field) {
+    private Value reflectFrom(VectorValue vector, AnyWordValue field) {
         return field.canonical().equals("spec")
-                ? VectorQuery.specOf(vector)
-                : VectorQuery.field(vector, field.canonical()).orElseThrow(
+                ? VectorQuery.makeTheSpecOf(vector)
+                : VectorQuery.readTheField(vector, field.canonical()).orElseThrow(
                         () -> Raised.of(EvaluationFailure.INVALID_ARG, field));
     }
 
-    private Value reflectedFrom(DatatypeSpec described, String field) {
+    private Value reflectFrom(DatatypeSpec described, String field) {
         return switch (field) {
             case "title" -> StringValue.of(described.title());
             case "type" -> WordValue.of(described.category());
-            case "spec" -> new ObjectValue(titleAndType(described));
+            case "spec" -> new ObjectValue(describeTheTitleAndType(described));
             default -> NoneValue.none();
         };
     }
 
-    private Context titleAndType(DatatypeSpec described) {
+    private Context describeTheTitleAndType(DatatypeSpec described) {
         Context fields = Context.root();
         fields.register("title", StringValue.of(described.title()));
         fields.register("type", WordValue.of(described.category()));
         return fields;
     }
 
-    private Value reflectedFrom(NativeValue built, String field) {
+    private Value reflectFrom(NativeValue built, String field) {
         return switch (field) {
-            case "spec" -> declarations.specOf(built);
-            case "words" -> declarations.specOf(built).declaredParameters();
-            case "types" -> built.typesets();
+            case "spec" -> declarations.findTheSpecOf(built);
+            case "words" -> declarations.findTheSpecOf(built).declaredParameters();
+            case "types" -> built.listTheTypesets();
             default -> NoneValue.none();
         };
     }
 
-    private Value reflectedFromBehind(OperatorValue operator, AnyWordValue field) {
+    private Value reflectFromBehind(OperatorValue operator, AnyWordValue field) {
         return switch (operator.underlying()) {
-            case NativeValue behind -> reflectedFrom(behind, field.canonical());
-            case Value behind -> behind.reflected(field);
+            case NativeValue behind -> reflectFrom(behind, field.canonical());
+            case Value behind -> behind.reflect(field);
         };
     }
 }

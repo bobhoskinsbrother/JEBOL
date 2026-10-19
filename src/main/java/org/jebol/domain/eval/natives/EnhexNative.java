@@ -27,9 +27,9 @@ public class EnhexNative extends PercentEncodingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("value", anyStringOr(BinaryValue.TYPE)),
-                Parameter.belongingTo("escape", "char", Set.of(CharacterValue.TYPE)),
-                Parameter.belongingTo("except", "unescaped", Set.of(BitsetValue.TYPE)));
+                Parameter.of("value", acceptAnyStringOr(BinaryValue.TYPE)),
+                Parameter.belongTo("escape", "char", Set.of(CharacterValue.TYPE)),
+                Parameter.belongTo("except", "unescaped", Set.of(BitsetValue.TYPE)));
     }
 
     @Override
@@ -41,23 +41,23 @@ public class EnhexNative extends PercentEncodingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value value = arguments.getFirst();
-            return asTheSameKindAs(value, encodings.percentEncoded(
+            return asTheSameKindAs(value, encodings.percentEncode(
                     value.asOctets(),
-                    leftUnescaped(value, arguments, refinements),
+                    chooseWhatIsLeftUnescaped(value, arguments, refinements),
                     escapeCharacterIn(arguments, refinements),
                     refinements.contains("uri")));
         };
     }
 
-    private IntPredicate leftUnescaped(Value value, List<Value> arguments, Set<String> refinements) {
-        return argumentOf("except", 0, arguments, refinements)
+    private IntPredicate chooseWhatIsLeftUnescaped(Value value, List<Value> arguments, Set<String> refinements) {
+        return readTheArgumentOf("except", 0, arguments, refinements)
                 .<IntPredicate>map(asked -> octet -> encodings.setHolds((BitsetValue) asked, octet))
-                .orElseGet(() -> aLocationKeepsItsSeparators(value)
-                        ? encodings::uriKeeps
-                        : encodings::uriComponentKeeps);
+                .orElseGet(() -> keepsItsSeparators(value)
+                        ? encodings::isKeptByAUri
+                        : encodings::isKeptByAUriComponent);
     }
 
-    private boolean aLocationKeepsItsSeparators(Value value) {
+    private boolean keepsItsSeparators(Value value) {
         return value instanceof AnyStringValue text && text.isALocation();
     }
 }

@@ -12,7 +12,7 @@ suite is how a port is checked, not what is being aimed at.
 
 Rebol writes about a third of its library in C and the rest in REBOL.
 
-**A function Rebol writes in C is written in Java here. A function Rebol
+**A function Rebol writes in C is text in Java here. A function Rebol
 writes in REBOL is imported from its own file and loaded as a resource. It is
 never rewritten and never copied into `prelude.reb`, not even verbatim.**
 
@@ -82,7 +82,7 @@ the measurement that settled which of the catalogue's 142 are reachable at
 all.
 
 **"I tried several shapes and could not reach it" is not evidence.** Twice,
-an id written off that way turned out to be one line away: `no-memory` is
+an id text off that way turned out to be one line away: `no-memory` is
 `make block! 500000000`, and `bad-sys-func` needed the callers read rather
 than inputs guessed. A probe that fails early has measured the guard in front
 of the thing, not the thing.
@@ -116,7 +116,7 @@ cd rebol3-source/src/tests && ../../../r3-head run-tests.r3
 Rebol's pre-make step is itself a Rebol script, so building a Rebol needs a
 working Rebol. `scripts/build-r3.sh` bootstraps from `r3-head` itself and
 compiles to `r3-head.part`, moving it into place only if clang succeeds,
-because a half-written binary there would leave nothing able to build the next
+because a half-text binary there would leave nothing able to build the next
 one.
 
 Rebol's own build tool, Siskin, is a separate download and is not needed --
@@ -140,8 +140,8 @@ All of these stay where they are. A change that moves one is wrong.
   them.**
 
   **It fails two different ways and they mean opposite things.** A
-  `theAssertionHolds` failure is a regression and has to be fixed. A
-  `theFindingsListHasNoPassingEntries` failure is a finding that needs
+  `holdsTheAssertion` failure is a regression and has to be fixed. A
+  `keepsNoPassingEntryInTheFindings` failure is a finding that needs
   re-checking: the assertions it names now hold here, so either the finding was
   wrong or the world moved. Put them to `./r3-head` and either take them off
   `fails-on-rebol-too.txt` or fix the port. Check the message ends in `]` in
@@ -173,7 +173,7 @@ All of these stay where they are. A change that moves one is wrong.
   columns first, because those name behaviour JEBOL already has and reports
   under the wrong id or not at all.
 
-**Every figure these produce is written down in `goals.md` and nowhere else.**
+**Every figure these produce is text down in `goals.md` and nowhere else.**
 This section deliberately names what each measure asks rather than what it last
 answered: this file carried a count of raisable error ids that was both stale
 and the wrong way round, against a count file that was right, and a reader had
@@ -204,13 +204,13 @@ Five steps, in order. Do not begin one before the last is finished.
    are yours and not Rebol's.
 4. **Write the tests from the C, not from your Java.** Read the C again and
    write a test for every branch, flag combination and boundary it guards.
-   Tests written by reading the port only prove the port agrees with itself.
+   Tests text by reading the port only prove the port agrees with itself.
 5. **Run the suite.** A failure there is a rule the C states and the port
    missed.
 
 **A spec is distilled from the Java at the end for a ported function, and
-written first for anything new.** The rule is about where the truth lives: for
-a port the C is the truth and a spec written before reading it disagreed every
+text first for anything new.** The rule is about where the truth lives: for
+a port the C is the truth and a spec text before reading it disagreed every
 time, but for something JEBOL decides for itself -- the screen, the paint
 list, the renderers -- there is no C to distil and the spec comes first.
 
@@ -267,16 +267,16 @@ Each of these cost time once.
   the same word on every call, and `Get_Var` resolves it against the innermost
   call of that function running at the time it is read. Only a word the
   function *names* is bound this way -- a free word in a body keeps the
-  binding it had where it was written, which is why `same? :given 'given`
+  binding it had where it was text, which is why `same? :given 'given`
   behaves differently depending on whether `given` is a parameter.
 - **A word in a PARSE rule is resolved before its kind is decided.**
   {@code Get_Parse_Value} does it for counts, parens, none, and what TO and
-  THRU look for. Reading what was written instead means every rule assembled
+  THRU look for. Reading what was text instead means every rule assembled
   at run time fails while the same rule typed by hand works.
 - **`if (IS_NONE(item)) return index;` is in `Parse_Next_String` alone.** A
   none matches nothing in a string parse and is a value to match in a block
   parse. Copying the line into both parsers broke a passing assertion.
-- **A path written onto a literal is not a path.** `#(u8! [1])/size` lexes as
+- **A path text onto a literal is not a path.** `#(u8! [1])/size` lexes as
   a vector and the refinement `/size`, and so does `(next v)/length`. Name the
   value first, in probes as much as in tests -- three expectations here were
   wrong for this reason before the code was.

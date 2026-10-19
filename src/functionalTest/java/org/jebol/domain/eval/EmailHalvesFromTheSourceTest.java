@@ -39,7 +39,7 @@ class EmailHalvesFromTheSourceTest {
 
         @Test
         @DisplayName("each is a plain string, not another address")
-        void eachHalfIsAString() {
+        void readsEachHalfAsAString() {
             assertThat(answerTo("e: someone@gmail.com string? e/user"))
                     .as("Copy_String and Set_String make a string!, and an address "
                             + "handed back here would mold with its own punctuation")
@@ -49,7 +49,7 @@ class EmailHalvesFromTheSourceTest {
 
         @Test
         @DisplayName("with no at sign at all, the whole thing is the user and there is no host")
-        void withoutAnAtSign() {
+        void readsAnEmailWithoutAnAtSign() {
             assertThat(answerTo("e: as email! {foo} e/user").replace("\"", ""))
                     .isEqualTo("foo");
             assertThat(moldOf("e: as email! {foo} e/host"))
@@ -72,7 +72,7 @@ class EmailHalvesFromTheSourceTest {
 
         @Test
         @DisplayName("replaces that half and leaves the other alone")
-        void replacingAhalf() {
+        void replacesAHalf() {
             assertThat(answerTo("e: someone@gmail.com e/user: {foo} mold e")
                     .replace("\"", "")).isEqualTo("foo@gmail.com");
             assertThat(answerTo("e: someone@gmail.com e/host: {x.com} mold e")
@@ -81,7 +81,7 @@ class EmailHalvesFromTheSourceTest {
 
         @Test
         @DisplayName("and setting a host where there is no at sign adds one")
-        void settingAhostAddsTheAtSign() {
+        void addsTheAtSignWhenSettingAHost() {
             assertThat(answerTo("e: as email! {bob} e/host: {rebol.tech} mold e")
                     .replace("\"", ""))
                     .as("the C appends the character and then appends the value "

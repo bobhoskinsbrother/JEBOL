@@ -18,8 +18,8 @@ public class ReverseAction extends DefaultNative implements ActionValue {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series"),
-                Parameter.belongingTo("part", "limit", Set.of(IntegerValue.TYPE)));
+        return List.of(Parameter.of("series"),
+                Parameter.belongTo("part", "limit", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -30,11 +30,11 @@ public class ReverseAction extends DefaultNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            Optional<Value> limit = argumentOf("part", 0, arguments, refinements);
+            Optional<Value> limit = readTheArgumentOf("part", 0, arguments, refinements);
             return switch (arguments.getFirst()) {
                 case RebolSeries series when refinements.contains("part") ->
-                        series.reversedFront(theFrontOf(series, limit));
-                case TupleValue tuple -> tuple.reversedFront((int) Arithmetic.asMagnitude(
+                        series.reverseTheFront(measureTheFrontOf(series, limit));
+                case TupleValue tuple -> tuple.reverseTheFront((int) Arithmetic.asMagnitude(
                         limit.orElseGet(() -> IntegerValue.of(tuple.segmentCount()))));
                 case PairValue pair -> pair.reversed();
                 case RebolSeries series -> series.reversedFromHere();
@@ -43,12 +43,12 @@ public class ReverseAction extends DefaultNative implements ActionValue {
         };
     }
 
-    private int theFrontOf(RebolSeries series, Optional<Value> limit) {
-        return limit.map(asked -> Math.clamp(howManyCounted(series, asked), 0, series.lengthFromHere()))
+    private int measureTheFrontOf(RebolSeries series, Optional<Value> limit) {
+        return limit.map(asked -> Math.clamp(countHowMany(series, asked), 0, series.lengthFromHere()))
                 .orElse(series.lengthFromHere());
     }
 
-    private long howManyCounted(RebolSeries series, Value asked) {
+    private long countHowMany(RebolSeries series, Value asked) {
         return switch (asked) {
             case IntegerValue(long magnitude) -> magnitude;
             case DecimalValue fraction ->

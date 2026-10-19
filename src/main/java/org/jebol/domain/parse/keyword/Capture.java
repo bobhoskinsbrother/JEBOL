@@ -21,7 +21,7 @@ final class Capture extends DeclaredKeyword {
 
     @Override
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
-        AnyWordValue word = walk.theWordToWriteInto(rules, at);
+        AnyWordValue word = walk.findTheWordToWriteInto(rules, at);
         if (at + 2 >= rules.size()) {
             return ParseWalk.NO_MATCH;
         }
@@ -32,17 +32,17 @@ final class Capture extends DeclaredKeyword {
         }
         walk.assign(word, wholeSlice
                 ? walk.sliceBetween(startedAt, walk.position())
-                : walk.firstItemBetween(startedAt, walk.position()));
+                : walk.readTheFirstItemBetween(startedAt, walk.position()));
         return 2 + consumed;
     }
 
     @Override
     public int applyToString(ParseWalk walk, List<Value> rules, int at) {
-        AnyWordValue target = walk.theWordToWriteInto(rules, at);
+        AnyWordValue target = walk.findTheWordToWriteInto(rules, at);
         if (at + 2 >= rules.size()) {
             return ParseWalk.NO_MATCH;
         }
-        int ruleAt = theRuleAfterAnyMarks(walk, rules, at + 2);
+        int ruleAt = skipAnyMarks(walk, rules, at + 2);
         int before = walk.position();
         if (walk.matchOne(rules, ruleAt) == ParseWalk.NO_MATCH) {
             walk.moveTo(before);
@@ -50,11 +50,11 @@ final class Capture extends DeclaredKeyword {
         }
         walk.assign(target, wholeSlice
                 ? walk.textSliceBetween(before, walk.position())
-                : walk.firstCharacterMatchedFrom(before));
+                : walk.readTheFirstCharacterMatchedFrom(before));
         return (ruleAt - at) + walk.ruleSpan(rules, ruleAt);
     }
 
-    private static int theRuleAfterAnyMarks(
+    private static int skipAnyMarks(
             ParseWalk walk, List<Value> rules, int from) {
 
         int ruleAt = from;

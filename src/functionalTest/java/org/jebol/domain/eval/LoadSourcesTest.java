@@ -14,26 +14,26 @@ class LoadSourcesTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("a binary is read as UTF-8")
-    void aBinaryIsReadAsText() {
+    void readsABinaryAsText() {
         assertThat(answerTo("\"3\" = load #{223322}")).isEqualTo("#(true)");
         assertThat(answerTo("load #{31}")).isEqualTo("1");
     }
 
     @Test
     @DisplayName("a byte order mark at the front is dropped")
-    void aByteOrderMarkIsNotPartOfTheSource() {
+    void dropsAByteOrderMark() {
         assertThat(answerTo("\"3\" = load #{EFBBBF223322}")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a block loads each item and keeps each answer whole")
-    void aBlockIsABlockOfSources() {
+    void readsABlockAsABlockOfSources() {
         assertThat(answerTo("(load [\"1\" \"2\"]) = [1 2]")).isEqualTo("#(true)");
         assertThat(answerTo("(load [#{31} \"2\"]) = [1 2]"))
                 .as("the items may be of different kinds")
@@ -42,14 +42,14 @@ class LoadSourcesTest {
 
     @Test
     @DisplayName("a source holding two values arrives nested")
-    void aMultipleValuedSourceKeepsItsBlock() {
+    void keepsTheBlockOfAMultipleValuedSource() {
         assertThat(answerTo("(load [\"print 'a\" \"print 'b\"]) = [[print 'a] [print 'b]]"))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("loading nothing answers an empty block")
-    void theDegenerateSourcesLoadToNothing() {
+    void loadsTheDegenerateSourcesToNothing() {
         assertThat(answerTo("empty? load \"\"")).isEqualTo("#(true)");
         assertThat(answerTo("empty? load #{}")).isEqualTo("#(true)");
         assertThat(answerTo("empty? load []")).isEqualTo("#(true)");
@@ -57,17 +57,17 @@ class LoadSourcesTest {
 
     @Test
     @DisplayName("a source that is not a source is refused")
-    void aWrongTypeIsRefused() {
-        assertThat(errorIdOf("load 'word")).isEqualTo("expect-arg");
-        assertThat(errorIdOf("load 5")).isEqualTo("expect-arg");
-        assertThat(errorIdOf("load [1]"))
+    void refusesAWrongType() {
+        assertThat(readTheErrorIdOf("load 'word")).isEqualTo("expect-arg");
+        assertThat(readTheErrorIdOf("load 5")).isEqualTo("expect-arg");
+        assertThat(readTheErrorIdOf("load [1]"))
                 .as("an item inside a block is checked too")
                 .isEqualTo("expect-arg");
     }
 
     @Test
     @DisplayName("/ALL keeps the block around a single value")
-    void allTurnsOffTheUnwrapping() {
+    void turnsOffTheUnwrappingForAll() {
         assertThat(answerTo("load \"1\"")).isEqualTo("1");
         assertThat(answerTo("(load/all \"1\") = [1]")).isEqualTo("#(true)");
     }

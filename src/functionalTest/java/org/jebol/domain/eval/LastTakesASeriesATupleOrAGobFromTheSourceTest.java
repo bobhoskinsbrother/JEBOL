@@ -16,7 +16,7 @@ class LastTakesASeriesATupleOrAGobFromTheSourceTest {
 
     @Test
     @DisplayName("a tuple answers the last part that was written")
-    void aTupleAnswersTheLastPartThatWasWritten() {
+    void answersTheLastWrittenPartOfATuple() {
         assertThat(answerTo("""
                 reduce [last 1.2.3  last 1.2.3.4  last 1.2.3.0  last 0.0.0]"""))
                 .isEqualTo("[3 4 0 0]");
@@ -24,7 +24,7 @@ class LastTakesASeriesATupleOrAGobFromTheSourceTest {
 
     @Test
     @DisplayName("a series answers its last item, and a gob its last child")
-    void aSeriesAnswersItsLastItemAndAGobItsLastChild() {
+    void answersASeriesLastItemAndAGobsLastChild() {
         assertThat(answerTo("""
                 holder: make gob! []
                 append holder make gob! [size: 2x2]
@@ -35,7 +35,7 @@ class LastTakesASeriesATupleOrAGobFromTheSourceTest {
 
     @Test
     @DisplayName("and anything else is refused by the declaration, naming the parameter")
-    void anythingElseIsRefusedByTheDeclaration() {
+    void refusesAnythingElseByTheDeclaration() {
         assertThat(answerTo("""
                 collect [
                     foreach subject reduce [:print 1 1x1 #(none) make map! [a 1]] [

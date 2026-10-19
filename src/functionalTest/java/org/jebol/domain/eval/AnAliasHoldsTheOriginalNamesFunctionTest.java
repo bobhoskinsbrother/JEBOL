@@ -11,15 +11,15 @@ class AnAliasHoldsTheOriginalNamesFunctionTest {
 
     @ParameterizedTest(name = "once the library has run, :{0} is the very function :{1} is")
     @CsvSource({"abs, absolute", "context, object", "true?, did"})
-    void theLibraryMakesTheAliasTheSameFunction(String alias, String originalName) {
+    void isTheSameFunctionInTheLibrary(String alias, String originalName) {
         Interpreter interpreter = Interpreter.create();
         assertThat(interpreter.display(interpreter.run("same? :" + alias + " :" + originalName))).isEqualTo("#(true)");
     }
 
     @ParameterizedTest(name = "type? :{0} is {1}, as in r3")
-    @DisplayName("each alias is the kind of function its original name is")
+    @DisplayName("each alias is the type of function its original name is")
     @CsvSource({"abs, #(action!)", "context, #(native!)", "true?, #(native!)"})
-    void theAliasIsTheSameKind(String alias, String kind) {
+    void isTheSameKind(String alias, String kind) {
         Interpreter interpreter = Interpreter.create();
         assertThat(interpreter.display(interpreter.run("type? :" + alias))).isEqualTo(kind);
     }

@@ -33,13 +33,13 @@ class BitOperatorsEveryPairEndToEndTest {
         }
     }
 
-    private String whatJebolPrintsForTheProbe() throws IOException {
+    private String runTheProbeInJebol() throws IOException {
         Path script = directory.resolve("every-pair.r3");
         Files.writeString(script, readFromTheClasspath(THE_PROBE), StandardCharsets.UTF_8);
 
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
-        Repl.runTheCommandLine(
+        Repl.runCommandLine(
                 new String[]{script.toString()}, output, output, directory.toString());
         output.flush();
         return captured.toString(StandardCharsets.UTF_8);
@@ -51,9 +51,9 @@ class BitOperatorsEveryPairEndToEndTest {
 
     @Test
     @DisplayName("every line JEBOL prints is the line a real 3.22.5 printed")
-    void everyLineAgreesWithTheRecording() throws IOException {
+    void agreesWithTheRecordingOnEveryLine() throws IOException {
         List<String> recorded = linesOf(readFromTheClasspath(WHAT_A_REAL_3_22_5_PRINTED));
-        List<String> answered = linesOf(whatJebolPrintsForTheProbe());
+        List<String> answered = linesOf(runTheProbeInJebol());
 
         int upToTheShorter = Math.min(recorded.size(), answered.size());
         for (int at = 0; at < upToTheShorter; at++) {
@@ -70,7 +70,7 @@ class BitOperatorsEveryPairEndToEndTest {
 
     @Test
     @DisplayName("the probe is the whole matrix, so a shrunken one is a shrunken test")
-    void theProbeAsksEveryQuestionItClaimsTo() throws IOException {
+    void asksEveryQuestionTheProbeClaims() throws IOException {
         List<String> recorded = linesOf(readFromTheClasspath(WHAT_A_REAL_3_22_5_PRINTED));
 
         assertThat(recorded.stream().filter(line -> line.contains("|")).count())

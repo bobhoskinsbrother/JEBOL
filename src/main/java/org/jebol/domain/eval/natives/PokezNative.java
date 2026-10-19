@@ -18,9 +18,9 @@ public class PokezNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("series", TypesetValue.SERIES.membersAnd(BitsetValue.TYPE, TupleValue.TYPE)),
-                Parameter.required("index", Set.of(IntegerValue.TYPE)),
-                Parameter.required("value"));
+                Parameter.of("series", TypesetValue.SERIES.membersAnd(BitsetValue.TYPE, TupleValue.TYPE)),
+                Parameter.of("index", Set.of(IntegerValue.TYPE)),
+                Parameter.of("value"));
     }
 
     @Override
@@ -34,15 +34,15 @@ public class PokezNative extends DefaultNative {
             }
             long index = ((IntegerValue) arguments.get(1)).magnitude();
             boolean countsFromOne = index >= 0 && !(series instanceof BitsetValue);
-            return evaluator.applyFunction(theActionItWraps(context),
+            return evaluator.applyFunction(findTheActionItWraps(context),
                     List.of(series, IntegerValue.of(countsFromOne ? index + 1 : index), arguments.get(2)));
         };
     }
 
-    private Value theActionItWraps(Context context) {
+    private Value findTheActionItWraps(Context context) {
         if (!context.knows(THE_ACTION_IT_WRAPS)) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, THE_ACTION_IT_WRAPS);
         }
-        return context.slotFor(THE_ACTION_IT_WRAPS).value();
+        return context.findSlotFor(THE_ACTION_IT_WRAPS).value();
     }
 }

@@ -17,8 +17,8 @@ public class TruncateNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series"),
-                Parameter.belongingTo("part", "count", aPartLimit()));
+        return List.of(Parameter.of("series"),
+                Parameter.belongTo("part", "count", listThePartLimitTypes()));
     }
 
     @Override
@@ -29,14 +29,14 @@ public class TruncateNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
-            case RebolSeries series -> truncated(series,
-                    argumentOf("part", 0, arguments, refinements)
+            case RebolSeries series -> truncate(series,
+                    readTheArgumentOf("part", 0, arguments, refinements)
                             .map(count -> ((IntegerValue) count).magnitude()));
             case Value anythingElse -> refuseTheDatatype(anythingElse);
         };
     }
 
-    private RebolSeries truncated(RebolSeries series, Optional<Long> keeping) {
+    private RebolSeries truncate(RebolSeries series, Optional<Long> keeping) {
         Actions.of(series).orElseThrow().takeOutFrom(1, series.index() - 1);
         RebolSeries kept = series.atIndex(1);
         keeping.ifPresent(wanted -> Actions.of(kept).orElseThrow()

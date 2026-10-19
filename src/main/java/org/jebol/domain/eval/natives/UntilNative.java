@@ -16,7 +16,7 @@ public class UntilNative extends LoopingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("body", A_BLOCK));
+        return List.of(Parameter.of("body", A_BLOCK));
     }
 
     @Override
@@ -26,8 +26,8 @@ public class UntilNative extends LoopingNative {
             return answerOfTheLoop(() -> {
                 Value last;
                 do {
-                    last = oneRoundCatchingContinue(evaluator, body, evaluator.systemContext());
-                } while (!theTruthInWhatALoopTests(last));
+                    last = runOneRoundCatchingContinue(evaluator, body, evaluator.systemContext());
+                } while (!isTrueForALoop(last));
                 return last;
             });
         };

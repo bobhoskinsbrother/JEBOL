@@ -19,20 +19,20 @@ public record Asked(
         Evaluator evaluator,
         Context context) {
 
-    public int howManyOctetsWanted() {
+    public int countTheOctetsWanted() {
         return howManyOctets;
     }
 
     /** The first few of a list, or all of them when {@code /part} said nothing. */
-    public List<Value> theFirstFewOf(List<Value> items) {
+    public List<Value> takeTheFirstFewOf(List<Value> items) {
         return howMuchOfIt
                 .map(count -> items.subList(0,
                         (int) Math.max(0, Math.min(count, items.size()))))
                 .orElse(items);
     }
 
-    public List<Value> theWantedItemsOf(AnyBlockValue added) {
-        return howMuchOf(added, limitAsked)
+    public List<Value> pickTheWantedItemsOf(AnyBlockValue added) {
+        return measureHowMuchOf(added, limitAsked)
                 .map(count -> {
                     List<Value> whole = added.head().remaining();
                     int here = added.index() - 1;
@@ -57,7 +57,7 @@ public record Asked(
         }
     }
 
-    public static Asked reading(
+    public static Asked read(
             Value subject, Value given, Set<String> refinementsAsked,
             Optional<Value> times, Optional<Value> part,
             Evaluator evaluator, Context context) {
@@ -66,10 +66,10 @@ public record Asked(
         return new Asked(
                 subject,
                 given,
-                times.<Value>map(given::repeatedInABlock).orElse(given),
+                times.<Value>map(given::repeatInABlock).orElse(given),
                 limit,
-                howMuchOf(given, limit),
-                howManyOctetsOf(given, limit),
+                measureHowMuchOf(given, limit),
+                countTheOctetsOf(given, limit),
                 refinementsAsked.contains("dup")
                         && times.orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
                         ? Math.max(0, magnitude)
@@ -80,7 +80,7 @@ public record Asked(
                 context);
     }
 
-    private static int howManyOctetsOf(Value given, Value limit) {
+    private static int countTheOctetsOf(Value given, Value limit) {
         if (limit instanceof IntegerValue(long magnitude)) {
             return (int) magnitude;
         }
@@ -92,7 +92,7 @@ public record Asked(
         return SeriesContents.EVERY_ONE;
     }
 
-    private static Optional<Long> howMuchOf(Value given, Value limit) {
+    private static Optional<Long> measureHowMuchOf(Value given, Value limit) {
         if (limit instanceof IntegerValue(long magnitude)) {
             if (magnitude > Integer.MAX_VALUE || magnitude < Integer.MIN_VALUE) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Long.toString(magnitude));

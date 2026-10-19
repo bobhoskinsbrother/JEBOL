@@ -18,8 +18,8 @@ public class DistanceNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("value1", Set.of(PairValue.TYPE)),
-                Parameter.required("value2", Set.of(PairValue.TYPE)));
+                Parameter.of("value1", Set.of(PairValue.TYPE)),
+                Parameter.of("value2", Set.of(PairValue.TYPE)));
     }
 
     @Override
@@ -30,7 +30,7 @@ public class DistanceNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                ((PairValue) arguments.get(0)).apartFrom(
+                ((PairValue) arguments.get(0)).measureTheDistanceFrom(
                         (PairValue) arguments.get(1),
                         refinements.contains("taxicab"));
     }

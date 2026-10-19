@@ -24,7 +24,7 @@ class MezzanineLoadTest {
 
     @Test
     @DisplayName("what happens when Rebol's own mezzanine is loaded")
-    void theMezzanineIsLoaded() {
+    void loadsTheMezzanine() {
         if (!Files.isDirectory(SOURCE)) {
             System.out.println("no Rebol source at " + SOURCE + "; nothing to measure");
             return;
@@ -54,7 +54,7 @@ class MezzanineLoadTest {
         assertThat(attempts).as("found no mezzanine files to try").isNotEmpty();
     }
 
-    private static String withHeaderRemoved(String withLeadingBlock) {
+    private static String removeTheHeader(String withLeadingBlock) {
         int depth = 0;
         for (int at = 0; at < withLeadingBlock.length(); at++) {
             char character = withLeadingBlock.charAt(at);
@@ -79,7 +79,7 @@ class MezzanineLoadTest {
                 .count();
         String body = source.replaceFirst("(?is)^\\s*rebol\\s*\\[", "[");
         int afterHeader = body.indexOf(']');
-        body = afterHeader >= 0 ? withHeaderRemoved(body) : source;
+        body = afterHeader >= 0 ? removeTheHeader(body) : source;
 
         Interpreter interpreter = Interpreter.create();
         try {

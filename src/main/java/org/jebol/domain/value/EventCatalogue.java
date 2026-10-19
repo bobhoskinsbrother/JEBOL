@@ -70,32 +70,32 @@ public final class EventCatalogue {
     public static final int DROP_FILE = TYPES.indexOf("drop-file");
 
     /** Where a type word sits, or nothing when the list has not got it. */
-    public static Optional<Integer> typeIndexOf(String word) {
+    public static Optional<Integer> findTheTypeIndexOf(String word) {
         int at = TYPES.indexOf(word);
         return at < 0 ? Optional.empty() : Optional.of(at);
     }
 
     /** Where a key word sits, or nothing. */
-    public static Optional<Integer> keyIndexOf(String word) {
+    public static Optional<Integer> findTheKeyIndexOf(String word) {
         int at = KEYS.indexOf(word);
         return at < 0 ? Optional.empty() : Optional.of(at);
     }
 
     /** The word at a type index, for reading one back. */
-    public static String typeAt(int index) {
+    public static String readTheTypeAt(int index) {
         return TYPES.get(index);
     }
 
     /** The blocks {@code system/catalog} publishes, built from the lists above. */
     public static AnyBlockValue typesBlock() {
-        return blockOfWords(TYPES);
+        return makeABlockOfWords(TYPES);
     }
 
     public static AnyBlockValue keysBlock() {
-        return blockOfWords(KEYS);
+        return makeABlockOfWords(KEYS);
     }
 
-    private static AnyBlockValue blockOfWords(List<String> words) {
-        return BlockValue.block(words.stream().<Value>map(WordValue::of).toList());
+    private static AnyBlockValue makeABlockOfWords(List<String> words) {
+        return BlockValue.of(words.stream().<Value>map(WordValue::of).toList());
     }
 }

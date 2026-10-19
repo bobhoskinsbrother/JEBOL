@@ -15,7 +15,7 @@ public interface ParseKeyword {
 
     boolean ownsTheRuleAfterIt();
 
-    WhenNothingFollowsIt whenNothingFollowsIt();
+    WhenNothingFollowsIt describeWhenNothingFollows();
 
     int applyToBlock(ParseWalk walk, List<Value> rules, int at);
 
@@ -29,9 +29,9 @@ public interface ParseKeyword {
         return ownsTheRuleAfterIt() || slotsBeforeTheRule() > 0;
     }
 
-    Map<String, ParseKeyword> BY_SPELLING = TheDialectsWords.bySpelling();
+    Map<String, ParseKeyword> BY_SPELLING = TheDialectsWords.indexBySpelling();
 
-    static Optional<ParseKeyword> named(String canonical) {
+    static Optional<ParseKeyword> findTheKeywordNamed(String canonical) {
         return Optional.ofNullable(BY_SPELLING.get(canonical));
     }
 }

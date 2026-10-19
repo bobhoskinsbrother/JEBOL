@@ -16,11 +16,11 @@ public record CharacterValue(int codepoint) implements Value {
     private static final int LAST_SURROGATE = 0xDFFF;
 
     @Override
-    public Value randomised(RandomDraw draw) {
-        return codepoint == 0 ? this : CharacterValue.of(aValidCodepointDrawnBy(draw));
+    public Value randomise(RandomDraw draw) {
+        return codepoint == 0 ? this : CharacterValue.of(drawAValidCodepoint(draw));
     }
 
-    private int aValidCodepointDrawnBy(RandomDraw draw) {
+    private int drawAValidCodepoint(RandomDraw draw) {
         while (true) {
             int picked = 1 + draw.below(codepoint);
             boolean surrogate = picked >= FIRST_SURROGATE && picked <= LAST_SURROGATE;
@@ -36,13 +36,13 @@ public record CharacterValue(int codepoint) implements Value {
     }
 
     @Override
-    public Value absolute() {
+    public Value makeAbsolute() {
         return this;
     }
 
     @Override
-    public String writtenInHex(HexWidth width) {
-        return width.sixteenDigitsKeptToTheRight(codepoint, digitsItsMagnitudeNeeds());
+    public String writeInHex(HexWidth width) {
+        return width.keepSixteenDigitsToTheRight(codepoint, digitsItsMagnitudeNeeds());
     }
 
     private int digitsItsMagnitudeNeeds() {
@@ -54,24 +54,24 @@ public record CharacterValue(int codepoint) implements Value {
 
 
     @Override
-    public Value arithmetic(Value right, ArithmeticOperation operation) {
-        return new CharacterActions(this).combinedWith(right, operation);
+    public Value calculate(Value right, ArithmeticOperation operation) {
+        return new CharacterActions(this).combineWith(right, operation);
     }
 
 
     @Override
-    public boolean equalTo(Value other, Sameness how) {
+    public boolean isEqualTo(Value other, Sameness how) {
         if (other instanceof CharacterValue || how.theyWereBroughtTogetherFirst()) {
-            return foldedTo(codepoint) == foldedTo(codepointOf(other));
+            return fold(codepoint) == fold(readTheCodepointOf(other));
         }
         return false;
     }
 
-    private static int foldedTo(int codepoint) {
+    private static int fold(int codepoint) {
         return Character.toLowerCase(codepoint);
     }
 
-    private static int codepointOf(Value value) {
+    private static int readTheCodepointOf(Value value) {
         return value instanceof CharacterValue(int theirs)
                 ? theirs
                 : (int) ((IntegerValue) value).magnitude();
@@ -83,23 +83,23 @@ public record CharacterValue(int codepoint) implements Value {
     }
 
     @Override
-    public Optional<Value[]> broughtTogetherWith(Value other) {
+    public Optional<Value[]> bringTogetherWith(Value other) {
         return other instanceof IntegerValue
-                ? both(asWholeNumber().orElseThrow(), other)
+                ? pairUp(asWholeNumber().orElseThrow(), other)
                 : Optional.empty();
     }
 
     @Override
-    public Value bitwise(Value right, BitwiseOperation operation) {
+    public Value combineBitwise(Value right, BitwiseOperation operation) {
         return CharacterValue.of(
-                (int) operation.onWholeElements(codepoint, aWholeNumberFrom(right)));
+                (int) operation.onWholeElements(codepoint, readAWholeNumberFrom(right)));
     }
 
-    private long aWholeNumberFrom(Value right) {
+    private long readAWholeNumberFrom(Value right) {
         return switch (right) {
             case CharacterValue(int other) -> other;
             case IntegerValue(long magnitude) -> magnitude;
-            default -> throw Raised.notRelated(this, right);
+            default -> throw Raised.ofUnrelated(this, right);
         };
     }
 
@@ -142,25 +142,25 @@ public record CharacterValue(int codepoint) implements Value {
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
-            throw refusingConstruction(contents);
+        public Value construct(List<Value> contents, Construction construction) {
+            throw refuseTheConstruction(contents);
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
                 case CharacterValue already -> already;
-                case StringValue text when text.text().isEmpty() -> throw refusing(from);
+                case StringValue text when text.text().isEmpty() -> throw refuse(from);
                 case StringValue text -> CharacterValue.of(text.text().codePointAt(0));
-                case BinaryValue octets -> characterLeadingThe(octets);
-                case IssueValue issue -> characterSpeltInHexBy(issue);
-                case IntegerValue whole -> characterAt(whole.magnitude());
-                case DecimalValue number -> characterAt((long) number.quantity());
-                default -> throw refusing(from);
+                case BinaryValue octets -> decodeTheLeadingCharacter(octets);
+                case IssueValue issue -> decodeAHexIssue(issue);
+                case IntegerValue whole -> makeTheCharacterAt(whole.magnitude());
+                case DecimalValue number -> makeTheCharacterAt((long) number.quantity());
+                default -> throw refuse(from);
             };
         }
 
-        private Value characterAt(long asked) {
+        private Value makeTheCharacterAt(long asked) {
             if (asked < Integer.MIN_VALUE || asked > Integer.MAX_VALUE) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(asked));
             }
@@ -175,34 +175,34 @@ public record CharacterValue(int codepoint) implements Value {
             return asked <= Character.MAX_VALUE && Character.isSurrogate((char) asked);
         }
 
-        private Value characterLeadingThe(BinaryValue octets) {
-            byte[] bytes = octets.bytesFromHere();
+        private Value decodeTheLeadingCharacter(BinaryValue octets) {
+            byte[] bytes = octets.readTheBytesFromHere();
             if (bytes.length == 0) {
-                throw refusing(octets);
+                throw refuse(octets);
             }
             int lead = bytes[0] & 0xFF;
             if (lead <= 0x80) {
                 return CharacterValue.of(lead);
             }
-            int continuations = continuationBytesFollowing(lead);
+            int continuations = countTheContinuationBytes(lead);
             if (continuations == 0 || bytes.length <= continuations) {
-                throw refusing(octets);
+                throw refuse(octets);
             }
             int decoded = lead & (0x7F >> continuations);
             for (int at = 1; at <= continuations; at++) {
                 int following = bytes[at] & 0xFF;
                 if ((following & 0xC0) != 0x80) {
-                    throw refusing(octets);
+                    throw refuse(octets);
                 }
                 decoded = (decoded << 6) | (following & 0x3F);
             }
             if (decoded > Character.MAX_CODE_POINT) {
-                throw refusing(octets);
+                throw refuse(octets);
             }
             return CharacterValue.of(decoded);
         }
 
-        private int continuationBytesFollowing(int lead) {
+        private int countTheContinuationBytes(int lead) {
             if ((lead & 0xE0) == 0xC0) {
                 return 1;
             }
@@ -215,19 +215,19 @@ public record CharacterValue(int codepoint) implements Value {
             return 0;
         }
 
-        private Value characterSpeltInHexBy(AnyWordValue issue) {
+        private Value decodeAHexIssue(AnyWordValue issue) {
             String spelling = issue.spelling();
             if (spelling.isEmpty() || spelling.length() > MOST_HEX_DIGITS_SCANNED) {
-                throw refusing(issue);
+                throw refuse(issue);
             }
             long decoded;
             try {
                 decoded = Long.parseLong(spelling, 16);
             } catch (NumberFormatException notHexadecimal) {
-                throw refusing(issue);
+                throw refuse(issue);
             }
             if (decoded < 0 || decoded > Character.MAX_CODE_POINT) {
-                throw refusing(issue);
+                throw refuse(issue);
             }
             return CharacterValue.of((int) decoded);
         }

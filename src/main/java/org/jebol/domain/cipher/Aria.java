@@ -17,13 +17,13 @@ public final class Aria {
     private static final int WORDS = 4;
 
     /** A cipher ready to transform blocks under one key, in one direction. */
-    public static OneBlock under(byte[] key, boolean deciphering) {
+    public static OneBlock keyWith(byte[] key, boolean deciphering) {
         int rounds = 12 + 2 * ((key.length * Byte.SIZE - 128) >> 6);
-        int[][] forwards = forEnciphering(key);
+        int[][] forwards = scheduleTheKeysForEnciphering(key);
         int[][] roundKeys = deciphering
-                ? reversedForDeciphering(forwards, rounds)
+                ? reverseForDeciphering(forwards, rounds)
                 : forwards;
-        return block -> transformed(block, roundKeys, rounds);
+        return block -> transform(block, roundKeys, rounds);
     }
 
     private static void substitute(int[] state, int[][] tables) {
@@ -152,7 +152,7 @@ public final class Aria {
         return word >>> 16 ^ word << 16;
     }
 
-    private static int reversed(int word) {
+    private static int reverse(int word) {
         return Integer.reverseBytes(word);
     }
 
@@ -177,10 +177,10 @@ public final class Aria {
         state[2] ^= swapWithinPairs(third) ^ carried;
     }
 
-    private static byte[] transformed(byte[] block, int[][] roundKeys, int rounds) {
+    private static byte[] transform(byte[] block, int[][] roundKeys, int rounds) {
         int[] state = new int[WORDS];
         for (int at = 0; at < WORDS; at++) {
-            state[at] = wordAt(block, at * 4);
+            state[at] = readTheWordAt(block, at * 4);
         }
         int round = 0;
         while (true) {
@@ -208,42 +208,42 @@ public final class Aria {
         }
     }
 
-    private static int[][] forEnciphering(byte[] key) {
+    private static int[][] scheduleTheKeysForEnciphering(byte[] key) {
         int width = (key.length * Byte.SIZE - 128) >> 6;
         int[][] derived = new int[4][WORDS];
         for (int at = 0; at < WORDS; at++) {
-            derived[0][at] = wordAt(key, at * 4);
+            derived[0][at] = readTheWordAt(key, at * 4);
         }
         for (int at = 0; at * 4 + 16 < key.length; at++) {
-            derived[1][at] = wordAt(key, 16 + at * 4);
+            derived[1][at] = readTheWordAt(key, 16 + at * 4);
         }
 
         int which = width;
-        theRoundFunction(derived[1], derived[0], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
+        runTheRoundFunction(derived[1], derived[0], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
                 derived[1].clone(), ODD_ROUND_TABLES);
         which = which < 2 ? which + 1 : 0;
-        theRoundFunction(derived[2], derived[1], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
+        runTheRoundFunction(derived[2], derived[1], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
                 derived[0], EVEN_ROUND_TABLES);
         which = which < 2 ? which + 1 : 0;
-        theRoundFunction(derived[3], derived[2], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
+        runTheRoundFunction(derived[3], derived[2], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
                 derived[1], ODD_ROUND_TABLES);
 
         int[][] roundKeys = new int[HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS][WORDS];
         for (int at = 0; at < 4; at++) {
             int[] next = derived[(at + 1) & 3];
-            rotatedIntoTakenInTheOtherByteOrder(roundKeys[at], derived[at], next, 128 - 19);
-            rotatedIntoTakenInTheOtherByteOrder(roundKeys[at + 4], derived[at], next, 128 - 31);
-            rotatedIntoTakenInTheOtherByteOrder(roundKeys[at + 8], derived[at], next, 61);
-            rotatedIntoTakenInTheOtherByteOrder(roundKeys[at + 12], derived[at], next, 31);
+            rotateInTheOtherByteOrder(roundKeys[at], derived[at], next, 128 - 19);
+            rotateInTheOtherByteOrder(roundKeys[at + 4], derived[at], next, 128 - 31);
+            rotateInTheOtherByteOrder(roundKeys[at + 8], derived[at], next, 61);
+            rotateInTheOtherByteOrder(roundKeys[at + 12], derived[at], next, 31);
         }
-        rotatedIntoTakenInTheOtherByteOrder(roundKeys[16], derived[0], derived[1], 19);
+        rotateInTheOtherByteOrder(roundKeys[16], derived[0], derived[1], 19);
         return roundKeys;
     }
 
     private static final int HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS = 17;
 
-    private static void theRoundFunction(int[] into, int[] from,
-            int[] constant, int[] addedAfter, int[][] tables) {
+    private static void runTheRoundFunction(int[] into, int[] from,
+                                            int[] constant, int[] addedAfter, int[][] tables) {
 
         int[] working = new int[WORDS];
         for (int at = 0; at < WORDS; at++) {
@@ -256,25 +256,25 @@ public final class Aria {
         }
     }
 
-    private static void rotatedIntoTakenInTheOtherByteOrder(
+    private static void rotateInTheOtherByteOrder(
             int[] into, int[] left, int[] right, int places) {
         int within = places % 32;
         int back = within != 0 ? 32 - within : 0;
         int from = places / 32 % 4;
-        int carried = reversed(right[from]);
+        int carried = reverse(right[from]);
         for (int at = 0; at < WORDS; at++) {
             from = (from + 1) % 4;
-            int next = reversed(right[from]);
+            int next = reverse(right[from]);
             int shifted = carried << within;
             if (back != 0) {
                 shifted |= next >>> back;
             }
-            into[at] = left[at] ^ reversed(shifted);
+            into[at] = left[at] ^ reverse(shifted);
             carried = next;
         }
     }
 
-    private static int[][] reversedForDeciphering(int[][] forwards, int rounds) {
+    private static int[][] reverseForDeciphering(int[][] forwards, int rounds) {
         int[][] backwards = new int[HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS][WORDS];
         for (int at = 0; at < HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS; at++) {
             backwards[at] = forwards[at].clone();
@@ -290,7 +290,7 @@ public final class Aria {
         return backwards;
     }
 
-    private static int wordAt(byte[] octets, int at) {
+    private static int readTheWordAt(byte[] octets, int at) {
         return octets[at] & 0xFF | (octets[at + 1] & 0xFF) << 8
                 | (octets[at + 2] & 0xFF) << 16 | (octets[at + 3] & 0xFF) << 24;
     }

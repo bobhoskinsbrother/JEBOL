@@ -17,7 +17,7 @@ public class HashNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value"));
+        return List.of(Parameter.of("value"));
     }
 
     @Override

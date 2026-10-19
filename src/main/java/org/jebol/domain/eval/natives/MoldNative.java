@@ -20,8 +20,8 @@ public class MoldNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("value", TypesetValue.ANY_TYPE.members()),
-                Parameter.belongingTo("part", "limit", Set.of(IntegerValue.TYPE)));
+                Parameter.of("value", TypesetValue.ANY_TYPE.members()),
+                Parameter.belongTo("part", "limit", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -32,43 +32,43 @@ public class MoldNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            Function<Value, String> how = flattenedWhenAsked(refinements,
-                    inTheSystemBase(evaluator, moldedAsAsked(arguments.getFirst(), refinements)));
-            return argumentOf("part", 0, arguments, refinements)
+            Function<Value, String> how = flattenWhenAsked(refinements,
+                    writeInTheSystemBase(evaluator, moldAsAsked(arguments.getFirst(), refinements)));
+            return readTheArgumentOf("part", 0, arguments, refinements)
                     .map(limit -> StringValue.of(Molder.moldWithin(arguments.getFirst(),
-                            charactersWithin(((IntegerValue) limit).magnitude()), how)))
+                            countTheCharactersWithin(((IntegerValue) limit).magnitude()), how)))
                     .orElseGet(() -> StringValue.of(how.apply(arguments.getFirst())));
         };
     }
 
-    private Function<Value, String> moldedAsAsked(Value subject, Set<String> refinements) {
+    private Function<Value, String> moldAsAsked(Value subject, Set<String> refinements) {
         if (refinements.contains("only") && subject instanceof BlockValue) {
             return value -> Molder.moldOnly((AnyBlockValue) value);
         }
         return refinements.contains("all") ? Molder::moldAll : Molder::mold;
     }
 
-    private Function<Value, String> inTheSystemBase(Evaluator evaluator,
-            Function<Value, String> written) {
-        return value -> Molder.writingBinariesInBase(binaryBaseNamedBy(evaluator),
+    private Function<Value, String> writeInTheSystemBase(Evaluator evaluator,
+                                                         Function<Value, String> written) {
+        return value -> Molder.writeBinariesInBase(readTheBinaryBaseNamedBy(evaluator),
                 () -> written.apply(value));
     }
 
-    private Function<Value, String> flattenedWhenAsked(Set<String> refinements,
-            Function<Value, String> how) {
+    private Function<Value, String> flattenWhenAsked(Set<String> refinements,
+                                                     Function<Value, String> how) {
         return refinements.contains("flat")
-                ? value -> Molder.flattened(() -> how.apply(value))
+                ? value -> Molder.flatten(() -> how.apply(value))
                 : how;
     }
 
-    private int charactersWithin(long limit) {
+    private int countTheCharactersWithin(long limit) {
         return Math.clamp(limit, 0, Integer.MAX_VALUE);
     }
 
-    private int binaryBaseNamedBy(Evaluator evaluator) {
-        return evaluator.systemContext().slotFor("system").value() instanceof ObjectValue(Context system)
-                && system.slotFor("options").value() instanceof ObjectValue(Context options)
-                && options.slotFor("binary-base").value() instanceof IntegerValue(long base)
+    private int readTheBinaryBaseNamedBy(Evaluator evaluator) {
+        return evaluator.systemContext().findSlotFor("system").value() instanceof ObjectValue(Context system)
+                && system.findSlotFor("options").value() instanceof ObjectValue(Context options)
+                && options.findSlotFor("binary-base").value() instanceof IntegerValue(long base)
                 ? (int) base
                 : THE_BASE_WHEN_THE_SYSTEM_NAMES_NONE;
     }

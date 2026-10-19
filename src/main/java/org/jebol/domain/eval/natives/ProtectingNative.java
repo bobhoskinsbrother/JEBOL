@@ -15,8 +15,8 @@ public abstract class ProtectingNative extends DefaultNative {
         return acceptsWhateverComesAlong("target");
     }
 
-    protected void protectionChanged(Value target, boolean protectedNow,
-            Set<String> refinements) {
+    protected void changeTheProtection(Value target, boolean protectedNow,
+                                       Set<String> refinements) {
 
         if (!protectFieldNamedBy(target, protectedNow, refinements)) {
             protectNamed(target, protectedNow, refinements);
@@ -67,7 +67,7 @@ public abstract class ProtectingNative extends DefaultNative {
             default -> List.of();
         };
         for (Value item : items) {
-            slotNamedInAList(item).ifPresent(slot ->
+            findTheSlotNamedInAList(item).ifPresent(slot ->
                     protectOneNamed(slot, protectedNow, values, words, refinements));
         }
     }
@@ -93,13 +93,13 @@ public abstract class ProtectingNative extends DefaultNative {
         }
     }
 
-    private Optional<ContextSlot> slotNamedInAList(Value item) {
+    private Optional<ContextSlot> findTheSlotNamedInAList(Value item) {
         if (item instanceof AnyPathValue path) {
             return path.fieldThePathNames();
         }
         if (item instanceof AnyWordValue word && word.isBound()
                 && word.binding().knows(word.canonical())) {
-            return Optional.of(word.binding().slotFor(word.canonical()));
+            return Optional.of(word.binding().findSlotFor(word.canonical()));
         }
         return Optional.empty();
     }
@@ -132,12 +132,12 @@ public abstract class ProtectingNative extends DefaultNative {
                     object, protectedNow, deeply, onlyTheWords, reached);
             case AnyWordValue word -> {
                 if (protectedNow) {
-                    word.boundSlot().protectFromAssignment();
+                    word.findTheBoundSlot().protectFromAssignment();
                 } else {
-                    word.boundSlot().allowAssignment();
+                    word.findTheBoundSlot().allowAssignment();
                 }
-                if (deeply && carriesProtection(word.boundSlot().value())) {
-                    setProtection(word.boundSlot().value(), protectedNow, true, onlyTheWords, reached);
+                if (deeply && carriesProtection(word.findTheBoundSlot().value())) {
+                    setProtection(word.findTheBoundSlot().value(), protectedNow, true, onlyTheWords, reached);
                 }
             }
             case BitsetValue members -> members.protectFromChange(protectedNow);

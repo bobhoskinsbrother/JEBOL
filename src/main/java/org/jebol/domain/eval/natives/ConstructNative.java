@@ -20,9 +20,9 @@ public class ConstructNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("body",
+                Parameter.of("body",
                         Set.of(BlockValue.TYPE, StringValue.TYPE, BinaryValue.TYPE)),
-                Parameter.belongingTo("with", "object", Set.of(ObjectValue.TYPE)));
+                Parameter.belongTo("with", "object", Set.of(ObjectValue.TYPE)));
     }
 
     @Override
@@ -33,16 +33,16 @@ public class ConstructNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            Context built = Context.childOf(evaluator.systemContext());
+            Context built = Context.makeChildOf(evaluator.systemContext());
             ObjectValue constructed = new ObjectValue(built);
             built.pointItsOwnSelfAt(constructed);
-            List<Value> items = itemsOf(arguments.getFirst());
+            List<Value> items = listTheItemsOf(arguments.getFirst());
             refuseAnyFieldSpeltLikeItsOwnSelf(built, items);
             if (refinements.contains("with")
                     && arguments.size() > WHERE_THE_PROTOTYPE_ARRIVES
                     && arguments.get(WHERE_THE_PROTOTYPE_ARRIVES)
                             instanceof ObjectValue(Context prototype)) {
-                prototype.fieldsExcludingSelf().forEach(built::register);
+                prototype.listTheFieldsExceptSelf().forEach(built::register);
             }
             constructInto(built, items, refinements.contains("only"));
             return constructed;
@@ -55,11 +55,11 @@ public class ConstructNative extends DefaultNative {
                 .forEach(built::refuseAFieldSpeltLikeItsOwnSelf);
     }
 
-    private List<Value> itemsOf(Value body) {
+    private List<Value> listTheItemsOf(Value body) {
         return switch (body) {
             case AnyBlockValue block -> block.remaining();
-            case AnyStringValue text -> headerFieldsIn(text.text());
-            case BinaryValue bytes -> headerFieldsIn(
+            case AnyStringValue text -> readTheHeaderFieldsIn(text.text());
+            case BinaryValue bytes -> readTheHeaderFieldsIn(
                     new String(bytes.octetsFromHere(), StandardCharsets.UTF_8));
             default -> List.of();
         };
@@ -72,7 +72,7 @@ public class ConstructNative extends DefaultNative {
                 waiting.add(name);
                 continue;
             }
-            Value held = asWritten ? item : namedConstant(item);
+            Value held = asWritten ? item : readANamedConstant(item);
             if (!asWritten && held instanceof UnsetValue) {
                 held = NoneValue.none();
             }
@@ -90,7 +90,7 @@ public class ConstructNative extends DefaultNative {
         }
     }
 
-    private Value namedConstant(Value value) {
+    private Value readANamedConstant(Value value) {
         if (!(value instanceof WordValue word)) {
             return value;
         }
@@ -102,12 +102,12 @@ public class ConstructNative extends DefaultNative {
         };
     }
 
-    private List<Value> headerFieldsIn(String header) {
+    private List<Value> readTheHeaderFieldsIn(String header) {
         List<Value> fields = new ArrayList<>();
         String[] lines = header.split("\n", -1);
         for (int at = 0; at < lines.length; at++) {
             String line = withoutACarriageReturn(lines[at]);
-            int colon = colonAfterAName(line);
+            int colon = findTheColonAfterAName(line);
             if (colon < 0) {
                 continue;
             }
@@ -126,7 +126,7 @@ public class ConstructNative extends DefaultNative {
         return line.endsWith("\r") ? line.substring(0, line.length() - 1) : line;
     }
 
-    private int colonAfterAName(String line) {
+    private int findTheColonAfterAName(String line) {
         String name = line.stripLeading();
         if (name.isEmpty() || !Character.isLetter(name.charAt(0))) {
             return -1;

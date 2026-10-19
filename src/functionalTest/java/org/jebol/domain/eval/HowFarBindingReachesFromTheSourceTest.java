@@ -31,7 +31,7 @@ class HowFarBindingReachesFromTheSourceTest {
 
         @Test
         @DisplayName("and leaves a word one block down exactly as it was")
-        void aWordOneBlockDownIsLeftAlone() {
+        void leavesAWordOneBlockDownAlone() {
             assertThat(answerTo("""
                     subject: [held [held]]
                     bind/only subject target
@@ -40,7 +40,7 @@ class HowFarBindingReachesFromTheSourceTest {
 
         @Test
         @DisplayName("and one two blocks down")
-        void aWordTwoBlocksDownIsLeftAlone() {
+        void leavesAWordTwoBlocksDownAlone() {
             assertThat(answerTo("""
                     subject: [held [[held]]]
                     bind/only subject target
@@ -50,7 +50,7 @@ class HowFarBindingReachesFromTheSourceTest {
 
         @Test
         @DisplayName("and one inside a paren, which the deep walk would have reached")
-        void aWordInsideAParenIsLeftAlone() {
+        void leavesAWordInsideAParenAlone() {
             assertThat(answerTo("""
                     subject: [held (held)]
                     bind/only subject target
@@ -59,7 +59,7 @@ class HowFarBindingReachesFromTheSourceTest {
 
         @Test
         @DisplayName("without /only the same word one block down does move")
-        void withoutOnlyTheWalkGoesAllTheWayDown() {
+        void goesAllTheWayDownWithoutOnly() {
             assertThat(answerTo("""
                     subject: [held [held]]
                     bind subject target
@@ -76,7 +76,7 @@ class HowFarBindingReachesFromTheSourceTest {
 
         @Test
         @DisplayName("an empty block binds without complaint")
-        void anEmptyBlockBindsWithoutComplaint() {
+        void bindsAnEmptyBlockWithoutComplaint() {
             assertThat(answerTo("""
                     subject: []
                     reduce [same? subject bind/only subject target  empty? subject]"""))
@@ -98,7 +98,7 @@ class HowFarBindingReachesFromTheSourceTest {
 
         @Test
         @DisplayName("and leaves a set-word one block down uncollected")
-        void aSetWordOneBlockDownIsNotCollected() {
+        void skipsASetWordOneBlockDown() {
             assertThat(answerTo("""
                     bind/only/set [fresh: 1 attempt [buried: 2]] target
                     words-of target""")).isEqualTo("[held fresh]");
@@ -106,7 +106,7 @@ class HowFarBindingReachesFromTheSourceTest {
 
         @Test
         @DisplayName("without /only the buried set-word is collected too")
-        void withoutOnlyTheBuriedSetWordIsCollected() {
+        void collectsTheBuriedSetWordWithoutOnly() {
             assertThat(answerTo("""
                     bind/set [fresh: 1 attempt [buried: 2]] target
                     words-of target""")).isEqualTo("[held fresh buried]");
@@ -122,7 +122,7 @@ class HowFarBindingReachesFromTheSourceTest {
 
         @Test
         @DisplayName("without /only /new reaches the buried word")
-        void withoutOnlyNewReachesTheBuriedWord() {
+        void reachesTheBuriedWordWithNewWithoutOnly() {
             assertThat(answerTo("""
                     bind/new [fresh [buried]] target
                     words-of target""")).isEqualTo("[held fresh buried]");
@@ -138,7 +138,7 @@ class HowFarBindingReachesFromTheSourceTest {
 
         @Test
         @DisplayName("a word the target already holds is not added a second time")
-        void aWordTheTargetAlreadyHoldsIsNotAddedTwice() {
+        void neverAddsAWordTheTargetAlreadyHolds() {
             assertThat(answerTo("""
                     bind/only/set [held: 1] target
                     reduce [words-of target  target/held]""")).isEqualTo("[[held] 99]");

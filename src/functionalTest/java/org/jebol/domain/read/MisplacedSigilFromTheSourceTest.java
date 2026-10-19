@@ -15,7 +15,7 @@ class MisplacedSigilFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFromLoading(String source) {
+    private static String readTheErrorIdFromLoading(String source) {
         return answerTo("e: try [load " + source + "] "
                 + "either error? e [e/id] ['no-error]");
     }
@@ -28,26 +28,26 @@ class MisplacedSigilFromTheSourceTest {
 
         @Test
         @DisplayName("a lit-word cannot name a get-word")
-        void aTickThenAColon() {
-            assertThat(errorIdFromLoading("""
+        void refuseATickThenAColon() {
+            assertThat(readTheErrorIdFromLoading("""
                     {':a}""")).isEqualTo("invalid");
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {':a:}""")).isEqualTo("invalid");
         }
 
         @Test
         @DisplayName("nor another lit-word")
-        void aTickThenATick() {
-            assertThat(errorIdFromLoading("""
+        void refuseATickThenATick() {
+            assertThat(readTheErrorIdFromLoading("""
                     {''foo}""")).isEqualTo("invalid");
         }
 
         @Test
         @DisplayName("and a get-word cannot name either")
-        void aColonThenASigil() {
-            assertThat(errorIdFromLoading("""
+        void refuseAColonThenASigil() {
+            assertThat(readTheErrorIdFromLoading("""
                     {::foo}""")).isEqualTo("invalid");
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {:'foo}""")).isEqualTo("invalid");
         }
     }
@@ -58,25 +58,25 @@ class MisplacedSigilFromTheSourceTest {
 
         @Test
         @DisplayName("a lit-word cannot start with a digit")
-        void aTickThenADigit() {
-            assertThat(errorIdFromLoading("""
+        void refusesATickThenADigit() {
+            assertThat(readTheErrorIdFromLoading("""
                     {'2nd}""")).isEqualTo("invalid");
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {'1}""")).isEqualTo("invalid");
         }
 
         @Test
         @DisplayName("nor quote a signed one")
-        void aTickThenASignedNumber() {
-            assertThat(errorIdFromLoading("""
+        void refusesATickThenASignedNumber() {
+            assertThat(readTheErrorIdFromLoading("""
                     {'-1}""")).isEqualTo("invalid");
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {'+1}""")).isEqualTo("invalid");
         }
 
         @Test
         @DisplayName("but the sign on its own is a word, and quoting it is fine")
-        void aTickThenASignAlone() {
+        void allowsATickThenASignAlone() {
             assertThat(answerTo("""
                     (load {'-}) = to lit-word! "-\"""")).isEqualTo(TRUE);
         }
@@ -88,10 +88,10 @@ class MisplacedSigilFromTheSourceTest {
 
         @Test
         @DisplayName("an underscore on its own cannot be quoted or got, and the error says which")
-        void aSigilThenAnUnderscore() {
-            assertThat(errorIdFromLoading("""
+        void refusesASigilThenAnUnderscore() {
+            assertThat(readTheErrorIdFromLoading("""
                     {'_}""")).isEqualTo("invalid");
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {:_}""")).isEqualTo("invalid");
             assertThat(answerTo("""
                     e: transcode/error/one "'_" e/arg1""")).isEqualTo("\"word-lit\"");
@@ -99,7 +99,7 @@ class MisplacedSigilFromTheSourceTest {
 
         @Test
         @DisplayName("and only on its own, because a longer name holding one is a word")
-        void anUnderscoreInsideAName() {
+        void allowsAnUnderscoreInsideAName() {
             assertThat(answerTo("""
                     (load {'_a}) = to lit-word! "_a\"""")).isEqualTo(TRUE);
         }
@@ -111,14 +111,14 @@ class MisplacedSigilFromTheSourceTest {
 
         @Test
         @DisplayName("a trailing colon makes it neither a refinement nor a set-word")
-        void theTrailingColon() {
-            assertThat(errorIdFromLoading("""
+        void isNeitherARefinementNorASetWord() {
+            assertThat(readTheErrorIdFromLoading("""
                     {/a:}""")).isEqualTo("invalid");
         }
 
         @Test
         @DisplayName("and an ordinary refinement is still a refinement")
-        void whatSurvives() {
+        void leavesAnOrdinaryRefinementAlone() {
             assertThat(answerTo("""
                     (load {/a}) = /a""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -128,7 +128,7 @@ class MisplacedSigilFromTheSourceTest {
         @Test
         @DisplayName("and more than one slash before a name is refused")
         void tooManySlashes() {
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {///refine}""")).isEqualTo("invalid");
         }
     }
@@ -139,7 +139,7 @@ class MisplacedSigilFromTheSourceTest {
 
         @Test
         @DisplayName("a lit-word of slashes is legal, and MOLD writes one")
-        void aQuotedRunOfSlashes() {
+        void allowsAQuotedRunOfSlashes() {
             assertThat(answerTo("""
                     (load {'/}) = to lit-word! "/\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -152,7 +152,7 @@ class MisplacedSigilFromTheSourceTest {
         @Test
         @DisplayName("but only when nothing follows the run")
         void unlessSomethingFollows() {
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {'//x}""")).isEqualTo("invalid");
         }
     }

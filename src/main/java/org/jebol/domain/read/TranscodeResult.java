@@ -77,12 +77,12 @@ public sealed interface TranscodeResult {
         public Optional<ErrorValue> error() {
             ErrorValue built = switch (arguments.size()) {
                 case 0 -> ErrorValue.of(failure.category(), failure.errorId(), failure.description());
-                case 1 -> ErrorValue.about(failure.category(), failure.errorId(), failure.description(),
+                case 1 -> ErrorValue.of(failure.category(), failure.errorId(), failure.description(),
                         arguments.getFirst());
-                default -> ErrorValue.about(failure.category(), failure.errorId(), failure.description(),
+                default -> ErrorValue.of(failure.category(), failure.errorId(), failure.description(),
                         arguments.get(0), arguments.get(1));
             };
-            return Optional.of(near.map(written -> built.near(StringValue.of(written))).orElse(built));
+            return Optional.of(near.map(written -> built.placeNear(StringValue.of(written))).orElse(built));
         }
     }
 }

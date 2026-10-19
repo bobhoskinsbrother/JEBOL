@@ -38,7 +38,7 @@ public final class Raised extends RuntimeException {
      * the word DIVISION.
      */
     public static Raised of(EvaluationFailure failure, String detail) {
-        return new Raised(ErrorValue.about(
+        return new Raised(ErrorValue.of(
                 failure.category(), failure.errorId(),
                 failure.description() + ": " + detail,
                 detail.isEmpty()
@@ -52,7 +52,7 @@ public final class Raised extends RuntimeException {
      * offended -- the integer 0 in a parse rule, or the get-word itself.
      */
     public static Raised of(EvaluationFailure failure, Value subject) {
-        return new Raised(ErrorValue.about(
+        return new Raised(ErrorValue.of(
                 failure.category(), failure.errorId(),
                 failure.description() + ": " + Molder.mold(subject),
                 subject));
@@ -66,7 +66,7 @@ public final class Raised extends RuntimeException {
      * rather than reading the datatype back out of the message.
      */
     public static Raised of(EvaluationFailure failure, Value first, Value second) {
-        return new Raised(ErrorValue.about(
+        return new Raised(ErrorValue.of(
                 failure.category(), failure.errorId(),
                 failure.description() + ": " + Molder.mold(first)
                         + " and " + Molder.mold(second),
@@ -93,7 +93,7 @@ public final class Raised extends RuntimeException {
     }
 
     private static Raised cannotUse(Value value, String spelling, AnyWordValue named) {
-        return new Raised(ErrorValue.about(
+        return new Raised(ErrorValue.of(
                 ErrorCategory.SCRIPT, "cannot-use",
                 "cannot use " + spelling + " on "
                         + value.datatype().literalSpelling() + " value",
@@ -101,7 +101,7 @@ public final class Raised extends RuntimeException {
                 value.datatype()));
     }
 
-    public static Raised notRelated(Value left, Value right) {
+    public static Raised ofUnrelated(Value left, Value right) {
         return of(EvaluationFailure.NOT_RELATED,
                 WordValue.of(left.datatype().literalSpelling()),
                 WordValue.of(right.datatype().literalSpelling()));

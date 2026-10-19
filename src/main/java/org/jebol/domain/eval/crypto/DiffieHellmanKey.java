@@ -35,7 +35,7 @@ public final class DiffieHellmanKey implements AKeyThatCanBeReleased {
         this.widthInBytes = widthInBytes;
     }
 
-    public static Optional<DiffieHellmanKey> generatedFor(byte[] generator, byte[] prime) {
+    public static Optional<DiffieHellmanKey> generateFor(byte[] generator, byte[] prime) {
         try {
             BigInteger p = new BigInteger(1, prime);
             BigInteger g = new BigInteger(1, generator);
@@ -54,11 +54,11 @@ public final class DiffieHellmanKey implements AKeyThatCanBeReleased {
     }
 
     public byte[] publishedPaddedToTheWidthOfThePrime() {
-        return fixedWidth(((javax.crypto.interfaces.DHPublicKey) pair.getPublic())
+        return padToFixedWidth(((javax.crypto.interfaces.DHPublicKey) pair.getPublic())
                 .getY());
     }
 
-    public Optional<byte[]> agreedWith(byte[] peersPublicValue) {
+    public Optional<byte[]> agreeWith(byte[] peersPublicValue) {
         if (handedBack) {
             return Optional.empty();
         }
@@ -74,13 +74,13 @@ public final class DiffieHellmanKey implements AKeyThatCanBeReleased {
             agreeing.doPhase(java.security.KeyFactory.getInstance("DH")
                     .generatePublic(new DHPublicKeySpec(theirs,
                             parameters.getP(), parameters.getG())), true);
-            return Optional.of(fixedWidth(new BigInteger(1, agreeing.generateSecret())));
+            return Optional.of(padToFixedWidth(new BigInteger(1, agreeing.generateSecret())));
         } catch (java.security.GeneralSecurityException | RuntimeException cannotAgree) {
             return Optional.empty();
         }
     }
 
-    private byte[] fixedWidth(BigInteger value) {
+    private byte[] padToFixedWidth(BigInteger value) {
         byte[] written = new byte[widthInBytes];
         byte[] raw = value.toByteArray();
         int from = raw.length > widthInBytes ? raw.length - widthInBytes : 0;

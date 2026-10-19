@@ -16,32 +16,32 @@ class PairValueTest {
     class Halves {
 
         @Test
-        void bothHalvesAreDecimalsEvenWhenWrittenAsWholeNumbers() {
+        void areDecimalsEvenWhenWrittenAsWholeNumbers() {
             assertThat(PairValue.of(1, 2).x()).isEqualTo(1.0d);
         }
 
         @Test
-        void theSecondHalfIsADecimalToo() {
+        void includeADecimalSecondHalf() {
             assertThat(PairValue.of(1, 2).y()).isEqualTo(2.0d);
         }
 
         @Test
-        void aHalfMayBeFractional() {
+        void mayBeFractional() {
             assertThat(PairValue.of(1.5, 2).x()).isEqualTo(1.5d);
         }
 
         @Test
-        void aHalfMayBeZero() {
+        void mayBeZero() {
             assertThat(PairValue.of(0, 0).x()).isEqualTo(0.0d);
         }
 
         @Test
-        void aHalfMayBeNegative() {
+        void mayBeNegative() {
             assertThat(PairValue.of(-1, -2).y()).isEqualTo(-2.0d);
         }
 
         @Test
-        void aPairReportsItselfAsAPair() {
+        void reportThePairAsAPair() {
             assertThat(PairValue.of(1, 2).datatype()).isEqualTo(PairValue.TYPE);
         }
     }
@@ -52,34 +52,34 @@ class PairValueTest {
 
         @Test
         @DisplayName("a half too large for a float becomes infinite")
-        void aLargeHalfOverflows() {
+        void overflowWhenLarge() {
             assertThat(PairValue.of(1e300, 1).x()).isEqualTo(Double.POSITIVE_INFINITY);
             assertThat(PairValue.of(1, -1e300).y()).isEqualTo(Double.NEGATIVE_INFINITY);
         }
 
         @Test
         @DisplayName("an infinite half is kept as it was given")
-        void anInfiniteHalfIsKept() {
+        void keepInfinity() {
             assertThat(PairValue.of(1, Double.POSITIVE_INFINITY).y())
                     .isEqualTo(Double.POSITIVE_INFINITY);
         }
 
         @Test
         @DisplayName("a not-a-number half is kept as it was given")
-        void aNotANumberHalfIsKept() {
+        void keepNotANumber() {
             assertThat(PairValue.of(Double.NaN, 1).x()).isNaN();
         }
 
         @Test
         @DisplayName("a fraction loses the digits a float cannot carry")
-        void aFractionIsNarrowed() {
+        void narrowAFraction() {
             assertThat(PairValue.of(0.1, 0.2).x()).isEqualTo(0.10000000149011612d);
             assertThat(PairValue.of(0.1, 0.2).x()).isNotEqualTo(0.1d);
         }
 
         @Test
         @DisplayName("a whole number too large for a float loses its low digits")
-        void aLargeWholeNumberIsRounded() {
+        void roundALargeWholeNumber() {
             assertThat(PairValue.of(2147483647, 1).x()).isEqualTo(2147483648.0d);
         }
     }
@@ -89,38 +89,38 @@ class PairValueTest {
     class Reading {
 
         @Test
-        void theFirstHalfAnswersToItsName() {
-            assertThat(PairValue.of(1, 2).half("x")).contains(DecimalValue.of(1.0d));
+        void answersTheFirstHalfByName() {
+            assertThat(PairValue.of(1, 2).readTheHalf("x")).contains(DecimalValue.of(1.0d));
         }
 
         @Test
-        void theSecondHalfAnswersToItsName() {
-            assertThat(PairValue.of(1, 2).half("y")).contains(DecimalValue.of(2.0d));
+        void answersTheSecondHalfByName() {
+            assertThat(PairValue.of(1, 2).readTheHalf("y")).contains(DecimalValue.of(2.0d));
         }
 
         @Test
-        void theFirstHalfAnswersToItsPositionAsWell() {
-            assertThat(PairValue.of(1, 2).halfAt(1)).contains(DecimalValue.of(1.0d));
+        void answersTheFirstHalfByPosition() {
+            assertThat(PairValue.of(1, 2).readTheHalfAt(1)).contains(DecimalValue.of(1.0d));
         }
 
         @Test
-        void theSecondHalfAnswersToItsPositionAsWell() {
-            assertThat(PairValue.of(1, 2).halfAt(2)).contains(DecimalValue.of(2.0d));
+        void answersTheSecondHalfByPosition() {
+            assertThat(PairValue.of(1, 2).readTheHalfAt(2)).contains(DecimalValue.of(2.0d));
         }
 
         @Test
-        void thePositionBeforeTheFirstHalfIsNotAHalf() {
-            assertThat(PairValue.of(1, 2).halfAt(0)).isEmpty();
+        void findsNoHalfBeforeTheFirst() {
+            assertThat(PairValue.of(1, 2).readTheHalfAt(0)).isEmpty();
         }
 
         @Test
-        void thePositionAfterTheSecondHalfIsNotAHalf() {
-            assertThat(PairValue.of(1, 2).halfAt(3)).isEmpty();
+        void findsNoHalfAfterTheSecond() {
+            assertThat(PairValue.of(1, 2).readTheHalfAt(3)).isEmpty();
         }
 
         @Test
-        void aNameThatIsNeitherHalfIsNotAHalf() {
-            assertThat(PairValue.of(1, 2).half("z")).isEmpty();
+        void findsNoHalfForAnotherName() {
+            assertThat(PairValue.of(1, 2).readTheHalf("z")).isEmpty();
         }
     }
 
@@ -129,22 +129,22 @@ class PairValueTest {
     class Molding {
 
         @Test
-        void aWholeHalfPrintsWithoutItsPoint() {
+        void printsAWholeHalfWithoutItsPoint() {
             assertThat(Molder.mold(PairValue.of(1, 2))).isEqualTo("1x2");
         }
 
         @Test
-        void aFractionalHalfKeepsItsPoint() {
+        void keepsTheFractionalHalfsPoint() {
             assertThat(Molder.mold(PairValue.of(1.5, 2))).isEqualTo("1.5x2");
         }
 
         @Test
-        void aNegativeHalfKeepsItsSign() {
+        void keepsTheNegativeHalfsSign() {
             assertThat(Molder.mold(PairValue.of(-1, -2))).isEqualTo("-1x-2");
         }
 
         @Test
-        void bothHalvesZero() {
+        void printsBothHalvesZero() {
             assertThat(Molder.mold(PairValue.of(0, 0))).isEqualTo("0x0");
         }
     }
@@ -154,28 +154,28 @@ class PairValueTest {
     class Equality {
 
         @Test
-        void twoPairsWithTheSameHalvesAreEqual() {
+        void holdsForTheSameHalves() {
             assertThat(PairValue.of(1, 2)).isEqualTo(PairValue.of(1, 2));
         }
 
         @Test
-        void aDifferingFirstHalfIsEnoughToDiffer() {
+        void failsForADifferingFirstHalf() {
             assertThat(PairValue.of(1, 2)).isNotEqualTo(PairValue.of(3, 2));
         }
 
         @Test
-        void aDifferingSecondHalfIsEnoughToDiffer() {
+        void failsForADifferingSecondHalf() {
             assertThat(PairValue.of(1, 2)).isNotEqualTo(PairValue.of(1, 3));
         }
 
         @Test
-        void aWholeHalfEqualsTheSameHalfWrittenFractionally() {
+        void holdsForAWholeHalfWrittenFractionally() {
             assertThat(PairValue.of(1, 2)).isEqualTo(PairValue.of(1.0, 2.0));
         }
     }
 
     @Property
-    void reversingTwiceGivesTheSamePair(
+    void comesBackFromReversingTwice(
             @ForAll @DoubleRange(min = -1e6, max = 1e6) double x,
             @ForAll @DoubleRange(min = -1e6, max = 1e6) double y) {
 
@@ -184,7 +184,7 @@ class PairValueTest {
     }
 
     @Property
-    void everyPairMoldsToSomethingTheReaderReadsBack(
+    void moldsEveryPairToSomethingReadable(
             @ForAll @DoubleRange(min = -1e6, max = 1e6) double x,
             @ForAll @DoubleRange(min = -1e6, max = 1e6) double y) {
 

@@ -21,35 +21,35 @@ class MoldConstructAndLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a url holding a space molds as a construct")
-        void aUrlWithASpace() {
+        void coversAUrlWithASpace() {
             assertThat(answerTo("""
                     (mold to url! "a b") = {#(url! "a b")}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a url holding a quote molds as a construct")
-        void aUrlWithAQuote() {
+        void coversAUrlWithAQuote() {
             assertThat(answerTo("""
                     (mold to url! {a"b}) = {#(url! {a"b})}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("an empty url molds as a construct, having nothing to read back")
-        void theEmptyUrl() {
+        void coversTheEmptyUrl() {
             assertThat(answerTo("""
                     (mold to url! "") = {#(url! "")}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a url with no colon would read back as a word")
-        void aUrlWithoutAColon() {
+        void coversAUrlWithoutAColon() {
             assertThat(answerTo("""
                     (mold to url! "nocolon") = {#(url! "nocolon")}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("an email with no at-sign would not read back as an email")
-        void anEmailWithoutAnAtSign() {
+        void coversAnEmailWithoutAnAtSign() {
             assertThat(answerTo("""
                     (mold to email! "noatsign") = {#(email! "noatsign")}"""))
                     .isEqualTo("#(true)");
@@ -57,35 +57,35 @@ class MoldConstructAndLinesFromTheSourceTest {
 
         @Test
         @DisplayName("nor one with the at-sign at the front")
-        void anEmailBeginningWithTheAtSign() {
+        void coversAnEmailBeginningWithTheAtSign() {
             assertThat(answerTo("""
                     (mold to email! "@b") = {#(email! "@b")}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("nor one with it at the end")
-        void anEmailEndingWithTheAtSign() {
+        void coversAnEmailEndingWithTheAtSign() {
             assertThat(answerTo("""
                     (mold to email! "a@") = {#(email! "a@")}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("an ordinary url molds bare, which is the whole point of the test")
-        void theOrdinaryUrlIsTheOffPoint() {
+        void leavesTheOrdinaryUrlOut() {
             assertThat(answerTo("""
                     (mold to url! "http://x") = {http://x}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and an ordinary email does too")
-        void theOrdinaryEmailIsTheOffPoint() {
+        void leavesTheOrdinaryEmailOut() {
             assertThat(answerTo("""
                     (mold to email! "a@b") = {a@b}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a positioned url carries its position into the construct")
-        void aPositionedUrlKeepsItsIndex() {
+        void keepsTheIndexOfAPositionedUrl() {
             assertThat(answerTo("""
                     (mold/all next to url! "http://x") = {#(url! "http://x" 2)}"""))
                     .isEqualTo("#(true)");
@@ -98,35 +98,35 @@ class MoldConstructAndLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a path writes its segments as a block")
-        void aPathWritesABlockBody() {
+        void isABlockForAPath() {
             assertThat(answerTo("""
                     (mold/all next next 'p/p) = {#(path! [p p] 3)}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a string writes its whole text quoted")
-        void aStringWritesItsWholeText() {
+        void holdsTheWholeTextOfAString() {
             assertThat(answerTo("""
                     (mold/all next "abc") = {#(string! "abc" 2)}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("an empty tag is a construct under /ALL, because <> reads back as a word")
-        void theEmptyTagUnderAll() {
+        void writesTheEmptyTagUnderAll() {
             assertThat(answerTo("""
                     (mold/all to tag! "") = {#(tag! "")}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("where plain MOLD writes it as the two brackets")
-        void theEmptyTagWithoutAll() {
+        void writesTheEmptyTagWithoutAll() {
             assertThat(answerTo("""
                     (mold to tag! "") = {<>}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and a tag with something in it needs no construct")
-        void aTagWithContentIsTheOffPoint() {
+        void leavesATagWithContentOut() {
             assertThat(answerTo("""
                     (mold/all to tag! "a") = {<a>}""")).isEqualTo("#(true)");
         }
@@ -138,7 +138,7 @@ class MoldConstructAndLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a break after the first item is bare, with no indent")
-        void oneFlaggedPosition() {
+        void breaksAtOneFlaggedPosition() {
             assertThat(answerTo("""
                     b: [1 2 3] new-line next b true
                     (mold b) = {[1^/2 3]}""")).isEqualTo("#(true)");
@@ -146,7 +146,7 @@ class MoldConstructAndLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a break at every position gives one item to a line")
-        void everyPositionFlagged() {
+        void breaksAtEveryFlaggedPosition() {
             assertThat(answerTo("""
                     b: [1 2 3] new-line/all b true
                     (mold b) = {[^/    1^/    2^/    3^/]}""")).isEqualTo("#(true)");
@@ -154,14 +154,14 @@ class MoldConstructAndLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a block with no breaks stays on one line")
-        void noPositionFlagged() {
+        void breaksNowhereWithNoFlag() {
             assertThat(answerTo("""
                     (mold [1 2 3]) = {[1 2 3]}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("BODY-OF an object flags every set-word")
-        void bodyOfFlagsEverySetWord() {
+        void breaksBeforeEverySetWordOfBodyOf() {
             assertThat(answerTo("""
                     (mold body-of make object! [a: 1 b: 2]) = {[^/    a: 1^/    b: 2^/]}"""))
                     .isEqualTo("#(true)");
@@ -174,7 +174,7 @@ class MoldConstructAndLinesFromTheSourceTest {
 
         @Test
         @DisplayName("the header is a molded object body under the word REBOL")
-        void theHeaderBytes() {
+        void holdsTheHeaderBytes() {
             assertThat(answerTo("""
                     (to string! save/header none [1 + 1] [title: "t" version: 1.0.0])
                         = {REBOL [^/    title: "t"^/    version: 1.0.0^/]^/1 + 1^/}"""))
@@ -183,7 +183,7 @@ class MoldConstructAndLinesFromTheSourceTest {
 
         @Test
         @DisplayName("an empty header is the two brackets on the same line")
-        void theEmptyHeaderBytes() {
+        void holdsTheEmptyHeaderBytes() {
             assertThat(answerTo("""
                     (to string! save/header none [1] []) = {REBOL []^/1^/}"""))
                     .isEqualTo("#(true)");
@@ -191,7 +191,7 @@ class MoldConstructAndLinesFromTheSourceTest {
 
         @Test
         @DisplayName("and no header at all writes only the body")
-        void noHeaderAtAll() {
+        void isLeftOutWithNoHeader() {
             assertThat(answerTo("""
                     (to string! save none [1]) = {1^/}""")).isEqualTo("#(true)");
         }

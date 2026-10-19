@@ -12,10 +12,10 @@ import java.security.GeneralSecurityException;
 public interface OneBlock {
 
     /** Sixteen bytes in, sixteen out. */
-    byte[] enciphered(byte[] block);
+    byte[] encipher(byte[] block);
 
     /** The JVM's own AES, transforming one block and remembering nothing. */
-    static OneBlock jvmAes(byte[] key) throws GeneralSecurityException {
+    static OneBlock useTheJvmAes(byte[] key) throws GeneralSecurityException {
         Cipher running = Cipher.getInstance("AES/ECB/NoPadding");
         running.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"));
         return block -> {

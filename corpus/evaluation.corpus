@@ -33,7 +33,7 @@ do [
 
 --- id evaluation/do-block-prefix-only
 --- origin adapted from REBOL/Core User Guide 2.3 section 4.3
---- note The same behaviour written without infix, so milestone 1 can run
+--- note The same behaviour text without infix, so milestone 1 can run
 --- note it. If this passes and do-block does not, the gap is op! alone.
 --- code
 do [

@@ -16,7 +16,7 @@ public class ComplementAction extends DefaultNative implements ActionValue {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value", Set.of(
+        return List.of(Parameter.of("value", Set.of(
                 LogicValue.TYPE, IntegerValue.TYPE, TupleValue.TYPE,
                 BinaryValue.TYPE, BitsetValue.TYPE, TypesetValue.TYPE,
                 ImageValue.TYPE)));
@@ -29,9 +29,9 @@ public class ComplementAction extends DefaultNative implements ActionValue {
                     case LogicValue truth -> LogicValue.of(!truth.truth());
                     case IntegerValue whole -> IntegerValue.of(~whole.magnitude());
                     case TypesetValue kinds -> new TypesetActions(kinds).complemented();
-                    case TupleValue tuple -> new TupleActions().complemented(tuple);
+                    case TupleValue tuple -> new TupleActions().complement(tuple);
                     case Value subject when Actions.of(subject).isPresent() ->
-                            Actions.of(subject).orElseThrow().complemented();
+                            Actions.of(subject).orElseThrow().complement();
                     default -> refuseTheArgument(arguments.getFirst(), "value");
                 };
     }

@@ -34,23 +34,23 @@ class ValueEqualityTest {
 
         @Test
         void blocksWithEqualItemsAreEqual() {
-            assertThat(BlockValue.block(IntegerValue.of(1), IntegerValue.of(2)))
-                    .isEqualTo(BlockValue.block(IntegerValue.of(1), IntegerValue.of(2)));
+            assertThat(BlockValue.of(IntegerValue.of(1), IntegerValue.of(2)))
+                    .isEqualTo(BlockValue.of(IntegerValue.of(1), IntegerValue.of(2)));
         }
 
         @Test
         void blocksWithDifferentItemsAreNotEqual() {
-            assertThat(BlockValue.block(IntegerValue.of(1)))
-                    .isNotEqualTo(BlockValue.block(IntegerValue.of(2)));
+            assertThat(BlockValue.of(IntegerValue.of(1)))
+                    .isNotEqualTo(BlockValue.of(IntegerValue.of(2)));
         }
 
         @Test
         @DisplayName("nested blocks compare all the way down")
-        void nestedBlocksCompareDeeply() {
-            assertThat(BlockValue.block(BlockValue.block(IntegerValue.of(1))))
-                    .isEqualTo(BlockValue.block(BlockValue.block(IntegerValue.of(1))));
-            assertThat(BlockValue.block(BlockValue.block(IntegerValue.of(1))))
-                    .isNotEqualTo(BlockValue.block(BlockValue.block(IntegerValue.of(2))));
+        void comparesNestedBlocksDeeply() {
+            assertThat(BlockValue.of(BlockValue.of(IntegerValue.of(1))))
+                    .isEqualTo(BlockValue.of(BlockValue.of(IntegerValue.of(1))));
+            assertThat(BlockValue.of(BlockValue.of(IntegerValue.of(1))))
+                    .isNotEqualTo(BlockValue.of(BlockValue.of(IntegerValue.of(2))));
         }
 
         @Test
@@ -61,10 +61,10 @@ class ValueEqualityTest {
 
         @Test
         @DisplayName("equal values hash alike")
-        void equalValuesShareAHashCode() {
+        void sharesAHashCodeBetweenEqualValues() {
             assertThat(StringValue.of("hello")).hasSameHashCodeAs(StringValue.of("hello"));
-            assertThat(BlockValue.block(IntegerValue.of(1)))
-                    .hasSameHashCodeAs(BlockValue.block(IntegerValue.of(1)));
+            assertThat(BlockValue.of(IntegerValue.of(1)))
+                    .hasSameHashCodeAs(BlockValue.of(IntegerValue.of(1)));
         }
     }
 
@@ -74,20 +74,20 @@ class ValueEqualityTest {
 
         @Test
         @DisplayName("a file! and a string! with the same text are not ==")
-        void sameTextDifferentDatatypeIsNotEqual() {
+        void separatesTheSameTextInAnotherDatatype() {
             assertThat(FileValue.of("readme")).isNotEqualTo(StringValue.of("readme"));
         }
 
         @Test
         @DisplayName("a block! and a paren! with the same items are not ==")
-        void blockAndParenAreDifferent() {
-            BlockValue asBlock = BlockValue.block(IntegerValue.of(1));
+        void separatesABlockFromAParen() {
+            BlockValue asBlock = BlockValue.of(IntegerValue.of(1));
             assertThat(ParenValue.of(asBlock.remaining())).isNotEqualTo(asBlock);
         }
 
         @Test
         @DisplayName("an integer and a decimal of the same magnitude are not ==")
-        void integerAndDecimalAreDifferent() {
+        void separatesAnIntegerFromADecimal() {
             assertThat((Value) IntegerValue.of(1)).isNotEqualTo(DecimalValue.of(1.0));
         }
     }
@@ -97,7 +97,7 @@ class ValueEqualityTest {
     class CaseSensitivity {
 
         @Test
-        void strictEqualityIsCaseSensitive() {
+        void mindsCaseUnderStrictEquality() {
             assertThat(StringValue.of("REBOL")).isNotEqualTo(StringValue.of("rebol"));
         }
 
@@ -117,7 +117,7 @@ class ValueEqualityTest {
 
         @Test
         @DisplayName("words compare without regard to case, and print as written")
-        void wordsCompareIgnoringCase() {
+        void ignoresCaseForWords() {
             AnyWordValue asWritten = WordValue.of("Print");
             assertThat(asWritten.spelling()).isEqualTo("Print");
             assertThat(asWritten.canonical()).isEqualTo("print");
@@ -157,7 +157,7 @@ class ValueEqualityTest {
 
         @Test
         @DisplayName("equal amounts hash alike, so they can share a key")
-        void equalAmountsHashAlike() {
+        void hashesEqualAmountsAlike() {
             assertThat(MoneyValue.of(new BigDecimal("1.50")))
                     .hasSameHashCodeAs(MoneyValue.of(new BigDecimal("1.5")));
         }

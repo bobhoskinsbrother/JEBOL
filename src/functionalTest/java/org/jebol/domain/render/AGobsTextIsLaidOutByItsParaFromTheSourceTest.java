@@ -20,7 +20,7 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
     private final Interpreter interpreter = Interpreter.withBounds(
             Bounds.standard().grant(HostService.WINDOWS));
 
-    private List<PaintInstruction.Writing> writtenFor(String gobBuiltBy) {
+    private List<PaintInstruction.Writing> writeFor(String gobBuiltBy) {
         interpreter.defineFreshWordsIn(gobBuiltBy);
         GobValue gob = (GobValue) interpreter.run(gobBuiltBy).value();
         ObjectValue dialect = (ObjectValue) interpreter.run("system/dialects/draw").value();
@@ -30,8 +30,8 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
                 .toList();
     }
 
-    private PaintInstruction.Writing theOnlyLineOf(String richText) {
-        List<PaintInstruction.Writing> written = writtenFor("""
+    private PaintInstruction.Writing findTheOnlyLineOf(String richText) {
+        List<PaintInstruction.Writing> written = writeFor("""
                 labelled: make gob! [size: 200x40]
                 labelled/text: compose [%s]
                 labelled""".formatted(richText));
@@ -39,8 +39,8 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
         return written.getFirst();
     }
 
-    private TextLayout theLayoutUnder(String para) {
-        return theOnlyLineOf("""
+    private TextLayout readTheLayoutUnder(String para) {
+        return findTheOnlyLineOf("""
                 para (make object! [%s])
                 "Set 0%%"
                 """.formatted(para)).layout();
@@ -52,8 +52,8 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
 
         @Test
         @DisplayName("is laid out by the standard para: origin 2x2, margin 2x2, left, top")
-        void itHasTheStandardPara() {
-            List<PaintInstruction.Writing> written = writtenFor("""
+        void takesTheStandardPara() {
+            List<PaintInstruction.Writing> written = writeFor("""
                     make gob! [size: 100x30 text: "plain"]""");
 
             assertThat(written).hasSize(1);
@@ -64,8 +64,8 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
 
         @Test
         @DisplayName("and is written in the gob's whole box, the layout doing the insetting")
-        void itIsWrittenInTheWholeBox() {
-            PaintInstruction.Writing written = writtenFor("""
+        void isWrittenInTheWholeBox() {
+            PaintInstruction.Writing written = writeFor("""
                     make gob! [offset: 5x7 size: 100x30 text: "plain"]""").getFirst();
 
             assertThat(written.where().wide()).isEqualTo(100);
@@ -79,16 +79,16 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
 
         @Test
         @DisplayName("the 2010 GUI's button para centres the line both ways and takes nothing off")
-        void theButtonsParaCentres() {
-            assertThat(theLayoutUnder("origin: 0x0 margin: 0x0 align: 'center valign: 'middle"))
+        void centresTheButtonsLine() {
+            assertThat(readTheLayoutUnder("origin: 0x0 margin: 0x0 align: 'center valign: 'middle"))
                     .isEqualTo(new TextLayout(0, 0, 0, 0,
                             TextAlignment.CENTRE, TextVerticalAlignment.MIDDLE, 0, 0));
         }
 
         @Test
         @DisplayName("the 2010 GUI's radio para starts the line 18 across, clear of the circle")
-        void theRadiosParaClearsTheCircle() {
-            TextLayout laidOut = theLayoutUnder("origin: 18x0 valign: 'middle");
+        void clearsTheRadiosCircle() {
+            TextLayout laidOut = readTheLayoutUnder("origin: 18x0 valign: 'middle");
 
             assertThat(laidOut.originAcross()).isEqualTo(18);
             assertThat(laidOut.originDown()).isZero();
@@ -97,8 +97,8 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
 
         @Test
         @DisplayName("a field the para does not have keeps the standard's value")
-        void aMissingFieldKeepsTheStandard() {
-            assertThat(theLayoutUnder("align: 'right"))
+        void keepsTheStandardForAMissingField() {
+            assertThat(readTheLayoutUnder("align: 'right"))
                     .isEqualTo(new TextLayout(2, 2, 2, 2,
                             TextAlignment.RIGHT, TextVerticalAlignment.TOP, 0, 0));
         }
@@ -114,13 +114,13 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
         })
         @DisplayName("wrap? as a logic says whether a long line breaks, and anything else leaves the standard's true")
         void wrapIsTakenOnlyAsALogic(String given, boolean wraps) {
-            assertThat(theLayoutUnder("wrap?: " + given).wraps()).isEqualTo(wraps);
+            assertThat(readTheLayoutUnder("wrap?: " + given).wraps()).isEqualTo(wraps);
         }
 
         @Test
         @DisplayName("a para without wrap? wraps, as the standard para does, and so does a plain string")
-        void theStandardWraps() {
-            assertThat(theLayoutUnder("align: 'left").wraps()).isTrue();
+        void wrapsByDefault() {
+            assertThat(readTheLayoutUnder("align: 'left").wraps()).isTrue();
             assertThat(TextLayout.STANDARD.wraps()).isTrue();
         }
 
@@ -137,7 +137,7 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
         })
         @DisplayName("align is left, center or right, and anything else is left as the C defaults it")
         void alignIsReadFromItsWord(String said, TextAlignment meant) {
-            assertThat(theLayoutUnder("align: " + said).align()).isEqualTo(meant);
+            assertThat(readTheLayoutUnder("align: " + said).align()).isEqualTo(meant);
         }
 
         @ParameterizedTest(name = "valign {0} is {1}")
@@ -151,7 +151,7 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
         })
         @DisplayName("valign is top, middle or bottom, and anything else is top as the C defaults it")
         void valignIsReadFromItsWord(String said, TextVerticalAlignment meant) {
-            assertThat(theLayoutUnder("valign: " + said).valign()).isEqualTo(meant);
+            assertThat(readTheLayoutUnder("valign: " + said).valign()).isEqualTo(meant);
         }
 
         @ParameterizedTest(name = "origin {0} is {1} across and {2} down")
@@ -166,7 +166,7 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
         })
         @DisplayName("origin is a pair, its fractions cut off as the C's copy into whole pixels does, and anything else keeps the standard 2x2")
         void originIsAPair(String said, int across, int down) {
-            TextLayout laidOut = theLayoutUnder("origin: " + said);
+            TextLayout laidOut = readTheLayoutUnder("origin: " + said);
 
             assertThat(laidOut.originAcross()).isEqualTo(across);
             assertThat(laidOut.originDown()).isEqualTo(down);
@@ -181,7 +181,7 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
         })
         @DisplayName("margin is a pair too, and anything else keeps the standard 2x2")
         void marginIsAPair(String said, int across, int down) {
-            TextLayout laidOut = theLayoutUnder("margin: " + said);
+            TextLayout laidOut = readTheLayoutUnder("margin: " + said);
 
             assertThat(laidOut.marginAcross()).isEqualTo(across);
             assertThat(laidOut.marginDown()).isEqualTo(down);
@@ -189,8 +189,8 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
 
         @Test
         @DisplayName("an object after FONT is read as a font, not as a para")
-        void aFontIsNotAPara() {
-            PaintInstruction.Writing written = theOnlyLineOf("""
+        void givesWayToAnObjectAfterFont() {
+            PaintInstruction.Writing written = findTheOnlyLineOf("""
                     font (make object! [size: 14 align: 'center origin: 0x0])
                     "label"
                     """);
@@ -201,8 +201,8 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
 
         @Test
         @DisplayName("and an object after PARA sets no font, however it is spelt")
-        void aParaIsNotAFont() {
-            PaintInstruction.Writing written = theOnlyLineOf("""
+        void setsNoFont() {
+            PaintInstruction.Writing written = findTheOnlyLineOf("""
                     para (make object! [size: 30 color: 255.0.0 align: 'center])
                     "label"
                     """);
@@ -219,8 +219,8 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
 
         @Test
         @DisplayName("the 2010 GUI's button font has a shadow 2 across and 2 down")
-        void theButtonsShadow() {
-            TextLayout laidOut = theOnlyLineOf("""
+        void fallsTwoAcrossAndTwoDownUnderTheButton() {
+            TextLayout laidOut = findTheOnlyLineOf("""
                     font (make object! [color: 255.250.250 style: 'bold size: 14 shadow: 2x2])
                     "Set 0%"
                     """).layout();
@@ -240,8 +240,8 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
                 "5,                 0,  0",
         })
         @DisplayName("a shadow is a pair, or a block whose first value is one, and anything else casts none")
-        void aShadowIsAPair(String said, int across, int down) {
-            TextLayout laidOut = theOnlyLineOf("""
+        void isAPairOrABlockStartingWithOne(String said, int across, int down) {
+            TextLayout laidOut = findTheOnlyLineOf("""
                     font (make object! [shadow: (%s)])
                     "label"
                     """.formatted(said.startsWith("[") ? "quote " + said : said)).layout();
@@ -252,8 +252,8 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
 
         @Test
         @DisplayName("a shadow of 0x0 casts nothing, as it would land under the text")
-        void noOffsetCastsNothing() {
-            assertThat(theOnlyLineOf("""
+        void castsNothingAtNoOffset() {
+            assertThat(findTheOnlyLineOf("""
                     font (make object! [shadow: 0x0])
                     "label"
                     """).layout().castsAShadow()).isFalse();
@@ -267,7 +267,7 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
         @Test
         @DisplayName("is one instruction holding every run, so it can be placed as a whole")
         void severalRunsAreOneLine() {
-            PaintInstruction.Writing written = theOnlyLineOf("""
+            PaintInstruction.Writing written = findTheOnlyLineOf("""
                     "plain " bold "heavy" /bold " plain again"
                     """);
 
@@ -280,8 +280,8 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
 
         @Test
         @DisplayName("a block with no strings writes nothing at all")
-        void noStringsNoLine() {
-            assertThat(writtenFor("""
+        void isLeftOutWithNoStrings() {
+            assertThat(writeFor("""
                     labelled: make gob! [size: 200x40]
                     labelled/text: [bold]
                     labelled""")).isEmpty();
@@ -289,8 +289,8 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
 
         @Test
         @DisplayName("an empty string is a run, so an empty field still has a line and a place for its caret")
-        void anEmptyStringIsARun() {
-            assertThat(theOnlyLineOf("""
+        void takesAnEmptyStringAsARun() {
+            assertThat(findTheOnlyLineOf("""
                     "" "label" ""
                     """).runs()).extracting(TextRun::text).containsExactly("", "label", "");
         }

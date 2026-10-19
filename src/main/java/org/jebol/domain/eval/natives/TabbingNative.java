@@ -11,13 +11,13 @@ public abstract class TabbingNative extends DefaultNative {
 
     private static final int SPACES_A_TAB_STANDS_FOR = 4;
 
-    abstract String tabbed(String text, String aTabsWorthOfSpaces);
+    abstract String tab(String text, String aTabsWorthOfSpaces);
 
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("string", TypesetValue.ANY_STRING.membersAnd(BinaryValue.TYPE)),
-                Parameter.belongingTo("size", "number", Set.of(IntegerValue.TYPE)));
+                Parameter.of("string", TypesetValue.ANY_STRING.membersAnd(BinaryValue.TYPE)),
+                Parameter.belongTo("size", "number", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -28,24 +28,24 @@ public abstract class TabbingNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            String aTabsWorthOfSpaces = aTabsWorthOf(argumentOf("size", 0, arguments, refinements)
-                    .map(this::spacesATabStandsFor)
+            String aTabsWorthOfSpaces = writeATabsWorthOf(readTheArgumentOf("size", 0, arguments, refinements)
+                    .map(this::countTheSpacesATabStandsFor)
                     .orElse(SPACES_A_TAB_STANDS_FOR));
             return switch (arguments.getFirst()) {
-                case BinaryValue octets -> BinaryValue.ofBytes(tabbed(
+                case BinaryValue octets -> BinaryValue.ofBytes(tab(
                         new String(octets.octetsFromHere(), StandardCharsets.ISO_8859_1),
                         aTabsWorthOfSpaces).getBytes(StandardCharsets.ISO_8859_1));
-                case AnyStringValue text -> text.holding(tabbed(text.text(), aTabsWorthOfSpaces));
+                case AnyStringValue text -> text.wrap(tab(text.text(), aTabsWorthOfSpaces));
                 case Value anythingElse -> refuseTheDatatype(anythingElse);
             };
         };
     }
 
-    private String aTabsWorthOf(int spaces) {
+    private String writeATabsWorthOf(int spaces) {
         return " ".repeat(spaces);
     }
 
-    private int spacesATabStandsFor(Value asked) {
+    private int countTheSpacesATabStandsFor(Value asked) {
         long spaces = ((IntegerValue) asked).magnitude();
         if (spaces <= 0 || spaces > Integer.MAX_VALUE) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, asked);

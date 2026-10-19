@@ -1,5 +1,5 @@
 ;; Rebol declares the system object in sysobj.reb, so that file is what the
-;; object is made from. The interpreter had written the same field names out
+;; object is made from. The interpreter had text the same field names out
 ;; by hand, in Java and again in the prelude, and the two copies had drifted.
 ;;
 ;; What the interpreter knows and the declaration cannot is carried over from

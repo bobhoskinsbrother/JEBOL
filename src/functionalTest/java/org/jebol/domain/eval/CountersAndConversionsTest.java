@@ -16,7 +16,7 @@ class CountersAndConversionsTest {
         ScriptOutcome outcome = interpreter.run(source);
         assertThat(outcome.conclusion())
                 .as("%s must not escape as a host exception", source)
-                .isEqualTo(Conclusion.PRODUCED_A_VALUE);
+                .isEqualTo(Conclusion.PRODUCED_VALUE);
         return interpreter.display(outcome);
     }
 
@@ -54,34 +54,34 @@ class CountersAndConversionsTest {
 
     @Test
     @DisplayName("TO BINARY! of a block is one byte per number")
-    void blockToBinaryIsOneBytePerNumber() {
+    void givesOneBytePerNumberForBlockToBinary() {
         assertThat(answerTo("mold to binary! [1 2 3]")).isEqualTo("\"#{010203}\"");
     }
 
     @Test
     @DisplayName("TO BINARY! of an integer is its whole machine width")
-    void integerToBinaryIsEightBytes() {
+    void givesEightBytesForIntegerToBinary() {
         assertThat(answerTo("mold to binary! 65"))
                 .isEqualTo("\"#{0000000000000041}\"");
     }
 
     @Test
     @DisplayName("TO BINARY! of an empty string or block gives an empty binary")
-    void emptyToBinaryIsTheDegenerateCase() {
+    void handlesEmptyToBinary() {
         assertThat(answerTo("mold to binary! \"\"")).isEqualTo("\"#{}\"");
         assertThat(answerTo("mold to binary! []")).isEqualTo("\"#{}\"");
     }
 
     @Test
     @DisplayName("TO FILE! takes the text of the value")
-    void toFileTakesTheText() {
+    void takesTheTextForToFile() {
         assertThat(answerTo("mold to file! \"a/b\"")).isEqualTo("\"%a/b\"");
         assertThat(answerTo("mold to file! 'abc")).isEqualTo("\"%abc\"");
     }
 
     @Test
     @DisplayName("TO FILE! of a block runs the parts together, inserting nothing")
-    void toFileOfABlockInsertsNoSeparators() {
+    void insertsNoSeparatorsForToFileOfABlock() {
         assertThat(answerTo("mold to file! [a b]"))
                 .as("%ab, not %a/b")
                 .isEqualTo("\"%ab\"");

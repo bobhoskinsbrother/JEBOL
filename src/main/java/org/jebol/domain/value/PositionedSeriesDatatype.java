@@ -11,12 +11,12 @@ abstract class PositionedSeriesDatatype extends SeriesDatatype {
     protected abstract Value withRoomFor(int asked);
 
     @Override
-    public Value madeFrom(Value spec, Maker maker) {
+    public Value makeFrom(Value spec, Maker maker) {
         refuseToBuildSomethingOutOfNothing(spec);
         return switch (spec) {
             case IntegerValue(long magnitude) -> withRoomForAsMuchAs(spec, magnitude);
             case DecimalValue number -> withRoomForAsMuchAs(spec, number.quantity());
-            default -> built(Conversion.MAKE, spec, maker);
+            default -> build(Conversion.MAKE, spec, maker);
         };
     }
 
@@ -26,7 +26,7 @@ abstract class PositionedSeriesDatatype extends SeriesDatatype {
         }
         refuseMoreRoomThanFits(asked, bytesAnItemTakes());
         int room = (int) Math.min(Integer.MAX_VALUE, (long) asked);
-        return whatTheHostHadRoomFor(() -> withRoomFor(room));
+        return allocateWithinTheHost(() -> withRoomFor(room));
     }
 
     protected int bytesAnItemTakes() {
@@ -34,28 +34,28 @@ abstract class PositionedSeriesDatatype extends SeriesDatatype {
     }
 
     @Override
-    public Value constructedFrom(List<Value> contents, Construction construction) {
+    public Value construct(List<Value> contents, Construction construction) {
         if (contents.size() == 1) {
-            return constructedFromOne(contents.getFirst(), construction);
+            return constructFromOne(contents.getFirst(), construction);
         }
         if (contents.size() == 2 && contents.get(1) instanceof IntegerValue) {
-            return standingWhereItWasTold(
-                    constructedFromOne(contents.getFirst(), construction), contents.get(1));
+            return standWhereItWasTold(
+                    constructFromOne(contents.getFirst(), construction), contents.get(1));
         }
-        return constructedFromMore(contents, construction);
+        return constructFromMore(contents, construction);
     }
 
-    protected Value constructedFromOne(Value only, Construction construction) {
-        return construction.madeOf(this, only);
+    protected Value constructFromOne(Value only, Construction construction) {
+        return construction.make(this, only);
     }
 
-    protected Value constructedFromMore(List<Value> contents, Construction construction) {
-        throw refusingConstruction(contents);
+    protected Value constructFromMore(List<Value> contents, Construction construction) {
+        throw refuseTheConstruction(contents);
     }
 
-    protected Value standingWhereItWasTold(Value whole, Value position) {
+    protected Value standWhereItWasTold(Value whole, Value position) {
         if (!(whole instanceof RebolSeries series)) {
-            throw refusingConstruction(List.of(whole, position));
+            throw refuseTheConstruction(List.of(whole, position));
         }
         if (!(position instanceof IntegerValue(long magnitude))) {
             return series;

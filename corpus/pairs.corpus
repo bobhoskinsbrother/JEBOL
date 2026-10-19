@@ -1,5 +1,5 @@
 --- title Coordinate pairs
---- about A pair is two decimals written with an x between them. The
+--- about A pair is two decimals text with an x between them. The
 --- about spelling suggests two integers and R3 does not agree: FIRST 1x2
 --- about is 1.0, and 1.5x2 is a legal pair. Everything here was asked of
 --- about R3 3.22.1 rather than reasoned out, because the integer reading

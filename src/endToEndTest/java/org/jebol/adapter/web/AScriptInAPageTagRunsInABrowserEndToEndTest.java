@@ -69,38 +69,38 @@ class AScriptInAPageTagRunsInABrowserEndToEndTest {
         return new WebDriverWait(browser, Duration.ofSeconds(30));
     }
 
-    private List<String> theLinesSoFar() {
+    private List<String> readTheLinesSoFar() {
         return browser.findElement(By.id("out")).getDomProperty("textContent").lines().toList();
     }
 
-    private boolean theWorkerGaveUp(List<String> lines) {
+    private boolean hasTheWorkerGivenUp(List<String> lines) {
         return lines.stream().anyMatch(line ->
                 line.startsWith("failed ") || line.startsWith("worker error"));
     }
 
-    private void untilThePageEitherSaysOrGivesUp(String whatWasHoped, Supplier<Boolean> hoped) {
+    private void waitUntilThePageSaysOrGivesUp(String whatWasHoped, Supplier<Boolean> hoped) {
         try {
-            patientBrowser().until(anything -> theWorkerGaveUp(theLinesSoFar()) || hoped.get());
+            patientBrowser().until(anything -> hasTheWorkerGivenUp(readTheLinesSoFar()) || hoped.get());
         } catch (TimeoutException late) {
             throw new AssertionError("the page never " + whatWasHoped
-                    + "; the page said: " + theLinesSoFar(), late);
+                    + "; the page said: " + readTheLinesSoFar(), late);
         }
-        List<String> lines = theLinesSoFar();
-        if (theWorkerGaveUp(lines)) {
+        List<String> lines = readTheLinesSoFar();
+        if (hasTheWorkerGivenUp(lines)) {
             throw new AssertionError("the worker gave up before " + whatWasHoped
                     + "; the page said: " + lines);
         }
     }
 
-    private void untilTheOutputSays(int atLeastLines, String containing) {
-        untilThePageEitherSaysOrGivesUp("saying " + containing, () -> {
-            List<String> lines = theLinesSoFar();
+    private void waitUntilTheOutputSays(int atLeastLines, String containing) {
+        waitUntilThePageSaysOrGivesUp("saying " + containing, () -> {
+            List<String> lines = readTheLinesSoFar();
             return lines.size() >= atLeastLines
                     && lines.stream().anyMatch(line -> line.contains(containing));
         });
     }
 
-    private String pixelAt(int across, int down) {
+    private String readThePixelAt(int across, int down) {
         return browser.executeScript("""
                 const d = document.getElementById('screen').getContext('2d')
                     .getImageData(arguments[0], arguments[1], 1, 1).data;
@@ -110,49 +110,49 @@ class AScriptInAPageTagRunsInABrowserEndToEndTest {
 
     @Test
     @DisplayName("the script in the page's tag runs in the worker and prints the Brotli answers, waiting included")
-    void theScriptInTheTag() {
+    void runsTheScriptInTheTag() {
         assertThat(browser.findElement(By.cssSelector("script[type='text/rebol']")).getDomAttribute("id"))
                 .isEqualTo("rebol");
-        untilTheOutputSays(8, "waited");
-        List<String> lines = theLinesSoFar();
+        waitUntilTheOutputSays(8, "waited");
+        List<String> lines = readTheLinesSoFar();
         assertThat(lines.subList(0, 8))
                 .containsExactly("3", "true", "true", "true", "true", "true", "true", "waited");
     }
 
     @Test
     @DisplayName("the window the second script opens is painted on the canvas the page owns")
-    void theWindowIsPaintedOnTheCanvas() {
-        untilTheOutputSays(9, "open");
+    void paintsTheWindowOnTheCanvas() {
+        waitUntilTheOutputSays(9, "open");
 
-        untilThePageEitherSaysOrGivesUp("a painted canvas",
-                () -> pixelAt(70, 80).equals("250,10,10,255"));
+        waitUntilThePageSaysOrGivesUp("a painted canvas",
+                () -> readThePixelAt(70, 80).equals("250,10,10,255"));
     }
 
     @Test
     @DisplayName("a real click on the canvas reaches the interpreter in the worker, counted from the window")
-    void aClickReachesTheInterpreterInTheWorker() {
-        untilTheOutputSays(9, "open");
+    void carriesAClickToTheInterpreterInTheWorker() {
+        waitUntilTheOutputSays(9, "open");
 
         WebElement canvas = browser.findElement(By.id("screen"));
         Rectangle where = canvas.getRect();
-        untilThePageEitherSaysOrGivesUp("a canvas the right size to click",
+        waitUntilThePageSaysOrGivesUp("a canvas the right size to click",
                 () -> where.getWidth() == PAGE_WIDE);
 
         new Actions(browser).moveToElement(canvas,
                 70 - where.getWidth() / 2, 80 - where.getHeight() / 2).click().perform();
 
-        untilTheOutputSays(10, "clicked 50x5");
+        waitUntilTheOutputSays(10, "clicked 50x5");
     }
 
     @Test
     @DisplayName("a browser resized while the script waits is taken, and the script sees the new size")
-    void aBrowserResizeIsTakenWhileTheScriptWaits() {
-        untilTheOutputSays(9, "open");
+    void takesABrowserResizeWhileTheScriptWaits() {
+        waitUntilTheOutputSays(9, "open");
 
         browser.manage().window().setSize(new Dimension(500, 400));
 
-        untilThePageEitherSaysOrGivesUp("the new size",
-                () -> theLinesSoFar().stream()
+        waitUntilThePageSaysOrGivesUp("the new size",
+                () -> readTheLinesSoFar().stream()
                         .anyMatch(line -> line.startsWith("now ")
                                 && !line.equals("now " + PAGE_WIDE + "x" + PAGE_HIGH)));
     }

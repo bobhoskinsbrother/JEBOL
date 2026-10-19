@@ -42,19 +42,19 @@ command, and what happens around it.
 
 ## 2. Writing a command's spec
 
-The spec is a REBOL function spec, written as a Java string without its
+The spec is a REBOL function spec, text as a Java string without its
 outer brackets. Put REBOL strings in braces, `{...}`, so nothing in Java
 needs escaping.
 
-| You want | Write |
-| --- | --- |
-| Help text | `{Says hello.}` first |
-| An argument of any type | `value` |
-| An argument of some types | `who [string! file!]` |
-| Help text for an argument | `delay [integer!] {Milliseconds.}` |
-| A refinement | `/loud` |
-| A refinement with an argument | `/times count [integer!]` |
-| No arguments | `""` |
+| You want                      | Write                              |
+|-------------------------------|------------------------------------|
+| Help text                     | `{Says hello.}` first              |
+| An argument of any type       | `value`                            |
+| An argument of some types     | `who [string! file!]`              |
+| Help text for an argument     | `delay [integer!] {Milliseconds.}` |
+| A refinement                  | `/loud`                            |
+| A refinement with an argument | `/times count [integer!]`          |
+| No arguments                  | `""`                               |
 
 JEBOL checks the arguments against the spec before your Java runs. A script
 that passes the wrong type gets REBOL's own error, naming the word, the
@@ -83,23 +83,23 @@ A command's datatype is `command!`, as an R3 extension's words are.
 
 ## 3. What your Java gets, and what it answers
 
-Your command's Java is a function from a `CommandCall` to a REBOL value:
+Your command's Java is a function from a `Command` to a REBOL value:
 
 ```java
 call -> IntegerValue.of(42)
 ```
 
-The `CommandCall` holds:
+The `Command` holds:
 
-| Call | Gives you |
-| --- | --- |
-| `call.arguments()` | The arguments, in the order of the spec, as REBOL values |
-| `call.refinements()` | The refinements the script used, without their slashes |
-| `call.evaluated(block)` | A block the script gave you, evaluated in the script's interpreter |
-| `call.handleOf(kind, object)` | A handle carrying a Java object, to give to the script (section 5) |
-| `call.heldBy(handle, Class)` | The Java object a handle carries (section 5) |
-| `call.failure(category, id, arguments...)` | An error to throw (section 4) |
-| `call.postbox()` | The interpreter's postbox, for work that finishes later (section 6) |
+| Call                                       | Gives you                                                           |
+|--------------------------------------------|---------------------------------------------------------------------|
+| `call.arguments()`                         | The arguments, in the order of the spec, as REBOL values            |
+| `call.refinements()`                       | The refinements the script used, without their slashes              |
+| `call.evaluated(block)`                    | A block the script gave you, evaluated in the script's interpreter  |
+| `call.handleOf(kind, object)`              | A handle carrying a Java object, to give to the script (section 5)  |
+| `call.heldBy(handle, Class)`               | The Java object a handle carries (section 5)                        |
+| `call.failure(category, id, arguments...)` | An error to throw (section 4)                                       |
+| `call.postbox()`                           | The interpreter's postbox, for work that finishes later (section 6) |
 
 **Arguments arrive as REBOL values, not Java ones.** A `file!` arrives as a
 `FileValue` and a `string!` as a `StringValue`, so you can tell `%a.txt` from
@@ -113,16 +113,16 @@ boolean loud = call.refinements().contains("loud");
 
 **Answer with a REBOL value.** The common ones:
 
-| To answer | Write |
-| --- | --- |
-| An integer | `IntegerValue.of(42)` |
-| A string | `StringValue.of("text")` |
-| A file | `FileValue.of("made.txt")` |
-| A url | `UrlValue.of("http://example.com")` |
-| A block | `BlockValue.block(List.of(IntegerValue.of(1), IntegerValue.of(2)))` |
-| none | `NoneValue.none()` |
-| Nothing at all | `UnsetValue.unset()` |
-| One of your arguments | `call.arguments().getFirst()` |
+| To answer             | Write                                                               |
+|-----------------------|---------------------------------------------------------------------|
+| An integer            | `IntegerValue.of(42)`                                               |
+| A string              | `StringValue.of("text")`                                            |
+| A file                | `FileValue.of("made.txt")`                                          |
+| A url                 | `UrlValue.of("http://example.com")`                                 |
+| A block               | `BlockValue.block(List.of(IntegerValue.of(1), IntegerValue.of(2)))` |
+| none                  | `NoneValue.none()`                                                  |
+| Nothing at all        | `UnsetValue.unset()`                                                |
+| One of your arguments | `call.arguments().getFirst()`                                       |
 
 ---
 
@@ -344,7 +344,7 @@ and `png`.
 
 ## 8. Starting, and refusing to start
 
-`startingWith` runs once, as the extension is installed in each interpreter.
+`startWith` runs once, as the extension is installed in each interpreter.
 Use it to check that what the extension needs is there, and to keep the
 postbox. If it throws, the extension is not installed:
 
@@ -386,12 +386,12 @@ interpreter.extensions();
 `report.installed()` is true when it went in. Otherwise `report.refusal()`
 holds the reason:
 
-| Refusal | Why | Example |
-| --- | --- | --- |
-| `already-used` | A command has a name `lib` already holds | a command called `add`, `append` or `secure` |
-| `bad-extension` | Something doesn't read | a blank name, a version that is not a tuple like `1.0.0`, a spec with a missing bracket, or two commands with one name |
-| `handle-exists` | A handle kind another extension declared with a different class | two extensions both declaring `session`, holding different classes |
-| `extension-init` | Your start step threw | no camera on this machine |
+| Refusal          | Why                                                             | Example                                                                                                                |
+|------------------|-----------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| `already-used`   | A command has a name `lib` already holds                        | a command called `add`, `append` or `secure`                                                                           |
+| `bad-extension`  | Something doesn't read                                          | a blank name, a version that is not a tuple like `1.0.0`, a spec with a missing bracket, or two commands with one name |
+| `handle-exists`  | A handle kind another extension declared with a different class | two extensions both declaring `session`, holding different classes                                                     |
+| `extension-init` | Your start step threw                                           | no camera on this machine                                                                                              |
 
 ```java
 Extension clash = new Extension("clash", "1.0.0", List.of(
@@ -406,7 +406,7 @@ module and no handle kind behind, even if most of its commands were fine.
 
 **Names are first come, first served.** Every word in `lib` when an
 interpreter is built is sealed: the natives, the actions, and Rebol's own
-functions written in REBOL. An extension can't take any of those names.
+functions text in REBOL. An extension can't take any of those names.
 Between two extensions that want the same name, the one added first wins.
 The seal is only against extensions. A script can still write
 `lib/add: func [a b] [...]`, as it can in R3.
@@ -544,16 +544,16 @@ And a session using it:
 
 ## 12. Quick reference
 
-| Class | What it is |
-| --- | --- |
-| `Extension(name, version, commands)` | An extension. `withScript`, `withHandleKind` and `startingWith` add the rest. |
-| `ExtensionCommand(name, spec, behaviour)` | One word: its name, its spec without brackets, and the Java behind it. |
-| `CommandCall` | What a command's Java receives (section 3). |
-| `HandleKind(name, class)` | A kind of handle and the class it carries. |
-| `Postbox` | Where to post events and callbacks from any thread (section 6). |
-| `Bounds.add(extension)` | Adds it to every interpreter built with these bounds. |
-| `Interpreter.extensions()` | Whether each one was installed, and why not. |
-| `ExtensionReport` | One extension's outcome: `installed()`, `refusal()`. |
+| Class                                     | What it is                                                                 |
+|-------------------------------------------|----------------------------------------------------------------------------|
+| `Extension(name, version, commands)`      | An extension. `withScript`, `withHandleType` and `startWith` add the rest. |
+| `ExtensionCommand(name, spec, behaviour)` | One word: its name, its spec without brackets, and the Java behind it.     |
+| `Command`                             | What a command's Java receives (section 3).                                |
+| `HandleKind(name, class)`                 | A kind of handle and the class it carries.                                 |
+| `Postbox`                                 | Where to post events and callbacks from any thread (section 6).            |
+| `Bounds.add(extension)`                   | Adds it to every interpreter built with these bounds.                      |
+| `Interpreter.extensions()`                | Whether each one was installed, and why not.                               |
+| `ExtensionReport`                         | One extension's outcome: `installed()`, `refusal()`.                       |
 
 The rules behind all of this are in `spec/embed.allium`, under "Extensions:
 what a library adds", and `spec/natives.allium`, under "Extensions, from the
@@ -574,32 +574,32 @@ checks, so a failure reads as a sentence. Run one class with, for example:
 **`ExtensionsFromTheSourceTest`**: the host's side, through `Bounds` and
 `Interpreter`. 40 tests in seven groups.
 
-| Group | Covers | Guide section |
-| --- | --- | --- |
-| `CallingACommand` | calling by name; the `command!` datatype; the spec and its help text; `expect-arg` for a wrong type; refinements; values arriving and going back as REBOL values; `call.failure`; `command-fail` from a Java exception; `call.evaluated`; fifteen arguments allowed and sixteen refused as `bad-command` | 1, 2, 3, 4 |
-| `WhereItLives` | words in `lib`; the module in `system/modules` with its version; `import`; every interpreter with the same bounds getting it; none without it; `interpreter.extensions()` | 9 |
-| `TheSeal` | a native's name refused; one of Rebol's own functions refused; all or nothing; the first of two extensions winning; a script still able to assign into `lib` | 9 |
-| `Refusals` | `bad-extension` for an unreadable spec, a version that is not a tuple, a blank name and two commands of one name; `extension-init`; `handle-exists`, and the same kind shared; an `Extension` missing a part refused when it is built | 8, 9 |
-| `ItsOwnRebol` | a scheme made in the extension's REBOL; a codec registered in it | 7 |
-| `Handles` | a handle going out to the script and back; a handle of another kind refused as `invalid-handle` | 5 |
-| `Posting` | an event posted from another thread waking a `wait`; a callback running on the script's thread and answering; a callback that fails; `do-callback` of an ordinary event; a `wait` with nothing woken letting its time pass | 6 |
+| Group             | Covers                                                                                                                                                                                                                                                                                                   | Guide section |
+|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| `CallingACommand` | calling by name; the `command!` datatype; the spec and its help text; `expect-arg` for a wrong type; refinements; values arriving and going back as REBOL values; `call.failure`; `command-fail` from a Java exception; `call.evaluated`; fifteen arguments allowed and sixteen refused as `bad-command` | 1, 2, 3, 4    |
+| `WhereItLives`    | words in `lib`; the module in `system/modules` with its version; `import`; every interpreter with the same bounds getting it; none without it; `interpreter.extensions()`                                                                                                                                | 9             |
+| `TheSeal`         | a native's name refused; one of Rebol's own functions refused; all or nothing; the first of two extensions winning; a script still able to assign into `lib`                                                                                                                                             | 9             |
+| `Refusals`        | `bad-extension` for an unreadable spec, a version that is not a tuple, a blank name and two commands of one name; `extension-init`; `handle-exists`, and the same kind shared; an `Extension` missing a part refused when it is built                                                                    | 8, 9          |
+| `ItsOwnRebol`     | a scheme made in the extension's REBOL; a codec registered in it                                                                                                                                                                                                                                         | 7             |
+| `Handles`         | a handle going out to the script and back; a handle of another kind refused as `invalid-handle`                                                                                                                                                                                                          | 5             |
+| `Posting`         | an event posted from another thread waking a `wait`; a callback running on the script's thread and answering; a callback that fails; `do-callback` of an ordinary event; a `wait` with nothing woken letting its time pass                                                                               | 6             |
 
 **`CommandsFromTheSourceTest`**: the script's side, the natives R3 has for
 extensions. 32 tests in three groups.
 
-| Group | Covers | Guide section |
-| --- | --- | --- |
-| `MakingACommand` | `make command!` and `to command!` checking their definition as R3's C does: `bad-make-arg` for a block that does not open with a spec, `bad-func-def` for one that does but is not `[spec extension number]`, the largest command number 65535 and one past it, a negative number, a number with no command behind it, and a command made by hand calling the right one | 2 |
-| `LoadExtension` | a file of native code refused as `no-extension`; SECURE checked first; a string and a binary refused; `/dispatch` answering an extension object; a command made from it; any handle accepted, as in R3, and `bad-extension` when it carries no dispatcher | 7, 8 |
-| `DoCommands` | `do-commands`: set-words, the last answer, word, path and paren arguments, a word that is not a command, a wrong type, a missing argument, a failing command answering unset | 3 |
+| Group            | Covers                                                                                                                                                                                                                                                                                                                                                                  | Guide section |
+|------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| `MakingACommand` | `make command!` and `to command!` checking their definition as R3's C does: `bad-make-arg` for a block that does not open with a spec, `bad-func-def` for one that does but is not `[spec extension number]`, the largest command number 65535 and one past it, a negative number, a number with no command behind it, and a command made by hand calling the right one | 2             |
+| `LoadExtension`  | a file of native code refused as `no-extension`; SECURE checked first; a string and a binary refused; `/dispatch` answering an extension object; a command made from it; any handle accepted, as in R3, and `bad-extension` when it carries no dispatcher                                                                                                               | 7, 8          |
+| `DoCommands`     | `do-commands`: set-words, the last answer, word, path and paren arguments, a word that is not a command, a wrong type, a missing argument, a failing command answering unset                                                                                                                                                                                            | 3             |
 
 **Elsewhere**
 
-| Test | Covers |
-| --- | --- |
-| `InteropTest`, group `HostObjectMutability` | a Java object stays the host's to change, seen through a command |
-| `AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest`, `aFailingCommandSaysHow` | the console wording of `command-fail` |
-| `AWaitsTimeIsPassedByTheHostTest` | `wait` counting its time in the host's own pause slices, which the postbox's waits rely on |
-| `LoadExtensionSurfaceFromTheSourceTest` and `HostServiceGrantTest` | `load-extension` on a file and a binary, whatever is granted |
+| Test                                                                                            | Covers                                                                                                     |
+|-------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| `InteropTest`, group `HostObjectMutability`                                                     | a Java object stays the host's to change, seen through a command                                           |
+| `AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest`, `saysHowACommandFailed`                     | the console wording of `command-fail`                                                                      |
+| `AWaitsTimeIsPassedByTheHostTest`                                                               | `wait` counting its time in the host's own pause slices, which the postbox's waits rely on                 |
+| `LoadExtensionSurfaceFromTheSourceTest` and `HostServiceGrantTest`                              | `load-extension` on a file and a binary, whatever is granted                                               |
 | `org.jebol.domain.eval.natives.WhatEachRemainingNativeDeclaresTest`, group `TheExtensionPoints` | `load-extension`, `do-callback` and `do-commands` answering as r3 does, and checking their arguments first |
-| `TheSchemesRebolDeclaresFromTheSourceTest`, `doCallbackOfAnOrdinaryEvent` | the `callback` scheme's `do-callback` answering none for an ordinary event |
+| `TheSchemesRebolDeclaresFromTheSourceTest`, `doCallbackOfAnOrdinaryEvent`                       | the `callback` scheme's `do-callback` answering none for an ordinary event                                 |

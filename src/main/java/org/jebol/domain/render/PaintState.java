@@ -17,7 +17,7 @@ public record PaintState(
         LineCap lineCap,
         LineJoin lineJoin,
         FillRule fillRule,
-        boolean antiAliased,
+        boolean isAntiAlias,
         List<Double> dashes,
         Optional<Gradient> fillGradient,
         ArrowEnds arrowEnds) {
@@ -39,53 +39,53 @@ public record PaintState(
 
     public PaintState withDashes(List<Double> lengths) {
         return new PaintState(strokeColour, fillColour, lineWidth, lineCap,
-                lineJoin, fillRule, antiAliased, lengths, fillGradient, arrowEnds);
+                lineJoin, fillRule, isAntiAlias, lengths, fillGradient, arrowEnds);
     }
 
     public PaintState withFillGradient(Optional<Gradient> gradient) {
         return new PaintState(strokeColour, fillColour, lineWidth, lineCap,
-                lineJoin, fillRule, antiAliased, dashes, gradient, arrowEnds);
+                lineJoin, fillRule, isAntiAlias, dashes, gradient, arrowEnds);
     }
 
     public PaintState withArrowEnds(ArrowEnds ends) {
         return new PaintState(strokeColour, fillColour, lineWidth, lineCap,
-                lineJoin, fillRule, antiAliased, dashes, fillGradient, ends);
+                lineJoin, fillRule, isAntiAlias, dashes, fillGradient, ends);
     }
 
     public PaintState withStroke(Optional<Colour> colour) {
         return new PaintState(colour, fillColour, lineWidth,
-                lineCap, lineJoin, fillRule, antiAliased, dashes, fillGradient,
+                lineCap, lineJoin, fillRule, isAntiAlias, dashes, fillGradient,
                 arrowEnds);
     }
 
     public PaintState withFill(Optional<Colour> colour) {
         return new PaintState(strokeColour, colour, lineWidth,
-                lineCap, lineJoin, fillRule, antiAliased, dashes, fillGradient,
+                lineCap, lineJoin, fillRule, isAntiAlias, dashes, fillGradient,
                 arrowEnds);
     }
 
     /** A width of zero or less is a width of one. */
     public PaintState withLineWidth(double width) {
         return new PaintState(strokeColour, fillColour, width > 0 ? width : 1,
-                lineCap, lineJoin, fillRule, antiAliased, dashes, fillGradient,
+                lineCap, lineJoin, fillRule, isAntiAlias, dashes, fillGradient,
                 arrowEnds);
     }
 
     public PaintState withLineCap(LineCap cap) {
         return new PaintState(strokeColour, fillColour, lineWidth,
-                cap, lineJoin, fillRule, antiAliased, dashes, fillGradient,
+                cap, lineJoin, fillRule, isAntiAlias, dashes, fillGradient,
                 arrowEnds);
     }
 
     public PaintState withLineJoin(LineJoin join) {
         return new PaintState(strokeColour, fillColour, lineWidth,
-                lineCap, join, fillRule, antiAliased, dashes, fillGradient,
+                lineCap, join, fillRule, isAntiAlias, dashes, fillGradient,
                 arrowEnds);
     }
 
     public PaintState withFillRule(FillRule rule) {
         return new PaintState(strokeColour, fillColour, lineWidth,
-                lineCap, lineJoin, rule, antiAliased, dashes, fillGradient,
+                lineCap, lineJoin, rule, isAntiAlias, dashes, fillGradient,
                 arrowEnds);
     }
 

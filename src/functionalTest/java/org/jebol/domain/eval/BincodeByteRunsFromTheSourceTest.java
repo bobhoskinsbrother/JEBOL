@@ -15,7 +15,7 @@ class BincodeByteRunsFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -25,7 +25,7 @@ class BincodeByteRunsFromTheSourceTest {
 
         @Test
         @DisplayName("a count takes that many, and no count takes the rest")
-        void aCountTakesThatMany() {
+        void takesThatManyOrTheRest() {
             assertThat(answerTo("""
                     b: binary #{0102030405}
                     reduce [binary/read b [BYTES 2] binary/read b [BYTES]]"""))
@@ -34,7 +34,7 @@ class BincodeByteRunsFromTheSourceTest {
 
         @Test
         @DisplayName("a get-word carries the count, which is how a decoder writes it")
-        void aGetWordCarriesTheCount() {
+        void comesFromAGetWord() {
             assertThat(answerTo("""
                     b: binary #{0102030405}
                     size: 3
@@ -43,7 +43,7 @@ class BincodeByteRunsFromTheSourceTest {
 
         @Test
         @DisplayName("a count of nothing takes nothing")
-        void aCountOfNothingTakesNothing() {
+        void takesNothingWhenNothing() {
             assertThat(answerTo("""
                     b: binary #{0102030405}
                     binary/read b [BYTES 0]""")).isEqualTo("[#{}]");
@@ -51,15 +51,15 @@ class BincodeByteRunsFromTheSourceTest {
 
         @Test
         @DisplayName("and a count past the end is out of range")
-        void aCountPastTheEnd() {
-            assertThat(errorIdFrom("""
+        void isOutOfRangePastTheEnd() {
+            assertThat(readTheErrorIdFrom("""
                     b: binary #{0102030405} binary/read b [BYTES 99]"""))
                     .isEqualTo("out-of-range");
         }
 
         @Test
         @DisplayName("codes after the run carry on from where it stopped")
-        void codesAfterTheRunCarryOn() {
+        void letsCodesAfterTheRunCarryOn() {
             assertThat(answerTo("""
                     b: binary #{0102030405}
                     binary/read b [BYTES 2 UI8 BYTES 2]"""))
@@ -73,7 +73,7 @@ class BincodeByteRunsFromTheSourceTest {
 
         @Test
         @DisplayName("a string stops at the first nought inside the run")
-        void aStringStopsAtTheFirstNought() {
+        void stopAStringAtTheFirstNought() {
             assertThat(answerTo("""
                     b: binary #{616263000405}
                     binary/read b [STRING-BYTES 5]""")).isEqualTo("[\"abc\"]");
@@ -81,7 +81,7 @@ class BincodeByteRunsFromTheSourceTest {
 
         @Test
         @DisplayName("and takes the whole run when there is no nought in it")
-        void aStringWithNoNought() {
+        void takeTheWholeRunWithNoNought() {
             assertThat(answerTo("""
                     b: binary #{61626364}
                     binary/read b [STRING-BYTES 4]""")).isEqualTo("[\"abcd\"]");
@@ -97,7 +97,7 @@ class BincodeByteRunsFromTheSourceTest {
 
         @Test
         @DisplayName("and both move the cursor by the whole run, nought or not")
-        void bothMoveByTheWholeRun() {
+        void moveByTheWholeRun() {
             assertThat(answerTo("""
                     b: binary #{616263000405}
                     binary/read b [STRING-BYTES 4 UI8]""")).isEqualTo("[\"abc\" 4]");
@@ -110,7 +110,7 @@ class BincodeByteRunsFromTheSourceTest {
 
         @Test
         @DisplayName("read as the whole code, it is a count of bytes")
-        void asTheWholeCodeItIsACount() {
+        void countsBytesAsTheWholeCode() {
             assertThat(answerTo("""
                     b: binary #{01020304}
                     reduce [binary/read b 2 binary/read b 2]"""))
@@ -119,17 +119,17 @@ class BincodeByteRunsFromTheSourceTest {
 
         @Test
         @DisplayName("but inside a block it is a bad spec")
-        void insideABlockItIsABadSpec() {
-            assertThat(errorIdFrom("b: binary #{01020304} binary/read b [2]"))
+        void isABadSpecInsideABlock() {
+            assertThat(readTheErrorIdFrom("b: binary #{01020304} binary/read b [2]"))
                     .isEqualTo("invalid-spec");
-            assertThat(errorIdFrom("b: binary #{01020304} binary/read b [UI8 2]"))
+            assertThat(readTheErrorIdFrom("b: binary #{01020304} binary/read b [UI8 2]"))
                     .isEqualTo("invalid-spec");
         }
 
         @Test
         @DisplayName("and reading a count into a block is refused, not ignored")
-        void readingACountIntoABlockIsRefused() {
-            assertThat(errorIdFrom("""
+        void isRefusedWhenReadIntoABlock() {
+            assertThat(readTheErrorIdFrom("""
                     b: binary #{01020304} d: copy [] binary/read/into b 2 tail d"""))
                     .isEqualTo("feature-na");
         }
@@ -141,7 +141,7 @@ class BincodeByteRunsFromTheSourceTest {
 
         @Test
         @DisplayName("the values land at the position given, in order")
-        void theValuesLandAtThePosition() {
+        void putsTheValuesAtThePositionInOrder() {
             assertThat(answerTo("""
                     b: binary #{01020304}
                     d: copy [x]
@@ -151,7 +151,7 @@ class BincodeByteRunsFromTheSourceTest {
 
         @Test
         @DisplayName("and the answer is the block standing after them")
-        void theAnswerIsTheBlockAfterThem() {
+        void answersTheBlockAfterThem() {
             assertThat(answerTo("""
                     b: binary #{01020304}
                     d: copy []
@@ -160,7 +160,7 @@ class BincodeByteRunsFromTheSourceTest {
 
         @Test
         @DisplayName("inserting in the middle keeps what was after it")
-        void insertingInTheMiddle() {
+        void keepsWhatWasAfterInTheMiddle() {
             assertThat(answerTo("""
                     b: binary #{0102}
                     d: copy [x y]
@@ -175,25 +175,25 @@ class BincodeByteRunsFromTheSourceTest {
 
         @Test
         @DisplayName("a read names the value alone")
-        void aReadNamesTheValue() {
-            assertThat(errorIdFrom("b: binary #{0102} binary/read b [FOO]"))
+        void nameTheValueAloneOnARead() {
+            assertThat(readTheErrorIdFrom("b: binary #{0102} binary/read b [FOO]"))
                     .isEqualTo("invalid-spec");
-            assertThat(errorIdFrom("b: binary #{0102} binary/read b [AT \"x\"]"))
+            assertThat(readTheErrorIdFrom("b: binary #{0102} binary/read b [AT \"x\"]"))
                     .isEqualTo("invalid-spec");
         }
 
         @Test
         @DisplayName("a write names the dialect")
-        void aWriteNamesTheDialect() {
-            assertThat(errorIdFrom("b: binary #{} binary/write b [FOO 1]"))
+        void nameTheDialectOnAWrite() {
+            assertThat(readTheErrorIdFrom("b: binary #{} binary/write b [FOO 1]"))
                     .isEqualTo("dialect");
-            assertThat(errorIdFrom("b: binary #{} binary/write b [UI8 \"x\"]"))
+            assertThat(readTheErrorIdFrom("b: binary #{} binary/write b [UI8 \"x\"]"))
                     .isEqualTo("dialect");
         }
 
         @Test
         @DisplayName("and a read past the end names the code it stopped on")
-        void aReadPastTheEndNamesTheCode() {
+        void nameTheCodeOnAReadPastTheEnd() {
             assertThat(answerTo("""
                     b: binary #{01}
                     e: try [binary/read b [UI8 UI8]]

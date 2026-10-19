@@ -18,7 +18,7 @@ class Atan2FromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("refused: try [" + source + "] refused/id");
     }
 
@@ -34,7 +34,7 @@ class Atan2FromTheSourceTest {
                 "'atan2 -1.0 -1.0',  -2.35619449019234",
         })
         @DisplayName("one answer per quadrant, and only the third and fourth pass pi over two")
-        void eachQuadrant(String written, String expected) {
+        void differsInEachQuadrant(String written, String expected) {
             assertThat(answerTo(written)).isEqualTo(expected);
         }
 
@@ -46,7 +46,7 @@ class Atan2FromTheSourceTest {
                 "'atan2 -1.0 0.0',   -1.5707963267949",
         })
         @DisplayName("and one on each axis, which is where a plain arctangent would divide by zero")
-        void eachAxis(String written, String expected) {
+        void landsOnEachAxis(String written, String expected) {
             assertThat(answerTo(written)).isEqualTo(expected);
         }
 
@@ -59,13 +59,13 @@ class Atan2FromTheSourceTest {
 
         @Test
         @DisplayName("it takes no refinement, so there is no asking it for degrees")
-        void noRefinementAtAll() {
+        void takesNoRefinement() {
             assertThat(answerTo("words-of :atan2")).isEqualTo("[y x]");
         }
 
         @Test
         @DisplayName("a proportion gives the same angle as the whole numbers it stands for")
-        void aProportionIsTheSameAngle() {
+        void staysTheSameForAProportion() {
             assertThat(answerTo("atan2 -1.5 1.5")).isEqualTo(answerTo("atan2 -1.0 1.0"));
         }
     }
@@ -76,7 +76,7 @@ class Atan2FromTheSourceTest {
 
         @Test
         @DisplayName("both halves zero is no angle rather than an error")
-        void bothZero() {
+        void answerNoAngleForBothZero() {
             assertThat(answerTo("atan2 0.0 0.0")).isEqualTo("0.0");
         }
 
@@ -130,20 +130,20 @@ class Atan2FromTheSourceTest {
         })
         @DisplayName("anything that is not a decimal on either side is refused, not converted")
         void onlyADecimal(String written) {
-            assertThat(errorIdFrom(written)).isEqualTo("expect-arg");
+            assertThat(readTheErrorIdFrom(written)).isEqualTo("expect-arg");
         }
 
         @Test
         @DisplayName("a string is refused on either side the same way")
-        void astring() {
-            assertThat(errorIdFrom("atan2 {a} 1.0")).isEqualTo("expect-arg");
-            assertThat(errorIdFrom("atan2 1.0 {a}")).isEqualTo("expect-arg");
+        void refusesAStringOnEitherSide() {
+            assertThat(readTheErrorIdFrom("atan2 {a} 1.0")).isEqualTo("expect-arg");
+            assertThat(readTheErrorIdFrom("atan2 1.0 {a}")).isEqualTo("expect-arg");
         }
 
         @Test
         @DisplayName("and both arguments are required, so one on its own has no second")
-        void bothAreRequired() {
-            assertThat(errorIdFrom("atan2 1.0")).isEqualTo("no-arg");
+        void requiresBothArguments() {
+            assertThat(readTheErrorIdFrom("atan2 1.0")).isEqualTo("no-arg");
         }
     }
 }

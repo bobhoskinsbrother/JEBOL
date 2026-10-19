@@ -36,14 +36,14 @@ class DuplicatingRefinementTest {
 
     @Test
     @DisplayName("a block being spliced repeats as a whole")
-    void aBlockRepeatsWhole() {
+    void repeatsABlockWhole() {
         assertThat(answerTo("mold append/dup copy [1] [2 3] 2"))
                 .isEqualTo("\"[1 2 3 2 3]\"");
     }
 
     @Test
     @DisplayName("a string takes the text that many times")
-    void aStringRepeats() {
+    void repeatsAString() {
         assertThat(answerTo("append/dup copy \"a\" \"b\" 3")).isEqualTo("\"abbb\"");
     }
 
@@ -55,14 +55,14 @@ class DuplicatingRefinementTest {
 
     @Test
     @DisplayName("a count of one is the same as no refinement at all")
-    void oneIsTheOrdinaryCase() {
+    void behavesOrdinarilyForOne() {
         assertThat(answerTo("mold append/dup copy [1] 2 1")).isEqualTo("\"[1 2]\"");
         assertThat(answerTo("mold append copy [1] 2")).isEqualTo("\"[1 2]\"");
     }
 
     @Test
     @DisplayName("/part still finds its own argument when /dup is there too")
-    void theTwoRefinementsDoNotCollide() {
+    void keepsTheTwoRefinementsApart() {
         assertThat(answerTo("mold append/part copy [1] [2 3 4] 2"))
                 .isEqualTo("\"[1 2 3]\"");
         assertThat(answerTo("mold append/dup copy [1] 2 2")).isEqualTo("\"[1 2 2]\"");

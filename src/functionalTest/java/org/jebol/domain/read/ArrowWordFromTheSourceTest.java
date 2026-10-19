@@ -23,7 +23,7 @@ class ArrowWordFromTheSourceTest {
 
         @Test
         @DisplayName("the short ones the C names as its common cases")
-        void theCommonCases() {
+        void includeTheCommonCases() {
             assertThat(answerTo("""
                     (load {<>}) = to word! "<>\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -34,7 +34,7 @@ class ArrowWordFromTheSourceTest {
 
         @Test
         @DisplayName("and a lone angle bracket, which has its own guard")
-        void aLoneAngle() {
+        void includeALoneAngle() {
             assertThat(answerTo("""
                     (load {<}) = to word! "<\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -43,7 +43,7 @@ class ArrowWordFromTheSourceTest {
 
         @Test
         @DisplayName("and a longer run of arrow characters, however long")
-        void theLongerRuns() {
+        void includeLongerRuns() {
             assertThat(answerTo("""
                     (load {<-->}) = to word! "<-->\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -54,7 +54,7 @@ class ArrowWordFromTheSourceTest {
 
         @Test
         @DisplayName("but a run that closes with a name inside it is a tag")
-        void aTagIsStillATag() {
+        void leaveATagATag() {
             assertThat(answerTo("""
                     tag? load {<a>}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -68,7 +68,7 @@ class ArrowWordFromTheSourceTest {
 
         @Test
         @DisplayName("all four spellings Rebol's own test asserts")
-        void theFourSpellings() {
+        void includeTheFourSpellings() {
             assertThat(answerTo("""
                     set-word? load {<-->:}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -81,7 +81,7 @@ class ArrowWordFromTheSourceTest {
 
         @Test
         @DisplayName("and it is one value, naming the run without the colon")
-        void itIsOneValue() {
+        void readAsOneValue() {
             assertThat(answerTo("""
                     length? load {[<-->:]}""")).isEqualTo("1");
             assertThat(answerTo("""
@@ -90,7 +90,7 @@ class ArrowWordFromTheSourceTest {
 
         @Test
         @DisplayName("and the right-pointing ones take one too")
-        void theRightArrows() {
+        void includeTheRightArrows() {
             assertThat(answerTo("""
                     set-word? load {-->:}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -99,7 +99,7 @@ class ArrowWordFromTheSourceTest {
 
         @Test
         @DisplayName("but a colon with a name after it is not the end of a word")
-        void aColonInTheMiddle() {
+        void endAtAColonOnlyWithNoNameAfterIt() {
             assertThat(answerTo("""
                     length? load {[<-->:x]}""")).isEqualTo("2");
         }

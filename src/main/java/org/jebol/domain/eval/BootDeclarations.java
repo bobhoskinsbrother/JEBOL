@@ -30,10 +30,10 @@ public final class BootDeclarations {
     private static final int A_HEADER_IS_THE_WORD_REBOL_AND_ITS_BLOCK = 2;
 
     private static final AnyBlockValue THE_SPEC_EVERY_DATATYPE_TEST_HAS =
-            BlockValue.block(List.of(
+            BlockValue.of(List.of(
                     StringValue.of("Returns TRUE if it is this type."),
                     WordValue.of("value"),
-                    BlockValue.block(List.of(WordValue.of("any-type!")))));
+                    BlockValue.of(List.of(WordValue.of("any-type!")))));
 
     private String datatypeSpecSource = "";
 
@@ -47,7 +47,7 @@ public final class BootDeclarations {
 
     private String errorCatalogueSource = "";
 
-    public List<Value> theRowsBelowTheHeaderOf(String source) {
+    public List<Value> readTheRowsBelowTheHeaderOf(String source) {
         try {
             List<Value> values =
                     Transcoder.transcode(source).values().orElseThrow().remaining();
@@ -78,42 +78,42 @@ public final class BootDeclarations {
     }
 
     public List<Value> operatorRows() {
-        return theRowsBelowTheHeaderOf(operatorTableSource);
+        return readTheRowsBelowTheHeaderOf(operatorTableSource);
     }
 
     public List<Value> errorCatalogueRows() {
-        return theRowsBelowTheHeaderOf(errorCatalogueSource);
+        return readTheRowsBelowTheHeaderOf(errorCatalogueSource);
     }
 
-    public Optional<DatatypeSpec> specOf(Datatype datatype) {
-        return Optional.ofNullable(datatypeSpecs().get(datatype.spelling()));
+    public Optional<DatatypeSpec> findTheSpecOf(Datatype datatype) {
+        return Optional.ofNullable(readTheDatatypeSpecs().get(datatype.spelling()));
     }
 
-    public AnyBlockValue specOf(NativeValue built) {
+    public AnyBlockValue findTheSpecOf(NativeValue built) {
         if (built.ownSpec().isPresent()) {
             return built.ownSpec().orElseThrow();
         }
-        AnyBlockValue declared = declaredSpecs().get(built.nativeName());
+        AnyBlockValue declared = readTheDeclaredSpecs().get(built.nativeName());
         if (declared != null) {
             return declared;
         }
-        return specBlockOf(built.parameters());
+        return makeTheSpecBlockOf(built.parameters());
     }
 
-    public AnyBlockValue theSpecEveryDatatypeTestHas() {
+    public AnyBlockValue makeTheSpecEveryDatatypeTestHas() {
         return THE_SPEC_EVERY_DATATYPE_TEST_HAS;
     }
 
-    private Map<String, DatatypeSpec> datatypeSpecs() {
+    private Map<String, DatatypeSpec> readTheDatatypeSpecs() {
         if (datatypeSpecs == null) {
-            datatypeSpecs = Map.copyOf(specsReadFrom(datatypeSpecSource));
+            datatypeSpecs = Map.copyOf(readTheSpecsFrom(datatypeSpecSource));
         }
         return datatypeSpecs;
     }
 
-    private Map<String, DatatypeSpec> specsReadFrom(String source) {
+    private Map<String, DatatypeSpec> readTheSpecsFrom(String source) {
         Map<String, DatatypeSpec> read = new LinkedHashMap<>();
-        List<Value> values = theRowsBelowTheHeaderOf(source);
+        List<Value> values = readTheRowsBelowTheHeaderOf(source);
         for (int at = 0; at + 1 < values.size(); at++) {
             if (!(values.get(at) instanceof AnyWordValue declaring)
                     || !(values.get(at + 1) instanceof AnyBlockValue row)) {
@@ -130,7 +130,7 @@ public final class BootDeclarations {
         return read;
     }
 
-    private Map<String, AnyBlockValue> declaredSpecs() {
+    private Map<String, AnyBlockValue> readTheDeclaredSpecs() {
         if (declaredSpecs != null) {
             return declaredSpecs;
         }
@@ -154,7 +154,7 @@ public final class BootDeclarations {
         return declaredSpecs;
     }
 
-    private AnyBlockValue specBlockOf(List<Parameter> parameters) {
+    private AnyBlockValue makeTheSpecBlockOf(List<Parameter> parameters) {
         List<Value> spec = new ArrayList<>();
         for (Parameter parameter : parameters) {
             switch (parameter.kind()) {
@@ -166,12 +166,12 @@ public final class BootDeclarations {
             }
             if (!parameter.acceptedTypes().isEmpty()
                     && !parameter.acceptedTypes().equals(TypesetValue.ANY_TYPE.members())) {
-                spec.add(BlockValue.block(parameter.acceptedTypes().stream()
+                spec.add(BlockValue.of(parameter.acceptedTypes().stream()
                         .sorted(Comparator.comparing(Datatype::spelling))
                         .<Value>map(type -> WordValue.of(type.literalSpelling()))
                         .toList()));
             }
         }
-        return BlockValue.block(spec);
+        return BlockValue.of(spec);
     }
 }

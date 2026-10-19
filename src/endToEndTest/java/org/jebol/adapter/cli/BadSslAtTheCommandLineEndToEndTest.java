@@ -31,7 +31,7 @@ class BadSslAtTheCommandLineEndToEndTest {
                 """.formatted(url));
         ByteArrayOutputStream printed = new ByteArrayOutputStream();
         ByteArrayOutputStream reported = new ByteArrayOutputStream();
-        int status = Repl.runTheCommandLine(new String[] {script.toString()},
+        int status = Repl.runCommandLine(new String[] {script.toString()},
                 new PrintStream(printed, true, StandardCharsets.UTF_8),
                 new PrintStream(reported, true, StandardCharsets.UTF_8),
                 directory.toString());
@@ -42,7 +42,7 @@ class BadSslAtTheCommandLineEndToEndTest {
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"https://badssl.com/", "https://ecc256.badssl.com/", "https://rsa2048.badssl.com/"})
     @DisplayName("a server every browser trusts is read, which a real 3.22.5 cannot do for the elliptic curve one")
-    void trustedServer(String url, @TempDir Path directory) throws IOException {
+    void trustsATrustedServer(String url, @TempDir Path directory) throws IOException {
         Ran ran = run(directory, url);
 
         assertThat(ran.printed()).endsWith("read it\n");
@@ -58,7 +58,7 @@ class BadSslAtTheCommandLineEndToEndTest {
             "https://wrong.host.badssl.com/     | the certificate does not name wrong.host.badssl.com",
     })
     @DisplayName("a server every browser refuses is refused, with the reason printed, where a real 3.22.5 reads it")
-    void untrustedServer(String url, String reason, @TempDir Path directory) throws IOException {
+    void refusesAnUntrustedServer(String url, String reason, @TempDir Path directory) throws IOException {
         Ran ran = run(directory, url);
 
         assertThat(ran.printed()).contains(reason).endsWith("refused: no-connect\n");

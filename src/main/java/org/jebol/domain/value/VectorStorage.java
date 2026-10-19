@@ -8,7 +8,7 @@ import java.util.Arrays;
  * <p>Every element is held as the bits that would sit in memory at the
  * vector's own width, already reduced by {@link VectorKind#store}. That is
  * what makes a vector a vector: the width is decided once for the whole
- * buffer, so nothing here needs to ask what kind a particular element is.
+ * buffer, so nothing here needs to ask what type a particular element is.
  */
 public final class VectorStorage extends ProtectableStorage {
 
@@ -31,7 +31,7 @@ public final class VectorStorage extends ProtectableStorage {
         return (long) elements.length * Long.BYTES;
     }
 
-    public static VectorStorage holding(VectorKind kind, long... stored) {
+    public static VectorStorage hold(VectorKind kind, long... stored) {
         VectorStorage made = new VectorStorage(kind, stored.length);
         System.arraycopy(stored, 0, made.elements, 0, stored.length);
         return made;
@@ -98,7 +98,7 @@ public final class VectorStorage extends ProtectableStorage {
         if (length == elements.length) {
             elements = Arrays.copyOf(elements,
                     Math.max(INITIAL_CAPACITY, elements.length * 2));
-            reserved.nowHolds(bytesInTheBuffer());
+            reserved.growTo(bytesInTheBuffer());
         }
     }
 

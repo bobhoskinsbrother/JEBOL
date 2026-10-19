@@ -52,10 +52,10 @@ final class ProgramCalling {
 
     Value answerThrough(ProcessPort port, Evaluator evaluator) {
         ProcessPort.ProgramResult result = port.run(toStart(evaluator));
-        output.ifPresent(buffer -> result.capturedOutput().ifPresent(bytes -> appendedInto(buffer, bytes)));
-        errors.ifPresent(buffer -> result.capturedError().ifPresent(bytes -> appendedInto(buffer, bytes)));
+        output.ifPresent(buffer -> result.capturedOutput().ifPresent(bytes -> appendInto(buffer, bytes)));
+        errors.ifPresent(buffer -> result.capturedError().ifPresent(bytes -> appendInto(buffer, bytes)));
         if (answersAnObject) {
-            return informationObject(result, evaluator);
+            return makeTheInformationObject(result, evaluator);
         }
         if (result.refusalMessage().isPresent()) {
             throw Raised.of(EvaluationFailure.CALL_FAIL, StringValue.of(result.refusalMessage().orElseThrow()));
@@ -67,45 +67,45 @@ final class ProgramCalling {
         return IntegerValue.of(waits ? result.exitCode().orElseThrow() : result.processNumber());
     }
 
-    private ProcessPort.ProgramToStart toStart(Evaluator evaluator) {
-        return new ProcessPort.ProgramToStart(
+    private ProcessPort.Program toStart(Evaluator evaluator) {
+        return new ProcessPort.Program(
                 command, readByTheShell, attachedToTheHostsConsole, waits,
-                inputKindOf(input), pipedBytesOf(input), fileOf(input, evaluator),
-                outputKindOf(output), fileOf(output, evaluator),
-                outputKindOf(errors), fileOf(errors, evaluator),
-                whatTheChildInherits(evaluator),
-                whereTheChildStarts(evaluator));
+                chooseTheInputKind(input), readThePipedBytes(input), readTheFile(input, evaluator),
+                chooseTheOutputKind(output), readTheFile(output, evaluator),
+                chooseTheOutputKind(errors), readTheFile(errors, evaluator),
+                listWhatTheChildInherits(evaluator),
+                findWhereTheChildStarts(evaluator));
     }
 
-    private Optional<String> whereTheChildStarts(Evaluator evaluator) {
+    private Optional<String> findWhereTheChildStarts(Evaluator evaluator) {
         try {
-            return Optional.of(evaluator.files().hostPathOf(evaluator.files().workingDirectory()));
+            return Optional.of(evaluator.files().hostPath(evaluator.files().workingDirectory()));
         } catch (FilePort.Denied noFilesystem) {
             return Optional.empty();
         }
     }
 
-    private Map<String, String> whatTheChildInherits(Evaluator evaluator) {
+    private Map<String, String> listWhatTheChildInherits(Evaluator evaluator) {
         try {
-            return evaluator.environment().all();
+            return evaluator.environment().readAll();
         } catch (FilePort.Denied noEnvironment) {
             return Map.of();
         }
     }
 
-    private ProcessPort.ProgramInput inputKindOf(Optional<Value> redirection) {
+    private ProcessPort.ProgramInput chooseTheInputKind(Optional<Value> redirection) {
         if (redirection.isEmpty()) {
             return ProcessPort.ProgramInput.THE_HOSTS_OWN;
         }
         return switch (redirection.orElseThrow()) {
             case BinaryValue piped -> ProcessPort.ProgramInput.SUPPLIED_BYTES;
             case StringValue typed -> ProcessPort.ProgramInput.SUPPLIED_BYTES;
-            case AnyStringValue address -> ProcessPort.ProgramInput.A_FILES_CONTENTS;
+            case AnyStringValue address -> ProcessPort.ProgramInput.FILE_CONTENTS;
             default -> ProcessPort.ProgramInput.NOTHING_AT_ALL;
         };
     }
 
-    private ProcessPort.ProgramOutput outputKindOf(Optional<Value> redirection) {
+    private ProcessPort.ProgramOutput chooseTheOutputKind(Optional<Value> redirection) {
         if (redirection.isEmpty()) {
             return ProcessPort.ProgramOutput.THE_HOSTS_OWN;
         }
@@ -117,7 +117,7 @@ final class ProgramCalling {
         };
     }
 
-    private Optional<byte[]> pipedBytesOf(Optional<Value> redirection) {
+    private Optional<byte[]> readThePipedBytes(Optional<Value> redirection) {
         return redirection.flatMap(value -> switch (value) {
             case BinaryValue binary -> Optional.of(binary.octetsFromHere());
             case StringValue text ->
@@ -126,21 +126,21 @@ final class ProgramCalling {
         });
     }
 
-    private Optional<String> fileOf(Optional<Value> redirection, Evaluator evaluator) {
+    private Optional<String> readTheFile(Optional<Value> redirection, Evaluator evaluator) {
         return redirection
                 .filter(FileValue.class::isInstance)
-                .map(value -> whereReadWouldResolveIt(((FileValue) value).text(), evaluator));
+                .map(value -> resolveAsReadWould(((FileValue) value).text(), evaluator));
     }
 
-    private String whereReadWouldResolveIt(String path, Evaluator evaluator) {
+    private String resolveAsReadWould(String path, Evaluator evaluator) {
         try {
-            return evaluator.files().hostPathOf(path);
+            return evaluator.files().hostPath(path);
         } catch (FilePort.Denied noDirectoryToAsk) {
             return path;
         }
     }
 
-    private void appendedInto(Value buffer, byte[] bytes) {
+    private void appendInto(Value buffer, byte[] bytes) {
         switch (buffer) {
             case BinaryValue binary -> {
                 for (byte octet : bytes) {
@@ -149,15 +149,15 @@ final class ProgramCalling {
             }
             case StringValue text ->
                     new String(bytes, StandardCharsets.UTF_8).codePoints().forEach(text.storage()::append);
-            default -> theBufferIsNeitherAStringNorABinary();
+            default -> refuseABufferThatIsNeitherAStringNorABinary();
         }
     }
 
-    private void theBufferIsNeitherAStringNorABinary() {
+    private void refuseABufferThatIsNeitherAStringNorABinary() {
     }
 
-    private Value informationObject(ProcessPort.ProgramResult result, Evaluator evaluator) {
-        Context fields = Context.childOf(evaluator.systemContext());
+    private Value makeTheInformationObject(ProcessPort.ProgramResult result, Evaluator evaluator) {
+        Context fields = Context.makeChildOf(evaluator.systemContext());
         ObjectValue built = new ObjectValue(fields);
         fields.pointItsOwnSelfAt(built);
         fields.register("id", IntegerValue.of(result.processNumber()));

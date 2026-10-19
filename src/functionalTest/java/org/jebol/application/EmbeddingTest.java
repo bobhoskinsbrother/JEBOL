@@ -21,16 +21,16 @@ class EmbeddingTest {
     class Running {
 
         @Test
-        void aScriptProducesAValue() {
+        void producesAValue() {
             ScriptOutcome outcome = Interpreter.create().run("add 1 2");
 
-            assertThat(outcome.conclusion()).isEqualTo(Conclusion.PRODUCED_A_VALUE);
+            assertThat(outcome.conclusion()).isEqualTo(Conclusion.PRODUCED_VALUE);
             assertThat(outcome.display()).isEqualTo("3");
         }
 
         @Test
         @DisplayName("a failing script reports why without throwing")
-        void aFailingScriptIsAConclusion() {
+        void concludesAFailingScript() {
             ScriptOutcome outcome = Interpreter.create().run("divide 1 0");
 
             assertThat(outcome.conclusion()).isEqualTo(Conclusion.RAISED);
@@ -38,8 +38,8 @@ class EmbeddingTest {
         }
 
         @Test
-        @DisplayName("a syntax error is a conclusion too, not a different kind of thing")
-        void aSyntaxErrorIsAConclusion() {
+        @DisplayName("a syntax error is a conclusion too, not a different type of thing")
+        void concludesASyntaxError() {
             ScriptOutcome outcome = Interpreter.create().run("1 + ]");
 
             assertThat(outcome.conclusion()).isEqualTo(Conclusion.RAISED);
@@ -47,7 +47,7 @@ class EmbeddingTest {
 
         @Test
         @DisplayName("state persists between runs on the same interpreter")
-        void stateCarriesBetweenRuns() {
+        void carriesStateBetweenRuns() {
             Interpreter interpreter = Interpreter.create();
 
             interpreter.run("total: 10");
@@ -75,10 +75,10 @@ class EmbeddingTest {
 
         @Test
         @DisplayName("a script that runs too long is stopped")
-        void aRunawayScriptIsStopped() {
+        void stopARunawayScript() {
             Interpreter interpreter = Interpreter.withBounds(
                     org.jebol.application.Bounds.standard()
-                            .withWallClockLimit(Duration.ofMillis(200)));
+                            .withTimeLimit(Duration.ofMillis(200)));
 
             long before = System.nanoTime();
             ScriptOutcome outcome = interpreter.run("while [true] [1]");
@@ -92,10 +92,10 @@ class EmbeddingTest {
 
         @Test
         @DisplayName("and the interpreter is usable afterwards")
-        void theInterpreterSurvivesATimeout() {
+        void letTheInterpreterSurviveATimeout() {
             Interpreter interpreter = Interpreter.withBounds(
                     org.jebol.application.Bounds.standard()
-                            .withWallClockLimit(Duration.ofMillis(200)));
+                            .withTimeLimit(Duration.ofMillis(200)));
 
             interpreter.run("while [true] [1]");
 
@@ -120,12 +120,12 @@ class EmbeddingTest {
         void ordinaryWorkIsUnaffected() {
             Interpreter interpreter = Interpreter.withBounds(
                     org.jebol.application.Bounds.standard()
-                            .withWallClockLimit(Duration.ofSeconds(5)));
+                            .withTimeLimit(Duration.ofSeconds(5)));
 
             ScriptOutcome outcome = interpreter.run(
                     "total: 0 repeat i 1000 [total: add total i] total");
 
-            assertThat(outcome.conclusion()).isEqualTo(Conclusion.PRODUCED_A_VALUE);
+            assertThat(outcome.conclusion()).isEqualTo(Conclusion.PRODUCED_VALUE);
             assertThat(outcome.display()).isEqualTo("500500");
         }
     }
@@ -136,7 +136,7 @@ class EmbeddingTest {
 
         @Test
         @DisplayName("a host can stop a running script from another thread")
-        void aHostCanCancel() throws Exception {
+        void letsAHostCancel() throws Exception {
             Interpreter interpreter = Interpreter.create();
             ExecutorService worker = Executors.newSingleThreadExecutor();
             try {
@@ -155,7 +155,7 @@ class EmbeddingTest {
 
         @Test
         @DisplayName("cancelling when nothing is running is harmless")
-        void cancellingIdleIsHarmless() {
+        void doesNoHarmWhenIdle() {
             Interpreter interpreter = Interpreter.create();
 
             interpreter.cancel();
@@ -179,7 +179,7 @@ class EmbeddingTest {
 
         @Test
         @DisplayName("a construction literal is laid out by the interpreter reading it, not the newest one")
-        void aConstructionLiteralBelongsToItsOwnInterpreter() {
+        void keepAConstructionLiteralInItsOwnInterpreter() {
             Interpreter older = Interpreter.create();
             older.run(A_PAIR_OF_BYTES);
             Interpreter newer = Interpreter.create();
@@ -191,7 +191,7 @@ class EmbeddingTest {
 
         @Test
         @DisplayName("a layout registered only in another interpreter is unknown here")
-        void aLayoutRegisteredElsewhereIsUnknownHere() {
+        void doNotKnowALayoutRegisteredElsewhere() {
             Interpreter older = Interpreter.create();
             Interpreter newer = Interpreter.create();
             newer.run(A_PAIR_OF_BYTES);
@@ -202,7 +202,7 @@ class EmbeddingTest {
 
         @Test
         @DisplayName("interpreters reading construction literals in parallel each use their own layouts")
-        void constructionLiteralsReadInParallelStayApart() throws Exception {
+        void keepConstructionLiteralsReadInParallelApart() throws Exception {
             ExecutorService workers = Executors.newFixedThreadPool(8);
             try {
                 List<Future<String>> sizes = workers.invokeAll(
@@ -254,9 +254,9 @@ class EmbeddingTest {
     class Output {
 
         @Test
-        void printedTextGoesWhereTheHostSaid() {
+        void sendsPrintedTextWhereTheHostSaid() {
             StringBuilder captured = new StringBuilder();
-            Interpreter interpreter = Interpreter.writingTo(captured::append);
+            Interpreter interpreter = Interpreter.createWithOutput(captured::append);
 
             interpreter.run("print \"from the script\"");
 

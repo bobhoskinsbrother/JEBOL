@@ -14,7 +14,7 @@ public class IsNumberNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value",
+        return List.of(Parameter.of("value",
                 TypesetValue.ANY_TYPE.membersAnd(UnsetValue.TYPE)));
     }
 

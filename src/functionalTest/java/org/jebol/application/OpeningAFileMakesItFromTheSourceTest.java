@@ -17,12 +17,12 @@ class OpeningAFileMakesItFromTheSourceTest {
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorFrom(Path root, String source) {
+    private static String readTheErrorFrom(Path root, String source) {
         return answerTo(root, "e: try [" + source
                 + "] either error? e [reduce [e/id e/arg1]] ['no-error]");
     }
@@ -41,7 +41,7 @@ class OpeningAFileMakesItFromTheSourceTest {
 
         @Test
         @DisplayName("including when the open names writing or seeking")
-        void includingWhenTheOpenNamesWritingOrSeeking() {
+        void isMadeWhenTheOpenNamesWritingOrSeeking() {
             assertThat(answerTo(root(), """
                     reduce [port? open/write %w.txt  exists? %w.txt]"""))
                     .isEqualTo("[#(true) file]");
@@ -55,8 +55,8 @@ class OpeningAFileMakesItFromTheSourceTest {
 
         @Test
         @DisplayName("but an open that only reads is refused, naming the file")
-        void anOpenThatOnlyReadsIsRefused() {
-            assertThat(errorFrom(root(), "open/read %gone.txt"))
+        void refusesAnOpenThatOnlyReads() {
+            assertThat(readTheErrorFrom(root(), "open/read %gone.txt"))
                     .isEqualTo("[cannot-open %gone.txt]");
             assertThat(answerTo(root(), """
                     e: try [open/read %gone.txt] file? e/arg1""")).isEqualTo("#(true)");
@@ -104,16 +104,16 @@ class OpeningAFileMakesItFromTheSourceTest {
 
     @Test
     @DisplayName("and a directory that is not there is refused, not made")
-    void aDirectoryThatIsNotThereIsRefused(@TempDir Path root) {
-        assertThat(errorFrom(root, "open %no-dir/")).isEqualTo("[cannot-open %no-dir/]");
-        assertThat(errorFrom(root, "open/write %no-dir/"))
+    void refusesADirectoryThatIsNotThere(@TempDir Path root) {
+        assertThat(readTheErrorFrom(root, "open %no-dir/")).isEqualTo("[cannot-open %no-dir/]");
+        assertThat(readTheErrorFrom(root, "open/write %no-dir/"))
                 .isEqualTo("[cannot-open %no-dir/]");
         assertThat(answerTo(root, "try [open %no-dir/] exists? %no-dir/")).isEqualTo("_");
     }
 
     @Test
     @DisplayName("but one that is there opens")
-    void oneThatIsThereOpens(@TempDir Path root) {
+    void opensOneThatIsThere(@TempDir Path root) {
         assertThat(answerTo(root, """
                 make-dir %a-dir/
                 port? open %a-dir/""")).isEqualTo("#(true)");
@@ -121,22 +121,22 @@ class OpeningAFileMakesItFromTheSourceTest {
 
     @Test
     @DisplayName("and a pattern opens when something matches it, not otherwise")
-    void aPatternOpensWhenSomethingMatchesIt(@TempDir Path root) {
+    void opensAPatternWhenSomethingMatchesIt(@TempDir Path root) {
         assertThat(answerTo(root, """
                 write %a.r3 "x"
                 p: open %*.r3
                 reduce [port? p  'dir = p/spec/scheme]"""))
                 .isEqualTo("[#(true) #(true)]");
-        assertThat(errorFrom(root, """
+        assertThat(readTheErrorFrom(root, """
                 write %a.r3 "x"
                 open %*.zzz""")).isEqualTo("[cannot-open %*.zzz]");
-        assertThat(errorFrom(root, "open %nodir/*.r3"))
+        assertThat(readTheErrorFrom(root, "open %nodir/*.r3"))
                 .isEqualTo("[cannot-open %nodir/*.r3]");
     }
 
     @Test
     @DisplayName("where reading the same pattern answers nothing and never raises")
-    void readingTheSamePatternAnswersNothing(@TempDir Path root) {
+    void answersNothingOnReadingTheSamePattern(@TempDir Path root) {
         assertThat(answerTo(root, "mold read %*.zzz")).isEqualTo("\"[]\"");
         assertThat(answerTo(root, "mold read %nodir/*.r3")).isEqualTo("\"[]\"");
     }
@@ -148,7 +148,7 @@ class OpeningAFileMakesItFromTheSourceTest {
     }
 
     @org.junit.jupiter.api.BeforeEach
-    void freshRoot(@TempDir Path root) {
+    void makeAFreshRoot(@TempDir Path root) {
         made = root;
     }
 }

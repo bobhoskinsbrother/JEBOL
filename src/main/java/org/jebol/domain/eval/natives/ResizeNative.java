@@ -22,11 +22,11 @@ public class ResizeNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("image", Set.of(ImageValue.TYPE)),
-                Parameter.required("size",
+        return List.of(Parameter.of("image", Set.of(ImageValue.TYPE)),
+                Parameter.of("size",
                         Set.of(PairValue.TYPE, PercentValue.TYPE, IntegerValue.TYPE)),
-                Parameter.belongingTo("filter", "name", Set.of(WordValue.TYPE, IntegerValue.TYPE)),
-                Parameter.belongingTo("blur", "factor", TypesetValue.NUMBER.members()));
+                Parameter.belongTo("filter", "name", Set.of(WordValue.TYPE, IntegerValue.TYPE)),
+                Parameter.belongTo("blur", "factor", TypesetValue.NUMBER.members()));
     }
 
     @Override
@@ -37,13 +37,13 @@ public class ResizeNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            argumentOf("filter", 0, arguments, refinements)
+            readTheArgumentOf("filter", 0, arguments, refinements)
                     .ifPresent(this::refuseAFilterTheCatalogueHasNot);
-            return resized((ImageValue) arguments.getFirst(), arguments.get(1));
+            return resize((ImageValue) arguments.getFirst(), arguments.get(1));
         };
     }
 
-    private Value resized(ImageValue image, Value asked) {
+    private Value resize(ImageValue image, Value asked) {
         int wasWide = image.storage().wide();
         int wasHigh = image.storage().high();
         int wide;
@@ -55,25 +55,25 @@ public class ResizeNative extends DefaultNative {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(asked));
             }
             if (wide == 0) {
-                wide = scaledFrom(high, wasWide, wasHigh);
+                wide = scaleFrom(high, wasWide, wasHigh);
             }
             if (high == 0) {
-                high = scaledFrom(wide, wasHigh, wasWide);
+                high = scaleFrom(wide, wasHigh, wasWide);
             }
         } else if (asked instanceof PercentValue scale) {
             wide = (int) Math.round(wasWide * scale.quantity());
             high = (int) Math.round(wasHigh * scale.quantity());
         } else {
             wide = (int) Math.round(Arithmetic.asMagnitude(asked));
-            high = scaledFrom(wide, wasHigh, wasWide);
+            high = scaleFrom(wide, wasHigh, wasWide);
         }
         if (wide <= 0 || high <= 0) {
             throw Raised.of(EvaluationFailure.NO_CREATE, ImageValue.TYPE);
         }
-        return ImageOperations.resized(image, wide, high);
+        return ImageOperations.resize(image, wide, high);
     }
 
-    private int scaledFrom(int given, int toKeep, int against) {
+    private int scaleFrom(int given, int toKeep, int against) {
         return against == 0 ? 0 : (given * toKeep) / against;
     }
 

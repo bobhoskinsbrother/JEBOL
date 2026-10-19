@@ -22,7 +22,7 @@ class TheSystemObjectIsSealedAtBootFromTheSourceTest {
 
     @Test
     @DisplayName("the catalogue and the build are protected all the way down")
-    void theCatalogueAndTheBuildAreProtected() {
+    void protectsTheCatalogueAndTheBuild() {
         assertThat(answerTo("""
                 reduce [protected? 'system/catalog  protected? 'system/build]"""))
                 .isEqualTo("[#(true) #(true)]");
@@ -30,7 +30,7 @@ class TheSystemObjectIsSealedAtBootFromTheSourceTest {
 
     @Test
     @DisplayName("so writing into either of them says locked-word")
-    void writingIntoEitherSaysLockedWord() {
+    void saysLockedWordOnWritingIntoEither() {
         assertThat(answerTo("""
                 collect [
                     foreach writing [
@@ -46,7 +46,7 @@ class TheSystemObjectIsSealedAtBootFromTheSourceTest {
 
     @Test
     @DisplayName("and the two things PROTECT-SYSTEM names are still writable")
-    void theTwoThingsItNamesAreStillWritable() {
+    void leavesTheTwoThingsItNamesWritable() {
         assertThat(answerTo("""
                 collect [
                     foreach writing [
@@ -54,8 +54,8 @@ class TheSystemObjectIsSealedAtBootFromTheSourceTest {
                         [append system/catalog/file-types [%.nothing nothing]]
                         [system/script: none]
                     ] [
-                        keep either error? e: try writing [e/id] ['written]
+                        keep either error? e: try writing [e/id] ['text]
                     ]
-                ]""")).isEqualTo("[written written written]");
+                ]""")).isEqualTo("[text text text]");
     }
 }

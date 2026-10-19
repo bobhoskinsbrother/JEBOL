@@ -24,7 +24,7 @@ class VectorMathFromTheSourceTest {
         return answerTo("(" + expression + ") == " + expected);
     }
 
-    private static String whatHappensTo(String source) {
+    private static String describeWhatHappensTo(String source) {
         return answerTo("either error? e: try [" + source + "] [e/id] ['accepted]");
     }
 
@@ -34,7 +34,7 @@ class VectorMathFromTheSourceTest {
 
         @Test
         @DisplayName("adding and subtracting reach every element")
-        void addingAndSubtracting() {
+        void addsAndSubtracts() {
             assertThat(holds("#(u8! [1 2 3 4]) + 200", "#(u8! [201 202 203 204])"))
                     .isEqualTo(TRUE);
             assertThat(holds("#(u8! [201 202 203 204]) - 200", "#(u8! [1 2 3 4])"))
@@ -78,7 +78,7 @@ class VectorMathFromTheSourceTest {
 
         @Test
         @DisplayName("a measuring vector keeps the decimal")
-        void ameasuringVectorKeepsTheDecimal() {
+        void keepsTheDecimalInAMeasuringVector() {
             assertThat(holds("#(f64! [1 2 3 4]) + 0.5", "#(f64! [1.5 2.5 3.5 4.5])"))
                     .isEqualTo(TRUE);
             assertThat(holds("#(f64! [1 2 3 4]) * 20.5", "#(f64! [20.5 41.0 61.5 82.0])"))
@@ -89,7 +89,7 @@ class VectorMathFromTheSourceTest {
         @ValueSource(strings = {"-", "/", "%", "and", "or", "xor"})
         @DisplayName("but only the two that do not care about order take it on the left")
         void onlyTheCommutativeOnesTakeTheNumberFirst(String operator) {
-            assertThat(whatHappensTo("10 " + operator + " #(u16! [1 2 3 4])"))
+            assertThat(describeWhatHappensTo("10 " + operator + " #(u16! [1 2 3 4])"))
                     .as("a number's own arm forwards to the vector for ADD and "
                             + "MULTIPLY and for nothing else, so 10 - v never "
                             + "reaches Math_Op_Vector to be read backwards")
@@ -98,9 +98,9 @@ class VectorMathFromTheSourceTest {
 
         @Test
         @DisplayName("dividing a counting vector by zero is refused")
-        void dividingByZero() {
-            assertThat(whatHappensTo("#(u16! [1 2]) / 0")).isEqualTo("zero-divide");
-            assertThat(whatHappensTo("#(u16! [1 2]) / 0.0"))
+        void refusesDividingACountingVectorByZero() {
+            assertThat(describeWhatHappensTo("#(u16! [1 2]) / 0")).isEqualTo("zero-divide");
+            assertThat(describeWhatHappensTo("#(u16! [1 2]) / 0.0"))
                     .as("the C truncates the divisor before it tests it, so a "
                             + "fraction below one divides by zero as surely as zero does")
                     .isEqualTo("zero-divide");
@@ -108,8 +108,8 @@ class VectorMathFromTheSourceTest {
 
         @Test
         @DisplayName("but dividing a measuring one by zero answers infinity")
-        void dividingAmeasuringVectorByZero() {
-            assertThat(whatHappensTo("#(f32! [1 2]) / 0"))
+        void answersInfinityDividingAMeasuringVectorByZero() {
+            assertThat(describeWhatHappensTo("#(f32! [1 2]) / 0"))
                     .as("the guard in the C reads `if (i == 0 && bits <= VTUI64)`, so "
                             + "a float vector is left to the machine and the machine "
                             + "has an answer")
@@ -119,9 +119,9 @@ class VectorMathFromTheSourceTest {
         @Test
         @DisplayName("and the remainder by zero is refused whatever the vector holds")
         void theremainderByZero() {
-            assertThat(whatHappensTo("#(i8! [1 2]) % 0")).isEqualTo("zero-divide");
-            assertThat(whatHappensTo("#(f32! [1 2]) % 0"))
-                    .as("A_REMAINDER tests the divisor before it looks at the kind, "
+            assertThat(describeWhatHappensTo("#(i8! [1 2]) % 0")).isEqualTo("zero-divide");
+            assertThat(describeWhatHappensTo("#(f32! [1 2]) % 0"))
+                    .as("A_REMAINDER tests the divisor before it looks at the type, "
                             + "which is the one place the two guards differ")
                     .isEqualTo("zero-divide");
         }
@@ -129,7 +129,7 @@ class VectorMathFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"int8!", "int16!", "int32!", "int64!",
                 "uint8!", "uint16!", "uint32!", "uint64!"})
-        @DisplayName("the bitwise three work on every counting kind")
+        @DisplayName("the bitwise three work on every counting type")
         void thebitwiseThree(String kind) {
             assertThat(holds("#(" + kind + " [1 2 3 4]) or 2", "#(" + kind + " [3 2 3 6])"))
                     .isEqualTo(TRUE);
@@ -144,13 +144,13 @@ class VectorMathFromTheSourceTest {
                 "float64!, or", "float64!, and", "float64!, xor"})
         @DisplayName("but not on a measuring one, which has no bits to speak of")
         void thebitwiseThreeRefuseDecimals(String kind, String operator) {
-            assertThat(whatHappensTo("#(" + kind + " [1 2]) " + operator + " 1"))
+            assertThat(describeWhatHappensTo("#(" + kind + " [1 2]) " + operator + " 1"))
                     .isEqualTo("not-related");
         }
 
         @ParameterizedTest
         @ValueSource(strings = {"int8!", "uint32!", "float32!", "float64!"})
-        @DisplayName("and the remainder works on every kind there is")
+        @DisplayName("and the remainder works on every type there is")
         void theremainder(String kind) {
             assertThat(holds("#(" + kind + " [1 2 3 4]) % 2", "#(" + kind + " [1 0 1 0])"))
                     .isEqualTo(TRUE);
@@ -158,7 +158,7 @@ class VectorMathFromTheSourceTest {
 
         @Test
         @DisplayName("working from a position leaves the vector it started from alone")
-        void workingFromAPosition() {
+        void leavesTheStartingVectorAlone() {
             assertThat(answerTo("""
                     v: #(i8! [1 2 3 4])
                     all [(2 + skip v 2) == #(i8! [5 6])
@@ -172,7 +172,7 @@ class VectorMathFromTheSourceTest {
 
         @Test
         @DisplayName("the four arithmetic operations work element by element")
-        void elementByElement() {
+        void worksElementByElement() {
             assertThat(holds("#(i8! [1 2]) + #(i8! [3 4])", "#(i8! [4 6])")).isEqualTo(TRUE);
             assertThat(holds("#(i8! [4 6]) - #(i8! [3 4])", "#(i8! [1 2])")).isEqualTo(TRUE);
             assertThat(holds("#(i8! [1 2]) * #(i8! [3 4])", "#(i8! [3 8])")).isEqualTo(TRUE);
@@ -181,14 +181,14 @@ class VectorMathFromTheSourceTest {
 
         @Test
         @DisplayName("and stop at the shorter of the two")
-        void stoppingAtTheShorter() {
+        void stopsAtTheShorter() {
             assertThat(holds("#(i16! [1 2]) + #(i16! [3 4 5])", "#(i16! [4 6])"))
                     .isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("each one counted from where it points")
-        void countingFromEachPosition() {
+        void countsFromEachPosition() {
             assertThat(holds("#(u32! [1 2]) + #(u32! [1 3 4] 2)", "#(u32! [4 6])"))
                     .isEqualTo(TRUE);
             assertThat(holds("#(f64! [1 1 2] 2) + #(f64! [1 3 4] 2)", "#(f64! [4 6])"))
@@ -218,9 +218,9 @@ class VectorMathFromTheSourceTest {
 
         @ParameterizedTest
         @ValueSource(strings = {"#(i16! [1 2])", "#(f32! [1 2])", "#(u8! [1 2])"})
-        @DisplayName("two kinds that are not the same kind cannot be combined")
+        @DisplayName("two kinds that are not the same type cannot be combined")
         void twodifferentKinds(String other) {
-            assertThat(whatHappensTo("#(i8! [1 2]) + " + other))
+            assertThat(describeWhatHappensTo("#(i8! [1 2]) + " + other))
                     .as("Math_Op_Vector_Vector compares the encodings and refuses "
                             + "outright rather than widening one to the other, so a "
                             + "different sign is as incompatible as a different width")
@@ -230,7 +230,7 @@ class VectorMathFromTheSourceTest {
         @Test
         @DisplayName("and a zero anywhere in the divisor is still a division by zero")
         void azeroInTheDivisor() {
-            assertThat(whatHappensTo("#(i8! [10 20]) / #(i8! [2 0])"))
+            assertThat(describeWhatHappensTo("#(i8! [10 20]) / #(i8! [2 0])"))
                     .isEqualTo("zero-divide");
         }
 
@@ -238,7 +238,7 @@ class VectorMathFromTheSourceTest {
         @CsvSource({"float32!, or", "float64!, and", "float64!, xor"})
         @DisplayName("the bitwise three refuse two measuring vectors as well")
         void thebitwiseThreeRefuseDecimals(String kind, String operator) {
-            assertThat(whatHappensTo(
+            assertThat(describeWhatHappensTo(
                     "#(" + kind + " [1 2]) " + operator + " #(" + kind + " [1 2])"))
                     .isEqualTo("not-related");
         }
@@ -259,7 +259,7 @@ class VectorMathFromTheSourceTest {
 
         @Test
         @DisplayName("and ordered by the first number they differ at, then by length")
-        void orderingIsElementwiseThenByLength() {
+        void ordersByTheFirstDifferenceThenLength() {
             assertThat(answerTo("#(u16! [1 2]) < #(u16! [1 2 0])")).isEqualTo(TRUE);
             assertThat(answerTo("#(u16! [1 2]) < #(u16! [2 2])")).isEqualTo(TRUE);
             assertThat(answerTo("#(u16! [2 2]) > #(u16! [1 2])")).isEqualTo(TRUE);
@@ -279,15 +279,15 @@ class VectorMathFromTheSourceTest {
 
         @Test
         @DisplayName("a negative zero is a zero")
-        void negativeZeroIsZero() {
+        void treatsNegativeZeroAsZero() {
             assertThat(answerTo("#(f64! [-0.0]) = #(f64! [0.0])")).isEqualTo(TRUE);
             assertThat(answerTo("not #(f64! [-0.0]) < #(f64! [0.0])")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("but a counting vector and a measuring one cannot be compared at all")
-        void countingAgainstMeasuring() {
-            assertThat(whatHappensTo("#(i64! [1 2]) = #(f64! [1.0 2.0])"))
+        void refusesCountingAgainstMeasuring() {
+            assertThat(describeWhatHappensTo("#(i64! [1 2]) = #(f64! [1.0 2.0])"))
                     .as("Compare_Vector raises rather than converting, because "
                             + "there is no answer that is not a guess")
                     .isEqualTo("not-same-type");

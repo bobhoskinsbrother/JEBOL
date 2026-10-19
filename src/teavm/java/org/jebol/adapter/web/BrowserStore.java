@@ -13,14 +13,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-final class TheBrowsersStore implements WebFiles.Store {
+final class BrowserStore implements WebFiles.Store {
 
-    static WebFiles.Store forThePage() {
-        return theStoreIsHere() ? new TheBrowsersStore() : WebFiles.Store.memory();
+    static WebFiles.Store openForThePage() {
+        return isTheStoreHere() ? new BrowserStore() : WebFiles.Store.keepInMemory();
     }
 
     @Override
-    public WebFiles.Store.Tree everything() {
+    public WebFiles.Store.Tree listAll() {
         WhatIsStored stored = jebolStoreEverything().await();
         if (stored.getFailed() != null) {
             return WebFiles.Store.Tree.empty();
@@ -45,12 +45,12 @@ final class TheBrowsersStore implements WebFiles.Store {
     }
 
     @Override
-    public void removed(String path) {
+    public void remove(String path) {
         requireItWorked(jebolStoreRemove(path).await());
     }
 
     @Override
-    public void madeADirectory(String path) {
+    public void makeDirectory(String path) {
         requireItWorked(jebolStoreMakeDirectory(path).await());
     }
 
@@ -110,7 +110,7 @@ final class TheBrowsersStore implements WebFiles.Store {
     }
 
     @JSBody(script = "return !!(self.navigator && navigator.storage && navigator.storage.getDirectory);")
-    private static native boolean theStoreIsHere();
+    private static native boolean isTheStoreHere();
 
     @JSBody(script = "return jebolStoreEverything();")
     private static native JSPromise<WhatIsStored> jebolStoreEverything();

@@ -5,12 +5,12 @@ public final class PercentValue extends AnyDecimalValue {
     public static final AnyDecimalDatatype TYPE = new AnyDecimalDatatype("percent") {
 
         @Override
-        public AnyDecimalValue holding(double quantity) {
+        public AnyDecimalValue wrap(double quantity) {
             return PercentValue.of(quantity);
         }
 
         @Override
-        public AnyDecimalValue holdingHundredths(double quantity) {
+        public AnyDecimalValue wrapHundredths(double quantity) {
             return PercentValue.of(quantity / 100.0);
         }
 
@@ -34,13 +34,13 @@ public final class PercentValue extends AnyDecimalValue {
     }
 
     @Override
-    PercentValue sameKindHolding(double another) {
+    PercentValue makeTheSameKindHolding(double another) {
         return new PercentValue(another);
     }
 
     @Override
-    public Value combinedWithANumber(Value right, ArithmeticOperation operation) {
-        Value answered = super.combinedWithANumber(right, operation);
+    public Value combineWithANumber(Value right, ArithmeticOperation operation) {
+        Value answered = super.combineWithANumber(right, operation);
         return right instanceof PercentValue
                 && !operation.divides()
                 && answered instanceof AnyDecimalValue number

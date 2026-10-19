@@ -17,11 +17,11 @@ public class AsNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("type", aSeriesTypeAnd(Datatype.TYPE)),
-                Parameter.required("spec", aSeriesTypeAnd()));
+                Parameter.of("type", listASeriesTypeAnd(Datatype.TYPE)),
+                Parameter.of("spec", listASeriesTypeAnd()));
     }
 
-    private Set<Datatype> aSeriesTypeAnd(Datatype... alsoTaken) {
+    private Set<Datatype> listASeriesTypeAnd(Datatype... alsoTaken) {
         Set<Datatype> accepted = new LinkedHashSet<>(TypesetValue.ANY_BLOCK.members());
         accepted.addAll(TypesetValue.ANY_STRING.members());
         accepted.addAll(List.of(alsoTaken));
@@ -31,6 +31,6 @@ public class AsNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                arguments.getFirst().theDatatypeItStandsFor().as(arguments.get(1));
+                arguments.getFirst().findTheDatatypeItStandsFor().as(arguments.get(1));
     }
 }

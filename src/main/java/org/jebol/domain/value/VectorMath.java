@@ -23,19 +23,19 @@ public final class VectorMath {
         return left instanceof VectorValue || right instanceof VectorValue;
     }
 
-    public static Value done(Value left, Value right, ValueOperation operation) {
+    public static Value calculate(Value left, Value right, ValueOperation operation) {
         if (left instanceof VectorValue first && right instanceof VectorValue second) {
-            return elementByElement(first, second, operation);
+            return combineElementByElement(first, second, operation);
         }
         if (left instanceof VectorValue only) {
-            return everyElementAgainstTheNumberReducedToTheVectorsKind(
+            return combineEveryElementWithTheNumber(
                     only, right, operation);
         }
-        return everyElementAgainstTheNumberReducedToTheVectorsKind(
+        return combineEveryElementWithTheNumber(
                 (VectorValue) right, left, operation);
     }
 
-    private static Value everyElementAgainstTheNumberReducedToTheVectorsKind(
+    private static Value combineEveryElementWithTheNumber(
             VectorValue vector, Value number, ValueOperation operation) {
 
         VectorKind kind = vector.kind();
@@ -50,14 +50,14 @@ public final class VectorMath {
         for (int at = 0; at < vector.lengthFromHere(); at++) {
             long held = vector.storage().at(vector.index() + at);
             answer.set(at + 1, kind.measures()
-                    ? measured(kind, kind.asDecimal(held), asDecimal, operation)
-                    : counted(kind, held, asWholeNumber, operation));
+                    ? measure(kind, kind.asDecimal(held), asDecimal, operation)
+                    : count(kind, held, asWholeNumber, operation));
         }
         return new VectorValue(answer, 1);
     }
 
-    private static Value elementByElement(VectorValue left, VectorValue right,
-            ValueOperation operation) {
+    private static Value combineElementByElement(VectorValue left, VectorValue right,
+                                                 ValueOperation operation) {
 
         VectorKind kind = left.kind();
         if (kind != right.kind()) {
@@ -74,10 +74,10 @@ public final class VectorMath {
                 double divisor = kind.asDecimal(theirs);
                 refuseElementByZero(operation, divisor == 0.0);
                 answer.set(at + 1,
-                        measured(kind, kind.asDecimal(ours), divisor, operation));
+                        measure(kind, kind.asDecimal(ours), divisor, operation));
             } else {
                 refuseElementByZero(operation, theirs == 0);
-                answer.set(at + 1, counted(kind, ours, theirs, operation));
+                answer.set(at + 1, count(kind, ours, theirs, operation));
             }
         }
         return new VectorValue(answer, 1);
@@ -109,14 +109,14 @@ public final class VectorMath {
         }
     }
 
-    private static long counted(VectorKind kind, long held, long against,
-            ValueOperation operation) {
+    private static long count(VectorKind kind, long held, long against,
+                              ValueOperation operation) {
 
         return kind.store(operation.onWholeElements(held, against));
     }
 
-    private static long measured(VectorKind kind, double held, double against,
-            ValueOperation operation) {
+    private static long measure(VectorKind kind, double held, double against,
+                                ValueOperation operation) {
 
         return kind.storeMeasured(operation.onMeasuredElements(held, against));
     }

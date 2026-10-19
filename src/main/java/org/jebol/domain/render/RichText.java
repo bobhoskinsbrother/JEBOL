@@ -34,7 +34,7 @@ final class RichText {
 
     record Line(List<TextRun> runs, List<Integer> placeOfEachRun, TextLayout layout, TextCaret caret) {
 
-        Optional<Integer> theRunAt(int placeInTheBlock) {
+        Optional<Integer> findTheRunAt(int placeInTheBlock) {
             int run = placeOfEachRun.indexOf(placeInTheBlock);
             return run < 0 ? Optional.empty() : Optional.of(run);
         }
@@ -60,7 +60,7 @@ final class RichText {
         }
         Line withoutACaret = new Line(List.copyOf(runs), List.copyOf(places), layout, TextCaret.NONE);
         return new Line(withoutACaret.runs(), withoutACaret.placeOfEachRun(), layout,
-                theCaretObject.map(fields -> theCaretIn(fields, withoutACaret)).orElse(TextCaret.NONE));
+                theCaretObject.map(fields -> readTheCaretIn(fields, withoutACaret)).orElse(TextCaret.NONE));
     }
 
     private void obeyTheWord(AnyWordValue command) {
@@ -85,14 +85,14 @@ final class RichText {
         theNextObject = WhatTheNextObjectIs.A_FONT;
     }
 
-    private TextCaret theCaretIn(ObjectValue fields, Line line) {
+    private TextCaret readTheCaretIn(ObjectValue fields, Line line) {
         return new TextCaret(
-                thePlaceNamedBy(theField(fields, "caret"), line),
-                thePlaceNamedBy(theField(fields, "start"), line),
-                thePlaceNamedBy(theField(fields, "end"), line));
+                findThePlaceNamedBy(readTheField(fields, "caret"), line),
+                findThePlaceNamedBy(readTheField(fields, "start"), line),
+                findThePlaceNamedBy(readTheField(fields, "end"), line));
     }
 
-    private TextLines.RunAndCharacter thePlaceNamedBy(Optional<Value> field, Line line) {
+    private TextLines.RunAndCharacter findThePlaceNamedBy(Optional<Value> field, Line line) {
         if (field.isEmpty() || !(field.get() instanceof AnyBlockValue pair) || pair.remaining().size() < 2) {
             return TextLines.RunAndCharacter.NOWHERE;
         }
@@ -106,24 +106,24 @@ final class RichText {
             case IntegerValue(long place) when place > 0 -> Optional.of((int) place - 1);
             default -> Optional.empty();
         };
-        Optional<Integer> run = placeInTheBlock.flatMap(line::theRunAt);
+        Optional<Integer> run = placeInTheBlock.flatMap(line::findTheRunAt);
         return run.isPresent() && character.isPresent()
                 ? new TextLines.RunAndCharacter(run.get(), character.get())
                 : TextLines.RunAndCharacter.NOWHERE;
     }
 
     private void takeTheFontIn(ObjectValue fields) {
-        theField(fields, "size").flatMap(this::aSizeIn).ifPresent(asked -> size = asked);
-        theField(fields, "color").filter(TupleValue.class::isInstance)
+        readTheField(fields, "size").flatMap(this::readASizeIn).ifPresent(asked -> size = asked);
+        readTheField(fields, "color").filter(TupleValue.class::isInstance)
                 .map(TupleValue.class::cast)
                 .ifPresent(parts -> colour = Colour.ofTuple(parts));
-        theField(fields, "style").ifPresent(this::takeTheStyle);
-        PairValue shadow = theField(fields, "shadow").flatMap(this::theShadowsOffsetIn)
+        readTheField(fields, "style").ifPresent(this::takeTheStyle);
+        PairValue shadow = readTheField(fields, "shadow").flatMap(this::readTheShadowsOffsetIn)
                 .orElse(PairValue.of(0, 0));
-        layout = layout.withShadow(wholePixels(shadow.x()), wholePixels(shadow.y()));
+        layout = layout.withShadow(roundToWholePixels(shadow.x()), roundToWholePixels(shadow.y()));
     }
 
-    private Optional<PairValue> theShadowsOffsetIn(Value shadow) {
+    private Optional<PairValue> readTheShadowsOffsetIn(Value shadow) {
         return switch (shadow) {
             case PairValue offset -> Optional.of(offset);
             case AnyBlockValue several when !several.remaining().isEmpty()
@@ -133,28 +133,28 @@ final class RichText {
     }
 
     private void takeTheParaIn(ObjectValue fields) {
-        theField(fields, "origin").filter(PairValue.class::isInstance).map(PairValue.class::cast)
-                .ifPresent(origin -> layout = layout.withOrigin(wholePixels(origin.x()), wholePixels(origin.y())));
-        theField(fields, "margin").filter(PairValue.class::isInstance).map(PairValue.class::cast)
-                .ifPresent(margin -> layout = layout.withMargin(wholePixels(margin.x()), wholePixels(margin.y())));
-        TextAlignment across = theField(fields, "align").flatMap(this::theWordsSpelling)
-                .flatMap(TextAlignment::spelt).orElse(TextAlignment.LEFT);
-        TextVerticalAlignment down = theField(fields, "valign").flatMap(this::theWordsSpelling)
-                .flatMap(TextVerticalAlignment::spelt).orElse(TextVerticalAlignment.TOP);
-        layout = layout.aligned(across, down);
-        theField(fields, "wrap?").filter(LogicValue.class::isInstance).map(LogicValue.class::cast)
-                .ifPresent(wraps -> layout = layout.wrapping(wraps.truth()));
+        readTheField(fields, "origin").filter(PairValue.class::isInstance).map(PairValue.class::cast)
+                .ifPresent(origin -> layout = layout.withOrigin(roundToWholePixels(origin.x()), roundToWholePixels(origin.y())));
+        readTheField(fields, "margin").filter(PairValue.class::isInstance).map(PairValue.class::cast)
+                .ifPresent(margin -> layout = layout.withMargin(roundToWholePixels(margin.x()), roundToWholePixels(margin.y())));
+        TextAlignment across = readTheField(fields, "align").flatMap(this::readTheWordsSpelling)
+                .flatMap(TextAlignment::findTheAlignmentSpelt).orElse(TextAlignment.LEFT);
+        TextVerticalAlignment down = readTheField(fields, "valign").flatMap(this::readTheWordsSpelling)
+                .flatMap(TextVerticalAlignment::findTheAlignmentSpelt).orElse(TextVerticalAlignment.TOP);
+        layout = layout.align(across, down);
+        readTheField(fields, "wrap?").filter(LogicValue.class::isInstance).map(LogicValue.class::cast)
+                .ifPresent(wraps -> layout = layout.wrap(wraps.truth()));
     }
 
-    private Optional<String> theWordsSpelling(Value word) {
+    private Optional<String> readTheWordsSpelling(Value word) {
         return word instanceof AnyWordValue said ? Optional.of(said.canonical()) : Optional.empty();
     }
 
-    private int wholePixels(double measurement) {
+    private int roundToWholePixels(double measurement) {
         return (int) measurement;
     }
 
-    private Optional<Double> aSizeIn(Value given) {
+    private Optional<Double> readASizeIn(Value given) {
         return switch (given) {
             case IntegerValue(long magnitude) -> Optional.of((double) magnitude);
             case AnyDecimalValue number -> Optional.of(number.quantity());
@@ -172,7 +172,7 @@ final class RichText {
         return word instanceof AnyWordValue said && said.canonical().equals(spelling);
     }
 
-    private Optional<Value> theField(ObjectValue fields, String name) {
+    private Optional<Value> readTheField(ObjectValue fields, String name) {
         return fields.context().holds(name)
                 ? Optional.of(fields.context().ownSlotFor(name).value())
                 : Optional.empty();

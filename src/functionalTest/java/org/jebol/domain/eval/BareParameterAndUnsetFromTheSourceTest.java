@@ -28,7 +28,7 @@ class BareParameterAndUnsetFromTheSourceTest {
 
         @Test
         @DisplayName("a written function with a bare parameter refuses it the same way")
-        void aWrittenFunctionRefusesAnUnset() {
+        void refusesAnUnsetInAWrittenFunction() {
             assertThat(answerTo("""
                     takes-anything: func [x] [true]
                     e: try [takes-anything ()] e/id = 'expect-arg""")).isEqualTo("#(true)");
@@ -36,7 +36,7 @@ class BareParameterAndUnsetFromTheSourceTest {
 
         @Test
         @DisplayName("and takes every other value, none included")
-        void aBareParameterTakesNone() {
+        void takesEveryOtherValueNoneIncluded() {
             assertThat(answerTo("""
                     names-the-type: func [x] [type? :x]
                     (names-the-type none) = none!""")).isEqualTo("#(true)");
@@ -44,7 +44,7 @@ class BareParameterAndUnsetFromTheSourceTest {
 
         @Test
         @DisplayName("a parameter naming a datatype refuses an absence as well")
-        void aTypedParameterRefusesAnUnset() {
+        void refusesAnUnsetWhenItNamesADatatype() {
             assertThat(answerTo("""
                     counts: func [x [integer!]] [x]
                     e: try [counts ()] e/id = 'expect-arg""")).isEqualTo("#(true)");
@@ -64,14 +64,14 @@ class BareParameterAndUnsetFromTheSourceTest {
 
         @Test
         @DisplayName("TYPE? of an absence names the unset datatype")
-        void typeOfAnUnset() {
+        void namesTheUnsetDatatypeForTypeOf() {
             assertThat(answerTo("""
                     (type? ()) = unset!""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("UNSET? answers true of one")
-        void unsetOfAnUnset() {
+        void answersTrueForUnsetOfOne() {
             assertThat(answerTo("""
                     unset? ()""")).isEqualTo("#(true)");
         }
@@ -85,7 +85,7 @@ class BareParameterAndUnsetFromTheSourceTest {
 
         @Test
         @DisplayName("a written function declaring any-type! takes one")
-        void aDeclaredParameterTakesAnUnset() {
+        void letsADeclaredParameterTakeOne() {
             assertThat(answerTo("""
                     asks-whether-there-is-one: func [x [any-type!]] [not value? 'x]
                     asks-whether-there-is-one ()""")).isEqualTo("#(true)");
@@ -93,7 +93,7 @@ class BareParameterAndUnsetFromTheSourceTest {
 
         @Test
         @DisplayName("and the same function still takes a value")
-        void aDeclaredParameterStillTakesAValue() {
+        void stillLetsADeclaredParameterTakeAValue() {
             assertThat(answerTo("""
                     asks-whether-there-is-one: func [x [any-type!]] [not value? 'x]
                     not asks-whether-there-is-one 1""")).isEqualTo("#(true)");
@@ -106,14 +106,14 @@ class BareParameterAndUnsetFromTheSourceTest {
 
         @Test
         @DisplayName("EQUAL? of two absences is true")
-        void twoAbsencesAreEqual() {
+        void findsTwoAbsencesEqual() {
             assertThat(answerTo("""
                     equal? () ()""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("NOT-EQUAL? of an absence and a value is true")
-        void anAbsenceIsNotAValue() {
+        void findsAnAbsenceUnequalToAValue() {
             assertThat(answerTo("""
                     not-equal? () 1""")).isEqualTo("#(true)");
         }
@@ -127,7 +127,7 @@ class BareParameterAndUnsetFromTheSourceTest {
 
         @Test
         @DisplayName("LESSER? refuses one on its right")
-        void lesserRefusesAnAbsenceOnTheRight() {
+        void refusesAnAbsenceOnTheRightOfLesser() {
             assertThat(answerTo("""
                     e: try [lesser? 1 ()] e/id = 'expect-arg""")).isEqualTo("#(true)");
         }
@@ -141,7 +141,7 @@ class BareParameterAndUnsetFromTheSourceTest {
 
         @Test
         @DisplayName("LESSER-OR-EQUAL? refuses one as well")
-        void lesserOrEqualRefusesAnAbsence() {
+        void refusesAnAbsenceForLesserOrEqual() {
             assertThat(answerTo("""
                     e: try [lesser-or-equal? () 1] e/id = 'expect-arg""")).isEqualTo("#(true)");
         }
@@ -160,7 +160,7 @@ class BareParameterAndUnsetFromTheSourceTest {
 
     @Test
     @DisplayName("ANY passes over an absence and answers the value after it")
-    void anyPassesOverAnAbsence() {
+    void passesOverAnAbsenceInAny() {
         assertThat(answerTo("""
                 (any [() 1]) = 1""")).isEqualTo("#(true)");
     }

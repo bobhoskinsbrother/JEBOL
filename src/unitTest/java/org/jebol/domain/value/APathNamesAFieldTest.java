@@ -9,42 +9,42 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class APathNamesAFieldTest {
 
-    private static Context holding(String name, Value value) {
+    private static Context makeAContextHolding(String name, Value value) {
         Context fields = Context.root();
         fields.register(name, value);
         return fields;
     }
 
-    private static AnyWordValue boundIn(String spelling, Context context) {
-        return WordValue.of(spelling).boundTo(context);
+    private static AnyWordValue bindIn(String spelling, Context context) {
+        return WordValue.of(spelling).bindTo(context);
     }
 
-    private static AnyBlockValue path(Value... segments) {
+    private static AnyBlockValue makeAPath(Value... segments) {
         return PathValue.of(List.of(segments));
     }
 
-    private static Context aScriptHoldingAnObject() {
-        return holding("account", new ObjectValue(holding("balance", IntegerValue.of(10))));
+    private static Context makeAScriptHoldingAnObject() {
+        return makeAContextHolding("account", new ObjectValue(makeAContextHolding("balance", IntegerValue.of(10))));
     }
 
     @Test
-    @DisplayName("every kind of path names the field it ends on")
-    void everyKindOfPath() {
-        Context script = aScriptHoldingAnObject();
+    @DisplayName("every type of path names the field it ends on")
+    void namesAFieldWithEveryKindOfPath() {
+        Context script = makeAScriptHoldingAnObject();
         assertThat(List.of(PathValue.TYPE, SetPathValue.TYPE, GetPathValue.TYPE, LitPathValue.TYPE))
-                .allSatisfy(kind -> assertThat(kind.holding(List.of(
-                                boundIn("account", script), WordValue.of("balance"))).fieldThePathNames())
+                .allSatisfy(kind -> assertThat(kind.wrap(List.of(
+                                bindIn("account", script), WordValue.of("balance"))).fieldThePathNames())
                         .hasValueSatisfying(slot ->
                                 assertThat(slot.value()).isEqualTo(IntegerValue.of(10))));
     }
 
     @Test
     @DisplayName("a path through nested objects names the innermost field")
-    void throughNestedObjects() {
-        Context script = holding("bank", new ObjectValue(holding("account",
-                new ObjectValue(holding("balance", IntegerValue.of(10))))));
+    void namesAFieldThroughNestedObjects() {
+        Context script = makeAContextHolding("bank", new ObjectValue(makeAContextHolding("account",
+                new ObjectValue(makeAContextHolding("balance", IntegerValue.of(10))))));
 
-        assertThat(path(boundIn("bank", script), WordValue.of("account"),
+        assertThat(makeAPath(bindIn("bank", script), WordValue.of("account"),
                 WordValue.of("balance")).fieldThePathNames())
                 .hasValueSatisfying(slot ->
                         assertThat(slot.value()).isEqualTo(IntegerValue.of(10)));
@@ -52,82 +52,82 @@ class APathNamesAFieldTest {
 
     @Test
     @DisplayName("the slot is the object's own, so writing through it changes the object")
-    void theSlotIsTheObjectsOwn() {
-        Context balanceHolder = holding("balance", IntegerValue.of(10));
-        Context script = holding("account", new ObjectValue(balanceHolder));
+    void namesTheObjectsOwnSlot() {
+        Context balanceHolder = makeAContextHolding("balance", IntegerValue.of(10));
+        Context script = makeAContextHolding("account", new ObjectValue(balanceHolder));
 
-        path(boundIn("account", script), WordValue.of("balance"))
+        makeAPath(bindIn("account", script), WordValue.of("balance"))
                 .fieldThePathNames().orElseThrow().setValue(IntegerValue.of(20));
 
-        assertThat(balanceHolder.slotFor("balance").value()).isEqualTo(IntegerValue.of(20));
+        assertThat(balanceHolder.findSlotFor("balance").value()).isEqualTo(IntegerValue.of(20));
     }
 
     @Test
     @DisplayName("a path of one segment names no field")
-    void oneSegment() {
-        assertThat(path(boundIn("account", aScriptHoldingAnObject())).fieldThePathNames())
+    void namesAFieldWithOneSegment() {
+        assertThat(makeAPath(bindIn("account", makeAScriptHoldingAnObject())).fieldThePathNames())
                 .isEmpty();
     }
 
     @Test
     @DisplayName("an empty path names no field")
-    void noSegments() {
-        assertThat(path().fieldThePathNames()).isEmpty();
+    void namesNothingWithNoSegments() {
+        assertThat(makeAPath().fieldThePathNames()).isEmpty();
     }
 
     @Test
     @DisplayName("an unbound first word names no field")
-    void anUnboundStart() {
-        assertThat(path(WordValue.of("account"), WordValue.of("balance")).fieldThePathNames())
+    void answersAnUnboundStart() {
+        assertThat(makeAPath(WordValue.of("account"), WordValue.of("balance")).fieldThePathNames())
                 .isEmpty();
     }
 
     @Test
     @DisplayName("a first segment that is not a word names no field")
-    void aStartThatIsNotAWord() {
-        assertThat(path(IntegerValue.of(1), WordValue.of("balance")).fieldThePathNames())
+    void answersAStartThatIsNotAWord() {
+        assertThat(makeAPath(IntegerValue.of(1), WordValue.of("balance")).fieldThePathNames())
                 .isEmpty();
     }
 
     @Test
     @DisplayName("stepping through something that is not an object names no field")
-    void steppingThroughANonObject() {
-        Context script = holding("account", IntegerValue.of(1));
+    void answersSteppingThroughANonObject() {
+        Context script = makeAContextHolding("account", IntegerValue.of(1));
 
-        assertThat(path(boundIn("account", script), WordValue.of("balance"))
+        assertThat(makeAPath(bindIn("account", script), WordValue.of("balance"))
                 .fieldThePathNames()).isEmpty();
     }
 
     @Test
     @DisplayName("a field the object does not hold is named by nothing")
-    void aMissingField() {
-        assertThat(path(boundIn("account", aScriptHoldingAnObject()), WordValue.of("owner"))
+    void answersAMissingField() {
+        assertThat(makeAPath(bindIn("account", makeAScriptHoldingAnObject()), WordValue.of("owner"))
                 .fieldThePathNames()).isEmpty();
     }
 
     @Test
     @DisplayName("a segment that is not a word names no field")
-    void aSegmentThatIsNotAWord() {
-        assertThat(path(boundIn("account", aScriptHoldingAnObject()), IntegerValue.of(1))
+    void answersASegmentThatIsNotAWord() {
+        assertThat(makeAPath(bindIn("account", makeAScriptHoldingAnObject()), IntegerValue.of(1))
                 .fieldThePathNames()).isEmpty();
     }
 
     @Test
     @DisplayName("a hidden field is named by nothing, as field selection would not find it")
-    void aHiddenField() {
-        Context balanceHolder = holding("balance", IntegerValue.of(10));
-        balanceHolder.slotFor("balance").hide(true);
-        Context script = holding("account", new ObjectValue(balanceHolder));
+    void answersAHiddenField() {
+        Context balanceHolder = makeAContextHolding("balance", IntegerValue.of(10));
+        balanceHolder.findSlotFor("balance").hide(true);
+        Context script = makeAContextHolding("account", new ObjectValue(balanceHolder));
 
-        assertThat(path(boundIn("account", script), WordValue.of("balance"))
+        assertThat(makeAPath(bindIn("account", script), WordValue.of("balance"))
                 .fieldThePathNames()).isEmpty();
     }
 
     @Test
     @DisplayName("a block that is not a path names no field, whatever it holds")
-    void aBlockThatIsNotAPath() {
-        AnyBlockValue block = BlockValue.block(List.of(
-                boundIn("account", aScriptHoldingAnObject()), WordValue.of("balance")));
+    void answersABlockThatIsNotAPath() {
+        AnyBlockValue block = BlockValue.of(List.of(
+                bindIn("account", makeAScriptHoldingAnObject()), WordValue.of("balance")));
 
         assertThat(block.fieldThePathNames()).isEmpty();
     }

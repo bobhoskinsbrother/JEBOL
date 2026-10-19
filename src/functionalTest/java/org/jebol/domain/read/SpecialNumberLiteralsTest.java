@@ -16,48 +16,48 @@ class SpecialNumberLiteralsTest {
         ScriptOutcome outcome = interpreter.run(source);
         assertThat(outcome.conclusion())
                 .as("%s must not escape as a host exception", source)
-                .isEqualTo(Conclusion.PRODUCED_A_VALUE);
+                .isEqualTo(Conclusion.PRODUCED_VALUE);
         return interpreter.display(outcome);
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("1.#INF reads and molds back as it was written")
-    void infinityRoundTrips() {
+    void roundTripInfinity() {
         assertThat(answerTo("mold 1.#INF")).isEqualTo("\"1.#INF\"");
     }
 
     @Test
     @DisplayName("-1.#INF reads and molds back too")
-    void negativeInfinityRoundTrips() {
+    void roundTripNegativeInfinity() {
         assertThat(answerTo("mold -1.#INF")).isEqualTo("\"-1.#INF\"");
     }
 
     @Test
     @DisplayName("1.#NaN reads and molds back")
-    void notANumberRoundTrips() {
+    void roundTripNotANumber() {
         assertThat(answerTo("mold 1.#NaN")).isEqualTo("\"1.#NaN\"");
     }
 
     @Test
     @DisplayName("all three are decimals")
-    void theyAreDecimals() {
+    void areDecimals() {
         assertThat(answerTo("mold reduce [type? 1.#INF type? 1.#NaN]"))
                 .isEqualTo("\"[#(decimal!) #(decimal!)]\"");
     }
 
     @Test
     @DisplayName("whole-number division by zero still raises")
-    void integerDivisionByZeroRaises() {
-        assertThat(errorIdOf("1 / 0")).isEqualTo("zero-divide");
+    void raiseOnIntegerDivisionByZero() {
+        assertThat(readTheErrorIdOf("1 / 0")).isEqualTo("zero-divide");
     }
 
     @Test
     @DisplayName("a decimal on either side gives infinity instead of raising")
-    void decimalDivisionByZeroGivesInfinity() {
+    void comeFromDecimalDivisionByZero() {
         assertThat(answerTo("mold 1.0 / 0")).isEqualTo("\"1.#INF\"");
         assertThat(answerTo("mold 1 / 0.0")).isEqualTo("\"1.#INF\"");
     }
@@ -76,13 +76,13 @@ class SpecialNumberLiteralsTest {
 
     @Test
     @DisplayName("the strict == follows the hardware and says it does not")
-    void strictEqualityFollowsIeee() {
+    void followIeeeInStrictEquality() {
         assertThat(answerTo("1.#NaN == 1.#NaN")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("SAME? says NaN is itself")
-    void sameSaysNaNIsItself() {
+    void countNaNAsTheSameAsItself() {
         assertThat(answerTo("same? 1.#NaN 1.#NaN")).isEqualTo("#(true)");
     }
 
@@ -100,7 +100,7 @@ class SpecialNumberLiteralsTest {
 
     @Test
     @DisplayName("negative money reads, molds and adds back to zero")
-    void negativeMoneyWorks() {
+    void includeNegativeMoney() {
         assertThat(answerTo("mold -$1")).isEqualTo("\"-$1\"");
         assertThat(answerTo("mold type? -$1")).isEqualTo("\"#(money!)\"");
         assertThat(answerTo("mold $1 + -$1")).isEqualTo("\"$0\"");

@@ -44,7 +44,7 @@ class BothRenderersSideBySideTest {
     @BeforeEach
     void openAPage() throws IOException {
         serving = WebScreenServer.on(0);
-        screen = BrowserScreen.seenBy(serving);
+        screen = BrowserScreen.showTo(serving);
         serving.reportTo(screen);
 
         ChromeOptions asked = new ChromeOptions();
@@ -57,7 +57,7 @@ class BothRenderersSideBySideTest {
         browser.get(serving.address());
 
         new WebDriverWait(browser, Duration.ofSeconds(20))
-                .until(anything -> screen.hasADisplay());
+                .until(anything -> screen.hasDisplay());
     }
 
     @AfterEach
@@ -167,8 +167,8 @@ class BothRenderersSideBySideTest {
                                     + "fill-pen 96.198.128 pen off circle 150x100 90"));
 
     @Test
-    @DisplayName("every path kind drawn in both renderers, and written out to look at")
-    void everyPathKindInBothRenderers() throws Exception {
+    @DisplayName("every path type drawn in both renderers, and written out to look at")
+    void paintsEveryPathKindInBothRenderers() throws Exception {
         Path into = Path.of(WHERE_TO_PUT_THEM.isEmpty()
                 ? "build/renderer-pictures"
                 : WHERE_TO_PUT_THEM);
@@ -184,26 +184,26 @@ class BothRenderersSideBySideTest {
                     view/no-wait shown
                     system/view/screen-gob
                     """;
-            Interpreter interpreter = anInterpreterOnThisPage();
+            Interpreter interpreter = makeAnInterpreterOnThisPage();
             interpreter.defineFreshWordsIn(source);
             GobValue root = (GobValue) interpreter.run(source).value();
 
-            BufferedImage fromTheBrowser = whatTheCanvasShows();
-            BufferedImage fromJava2D = whatJava2DPaints(root,
+            BufferedImage fromTheBrowser = captureWhatTheCanvasShows();
+            BufferedImage fromJava2D = paintWithJava2D(root,
                     fromTheBrowser.getWidth(), fromTheBrowser.getHeight());
 
             ImageIO.write(fromTheBrowser, "png",
                     new File(into.toFile(), path.name() + "-browser.png"));
             ImageIO.write(fromJava2D, "png",
                     new File(into.toFile(), path.name() + "-java2d.png"));
-            ImageIO.write(whereTheyDiffer(fromTheBrowser, fromJava2D), "png",
+            ImageIO.write(markWhereTheyDiffer(fromTheBrowser, fromJava2D), "png",
                     new File(into.toFile(), path.name() + "-difference.png"));
 
             assertThat(fromTheBrowser.getWidth()).isEqualTo(fromJava2D.getWidth());
         }
     }
 
-    private static BufferedImage whereTheyDiffer(BufferedImage one, BufferedImage other) {
+    private static BufferedImage markWhereTheyDiffer(BufferedImage one, BufferedImage other) {
         BufferedImage map = new BufferedImage(
                 one.getWidth(), one.getHeight(), BufferedImage.TYPE_INT_RGB);
         for (int down = 0; down < one.getHeight(); down++) {
@@ -222,13 +222,13 @@ class BothRenderersSideBySideTest {
         return map;
     }
 
-    private BufferedImage whatTheCanvasShows() throws IOException {
+    private BufferedImage captureWhatTheCanvasShows() throws IOException {
         WebElement canvas = browser.findElement(By.id("screen"));
         return ImageIO.read(new ByteArrayInputStream(
                 canvas.getScreenshotAs(OutputType.BYTES)));
     }
 
-    private BufferedImage whatJava2DPaints(GobValue root, int wide, int high) {
+    private BufferedImage paintWithJava2D(GobValue root, int wide, int high) {
         BufferedImage surface =
                 new BufferedImage(wide, high, BufferedImage.TYPE_INT_RGB);
         Graphics2D onto = surface.createGraphics();
@@ -236,7 +236,7 @@ class BothRenderersSideBySideTest {
             onto.setColor(Color.WHITE);
             onto.fillRect(0, 0, wide, high);
             Java2DSurface.execute(onto,
-                    PaintList.ofTheScreen(root, wide, high, theDrawDialect),
+                    PaintList.ofScreen(root, wide, high, theDrawDialect),
                     TextMeasures.ofTheCarriedFont());
         } finally {
             onto.dispose();
@@ -244,7 +244,7 @@ class BothRenderersSideBySideTest {
         return surface;
     }
 
-    private Interpreter anInterpreterOnThisPage() {
+    private Interpreter makeAnInterpreterOnThisPage() {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useScreen(screen);

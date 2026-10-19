@@ -30,7 +30,7 @@ class ReaderNeverThrowsTest {
         "nonsense!", "1..2", "....",
     })
     @DisplayName("malformed input gives a failure, not an exception")
-    void malformedInputNeverThrows(String source) {
+    void survivesMalformedInput(String source) {
         TranscodeResult result = Transcoder.transcode(source);
 
         assertThat(result).isNotNull();
@@ -53,10 +53,10 @@ class ReaderNeverThrowsTest {
 
     @Test
     @DisplayName("construction syntax reads back what MOLD wrote")
-    void constructionSyntaxReadsBack() {
+    void readsConstructionSyntaxBack() {
         assertThat(readBack(NoneValue.none())).isEqualTo(NoneValue.none());
         assertThat(readBack(LogicValue.yes())).isEqualTo(LogicValue.yes());
-        assertThat(readBack(LogicValue.no())).isEqualTo(LogicValue.no());
+        assertThat(readBack(LogicValue.answerNo())).isEqualTo(LogicValue.answerNo());
         assertThat(readBack(UnsetValue.unset())).isEqualTo(UnsetValue.unset());
     }
 
@@ -65,6 +65,6 @@ class ReaderNeverThrowsTest {
         assertThat(reread.succeeded())
                 .as("mold produced %s, which will not read", Molder.mold(value))
                 .isTrue();
-        return reread.values().orElseThrow().first();
+        return reread.values().orElseThrow().pickTheFirst();
     }
 }

@@ -70,7 +70,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
 
     static final String NUMBERED_ASSERT = "--assert-numbered";
 
-    private static String numberedSource(Interpreter reader, String written, int firstOrdinal) {
+    private static String numberTheSource(Interpreter reader, String written, int firstOrdinal) {
         StringBuilder out = new StringBuilder();
         int ordinal = firstOrdinal;
         int at = 0;
@@ -154,10 +154,10 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         AnyBlockValue before = reader.read(written).values().orElse(null);
         AnyBlockValue after = reader.read(numbered).values().orElse(null);
         return before != null && after != null
-                && sameValues(before.remaining(), after.remaining(), new int[] {firstOrdinal});
+                && areTheSameValues(before.remaining(), after.remaining(), new int[] {firstOrdinal});
     }
 
-    private static boolean sameValues(
+    private static boolean areTheSameValues(
             List<Value> before, List<Value> after, int[] next) {
 
         int here = 0;
@@ -179,7 +179,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             if (one instanceof AnyBlockValue nested) {
                 if (!(other instanceof AnyBlockValue alsoNested)
                         || nested.datatype() != alsoNested.datatype()
-                        || !sameValues(nested.remaining(), alsoNested.remaining(), next)) {
+                        || !areTheSameValues(nested.remaining(), alsoNested.remaining(), next)) {
                     return false;
                 }
                 continue;
@@ -191,11 +191,11 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         return here == after.size();
     }
 
-    private static int assertionsNestedIn(List<Value> values) {
+    private static int countTheAssertionsNestedIn(List<Value> values) {
         int found = 0;
         for (Value value : values) {
             if (value instanceof AnyBlockValue block) {
-                found += assertionsNestedIn(block.remaining());
+                found += countTheAssertionsNestedIn(block.remaining());
             } else if (value instanceof AnyWordValue word && ASSERT.equals(word.spelling())) {
                 found++;
             }
@@ -215,10 +215,10 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         try {
             String readable = reader.read(source).succeeded()
                     ? source
-                    : longestReadablePrefix(reader, source);
+                    : findTheLongestReadablePrefix(reader, source);
             return reader.read(readable).values()
                     .map(block -> build(reader, name, readable, block.remaining(),
-                            Transcoder.topLevelSpans(readable)))
+                            Transcoder.findTheTopLevelSpans(readable)))
                     .orElseGet(() -> new SuiteFile(name, List.of(), List.of()));
         } catch (RuntimeException thrown) {
             throw new IllegalStateException(
@@ -239,7 +239,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                             + " spans for " + name + ", so no assertion can be trusted "
                             + "to be the one the file wrote");
         }
-        List<Step> steps = stepsIn(reader, name, source, values, spans);
+        List<Step> steps = listTheStepsIn(reader, name, source, values, spans);
         List<Assertion> everyOne = new ArrayList<>();
         for (Step step : steps) {
             if (step.isAssertion()) {
@@ -250,7 +250,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         return new SuiteFile(name, List.copyOf(everyOne), steps);
     }
 
-    private static String longestReadablePrefix(Interpreter reader, String source) {
+    private static String findTheLongestReadablePrefix(Interpreter reader, String source) {
         List<String> lines = source.lines().toList();
         int readable = 0;
         for (int upTo = 1; upTo <= lines.size(); upTo++) {
@@ -261,8 +261,8 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         return String.join("\n", lines.subList(0, readable));
     }
 
-    private static List<Step> stepsIn(Interpreter reader, String file, String source,
-            List<Value> values, List<Transcoder.SourceSpan> spans) {
+    private static List<Step> listTheStepsIn(Interpreter reader, String file, String source,
+                                             List<Value> values, List<Transcoder.SourceSpan> spans) {
         List<Step> found = new ArrayList<>();
         String group = "(no group)";
         String test = "(no test)";
@@ -273,22 +273,22 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         while (at < values.size()) {
             Value current = values.get(at);
             if (!(current instanceof AnyWordValue word) || !isHarnessWord(current)) {
-                List<Value> run = valuesUntilNextHarnessWord(values, at);
+                List<Value> run = takeTheValuesUntilTheNextHarnessWord(values, at);
                 ordinal = addSetupSteps(reader, found, file, group, test, ordinal,
                         source, values, spans, at, run.size());
                 at += Math.max(1, run.size());
                 continue;
             }
             String spelling = word.spelling();
-            List<Value> until = valuesUntilNextHarnessWord(values, at + 1);
+            List<Value> until = takeTheValuesUntilTheNextHarnessWord(values, at + 1);
             int next = at + 1 + until.size();
 
             switch (spelling) {
                 case START_GROUP, TEST -> {
                     if (spelling.equals(START_GROUP)) {
-                        group = onlyString(until, group);
+                        group = readTheOnlyString(until, group);
                     } else {
-                        test = onlyString(until, test);
+                        test = readTheOnlyString(until, test);
                     }
                     int howMany = Math.max(0, until.size() - 1);
                     ordinal = addSetupSteps(reader, found, file, group, test, ordinal,
@@ -297,23 +297,23 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
                 case RED_ONLY -> nextAssertionDescribesRed = true;
                 case ASSERT -> {
                     ordinal++;
-                    String written = sourceOf(source, spans, at + 1, until.size());
+                    String written = readTheSourceOf(source, spans, at + 1, until.size());
                     Assertion asserted = new Assertion(file, group, test, ordinal,
-                            written, beginningOf(spans, at + 1),
+                            written, findTheBeginningOf(spans, at + 1),
                             endOf(spans, at + 1, until.size()),
                             nextAssertionDescribesRed);
                     nextAssertionDescribesRed = false;
                     int began = ordinal;
                     List<Assertion> alsoInside = new ArrayList<>();
-                    for (int more = assertionsNestedIn(until); more > 0; more--) {
+                    for (int more = countTheAssertionsNestedIn(until); more > 0; more--) {
                         ordinal++;
                         alsoInside.add(new Assertion(file, group, test, ordinal,
-                                written, beginningOf(spans, at + 1),
+                                written, findTheBeginningOf(spans, at + 1),
                                 endOf(spans, at + 1, until.size())));
                     }
                     found.add(new Step(asserted, null, List.copyOf(alsoInside),
                             alsoInside.isEmpty() ? null
-                                    : numberedSource(reader, written, began)));
+                                    : numberTheSource(reader, written, began)));
                 }
                 default -> ordinal = addSetupSteps(reader, found, file, group, test, ordinal,
                         source, values, spans, at + 1, until.size());
@@ -338,24 +338,24 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             String group, String test, int ordinal, String source, List<Value> values,
             List<Transcoder.SourceSpan> spans, int from, int count) {
 
-        for (int[] piece : expressionsIn(reader, source, values, spans, from, count)) {
+        for (int[] piece : findTheExpressionsIn(reader, source, values, spans, from, count)) {
             List<Value> body = values.subList(piece[0], piece[0] + piece[1]);
-            String setup = sourceOf(source, spans, piece[0], piece[1]);
+            String setup = readTheSourceOf(source, spans, piece[0], piece[1]);
             int began = ordinal;
             List<Assertion> nested = new ArrayList<>();
-            for (int more = assertionsNestedIn(body); more > 0; more--) {
+            for (int more = countTheAssertionsNestedIn(body); more > 0; more--) {
                 ordinal++;
                 nested.add(new Assertion(file, group, test, ordinal, setup,
-                        beginningOf(spans, piece[0]), endOf(spans, piece[0], piece[1])));
+                        findTheBeginningOf(spans, piece[0]), endOf(spans, piece[0], piece[1])));
             }
             found.add(new Step(null, setup, List.copyOf(nested),
-                    nested.isEmpty() ? null : numberedSource(reader, setup, began)));
+                    nested.isEmpty() ? null : numberTheSource(reader, setup, began)));
         }
         return ordinal;
     }
 
-    private static List<int[]> expressionsIn(Interpreter reader, String source,
-            List<Value> values, List<Transcoder.SourceSpan> spans, int from, int count) {
+    private static List<int[]> findTheExpressionsIn(Interpreter reader, String source,
+                                                    List<Value> values, List<Transcoder.SourceSpan> spans, int from, int count) {
 
         List<int[]> whole = List.of(new int[] {from, count});
         if (count <= 1) {
@@ -364,7 +364,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         List<Integer> starts = new ArrayList<>();
         for (int at = from; at < from + count; at++) {
             if (at == from || values.get(at) instanceof AnyWordValue
-                    && beginsALine(source, beginningOf(spans, at))) {
+                    && beginsALine(source, findTheBeginningOf(spans, at))) {
                 starts.add(at);
             }
         }
@@ -378,7 +378,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
             pieces.add(new int[] {begins, ends - begins});
         }
         return pieces.stream().allMatch(piece ->
-                readsOnItsOwn(reader, sourceOf(source, spans, piece[0], piece[1])))
+                readsOnItsOwn(reader, readTheSourceOf(source, spans, piece[0], piece[1])))
                 ? pieces
                 : whole;
     }
@@ -401,7 +401,7 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         return piece.isBlank() || reader.read(piece).succeeded();
     }
 
-    private static List<Value> valuesUntilNextHarnessWord(List<Value> values, int from) {
+    private static List<Value> takeTheValuesUntilTheNextHarnessWord(List<Value> values, int from) {
         int at = from;
         while (at < values.size() && !isHarnessWord(values.get(at))) {
             at++;
@@ -409,25 +409,25 @@ record SuiteFile(String name, List<Assertion> assertions, List<Step> steps) {
         return values.subList(from, at);
     }
 
-    private static List<Value> afterTheName(List<Value> values) {
+    private static List<Value> skipTheName(List<Value> values) {
         return values.isEmpty() ? values : values.subList(1, values.size());
     }
 
-    private static String onlyString(List<Value> values, String fallback) {
+    private static String readTheOnlyString(List<Value> values, String fallback) {
         return values.isEmpty() ? fallback : Molder.form(values.get(0));
     }
 
-    private static int beginningOf(List<Transcoder.SourceSpan> spans, int at) {
+    private static int findTheBeginningOf(List<Transcoder.SourceSpan> spans, int at) {
         return at < spans.size() ? spans.get(at).from() : 0;
     }
 
     private static int endOf(List<Transcoder.SourceSpan> spans, int from, int count) {
         int last = Math.min(from + count, spans.size()) - 1;
-        return last >= from ? spans.get(last).to() : beginningOf(spans, from);
+        return last >= from ? spans.get(last).to() : findTheBeginningOf(spans, from);
     }
 
-    private static String sourceOf(String source,
-            List<Transcoder.SourceSpan> spans, int from, int count) {
+    private static String readTheSourceOf(String source,
+                                          List<Transcoder.SourceSpan> spans, int from, int count) {
         return Transcoder.textOf(source, spans, from, count);
     }
 }

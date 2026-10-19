@@ -19,10 +19,10 @@ public abstract class PortAction extends HostNative implements ActionValue {
         this.ports = ports;
     }
 
-    protected PortRequest asked(List<Value> arguments, Set<String> refinements) {
+    protected PortRequest readTheRequest(List<Value> arguments, Set<String> refinements) {
         return new PortRequest(
-                argumentOf("part", 0, arguments, refinements),
-                argumentOf("seek", 0, arguments, refinements),
+                readTheArgumentOf("part", 0, arguments, refinements),
+                readTheArgumentOf("seek", 0, arguments, refinements),
                 refinements);
     }
 }

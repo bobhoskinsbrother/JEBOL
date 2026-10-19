@@ -16,12 +16,12 @@ public final class Camellia {
     public static final int BLOCK = 16;
 
     /** A cipher ready to transform blocks under one key, in one direction. */
-    public static OneBlock under(byte[] key, boolean deciphering) {
+    public static OneBlock keyWith(byte[] key, boolean deciphering) {
         int[] subkeys = deciphering
-                ? forDeciphering(key)
-                : forEnciphering(key);
+                ? scheduleTheKeysForDeciphering(key)
+                : scheduleTheKeysForEnciphering(key);
         int rounds = key.length <= 16 ? 3 : 4;
-        return block -> transformed(block, subkeys, rounds);
+        return block -> transform(block, subkeys, rounds);
     }
 
     private static void round(int[] state, int at, int[] key, int keyAt,
@@ -30,14 +30,14 @@ public final class Camellia {
         int left = state[at] ^ key[keyAt];
         int right = state[at + 1] ^ key[keyAt + 1];
 
-        left = substituted1(byteAt(left, 3)) << 24
-                | substituted2(byteAt(left, 2)) << 16
-                | substituted3(byteAt(left, 1)) << 8
-                | substituted4(byteAt(left, 0));
-        right = substituted2(byteAt(right, 3)) << 24
-                | substituted3(byteAt(right, 2)) << 16
-                | substituted4(byteAt(right, 1)) << 8
-                | substituted1(byteAt(right, 0));
+        left = substitute1(readTheByteAt(left, 3)) << 24
+                | substitute2(readTheByteAt(left, 2)) << 16
+                | substitute3(readTheByteAt(left, 1)) << 8
+                | substitute4(readTheByteAt(left, 0));
+        right = substitute2(readTheByteAt(right, 3)) << 24
+                | substitute3(readTheByteAt(right, 2)) << 16
+                | substitute4(readTheByteAt(right, 1)) << 8
+                | substitute1(readTheByteAt(right, 0));
 
         left ^= right << 8 | right >>> 24;
         right ^= left << 16 | left >>> 16;
@@ -48,25 +48,25 @@ public final class Camellia {
         into[intoAt + 1] ^= left;
     }
 
-    private static int byteAt(int word, int which) {
+    private static int readTheByteAt(int word, int which) {
         return word >>> which * 8 & 0xFF;
     }
 
-    private static int substituted1(int index) {
+    private static int substitute1(int index) {
         return SUBSTITUTION[index] & 0xFF;
     }
 
-    private static int substituted2(int index) {
+    private static int substitute2(int index) {
         int found = SUBSTITUTION[index] & 0xFF;
         return (found >>> 7 ^ found << 1) & 0xFF;
     }
 
-    private static int substituted3(int index) {
+    private static int substitute3(int index) {
         int found = SUBSTITUTION[index] & 0xFF;
         return (found >>> 1 ^ found << 7) & 0xFF;
     }
 
-    private static int substituted4(int index) {
+    private static int substitute4(int index) {
         return SUBSTITUTION[(index << 1 ^ index >>> 7) & 0xFF] & 0xFF;
     }
 
@@ -82,10 +82,10 @@ public final class Camellia {
         state[3] ^= masked << 1 | masked >>> 31;
     }
 
-    private static byte[] transformed(byte[] block, int[] subkeys, int rounds) {
+    private static byte[] transform(byte[] block, int[] subkeys, int rounds) {
         int[] state = {
-            wordAt(block, 0), wordAt(block, 4),
-            wordAt(block, 8), wordAt(block, 12)
+            readTheWordAt(block, 0), readTheWordAt(block, 4),
+            readTheWordAt(block, 8), readTheWordAt(block, 12)
         };
         int key = 0;
         for (int at = 0; at < 4; at++) {
@@ -105,10 +105,10 @@ public final class Camellia {
                 key += 2;
             }
         }
-        return theHalvesSwapped(state, subkeys, key);
+        return swapTheHalves(state, subkeys, key);
     }
 
-    private static byte[] theHalvesSwapped(int[] state, int[] subkeys, int key) {
+    private static byte[] swapTheHalves(int[] state, int[] subkeys, int key) {
         state[2] ^= subkeys[key];
         state[3] ^= subkeys[key + 1];
         state[0] ^= subkeys[key + 2];
@@ -121,7 +121,7 @@ public final class Camellia {
         return out;
     }
 
-    private static int wordAt(byte[] octets, int at) {
+    private static int readTheWordAt(byte[] octets, int at) {
         return (octets[at] & 0xFF) << 24 | (octets[at + 1] & 0xFF) << 16
                 | (octets[at + 2] & 0xFF) << 8 | octets[at + 3] & 0xFF;
     }
@@ -133,7 +133,7 @@ public final class Camellia {
         octets[at + 3] = (byte) word;
     }
 
-    private static int[] forEnciphering(byte[] key) {
+    private static int[] scheduleTheKeysForEnciphering(byte[] key) {
         int width = key.length <= 16 ? 0 : 1;
         byte[] stored = new byte[32];
         System.arraycopy(key, 0, stored, 0, key.length);
@@ -144,7 +144,7 @@ public final class Camellia {
         }
         int[] derived = new int[16];
         for (int at = 0; at < 8; at++) {
-            derived[at] = wordAt(stored, at * 4);
+            derived[at] = readTheWordAt(stored, at * 4);
         }
         foldTheKeyThrough(derived, key.length > 16);
 
@@ -212,8 +212,8 @@ public final class Camellia {
         }
     }
 
-    private static int[] forDeciphering(byte[] key) {
-        int[] forwards = forEnciphering(key);
+    private static int[] scheduleTheKeysForDeciphering(byte[] key) {
+        int[] forwards = scheduleTheKeysForEnciphering(key);
         int width = key.length <= 16 ? 0 : 1;
         int[] backwards = new int[HOW_MANY_SUBKEYS_THE_LONGEST_SCHEDULE_NEEDS];
         int from = 48 + 16 * width;

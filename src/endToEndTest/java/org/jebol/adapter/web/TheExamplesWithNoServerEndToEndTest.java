@@ -61,91 +61,91 @@ class TheExamplesWithNoServerEndToEndTest {
         return new WebDriverWait(browser, Duration.ofSeconds(60));
     }
 
-    private List<String> theLinesSoFar() {
+    private List<String> readTheLinesSoFar() {
         return browser.findElement(By.id("out")).getDomProperty("textContent").lines().toList();
     }
 
-    private boolean theWorkerGaveUp(List<String> lines) {
+    private boolean hasTheWorkerGivenUp(List<String> lines) {
         return lines.stream().anyMatch(line ->
                 line.startsWith("failed ") || line.startsWith("worker error"));
     }
 
-    private void untilThePageSays(String whatWasHoped, Supplier<Boolean> hoped) {
+    private void waitUntilThePageSays(String whatWasHoped, Supplier<Boolean> hoped) {
         try {
-            patientBrowser().until(anything -> theWorkerGaveUp(theLinesSoFar()) || hoped.get());
+            patientBrowser().until(anything -> hasTheWorkerGivenUp(readTheLinesSoFar()) || hoped.get());
         } catch (TimeoutException late) {
             throw new AssertionError("the page never " + whatWasHoped
-                    + "; the page said: " + theLinesSoFar(), late);
+                    + "; the page said: " + readTheLinesSoFar(), late);
         }
-        List<String> lines = theLinesSoFar();
-        if (theWorkerGaveUp(lines)) {
+        List<String> lines = readTheLinesSoFar();
+        if (hasTheWorkerGivenUp(lines)) {
             throw new AssertionError("the worker gave up before " + whatWasHoped
                     + "; the page said: " + lines);
         }
     }
 
-    private String theLineStartingWith(String prefix) {
-        return theLinesSoFar().stream()
+    private String findTheLineStartingWith(String prefix) {
+        return readTheLinesSoFar().stream()
                 .filter(line -> line.startsWith(prefix))
                 .reduce((first, second) -> second)
                 .orElseThrow(() -> new AssertionError(
-                        "the page never said a line starting " + prefix + "; it said: " + theLinesSoFar()));
+                        "the page never said a line starting " + prefix + "; it said: " + readTheLinesSoFar()));
     }
 
-    private Actions theOperatorAt(int pageAcross, int pageDown) {
+    private Actions placeTheOperatorAt(int pageAcross, int pageDown) {
         WebElement canvas = browser.findElement(By.id("screen"));
         return new Actions(browser).moveToElement(canvas,
                 pageAcross - canvas.getRect().getWidth() / 2,
                 pageDown - canvas.getRect().getHeight() / 2);
     }
 
-    private static int acrossOf(String pair) {
+    private static int readTheAcrossOf(String pair) {
         return (int) Math.round(Double.parseDouble(pair.substring(0, pair.indexOf('x'))));
     }
 
-    private static int downOf(String pair) {
+    private static int readTheDownOf(String pair) {
         return (int) Math.round(Double.parseDouble(pair.substring(pair.indexOf('x') + 1)));
     }
 
     @Test
     @DisplayName("the sliders example runs in a page with no server, and a real drag changes its value")
-    void theSliderIsDraggedWithNoServer() {
-        untilThePageSays("the two example windows",
-                () -> theLinesSoFar().contains("open")
-                        && theLinesSoFar().stream().anyMatch(line -> line.startsWith("booted in "))
-                        && theLinesSoFar().stream().anyMatch(line -> line.startsWith("worker loaded in "))
-                        && theLinesSoFar().stream().anyMatch(line -> line.startsWith("slider-at "))
-                        && theLinesSoFar().stream().anyMatch(line -> line.startsWith("field-at ")));
+    void dragsTheSliderWithNoServer() {
+        waitUntilThePageSays("the two example windows",
+                () -> readTheLinesSoFar().contains("open")
+                        && readTheLinesSoFar().stream().anyMatch(line -> line.startsWith("booted in "))
+                        && readTheLinesSoFar().stream().anyMatch(line -> line.startsWith("worker loaded in "))
+                        && readTheLinesSoFar().stream().anyMatch(line -> line.startsWith("slider-at "))
+                        && readTheLinesSoFar().stream().anyMatch(line -> line.startsWith("field-at ")));
 
-        String middle = theLineStartingWith("slider-at ").substring("slider-at ".length());
-        String before = theLineStartingWith("slider ").substring("slider ".length());
+        String middle = findTheLineStartingWith("slider-at ").substring("slider-at ".length());
+        String before = findTheLineStartingWith("slider ").substring("slider ".length());
 
-        theOperatorAt(acrossOf(middle), downOf(middle)).clickAndHold()
+        placeTheOperatorAt(readTheAcrossOf(middle), readTheDownOf(middle)).clickAndHold()
                 .moveByOffset(80, 0).release().perform();
 
-        untilThePageSays("the slider's value changed",
-                () -> theLinesSoFar().stream()
+        waitUntilThePageSays("the slider's value changed",
+                () -> readTheLinesSoFar().stream()
                         .filter(line -> line.startsWith("slider "))
                         .count() > 1);
-        assertThat(theLineStartingWith("slider ").substring("slider ".length()))
+        assertThat(findTheLineStartingWith("slider ").substring("slider ".length()))
                 .as("the slider the operator dragged is not the one it was")
                 .isNotEqualTo(before);
     }
 
     @Test
     @DisplayName("and the survey runs there too: a real click and real keys put a name in its field")
-    void theSurveyTakesATypedNameWithNoServer() {
-        untilThePageSays("the two example windows",
-                () -> theLinesSoFar().contains("open")
-                        && theLinesSoFar().stream().anyMatch(line -> line.startsWith("field-at ")));
+    void takesATypedNameInTheSurveyWithNoServer() {
+        waitUntilThePageSays("the two example windows",
+                () -> readTheLinesSoFar().contains("open")
+                        && readTheLinesSoFar().stream().anyMatch(line -> line.startsWith("field-at ")));
 
-        String middle = theLineStartingWith("field-at ").substring("field-at ".length());
-        theOperatorAt(acrossOf(middle), downOf(middle)).click().perform();
+        String middle = findTheLineStartingWith("field-at ").substring("field-at ".length());
+        placeTheOperatorAt(readTheAcrossOf(middle), readTheDownOf(middle)).click().perform();
         new Actions(browser).sendKeys("Ben").perform();
 
-        untilThePageSays("the field to hold the typed name",
-                () -> theLinesSoFar().contains("field Ben"));
-        assertThat(theLinesSoFar()).contains("field Ben");
+        waitUntilThePageSays("the field to hold the typed name",
+                () -> readTheLinesSoFar().contains("field Ben"));
+        assertThat(readTheLinesSoFar()).contains("field Ben");
     }
 
     private void answer(HttpExchange exchange) throws IOException {
@@ -156,10 +156,10 @@ class TheExamplesWithNoServerEndToEndTest {
             exchange.close();
             return;
         }
-        respond(exchange, Files.readAllBytes(file), theContentTypeOf(file), 200);
+        respond(exchange, Files.readAllBytes(file), readTheContentTypeOf(file), 200);
     }
 
-    private static String theContentTypeOf(Path file) {
+    private static String readTheContentTypeOf(Path file) {
         String name = file.getFileName().toString();
         if (name.endsWith(".html")) {
             return "text/html";

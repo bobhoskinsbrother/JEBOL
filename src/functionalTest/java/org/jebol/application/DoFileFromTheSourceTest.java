@@ -15,26 +15,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class DoFileFromTheSourceTest {
 
-    private static Interpreter grantedFilesUnder(Path root) {
+    private static Interpreter makeAnInterpreterGrantedFilesUnder(Path root) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         return interpreter;
     }
 
     private static String answerTo(Path root, String source) {
-        Interpreter interpreter = grantedFilesUnder(root);
+        Interpreter interpreter = makeAnInterpreterGrantedFilesUnder(root);
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(Path root, String source) {
+    private static String readTheErrorIdFrom(Path root, String source) {
         return answerTo(root, "failure: try [" + source + "] failure/id");
     }
 
-    private static void script(Path root, String fileName, String body) throws IOException {
+    private static void writeAScript(Path root, String fileName, String body) throws IOException {
         Files.writeString(root.resolve(fileName), body);
     }
 
@@ -44,8 +44,8 @@ class DoFileFromTheSourceTest {
 
         @Test
         @DisplayName("the last value the script evaluated")
-        void theLastValue(@TempDir Path root) throws IOException {
-            script(root, "adds.r3", """
+        void answersTheLastValue(@TempDir Path root) throws IOException {
+            writeAScript(root, "adds.r3", """
                     Rebol [title: "adds"]
                     1 + 2""");
 
@@ -54,8 +54,8 @@ class DoFileFromTheSourceTest {
 
         @Test
         @DisplayName("unset, when the script ends on something that answers nothing")
-        void unsetWhenTheScriptAnswersNothing(@TempDir Path root) throws IOException {
-            script(root, "unset.r3", """
+        void answersUnsetWhenTheScriptAnswersNothing(@TempDir Path root) throws IOException {
+            writeAScript(root, "unset.r3", """
                     Rebol [title: "Script which returns UNSET"]
                     print "Hello\"""");
 
@@ -65,7 +65,7 @@ class DoFileFromTheSourceTest {
         @Test
         @DisplayName("QUIT ends the script and answers unset, and the host lives on")
         void quitEndsTheScript(@TempDir Path root) throws IOException {
-            script(root, "quit.r3", """
+            writeAScript(root, "quit.r3", """
                     Rebol [title: "Script which uses quit"]
                     quit
                     print "Hello\"""");
@@ -79,7 +79,7 @@ class DoFileFromTheSourceTest {
         @Test
         @DisplayName("QUIT/RETURN answers what it was given")
         void quitReturnAnswersItsValue(@TempDir Path root) throws IOException {
-            script(root, "quit-return.r3", """
+            writeAScript(root, "quit-return.r3", """
                     Rebol [title: "Script which uses quit/return"]
                     quit/return 42
                     print "Hello\"""");
@@ -89,8 +89,8 @@ class DoFileFromTheSourceTest {
 
         @Test
         @DisplayName("and the script's own line after QUIT never runs")
-        void nothingAfterQuitRuns(@TempDir Path root) throws IOException {
-            script(root, "quit.r3", """
+        void runsNothingAfterQuit(@TempDir Path root) throws IOException {
+            writeAScript(root, "quit.r3", """
                     Rebol [title: "quits"]
                     quit
                     set 'escaped true""");
@@ -109,12 +109,12 @@ class DoFileFromTheSourceTest {
 
         @Test
         @DisplayName("the error is the script's own, not one about its name")
-        void theErrorIsTheScriptsOwn(@TempDir Path root) throws IOException {
-            script(root, "error.r3", """
+        void raisesTheScriptsOwnError(@TempDir Path root) throws IOException {
+            writeAScript(root, "error.r3", """
                     Rebol [title: "Script with evaluation error"]
                     1 / 0""");
 
-            assertThat(errorIdFrom(root, "do %error.r3"))
+            assertThat(readTheErrorIdFrom(root, "do %error.r3"))
                     .as("this assertion passed while DO was broken, because it asks "
                             + "only that some error came back")
                     .isEqualTo("zero-divide");
@@ -123,7 +123,7 @@ class DoFileFromTheSourceTest {
         @Test
         @DisplayName("a file that is not there cannot be run")
         void afileThatIsNotThere(@TempDir Path root) {
-            assertThat(errorIdFrom(root, "do %never-written.r3"))
+            assertThat(readTheErrorIdFrom(root, "do %never-written.r3"))
                     .isEqualTo("cannot-open");
         }
     }
@@ -136,8 +136,8 @@ class DoFileFromTheSourceTest {
         @DisplayName("a script runs in its own directory, so it can name a sibling")
         void ascriptRunsInItsOwnDirectory(@TempDir Path root) throws IOException {
             Files.createDirectories(root.resolve("nested"));
-            script(root, "nested/beside.txt", "the sibling");
-            script(root, "nested/reads-sibling.r3", """
+            writeAScript(root, "nested/beside.txt", "the sibling");
+            writeAScript(root, "nested/reads-sibling.r3", """
                     Rebol [title: "reads a sibling by bare name"]
                     to-string read %beside.txt""");
 
@@ -148,9 +148,9 @@ class DoFileFromTheSourceTest {
 
         @Test
         @DisplayName("and it is put back afterwards, which the suite asserts four times")
-        void itIsPutBackAfterwards(@TempDir Path root) throws IOException {
+        void isPutBackAfterwards(@TempDir Path root) throws IOException {
             Files.createDirectories(root.resolve("nested"));
-            script(root, "nested/quiet.r3", """
+            writeAScript(root, "nested/quiet.r3", """
                     Rebol [title: "does nothing"]
                     1""");
 
@@ -164,7 +164,7 @@ class DoFileFromTheSourceTest {
         @DisplayName("even when the script raises")
         void evenWhenTheScriptRaises(@TempDir Path root) throws IOException {
             Files.createDirectories(root.resolve("nested"));
-            script(root, "nested/breaks.r3", """
+            writeAScript(root, "nested/breaks.r3", """
                     Rebol [title: "raises"]
                     1 / 0""");
 
@@ -181,7 +181,7 @@ class DoFileFromTheSourceTest {
 
         @Test
         @DisplayName("a string is evaluated as source and keeps no header")
-        void astringIsStillSource(@TempDir Path root) {
+        void stillTakesAStringAsSource(@TempDir Path root) {
             assertThat(answerTo(root, """
                     do "1 + 2\"""")).isEqualTo("3");
         }

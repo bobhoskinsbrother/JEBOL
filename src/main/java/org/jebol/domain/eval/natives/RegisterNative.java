@@ -16,8 +16,8 @@ public class RegisterNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.hardQuoted("name"),
-                Parameter.required("value", Set.of(StructValue.TYPE)));
+        return List.of(Parameter.quoteLiterally("name"),
+                Parameter.of("value", Set.of(StructValue.TYPE)));
     }
 
     @Override
@@ -28,17 +28,17 @@ public class RegisterNative extends DefaultNative {
             }
             StructValue given = (StructValue) arguments.get(1);
             if (name instanceof SetWordValue) {
-                name.boundSlot().setValue(given);
+                name.findTheBoundSlot().setValue(given);
             }
-            return filedUnder(WordValue.of(name.spelling()), given, theCatalogueIn(evaluator));
+            return fileUnder(WordValue.of(name.spelling()), given, findTheCatalogueIn(evaluator));
         };
     }
 
-    private MapValue theCatalogueIn(Evaluator evaluator) {
-        return (MapValue) evaluator.systemContext().valueAt("system", "catalog", "structs");
+    private MapValue findTheCatalogueIn(Evaluator evaluator) {
+        return (MapValue) evaluator.systemContext().readValueAt("system", "catalog", "structs");
     }
 
-    private Value filedUnder(AnyWordValue filedAs, StructValue given, MapValue catalogue) {
+    private Value fileUnder(AnyWordValue filedAs, StructValue given, MapValue catalogue) {
         Value alreadyThere = catalogue.select(filedAs);
         if (alreadyThere instanceof AnyBlockValue held) {
             if (!held.equals(given.spec().declaration())) {

@@ -18,18 +18,18 @@ public class ColorDistanceNative extends ColourNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("a", Set.of(TupleValue.TYPE)),
-                Parameter.required("b", Set.of(TupleValue.TYPE)));
+                Parameter.of("a", Set.of(TupleValue.TYPE)),
+                Parameter.of("b", Set.of(TupleValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> DecimalValue.of(perceptionDistance(
-                threeParts((TupleValue) arguments.get(0)),
-                threeParts((TupleValue) arguments.get(1))));
+        return (arguments, evaluator, context, refinements) -> DecimalValue.of(measureThePerceptionDistance(
+                readThreeParts((TupleValue) arguments.get(0)),
+                readThreeParts((TupleValue) arguments.get(1))));
     }
 
-    private double perceptionDistance(int[] one, int[] other) {
+    private double measureThePerceptionDistance(int[] one, int[] other) {
         long red = one[0] - other[0];
         long green = one[1] - other[1];
         long blue = one[2] - other[2];

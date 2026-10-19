@@ -30,74 +30,74 @@ class WhatEachLoopNativeDeclaresTest {
         definition.behaviour().call(List.of(arguments), null, null, refinements);
     }
 
-    private Set<Datatype> whatRepeatCountsBy() {
+    private Set<Datatype> listWhatRepeatCountsBy() {
         return TypesetValue.NUMBER.membersAnd(
                 TypesetValue.SERIES.membersAnd(PairValue.TYPE, NoneValue.TYPE)
                         .toArray(Datatype[]::new));
     }
 
-    Stream<Arguments> whatEachDeclares() {
+    Stream<Arguments> listWhatEachDeclares() {
         return Stream.of(
                 Arguments.of(new LoopNative(), "loop",
-                        List.of(Parameter.required("count", TypesetValue.NUMBER.members()),
-                                Parameter.required("body", A_BLOCK)),
+                        List.of(Parameter.of("count", TypesetValue.NUMBER.members()),
+                                Parameter.of("body", A_BLOCK)),
                         NOTHING),
                 Arguments.of(new RepeatNative(), "repeat",
-                        List.of(Parameter.softQuoted("counter"),
-                                Parameter.required("count", whatRepeatCountsBy()),
-                                Parameter.required("body", A_BLOCK)),
+                        List.of(Parameter.quoteSoftly("counter"),
+                                Parameter.of("count", listWhatRepeatCountsBy()),
+                                Parameter.of("body", A_BLOCK)),
                         NOTHING),
                 Arguments.of(new WhileNative(), "while",
-                        List.of(Parameter.required("condition", A_BLOCK),
-                                Parameter.required("body", A_BLOCK)),
+                        List.of(Parameter.of("condition", A_BLOCK),
+                                Parameter.of("body", A_BLOCK)),
                         NOTHING),
                 Arguments.of(new UntilNative(), "until",
-                        List.of(Parameter.required("body", A_BLOCK)), NOTHING),
+                        List.of(Parameter.of("body", A_BLOCK)), NOTHING),
                 Arguments.of(new ForeverNative(), "forever",
-                        List.of(Parameter.required("body", A_BLOCK)), NOTHING),
+                        List.of(Parameter.of("body", A_BLOCK)), NOTHING),
                 Arguments.of(new ForNative(), "for",
-                        List.of(Parameter.softQuoted("counter"),
-                                Parameter.required("start"),
-                                Parameter.required("end"),
-                                Parameter.required("step"),
-                                Parameter.required("body", A_BLOCK)),
+                        List.of(Parameter.quoteSoftly("counter"),
+                                Parameter.of("start"),
+                                Parameter.of("end"),
+                                Parameter.of("step"),
+                                Parameter.of("body", A_BLOCK)),
                         NOTHING),
                 Arguments.of(new ForEachNative(), "foreach",
-                        List.of(Parameter.softQuoted("target"),
-                                Parameter.required("series"),
-                                Parameter.required("body", A_BLOCK)),
+                        List.of(Parameter.quoteSoftly("target"),
+                                Parameter.of("series"),
+                                Parameter.of("body", A_BLOCK)),
                         NOTHING),
                 Arguments.of(new RemoveEachNative(), "remove-each",
-                        List.of(Parameter.softQuoted("word"),
-                                Parameter.required("series", Set.of(BlockValue.TYPE,
+                        List.of(Parameter.quoteSoftly("word"),
+                                Parameter.of("series", Set.of(BlockValue.TYPE,
                                         BinaryValue.TYPE, StringValue.TYPE, MapValue.TYPE,
                                         VectorValue.TYPE)),
-                                Parameter.required("body", A_BLOCK)),
+                                Parameter.of("body", A_BLOCK)),
                         Set.of("count")),
                 Arguments.of(new MapEachNative(), "map-each",
-                        List.of(Parameter.softQuoted("word"),
-                                Parameter.required("series", A_BLOCK),
-                                Parameter.required("body", A_BLOCK)),
+                        List.of(Parameter.quoteSoftly("word"),
+                                Parameter.of("series", A_BLOCK),
+                                Parameter.of("body", A_BLOCK)),
                         NOTHING),
                 Arguments.of(new ForSkipNative(), "forskip",
-                        List.of(Parameter.softQuoted("word"),
-                                Parameter.required("size",
+                        List.of(Parameter.quoteSoftly("word"),
+                                Parameter.of("size",
                                         Set.of(IntegerValue.TYPE, DecimalValue.TYPE)),
-                                Parameter.required("body", A_BLOCK)),
+                                Parameter.of("body", A_BLOCK)),
                         NOTHING),
                 Arguments.of(new ForAllNative(), "forall",
-                        List.of(Parameter.softQuoted("word"),
-                                Parameter.required("body", A_BLOCK)),
+                        List.of(Parameter.quoteSoftly("word"),
+                                Parameter.of("body", A_BLOCK)),
                         NOTHING),
                 Arguments.of(new ContinueNative(), "continue", List.of(), NOTHING),
                 Arguments.of(new BreakNative(), "break",
-                        List.of(Parameter.belongingTo("return", "value",
+                        List.of(Parameter.belongTo("return", "value",
                                 TypesetValue.ANY_TYPE.members())),
                         Set.of("return")));
     }
 
     @ParameterizedTest(name = "{1}")
-    @MethodSource("whatEachDeclares")
+    @MethodSource("listWhatEachDeclares")
     @DisplayName("each declares exactly what the inline definition declared")
     void declaresWhatItDeclaredInline(DefaultNative definition, String name,
             List<Parameter> parameters, Set<String> refinements) {
@@ -119,7 +119,7 @@ class WhatEachLoopNativeDeclaresTest {
 
         @Test
         @DisplayName("a plain break leaves the loop answering unset")
-        void aPlainBreak() {
+        void includeAPlainBreak() {
             assertThatThrownBy(() -> call(new BreakNative(), NOTHING))
                     .isInstanceOf(LoopSignal.class)
                     .extracting(signal -> ((LoopSignal) signal).answer())

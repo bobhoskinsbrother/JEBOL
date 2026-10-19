@@ -15,11 +15,11 @@ public abstract class CipherNative extends DefaultNative {
     public static final String DHM_HANDLE_TYPE = "dhm";
     public static final String ECDH_HANDLE_TYPE = "ecdh";
 
-    protected Value aHandleHolding(String type, Object key, Evaluator evaluator) {
-        return HandleValue.context(type, evaluator.nextCipherIdentity(), JavaObjectValue.of(key));
+    protected Value wrapInAHandle(String type, Object key, Evaluator evaluator) {
+        return HandleValue.wrapAContext(type, evaluator.nextCipherIdentity(), JavaObjectValue.of(key));
     }
 
-    protected <K> Optional<K> keyHeldBy(Value given, String type, Class<K> kind) {
+    protected <K> Optional<K> readTheKeyHeldBy(Value given, String type, Class<K> kind) {
         if (!(given instanceof HandleValue held)
                 || !type.equals(held.typeName())
                 || !(held.payload() instanceof JavaObjectValue carried)) {

@@ -20,7 +20,7 @@ class VectorSeriesActionsFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String whatHappensTo(String source) {
+    private static String describeWhatHappensTo(String source) {
         return answerTo("either error? e: try [" + source + "] [e/id] ['accepted]");
     }
 
@@ -34,7 +34,7 @@ class VectorSeriesActionsFromTheSourceTest {
 
         @Test
         @DisplayName("NEXT, BACK, SKIP and AT all keep the same storage")
-        void movingKeepsTheStorage() {
+        void keepsTheStorage() {
             assertThat(answerTo("v: #(i32! [10 20 30]) same? v next v")).isEqualTo("#(false)");
             assertThat(answerTo("v: #(i32! [10 20 30]) first next v")).isEqualTo("20");
             assertThat(answerTo("v: #(i32! [10 20 30]) first back tail v")).isEqualTo("30");
@@ -44,7 +44,7 @@ class VectorSeriesActionsFromTheSourceTest {
 
         @Test
         @DisplayName("and skipping back from the head stays at the head")
-        void skippingBackFromTheHeadStays() {
+        void staysAtTheHeadSkippingBack() {
             assertThat(answerTo("v: #(i32! [10 20 30]) index? skip v -1")).isEqualTo("1");
         }
     }
@@ -55,7 +55,7 @@ class VectorSeriesActionsFromTheSourceTest {
 
         @Test
         @DisplayName("copies the numbers rather than sharing them")
-        void copyingIsNotSharing() {
+        void copiesRatherThanShares() {
             assertThat(answerTo("v: #(u16! [1 2]) not same? v copy v")).isEqualTo(TRUE);
         }
 
@@ -76,14 +76,14 @@ class VectorSeriesActionsFromTheSourceTest {
 
         @Test
         @DisplayName("from the head, which empties it")
-        void clearingFromTheHead() {
+        void emptiesFromTheHead() {
             assertThat(holds("clear #(i8! [1 2])", "#(i8! [])")).isEqualTo(TRUE);
             assertThat(answerTo("v: #(i8! [1 2]) clear v empty? v")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and from further in, which keeps what is behind")
-        void clearingFromFurtherIn() {
+        void keepsWhatIsBehindFromFurtherIn() {
             assertThat(holds("head clear next #(i8! [1 2 3])", "#(i8! [1])"))
                     .isEqualTo(TRUE);
         }
@@ -96,7 +96,7 @@ class VectorSeriesActionsFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"u8!", "u16!", "u32!", "u64!", "i8!", "i16!", "i32!", "i64!"})
         @DisplayName("turns the numbers round, at every width")
-        void reversingCounts(String kind) {
+        void turnsCountsRound(String kind) {
             assertThat(holds("reverse #(" + kind + " [1 2 3])", "#(" + kind + " [3 2 1])"))
                     .isEqualTo(TRUE);
         }
@@ -104,7 +104,7 @@ class VectorSeriesActionsFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"f32!", "f64!"})
         @DisplayName("and the same for the two that measure")
-        void reversingMeasures(String kind) {
+        void turnsMeasuresRound(String kind) {
             assertThat(holds("reverse #(" + kind + " [1 2 3])",
                     "#(" + kind + " [3.0 2.0 1.0])")).isEqualTo(TRUE);
         }
@@ -112,7 +112,7 @@ class VectorSeriesActionsFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"u8!", "i16!", "i64!", "f64!"})
         @DisplayName("/PART turns only the front round")
-        void reversingPart(String kind) {
+        void turnsOnlyTheFrontRoundForPart(String kind) {
             assertThat(answerTo("(reverse/part #(" + kind + " [1 2 3]) 2) == "
                     + "#(" + kind + " [2 1 3])")).isEqualTo(TRUE);
         }
@@ -120,7 +120,7 @@ class VectorSeriesActionsFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"u8!", "i16!", "i64!", "f64!"})
         @DisplayName("and from a position it leaves what is behind alone")
-        void reversingFromAPosition(String kind) {
+        void leavesWhatIsBehindAloneFromAPosition(String kind) {
             assertThat(answerTo("(head reverse next #(" + kind + " [1 2 3])) == "
                     + "#(" + kind + " [1 3 2])")).isEqualTo(TRUE);
         }
@@ -133,7 +133,7 @@ class VectorSeriesActionsFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"i8!", "i16!", "i32!", "i64!", "f32!", "f64!"})
         @DisplayName("puts the numbers in order")
-        void sorting(String kind) {
+        void putsTheNumbersInOrder(String kind) {
             assertThat(holds("sort #(" + kind + " [2 4 1 3])", "#(" + kind + " [1 2 3 4])"))
                     .isEqualTo(TRUE);
         }
@@ -141,7 +141,7 @@ class VectorSeriesActionsFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"i8!", "i64!", "f32!"})
         @DisplayName("/REVERSE puts them in the other order")
-        void sortingBackwards(String kind) {
+        void putsThemInTheOtherOrderForReverse(String kind) {
             assertThat(holds("sort/reverse #(" + kind + " [2 4 1 3])",
                     "#(" + kind + " [4 3 2 1])")).isEqualTo(TRUE);
         }
@@ -149,7 +149,7 @@ class VectorSeriesActionsFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"i8!", "i64!", "f32!"})
         @DisplayName("/PART sorts only the front and leaves the rest where it was")
-        void sortingPart(String kind) {
+        void sortsOnlyTheFrontForPart(String kind) {
             assertThat(holds("sort/part #(" + kind + " [2 4 1 3]) 3",
                     "#(" + kind + " [1 2 4 3])")).isEqualTo(TRUE);
             assertThat(holds("sort/part/reverse #(" + kind + " [2 4 1 3]) 3",
@@ -159,7 +159,7 @@ class VectorSeriesActionsFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"i8!", "i64!", "f32!"})
         @DisplayName("and from a position it sorts only what is in front of it")
-        void sortingFromAPosition(String kind) {
+        void sortsOnlyWhatIsInFrontFromAPosition(String kind) {
             assertThat(holds("head sort next #(" + kind + " [2 4 1 3])",
                     "#(" + kind + " [2 1 3 4])")).isEqualTo(TRUE);
             assertThat(holds("head sort/part next #(" + kind + " [2 4 1 3]) 2",
@@ -169,11 +169,11 @@ class VectorSeriesActionsFromTheSourceTest {
         @Test
         @DisplayName("but /SKIP and /COMPARE are not available on a vector")
         void therefinementsAvectorHasNot() {
-            assertThat(whatHappensTo("sort/skip #(i8! [2 4 1 3]) 2"))
+            assertThat(describeWhatHappensTo("sort/skip #(i8! [2 4 1 3]) 2"))
                     .as("the C names both in one Trap0(RE_FEATURE_NA) rather than "
                             + "sorting the wrong way round")
                     .isEqualTo("feature-na");
-            assertThat(whatHappensTo("sort/compare #(i8! [2 4 1 3]) func [a b] [a < b]"))
+            assertThat(describeWhatHappensTo("sort/compare #(i8! [2 4 1 3]) func [a b] [a < b]"))
                     .isEqualTo("feature-na");
         }
     }
@@ -184,7 +184,7 @@ class VectorSeriesActionsFromTheSourceTest {
 
         @Test
         @DisplayName("removes and answers one number, or none when there is none left")
-        void takingOne() {
+        void takesOne() {
             assertThat(answerTo("v: #(i32! [10 20]) take v")).isEqualTo("10");
             assertThat(answerTo("v: #(i32! [10 20]) take/last v")).isEqualTo("20");
             assertThat(answerTo("v: #(i32! []) mold take v").replace("\"", ""))
@@ -194,8 +194,8 @@ class VectorSeriesActionsFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and /PART answers a vector of the same kind")
-        void takingSeveral() {
+        @DisplayName("and /PART answers a vector of the same type")
+        void takesSeveral() {
             assertThat(holds("take/part #(i32! [10 20 30]) 2", "#(i32! [10 20])"))
                     .isEqualTo(TRUE);
             assertThat(holds("take/part/last #(i32! [10 20 30]) 1", "#(i32! [30])"))
@@ -204,14 +204,14 @@ class VectorSeriesActionsFromTheSourceTest {
 
         @Test
         @DisplayName("asking for more than is there takes what is there")
-        void takingMoreThanIsThere() {
+        void takesWhatIsThereWhenAskedForMore() {
             assertThat(holds("take/part #(i32! [1 2 3]) 100", "#(i32! [1 2 3])"))
                     .isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("taking from a position takes from there, and both names see it")
-        void takingFromAPosition() {
+        void takesFromAPosition() {
             assertThat(answerTo("""
                     v: #(i32! [10 20 30 40 50])
                     w: skip v 2
@@ -222,7 +222,7 @@ class VectorSeriesActionsFromTheSourceTest {
 
         @Test
         @DisplayName("and /PART/LAST never reaches back past the position")
-        void takingTheLastNeverReachesBehind() {
+        void neverReachesBehindForLast() {
             assertThat(answerTo("""
                     v: #(i32! [10 20 30 40 50])
                     w: skip v 3
@@ -267,7 +267,7 @@ class VectorSeriesActionsFromTheSourceTest {
             assertThat(holds("append #(i8! [1 2]) #(i8! [3 4])", "#(i8! [1 2 3 4])"))
                     .isEqualTo(TRUE);
             assertThat(holds("append #(i16! [1 2]) #(f32! [3.5 4.1])", "#(i16! [1 2 3 4])"))
-                    .as("the numbers are converted to the target's kind, not its bits")
+                    .as("the numbers are converted to the target's type, not its bits")
                     .isEqualTo(TRUE);
         }
 
@@ -282,7 +282,7 @@ class VectorSeriesActionsFromTheSourceTest {
 
         @Test
         @DisplayName("a stray byte past the last whole number is dropped without a word")
-        void thePartialElementIsDropped() {
+        void dropsAStrayByte() {
             assertThat(holds("append #(i16! [1 2]) #{030004}", "#(i16! [1 2 3])"))
                     .isEqualTo(TRUE);
             assertThat(holds("append #(i16! [1]) #{0100020003}", "#(i16! [1 1 2])"))
@@ -294,25 +294,25 @@ class VectorSeriesActionsFromTheSourceTest {
         @Test
         @DisplayName("and a binary too short to spell one number is refused, empty included")
         void tooShortForOneNumberIsRefused() {
-            assertThat(whatHappensTo("append #(i16! [1 2]) #{03}"))
+            assertThat(describeWhatHappensTo("append #(i16! [1 2]) #{03}"))
                     .isEqualTo("invalid-data");
-            assertThat(whatHappensTo("append #(i16! [1 2]) #{}"))
+            assertThat(describeWhatHappensTo("append #(i16! [1 2]) #{}"))
                     .isEqualTo("invalid-data");
-            assertThat(whatHappensTo("append #(i8! [1]) #{}"))
+            assertThat(describeWhatHappensTo("append #(i8! [1]) #{}"))
                     .isEqualTo("invalid-data");
-            assertThat(whatHappensTo("append #(i32! [1]) #{030004}"))
+            assertThat(describeWhatHappensTo("append #(i32! [1]) #{030004}"))
                     .isEqualTo("invalid-data");
-            assertThat(whatHappensTo("append #(f32! [1.0]) #{0304}"))
+            assertThat(describeWhatHappensTo("append #(f32! [1.0]) #{0304}"))
                     .isEqualTo("invalid-data");
 
-            assertThat(whatHappensTo("append #(i8! [1]) #{02}"))
+            assertThat(describeWhatHappensTo("append #(i8! [1]) #{02}"))
                     .as("one byte is a whole number at a width of one")
                     .isEqualTo("accepted");
         }
 
         @Test
         @DisplayName("the failure hands back the binary itself, not a rendering of it")
-        void theFailureNamesTheBinary() {
+        void handsBackTheBinaryOnFailure() {
             assertThat(answerTo(
                     "e: try [append #(i16! [1 2]) #{03}] type? e/arg1"))
                     .isEqualTo("#(binary!)");
@@ -336,11 +336,11 @@ class VectorSeriesActionsFromTheSourceTest {
             assertThat(holds("append/part #(i16! [1 2]) #{03000400} 9", "#(i16! [1 2 3 4])"))
                     .as("a limit past the end takes what is there")
                     .isEqualTo(TRUE);
-            assertThat(whatHappensTo("append/part #(i16! [1 2]) #{03000400} 0"))
+            assertThat(describeWhatHappensTo("append/part #(i16! [1 2]) #{03000400} 0"))
                     .isEqualTo("invalid-data");
-            assertThat(whatHappensTo("append/part #(i16! [1 2]) #{03000400} -1"))
+            assertThat(describeWhatHappensTo("append/part #(i16! [1 2]) #{03000400} -1"))
                     .isEqualTo("invalid-data");
-            assertThat(whatHappensTo("insert/part #(i16! [1 2]) #{05000600} 0"))
+            assertThat(describeWhatHappensTo("insert/part #(i16! [1 2]) #{05000600} 0"))
                     .isEqualTo("invalid-data");
 
             assertThat(holds("head change/part #(i16! [1 2 3 4]) #{05000600} 1",
@@ -381,20 +381,20 @@ class VectorSeriesActionsFromTheSourceTest {
 
         @Test
         @DisplayName("INSERT and CHANGE ask the same of a binary as APPEND does")
-        void theOtherTwoAskTheSame() {
+        void asksTheSameForInsertAndChange() {
             assertThat(holds("head insert #(i16! [1 2]) #{050006}", "#(i16! [5 1 2])"))
                     .isEqualTo(TRUE);
-            assertThat(whatHappensTo("insert #(i16! [1 2]) #{03}"))
+            assertThat(describeWhatHappensTo("insert #(i16! [1 2]) #{03}"))
                     .isEqualTo("invalid-data");
             assertThat(holds("head change #(i16! [1 2 3 4]) #{050006}", "#(i16! [5 2 3 4])"))
                     .isEqualTo(TRUE);
-            assertThat(whatHappensTo("change #(i16! [1 2]) #{}"))
+            assertThat(describeWhatHappensTo("change #(i16! [1 2]) #{}"))
                     .isEqualTo("invalid-data");
         }
 
         @Test
         @DisplayName("a binary is read from where it stands, not from its head")
-        void aBinaryIsReadFromItsPosition() {
+        void readsABinaryFromItsPosition() {
             assertThat(holds("append #(i16! [1 2]) next #{030004}", "#(i16! [1 2 1024])"))
                     .isEqualTo(TRUE);
         }
@@ -402,7 +402,7 @@ class VectorSeriesActionsFromTheSourceTest {
         @Test
         @DisplayName("and something that is neither a number nor bytes is a bad argument")
         void awrongTypeIsABadArgument() {
-            assertThat(whatHappensTo("append #(i16! [1 2]) \"ab\""))
+            assertThat(describeWhatHappensTo("append #(i16! [1 2]) \"ab\""))
                     .isEqualTo("invalid-arg");
         }
 
@@ -420,7 +420,7 @@ class VectorSeriesActionsFromTheSourceTest {
 
         @Test
         @DisplayName("appending at a position still appends at the end")
-        void appendingFromAPosition() {
+        void appendsAtTheEndFromAPosition() {
             assertThat(holds("append next #(i16! [1 2]) 3", "#(i16! [1 2 3])"))
                     .as("APPEND ignores where the value points, which is what "
                             + "distinguishes it from INSERT")
@@ -429,14 +429,14 @@ class VectorSeriesActionsFromTheSourceTest {
 
         @Test
         @DisplayName("but inserting at one puts the numbers there")
-        void insertingFromAPosition() {
+        void insertsAtThePosition() {
             assertThat(answerTo("all [(insert next v: #(i8! [1 2]) 3) == #(i8! [2]) "
                     + "v == #(i8! [1 3 2])]")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("CHANGE writes over as many as it adds, and lengthens when it runs out")
-        void changing() {
+        void writesOverAndLengthens() {
             assertThat(answerTo("all [(change v: #(i8! [1 2 3]) [3 4]) == #(i8! [3]) "
                     + "v == #(i8! [3 4 3])]")).isEqualTo(TRUE);
             assertThat(answerTo("all [(change/part v: #(i8! [1 2]) 3 3) == #(i8! []) "
@@ -452,13 +452,13 @@ class VectorSeriesActionsFromTheSourceTest {
 
         @Test
         @DisplayName("REMOVE takes one out at the position")
-        void removing() {
+        void removeOneAtThePosition() {
             assertThat(holds("remove #(i8! [1 2])", "#(i8! [2])")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("FIND-MAX and FIND-MIN answer the position of the extreme")
-        void findingTheExtremes() {
+        void findTheExtremes() {
             assertThat(answerTo("first find-max #(i32! [1 2 3 -1])")).isEqualTo("3");
             assertThat(answerTo("first find-min #(i32! [1 2 3 -1])")).isEqualTo("-1");
         }
@@ -475,8 +475,8 @@ class VectorSeriesActionsFromTheSourceTest {
         @ParameterizedTest
         @CsvSource({"select, cannot-use", "find, cannot-use"})
         @DisplayName("but searching a vector is not something a vector does")
-        void searchingIsRefused(String native0, String expected) {
-            assertThat(whatHappensTo(native0 + " #(i8! [1 2 3]) 2")).isEqualTo(expected);
+        void leaveSearchingOut(String native0, String expected) {
+            assertThat(describeWhatHappensTo(native0 + " #(i8! [1 2 3]) 2")).isEqualTo(expected);
         }
     }
 }

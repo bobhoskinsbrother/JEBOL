@@ -10,11 +10,11 @@ final class HuffmanCodes {
 
     final int[] offsetCodewords = new int[DeflateTables.OFFSET_SYMBOL_COUNT];
 
-    int litlenLength(int symbol) {
+    int readTheLitlenLength(int symbol) {
         return lengths[symbol];
     }
 
-    int offsetLength(int slot) {
+    int readTheOffsetLength(int slot) {
         return lengths[OFFSET_LENGTHS_FROM + slot];
     }
 }

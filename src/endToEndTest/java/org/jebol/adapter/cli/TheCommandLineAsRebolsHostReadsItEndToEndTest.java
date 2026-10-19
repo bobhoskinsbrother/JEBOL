@@ -24,10 +24,10 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
     private record Ran(int exitStatus, String printed, String reported) {
     }
 
-    private Ran typing(String typed, String... arguments) {
+    private Ran type(String typed, String... arguments) {
         ByteArrayOutputStream printed = new ByteArrayOutputStream();
         ByteArrayOutputStream reported = new ByteArrayOutputStream();
-        int status = Repl.runTheCommandLine(arguments,
+        int status = Repl.runCommandLine(arguments,
                 new BufferedReader(new StringReader(typed)),
                 new PrintStream(printed, true, StandardCharsets.UTF_8),
                 new PrintStream(reported, true, StandardCharsets.UTF_8),
@@ -36,11 +36,11 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
                 reported.toString(StandardCharsets.UTF_8));
     }
 
-    private Ran running(String... arguments) {
-        return typing("", arguments);
+    private Ran run(String... arguments) {
+        return type("", arguments);
     }
 
-    private String aScript(String named, String source) throws IOException {
+    private String writeAScript(String named, String source) throws IOException {
         Files.writeString(directory.resolve(named), source);
         return directory.resolve(named).toString();
     }
@@ -51,15 +51,15 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
         @Test
         @DisplayName("a word DO of a string sets is set for the script")
-        void aWordDoOfAStringSetsIsSetForTheScript() throws IOException {
-            String script = aScript("d.r3", """
+        void holdsAWordThatDoOfAStringSets() throws IOException {
+            String script = writeAScript("d.r3", """
                     Rebol []
                     do {zz: 5}
                     probe select system/contexts/user 'zz
                     probe value? 'zz
                     """);
 
-            assertThat(running(script).printed()).isEqualTo("""
+            assertThat(run(script).printed()).isEqualTo("""
                     5
                     #(true)
                     """);
@@ -68,7 +68,7 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
         @Test
         @DisplayName("self is the user context, written in the script or in a string it does")
         void selfIsTheUserContext() throws IOException {
-            String script = aScript("u.r3", """
+            String script = writeAScript("u.r3", """
                     Rebol []
                     probe same? self system/contexts/user
                     probe same? self lib-local
@@ -77,7 +77,7 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
                     probe error? try [set 'self 5]
                     """);
 
-            assertThat(running(script).printed()).isEqualTo("""
+            assertThat(run(script).printed()).isEqualTo("""
                     #(true)
                     #(true)
                     #(true)
@@ -93,8 +93,8 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
         @Test
         @DisplayName("flags, boot level, quiet, its arguments, its title, and the boot finished")
-        void theSystemAfterStart() throws IOException {
-            String script = aScript("s.r3", """
+        void includesTheSystemAfterStart() throws IOException {
+            String script = writeAScript("s.r3", """
                     Rebol [Title: "Sweep"]
                     probe system/options/flags
                     probe system/options/boot-level
@@ -112,7 +112,7 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
                     probe equal? what-dir first split-path system/options/script
                     """);
 
-            Ran ran = running(script, "a", "b c");
+            Ran ran = run(script, "a", "b c");
 
             assertThat(ran.printed()).isEqualTo("""
                     [#(true)]
@@ -141,8 +141,8 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
         @Test
         @DisplayName("a word after --do's code is the script, so a missing one is reported after the code ran")
-        void theWordAfterTheCodeIsTheScript() {
-            Ran ran = running("--do",
+        void takeTheWordAfterTheCodeAsTheScript() {
+            Ran ran = run("--do",
                     "probe system/options/flags probe system/options/quiet "
                             + "probe system/options/script probe system/options/args",
                     "x");
@@ -163,8 +163,8 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
         @Test
         @DisplayName("-- ends the options, and what follows is only arguments")
-        void aDoubleDashLeavesOnlyArguments() {
-            Ran ran = running("--do", "probe system/options/args", "--", "x", "y");
+        void leaveOnlyArgumentsAfterADoubleDash() {
+            Ran ran = run("--do", "probe system/options/args", "--", "x", "y");
 
             assertThat(ran.printed()).isEqualTo("""
                     ["x" "y"]
@@ -174,13 +174,13 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
         @Test
         @DisplayName("the code runs first and then the script")
-        void theCodeRunsBeforeTheScript() throws IOException {
-            String script = aScript("n.r3", """
+        void runTheCodeBeforeTheScript() throws IOException {
+            String script = writeAScript("n.r3", """
                     Rebol [Title: "T"]
                     print system/script/title
                     """);
 
-            Ran ran = running("--do", "print 1", script);
+            Ran ran = run("--do", "print 1", script);
 
             assertThat(ran.printed()).isEqualTo("1\nT\n");
             assertThat(ran.exitStatus()).isZero();
@@ -188,8 +188,8 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
         @Test
         @DisplayName("flags come in boot-flags order and --args comes first among the arguments")
-        void flagsInBootFlagsOrder() {
-            Ran ran = running("-s", "--args", "a b", "--do",
+        void orderTheFlagsAsBootFlags() {
+            Ran ran = run("-s", "--args", "a b", "--do",
                     "probe system/options/flags probe system/options/args", "--", "c");
 
             assertThat(ran.printed()).isEqualTo("""
@@ -201,8 +201,8 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
         @Test
         @DisplayName("an empty script name is reported molded, with its quotes")
-        void anEmptyScriptName() {
-            Ran ran = running("");
+        void acceptAnEmptyScriptName() {
+            Ran ran = run("");
 
             assertThat(ran.reported()).isEqualTo("""
 
@@ -219,13 +219,13 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
         @Test
         @DisplayName("--halt opens the console after the script, in the context the script set its words in")
-        void halting() throws IOException {
-            String script = aScript("xs.r3", """
+        void halts() throws IOException {
+            String script = writeAScript("xs.r3", """
                     Rebol []
                     x: 5 f: does [x]
                     """);
 
-            Ran ran = typing("""
+            Ran ran = type("""
                     x
                     x: 6
                     f
@@ -234,22 +234,22 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
             assertThat(ran.printed()).isEqualTo(
                     ">> == 5\n\n>> == 6\n\n>> == 6\n\n>> == 3\n\n>> ");
-            assertThat(ran.exitStatus()).isEqualTo(Repl.KEEP_THE_PROCESS);
+            assertThat(ran.exitStatus()).isEqualTo(Repl.KEEP_PROCESS);
         }
 
         @Test
         @DisplayName("a boot level below mods never reaches start, so --do does not run and the console opens")
-        void aBootLevelBelowModsSkipsStart() {
-            Ran ran = running("--boot", "base", "--do", "print 1");
+        void skipsStartBelowMods() {
+            Ran ran = run("--boot", "base", "--do", "print 1");
 
             assertThat(ran.printed()).isEqualTo(">> ");
-            assertThat(ran.exitStatus()).isEqualTo(Repl.KEEP_THE_PROCESS);
+            assertThat(ran.exitStatus()).isEqualTo(Repl.KEEP_PROCESS);
         }
 
         @Test
         @DisplayName("--cgi reports an error and still leaves with nought")
         void cgiLeavesWithNought() {
-            Ran ran = running("--cgi", "--do", "1 / 0");
+            Ran ran = run("--cgi", "--do", "1 / 0");
 
             assertThat(ran.reported()).isEqualTo("""
 
@@ -263,12 +263,12 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
         @Test
         @DisplayName("--halt after an error opens the console rather than leaving")
-        void anErrorWithHaltOpensTheConsole() throws IOException {
-            String script = aScript("n.r3", """
+        void opensTheConsoleOnAnErrorWithHalt() throws IOException {
+            String script = writeAScript("n.r3", """
                     Rebol []
                     """);
 
-            Ran ran = typing("print 2\n", "-h", "--do", "1 / 0", script);
+            Ran ran = type("print 2\n", "-h", "--do", "1 / 0", script);
 
             assertThat(ran.reported()).isEqualTo("""
 
@@ -278,13 +278,13 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
                     """);
             assertThat(ran.printed()).isEqualTo(">> 2\n>> ");
-            assertThat(ran.exitStatus()).isEqualTo(Repl.KEEP_THE_PROCESS);
+            assertThat(ran.exitStatus()).isEqualTo(Repl.KEEP_PROCESS);
         }
 
         @Test
         @DisplayName("SECURE's bulk form works, its policy words being bound to their object")
         void secureAllowWorks() {
-            Ran ran = running("--do", "secure allow probe 1");
+            Ran ran = run("--do", "secure allow probe 1");
 
             assertThat(ran.printed()).isEqualTo("1\n");
             assertThat(ran.exitStatus()).isZero();
@@ -297,13 +297,13 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
         @Test
         @DisplayName("a relative script under --root is found, wherever the directory's real path lies")
-        void aRelativeScriptUnderARootIsFound() throws IOException {
-            aScript("r.r3", """
+        void findARelativeScriptUnderARoot() throws IOException {
+            writeAScript("r.r3", """
                     Rebol []
                     print {found}
                     """);
 
-            Ran ran = running("--root", directory.toString(), "r.r3");
+            Ran ran = run("--root", directory.toString(), "r.r3");
 
             assertThat(ran.printed()).isEqualTo("found\n");
             assertThat(ran.exitStatus()).isZero();
@@ -311,8 +311,8 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
         @Test
         @DisplayName("the launcher is visible and readable inside a root, so start resolves it and says nothing")
-        void theLauncherIsReadableInsideARoot() {
-            Ran ran = running("-s", "--root", directory.toString(), "--do", """
+        void readTheLauncherInsideARoot() {
+            Ran ran = run("-s", "--root", directory.toString(), "--do", """
                     b: system/options/boot
                     probe exists? b
                     probe (file-checksum b 'md5) = checksum read b 'md5
@@ -324,10 +324,10 @@ class TheCommandLineAsRebolsHostReadsItEndToEndTest {
 
         @Test
         @DisplayName("--data reaches start as REBOL_HOME, so the data folder is the one named")
-        void theDataSwitchIsRebolHome() throws IOException {
+        void setRebolHomeWithTheDataSwitch() throws IOException {
             Files.createDirectories(directory.resolve("kept"));
 
-            Ran ran = running("--root", directory.toString(), "--data", "/kept/", "--do", """
+            Ran ran = run("--root", directory.toString(), "--data", "/kept/", "--do", """
                     probe system/options/data probe system/options/modules""");
 
             assertThat(ran.printed()).isEqualTo("%/kept/\n%/kept/modules/\n");

@@ -1,5 +1,6 @@
 package org.jebol.suite;
 
+import org.jebol.application.JavaMachine;
 import org.jebol.domain.eval.Boot;
 import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
@@ -16,9 +17,9 @@ class SurfaceReportTest {
 
     @Test
     @DisplayName("every function JEBOL has, with its arguments and refinements")
-    void theSurfaceIsPrinted() {
+    void printsTheSurface() {
         TreeMap<String, String> byName = new TreeMap<>();
-        for (ContextSlot slot : Boot.standard().start().lib().slots()) {
+        for (ContextSlot slot : Boot.makeStandard(new JavaMachine()).start().lib().slots()) {
             describe(slot.value()).ifPresent(
                     shape -> byName.put(slot.canonical(), slot.canonical() + " |" + shape));
         }
@@ -34,13 +35,13 @@ class SurfaceReportTest {
         java.nio.file.Path into = java.nio.file.Path.of("build", "jebol-surface.txt");
         try {
             java.nio.file.Files.createDirectories(into.getParent());
-            java.nio.file.Files.write(into, withTheDatatypeTable(lines));
+            java.nio.file.Files.write(into, addTheDatatypeTable(lines));
         } catch (java.io.IOException unwritable) {
             throw new java.io.UncheckedIOException(unwritable);
         }
     }
 
-    private static List<String> withTheDatatypeTable(java.util.Collection<String> lines) {
+    private static List<String> addTheDatatypeTable(java.util.Collection<String> lines) {
         List<String> everything = new java.util.ArrayList<>();
         for (Datatype datatype : Catalogue.DATATYPES.entries()) {
             everything.add("DATATYPE " + datatype.literalSpelling());

@@ -18,11 +18,11 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("failure: try [" + source + "] failure/id");
     }
 
-    private static String errorIdAndSubjectsFrom(String source) {
+    private static String readTheErrorIdAndSubjectsFrom(String source) {
         return answerTo("failure: try [" + source + "] "
                 + "reduce [failure/id failure/arg1 failure/arg2]");
     }
@@ -33,7 +33,7 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
 
         @Test
         @DisplayName("each word the block names goes out of the object it belongs to")
-        void eachWordGoesOut() {
+        void hidesEachWord() {
             assertThat(answerTo("""
                     o: make object! [a: 1 b: 2]
                     protect/hide/words bind [a] o
@@ -42,7 +42,7 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
 
         @Test
         @DisplayName("and the value is still there for the object's own code")
-        void theValueIsStillThere() {
+        void keepsTheValue() {
             assertThat(answerTo("""
                     o: make object! [a: 1 b: does [a + 1]]
                     protect/hide/words bind [a] o
@@ -51,7 +51,7 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
 
         @Test
         @DisplayName("hiding one bare word still works, which is the older spelling")
-        void oneBareWordStillWorks() {
+        void stillHidesOneBareWord() {
             assertThat(answerTo("""
                     p: make object! [c: 3]
                     protect/hide in p 'c
@@ -61,7 +61,7 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
         @Test
         @DisplayName("and /HIDE without a word or a block of them is still refused")
         void hideWithoutWords() {
-            assertThat(errorIdFrom("""
+            assertThat(readTheErrorIdFrom("""
                     protect/hide [1 2 3]""")).isEqualTo("bad-refines");
         }
     }
@@ -72,7 +72,7 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
 
         @Test
         @DisplayName("the hidden word is not one of the module's own")
-        void theHiddenWordIsNotListed() {
+        void leavesTheHiddenWordOffTheList() {
             assertThat(answerTo("""
                     m: module [] [hidden a: 1 b: does [a + 1]]
                     words-of m""")).isEqualTo("[lib-local b]");
@@ -80,7 +80,7 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
 
         @Test
         @DisplayName("reaching it from outside is a mistake, and from inside is not")
-        void reachingItFromOutside() {
+        void refusesReachFromOutside() {
             assertThat(answerTo("""
                     m: module [] [hidden a: 1 b: does [a + 1]]
                     reduce [error? try [m/a] m/b]""")).isEqualTo("[#(true) 2]");
@@ -88,7 +88,7 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
 
         @Test
         @DisplayName("and a module that hides nothing lists everything")
-        void aModuleThatHidesNothing() {
+        void mayHideNothing() {
             assertThat(answerTo("""
                     m: module [] [a: 1]
                     reduce [words-of m m/a]""")).isEqualTo("[[lib-local a] 1]");
@@ -101,7 +101,7 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
 
         @Test
         @DisplayName("it is open, and it is a console")
-        void itIsOpenAndAConsole() {
+        void isOpenAndAConsole() {
             assertThat(answerTo("""
                     reduce [port? system/ports/output system/ports/output/spec/scheme]"""))
                     .isEqualTo("[#(true) console]");
@@ -109,7 +109,7 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
 
         @Test
         @DisplayName("the width is eighty and the other three are nothing")
-        void theFourMeasurements() {
+        void answersTheFourMeasurements() {
             assertThat(answerTo("""
                     collect [
                         foreach field [window-cols window-rows buffer-cols buffer-rows][
@@ -120,8 +120,8 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
 
         @Test
         @DisplayName("asking for a measurement it has not got names the word")
-        void askingForSomethingElse() {
-            assertThat(errorIdFrom("""
+        void answersWhenAskedForSomethingElse() {
+            assertThat(readTheErrorIdFrom("""
                     query system/ports/output 'nonsense""")).isEqualTo("invalid-arg");
         }
 
@@ -146,7 +146,7 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
                 "error, true",
                 "error, false",
         })
-        void settingAModeAnswersTheSetting(String mode, String setting) {
+        void answerTheSettingWhenSet(String mode, String setting) {
             assertThat(answerTo(
                     "modify system/ports/output (quote " + mode + ") " + setting))
                     .isEqualTo("#(" + setting + ")");
@@ -154,15 +154,15 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
 
         @Test
         @DisplayName("the mode is named without regard to case")
-        void namedWithoutRegardToCase() {
+        void ignoreCaseInTheirNames() {
             assertThat(answerTo("""
                     modify system/ports/output (quote ECHO) true""")).isEqualTo("#(true)");
         }
 
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"bogus", "nonsense", "echoes"})
-        void aWordThatIsNotOneOfTheThreeIsRefused(String word) {
-            assertThat(errorIdAndSubjectsFrom(
+        void refuseAWordOutsideTheThree(String word) {
+            assertThat(readTheErrorIdAndSubjectsFrom(
                     "modify system/ports/output (quote " + word + ") true"))
                     .isEqualTo("[bad-file-mode " + word + " _]");
         }
@@ -170,8 +170,8 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"created", "accessed", "modified", "owner-read",
                 "group-write", "world-execute"})
-        void aPortModeIsNotAConsoleMode(String word) {
-            assertThat(errorIdAndSubjectsFrom(
+        void excludeAPortMode(String word) {
+            assertThat(readTheErrorIdAndSubjectsFrom(
                     "modify system/ports/output (quote " + word + ") true"))
                     .isEqualTo("[bad-file-mode " + word + " _]");
         }
@@ -186,24 +186,24 @@ class HiddenWordsAndTheConsolePortFromTheSourceTest {
                 "'[true]',   '[true]'",
                 "1.0,        1.0",
         })
-        void aModeHoldsOnlyTrueOrFalse(String written, String molded) {
-            assertThat(errorIdAndSubjectsFrom(
+        void holdOnlyTrueOrFalse(String written, String molded) {
+            assertThat(readTheErrorIdAndSubjectsFrom(
                     "modify system/ports/output (quote echo) " + written))
                     .isEqualTo("[invalid-value-for " + molded + " echo]");
         }
 
         @Test
         @DisplayName("no mode at all is refused the same way, about nothing")
-        void noModeAtAll() {
-            assertThat(errorIdAndSubjectsFrom("""
+        void refuseNoModeAtAll() {
+            assertThat(readTheErrorIdAndSubjectsFrom("""
                     modify system/ports/output none true"""))
                     .isEqualTo("[bad-file-mode _ _]");
         }
 
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"\"echo\"", "5", "#\"e\"", "[echo]"})
-        void somethingThatIsNotAWordNeverReachesTheModes(String written) {
-            assertThat(errorIdFrom(
+        void neverReceiveSomethingThatIsNotAWord(String written) {
+            assertThat(readTheErrorIdFrom(
                     "modify system/ports/output " + written + " true"))
                     .isEqualTo("expect-arg");
         }

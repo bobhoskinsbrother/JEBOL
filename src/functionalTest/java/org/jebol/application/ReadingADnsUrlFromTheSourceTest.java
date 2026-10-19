@@ -1,6 +1,6 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.JavaSockets;
+import org.jebol.adapter.host.JavaSocket;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.NetworkPort;
 import org.junit.jupiter.api.DisplayName;
@@ -24,12 +24,12 @@ class ReadingADnsUrlFromTheSourceTest {
     private record AKnownDirectory(Map<String, String> addressesByName, String machine) implements NetworkPort {
 
         @Override
-        public Optional<String> theFirstIpv4AddressOf(String hostName) {
+        public Optional<String> resolveTheFirstIpv4Address(String hostName) {
             return Optional.ofNullable(addressesByName.get(hostName));
         }
 
         @Override
-        public Optional<String> theNameAt(String ipv4Address) {
+        public Optional<String> resolveHostName(String ipv4Address) {
             return addressesByName.entrySet().stream()
                     .filter(entry -> entry.getValue().equals(ipv4Address))
                     .map(Map.Entry::getKey)
@@ -37,7 +37,7 @@ class ReadingADnsUrlFromTheSourceTest {
         }
 
         @Override
-        public String thisMachinesName() {
+        public String hostName() {
             return machine;
         }
 
@@ -61,38 +61,38 @@ class ReadingADnsUrlFromTheSourceTest {
 
         @Test
         @DisplayName("a name answers its address as a tuple")
-        void aNameAnswersATuple() {
+        void answersANamesAddressAsATuple() {
             assertThat(answerTo(directory, "read dns://example.test")).isEqualTo("192.0.2.7");
             assertThat(answerTo(directory, "tuple? read dns://example.test")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("an address answers its name as a string")
-        void anAddressAnswersAString() {
+        void answersAnAddressesNameAsAString() {
             assertThat(answerTo(directory, "read dns://192.0.2.7")).isEqualTo("\"example.test\"");
         }
 
         @Test
         @DisplayName("no host answers this machine's name")
-        void noHostAnswersThisMachine() {
+        void answersThisMachinesNameForNoHost() {
             assertThat(answerTo(directory, "read dns://")).isEqualTo("\"this-machine\"");
         }
 
         @Test
         @DisplayName("a name nobody knows answers none")
-        void anUnknownName() {
+        void answersNoneForAnUnknownName() {
             assertThat(answerTo(directory, "read dns://nobody.test")).isEqualTo("_");
         }
 
         @Test
         @DisplayName("an address nobody knows answers none")
-        void anUnknownAddress() {
+        void answersNoneForAnUnknownAddress() {
             assertThat(answerTo(directory, "read dns://198.51.100.1")).isEqualTo("_");
         }
 
         @Test
         @DisplayName("an address of three parts answers none, having no fourth byte to look up")
-        void threeParts() {
+        void answersNoneForThreeParts() {
             assertThat(answerTo(directory, "read dns://1.2.3")).isEqualTo("_");
         }
     }
@@ -104,25 +104,25 @@ class ReadingADnsUrlFromTheSourceTest {
         @Test
         @DisplayName("localhost is 127.0.0.1, as r3 answers")
         void localhost() {
-            assertThat(answerTo(new JavaSockets(), "read dns://localhost")).isEqualTo("127.0.0.1");
+            assertThat(answerTo(new JavaSocket(), "read dns://localhost")).isEqualTo("127.0.0.1");
         }
 
         @Test
         @DisplayName("127.0.0.1 is named, as r3 answers with a string")
-        void theLoopback() {
-            assertThat(answerTo(new JavaSockets(), "string? read dns://127.0.0.1")).isEqualTo("#(true)");
+        void resolvesTheLoopback() {
+            assertThat(answerTo(new JavaSocket(), "string? read dns://127.0.0.1")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("this machine has a name")
-        void thisMachine() {
-            assertThat(answerTo(new JavaSockets(), "string? read dns://")).isEqualTo("#(true)");
+        void namesThisMachine() {
+            assertThat(answerTo(new JavaSocket(), "string? read dns://")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a name under .invalid, which no resolver answers, is none")
-        void anInvalidName() {
-            assertThat(answerTo(new JavaSockets(), "read dns://nonexistent.invalid")).isEqualTo("_");
+        void answersNoneForAnInvalidName() {
+            assertThat(answerTo(new JavaSocket(), "read dns://nonexistent.invalid")).isEqualTo("_");
         }
     }
 }

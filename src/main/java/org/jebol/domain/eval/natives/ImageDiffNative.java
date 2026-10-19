@@ -16,10 +16,10 @@ public class ImageDiffNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("a", Set.of(ImageValue.TYPE)),
-                Parameter.required("b", Set.of(ImageValue.TYPE)),
-                Parameter.belongingTo("part", "offset", Set.of(PairValue.TYPE)),
-                Parameter.belongingTo("part", "size", Set.of(PairValue.TYPE)));
+        return List.of(Parameter.of("a", Set.of(ImageValue.TYPE)),
+                Parameter.of("b", Set.of(ImageValue.TYPE)),
+                Parameter.belongTo("part", "offset", Set.of(PairValue.TYPE)),
+                Parameter.belongTo("part", "size", Set.of(PairValue.TYPE)));
     }
 
     @Override
@@ -33,11 +33,11 @@ public class ImageDiffNative extends DefaultNative {
             ImageValue first = (ImageValue) arguments.get(0);
             ImageValue second = (ImageValue) arguments.get(1);
             if (!refinements.contains("part")) {
-                return PercentValue.of(ImageOperations.differenceBetween(first, second));
+                return PercentValue.of(ImageOperations.measureTheDifferenceBetween(first, second));
             }
             PairValue corner = (PairValue) arguments.get(2);
             PairValue size = (PairValue) arguments.get(3);
-            return PercentValue.of(ImageOperations.differenceOverTheRectangle(
+            return PercentValue.of(ImageOperations.measureTheDifferenceOverTheRectangle(
                     first, second, (int) corner.x(), (int) corner.y(),
                     (int) size.x(), (int) size.y()));
         };

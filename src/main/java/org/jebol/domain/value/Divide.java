@@ -28,7 +28,7 @@ public final class Divide implements ArithmeticOperation {
 
     @Override
     public Deci onAmounts(Deci left, Deci right) {
-        return left.dividedBy(right);
+        return left.divideBy(right);
     }
 
     @Override
@@ -41,7 +41,7 @@ public final class Divide implements ArithmeticOperation {
     public long onOctets(long octet, double against, boolean fractional) {
         Overflowing.refuseAZeroOctetDivisor(against);
         return fractional
-                ? (long) Overflowing.roundedHalfAwayFromZero(octet / against)
+                ? (long) Overflowing.roundHalfAwayFromZero(octet / against)
                 : octet / (long) against;
     }
 

@@ -59,7 +59,7 @@ class WordActionsFromTheSourceTest {
     class Conversion {
 
         @Test
-        @DisplayName("a word of one kind becomes a word of another, spelling and all")
+        @DisplayName("a word of one type becomes a word of another, spelling and all")
         void betweenTheWordKinds() {
             assertThat(answerTo("(to word! quote 'a) = 'a")).isEqualTo("#(true)");
             assertThat(answerTo("(to word! #a) = 'a")).isEqualTo("#(true)");

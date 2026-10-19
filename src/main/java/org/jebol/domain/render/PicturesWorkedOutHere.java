@@ -17,18 +17,18 @@ final class PicturesWorkedOutHere {
         int high = (int) Math.round(picture.size().y());
         int[] copied = new int[wide * high * CHANNELS];
         for (int pixel = 0; pixel < wide * high; pixel++) {
-            int[] parts = picture.pixelAt(pixel + 1);
+            int[] parts = picture.readThePixelAt(pixel + 1);
             boolean matches = parts[0] == key.red()
                     && parts[1] == key.green() && parts[2] == key.blue();
             copied[pixel * CHANNELS] = parts[0];
             copied[pixel * CHANNELS + 1] = parts[1];
             copied[pixel * CHANNELS + 2] = parts[2];
-            copied[pixel * CHANNELS + 3] = matches ? SEE_THROUGH : alphaOf(parts);
+            copied[pixel * CHANNELS + 3] = matches ? SEE_THROUGH : readTheAlphaOf(parts);
         }
-        return madeOf(copied, wide, high);
+        return makeAPictureOf(copied, wide, high);
     }
 
-    static ImageValue pulledOntoFourCorners(
+    static ImageValue pullOntoFourCorners(
             ImageValue picture, PairValue[] corners, int wide, int high, int leftAt,
             int topAt) {
 
@@ -37,7 +37,7 @@ final class PicturesWorkedOutHere {
         int[] made = new int[Math.max(0, wide * high * CHANNELS)];
         for (int down = 0; down < high; down++) {
             for (int across = 0; across < wide; across++) {
-                double[] found = whereInTheOriginal(
+                double[] found = findWhereInTheOriginal(
                         corners, leftAt + across + 0.5, topAt + down + 0.5);
                 int at = (down * wide + across) * CHANNELS;
                 if (found == null) {
@@ -47,19 +47,19 @@ final class PicturesWorkedOutHere {
                 int fromAcross = Math.clamp(
                         (int) (found[0] * fromWide), 0, fromWide - 1);
                 int fromDown = Math.clamp((int) (found[1] * fromHigh), 0, fromHigh - 1);
-                int[] parts = picture.pixelAt(fromDown * fromWide + fromAcross + 1);
+                int[] parts = picture.readThePixelAt(fromDown * fromWide + fromAcross + 1);
                 made[at] = parts[0];
                 made[at + 1] = parts[1];
                 made[at + 2] = parts[2];
-                made[at + 3] = alphaOf(parts);
+                made[at + 3] = readTheAlphaOf(parts);
             }
         }
-        return madeOf(made, wide, high);
+        return makeAPictureOf(made, wide, high);
     }
 
     private static final int HOW_MANY_TIMES_TO_NARROW_IT = 24;
 
-    private static double[] whereInTheOriginal(
+    private static double[] findWhereInTheOriginal(
             PairValue[] corners, double across, double down) {
 
         double alongTheTop = 0.5;
@@ -71,8 +71,8 @@ final class PicturesWorkedOutHere {
                     corners, Math.min(1, alongTheTop + step), downTheSide);
             double[] downABit = pointOnTheQuad(
                     corners, alongTheTop, Math.min(1, downTheSide + step));
-            alongTheTop = closerOn(alongTheTop, step, here, rightABit, across, down);
-            downTheSide = closerOn(downTheSide, step, here, downABit, across, down);
+            alongTheTop = stepCloserOn(alongTheTop, step, here, rightABit, across, down);
+            downTheSide = stepCloserOn(downTheSide, step, here, downABit, across, down);
             step /= 2;
         }
         double[] landed = pointOnTheQuad(corners, alongTheTop, downTheSide);
@@ -80,7 +80,7 @@ final class PicturesWorkedOutHere {
         return howFarOut > 1.5 ? null : new double[] {alongTheTop, downTheSide};
     }
 
-    private static double closerOn(
+    private static double stepCloserOn(
             double standing, double step, double[] here, double[] moved,
             double across, double down) {
 
@@ -106,11 +106,11 @@ final class PicturesWorkedOutHere {
                 downTheTop + (downTheBottom - downTheTop) * downTheSide};
     }
 
-    private static int alphaOf(int[] parts) {
+    private static int readTheAlphaOf(int[] parts) {
         return parts.length >= 4 ? parts[3] : OPAQUE;
     }
 
-    private static ImageValue madeOf(int[] channels, int wide, int high) {
+    private static ImageValue makeAPictureOf(int[] channels, int wide, int high) {
         ImageValue made = ImageValue.of(Math.max(1, wide), Math.max(1, high));
         for (int pixel = 0; pixel < wide * high; pixel++) {
             int at = pixel * CHANNELS;

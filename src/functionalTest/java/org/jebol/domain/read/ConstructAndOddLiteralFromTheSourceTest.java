@@ -28,7 +28,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("which holds every character the plain bytes left out")
-        void theComplementHoldsWhatTheBytesDidNot() {
+        void holdsWhatTheBytesDidNotInTheComplement() {
             assertThat(answerTo("""
                     complemented: load {#(bitset! not #{FF})}
                     all [find complemented #"a"]""")).isEqualTo("#(true)");
@@ -36,7 +36,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("and holds none of what they named")
-        void theComplementDropsWhatTheBytesNamed() {
+        void dropsWhatTheBytesNamedFromTheComplement() {
             assertThat(answerTo("""
                     complemented: load {#(bitset! not #{FF})}
                     all [not find complemented #"^(00)"]""")).isEqualTo("#(true)");
@@ -44,7 +44,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("where the plain form holds exactly those, which is the contrast")
-        void thePlainFormIsTheOffPoint() {
+        void buildsAnUncomplementedSetInThePlainForm() {
             assertThat(answerTo("""
                     plain: load {#(bitset! #{FF})}
                     all [find plain #"^(00)" not find plain #"a"]""")).isEqualTo("#(true)");
@@ -57,14 +57,14 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("a series construct reads it as where the series stands")
-        void aSeriesConstructTakesAPosition() {
+        void givesASeriesConstructAPosition() {
             assertThat(answerTo("""
                     (load {#(block! [1 2] 2)}) = [2]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a bitset carrying one is malformed")
-        void aBitsetWithAPositionIsRefused() {
+        void refusesABitsetWithAPosition() {
             assertThat(answerTo("""
                     e: try [load {#(bitset! #{FF} 2)}] e/id = 'malconstruct"""))
                     .isEqualTo("#(true)");
@@ -72,7 +72,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("and so is a char")
-        void aCharWithAPositionIsRefused() {
+        void refusesACharWithAPosition() {
             assertThat(answerTo("""
                     e: try [load {#(char! 65 2)}] e/id = 'malconstruct"""))
                     .isEqualTo("#(true)");
@@ -85,7 +85,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("one field of one scalar type reads back as a struct")
-        void oneFieldReads() {
+        void readsOneField() {
             assertThat(answerTo("""
                     struct? load {#(struct! [a [uint8!]])}""")).isEqualTo("#(true)");
         }
@@ -100,7 +100,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("a type that is not one of the scalars is malformed")
-        void aNonScalarTypeIsRefused() {
+        void refusesANonScalarType() {
             assertThat(answerTo("""
                     e: try [load {#(struct! [a [integer!]])}] e/id = 'malconstruct"""))
                     .isEqualTo("#(true)");
@@ -108,7 +108,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("a field with no type beside it is malformed")
-        void aFieldWithNoTypeIsRefused() {
+        void refusesAFieldWithNoType() {
             assertThat(answerTo("""
                     e: try [load {#(struct! [a])}] e/id = 'malconstruct"""))
                     .isEqualTo("#(true)");
@@ -116,7 +116,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("and so is a layout that is not a block at all")
-        void somethingThatIsNotALayoutIsRefused() {
+        void refusesSomethingThatIsNotALayout() {
             assertThat(answerTo("""
                     e: try [load {#(struct! 5)}] e/id = 'malconstruct"""))
                     .isEqualTo("#(true)");
@@ -129,14 +129,14 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("the pair reads back as a function")
-        void theSpecAndBodyRead() {
+        void readsTheSpecAndBody() {
             assertThat(answerTo("""
                     function? load {#(function! [[a] [a]])}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and the function it built can be called")
-        void theFunctionCanBeCalled() {
+        void makesAFunctionThatCanBeCalled() {
             assertThat(answerTo("""
                     built: load {#(function! [[a] [a]])}
                     (built 7) = 7""")).isEqualTo("#(true)");
@@ -144,7 +144,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("a typed parameter and a body with a call in it read as well")
-        void aTypedSpecReads() {
+        void readsATypedSpec() {
             assertThat(answerTo("""
                     function? transcode/one {#(function! [[a [series!]][print a]])}"""))
                     .isEqualTo("#(true)");
@@ -152,7 +152,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("a spec with no body is malformed")
-        void aSpecWithoutABodyIsRefused() {
+        void refusesASpecWithoutABody() {
             assertThat(answerTo("""
                     e: try [load {#(function! [[a]])}] e/id = 'malconstruct"""))
                     .isEqualTo("#(true)");
@@ -160,7 +160,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("a third block is malformed as well")
-        void aThirdBlockIsRefused() {
+        void refusesAThirdBlock() {
             assertThat(answerTo("""
                     e: try [transcode/one {#(function! [[a] [a] [b]])}]
                     e/id = 'malconstruct""")).isEqualTo("#(true)");
@@ -168,7 +168,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("a spec that is not a block is malformed")
-        void aSpecThatIsNotABlockIsRefused() {
+        void refusesASpecThatIsNotABlock() {
             assertThat(answerTo("""
                     e: try [transcode/one {#(function! [5 [a]])}]
                     e/id = 'malconstruct""")).isEqualTo("#(true)");
@@ -176,7 +176,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("and so is a pair that is not a block at all")
-        void somethingThatIsNotAPairIsRefused() {
+        void refusesSomethingThatIsNotAPair() {
             assertThat(answerTo("""
                     e: try [transcode/one {#(function! 5)}]
                     e/id = 'malconstruct""")).isEqualTo("#(true)");
@@ -189,21 +189,21 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("a slash before an underscore is two values, not one word")
-        void aSlashBeforeAnUnderscoreSplits() {
+        void splitsAtASlashBeforeAnUnderscore() {
             assertThat(answerTo("""
                     (load "/_") = reduce ['/ none]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and there really are two of them")
-        void theSplitIsTwoValues() {
+        void splitIntoTwoValues() {
             assertThat(answerTo("""
                     (length? load "/_") = 2""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a slash inside a money amount makes it an invalid token")
-        void aSlashInMoneyIsRefused() {
+        void refuseASlashInMoney() {
             assertThat(answerTo("""
                     e: try [load "$1/2"]
                     all [e/id = 'invalid e/arg1 = "money" e/arg2 = "$1/"]"""))
@@ -212,28 +212,28 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("where the amount without one is ordinary money")
-        void moneyWithoutASlashReads() {
+        void readMoneyWithoutASlash() {
             assertThat(answerTo("""
                     money? load {$1}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a colon before digits is a time, not a get-word")
-        void aColonBeforeDigitsIsATime() {
+        void readAColonBeforeDigitsAsATime() {
             assertThat(answerTo("""
                     time? load {:10}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and the digits are the minutes")
-        void theDigitsAreTheMinutes() {
+        void readTheDigitsAsTheMinutes() {
             assertThat(answerTo("""
                     (load ":10") = 0:10""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("with a third part read as seconds")
-        void aThirdPartIsSeconds() {
+        void readAThirdPartAsSeconds() {
             assertThat(answerTo("""
                     (load ":10:20") = 0:10:20""")).isEqualTo("#(true)");
         }
@@ -245,28 +245,28 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("what follows the return is read")
-        void theReturnEndsTheComment() {
+        void endsTheComment() {
             assertThat(answerTo("""
                     (load {; comment^M1}) = 1""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and the rest of the line is read as its own expressions")
-        void whatFollowsIsOrdinarySource() {
+        void leavesWhatFollowsAsOrdinarySource() {
             assertThat(answerTo("""
                     (load {1 ; comment^Mx: 2 x}) = [1 x: 2 x]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("inside a binary script body as well")
-        void theSameHoldsInsideAScript() {
+        void endsTheCommentInsideAScriptToo() {
             assertThat(answerTo("""
                     (do to binary! {REBOL [] ; comment^M1}) = 1""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("as a line feed always did")
-        void theLineFeedIsTheOffPoint() {
+        void endsTheCommentAsALineFeedDoes() {
             assertThat(answerTo("""
                     (load "; comment^/1") = 1""")).isEqualTo("#(true)");
         }
@@ -278,7 +278,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("a lone surrogate in a char literal is an invalid char")
-        void aSurrogateCharIsRefused() {
+        void refusesASurrogateChar() {
             assertThat(answerTo("""
                     e: try [load {#"^^(D800)"}]
                     all [e/id = 'invalid e/arg1 = "char"]""")).isEqualTo("#(true)");
@@ -286,7 +286,7 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("and one above the last code point is refused the same way")
-        void anOversizeCharIsRefused() {
+        void refusesAnOversizeChar() {
             assertThat(answerTo("""
                     e: try [load {#"^^(110000)"}]
                     all [e/id = 'invalid e/arg1 = "char"]""")).isEqualTo("#(true)");
@@ -294,28 +294,28 @@ class ConstructAndOddLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("the code point just below the surrogates reads")
-        void theCodePointBelowTheSurrogatesReads() {
+        void readsTheCodePointBelowTheSurrogates() {
             assertThat(answerTo("""
                     (to integer! load {#"^^(D7FF)"}) = 55295""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and so does the last code point there is")
-        void theLastCodePointReads() {
+        void readsTheLastCodePoint() {
             assertThat(answerTo("""
                     (to integer! load {#"^^(10FFFF)"}) = 1114111""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a lone surrogate inside a string is refused too")
-        void aSurrogateInsideAStringIsRefused() {
+        void refusesASurrogateInsideAString() {
             assertThat(answerTo("""
                     error? try [load {"^^(D800)"}]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and so is one above the last code point")
-        void anOversizeEscapeInsideAStringIsRefused() {
+        void refusesAnOversizeEscapeInsideAString() {
             assertThat(answerTo("""
                     error? try [load {"^^(110000)"}]""")).isEqualTo("#(true)");
         }

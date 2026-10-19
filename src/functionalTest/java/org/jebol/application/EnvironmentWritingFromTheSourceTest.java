@@ -1,6 +1,6 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.JavaProcesses;
+import org.jebol.adapter.host.JavaProcess;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class EnvironmentWritingFromTheSourceTest {
 
-    private static Interpreter reaching() {
+    private static Interpreter makeAnInterpreterReaching() {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.ENVIRONMENT));
         interpreter.useEnvironment(new ProcessEnvironment());
@@ -23,16 +23,16 @@ class EnvironmentWritingFromTheSourceTest {
     }
 
     private static String answerTo(String source) {
-        return answerTo(reaching(), source);
+        return answerTo(makeAnInterpreterReaching(), source);
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("a name may be written as a string or as a word, either way round")
-    void aNameMayBeWrittenEitherWay() {
+    void takesANameWrittenEitherWay() {
         assertThat(answerTo("""
                 set-env "JB_A" "one"
                 set-env 'JB_B "two"
@@ -42,13 +42,13 @@ class EnvironmentWritingFromTheSourceTest {
 
     @Test
     @DisplayName("a name that is neither a string nor a word is refused")
-    void aNameThatIsNeitherIsRefused() {
-        assertThat(errorIdFrom("get-env 42")).isEqualTo("expect-arg");
+    void refusesANameThatIsNeither() {
+        assertThat(readTheErrorIdFrom("get-env 42")).isEqualTo("expect-arg");
     }
 
     @Test
     @DisplayName("a name nothing holds answers none, and so does the empty name")
-    void aNameNothingHoldsAnswersNone() {
+    void answersNoneForANameNothingHolds() {
         assertThat(answerTo("""
                 reduce [get-env "JB_NEVER_SET_AT_ALL" get-env ""]"""))
                 .isEqualTo("[_ _]");
@@ -56,7 +56,7 @@ class EnvironmentWritingFromTheSourceTest {
 
     @Test
     @DisplayName("setting a name changes what GET-ENV and LIST-ENV report")
-    void settingANameChangesWhatIsReported() {
+    void reportsANameSet() {
         assertThat(answerTo("""
                 answered: set-env "JB_C" "three"
                 reduce [answered get-env "JB_C" select list-env "JB_C"]"""))
@@ -65,7 +65,7 @@ class EnvironmentWritingFromTheSourceTest {
 
     @Test
     @DisplayName("setting the same name twice keeps the second value")
-    void settingANameTwiceKeepsTheSecond() {
+    void keepsTheSecondOfTwoSettings() {
         assertThat(answerTo("""
                 set-env "JB_D" "first"
                 set-env "JB_D" "second"
@@ -74,7 +74,7 @@ class EnvironmentWritingFromTheSourceTest {
 
     @Test
     @DisplayName("an empty value is a value, not a way of removing the name")
-    void anEmptyValueIsStillAValue() {
+    void keepsAnEmptyValue() {
         assertThat(answerTo("""
                 set-env "JB_E" ""
                 reduce [get-env "JB_E" true? find/only to block! list-env "JB_E"]"""))
@@ -83,7 +83,7 @@ class EnvironmentWritingFromTheSourceTest {
 
     @Test
     @DisplayName("setting a name to none takes it away again")
-    void settingANameToNoneRemovesIt() {
+    void removesANameSetToNone() {
         assertThat(answerTo("""
                 set-env "JB_F" "here"
                 set-env "JB_F" none
@@ -93,13 +93,13 @@ class EnvironmentWritingFromTheSourceTest {
 
     @Test
     @DisplayName("removing a name that was never there is quiet")
-    void removingANameThatWasNeverThere() {
+    void removesANameThatWasNeverThere() {
         assertThat(answerTo("set-env \"JB_NEVER_EITHER\" none")).isEqualTo("_");
     }
 
     @Test
     @DisplayName("a value that is neither text nor nothing is refused")
-    void aValueThatIsNeitherTextNorNothingIsRefused() {
+    void refusesAValueThatIsNeitherTextNorNothing() {
         assertThat(answerTo("""
                 reduce [
                     either error? e: try [set-env "JB_G" 42] [e/id] ['no-error]
@@ -111,7 +111,7 @@ class EnvironmentWritingFromTheSourceTest {
 
     @Test
     @DisplayName("setting over a name the host had shadows it, and putting it back restores it")
-    void settingOverAHostNameShadowsIt() {
+    void shadowsAHostNameSetOver() {
         assertThat(answerTo("""
                 was: get-env "HOME"
                 set-env "HOME" "/somewhere-else"
@@ -123,11 +123,11 @@ class EnvironmentWritingFromTheSourceTest {
 
     @Test
     @DisplayName("a program started afterwards inherits what was set")
-    void aStartedProgramInheritsIt() {
+    void passesItToAStartedProgram() {
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
                 .grant(HostService.ENVIRONMENT).grant(HostService.PROCESSES));
         interpreter.useEnvironment(new ProcessEnvironment());
-        interpreter.useProcesses(new JavaProcesses());
+        interpreter.useProcesses(new JavaProcess());
         assertThat(answerTo(interpreter, """
                 set-env "JB_CHILD" "inherited"
                 seen: copy ""
@@ -138,7 +138,7 @@ class EnvironmentWritingFromTheSourceTest {
 
     @Test
     @DisplayName("without the environment grant, all three refuse")
-    void withoutTheGrantItRefuses() {
+    void refusesWithoutTheGrant() {
         Interpreter without = Interpreter.withBounds(Bounds.standard());
         without.useEnvironment(new ProcessEnvironment());
         assertThat(answerTo(without,

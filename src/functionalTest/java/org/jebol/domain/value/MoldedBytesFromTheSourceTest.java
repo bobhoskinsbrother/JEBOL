@@ -37,21 +37,21 @@ class MoldedBytesFromTheSourceTest {
 
     @Test
     @DisplayName("an exact multiple leaves the closing brace alone on its line")
-    void anExactMultipleClosesOnItsOwnLine() {
+    void closeAnExactMultipleOnItsOwnLine() {
         assertThat(answerTo(BYTES + """
                 last lines mold bytes 64""")).isEqualTo("\"}\"");
     }
 
     @Test
     @DisplayName("and a short last line keeps the brace beside it")
-    void aShortLastLineKeepsTheBrace() {
+    void keepTheBraceOnAShortLastLine() {
         assertThat(answerTo(BYTES + """
                 last lines mold bytes 65""")).isEqualTo("\"41}\"");
     }
 
     @Test
     @DisplayName("every full line is sixty-four digits, which is thirty-two bytes")
-    void everyFullLineIsThirtyTwoBytes() {
+    void fillEveryFullLineWithThirtyTwo() {
         assertThat(answerTo(BYTES + """
                 collect [
                     foreach line lines mold bytes 100 [keep length? line]
@@ -60,7 +60,7 @@ class MoldedBytesFromTheSourceTest {
 
     @Test
     @DisplayName("and the whole thing still reads back as the binary it came from")
-    void itStillReadsBack() {
+    void stillReadBack() {
         assertThat(answerTo(BYTES + """
                 (bytes 100) = load mold bytes 100""")).isEqualTo("#(true)");
     }
@@ -94,7 +94,7 @@ class MoldedBytesFromTheSourceTest {
 
     @Test
     @DisplayName("a bitset breaks its bytes the same way a binary does")
-    void aBitsetBreaksTheSameWay() {
+    void breakTheSameWayInABitset() {
         assertThat(answerTo(BYTES + """
                 collect [
                     foreach line lines mold charset [0 - 400] [keep length? line]
@@ -103,7 +103,7 @@ class MoldedBytesFromTheSourceTest {
 
     @Test
     @DisplayName("an image with no pixels writes empty braces")
-    void anEmptyImageWritesEmptyBraces() {
+    void writeEmptyBracesForAnEmptyImage() {
         assertThat(answerTo("""
                 mold make image! 0x0""")).isEqualTo("\"make image! [0x0 #{}]\"");
     }
@@ -141,7 +141,7 @@ class MoldedBytesFromTheSourceTest {
 
     @Test
     @DisplayName("an empty file molds with its quotes, since a bare percent is not one")
-    void anEmptyFileKeepsItsQuotes() {
+    void keepTheQuotesOfAnEmptyFile() {
         assertThat(answerTo("""
                 mold to file! {}""")).isEqualTo("""
                 {%""}""");

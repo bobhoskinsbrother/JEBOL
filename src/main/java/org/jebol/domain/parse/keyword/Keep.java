@@ -56,7 +56,7 @@ final class Keep extends DeclaredKeyword {
         if (walk.position() > before) {
             walk.keep(wholeSlice
                     ? walk.textSliceBetween(before, walk.position())
-                    : walk.whatMatchedBetween(before, walk.position()).orElseThrow());
+                    : walk.readWhatMatchedBetween(before, walk.position()).orElseThrow());
         }
         return 1 + walk.ruleSpan(rules, at + 1);
     }
@@ -69,7 +69,7 @@ final class Keep extends DeclaredKeyword {
             walk.moveTo(before);
             return ParseWalk.NO_MATCH;
         }
-        walk.whatMatchedBetween(before, walk.position()).ifPresent(walk::keep);
+        walk.readWhatMatchedBetween(before, walk.position()).ifPresent(walk::keep);
         return 1 + walk.ruleSpan(rules, at + 1);
     }
 
@@ -110,7 +110,7 @@ final class Keep extends DeclaredKeyword {
     }
 
     private static void refuseAKeepWithNoCollectAroundIt(ParseWalk walk) {
-        if (walk.noCollectionIsOpen()) {
+        if (walk.hasNoCollectionOpen()) {
             throw Raised.of(EvaluationFailure.PARSE_NO_COLLECT,
                     "keep has no collect around it");
         }

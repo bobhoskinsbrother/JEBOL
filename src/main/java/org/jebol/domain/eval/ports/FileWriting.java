@@ -29,13 +29,13 @@ final class FileWriting {
     FileWriting(String path, Value data, PortRequest asked) {
         this.path = path;
         this.data = data;
-        this.bound = refusingANegative(asked.part());
-        this.position = refusingANegative(asked.seek());
+        this.bound = refuseANegative(asked.part());
+        this.position = refuseANegative(asked.seek());
         this.atTheEnd = asked.refinements().contains("append");
         this.oneValuePerLine = asked.refinements().contains("lines");
     }
 
-    private Optional<Long> refusingANegative(Optional<Value> asked) {
+    private Optional<Long> refuseANegative(Optional<Value> asked) {
         Optional<Long> magnitude = asked.map(number -> (long) Arithmetic.asMagnitude(number));
         if (magnitude.isPresent() && magnitude.get() < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, asked.get());
@@ -44,9 +44,9 @@ final class FileWriting {
     }
 
     void performThrough(FilePort files) {
-        byte[] bytes = bytesToWrite();
+        byte[] bytes = encodeTheBytesToWrite();
         if (position.isPresent()) {
-            files.writeAt(path, clippedToTheFileSize(files), bytes);
+            files.writeAt(path, clipToTheFileSize(files), bytes);
         } else if (atTheEnd) {
             files.appendTo(path, bytes);
         } else {
@@ -54,24 +54,24 @@ final class FileWriting {
         }
     }
 
-    private long clippedToTheFileSize(FilePort files) {
-        long size = files.informationAbout(path)
+    private long clipToTheFileSize(FilePort files) {
+        long size = files.describe(path)
                 .flatMap(FileInformation::size)
                 .orElse(0L);
         return Math.min(position.orElseThrow(), size);
     }
 
-    private byte[] bytesToWrite() {
+    private byte[] encodeTheBytesToWrite() {
         if (data instanceof BinaryValue binary) {
-            return withTheLineFeedByteLinesAsks(boundedOctets(binary.octetsFromHere()));
+            return withTheLineFeedByteLinesAsks(boundTheOctets(binary.octetsFromHere()));
         }
         if (data instanceof CharacterValue(int codepoint)) {
-            return utf8(new String(Character.toChars(codepoint)));
+            return encodeAsUtf8(new String(Character.toChars(codepoint)));
         }
         if (data instanceof AnyBlockValue block && oneValuePerLine) {
-            return utf8(eachValueFormedOnItsOwnLine(block));
+            return encodeAsUtf8(formEachValueOnItsOwnLine(block));
         }
-        return utf8(withTheLineFeedLinesAsks(boundedText(asTextToWrite())));
+        return encodeAsUtf8(withTheLineFeedLinesAsks(boundTheText(asTextToWrite())));
     }
 
     private String asTextToWrite() {
@@ -80,7 +80,7 @@ final class FileWriting {
                 : Molder.mold(data);
     }
 
-    private String eachValueFormedOnItsOwnLine(AnyBlockValue block) {
+    private String formEachValueOnItsOwnLine(AnyBlockValue block) {
         return block.remaining().stream()
                 .map(each -> Molder.form(each) + "\n")
                 .collect(Collectors.joining());
@@ -99,7 +99,7 @@ final class FileWriting {
         return fed;
     }
 
-    private String boundedText(String text) {
+    private String boundTheText(String text) {
         if (bound.isEmpty()) {
             return text;
         }
@@ -108,14 +108,14 @@ final class FileWriting {
         return text.substring(0, text.offsetByCodePoints(0, kept));
     }
 
-    private byte[] boundedOctets(byte[] octets) {
+    private byte[] boundTheOctets(byte[] octets) {
         if (bound.isEmpty() || bound.orElseThrow() >= octets.length) {
             return octets;
         }
         return Arrays.copyOf(octets, (int) (long) bound.orElseThrow());
     }
 
-    private byte[] utf8(String text) {
+    private byte[] encodeAsUtf8(String text) {
         return text.getBytes(StandardCharsets.UTF_8);
     }
 }

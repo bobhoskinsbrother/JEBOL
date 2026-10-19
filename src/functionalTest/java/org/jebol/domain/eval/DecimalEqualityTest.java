@@ -16,14 +16,14 @@ class DecimalEqualityTest {
 
     @Test
     @DisplayName("a computed decimal equals the one it was meant to be")
-    void aComputedDecimalEqualsItsWrittenForm() {
+    void equatesAComputedDecimalWithItsWrittenForm() {
         assertThat(answerTo("(0.1 + 0.2) = 0.3")).isEqualTo("#(true)");
         assertThat(answerTo("0.5 = cosine 60")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("the allowance runs out ten steps away")
-    void theAllowanceEndsAtTenSteps() {
+    void allowsUpToTenSteps() {
         assertThat(answerTo("1.0 = 1.000000000000002"))
                 .as("about nine steps apart")
                 .isEqualTo("#(true)");
@@ -34,14 +34,14 @@ class DecimalEqualityTest {
 
     @Test
     @DisplayName("the allowance scales with the size of the numbers")
-    void theAllowanceIsRelativeNotFixed() {
+    void allowsARelativeRatherThanFixedAmount() {
         assertThat(answerTo("1000000.0 = 1000000.0000000002")).isEqualTo("#(true)");
         assertThat(answerTo("0.0001 = 0.0001000000000002")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("== is exact and minds the datatype")
-    void strictEqualityAllowsNothing() {
+    void allowsNothingForStrictEquality() {
         assertThat(answerTo("0.5 == 0.5000000000000001")).isEqualTo("#(false)");
         assertThat(answerTo("1 == 1.0")).isEqualTo("#(false)");
         assertThat(answerTo("1 = 1.0"))
@@ -51,14 +51,14 @@ class DecimalEqualityTest {
 
     @Test
     @DisplayName("SAME? is exact too")
-    void sameIsExact() {
+    void isExactForSame() {
         assertThat(answerTo("same? 0.5 0.5000000000000001")).isEqualTo("#(false)");
         assertThat(answerTo("same? 0.5 0.5")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a zero equals a negative zero and a NaN equals a NaN")
-    void theHardwareIsOverruledAtBothEnds() {
+    void overrulesTheHardwareAtBothEnds() {
         assertThat(answerTo("0.0 = -0.0")).isEqualTo("#(true)");
         assertThat(answerTo("(1.#NaN) = (1.#NaN)")).isEqualTo("#(true)");
     }
@@ -73,7 +73,7 @@ class DecimalEqualityTest {
 
     @Test
     @DisplayName("an infinity equals itself and not the other one")
-    void theInfinitiesAreToldApart() {
+    void tellsTheInfinitiesApart() {
         assertThat(answerTo("(1.#INF) = (1.#INF)")).isEqualTo("#(true)");
         assertThat(answerTo("(1.#INF) = (-1.#INF)")).isEqualTo("#(false)");
     }

@@ -77,7 +77,7 @@ class PrimitivesUnderTheMezzanineFromTheSourceTest {
         void anumberStandsForItsDatatype() {
             assertThat(answerTo("make 0 0"))
                     .as("MAKE takes the type from the first argument whatever it is, "
-                            + "so a number there means a number of that kind")
+                            + "so a number there means a number of that type")
                     .isEqualTo("0");
             assertThat(answerTo("make 1 5")).isEqualTo("5");
             assertThat(answerTo("make 1.5 0")).isEqualTo("0.0");

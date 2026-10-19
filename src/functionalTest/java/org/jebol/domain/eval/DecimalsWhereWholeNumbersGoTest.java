@@ -16,7 +16,7 @@ class DecimalsWhereWholeNumbersGoTest {
 
     @Test
     @DisplayName("EVEN? on a whole decimal asks about that number")
-    void wholeDecimalsAreStraightforward() {
+    void takeWholeDecimalsStraightforwardly() {
         assertThat(answerTo("mold reduce [even? 0.0 even? 1.0 even? 2.0 even? -2.0]"))
                 .isEqualTo("\"[#(true) #(false) #(true) #(true)]\"");
     }
@@ -30,14 +30,14 @@ class DecimalsWhereWholeNumbersGoTest {
 
     @Test
     @DisplayName("EVEN? rounds a negative half away from zero too")
-    void negativeHalvesRoundAwayAsWell() {
+    void roundNegativeHalvesAwayAsWell() {
         assertThat(answerTo("mold reduce [even? -1.5 even? -2.5]"))
                 .isEqualTo("\"[#(true) #(false)]\"");
     }
 
     @Test
     @DisplayName("either side of a half falls the way rounding says")
-    void thePointsEitherSideOfAHalf() {
+    void roundThePointsEitherSideOfAHalf() {
         assertThat(answerTo("mold reduce [even? 1.4 even? 1.6 even? 2.4 even? 2.6]"))
                 .isEqualTo("\"[#(false) #(true) #(true) #(false)]\"");
     }
@@ -51,13 +51,13 @@ class DecimalsWhereWholeNumbersGoTest {
 
     @Test
     @DisplayName("a decimal too large to be anything but even is even")
-    void theLargestDecimalIsEven() {
+    void takeTheLargestDecimalAsEven() {
         assertThat(answerTo("even? 1.7976931348623157e308")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a decimal path index truncates rather than rounding")
-    void aPathIndexTruncates() {
+    void truncateAsAPathIndex() {
         assertThat(answerTo("b: [1 2] mold reduce [b/1.0 b/1.6 b/2.0 b/2.6]"))
                 .as("1.6 truncates to 1, where EVEN? would have rounded it to 2")
                 .isEqualTo("\"[1 1 2 2]\"");

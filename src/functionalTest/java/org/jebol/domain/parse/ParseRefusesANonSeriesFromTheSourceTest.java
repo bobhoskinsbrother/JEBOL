@@ -14,14 +14,14 @@ class ParseRefusesANonSeriesFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("an integer is refused, and the error says what was wrong")
     void anintegerIsRefused() {
-        assertThat(errorIdFrom("parse 1 [end]")).isEqualTo("expect-arg");
+        assertThat(readTheErrorIdFrom("parse 1 [end]")).isEqualTo("expect-arg");
         assertThat(answerTo("""
                 e: try [parse 1 [end]]
                 mold reduce [e/arg1 e/arg2 e/arg3]"""))
@@ -31,27 +31,27 @@ class ParseRefusesANonSeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and so is none, which is the one a script hits by accident")
-    void noneIsRefused() {
-        assertThat(errorIdFrom("parse none [end]")).isEqualTo("expect-arg");
+    void refusesNone() {
+        assertThat(readTheErrorIdFrom("parse none [end]")).isEqualTo("expect-arg");
     }
 
     @Test
     @DisplayName("a map is refused, though it holds things")
     void amapIsRefused() {
-        assertThat(errorIdFrom("parse make map! [] [end]")).isEqualTo("expect-arg");
+        assertThat(readTheErrorIdFrom("parse make map! [] [end]")).isEqualTo("expect-arg");
     }
 
     @Test
     @DisplayName("a bitset is refused too")
     void abitsetIsRefused() {
-        assertThat(errorIdFrom("parse make bitset! \"a\" [end]")).isEqualTo("expect-arg");
+        assertThat(readTheErrorIdFrom("parse make bitset! \"a\" [end]")).isEqualTo("expect-arg");
     }
 
     @Test
     @DisplayName("a string, a block and a binary are what it takes")
     void thethreeItTakes() {
-        assertThat(errorIdFrom("parse \"ab\" [end]")).isEqualTo("no-error");
-        assertThat(errorIdFrom("parse [1] [end]")).isEqualTo("no-error");
-        assertThat(errorIdFrom("parse #{00} [end]")).isEqualTo("no-error");
+        assertThat(readTheErrorIdFrom("parse \"ab\" [end]")).isEqualTo("no-error");
+        assertThat(readTheErrorIdFrom("parse [1] [end]")).isEqualTo("no-error");
+        assertThat(readTheErrorIdFrom("parse #{00} [end]")).isEqualTo("no-error");
     }
 }

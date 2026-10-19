@@ -16,7 +16,7 @@ class TranscodeErrorTest {
         ScriptOutcome outcome = interpreter.run(source);
         assertThat(outcome.conclusion())
                 .as("%s must not raise", source)
-                .isEqualTo(Conclusion.PRODUCED_A_VALUE);
+                .isEqualTo(Conclusion.PRODUCED_VALUE);
         return interpreter.display(outcome);
     }
 
@@ -28,7 +28,7 @@ class TranscodeErrorTest {
 
     @Test
     @DisplayName("the error says what was wrong with it")
-    void theErrorCarriesItsId() {
+    void carriesTheId() {
         assertThat(answerTo("e: transcode/one/error \"2#12\" e/id")).isEqualTo("invalid");
     }
 
@@ -40,7 +40,7 @@ class TranscodeErrorTest {
 
     @Test
     @DisplayName("without the refinement the same source raises")
-    void withoutTheRefinementItRaises() {
+    void raisesWithoutTheRefinement() {
         Interpreter interpreter = Interpreter.create();
         String source = "transcode/one \"2#12\"";
         interpreter.defineFreshWordsIn(source);
@@ -52,7 +52,7 @@ class TranscodeErrorTest {
 
     @Test
     @DisplayName("a digit outside the base is refused in each base")
-    void eachBaseRefusesItsOwnBadDigits() {
+    void refusesEachBasesOwnBadDigits() {
         assertThat(answerTo("mold reduce [error? transcode/one/error \"2#12\" "
                 + "error? transcode/one/error \"8#88\" "
                 + "error? transcode/one/error \"10#1A2\"]"))
@@ -61,14 +61,14 @@ class TranscodeErrorTest {
 
     @Test
     @DisplayName("a number too big for its base is refused too")
-    void anOversizedNumberIsRefused() {
+    void refusesAnOversizedNumber() {
         assertThat(answerTo("error? transcode/one/error "
                 + "\"10#9999999999999999999\"")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("the block form answers an error the same way")
-    void theBlockFormAnswersAnErrorToo() {
+    void answersAnErrorInTheBlockFormToo() {
         assertThat(answerTo("error? first transcode/error \"2#12\"")).isEqualTo("#(true)");
     }
 }

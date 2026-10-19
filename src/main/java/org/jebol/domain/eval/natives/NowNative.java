@@ -42,7 +42,7 @@ public class NowNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             grantedServices.require(HostService.CLOCK);
             refuseMoreThanOneQuestion(refinements);
-            return thePartAskedFor(theClockReadAsAsked(refinements), refinements);
+            return takeThePartAskedFor(readTheClockAsAsked(refinements), refinements);
         };
     }
 
@@ -53,14 +53,14 @@ public class NowNative extends DefaultNative {
         }
     }
 
-    private ZonedDateTime theClockReadAsAsked(Set<String> refinements) {
+    private ZonedDateTime readTheClockAsAsked(Set<String> refinements) {
         ZonedDateTime here = ZonedDateTime.now();
         return refinements.contains("precise") ? here : here.withNano(0);
     }
 
-    private Value thePartAskedFor(ZonedDateTime here, Set<String> refinements) {
+    private Value takeThePartAskedFor(ZonedDateTime here, Set<String> refinements) {
         if (refinements.contains("utc")) {
-            return dateWithZone(here.withZoneSameInstant(ZoneOffset.UTC), 0);
+            return makeADateWithZone(here.withZoneSameInstant(ZoneOffset.UTC), 0);
         }
         int offsetMinutes = here.getOffset().getTotalSeconds() / SECONDS_A_MINUTE;
         if (refinements.contains("date")) {
@@ -88,10 +88,10 @@ public class NowNative extends DefaultNative {
         if (refinements.contains("day")) {
             return IntegerValue.of(here.getDayOfMonth());
         }
-        return dateWithZone(here, offsetMinutes);
+        return makeADateWithZone(here, offsetMinutes);
     }
 
-    private DateValue dateWithZone(ZonedDateTime moment, int offsetMinutes) {
+    private DateValue makeADateWithZone(ZonedDateTime moment, int offsetMinutes) {
         return new DateValue(moment.getYear(), moment.getMonthValue(), moment.getDayOfMonth(),
                 Optional.of(TimeValue.ofNanoseconds(moment.toLocalTime().toNanoOfDay())),
                 Optional.of(offsetMinutes));

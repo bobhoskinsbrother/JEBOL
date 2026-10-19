@@ -8,22 +8,22 @@ final class Exclude implements SetOperation {
     }
 
     @Override
-    public boolean theFirstSetKeeps(boolean inTheirs) {
+    public boolean keepsFromTheFirstSet(boolean inTheirs) {
         return !inTheirs;
     }
 
     @Override
-    public boolean theSecondSetContributes() {
+    public boolean takesFromTheSecondSet() {
         return false;
     }
 
     @Override
-    public boolean theSecondSetKeeps(boolean inOurs) {
+    public boolean keepsFromTheSecondSet(boolean inOurs) {
         return false;
     }
 
     @Override
-    public int combinedBits(int mine, int yours) {
+    public int combineTheBits(int mine, int yours) {
         return mine & ~yours;
     }
 }

@@ -30,9 +30,9 @@ public class SwapEndianNative extends EncodingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("value", Set.of(BinaryValue.TYPE)),
-                Parameter.belongingTo("width", "bytes", Set.of(IntegerValue.TYPE)),
-                Parameter.belongingTo("part", "range", aCountOrPosition()));
+                Parameter.of("value", Set.of(BinaryValue.TYPE)),
+                Parameter.belongTo("width", "bytes", Set.of(IntegerValue.TYPE)),
+                Parameter.belongTo("part", "range", acceptACountOrPosition()));
     }
 
     @Override
@@ -44,10 +44,10 @@ public class SwapEndianNative extends EncodingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             BinaryValue bytes = (BinaryValue) arguments.getFirst();
-            int width = aWidthItSwaps(argumentOf("width", 0, arguments, refinements)
+            int width = readAWidthItSwaps(readTheArgumentOf("width", 0, arguments, refinements)
                     .orElse(TWO_BYTES_UNLESS_ASKED));
             byte[] octets = bytes.octetsFromHere();
-            int reach = argumentOf("part", 0, arguments, refinements)
+            int reach = readTheArgumentOf("part", 0, arguments, refinements)
                     .map(asked -> (int) Math.max(0, Math.min(octets.length, bytes.countUpTo(asked))))
                     .orElse(octets.length);
             encodings.swapEndian(octets, reach - reach % width, width);
@@ -58,7 +58,7 @@ public class SwapEndianNative extends EncodingNative {
         };
     }
 
-    private int aWidthItSwaps(Value asked) {
+    private int readAWidthItSwaps(Value asked) {
         long width = ((IntegerValue) asked).magnitude();
         if (!WIDTHS_IT_SWAPS.contains(width)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);

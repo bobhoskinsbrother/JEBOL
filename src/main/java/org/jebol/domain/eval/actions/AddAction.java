@@ -25,7 +25,7 @@ public class AddAction extends ArithmeticNative implements ActionValue {
         return (arguments, evaluator, context, refinements) -> {
             Value left = arguments.get(0);
             Value right = arguments.get(1);
-            return left.arithmetic(right, new Add());
+            return left.calculate(right, new Add());
         };
     }
 }

@@ -19,23 +19,23 @@ class TheThreeTextCommandsFromTheSourceTest {
             """;
 
     private static final String A_RICH_TEXT_GOB = """
-            written: copy "abcd^/ab"
+            text: copy "abcd^/ab"
             rich: make gob! [size: 200x100]
             rich/text: reduce [
                 'para make object! [origin: 0x0 margin: 0x0 align: 'left valign: 'top]
-                written
+                text
             ]
             """;
 
-    private Interpreter anInterpreterOn(RecordingScreen screen) {
+    private Interpreter makeAnInterpreterOn(RecordingScreen screen) {
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                .grant(HostService.WINDOWS).withWallClockLimit(Duration.ofSeconds(10)));
+                .grant(HostService.WINDOWS).withTimeLimit(Duration.ofSeconds(10)));
         interpreter.useScreen(screen);
         return interpreter;
     }
 
     private String answerTo(String source) {
-        Interpreter interpreter = anInterpreterOn(RecordingScreen.measuring(1024, 768));
+        Interpreter interpreter = makeAnInterpreterOn(RecordingScreen.measure(1024, 768));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -46,7 +46,7 @@ class TheThreeTextCommandsFromTheSourceTest {
 
         @Test
         @DisplayName("answers the room a plain string takes, without the para's origin and margin")
-        void aPlainString() {
+        void measuresAPlainString() {
             assertThat(answerTo(A_PLAIN_GOB + "size-text plain")).isEqualTo("24x12");
         }
 
@@ -58,13 +58,13 @@ class TheThreeTextCommandsFromTheSourceTest {
 
         @Test
         @DisplayName("answers 0x0 for a gob with no text")
-        void noText() {
+        void measuresNothingForNoText() {
             assertThat(answerTo("size-text make gob! [size: 10x10]")).isEqualTo("0x0");
         }
 
         @Test
         @DisplayName("answers one line's height for an empty string")
-        void anEmptyString() {
+        void measuresOneLineForAnEmptyString() {
             assertThat(answerTo("size-text make gob! [size: 10x10 text: {}]")).isEqualTo("0x12");
         }
 
@@ -75,7 +75,7 @@ class TheThreeTextCommandsFromTheSourceTest {
                 "35, false, 36x12",
         })
         @DisplayName("a para that wraps breaks a line too wide for the gob, and the answer is the wrapped text's room")
-        void aWrappingParaBreaksTheLine(int wide, boolean wraps, String expected) {
+        void breaksALineWithAWrappingPara(int wide, boolean wraps, String expected) {
             assertThat(answerTo("""
                     narrow: make gob! [size: %dx100]
                     narrow/text: reduce ['para make object! [origin: 0x0 margin: 0x0 wrap?: %s] {abc de}]
@@ -85,7 +85,7 @@ class TheThreeTextCommandsFromTheSourceTest {
         @ParameterizedTest(name = "size-text {0} is refused")
         @ValueSource(strings = {"5", "{abc}", "none", "[]"})
         @DisplayName("anything but a gob is refused, as its declaration says")
-        void anythingButAGobIsRefused(String given) {
+        void refusesAnythingButAGob(String given) {
             assertThat(answerTo("e: try [size-text " + given + "] e/id")).isEqualTo("expect-arg");
         }
     }
@@ -104,20 +104,20 @@ class TheThreeTextCommandsFromTheSourceTest {
                 "3, 99, 12x12",
         })
         @DisplayName("answers where the caret is drawn, named by integers, from the gob's own top left")
-        void byIntegers(int element, int position, String drawnAt) {
+        void answersWhereTheCaretIsDrawnByIntegers(int element, int position, String drawnAt) {
             assertThat(answerTo(A_RICH_TEXT_GOB + "caret-to-offset rich %d %d".formatted(element, position)))
                     .isEqualTo(drawnAt);
         }
 
         @Test
         @DisplayName("takes the block at the string and the string at the caret, as the 2010 GUI asks")
-        void byPositionedSeries() {
-            assertThat(answerTo(A_RICH_TEXT_GOB + "caret-to-offset rich at rich/text 3 at written 3"))
+        void takesPositionedSeries() {
+            assertThat(answerTo(A_RICH_TEXT_GOB + "caret-to-offset rich at rich/text 3 at text 3"))
                     .isEqualTo("12x0");
         }
 
         @Test
-        @DisplayName("counts in the para's origin, where the text is written")
+        @DisplayName("counts in the para's origin, where the text is text")
         void countsTheOrigin() {
             assertThat(answerTo(A_PLAIN_GOB + "caret-to-offset plain 1 2")).isEqualTo("8x2");
         }
@@ -145,16 +145,16 @@ class TheThreeTextCommandsFromTheSourceTest {
                 "7x500, 7",
         })
         @DisplayName("answers the rich-text block at the string, the string at the nearest caret")
-        void theNearestCaret(String point, int character) {
+        void answersTheNearestCaret(String point, int character) {
             assertThat(answerTo(A_RICH_TEXT_GOB + """
                     found: offset-to-caret rich %s
-                    reduce [index? found  index? first found  same? head first found written]""".formatted(point)))
+                    reduce [index? found  index? first found  same? head first found text]""".formatted(point)))
                     .isEqualTo("[3 %d #(true)]".formatted(character));
         }
 
         @Test
         @DisplayName("answers a copy of the block, so moving it leaves the gob's text where it was")
-        void aCopyOfTheBlock() {
+        void answersACopyOfTheBlock() {
             assertThat(answerTo(A_RICH_TEXT_GOB + """
                     found: offset-to-caret rich 9x5
                     reduce [same? head found rich/text  index? third rich/text]"""))
@@ -163,7 +163,7 @@ class TheThreeTextCommandsFromTheSourceTest {
 
         @Test
         @DisplayName("answers none for a gob whose text holds no string")
-        void noStringNoCaret() {
+        void answersNoneForNoString() {
             assertThat(answerTo("""
                     g: make gob! [size: 50x50]
                     g/text: [bold]
@@ -173,7 +173,7 @@ class TheThreeTextCommandsFromTheSourceTest {
         @ParameterizedTest(name = "offset-to-caret with {0} is refused")
         @ValueSource(strings = {"5", "{5x5}", "none", "[5 5]"})
         @DisplayName("a point that is no pair is refused")
-        void aPointThatIsNoPairIsRefused(String given) {
+        void refusesAPointThatIsNoPair(String given) {
             assertThat(answerTo(A_RICH_TEXT_GOB + "e: try [offset-to-caret rich " + given + "] e/id"))
                     .isEqualTo("expect-arg");
         }
@@ -181,8 +181,8 @@ class TheThreeTextCommandsFromTheSourceTest {
 
     @Test
     @DisplayName("measuring needs a screen to measure with, so a machine with none refuses it as not present")
-    void noScreenRefuses() {
-        Interpreter interpreter = anInterpreterOn(RecordingScreen.absent());
+    void refuseWithNoScreen() {
+        Interpreter interpreter = makeAnInterpreterOn(RecordingScreen.absent());
         String asked = A_PLAIN_GOB + "e: try [size-text plain] e/id";
         interpreter.defineFreshWordsIn(asked);
 

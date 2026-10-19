@@ -13,11 +13,11 @@ public final class Arithmetic {
     private Arithmetic() {
     }
 
-    public static Value difference(Value left, Value right) {
-        return left.arithmetic(right, new Subtract());
+    public static Value subtract(Value left, Value right) {
+        return left.calculate(right, new Subtract());
     }
 
-    public static Value wholeQuotient(Value dividend, Value divisor) {
+    public static Value divideWhole(Value dividend, Value divisor) {
         long by = asIntegerDivideReadsIt(divisor);
         requireNonZero(by);
         return IntegerValue.of(asIntegerDivideReadsIt(dividend) / by);
@@ -31,26 +31,26 @@ public final class Arithmetic {
         };
     }
 
-    public static Value rest(Value dividend, Value divisor, Division definition) {
+    public static Value findTheRest(Value dividend, Value divisor, Division definition) {
         if (dividend instanceof IntegerValue(long magnitude1) && divisor instanceof IntegerValue(long magnitude)) {
             return IntegerValue.of(
-                    wholeRest(magnitude1, magnitude, definition));
+                    findTheWholeRest(magnitude1, magnitude, definition));
         }
         double first = asMagnitude(dividend);
         double second = asMagnitude(divisor);
         requireNonZero(second);
         if (definition == Division.SIGN_FOLLOWS_THE_DIVIDEND) {
-            return likeTheDividend(dividend, first % second);
+            return shapeLikeTheDividend(dividend, first % second);
         }
         double by = definition == Division.NEVER_NEGATIVE
                 ? Math.abs(second) : second;
         double rest = ((first % by) + by) % by;
-        return likeTheDividend(dividend, negligibleAgainstItsOperands(rest, first, by)
+        return shapeLikeTheDividend(dividend, isNegligibleAgainstItsOperands(rest, first, by)
                 ? 0.0
                 : rest);
     }
 
-    private static long wholeRest(long dividend, long divisor, Division definition) {
+    private static long findTheWholeRest(long dividend, long divisor, Division definition) {
         requireNonZero(divisor);
         long rest = dividend % divisor;
         return switch (definition) {
@@ -62,7 +62,7 @@ public final class Arithmetic {
         };
     }
 
-    private static Value likeTheDividend(Value dividend, double magnitude) {
+    private static Value shapeLikeTheDividend(Value dividend, double magnitude) {
         return switch (dividend) {
             case CharacterValue ignored -> CharacterValue.of((int) magnitude);
             case TimeValue ignored -> TimeValue.ofNanoseconds((long) magnitude);
@@ -72,17 +72,17 @@ public final class Arithmetic {
         };
     }
 
-    private static boolean negligibleAgainstItsOperands(
+    private static boolean isNegligibleAgainstItsOperands(
             double rest, double dividend, double divisor) {
 
-        return nearlyTheSame(dividend, dividend - rest)
-                || nearlyTheSame(divisor, divisor + rest);
+        return areNearlyTheSame(dividend, dividend - rest)
+                || areNearlyTheSame(divisor, divisor + rest);
     }
 
     private static final long STEPS_MODULUS_ALLOWS = 10;
 
-    public static boolean nearlyTheSame(double first, double second) {
-        return Comparison.looselyEqual(
+    public static boolean areNearlyTheSame(double first, double second) {
+        return Comparison.areLooselyEqual(
                 DecimalValue.of(first), DecimalValue.of(second), STEPS_MODULUS_ALLOWS);
     }
 

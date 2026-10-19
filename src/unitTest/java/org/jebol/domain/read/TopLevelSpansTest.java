@@ -10,51 +10,51 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TopLevelSpansTest {
 
     private static List<String> textsOf(String source) {
-        return Transcoder.topLevelSpans(source).stream()
+        return Transcoder.findTheTopLevelSpans(source).stream()
                 .map(Transcoder.SourceSpan::text)
                 .toList();
     }
 
     @Test
     @DisplayName("one expression is its own span")
-    void oneValue() {
+    void spansOneValue() {
         assertThat(textsOf("1 + 1")).containsExactly("1", "+", "1");
     }
 
     @Test
     @DisplayName("a block counts as one, brackets and all")
-    void aBlockIsOneSpan() {
+    void spansABlockAsOne() {
         assertThat(textsOf("[1 2] 3")).containsExactly("[1 2]", "3");
     }
 
     @Test
     @DisplayName("nesting does not add spans")
-    void nestingIsNotSplit() {
+    void keepsNestingWhole() {
         assertThat(textsOf("[a [b c]]")).containsExactly("[a [b c]]");
     }
 
     @Test
     @DisplayName("a paren counts as one too")
-    void aParenIsOneSpan() {
+    void spansAParenAsOne() {
         assertThat(textsOf("(1 + 1) 2")).containsExactly("(1 + 1)", "2");
     }
 
     @Test
     @DisplayName("the text comes back exactly as written, digits and all")
-    void aLongDecimalKeepsItsDigits() {
+    void keepsALongDecimalsDigits() {
         assertThat(textsOf("even? 1.7976931348623157e308"))
                 .containsExactly("even?", "1.7976931348623157e308");
     }
 
     @Test
     @DisplayName("a time keeps the spelling it was written with")
-    void aTimeKeepsItsSpelling() {
+    void keepsATimesSpelling() {
         assertThat(textsOf("0:0:1")).containsExactly("0:0:1");
     }
 
     @Test
     @DisplayName("a string keeps its own brackets and spaces")
-    void aStringIsNotSplitOnItsSpaces() {
+    void keepsAStringWholeAcrossItsSpaces() {
         assertThat(textsOf("\"a b\" c")).containsExactly("\"a b\"", "c");
     }
 
@@ -72,7 +72,7 @@ class TopLevelSpansTest {
 
     @Test
     @DisplayName("empty source has no spans")
-    void nothingInNothingOut() {
+    void spansNothingForNothing() {
         assertThat(textsOf("")).isEmpty();
     }
 
@@ -84,7 +84,7 @@ class TopLevelSpansTest {
 
     @Test
     @DisplayName("construction syntax is one span, not one per part")
-    void constructionSyntaxIsNotSplit() {
+    void keepsConstructionSyntaxWhole() {
         assertThat(textsOf("#(true) 1")).containsExactly("#(true)", "1");
     }
 

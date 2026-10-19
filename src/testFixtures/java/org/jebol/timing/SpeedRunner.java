@@ -13,7 +13,7 @@ public final class SpeedRunner {
     }
 
     static void main(String[] argued) throws Exception {
-        Interpreter interpreter = Interpreter.writingTo(new OutputPort() {
+        Interpreter interpreter = Interpreter.createWithOutput(new OutputPort() {
             @Override
             public void write(String text) {
                 System.out.print(text);

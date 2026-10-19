@@ -39,8 +39,8 @@ final class BrotliBlockSplitting {
         }
     }
 
-    private static double bitCostPricingAnAbsentSymbolAtMinusTwoBits(int count) {
-        return count == 0 ? -2.0 : BrotliCodes.fastLog2(count);
+    private static double priceTheBits(int count) {
+        return count == 0 ? -2.0 : BrotliCodes.computeLog2Quickly(count);
     }
 
     static void splitEverything(BrotliCommand commands, byte[] data, int from,
@@ -61,7 +61,7 @@ final class BrotliBlockSplitting {
 
         int[] commandRun = new int[commands.count()];
         for (int which = 0; which < commands.count(); which++) {
-            commandRun[which] = commands.commandPrefixAt(which);
+            commandRun[which] = commands.readTheCommandPrefixAt(which);
         }
         split(commandRun, commands.count(), BrotliCodes.COMMAND_SYMBOLS,
                 SYMBOLS_PER_COMMAND_HISTOGRAM, MOST_COMMAND_HISTOGRAMS,
@@ -71,9 +71,9 @@ final class BrotliBlockSplitting {
         int howManyDistances = 0;
         for (int which = 0; which < commands.count(); which++) {
             if (commands.copyLengthAt(which) != 0
-                    && commands.commandPrefixAt(which) >= 128) {
+                    && commands.readTheCommandPrefixAt(which) >= 128) {
                 distanceRun[howManyDistances++] =
-                        commands.distancePrefixAt(which) & 0x3FF;
+                        commands.readTheDistancePrefixAt(which) & 0x3FF;
             }
         }
         split(distanceRun, howManyDistances, DISTANCE_SYMBOLS_A_HISTOGRAM_HOLDS,
@@ -102,20 +102,20 @@ final class BrotliBlockSplitting {
         int howManyHistograms = Math.min(howMany / symbolsPerHistogram + 1,
                 mostHistograms);
         if (howMany == 0) {
-            split.oneMoreType();
+            split.addAType();
             return;
         }
         if (howMany < SHORTEST_WORTH_SPLITTING) {
-            split.roomFor(split.howManyBlocks() + 1);
-            split.oneMoreType();
-            split.typeIs(split.howManyBlocks(), 0);
-            split.lengthIs(split.howManyBlocks(), howMany);
-            split.howManyBlocksIs(split.howManyBlocks() + 1);
+            split.makeRoomFor(split.countTheBlocks() + 1);
+            split.addAType();
+            split.setTheType(split.countTheBlocks(), 0);
+            split.setTheLength(split.countTheBlocks(), howMany);
+            split.setTheBlockCount(split.countTheBlocks() + 1);
             return;
         }
 
         BrotliHistogram[] histograms =
-                BrotliHistogram.freshRow(howManyHistograms + 1, alphabetSize);
+                BrotliHistogram.makeAFreshRow(howManyHistograms + 1, alphabetSize);
         seedFromSamples(symbols, howMany, stride, howManyHistograms, histograms);
         refineFromSamples(symbols, howMany, stride, howManyHistograms, histograms);
 
@@ -192,14 +192,14 @@ final class BrotliBlockSplitting {
         double[] costOfASymbol = new double[alphabetSize * howManyHistograms];
         for (int which = 0; which < howManyHistograms; which++) {
             costOfASymbol[which] =
-                    BrotliCodes.fastLog2(histograms[which].total());
+                    BrotliCodes.computeLog2Quickly(histograms[which].total());
         }
         for (int symbol = alphabetSize; symbol != 0; ) {
             symbol--;
             for (int which = 0; which < howManyHistograms; which++) {
                 costOfASymbol[symbol * howManyHistograms + which] =
                         costOfASymbol[which]
-                                - bitCostPricingAnAbsentSymbolAtMinusTwoBits(
+                                - priceTheBits(
                                         histograms[which].counts()[symbol]);
             }
         }
@@ -298,7 +298,7 @@ final class BrotliBlockSplitting {
         int roomForPairs = HISTOGRAMS_PER_BATCH * HISTOGRAMS_PER_BATCH / 2;
         BrotliClustering.Queue queue = new BrotliClustering.Queue(roomForPairs);
         BrotliHistogram[] batch =
-                BrotliHistogram.freshRow(Math.min(howManyBlocks,
+                BrotliHistogram.makeAFreshRow(Math.min(howManyBlocks,
                         HISTOGRAMS_PER_BATCH), alphabetSize);
         int[] sizes = new int[HISTOGRAMS_PER_BATCH];
         int[] survivorsOfTheBatch = new int[HISTOGRAMS_PER_BATCH];
@@ -306,7 +306,7 @@ final class BrotliBlockSplitting {
         int[] renamed = new int[HISTOGRAMS_PER_BATCH];
 
         BrotliHistogram[] survivors =
-                BrotliHistogram.freshRow(Math.max(1, howManyBlocks), alphabetSize);
+                BrotliHistogram.makeAFreshRow(Math.max(1, howManyBlocks), alphabetSize);
         int[] survivorSizes = new int[survivors.length];
         int howManySurvivors = 0;
         int at = 0;
@@ -381,7 +381,7 @@ final class BrotliBlockSplitting {
             }
         }
 
-        split.roomFor(howManyBlocks);
+        split.makeRoomFor(howManyBlocks);
         int runLength = 0;
         int written = 0;
         int highestType = 0;
@@ -389,14 +389,14 @@ final class BrotliBlockSplitting {
             runLength += blockLengths[which];
             if (which + 1 == howManyBlocks || usedBy[which] != usedBy[which + 1]) {
                 int type = newName[usedBy[which]];
-                split.typeIs(written, type);
-                split.lengthIs(written, runLength);
+                split.setTheType(written, type);
+                split.setTheLength(written, runLength);
                 highestType = Math.max(highestType, type);
                 runLength = 0;
                 written++;
             }
         }
-        split.howManyBlocksIs(written);
-        split.howManyTypesIs(highestType + 1);
+        split.setTheBlockCount(written);
+        split.setTheTypeCount(highestType + 1);
     }
 }

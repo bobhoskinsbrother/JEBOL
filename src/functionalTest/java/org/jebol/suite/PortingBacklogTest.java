@@ -43,9 +43,9 @@ class PortingBacklogTest {
 
     @Test
     @DisplayName("what R3 has and JEBOL has not, grouped by what is blocking it")
-    void theBacklogIsPrinted() {
-        Set<String> theirs = functionsRebolDefines();
-        Set<String> ours = functionsInJebol();
+    void printsTheBacklog() {
+        Set<String> theirs = listTheFunctionsRebolDefines();
+        Set<String> ours = listTheFunctionsInJebol();
         writeForTheAudit(ours);
         TreeSet<String> missing = new TreeSet<>(theirs);
         missing.removeAll(ours);
@@ -80,7 +80,7 @@ class PortingBacklogTest {
         }
     }
 
-    private static Set<String> functionsRebolDefines() {
+    private static Set<String> listTheFunctionsRebolDefines() {
         try (var source = PortingBacklogTest.class.getResourceAsStream("/r3/c-surface.txt")) {
             if (source == null) {
                 throw new IllegalStateException(
@@ -109,7 +109,7 @@ class PortingBacklogTest {
         }
     }
 
-    private static Set<String> functionsInJebol() {
+    private static Set<String> listTheFunctionsInJebol() {
         Interpreter interpreter = Interpreter.create();
         String source = """
                 names: copy []

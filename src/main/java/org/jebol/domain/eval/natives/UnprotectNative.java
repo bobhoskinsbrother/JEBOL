@@ -25,7 +25,7 @@ public class UnprotectNative extends ProtectingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             evaluator.policies().require(PolicyClass.PROTECT, PolicyAccess.READ, Optional.of(arguments.getFirst()));
-            protectionChanged(arguments.getFirst(), UNPROTECTED, refinements);
+            changeTheProtection(arguments.getFirst(), UNPROTECTED, refinements);
             return arguments.getFirst();
         };
     }

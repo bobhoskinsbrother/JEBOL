@@ -1,7 +1,7 @@
 ;; Rebol declares the schemes in sys-ports.reb's INIT-SCHEMES -- thirteen of
 ;; them, with their specs, their init functions and their awake handlers --
 ;; so that is what registers them. Five of those declarations used to be
-;; written out again in boot files beside this one, which is how CALLBACK,
+;; text out again in boot files beside this one, which is how CALLBACK,
 ;; CLIPBOARD, SERIAL and UDP came to be declared in a file this build loads
 ;; and registered nowhere.
 ;;

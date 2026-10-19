@@ -42,7 +42,7 @@ final class BrotliContext {
             2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
     };
 
-    private static int magnitudeOf(int octet) {
+    private static int measureTheMagnitudeOf(int octet) {
         if (octet == 0) {
             return 0;
         }
@@ -70,7 +70,7 @@ final class BrotliContext {
             case HIGH_SIX_BITS -> previous >> 2;
             case UTF8 -> UTF8_FROM_THE_LAST_BYTE[previous]
                     | UTF8_FROM_THE_BYTE_BEFORE[beforeThat];
-            default -> (magnitudeOf(previous) << 3) | magnitudeOf(beforeThat);
+            default -> (measureTheMagnitudeOf(previous) << 3) | measureTheMagnitudeOf(beforeThat);
         };
     }
 }

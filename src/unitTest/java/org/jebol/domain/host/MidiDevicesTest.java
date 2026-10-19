@@ -24,7 +24,7 @@ class MidiDevicesTest {
 
         @ParameterizedTest(name = "{0} is a position")
         @ValueSource(ints = {1, 2, Integer.MAX_VALUE})
-        void fromOneUp(int position) {
+        void countsFromOneUp(int position) {
             assertThat(new MidiDevice(position).position()).isEqualTo(position);
         }
 
@@ -56,21 +56,21 @@ class MidiDevicesTest {
 
         @Test
         @DisplayName("an input alone")
-        void anInputAlone() {
+        void takesAnInputAlone() {
             assertThat(new MidiRoute(Optional.of(new MidiDevice(1)), Optional.empty()).input())
                     .contains(new MidiDevice(1));
         }
 
         @Test
         @DisplayName("an output alone")
-        void anOutputAlone() {
+        void takesAnOutputAlone() {
             assertThat(new MidiRoute(Optional.empty(), Optional.of(new MidiDevice(2))).output())
                     .contains(new MidiDevice(2));
         }
 
         @Test
         @DisplayName("and naming neither is refused")
-        void neitherIsRefused() {
+        void isRefusedWithNeither() {
             assertThatThrownBy(() -> new MidiRoute(Optional.empty(), Optional.empty()))
                     .isInstanceOf(IllegalArgumentException.class);
         }
@@ -82,19 +82,19 @@ class MidiDevicesTest {
 
         @Test
         @DisplayName("no inputs")
-        void noInputs() {
+        void listNoInputs() {
             assertThat(new NoMidiDevices().inputs()).isEmpty();
         }
 
         @Test
         @DisplayName("no outputs")
-        void noOutputs() {
+        void listNoOutputs() {
             assertThat(new NoMidiDevices().outputs()).isEmpty();
         }
 
         @Test
         @DisplayName("and a connection is refused as a device it does not list")
-        void aConnectionIsRefused() {
+        void refuseAConnection() {
             assertThatThrownBy(() -> new NoMidiDevices().connect(
                     new MidiRoute(Optional.of(new MidiDevice(1)), Optional.empty())))
                     .isInstanceOfSatisfying(MidiDevices.Refused.class, refused ->

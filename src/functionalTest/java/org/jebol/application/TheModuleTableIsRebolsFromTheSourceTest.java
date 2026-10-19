@@ -26,7 +26,7 @@ class TheModuleTableIsRebolsFromTheSourceTest {
         return Files.exists(SYSOBJ);
     }
 
-    private static Map<String, String> whatRebolPublishes() {
+    private static Map<String, String> listWhatRebolPublishes() {
         String source;
         try {
             source = Files.readString(SYSOBJ, StandardCharsets.UTF_8);
@@ -46,7 +46,7 @@ class TheModuleTableIsRebolsFromTheSourceTest {
     private static final Pattern A_NAME_AND_ITS_ADDRESS =
             Pattern.compile("(?m)^\\s*([a-z0-9-]+):\\s+(https://\\S+)\\s*$");
 
-    private static String whatJebolHolds(String name) {
+    private static String listWhatJebolHolds(String name) {
         Interpreter interpreter = Interpreter.create();
         String asking = "mold select system/modules '" + name;
         interpreter.defineFreshWordsIn(asking);
@@ -56,8 +56,8 @@ class TheModuleTableIsRebolsFromTheSourceTest {
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("the block read out of Rebol's own source is not empty")
-    void theBlockReadOutOfRebolsOwnSourceIsNotEmpty() {
-        assertThat(whatRebolPublishes())
+    void readsAFilledBlockOutOfRebolsOwnSource() {
+        assertThat(listWhatRebolPublishes())
                 .as("if this is empty the checks below prove nothing, "
                         + "and the shape of sysobj.reb has changed")
                 .hasSizeGreaterThan(40)
@@ -68,11 +68,11 @@ class TheModuleTableIsRebolsFromTheSourceTest {
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("and every name offered is Rebol's, read out of this build")
-    void everyNameOfferedIsRebolsReadOutOfThisBuild() {
-        Map<String, String> published = whatRebolPublishes();
+    void offersOnlyRebolsNames() {
+        Map<String, String> published = listWhatRebolPublishes();
         Map<String, String> wrong = new LinkedHashMap<>();
-        for (String name : whatThisBuildOffers()) {
-            String held = whatJebolHolds(name);
+        for (String name : listWhatThisBuildOffers()) {
+            String held = listWhatJebolHolds(name);
             if (!published.containsKey(name)) {
                 wrong.put(name, "not a name Rebol publishes");
             } else if (!held.equals("\"bundled://" + name + ".reb\"")) {
@@ -89,9 +89,9 @@ class TheModuleTableIsRebolsFromTheSourceTest {
 
     @Test
     @DisplayName("and every one of them is a module this build can read")
-    void everyOneOfThemIsAModuleThisBuildCanRead() {
+    void offersOnlyModulesThisBuildCanRead() {
         Interpreter interpreter = Interpreter.create();
-        for (String name : whatThisBuildOffers()) {
+        for (String name : listWhatThisBuildOffers()) {
             String asking = "binary? read bundled://" + name + ".reb";
             interpreter.defineFreshWordsIn(asking);
             assertThat(interpreter.display(interpreter.run(asking)))
@@ -100,7 +100,7 @@ class TheModuleTableIsRebolsFromTheSourceTest {
         }
     }
 
-    private static List<String> whatThisBuildOffers() {
+    private static List<String> listWhatThisBuildOffers() {
         Interpreter interpreter = Interpreter.create();
         String asking = """
                 collect [
@@ -116,9 +116,9 @@ class TheModuleTableIsRebolsFromTheSourceTest {
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("and no compiled extension is offered, because none can be loaded")
-    void noCompiledExtensionIsOffered() {
-        List<String> offered = whatThisBuildOffers();
-        List<String> shouldNotBe = whatRebolPublishes().entrySet().stream()
+    void offersNoCompiledExtension() {
+        List<String> offered = listWhatThisBuildOffers();
+        List<String> shouldNotBe = listWhatRebolPublishes().entrySet().stream()
                 .filter(one -> one.getValue().endsWith("/"))
                 .map(Map.Entry::getKey)
                 .filter(offered::contains)

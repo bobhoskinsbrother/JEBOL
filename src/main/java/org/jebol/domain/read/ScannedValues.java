@@ -70,7 +70,7 @@ final class ScannedValues {
         return octet >= '0' && octet <= '9';
     }
 
-    int grabbedIntegerEnd(int from) {
+    int findTheIntegerEnd(int from) {
         int cp = from;
         if (at(cp) == '-' || at(cp) == '+') {
             cp++;
@@ -81,7 +81,7 @@ final class ScannedValues {
         return cp;
     }
 
-    int grabbedInteger(int from) {
+    int grabAnInteger(int from) {
         int cp = from;
         boolean negative = false;
         if (at(cp) == '-') {
@@ -98,7 +98,7 @@ final class ScannedValues {
         return negative ? -value : value;
     }
 
-    Optional<Value> integer(int from, int length) {
+    Optional<Value> scanAnInteger(int from, int length) {
         int cp = from;
         int num = length;
         if (num == 1) {
@@ -154,7 +154,7 @@ final class ScannedValues {
         return Optional.of(IntegerValue.of(read.longValue()));
     }
 
-    Optional<Double> decimalBuffer(int from, StringBuilder written) {
+    Optional<Double> bufferADecimal(int from, StringBuilder written) {
         int cp = from;
         boolean digit = false;
         if (at(cp) == '+' || at(cp) == '-') {
@@ -204,15 +204,15 @@ final class ScannedValues {
             }
         }
         scannedTo = cp;
-        return Optional.of(whatStrtodReads(written.toString()));
+        return Optional.of(readLikeStrtod(written.toString()));
     }
 
-    double whatStrtodReads(String written) {
+    double readLikeStrtod(String written) {
         Matcher read = WHAT_STRTOD_READS.matcher(written);
         return read.lookingAt() ? Double.parseDouble(read.group()) : 0.0;
     }
 
-    Optional<Value> decimal(int from, int length) {
+    Optional<Value> scanADecimal(int from, int length) {
         int cp = from;
         if (length > MAX_NUM_LEN) {
             return Optional.empty();
@@ -235,7 +235,7 @@ final class ScannedValues {
         }
         written.append('.');
         if (at(cp) == '#') {
-            return infinityOrNaN(from, cp, length);
+            return scanInfinityOrNaN(from, cp, length);
         }
         while (lex.isNumber(at(cp)) || at(cp) == '\'') {
             if (at(cp) != '\'') {
@@ -263,7 +263,7 @@ final class ScannedValues {
         if (cp - from != length) {
             return Optional.empty();
         }
-        double read = whatStrtodReads(written.toString());
+        double read = readLikeStrtod(written.toString());
         if (Double.isInfinite(read)) {
             throw new ScanFailure(SyntaxFailure.OVERFLOW);
         }
@@ -271,7 +271,7 @@ final class ScannedValues {
         return Optional.of(DecimalValue.of(read));
     }
 
-    private Optional<Value> infinityOrNaN(int from, int hash, int length) {
+    private Optional<Value> scanInfinityOrNaN(int from, int hash, int length) {
         int cp = hash;
         if (spells(cp + 1, "INF")) {
             cp += 4;
@@ -299,7 +299,7 @@ final class ScannedValues {
         return true;
     }
 
-    Optional<Value> money(int from, int length) {
+    Optional<Value> scanMoney(int from, int length) {
         int cp = from;
         int remaining = length;
         if (at(cp) == '$') {
@@ -322,7 +322,7 @@ final class ScannedValues {
         return Optional.of(new MoneyValue(read));
     }
 
-    Optional<TimeValue> scannedTimeOrNot(int from) {
+    Optional<TimeValue> scanATime(int from) {
         int cp = from;
         boolean negative = false;
         if (at(cp) == '-') {
@@ -334,16 +334,16 @@ final class ScannedValues {
         if (at(cp) == '-' || at(cp) == '+') {
             return Optional.empty();
         }
-        long part1 = grabbedInteger(cp);
-        cp = grabbedIntegerEnd(cp);
+        long part1 = grabAnInteger(cp);
+        cp = findTheIntegerEnd(cp);
         if (part1 > MAX_HOUR) {
             return Optional.empty();
         }
         if (at(cp++) != ':') {
             return Optional.empty();
         }
-        int sp = grabbedIntegerEnd(cp);
-        long part2 = grabbedInteger(cp);
+        int sp = findTheIntegerEnd(cp);
+        long part2 = grabAnInteger(cp);
         if (part2 < 0 || sp == cp) {
             return Optional.empty();
         }
@@ -352,8 +352,8 @@ final class ScannedValues {
         long part4 = -1;
         if (at(cp) == ':') {
             sp = cp + 1;
-            cp = grabbedIntegerEnd(sp);
-            part3 = grabbedInteger(sp);
+            cp = findTheIntegerEnd(sp);
+            part3 = grabAnInteger(sp);
             if (part3 < 0 || cp == sp) {
                 return Optional.empty();
             }
@@ -413,7 +413,7 @@ final class ScannedValues {
         return Optional.of(TimeValue.ofNanoseconds(negative ? -nanoseconds : nanoseconds));
     }
 
-    Optional<Value> date(int from, int length) {
+    Optional<Value> scanADate(int from, int length) {
         int cp = from;
         int end = from + length;
         int day = 0;
@@ -436,8 +436,8 @@ final class ScannedValues {
         if (cp == end) {
             return Optional.empty();
         }
-        ep = grabbedIntegerEnd(cp);
-        int num = grabbedInteger(cp);
+        ep = findTheIntegerEnd(cp);
+        int num = grabAnInteger(cp);
         if (num < 0) {
             return Optional.empty();
         }
@@ -454,8 +454,8 @@ final class ScannedValues {
             return Optional.empty();
         }
         int separator = at(cp++);
-        ep = grabbedIntegerEnd(cp);
-        num = grabbedInteger(cp);
+        ep = findTheIntegerEnd(cp);
+        num = grabAnInteger(cp);
         if (num < 0) {
             return Optional.empty();
         }
@@ -484,8 +484,8 @@ final class ScannedValues {
         if (at(cp++) != separator) {
             return Optional.empty();
         }
-        ep = grabbedIntegerEnd(cp);
-        num = grabbedInteger(cp);
+        ep = findTheIntegerEnd(cp);
+        num = grabAnInteger(cp);
         if (at(cp) == '-' || num < 0) {
             return Optional.empty();
         }
@@ -519,9 +519,9 @@ final class ScannedValues {
                 separator = at(cp++);
                 if (cp >= end) {
                     scannedTo = cp;
-                    return Optional.of(dated(year, month, day, time, zone));
+                    return Optional.of(makeADate(year, month, day, time, zone));
                 }
-                time = scannedTimeOrNot(cp);
+                time = scanATime(cp);
                 if (time.isEmpty() || time.get().nanoseconds() < 0
                         || time.get().nanoseconds() >= NANOSECONDS_IN_A_DAY) {
                     return Optional.empty();
@@ -536,11 +536,11 @@ final class ScannedValues {
                     return Optional.empty();
                 }
                 scannedTo = cp;
-                return Optional.of(dated(year, month, day, time, zone));
+                return Optional.of(makeADate(year, month, day, time, zone));
             }
             if (at(cp) == '-' || at(cp) == '+') {
-                ep = grabbedIntegerEnd(cp + 1);
-                num = grabbedInteger(cp + 1);
+                ep = findTheIntegerEnd(cp + 1);
+                num = grabAnInteger(cp + 1);
                 if (ep - cp == 0) {
                     return Optional.empty();
                 }
@@ -557,8 +557,8 @@ final class ScannedValues {
                     }
                     zone = num * (60 / ZONE_MINUTES);
                     int minutesFrom = ep + 1;
-                    ep = grabbedIntegerEnd(minutesFrom);
-                    num = grabbedInteger(minutesFrom);
+                    ep = findTheIntegerEnd(minutesFrom);
+                    num = grabAnInteger(minutesFrom);
                     if (num % ZONE_MINUTES != 0) {
                         return Optional.empty();
                     }
@@ -574,7 +574,7 @@ final class ScannedValues {
             }
         }
         scannedTo = cp;
-        return Optional.of(dated(year, month, day, time, zone));
+        return Optional.of(makeADate(year, month, day, time, zone));
     }
 
     private boolean namesTheMonth(int month, int from, int size) {
@@ -588,7 +588,7 @@ final class ScannedValues {
         return true;
     }
 
-    private Value dated(int year, int month, int day, Optional<TimeValue> time, int zone) {
+    private Value makeADate(int year, int month, int day, Optional<TimeValue> time, int zone) {
         if (time.isEmpty() && zone == 0) {
             return DateValue.of(year, month, day);
         }
@@ -598,14 +598,14 @@ final class ScannedValues {
         return new DateValue(year, month, day, time, Optional.of(zone * ZONE_MINUTES));
     }
 
-    Optional<Value> pair(int from, int length) {
+    Optional<Value> scanAPair(int from, int length) {
         StringBuilder written = new StringBuilder();
-        Optional<Double> x = decimalBuffer(from, written);
+        Optional<Double> x = bufferADecimal(from, written);
         if (x.isEmpty()) {
             return Optional.empty();
         }
         int ep = scannedTo;
-        Optional<Double> readX = pairPart(written, ep, x.get());
+        Optional<Double> readX = scanAPairPart(written, ep, x.get());
         if (readX.isEmpty()) {
             return Optional.empty();
         }
@@ -615,12 +615,12 @@ final class ScannedValues {
         }
         ep++;
         written.setLength(0);
-        Optional<Double> y = decimalBuffer(ep, written);
+        Optional<Double> y = bufferADecimal(ep, written);
         if (y.isEmpty()) {
             return Optional.empty();
         }
         int xp = scannedTo;
-        Optional<Double> readY = pairPart(written, xp, y.get());
+        Optional<Double> readY = scanAPairPart(written, xp, y.get());
         if (readY.isEmpty()) {
             return Optional.empty();
         }
@@ -631,7 +631,7 @@ final class ScannedValues {
         return Optional.of(PairValue.of((float) readX.get().doubleValue(), (float) readY.get().doubleValue()));
     }
 
-    private Optional<Double> pairPart(StringBuilder written, int ep, double read) {
+    private Optional<Double> scanAPairPart(StringBuilder written, int ep, double read) {
         scannedTo = ep;
         if (at(ep) != '#') {
             return Optional.of(read);
@@ -651,7 +651,7 @@ final class ScannedValues {
         return Optional.empty();
     }
 
-    Optional<Value> tuple(int from, int length) {
+    Optional<Value> scanATuple(int from, int length) {
         if (length == 0) {
             return Optional.empty();
         }
@@ -668,8 +668,8 @@ final class ScannedValues {
         int written = 0;
         int ep = from;
         for (; length > ep - from; ep++) {
-            int n = grabbedInteger(ep);
-            ep = grabbedIntegerEnd(ep);
+            int n = grabAnInteger(ep);
+            ep = findTheIntegerEnd(ep);
             if (n < 0 || n > 255) {
                 return Optional.empty();
             }
@@ -686,14 +686,14 @@ final class ScannedValues {
         return Optional.of(TupleValue.of(kept));
     }
 
-    Value specInteger(int from, int length) {
+    Value scanASpecInteger(int from, int length) {
         int cp = from;
         int remaining = length;
         long accumulated = 0;
         if (at(cp) == '0') {
             cp += 2;
             remaining -= 2;
-            accumulated = hexadecimal(cp, remaining);
+            accumulated = scanHexadecimal(cp, remaining);
         } else if (at(cp) == '2') {
             cp += 2;
             remaining -= 2;
@@ -711,7 +711,7 @@ final class ScannedValues {
         } else if (at(cp + 1) == '6') {
             cp += 3;
             remaining -= 3;
-            accumulated = hexadecimal(cp, remaining);
+            accumulated = scanHexadecimal(cp, remaining);
         } else if (at(cp + 1) == '0') {
             cp += 3;
             remaining -= 3;
@@ -723,7 +723,7 @@ final class ScannedValues {
         return IntegerValue.of(accumulated);
     }
 
-    private long hexadecimal(int from, int length) {
+    private long scanHexadecimal(int from, int length) {
         long accumulated = 0;
         for (int cp = from; cp < from + length; cp++) {
             accumulated = (accumulated << 4) + lex.valueOf(at(cp));
@@ -731,13 +731,13 @@ final class ScannedValues {
         return accumulated;
     }
 
-    int binaryBase(int from, int length) {
+    int readTheBinaryBase(int from, int length) {
         int cp = from;
         int remaining = length;
         int base = 16;
         if (at(cp) != '#') {
-            int ep = grabbedIntegerEnd(cp);
-            base = grabbedInteger(cp);
+            int ep = findTheIntegerEnd(cp);
+            base = grabAnInteger(cp);
             if (cp == ep || at(ep) != '#') {
                 return 0;
             }

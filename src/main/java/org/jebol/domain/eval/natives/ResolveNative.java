@@ -20,9 +20,9 @@ public class ResolveNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("target", TypesetValue.ANY_OBJECT.members()),
-                Parameter.required("source", TypesetValue.ANY_OBJECT.members()),
-                Parameter.belongingTo("only", "from", Set.of(BlockValue.TYPE, IntegerValue.TYPE)));
+        return List.of(Parameter.of("target", TypesetValue.ANY_OBJECT.members()),
+                Parameter.of("source", TypesetValue.ANY_OBJECT.members()),
+                Parameter.belongTo("only", "from", Set.of(BlockValue.TYPE, IntegerValue.TYPE)));
     }
 
     @Override
@@ -59,8 +59,8 @@ public class ResolveNative extends DefaultNative {
             Context into, Context from, Set<String> refinements, Value onlyThese) {
 
         List<ContextSlot> targetSlots = into.slots();
-        WordsToResolve writable = wordsToResolve(targetSlots, refinements, onlyThese);
-        Map<String, Value> available = theFieldsOtherThanSelfIn(from);
+        WordsToResolve writable = chooseTheWordsToResolve(targetSlots, refinements, onlyThese);
+        Map<String, Value> available = collectTheFieldsOtherThanSelfIn(from);
         for (int at = writable.startAt(); at <= targetSlots.size(); at++) {
             ContextSlot slot = targetSlots.get(at - 1);
             if (slot.isProtected()) {
@@ -84,7 +84,7 @@ public class ResolveNative extends DefaultNative {
         }
     }
 
-    private Map<String, Value> theFieldsOtherThanSelfIn(Context from) {
+    private Map<String, Value> collectTheFieldsOtherThanSelfIn(Context from) {
         Map<String, Value> available = new LinkedHashMap<>();
         for (ContextSlot slot : from.slots()) {
             available.put(slot.canonical(), slot.value());
@@ -92,7 +92,7 @@ public class ResolveNative extends DefaultNative {
         return available;
     }
 
-    private WordsToResolve wordsToResolve(
+    private WordsToResolve chooseTheWordsToResolve(
             List<ContextSlot> targetSlots, Set<String> refinements, Value onlyThese) {
 
         if (!refinements.contains("only")) {

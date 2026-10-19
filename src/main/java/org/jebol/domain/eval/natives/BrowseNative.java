@@ -28,7 +28,7 @@ public class BrowseNative extends WindowNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("url", Set.of(UrlValue.TYPE, FileValue.TYPE, NoneValue.TYPE)));
+        return List.of(Parameter.of("url", Set.of(UrlValue.TYPE, FileValue.TYPE, NoneValue.TYPE)));
     }
 
     @Override
@@ -36,7 +36,7 @@ public class BrowseNative extends WindowNative {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
             evaluator.policies().require(PolicyClass.BROWSE, PolicyAccess.EXECUTE, Optional.of(arguments.getFirst()));
-            return throughTheWindows(() -> {
+            return runThroughTheWindows(() -> {
                 if (arguments.getFirst() instanceof AnyStringValue target) {
                     evaluator.windows().browse(target.text());
                 }

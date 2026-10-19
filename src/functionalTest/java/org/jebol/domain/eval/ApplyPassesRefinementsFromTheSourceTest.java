@@ -23,7 +23,7 @@ class ApplyPassesRefinementsFromTheSourceTest {
 
     @Test
     @DisplayName("and one that is not is not, though its argument is still consumed")
-    void andOneThatIsNotIsNot() {
+    void leavesOffARefinementThatIsNot() {
         assertThat(answerTo("mold apply :copy [[1 2 3 4 5] false 3]"))
                 .as("the 3 is read into /part's slot and ignored, so the position "
                         + "of anything after it does not move")
@@ -64,7 +64,7 @@ class ApplyPassesRefinementsFromTheSourceTest {
 
     @Test
     @DisplayName("missing values are none, and a refinement with none is not asked for")
-    void missingValuesAreNone() {
+    void passesNoneForMissingValues() {
         assertThat(answerTo("mold apply :copy [[1 2 3]]"))
                 .as("nothing said about /part, so no /part")
                 .isEqualTo("\"[1 2 3]\"");

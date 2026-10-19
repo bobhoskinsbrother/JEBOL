@@ -39,7 +39,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and /TAIL, /ONLY and /MATCH mean what they mean elsewhere")
-    void andTheRefinementsMeanWhatTheyMeanElsewhere() {
+    void honoursTheRefinementsAsElsewhere() {
         assertThat(answerTo("""
                 img: make image! 2x2 img/2: 66.66.66
                 p: find/tail img 66.66.66
@@ -56,7 +56,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("a pixel that is not there answers none")
-    void aPixelThatIsNotThereAnswersNone() {
+    void answersNoneForAPixelThatIsNotThere() {
         assertThat(answerTo("""
                 img: make image! 2x2 img/2: 66.66.66
                 none? find img 66.66.66.22""")).isEqualTo("#(true)");
@@ -80,7 +80,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and a block appends every pixel in it")
-    void aBlockAppendsEveryPixelInIt() {
+    void appendsEveryPixelInABlock() {
         assertThat(answerTo("""
                 img: make image! 2x0
                 append img 170.170.170
@@ -92,7 +92,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("the height moves only when a row is finished")
-    void theHeightMovesOnlyWhenARowIsFinished() {
+    void growsTheHeightOnlyWhenARowIsFinished() {
         for (int howMany = 1; howMany <= 4; howMany++) {
             String expected = switch (howMany) {
                 case 1 -> "[3x0 1 3]";
@@ -125,7 +125,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and inserting into the middle pushes the rest along")
-    void insertingIntoTheMiddlePushesTheRestAlong() {
+    void pushesTheRestAlongWhenInsertingIntoTheMiddle() {
         assertThat(answerTo("""
                 img: make image! [2x2 1.1.1]
                 insert at img 2 9.9.9
@@ -136,7 +136,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("inserting at the tail leaves the position at the tail")
-    void insertingAtTheTailLeavesThePositionAtTheTail() {
+    void leavesThePositionAtTheTailWhenInsertingThere() {
         assertThat(answerTo("""
                 img: make image! 2x0
                 img: insert tail img 170.170.170
@@ -154,7 +154,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and what is not a pixel is refused without changing the image")
-    void whatIsNotAPixelIsRefusedWithoutChangingTheImage() {
+    void refusesWhatIsNotAPixelWithoutChangingTheImage() {
         assertThat(answerTo("""
                 img: make image! 2x0
                 reduce [length? img  error? try [append img {a}]  length? img]"""))
@@ -163,7 +163,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and the refusal names the type, not the verb")
-    void theRefusalNamesTheType() {
+    void namesTheTypeInTheRefusal() {
         assertThat(answerTo("""
                 img: make image! 2x0
                 e: try [append img {a}] reduce [e/id mold e/arg1]"""))
@@ -173,7 +173,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("a run of bytes is four to a pixel")
-    void aRunOfBytesIsFourToAPixel() {
+    void readsARunOfBytesFourToAPixel() {
         assertThat(answerTo("""
                 img: make image! [2x0 1.1.1]
                 append img #{FF000000}
@@ -190,7 +190,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("a whole number writes the alpha and leaves the colour alone")
-    void aWholeNumberWritesTheAlphaAndLeavesTheColourAlone() {
+    void writesTheAlphaFromAWholeNumberAndLeavesTheColourAlone() {
         assertThat(answerTo("""
                 img: make image! [2x2 1.1.1]
                 change img 7
@@ -200,7 +200,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and appending one adds a white pixel wearing that alpha")
-    void appendingOneAddsAWhitePixelWearingThatAlpha() {
+    void appendsAWhitePixelWearingTheAlpha() {
         assertThat(answerTo("""
                 img: make image! [2x2 1.1.1]
                 append img 7
@@ -239,7 +239,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and a count where a shape belongs writes nothing")
-    void aCountWhereAShapeBelongsWritesNothing() {
+    void writesNothingForACountWhereAShapeBelongs() {
         assertThat(answerTo("""
                 img: make image! [4x4 1.1.1]
                 change/part img make image! [3x3 9.9.9] 2
@@ -266,7 +266,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and answers the position just past what it wrote")
-    void andAnswersThePositionJustPastWhatItWrote() {
+    void answersThePositionJustPastWhatItWrites() {
         assertThat(answerTo("""
                 a: make image! [2x1 170.170.170]
                 reduce [tail? change/dup a 200.200.200 2  enbase/flat a/rgb 16]"""))
@@ -276,7 +276,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and more pixels than there is room for are dropped")
-    void morePixelsThanThereIsRoomForAreDropped() {
+    void dropsMorePixelsThanThereIsRoomFor() {
         assertThat(answerTo("""
                 a: make image! [2x1 170.170.170]
                 change at a 2 [1.1.1 2.2.2]
@@ -287,7 +287,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("but an image written into an image goes in as a rectangle")
-    void anImageWrittenIntoAnImageGoesInAsARectangle() {
+    void writesAnImageInAsARectangle() {
         assertThat(answerTo("""
                 img: make image! 4x4
                 change img make image! [2x2 0.0.0]
@@ -300,7 +300,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and the position says which column and which row it starts at")
-    void thePositionSaysWhichColumnAndWhichRow() {
+    void takesTheColumnAndRowFromThePosition() {
         assertThat(answerTo("""
                 img: make image! [4x2 1.1.1]
                 change at img 2x2 make image! [2x1 9.9.9]
@@ -311,7 +311,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("what will not fit on the row is dropped, not wrapped onto the next")
-    void whatWillNotFitOnTheRowIsDropped() {
+    void dropsWhatWillNotFitOnTheRow() {
         assertThat(answerTo("""
                 img: make image! [2x2 1.1.1]
                 change at img 2x1 make image! [3x1 9.9.9]
@@ -331,7 +331,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("the source is read from its head whatever position it stands at")
-    void theSourceIsReadFromItsHead() {
+    void readsTheSourceFromItsHead() {
         assertThat(answerTo("""
                 img: make image! [3x1 1.1.1]
                 change img next make image! [2x1 9.9.9]
@@ -341,7 +341,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and the answer steps one pixel, not the size of the rectangle")
-    void theAnswerStepsOnePixel() {
+    void stepsTheAnswerOnePixel() {
         assertThat(answerTo("""
                 index? change make image! 4x4 make image! [2x2 0.0.0]"""))
                 .isEqualTo("2");
@@ -352,7 +352,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("/DUP moves the answer along and leaves the picture alone")
-    void duplicatingMovesOnlyTheAnswer() {
+    void movesOnlyTheAnswerWhenDuplicating() {
         assertThat(answerTo("""
                 img: make image! [4x1 1.1.1]
                 reduce [
@@ -364,7 +364,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and a count of nought writes nothing and stays where it is")
-    void aCountOfNoughtWritesNothing() {
+    void writesNothingForACountOfNought() {
         assertThat(answerTo("""
                 img: make image! [2x1 1.1.1]
                 reduce [
@@ -376,7 +376,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("a rectangle with nowhere to go writes nothing")
-    void aRectangleWithNowhereToGoWritesNothing() {
+    void writesNothingForARectangleWithNowhereToGo() {
         assertThat(answerTo("""
                 img: make image! [2x1 1.1.1]
                 reduce [
@@ -446,7 +446,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and it is clipped to what is left of the row and of the picture")
-    void theRectangleIsClippedToWhatIsLeft() {
+    void clipsTheRectangleToWhatIsLeft() {
         assertThat(answerTo(A_COUNTED_PICTURE + """
                 taken: copy/part at img 4x1 3x3
                 reduce [mold taken/size  enbase/flat taken/rgb 16]"""))
@@ -458,7 +458,7 @@ class ImageAsASeriesFromTheSourceTest {
 
     @Test
     @DisplayName("a rectangle of nothing, or of less than nothing, is empty")
-    void aRectangleOfNothingIsEmpty() {
+    void copiesNothingForAnEmptyRectangle() {
         assertThat(answerTo(A_COUNTED_PICTURE + """
                 taken: copy/part img 0x0  mold taken/size""")).isEqualTo("\"0x0\"");
         assertThat(answerTo(A_COUNTED_PICTURE + """

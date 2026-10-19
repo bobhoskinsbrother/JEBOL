@@ -14,11 +14,11 @@ public final class TypesetValue implements Value {
     public static final Datatype TYPE = new Datatype("typeset") {
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
                 case TypesetValue already -> already;
-                case BlockValue block -> TypesetValue.of(TypesetActions.datatypesNamedIn(block));
-                default -> throw refusing(from);
+                case BlockValue block -> TypesetValue.of(TypesetActions.listTheDatatypesNamedIn(block));
+                default -> throw refuse(from);
             };
         }
     };
@@ -103,7 +103,7 @@ public final class TypesetValue implements Value {
     }
 
     public Set<Datatype> members() {
-        return Catalogue.DATATYPES.where(membership);
+        return Catalogue.DATATYPES.selectWhere(membership);
     }
 
     public Set<Datatype> membersAnd(Datatype... alsoTaken) {
@@ -122,15 +122,15 @@ public final class TypesetValue implements Value {
         if (!(other instanceof TypesetValue theirs)) {
             throw Raised.cannotUse(this, "a set operation");
         }
-        return new TypesetActions(this).combinedWith(theirs, keeping.how());
+        return new TypesetActions(this).combineWith(theirs, keeping.how());
     }
 
     @Override
-    public Value bitwise(Value right, BitwiseOperation operation) {
-        return TypesetValue.of(membersKeptAgainst(someDatatypesFrom(right), operation));
+    public Value combineBitwise(Value right, BitwiseOperation operation) {
+        return TypesetValue.of(membersKeptAgainst(collectTheDatatypesFrom(right), operation));
     }
 
-    private Set<Datatype> someDatatypesFrom(Value right) {
+    private Set<Datatype> collectTheDatatypesFrom(Value right) {
         return switch (right) {
             case TypesetValue set -> set.members();
             case Datatype one -> Set.of(one);

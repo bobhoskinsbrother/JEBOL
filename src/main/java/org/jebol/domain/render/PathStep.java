@@ -3,7 +3,7 @@ package org.jebol.domain.render;
 /**
  * One piece of a path, in coordinates measured from the surface.
  *
- * <p>A kind belongs here only where every renderer executes it directly:
+ * <p>A type belongs here only where every renderer executes it directly:
  * anything one would have to approximate is a place two could differ.
  *
  * <p>Specified in {@code spec/draw.allium}.

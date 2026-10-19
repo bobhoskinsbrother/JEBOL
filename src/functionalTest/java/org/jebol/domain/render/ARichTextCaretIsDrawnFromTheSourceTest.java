@@ -17,14 +17,14 @@ class ARichTextCaretIsDrawnFromTheSourceTest {
     private final Interpreter interpreter = Interpreter.withBounds(
             Bounds.standard().grant(HostService.WINDOWS));
 
-    private PaintInstruction.Writing theLineWrittenFor(String caretFields) {
+    private PaintInstruction.Writing writeTheLineFor(String caretFields) {
         String source = """
-                written: copy {abcd}
+                text: copy {abcd}
                 labelled: make gob! [size: 200x40]
                 labelled/text: reduce [
                     'font make object! [shadow: 2x2]
                     'caret make object! [caret: none start: none end: none]
-                    written
+                    text
                 ]
                 the-caret: select labelled/text 'caret
                 do bind [%s] the-caret
@@ -32,19 +32,19 @@ class ARichTextCaretIsDrawnFromTheSourceTest {
         interpreter.defineFreshWordsIn(source);
         GobValue gob = (GobValue) interpreter.run(source).value();
         ObjectValue dialect = (ObjectValue) interpreter.run("system/dialects/draw").value();
-        List<PaintInstruction.Writing> written = PaintList.of(gob, dialect).instructions().stream()
+        List<PaintInstruction.Writing> text = PaintList.of(gob, dialect).instructions().stream()
                 .filter(PaintInstruction.Writing.class::isInstance)
                 .map(PaintInstruction.Writing.class::cast)
                 .toList();
-        assertThat(written).hasSize(1);
-        return written.getFirst();
+        assertThat(text).hasSize(1);
+        return text.getFirst();
     }
 
     @Test
     @DisplayName("a caret set in the rich text is carried to the renderer, before the character it names")
-    void aSetCaretIsCarried() {
-        TextCaret caret = theLineWrittenFor("""
-                caret: reduce [at labelled/text 5 at written 3] start: none end: none""").caret();
+    void carriesASetCaret() {
+        TextCaret caret = writeTheLineFor("""
+                caret: reduce [at labelled/text 5 at text 3] start: none end: none""").caret();
 
         assertThat(caret.isShown()).isTrue();
         assertThat(caret.run()).isZero();
@@ -54,17 +54,17 @@ class ARichTextCaretIsDrawnFromTheSourceTest {
 
     @Test
     @DisplayName("a caret whose place is unset is not drawn, as the 2010 GUI leaves it while a field has no focus")
-    void anUnsetCaretIsNotDrawn() {
-        assertThat(theLineWrittenFor("caret: [0 0] start: [0 0] end: [0 0]").caret().isShown()).isFalse();
+    void skipsAnUnsetCaret() {
+        assertThat(writeTheLineFor("caret: [0 0] start: [0 0] end: [0 0]").caret().isShown()).isFalse();
     }
 
     @Test
     @DisplayName("a start and an end that differ mark the text between them")
-    void aSelectionIsCarried() {
-        TextCaret caret = theLineWrittenFor("""
-                caret: reduce [at labelled/text 5 at written 4]
-                start: reduce [at labelled/text 5 at written 2]
-                end: reduce [at labelled/text 5 at written 4]""").caret();
+    void carriesASelection() {
+        TextCaret caret = writeTheLineFor("""
+                caret: reduce [at labelled/text 5 at text 4]
+                start: reduce [at labelled/text 5 at text 2]
+                end: reduce [at labelled/text 5 at text 4]""").caret();
 
         assertThat(caret.marksASelection()).isTrue();
         assertThat(caret.selectionFrom()).isEqualTo(new TextLines.RunAndCharacter(0, 1));
@@ -73,29 +73,29 @@ class ARichTextCaretIsDrawnFromTheSourceTest {
 
     @Test
     @DisplayName("a start and an end at the same place mark nothing")
-    void anEmptySelectionMarksNothing() {
-        assertThat(theLineWrittenFor("""
-                caret: reduce [at labelled/text 5 at written 2]
-                start: reduce [at labelled/text 5 at written 2]
-                end: reduce [at labelled/text 5 at written 2]""").caret().marksASelection()).isFalse();
+    void marksNothingForAnEmptySelection() {
+        assertThat(writeTheLineFor("""
+                caret: reduce [at labelled/text 5 at text 2]
+                start: reduce [at labelled/text 5 at text 2]
+                end: reduce [at labelled/text 5 at text 2]""").caret().marksASelection()).isFalse();
     }
 
     @Test
     @DisplayName("the caret object is not a font, so the font's shadow before it still stands")
-    void theCaretIsNotAFont() {
-        assertThat(theLineWrittenFor("caret: [0 0] start: [0 0] end: [0 0]").layout().shadowAcross())
+    void isNotReadAsAFont() {
+        assertThat(writeTheLineFor("caret: [0 0] start: [0 0] end: [0 0]").layout().shadowAcross())
                 .isEqualTo(2);
     }
 
     @Test
     @DisplayName("a gob with no caret in its text draws none")
-    void noCaretNoneDrawn() {
+    void drawsNoneWithNoCaret() {
         String source = """
                 make gob! [size: 100x20 text: {plain}]""";
         interpreter.defineFreshWordsIn(source);
         GobValue gob = (GobValue) interpreter.run(source).value();
-        PaintInstruction.Writing written = (PaintInstruction.Writing) PaintList.of(gob).instructions().getFirst();
+        PaintInstruction.Writing text = (PaintInstruction.Writing) PaintList.of(gob).instructions().getFirst();
 
-        assertThat(written.caret().isShown()).isFalse();
+        assertThat(text.caret().isShown()).isFalse();
     }
 }

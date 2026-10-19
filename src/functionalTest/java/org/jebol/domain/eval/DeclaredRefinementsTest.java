@@ -14,7 +14,7 @@ class DeclaredRefinementsTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo(
                 "e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
@@ -27,7 +27,7 @@ class DeclaredRefinementsTest {
 
     @Test
     @DisplayName("CASE/ALL runs every matching branch and answers the last")
-    void caseAllRunsEveryMatchingBranch() {
+    void runEveryMatchingBranchForCaseAll() {
         assertThat(answerTo("case/all [true [1] true [2]]")).isEqualTo("2");
         assertThat(answerTo("case [true [1] true [2]]"))
                 .as("plain CASE stops at the first")
@@ -36,19 +36,19 @@ class DeclaredRefinementsTest {
 
     @Test
     @DisplayName("CASE/ALL with an empty branch answers unset")
-    void caseAllAnswersUnsetForAnEmptyBranch() {
+    void answerUnsetForAnEmptyBranchOfCaseAll() {
         assertThat(answerTo("unset? case/all [true [1] true []]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("CASE/ALL with nothing matching answers none")
-    void caseAllAnswersNoneWhenNothingMatches() {
+    void answerNoneWhenCaseAllMatchesNothing() {
         assertThat(answerTo("none? case/all [false [1] false [2]]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("CASE/ALL skips the branches whose condition is false")
-    void caseAllSkipsFalseBranches() {
+    void skipFalseBranchesForCaseAll() {
         assertThat(answerTo("case/all [false [1] true [2]]")).isEqualTo("2");
     }
 
@@ -56,7 +56,7 @@ class DeclaredRefinementsTest {
     @DisplayName("GET/ANY answers unset where GET raises")
     void getAnyAnswersUnsetForAWordWithNoValue() {
         assertThat(answerTo("unset? get/any 'xyz")).isEqualTo("#(true)");
-        assertThat(errorIdOf("get 'xyz"))
+        assertThat(readTheErrorIdOf("get 'xyz"))
                 .as("plain GET still refuses")
                 .isEqualTo("no-value");
     }
@@ -90,7 +90,7 @@ class DeclaredRefinementsTest {
 
     @Test
     @DisplayName("the trigonometric natives take radians when asked")
-    void theTrigonometryTakesRadians() {
+    void takeRadiansForTrigonometry() {
         assertThat(answerTo("-1.0 = cosine/radians pi")).isEqualTo("#(true)");
         assertThat(answerTo("0.0 = sine/radians 0")).isEqualTo("#(true)");
         assertThat(answerTo("0.0 = tangent/radians 0")).isEqualTo("#(true)");
@@ -98,7 +98,7 @@ class DeclaredRefinementsTest {
 
     @Test
     @DisplayName("the inverse trigonometric natives answer radians when asked")
-    void theInverseTrigonometryAnswersRadians() {
+    void answerRadiansForInverseTrigonometry() {
         assertThat(answerTo("(arccosine/radians 0) - (pi / 2) < 1E-13")).isEqualTo("#(true)");
         assertThat(answerTo("0.0 = arcsine/radians 0")).isEqualTo("#(true)");
         assertThat(answerTo("0.0 = arctangent/radians 0")).isEqualTo("#(true)");
@@ -106,7 +106,7 @@ class DeclaredRefinementsTest {
 
     @Test
     @DisplayName("the trigonometric natives still take degrees without the refinement")
-    void theTrigonometryIsUnchangedInDegrees() {
+    void leaveTrigonometryInDegreesUnchanged() {
         assertThat(answerTo("0.5 = cosine 60")).isEqualTo("#(true)");
         assertThat(answerTo("90.0 = arccosine 0")).isEqualTo("#(true)");
     }

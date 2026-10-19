@@ -10,7 +10,7 @@ public class UppercaseNative extends CaseChangeNative {
     }
 
     @Override
-    int changed(int codepoint) {
-        return UnicodeCases.TABLES.upper(codepoint);
+    int change(int codepoint) {
+        return UnicodeCases.TABLES.toUpper(codepoint);
     }
 }

@@ -23,7 +23,7 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("a size makes one, shaped like system/standard/bincode")
-        void aSizeMakesAContext() {
+        void isMadeFromASize() {
             assertThat(answerTo("object? binary 64")).isEqualTo(TRUE);
             assertThat(answerTo("b: binary 64  b/type = 'bincode")).isEqualTo(TRUE);
             assertThat(answerTo("b: binary 64  mold words-of b"))
@@ -32,7 +32,7 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("and it carries a buffer for the bytes to go in")
-        void itCarriesABuffer() {
+        void carriesABuffer() {
             assertThat(answerTo("b: binary 64  binary? b/buffer")).isEqualTo(TRUE);
         }
     }
@@ -43,35 +43,35 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("one byte then two, most significant first")
-        void aByteThenTwo() {
+        void laysOneByteThenTwo() {
             assertThat(answerTo("b: binary/write #{} [UI8 5 UI16 300]  mold b/buffer"))
                     .isEqualTo("\"#{05012C}\"");
         }
 
         @Test
         @DisplayName("an LE suffix writes the same field the other way round")
-        void littleEndianReverses() {
+        void reversesTheFieldForLittleEndian() {
             assertThat(answerTo("b: binary/write #{} [UI16LE 300]  mold b/buffer"))
                     .isEqualTo("\"#{2C01}\"");
         }
 
         @Test
         @DisplayName("a three-byte field is three bytes, which no other width gives")
-        void aThreeByteField() {
+        void laysAThreeByteField() {
             assertThat(answerTo("b: binary/write #{} [UI24 65536]  mold b/buffer"))
                     .isEqualTo("\"#{010000}\"");
         }
 
         @Test
         @DisplayName("BYTES lays a binary in whole")
-        void bytesLaysABinary() {
+        void laysABinaryInWholeForBytes() {
             assertThat(answerTo("b: binary/write #{} [BYTES #{AABB} UI8 1]  mold b/buffer"))
                     .isEqualTo("\"#{AABB01}\"");
         }
 
         @Test
         @DisplayName("and it answers the context, so writes can follow one another")
-        void writingAnswersTheContext() {
+        void answersTheContext() {
             assertThat(answerTo("object? binary/write #{} [UI8 1]")).isEqualTo(TRUE);
         }
 
@@ -87,7 +87,7 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("but a fresh context over the same bytes writes from their head")
-        void aFreshContextWritesFromTheHead() {
+        void startsFromTheHeadInAFreshContext() {
             assertThat(answerTo("""
                     b: binary/write #{} [UI8 1]
                     c: binary/write b/buffer [UI8 2]
@@ -101,27 +101,27 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("one value per code that produces one")
-        void aValuePerCode() {
+        void answersAValuePerCode() {
             assertThat(answerTo("mold binary/read #{05012C} [UI8 UI16]"))
                     .isEqualTo("\"[5 300]\"");
         }
 
         @Test
         @DisplayName("but a single word answers that value, not a block holding it")
-        void aSingleWordAnswersTheValueItself() {
+        void answersTheValueItselfForASingleWord() {
             assertThat(answerTo("mold binary/read #{0102} 'UI16")).isEqualTo("\"258\"");
             assertThat(answerTo("integer? binary/read #{0102} 'UI16")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("while the same code in a block still answers a block")
-        void theSameCodeInABlockAnswersABlock() {
+        void answersABlockForTheSameCodeInABlock() {
             assertThat(answerTo("mold binary/read #{0102} [UI16]")).isEqualTo("\"[258]\"");
         }
 
         @Test
         @DisplayName("and it round trips whatever was written")
-        void itRoundTrips() {
+        void roundTripsWhatWasWritten() {
             assertThat(answerTo("""
                     b: binary/write #{} [UI8 5 UI16 300 UI24 65536]
                     (mold binary/read b/buffer [UI8 UI16 UI24]) = {[5 300 65536]}"""))
@@ -130,21 +130,21 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("a little-endian field reads back the way it was written")
-        void littleEndianRoundTrips() {
+        void roundTripsALittleEndianField() {
             assertThat(answerTo("mold binary/read #{2C01} [UI16LE]"))
                     .isEqualTo("\"[300]\"");
         }
 
         @Test
         @DisplayName("a signed field with its top bit set reads back negative")
-        void aSignedFieldIsNegative() {
+        void readsASignedFieldWithItsTopBitSetAsNegative() {
             assertThat(answerTo("mold binary/read #{FF} [SI8]")).isEqualTo("\"[-1]\"");
             assertThat(answerTo("mold binary/read #{FFFF} [SI16]")).isEqualTo("\"[-1]\"");
         }
 
         @Test
         @DisplayName("while the unsigned form of the same bytes is positive")
-        void theUnsignedFormIsPositive() {
+        void readsTheUnsignedFormAsPositive() {
             assertThat(answerTo("mold binary/read #{FF} [UI8]")).isEqualTo("\"[255]\"");
             assertThat(answerTo("mold binary/read #{FFFF} [UI16]")).isEqualTo("\"[65535]\"");
         }
@@ -158,7 +158,7 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("and AT moves to a numbered position, counting from one")
-        void atMovesToAPosition() {
+        void movesToANumberedPositionForAt() {
             assertThat(answerTo("mold binary/read #{0102030405} [AT 4 UI8]"))
                     .isEqualTo("\"[4]\"");
         }
@@ -170,7 +170,7 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("a get-word writes what the word holds")
-        void aGetWordIsLookedUp() {
+        void lookUpAGetWord() {
             assertThat(answerTo("""
                     n: 300
                     b: binary/write #{} [UI16 :n]
@@ -179,7 +179,7 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("and a plain word is not, because a word there names a code")
-        void aPlainWordIsNotLookedUp() {
+        void leaveAPlainWordNamingACode() {
             assertThat(answerTo("""
                     n: 300
                     e: try [binary/write #{} [UI16 n]] error? e""")).isEqualTo(TRUE);
@@ -187,7 +187,7 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("a get-path reaches into a table of constants")
-        void aGetPathIsLookedUp() {
+        void lookUpAGetPath() {
             assertThat(answerTo("""
                     table: make object! [secp256r1: 23]
                     b: binary/write #{} [UI16BE :table/secp256r1]
@@ -196,7 +196,7 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("including one whose own segment is a get-word, as prot-tls writes it")
-        void aGetPathWithAGetWordSegment() {
+        void lookUpAGetPathWithAGetWordSegment() {
             assertThat(answerTo("""
                     table: make object! [secp256r1: 23 secp384r1: 24]
                     curve: 'secp384r1
@@ -206,7 +206,7 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("and a get-word may give the count a position code takes")
-        void aGetWordServesAPositionCode() {
+        void giveAPositionCodeItsCountFromAGetWord() {
             assertThat(answerTo("""
                     where: 2
                     mold binary/read #{0102030405} [SKIP :where UI8]"""))
@@ -220,14 +220,14 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("a code this build has not got is refused by name, never skipped")
-        void anUnknownCodeIsRefused() {
+        void refuseAnUnknownCodeByName() {
             assertThat(answerTo("""
                     e: try [binary/write #{} [NOSUCH 1]] e/id""")).isEqualTo("dialect");
         }
 
         @Test
         @DisplayName("and the refusal names the dialect and the code that was wrong")
-        void theRefusalNamesTheCode() {
+        void nameTheDialectAndTheCode() {
             assertThat(answerTo("""
                     e: try [binary/write #{} [NOSUCH 1]]
                     reduce [e/arg1 true? find form e/arg2 {osuch}]"""))
@@ -236,21 +236,21 @@ class BinaryDialectFromTheSourceTest {
 
         @Test
         @DisplayName("a code needing a value and not given one is the same refusal")
-        void aCodeWithoutItsValueIsRefused() {
+        void refuseACodeWithoutItsValue() {
             assertThat(answerTo("""
                     e: try [binary/write #{} [UI8]] e/id""")).isEqualTo("dialect");
         }
 
         @Test
         @DisplayName("and something that is not a code at all is refused the same way")
-        void aNonCodeIsRefused() {
+        void refuseSomethingThatIsNotACode() {
             assertThat(answerTo("""
                     e: try [binary/write #{} [5 5]] e/id""")).isEqualTo("dialect");
         }
 
         @Test
         @DisplayName("writing into a protected binary is refused before anything moves")
-        void aProtectedBinaryIsRefused() {
+        void refuseAProtectedBinaryBeforeAnythingMoves() {
             assertThat(answerTo("""
                     out: protect #{0000}
                     e: try [binary/write out #{babe}] e/id""")).isEqualTo("protected");

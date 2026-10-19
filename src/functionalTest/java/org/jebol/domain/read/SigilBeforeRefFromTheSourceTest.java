@@ -15,7 +15,7 @@ class SigilBeforeRefFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFromLoading(String source) {
+    private static String readTheErrorIdFromLoading(String source) {
         return answerTo("e: try [load " + source + "] "
                 + "either error? e [e/id] ['no-error]");
     }
@@ -28,19 +28,19 @@ class SigilBeforeRefFromTheSourceTest {
 
         @Test
         @DisplayName("in front of a ref")
-        void beforeARef() {
-            assertThat(errorIdFromLoading("""
+        void coversASigilBeforeARef() {
+            assertThat(readTheErrorIdFromLoading("""
                     {'@foo}""")).isEqualTo("invalid");
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {:@foo}""")).isEqualTo("invalid");
         }
 
         @Test
         @DisplayName("and in front of an email, because the test is on the at-sign anywhere")
-        void beforeAnEmail() {
-            assertThat(errorIdFromLoading("""
+        void coversASigilBeforeAnEmail() {
+            assertThat(readTheErrorIdFromLoading("""
                     {'a@b}""")).isEqualTo("invalid");
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {:a@b}""")).isEqualTo("invalid");
         }
     }
@@ -51,14 +51,14 @@ class SigilBeforeRefFromTheSourceTest {
 
         @Test
         @DisplayName("a leading at-sign is a ref")
-        void aRef() {
+        void readsALeadingAtSignAsARef() {
             assertThat(answerTo("""
                     ref? load {@foo}""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and an at-sign inside a name is an email")
-        void anEmail() {
+        void readsAnInnerAtSignAsAnEmail() {
             assertThat(answerTo("""
                     email? load {a@b}""")).isEqualTo(TRUE);
         }
@@ -70,14 +70,14 @@ class SigilBeforeRefFromTheSourceTest {
 
         @Test
         @DisplayName("a tag may hold an at-sign")
-        void aTagMayHoldOne() {
+        void letATagHoldOne() {
             assertThat(answerTo("""
                     tag? load {<a@b>}""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and so may a file, including one whose escape decodes to it")
-        void aFileMayHoldOne() {
+        void letAFileHoldOne() {
             assertThat(answerTo("""
                     file? load {%a@b}""")).isEqualTo(TRUE);
             assertThat(answerTo("""

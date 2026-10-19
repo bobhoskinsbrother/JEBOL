@@ -21,7 +21,7 @@ class ChecksumHashFromTheSourceTest {
 
         @Test
         @DisplayName("the suite's own case: a thousand binaries all land inside the table")
-        void everySlotIsInsideTheTable() {
+        void staysInsideTheTable() {
             assertThat(answerTo("""
                     inside: true
                     repeat i 1024 [
@@ -33,7 +33,7 @@ class ChecksumHashFromTheSourceTest {
 
         @Test
         @DisplayName("a binary mixes four bytes at a time, so a fifth byte moves it a long way")
-        void aBinaryMixesFourBytesAtATime() {
+        void mixesABinaryFourBytesAtATime() {
             assertThat(answerTo("""
                     reduce [
                         checksum/with #{} 'hash 64
@@ -46,7 +46,7 @@ class ChecksumHashFromTheSourceTest {
 
         @Test
         @DisplayName("a string hashes its bytes, not the binary holding them")
-        void aStringIsNotItsBytes() {
+        void differsForAStringAndItsBytes() {
             assertThat(answerTo("""
                     reduce [
                         checksum/with "abc" 'hash 1000000
@@ -56,7 +56,7 @@ class ChecksumHashFromTheSourceTest {
 
         @Test
         @DisplayName("and the empty string is not the empty binary either")
-        void theEmptyStringIsNotTheEmptyBinary() {
+        void differsForTheEmptyStringAndTheEmptyBinary() {
             assertThat(answerTo("""
                     reduce [
                         checksum/with "" 'hash 1000000
@@ -71,7 +71,7 @@ class ChecksumHashFromTheSourceTest {
 
         @Test
         @DisplayName("ASCII folds, so the same word in either case is the same slot")
-        void asciiFolds() {
+        void foldsAscii() {
             assertThat(answerTo("""
                     (checksum/with "abc" 'hash 1000000)
                         = checksum/with "ABC" 'hash 1000000""")).isEqualTo("#(true)");
@@ -79,7 +79,7 @@ class ChecksumHashFromTheSourceTest {
 
         @Test
         @DisplayName("an accented letter does not, being two bytes lowered separately")
-        void anAccentedLetterDoesNot() {
+        void leavesAnAccentedLetter() {
             assertThat(answerTo("""
                     reduce [
                         checksum/with "é" 'hash 1000000
@@ -91,7 +91,7 @@ class ChecksumHashFromTheSourceTest {
 
         @Test
         @DisplayName("a whole accented word, which is where the suite would have caught it")
-        void aWholeAccentedWord() {
+        void leavesAWholeAccentedWord() {
             assertThat(answerTo("""
                     reduce [
                         checksum/with "šiška" 'hash 1000000
@@ -108,7 +108,7 @@ class ChecksumHashFromTheSourceTest {
 
         @Test
         @DisplayName("one slot means slot zero, whatever the value")
-        void oneSlotMeansSlotZero() {
+        void answersSlotZeroForOneSlot() {
             assertThat(answerTo("""
                     reduce [
                         checksum/with #{} 'hash 1
@@ -119,7 +119,7 @@ class ChecksumHashFromTheSourceTest {
 
         @Test
         @DisplayName("and nothing or less is read as one rather than dividing by zero")
-        void nothingOrLessIsReadAsOne() {
+        void readsNothingOrLessAsOne() {
             assertThat(answerTo("""
                     reduce [
                         checksum/with #{00} 'hash 0
@@ -129,7 +129,7 @@ class ChecksumHashFromTheSourceTest {
 
         @Test
         @DisplayName("the size is counted in thirty-two bits, so a bigger one wraps first")
-        void theSizeIsCountedInThirtyTwoBits() {
+        void countsTheSizeInThirtyTwoBits() {
             assertThat(answerTo("""
                     reduce [
                         checksum/with #{00} 'hash 4294967295
@@ -139,7 +139,7 @@ class ChecksumHashFromTheSourceTest {
 
         @Test
         @DisplayName("and a size that wraps to none leaves the hash whole")
-        void aSizeThatWrapsToNone() {
+        void handlesASizeThatWrapsToNothing() {
             assertThat(answerTo("""
                     checksum/with #{00} 'hash 4294967296""")).isEqualTo("1364076727");
         }
@@ -149,51 +149,51 @@ class ChecksumHashFromTheSourceTest {
     @DisplayName("what it refuses")
     class TheRefusals {
 
-        private static String errorIdFrom(String source) {
+        private static String readTheErrorIdFrom(String source) {
             return answerTo("failure: try [" + source + "] failure/id");
         }
 
         @Test
         @DisplayName("no /WITH at all, because the table has to have a size")
-        void noWithAtAll() {
-            assertThat(errorIdFrom("checksum #{00} 'hash")).isEqualTo("missing-arg");
+        void refuseAMissingWith() {
+            assertThat(readTheErrorIdFrom("checksum #{00} 'hash")).isEqualTo("missing-arg");
         }
 
         @Test
         @DisplayName("a /WITH that is not a number, because a key is not a size")
-        void aWithThatIsNotANumber() {
-            assertThat(errorIdFrom("""
+        void refuseAWithThatIsNotANumber() {
+            assertThat(readTheErrorIdFrom("""
                     checksum/with #{00} 'hash {x}""")).isEqualTo("bad-refine");
-            assertThat(errorIdFrom("""
+            assertThat(readTheErrorIdFrom("""
                     checksum/with #{00} 'hash #{FF}""")).isEqualTo("bad-refine");
         }
 
         @Test
         @DisplayName("and the other way about: a number where a digest wanted a key")
-        void aNumberWhereADigestWantedAKey() {
-            assertThat(errorIdFrom("""
+        void refuseANumberWhereADigestWantsAKey() {
+            assertThat(readTheErrorIdFrom("""
                     checksum/with #{00} 'md5 5""")).isEqualTo("bad-refine");
-            assertThat(errorIdFrom("""
+            assertThat(readTheErrorIdFrom("""
                     checksum/with #{00} 'sha256 5""")).isEqualTo("bad-refine");
         }
 
         @Test
         @DisplayName("a /WITH on a sum that has no use for one is the refinements quarrelling")
-        void aWithOnASumThatHasNoUseForOne() {
-            assertThat(errorIdFrom("""
+        void refuseAWithOnASumThatHasNoUseForOne() {
+            assertThat(readTheErrorIdFrom("""
                     checksum/with #{00} 'crc32 5""")).isEqualTo("bad-refines");
-            assertThat(errorIdFrom("""
+            assertThat(readTheErrorIdFrom("""
                     checksum/with #{00} 'adler32 5""")).isEqualTo("bad-refines");
-            assertThat(errorIdFrom("""
+            assertThat(readTheErrorIdFrom("""
                     checksum/with #{00} 'crc24 5""")).isEqualTo("bad-refines");
-            assertThat(errorIdFrom("""
+            assertThat(readTheErrorIdFrom("""
                     checksum/with #{00} 'tcp 5""")).isEqualTo("bad-refines");
         }
 
         @Test
         @DisplayName("and a method nobody has heard of")
-        void aMethodNobodyHasHeardOf() {
-            assertThat(errorIdFrom("checksum #{00} 'nosuch")).isEqualTo("invalid-arg");
+        void refuseAMethodNobodyHasHeardOf() {
+            assertThat(readTheErrorIdFrom("checksum #{00} 'nosuch")).isEqualTo("invalid-arg");
         }
     }
 
@@ -210,7 +210,7 @@ class ChecksumHashFromTheSourceTest {
 
         @Test
         @DisplayName("though everything the catalogue does list answers to CHECKSUM")
-        void everythingListedAnswers() {
+        void answersForEverythingListed() {
             assertThat(answerTo("""
                     every-one-works: true
                     foreach method system/catalog/checksums [

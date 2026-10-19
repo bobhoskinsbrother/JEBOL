@@ -43,28 +43,28 @@ public final class InterpreterMaker implements Maker {
     }
 
     @Override
-    public ObjectValue objectEvaluatedFrom(AnyBlockValue body) {
-        return evaluator.evaluatedInto(evaluator.freshObjectWithin(context), body);
+    public ObjectValue evaluateAnObject(AnyBlockValue body) {
+        return evaluator.evaluateInto(evaluator.makeAFreshObjectWithin(context), body);
     }
 
     @Override
-    public FunctionValue functionBoundFrom(AnyBlockValue spec, AnyBlockValue body) {
-        return Binder.functionWithItsBodyBound(spec, body, context);
+    public FunctionValue bindAFunction(AnyBlockValue spec, AnyBlockValue body) {
+        return Binder.bindTheFunctionsBody(spec, body, context);
     }
 
     @Override
-    public Value systemFunctionApplied(String name, Value argument) {
-        return evaluator.applyFunction(context.systemFunctionNamed(name), List.of(argument));
+    public Value applyASystemFunction(String name, Value argument) {
+        return evaluator.applyFunction(context.findTheSystemFunctionNamed(name), List.of(argument));
     }
 
     @Override
-    public Value simpleValueOf(Value piece) {
-        return evaluator.simpleValueOf(piece, context);
+    public Value readASimpleValue(Value piece) {
+        return evaluator.readASimpleValue(piece, context);
     }
 
     @Override
-    public ErrorValue spokenHere(ErrorValue error) {
-        return evaluator.spokenHere(error);
+    public ErrorValue speakHere(ErrorValue error) {
+        return evaluator.speakHere(error);
     }
 
     @Override
@@ -73,36 +73,36 @@ public final class InterpreterMaker implements Maker {
     }
 
     @Override
-    public Optional<List<Value>> valuesReadFrom(String source) {
-        return withoutEvaluating.valuesReadFrom(source);
+    public Optional<List<Value>> readTheValuesFrom(String source) {
+        return withoutEvaluating.readTheValuesFrom(source);
     }
 
     @Override
-    public AnyBlockValue sourceRead(String source) {
-        return withoutEvaluating.sourceRead(source);
+    public AnyBlockValue readTheSource(String source) {
+        return withoutEvaluating.readTheSource(source);
     }
 
     @Override
     public Value makeObjectFrom(ObjectValue prototype, BlockValue body) {
-        return evaluator.evaluatedInto(aCopyOf(prototype), body);
+        return evaluator.evaluateInto(copyTheObject(prototype), body);
     }
 
     @Override
-    public Value objectMergedFrom(ObjectValue prototype, ObjectValue other) {
-        return mergedObject(prototype, other);
+    public Value mergeAnObject(ObjectValue prototype, ObjectValue other) {
+        return mergeTheObjects(prototype, other);
     }
 
-    private ObjectValue aCopyOf(ObjectValue prototype) {
-        ObjectValue built = evaluator.freshObjectWithin(context);
+    private ObjectValue copyTheObject(ObjectValue prototype) {
+        ObjectValue built = evaluator.makeAFreshObjectWithin(context);
         Context fields = built.context();
         prototype.context().slots().forEach(slot -> fields.register(
-                slot.spelling(), Binder.clonedAndRebound(
+                slot.spelling(), Binder.cloneAndRebind(
                         slot.value(), Set.of(prototype.context()), fields)));
         return built;
     }
 
-    private Value mergedObject(ObjectValue prototype, ObjectValue other) {
-        Context fields = Context.childOf(context);
+    private Value mergeTheObjects(ObjectValue prototype, ObjectValue other) {
+        Context fields = Context.makeChildOf(context);
         prototype.context().slots()
                 .forEach(slot -> fields.register(slot.spelling(), slot.value()));
         other.context().slots()
@@ -112,7 +112,7 @@ public final class InterpreterMaker implements Maker {
         fields.pointItsOwnSelfAt(merged);
         Set<Context> sources = Set.of(prototype.context(), other.context());
         fields.slots().forEach(slot -> fields.register(slot.spelling(),
-                Binder.clonedAndRebound(slot.value(), sources, fields)));
+                Binder.cloneAndRebind(slot.value(), sources, fields)));
         return merged;
     }
 
@@ -127,22 +127,22 @@ public final class InterpreterMaker implements Maker {
                 ? Optional.of(given)
                 : Optional.empty();
         if (newSpecification.isEmpty() && !isTheStarThatMeansKeepIt(first)) {
-            throw prototype.refusedAsAPrototypeFor(spec);
+            throw prototype.refuseAsAPrototypeFor(spec);
         }
         Optional<Value> newBody = parts.size() > 1 ? Optional.of(parts.get(1)) : Optional.empty();
         if (newBody.isPresent() && !takesTheBody(prototype, newBody.get())) {
-            throw prototype.refusedAsAPrototypeFor(spec);
+            throw prototype.refuseAsAPrototypeFor(spec);
         }
         return switch (prototype) {
-            case DefinedFunctionValue written -> Binder.functionWithItsBodyBound(
+            case DefinedFunctionValue written -> Binder.bindTheFunctionsBody(
                     newSpecification.orElseGet(() -> asABlock(written.spec())),
                     newBody.map(this::asABlock).orElseGet(() -> asABlock(written.body())),
                     written.closedOver());
             case NativeValue built -> newSpecification
-                    .<AnyFunctionValue>map(given -> built.derivedWith(given, FunctionSpec.parametersIn(given)))
+                    .<AnyFunctionValue>map(given -> built.deriveWith(given, FunctionSpec.readTheParametersIn(given)))
                     .orElse(built);
             case OperatorValue operator -> newSpecification
-                    .<AnyFunctionValue>map(given -> operatorRespecified(operator, given))
+                    .<AnyFunctionValue>map(given -> respecifyTheOperator(operator, given))
                     .orElse(operator);
         };
     }
@@ -153,13 +153,13 @@ public final class InterpreterMaker implements Maker {
         if (parts.size() != PARTS_OF_A_COMMAND_DEFINITION
                 || !(parts.getFirst() instanceof AnyBlockValue spec)
                 || !(parts.get(1) instanceof PathTargetWithFields extension)
-                || !theFirstFieldIsAnExtensionHandle(extension)
+                || !hasAnExtensionHandleFirst(extension)
                 || !(parts.get(2) instanceof IntegerValue(long index))
                 || index > THE_LARGEST_COMMAND_INDEX) {
             throw Raised.of(EvaluationFailure.BAD_FUNC_DEF, definition);
         }
-        CommandValue made = new CommandValue(spec, FunctionSpec.parametersIn(spec), extension, index);
-        if (made.theDispatcher().isEmpty()) {
+        CommandValue made = new CommandValue(spec, FunctionSpec.readTheParametersIn(spec), extension, index);
+        if (made.findTheDispatcher().isEmpty()) {
             throw Raised.of(EvaluationFailure.BAD_EXTENSION, definition);
         }
         return made;
@@ -169,7 +169,7 @@ public final class InterpreterMaker implements Maker {
 
     private static final long THE_LARGEST_COMMAND_INDEX = 0xFFFF;
 
-    private boolean theFirstFieldIsAnExtensionHandle(PathTargetWithFields extension) {
+    private boolean hasAnExtensionHandleFirst(PathTargetWithFields extension) {
         List<ContextSlot> fields = extension.context().slots();
         return !fields.isEmpty()
                 && fields.getFirst().value() instanceof HandleValue handle
@@ -180,15 +180,15 @@ public final class InterpreterMaker implements Maker {
         return prototype instanceof DefinedFunctionValue && body instanceof AnyBlockValue;
     }
 
-    private OperatorValue operatorRespecified(OperatorValue operator, AnyBlockValue specification) {
+    private OperatorValue respecifyTheOperator(OperatorValue operator, AnyBlockValue specification) {
         return new OperatorValue(operator.operatorName(),
-                makeFunctionFrom(operator.underlying(), BlockValue.block(List.of(specification))));
+                makeFunctionFrom(operator.underlying(), BlockValue.of(List.of(specification))));
     }
 
     private AnyBlockValue asABlock(Value half) {
         return half instanceof AnyBlockValue block
                 ? block
-                : BlockValue.block(List.of());
+                : BlockValue.of(List.of());
     }
 
     private boolean isTheStarThatMeansKeepIt(Value first) {
@@ -199,17 +199,17 @@ public final class InterpreterMaker implements Maker {
     public Value makeStructFrom(StructValue prototype, Value spec) {
         StructValue made = prototype.separateCopy();
         if (spec instanceof BinaryValue octets) {
-            byte[] bytes = octets.bytesFromHere();
+            byte[] bytes = octets.readTheBytesFromHere();
             if (bytes.length < made.size()) {
-                throw StructValue.TYPE.refusing(spec);
+                throw StructValue.TYPE.refuse(spec);
             }
             made.changeFrom(bytes);
             return made;
         }
         if (!(spec instanceof AnyBlockValue written)) {
-            throw StructValue.TYPE.refusing(spec);
+            throw StructValue.TYPE.refuse(spec);
         }
-        made.startedWith(BlockValue.block(evaluator.reducedLeavingSetWords(written)));
+        made.startWith(BlockValue.of(evaluator.reduceLeavingSetWords(written)));
         return made;
     }
 }

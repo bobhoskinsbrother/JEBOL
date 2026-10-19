@@ -22,7 +22,7 @@ class InteractiveRenderingTest {
         void actionableFacesAreNamed() {
             View view = viewOf("[button \"Press\" [count: 1]]");
 
-            assertThat(view.markup()).contains("data-jebol-action=");
+            assertThat(view.writeTheMarkup()).contains("data-jebol-action=");
         }
 
         @Test
@@ -30,7 +30,7 @@ class InteractiveRenderingTest {
         void inertFacesAreNotNamed() {
             View view = viewOf("[text \"just words\"]");
 
-            assertThat(view.markup()).doesNotContain("data-jebol-action=");
+            assertThat(view.writeTheMarkup()).doesNotContain("data-jebol-action=");
         }
 
         @Test
@@ -48,7 +48,7 @@ class InteractiveRenderingTest {
     class Events {
 
         @Test
-        void anEventRunsItsAction() {
+        void runTheirAction() {
             View view = viewOf(
                     "count: 0 [button \"Press\" [count: add count 1]]");
 
@@ -59,7 +59,7 @@ class InteractiveRenderingTest {
 
         @Test
         @DisplayName("pressing twice runs it twice")
-        void eventsAccumulate() {
+        void accumulate() {
             View view = viewOf(
                     "count: 0 [button \"Press\" [count: add count 1]]");
             String handle = view.actionHandles().get(0);
@@ -72,7 +72,7 @@ class InteractiveRenderingTest {
 
         @Test
         @DisplayName("the right block runs, not merely a block")
-        void theRightActionRuns() {
+        void runTheRightAction() {
             View view = viewOf(
                     "chosen: \"none\" ["
                             + "button \"one\" [chosen: \"first\"] "
@@ -85,7 +85,7 @@ class InteractiveRenderingTest {
 
         @Test
         @DisplayName("an event nobody registered is refused rather than guessed at")
-        void unknownHandlesAreRefused() {
+        void refuseUnknownHandles() {
             View view = viewOf("[button \"Press\" [x: 1]]");
 
             assertThat(view.raise("not-a-real-handle").succeeded()).isFalse();
@@ -93,11 +93,11 @@ class InteractiveRenderingTest {
 
         @Test
         @DisplayName("an action that fails does not take the view with it")
-        void aFailingActionLeavesTheViewUsable() {
+        void leaveTheViewUsableAfterAFailingAction() {
             View view = viewOf("[button \"Press\" [divide 1 0]]");
 
             assertThat(view.raise(view.actionHandles().get(0)).succeeded()).isFalse();
-            assertThat(view.markup()).contains("Press");
+            assertThat(view.writeTheMarkup()).contains("Press");
         }
     }
 
@@ -107,24 +107,24 @@ class InteractiveRenderingTest {
 
         @Test
         @DisplayName("markup reflects state changed by an action")
-        void markupFollowsState() {
+        void followsTheState() {
             View view = viewOf(
                     "caption: \"before\" [button caption [caption: \"after\"]]");
 
-            assertThat(view.markup()).contains("before");
+            assertThat(view.writeTheMarkup()).contains("before");
             view.raise(view.actionHandles().get(0));
 
-            assertThat(view.markup())
+            assertThat(view.writeTheMarkup())
                     .as("the view is built again from the values, so it cannot drift")
                     .contains("after");
         }
 
         @Test
         @DisplayName("rendering the same state twice gives the same markup")
-        void rerenderingIsStable() {
+        void staysStable() {
             View view = viewOf("[text \"steady\"]");
 
-            assertThat(view.markup()).isEqualTo(view.markup());
+            assertThat(view.writeTheMarkup()).isEqualTo(view.writeTheMarkup());
         }
     }
 }

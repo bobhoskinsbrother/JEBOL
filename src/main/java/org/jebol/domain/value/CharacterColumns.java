@@ -11,22 +11,22 @@ public final class CharacterColumns {
     private CharacterColumns() {
     }
 
-    public static int widthOf(int codepoint) {
+    public static int measureTheWidthOf(int codepoint) {
         if (codepoint > 0x1F && codepoint < 0x7F) {
             return 1;
         }
         if (codepoint <= 0xFFFF) {
-            if (inRanges(ZERO_NARROW, codepoint)) {
+            if (isInRanges(ZERO_NARROW, codepoint)) {
                 return 0;
             }
-            if (inRanges(WIDE_NARROW, codepoint)) {
+            if (isInRanges(WIDE_NARROW, codepoint)) {
                 return 2;
             }
         } else {
-            if (inRanges(ZERO_SUPPLEMENTARY, codepoint)) {
+            if (isInRanges(ZERO_SUPPLEMENTARY, codepoint)) {
                 return 0;
             }
-            if (inRanges(WIDE_SUPPLEMENTARY, codepoint)) {
+            if (isInRanges(WIDE_SUPPLEMENTARY, codepoint)) {
                 return 2;
             }
         }
@@ -34,7 +34,7 @@ public final class CharacterColumns {
     }
 
     /** The UTF-8 byte count, {@code UTF8_Codepoint_Size} in the C. */
-    public static int utf8SizeOf(int codepoint) {
+    public static int measureTheUtf8SizeOf(int codepoint) {
         if (codepoint < 0x80) {
             return 1;
         }
@@ -47,7 +47,7 @@ public final class CharacterColumns {
         return 4;
     }
 
-    private static boolean inRanges(int[][] ranges, int codepoint) {
+    private static boolean isInRanges(int[][] ranges, int codepoint) {
         int low = 0;
         int high = ranges.length - 1;
         while (low <= high) {

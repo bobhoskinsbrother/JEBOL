@@ -27,10 +27,10 @@ public class CompressNative extends CompressionNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("data", Set.of(BinaryValue.TYPE, StringValue.TYPE)),
-                Parameter.required("method", Set.of(WordValue.TYPE)),
-                Parameter.belongingTo("part", "length", aPartLimit()),
-                Parameter.belongingTo("level", "lvl", Set.of(IntegerValue.TYPE)));
+                Parameter.of("data", Set.of(BinaryValue.TYPE, StringValue.TYPE)),
+                Parameter.of("method", Set.of(WordValue.TYPE)),
+                Parameter.belongTo("part", "length", listThePartLimitTypes()),
+                Parameter.belongTo("level", "lvl", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -41,13 +41,13 @@ public class CompressNative extends CompressionNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            String method = aKnownCompression(arguments.get(1));
+            String method = readAKnownCompression(arguments.get(1));
             Value data = arguments.getFirst();
-            int level = argumentOf("level", 0, arguments, refinements)
+            int level = readTheArgumentOf("level", 0, arguments, refinements)
                     .map(asked -> (int) ((IntegerValue) asked).magnitude())
                     .orElse(Deflater.DEFAULT_COMPRESSION);
-            return BinaryValue.ofBytes(encodings.compressed(
-                    octetsWithinAnyPart(data, arguments, refinements),
+            return BinaryValue.ofBytes(encodings.compress(
+                    readTheOctetsWithinAnyPart(data, arguments, refinements),
                     method, level));
         };
     }

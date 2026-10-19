@@ -5,7 +5,7 @@ public final class SetPathValue extends AnyPathValue {
     public static final AnyPathDatatype TYPE = new AnyPathDatatype("set-path") {
 
         @Override
-        public AnyPathValue holding(BlockStorage storage, int index) {
+        public AnyPathValue wrap(BlockStorage storage, int index) {
             return new SetPathValue(storage, index);
         }
     };
@@ -20,12 +20,12 @@ public final class SetPathValue extends AnyPathValue {
     }
 
     @Override
-    String markedAfter(boolean forReading) {
+    String markAfter(boolean forReading) {
         return forReading ? ":" : "";
     }
 
     @Override
-    SetPathValue sameKindOver(BlockStorage storage, int index) {
+    SetPathValue makeTheSameKindOver(BlockStorage storage, int index) {
         return new SetPathValue(storage, index);
     }
 }

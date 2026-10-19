@@ -15,7 +15,7 @@ class CaseAndMakePrototypeFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -28,29 +28,29 @@ class CaseAndMakePrototypeFromTheSourceTest {
 
         @Test
         @DisplayName("a truthy condition with nothing after it answers logic true")
-        void aTrailingTruthyConditionAnswersTrue() {
+        void answersTrueForATrailingTruthyCondition() {
             assertThat(answerTo("case [true]")).isEqualTo(TRUE);
             assertThat(answerTo("case [false [1] true]")).isEqualTo(TRUE);
-            assertThat(errorIdOf("case [true]")).isEqualTo(NO_ERROR);
+            assertThat(readTheErrorIdOf("case [true]")).isEqualTo(NO_ERROR);
         }
 
         @Test
         @DisplayName("the trailing condition is still evaluated, so its effect happens")
-        void theTrailingConditionIsEvaluated() {
+        void evaluatesTheTrailingCondition() {
             assertThat(answerTo("x: 0 case [false [1] x: 9] x")).isEqualTo("9");
             assertThat(answerTo("x: 0 case [true [1] x: 9] x")).isEqualTo("0");
         }
 
         @Test
         @DisplayName("a false condition skips its branch without evaluating it")
-        void aFalseConditionSkipsWithoutEvaluating() {
+        void skipsAFalseConditionsBranchUnevaluated() {
             assertThat(answerTo("x: 0 case [false [x: 1] true [x: 2]] x")).isEqualTo("2");
-            assertThat(errorIdOf("case [false [1 / 0] true [1]]")).isEqualTo(NO_ERROR);
+            assertThat(readTheErrorIdOf("case [false [1 / 0] true [1]]")).isEqualTo(NO_ERROR);
         }
 
         @Test
         @DisplayName("a branch that is not a block is its own answer")
-        void aBareBranchAnswersItself() {
+        void answersABareBranchAsItself() {
             assertThat(answerTo("case [true 1]")).isEqualTo("1");
             assertThat(answerTo("case [true \"a\"]")).isEqualTo("\"a\"");
             assertThat(answerTo("case [true [1]]")).isEqualTo("1");
@@ -58,21 +58,21 @@ class CaseAndMakePrototypeFromTheSourceTest {
 
         @Test
         @DisplayName("no condition truthy answers none")
-        void nothingTruthyAnswersNone() {
+        void answersNoneWhenNothingIsTruthy() {
             assertThat(answerTo("case [false [1] false [2]]")).isEqualTo("_");
             assertThat(answerTo("case []")).isEqualTo("_");
         }
 
         @Test
         @DisplayName("the first truthy condition wins and the rest are not reached")
-        void theFirstTruthyConditionWins() {
+        void takesTheFirstTruthyCondition() {
             assertThat(answerTo("x: 0 case [true [1] true [x: 9]] x")).isEqualTo("0");
             assertThat(answerTo("case [true [1] true [2]]")).isEqualTo("1");
         }
 
         @Test
         @DisplayName("/ALL keeps going, and the last branch it ran is the answer")
-        void theAllRefinementKeepsGoing() {
+        void keepsGoingForAll() {
             assertThat(answerTo("case/all [true [1] true [2]]")).isEqualTo("2");
             assertThat(answerTo("x: 0 case/all [true [x: 1] true [x: x + 1]] x"))
                     .isEqualTo("2");
@@ -85,14 +85,14 @@ class CaseAndMakePrototypeFromTheSourceTest {
 
         @Test
         @DisplayName("MAKE on a series value builds an empty series of that datatype")
-        void aValueStandsForItsOwnDatatype() {
+        void takesAValueAsItsOwnDatatype() {
             assertThat(answerTo("file? make %a/b 10")).isEqualTo(TRUE);
             assertThat(answerTo("empty? make %a/b 10")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("it works for every string datatype, because the rule is about the value")
-        void everyStringDatatype() {
+        void coversEveryStringDatatype() {
             assertThat(answerTo("string? make \"abc\" 10")).isEqualTo(TRUE);
             assertThat(answerTo("empty? make \"abc\" 10")).isEqualTo(TRUE);
             assertThat(answerTo("tag? make <a> 10")).isEqualTo(TRUE);
@@ -111,23 +111,23 @@ class CaseAndMakePrototypeFromTheSourceTest {
 
         @Test
         @DisplayName("the number is a capacity and not a value, which is MAKE's whole difference from TO")
-        void theNumberIsACapacity() {
+        void takesTheNumberAsACapacity() {
             assertThat(answerTo("length? make [1 2] 10")).isEqualTo("0");
             assertThat(answerTo("length? make \"ab\" 10")).isEqualTo("0");
         }
 
         @Test
         @DisplayName("naming the datatype still works, because that is the second line")
-        void aDatatypeStillWorks() {
+        void stillTakesADatatype() {
             assertThat(answerTo("file? make file! 10")).isEqualTo(TRUE);
             assertThat(answerTo("block? make block! 10")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("MAKE on a value with none is refused")
-        void noneIsRefused() {
-            assertThat(errorIdOf("make %a none")).isNotEqualTo(NO_ERROR);
-            assertThat(errorIdOf("make \"a\" none")).isNotEqualTo(NO_ERROR);
+        void refusesNone() {
+            assertThat(readTheErrorIdOf("make %a none")).isNotEqualTo(NO_ERROR);
+            assertThat(readTheErrorIdOf("make \"a\" none")).isNotEqualTo(NO_ERROR);
         }
     }
 }

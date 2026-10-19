@@ -21,7 +21,7 @@ class BinaryBaseFromTheSourceTest {
 
         @Test
         @DisplayName("two, sixteen and sixty-four each name themselves but sixteen")
-        void eachBaseNamesItself() {
+        void namesEachBaseButSixteen() {
             assertThat(answerTo("""
                     collect [
                         foreach base [2 16 64][
@@ -45,7 +45,7 @@ class BinaryBaseFromTheSourceTest {
 
         @Test
         @DisplayName("and a bitset follows it too, being molded by the same code")
-        void aBitsetFollowsIt() {
+        void appliesToABitsetToo() {
             assertThat(answerTo("""
                     system/options/binary-base: 2
                     answer: mold #(bitset! #{FF})
@@ -58,7 +58,7 @@ class BinaryBaseFromTheSourceTest {
     @DisplayName("where each base breaks its lines")
     class TheLineBreaks {
 
-        private String moldedAtBase(int base, int bytes) {
+        private String moldAtBase(int base, int bytes) {
             return answerTo("""
                     system/options/binary-base: %d
                     bin: copy #{}
@@ -70,29 +70,29 @@ class BinaryBaseFromTheSourceTest {
 
         @Test
         @DisplayName("sixteen stays on one line up to thirty-two bytes")
-        void sixteenBreaksAtThirtyTwo() {
-            assertThat(moldedAtBase(16, 32)).doesNotContain("\n");
-            assertThat(moldedAtBase(16, 33)).contains("\n");
+        void keepSixteenOnOneLineUpToThirtyTwo() {
+            assertThat(moldAtBase(16, 32)).doesNotContain("\n");
+            assertThat(moldAtBase(16, 33)).contains("\n");
         }
 
         @Test
         @DisplayName("two stays on one line up to eight")
-        void twoBreaksAtEight() {
-            assertThat(moldedAtBase(2, 8)).doesNotContain("\n");
-            assertThat(moldedAtBase(2, 9)).contains("\n");
+        void keepTwoOnOneLineUpToEight() {
+            assertThat(moldAtBase(2, 8)).doesNotContain("\n");
+            assertThat(moldAtBase(2, 9)).contains("\n");
         }
 
         @Test
         @DisplayName("and sixty-four up to sixty-four, though its runs are forty-eight")
         void sixtyFourBreaksAtSixtyFour() {
-            assertThat(moldedAtBase(64, 48)).doesNotContain("\n");
-            assertThat(moldedAtBase(64, 64)).doesNotContain("\n");
-            assertThat(moldedAtBase(64, 65)).contains("\n");
+            assertThat(moldAtBase(64, 48)).doesNotContain("\n");
+            assertThat(moldAtBase(64, 64)).doesNotContain("\n");
+            assertThat(moldAtBase(64, 65)).contains("\n");
         }
 
         @Test
         @DisplayName("MOLD/FLAT breaks nothing, whatever the base")
-        void flatBreaksNothing() {
+        void vanishUnderFlat() {
             assertThat(answerTo("""
                     system/options/binary-base: 2
                     bin: copy #{}
@@ -105,9 +105,9 @@ class BinaryBaseFromTheSourceTest {
         @Test
         @DisplayName("exactly eight bytes in base two come back a digit short")
         void eightBytesInBaseTwoLoseADigit() {
-            assertThat(moldedAtBase(2, 8))
+            assertThat(moldAtBase(2, 8))
                     .isEqualTo("{2#{" + "1".repeat(63) + "}}");
-            assertThat(moldedAtBase(2, 7))
+            assertThat(moldAtBase(2, 7))
                     .isEqualTo("{2#{" + "1".repeat(56) + "}}");
         }
     }
@@ -132,14 +132,14 @@ class BinaryBaseFromTheSourceTest {
 
         @Test
         @DisplayName("and a limit past the end is the whole thing")
-        void aLimitPastTheEnd() {
+        void takesTheWholeThingPastTheEnd() {
             assertThat(answerTo("""
                     mold/part #{FFAA} 100""")).isEqualTo("\"#{FFAA}\"");
         }
 
         @Test
         @DisplayName("a limit of nothing is nothing")
-        void aLimitOfNothing() {
+        void takesNothingAtNothing() {
             assertThat(answerTo("""
                     mold/part #{FFAA} 0""")).isEqualTo("\"\"");
         }

@@ -5,7 +5,7 @@ public final class LitPathValue extends AnyPathValue {
     public static final AnyPathDatatype TYPE = new AnyPathDatatype("lit-path") {
 
         @Override
-        public AnyPathValue holding(BlockStorage storage, int index) {
+        public AnyPathValue wrap(BlockStorage storage, int index) {
             return new LitPathValue(storage, index);
         }
     };
@@ -20,12 +20,12 @@ public final class LitPathValue extends AnyPathValue {
     }
 
     @Override
-    String markedBefore(boolean forReading) {
+    String markBefore(boolean forReading) {
         return forReading ? "'" : "";
     }
 
     @Override
-    LitPathValue sameKindOver(BlockStorage storage, int index) {
+    LitPathValue makeTheSameKindOver(BlockStorage storage, int index) {
         return new LitPathValue(storage, index);
     }
 }

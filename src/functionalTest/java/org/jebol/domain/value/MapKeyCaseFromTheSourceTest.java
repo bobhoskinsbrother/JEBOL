@@ -153,7 +153,7 @@ class MapKeyCaseFromTheSourceTest {
 
         @Test
         @DisplayName("and each holds its own value")
-        void eachHoldsItsOwn() {
+        void keepsEachOnesOwn() {
             assertThat(answerTo("""
                     m: make map! ["k" 1 "K" 2]
                     select/case m "K\"""")).isEqualTo("2");

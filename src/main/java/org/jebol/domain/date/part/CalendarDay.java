@@ -11,7 +11,7 @@ final class CalendarDay implements WritableDateField {
     }
 
     @Override
-    public DateValue writtenOn(DateValue date, Assigned given) {
+    public DateValue writeOn(DateValue date, Assigned given) {
         return date.onTheDayOf(given.asADate());
     }
 }

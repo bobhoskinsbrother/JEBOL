@@ -16,7 +16,7 @@ class AppendingToAFilePortFromTheSourceTest {
     private static Path root;
 
     @BeforeEach
-    void freshRoot(@TempDir Path made) {
+    void makeAFreshRoot(@TempDir Path made) {
         root = made;
     }
 
@@ -25,12 +25,12 @@ class AppendingToAFilePortFromTheSourceTest {
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorFrom(String source) {
+    private static String readTheErrorFrom(String source) {
         return answerTo("e: try [" + source
                 + "] either error? e [e/id] ['no-error]");
     }
@@ -65,7 +65,7 @@ class AppendingToAFilePortFromTheSourceTest {
 
         @Test
         @DisplayName("from the end rather than from wherever the port was standing")
-        void fromTheEndRatherThanTheCurrentPosition() {
+        void writesFromTheEndRatherThanTheCurrentPosition() {
             assertThat(answerTo("""
                     write %w "12345"
                     p: open %w
@@ -76,7 +76,7 @@ class AppendingToAFilePortFromTheSourceTest {
 
         @Test
         @DisplayName("unless a seek position was named too, which wins")
-        void aSeekPositionWins() {
+        void letsASeekPositionWin() {
             assertThat(answerTo("""
                     write %w "12345"
                     p: open %w
@@ -119,17 +119,17 @@ class AppendingToAFilePortFromTheSourceTest {
         @Test
         @DisplayName("but refuses its own two refinements")
         void refusesItsOwnRefinements() {
-            assertThat(errorFrom("""
+            assertThat(readTheErrorFrom("""
                     p: open/new %a
                     append/dup p LF 10""")).isEqualTo("bad-refines");
-            assertThat(errorFrom("""
+            assertThat(readTheErrorFrom("""
                     p: open/new %a
                     append/only p "aa\"""")).isEqualTo("bad-refines");
         }
 
         @Test
         @DisplayName("before writing anything")
-        void beforeWritingAnything() {
+        void refusesBeforeWritingAnything() {
             assertThat(answerTo("""
                     write %a "12345"
                     p: open %a
@@ -146,7 +146,7 @@ class AppendingToAFilePortFromTheSourceTest {
         @Test
         @DisplayName("refuses CLEAR with write-error, and leaves the file whole")
         void refusesClearWithWriteError() {
-            assertThat(errorFrom("""
+            assertThat(readTheErrorFrom("""
                     write %r "No clear!"
                     p: open/read %r
                     clear p""")).isEqualTo("write-error");
@@ -161,11 +161,11 @@ class AppendingToAFilePortFromTheSourceTest {
         @Test
         @DisplayName("and refuses a write with read-only")
         void refusesAWriteWithReadOnly() {
-            assertThat(errorFrom("""
+            assertThat(readTheErrorFrom("""
                     write %r "keep me"
                     p: open/read %r
                     write p "gone\"""")).isEqualTo("read-only");
-            assertThat(errorFrom("""
+            assertThat(readTheErrorFrom("""
                     write %r "keep me"
                     p: open/read %r
                     append p "more\"""")).isEqualTo("read-only");
@@ -173,7 +173,7 @@ class AppendingToAFilePortFromTheSourceTest {
 
         @Test
         @DisplayName("where a port opened the ordinary way takes both")
-        void aPortOpenedTheOrdinaryWayTakesBoth() {
+        void takesBothThroughAPortOpenedTheOrdinaryWay() {
             assertThat(answerTo("""
                     write %r "Hello World!"
                     p: open %r

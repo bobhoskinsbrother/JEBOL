@@ -19,7 +19,7 @@ public record ArrowEnds(boolean atTheStart, boolean atTheEnd) {
         return new ArrowEnds(flags.x() != 0, flags.y() != 0);
     }
 
-    public boolean anyAtAll() {
+    public boolean hasAnyAtAll() {
         return atTheStart || atTheEnd;
     }
 }

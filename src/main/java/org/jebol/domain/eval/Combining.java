@@ -10,8 +10,8 @@ public final class Combining {
     private Combining() {
     }
 
-    public static Value bitwise(Value left, Value right, BitwiseOperation operation) {
-        return left.bitwise(right, operation);
+    public static Value combineBitwise(Value left, Value right, BitwiseOperation operation) {
+        return left.combineBitwise(right, operation);
     }
 
     public static Value sets(Value first, Value second, SetOperation how) {
@@ -21,15 +21,15 @@ public final class Combining {
     public static Value sets(
             Value first, Value second, SetOperation how, boolean mindingCase, int stride) {
 
-        return first.asASetWith(second, keeping(how, mindingCase, stride), mindingCase);
+        return first.asASetWith(second, keep(how, mindingCase, stride), mindingCase);
     }
 
-    private static MembersKept keeping(
+    private static MembersKept keep(
             SetOperation how, boolean mindingCase, int stride) {
 
         return new MembersKept(how, stride, mindingCase
-                ? Comparison::identicallyEqual
-                : Comparison::looselyEqual);
+                ? Comparison::areIdenticallyEqual
+                : Comparison::areLooselyEqual);
     }
 
 }

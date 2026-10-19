@@ -8,11 +8,11 @@ final class Julian implements WritableDateField {
 
     @Override
     public Value readFrom(DateValue date) {
-        return DecimalValue.of(JulianDay.countedFromNoon(date));
+        return DecimalValue.of(JulianDay.countFromNoon(date));
     }
 
     @Override
-    public DateValue writtenOn(DateValue date, Assigned given) {
+    public DateValue writeOn(DateValue date, Assigned given) {
         return JulianDay.asADate(given.asAJulianDayCount());
     }
 }

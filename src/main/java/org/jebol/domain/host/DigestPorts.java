@@ -5,7 +5,7 @@ public final class DigestPorts {
     private DigestPorts() {
     }
 
-    public static DigestPort theOneForThisBuild() {
+    public static DigestPort chooseTheOneForThisBuild() {
         return new JvmDigests();
     }
 }

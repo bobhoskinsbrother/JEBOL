@@ -1,8 +1,11 @@
 package org.jebol.domain.host;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+
+import static java.util.Map.*;
 
 /**
  * Starting another program.
@@ -17,7 +20,7 @@ import java.util.OptionalLong;
  */
 public interface ProcessPort {
 
-    enum ProgramInput { THE_HOSTS_OWN, SUPPLIED_BYTES, A_FILES_CONTENTS, NOTHING_AT_ALL }
+    enum ProgramInput { THE_HOSTS_OWN, SUPPLIED_BYTES, FILE_CONTENTS, NOTHING_AT_ALL }
 
     enum ProgramOutput { THE_HOSTS_OWN, CAPTURED, INTO_A_FILE, DISCARDED }
 
@@ -35,11 +38,11 @@ public interface ProcessPort {
      *     the one door confinement cannot close. Empty where no filesystem was
      *     granted, and the child then starts wherever the host process is.
      */
-    record ProgramToStart(
+    record Program(
             List<String> command,
-            boolean readByTheShell,
+            boolean isReadByShell,
             boolean attachedToTheHostsConsole,
-            boolean waitedFor,
+            boolean isWaitedFor,
             ProgramInput standardInput,
             Optional<byte[]> inputBytes,
             Optional<String> inputFile,
@@ -47,12 +50,12 @@ public interface ProcessPort {
             Optional<String> outputFile,
             ProgramOutput standardError,
             Optional<String> errorFile,
-            java.util.Map<String, String> environment,
+            Map<String, String> environment,
             Optional<String> workingDirectory) {
 
-        public ProgramToStart {
+        public Program {
             command = List.copyOf(command);
-            environment = java.util.Map.copyOf(environment);
+            environment = copyOf(environment);
         }
     }
 
@@ -63,12 +66,27 @@ public interface ProcessPort {
             Optional<byte[]> capturedError,
             Optional<String> refusalMessage) { }
 
-    ProgramResult run(ProgramToStart program);
+    ProgramResult run(Program program);
 
     enum WhoTheProcessRunsAs { REAL_USER, EFFECTIVE_USER, REAL_GROUP, EFFECTIVE_GROUP }
 
-    default OptionalLong identity(WhoTheProcessRunsAs asked) {
+    default OptionalLong identify(WhoTheProcessRunsAs asked) {
         return OptionalLong.empty();
+    }
+
+    /** Whether a process is running under this number. */
+    default boolean isRunning(long processNumber) {
+        throw refuse();
+    }
+
+    /** Sends the signal to the process, and answers whether the host could. */
+    default boolean end(long processNumber, int signal) {
+        throw refuse();
+    }
+
+    private FilePort.Denied refuse() {
+        return new FilePort.Denied("no-port",
+                "this script was given no way to start a program");
     }
 
     static ProcessPort none() {

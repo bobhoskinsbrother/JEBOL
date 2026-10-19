@@ -17,7 +17,7 @@ final class Numbers {
                 || value instanceof TimeValue;
     }
 
-    static boolean theyMayBeCompared(Value one, Value other, Sameness how) {
+    static boolean canBeCompared(Value one, Value other, Sameness how) {
         if (how.theyWereBroughtTogetherFirst()) {
             return isANumber(one) && isANumber(other);
         }
@@ -30,8 +30,8 @@ final class Numbers {
         if (MONEY.meetsMoney(one, other)) {
             return MONEY.asDeci(one).isEqualTo(MONEY.asDeci(other));
         }
-        double ours = quantityOf(one);
-        double theirs = quantityOf(other);
+        double ours = measureTheQuantityOf(one);
+        double theirs = measureTheQuantityOf(other);
         if (Double.isNaN(ours) || Double.isNaN(theirs)) {
             return Double.isNaN(ours) && Double.isNaN(theirs) && how.stepsAllowed() > 0;
         }
@@ -41,13 +41,13 @@ final class Numbers {
         return ours == theirs;
     }
 
-    static double quantityOfANumber(Value value) {
+    static double measureTheQuantityOfANumber(Value value) {
         return value instanceof CharacterValue(int codepoint)
                 ? codepoint
-                : quantityOf(value);
+                : measureTheQuantityOf(value);
     }
 
-    static double quantityOf(Value value) {
+    static double measureTheQuantityOf(Value value) {
         return switch (value) {
             case IntegerValue(long magnitude) -> magnitude;
             case TimeValue time -> time.asSeconds().quantity();
@@ -61,11 +61,11 @@ final class Numbers {
     private static boolean withinTheAllowedSteps(
             double first, double second, long stepsAllowed) {
 
-        long steps = inRunningOrder(first) - inRunningOrder(second);
+        long steps = placeInRunningOrder(first) - placeInRunningOrder(second);
         return Math.abs(steps) <= stepsAllowed;
     }
 
-    private static long inRunningOrder(double number) {
+    private static long placeInRunningOrder(double number) {
         long bits = Double.doubleToRawLongBits(number);
         return bits < 0 ? Long.MIN_VALUE - bits : bits;
     }

@@ -15,17 +15,17 @@ public record VouchedNames(Set<String> dnsNames, Set<String> ipAddresses) {
     }
 
     public boolean cover(String hostName) {
-        Optional<String> address = new IpAddressText(hostName).canonicalHex();
+        Optional<String> address = new IpAddressText(hostName).writeTheCanonicalHex();
         if (address.isPresent()) {
             return vouchesForAddress(address.get());
         }
-        String host = normalised(hostName);
-        return isWellFormed(host) && dnsNames.stream().anyMatch(name -> matches(normalised(name), host));
+        String host = normalise(hostName);
+        return isWellFormed(host) && dnsNames.stream().anyMatch(name -> matches(normalise(name), host));
     }
 
     private boolean vouchesForAddress(String canonicalHex) {
         return ipAddresses.stream()
-                .map(vouched -> new IpAddressText(vouched).canonicalHex())
+                .map(vouched -> new IpAddressText(vouched).writeTheCanonicalHex())
                 .anyMatch(vouched -> vouched.equals(Optional.of(canonicalHex)));
     }
 
@@ -36,10 +36,10 @@ public record VouchedNames(Set<String> dnsNames, Set<String> ipAddresses) {
         String suffix = pattern.substring(WILDCARD_PREFIX.length());
         return isWellFormed(suffix)
                 && hasTwoOrMoreLabels(suffix)
-                && parentDomain(host).equals(Optional.of(suffix));
+                && findTheParentDomain(host).equals(Optional.of(suffix));
     }
 
-    private Optional<String> parentDomain(String host) {
+    private Optional<String> findTheParentDomain(String host) {
         int firstSeparator = host.indexOf(LABEL_SEPARATOR);
         return firstSeparator > 0 ? Optional.of(host.substring(firstSeparator + 1)) : Optional.empty();
     }
@@ -56,7 +56,7 @@ public record VouchedNames(Set<String> dnsNames, Set<String> ipAddresses) {
                 && !name.contains("..");
     }
 
-    private String normalised(String name) {
+    private String normalise(String name) {
         String lowered = name.toLowerCase(Locale.ROOT);
         return lowered.endsWith(".") ? lowered.substring(0, lowered.length() - 1) : lowered;
     }

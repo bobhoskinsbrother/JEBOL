@@ -26,9 +26,9 @@ public class DebaseNative extends BinaryBaseNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("value", anyStringOr(BinaryValue.TYPE)),
-                Parameter.required("base", Set.of(IntegerValue.TYPE)),
-                Parameter.belongingTo("part", "limit", anyStringOr(BinaryValue.TYPE, IntegerValue.TYPE)));
+                Parameter.of("value", acceptAnyStringOr(BinaryValue.TYPE)),
+                Parameter.of("base", Set.of(IntegerValue.TYPE)),
+                Parameter.belongTo("part", "limit", acceptAnyStringOr(BinaryValue.TYPE, IntegerValue.TYPE)));
     }
 
     @Override
@@ -39,7 +39,7 @@ public class DebaseNative extends BinaryBaseNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            int base = aKnownBase(arguments);
+            int base = readAKnownBase(arguments);
             Value value = arguments.getFirst();
             try {
                 return BinaryValue.ofBytes(encodings.debase(
@@ -52,7 +52,7 @@ public class DebaseNative extends BinaryBaseNative {
     }
 
     @Override
-    Raised refusalOfAnUnknownBase(List<Value> arguments) {
+    Raised refuseAnUnknownBase(List<Value> arguments) {
         return Raised.of(EvaluationFailure.INVALID_DATA, arguments.getFirst());
     }
 }

@@ -9,12 +9,12 @@ public abstract class GobMappingNative extends DefaultNative {
 
     protected static final int DEEPEST_GOB_WALK = 1000;
 
-    protected Value mappedInwards(GobValue from, PairValue point) {
+    protected Value mapInwards(GobValue from, PairValue point) {
         GobValue reached = from;
         double takenX = 0;
         double takenY = 0;
         for (int depth = 0; depth < DEEPEST_GOB_WALK; depth++) {
-            Optional<GobValue> entered = theTopmostChildHolding(reached, point, takenX, takenY);
+            Optional<GobValue> entered = findTheTopmostChildHolding(reached, point, takenX, takenY);
             if (entered.isEmpty()) {
                 break;
             }
@@ -22,14 +22,14 @@ public abstract class GobMappingNative extends DefaultNative {
             takenX += reached.storage().offset().x();
             takenY += reached.storage().offset().y();
         }
-        return gobAndPoint(reached, PairValue.of(point.x() - takenX, point.y() - takenY));
+        return pairTheGobWithThePoint(reached, PairValue.of(point.x() - takenX, point.y() - takenY));
     }
 
-    private Optional<GobValue> theTopmostChildHolding(
+    private Optional<GobValue> findTheTopmostChildHolding(
             GobValue parent, PairValue point, double takenX, double takenY) {
 
         for (int at = parent.storage().length(); at >= 1; at--) {
-            if (parent.storage().childAt(at) instanceof GobValue child
+            if (parent.storage().readTheChildAt(at) instanceof GobValue child
                     && holds(child, point, takenX, takenY)) {
                 return Optional.of(child);
             }
@@ -46,7 +46,7 @@ public abstract class GobMappingNative extends DefaultNative {
                 && point.y() < top + child.storage().size().y();
     }
 
-    protected Value gobAndPoint(GobValue reached, PairValue point) {
-        return BlockValue.block(List.of(reached, point));
+    protected Value pairTheGobWithThePoint(GobValue reached, PairValue point) {
+        return BlockValue.of(List.of(reached, point));
     }
 }

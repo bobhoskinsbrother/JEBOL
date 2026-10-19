@@ -16,7 +16,7 @@ public class QuitNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.belongingTo("return", "value", Set.of()));
+        return List.of(Parameter.belongTo("return", "value", Set.of()));
     }
 
     @Override
@@ -27,7 +27,7 @@ public class QuitNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            throw new QuitRequested(argumentOf("return", 0, arguments, refinements)
+            throw new QuitRequested(readTheArgumentOf("return", 0, arguments, refinements)
                     .filter(this::isSomethingOtherThanNone)
                     .orElse(UnsetValue.unset()));
         };

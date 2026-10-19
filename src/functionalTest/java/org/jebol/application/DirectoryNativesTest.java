@@ -13,13 +13,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class DirectoryNativesTest {
 
-    private static Interpreter reaching(Path directory, HostService... granted) {
+    private static Interpreter makeAnInterpreterReaching(Path directory, HostService... granted) {
         Bounds bounds = Bounds.standard();
         for (HostService service : granted) {
             bounds = bounds.grant(service);
         }
         Interpreter interpreter = Interpreter.withBounds(bounds);
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         return interpreter;
     }
 
@@ -28,7 +28,7 @@ class DirectoryNativesTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(Interpreter interpreter, String source) {
+    private static String readTheErrorIdOf(Interpreter interpreter, String source) {
         return answerTo(interpreter,
                 "e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
@@ -36,7 +36,7 @@ class DirectoryNativesTest {
     @Test
     @DisplayName("MAKE-DIR makes a directory")
     void makeDirMakesOne(@TempDir Path directory) {
-        Interpreter interpreter = reaching(directory, HostService.FILES);
+        Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
         answerTo(interpreter, "make-dir %sub/");
         assertThat(Files.isDirectory(directory.resolve("sub"))).isTrue();
     }
@@ -45,19 +45,19 @@ class DirectoryNativesTest {
     @Test
     @DisplayName("MAKE-DIR says nothing when the directory is there already")
     void makeDirIsQuietTheSecondTime(@TempDir Path directory) {
-        Interpreter interpreter = reaching(directory, HostService.FILES);
+        Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
         answerTo(interpreter, "make-dir %sub/");
-        assertThat(errorIdOf(interpreter, "make-dir %sub/")).isEqualTo("no-error");
+        assertThat(readTheErrorIdOf(interpreter, "make-dir %sub/")).isEqualTo("no-error");
         assertThat(answerTo(interpreter, "make-dir %sub/")).isEqualTo("%sub/");
         assertThat(Files.isDirectory(directory.resolve("sub"))).isTrue();
     }
 
 
     @Test
-    @DisplayName("CD ~ goes where the application keeps its own files")
-    void changingToTheDataDirectory(@TempDir Path directory) throws Exception {
+    @DisplayName("CD ~ goes where the application keeps its own filePort")
+    void changesToTheDataDirectory(@TempDir Path directory) throws Exception {
         Files.createDirectory(directory.resolve("appdata"));
-        Interpreter interpreter = reaching(
+        Interpreter interpreter = makeAnInterpreterReaching(
                 directory, HostService.FILES, HostService.WORKING_DIRECTORY);
         answerTo(interpreter, "system/options/data: %/appdata/ set '~ system/options/data");
 
@@ -69,23 +69,23 @@ class DirectoryNativesTest {
     @Test
     @DisplayName("/DEEP makes the directories above it too")
     void deepMakesTheParents(@TempDir Path directory) {
-        Interpreter interpreter = reaching(directory, HostService.FILES);
+        Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
         answerTo(interpreter, "make-dir/deep %a/b/c/");
         assertThat(Files.isDirectory(directory.resolve("a/b/c"))).isTrue();
     }
 
     @Test
     @DisplayName("without /DEEP a missing parent is a failure")
-    void aMissingParentFails(@TempDir Path directory) {
-        Interpreter interpreter = reaching(directory, HostService.FILES);
-        assertThat(errorIdOf(interpreter, "make-dir %x/y/")).isEqualTo("cannot-open");
+    void failsForAMissingParent(@TempDir Path directory) {
+        Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
+        assertThat(readTheErrorIdOf(interpreter, "make-dir %x/y/")).isEqualTo("cannot-open");
     }
 
     @Test
     @DisplayName("DELETE removes a file")
     void deleteRemoves(@TempDir Path directory) throws Exception {
         Files.writeString(directory.resolve("gone.txt"), "x");
-        Interpreter interpreter = reaching(directory, HostService.FILES);
+        Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
         answerTo(interpreter, "delete %gone.txt");
         assertThat(Files.exists(directory.resolve("gone.txt"))).isFalse();
     }
@@ -94,7 +94,7 @@ class DirectoryNativesTest {
     @DisplayName("RENAME gives a file another name")
     void renameMoves(@TempDir Path directory) throws Exception {
         Files.writeString(directory.resolve("old.txt"), "x");
-        Interpreter interpreter = reaching(directory, HostService.FILES);
+        Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
         answerTo(interpreter, "rename %old.txt %new.txt");
         assertThat(Files.exists(directory.resolve("new.txt"))).isTrue();
         assertThat(Files.exists(directory.resolve("old.txt"))).isFalse();
@@ -102,31 +102,31 @@ class DirectoryNativesTest {
 
     @Test
     @DisplayName("READ of a directory gives the names, with a slash on each directory")
-    void readingADirectoryNamesEverything(@TempDir Path directory) throws Exception {
+    void namesEverythingInADirectory(@TempDir Path directory) throws Exception {
         Files.writeString(directory.resolve("one.txt"), "x");
         Files.createDirectory(directory.resolve("two"));
-        Interpreter interpreter = reaching(directory, HostService.FILES);
+        Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
         assertThat(answerTo(interpreter, "sort read %./")).isEqualTo("[%one.txt %two/]");
     }
 
     @Test
     @DisplayName("READ of an empty directory gives no names")
-    void theDegenerateDirectory(@TempDir Path directory) {
-        Interpreter interpreter = reaching(directory, HostService.FILES);
+    void readsTheDegenerateDirectory(@TempDir Path directory) {
+        Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
         assertThat(answerTo(interpreter, "read %./")).isEqualTo("[]");
     }
 
     @Test
     @DisplayName("READ-DIR is not a word Rebol has")
-    void thereIsNoReadDir(@TempDir Path directory) {
-        Interpreter interpreter = reaching(directory, HostService.FILES);
+    void hasNoReadDir(@TempDir Path directory) {
+        Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
         assertThat(answerTo(interpreter, "value? 'read-dir")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("WHAT-DIR ends with a slash")
-    void theDirectoryNamesItselfAsADirectory(@TempDir Path directory) {
-        Interpreter interpreter = reaching(directory, HostService.WORKING_DIRECTORY);
+    void namesItselfAsADirectory(@TempDir Path directory) {
+        Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.WORKING_DIRECTORY);
         assertThat(answerTo(interpreter, "#\"/\" = last what-dir")).isEqualTo("#(true)");
     }
 
@@ -135,7 +135,7 @@ class DirectoryNativesTest {
     void changeDirMoves(@TempDir Path directory) throws Exception {
         Files.createDirectory(directory.resolve("inner"));
         Files.writeString(directory.resolve("inner/here.txt"), "found");
-        Interpreter interpreter = reaching(
+        Interpreter interpreter = makeAnInterpreterReaching(
                 directory, HostService.WORKING_DIRECTORY, HostService.FILES);
         assertThat(answerTo(interpreter, "change-dir %inner/ read/string %here.txt"))
                 .isEqualTo("\"found\"");
@@ -144,18 +144,18 @@ class DirectoryNativesTest {
 
     @Test
     @DisplayName("CHANGE-DIR up from the root stays at the root")
-    void theRootStillHolds(@TempDir Path directory) {
-        Interpreter interpreter = reaching(
+    void stillHoldsTheRoot(@TempDir Path directory) {
+        Interpreter interpreter = makeAnInterpreterReaching(
                 directory, HostService.WORKING_DIRECTORY, HostService.FILES);
         assertThat(answerTo(interpreter, "change-dir %../ what-dir")).isEqualTo("%/");
     }
 
     @Test
     @DisplayName("and what it can see up there is still only what is inside")
-    void whatItCanSeeUpThereIsStillInside(@TempDir Path directory) throws Exception {
+    void keepsWhatItCanSeeUpThereInside(@TempDir Path directory) throws Exception {
         Files.writeString(directory.getParent().resolve("outside.txt"), "not yours");
         Files.writeString(directory.resolve("inside.txt"), "yours");
-        Interpreter interpreter = reaching(
+        Interpreter interpreter = makeAnInterpreterReaching(
                 directory, HostService.WORKING_DIRECTORY, HostService.FILES);
         assertThat(answerTo(interpreter, """
                 change-dir %../
@@ -165,25 +165,25 @@ class DirectoryNativesTest {
 
     @Test
     @DisplayName("CHANGE-DIR to something that is not a directory fails")
-    void aFileIsNotADirectory(@TempDir Path directory) throws Exception {
+    void refusesAFileAsADirectory(@TempDir Path directory) throws Exception {
         Files.writeString(directory.resolve("flat.txt"), "x");
-        Interpreter interpreter = reaching(
+        Interpreter interpreter = makeAnInterpreterReaching(
                 directory, HostService.WORKING_DIRECTORY, HostService.FILES);
-        assertThat(errorIdOf(interpreter, "change-dir %flat.txt")).isEqualTo("cannot-open");
+        assertThat(readTheErrorIdOf(interpreter, "change-dir %flat.txt")).isEqualTo("cannot-open");
     }
 
     @Test
     @DisplayName("the two grants are separate")
-    void readingDoesNotLetAScriptWander(@TempDir Path directory) {
-        Interpreter interpreter = reaching(directory, HostService.FILES);
-        assertThat(errorIdOf(interpreter, "what-dir")).isEqualTo("no-service");
-        assertThat(errorIdOf(interpreter, "change-dir %.")).isEqualTo("no-service");
+    void keepsAReadingScriptFromWandering(@TempDir Path directory) {
+        Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.FILES);
+        assertThat(readTheErrorIdOf(interpreter, "what-dir")).isEqualTo("no-service");
+        assertThat(readTheErrorIdOf(interpreter, "change-dir %.")).isEqualTo("no-service");
     }
 
     @Test
     @DisplayName("and moving does not let a script read")
-    void wanderingDoesNotLetAScriptRead(@TempDir Path directory) {
-        Interpreter interpreter = reaching(directory, HostService.WORKING_DIRECTORY);
-        assertThat(errorIdOf(interpreter, "read %a.txt")).isEqualTo("no-service");
+    void keepsAWanderingScriptFromReading(@TempDir Path directory) {
+        Interpreter interpreter = makeAnInterpreterReaching(directory, HostService.WORKING_DIRECTORY);
+        assertThat(readTheErrorIdOf(interpreter, "read %a.txt")).isEqualTo("no-service");
     }
 }

@@ -21,7 +21,7 @@ abstract class MatchFinder {
         return load32(input, at) & LOW_THREE_BYTES;
     }
 
-    int lowThreeBytes(int sequence) {
+    int takeTheLowThreeBytes(int sequence) {
         return sequence & LOW_THREE_BYTES;
     }
 
@@ -37,7 +37,7 @@ abstract class MatchFinder {
         return length;
     }
 
-    int cutoffFor(int position) {
+    int findTheCutoffFor(int position) {
         return (short) (position - DeflateTables.WINDOW_SIZE);
     }
 

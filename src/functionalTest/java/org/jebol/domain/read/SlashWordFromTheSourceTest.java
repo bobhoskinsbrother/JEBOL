@@ -15,7 +15,7 @@ class SlashWordFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFromLoading(String source) {
+    private static String readTheErrorIdFromLoading(String source) {
         return answerTo("e: try [load " + source + "] "
                 + "either error? e [e/id] ['no-error]");
     }
@@ -28,7 +28,7 @@ class SlashWordFromTheSourceTest {
 
         @Test
         @DisplayName("is a word, however long the run")
-        void aRunOfSlashesIsAWord() {
+        void readsARunOfSlashesAsAWord() {
             assertThat(answerTo("""
                     (load {/}) = to word! "/\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -39,7 +39,7 @@ class SlashWordFromTheSourceTest {
 
         @Test
         @DisplayName("and the first two are operators the boot table binds")
-        void theyAreRealOperators() {
+        void bindsTheFirstTwoAsOperators() {
             assertThat(answerTo("""
                     9 / 2""")).isEqualTo("4.5");
             assertThat(answerTo("""
@@ -53,7 +53,7 @@ class SlashWordFromTheSourceTest {
 
         @Test
         @DisplayName("a colon after the run makes a set-word")
-        void aRunThenAColon() {
+        void comesFromARunThenAColon() {
             assertThat(answerTo("""
                     set-word? load {/:}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -64,15 +64,15 @@ class SlashWordFromTheSourceTest {
 
         @Test
         @DisplayName("and it names the run without the colon")
-        void whatItNames() {
+        void namesTheRunWithoutTheColon() {
             assertThat(answerTo("""
                     (load {//:}) = to set-word! "//\"""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("but a name between the slash and the colon is refused")
-        void aNamedRefinementWithAColon() {
-            assertThat(errorIdFromLoading("""
+        void refusesANameBetweenTheSlashAndTheColon() {
+            assertThat(readTheErrorIdFromLoading("""
                     {/a:}""")).isEqualTo("invalid");
         }
     }
@@ -83,7 +83,7 @@ class SlashWordFromTheSourceTest {
 
         @Test
         @DisplayName("a colon before the run makes a get-word")
-        void aColonThenARun() {
+        void comesFromAColonThenARun() {
             assertThat(answerTo("""
                     get-word? load {:/}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -94,22 +94,22 @@ class SlashWordFromTheSourceTest {
 
         @Test
         @DisplayName("and it names the run without the colon")
-        void whatItNames() {
+        void namesTheRunWithoutTheColon() {
             assertThat(answerTo("""
                     (load {://}) = to get-word! "//\"""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and it answers the function rather than calling it")
-        void itDoesNotCall() {
+        void answersTheFunctionWithoutCallingIt() {
             assertThat(answerTo("""
                     any-function? :/""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("but something that is not a delimiter after the run is refused")
-        void aNameAfterTheRun() {
-            assertThat(errorIdFromLoading("""
+        void refusesANonDelimiterAfterTheRun() {
+            assertThat(readTheErrorIdFromLoading("""
                     {://x}""")).isNotEqualTo("no-error");
         }
     }

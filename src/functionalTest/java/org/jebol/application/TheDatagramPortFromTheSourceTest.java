@@ -1,6 +1,6 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.JavaSockets;
+import org.jebol.adapter.host.JavaSocket;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -16,20 +16,20 @@ class TheDatagramPortFromTheSourceTest {
 
     private static final AtomicInteger NEXT = new AtomicInteger(41_500);
 
-    private static int aFreePortNumber() {
+    private static int findAFreePortNumber() {
         return NEXT.incrementAndGet();
     }
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.writingTo(
+        Interpreter interpreter = Interpreter.createWithOutput(
                 message -> { },
                 Bounds.standard().grant(HostService.NETWORK));
-        interpreter.useNetwork(new JavaSockets());
+        interpreter.useNetwork(new JavaSocket());
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String withoutTheGrant(String source) {
+    private static String runWithoutTheGrant(String source) {
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
@@ -42,7 +42,7 @@ class TheDatagramPortFromTheSourceTest {
         @Test
         @DisplayName("answers a port")
         void answersAPort() {
-            assertThat(answerTo("port? open udp://:" + aFreePortNumber()))
+            assertThat(answerTo("port? open udp://:" + findAFreePortNumber()))
                     .isEqualTo("#(true)");
         }
 
@@ -53,14 +53,14 @@ class TheDatagramPortFromTheSourceTest {
                     p: open udp://:%d
                     was: open? p
                     close p
-                    reduce [was open? p]""".formatted(aFreePortNumber())))
+                    reduce [was open? p]""".formatted(findAFreePortNumber())))
                     .isEqualTo("[#(true) #(false)]");
         }
 
         @Test
         @DisplayName("a number another socket already holds is refused")
-        void aNumberAlreadyHeldIsRefused() {
-            int held = aFreePortNumber();
+        void refusesANumberAlreadyHeld() {
+            int held = findAFreePortNumber();
             assertThat(answerTo("""
                     first-one: open udp://:%d
                     failure: try [open udp://:%d]
@@ -75,8 +75,8 @@ class TheDatagramPortFromTheSourceTest {
 
         @Test
         @DisplayName("a datagram written at one end arrives at the other")
-        void aDatagramReachesThePeer() {
-            int listening = aFreePortNumber();
+        void reachesThePeer() {
+            int listening = findAFreePortNumber();
             assertThat(answerTo("""
                     here: open udp://:%d
                     there: open udp://127.0.0.1:%d
@@ -90,8 +90,8 @@ class TheDatagramPortFromTheSourceTest {
 
         @Test
         @DisplayName("reading answers the port, not the bytes, as the C does")
-        void readingAnswersThePort() {
-            int listening = aFreePortNumber();
+        void answersThePortOnReading() {
+            int listening = findAFreePortNumber();
             assertThat(answerTo("""
                     here: open udp://:%d
                     there: open udp://127.0.0.1:%d
@@ -103,8 +103,8 @@ class TheDatagramPortFromTheSourceTest {
 
         @Test
         @DisplayName("what arrived is a binary in the port's data")
-        void theDatagramLandsInTheData() {
-            int listening = aFreePortNumber();
+        void landsTheDatagramInTheData() {
+            int listening = findAFreePortNumber();
             assertThat(answerTo("""
                     here: open udp://:%d
                     there: open udp://127.0.0.1:%d
@@ -118,8 +118,8 @@ class TheDatagramPortFromTheSourceTest {
 
         @Test
         @DisplayName("two datagrams append cleanly, with nothing wedged between")
-        void twoDatagramsBothLand() {
-            int listening = aFreePortNumber();
+        void landsBothOfTwoDatagrams() {
+            int listening = findAFreePortNumber();
             assertThat(answerTo("""
                     here: open udp://:%d
                     there: open udp://127.0.0.1:%d
@@ -135,8 +135,8 @@ class TheDatagramPortFromTheSourceTest {
 
         @Test
         @DisplayName("an empty datagram is a datagram")
-        void anEmptyDatagram() {
-            int listening = aFreePortNumber();
+        void carriesAnEmptyDatagram() {
+            int listening = findAFreePortNumber();
             assertThat(answerTo("""
                     here: open udp://:%d
                     there: open udp://127.0.0.1:%d
@@ -154,34 +154,34 @@ class TheDatagramPortFromTheSourceTest {
 
         @Test
         @DisplayName("answers the port so writes chain")
-        void writingAnswersThePort() {
+        void answersThePort() {
             assertThat(answerTo("""
                     p: open udp://127.0.0.1:%d
                     answered: port? write p "x"
                     close p
-                    answered""".formatted(aFreePortNumber()))).isEqualTo("#(true)");
+                    answered""".formatted(findAFreePortNumber()))).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and leaves none in the data, because the write is done")
-        void writingLeavesNoneInTheData() {
+        void leavesNoneInTheData() {
             assertThat(answerTo("""
                     p: open udp://127.0.0.1:%d
                     write p "x"
                     left: type? p/data
                     close p
-                    left""".formatted(aFreePortNumber()))).isEqualTo("#(none!)");
+                    left""".formatted(findAFreePortNumber()))).isEqualTo("#(none!)");
         }
 
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"5", "0", "-1", "1.5", "[a b]", "none", "true",
                 "quote word", "10:30"})
-        void anythingButTextAndBytesIsRefused(String written) {
+        void refusesAnythingButTextAndBytes(String written) {
             assertThat(answerTo("""
                     p: open udp://127.0.0.1:%d
                     failure: try [write p %s]
                     close p
-                    failure/id""".formatted(aFreePortNumber(), written)))
+                    failure/id""".formatted(findAFreePortNumber(), written)))
                     .isEqualTo("invalid-port-arg");
         }
     }
@@ -192,18 +192,18 @@ class TheDatagramPortFromTheSourceTest {
 
         @Test
         @DisplayName("nothing buffered is a length of zero")
-        void nothingBufferedIsZero() {
+        void reportsZeroWhenNothingIsBuffered() {
             assertThat(answerTo("""
                     p: open udp://:%d
                     measured: length? p
                     close p
-                    measured""".formatted(aFreePortNumber()))).isEqualTo("0");
+                    measured""".formatted(findAFreePortNumber()))).isEqualTo("0");
         }
 
         @Test
         @DisplayName("and after a read it is how many bytes arrived")
-        void afterAReadItIsTheByteCount() {
-            int listening = aFreePortNumber();
+        void reportsTheByteCountAfterARead() {
+            int listening = findAFreePortNumber();
             assertThat(answerTo("""
                     here: open udp://:%d
                     there: open udp://127.0.0.1:%d
@@ -222,8 +222,8 @@ class TheDatagramPortFromTheSourceTest {
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"open udp://:41999", "read udp://:41999",
                 "write udp://:41999 \"x\""})
-        void withoutTheGrantItRefuses(String written) {
-            assertThat(withoutTheGrant("failure: try [" + written + "] failure/id"))
+        void refusesWithoutIt(String written) {
+            assertThat(runWithoutTheGrant("failure: try [" + written + "] failure/id"))
                     .isEqualTo("no-service");
         }
     }

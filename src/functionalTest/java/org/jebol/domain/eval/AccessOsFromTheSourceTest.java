@@ -1,5 +1,6 @@
 package org.jebol.domain.eval;
 
+import org.jebol.adapter.host.JavaProcess;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
@@ -16,8 +17,9 @@ class AccessOsFromTheSourceTest {
     }
 
     private static String answerAllowingProcesses(String source) {
-        return answerFrom(Interpreter.withBounds(
-                Bounds.standard().grant(HostService.PROCESSES)), source);
+        Interpreter interpreter = Interpreter.withBounds(Bounds.standard().grant(HostService.PROCESSES));
+        interpreter.useProcesses(new JavaProcess());
+        return answerFrom(interpreter, source);
     }
 
     private static String answerFrom(Interpreter interpreter, String source) {
@@ -25,7 +27,7 @@ class AccessOsFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String whatHappensTo(String call) {
+    private static String describeWhatHappensTo(String call) {
         return answerTo("either error? e: try [" + call + "] [e/id] ['accepted]");
     }
 
@@ -35,7 +37,7 @@ class AccessOsFromTheSourceTest {
 
         @Test
         @DisplayName("the process id is a whole number, and it is this process's")
-        void theProcessIdIsAnswered() {
+        void answersTheProcessId() {
             assertThat(answerTo("integer? access-os 'pid")).isEqualTo("#(true)");
             assertThat(answerTo("access-os 'pid"))
                     .isEqualTo(String.valueOf(ProcessHandle.current().pid()));
@@ -45,7 +47,7 @@ class AccessOsFromTheSourceTest {
         @DisplayName("and the four identity fields say they are not here")
         void theidentityFieldsSayNotHere() {
             for (String field : new String[] {"uid", "euid", "gid", "egid"}) {
-                assertThat(whatHappensTo("access-os '" + field))
+                assertThat(describeWhatHappensTo("access-os '" + field))
                         .as("n-io.c raises not-here where the platform has no such "
                                 + "call, and the JVM has none of these")
                         .isEqualTo("not-here");
@@ -55,7 +57,7 @@ class AccessOsFromTheSourceTest {
         @Test
         @DisplayName("a word that is not one of the five is an invalid argument")
         void anunknownFieldIsInvalid() {
-            assertThat(whatHappensTo("access-os 'nope"))
+            assertThat(describeWhatHappensTo("access-os 'nope"))
                     .as("the C reaches Trap_Arg on the field, not on the declaration")
                     .isEqualTo("invalid-arg");
         }
@@ -63,8 +65,8 @@ class AccessOsFromTheSourceTest {
         @Test
         @DisplayName("and the field must be a word")
         void thefieldMustBeAWord() {
-            assertThat(whatHappensTo("access-os {pid}")).isEqualTo("expect-arg");
-            assertThat(whatHappensTo("access-os 1")).isEqualTo("expect-arg");
+            assertThat(describeWhatHappensTo("access-os {pid}")).isEqualTo("expect-arg");
+            assertThat(describeWhatHappensTo("access-os 1")).isEqualTo("expect-arg");
         }
     }
 
@@ -75,33 +77,33 @@ class AccessOsFromTheSourceTest {
         @Test
         @DisplayName("the value may be a whole number or a block, and nothing else")
         void thevalueIsDeclaredTwoWays() {
-            assertThat(whatHappensTo("access-os/set 'pid {x}"))
+            assertThat(describeWhatHappensTo("access-os/set 'pid {x}"))
                     .as("the declaration turns a string away before the body runs")
                     .isEqualTo("expect-arg");
-            assertThat(whatHappensTo("access-os/set 'pid 1.5")).isEqualTo("expect-arg");
+            assertThat(describeWhatHappensTo("access-os/set 'pid 1.5")).isEqualTo("expect-arg");
         }
 
         @Test
         @DisplayName("a block must hold exactly a pid and a signal, both whole numbers")
         void ablockIsAPidAndASignal() {
-            assertThat(whatHappensTo("access-os/set 'pid [1]"))
+            assertThat(describeWhatHappensTo("access-os/set 'pid [1]"))
                     .as("VAL_LEN(val) != 2 is Trap_Arg on the block itself")
                     .isEqualTo("invalid-arg");
-            assertThat(whatHappensTo("access-os/set 'pid [1 2 3]")).isEqualTo("invalid-arg");
-            assertThat(whatHappensTo("access-os/set 'pid [{a} 2]")).isEqualTo("invalid-arg");
-            assertThat(whatHappensTo("access-os/set 'pid [1 {b}]")).isEqualTo("invalid-arg");
+            assertThat(describeWhatHappensTo("access-os/set 'pid [1 2 3]")).isEqualTo("invalid-arg");
+            assertThat(describeWhatHappensTo("access-os/set 'pid [{a} 2]")).isEqualTo("invalid-arg");
+            assertThat(describeWhatHappensTo("access-os/set 'pid [1 {b}]")).isEqualTo("invalid-arg");
         }
 
         @Test
         @DisplayName("setting an identity field is still not here")
         void settinganIdentityFieldIsNotHere() {
-            assertThat(whatHappensTo("access-os/set 'uid 0")).isEqualTo("not-here");
+            assertThat(describeWhatHappensTo("access-os/set 'uid 0")).isEqualTo("not-here");
         }
 
         @Test
         @DisplayName("signalling a process a script was not granted is refused")
-        void withoutTheGrantSignallingIsRefused() {
-            assertThat(whatHappensTo("access-os/set 'pid 1"))
+        void refusesSignallingWithoutTheGrant() {
+            assertThat(describeWhatHappensTo("access-os/set 'pid 1"))
                     .as("ending another program is starting one's twin, and the "
                             + "host grants the pair together")
                     .isEqualTo("no-service");
@@ -109,7 +111,7 @@ class AccessOsFromTheSourceTest {
 
         @Test
         @DisplayName("and a process nobody may signal answers permission-denied")
-        void signallingWhatCannotBeSignalledIsDenied() {
+        void deniesSignallingWhatCannotBeSignalled() {
             assertThat(answerAllowingProcesses(
                     "either error? e: try [access-os/set 'pid 1] [e/id] ['accepted]"))
                     .as("process 1 belongs to the system on every platform this runs "

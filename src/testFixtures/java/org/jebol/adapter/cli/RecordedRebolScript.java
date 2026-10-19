@@ -29,11 +29,11 @@ final class RecordedRebolScript {
         this.directory = directory;
     }
 
-    Stream<DynamicTest> eachRowPrintsWhatRebolPrinted() throws IOException {
+    Stream<DynamicTest> replayEachRow() throws IOException {
         String script = readFromTheClasspath("/r3-recorded/" + named + ".r3");
-        List<String> rows = theRowsOf(script);
+        List<String> rows = readTheRowsOf(script);
         List<String> recorded = readFromTheClasspath("/r3-recorded/" + named + ".recorded").lines().toList();
-        List<String> printed = whatJebolPrintsRunning(script);
+        List<String> printed = recordWhatJebolPrintsRunning(script);
         assertThat(recorded).hasSize(rows.size());
         assertThat(printed).hasSize(rows.size());
         return IntStream.range(0, rows.size()).mapToObj(at -> DynamicTest.dynamicTest(
@@ -48,11 +48,11 @@ final class RecordedRebolScript {
         }
     }
 
-    private List<String> whatJebolPrintsRunning(String script) throws IOException {
+    private List<String> recordWhatJebolPrintsRunning(String script) throws IOException {
         Path written = directory.resolve(named + ".r3");
         Files.writeString(written, script);
         ByteArrayOutputStream printed = new ByteArrayOutputStream();
-        Repl.runTheCommandLine(new String[] {written.toString()},
+        Repl.runCommandLine(new String[] {written.toString()},
                 new BufferedReader(new StringReader("")),
                 new PrintStream(printed, true, StandardCharsets.UTF_8),
                 new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8),
@@ -60,7 +60,7 @@ final class RecordedRebolScript {
         return printed.toString(StandardCharsets.UTF_8).lines().toList();
     }
 
-    private List<String> theRowsOf(String script) {
+    private List<String> readTheRowsOf(String script) {
         List<String> lines = script.lines().toList();
         int first = lines.indexOf(WHERE_THE_ROWS_START) + 1;
         return lines.subList(first, first + countOfRowsIn(lines, first)).stream()

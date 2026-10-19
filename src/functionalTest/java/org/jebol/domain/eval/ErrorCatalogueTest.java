@@ -16,7 +16,7 @@ class ErrorCatalogueTest {
 
     @Test
     @DisplayName("the catalogue holds the ten categories R3 has, and any a module added")
-    void theCategoriesAreThere() {
+    void holdsTheCategories() {
         assertThat(answerTo("mold words-of system/catalog/errors"))
                 .startsWith("{[Throw Note Syntax Script Math Access Command "
                         + "resv700 User Internal");
@@ -27,7 +27,7 @@ class ErrorCatalogueTest {
 
     @Test
     @DisplayName("each category carries the code its first id gets")
-    void theCategoryCodesAreRight() {
+    void holdsTheRightCategoryCodes() {
         assertThat(answerTo("mold reduce [system/catalog/errors/Throw/code "
                 + "system/catalog/errors/Syntax/code system/catalog/errors/Script/code "
                 + "system/catalog/errors/Math/code system/catalog/errors/Access/code]"))
@@ -36,33 +36,33 @@ class ErrorCatalogueTest {
 
     @Test
     @DisplayName("the first id in a category gets the category's own code")
-    void theFirstIdTakesTheBase() {
+    void givesTheFirstIdTheBase() {
         assertThat(answerTo("e: try [1 / 0] e/code")).isEqualTo("400");
     }
 
     @Test
     @DisplayName("a later id is offset by its position")
-    void aLaterIdIsOffset() {
+    void offsetsALaterId() {
         assertThat(answerTo("e: try/all [throw 5] e/code")).isEqualTo("2");
     }
 
     @Test
     @DisplayName("the type field is not counted as an id")
-    void theTypeFieldDoesNotShiftTheCodes() {
+    void leavesTheCodesUnshiftedByTheTypeField() {
         assertThat(answerTo("e: try [1 / 0] e/code = system/catalog/errors/Math/code"))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a category names itself in its type field, as errors.reb writes it")
-    void eachCategoryNamesItself() {
+    void letsEachCategoryNameItself() {
         assertThat(answerTo("system/catalog/errors/Math/type"))
                 .isEqualTo("\"math error\"");
     }
 
     @Test
     @DisplayName("an id JEBOL raises is in the catalogue under its own category")
-    void aRaisedIdIsInTheCatalogue() {
+    void holdsEveryRaisedId() {
         assertThat(answerTo("true? system/catalog/errors/Script/not-defined"))
                 .isEqualTo("#(true)");
     }

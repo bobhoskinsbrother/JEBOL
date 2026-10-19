@@ -22,13 +22,13 @@ abstract class SeriesActions implements Actions {
     }
 
     @Override
-    public int length() {
+    public int measureTheLength() {
         return held().lengthFromHere();
     }
 
     @Override
-    public Value removed(long howMany) {
-        RebolSeries removingFrom = held().reachingBackIfNegative(howMany);
+    public Value remove(long howMany) {
+        RebolSeries removingFrom = held().reachBackIfNegative(howMany);
         for (long dropped = 0; dropped < Math.abs(howMany)
                 && !removingFrom.atTail(); dropped++) {
             takeOneOutAt(removingFrom.index());
@@ -44,7 +44,7 @@ abstract class SeriesActions implements Actions {
     }
 
     @Override
-    public Value takenSeveral(long wanted) {
+    public Value takeSeveral(long wanted) {
         int from = Math.min(held().index(), held().storageLength() + 1);
         int howMany;
         if (wanted >= 0) {
@@ -54,22 +54,22 @@ abstract class SeriesActions implements Actions {
             from -= howMany;
         }
         List<Value> taken = List.copyOf(
-                held().head().items().subList(from - 1, from - 1 + howMany));
+                held().head().listTheItems().subList(from - 1, from - 1 + howMany));
         takeOutFrom(from, howMany);
         return ofTheSameKindHolding(taken);
     }
 
     @Override
-    public Value takenOne() {
+    public Value takeOne() {
         if (held().lengthFromHere() == 0) {
             return NoneValue.none();
         }
-        Value taken = held().items().getFirst();
+        Value taken = held().listTheItems().getFirst();
         takeOutFrom(held().index(), 1);
         return taken;
     }
 
-    int pokedStoragePosition(Value position) {
+    int findThePokedStoragePosition(Value position) {
         long at = position.asPosition();
         if (at < 1 || at > held().lengthFromHere()) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, position);
@@ -77,7 +77,7 @@ abstract class SeriesActions implements Actions {
         return held().index() + (int) at - 1;
     }
 
-    Value clearedOneAtATime() {
+    Value clearOneAtATime() {
         while (held().storageLength() >= held().index()) {
             takeOneOutAt(held().index());
         }

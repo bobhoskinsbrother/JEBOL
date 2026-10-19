@@ -18,16 +18,16 @@ public class DhInitNative extends CipherNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("g", Set.of(BinaryValue.TYPE)),
-                Parameter.required("p", Set.of(BinaryValue.TYPE)));
+        return List.of(Parameter.of("g", Set.of(BinaryValue.TYPE)),
+                Parameter.of("p", Set.of(BinaryValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> DiffieHellmanKey.generatedFor(
+        return (arguments, evaluator, context, refinements) -> DiffieHellmanKey.generateFor(
                         ((BinaryValue) arguments.get(0)).octetsFromHere(),
                         ((BinaryValue) arguments.get(1)).octetsFromHere())
-                .map(key -> aHandleHolding(DHM_HANDLE_TYPE, key, evaluator))
+                .map(key -> wrapInAHandle(DHM_HANDLE_TYPE, key, evaluator))
                 .orElseGet(NoneValue::none);
     }
 }

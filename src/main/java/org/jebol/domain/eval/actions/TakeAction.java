@@ -24,8 +24,8 @@ public class TakeAction extends DefaultNative implements ActionValue {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series"),
-                Parameter.belongingTo("part", "count", Set.of()));
+        return List.of(Parameter.of("series"),
+                Parameter.belongTo("part", "count", Set.of()));
     }
 
     @Override
@@ -42,28 +42,28 @@ public class TakeAction extends DefaultNative implements ActionValue {
                 cryptPort.update(port);
                 yield cryptPort.read(port);
             }
-            case RebolSeries series -> takenFrom(series, arguments, refinements);
+            case RebolSeries series -> takeFrom(series, arguments, refinements);
             case Value anythingElse -> refuseTheDatatype(anythingElse);
         };
     }
 
-    private Value takenFrom(RebolSeries series, List<Value> arguments, Set<String> refinements) {
+    private Value takeFrom(RebolSeries series, List<Value> arguments, Set<String> refinements) {
         if (refinements.contains("all")) {
-            return takenSeveral(series, series.lengthFromHere());
+            return takeSeveral(series, series.lengthFromHere());
         }
         if (!refinements.contains("part")) {
-            return deepenedIfAsked(takenOne(series, refinements.contains("last")), refinements);
+            return deepenIfAsked(takeOne(series, refinements.contains("last")), refinements);
         }
-        Optional<Value> howMuch = argumentOf("part", 0, arguments, refinements);
+        Optional<Value> howMuch = readTheArgumentOf("part", 0, arguments, refinements);
         if (howMuch.isPresent() && howMuch.get() instanceof RebolSeries upTo) {
-            return deepenedIfAsked(takenSeveral(series.earlierOf(upTo),
+            return deepenIfAsked(takeSeveral(series.pickTheEarlierOf(upTo),
                     Math.abs(upTo.index() - series.index())), refinements);
         }
         long wanted = howMuch.map(series::countUpTo).orElse(1L);
-        return deepenedIfAsked(takenACount(series, wanted, refinements), refinements);
+        return deepenIfAsked(takeACount(series, wanted, refinements), refinements);
     }
 
-    private Value takenACount(RebolSeries from, long wanted, Set<String> refinements) {
+    private Value takeACount(RebolSeries from, long wanted, Set<String> refinements) {
         RebolSeries series = from;
         long howMany;
         if (wanted < 0) {
@@ -75,25 +75,25 @@ public class TakeAction extends DefaultNative implements ActionValue {
         if (refinements.contains("last")) {
             int tail = series.storageLength() + 1;
             long start = Math.max(1, tail - howMany);
-            return takenSeveral(series.atIndex((int) start), howMany);
+            return takeSeveral(series.atIndex((int) start), howMany);
         }
-        return takenSeveral(series, howMany);
+        return takeSeveral(series, howMany);
     }
 
-    private Value takenOne(RebolSeries series, boolean fromTheEnd) {
+    private Value takeOne(RebolSeries series, boolean fromTheEnd) {
         RebolSeries takingFrom = fromTheEnd && series.lengthFromHere() > 0
                 ? series.atIndex(series.index() + series.lengthFromHere() - 1)
                 : series;
-        return Actions.of(takingFrom).orElseThrow().takenOne();
+        return Actions.of(takingFrom).orElseThrow().takeOne();
     }
 
-    private Value takenSeveral(RebolSeries series, long wanted) {
-        return Actions.of(series).orElseThrow().takenSeveral(wanted);
+    private Value takeSeveral(RebolSeries series, long wanted) {
+        return Actions.of(series).orElseThrow().takeSeveral(wanted);
     }
 
-    private Value deepenedIfAsked(Value taken, Set<String> refinements) {
+    private Value deepenIfAsked(Value taken, Set<String> refinements) {
         return refinements.contains("deep") && !(taken instanceof ObjectValue)
-                ? taken.copied(taken instanceof AnyBlockValue)
+                ? taken.copy(taken instanceof AnyBlockValue)
                 : taken;
     }
 }

@@ -20,25 +20,25 @@ public class MapEventNative extends GobMappingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("event", Set.of(EventValue.TYPE)));
+        return List.of(Parameter.of("event", Set.of(EventValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                mappedEvent((EventValue) arguments.getFirst());
+                mapTheEvent((EventValue) arguments.getFirst());
     }
 
-    private Value mappedEvent(EventValue event) {
+    private Value mapTheEvent(EventValue event) {
         if (!(event.attached() instanceof GobValue gob) || !event.has(EventValue.Flag.HAS_XY)) {
             return event;
         }
-        List<Value> gobAndPoint = ((AnyBlockValue) mappedInwards(gob,
+        List<Value> gobAndPoint = ((AnyBlockValue) mapInwards(gob,
                 PairValue.of(event.offsetX(), event.offsetY()))).remaining();
         PairValue inside = (PairValue) gobAndPoint.get(1);
         return event
                 .withAttached(EventValue.Model.GUI, gobAndPoint.getFirst())
-                .withData(EventValue.packedOffset(
+                .withData(EventValue.packTheOffset(
                                 (int) Math.round(inside.x()), (int) Math.round(inside.y())),
                         EventValue.Flag.HAS_XY);
     }

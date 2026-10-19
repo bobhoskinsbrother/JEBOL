@@ -32,7 +32,7 @@ class ParseNamesWhatItCannotUseFromTheSourceTest {
 
     @Test
     @DisplayName("a get-word rule holding something that is not a series names parse-series")
-    void aGetWordHoldingSomethingThatIsNotASeriesNamesParseSeries() {
+    void namesParseSeriesForAGetWordHoldingANonSeries() {
         assertThat(failureOf("counted: 5", """
                 parse "abc" [:counted]"""))
                 .isEqualTo("""
@@ -44,7 +44,7 @@ class ParseNamesWhatItCannotUseFromTheSourceTest {
 
     @Test
     @DisplayName("and so does one holding a function, or nothing at all")
-    void andSoDoesOneHoldingAFunctionOrNothingAtAll() {
+    void namesParseSeriesForAFunctionOrNothingAtAll() {
         assertThat(failureOf("""
                 parse "abc" [:append]"""))
                 .isEqualTo("""
@@ -61,7 +61,7 @@ class ParseNamesWhatItCannotUseFromTheSourceTest {
 
     @Test
     @DisplayName("a get-word holding a series switches the input instead")
-    void aGetWordHoldingASeriesSwitchesTheInput() {
+    void switchesTheInputForAGetWordHoldingASeries() {
         assertThat(failureOf("""
                 other: "bc"
                 parse "abc" [:other]"""))
@@ -72,7 +72,7 @@ class ParseNamesWhatItCannotUseFromTheSourceTest {
 
     @Test
     @DisplayName("a get-path naming something that is not a series names parse-series too")
-    void aGetPathNamingSomethingThatIsNotASeriesNamesParseSeries() {
+    void namesParseSeriesForAGetPathToANonSeries() {
         assertThat(failureOf("holder: object [part: 5]", """
                 parse "abc" [:holder/part]"""))
                 .isEqualTo("""
@@ -84,7 +84,7 @@ class ParseNamesWhatItCannotUseFromTheSourceTest {
 
     @Test
     @DisplayName("a SET or COPY target that is not a word names parse-variable and molds it")
-    void aTargetThatIsNotAWordNamesParseVariable() {
+    void namesParseVariableForATargetThatIsNotAWord() {
         assertThat(failureOf("""
                 parse "abc" [set 1 skip]"""))
                 .isEqualTo("""
@@ -107,7 +107,7 @@ class ParseNamesWhatItCannotUseFromTheSourceTest {
 
     @Test
     @DisplayName("a quoted word is not a word to write into either")
-    void aQuotedWordIsNotAWordToWriteInto() {
+    void refusesToWriteIntoAQuotedWord() {
         assertThat(failureOf("""
                 parse "abc" [set 'target skip]"""))
                 .isEqualTo("""
@@ -120,7 +120,7 @@ class ParseNamesWhatItCannotUseFromTheSourceTest {
 
     @Test
     @DisplayName("a plain word and a set-word are the two it does accept")
-    void aPlainWordAndASetWordAreTheTwoItAccepts() {
+    void acceptsOnlyAPlainWordAndASetWord() {
         assertThat(answerTo("""
                 parse "abc" [set target skip]
                 reduce [target]""")).isEqualTo("[#\"a\"]");
@@ -141,7 +141,7 @@ class ParseNamesWhatItCannotUseFromTheSourceTest {
 
     @Test
     @DisplayName("but a target with no rule after it is only a parse that did not match")
-    void aTargetWithNoRuleAfterItIsOnlyAParseThatDidNotMatch() {
+    void onlyFailsToMatchForATargetWithNoRuleAfterIt() {
         assertThat(answerTo("""
                 parse "abc" [set target skip]
                 parse "abc" [set target]""")).isEqualTo("#(false)");
@@ -152,7 +152,7 @@ class ParseNamesWhatItCannotUseFromTheSourceTest {
 
     @Test
     @DisplayName("a target that is one of the dialect's own words names parse-command")
-    void aTargetThatIsOneOfTheDialectsOwnWordsNamesParseCommand() {
+    void namesParseCommandForATargetThatIsADialectWord() {
         assertThat(failureOf("""
                 parse "abc" [set skip skip]"""))
                 .isEqualTo("""
@@ -176,7 +176,7 @@ class ParseNamesWhatItCannotUseFromTheSourceTest {
 
     @Test
     @DisplayName("and a set-word spelling one of them is refused the same way")
-    void aSetWordSpellingOneOfThemIsRefusedTheSameWay() {
+    void refusesASetWordSpellingADialectWordTheSameWay() {
         assertThat(failureOf("""
                 parse "abc" [set skip: skip]"""))
                 .isEqualTo("""
@@ -185,7 +185,7 @@ class ParseNamesWhatItCannotUseFromTheSourceTest {
 
     @Test
     @DisplayName("a word the dialect does not reserve is a variable, even a datatype's name")
-    void aWordTheDialectDoesNotReserveIsAVariable() {
+    void takesAnUnreservedWordAsAVariable() {
         assertThat(failureOf("""
                 parse "abc" [set integer! skip]""")).isEqualTo("[ok]");
         assertThat(failureOf("""

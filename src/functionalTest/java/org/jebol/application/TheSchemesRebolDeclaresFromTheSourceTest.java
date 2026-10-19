@@ -26,10 +26,10 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
 
     private static final String THE_BUILDS_OWN_SCHEME = "bundled";
 
-    static List<String> theSchemesTheLibraryDeclares() {
+    static List<String> listTheSchemesTheLibraryDeclares() {
         List<String> declared = new ArrayList<>();
         boolean inside = false;
-        for (String line : theBorrowedPortFile().split("\n")) {
+        for (String line : readTheBorrowedPortFile().split("\n")) {
             if (line.startsWith("init-schemes:")) {
                 inside = true;
             }
@@ -40,11 +40,11 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
         return declared;
     }
 
-    private static String theBorrowedPortFile() {
-        return theBorrowedFile("sys-ports.reb");
+    private static String readTheBorrowedPortFile() {
+        return readTheBorrowedFile("sys-ports.reb");
     }
 
-    private static String theBorrowedFile(String name) {
+    private static String readTheBorrowedFile(String name) {
         try (InputStream open = TheSchemesRebolDeclaresFromTheSourceTest.class
                 .getResourceAsStream("/org/jebol/mezz/" + name)) {
             return new String(open.readAllBytes(), StandardCharsets.UTF_8);
@@ -59,52 +59,52 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
 
         @Test
         @DisplayName("the library declares thirteen, and the four that were missing are among them")
-        void theLibraryDeclaresThirteen() {
-            assertThat(theSchemesTheLibraryDeclares())
+        void countThirteenInTheLibrary() {
+            assertThat(listTheSchemesTheLibraryDeclares())
                     .hasSize(13)
                     .contains("callback", "clipboard", "serial", "udp");
         }
 
         @ParameterizedTest(name = "{0}")
         @MethodSource("org.jebol.application."
-                + "TheSchemesRebolDeclaresFromTheSourceTest#theSchemesTheLibraryDeclares")
-        void everySchemeTheLibraryDeclaresIsRegistered(String scheme) {
+                + "TheSchemesRebolDeclaresFromTheSourceTest#listTheSchemesTheLibraryDeclares")
+        void includeEverySchemeTheLibraryDeclares(String scheme) {
             assertThat(answerTo("object? get in system/schemes (quote "
                     + scheme + ")")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and BUNDLED beside them, which is this build's own")
-        void theBundledSchemeIsStillThere() {
+        void stillIncludeTheBundledScheme() {
             assertThat(answerTo("object? get in system/schemes (quote "
                     + THE_BUILDS_OWN_SCHEME + ")")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("nothing is registered that Rebol does not declare, bar the protocols and BUNDLED")
-        void nothingIsInventedBesideBundled() {
-            List<String> allowed = new ArrayList<>(theSchemesTheLibraryDeclares());
-            allowed.addAll(theSchemesTheOptionalSysFilesDeclare());
+        void inventNothingBesideBundled() {
+            List<String> allowed = new ArrayList<>(listTheSchemesTheLibraryDeclares());
+            allowed.addAll(listTheSchemesTheOptionalSysFilesDeclare());
             allowed.add(THE_BUILDS_OWN_SCHEME);
             String registered = answerTo("mold sort copy words-of system/schemes");
             for (String name : registered
                     .replaceAll("[\\[\\]\"{}]", "").trim().split("\\s+")) {
                 assertThat(name).satisfiesAnyOf(
                         each -> assertThat(allowed).contains(each),
-                        each -> assertThat(theProtocolsTheLibraryBrings()).contains(each));
+                        each -> assertThat(listTheProtocolsTheLibraryBrings()).contains(each));
             }
         }
 
         @Test
         @DisplayName("the optional MIDI file declares midi, and it is registered")
-        void theMidiFileDeclaresMidi() {
-            assertThat(theSchemesTheOptionalSysFilesDeclare()).containsExactly("midi");
+        void takeMidiFromTheMidiFile() {
+            assertThat(listTheSchemesTheOptionalSysFilesDeclare()).containsExactly("midi");
             assertThat(answerTo("object? get in system/schemes (quote midi)")).isEqualTo("#(true)");
         }
 
-        private List<String> theSchemesTheOptionalSysFilesDeclare() {
+        private List<String> listTheSchemesTheOptionalSysFilesDeclare() {
             List<String> declared = new ArrayList<>();
-            for (String line : theBorrowedFile("sys-ports-midi.reb").split("\n")) {
+            for (String line : readTheBorrowedFile("sys-ports-midi.reb").split("\n")) {
                 if (line.startsWith("\tname: '")) {
                     declared.add(line.substring("\tname: '".length()).trim());
                 }
@@ -112,7 +112,7 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
             return declared;
         }
 
-        private static List<String> theProtocolsTheLibraryBrings() {
+        private static List<String> listTheProtocolsTheLibraryBrings() {
             return List.of("http", "https", "tls", "smtp", "smtps", "pop3", "pop3s",
                     "mysql", "rdap", "whois", "daytime", "mail", "safe");
         }
@@ -124,7 +124,7 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
 
         @Test
         @DisplayName("input is open, and it is the same port as output")
-        void theInputAndOutputPortsAreOne() {
+        void shareOnePortForInputAndOutput() {
             assertThat(answerTo("""
                     reduce [
                         port? system/ports/input
@@ -135,7 +135,7 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
 
         @Test
         @DisplayName("and the callback port is open too")
-        void theCallbackPortIsOpen() {
+        void keepTheCallbackPortOpen() {
             assertThat(answerTo("port? system/ports/callback")).isEqualTo("#(true)");
         }
     }
@@ -146,27 +146,27 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
 
         @Test
         @DisplayName("the callback scheme answers a port, which is what a real 3.22.5 answers")
-        void openingTheCallbackSchemeAnswersAPort() {
+        void answersAPortForTheCallbackScheme() {
             assertThat(answerTo("port? open callback://")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("the serial scheme opens to nothing, which is what a real 3.22.5 answers")
-        void openingTheSerialSchemeAnswersNothing() {
+        void answersNothingForTheSerialScheme() {
             assertThat(answerTo("""
                     none? try [open serial://usb/9600]""")).isEqualTo("#(true)");
         }
 
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"udp://:40999", "clipboard://"})
-        void aSchemeWithADeviceRefusesForWantOfItsGrant(String url) {
+        void refusesASchemeWithADeviceForWantOfItsGrant(String url) {
             assertThat(answerTo("failure: try [open " + url + "] failure/id"))
                     .isEqualTo("no-service");
         }
 
         @Test
         @DisplayName("and a name nobody declares is still refused as no scheme at all")
-        void anUnknownSchemeIsStillRefused() {
+        void stillRefusesAnUnknownScheme() {
             assertThat(answerTo("""
                     failure: try [open frobozz://] failure/id"""))
                     .isEqualTo("no-scheme");
@@ -183,20 +183,20 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
                 "open UDP://:40999",
                 "open [scheme: 'udp]",
                 "open quote udp"})
-        void everySpellingReachesTheScheme(String written) {
+        void reachesTheScheme(String written) {
             assertThat(answerTo("failure: try [" + written + "] failure/id"))
                     .isEqualTo("no-service");
         }
 
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"make port! quote udp", "make port! [scheme: 'udp]"})
-        void makingAPortOfOneAnswersAPort(String written) {
+        void answersAPortWhenMadeIntoOne(String written) {
             assertThat(answerTo("port? " + written)).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a specification naming no scheme at all is still no scheme")
-        void anEmptySpecificationNamesNoScheme() {
+        void namesNoSchemeForAnEmptySpecification() {
             assertThat(answerTo("failure: try [open []] failure/id"))
                     .isEqualTo("no-scheme");
         }
@@ -208,7 +208,7 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
 
         @Test
         @DisplayName("the callback port opens and then serves nothing")
-        void theCallbackPortServesNothing() {
+        void leavesTheCallbackPortServingNothing() {
             assertThat(answerTo("""
                     failure: try [read open callback://] failure/id"""))
                     .isEqualTo("no-service");
@@ -223,7 +223,7 @@ class TheSchemesRebolDeclaresFromTheSourceTest {
 
         @Test
         @DisplayName("reading the clipboard is refused, not answered with an empty one")
-        void readingTheClipboardIsRefused() {
+        void refusesReadingTheClipboard() {
             assertThat(answerTo("""
                     failure: try [read clipboard://] failure/id"""))
                     .isEqualTo("no-service");

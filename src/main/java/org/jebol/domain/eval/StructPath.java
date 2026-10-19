@@ -20,22 +20,22 @@ public final class StructPath {
     }
 
     public static Value read(StructValue struct, Value selector) {
-        return struct.valueOf(fieldChosenBy(struct, selector));
+        return struct.valueOf(findTheFieldChosenBy(struct, selector));
     }
 
     public static void write(StructValue struct, Value selector, Value written) {
         try {
-            struct.writeField(fieldChosenBy(struct, selector), written);
+            struct.writeField(findTheFieldChosenBy(struct, selector), written);
         } catch (StructLayoutRefused refused) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(written));
         }
     }
 
-    private static StructSpec.StructField fieldChosenBy(StructValue struct, Value selector) {
+    private static StructSpec.StructField findTheFieldChosenBy(StructValue struct, Value selector) {
         if (!(selector instanceof AnyWordValue asked)) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, Molder.mold(selector));
         }
-        return struct.fieldCalled(asked.spelling())
+        return struct.findTheFieldCalled(asked.spelling())
                 .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
                         asked.spelling()));
     }

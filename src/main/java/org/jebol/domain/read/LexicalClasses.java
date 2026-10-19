@@ -135,56 +135,56 @@ final class LexicalClasses {
         map[0xFF] = CONTROL;
     }
 
-    int entry(int octet) {
+    int lookUpTheEntry(int octet) {
         return map[octet & 0xFF];
     }
 
-    int classOf(int octet) {
-        return entry(octet) >> SHIFT;
+    int classify(int octet) {
+        return lookUpTheEntry(octet) >> SHIFT;
     }
 
     int valueOf(int octet) {
-        return entry(octet) & VALUE_MASK;
+        return lookUpTheEntry(octet) & VALUE_MASK;
     }
 
     boolean isSpace(int octet) {
-        return entry(octet) == 0;
+        return lookUpTheEntry(octet) == 0;
     }
 
     boolean isAnySpace(int octet) {
-        return entry(octet) <= DELIMIT_RETURN;
+        return lookUpTheEntry(octet) <= DELIMIT_RETURN;
     }
 
     boolean isDelimit(int octet) {
-        return (entry(octet) & CLASS_MASK) == DELIMIT;
+        return (lookUpTheEntry(octet) & CLASS_MASK) == DELIMIT;
     }
 
     boolean isSpecial(int octet) {
-        return (entry(octet) & CLASS_MASK) == SPECIAL;
+        return (lookUpTheEntry(octet) & CLASS_MASK) == SPECIAL;
     }
 
     boolean isWord(int octet) {
-        return (entry(octet) & CLASS_MASK) == WORD;
+        return (lookUpTheEntry(octet) & CLASS_MASK) == WORD;
     }
 
     boolean isNumber(int octet) {
-        return (entry(octet) & CLASS_MASK) == NUMBER;
+        return (lookUpTheEntry(octet) & CLASS_MASK) == NUMBER;
     }
 
     boolean isAtLeastSpecial(int octet) {
-        return entry(octet) >= SPECIAL;
+        return lookUpTheEntry(octet) >= SPECIAL;
     }
 
     boolean isAtLeastWord(int octet) {
-        return entry(octet) >= WORD;
+        return lookUpTheEntry(octet) >= WORD;
     }
 
     boolean isAtLeastNumber(int octet) {
-        return entry(octet) >= NUMBER;
+        return lookUpTheEntry(octet) >= NUMBER;
     }
 
     boolean isHexDigit(int octet) {
-        int lexical = entry(octet);
+        int lexical = lookUpTheEntry(octet);
         return lexical >= WORD && ((lexical & VALUE_MASK) != 0 || lexical >= NUMBER);
     }
 }

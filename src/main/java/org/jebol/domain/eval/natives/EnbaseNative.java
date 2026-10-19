@@ -28,9 +28,9 @@ public class EnbaseNative extends BinaryBaseNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("value", anyStringOr(BinaryValue.TYPE, IntegerValue.TYPE)),
-                Parameter.required("base", Set.of(IntegerValue.TYPE)),
-                Parameter.belongingTo("part", "limit", anyStringOr(BinaryValue.TYPE, IntegerValue.TYPE)));
+                Parameter.of("value", acceptAnyStringOr(BinaryValue.TYPE, IntegerValue.TYPE)),
+                Parameter.of("base", Set.of(IntegerValue.TYPE)),
+                Parameter.belongTo("part", "limit", acceptAnyStringOr(BinaryValue.TYPE, IntegerValue.TYPE)));
     }
 
     @Override
@@ -41,32 +41,32 @@ public class EnbaseNative extends BinaryBaseNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            int base = aKnownBase(arguments);
+            int base = readAKnownBase(arguments);
             Value value = arguments.getFirst();
-            byte[] octets = theOctetsToEncode(value, arguments, refinements);
-            String encoded = encodedOrRefused(value, octets, base, refinements.contains("url"));
+            byte[] octets = readTheOctetsToEncode(value, arguments, refinements);
+            String encoded = encodeOrRefuse(value, octets, base, refinements.contains("url"));
             return StringValue.of(refinements.contains("flat")
                     ? encoded
-                    : encodings.brokenIntoLines(encoded, base, octets.length));
+                    : encodings.breakIntoLines(encoded, base, octets.length));
         };
     }
 
     @Override
-    Raised refusalOfAnUnknownBase(List<Value> arguments) {
+    Raised refuseAnUnknownBase(List<Value> arguments) {
         return Raised.of(EvaluationFailure.INVALID_ARG, arguments.get(1));
     }
 
-    private byte[] theOctetsToEncode(Value value, List<Value> arguments, Set<String> refinements) {
+    private byte[] readTheOctetsToEncode(Value value, List<Value> arguments, Set<String> refinements) {
         if (value instanceof IntegerValue number) {
             byte[] octets = number.asFewOctetsAsHoldIt();
-            return howManyWanted(value, arguments, refinements)
+            return countHowManyWanted(value, arguments, refinements)
                     .map(count -> Arrays.copyOf(octets, Math.clamp(count, 0, octets.length)))
                     .orElse(octets);
         }
-        return theUnitsAskedFor(value, arguments, refinements);
+        return readTheUnitsAskedFor(value, arguments, refinements);
     }
 
-    private String encodedOrRefused(Value value, byte[] octets, int base, boolean urlSafe) {
+    private String encodeOrRefuse(Value value, byte[] octets, int base, boolean urlSafe) {
         try {
             return encodings.enbase(octets, base, urlSafe);
         } catch (ArithmeticException tooWideForANumber) {

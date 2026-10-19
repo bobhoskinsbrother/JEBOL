@@ -20,9 +20,9 @@ public class TrimAction extends DefaultNative implements ActionValue {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("series", TypesetValue.SERIES.membersAnd(
+                Parameter.of("series", TypesetValue.SERIES.membersAnd(
                         ObjectValue.TYPE, ErrorValue.TYPE, ModuleValue.TYPE)),
-                Parameter.belongingTo("with", "characters", Set.of()));
+                Parameter.belongTo("with", "characters", Set.of()));
     }
 
     @Override
@@ -32,23 +32,23 @@ public class TrimAction extends DefaultNative implements ActionValue {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> arguments.getFirst().trimmed(
-                new Trimming(refinements, argumentOf("with", 0, arguments, refinements)
-                        .map(this::unwantedCodePoints)
+        return (arguments, evaluator, context, refinements) -> arguments.getFirst().trim(
+                new Trimming(refinements, readTheArgumentOf("with", 0, arguments, refinements)
+                        .map(this::collectTheUnwantedCodePoints)
                         .orElseGet(Set::of)));
     }
 
-    private Set<Integer> unwantedCodePoints(Value characters) {
+    private Set<Integer> collectTheUnwantedCodePoints(Value characters) {
         return switch (characters) {
             case CharacterValue character -> Set.of(character.codepoint());
             case IntegerValue whole -> Set.of((int) whole.magnitude());
             case AnyStringValue text -> text.text().codePoints().boxed().collect(Collectors.toSet());
-            case BinaryValue bytes -> octetsOf(bytes);
+            case BinaryValue bytes -> collectTheOctetsOf(bytes);
             default -> Set.of();
         };
     }
 
-    private Set<Integer> octetsOf(BinaryValue bytes) {
+    private Set<Integer> collectTheOctetsOf(BinaryValue bytes) {
         Set<Integer> octets = new HashSet<>();
         for (byte octet : bytes.octetsFromHere()) {
             octets.add(octet & AN_OCTET);

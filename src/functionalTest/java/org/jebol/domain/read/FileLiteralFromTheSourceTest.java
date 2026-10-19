@@ -15,7 +15,7 @@ class FileLiteralFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFromLoading(String source) {
+    private static String readTheErrorIdFromLoading(String source) {
         return answerTo("e: try [load " + source + "] "
                 + "either error? e [e/id] ['no-error]");
     }
@@ -28,14 +28,14 @@ class FileLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("a colon is not part of a file name")
-        void theColon() {
-            assertThat(errorIdFromLoading("""
+        void includeTheColon() {
+            assertThat(readTheErrorIdFromLoading("""
                     {%a:b}""")).isEqualTo("invalid");
         }
 
         @Test
         @DisplayName("and a delimiter ends the name instead of invalidating it")
-        void theDelimitersEndIt() {
+        void endAtADelimiter() {
             assertThat(answerTo("""
                     mold load {%a b}""")).isEqualTo("\"[%a b]\"");
             assertThat(answerTo("""
@@ -48,7 +48,7 @@ class FileLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("and everything else is an ordinary character of a name")
-        void whatSurvives() {
+        void leaveEverythingElseOrdinary() {
             assertThat(answerTo("""
                     mold load {%a-b.txt}""")).isEqualTo("\"%a-b.txt\"");
             assertThat(answerTo("""
@@ -64,25 +64,25 @@ class FileLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("a caret in an unquoted name is refused rather than read as an escape")
-        void aCaretIsRefused() {
-            assertThat(errorIdFromLoading("""
+        void isRefusedInAnUnquotedName() {
+            assertThat(readTheErrorIdFromLoading("""
                     {%^^}""")).isEqualTo("invalid");
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {%a^^b}""")).isEqualTo("invalid");
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {%a^^ }""")).isEqualTo("invalid");
         }
 
         @Test
         @DisplayName("and inside a quoted name it escapes, even the closing quote")
-        void theCaretEscapesInAQuotedName() {
-            assertThat(errorIdFromLoading("""
+        void escapesInAQuotedName() {
+            assertThat(readTheErrorIdFromLoading("""
                     {%"a^^"}""")).isEqualTo("invalid");
         }
 
         @Test
         @DisplayName("and a caret in a quoted name reads the character after it twice, as r3's Scan_Item does")
-        void aQuotedNameReadsTheCaretsCharacterTwice() {
+        void readsTheNextCharacterTwiceInAQuotedName() {
             assertThat(answerTo("""
                     (load {%"a^^-b"}) = to file! {a--b}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -96,7 +96,7 @@ class FileLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("two hex digits are read as the byte they name")
-        void twoHexDigits() {
+        void readsTwoHexDigitsAsTheirByte() {
             assertThat(answerTo("""
                     (load {%a%20b}) = to file! "a b\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -105,19 +105,19 @@ class FileLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("and anything else after the percent is refused")
-        void notTwoHexDigits() {
-            assertThat(errorIdFromLoading("""
+        void refusesAnythingElse() {
+            assertThat(readTheErrorIdFromLoading("""
                     {%a%2h}""")).isEqualTo("invalid");
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {%a%zz}""")).isEqualTo("invalid");
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {%a%2}""")).isEqualTo("invalid");
         }
 
         @Test
         @DisplayName("an email is checked the same way, by its own scanner")
-        void anEmailToo() {
-            assertThat(errorIdFromLoading("""
+        void checksAnEmailTheSameWay() {
+            assertThat(readTheErrorIdFromLoading("""
                     {a@%2h}""")).isEqualTo("invalid");
             assertThat(answerTo("""
                     (load {a@%20b}) = to email! "a@ b\"""")).isEqualTo(TRUE);
@@ -125,8 +125,8 @@ class FileLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("and an email wants exactly one at-sign")
-        void oneAtSign() {
-            assertThat(errorIdFromLoading("""
+        void wantsExactlyOneAtSignInAnEmail() {
+            assertThat(readTheErrorIdFromLoading("""
                     {a@b@c}""")).isEqualTo("invalid");
             assertThat(answerTo("""
                     email? load {a@b}""")).isEqualTo(TRUE);
@@ -139,7 +139,7 @@ class FileLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("a quoted name may hold what an unquoted one may not")
-        void theNarrowerRefusedSet() {
+        void holdsWhatAnUnquotedOneMayNot() {
             assertThat(answerTo("""
                     (load {%"a b"}) = to file! "a b\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -150,10 +150,10 @@ class FileLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("but a colon and a semicolon are still refused")
-        void whatStaysRefused() {
-            assertThat(errorIdFromLoading("""
+        void stillRefusesAColonAndASemicolon() {
+            assertThat(readTheErrorIdFromLoading("""
                     {%"a:b"}""")).isEqualTo("invalid");
-            assertThat(errorIdFromLoading("""
+            assertThat(readTheErrorIdFromLoading("""
                     {%"a;b"}""")).isEqualTo("invalid");
         }
     }
@@ -164,14 +164,14 @@ class FileLiteralFromTheSourceTest {
 
         @Test
         @DisplayName("a backslash quietly becomes a forward slash")
-        void aBackslashIsASlash() {
+        void turnABackslashIntoASlash() {
             assertThat(answerTo("""
                     mold load {%a\\b}""")).isEqualTo("\"%a/b\"");
         }
 
         @Test
         @DisplayName("and a tab or a control character ends the name, as a space does")
-        void aControlCharacterEndsTheName() {
+        void endTheNameAtAControlCharacter() {
             assertThat(answerTo("""
                     mold load {%a^-b}""")).isEqualTo("\"[%a b]\"");
             assertThat(answerTo("""

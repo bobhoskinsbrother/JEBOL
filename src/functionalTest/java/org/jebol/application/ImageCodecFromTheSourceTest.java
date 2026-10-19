@@ -1,6 +1,6 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.JavaImages;
+import org.jebol.adapter.host.JavaImage;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,16 +18,16 @@ class ImageCodecFromTheSourceTest {
     private static final Path VENDORED =
             Path.of("src", "testFixtures", "resources", "rebol-suite", "units", "files");
 
-    private static Interpreter reaching(Path directory) {
-        Interpreter interpreter = withAFilesystemOn(directory);
-        interpreter.useImages(new JavaImages());
+    private static Interpreter makeAnInterpreterReaching(Path directory) {
+        Interpreter interpreter = makeAnInterpreterWithAFilesystemOn(directory);
+        interpreter.useImages(new JavaImage());
         return interpreter;
     }
 
-    private static Interpreter withAFilesystemOn(Path directory) {
+    private static Interpreter makeAnInterpreterWithAFilesystemOn(Path directory) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         return interpreter;
     }
 
@@ -36,7 +36,7 @@ class ImageCodecFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(Interpreter interpreter, String source) {
+    private static String readTheErrorIdFrom(Interpreter interpreter, String source) {
         return answerTo(interpreter,
                 "e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
@@ -52,20 +52,20 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("a PNG binary loads as an image of the right size")
-    void aPngBinaryLoadsAsAnImage(@TempDir Path directory) throws IOException {
+    void loadsAPngBinaryAsAnImage(@TempDir Path directory) throws IOException {
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 i: image/load/as read %r3.png 'PNG
                 reduce [type? i i/size]""")).isEqualTo("[#(image!) 24x24]");
     }
 
     @Test
     @DisplayName("and so does a file, with the bytes left to say what they are")
-    void aFileLoadsWithoutBeingToldTheFormat(@TempDir Path directory)
+    void loadsAFileWithoutBeingToldTheFormat(@TempDir Path directory)
             throws IOException {
 
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 a: image/load %r3.png
                 b: image/load %flower.jpg
                 c: image/load %flower.bmp
@@ -76,15 +76,15 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("with no codec named, saving to none writes PNG, as the C's cleared codec type is PNG")
-    void noCodecNamedWritesPngToABinary(@TempDir Path directory) {
-        assertThat(answerTo(reaching(directory), """
+    void writesPngToABinaryWhenNoCodecIsNamed(@TempDir Path directory) {
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 copy/part image/save none make image! 2x2 8""")).isEqualTo("#{89504E470D0A1A0A}");
     }
 
     @Test
     @DisplayName("and saving to a file writes PNG there, whatever the file's suffix says")
-    void noCodecNamedWritesPngToAFile(@TempDir Path directory) throws IOException {
-        answerTo(reaching(directory), """
+    void writesPngToAFileWhenNoCodecIsNamed(@TempDir Path directory) throws IOException {
+        answerTo(makeAnInterpreterReaching(directory), """
                 image/save %saved.png make image! 2x2
                 image/save %saved.jpg make image! 2x2""");
 
@@ -94,11 +94,11 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("saving to none answers a binary, and every format reads back")
-    void savingToNoneAnswersABinaryThatReadsBack(@TempDir Path directory)
+    void answersABinaryThatReadsBackOnSavingToNone(@TempDir Path directory)
             throws IOException {
 
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 one: make image! 1x1
                 p: image/load/as image/save/as none one 'PNG 'PNG
                 j: image/load/as image/save/as none one 'JPEG 'JPEG
@@ -110,11 +110,11 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("an image with alpha, saved to a format that has none")
-    void anImageWithAlphaSavedToAFormatWithoutIt(@TempDir Path directory)
+    void savesAnImageWithAlphaToAFormatWithoutIt(@TempDir Path directory)
             throws IOException {
 
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 see-through: make image! 2x2
                 see-through/1: 200.0.0.0
                 back-again: image/load/as
@@ -125,9 +125,9 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("a BMP keeps its alpha, which the runtime's own writer will not")
-    void aBmpKeepsItsAlpha(@TempDir Path directory) throws IOException {
+    void keepsABmpsAlpha(@TempDir Path directory) throws IOException {
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 see-through: make image! [2x2 255.0.0.10]
                 back-again: image/load/as
                     image/save/as none see-through 'BMP 'BMP
@@ -137,13 +137,13 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("and it writes the same bytes a real Rebol writes")
-    void itWritesTheSameBytesARealRebolWrites(@TempDir Path directory)
+    void writesTheSameBytesARealRebolWrites(@TempDir Path directory)
             throws IOException {
 
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
-                written: image/save/as none make image! [2x2 255.0.0.10] 'BMP
-                reduce [length? written  enbase/flat written 16]"""))
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
+                text: image/save/as none make image! [2x2 255.0.0.10] 'BMP
+                reduce [length? text  enbase/flat text 16]"""))
                 .isEqualTo("""
                         [154 {424D9A000000000000008A0000007C00000002000000\
                         FEFFFFFF010020000300000010000000000000000000\
@@ -156,11 +156,11 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("and the rows come back in the order they went in")
-    void theRowsComeBackInTheOrderTheyWentIn(@TempDir Path directory)
+    void keepsTheRowsInOrder(@TempDir Path directory)
             throws IOException {
 
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 striped: make image! 2x3
                 repeat n 6 [poke striped n to tuple! reduce [n n n 255]]
                 back-again: image/load/as
@@ -172,11 +172,11 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("saving into a binary fills the one it was given")
-    void savingIntoABinaryFillsTheOneItWasGiven(@TempDir Path directory)
+    void fillsTheBinaryItIsGiven(@TempDir Path directory)
             throws IOException {
 
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 destination: copy #{}
                 answered: image/save/as destination make image! 2x2 'PNG
                 elsewhere: image/save/as none make image! 2x2 'PNG
@@ -191,16 +191,16 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("and it writes from the position, dropping whatever followed")
-    void itWritesFromThePositionDroppingWhateverFollowed(@TempDir Path directory)
+    void writesFromThePositionDroppingWhateverFollowed(@TempDir Path directory)
             throws IOException {
 
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 destination: copy #{DEADBEEF}
                 image/save/as destination make image! 2x2 'PNG
                 copy/part destination 4"""))
                 .isEqualTo("#{89504E47}");
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 destination: copy #{DEADBEEF}
                 image/save/as (next destination) make image! 2x2 'PNG
                 whole: head destination
@@ -210,9 +210,9 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("saving to a file answers the file, and puts the bytes there")
-    void savingToAFileAnswersTheFile(@TempDir Path directory) throws IOException {
+    void answersTheFileOnSavingToAFile(@TempDir Path directory) throws IOException {
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 where: image/save/as %made.png make image! 2x2 'PNG
                 back: image/load %made.png
                 reduce [where exists? %made.png back/size]"""))
@@ -221,9 +221,9 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("a codec word this build has not got is refused by name")
-    void aCodecWordItHasNotGotIsRefused(@TempDir Path directory) throws IOException {
+    void refusesACodecWordItHasNotGot(@TempDir Path directory) throws IOException {
         layOut(directory);
-        assertThat(errorIdFrom(reaching(directory),
+        assertThat(readTheErrorIdFrom(makeAnInterpreterReaching(directory),
                 "image/load/as read %r3.png 'NOPE")).isEqualTo("bad-func-arg");
     }
 
@@ -231,22 +231,22 @@ class ImageCodecFromTheSourceTest {
     @DisplayName("bytes that are not an image and a file that is not there fail apart")
     void badBytesAndABadFileFailApart(@TempDir Path directory) throws IOException {
         layOut(directory);
-        Interpreter interpreter = reaching(directory);
-        assertThat(errorIdFrom(interpreter, "image/load/as #{} 'PNG"))
+        Interpreter interpreter = makeAnInterpreterReaching(directory);
+        assertThat(readTheErrorIdFrom(interpreter, "image/load/as #{} 'PNG"))
                 .isEqualTo("no-codec");
-        assertThat(errorIdFrom(interpreter, "image/load/as #{0102030405} 'PNG"))
+        assertThat(readTheErrorIdFrom(interpreter, "image/load/as #{0102030405} 'PNG"))
                 .isEqualTo("no-codec");
-        assertThat(errorIdFrom(interpreter, "image/load %no-such-file-at-all.png"))
+        assertThat(readTheErrorIdFrom(interpreter, "image/load %no-such-file-at-all.png"))
                 .isEqualTo("cannot-open");
-        assertThat(errorIdFrom(interpreter, "image/load %issue-1677.txt"))
+        assertThat(readTheErrorIdFrom(interpreter, "image/load %issue-1677.txt"))
                 .isEqualTo("cannot-open");
     }
 
     @Test
     @DisplayName("/FRAME picks one image out of a file holding several")
-    void frameChoosesOneOfSeveral(@TempDir Path directory) throws IOException {
+    void choosesOneFrameOfSeveral(@TempDir Path directory) throws IOException {
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 i1: image/load/frame %animation.gif 1
                 i2: image/load/frame %animation.gif 2
                 i3: image/load/frame %animation.gif 3
@@ -262,34 +262,34 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("a frame at either end of the range, and one step outside it")
-    void aFrameAtEitherEndOfTheRange(@TempDir Path directory) throws IOException {
+    void takesAFrameAtEitherEndOfTheRange(@TempDir Path directory) throws IOException {
         layOut(directory);
-        Interpreter interpreter = reaching(directory);
+        Interpreter interpreter = makeAnInterpreterReaching(directory);
         assertThat(answerTo(interpreter, """
                 last-one: image/load/frame %animation.gif 3
                 last-one/size""")).isEqualTo("11x29");
-        assertThat(errorIdFrom(interpreter, "image/load/frame %animation.gif 4"))
+        assertThat(readTheErrorIdFrom(interpreter, "image/load/frame %animation.gif 4"))
                 .isEqualTo("cannot-open");
-        assertThat(errorIdFrom(interpreter, "image/load/frame %animation.gif 0"))
+        assertThat(readTheErrorIdFrom(interpreter, "image/load/frame %animation.gif 0"))
                 .isEqualTo("cannot-open");
-        assertThat(errorIdFrom(interpreter, "image/load/frame %animation.gif -1"))
+        assertThat(readTheErrorIdFrom(interpreter, "image/load/frame %animation.gif -1"))
                 .isEqualTo("cannot-open");
     }
 
     @Test
     @DisplayName("a file holding one image has a first frame like any other")
-    void aSingleImageFileHasAFirstFrame(@TempDir Path directory) throws IOException {
+    void findsAFirstFrameInASingleImageFile(@TempDir Path directory) throws IOException {
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 s: image/load/frame %r3.png 1
                 s/size""")).isEqualTo("24x24");
     }
 
     @Test
     @DisplayName("the pixels come back in the order REBOL holds them")
-    void thePixelsComeBackInRebolsOrder(@TempDir Path directory) throws IOException {
+    void givesThePixelsBackInRebolsOrder(@TempDir Path directory) throws IOException {
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 i: image/load %rbgw.png
                 reduce [i/1 i/2 i/3 i/rgb]"""))
                 .isEqualTo("[200.0.0.255 0.0.200.255 0.200.0.255"
@@ -298,9 +298,9 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("the codecs Rebol's own codec-image.reb registers now work")
-    void theRegisteredCodecsWork(@TempDir Path directory) throws IOException {
+    void worksWithTheRegisteredCodecs(@TempDir Path directory) throws IOException {
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 e: encode 'png make image! 1x1
                 d: decode 'png e
                 reduce [type? load %r3.png type? e d/rgb]"""))
@@ -309,21 +309,21 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("saving something that is not an image is refused by the declaration")
-    void savingSomethingThatIsNotAnImageIsRefused(@TempDir Path directory)
+    void refusesToSaveSomethingThatIsNotAnImage(@TempDir Path directory)
             throws IOException {
 
         layOut(directory);
-        assertThat(errorIdFrom(reaching(directory),
+        assertThat(readTheErrorIdFrom(makeAnInterpreterReaching(directory),
                 "image/save/as none \"not an image\" 'PNG")).isEqualTo("expect-arg");
     }
 
     @Test
     @DisplayName("a palette holds every colour the picture has")
-    void aPaletteHoldsEveryColourThePictureHas(@TempDir Path directory)
+    void holdsEveryColourInThePalette(@TempDir Path directory)
             throws IOException {
 
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 one: decode 'gif encode 'gif make image! [1x1 #{C80000}]
                 four: decode 'gif encode 'gif
                     make image! [2x2 #{C800000000C800C800FFFFFF}]
@@ -337,7 +337,7 @@ class ImageCodecFromTheSourceTest {
             throws IOException {
 
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 near: decode 'gif encode 'gif make image! [2x1 #{000000 010000}]
                 near/rgb"""))
                 .isEqualTo("#{000000010000}");
@@ -345,9 +345,9 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("a palette exactly full is still exact")
-    void aFullPaletteIsStillExact(@TempDir Path directory) throws IOException {
+    void staysExactWithAFullPalette(@TempDir Path directory) throws IOException {
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 full: make image! 256x1
                 repeat n 256 [full/:n: to tuple! reduce [n - 1 0 0]]
                 back: decode 'gif encode 'gif full
@@ -357,11 +357,11 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("one colour too many still reads back, at the right size")
-    void oneTooManyColoursStillReadsBack(@TempDir Path directory)
+    void stillReadsBackOneTooManyColours(@TempDir Path directory)
             throws IOException {
 
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 over: make image! 257x1
                 repeat n 257 [
                     over/:n: to tuple! reduce [
@@ -375,9 +375,9 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("the round trip the suite makes, through a file")
-    void theSuitesRoundTripThroughAFile(@TempDir Path directory) throws IOException {
+    void roundTripsTheSuitesPictureThroughAFile(@TempDir Path directory) throws IOException {
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 src: make image! [2x2 #{C800000000C800C800FFFFFF}]
                 img: load save %new.gif src
                 reduce [image? img img/rgb]"""))
@@ -386,21 +386,21 @@ class ImageCodecFromTheSourceTest {
 
     @Test
     @DisplayName("an interpreter given no codec refuses, as the C does without one")
-    void withoutAHostCodecItRefuses(@TempDir Path directory) throws IOException {
+    void refusesWithoutAHostCodec(@TempDir Path directory) throws IOException {
         layOut(directory);
-        Interpreter without = withAFilesystemOn(directory);
-        assertThat(errorIdFrom(without, "image/load %r3.png")).isEqualTo("feature-na");
-        assertThat(errorIdFrom(without, "image/save none make image! 1x1"))
+        Interpreter without = makeAnInterpreterWithAFilesystemOn(directory);
+        assertThat(readTheErrorIdFrom(without, "image/load %r3.png")).isEqualTo("feature-na");
+        assertThat(readTheErrorIdFrom(without, "image/save none make image! 1x1"))
                 .isEqualTo("feature-na");
-        assertThat(errorIdFrom(without, "image/load/as read %r3.png 'PNG"))
+        assertThat(readTheErrorIdFrom(without, "image/load/as read %r3.png 'PNG"))
                 .isEqualTo("feature-na");
         assertThat(answerTo(without, "unset? image")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("and asked for nothing it still answers nothing")
-    void askedForNothingItAnswersNothing(@TempDir Path directory) throws IOException {
+    void answersNothingWhenAskedForNothing(@TempDir Path directory) throws IOException {
         layOut(directory);
-        assertThat(answerTo(reaching(directory), "unset? image")).isEqualTo("#(true)");
+        assertThat(answerTo(makeAnInterpreterReaching(directory), "unset? image")).isEqualTo("#(true)");
     }
 }

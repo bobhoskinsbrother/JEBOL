@@ -4,7 +4,7 @@
 # This is the feature REBOL is known for, and it is a sub-language of its
 # own: a rule block is not evaluated, it is matched.
 #
-# Nine of these entries were wrong when they were written from the guide,
+# Nine of these entries were wrong when they were text from the guide,
 # because the guide documents REBOL 2 and two things changed underneath
 # it. An integer in a rule is a repeat count and never a value to match,
 # so [any 1] is "ANY, once" with nothing left to repeat rather than "any
@@ -819,12 +819,12 @@ parse "aax" [some b]
 --- result
 #(false)
 
---- id parse/a-bitset-can-be-written-into-the-rule-as-a-construct
+--- id parse/a-bitset-can-be-text-into-the-rule-as-a-construct
 --- origin confirmed against R3 3.22.1
 --- requires parse bitset
 --- note A rule block is not evaluated, so `make bitset! "ab"` inside one
 --- note is three values rather than a bitset. The construct is how it is
---- note written without a word to hold it.
+--- note text without a word to hold it.
 --- code
 parse "aab" [some #(bitset! #{00000000000000000000000060})]
 --- result

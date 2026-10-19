@@ -11,7 +11,7 @@ class ADecimalKnowsItsOwnKindTest {
 
     @Test
     @DisplayName("a decimal answers decimal! and a percent answers percent!")
-    void eachAnswersToItsOwnDatatype() {
+    void answersToItsOwnDatatype() {
         assertThat(DecimalValue.of(1.5).datatype()).isSameAs(DecimalValue.TYPE);
         assertThat(PercentValue.of(0.5).datatype()).isSameAs(PercentValue.TYPE);
     }
@@ -23,46 +23,46 @@ class ADecimalKnowsItsOwnKindTest {
     }
 
     @Test
-    @DisplayName("the same quantity in one kind is equal and hashes alike")
-    void theSameKindIsEqual() {
+    @DisplayName("the same quantity in one type is equal and hashes alike")
+    void equalsTheSameKind() {
         assertThat(PercentValue.of(0.5)).isEqualTo(PercentValue.of(0.5));
         assertThat(PercentValue.of(0.5)).hasSameHashCodeAs(PercentValue.of(0.5));
     }
 
     @ParameterizedTest
     @ValueSource(doubles = {-2.5, -0.0, 0.0, 1.0})
-    @DisplayName("negating and taking the absolute keep the kind")
+    @DisplayName("negating and taking the absolute keep the type")
     void signChangesKeepTheKind(double quantity) {
         assertThat(PercentValue.of(quantity).negated()).isInstanceOf(PercentValue.class);
-        assertThat(PercentValue.of(quantity).absolute()).isInstanceOf(PercentValue.class);
+        assertThat(PercentValue.of(quantity).makeAbsolute()).isInstanceOf(PercentValue.class);
         assertThat(DecimalValue.of(quantity).negated()).isInstanceOf(DecimalValue.class);
-        assertThat(DecimalValue.of(quantity).absolute()).isInstanceOf(DecimalValue.class);
+        assertThat(DecimalValue.of(quantity).makeAbsolute()).isInstanceOf(DecimalValue.class);
     }
 
     @Test
     @DisplayName("two percents added stay a percent")
-    void twoPercentsAddedStayAPercent() {
-        assertThat(PercentValue.of(0.25).combinedWithANumber(PercentValue.of(0.5), new Add()))
+    void staysAPercentWhenTwoAreAdded() {
+        assertThat(PercentValue.of(0.25).combineWithANumber(PercentValue.of(0.5), new Add()))
                 .isEqualTo(PercentValue.of(0.75));
     }
 
     @Test
     @DisplayName("a percent added to a decimal is a decimal")
-    void aPercentAndADecimalMakeADecimal() {
-        assertThat(PercentValue.of(0.25).combinedWithANumber(DecimalValue.of(0.5), new Add()))
+    void becomesADecimalWithAPercent() {
+        assertThat(PercentValue.of(0.25).combineWithANumber(DecimalValue.of(0.5), new Add()))
                 .isInstanceOf(DecimalValue.class);
     }
 
     @Test
     @DisplayName("two percents divided are a plain decimal")
-    void twoPercentsDividedAreADecimal() {
-        assertThat(PercentValue.of(0.5).combinedWithANumber(PercentValue.of(0.25), new Divide()))
+    void becomesADecimalWhenTwoPercentsDivide() {
+        assertThat(PercentValue.of(0.5).combineWithANumber(PercentValue.of(0.25), new Divide()))
                 .isInstanceOf(DecimalValue.class);
     }
 
     @Test
     @DisplayName("a decimal repeats as many times as its whole part")
-    void aDecimalRepeatsByItsWholePart() {
+    void repeatsByItsWholePart() {
         assertThat(DecimalValue.of(3.9).asCountOfRepetitions()).isEqualTo(3);
     }
 }

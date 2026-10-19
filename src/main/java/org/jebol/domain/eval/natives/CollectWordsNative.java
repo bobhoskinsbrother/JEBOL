@@ -18,10 +18,10 @@ public class CollectWordsNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("block", Set.of(BlockValue.TYPE)),
-                Parameter.belongingTo("ignore", "words",
+        return List.of(Parameter.of("block", Set.of(BlockValue.TYPE)),
+                Parameter.belongTo("ignore", "words",
                         TypesetValue.ANY_OBJECT.membersAnd(BlockValue.TYPE, NoneValue.TYPE)),
-                Parameter.belongingTo("as", "type", Set.of(Datatype.TYPE)));
+                Parameter.belongTo("as", "type", Set.of(Datatype.TYPE)));
     }
 
     @Override
@@ -32,27 +32,27 @@ public class CollectWordsNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            List<Value> found = ((AnyBlockValue) arguments.getFirst()).wordsWritten(
+            List<Value> found = ((AnyBlockValue) arguments.getFirst()).listTheWordsWritten(
                     refinements.contains("deep"), refinements.contains("set"));
-            Value ignoring = theIgnoredWords(arguments, refinements);
-            Set<String> known = namesIn(ignoring);
+            Value ignoring = readTheIgnoredWords(arguments, refinements);
+            Set<String> known = collectTheNamesIn(ignoring);
             found.removeIf(word -> known.contains(((AnyWordValue) word).canonical()));
             if (refinements.contains("as")) {
-                AnyWordValue.AnyWordDatatype wanted = theWordKindAsked(arguments, refinements);
+                AnyWordValue.AnyWordDatatype wanted = readTheWordKindAsked(arguments, refinements);
                 found.replaceAll(wanted::as);
             }
-            return BlockValue.block(found);
+            return BlockValue.of(found);
         };
     }
 
-    private Value theIgnoredWords(List<Value> arguments, Set<String> refinements) {
+    private Value readTheIgnoredWords(List<Value> arguments, Set<String> refinements) {
         return refinements.contains("ignore")
                 && arguments.size() > WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES
                 ? arguments.get(WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES)
                 : NoneValue.none();
     }
 
-    private AnyWordValue.AnyWordDatatype theWordKindAsked(List<Value> arguments, Set<String> refinements) {
+    private AnyWordValue.AnyWordDatatype readTheWordKindAsked(List<Value> arguments, Set<String> refinements) {
         int at = WHERE_THE_FIRST_REFINEMENT_ARGUMENT_ARRIVES
                 + (refinements.contains("ignore") ? 1 : 0);
         if (arguments.size() <= at
@@ -62,7 +62,7 @@ public class CollectWordsNative extends DefaultNative {
         return asked;
     }
 
-    private Set<String> namesIn(Value source) {
+    private Set<String> collectTheNamesIn(Value source) {
         return switch (source) {
             case AnyBlockValue words -> words.remaining().stream()
                     .filter(AnyWordValue.class::isInstance)

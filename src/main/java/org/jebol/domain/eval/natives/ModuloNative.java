@@ -27,7 +27,7 @@ public class ModuloNative extends ArithmeticNative {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> Arithmetic.rest(
+        return (arguments, evaluator, context, refinements) -> Arithmetic.findTheRest(
                 arguments.get(0), arguments.get(1),
                 refinements.contains("floor")
                         ? Arithmetic.Division.SIGN_FOLLOWS_THE_DIVISOR

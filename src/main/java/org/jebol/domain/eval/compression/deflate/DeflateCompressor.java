@@ -48,9 +48,9 @@ public final class DeflateCompressor {
         return out.toArray();
     }
 
-    public byte[] zlib(byte[] input) {
+    public byte[] wrapInZlib(byte[] input) {
         BitWriter out = new BitWriter(input.length + input.length / 8 + 32);
-        int header = ZLIB_DEFLATE_WITH_A_32K_WINDOW | (zlibLevelHint() << ZLIB_LEVEL_HINT_SHIFT);
+        int header = ZLIB_DEFLATE_WITH_A_32K_WINDOW | (hintTheZlibLevel() << ZLIB_LEVEL_HINT_SHIFT);
         header |= ZLIB_CHECK_DIVISOR - (header % ZLIB_CHECK_DIVISOR);
         out.write(header >>> Byte.SIZE);
         out.write(header);
@@ -61,7 +61,7 @@ public final class DeflateCompressor {
         return out.toArray();
     }
 
-    public byte[] gzip(byte[] input) {
+    public byte[] wrapInGzip(byte[] input) {
         BitWriter out = new BitWriter(input.length + input.length / 8 + 32);
         out.write(GZIP_FIRST_MAGIC);
         out.write(GZIP_SECOND_MAGIC);
@@ -70,7 +70,7 @@ public final class DeflateCompressor {
         for (int each = 0; each < GZIP_TIME_FIELD_LENGTH; each++) {
             out.write(0);
         }
-        out.write(gzipEffortFlags());
+        out.write(flagTheGzipEffort());
         out.write(GZIP_UNKNOWN_SYSTEM);
         deflateInto(out, input);
         CRC32 checksum = new CRC32();
@@ -80,7 +80,7 @@ public final class DeflateCompressor {
         return out.toArray();
     }
 
-    private int zlibLevelHint() {
+    private int hintTheZlibLevel() {
         if (level < 2) {
             return 0;
         }
@@ -90,7 +90,7 @@ public final class DeflateCompressor {
         return level < 8 ? 2 : 3;
     }
 
-    private int gzipEffortFlags() {
+    private int flagTheGzipEffort() {
         if (level < 2) {
             return GZIP_FASTEST;
         }
@@ -115,7 +115,7 @@ public final class DeflateCompressor {
             return;
         }
         byte[] padded = Arrays.copyOf(input, input.length + READ_AHEAD_PADDING);
-        parserFor(input.length).compress(padded, input.length, out);
+        chooseTheParserFor(input.length).compress(padded, input.length, out);
         out.finish();
     }
 
@@ -136,7 +136,7 @@ public final class DeflateCompressor {
         } while (at != input.length);
     }
 
-    private DeflateParser parserFor(int inputLength) {
+    private DeflateParser chooseTheParserFor(int inputLength) {
         BlockEncoder encoder = new BlockEncoder();
         return switch (level) {
             case 1 -> new FastestParser(encoder, 32);

@@ -7,7 +7,7 @@ public final class DecimalValue extends AnyDecimalValue {
     public static final AnyDecimalDatatype TYPE = new AnyDecimalDatatype("decimal") {
 
         @Override
-        public AnyDecimalValue holding(double quantity) {
+        public AnyDecimalValue wrap(double quantity) {
             return DecimalValue.of(quantity);
         }
 
@@ -17,14 +17,14 @@ public final class DecimalValue extends AnyDecimalValue {
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
+        public Value construct(List<Value> contents, Construction construction) {
             if (contents.size() != 1) {
-                return super.constructedFrom(contents, construction);
+                return super.construct(contents, construction);
             }
             return switch (contents.getFirst()) {
                 case IntegerValue(long magnitude) -> DecimalValue.of(magnitude);
                 case DecimalValue already -> already;
-                default -> throw refusingConstruction(contents);
+                default -> throw refuseTheConstruction(contents);
             };
         }
     };
@@ -43,7 +43,7 @@ public final class DecimalValue extends AnyDecimalValue {
     }
 
     @Override
-    DecimalValue sameKindHolding(double another) {
+    DecimalValue makeTheSameKindHolding(double another) {
         return new DecimalValue(another);
     }
 

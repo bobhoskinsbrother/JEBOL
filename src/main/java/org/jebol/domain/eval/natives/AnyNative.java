@@ -16,7 +16,7 @@ public class AnyNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("block", Set.of(BlockValue.TYPE)));
+        return List.of(Parameter.of("block", Set.of(BlockValue.TYPE)));
     }
 
     @Override

@@ -33,16 +33,16 @@ public final class Trace {
         return level > 0;
     }
 
-    public void level(int wanted, boolean functionsOnly) {
+    public void setTheLevel(int wanted, boolean functionsOnly) {
         this.level = Math.max(0, wanted);
         this.callsOnly = level > 0 && functionsOnly;
-        this.depthWhenTraceBegan = theZeroTheIndentationCountsFrom();
+        this.depthWhenTraceBegan = findTheZeroTheIndentationCountsFrom();
         if (level == 0) {
             keepingRatherThanPrinting = false;
         }
     }
 
-    private int theZeroTheIndentationCountsFrom() {
+    private int findTheZeroTheIndentationCountsFrom() {
         return depthNow;
     }
 
@@ -79,9 +79,9 @@ public final class Trace {
         StringBuilder written = new StringBuilder(" ".repeat(3 * depth));
         written.append(String.format("%-2d", position))
                 .append(": ")
-                .append(molded(value));
+                .append(mold(value));
         if (value instanceof AnyWordValue word && word.looksUpItsDeclaration()) {
-            written.append(whatTheWordHolds(word, context));
+            written.append(describeWhatTheWordHolds(word, context));
         }
         emit(written.toString());
     }
@@ -95,18 +95,18 @@ public final class Trace {
         written.append("--> ").append(name);
         if (callsOnly) {
             for (Value argument : arguments) {
-                written.append(' ').append(molded(argument));
+                written.append(' ').append(mold(argument));
             }
         }
         emit(written.toString());
     }
 
-    void answered(String name, Value produced) {
+    void traceTheAnswer(String name, Value produced) {
         int depth = indentFor(ONE_FURTHER_OUT);
         if (depth < 0) {
             return;
         }
-        emit(" ".repeat(3 * depth) + "<-- " + name + " == " + molded(produced));
+        emit(" ".repeat(3 * depth) + "<-- " + name + " == " + mold(produced));
     }
 
     private static final int AT_THIS_DEPTH = 0;
@@ -125,11 +125,11 @@ public final class Trace {
 
     private int depthNow;
 
-    void nowAtDepth(int depth) {
+    void moveToDepth(int depth) {
         this.depthNow = depth;
     }
 
-    private String whatTheWordHolds(AnyWordValue word, Context context) {
+    private String describeWhatTheWordHolds(AnyWordValue word, Context context) {
         if (!word.isBound() && !context.knows(word.canonical())) {
             return "";
         }
@@ -137,14 +137,14 @@ public final class Trace {
         if (!holder.knows(word.canonical())) {
             return "";
         }
-        Value held = holder.slotFor(word.canonical()).value();
+        Value held = holder.findSlotFor(word.canonical()).value();
         if (held instanceof AnyFunctionValue) {
-            return " : " + held.datatype().literalSpelling() + " " + molded(held);
+            return " : " + held.datatype().literalSpelling() + " " + mold(held);
         }
-        return " : " + molded(held);
+        return " : " + mold(held);
     }
 
-    private String molded(Value value) {
+    private String mold(Value value) {
         String written = Molder.mold(value);
         return written.length() <= MOLD_LIMIT
                 ? written

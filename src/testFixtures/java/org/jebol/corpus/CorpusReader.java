@@ -16,19 +16,19 @@ public final class CorpusReader {
     private CorpusReader() {
     }
 
-    public static List<CorpusEntry> allEntries() {
+    public static List<CorpusEntry> readAllEntries() {
         try (Stream<Path> files = Files.list(CORPUS_DIRECTORY)) {
             List<CorpusEntry> entries = new ArrayList<>();
             files.filter(path -> path.getFileName().toString().endsWith(".corpus"))
                     .sorted()
-                    .forEach(path -> entries.addAll(entriesIn(path)));
+                    .forEach(path -> entries.addAll(readTheEntriesIn(path)));
             return List.copyOf(entries);
         } catch (IOException problem) {
             throw new UncheckedIOException("cannot list " + CORPUS_DIRECTORY, problem);
         }
     }
 
-    public static List<Path> sourceProgrammes() {
+    public static List<Path> listTheSourceProgrammes() {
         Path sources = CORPUS_DIRECTORY.resolve("sources");
         try (Stream<Path> files = Files.list(sources)) {
             return files.filter(path -> path.getFileName().toString().endsWith(".r"))
@@ -51,7 +51,7 @@ public final class CorpusReader {
         return line.equals("#") || line.startsWith("# ");
     }
 
-    static List<CorpusEntry> entriesIn(Path file) {
+    static List<CorpusEntry> readTheEntriesIn(Path file) {
         List<CorpusEntry> entries = new ArrayList<>();
         EntryBuilder building = null;
 
@@ -63,7 +63,7 @@ public final class CorpusReader {
                 if (building != null) {
                     entries.add(building.build(file));
                 }
-                building = new EntryBuilder(value(line, "id"));
+                building = new EntryBuilder(readTheValue(line, "id"));
                 continue;
             }
             if (building == null) {
@@ -81,7 +81,7 @@ public final class CorpusReader {
         return entries;
     }
 
-    private static String value(String line, String field) {
+    private static String readTheValue(String line, String field) {
         return line.substring(FIELD_PREFIX.length() + field.length() + 1).trim();
     }
 

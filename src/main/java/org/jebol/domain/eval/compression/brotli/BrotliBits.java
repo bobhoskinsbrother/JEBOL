@@ -15,7 +15,7 @@ final class BrotliBits {
         return position;
     }
 
-    private void room(int howManyBits) {
+    private void makeRoom(int howManyBits) {
         int wanted = ((position + howManyBits) >> 3) + 9;
         if (wanted > data.length) {
             data = Arrays.copyOf(data, Math.max(wanted, data.length * 2));
@@ -26,7 +26,7 @@ final class BrotliBits {
         if (howManyBits == 0) {
             return;
         }
-        room(howManyBits);
+        makeRoom(howManyBits);
         int at = position >> 3;
         int reserved = position & 7;
         long shifted = bits << reserved;
@@ -41,14 +41,14 @@ final class BrotliBits {
     }
 
     void writeBytes(byte[] source, int at, int howMany) {
-        room((howMany + 1) << 3);
+        makeRoom((howMany + 1) << 3);
         System.arraycopy(source, at, data, position >> 3, howMany);
         position += howMany << 3;
         data[position >> 3] = 0;
     }
 
     void jumpToByteBoundary() {
-        room(8);
+        makeRoom(8);
         position = (position + 7) & ~7;
         data[position >> 3] = 0;
     }

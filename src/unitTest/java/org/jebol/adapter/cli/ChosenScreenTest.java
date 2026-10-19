@@ -17,14 +17,14 @@ class ChosenScreenTest {
 
     @Test
     @DisplayName("a window turns the display back on")
-    void aWindow() {
+    void choosesAWindow() {
         assertThat(headlessAfter("--screen=window")).isEqualTo("false");
     }
 
     private static String headlessAfter(String... arguments) {
         String was = System.getProperty("java.awt.headless");
         try {
-            ChosenScreen.makeTheProcessSuitTheScreenAskedFor(arguments);
+            ChosenScreen.setHeadlessBasedOnWhetherAScreenIsNeeded(arguments);
             return System.getProperty("java.awt.headless");
         } finally {
             if (was == null) {

@@ -10,39 +10,39 @@ public final class TimeActions {
         this.span = span;
     }
 
-    public Value combinedWith(Value right, ArithmeticOperation operation) {
+    public Value combineWith(Value right, ArithmeticOperation operation) {
         if (right instanceof TimeValue other) {
             return againstAnotherTime(other, operation);
         }
         if (right instanceof MoneyValue rate) {
-            return billedAt(rate, operation);
+            return billAt(rate, operation);
         }
         if (right instanceof PercentValue portion) {
-            return scaledBy(portion, operation);
+            return scaleBy(portion, operation);
         }
         if (!(right instanceof IntegerValue) && !(right instanceof AnyDecimalValue)) {
-            throw notRelatedToATime(operation);
+            throw refuseAsNotRelatedToATime(operation);
         }
         if (operation.keepsTheSignOfTheDividend()) {
-            return theRestOfTheNanoseconds(right, operation);
+            return takeTheRestOfTheNanoseconds(right, operation);
         }
         if (operation.scalesRatherThanShifts()) {
-            return scaledByAPlainNumber(right, operation);
+            return scaleByAPlainNumber(right, operation);
         }
-        return addedInWholeNanosecondsTo(right, operation);
+        return addInWholeNanosecondsTo(right, operation);
     }
 
-    public Value takenBy(Value left, ArithmeticOperation operation) {
+    public Value combineFromTheLeft(Value left, ArithmeticOperation operation) {
         boolean allowed = operation.isCommutative()
                 || (operation.subtractsOneFromTheOther() && left instanceof IntegerValue);
         if (!allowed) {
-            throw notRelatedToATime(operation);
+            throw refuseAsNotRelatedToATime(operation);
         }
         if (operation.subtractsOneFromTheOther()) {
             return TimeValue.ofNanoseconds(withinWhatADurationHolds(
-                    wholeNanosecondsOf(left) - span.nanoseconds()));
+                    countTheWholeNanosecondsOf(left) - span.nanoseconds()));
         }
-        return combinedWith(left, operation);
+        return combineWith(left, operation);
     }
 
     private Value againstAnotherTime(TimeValue other, ArithmeticOperation operation) {
@@ -52,38 +52,38 @@ public final class TimeActions {
                     (double) span.nanoseconds() / (double) other.nanoseconds());
         }
         if (operation.multiplies()) {
-            throw notRelatedToATime(operation);
+            throw refuseAsNotRelatedToATime(operation);
         }
-        return addedInWholeNanosecondsTo(other, operation);
+        return addInWholeNanosecondsTo(other, operation);
     }
 
-    private Value billedAt(MoneyValue rate, ArithmeticOperation operation) {
+    private Value billAt(MoneyValue rate, ArithmeticOperation operation) {
         Deci hours = new MoneyActions.HoursBilled(span).asDeci();
         if (operation.multiplies()) {
             return new MoneyValue(hours.times(rate.asDeci()));
         }
         if (operation.divides()) {
-            return new MoneyValue(rate.asDeci().dividedBy(hours));
+            return new MoneyValue(rate.asDeci().divideBy(hours));
         }
-        throw notRelatedToATime(operation);
+        throw refuseAsNotRelatedToATime(operation);
     }
 
-    private Value scaledBy(AnyDecimalValue portion, ArithmeticOperation operation) {
+    private Value scaleBy(AnyDecimalValue portion, ArithmeticOperation operation) {
         if (!operation.multiplies()) {
-            throw notRelatedToATime(operation);
+            throw refuseAsNotRelatedToATime(operation);
         }
         return TimeValue.ofNanoseconds((long) (span.nanoseconds() * portion.quantity()));
     }
 
-    private Value theRestOfTheNanoseconds(Value right, ArithmeticOperation operation) {
+    private Value takeTheRestOfTheNanoseconds(Value right, ArithmeticOperation operation) {
         if (!(right instanceof IntegerValue(long divisor))) {
-            throw notRelatedToATime(operation);
+            throw refuseAsNotRelatedToATime(operation);
         }
         operation.requireANonZeroDivisor(divisor);
         return TimeValue.ofNanoseconds(span.nanoseconds() % divisor);
     }
 
-    private Value scaledByAPlainNumber(Value right, ArithmeticOperation operation) {
+    private Value scaleByAPlainNumber(Value right, ArithmeticOperation operation) {
         double by = Comparison.asDouble(right);
         if (operation.divides()) {
             operation.requireANonZeroDivisor(by);
@@ -92,14 +92,14 @@ public final class TimeActions {
         return TimeValue.ofNanoseconds((long) (span.nanoseconds() * by));
     }
 
-    private Value addedInWholeNanosecondsTo(Value right, ArithmeticOperation operation) {
+    private Value addInWholeNanosecondsTo(Value right, ArithmeticOperation operation) {
         long ours = span.nanoseconds();
-        long theirs = wholeNanosecondsOf(right);
+        long theirs = countTheWholeNanosecondsOf(right);
         return TimeValue.ofNanoseconds(
-                withinWhatADurationHolds(nanosecondsCombined(ours, theirs, operation)));
+                withinWhatADurationHolds(combineTheNanoseconds(ours, theirs, operation)));
     }
 
-    private static long nanosecondsCombined(
+    private static long combineTheNanoseconds(
             long ours, long theirs, ArithmeticOperation operation) {
 
         if (operation.subtractsOneFromTheOther()) {
@@ -114,13 +114,13 @@ public final class TimeActions {
                 : Math.floorMod(ours, theirs);
     }
 
-    private static Raised notRelatedToATime(ArithmeticOperation operation) {
+    private static Raised refuseAsNotRelatedToATime(ArithmeticOperation operation) {
         return Raised.of(EvaluationFailure.NOT_RELATED,
                 WordValue.of(operation.spelling()),
                 TimeValue.TYPE);
     }
 
-    public static long wholeNanosecondsOf(Value value) {
+    public static long countTheWholeNanosecondsOf(Value value) {
         if (value instanceof TimeValue(long nanoseconds)) {
             return nanoseconds;
         }

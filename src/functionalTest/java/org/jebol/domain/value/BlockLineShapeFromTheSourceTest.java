@@ -21,7 +21,7 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("a value after a line feed begins a line")
-        void aValueAfterALineFeedBeginsALine() {
+        void beginALineAfterALineFeed() {
             assertThat(answerTo("""
                     b: load {[1^/2^/3]}
                     reduce [new-line? b new-line? next b new-line? next next b]"""))
@@ -30,7 +30,7 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("and it survives being written into a script and run")
-        void itSurvivesTheInterpreter() {
+        void surviveBeingRunAsAScript() {
             assertThat(answerTo("""
                     b: [1
                     2]
@@ -46,14 +46,14 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("a comment's own newline marks the value after it")
-        void aCommentMarksWhatFollows() {
+        void followACommentsOwnNewline() {
             assertThat(answerTo("""
                     mold load {[1 ; note^/2]}""")).isEqualTo("\"[1^/2]\"");
         }
 
         @Test
         @DisplayName("each block keeps its own marks, a nested one saying nothing")
-        void eachBlockKeepsItsOwn() {
+        void stayWithTheirOwnBlock() {
             assertThat(answerTo("""
                     mold load {[[1^/2]^/[3]]}"""))
                     .isEqualTo("\"[[1^/2]^/[3]]\"");
@@ -66,14 +66,14 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("a break in the middle is bare, with no indent")
-        void aBreakInTheMiddleIsBare() {
+        void goBareInTheMiddle() {
             assertThat(answerTo("""
                     mold load {[1^/2]}""")).isEqualTo("\"[1^/2]\"");
         }
 
         @Test
         @DisplayName("a break before the first item steps in, and back out for the bracket")
-        void aBreakBeforeTheFirstStepsIn() {
+        void stepInBeforeTheFirstItem() {
             assertThat(answerTo("""
                     mold load {[^/1 2]}""")).isEqualTo("""
                     "[^/    1 2^/]\"""");
@@ -81,7 +81,7 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("a line feed with nothing after it is forgotten")
-        void aTrailingLineFeedIsForgotten() {
+        void forgetATrailingLineFeed() {
             assertThat(answerTo("""
                     reduce [mold load {[1 2^/]} mold load {[^/]}]"""))
                     .isEqualTo("[\"[1 2]\" \"[]\"]");
@@ -89,7 +89,7 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("the indent is one level whatever the nesting of breaks")
-        void theIndentIsOneLevel() {
+        void indentOneLevelWhateverTheNesting() {
             assertThat(answerTo("""
                     mold load {[[[^/1^/]]]}""")).isEqualTo("""
                     "[[[^/    1^/]]]\"""");
@@ -97,7 +97,7 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("MOLD/FLAT writes none of them")
-        void flatWritesNone() {
+        void vanishUnderFlat() {
             assertThat(answerTo("""
                     mold/flat load {[^/1^/2^/]}""")).isEqualTo("\"[1 2]\"");
         }
@@ -117,7 +117,7 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("a paren keeps them as a block does")
-        void aParenKeepsThem() {
+        void includesAParen() {
             assertThat(answerTo("""
                     mold load {[(1^/2)]}""")).isEqualTo("\"[(1^/2)]\"");
         }
@@ -138,7 +138,7 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("an object's fields step in, and a block inside one steps in again")
-        void anObjectStepsIn() {
+        void includesAnObjectsFields() {
             assertThat(answerTo("""
                     m: make map! [
                         a: 1
@@ -157,7 +157,7 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("and BODY-OF an object writes each field on its own line")
-        void bodyOfWritesEachFieldOnItsOwnLine() {
+        void includesBodyOf() {
             assertThat(answerTo("""
                     mold make object! [a: 1 b: [2 3]]""")).isEqualTo("""
                     {make object! [
@@ -195,14 +195,14 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("so do TO BLOCK! and TO PAREN!")
-        void theConversionsKeepThem() {
+        void includesTheConversions() {
             assertThat(marksOf("to block! src")).isEqualTo(ONLY_THE_LAST_TWO);
             assertThat(marksOf("to paren! src")).isEqualTo(ONLY_THE_LAST_TWO);
         }
 
         @Test
         @DisplayName("and the three that modify, spreading a block into another")
-        void theModifyingThreeKeepThem() {
+        void includesTheModifyingThree() {
             assertThat(marksOf("append copy [] src")).isEqualTo(ONLY_THE_LAST_TWO);
             assertThat(marksOf("head insert copy [] src")).isEqualTo(ONLY_THE_LAST_TWO);
             assertThat(marksOf("head change copy [a b c] src")).isEqualTo(ONLY_THE_LAST_TWO);
@@ -211,7 +211,7 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("REDUCE and COMPOSE keep them, and REDUCE/INTO too")
-        void theEvaluatingTwoKeepThem() {
+        void includesReduceAndCompose() {
             assertThat(marksOf("reduce src")).isEqualTo(ONLY_THE_LAST_TWO);
             assertThat(marksOf("compose src")).isEqualTo(ONLY_THE_LAST_TWO);
             assertThat(marksOf("head reduce/into src copy []"))
@@ -220,7 +220,7 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("REVERSE turns them round with the items and SORT sorts them")
-        void thereorderingTwoMoveThem() {
+        void movesWithReverseAndSort() {
             assertThat(answerTo(LAID_OUT + "mold/flat reverse copy src"))
                     .isEqualTo("\"[2 1 0]\"");
             assertThat(answerTo(LAID_OUT + "b: reverse copy src "
@@ -231,7 +231,7 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("but a value REDUCE worked out arrives without one")
-        void acomputedValueArrivesBare() {
+        void excludesAValueReduceWorkedOut() {
             assertThat(answerTo("""
                     x: 5 b: reduce [0
                     1
@@ -245,25 +245,25 @@ class BlockLineShapeFromTheSourceTest {
 
         @Test
         @DisplayName("and which forms count as literals is the same question")
-        void whichFormsCountAsLiterals() {
+        void dependsOnWhichFormsCountAsLiterals() {
             for (String literal : new String[] {"1", "{a}", "[1]", "#(none)", "/a",
                 "#(integer!)"}) {
-                assertThat(answerTo(secondItemOfAReduceOver(literal)))
+                assertThat(answerTo(readTheSecondItemOfAReduceOver(literal)))
                         .as(literal).isEqualTo("#(true)");
             }
             for (String worksItOut : new String[] {"x", "'a", ":x", "(1)", "add 1 1"}) {
-                assertThat(answerTo(secondItemOfAReduceOver(worksItOut)))
+                assertThat(answerTo(readTheSecondItemOfAReduceOver(worksItOut)))
                         .as(worksItOut).isEqualTo("#(false)");
             }
         }
 
-        private static String secondItemOfAReduceOver(String written) {
+        private static String readTheSecondItemOfAReduceOver(String written) {
             return "x: 5 new-line? next reduce [0\n" + written + "\n]";
         }
 
         @Test
         @DisplayName("which is what makes a molded REDUCE keep its author's shape")
-        void amoldedReduceKeepsItsShape() {
+        void keepsTheShapeOfAMoldedReduce() {
             assertThat(answerTo("""
                     v: make vector! [integer! 8 20]
                     mold reduce [

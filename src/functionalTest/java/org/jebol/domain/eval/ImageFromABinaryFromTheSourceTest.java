@@ -15,7 +15,7 @@ class ImageFromABinaryFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("failure: try [" + source + "] failure/id");
     }
 
@@ -25,7 +25,7 @@ class ImageFromABinaryFromTheSourceTest {
 
         @Test
         @DisplayName("one pixel keeps all four bytes in their places")
-        void onePixelKeepsAllFour() {
+        void keepAllFourInOnePixel() {
             assertThat(answerTo("""
                     mold to image! #{11223344}"""))
                     .isEqualTo("\"make image! [1x1 #{112233} #{44}]\"");
@@ -33,7 +33,7 @@ class ImageFromABinaryFromTheSourceTest {
 
         @Test
         @DisplayName("two pixels go side by side")
-        void twoPixelsGoSideBySide() {
+        void goSideBySide() {
             assertThat(answerTo("""
                     mold to image! #{0000000011111111}"""))
                     .isEqualTo("\"make image! [2x1 #{000000111111} #{0011}]\"");
@@ -41,7 +41,7 @@ class ImageFromABinaryFromTheSourceTest {
 
         @Test
         @DisplayName("and bytes past the last whole pixel are dropped")
-        void bytesPastTheLastWholePixelAreDropped() {
+        void dropBytesPastTheLastWholePixel() {
             assertThat(answerTo("""
                     reduce [
                         mold to image! #{00000000}
@@ -72,26 +72,26 @@ class ImageFromABinaryFromTheSourceTest {
 
         @Test
         @DisplayName("under a hundred pixels the picture is one row of them")
-        void underAHundredIsOneRow() {
+        void fitsUnderAHundredOnOneRow() {
             assertThat(sizesFor("1 2 99 100")).isEqualTo("[1x1 2x1 99x1 100x1]");
         }
 
         @Test
         @DisplayName("from a hundred and one it is a hundred to a row")
-        void fromAHundredAndOne() {
+        void changesFromAHundredAndOne() {
             assertThat(sizesFor("101 199 200 9999")).isEqualTo("[100x2 100x2 100x2 100x100]");
         }
 
         @Test
         @DisplayName("and from ten thousand it is five hundred to a row")
-        void fromTenThousand() {
+        void changesFromTenThousand() {
             assertThat(sizesFor("10000 10001 250000"))
                     .isEqualTo("[500x20 500x21 500x500]");
         }
 
         @Test
         @DisplayName("a short last row is filled out with opaque white")
-        void aShortLastRowIsWhite() {
+        void fillsAShortLastRowWithWhite() {
             assertThat(answerTo("""
                     picture: to image! head insert/dup copy #{} #{01020304} 101
                     reduce [picture/101 picture/102 picture/200]"""))
@@ -105,25 +105,25 @@ class ImageFromABinaryFromTheSourceTest {
 
         @Test
         @DisplayName("not one whole pixel is bad-make-arg, not an empty picture")
-        void notOneWholePixel() {
-            assertThat(errorIdFrom("to image! #{}")).isEqualTo("bad-make-arg");
-            assertThat(errorIdFrom("to image! #{00}")).isEqualTo("bad-make-arg");
-            assertThat(errorIdFrom("to image! #{0000}")).isEqualTo("bad-make-arg");
-            assertThat(errorIdFrom("to image! #{000000}")).isEqualTo("bad-make-arg");
+        void refuseLessThanOneWholePixel() {
+            assertThat(readTheErrorIdFrom("to image! #{}")).isEqualTo("bad-make-arg");
+            assertThat(readTheErrorIdFrom("to image! #{00}")).isEqualTo("bad-make-arg");
+            assertThat(readTheErrorIdFrom("to image! #{0000}")).isEqualTo("bad-make-arg");
+            assertThat(readTheErrorIdFrom("to image! #{000000}")).isEqualTo("bad-make-arg");
         }
 
         @Test
         @DisplayName("and something that is not bytes at all is refused by type")
-        void somethingThatIsNotBytes() {
-            assertThat(errorIdFrom("""
+        void refuseSomethingThatIsNotBytes() {
+            assertThat(readTheErrorIdFrom("""
                     to image! {abcd}""")).isEqualTo("invalid-type");
-            assertThat(errorIdFrom("to image! 1")).isEqualTo("invalid-type");
-            assertThat(errorIdFrom("to image! [1 2]")).isEqualTo("invalid-type");
+            assertThat(readTheErrorIdFrom("to image! 1")).isEqualTo("invalid-type");
+            assertThat(readTheErrorIdFrom("to image! [1 2]")).isEqualTo("invalid-type");
         }
 
         @Test
         @DisplayName("an image converts to itself, and to a copy rather than the same one")
-        void anImageConvertsToACopy() {
+        void spareAnImageAndConvertItToACopy() {
             assertThat(answerTo("""
                     original: to image! #{11223344}
                     copied: to image! original

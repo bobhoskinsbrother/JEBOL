@@ -9,7 +9,7 @@ final class BrotliBlockSplit {
     private int howManyBlocks;
     private int howManyTypes;
 
-    void roomFor(int howMany) {
+    void makeRoomFor(int howMany) {
         if (howMany <= types.length) {
             return;
         }
@@ -17,43 +17,43 @@ final class BrotliBlockSplit {
         lengths = java.util.Arrays.copyOf(lengths, howMany);
     }
 
-    int typeAt(int which) {
+    int readTheTypeAt(int which) {
         return types[which];
     }
 
-    int lengthAt(int which) {
+    int readTheLengthAt(int which) {
         return lengths[which];
     }
 
-    void typeIs(int which, int type) {
+    void setTheType(int which, int type) {
         types[which] = type;
     }
 
-    void lengthIs(int which, int length) {
+    void setTheLength(int which, int length) {
         lengths[which] = length;
     }
 
-    void lengthGrows(int which, int by) {
+    void growTheLength(int which, int by) {
         lengths[which] += by;
     }
 
-    int howManyBlocks() {
+    int countTheBlocks() {
         return howManyBlocks;
     }
 
-    void howManyBlocksIs(int howMany) {
+    void setTheBlockCount(int howMany) {
         howManyBlocks = howMany;
     }
 
-    int howManyTypes() {
+    int countTheTypes() {
         return howManyTypes;
     }
 
-    void oneMoreType() {
+    void addAType() {
         howManyTypes++;
     }
 
-    void howManyTypesIs(int howMany) {
+    void setTheTypeCount(int howMany) {
         howManyTypes = howMany;
     }
 }

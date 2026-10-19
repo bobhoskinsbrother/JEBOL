@@ -16,8 +16,8 @@ public class AjoinNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("block", Set.of(BlockValue.TYPE)),
-                Parameter.belongingTo("with", "separator", TypesetValue.ANY_TYPE.members()));
+        return List.of(Parameter.of("block", Set.of(BlockValue.TYPE)),
+                Parameter.belongTo("with", "separator", TypesetValue.ANY_TYPE.members()));
     }
 
     @Override
@@ -30,10 +30,10 @@ public class AjoinNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             List<Value> all = evaluator.evaluateEachOrRaise(
                     (AnyBlockValue) arguments.getFirst(), context);
-            String separator = argumentOf("with", 0, arguments, refinements)
+            String separator = readTheArgumentOf("with", 0, arguments, refinements)
                     .map(Molder::form)
                     .orElse("");
-            return kindOf(all).holding(all.stream()
+            return chooseTheKindOf(all).wrap(all.stream()
                     .filter(piece -> refinements.contains("all") || holdsSomething(piece))
                     .map(Value::runTogether)
                     .collect(Collectors.joining(separator)));
@@ -44,7 +44,7 @@ public class AjoinNative extends DefaultNative {
         return !(piece instanceof NoneValue || piece instanceof UnsetValue);
     }
 
-    private AnyStringValue.AnyStringDatatype kindOf(List<Value> pieces) {
+    private AnyStringValue.AnyStringDatatype chooseTheKindOf(List<Value> pieces) {
         if (pieces.isEmpty()) {
             return StringValue.TYPE;
         }

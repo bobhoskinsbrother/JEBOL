@@ -22,25 +22,25 @@ public record DateValue(
         Optional<Integer> zoneMinutes) implements Value, PathTarget {
 
     @Override
-    public Value steppedIntoBy(Value selector) {
+    public Value stepIntoBy(Value selector) {
         return DatePart.readFrom(this, selector);
     }
 
     @Override
     public void writeThrough(Slot place, Value selector, Value written) {
-        place.setValue(DatePart.writtenOn(this, selector, written));
+        place.setValue(DatePart.writeOn(this, selector, written));
     }
 
     @Override
-    public Value arithmetic(Value right, ArithmeticOperation operation) {
-        return new DateArithmetic(this).combinedWith(right, operation);
+    public Value calculate(Value right, ArithmeticOperation operation) {
+        return new DateArithmetic(this).combineWith(right, operation);
     }
 
 
     @Override
-    public boolean equalTo(Value other, Sameness how) {
+    public boolean isEqualTo(Value other, Sameness how) {
         return other instanceof DateValue theirs
-                && moment().compareTo(theirs.moment()) == 0;
+                && findTheMoment().compareTo(theirs.findTheMoment()) == 0;
     }
 
     private static final String[] MONTH_NAMES = {
@@ -55,7 +55,7 @@ public record DateValue(
         if (month < 1 || month > 12) {
             throw new IllegalArgumentException("month out of range: " + month);
         }
-        if (day < 1 || day > daysIn(month, year)) {
+        if (day < 1 || day > countTheDaysIn(month, year)) {
             throw new IllegalArgumentException("day out of range: " + day);
         }
         if (zoneMinutes.isPresent() && timeOfDay.isEmpty()) {
@@ -64,7 +64,7 @@ public record DateValue(
         }
     }
 
-    private static int daysIn(int month, int year) {
+    private static int countTheDaysIn(int month, int year) {
         if (month != 2) {
             return LENGTH_OF_MONTH[month - 1];
         }
@@ -99,25 +99,25 @@ public record DateValue(
         }
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             return switch (spec) {
                 case AnyBlockValue parts -> DateMaking.fromParts(parts.remaining());
                 case DateValue already -> DateMaking.fromParts(List.of(already));
-                default -> super.madeFrom(spec, maker);
+                default -> super.makeFrom(spec, maker);
             };
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
-            Value specification = theSpecificationIn(contents);
+        public Value construct(List<Value> contents, Construction construction) {
+            Value specification = readTheSpecificationIn(contents);
             if (!(specification instanceof AnyBlockValue || specification instanceof DateValue)) {
-                throw refusingConstruction(contents);
+                throw refuseTheConstruction(contents);
             }
-            return construction.madeOf(this, specification);
+            return construction.make(this, specification);
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
                 case DateValue already -> already;
                 case IntegerValue seconds ->
@@ -125,41 +125,41 @@ public record DateValue(
                 case DecimalValue seconds -> DateMaking.atTheTimestamp(
                         (long) (seconds.quantity() * MICROSECONDS_A_SECOND));
                 case AnyBlockValue parts -> DateMaking.fromParts(parts.remaining());
-                case AnyStringValue written -> dateReadFrom(written, maker);
-                default -> throw refusing(from);
+                case AnyStringValue written -> readADateFrom(written, maker);
+                default -> throw refuse(from);
             };
         }
 
-        private Value dateReadFrom(AnyStringValue written, Maker maker) {
-            return maker.valuesReadFrom(written.text())
+        private Value readADateFrom(AnyStringValue written, Maker maker) {
+            return maker.readTheValuesFrom(written.text())
                     .filter(read -> read.size() == 1 && read.getFirst() instanceof DateValue)
                     .map(List::getFirst)
-                    .orElseThrow(() -> refusing(written));
+                    .orElseThrow(() -> refuse(written));
         }
     }
 
     @Override
     public Optional<Value> asDecimal(AnyDecimalValue.AnyDecimalDatatype wanted, Conversion asking) {
-        return Optional.of(inHundredths(wanted, secondsSinceTheEpoch()));
+        return Optional.of(countInHundredths(wanted, countTheSecondsSinceTheEpoch()));
     }
 
-    public double secondsSinceTheEpoch() {
-        Moment instant = moment();
+    public double countTheSecondsSinceTheEpoch() {
+        Moment instant = findTheMoment();
         return (double) instant.dayNumber() * SECONDS_A_DAY
                 + (double) instant.nanosecondsIntoTheDay() / NANOSECONDS_A_SECOND;
     }
 
     public long wholeSecondsSinceTheEpoch() {
-        return Math.round(secondsSinceTheEpoch());
+        return Math.round(countTheSecondsSinceTheEpoch());
     }
 
     public long dayNumber() {
         return java.time.LocalDate.of(year, month, day).toEpochDay();
     }
 
-    public TimeValue spanTo(DateValue other) {
-        Moment here = moment();
-        Moment there = other.moment();
+    public TimeValue measureTheSpanTo(DateValue other) {
+        Moment here = findTheMoment();
+        Moment there = other.findTheMoment();
         return TimeValue.ofNanoseconds(
                 (here.dayNumber() - there.dayNumber()) * NANOSECONDS_A_DAY
                         + here.nanosecondsIntoTheDay() - there.nanosecondsIntoTheDay());
@@ -175,7 +175,7 @@ public record DateValue(
     private static final int WHERE_THE_DAY_OF_THE_YEAR_IS_PACKED = 32;
 
     @Override
-    public Value randomised(RandomDraw draw) {
+    public Value randomise(RandomDraw draw) {
         java.time.LocalDate drawn = java.time.LocalDate
                 .of((int) draw.upTo(year), 1, 1)
                 .plusMonths(draw.upTo(MONTHS_A_YEAR))
@@ -216,7 +216,7 @@ public record DateValue(
         return (int) (nanosecondsOnTheClock() / NANOSECONDS_A_SECOND / 60 % 60);
     }
 
-    public Value secondOfTheMinute() {
+    public Value readTheSecondOfTheMinute() {
         long onTheClock = nanosecondsOnTheClock();
         long whole = onTheClock / NANOSECONDS_A_SECOND % 60;
         long fraction = onTheClock % NANOSECONDS_A_SECOND;
@@ -326,7 +326,7 @@ public record DateValue(
      * {@code Cmp_Date} compares the stored times as they are. JEBOL keeps the
      * time as it was written, so the zone comes off here instead.
      */
-    public Moment moment() {
+    public Moment findTheMoment() {
         long sinceMidnight = timeOfDay.map(TimeValue::nanoseconds).orElse(0L)
                 - zoneMinutes.orElse(0) * NANOSECONDS_A_MINUTE;
         return new Moment(
@@ -380,10 +380,10 @@ public record DateValue(
         if (timeOfDay.isEmpty()) {
             return rendered;
         }
-        return rendered + "/" + timeOfDay.get() + writtenOffset();
+        return rendered + "/" + timeOfDay.get() + writeTheOffset();
     }
 
-    private String writtenOffset() {
+    private String writeTheOffset() {
         int minutes = zoneMinutes.orElse(0);
         if (minutes == 0) {
             return "";
@@ -405,15 +405,15 @@ public record DateValue(
      * fraction has its trailing zeros trimmed -- {@code Trim_Tail(series,
      * '0')} after the nine digits it pads to.
      */
-    public String isoForm() {
+    public String writeInIsoForm() {
         String calendar = "%04d-%02d-%02d".formatted(year, month, day);
         if (timeOfDay.isEmpty()) {
             return calendar;
         }
-        return calendar + "T" + isoClock() + isoOffset();
+        return calendar + "T" + writeTheIsoClock() + writeTheIsoOffset();
     }
 
-    private String isoClock() {
+    private String writeTheIsoClock() {
         long nanoseconds = timeOfDay.orElseThrow().nanoseconds();
         long seconds = nanoseconds / A_SECOND;
         String written = "%02d:%02d:%02d".formatted(
@@ -426,7 +426,7 @@ public record DateValue(
         return written + "." + digits;
     }
 
-    private String isoOffset() {
+    private String writeTheIsoOffset() {
         int minutes = zoneMinutes.orElse(0);
         if (minutes == 0) {
             return "";

@@ -14,17 +14,17 @@ class BincodeVariableWidthFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
-    private static String errorArgumentFrom(String source) {
+    private static String readTheErrorArgumentFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/arg1] ['no-error]");
     }
 
     @Test
     @DisplayName("seven bits a byte, least significant first")
-    void sevenBitsAByteLeastSignificantFirst() {
+    void writesSevenBitsAByteLeastSignificantFirst() {
         assertThat(answerTo("""
                 b: binary/init none 16
                 binary/write b [
@@ -37,7 +37,7 @@ class BincodeVariableWidthFromTheSourceTest {
 
     @Test
     @DisplayName("and they read back as the numbers they were")
-    void theyReadBackAsThemselves() {
+    void readsThemBackAsThemselves() {
         assertThat(answerTo("""
                 b: binary/init none 16
                 binary/write b [
@@ -52,19 +52,19 @@ class BincodeVariableWidthFromTheSourceTest {
 
     @Test
     @DisplayName("the widest number thirty-two bits hold, and one past it")
-    void theWidestItTakesAndOnePastIt() {
+    void takesTheWidestThirtyTwoBitNumberAndOnePastIt() {
         assertThat(answerTo("""
                 b: binary 16
                 binary/write b [EncodedU32 4294967295]
                 enbase/flat b/buffer 16""")).isEqualTo("\"FFFFFFFF0F\"");
-        assertThat(errorIdFrom("""
+        assertThat(readTheErrorIdFrom("""
                 b: binary 16
                 binary/write b [EncodedU32 4294967296]""")).isEqualTo("out-of-range");
     }
 
     @Test
     @DisplayName("the wider one takes the numbers the narrower will not")
-    void theWiderOneTakesMore() {
+    void takesMoreInTheWiderOne() {
         assertThat(answerTo("""
                 b: binary/init none 16
                 binary/write b [
@@ -100,7 +100,7 @@ class BincodeVariableWidthFromTheSourceTest {
 
     @Test
     @DisplayName("a VINT at the widest each length holds")
-    void aVintAtTheWidestEachLengthHolds() {
+    void writesAVintAtTheWidestEachLengthHolds() {
         assertThat(answerTo("""
                 one: binary 16  binary/write one [VINT 127]
                 two: binary 16  binary/write two [VINT 16383]
@@ -110,7 +110,7 @@ class BincodeVariableWidthFromTheSourceTest {
 
     @Test
     @DisplayName("the narrower one takes a negative as its lowest thirty-two bits")
-    void theNarrowerOneTakesANegativeAsItsUnsignedSelf() {
+    void takesANegativeAsItsLowThirtyTwoBitsInTheNarrowerOne() {
         assertThat(answerTo("""
                 b: binary 16
                 binary/write b [EncodedU32 -1]
@@ -119,14 +119,14 @@ class BincodeVariableWidthFromTheSourceTest {
                 b: binary 16
                 binary/write b [EncodedU32 -4294967295]
                 binary/read b 'EncodedU32""")).isEqualTo("1");
-        assertThat(errorIdFrom("""
+        assertThat(readTheErrorIdFrom("""
                 b: binary 16
                 binary/write b [EncodedU32 -4294967296]""")).isEqualTo("out-of-range");
     }
 
     @Test
     @DisplayName("the wider one has no floor either")
-    void theWiderOneTakesANegativeWhole() {
+    void takesANegativeWholeInTheWiderOne() {
         assertThat(answerTo("""
                 b: binary 16
                 binary/write b [EncodedU64 -1]
@@ -135,7 +135,7 @@ class BincodeVariableWidthFromTheSourceTest {
 
     @Test
     @DisplayName("the widest number a VINT can carry, and one step inside it")
-    void theWidestAVintCanCarry() {
+    void writesTheWidestAVintCanCarry() {
         assertThat(answerTo("""
                 b: binary 16
                 binary/write b [VINT 72057594037927935]
@@ -148,7 +148,7 @@ class BincodeVariableWidthFromTheSourceTest {
 
     @Test
     @DisplayName("and one step past where two bytes stop being enough")
-    void aVintJustPastWhereTwoBytesStop() {
+    void writesAVintJustPastWhereTwoBytesStop() {
         assertThat(answerTo("""
                 b: binary 16
                 binary/write b [VINT 16384]
@@ -157,30 +157,30 @@ class BincodeVariableWidthFromTheSourceTest {
 
     @Test
     @DisplayName("a VINT refuses a number it has no form for")
-    void aVintRefusesANumberItCannotCarry() {
-        assertThat(errorIdFrom("""
+    void refusesANumberAVintCannotCarry() {
+        assertThat(readTheErrorIdFrom("""
                 b: binary 16
                 binary/write b [VINT -1]""")).isEqualTo("out-of-range");
     }
 
     @Test
     @DisplayName("both refuse a fraction where a whole number belongs")
-    void bothRefuseAFraction() {
-        assertThat(errorIdFrom("""
+    void refusesAFraction() {
+        assertThat(readTheErrorIdFrom("""
                 b: binary 16
                 binary/write b [EncodedU32 1.5]""")).isEqualTo("dialect");
-        assertThat(errorIdFrom("""
+        assertThat(readTheErrorIdFrom("""
                 b: binary 16
                 binary/write b [VINT 1.5]""")).isEqualTo("dialect");
     }
 
     @Test
     @DisplayName("reading either from nothing, or from a stream that stops mid-number")
-    void readingPastTheEnd() {
-        assertThat(errorIdFrom("binary/read #{} [EncodedU32]")).isEqualTo("out-of-range");
-        assertThat(errorIdFrom("binary/read #{80} [EncodedU32]")).isEqualTo("out-of-range");
-        assertThat(errorIdFrom("binary/read #{} [VINT]")).isEqualTo("out-of-range");
-        assertThat(errorIdFrom("binary/read #{40} [VINT]")).isEqualTo("out-of-range");
+    void refusesReadingPastTheEnd() {
+        assertThat(readTheErrorIdFrom("binary/read #{} [EncodedU32]")).isEqualTo("out-of-range");
+        assertThat(readTheErrorIdFrom("binary/read #{80} [EncodedU32]")).isEqualTo("out-of-range");
+        assertThat(readTheErrorIdFrom("binary/read #{} [VINT]")).isEqualTo("out-of-range");
+        assertThat(readTheErrorIdFrom("binary/read #{40} [VINT]")).isEqualTo("out-of-range");
     }
 
     @Test
@@ -193,14 +193,14 @@ class BincodeVariableWidthFromTheSourceTest {
 
     @Test
     @DisplayName("and skipping none at all leaves the position where it was")
-    void skippingNoneLeavesThePosition() {
+    void leavesThePositionSkippingNone() {
         assertThat(answerTo("""
                 binary/read 2#{11000011} [SKIPBITS 0 UB 2]""")).isEqualTo("[3]");
     }
 
     @Test
     @DisplayName("a skip of exactly one byte, and of one bit less")
-    void aSkipOfExactlyOneByte() {
+    void skipsExactlyOneByteAndOneBitLess() {
         assertThat(answerTo("binary/read #{FF} [SKIPBITS 8]")).isEqualTo("[]");
         assertThat(answerTo("""
                 binary/read 2#{11000011} [SKIPBITS 7 UB 1]""")).isEqualTo("[1]");
@@ -208,28 +208,28 @@ class BincodeVariableWidthFromTheSourceTest {
 
     @Test
     @DisplayName("a negative skip runs off the end rather than backwards")
-    void aNegativeSkipRunsOffTheEnd() {
-        assertThat(errorIdFrom("binary/read #{FF} [SKIPBITS -1]"))
+    void runsOffTheEndOnANegativeSkip() {
+        assertThat(readTheErrorIdFrom("binary/read #{FF} [SKIPBITS -1]"))
                 .isEqualTo("out-of-range");
-        assertThat(errorArgumentFrom("binary/read #{FF} [SKIPBITS -1]"))
+        assertThat(readTheErrorArgumentFrom("binary/read #{FF} [SKIPBITS -1]"))
                 .isEqualTo("-1");
-        assertThat(errorIdFrom("binary/read #{FF} [SKIPBITS -8]"))
+        assertThat(readTheErrorIdFrom("binary/read #{FF} [SKIPBITS -8]"))
                 .isEqualTo("out-of-range");
     }
 
     @Test
     @DisplayName("a skip past the end names the count, not the code")
-    void aSkipPastTheEndNamesTheCount() {
-        assertThat(errorIdFrom("binary/read #{FF} [SKIPBITS 16]"))
+    void namesTheCountOnASkipPastTheEnd() {
+        assertThat(readTheErrorIdFrom("binary/read #{FF} [SKIPBITS 16]"))
                 .isEqualTo("out-of-range");
-        assertThat(errorArgumentFrom("binary/read #{FF} [SKIPBITS 16]"))
+        assertThat(readTheErrorArgumentFrom("binary/read #{FF} [SKIPBITS 16]"))
                 .isEqualTo("16");
     }
 
     @Test
     @DisplayName("and a skip needs a whole number to count by")
-    void aSkipNeedsAWholeNumber() {
-        assertThat(errorIdFrom("""
+    void needsAWholeNumberToSkip() {
+        assertThat(readTheErrorIdFrom("""
                 binary/read #{FF} [SKIPBITS {x}]""")).isEqualTo("invalid-spec");
     }
 }

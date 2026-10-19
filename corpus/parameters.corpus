@@ -19,7 +19,7 @@ show n
 
 # --- Literal: never evaluated --------------------------------
 
---- id parameters/a-literal-argument-arrives-as-written
+--- id parameters/a-literal-argument-arrives-as-text
 --- origin REBOL/Core User Guide 2.3 section 9
 --- requires control
 --- note A quoted word in the spec takes the word itself, which is how ZAP
@@ -56,10 +56,10 @@ test
 
 # --- Soft literal: unevaluated unless the caller says otherwise
 
---- id parameters/a-soft-literal-argument-arrives-as-written
+--- id parameters/a-soft-literal-argument-arrives-as-text
 --- origin REBOL/Core User Guide 2.3 section 9
 --- requires control
---- note An ordinary word arrives as written under either sigil, so a
+--- note An ordinary word arrives as text under either sigil, so a
 --- note function name arrives without being called. This entry passed
 --- note while naming the wrong sigil, because it is the one case where
 --- note both behave alike.
@@ -74,7 +74,7 @@ hello
 --- requires control
 --- note This is the whole point of soft rather than hard. The caller wraps
 --- note the argument in a paren to say "evaluate this one after all".
---- note The soft one is written 'value. It was written :value here until a
+--- note The soft one is text 'value. It was text :value here until a
 --- note real R3 was asked, which had the two sigils the wrong way round.
 --- code
 soft: func ['value] [value]

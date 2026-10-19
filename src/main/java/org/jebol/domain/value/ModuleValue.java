@@ -20,21 +20,21 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
     }
 
     @Override
-    public Value trimmed(Trimming trimming) {
+    public Value trim(Trimming trimming) {
         trimming.refuseEveryRefinementOnFields();
         return new ObjectValue(context.withoutTheFieldsHoldingNothing());
     }
 
     @Override
-    public List<Value> items() {
-        return context.boundWordsAndValues();
+    public List<Value> listTheItems() {
+        return context.listTheBoundWordsAndValues();
     }
 
     @Override
-    public Value reflected(AnyWordValue field) {
+    public Value reflect(AnyWordValue field) {
         return switch (field.canonical()) {
             case "spec" -> header;
-            case "title" -> headerField("title");
+            case "title" -> readTheHeaderField("title");
             case "body" -> context.setWordsAndValuesOnLines();
             case "words" -> context.wordsExcludingSelf();
             case "values" -> context.valuesExcludingSelf();
@@ -42,8 +42,8 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
         };
     }
 
-    public List<String> exportedNames() {
-        if (!(headerField("exports") instanceof AnyBlockValue exports)) {
+    public List<String> listTheExportedNames() {
+        if (!(readTheHeaderField("exports") instanceof AnyBlockValue exports)) {
             return List.of();
         }
         return exports.remaining().stream()
@@ -53,21 +53,21 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
                 .toList();
     }
 
-    public Value headerField(String name) {
-        return header.fieldValue(name);
+    public Value readTheHeaderField(String name) {
+        return header.readTheFieldValue(name);
     }
 
     @Override
     public boolean equals(Object other) {
         return other instanceof ModuleValue(Context context1, ObjectValue header1)
-                && context.fieldsExcludingSelf().equals(
-                        context1.fieldsExcludingSelf())
+                && context.listTheFieldsExceptSelf().equals(
+                        context1.listTheFieldsExceptSelf())
                 && header.equals(header1);
     }
 
     @Override
     public int hashCode() {
-        return context.fieldsExcludingSelf().hashCode();
+        return context.listTheFieldsExceptSelf().hashCode();
     }
 
     @Override
@@ -84,20 +84,20 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
         }
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             if (!(spec instanceof AnyBlockValue)) {
-                throw refusing(spec);
+                throw refuse(spec);
             }
-            if (!(maker.systemFunctionApplied("make-module*", spec) instanceof ModuleValue module)) {
+            if (!(maker.applyASystemFunction("make-module*", spec) instanceof ModuleValue module)) {
                 throw Raised.of(EvaluationFailure.INVALID_SPEC, "module!");
             }
             return module;
         }
 
         @Override
-        public Value convertedFrom(Value value, Maker maker) {
+        public Value convert(Value value, Maker maker) {
             if (!(value instanceof BlockValue parts) || parts.remaining().isEmpty()) {
-                throw refusing(value);
+                throw refuse(value);
             }
             List<Value> given = parts.remaining();
             if (!(given.getFirst() instanceof ObjectValue header)) {
@@ -111,15 +111,15 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
-            if (!(theSpecificationIn(contents) instanceof AnyBlockValue parts)) {
-                throw refusingConstruction(contents);
+        public Value construct(List<Value> contents, Construction construction) {
+            if (!(readTheSpecificationIn(contents) instanceof AnyBlockValue parts)) {
+                throw refuseTheConstruction(contents);
             }
             List<Value> given = parts.remaining();
             if (given.size() < 2
                     || !(given.get(0) instanceof ObjectValue header)
                     || !(given.get(1) instanceof ObjectValue(Context fields))) {
-                throw refusingConstruction(contents);
+                throw refuseTheConstruction(contents);
             }
             return new ModuleValue(fields, header);
         }
@@ -132,7 +132,7 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
 
     @Override
     public String toString() {
-        Value declared = headerField("name");
+        Value declared = readTheHeaderField("name");
         return declared instanceof AnyWordValue word
                 ? "module " + word.canonical()
                 : "module with " + context.slotCount() + " words";

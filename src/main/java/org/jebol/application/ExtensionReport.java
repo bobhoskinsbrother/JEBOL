@@ -7,4 +7,5 @@ public record ExtensionReport(String name, Optional<String> refusal) {
     public boolean installed() {
         return refusal.isEmpty();
     }
+
 }

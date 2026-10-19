@@ -1,8 +1,8 @@
-# Things about REBOL 3 that are not written down
+# Things about REBOL 3 that are not text down
 
 A frozen note, kept while porting REBOL 3 to the JVM.
 
-Each entry is behaviour that is not written down anywhere we could find. Some
+Each entry is behaviour that is not text down anywhere we could find. Some
 are surprising. A few look like inconsistencies rather than decisions, and those
 are flagged as questions rather than as complaints - a reimplementation is not
 evidence that the original is wrong.
@@ -199,9 +199,9 @@ print [mold 0.0 / 0.0]        ; 1.#NaN
 ```
 
 The decimal side follows the hardware and the integer side does not, so
-which a caller gets depends on how the operands happen to be written.
+which a caller gets depends on how the operands happen to be text.
 
-Pairs, money and time all still raise, whichever way the zero is written,
+Pairs, money and time all still raise, whichever way the zero is text,
 so the exception belongs to plain decimals alone rather than to division.
 
 ## 11. PICK shrugs where POKE refuses
@@ -262,7 +262,7 @@ print [mold to binary! "ab"]      ; #{6162}
 
 The whole machine width, not the fewest bytes that hold the number. The
 block form gives one byte per number, so the two agree for anything under
-256 written as a block.
+256 text as a block.
 
 `to file!` inserts nothing between a block's parts: `to file! [a b]` is
 `%ab`, not `%a/b`.
@@ -316,7 +316,7 @@ classify the lexeme first and then decide.
 
 A real R3 also refuses `%`, `#`, `$`, `\` and a comma inside a word.
 JEBOL refuses only the angle brackets so far, because a hash is how a
-based number and a based binary are written: `2#01` and `64#{...}`.
+based number and a based binary are text: `2#01` and `64#{...}`.
 Refusing one on the raw text turns `64#{` into the integer 64 and breaks
 a source file that reads perfectly well, so that rule has to run after
 those forms are recognised. Recorded as an open question in
@@ -360,7 +360,7 @@ o/a: 0                          ; fine -- UNPROTECT/WORDS freed the words
 put o to-set-word 'a 0          ; refused: protected
 ```
 
-EXTEND is written in terms of PUT, so a PUT that asks the wrong question
+EXTEND is text in terms of PUT, so a PUT that asks the wrong question
 lets EXTEND straight past a protected object.
 
 ## 20. The TO-X family is generated, and which datatypes get one is a list
@@ -389,12 +389,12 @@ probe to block! none            ; [_] -- a block holding none
 probe to word! ""               ; error: invalid-chars
 ```
 
-Two of those were written down wrongly here for a while, and both were
+Two of those were text down wrongly here for a while, and both were
 corrected by reading the C rather than by probing again.
 
 A tuple keeps a length of its own and shows a minimum of three, so
 `to tuple! []` and `to tuple! [1 2]` are different values that print the
-same as `0.0.0` and `1.2.0` would if written out. The difference shows
+same as `0.0.0` and `1.2.0` would if text out. The difference shows
 only under `==`, which asks about the kept length, and under REVERSE,
 which turns round the kept octets and leaves the shown zeros alone.
 
@@ -406,8 +406,8 @@ JEBOL's own answer as though it were R3's.
 
 ## 21. A date is stored in UTC, and the zone is only kept for writing it back
 
-`20-Sep-2021/12:00+2:00` prints as it was written and its time and zone read
-back as they were written. `/utc` is the one that gives the game away:
+`20-Sep-2021/12:00+2:00` prints as it was text and its time and zone read
+back as they were text. `/utc` is the one that gives the game away:
 
 ```rebol
 d: 20-Sep-2021/12:00+2:00
@@ -450,7 +450,7 @@ probe 2-Jan-2000/1:00  - 1-Jan-2000/23:00  ; 1
 Two hours apart is a difference of zero and a comparison of less-than, and
 those are both right: one is counting days and the other is ordering instants.
 
-JEBOL keeps the written time and the zone beside it instead, which is the same
+JEBOL keeps the text time and the zone beside it instead, which is the same
 information stored the other way round. Everything above still has to hold, so
 `DateValue.moment` takes the zone off at the point of comparison rather than at
 the point of reading, and `Comparison.compareForSorting` orders on that.
@@ -459,7 +459,7 @@ The binary dialect is where storing it the other way round costs something. The
 MS-DOS date and clock are sixteen bits each with no room for an offset, so
 `u-bincode.c` reads the year, month, day and time straight out of the struct --
 and that struct already holds UTC, so the offset resolves itself with nothing
-written to do it:
+text to do it:
 
 ```rebol
 b: binary 8  binary/write b [msdos-datetime 14-Mar-2019/00:33:18+1:00]
@@ -469,8 +469,8 @@ probe binary/read b 'MSDOS-DATETIME     ; 13-Mar-2019/23:33:18
 Half past midnight an hour ahead goes in as half past eleven the evening
 before, day included. JEBOL has to ask for that explicitly, which is what
 `DateValue.asStoredInUtc` is for, and any other reader of the raw fields has to
-do the same. It is also the right answer for the format: a ZIP written in
-Berlin and a ZIP written in London at the same moment carry the same two bytes.
+do the same. It is also the right answer for the format: a ZIP text in
+Berlin and a ZIP text in London at the same moment carry the same two bytes.
 
 Two things about those fields bite either way. The year counts from 1980 in
 seven bits, so it wraps at both ends rather than raising -- 1979 is 127 and
@@ -634,7 +634,7 @@ likely to want.
 
 The pixel count is cut against the characters left rather than the pixels left -
 a generous cut, since a pixel costs six characters, but the one the C makes. What
-is already written comes off first: `mold/part/all img 30` has spent twenty-one
+is already text comes off first: `mold/part/all img 30` has spent twenty-one
 characters on `#(image! 3840x2160 #{` before a pixel is reached, so nine are
 left, so nine pixels at most, so fewer than ten and no line break at all.
 
@@ -659,18 +659,18 @@ whether or not the caller asked for it.
 
 A mold is only correct if LOAD reads it back as the same value, so each of these
 types has a rule for when its literal form cannot carry the value and the
-construct form is written instead.
+construct form is text instead.
 
 **A plain string** uses quotes only when the text holds no quote, fewer than
 three newlines, and no more than fifty characters. Otherwise braces, where a
 quote and a newline stand for themselves and only an unbalanced brace is
 escaped. MOLD/PART decides the form from the part that will be shown, not from
-the whole - so a string with a quote at its end is written in braces, but its
+the whole - so a string with a quote at its end is text in braces, but its
 first three characters are not.
 
 **A file** escapes the lexer's delimiters, the control range and space, and the
 percent and colon, as `%XX`. Without that a space truncates the path and a
-control character vanishes. A file with no name at all is written `%""`, because
+control character vanishes. A file with no name at all is text `%""`, because
 a bare percent sign is the modulo operator and would read back as a word.
 
 **A ref** keeps only letters and digits. Anything below decimal twenty-one, any
@@ -697,7 +697,7 @@ would have dropped them.
 **A struct** plainly writes the identifier Rebol filed the layout under -
 `#(struct! 749277710 [a: 0.0])`. That number is a hash of the layout block and
 every struct built from the same layout shares it, so a reader that has seen one
-can recognise the rest. Under MOLD/ALL the layout itself is written instead,
+can recognise the rest. Under MOLD/ALL the layout itself is text instead,
 which is the form that reads back.
 
 **MOLD/ALL prints a decimal to seventeen digits**, which is every one a double
@@ -709,7 +709,7 @@ second is what a person meant by it.
 a zero after it - a decimal keeps its point or it would read back as an integer,
 and a pair half has the `x` to say what it is. With seven digits rather than
 fifteen, `2147483647x1` molds as `2.147484e9x1`. A negative zero keeps its sign,
-because the sign is written from the value rather than from the digits, which is
+because the sign is text from the value rather than from the digits, which is
 how `-32767x-32767 % -32767` molds as `-0x-0` while still equalling `0x0`.
 
 ## 31. Where a mold breaks its lines, and the four places the numbers disagree
@@ -721,7 +721,7 @@ indented by one level, not by ten. The closing bracket goes on its own line
 exactly when the indent went up.
 
 The first value is the exception: the line flag is false until one value has
-been written, so a break for a flagged first value needs either that flag or a
+been text, so a break for a flagged first value needs either that flag or a
 bracket to write against. A block therefore breaks before its first value and
 MOLD/ONLY, which writes no brackets, does not - `mold/only load "[1^/2]"` is
 `1^/2` with nothing in front of the one.
@@ -736,7 +736,7 @@ brackets - so a path carrying one still molds on a single line.
 **An image's ten is doing two jobs.** `if (size < 10) indented = FALSE`, with the
 C's comment saying why: "use `flat` result for images with less than 10 pixels
 (looks better in console)". So the same number sets the width of a line and the
-point at which lines start. The break is written before each tenth pixel rather
+point at which lines start. The break is text before each tenth pixel rather
 than after, so the digits start on the line below the opening brace and the
 closing one stands alone. The alpha binary appears only when some pixel needs it,
 and that is decided by walking the pixels rather than by reading a flag.
@@ -750,16 +750,16 @@ but base sixty-four's *runs* are forty-eight bytes long. The two come from
 different places in `Mold_Binary`, and a binary of between forty-nine and
 sixty-four bytes is where they disagree.
 
-Base sixty-four is also the one base whose breaks are written as it goes rather
+Base sixty-four is also the one base whose breaks are text as it goes rather
 than counted over the finished digits: `Encode_Base64` breaks on a byte boundary
 inside the loop over whole groups, and the two or three leftover bytes are
-written after the loop has stopped breaking. A run that ends exactly where the
+text after the loop has stopped breaking. A run that ends exactly where the
 leftovers begin therefore carries no newline.
 
 **Base two drops its last digit at exactly eight bytes.** `if (len == 8) --p` in
-`Encode_Base2` was written to remove the newline a run of eight would have left -
+`Encode_Base2` was text to remove the newline a run of eight would have left -
 but at exactly eight bytes there is no newline to remove, because the break is
-only written above eight. So what it removes is a digit. `mold #{FFAAFFAAFFAAFFAA}`
+only text above eight. So what it removes is a digit. `mold #{FFAAFFAAFFAAFFAA}`
 comes back a bit short on a real 3.22, and JEBOL does it too rather than disagree.
 
 **`system/options/binary-base` is read at the moment of writing**, so which
@@ -777,7 +777,7 @@ quoted at a limit of seven, and turns to braces at eight.
 
 `if (VAL_TAIL <= 1 || !IS_WORD(VAL_BLK_DATA(value)))`.
 
-A path of one item cannot be written with slashes at all, because a slash needs
+A path of one item cannot be text with slashes at all, because a slash needs
 something either side of it - so `a` on its own is `#(path! [a])` even though it
 is the very word a path may start with.
 
@@ -805,7 +805,7 @@ path.
 
 Below a space, a code point molds as a caret and the letter sixty-four above it:
 0 is `^@`, 1 is `^A`, 31 is `^_`. That is an escape a reader has to know, not a
-decoration - it is how REBOL has always written control characters, and the hex
+decoration - it is how REBOL has always text control characters, and the hex
 form is only for what has no letter. From a space to 126 the character stands for
 itself, and from 127 up it is `^(7F)` with upper-case hex. Tab and newline have
 their own spellings, `^-` and `^/`.
@@ -825,7 +825,7 @@ A word field is quoted, because the body is read back as a spec and a bare word
 there would be evaluated: without the quote an object holding the word NONE molds
 as `b: none` and reads back holding the none value, which is a different object.
 
-A port and a module are written the same way but **name themselves** rather than
+A port and a module are text the same way but **name themselves** rather than
 saying object, because `Mold_Object` writes `VAL_TYPE(value)` and not a fixed
 word. Writing `make object!` for all three means a molded port does not read back
 as a port.
@@ -847,7 +847,7 @@ trims the last off, so an empty typeset forms as nothing at all.
 **A function molds as one pair of brackets holding both blocks** - `func [a][print a]`
 molds as `make function! [[a][print a]]` - and FORM gives the same thing, because
 there is no shorter way to say what a function is. Both blocks are molded
-whichever way the function is written, since `Mold_Block_Series` always writes its
+whichever way the function is text, since `Mold_Block_Series` always writes its
 brackets; forming them drops the brackets and leaves `make function! [a print a]`,
 which is a spec of three words and no body. A closure names itself, because the
 two are separate datatypes to the reader.
@@ -889,7 +889,7 @@ constant: `pi1`.
 
 ## 36. A bitset literal in sysobj.reb is a hundred and twenty-eight bits, and the bound is the point
 
-Every unescaped set in the catalogue is written as sixteen bytes, and that bound
+Every unescaped set in the catalogue is text as sixteen bytes, and that bound
 is what makes percent encoding do its job: a byte the set cannot hold is a byte
 that gets escaped. Building the quoted-printable set to 255 instead sends every
 accented letter into the output as a raw byte - exactly what the encoding exists
@@ -930,7 +930,7 @@ a sequence nobody can predict. A block and a vector have no arm at all and answe
 **`random/only` on a string is biased towards multi-byte characters.** The pick is
 `index += Random_Int(secure) % (tail - index)` followed by a step back to a
 character boundary, and both halves are byte offsets into the UTF-8 the string is
-stored as. Every *byte* is equally likely to be landed on, so a character written
+stored as. Every *byte* is equally likely to be landed on, so a character text
 in three bytes comes up three times as often as a one-byte one. Measured on a real
 Rebol before this was ported: six thousand picks out of `"aéb"` gave the two
 one-byte letters about fifteen hundred each and the two-byte letter about three
@@ -968,7 +968,7 @@ the carry, a February drawn together with a thirtieth is an out-of-range failure
 **Two binaries combine octet by octet as long as the longer, wrapping the shorter.**
 `Xandor_Binary` walks the longer and wraps its index into the shorter -
 `if (i == mt) i = 0` - so one octet against four is that octet four times, not one
-octet and three zeros. Which side was written first makes no difference: the C
+octet and three zeros. Which side was text first makes no difference: the C
 picks the longer to walk before it looks at anything else, so all three operations
 come out the same either way round.
 
@@ -1186,7 +1186,7 @@ splicing is always suppressed and keys are pushed raw.
 
 **The two values go in the other way round.** `Compare_Call` hands the comparator
 asking about the pair (first, second) the pair (second, first), so a comparator
-written `[a > b]` counts *down*.
+text `[a > b]` counts *down*.
 
 **The answer starts at -1 and stays there** unless the comparator gave a true logic
 or a number at or above zero. So false means "the one on the left comes first"
@@ -1194,7 +1194,7 @@ rather than "these two are equal", and only a numeric zero is a tie. That is wha
 makes a plain strict predicate stable: two equal items answer false, which says
 leave the pair as it is.
 
-**`stable_sort` has to be written out rather than handed to the JVM.** The JVM's
+**`stable_sort` has to be text out rather than handed to the JVM.** The JVM's
 sort is stable for a comparator that behaves like one, and a REBOL comparator need
 not: a plain predicate such as `[a < b]` answers "left first" for a pair either way
 round, which is a contradiction as far as a sort is concerned. The C's merge takes
@@ -1206,7 +1206,7 @@ twice to order by two keys.
 
 **The C lends the same two blocks to every comparison and locks them**, because a
 comparator that grew one would corrupt the next call. JEBOL builds a fresh block
-each time and still locks it, so a comparator written against a real R3 fails here
+each time and still locks it, so a comparator text against a real R3 fails here
 the same way rather than quietly working.
 
 A whole record is lent in the shape the C lends it: a binary series lends a binary,
@@ -1296,10 +1296,10 @@ spells out all three conditions at once. So `find charset [#"A"] #"a"` is true a
 tuple as well as the four numbers: a zero pair and a zero tuple are zero, and so is
 the null character. Everything else answers *no* rather than being refused, which is
 why the declared argument is a bare `value` and a string simply says false - taking
-numbers only makes ZERO? raise on the datatype the question was written for.
+numbers only makes ZERO? raise on the datatype the question was text for.
 
 A bitset is the odd one. `Is_Zero_Bitset` asks whether every byte is what an empty
-set would hold - nought, or `0xFF` where the set is written as a complement - so
+set would hold - nought, or `0xFF` where the set is text as a complement - so
 `complement make bitset! #{FF}` is zero because it holds nothing, while a
 complemented charset is not.
 
@@ -1350,7 +1350,7 @@ The datatype tests are generated rather than declared, so they appear in none of
 the declaration files and all read identically:
 `["Returns TRUE if it is this type." value [any-type!]]`.
 
-## 53. DO of a file is not written in C either
+## 53. DO of a file is not text in C either
 
 `n-control.c` sends `REB_FILE`, `REB_URL`, `REB_STRING` and `REB_BINARY` to
 `Do_Sys_Func(SYS_CTX_DO_P, ...)`, which is `sys/do*` in the borrowed
@@ -1418,7 +1418,7 @@ names as not copied - `TYPESET(REB_IMAGE) | TYPESET(REB_VECTOR) | TYPESET(REB_TA
 An image is shared because copying one is expensive, and a port because two ports
 on one connection would be two ways to close it.
 
-## 56. TAIL? and PARSE each have a written-out typeset, and both lists matter
+## 56. TAIL? and PARSE each have a text-out typeset, and both lists matter
 
 `tail?` admits `series [series! gob! port! bitset! typeset! map!]`. NONE and OBJECT
 are deliberately absent: EMPTY? is *the same action* under a wider spec -
@@ -1467,7 +1467,7 @@ read the same closed port three times and get the whole file each time.
 **Only `open/read` cannot make a file.** The device carries `O_CREAT` for anything
 that may write, and a bare OPEN fills in *both* modes -
 `if (!(args & (AM_OPEN_READ | AM_OPEN_WRITE))) args |= (AM_OPEN_READ | AM_OPEN_WRITE);`
-is the first line of `A_OPEN`. So the truncation has to ask the filled-in modes
+is the first line of `A_OPEN`. So the truncation has to ask the fill-in modes
 rather than what the caller wrote: a bare OPEN reads, so it does not empty the file.
 `open/new` is the one that creates, truncating whatever was there.
 
@@ -1478,10 +1478,10 @@ same pattern answers an empty block. Opening asks for a thing and reading asks a
 question: no matches is an answer to the second and not to the first.
 
 **CHANGE-DIR writes PWD.** `OS_Set_Current_Dir` does both in three lines, and the
-C's comment names the issue it was written for: "directory changed... update PWD".
+C's comment names the issue it was text for: "directory changed... update PWD".
 So `pwd = to-rebol-file get-env "PWD"` holds before a move and after one, which is
 what Rebol's own port test asserts on both sides of a `change-dir %../`. It is
-written *after* the move, so a refused CHANGE-DIR leaves both where they were - and
+text *after* the move, so a refused CHANGE-DIR leaves both where they were - and
 only where the host granted an environment to write to, because moving does not
 depend on the writing.
 
@@ -1581,7 +1581,7 @@ even when the argument is behind the series.
 ## 62. WAIT is one call into REBOL, and an AWAKE answer must be a logic
 
 `Wait_Ports` is a loop over `Awake_System`, and `Awake_System` is one call into
-REBOL: the system port's own AWAKE, written in `sys-ports.reb`. It takes each event
+REBOL: the system port's own AWAKE, text in `sys-ports.reb`. It takes each event
 off the queue, calls WAKE-UP on the port the event names, collects the ports that
 said they were finished, and answers true when one of those is a port the caller
 named. So the loop is `if ((result = Awake_System(ports, only)) > 0) return TRUE;`
@@ -1623,7 +1623,7 @@ the pairs come back with the keys the operation kept.
 
 **On typesets, DIFFERENCE is the symmetric one** (`^=`): it keeps what is in one set
 or the other but not both. EXCLUDE is the asymmetric one (`&= ~`). The two agree
-whenever the second set is contained in the first, which is why a test written with
+whenever the second set is contained in the first, which is why a test text with
 either passes and the distinction stays hidden.
 
 **A binary is not a set operand.** Leaving it in the declaration lets one through to
@@ -1693,7 +1693,7 @@ refinement rather than honouring it, because the digits are not bytes a caller
 chose.
 
 A character set named by a tag uses the tag's own text: `<utf8>` names utf8, and the
-angle brackets are how it was written rather than part of the name. Going through
+angle brackets are how it was text rather than part of the name. Going through
 FORM keeps them and refuses every tag.
 
 The same distinction runs through ENBASE and its kin: `VAL_BIN_DATA` reaches the
@@ -1702,7 +1702,7 @@ molder adds rather than content the series has - so `enbase <ab> 16` is `"6162"`
 not the four bytes of `<ab>`.
 
 An environment variable may be named either way - `get-env "HOME"` and
-`get-env 'HOME` are the same question - and a word keeps the spelling it was written
+`get-env 'HOME` are the same question - and a word keeps the spelling it was text
 with rather than its canonical form, since the environment minds case and REBOL
 words do not.
 
@@ -1750,19 +1750,19 @@ binary to work on directly, or a number of bytes to make room for.
 **The context is a thing, not a value.** Every refinement changes the one it was
 handed rather than answering a new one - a protocol writes a header, works out a
 length, writes that, and reads the reply, all through the same `b`. Answering a
-fresh context each time means every step after the first is written into something
-nobody is holding, so `b/buffer` stays empty however much is written to it.
+fresh context each time means every step after the first is text into something
+nobody is holding, so `b/buffer` stays empty however much is text to it.
 
 **Two cursors over one series**, because reading and writing move independently.
 `buffer` is where the next read starts and `buffer-write` is where the next write
-lands, so a context can be filled and then read from the beginning without either
+lands, so a context can be fill and then read from the beginning without either
 cursor disturbing the other.
 
 **A write pokes rather than appends.** `binary #{01020304}` leaves the write cursor
 at the head, so writing a byte replaces the first one; the series only grows where
 the cursor has reached the end. That is what makes a header writable twice, once
 with a placeholder length and once with the real one. And a binary given straight to
-BINARY/WRITE is written *into*: `binary/write b: #{} [UI8 255 PAD 4 UI8 255]` leaves
+BINARY/WRITE is text *into*: `binary/write b: #{} [UI8 255 PAD 4 UI8 255]` leaves
 `b` holding all five bytes, so the caller's own storage has to change.
 
 **A get-word is looked up by the dialect, not before it.** The block arrives
@@ -1777,7 +1777,7 @@ follows it; rebinding finds a word of the same name wherever this happens to be
 looking instead. That shows only when a caller picks a name the borrowed library
 also uses - it hid until Rebol's own ZIP encoder, which keeps the directory it is
 building in a word called DIR and writes it with `BYTES :dir/buffer`. Rebound, that
-found the library's directory-listing function and no archive could be written.
+found the library's directory-listing function and no archive could be text.
 
 **A number where a code was expected is a count of bytes**, and it never reaches
 the dialect: `if (IS_INTEGER(val_read)) { ... return R_RET; }` is the first thing
@@ -1827,7 +1827,7 @@ so registering one that leads nowhere is worse than leaving it out.
 
 **GENERATE answers a single zero byte, whatever curve was named.** The C shows why
 on its own lines: `mbedtls_ecdsa_genkey` is commented out, the group is loaded as
-SECP192R1 whichever curve was asked for, and the point written out is one nobody
+SECP192R1 whichever curve was asked for, and the point text out is one nobody
 set - so a real 3.22.1 answers the point at infinity for every curve in the
 catalogue.
 
@@ -1838,7 +1838,7 @@ use. ECDH/INIT already makes a usable elliptic-curve key. The curve name is stil
 checked, which is the part of it that works.
 
 **DH neither publishes nor agrees.** The C reaches `return R_RET` having never
-written the return slot, so a real 3.22.1 hands back whatever that memory held - a
+text the return slot, so a real 3.22.1 hands back whatever that memory held - a
 binary of nothing in particular, and a crash when two contexts were built in one
 expression.
 
@@ -1863,7 +1863,7 @@ different failure from bytes it cannot make sense of.
 one apiece puts every argument after it one place early. IMAGE has no required
 arguments at all, so the first refinement's argument is the first there is.
 
-A **binary** handed in as the destination is written into, and it is that very binary
+A **binary** handed in as the destination is text into, and it is that very binary
 that comes back: a caller passing one has a hold on it and means to read the bytes
 from there. Handing back a fresh binary and leaving theirs empty looks as though it
 worked and quietly does nothing. From the position, and everything after it goes -
@@ -1917,7 +1917,7 @@ Every byte after is base 128, seven bits at a time, with the high bit set on all
 the last of its group.
 
 A group whose last byte never arrives contributes nothing - the accumulator is
-written out only when a byte turns up with its high bit clear - so a truncated
+text out only when a byte turns up with its high bit clear - so a truncated
 identifier reads as a shorter whole one rather than refusing.
 
 ## 75. EVOKE's chants are assembled by the preprocessor, and a release build refuses six
@@ -1949,7 +1949,7 @@ error any more. Everything else is bad-make-arg - `Trap_Make(type, arg)` is the 
 the branch falls to, with nothing above it but the error case.
 
 **TO MODULE! evaluates neither half**, unlike MAKE MODULE!, which is why the block is
-written with REDUCE at the call site. An empty block or a non-block is bad-make-arg;
+text with REDUCE at the call site. An empty block or a non-block is bad-make-arg;
 a block whose first two values are not both objects is invalid-arg.
 
 ## 76. MAKE IMAGE! refuses the same size two ways for two different reasons
@@ -2016,7 +2016,7 @@ shapes and one rule - take what was given, keep what was not:
 
 - `make :f []` is a copy, both halves kept.
 - `make :f [[x]]` is a new interface over the same body.
-- `make :f [[x] [y]]` is a new function that happens to have been written beside an
+- `make :f [[x] [y]]` is a new function that happens to have been text beside an
   old one.
 - `make :f [* [y]]` is a new body under the same interface, and the star is what says
   "this half stays".
@@ -2056,7 +2056,7 @@ one of them.
 
 **A block carries a line break per item and MOLD honours it.** `Make_Object_Block`
 sets the line flag on every set-word it writes, so `to block! make object! [a: 1]`
-molds over three lines where the same block written by hand is one. That is a
+molds over three lines where the same block text by hand is one. That is a
 property of the block, not of how it is later printed - and it is why `to block!` of
 a map reads as a list of pairs. SELF is slot zero and the C starts counting at one,
 so it is left out of BODY-OF, the block a conversion answers, and the spec an error
@@ -2151,7 +2151,7 @@ they resemble are taken. The C says so by naming its cases and giving everything
 `ser = 0`, which becomes `Trap_Arg`.
 
 A tuple keeps its **own** length rather than the three it shows, so `to binary! 1.1.1`
-is three bytes and `1.2.3.4.5` is five. A bitset written as a complement answers the
+is three bytes and `1.2.3.4.5` is five. A bitset text as a complement answers the
 complement of its bytes - it keeps the bytes of what it leaves out plus a flag saying
 to read them the other way round, so the turning has to happen at conversion or
 `to binary! complement charset "a"` answers the set it is the complement of. An image
@@ -2258,7 +2258,7 @@ blank, and require everything after it to be blank as well. Nothing taken is
 `too-short` - there was no name in it, as opposed to a bad one.
 
 **Skipping uses the lexer's own test, which a control character passes** - its default
-class is written `LEX_DEFAULT (LEX_DELIMIT|LEX_DELIMIT_SPACE)` with the comment
+class is text `LEX_DEFAULT (LEX_DELIMIT|LEX_DELIMIT_SPACE)` with the comment
 "control chars = spaces". The trailing check uses `IS_SPACE`, which only a space and a
 tab pass. So `make issue! "^(01)a"` is `#a` and `make issue! "a^(01)"` is refused,
 from the same two characters in the other order. A line feed and a carriage return are
@@ -2283,7 +2283,7 @@ them**, which surprises callers more than anything else here.
 - A **string** is padded up to three: `Scan_Tuple` counts the dots to decide the
   length, then raises that length to three whatever it counted.
 - A **block** keeps exactly what it holds, so `[1]` gives a tuple keeping one octet -
-  it shows as `1.0.0` and is not *strictly* equal to a written `1.0.0`, which keeps
+  it shows as `1.0.0` and is not *strictly* equal to a text `1.0.0`, which keeps
   three. Each item must be a whole octet already: outside 0 to 255 is refused rather
   than clamped, which is the opposite of what writing through a path does. A decimal
   rounds half away from zero, so `[0.5]` gives 1.
@@ -2363,7 +2363,7 @@ past that is `overflow`.
 is a proportion of something, and a coordinate is not a proportion of anything. The
 same goes for a paren, which is a block by shape and a piece of unevaluated code by
 meaning. A single number fills both halves; a block must hold exactly two - one is
-refused rather than filled in, three refused rather than trimmed.
+refused rather than fill in, three refused rather than trimmed.
 
 **`make map!` takes five things and no others** - a block, a paren, another map, an
 object (turned into a block of its fields first) and a number for room. Everything
@@ -2492,7 +2492,7 @@ non-series value)".
 
 ## 95. TO-HEX cuts a tuple from the left and a number from the right
 
-A tuple is a run of bytes in the order they were written, so the size says how many
+A tuple is a run of bytes in the order they were text, so the size says how many
 digits to keep **from the left**; a number is right-aligned and keeps its low digits.
 
 The tuple's ceiling is twice its **own** length rather than sixteen:
@@ -2527,7 +2527,7 @@ The C splits the last two before `Ret_Query_File` is reached -
 `if (IS_NONE(D_ARG(ARG_QUERY_FIELD))) { Ret_File_Modes(port, D_RET); return R_RET; }` -
 in both the file arm and the directory arm.
 
-**Whether a fact is labelled depends on how its word was written, per word rather
+**Whether a fact is labelled depends on how its word was text, per word rather
 than per block.** A plain word puts itself in the answer as a set-word before its
 value; a get-word contributes the value alone. So `query %a [type size]` is
 `[type: file size: 5]` and `query %a [:type :size]` is `[file 5]`. Rebol's own
@@ -2538,7 +2538,7 @@ A path with nothing at it answers none for every shape but the names - "there is
 nothing there" is an answer a script acts on - and the names are a fact about the
 *port* rather than about the file, so they come back either way. They are read off
 `system/standard/file-info` at the moment of asking, which is what `Ret_File_Modes`
-does in its one line; a list written out in Java could drift from the object a script
+does in its one line; a list text out in Java could drift from the object a script
 compares the answer against, and comparing them is exactly what the suite does.
 
 ## 98. ASSERT and ASSERT/TYPE are two functions under one name
@@ -2562,7 +2562,7 @@ typeset.
 
 ## 99. A separately-encoded surrogate pair is joined, and a lone one is still an error
 
-`#{EDA0B4EDB4A2}` is U+D834 and U+DD22 written as two three-byte sequences, which is
+`#{EDA0B4EDB4A2}` is U+D834 and U+DD22 text as two three-byte sequences, which is
 how a good many systems encode a character above the basic plane and is what Rebol
 reads back as `𝄢`. Strict UTF-8 refuses it - a surrogate is not a character - so the
 pair is **joined** and the strictness kept for everything else.
@@ -2690,7 +2690,7 @@ body ever sees it, so the position form cannot be reached at all. DECOMPRESS and
 SWAP-ENDIAN declare `[number! series!]` where the REMOVE family also declares a pair -
 a whole datatype's worth of arguments a real Rebol turns away before the body runs.
 
-## 105. A port whose actor is written in REBOL is not a way out of the interpreter
+## 105. A port whose actor is text in REBOL is not a way out of the interpreter
 
 `Do_Port_Action` sorts three cases. **None** means the port does nothing at all. A
 **word** means a built-in actor, which is a way out and needs its service granted
@@ -2710,7 +2710,7 @@ queues of events inside the interpreter, and whatever put an event on one alread
 the host; refusing the system port would refuse WAIT itself.
 
 **`Redo_Func` hands the actor's function the same arguments the action was called
-with**, so PICK's key and POKE's value arrive as they were written. But the two
+with**, so PICK's key and POKE's value arrive as they were text. But the two
 layouts differ in one respect that matters for REMOVE: a native hands over its
 refinement arguments as ordinary positions and says separately which refinements were
 asked for, while a REBOL function has the refinement *itself* as a parameter with its
@@ -2722,9 +2722,9 @@ rather than assumed: the native hands over one value per refinement that *was* a
 for and nothing for the others, so the key is the second value and not the fourth.
 
 **A url reaches an action by opening a port on the way.** `write checksum:md5 data` is
-a port opened, written and left, and the C gets there because WRITE is an action - a
+a port opened, text and left, and the C gets there because WRITE is an action - a
 URL reaches `Make_Port` on its way to the actor rather than being refused before it
-starts. Refusing it means a URL can never be written at all, and the error says "no
+starts. Refusing it means a URL can never be text at all, and the error says "no
 service" where the real answer is about the data.
 
 **`file://a.txt` and `%a.txt` are the same file**, and the scheme's own INIT is what
@@ -2768,7 +2768,7 @@ the same way.
 
 `layout` appears in neither `src/mezz` nor `src/boot`, so a real 3.22.1 has no such
 function - and `view-funcs.reb:117` calls it. A block handed to VIEW therefore fails
-on a word with no value, in Rebol and in the port alike, until VID is written. A
+on a word with no value, in Rebol and in the port alike, until VID is text. A
 native that answers its own argument is worse than the failure it hides: a VID program
 then runs, reports success and draws nothing.
 
@@ -2798,7 +2798,7 @@ The bounds must be the same datatype as the value and are **not converted** -
 `clamp 5 1.0 3` is refused rather than quietly treating 1.0 as 1, which is the choice
 worth having: a caller who mixed them almost certainly meant one type throughout.
 
-Bounds written the wrong way round answer the **lower** one, and that is not a check
+Bounds text the wrong way round answer the **lower** one, and that is not a check
 anybody wrote - it falls out of the order the two are applied in: the inner minimum
 pulls the value down to the maximum and the outer maximum pushes it back up to the
 minimum.
@@ -2830,7 +2830,7 @@ a protocol cannot leave a note to itself among the events.
 
 **What marks a port open is the actor's own storage** - a socket, a cipher, a position
 in a file, a queue of events - so a scheme with none of those needs a plain mark, and a
-scheme that has one must not have it written over. The console and checksum ports are
+scheme that has one must not have it text over. The console and checksum ports are
 the two that need the mark. A *directory* port looks as though it should and does not:
 opening one writes its position into STATE, so there is already something there.
 
@@ -2861,7 +2861,7 @@ can be read back - something referring to a live thing, such as a native or a ho
 object, cannot be reconstructed by a reader with no context to resolve it against, and
 having no context is deliberate.
 
-**Fifteen datatypes cannot be written as a construction at all**, straight off the
+**Fifteen datatypes cannot be text as a construction at all**, straight off the
 Make column of `types.reb`, whose header says what it is for: "Make -- It can be made
 with #(datatype) method". Handing those to MAKE instead reads things Rebol refuses -
 `#(char! 97)`, `#(money! 1)` and `#(integer! 5)` all become values that way.
@@ -2943,7 +2943,7 @@ only reads hours, minutes and seconds from a block - which makes `#(time! 1 2 3)
 second where `make time! [1 2 3]` is an hour, two minutes and three seconds.
 
 **An image always reads a block**, even for a single value. `MT_Image` calls
-`Create_Image` and nothing else, so a written image is always a *specification* - and
+`Create_Image` and nothing else, so a text image is always a *specification* - and
 a specification refuses a size that cannot exist. Handing the maker a bare pair
 instead reaches the code that makes a blank picture of a size and brings an impossible
 one down, so `#(image! 1x-1)` quietly reads as a picture one wide and none tall. It
@@ -2987,7 +2987,7 @@ it ends**, so `<>`, `<=` and `<-->` are all words. Closing with `>` is *not* the
 and using it makes `<-->` a tag - Rebol's own lexer-test.r3 asserts that case on line
 338, and getting it wrong costs the 444 assertions in that file.
 
-**A based binary takes only 2, 16 and 64, written plainly** - a sign or a leading zero
+**A based binary takes only 2, 16 and 64, text plainly** - a sign or a leading zero
 is refused, and a real R3 complains about the *integer* rather than about the binary
 for all of them, which is the clue that it reads the base as a number before it looks
 at the braces. Whitespace is ignored wherever it falls and a semicolon starts a comment
@@ -3081,7 +3081,7 @@ the pair side by side.
 
 **A hash may not be refused inside a word as a general rule**, even though a real R3
 refuses `%`, `#`, `$`, `\` and a comma there. A hash is how a based number and a based
-binary are written - `2#01`, `64#{...}` - so the rule has to run *after* those forms
+binary are text - `2#01`, `64#{...}` - so the rule has to run *after* those forms
 have been recognised. Refusing it first turns `64#{` into the integer 64.
 
 ## 117. An email's escapes are bytes, and it must carry exactly one at-sign
@@ -3126,16 +3126,16 @@ literal, one already carrying a sigil at the other end.
 
 `if (size >= 4) year = num; else if (size) day = num;`. So `2000-01-01` is the first
 of January and `1-1-2000` is as well. The **last** part is read by digit count too:
-three or more digits is the year as written, which makes `1-Feb-0003` the year three
+three or more digits is the year as text, which makes `1-Feb-0003` the year three
 rather than 2003. Two digits or fewer is a shorthand the C resolves against the year it
 is *running in*, keeping inside fifty years either way - so the century a bare `96`
-means is not a constant and cannot be written as one.
+means is not a constant and cannot be text as one.
 
 **A date's time must be a clock of the day.** A time on its own may be any length -
 `30:00` is thirty hours and a perfectly good duration - but `3-Jan-2010/30:00` and
 `3-Jan-2010/-10:00` are invalid lexemes.
 
-**An offset written without a time gives midnight and a zone of zero.**
+**An offset text without a time gives midnight and a zone of zero.**
 `1-Jan-2000+2:00` molds as `1-Jan-2000/0:00` and reads its zone as 0:00 - the offset is
 consumed and not kept, because there is nothing yet to offset when it arrives.
 
@@ -3143,7 +3143,7 @@ consumed and not kept, because there is nothing yet to offset when it arrives.
 `+20` is twenty minutes past the hour and comes back as `0:15`; `+5` comes back as
 nothing at all. And the ceiling is on the **digits** rather than on the offset they
 mean: anything above 1500 is refused, so `+1545` is an invalid lexeme although
-`+15:45` written with its colon is a real zone. Two spellings, two limits.
+`+15:45` text with its colon is a real zone. Two spellings, two limits.
 
 **A fraction of zero does not make a two-part time minutes and seconds.**
 `if (part3 >= 0 || part4 < 0)` chooses HH:MM, and `Grab_Int_Scale` is followed by
@@ -3153,7 +3153,7 @@ mean: anything above 1500 is refused, so `+1545` is an invalid lexeme although
 
 A slash is what a directory is made of, so `a/%b/c` is **two** segments and the second
 is the file `%b/c` - not three segments with a file called `b`. Once a segment begins
-with a percent sign the rest of the path belongs to it, unless the file is written in
+with a percent sign the rest of the path belongs to it, unless the file is text in
 quotes: `%"b"` ends at the closing quote and whatever follows is a segment of its own.
 A paren holds its own the same way.
 
@@ -3181,7 +3181,7 @@ Where `+20` is lost down to `0:15`, `+5:50` is an **invalid lexeme** rather than
 and three quarters - because a caller who wrote the minutes out meant them. The
 furthest either way is 15:45, which is what seven signed bits of quarter-hours reach.
 
-**`_` is how none is written**, so it is not a word and cannot take a sigil: `'_`, `:_`
+**`_` is how none is text**, so it is not a word and cannot take a sigil: `'_`, `:_`
 and `_:` are each a mistake rather than a quoted, read or assigned none. A real R3
 reports them as invalid and names *which of the three* was being read.
 
@@ -3250,14 +3250,14 @@ the write happened - so the only evidence is that the map is the length it was.
 
 **Writing a pair's half refuses twice, both `bad-path-set`.** The segment has to be a
 half rather than the derived AREA, and the value has to be an integer or a decimal -
-so a pair cannot be written into a pair's half. `bad-path-set` rather than
+so a pair cannot be text into a pair's half. `bad-path-set` rather than
 `invalid-path`, because the path is fine and the write is not.
 
 **`s/field/2: other` on an array of structs has to copy bytes.** Reading such a field
 gives a block, because no vector holds structs, and replacing a slot would leave the
 parent unchanged while appearing to have worked. `PD_Struct` does it in its
 `STRUCT_TYPE_STRUCT` arm, where it can see both that the block came from a struct field
-and that a struct is being written.
+and that a struct is being text.
 
 **An object, a module, an error and a port share one path handler** in
 `boot/types.reb`, so all four read and write their fields the same way.
@@ -3276,7 +3276,7 @@ a context that is lent and handed back. Copying per call is what keeps the names
 call alive after it.
 
 A function's locals context is a child of the one the function was **defined** in, so
-a word the function does not name falls through to where it was written rather than to
+a word the function does not name falls through to where it was text rather than to
 where it was called. That is what makes a function mean the same thing wherever it is
 passed.
 
@@ -3356,7 +3356,7 @@ refinement unset instead is what stops Rebol's IMPORT: LOAD opens with
 
 **A call rebinds a function's own names and nothing else** - its arguments, its
 refinements and its locals. Every other word in the body keeps the binding it was
-written with.
+text with.
 
 ## 128. The binary dialect's float codes default the other way from its integers
 
@@ -3409,7 +3409,7 @@ is an error although a byte holds it. Rebol's own suite asserts that for all fou
 widths.
 
 `ASSERT_UI_RANGE` is a **signed** comparison against the maximum, so a negative passes
-straight through and is written as its two's complement - which is why `UI8 -1` is 255
+straight through and is text as its two's complement - which is why `UI8 -1` is 255
 rather than a refusal. Only `UI32` has a floor, from the second half of
 `ASSERT_U32_RANGE`, and it is the mirror of its ceiling rather than anything a 32-bit
 word would suggest. The 64-bit codes are checked by neither, having no room left to
@@ -3457,7 +3457,7 @@ So `binary/write b [FOO 1]` is `dialect` and `binary/read b [FOO]` is `invalid-s
 for the same word. The same split applies when the block runs out: a write that has no
 value left is `dialect`, a read is `invalid-spec` naming the code left hanging - and
 Rebol's own suite pins the read side three times over, checking `e/arg1` is the word as
-written (`AT`, `ATz`, `SKIP`, unfolded).
+text (`AT`, `ATz`, `SKIP`, unfolded).
 
 A code the dialect has no meaning for is the *same* error as an unknown one, because
 the C makes no distinction: an unknown code falls off the end of its switch to the same
@@ -3508,11 +3508,11 @@ Five bits of hour, six of minute, five of seconds - which is why the seconds are
 resolution, so 21:23:55 comes back as 21:23:54.
 
 The date is seven bits of year counted from **1980**, four of month, five of day. That
-is the whole of why a ZIP written before 1980 cannot say so, and why 2107 is the last
-year with a spelling of its own - 2108 is written the same as 1980, and there is
+is the whole of why a ZIP text before 1980 cannot say so, and why 2107 is the last
+year with a spelling of its own - 2108 is text the same as 1980, and there is
 nowhere else for the eighth bit to go.
 
-Neither field has room for an offset, so **a date carrying one is written as the
+Neither field has room for an offset, so **a date carrying one is text as the
 instant it names**: half past midnight an hour ahead goes in as half past eleven the
 evening before, day included. Rebol gets there without a line in the dialect because it
 stores a date in UTC already.
@@ -3540,7 +3540,7 @@ not a digit stops the decode.
 **Base sixty-four will not decode a partial group.** Four digits are three bytes and
 there is no padding rule that lets three stand for two, so `debase "YWJ" 64` is an
 error where `debase "123" 16` is a number. The equals signs are how a short last group
-is written: one after three digits ends with two bytes, two after two digits end with
+is text: one after three digits ends with two bytes, two after two digits end with
 one. A single equals after *two* digits is refused, because the C looks ahead for the
 second.
 
@@ -3550,7 +3550,7 @@ the safe alphabet and **starts the whole decode again**.
 
 **Base 36 and base 85 are one big number**, not fixed groups - the digits are its
 remainders. A leading zero octet would be lost that way, so the count of them is
-written first as a digit of its own.
+text first as a digit of its own.
 
 **A space under /URI becomes a plus, unless the escape character is an equals sign**,
 in which case an underscore.
@@ -3561,7 +3561,7 @@ has to survive being decoded.
 
 **Percent encoding is octets in and octets out, never codepoints.** A character taking
 two bytes in UTF-8 takes two escapes, because what a URL carries is bytes - and an
-octet the set allows through is written back as itself, which only bytes can hold.
+octet the set allows through is text back as itself, which only bytes can hold.
 Building a string instead reads every kept octet as Latin-1, so a set wide enough to
 pass an accented letter turns it into two.
 
@@ -3584,7 +3584,7 @@ datatype holds them.
 A method REBOL has and a build has not is **`feature-na`**, not `invalid-arg` - a name
 nobody has heard of is a bad argument, a real method the build was not compiled with is
 a feature that is not available, and REBOL has an id that says exactly that. Rebol's own
-suite is written for both: each group opens with
+suite is text for both: each group opens with
 `either error? e: try [compress "test" 'lzw]` and accepts `feature-na` as the whole
 answer, because a build without the algorithm is an ordinary build rather than a broken
 one.
@@ -3706,7 +3706,7 @@ A block cipher takes whole blocks and holds the rest. **ChaCha20 is a stream cip
 gives a block of sixteen anyway**, and the C returns early while `len < blk`, then its
 ChaCha20 arm consumes the whole input rather than a whole number of blocks.
 
-So four bytes written and taken come back as sixteen, and **twenty-one bytes come back as
+So four bytes text and taken come back as sixteen, and **twenty-one bytes come back as
 twenty-one, not as sixteen and a remainder.**
 
 ---
@@ -3866,13 +3866,13 @@ its case flag and `Cmp_Value` reads that flag as "stop coercing".
 
 **Two maps are equal by keys and values, and order does not count**, because a map is not a
 series and the pairs came out of a hash. The keys are already the same whichever sigil they
-were written with - a map stores `c:`, `c` and `'c` as one key. EQUAL? does not mind case,
+were text with - a map stores `c:`, `c` and `'c` as one key. EQUAL? does not mind case,
 so a map holding `"a"` equals one holding `"A"`; reaching for the host language's own map
 equality minds it, and made two maps unequal that a real 3.22.1 calls equal.
 
 **`CT_Date` above mode one compares the packed date word and the time, and the packed word
 carries the zone.** So the zone counts for `==` where it does not for ordinary equality, and
-a date written without one is at zero rather than at no zone at all.
+a date text without one is at zero rather than at no zone at all.
 
 **SAME? answers by where, not by what.** `VAL_SERIES(a) == VAL_SERIES(b)` is the whole of
 mode three for a series, and a map and a bitset are series underneath. An equality that
@@ -3886,7 +3886,7 @@ which makes two NaNs the same value and the two zeroes different ones.
 
 **SORT's default order is numbers by size, dates by the instant they name, everything else
 by its text**, with case folded unless `/case` was asked for. Dates need their own line
-because their written form does not sort into their order at all: as text, `9-Jan-2000`
+because their text form does not sort into their order at all: as text, `9-Jan-2000`
 comes after `10-Jan-2000` and `1-Jan-2000` comes before `2-Feb-1999`.
 
 **`VAL_CHAR` reads the low bits of whichever value it is handed**, so an integer beside a
@@ -3905,7 +3905,7 @@ handler runs before the general series one.
 `*dp = (*dp & 0xffffff) | (n << 24)`. **Writing a tuple sets the colour, and sets the alpha
 to opaque unless the tuple carried a fourth part** - `Set_Pixel_Tuple` ends
 `if (VAL_TUPLE_LEN(tuple) > 3) dp[C_A] = tup[3]; else dp[C_A] = 0xff;`, so a three-part
-colour written over a half-transparent pixel makes it solid. A value that is neither an
+colour text over a half-transparent pixel makes it solid. A value that is neither an
 integer nor a character below 256 is `invalid-arg` rather than a bad path set - the path is
 fine and the value is not.
 
@@ -3914,7 +3914,7 @@ fine and the value is not.
 rather than `255.255.255`, and a script comparing `img/1` against a three-part colour never
 matches. This looks like a bug and is not.
 
-**A pixel's own bytes can be written by number** - `img/1/2: 100` is the green byte. The C
+**A pixel's own bytes can be text by number** - `img/1/2: 100` is the green byte. The C
 added it for one reported issue and guards it tightly:
 `if (!IS_END(pvs->path+1) || n < 1 || n > 4) return PE_BAD_SET;` - so a third path segment
 is a bad set too. **The value is checked before the channel is**, and a value that is not a
@@ -3941,17 +3941,17 @@ rather than what is left from the position. The colour words answer a binary of 
 which reads as `invalid-path`.
 
 **RGB and COLOR are the same setter and leave the alpha where it was.**
-`Fill_Line(..., only)` with `only` true masks it off, so a four-part tuple written to either
+`Fill_Line(..., only)` with `only` true masks it off, so a four-part tuple text to either
 of them loses its fourth part. The four-letter spellings - RGBA, BGRA, ARGB, ABGR and their
 O-spellings - set all four.
 
-**A binary or a single-byte vector written to a colour field is a picture's worth of
+**A binary or a single-byte vector text to a colour field is a picture's worth of
 colours, not one colour**, laid over the pixels in the order the field names, stopping at
 whichever of the two runs out first. The C tests for the two together:
 `(IS_VECTOR(val) && VAL_VEC_WIDTH(val) == 1) || IS_BINARY(val)`.
 
 **LUMINOSITY and GRAY from a number write all four channels including the alpha** -
-`Fill_Line(..., TO_PIXEL_COLOR(n, n, n, n), FALSE)` - where the same field written from a
+`Fill_Line(..., TO_PIXEL_COLOR(n, n, n, n), FALSE)` - where the same field text from a
 run of bytes gives each pixel its own grey and leaves the alpha alone.
 
 **Reading them back, LUMINOSITY and GRAY are two different sums**, not two names for one:
@@ -4019,7 +4019,7 @@ hours is a change of two.
 **A number naming an offset has always meant hours**: `d/zone: 2` is two hours and
 `d/zone: 2:30` is two and a half. **The ceiling is fifteen hours and three quarters either
 way**, which is what seven signed bits of quarter-hours reach and the same ceiling the lexer
-applies to a written offset - so `d/timezone: 16` is `out-of-range` rather than wrapping
+applies to a text offset - so `d/timezone: 16` is `out-of-range` rather than wrapping
 round to the other side of the world.
 
 **Writing a clock part to a bare date starts the clock rather than refusing**:
@@ -4033,10 +4033,10 @@ calls its zone nothing**, and **`d/date:` takes the day from another date and ke
 one's clock**.
 
 **A month or a day outside its range rolls into the next one** rather than failing, which is
-`Normalize_Time` and `Date_Of_Days` running over the numbers the C has just written - so
+`Normalize_Time` and `Date_Of_Days` running over the numbers the C has just text - so
 `d/month: 13` is January of the year after.
 
-**A part that exists but cannot be written is `bad-field-set`; a word that is no part at all
+**A part that exists but cannot be text is `bad-field-set`; a word that is no part at all
 is `invalid-path`.** Two errors because they are two different mistakes - one is asking for
 something impossible, the other is a typo.
 
@@ -4050,7 +4050,7 @@ Writing a reader for DRAW alone would have been writing the first of four.
 
 **A command declares the types of its arguments rather than their order**, and each argument
 goes to whichever slot will take it. `cmd 3 a@b` answers `[cmd a@b 3]` - neither argument
-moved to where it was written, both went to where they fit. That is what lets a dialect read
+moved to where it was text, both went to where they fit. That is what lets a dialect read
 as a description rather than as a call.
 
 Four rules are the opposite of the obvious guess, and every one was settled against a real
@@ -4060,12 +4060,12 @@ Four rules are the opposite of the obvious guess, and every one was settled agai
   `FRM_WORD_SYM(dialect, 1)` rather than looking for a word, so `system/dialects/draw`
   defaults to `type-spec`.
 - **A fraction in a whole number's slot is cut down, not rounded.** A slot makes exactly two
-  conversions - integer where a decimal was written and decimal where an integer was - and
+  conversions - integer where a decimal was text and decimal where an integer was - and
   no others. They are what make a dialect writable by hand: nobody typing `line-width 2`
   wants to be told it should have been `2.0`.
 - **The answer is padded to whichever is longer, the slot count or the number of arguments
-  written.** `if (dia->len > size) size = dia->len;` sizes the output by whichever is bigger
-  before any of it is filled in, so writing more than a command takes makes a longer answer
+  text.** `if (dia->len > size) size = dia->len;` sizes the output by whichever is bigger
+  before any of it is fill in, so writing more than a command takes makes a longer answer
   rather than an error.
 - **An argument no slot will take stops the command where it stands without raising**,
   leaving the input pointing at it.
@@ -4077,7 +4077,7 @@ stops it ending the command before it. So `spline 1x1 2x2 closed` finishes with 
 word.
 
 **Three kinds of slot.** A plain slot holds one value of a type. A repeater holds as many of
-its type as were written in a row. A named slot holds one word and only its own word, and
+its type as were text in a row. A named slot holds one word and only its own word, and
 reaching one moves the search past itself, which is how a dialect's option words are told
 from its ordinary ones. Every other kind moves the search on only when it was the one being
 looked at, which lets an out-of-order argument reach a later slot without closing the ones
@@ -4085,10 +4085,10 @@ before it.
 
 **A word the dialect does not know stands for whatever it holds; a word it does know is left
 alone**, or every option word would have to be a defined variable. A paren is evaluated and a
-path is followed, so a dialect can be written with variables and computed values. **A word
+path is followed, so a dialect can be text with variables and computed values. **A word
 naming nothing stops the command rather than raising.** The lookup follows the word's own
 binding first - `Get_Var_No_Trap(val)` - which matters for a draw block, since that is a
-gob's content and may be read long after and far from wherever it was written.
+gob's content and may be read long after and far from wherever it was text.
 
 **A slot may be declared with a typeset somebody made themselves**, not only with the ones
 the language ships: a word that is neither a datatype nor a typeset literal is looked up,
@@ -4111,7 +4111,7 @@ holding the value sees the change. RESIZE is the exception, because the old imag
 wrong size to hold the answer.
 
 **They reach width times height pixels, not however many the image holds.** An image whose
-last row is partly filled has pixels past its final whole row - three in a picture two wide
+last row is partly fill has pixels past its final whole row - three in a picture two wide
 is a row and a spare - and the spare is a real pixel that reads back and can be changed.
 None of the four reach it, because each walks the rectangle rather than the run.
 
@@ -4197,7 +4197,7 @@ three. /ONLY asks for the opposite, a colour with the alpha left as it was.
 
 **A run of bytes reads four to a pixel here, which is the other way round from building an
 image.** `make image! [1x1 #{FFFFFF}]` reads three at a time because the alpha arrives in a
-run of its own; a binary written at an image reads four because there is nowhere else for the
+run of its own; a binary text at an image reads four because there is nowhere else for the
 alpha to come from.
 
 **Pixels are refused as a whole if any one of them is not a pixel**, because a half-applied
@@ -4212,12 +4212,12 @@ rather than black. It falls out of the order.
 **CHANGE never lengthens an image.** Its width is fixed, so a longer one would be a different
 shape, and pixels past the end are dropped.
 
-**One image written into another is the one thing CHANGE lays down as a shape rather than a
+**One image text into another is the one thing CHANGE lays down as a shape rather than a
 run.** `Copy_Rect_Data`: the rectangle's top-left corner goes where the position points and
 each of its rows lands on one row of the target, so what will not fit on a row is dropped
 rather than spilled onto the next.
 
-- **The step taken afterwards is one pixel, not the size of what was written** -
+- **The step taken afterwards is one pixel, not the size of what was text** -
   `index + dup * part` with `part` left at one, because one image is one thing however many
   pixels it carries. **/DUP multiplies that step and nothing else**, so the rectangle goes in
   once however many times it was asked for.
@@ -4293,9 +4293,9 @@ gob can carry a draw block and a block of data at the same time. `data` holds fi
 each with its own `GOBD` tag: an object, a binary, an integer, a block or a string.
 
 **Three fields break the symmetry between reading and writing.** `parent` can be read and not
-written, because being in a pane is what sets it. `owner` can be written and not read, because
+text, because being in a pane is what sets it. `owner` can be text and not read, because
 `Get_GOB_Var` has no case for it. And `flags` answers a block built from a fixed table, so it
-comes back in the table's order whatever order it was written in.
+comes back in the table's order whatever order it was text in.
 
 **A gob is the one series where a negative position does not reach behind where it stands.**
 `index += Int32(pvs->select) - 1; if (index >= tail) return PE_NONE;` with `index` unsigned,
@@ -4306,7 +4306,7 @@ not a tuple, and a flags value that is neither a word nor a block, are quietly i
 arm ends in a plain `break` where every other content arm ends in `return FALSE`. It reads
 like an oversight in the C and it is what a script sees.
 
-**A lone number written to `offset` or `size` is both halves**:
+**A lone number text to `offset` or `size` is both halves**:
 `pair->x = pair->y = (REBD32)VAL_INT64(val)`, so `size: 7` is seven square.
 
 **Writing an image also sets the gob's shape**: `GOB_W(gob) = VAL_IMAGE_WIDE(val)`.
@@ -4328,9 +4328,9 @@ it and commented out, so `poke g 1 child` makes the pane one longer.
 
 ## 156. A call consumes what the path *named*, not what was granted, and the arguments arrive out of order
 
-**A declined refinement's argument is still written and still taken.** The C takes each one
+**A declined refinement's argument is still text and still taken.** The C takes each one
 and drops it - `if (useArgs) DS_Base[ds] = *DS_POP; else DS_DROP` - so what a call consumes
-depends on what was written and not on what was granted. `append/:part s v 1` with part
+depends on what was text and not on what was granted. `append/:part s v 1` with part
 declined appends and swallows the 1.
 
 What counting only the granted ones cost here: REPEND is
@@ -4347,19 +4347,19 @@ the spec walk at that refinement and fills its arguments from the stream, under 
 reading "refinement out of sequence, resequence arg order".
 
 **Getting that wrong is subtle rather than loud.** A quoted parameter belonging to a
-refinement written out of order was matched against whichever parameter sat at that position
-in the declaration, so `f/two/one "a" x y 1` evaluated X instead of taking it as written, and
+refinement text out of order was matched against whichever parameter sat at that position
+in the declaration, so `f/two/one "a" x y 1` evaluated X instead of taking it as text, and
 failed on a word nobody had set.
 
 **An argument belonging to a refinement is only counted when that refinement was asked for**,
 so a call's arity depends on the call site rather than on the function. Counting them all
 means `f: func [a /into b] [...]` demands two arguments from every caller, and Rebol's own
-COLLECT cannot be written.
+COLLECT cannot be text.
 
 **A soft-quoted parameter is the `'word` sigil, not `:word`.** A paren, a get-word or a
 get-path at the call site says "evaluate this one after all", which is what makes it soft: the
 function declares the default and the caller keeps a way out. A hard-quoted parameter always
-takes the next value as written, which is why `repeat count 3` works - the counter is a word
+takes the next value as text, which is why `repeat count 3` works - the counter is a word
 the loop is about to bind, so looking it up first would fail on a word nobody has set.
 
 **A block that ends where a quoted parameter was wanted has given it unset, not too few
@@ -4398,7 +4398,7 @@ sixteen bits up, which is what keeps a named key from colliding with a character
 run first, so a key of the wrong datatype is refused **after two fields have already changed** -
 visible to a caller that catches the error and carries on.
 
-**`flags` can be read and not written**: nothing in `Set_Event_Var` touches them, because they
+**`flags` can be read and not text**: nothing in `Set_Event_Var` touches them, because they
 say what a window system observed. **`data` is the same, and its two guards mean a script
 always reads none for it** - `if (!GET_FLAG(..., EVF_HAS_DATA)) goto is_none;` and the type
 must be `drop-file`, and nothing in `Set_Event_Var` raises HAS_DATA. That is the answer rather
@@ -4536,7 +4536,7 @@ copy, with a comment saying why: "using copy so READ will not destroy intermedia
 state by calling *_Finish". So `read port` twice running gives the same answer, and writing
 more afterwards carries on from where the writes had got to rather than from nothing.
 
-**Opening a port that is already open throws away what has been written to it.**
+**Opening a port that is already open throws away what has been text to it.**
 `Checksum_Open` clears the context whether or not one was there. Rebol's own suite says so in
 a comment beside the assertion - "opening already opened port restarts computation" - and
 builds a sum twice from the same port to prove it.
@@ -4572,7 +4572,7 @@ validated - so between two arguments, between two locals, or **between an argume
 local**. Skipping everything after `/local` lets `func [a /local a][]` through with two names
 for one slot.
 
-**The duplicate failure names the word as it was written rather than as it was spelled**, so
+**The duplicate failure names the word as it was text rather than as it was spelled**, so
 a repeated refinement reports `/x` and a repeated argument reports `x`.
 `Trap1(RE_DUP_VARS, value)` hands over the value from the block itself.
 
@@ -4586,7 +4586,7 @@ will be ignored while evaluating", says the comment, and it is. **One only**: a 
 `return:` is a malformed definition like any other set-word.
 
 **A type block holds words, not datatypes.** `integer!` is a word the system context binds to
-a datatype, and the reader hands it over as written, so the name is resolved when the spec is
+a datatype, and the reader hands it over as text, so the name is resolved when the spec is
 read.
 
 ---
@@ -4596,11 +4596,11 @@ read.
 `u-lzw.c` carries David Bryant's variant, and two things make it unlike the textbook
 algorithm. Both change the bytes.
 
-**The codes are written in adjusted binary.** A dictionary holding 257 strings would normally
+**The codes are text in adjusted binary.** A dictionary holding 257 strings would normally
 spend nine bits on every code; here the codes below a threshold spend eight and only the ones
 above it spend nine, the threshold moving as the dictionary grows. **So the width of a code
-depends on how many strings exist when it is written**, and a decoder that counted differently
-would read the whole stream wrong from that point on. The extra bit is written after the rest,
+depends on how many strings exist when it is text**, and a decoder that counted differently
+would read the whole stream wrong from that point on. The extra bit is text after the rest,
 so a reader can take the narrow form first and widen only when it has to.
 
 **The dictionary is never simply cleared when it fills.** Entries that nothing longer is built
@@ -4617,7 +4617,7 @@ one".
 
 `if (level >= 1 && level <= 7) maxbits = 8 + level; else if (level < 1) maxbits = 9;` and
 sixteen otherwise, **over an unsigned level**. COMPRESS with no /LEVEL passes `UNKNOWN`, which
-is minus one written into an unsigned, so the comparison sees four thousand million and the
+is minus one text into an unsigned, so the comparison sees four thousand million and the
 answer is sixteen. Reading the level as signed makes the default the narrowest width instead
 of the widest, and every byte after the first comes out differently.
 
@@ -4685,7 +4685,7 @@ default and BT.601 under /LUMA, cast to a byte rather than rounded, so it trunca
 weighted four flat while red and blue are weighted by the mean red of the two colours, which
 is what makes two greens further apart than two blues of the same numeric difference.
 
-**TINT is written as two cases rather than one interpolation**, because the C is
+**TINT is text as two cases rather than one interpolation**, because the C is
 `(r1 >= r2) ? r2 + ((r1 - r2) * amount1) : r1 + ((r2 - r1) * amount0)`. The two agree at every
 amount; following the C keeps the rounding in the same place.
 
@@ -4696,7 +4696,7 @@ branch, and the answer is a grey.
 
 ## 166. CRUSH is Rebol's own compressor, built with Red's constants rather than the original's
 
-`u-crush.c`, ported from Ilya Muravyov's public-domain original. LZ77 with the matches written
+`u-crush.c`, ported from Ilya Muravyov's public-domain original. LZ77 with the matches text
 out in a bit code of its own: a length in one of six brackets and then a distance in one of
 sixteen slots, packed least significant bit first. **The first four bytes are the uncompressed
 length, little endian**, which is how DECOMPRESS knows how much to make before it starts.
@@ -4739,7 +4739,7 @@ uses a different one cannot agree with Rebol about anything a script seeds.
 so that two nearby seeds do not give two similar sequences. **The ten warm-up rounds at the
 end are Knuth's too, and leaving them out changes every number that follows.**
 
-**The end-of-buffer marker is written as a negative number in the buffer**, which is why every
+**The end-of-buffer marker is text as a negative number in the buffer**, which is why every
 real value has to be non-negative and why the modulus is what it is.
 
 **The shuffles and the pickers narrow to thirty-two bits before taking the remainder.**
@@ -4804,11 +4804,11 @@ nothing else. So `mold number!` is `make typeset! [integer! decimal! percent!]` 
 word that fetched it.
 
 **A tuple's mold pads out to three.** `Emit_Tuple` writes each kept octet and then keeps
-writing "0." until it has written three, so a tuple keeping one octet shows as `1.0.0` and one
+writing "0." until it has text three, so a tuple keeping one octet shows as `1.0.0` and one
 keeping none shows as `0.0.0`.
 
-**A date's offset of zero is written as nothing at all.** `1-Jan-2000/12:00+0:00` molds as
-`1-Jan-2000/12:00`, so **the written form does not distinguish an offset of zero from a date
+**A date's offset of zero is text as nothing at all.** `1-Jan-2000/12:00+0:00` molds as
+`1-Jan-2000/12:00`, so **the text form does not distinguish an offset of zero from a date
 that never carried one**, and reading either back gives a zone of 0:00.
 
 **A time writes its fraction to as many digits as it has and no more**: a tenth is `0:00:00.1`
@@ -4819,7 +4819,7 @@ cannot be saved.**
 **A closure is its own datatype, not a function with a flag set.** `types.reb` gives `closure!`
 a row of its own, so `type? :c` is `closure!` and `function? :c` is false where
 `any-function? :c` is true. Answering `function!` for both kinds makes `closure?` false for
-every closure ever written - while MOLD still says `make closure!`, because the molder reads
+every closure ever text - while MOLD still says `make closure!`, because the molder reads
 the flag and nothing else does.
 
 **An action and a native look identical from every angle but their name.** Both are
@@ -4834,7 +4834,7 @@ natives, and the name is the only thing that carries it.
 `if (ANY_WORD(key) && VAL_TYPE(key) != REB_SET_WORD) ... VAL_SET(set, REB_SET_WORD);` So
 `#[a: 1]` and `make map! [a 1]` hold one key, and so do a lit-word, a get-word and a refinement
 of the same spelling: **a map is keyed by what a word names rather than by how it was
-written.**
+text.**
 
 **The direction matters as much as the fact.** Storing the set-word is what makes a molded map
 read back as an equal map - the colon comes from the key and not from the molder, **which is
@@ -4928,7 +4928,7 @@ input; the accumulators folded into one; the length added and the tail eaten a w
 at a time; then a final scramble of shifts and multiplies to spread the bits. Only the
 constants, the word width and the rotations differ.
 
-**Little-endian throughout, and the answer is written big-endian**, which is what makes
+**Little-endian throughout, and the answer is text big-endian**, which is what makes
 `checksum "" 'xxh32` the four bytes `02CC5D05` rather than their reverse.
 
 **The final scramble is what makes a one-bit change to the input change roughly half the
@@ -4955,7 +4955,7 @@ answers infinity**. The remainder tests `i == 0` alone and refuses whatever the 
 dividing by zero.**
 
 **`VEC_OP_LOOP_NO_ZERO` tests each element of the divisor at its own type**, so a measuring
-vector *is* guarded element by element where a plain zero divisor is not - the loop is written
+vector *is* guarded element by element where a plain zero divisor is not - the loop is text
 once and used for every kind.
 
 **The widest unsigned kind is compared as unsigned by minimum and maximum and as signed by the
@@ -4998,7 +4998,7 @@ both, which is what makes protection worth anything.
 **`29-Feb-2001` is `invalid` rather than a date.** `Month_Length` in `t-date.c`, leap rule
 included - checking the day against a flat 31 accepts it.
 
-**A year below 1000 is written four digits wide**: `1-Feb-0003` rather than `1-Feb-3`. The
+**A year below 1000 is text four digits wide**: `1-Feb-0003` rather than `1-Feb-3`. The
 padding is not decoration - a molded date has to read back as the same date, and `1-Feb-3`
 reads back as 2003, because a year of one or two digits is the shorthand form.
 
@@ -5053,7 +5053,7 @@ REBCNT_To_Bytes(out_size, (REBCNT)len); // Tag the size to the end.
 Append_Series(*output, (REBYTE*)out_size, sizeof(REBCNT));
 ```
 
-**A file written by 7-Zip has an eight-byte length in the header instead and nothing at the
+**A file text by 7-Zip has an eight-byte length in the header instead and nothing at the
 end**, so the two are not interchangeable even though the bytes between are the same. The
 trailer is what DECOMPRESS reads to know how much to make, unless DECOMPRESS/SIZE said so first.
 
@@ -5086,7 +5086,7 @@ one that was not expecting it, or the naming would buy nothing.
 
 **PROTECT/HIDE conceals a field rather than locking it.** The object stops listing it, molding
 it and answering for it, and a path to it fails as though there were no such field - **but code
-written inside the object still reaches it**, which is the whole point: it is how an object
+text inside the object still reaches it**, which is the whole point: it is how an object
 keeps something to itself. PROTECT/LOCK is the one that makes protection permanent.
 
 **`Reset_Height` runs only after something changes the pixel count.**
@@ -5109,20 +5109,20 @@ Rebol answers a pair.
 **A struct's type word is rewritten in the spec block itself.**
 `VAL_WORD_SYM(val) = Normalize_Vector_Type_Symbol(...)`, so a struct declared with `float!`
 reports `float32!` ever after and `spec-of` shows the settled spelling rather than the one that
-was typed. **An inner struct is left exactly as written**, which is why a field declared
+was typed. **An inner struct is left exactly as text**, which is why a field declared
 `[struct! pair8!]` still names `pair8!` in the spec while the value that field answers molds its
 whole layout.
 
 **A number reaches a struct field the way it reaches a vector.** `assign_scalar` converts
-through both an integer and a double and then picks: an integer written to a float field goes in
-as the number, and a decimal written to an integer field is truncated towards zero. **A whole
-array field written from a vector is a copy of bytes**, taken only when the vector's element
+through both an integer and a double and then picks: an integer text to a float field goes in
+as the number, and a decimal text to an integer field is truncated towards zero. **A whole
+array field text from a vector is a copy of bytes**, taken only when the vector's element
 width matches the field's and there are exactly as many - **a vector of the right length but the
 wrong width is refused rather than converted.**
 
 **Binding copies, and a copy that drops the line-break flags molds every script's blocks on one
 line.** The flags shift with the copy, because a bound block starts at its head where the one it
-came from may not. **A map's values are replaced rather than written over**, because a map is
+came from may not. **A map's values are replaced rather than text over**, because a map is
 not a series and cannot be walked by position - `compose/deep #[num: (val)]` is how a map
 literal inside a body reaches an argument, and leaving it alone leaves VAL with no word to
 resolve.
@@ -5148,8 +5148,8 @@ rest straight from it**, so a datatype left out of that list is a datatype the g
 function refuses. That is how WORDS-OF came to turn away the handle whose only readable field
 is its type.
 
-**`structs` is filled by REGISTER rather than at boot.** `sysobj.reb` declares it
-`make map! []` with the comment "filled using `register` native function", so an empty map is
+**`structs` is fill by REGISTER rather than at boot.** `sysobj.reb` declares it
+`make map! []` with the comment "fill using `register` native function", so an empty map is
 the finished state and not a gap.
 
 **`actions` and `natives` are Rebol's declaration rather than a fact about any implementation.**
@@ -5198,7 +5198,7 @@ VALUES-OF find on one, and `PD_Handle` serves the same single field through a pa
 **Every reflector on an operator asks the function it wraps, not the wrapper.**
 `type = VAL_GET_EXT(value); goto of_type;` - the C reads the datatype the operator was made
 from and starts the same switch again, so **an operator made from an action answers none for its
-body and one made from a function answers the block it was written with.**
+body and one made from a function answers the block it was text with.**
 
 **`round/to 1 0` raises and `round/to 1.5 0` answers 1.** A whole-number scale of nothing is a
 division by it; a decimal one is a scale too small to move anything.
@@ -5213,7 +5213,7 @@ same applies to /PART: cutting by a UTF-16 length takes half of a non-basic-plan
 Collecting locals by comparing the spelling gathers both, which gives the borrowed SET-COOKIES
 three locals R3 does not list. **The first spelling seen is the one kept.**
 
-**In a set operation a key already kept is left as it was rather than written over**, which is
+**In a set operation a key already kept is left as it was rather than text over**, which is
 what decides whose value survives. Without /CASE a map holding both `a` and `A` answers the
 first of them for either spelling, so the pair collapses to one and keeps the earlier value -
 and **`union m1 m2` keeps the left's value for every key the two share**, because the left went
@@ -5252,7 +5252,7 @@ and 19 are pinned by `ProtectByNameTest` and `ProtectedObjectTest`, and
 entry 20 by `ConversionFamilyTest`, which carries the list of forty-five names
 taken from Rebol rather than reasoned about. Entries 21 and 22 are pinned by
 `MakeAndToFromTheSourceTest`, whose date expectations were each run against a
-Rebol built from `scripts/build-r3.sh` before they were written down. Entry 23
+Rebol built from `scripts/build-r3.sh` before they were text down. Entry 23
 is pinned by `BitsetConstructionFromTheSourceTest`, which asserts the copy's
 answer as well as its mold, because the mold alone would not show that the
 copy answers the opposite question.
@@ -5268,7 +5268,7 @@ An entry with neither should be read as a recollection, not a finding.
 ## 183. Rebol's checksum port computes xxh32 and xxh64 from an uninitialised context
 
 **`XXH32_Starts` and `XXH64_Starts` in `u-xxhash.c` never touch the context they
-were given.** Both are written the same way:
+were given.** Both are text the same way:
 
 ```c
 void XXH32_Starts( XXH32_state_t *ctx )
@@ -5283,7 +5283,7 @@ The assignment rebinds the parameter, so the caller's buffer -- the series
 every `XXH32_Update` after it accumulates into that. The freshly created state
 is leaked once per port opened.
 
-**`XXH3_Starts` and `XXH128_Starts`, four lines away, are written correctly** as
+**`XXH3_Starts` and `XXH128_Starts`, four lines away, are text correctly** as
 `XXH3_64bits_reset(ctx)` and `XXH3_128bits_reset(ctx)`. That is the whole of why
 those two agree between a port and a one-shot and the other two do not.
 
@@ -5426,7 +5426,7 @@ arithmetic, or answer none for eight of thirteen curves while the catalogue
 names all thirteen. JEBOL carries them, in `WeierstrassCurve`.
 
 **Two checks are worth more than any amount of reading.** The first is that each
-generator is on its own curve and has the order written beside it, which is what
+generator is on its own curve and has the order text beside it, which is what
 a mistyped parameter fails and nothing else does. The second is interoperation
 in both directions: a real 3.22.5 verifying an ECDSA signature this build
 produced, and this build verifying one it produced. The second caught a defect
@@ -5523,7 +5523,7 @@ modules where its parent did not put them, and `import 'whatever` fails with
 
 Which is the same fact as the root, one level down. Confinement is not only what
 a script may reach; it is what the paths mean. The launcher therefore carries
-`--data` beside `--root`, and `followTheApplicationDataDirectory()` rewrites it
+`--data` beside `--root`, and `followApplicationDataDirectory()` rewrites it
 whenever the host moves the directory.
 
 ## 192. SORT and `<` are one comparison in the C, and a pair or a tuple sorted by its text is a loop that never ends
@@ -5531,7 +5531,7 @@ whenever the host moves the directory.
 **`Cmp_Value` is reached from `Compare_Values`, which is what both the sort's
 default comparator and the ordering natives call.** So a datatype cannot be
 ordered one way by `<` and another way by SORT, and a default that compares the
-written form is wrong for every value whose text does not rise with it:
+text form is wrong for every value whose text does not rise with it:
 
     >> sort [3x0 20x0 100x0]
     == [3x0 20x0 100x0]        ; r3-head 3.22.5
@@ -5542,7 +5542,7 @@ written form is wrong for every value whose text does not rise with it:
     == [16.0.0 2.0.0 255.0.0]  ; JEBOL before
 
 `Cmp_Pair` settles it on the x halves and looks at the y halves only to break a
-tie. `Cmp_Tuple` walks the parts to `MAX(len1, len2)` over a zero-filled byte
+tie. `Cmp_Tuple` walks the parts to `MAX(len1, len2)` over a zero-fill byte
 array, so `1.2.3` is below `1.2.3.4` and equal to `1.2.3.0` -- which is what
 `=` says of them and not what `==` does, because strict equality compares the
 lengths as well.
@@ -5566,7 +5566,7 @@ have gaps in them hung for ever where a real Rebol takes a millisecond.
 ## 193. MAKE TIME! from a string is a scanner of its own, and it takes a leading sign
 
 **`Make_Time` hands a string straight to `Scan_Time`**, the same function the
-reader calls for a time written in source, and the C's own comment lists what
+reader calls for a time text in source, and the C's own comment lists what
 it takes:
 
     HH:MM       as part1:part2
@@ -5576,7 +5576,7 @@ it takes:
 
 So a two-part time **with a fraction** is minutes and seconds:
 `to time! "12:34.5"` is `0:12:34.5` where `to time! "12:34"` is twelve hours.
-A fraction may be written with a comma. An AM or PM suffix moves the hour, with
+A fraction may be text with a comma. An AM or PM suffix moves the hour, with
 `12:00AM` midnight and `12:00PM` noon, and an hour above twelve with a suffix
 is refused.
 
@@ -5619,7 +5619,7 @@ Reproduced rather than corrected, because the same arithmetic in the same width
 gives it for nothing and it is what a script comparing against a real Rebol
 gets.
 
-**The block arm is its own small dialect**: up to three numbers filled from the
+**The block arm is its own small dialect**: up to three numbers fill from the
 left, only the last of which may be fractional and only the first of which may
 be negative, with every prefix sum checked against the widest time as it is
 built. `to time! [1]` is one hour; `to time! [1 -2 3]` is refused.
@@ -5706,7 +5706,7 @@ many" of an object names nothing. A bitset and a map are not in that group and
 accept /PART without complaint on r3-head, which is worth knowing before
 widening the refusal.
 
-## 198. A percent is written from its own digits, with the point moved twice
+## 198. A percent is text from its own digits, with the point moved twice
 
 `Emit_Decimal` writes both decimals and percents, and the percent flag changes
 exactly two things. The digits come from the stored value and then `e += 2`
@@ -5732,10 +5732,10 @@ writes.
 
 The arm sets the bits and leaves the switch -- `if (Set_Bits(...)) break;` --
 so the function answers its first argument rather than its third. Every other
-POKE reaches the line that answers the value written.
+POKE reaches the line that answers the value text.
 
 It reads as an inconsistency and it is the only answer available. A bitset has
-no slot to have written a value into: what went in was a request to turn bits
+no slot to have text a value into: what went in was a request to turn bits
 on or off, and a character, a string, a block or a range may say so in one
 call. There is no "the value at that position" to hand back.
 
@@ -5772,7 +5772,7 @@ in both.
 ## 201. LAST takes a series, a tuple or a gob, and the typeset is where the error comes from
 
 `value [series! tuple! gob!]`, so `last 1.2.3` is 3 and `last 1.2.3.0` is the
-nought that was written rather than one of the zeros a shorter tuple is padded
+nought that was text rather than one of the zeros a shorter tuple is padded
 with.
 
 What the typeset buys is the shape of the refusal. Anything else fails the
@@ -5782,7 +5782,7 @@ and the value and leaves ARG2 none. A script reading `e/arg2` to find out which
 argument it got wrong gets nothing from the second shape, and Rebol's own
 error-test asks exactly that of `last :some-function`.
 
-## 202. A date's parts are written by the same numbers they are read by
+## 202. A date's parts are text by the same numbers they are read by
 
 `sym = SYM_YEAR + Int32(arg) - 1` runs in `PD_Date` before the read and the
 write arms part company, so `d/1: 2020` is `d/year: 2020` and a number past
@@ -5798,14 +5798,14 @@ a caller loops over the parts -- and Rebol's own date-test does exactly that:
     d/date: 5-May-2005                 -> the day, and its offset with it
 
 UTC takes a date and leaves the instant it names with no offset at all, which
-is the same moment written the other way. JULIAN takes a decimal and nothing
+is the same moment text the other way. JULIAN takes a decimal and nothing
 else -- `if (!IS_DECIMAL(val)) return PE_BAD_SET_TYPE;` -- and a count outside
 what `Normalize_Date` accepts is type-limit rather than a date in the year
 minus four thousand. DATE assigns the whole packed date field, `date =
 VAL_DATE(val)`, and the offset is *in* that field, so writing a bare day into a
 date that had an offset leaves it with none.
 
-**WEEKDAY can be read and not written, and the refusal has an id of its own.**
+**WEEKDAY can be read and not text, and the refusal has an id of its own.**
 It falls to `default: return PE_BAD_SET;` where the parts that refuse a
 datatype answer PE_BAD_SET_TYPE, so a script can tell "this part is not
 writable" from "this part will not take that".
@@ -5853,7 +5853,7 @@ and the only visible trace of a function being called twice everywhere.
 What it means depends on what the lexeme turns out to be, and there are three
 answers.
 
-**In a number it is the point.** `Scan_Decimal` steps over one, written either
+**In a number it is the point.** `Scan_Decimal` steps over one, text either
 way -- `if (*cp == ',' || *cp == '.') cp++;` -- and the whole lexeme has to be
 consumed, so there is exactly one and it may not be spelt both ways:
 
@@ -5997,7 +5997,7 @@ not have.
 
 `make task!` reads its block the way MAKE MODULE! reads one.
 `Make_Module_Spec` builds the header either way, which is why the fields are
-always TITLE, HEADER, PARENT, PATH and ARGS whatever was written:
+always TITLE, HEADER, PARENT, PATH and ARGS whatever was text:
 
     >> make task! [title: "x"]      ; a body, not a spec
     == make task! [title: _ header: _ parent: _ path: _ args: _]
@@ -6174,7 +6174,7 @@ not a map holding none.
 
 **OPEN? reads the port's own state.** `Awake_System` reads STATE and tests
 `IS_HANDLE(state)`. What a built-in actor leaves there varies by scheme, but
-it is never an object: an actor written in REBOL keeps its own object there
+it is never an object: an actor text in REBOL keeps its own object there
 and answers OPEN? from its own function. So an object in STATE came from
 elsewhere, and reading it as open is how a connection stopped being made:
 Rebol's TLS hands a TCP port the HTTP protocol's object --
@@ -6383,7 +6383,7 @@ checksum file dir crypt clipboard udp midi system callback`. `serial` and
 
 **The actor SET-SCHEME makes is a `native!` nothing can call.** Its spec is
 `[_ internal]`, and `internal` takes only `end!`, so a call is `no-arg` or
-`expect-arg` and never runs. It is written straight into the frame, so a
+`expect-arg` and never runs. It is text straight into the frame, so a
 protected `actor` field is overwritten all the same. Each scheme's actor is
 its own value: the file and dir actors are not equal.
 
@@ -6400,7 +6400,7 @@ twin's spec, and `mold/all` writes `#(native! [...])`.
 its line breaks, and a vector of more than ten numbers stays on one line.
 
 **An argument error names what Rebol's declaration names.** `no-arg` and
-`expect-arg` carry the word the call was written with, then the argument as
+`expect-arg` carry the word the call was text with, then the argument as
 Rebol's own `natives.reb` and `actions.reb` spell it: `if`'s second argument
 is `true-branch`, `pick`'s first is `aggregate`. An operator is named by its
 own word, so `1 +` is `no-arg + value2`. A set-word with nothing after it is
@@ -6424,7 +6424,7 @@ CREATE's `no-create` has no second argument at all.
 "No such file or directory", not the JVM's longer message. An empty command
 block is a bare `too-short`.
 
-**A type error names the call as written.** `expect-arg` names the word the
+**A type error names the call as text.** `expect-arg` names the word the
 function or native was called through, such as `exists?`, `f` for `o/f`,
 `g` for `g: :exists?`, or `ap` for `ap: :append`. A call no word made is
 `-unnamed-`. APPLY is `-apply-`, and it checks the types too.
@@ -6579,7 +6579,7 @@ and the datatype, as RANDOM of it is.
 
 **ACCESS-OS reads the user and group ids from the host.** UID, EUID, GID and
 EGID were `not-here` always. The JVM has no call for the effective ids, so
-`JavaProcesses` asks `id -ru`, `id -u`, `id -rg` and `id -g`; a host given no
+`JavaProcess` asks `id -ru`, `id -u`, `id -rg` and `id -g`; a host given no
 process port, or a machine with no `id`, still says `not-here`, which is what
 r3 answers on Windows.
 

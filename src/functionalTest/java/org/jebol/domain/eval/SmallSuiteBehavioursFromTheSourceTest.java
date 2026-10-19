@@ -97,7 +97,7 @@ class SmallSuiteBehavioursFromTheSourceTest {
                 org.jebol.application.Bounds.standard()
                         .grant(org.jebol.domain.host.HostService.FILES));
         interpreter.useFileSystem(
-                org.jebol.application.FileSystemPort.rootedAt(directory));
+                org.jebol.application.FileSystemPort.rootFileSystem(directory));
         String source = """
                 e: try [read %nonsense] reduce [e/id = 'cannot-open e/arg1 = %nonsense]""";
         interpreter.defineFreshWordsIn(source);

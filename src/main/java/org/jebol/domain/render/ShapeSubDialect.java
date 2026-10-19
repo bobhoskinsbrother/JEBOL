@@ -7,7 +7,7 @@ import java.util.List;
 
 final class ShapeSubDialect {
 
-    List<PathStep> pathFrom(AnyBlockValue steps) {
+    List<PathStep> readThePathFrom(AnyBlockValue steps) {
         WhereARelativeStepIsMeasuredFrom walk =
                 new WhereARelativeStepIsMeasuredFrom();
         List<Value> written = steps.remaining();
@@ -17,7 +17,7 @@ final class ShapeSubDialect {
                 at++;
                 continue;
             }
-            int ends = whereTheNextStepStarts(written, at + 1);
+            int ends = findWhereTheNextStepStarts(written, at + 1);
             walk.obey(command.canonical(),
                     command instanceof LitWordValue,
                     written.subList(at + 1, ends));
@@ -26,7 +26,7 @@ final class ShapeSubDialect {
         return walk.path();
     }
 
-    private int whereTheNextStepStarts(List<Value> written, int from) {
+    private int findWhereTheNextStepStarts(List<Value> written, int from) {
         int ahead = from;
         while (ahead < written.size() && !(written.get(ahead) instanceof AnyWordValue)) {
             ahead++;
@@ -48,20 +48,20 @@ final class ShapeSubDialect {
         }
 
         void obey(String command, boolean relative, List<Value> arguments) {
-            List<PairValue> points = read.everyPairIn(arguments);
+            List<PairValue> points = read.collectEveryPairIn(arguments);
             switch (command) {
                 case "move" -> moveTo(points, relative);
                 case "line" -> lineThrough(points, relative);
-                case "hline" -> lineTo(read.numberIn(arguments, relative ? across : 0)
+                case "hline" -> lineTo(read.findTheNumberIn(arguments, relative ? across : 0)
                         + (relative ? across : 0), down);
                 case "vline" -> lineTo(across,
-                        read.numberIn(arguments, relative ? down : 0)
+                        read.findTheNumberIn(arguments, relative ? down : 0)
                                 + (relative ? down : 0));
-                case "curve" -> cubicThrough(points, relative);
-                case "curv" -> cubicThrough(points, relative);
-                case "qcurve" -> quadraticThrough(points, relative);
-                case "qcurv" -> quadraticThrough(points, relative);
-                case "arc" -> arcThrough(points, arguments, relative);
+                case "curve" -> drawACubicThrough(points, relative);
+                case "curv" -> drawACubicThrough(points, relative);
+                case "qcurve" -> drawAQuadraticThrough(points, relative);
+                case "qcurv" -> drawAQuadraticThrough(points, relative);
+                case "arc" -> drawAnArcThrough(points, arguments, relative);
                 case "close" -> close();
                 default -> {
                 }
@@ -93,7 +93,7 @@ final class ShapeSubDialect {
             path.add(new PathStep.LineTo(across, down));
         }
 
-        private void quadraticThrough(List<PairValue> points, boolean relative) {
+        private void drawAQuadraticThrough(List<PairValue> points, boolean relative) {
             if (points.size() < 2) {
                 return;
             }
@@ -105,9 +105,9 @@ final class ShapeSubDialect {
                     controlAcross, controlDown, across, down));
         }
 
-        private void cubicThrough(List<PairValue> points, boolean relative) {
+        private void drawACubicThrough(List<PairValue> points, boolean relative) {
             if (points.size() < 3) {
-                quadraticThrough(points, relative);
+                drawAQuadraticThrough(points, relative);
                 return;
             }
             double firstAcross = pointAcross(points.get(0), relative);
@@ -120,7 +120,7 @@ final class ShapeSubDialect {
                     firstAcross, firstDown, secondAcross, secondDown, across, down));
         }
 
-        private void arcThrough(
+        private void drawAnArcThrough(
                 List<PairValue> points, List<Value> arguments, boolean relative) {
 
             if (points.size() < 2) {

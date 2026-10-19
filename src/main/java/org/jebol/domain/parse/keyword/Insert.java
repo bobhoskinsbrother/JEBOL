@@ -23,7 +23,7 @@ final class Insert extends DeclaredKeyword {
         if (wholeBlock) {
             valueAt++;
         }
-        Value added = walk.theValueToInsert(rules.get(valueAt));
+        Value added = walk.chooseTheValueToInsert(rules.get(valueAt));
         List<Value> putting = !wholeBlock && added instanceof BlockValue spread
                 ? spread.remaining()
                 : List.of(added);

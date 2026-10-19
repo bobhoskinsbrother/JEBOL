@@ -34,29 +34,29 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
         return new Deci(significand(), exponent(), negative);
     }
 
-    public MoneyValue signed(boolean wanted) {
+    public MoneyValue sign(boolean wanted) {
         return new MoneyValue(amount, currency, wanted);
     }
 
     @Override
-    public Value absolute() {
-        return MoneyValue.of(amount.abs()).signed(false);
+    public Value makeAbsolute() {
+        return MoneyValue.of(amount.abs()).sign(false);
     }
 
 
     @Override
-    public Value arithmetic(Value right, ArithmeticOperation operation) {
-        return new MoneyActions(this).combinedWith(right, operation);
+    public Value calculate(Value right, ArithmeticOperation operation) {
+        return new MoneyActions(this).combineWith(right, operation);
     }
 
     @Override
     public Value negated() {
-        return amounting(amount.negate()).signed(!negative);
+        return amountTo(amount.negate()).sign(!negative);
     }
 
     @Override
-    public Value heldBetween(Value lowest, Value highest) {
-        return new MoneyActions(this).heldBetween(
+    public Value holdBetween(Value lowest, Value highest) {
+        return new MoneyActions(this).holdBetween(
                 (MoneyValue) lowest, (MoneyValue) highest);
     }
 
@@ -95,7 +95,7 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
      * passed {@code currency().orElse(null)} to the two-argument factory,
      * which wraps the null and fails on every plain money.
      */
-    public MoneyValue amounting(BigDecimal replacement) {
+    public MoneyValue amountTo(BigDecimal replacement) {
         return new MoneyValue(replacement, currency);
     }
 
@@ -250,30 +250,30 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
-            throw refusingConstruction(contents);
+        public Value construct(List<Value> contents, Construction construction) {
+            throw refuseTheConstruction(contents);
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
                 case MoneyValue already -> already;
                 case IntegerValue whole -> new MoneyValue(new Deci(whole.magnitude()));
                 case AnyDecimalValue quantity -> new MoneyValue(new Deci(quantity.quantity()));
                 case AnyStringValue text -> readMoney(text);
-                case BinaryValue bytes -> MoneyValue.fromBytes(bytes.bytesFromHere());
+                case BinaryValue bytes -> MoneyValue.fromBytes(bytes.readTheBytesFromHere());
                 case LogicValue truth when asking.builds() ->
                         new MoneyValue(new Deci(truth.truth() ? 1 : 0));
-                default -> throw refusing(from);
+                default -> throw refuse(from);
             };
         }
 
         private MoneyValue readMoney(AnyStringValue text) {
             String written = new WrittenText(text.text())
-                    .theOneNumberIn("a money", MOST_MONEY_CHARACTERS);
-            return new DeciReading(written).theWholeOf()
+                    .findTheOneNumberIn("a money", MOST_MONEY_CHARACTERS);
+            return new DeciReading(written).readTheWhole()
                     .map(MoneyValue::new)
-                    .orElseThrow(() -> refusing(text));
+                    .orElseThrow(() -> refuse(text));
         }
     }
 

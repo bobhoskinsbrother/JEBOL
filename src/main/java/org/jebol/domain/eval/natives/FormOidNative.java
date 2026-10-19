@@ -20,16 +20,16 @@ public class FormOidNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("oid", Set.of(BinaryValue.TYPE)));
+        return List.of(Parameter.of("oid", Set.of(BinaryValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> StringValue.of(
-                objectIdentifierWritten(((BinaryValue) arguments.getFirst()).octetsFromHere()));
+                writeTheObjectIdentifier(((BinaryValue) arguments.getFirst()).octetsFromHere()));
     }
 
-    private String objectIdentifierWritten(byte[] encoded) {
+    private String writeTheObjectIdentifier(byte[] encoded) {
         if (encoded.length == 0) {
             return "";
         }

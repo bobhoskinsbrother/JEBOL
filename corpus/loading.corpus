@@ -3,7 +3,7 @@
 # Every entry here is a line lifted from the fourteen programs in
 # corpus/sources/, cited by file and line. Nothing is invented. The point
 # of loader tests drawn from real code rather than from a grammar is that
-# real code uses the awkward combinations, and a hand-written example
+# real code uses the awkward combinations, and a hand-text example
 # tends not to.
 #
 # The `types` field lists the datatype of each value the text loads to, in
@@ -286,7 +286,7 @@ false = load {#(false)}
 --- id loading/construct-unset
 --- origin confirmed against R3 3.22.1
 --- requires reader
---- note The one that cannot be written any other way at all, and the one
+--- note The one that cannot be text any other way at all, and the one
 --- note that stopped series-test.r3 on its twenty-sixth line.
 --- code
 type? load {#(unset)}
@@ -461,7 +461,7 @@ type? load {@bob}
 --- result
 #(ref!)
 
---- id loading/a-ref-molds-back-as-it-was-written
+--- id loading/a-ref-molds-back-as-it-was-text
 --- origin confirmed against R3 3.22.1
 --- requires reader
 --- code
@@ -589,7 +589,7 @@ length? "a^ b"
 --- requires reader object
 --- note The single most valuable construct to read: series-test.r3 and
 --- note object-test.r3 hold 1,725 assertions between them and both stop
---- note at the first one of these. The block is taken as written and
+--- note at the first one of these. The block is taken as text and
 --- note never evaluated, because the reader has no context to evaluate in.
 --- code
 type? load {#(object! [a: 1])}
@@ -757,7 +757,7 @@ load "10#9999999999999999999"
 # --- The control-character escapes --------------------------
 #
 # A caret before a character from @ to _ escapes to that character less
-# sixty-four, which is how the control codes are written. The caret
+# sixty-four, which is how the control codes are text. The caret
 # itself is the exception: ^^ is a caret and not thirty.
 #
 # JEBOL handled only the letters, so ^[ was an invalid escape. That one
@@ -963,7 +963,7 @@ type? first [tls://]
 --- id loading/a-url-may-end-in-a-colon
 --- origin confirmed against R3 3.22.1
 --- note And a trailing colon does not turn it back into a set-word.
---- note Rebol's own TLS scheme is written `tls://:` and this one
+--- note Rebol's own TLS scheme is text `tls://:` and this one
 --- note character stopped fifty-three of its definitions loading.
 --- code
 mold first [tls://:]

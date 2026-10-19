@@ -28,7 +28,7 @@ class FilePathFamilyTest {
 
     @Test
     @DisplayName("DIRIZE of an empty path gives a slash")
-    void theDegenerateDirize() {
+    void dirizesTheDegenerateCase() {
         assertThat(answerTo("(dirize %\"\") = %/")).isEqualTo("#(true)");
     }
 
@@ -41,34 +41,34 @@ class FilePathFamilyTest {
 
     @Test
     @DisplayName("neither one changes the path it was given")
-    void bothAnswerACopy() {
+    void answersACopyBothWays() {
         assertThat(answerTo("p: %a/b dirize p p = %a/b")).isEqualTo("#(true)");
         assertThat(answerTo("p: %a/b/ undirize p p = %a/b/")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("SUFFIX? gives the suffix with its dot")
-    void theSuffixKeepsItsDot() {
+    void keepsTheSuffixsDot() {
         assertThat(answerTo("(suffix? %a/b.txt) = %.txt")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a dot in a directory name is not a suffix")
-    void theDotMustFollowTheLastSlash() {
+    void needsTheDotAfterTheLastSlash() {
         assertThat(answerTo("none? suffix? %a.b/c")).isEqualTo("#(true)");
         assertThat(answerTo("none? suffix? %a/b")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("DIR? asks whether the path ends with a slash")
-    void aDirectoryEndsWithASlash() {
+    void endsADirectoryWithASlash() {
         assertThat(answerTo("dir? %a/b/")).isEqualTo("#(true)");
         assertThat(answerTo("dir? %a/b")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("DIR? of none is false, and not none")
-    void theAnswerIsAlwaysALogic() {
+    void alwaysAnswersALogic() {
         assertThat(answerTo("dir? none")).isEqualTo("#(false)");
         assertThat(answerTo("logic? dir? none")).isEqualTo("#(true)");
     }

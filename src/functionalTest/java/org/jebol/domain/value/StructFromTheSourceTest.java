@@ -22,7 +22,7 @@ class StructFromTheSourceTest {
         return quoted ? shown.substring(1, shown.length() - 1) : shown;
     }
 
-    private static String errorOr(String source) {
+    private static String readTheErrorOr(String source) {
         return answerTo("either error? e: try [" + source + "] [e/id] [" + source + "]");
     }
 
@@ -51,7 +51,7 @@ class StructFromTheSourceTest {
 
         @Test
         @DisplayName("fields are packed, so nothing is rounded up to an alignment")
-        void fieldsArePacked() {
+        void packsTheFields() {
             assertThat(answerTo("""
                     register pair8!: make struct! [x [uint8!] y [uint8!]]
                     length? make struct! [id [uint16!] pos [struct! pair8!]]"""))
@@ -83,7 +83,7 @@ class StructFromTheSourceTest {
         })
         @DisplayName("a shape that is not word-then-block at all")
         void ashapeThatIsNotWordThenBlock(String layout) {
-            assertThat(errorOr("make struct! " + layout)).isEqualTo("malconstruct");
+            assertThat(readTheErrorOr("make struct! " + layout)).isEqualTo("malconstruct");
         }
 
         @ParameterizedTest(name = "make struct! {0} is an invalid argument")
@@ -92,12 +92,12 @@ class StructFromTheSourceTest {
         })
         @DisplayName("the right shape naming a type that is not one")
         void therightShapeWithAWrongType(String layout) {
-            assertThat(errorOr("make struct! " + layout)).isEqualTo("invalid-arg");
+            assertThat(readTheErrorOr("make struct! " + layout)).isEqualTo("invalid-arg");
         }
 
         @Test
         @DisplayName("construction evaluates nothing, so a word cannot become a number")
-        void constructionEvaluatesNothing() {
+        void includesAWordThatNeedsEvaluating() {
             assertThat(answerTo("""
                     e: transcode/one/error {#(struct! [a [uint8!]] [random 10])}
                     e/id"""))
@@ -119,7 +119,7 @@ class StructFromTheSourceTest {
 
         @Test
         @DisplayName("without set-words the values fill the fields in order")
-        void withoutSetWordsTheValuesFillInOrder() {
+        void fillInOrderWithoutSetWords() {
             assertThat(answerTo("""
                     mold/all/flat #(struct! [a [uint16!] b [int8!]] [23])"""))
                     .as("a short list leaves the rest of the fields alone")
@@ -161,7 +161,7 @@ class StructFromTheSourceTest {
             "[10]          | [10 2]",
         })
         @DisplayName("what the block does not name keeps the prototype's value")
-        void whatTheBlockDoesNotName(String given, String expected) {
+        void keepsWhatTheBlockDoesNotName(String given, String expected) {
             assertThat(answerTo(PAIR + "s: make proto " + given.strip()
                     + " mold reduce [s/a s/b]"))
                     .isEqualTo(expected.strip());
@@ -195,7 +195,7 @@ class StructFromTheSourceTest {
         @ValueSource(strings = {"part s 1", "deep s 1"})
         @DisplayName("and COPY takes no refinements at all")
         void copyTakesNoRefinements(String call) {
-            assertThat(errorOr(PAIR + "s: make proto [1 2] copy/" + call))
+            assertThat(readTheErrorOr(PAIR + "s: make proto [1 2] copy/" + call))
                     .isEqualTo("bad-refines");
         }
     }
@@ -244,7 +244,7 @@ class StructFromTheSourceTest {
 
         @Test
         @DisplayName("writing through the inner struct reaches the outer bytes")
-        void writingThroughTheInnerStruct() {
+        void reachesTheOuterBytesFromTheInnerStruct() {
             assertThat(answerTo(NESTED + """
                     s/pos/x: 22
                     s/pos/y: 33
@@ -254,7 +254,7 @@ class StructFromTheSourceTest {
 
         @Test
         @DisplayName("and changing the outer bytes shows through the inner struct")
-        void changingTheOuterBytes() {
+        void showsOuterChangesThroughTheInnerStruct() {
             assertThat(answerTo(NESTED + """
                     change s #{0100 0203}
                     mold reduce [s/id s/pos/x s/pos/y]"""))
@@ -272,7 +272,7 @@ class StructFromTheSourceTest {
 
         @Test
         @DisplayName("three levels deep, each level sees its own span of the bytes")
-        void threeLevelsDeep() {
+        void givesEachOfThreeLevelsItsOwnSpan() {
             assertThat(answerTo("""
                     s: make struct! [
                         a [uint32!]
@@ -309,7 +309,7 @@ class StructFromTheSourceTest {
 
         @Test
         @DisplayName("numbers give a vector, because one can hold them")
-        void numbersGiveAVector() {
+        void readAsAVectorForNumbers() {
             assertThat(answerTo("""
                     s: make struct! [a [uint8! [2]]]
                     type? s/a"""))
@@ -322,7 +322,7 @@ class StructFromTheSourceTest {
 
         @Test
         @DisplayName("anything else gives a block, because no vector holds it")
-        void anythingElseGivesABlock() {
+        void readAsABlockForAnythingElse() {
             assertThat(answerTo("""
                     s: make struct! [a [word! [2]]]
                     mold s/a"""))
@@ -411,7 +411,7 @@ class StructFromTheSourceTest {
 
         @Test
         @DisplayName("and differing bytes are not equal")
-        void differingBytesAreNotEqual() {
+        void findsDifferingBytesUnequal() {
             assertThat(answerTo("""
                     first: make struct! [a [uint8!]]
                     second: make struct! [a [uint8!]]
@@ -442,7 +442,7 @@ class StructFromTheSourceTest {
         @Test
         @DisplayName("refuses a raw binary, because bytes would land on a value")
         void refusesARawBinary() {
-            assertThat(errorOr("""
+            assertThat(readTheErrorOr("""
                     s: make struct! [a [rebval!] b [rebval!]]
                     change s #{FF}"""))
                     .isEqualTo("protected");
@@ -451,7 +451,7 @@ class StructFromTheSourceTest {
         @Test
         @DisplayName("and so does any struct holding one, however deep")
         void andsoDoesAnyStructHoldingOne() {
-            assertThat(errorOr("""
+            assertThat(readTheErrorOr("""
                     s: make struct! [id [uint8!] inner [struct! [val [rebval!]]]]
                     change s #{0102}"""))
                     .as("STRUCT_FLAGS accumulates upward from the inner struct")
@@ -496,7 +496,7 @@ class StructFromTheSourceTest {
         @Test
         @DisplayName("a name already taken by a different layout is refused")
         void anameAlreadyTaken() {
-            assertThat(errorOr("""
+            assertThat(readTheErrorOr("""
                     register taken!: make struct! [x [uint8!]]
                     register taken!: make struct! [y [uint16!]]"""))
                     .isEqualTo("already-used");

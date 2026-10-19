@@ -7,7 +7,7 @@ public final class TupleActions {
     public TupleActions() {
     }
 
-    public Value complemented(Value left) {
+    public Value complement(Value left) {
         int[] octets = ((TupleValue) left).segments();
         for (int at = 0; at < octets.length; at++) {
             octets[at] = 255 - octets[at];
@@ -15,12 +15,12 @@ public final class TupleActions {
         return TupleValue.of(octets);
     }
 
-    public Value combinedWith(Value left, Value right, ArithmeticOperation operation) {
-        return octetByOctet(left, right, (octet, against, fractional) ->
-                octetCombined(octet, against, fractional, operation));
+    public Value combineWith(Value left, Value right, ArithmeticOperation operation) {
+        return workOctetByOctet(left, right, (octet, against, fractional) ->
+                combineAnOctet(octet, against, fractional, operation));
     }
 
-    private long octetCombined(
+    private long combineAnOctet(
             long octet, double against, boolean fractional,
             ArithmeticOperation operation) {
 
@@ -32,14 +32,14 @@ public final class TupleActions {
         long against(long octet, double amount, boolean fractional);
     }
 
-    public Value octetByOctet(Value left, Value right, OctetWork work) {
+    public Value workOctetByOctet(Value left, Value right, OctetWork work) {
         refuseATimeBesideATuple(left, right);
         if (!(left instanceof TupleValue ours)) {
             throw Raised.cannotUse(left, "tuple arithmetic");
         }
         TupleValue theirs = right instanceof TupleValue tuple ? tuple : null;
-        if (theirs == null && !aPlainNumber(right)) {
-            throw Raised.notRelated(left, right);
+        if (theirs == null && !isAPlainNumber(right)) {
+            throw Raised.ofUnrelated(left, right);
         }
         int width = theirs == null
                 ? ours.segmentCount()
@@ -49,14 +49,14 @@ public final class TupleActions {
 
         int[] answer = new int[width];
         for (int at = 1; at <= width; at++) {
-            long worked = work.against(ours.octetAt(at),
-                    theirs == null ? amount : theirs.octetAt(at), fractional);
+            long worked = work.against(ours.readTheOctetAt(at),
+                    theirs == null ? amount : theirs.readTheOctetAt(at), fractional);
             answer[at - 1] = (int) Math.max(0, Math.min(255, worked));
         }
         return TupleValue.of(answer);
     }
 
-    private boolean aPlainNumber(Value right) {
+    private boolean isAPlainNumber(Value right) {
         return right instanceof IntegerValue || right instanceof AnyDecimalValue;
     }
 

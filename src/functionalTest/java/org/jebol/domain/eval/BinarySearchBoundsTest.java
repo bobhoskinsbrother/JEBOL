@@ -10,14 +10,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class BinarySearchBoundsTest {
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         String probe = "e: try [" + source + "] either error? e [e/id] ['no-error]";
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn(probe);
         ScriptOutcome outcome = interpreter.run(probe);
         assertThat(outcome.conclusion())
                 .as("%s must not escape as a host exception", source)
-                .isEqualTo(Conclusion.PRODUCED_A_VALUE);
+                .isEqualTo(Conclusion.PRODUCED_VALUE);
         return interpreter.display(outcome);
     }
 
@@ -29,26 +29,26 @@ class BinarySearchBoundsTest {
 
     @Test
     @DisplayName("one below the smallest byte raises")
-    void minusOneRaises() {
-        assertThat(errorIdOf("find #{0063} -1")).isEqualTo("out-of-range");
+    void raisesForMinusOne() {
+        assertThat(readTheErrorIdOf("find #{0063} -1")).isEqualTo("out-of-range");
     }
 
     @Test
     @DisplayName("one above the largest byte raises")
-    void twoFiftySixRaises() {
-        assertThat(errorIdOf("find #{0063} 256")).isEqualTo("out-of-range");
+    void raisesForTwoFiftySix() {
+        assertThat(readTheErrorIdOf("find #{0063} 256")).isEqualTo("out-of-range");
     }
 
     @Test
     @DisplayName("well past the largest byte raises")
-    void sevenHundredRaises() {
-        assertThat(errorIdOf("find/tail #{0063} 700")).isEqualTo("out-of-range");
+    void raisesForSevenHundred() {
+        assertThat(readTheErrorIdOf("find/tail #{0063} 700")).isEqualTo("out-of-range");
     }
 
     @Test
     @DisplayName("SELECT raises on the same input")
     void selectRaisesToo() {
-        assertThat(errorIdOf("select #{0063} 700")).isEqualTo("out-of-range");
+        assertThat(readTheErrorIdOf("select #{0063} 700")).isEqualTo("out-of-range");
     }
 
     @Test
@@ -59,19 +59,19 @@ class BinarySearchBoundsTest {
 
     @Test
     @DisplayName("the largest byte is inside the range and is not refused")
-    void twoFiftyFiveIsNotRefused() {
-        assertThat(errorIdOf("find #{00FF} 255")).isEqualTo("no-error");
+    void acceptsTwoFiftyFive() {
+        assertThat(readTheErrorIdOf("find #{00FF} 255")).isEqualTo("no-error");
     }
 
     @Test
     @DisplayName("a byte in the middle is found where it sits")
-    void anOrdinaryByteIsFound() {
+    void findsAnOrdinaryByte() {
         assertThat(answerTo("mold find #{0063} 99")).isEqualTo("\"#{63}\"");
     }
 
     @Test
     @DisplayName("a byte that is not there answers none")
-    void aMissAnswersNone() {
+    void answersNoneForAMiss() {
         assertThat(answerTo("mold find #{0063} 7")).isEqualTo("\"_\"");
     }
 }

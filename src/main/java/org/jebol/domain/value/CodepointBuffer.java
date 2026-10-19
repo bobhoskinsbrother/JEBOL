@@ -89,6 +89,6 @@ final class CodepointBuffer {
         }
         int grown = Math.max(required, codepoints.length * 2);
         codepoints = Arrays.copyOf(codepoints, grown);
-        reserved.nowHolds(bytesInTheBuffer());
+        reserved.growTo(bytesInTheBuffer());
     }
 }

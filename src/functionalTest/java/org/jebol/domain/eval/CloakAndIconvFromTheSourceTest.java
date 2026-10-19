@@ -15,7 +15,7 @@ class CloakAndIconvFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -27,7 +27,7 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("scrambling then unscrambling gives back what went in")
-        void theyAreInverses() {
+        void undoesItself() {
             assertThat(answerTo(
                     "b: #{00112233445566} was: copy b "
                     + "was = decloak encloak b \"key\" \"key\"")).isEqualTo(TRUE);
@@ -35,7 +35,7 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("and the scrambled form is not the original")
-        void itActuallyScrambles() {
+        void actuallyScrambles() {
             assertThat(answerTo(
                     "b: #{00112233445566} was: copy b "
                     + "was <> encloak b \"key\"")).isEqualTo(TRUE);
@@ -43,7 +43,7 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("it changes the binary it was given, and answers it")
-        void itChangesInPlace() {
+        void changesInPlace() {
             assertThat(answerTo(
                     "b: #{0011223344} was: copy b encloak b \"k\" b <> was"))
                     .isEqualTo(TRUE);
@@ -51,7 +51,7 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("a different key gives a different result")
-        void theKeyMatters() {
+        void dependsOnTheKey() {
             assertThat(answerTo(
                     "a: #{00112233} b: copy a "
                     + "(encloak a \"one\") <> encloak b \"two\"")).isEqualTo(TRUE);
@@ -59,7 +59,7 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("the wrong key does not give the data back")
-        void theWrongKeyDoesNotUnscramble() {
+        void failsToUnscrambleWithTheWrongKey() {
             assertThat(answerTo(
                     "b: #{00112233445566} was: copy b "
                     + "was <> decloak encloak b \"right\" \"wrong\"")).isEqualTo(TRUE);
@@ -67,7 +67,7 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("a one-byte key works, because the key is hashed to twenty")
-        void aShortKeyWorks() {
+        void worksWithAShortKey() {
             assertThat(answerTo(
                     "b: #{00112233} was: copy b "
                     + "was = decloak encloak b \"k\" \"k\"")).isEqualTo(TRUE);
@@ -75,7 +75,7 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("/WITH uses the key's own bytes rather than hashing them")
-        void withUsesTheKeyAsItStands() {
+        void usesTheKeyAsItStandsWithWith() {
             assertThat(answerTo(
                     "a: #{00112233} b: copy a "
                     + "(encloak a \"key\") <> encloak/with b \"key\"")).isEqualTo(TRUE);
@@ -83,7 +83,7 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("and /WITH still round-trips, with /WITH on both halves")
-        void withRoundTrips() {
+        void roundTripsWithWith() {
             assertThat(answerTo(
                     "b: #{00112233445566} was: copy b "
                     + "was = decloak/with encloak/with b \"key\" \"key\""))
@@ -92,7 +92,7 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("a binary key works as well as a string")
-        void aBinaryKeyWorks() {
+        void worksWithABinaryKey() {
             assertThat(answerTo(
                     "b: #{00112233} was: copy b "
                     + "was = decloak encloak b #{DEAD} #{DEAD}")).isEqualTo(TRUE);
@@ -100,7 +100,7 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("an integer key is spelled in decimal, and always hashed")
-        void anIntegerKeyIsAlwaysHashed() {
+        void alwaysHashesAnIntegerKey() {
             assertThat(answerTo(
                     "b: #{00112233} was: copy b "
                     + "was = decloak encloak b 1234 1234")).isEqualTo(TRUE);
@@ -111,7 +111,7 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("and it agrees with the same digits written as a string")
-        void anIntegerAgreesWithItsDigits() {
+        void agreesForAnIntegerAndItsDigits() {
             assertThat(answerTo(
                     "a: #{00112233} b: copy a "
                     + "(encloak a 1234) = encloak b \"1234\"")).isEqualTo(TRUE);
@@ -119,34 +119,34 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("empty data is left alone rather than refused")
-        void emptyDataIsLeftAlone() {
+        void leavesEmptyDataAlone() {
             assertThat(answerTo("#{} = encloak #{} \"key\"")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a one-byte binary scrambles, because the first byte is always touched")
-        void oneByteStillScrambles() {
+        void stillScramblesOneByte() {
             assertThat(answerTo("#{00} <> encloak #{00} \"key\"")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("an empty key is refused")
-        void anEmptyKeyIsRefused() {
-            assertThat(errorIdFrom("encloak #{0011} \"\"")).isNotEqualTo("no-error");
-            assertThat(errorIdFrom("encloak #{0011} #{}")).isNotEqualTo("no-error");
+        void refusesAnEmptyKey() {
+            assertThat(readTheErrorIdFrom("encloak #{0011} \"\"")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdFrom("encloak #{0011} #{}")).isNotEqualTo("no-error");
         }
 
         @Test
         @DisplayName("a protected binary is refused before anything is written")
-        void aProtectedBinaryIsRefused() {
-            assertThat(errorIdFrom("b: protect #{00112233} encloak b \"key\""))
+        void refusesAProtectedBinary() {
+            assertThat(readTheErrorIdFrom("b: protect #{00112233} encloak b \"key\""))
                     .isEqualTo("protected");
         }
 
         @Test
         @DisplayName("only a binary is taken, because text has no bytes to scramble")
         void onlyABinaryIsTaken() {
-            assertThat(errorIdFrom("encloak \"text\" \"key\"")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdFrom("encloak \"text\" \"key\"")).isNotEqualTo("no-error");
         }
     }
 
@@ -156,20 +156,20 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("reads a binary as text in a named character set")
-        void itReadsText() {
+        void readsText() {
             assertThat(answerTo("iconv #{616263} 'utf8")).isEqualTo("\"abc\"");
         }
 
         @Test
         @DisplayName("a set where the bytes mean something else gives different text")
-        void theSetMatters() {
+        void dependsOnTheSet() {
             assertThat(answerTo("(iconv #{41E9} 'latin1) <> \"A\"")).isEqualTo(TRUE);
             assertThat(answerTo("2 = length? iconv #{41E9} 'latin1")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("/TO answers a binary, unless the target is UTF-8")
-        void theToFormAnswersABinary() {
+        void answersABinaryForTheToForm() {
             assertThat(answerTo("binary? iconv/to #{4142} 'utf8 'utf16le"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("string? iconv/to #{4142} 'utf8 'utf8"))
@@ -184,7 +184,7 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("and transcoding widens a Latin-1 byte into two UTF-8 bytes")
-        void transcodingWidens() {
+        void widensWhenTranscoding() {
             assertThat(answerTo("to binary! iconv/to #{E9} 'latin1 'utf8"))
                     .as("the widening still happens; it is the answer's datatype "
                             + "that this test had wrong")
@@ -201,14 +201,14 @@ class CloakAndIconvFromTheSourceTest {
 
         @Test
         @DisplayName("a character set the host has not got is refused")
-        void anUnknownSetIsRefused() {
-            assertThat(errorIdFrom("iconv #{6162} 'invented-codepage"))
+        void refusesAnUnknownSet() {
+            assertThat(readTheErrorIdFrom("iconv #{6162} 'invented-codepage"))
                     .isNotEqualTo("no-error");
         }
 
         @Test
         @DisplayName("empty data answers empty")
-        void emptyIsEmpty() {
+        void keepsEmptyEmpty() {
             assertThat(answerTo("\"\" = iconv #{} 'utf8")).isEqualTo(TRUE);
         }
     }

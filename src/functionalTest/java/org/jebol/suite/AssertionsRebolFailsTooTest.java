@@ -14,20 +14,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AssertionsRebolFailsTooTest {
 
-    static List<String> everyEntryOnTheList() {
+    static List<String> listEveryEntry() {
         return RebolSuiteTest.failingOnRebolToo();
     }
 
-    private static Map<String, SuiteFile.Assertion> theSuiteByName() {
-        return RebolSuiteTest.everyAssertion().collect(Collectors.toMap(
+    private static Map<String, SuiteFile.Assertion> indexTheSuiteByName() {
+        return RebolSuiteTest.listEveryAssertion().collect(Collectors.toMap(
                 SuiteFile.Assertion::toString, Function.identity(), (first, next) -> first));
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("everyEntryOnTheList")
+    @MethodSource("listEveryEntry")
     @DisplayName("a real 3.22.5 does not pass this either")
-    void itDoesNotHoldHereEither(String entry) {
-        SuiteFile.Assertion assertion = theSuiteByName().get(entry);
+    void failsHereToo(String entry) {
+        SuiteFile.Assertion assertion = indexTheSuiteByName().get(entry);
         assertThat(assertion)
                 .as("%s names no assertion in the suite, so nothing can ever take "
                         + "it off the list; delete the entry", entry)
@@ -44,7 +44,7 @@ class AssertionsRebolFailsTooTest {
 
     @Test
     @DisplayName("the list is not empty, so this test is doing something")
-    void theListIsNotEmpty() {
-        assertThat(everyEntryOnTheList()).isNotEmpty();
+    void holdsEntries() {
+        assertThat(listEveryEntry()).isNotEmpty();
     }
 }

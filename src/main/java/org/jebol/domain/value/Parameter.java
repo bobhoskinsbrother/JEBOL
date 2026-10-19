@@ -37,11 +37,11 @@ public record Parameter(
                 : Set.copyOf(acceptedTypes);
     }
 
-    public static Parameter required(String name) {
+    public static Parameter of(String name) {
         return new Parameter(name, ParameterKind.NORMAL, Set.of(), Optional.empty());
     }
 
-    public static Parameter required(String name, Set<Datatype> acceptedTypes) {
+    public static Parameter of(String name, Set<Datatype> acceptedTypes) {
         return new Parameter(name, ParameterKind.NORMAL, acceptedTypes, Optional.empty());
     }
 
@@ -53,7 +53,7 @@ public record Parameter(
      * is observable, because it lets the caller choose the counter at run
      * time: {@code chosen: 'n  foreach (chosen) [7] [n]} gives 7.
      */
-    public static Parameter softQuoted(String name) {
+    public static Parameter quoteSoftly(String name) {
         return new Parameter(name, ParameterKind.SOFT_QUOTED, Set.of(), Optional.empty());
     }
 
@@ -63,7 +63,7 @@ public record Parameter(
      * <p>{@code take} takes one value and {@code take/part} takes two, so
      * the count depends on the call site rather than on the native.
      */
-    public static Parameter belongingTo(
+    public static Parameter belongTo(
             String refinement, String name, Set<Datatype> acceptedTypes) {
         return new Parameter(name, ParameterKind.REFINEMENT_ARGUMENT,
                 acceptedTypes, Optional.of(refinement));
@@ -74,11 +74,11 @@ public record Parameter(
      * spec. Nothing at the call site opts out, which is what QUOTE needs:
      * a soft-quoted paren would evaluate, and QUOTE exists not to.
      */
-    public static Parameter hardQuoted(String name) {
+    public static Parameter quoteLiterally(String name) {
         return new Parameter(name, ParameterKind.HARD_QUOTED, Set.of(), Optional.empty());
     }
 
-    public static Parameter refinement(String name) {
+    public static Parameter ofARefinement(String name) {
         return new Parameter(name, ParameterKind.REFINEMENT, Set.of(), Optional.empty());
     }
 
@@ -106,7 +106,7 @@ public record Parameter(
                 : acceptedTypes.contains(datatype);
     }
 
-    TypesetValue typeset() {
+    TypesetValue makeTheTypeset() {
         if (kind == ParameterKind.REFINEMENT) {
             return TypesetValue.of(A_REFINEMENTS_SLOT);
         }

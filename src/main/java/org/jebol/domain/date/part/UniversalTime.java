@@ -11,7 +11,7 @@ final class UniversalTime implements WritableDateField {
     }
 
     @Override
-    public DateValue writtenOn(DateValue date, Assigned given) {
+    public DateValue writeOn(DateValue date, Assigned given) {
         DateValue other = given.asADate();
         return other.zoneMinutes().orElse(0) == 0
                 ? other.withTheZoneForgotten()

@@ -15,7 +15,7 @@ class WordThenAngleFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String refusedAsAWord(String source) {
+    private static String readTheRefusalOf(String source) {
         return answerTo("e: try [load " + source + "] "
                 + "all [error? e e/id = 'invalid e/arg1 = \"word\"]");
     }
@@ -28,7 +28,7 @@ class WordThenAngleFromTheSourceTest {
 
         @Test
         @DisplayName("a tag after a name is a name and a tag")
-        void aWordThenATag() {
+        void readsANameAndATag() {
             assertThat(answerTo("""
                     mold load {a<a>}""")).isEqualTo("\"[a <a>]\"");
             assertThat(answerTo("""
@@ -37,14 +37,14 @@ class WordThenAngleFromTheSourceTest {
 
         @Test
         @DisplayName("and a closing tag too, which is the one delimiter excused")
-        void aWordThenAClosingTag() {
+        void readsANameAndAClosingTag() {
             assertThat(answerTo("""
                     mold load {a</a>}""")).isEqualTo("\"[a </a>]\"");
         }
 
         @Test
         @DisplayName("and an arrow word after a name is two words")
-        void aWordThenAnArrow() {
+        void readsANameAndAnArrowAsTwoWords() {
             assertThat(answerTo("""
                     mold load {a<--}""")).isEqualTo("\"[a <--]\"");
             assertThat(answerTo("""
@@ -53,19 +53,19 @@ class WordThenAngleFromTheSourceTest {
 
         @Test
         @DisplayName("but a comparison written hard against a name is refused, not split")
-        void anOperatorAgainstAName() {
-            assertThat(refusedAsAWord("""
+        void refusesAComparisonHardAgainstAName() {
+            assertThat(readTheRefusalOf("""
                     {a<=}""")).isEqualTo(TRUE);
-            assertThat(refusedAsAWord("""
+            assertThat(readTheRefusalOf("""
                     {a<>}""")).isEqualTo(TRUE);
-            assertThat(refusedAsAWord("""
+            assertThat(readTheRefusalOf("""
                     {a<<}""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and so is a bracket with nothing after it")
-        void aBracketAtTheEnd() {
-            assertThat(refusedAsAWord("""
+        void refusesABracketWithNothingAfterIt() {
+            assertThat(readTheRefusalOf("""
                     {a<}""")).isEqualTo(TRUE);
         }
     }
@@ -76,7 +76,7 @@ class WordThenAngleFromTheSourceTest {
 
         @Test
         @DisplayName("a number ends at the bracket, whatever follows it")
-        void aNumberEnds() {
+        void endsANumberAtTheBracket() {
             assertThat(answerTo("""
                     mold load {1<}""")).isEqualTo("\"[1 <]\"");
             assertThat(answerTo("""
@@ -87,7 +87,7 @@ class WordThenAngleFromTheSourceTest {
 
         @Test
         @DisplayName("and so does anything else that is not a word")
-        void aScalarEnds() {
+        void endsAnythingElseThatIsNotAWord() {
             assertThat(answerTo("""
                     mold load {19-Jan-2010<}""")).isEqualTo("\"[19-Jan-2010 <]\"");
             assertThat(answerTo("""
@@ -101,7 +101,7 @@ class WordThenAngleFromTheSourceTest {
 
         @Test
         @DisplayName("a numeric last segment ends at the bracket")
-        void aNumericSegment() {
+        void endsANumericLastSegmentAtTheBracket() {
             assertThat(answerTo("""
                     mold load {a/3<}""")).isEqualTo("\"[a/3 <]\"");
             assertThat(answerTo("""
@@ -110,14 +110,14 @@ class WordThenAngleFromTheSourceTest {
 
         @Test
         @DisplayName("and a word last segment is refused, which is the same bracket")
-        void aWordSegment() {
-            assertThat(refusedAsAWord("""
+        void refusesAWordLastSegment() {
+            assertThat(readTheRefusalOf("""
                     {a/b<}""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and the pair together, because either alone reads as a rule about paths")
-        void thePairSideBySide() {
+        void readsThePairTogether() {
             assertThat(answerTo("""
                     block? load {a/3<}""")).isEqualTo(TRUE);
             assertThat(answerTo("""

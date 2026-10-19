@@ -28,7 +28,7 @@ public final class View {
     private final Interpreter interpreter;
     private final Map<String, AnyBlockValue> actions = new LinkedHashMap<>();
 
-    private AnyBlockValue description = BlockValue.block();
+    private AnyBlockValue description = BlockValue.of();
     private List<Face> faces = List.of();
 
     private View(Interpreter interpreter) {
@@ -42,7 +42,7 @@ public final class View {
         ScriptOutcome outcome = runOnceBecauseItSetsUpTheStateAsWellAsDescribingIt(
                 interpreter, source);
 
-        if (outcome.conclusion() == Conclusion.PRODUCED_A_VALUE
+        if (outcome.conclusion() == Conclusion.PRODUCED_VALUE
                 && outcome.value() instanceof AnyBlockValue block) {
             view.description = block.asBlock();
         }
@@ -57,7 +57,7 @@ public final class View {
     }
 
     /** The page as it stands, built afresh so it cannot drift from the state. */
-    public String markup() {
+    public String writeTheMarkup() {
         rebuild();
         return Html.render(faces, List.copyOf(actions.keySet()));
     }
@@ -71,12 +71,12 @@ public final class View {
     public ScriptOutcome raise(String handle) {
         AnyBlockValue action = actions.get(handle);
         if (action == null) {
-            return aBrowserOutOfStepWithThisView(handle);
+            return refuseABrowserOutOfStep(handle);
         }
         return interpreter.run(Molder.moldOnly(action));
     }
 
-    private static ScriptOutcome aBrowserOutOfStepWithThisView(String handle) {
+    private static ScriptOutcome refuseABrowserOutOfStep(String handle) {
         return new ScriptOutcome(
                 Conclusion.RAISED,
                 ErrorValue.of(ErrorCategory.SCRIPT, "no-such-action",
@@ -90,7 +90,7 @@ public final class View {
     }
 
     private void rebuild() {
-        faces = Layout.facesIn(description, this::valueOf);
+        faces = Layout.readTheFacesIn(description, this::valueOf);
         rememberActions();
     }
 
@@ -99,7 +99,7 @@ public final class View {
         if (!context.knows(canonical)) {
             return Optional.empty();
         }
-        Value held = context.slotFor(canonical).value();
+        Value held = context.findSlotFor(canonical).value();
         return held.datatype() == UnsetValue.TYPE
                 ? Optional.empty()
                 : Optional.of(held);
@@ -110,15 +110,15 @@ public final class View {
         int at = 0;
         for (Face face : faces) {
             if (face.action().isPresent()) {
-                stillThere.add(handleFor(at));
-                actions.put(handleFor(at), (AnyBlockValue) face.action().orElseThrow());
+                stillThere.add(findTheHandleFor(at));
+                actions.put(findTheHandleFor(at), (AnyBlockValue) face.action().orElseThrow());
             }
             at++;
         }
         actions.keySet().retainAll(stillThere);
     }
 
-    private static String handleFor(int position) {
+    private static String findTheHandleFor(int position) {
         return "face-" + position;
     }
 }

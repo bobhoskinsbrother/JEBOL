@@ -20,7 +20,7 @@ class AjoinEvaluatesItsBlockOnceFromTheSourceTest {
 
     @Test
     @DisplayName("a function in the block is called once per place it is written")
-    void aFunctionInTheBlockIsCalledOncePerPlaceItIsWritten() {
+    void callsAFunctionOncePerPlaceItIsWritten() {
         assertThat(answerTo("""
                 joined: ajoin ["<" bump ">" bump "!"]
                 reduce [joined counted]""")).isEqualTo("""
@@ -29,7 +29,7 @@ class AjoinEvaluatesItsBlockOnceFromTheSourceTest {
 
     @Test
     @DisplayName("and that holds with a separator, with /ALL, and for an empty block")
-    void thatHoldsWithASeparatorWithAllAndForAnEmptyBlock() {
+    void holdsWithASeparatorWithAllAndForAnEmptyBlock() {
         assertThat(answerTo("""
                 reduce [
                     ajoin/with ["a" bump "b"] #"/"
@@ -42,7 +42,7 @@ class AjoinEvaluatesItsBlockOnceFromTheSourceTest {
 
     @Test
     @DisplayName("the datatype still comes from the first value, dropped or not")
-    void theDatatypeStillComesFromTheFirstValue() {
+    void stillTakesTheDatatypeFromTheFirstValue() {
         assertThat(answerTo("""
                 reduce [
                     ajoin [%a "b"]
@@ -55,7 +55,7 @@ class AjoinEvaluatesItsBlockOnceFromTheSourceTest {
 
     @Test
     @DisplayName("a counter walked by the block lands where one pass leaves it")
-    void aCounterWalkedByTheBlockLandsWhereOnePassLeavesIt() {
+    void leavesACounterWhereOnePassLeavesIt() {
         assertThat(answerTo("""
                 widths: [100 20 *]
                 column: 0

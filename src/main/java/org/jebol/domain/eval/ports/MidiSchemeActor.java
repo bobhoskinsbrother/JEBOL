@@ -53,7 +53,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
 
     public MidiSchemeActor(GrantedServices granted) {
         this.granted = granted;
-        declaredBy(BlockValue.block(List.of(NoneValue.none(), WordValue.of(THE_ARGUMENT_NOTHING_CAN_FILL))),
+        declare(BlockValue.of(List.of(NoneValue.none(), WordValue.of(THE_ARGUMENT_NOTHING_CAN_FILL))),
                 parametersAsWritten());
     }
 
@@ -64,7 +64,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required(THE_ARGUMENT_NOTHING_CAN_FILL, Set.of(EndValue.TYPE)));
+        return List.of(Parameter.of(THE_ARGUMENT_NOTHING_CAN_FILL, Set.of(EndValue.TYPE)));
     }
 
     @Override
@@ -82,145 +82,145 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
             return Optional.empty();
         }
         return Optional.of(switch (action) {
-            case "open" -> opened(port, refinements, evaluator);
-            case "close" -> closed(port, evaluator);
-            case "read" -> whatHasArrived(port);
-            case "write" -> sent(port, arguments.get(1));
-            case "query" -> asked(arguments.get(1), evaluator);
-            case "open?" -> LogicValue.of(theConnectionBehind(port).isPresent());
+            case "open" -> open(port, refinements, evaluator);
+            case "close" -> close(port, evaluator);
+            case "read" -> collectWhatHasArrived(port);
+            case "write" -> send(port, arguments.get(1));
+            case "query" -> answerTheQuery(arguments.get(1), evaluator);
+            case "open?" -> LogicValue.of(findTheConnectionBehind(port).isPresent());
             case "update" -> NoneValue.none();
             default -> throw Raised.of(EvaluationFailure.NO_PORT_ACTION, SetWordValue.of(action));
         });
     }
 
-    private Value opened(PortValue port, Set<String> refinements, Evaluator evaluator) {
+    private Value open(PortValue port, Set<String> refinements, Evaluator evaluator) {
         granted.require(HostService.MIDI);
-        ObjectValue spec = theSpecOf(port);
+        ObjectValue spec = readTheSpecOf(port);
         if (refinements.contains("write") && !refinements.contains("read")
-                && !(spec.fieldValue("device-out") instanceof IntegerValue)) {
+                && !(spec.readTheFieldValue("device-out") instanceof IntegerValue)) {
             makeTheOneDeviceAnOutput(spec);
         }
         MidiDevices devices = evaluator.midiDevices();
-        MidiRoute route = theRouteTheSpecNames(port, spec, devices);
+        MidiRoute route = findTheRouteTheSpecNames(port, spec, devices);
         try {
             port.setField("state", JavaObjectValue.of(devices.connect(route)));
         } catch (MidiDevices.Refused refused) {
-            throw refusedToOpen(port, refused.devicesOwnNumber());
+            throw refuseToOpen(port, refused.devicesOwnNumber());
         }
         queueWhatHappenedTo(port, "open", evaluator);
         return port;
     }
 
     private void makeTheOneDeviceAnOutput(ObjectValue spec) {
-        long asAnInput = spec.fieldValue("device-in") instanceof IntegerValue(long number)
+        long asAnInput = spec.readTheFieldValue("device-in") instanceof IntegerValue(long number)
                 ? number
                 : NO_DEVICE_AT_ALL;
         spec.context().register("device-in", NoneValue.none());
         spec.context().register("device-out", IntegerValue.of(asAnInput));
     }
 
-    private MidiRoute theRouteTheSpecNames(PortValue port, ObjectValue spec, MidiDevices devices) {
-        long input = theNumberIn(spec.fieldValue("device-in"));
-        long output = theNumberIn(spec.fieldValue("device-out"));
+    private MidiRoute findTheRouteTheSpecNames(PortValue port, ObjectValue spec, MidiDevices devices) {
+        long input = readTheNumberIn(spec.readTheFieldValue("device-in"));
+        long output = readTheNumberIn(spec.readTheFieldValue("device-out"));
         if (input == NO_DEVICE_AT_ALL && output == NO_DEVICE_AT_ALL) {
-            throw refusedToOpen(port, NO_DEVICE_IS_NAMED);
+            throw refuseToOpen(port, NO_DEVICE_IS_NAMED);
         }
-        Optional<MidiDevice> listedInput = theListedDevice(port, input, devices.inputs());
-        Optional<MidiDevice> listedOutput = theListedDevice(port, output, devices.outputs());
+        Optional<MidiDevice> listedInput = findTheListedDevice(port, input, devices.inputs());
+        Optional<MidiDevice> listedOutput = findTheListedDevice(port, output, devices.outputs());
         return new MidiRoute(listedInput, listedOutput);
     }
 
-    private long theNumberIn(Value field) {
+    private long readTheNumberIn(Value field) {
         return field instanceof IntegerValue(long number) ? number : NO_DEVICE_AT_ALL;
     }
 
-    private Optional<MidiDevice> theListedDevice(PortValue port, long number, List<String> listed) {
+    private Optional<MidiDevice> findTheListedDevice(PortValue port, long number, List<String> listed) {
         if (number == NO_DEVICE_AT_ALL) {
             return Optional.empty();
         }
         if (number < 0 || number > Integer.MAX_VALUE) {
-            throw refusedToOpen(port, A_DEVICE_THE_HOST_DOES_NOT_LIST);
+            throw refuseToOpen(port, A_DEVICE_THE_HOST_DOES_NOT_LIST);
         }
         MidiDevice named = new MidiDevice((int) number);
         if (!named.isListedAmong(listed)) {
-            throw refusedToOpen(port, A_DEVICE_THE_HOST_DOES_NOT_LIST);
+            throw refuseToOpen(port, A_DEVICE_THE_HOST_DOES_NOT_LIST);
         }
         return Optional.of(named);
     }
 
-    private Raised refusedToOpen(PortValue port, int devicesOwnNumber) {
-        return Raised.of(EvaluationFailure.CANNOT_OPEN, theReferenceOf(port), IntegerValue.of(devicesOwnNumber));
+    private Raised refuseToOpen(PortValue port, int devicesOwnNumber) {
+        return Raised.of(EvaluationFailure.CANNOT_OPEN, readTheReferenceOf(port), IntegerValue.of(devicesOwnNumber));
     }
 
-    private Value closed(PortValue port, Evaluator evaluator) {
-        MidiDevices.Connection connection = theOpenConnectionBehind(port);
+    private Value close(PortValue port, Evaluator evaluator) {
+        MidiDevices.Connection connection = findTheOpenConnectionBehind(port);
         connection.close();
         port.setField("state", NoneValue.none());
         queueWhatHappenedTo(port, "close", evaluator);
         return port;
     }
 
-    private Value whatHasArrived(PortValue port) {
+    private Value collectWhatHasArrived(PortValue port) {
         granted.require(HostService.MIDI);
-        MidiDevices.Connection connection = theOpenConnectionBehind(port);
+        MidiDevices.Connection connection = findTheOpenConnectionBehind(port);
         try {
             BinaryValue arrived = BinaryValue.ofBytes(connection.arrivedSinceTheLastRead());
             port.setField("data", arrived);
             return arrived;
         } catch (MidiDevices.Refused refused) {
-            throw Raised.of(EvaluationFailure.READ_ERROR, theReferenceOf(port),
+            throw Raised.of(EvaluationFailure.READ_ERROR, readTheReferenceOf(port),
                     IntegerValue.of(refused.devicesOwnNumber()));
         }
     }
 
-    private Value sent(PortValue port, Value data) {
+    private Value send(PortValue port, Value data) {
         granted.require(HostService.MIDI);
-        MidiDevices.Connection connection = theOpenConnectionBehind(port);
+        MidiDevices.Connection connection = findTheOpenConnectionBehind(port);
         if (!(data instanceof BinaryValue message)) {
             return port;
         }
         try {
             connection.send(message.octetsFromHere());
         } catch (MidiDevices.Refused refused) {
-            throw Raised.of(EvaluationFailure.WRITE_ERROR, theReferenceOf(port),
+            throw Raised.of(EvaluationFailure.WRITE_ERROR, readTheReferenceOf(port),
                     IntegerValue.of(refused.devicesOwnNumber()));
         }
         return port;
     }
 
-    private Value asked(Value field, Evaluator evaluator) {
+    private Value answerTheQuery(Value field, Evaluator evaluator) {
         if (!(field instanceof NoneValue)) {
             granted.require(HostService.MIDI);
         }
-        return new TheDevicesTheHostLists(evaluator.midiDevices()).answering(field, evaluator);
+        return new TheDevicesTheHostLists(evaluator.midiDevices()).answer(field, evaluator);
     }
 
-    private MidiDevices.Connection theOpenConnectionBehind(PortValue port) {
-        return theConnectionBehind(port).orElseThrow(() -> Raised.of(EvaluationFailure.NOT_OPEN,
-                theReferenceOf(port), IntegerValue.of(THE_PORT_IS_NOT_OPEN)));
+    private MidiDevices.Connection findTheOpenConnectionBehind(PortValue port) {
+        return findTheConnectionBehind(port).orElseThrow(() -> Raised.of(EvaluationFailure.NOT_OPEN,
+                readTheReferenceOf(port), IntegerValue.of(THE_PORT_IS_NOT_OPEN)));
     }
 
-    private Optional<MidiDevices.Connection> theConnectionBehind(PortValue port) {
-        if (port.fieldValue("state") instanceof JavaObjectValue carried
+    private Optional<MidiDevices.Connection> findTheConnectionBehind(PortValue port) {
+        if (port.readTheFieldValue("state") instanceof JavaObjectValue carried
                 && carried.held().orElse(null) instanceof MidiDevices.Connection connection) {
             return Optional.of(connection);
         }
         return Optional.empty();
     }
 
-    private ObjectValue theSpecOf(PortValue port) {
-        if (!(port.fieldValue("spec") instanceof ObjectValue spec)) {
+    private ObjectValue readTheSpecOf(PortValue port) {
+        if (!(port.readTheFieldValue("spec") instanceof ObjectValue spec)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, port);
         }
         return spec;
     }
 
-    private Value theReferenceOf(PortValue port) {
-        return theSpecOf(port).fieldValue("ref");
+    private Value readTheReferenceOf(PortValue port) {
+        return readTheSpecOf(port).readTheFieldValue("ref");
     }
 
     private void queueWhatHappenedTo(PortValue port, String happened, Evaluator evaluator) {
-        evaluator.queueOnTheSystemPort(new EventValue(EventCatalogue.typeIndexOf(happened).orElseThrow(),
+        evaluator.queueOnTheSystemPort(new EventValue(EventCatalogue.findTheTypeIndexOf(happened).orElseThrow(),
                 Set.of(), EventValue.Model.PORT, 0, port));
     }
 
@@ -238,26 +238,26 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         }
 
         @Override
-        protected Optional<Value> fieldNamed(String asked) {
+        protected Optional<Value> findTheFieldNamed(String asked) {
             return switch (asked) {
-                case DEVICES_IN -> Optional.of(theNamesOf(devices.inputs()));
-                case DEVICES_OUT -> Optional.of(theNamesOf(devices.outputs()));
+                case DEVICES_IN -> Optional.of(listTheNamesOf(devices.inputs()));
+                case DEVICES_OUT -> Optional.of(listTheNamesOf(devices.outputs()));
                 default -> Optional.empty();
             };
         }
 
         @Override
-        protected String theFieldItAsksFor(AnyWordValue asked) {
+        protected String findTheFieldItAsksFor(AnyWordValue asked) {
             return asked.spelling();
         }
 
         @Override
-        protected Value unknownAlone(AnyWordValue asked) {
+        protected Value answerAnUnknownAlone(AnyWordValue asked) {
             throw cannotUse(asked, PortValue.TYPE);
         }
 
-        private Value theNamesOf(List<String> listed) {
-            return BlockValue.block(listed.stream().<Value>map(StringValue::of).toList());
+        private Value listTheNamesOf(List<String> listed) {
+            return BlockValue.of(listed.stream().<Value>map(StringValue::of).toList());
         }
     }
 }

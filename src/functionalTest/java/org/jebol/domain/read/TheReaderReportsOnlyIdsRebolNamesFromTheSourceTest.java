@@ -14,7 +14,7 @@ class TheReaderReportsOnlyIdsRebolNamesFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String loading) {
+    private static String readTheErrorIdOf(String loading) {
         return answerTo("e: try [load " + loading + """
                 ]
                 either error? e [reduce [e/type e/id]] [reduce ['ok]]""");
@@ -22,48 +22,48 @@ class TheReaderReportsOnlyIdsRebolNamesFromTheSourceTest {
 
     @Test
     @DisplayName("a string that never closes is the generic syntax failure")
-    void aStringThatNeverClosesIsInvalid() {
-        assertThat(errorIdOf("""
+    void refusesAStringThatNeverClosesAsInvalid() {
+        assertThat(readTheErrorIdOf("""
                 {"abc}""")).isEqualTo("[Syntax invalid]");
-        assertThat(errorIdOf("""
+        assertThat(readTheErrorIdOf("""
                 {^{abc}""")).isEqualTo("[Syntax invalid]");
     }
 
     @Test
     @DisplayName("and so is a caret escape naming no character")
-    void aCaretEscapeNamingNoCharacterIsInvalid() {
-        assertThat(errorIdOf("""
+    void refusesACaretEscapeNamingNoCharacterAsInvalid() {
+        assertThat(readTheErrorIdOf("""
                 {"a^^(zz)b"}""")).isEqualTo("[Syntax invalid]");
     }
 
     @Test
     @DisplayName("and so are digits past the range an integer holds")
-    void digitsPastTheIntegerRangeAreInvalid() {
-        assertThat(errorIdOf("""
+    void refusesDigitsPastTheIntegerRangeAsInvalid() {
+        assertThat(readTheErrorIdOf("""
                 {99999999999999999999999}""")).isEqualTo("[Syntax invalid]");
-        assertThat(errorIdOf("""
+        assertThat(readTheErrorIdOf("""
                 {-99999999999999999999999}""")).isEqualTo("[Syntax invalid]");
     }
 
     @Test
     @DisplayName("a file literal that never closes is invalid too, not a string failure")
-    void aFileLiteralThatNeverClosesIsInvalid() {
-        assertThat(errorIdOf("""
+    void refusesAFileLiteralThatNeverClosesAsInvalid() {
+        assertThat(readTheErrorIdOf("""
                 {%"a}""")).isEqualTo("[Syntax invalid]");
-        assertThat(errorIdOf("""
+        assertThat(readTheErrorIdOf("""
                 {#"ab}""")).isEqualTo("[Syntax invalid]");
     }
 
     @Test
     @DisplayName("an unbalanced delimiter keeps its own id, which the catalogue does name")
-    void anUnbalancedDelimiterKeepsItsOwnId() {
-        assertThat(errorIdOf("{[}")).isEqualTo("[Syntax missing]");
-        assertThat(errorIdOf("{]}")).isEqualTo("[Syntax missing]");
+    void keepsItsOwnIdForAnUnbalancedDelimiter() {
+        assertThat(readTheErrorIdOf("{[}")).isEqualTo("[Syntax missing]");
+        assertThat(readTheErrorIdOf("{]}")).isEqualTo("[Syntax missing]");
     }
 
     @Test
     @DisplayName("every id the reader can report is one Rebol's own catalogue names")
-    void everyIdTheReaderReportsIsOneRebolNames() {
+    void reportsOnlyIdsRebolNames() {
         assertThat(answerTo("""
                 sources: [
                     {"abc}  {^{abc}  {"a^^(zz)b"}  {99999999999999999999999}

@@ -5,6 +5,7 @@ import org.jebol.domain.value.ErrorValue;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.Raised;
 import org.jebol.domain.value.FileValue;
+import org.jebol.domain.value.Value;
 
 import java.util.Optional;
 
@@ -56,9 +57,9 @@ public interface FilePort {
      * inside the sandbox and cannot be told a path that only means something
      * in here. Every other reader wants {@link #workingDirectory} instead.
      */
-    String hostPathOf(String path);
+    String hostPath(String path);
 
-    default void showsAtItsOwnPath(String hostFile) {
+    default void acceptFileFromOutsideRoot(String hostFile) {
     }
 
     /**
@@ -93,24 +94,23 @@ public interface FilePort {
     void rename(String from, String to);
 
     /** The names in a directory, each on its own. */
-    java.util.List<String> namesIn(String path);
+    java.util.List<String> listFileNames(String path);
 
     /** Whether the path names a directory rather than a file. */
     boolean isDirectory(String path);
 
     /**
-     * The canonical absolute path of something that is there, or null.
+     * What TO-REAL-FILE answers: the canonical absolute path of something that
+     * is there as a {@code file!}, or none.
      *
-     * <p>What TO-REAL-FILE answers. Canonical means symbolic links resolved
-     * and every {@code .} and {@code ..} removed, which is why it can only be
-     * answered for a path that exists: there is nothing to resolve otherwise.
-     *
-     * <p>Null rather than a thrown failure, because "not there" is a true
-     * answer to the question and the native turns it into none.
+     * <p>Canonical means symbolic links resolved and every {@code .} and
+     * {@code ..} removed, which is why it can only be answered for a path that
+     * exists: there is nothing to resolve otherwise. None rather than a thrown
+     * failure, because "not there" is a true answer to the question.
      */
-    String canonicalPathOf(String path);
+    Value resolvedFile(String path);
 
-    String realLocationOf(String path);
+    String locationFor(String path);
 
     /**
      * What the host knows about one thing on its filesystem, or empty when
@@ -126,7 +126,7 @@ public interface FilePort {
      * of the boundary, so there is one place for the host to be asked and one
      * place for it to be wrong.
      */
-    Optional<FileInformation> informationAbout(String path);
+    Optional<FileInformation> describe(String path);
 
     /** Why a port refused. Carries an error id the boundary reports. */
     final class Denied extends RuntimeException {
@@ -136,6 +136,8 @@ public interface FilePort {
         private static final int OPEN_FAILED = 3;
 
         public static final String SECURITY = "security";
+
+        public static final String READ_ONLY = "read-only";
 
         private final transient String errorId;
         private final transient String subject;
@@ -166,19 +168,24 @@ public interface FilePort {
             return subject;
         }
 
-        public boolean isASecurityRefusal() {
+        public boolean isSecurityRefusal() {
             return errorId.equals(SECURITY);
         }
 
-        public Raised raised() {
+        /** Whether the host refused the script rather than the file, so the refusal reaches the script as it is. */
+        public boolean isRefusedByHost() {
+            return isSecurityRefusal() || errorId.equals(READ_ONLY);
+        }
+
+        public Raised raise() {
             if (subject.isEmpty()) {
                 return new Raised(ErrorValue.of(ErrorCategory.ACCESS, errorId, getMessage()));
             }
             FileValue path = FileValue.of(subject);
             return new Raised(code
-                    .map(number -> ErrorValue.about(ErrorCategory.ACCESS, errorId, getMessage(),
+                    .map(number -> ErrorValue.of(ErrorCategory.ACCESS, errorId, getMessage(),
                             path, IntegerValue.of(number)))
-                    .orElseGet(() -> ErrorValue.about(ErrorCategory.ACCESS, errorId, getMessage(), path)));
+                    .orElseGet(() -> ErrorValue.of(ErrorCategory.ACCESS, errorId, getMessage(), path)));
         }
     }
 
@@ -196,7 +203,7 @@ public interface FilePort {
             }
 
             @Override
-            public String hostPathOf(String path) {
+            public String hostPath(String path) {
                 throw refuse();
             }
 
@@ -221,7 +228,7 @@ public interface FilePort {
             }
 
             @Override
-            public java.util.List<String> namesIn(String path) {
+            public java.util.List<String> listFileNames(String path) {
                 throw refuse();
             }
 
@@ -231,17 +238,17 @@ public interface FilePort {
             }
 
             @Override
-            public String canonicalPathOf(String path) {
+            public Value resolvedFile(String path) {
                 throw refuse();
             }
 
             @Override
-            public String realLocationOf(String path) {
+            public String locationFor(String path) {
                 throw refuse();
             }
 
             @Override
-            public java.util.Optional<FileInformation> informationAbout(String path) {
+            public java.util.Optional<FileInformation> describe(String path) {
                 throw refuse();
             }
 

@@ -17,8 +17,8 @@ public class ToHexNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("value", Set.of(IntegerValue.TYPE, CharacterValue.TYPE, TupleValue.TYPE)),
-                Parameter.belongingTo("size", "len", Set.of(IntegerValue.TYPE)));
+                Parameter.of("value", Set.of(IntegerValue.TYPE, CharacterValue.TYPE, TupleValue.TYPE)),
+                Parameter.belongTo("size", "len", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -29,10 +29,10 @@ public class ToHexNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            HexWidth width = new HexWidth(argumentOf("size", 0, arguments, refinements)
+            HexWidth width = new HexWidth(readTheArgumentOf("size", 0, arguments, refinements)
                     .map(asked -> OptionalLong.of(((IntegerValue) asked).magnitude()))
                     .orElseGet(OptionalLong::empty));
-            return IssueValue.of(arguments.getFirst().writtenInHex(width));
+            return IssueValue.of(arguments.getFirst().writeInHex(width));
         };
     }
 }

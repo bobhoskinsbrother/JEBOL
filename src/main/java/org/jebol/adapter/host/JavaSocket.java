@@ -10,14 +10,14 @@ import java.util.Arrays;
 import java.util.Optional;
 
 /** The network as the JDK already provides it, with nothing cached. */
-public final class JavaSockets implements NetworkPort {
+public final class JavaSocket implements NetworkPort {
 
-    private static final int LONGEST_WAIT_BEFORE_GIVING_UP_MILLISECONDS = 30_000;
+    private static final int TIMEOUT_IN_MILLISECONDS = 30_000;
 
-    private static final int MOST_BYTES_AT_ONCE = 65_536;
+    private static final int MAX_BYTES = 65_536;
 
     @Override
-    public Optional<String> theFirstIpv4AddressOf(String hostName) {
+    public Optional<String> resolveTheFirstIpv4Address(String hostName) {
         try {
             return Arrays.stream(InetAddress.getAllByName(hostName))
                     .filter(Inet4Address.class::isInstance)
@@ -29,17 +29,17 @@ public final class JavaSockets implements NetworkPort {
     }
 
     @Override
-    public Optional<String> theNameAt(String ipv4Address) {
+    public Optional<String> resolveHostName(String ipv4Address) {
         try {
-            String named = InetAddress.getByName(ipv4Address).getHostName();
-            return named.equals(ipv4Address) ? Optional.empty() : Optional.of(named);
+            String hostName = InetAddress.getByName(ipv4Address).getHostName();
+            return hostName.equals(ipv4Address) ? Optional.empty() : Optional.of(hostName);
         } catch (UnknownHostException notAnAddress) {
             return Optional.empty();
         }
     }
 
     @Override
-    public String thisMachinesName() {
+    public String hostName() {
         try {
             return InetAddress.getLocalHost().getHostName();
         } catch (UnknownHostException unnamed) {
@@ -51,20 +51,17 @@ public final class JavaSockets implements NetworkPort {
     public Connection connectTo(String hostName, int portNumber) {
         Socket socket = new Socket();
         try {
-            socket.connect(new InetSocketAddress(hostName, portNumber),
-                    LONGEST_WAIT_BEFORE_GIVING_UP_MILLISECONDS);
-            socket.setSoTimeout(LONGEST_WAIT_BEFORE_GIVING_UP_MILLISECONDS);
+            socket.connect(new InetSocketAddress(hostName, portNumber), TIMEOUT_IN_MILLISECONDS);
+            socket.setSoTimeout(TIMEOUT_IN_MILLISECONDS);
             return new SocketConnection(socket);
         } catch (UnknownHostException noSuchHost) {
-            closeQuietly(socket);
-            throw new Refused("no-connect",
-                    "no host of that name", hostName);
+            close(socket);
+            throw new Refused("no-connect", "no host of that name", hostName);
         } catch (SocketTimeoutException tookTooLong) {
-            closeQuietly(socket);
-            throw new Refused("no-connect",
-                    "the host did not answer in time", hostName);
+            close(socket);
+            throw new Refused("no-connect", "the host did not answer in time", hostName);
         } catch (IOException refused) {
-            closeQuietly(socket);
+            close(socket);
             throw new Refused("no-connect",
                     refused.getMessage() == null ? "the connection failed"
                             : refused.getMessage(),
@@ -76,7 +73,7 @@ public final class JavaSockets implements NetworkPort {
     public Datagrams bindTo(int portNumber) {
         try {
             DatagramSocket bound = new DatagramSocket(portNumber);
-            bound.setSoTimeout(LONGEST_WAIT_BEFORE_GIVING_UP_MILLISECONDS);
+            bound.setSoTimeout(TIMEOUT_IN_MILLISECONDS);
             return new BoundDatagrams(bound);
         } catch (SocketException alreadyHeld) {
             throw new Refused("no-connect",
@@ -107,7 +104,7 @@ public final class JavaSockets implements NetworkPort {
 
         @Override
         public byte[] receive() {
-            byte[] room = new byte[MOST_BYTES_AT_ONCE];
+            byte[] room = new byte[MAX_BYTES];
             DatagramPacket arrived = new DatagramPacket(room, room.length);
             try {
                 socket.receive(arrived);
@@ -134,30 +131,30 @@ public final class JavaSockets implements NetworkPort {
         }
     }
 
-    private static void closeQuietly(Socket socket) {
+    private void close(Socket socket) {
         try {
             socket.close();
-        } catch (IOException theTidyingUpFailedAndTheCallerIsAlreadyBeingToldWhy) {
+        } catch (IOException ignored) {
         }
     }
 
-    private static final class SocketConnection implements Connection {
+    private final class SocketConnection implements Connection {
 
         private final Socket socket;
-        private final InputStream incoming;
-        private final OutputStream outgoing;
+        private final InputStream input;
+        private final OutputStream output;
 
         private SocketConnection(Socket socket) throws IOException {
             this.socket = socket;
-            this.incoming = socket.getInputStream();
-            this.outgoing = socket.getOutputStream();
+            this.input = socket.getInputStream();
+            this.output = socket.getOutputStream();
         }
 
         @Override
         public byte[] read() {
             try {
-                byte[] room = new byte[MOST_BYTES_AT_ONCE];
-                int arrived = incoming.read(room);
+                byte[] room = new byte[MAX_BYTES];
+                int arrived = input.read(room);
                 return arrived <= 0 ? new byte[0] : Arrays.copyOf(room, arrived);
             } catch (SocketTimeoutException nothingCame) {
                 return new byte[0];
@@ -170,8 +167,8 @@ public final class JavaSockets implements NetworkPort {
         @Override
         public void write(byte[] bytes) {
             try {
-                outgoing.write(bytes);
-                outgoing.flush();
+                output.write(bytes);
+                output.flush();
             } catch (IOException broken) {
                 throw new Refused("no-connect",
                         "the connection broke while writing", describe());
@@ -185,7 +182,7 @@ public final class JavaSockets implements NetworkPort {
 
         @Override
         public void close() {
-            closeQuietly(socket);
+            JavaSocket.this.close(socket);
         }
 
         private String describe() {

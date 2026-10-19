@@ -2,10 +2,10 @@ package org.jebol.domain.value;
 
 public interface PathTarget {
 
-    Value steppedIntoBy(Value selector);
+    Value stepIntoBy(Value selector);
 
     default Slot placeSteppedIntoBy(Value selector) {
-        return new ComputedSlot(steppedIntoBy(selector), selector);
+        return new ComputedSlot(stepIntoBy(selector), selector);
     }
 
     default void writeThrough(Slot place, Value selector, Value written) {

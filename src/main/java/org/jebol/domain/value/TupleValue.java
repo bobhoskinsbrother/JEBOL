@@ -40,7 +40,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     private static final int HEX_DIGITS_A_SEGMENT = 2;
 
     @Override
-    public String writtenInHex(HexWidth width) {
+    public String writeInHex(HexWidth width) {
         StringBuilder hex = new StringBuilder();
         for (int segment : segments) {
             hex.append("%02X".formatted(segment));
@@ -48,7 +48,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
         for (int padded = segments.length; padded < MINIMUM_SHOWN_SEGMENTS; padded++) {
             hex.append("00");
         }
-        return width.keptFromTheLeft(hex.toString(), HEX_DIGITS_A_SEGMENT * segments.length);
+        return width.keepFromTheLeft(hex.toString(), HEX_DIGITS_A_SEGMENT * segments.length);
     }
 
     public TupleValue {
@@ -74,18 +74,18 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     }
 
     @Override
-    public Value arithmetic(Value right, ArithmeticOperation operation) {
-        return new TupleActions().combinedWith(this, right, operation);
+    public Value calculate(Value right, ArithmeticOperation operation) {
+        return new TupleActions().combineWith(this, right, operation);
     }
 
     @Override
-    public Value heldBetween(Value lowest, Value highest) {
+    public Value holdBetween(Value lowest, Value highest) {
         TupleValue floor = (TupleValue) lowest;
         TupleValue ceiling = (TupleValue) highest;
         int[] held = new int[segments.length];
         for (int at = 0; at < held.length; at++) {
-            held[at] = Math.max(floor.octetAt(at + 1),
-                    Math.min(ceiling.octetAt(at + 1), segments[at]));
+            held[at] = Math.max(floor.readTheOctetAt(at + 1),
+                    Math.min(ceiling.readTheOctetAt(at + 1), segments[at]));
         }
         return TupleValue.of(held);
     }
@@ -98,44 +98,44 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
         int width = Math.max(segmentCount(), reached.segmentCount());
         int[] octets = new int[width];
         for (int at = 1; at <= width; at++) {
-            int from = octetAt(at);
-            octets[at - 1] = (int) (from + (reached.octetAt(at) - from) * fraction);
+            int from = readTheOctetAt(at);
+            octets[at - 1] = (int) (from + (reached.readTheOctetAt(at) - from) * fraction);
         }
         return TupleValue.of(octets);
     }
 
 
     @Override
-    public Value bitwise(Value right, BitwiseOperation operation) {
+    public Value combineBitwise(Value right, BitwiseOperation operation) {
         return switch (right) {
-            case TupleValue theirs -> octetByOctetAgainst(theirs, operation);
-            case IntegerValue(long magnitude) -> everyOctetAgainst(magnitude, operation);
-            default -> throw Raised.notRelated(this, right);
+            case TupleValue theirs -> combineOctetByOctetAgainst(theirs, operation);
+            case IntegerValue(long magnitude) -> combineEveryOctetAgainst(magnitude, operation);
+            default -> throw Raised.ofUnrelated(this, right);
         };
     }
 
-    private Value everyOctetAgainst(long magnitude, BitwiseOperation operation) {
+    private Value combineEveryOctetAgainst(long magnitude, BitwiseOperation operation) {
         int[] combined = new int[segments.length];
         for (int at = 0; at < combined.length; at++) {
-            combined[at] = clampedToAnOctet(
+            combined[at] = clampToAnOctet(
                     operation.onWholeElements(segments[at], magnitude));
         }
         return TupleValue.of(combined);
     }
 
-    private Value octetByOctetAgainst(TupleValue theirs, BitwiseOperation operation) {
+    private Value combineOctetByOctetAgainst(TupleValue theirs, BitwiseOperation operation) {
         int[] yours = theirs.segments;
         int[] combined = new int[Math.max(segments.length, yours.length)];
         for (int at = 0; at < combined.length; at++) {
             long mine = at < segments.length ? segments[at] : 0;
             long theirsHere = at < yours.length ? yours[at] : 0;
-            combined[at] = clampedToAnOctet(
+            combined[at] = clampToAnOctet(
                     operation.onWholeElements(mine, theirsHere));
         }
         return TupleValue.of(combined);
     }
 
-    private int clampedToAnOctet(long combined) {
+    private int clampToAnOctet(long combined) {
         return (int) Math.clamp(combined, 0L, 255L);
     }
 
@@ -149,7 +149,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
         return Math.max(segments.length, MINIMUM_SHOWN_SEGMENTS);
     }
 
-    public TupleValue reversedFront(int howMany) {
+    public TupleValue reverseTheFront(int howMany) {
         if (howMany < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Integer.toString(howMany));
         }
@@ -164,20 +164,20 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     }
 
     @Override
-    public Value picked(int oneBasedPosition) {
+    public Value pick(int oneBasedPosition) {
         return oneBasedPosition < 1 || oneBasedPosition > shownCount()
                 ? NoneValue.none()
-                : IntegerValue.of(octetAt(oneBasedPosition));
+                : IntegerValue.of(readTheOctetAt(oneBasedPosition));
     }
 
     @Override
-    public Value steppedIntoBy(Value selector) {
+    public Value stepIntoBy(Value selector) {
         if (!(selector instanceof IntegerValue(long at))) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
                     "cannot select " + selector.datatype().literalSpelling()
                             + " from " + datatype().literalSpelling());
         }
-        return at < 1 || at > shownCount() ? NoneValue.none() : picked((int) at);
+        return at < 1 || at > shownCount() ? NoneValue.none() : pick((int) at);
     }
 
     @Override
@@ -200,21 +200,21 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
             case AnyDecimalValue quantity -> (long) quantity.quantity();
             default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET);
         };
-        int[] octets = octetsToTwelve();
+        int[] octets = padTheOctetsToTwelve();
         octets[position - 1] = (int) Math.max(0, Math.min(TupleDatatype.THE_LARGEST_OCTET, amount));
         int kept = position > shownCount() ? position : segmentCount();
         return TupleValue.of(Arrays.copyOf(octets, kept));
     }
 
     /** An octet by position, counting from one, and zero past the kept ones. */
-    public int octetAt(int oneBasedPosition) {
+    public int readTheOctetAt(int oneBasedPosition) {
         return oneBasedPosition >= 1 && oneBasedPosition <= segments.length
                 ? segments[oneBasedPosition - 1]
                 : 0;
     }
 
     /** The octets a comparison sees: what was written, then zeros. */
-    public int[] octetsToTwelve() {
+    public int[] padTheOctetsToTwelve() {
         int[] all = new int[MAXIMUM_SEGMENTS];
         System.arraycopy(segments, 0, all, 0, segments.length);
         return all;
@@ -228,7 +228,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     private static final int THE_BITS_OF_AN_OCTET = 0xFF;
 
     @Override
-    public Value randomised(RandomDraw draw) {
+    public Value randomise(RandomDraw draw) {
         int[] octets = segments();
         for (int at = 0; at < octets.length; at++) {
             if (octets[at] != 0) {
@@ -240,13 +240,13 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
 
     @Override
     public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
-        return checksumOfTheOctets.applyAsLong(shownOctets());
+        return checksumOfTheOctets.applyAsLong(listTheShownOctets());
     }
 
-    private byte[] shownOctets() {
+    private byte[] listTheShownOctets() {
         byte[] octets = new byte[shownCount()];
         for (int at = 0; at < octets.length; at++) {
-            octets[at] = (byte) octetAt(at + 1);
+            octets[at] = (byte) readTheOctetAt(at + 1);
         }
         return octets;
     }
@@ -267,44 +267,44 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
                 case TupleValue already -> already;
-                case AnyStringValue text -> tupleScannedFrom(text.text(), from);
-                case AnyBlockValue segments -> tupleOfSegments(segments);
-                case BinaryValue octets -> tupleOfOctets(octets);
-                case IssueValue issue -> tupleOfHexPairs(issue.spelling(), from);
-                default -> throw refusing(from);
+                case AnyStringValue text -> scanATupleFrom(text.text(), from);
+                case AnyBlockValue segments -> makeATupleOfSegments(segments);
+                case BinaryValue octets -> makeATupleOfOctets(octets);
+                case IssueValue issue -> makeATupleOfHexPairs(issue.spelling(), from);
+                default -> throw refuse(from);
             };
         }
 
-        private Value tupleOfSegments(AnyBlockValue segments) {
+        private Value makeATupleOfSegments(AnyBlockValue segments) {
             List<Value> items = segments.remaining();
             if (items.size() > MAXIMUM_SEGMENTS) {
-                throw refusing(segments);
+                throw refuse(segments);
             }
             int[] octets = new int[items.size()];
             for (int at = 0; at < items.size(); at++) {
-                octets[at] = octetOf(items.get(at), segments);
+                octets[at] = readTheOctetOf(items.get(at), segments);
             }
             return TupleValue.of(octets);
         }
 
-        private int octetOf(Value item, Value whole) {
+        private int readTheOctetOf(Value item, Value whole) {
             long number = switch (item) {
                 case IntegerValue wholeNumber -> wholeNumber.magnitude();
                 case CharacterValue letter -> letter.codepoint();
                 case AnyDecimalValue fractional -> Math.round(Math.abs(fractional.quantity()))
                         * (fractional.quantity() < 0 ? -1 : 1);
-                default -> throw refusing(whole);
+                default -> throw refuse(whole);
             };
             if (number < 0 || number > THE_LARGEST_OCTET) {
-                throw refusing(whole);
+                throw refuse(whole);
             }
             return (int) number;
         }
 
-        private Value tupleOfOctets(BinaryValue octets) {
+        private Value makeATupleOfOctets(BinaryValue octets) {
             int width = Math.min(octets.lengthFromHere(), MAXIMUM_SEGMENTS);
             int[] kept = new int[width];
             for (int at = 0; at < width; at++) {
@@ -313,25 +313,25 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
             return TupleValue.of(kept);
         }
 
-        private Value tupleOfHexPairs(String digits, Value original) {
+        private Value makeATupleOfHexPairs(String digits, Value original) {
             if (digits.length() % 2 != 0 || digits.length() / 2 > MAXIMUM_SEGMENTS) {
-                throw refusing(original);
+                throw refuse(original);
             }
             int[] octets = new int[digits.length() / 2];
             for (int at = 0; at < octets.length; at++) {
                 try {
                     octets[at] = Integer.parseInt(digits.substring(at * 2, at * 2 + 2), 16);
                 } catch (NumberFormatException notHexadecimal) {
-                    throw refusing(original);
+                    throw refuse(original);
                 }
             }
             return TupleValue.of(octets);
         }
 
-        private Value tupleScannedFrom(String text, Value original) {
+        private Value scanATupleFrom(String text, Value original) {
             String[] parts = text.split("\\.", -1);
             if (text.isEmpty() || parts.length > MAXIMUM_SEGMENTS) {
-                throw refusing(original);
+                throw refuse(original);
             }
             int width = Math.max(parts.length, MINIMUM_SHOWN_SEGMENTS);
             int[] octets = new int[width];
@@ -343,10 +343,10 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
                 try {
                     written = Integer.parseInt(parts[at].trim());
                 } catch (NumberFormatException notANumber) {
-                    throw refusing(original);
+                    throw refuse(original);
                 }
                 if (written < 0 || written > THE_LARGEST_OCTET) {
-                    throw refusing(original);
+                    throw refuse(original);
                 }
                 octets[at] = written;
             }
@@ -357,18 +357,18 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     @Override
     public boolean equals(Object other) {
         return other instanceof TupleValue tuple
-                && Arrays.equals(octetsToTwelve(), tuple.octetsToTwelve());
+                && Arrays.equals(padTheOctetsToTwelve(), tuple.padTheOctetsToTwelve());
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(octetsToTwelve());
+        return Arrays.hashCode(padTheOctetsToTwelve());
     }
 
     @Override
     public String toString() {
         return IntStream.rangeClosed(1, shownCount())
-                .mapToObj(position -> Integer.toString(octetAt(position)))
+                .mapToObj(position -> Integer.toString(readTheOctetAt(position)))
                 .collect(Collectors.joining("."));
     }
 }

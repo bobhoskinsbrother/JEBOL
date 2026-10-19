@@ -26,7 +26,7 @@ public abstract class GobScreen implements ScreenPort {
     }
 
     @Override
-    public void takeTheRootGob(GobValue given) {
+    public void acceptRootGob(GobValue given) {
         this.root = given;
     }
 
@@ -34,17 +34,17 @@ public abstract class GobScreen implements ScreenPort {
      * Leaves an event where a toolkit's own thread may put it, to be moved
      * into the interpreter's queue when the interpreter asks for one.
      */
-    protected final void posted(ScreenEventKind kind, GobValue window) {
+    protected final void post(ScreenEventType kind, GobValue window) {
         postedFromAnotherThread.add(new ScreenEvent(kind, window));
     }
 
     /** The same, for an event that carries where it happened or which key. */
-    protected final void posted(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
+    protected final void post(ScreenEventType kind, GobValue window, ScreenEventDetail detail) {
         postedFromAnotherThread.add(new ScreenEvent(kind, window, detail));
     }
 
     @Override
-    public Optional<ScreenEvent> takeTheNextEvent() {
+    public Optional<ScreenEvent> acceptNextEvent() {
         moveEverythingPostedFromAnotherThread();
         return queued.takeTheOldest();
     }
@@ -53,14 +53,14 @@ public abstract class GobScreen implements ScreenPort {
         for (ScreenEvent next = postedFromAnotherThread.poll();
                 next != null;
                 next = postedFromAnotherThread.poll()) {
-            queued.add(next.kind(), next.window(), next.detail());
+            queued.add(next.type(), next.window(), next.detail());
         }
     }
 
     @Override
     public void show(GobValue gob) {
-        if (!hasADisplay()) {
-            throw nothingToShowOn();
+        if (!hasDisplay()) {
+            throw refuseWithNoService();
         }
         if (root == null) {
             return;
@@ -74,46 +74,46 @@ public abstract class GobScreen implements ScreenPort {
             return;
         }
         if (hasAWindow(gob)) {
-            closeTheWindowFor(gob);
+            closeWindowFor(gob);
             return;
         }
-        theWindowHolding(gob).filter(this::hasAWindow).ifPresent(this::repaintTheWindowFor);
+        findTheWindowHolding(gob).filter(this::hasAWindow).ifPresent(this::repaintWindowFor);
     }
 
-    protected abstract Denied nothingToShowOn();
+    protected abstract Denied refuseWithNoService();
 
-    protected abstract List<GobValue> gobsWithWindows();
+    protected abstract List<GobValue> gobWithWindow();
 
-    protected abstract void openTheWindowFor(GobValue gob);
+    protected abstract void openWindowFor(GobValue gob);
 
-    protected abstract void repaintTheWindowFor(GobValue gob);
+    protected abstract void repaintWindowFor(GobValue gob);
 
-    protected abstract void closeTheWindowFor(GobValue gob);
+    protected abstract void closeWindowFor(GobValue gob);
 
     protected boolean hasAWindow(GobValue gob) {
-        return gobsWithWindows().stream().anyMatch(gob::sharesStorageWith);
+        return gobWithWindow().stream().anyMatch(gob::sharesStorageWith);
     }
 
     private void closeWhatLeftThePaneBeforeOpeningWhatArrivedInIt() {
-        for (GobValue standing : List.copyOf(gobsWithWindows())) {
+        for (GobValue standing : List.copyOf(gobWithWindow())) {
             if (!isInTheRootsPane(standing)) {
-                closeTheWindowFor(standing);
+                closeWindowFor(standing);
             }
         }
-        for (GobValue child : childrenOfTheRoot()) {
+        for (GobValue child : listTheChildrenOfTheRoot()) {
             openOrRepaint(child);
         }
     }
 
     private void openOrRepaint(GobValue gob) {
         if (hasAWindow(gob)) {
-            repaintTheWindowFor(gob);
+            repaintWindowFor(gob);
             return;
         }
-        openTheWindowFor(gob);
+        openWindowFor(gob);
     }
 
-    private Optional<GobValue> theWindowHolding(GobValue gob) {
+    private Optional<GobValue> findTheWindowHolding(GobValue gob) {
         GobStorage outermost = gob.storage();
         while (outermost.parent() != null && outermost.parent() != root.storage()) {
             outermost = outermost.parent();
@@ -122,12 +122,12 @@ public abstract class GobScreen implements ScreenPort {
             return Optional.empty();
         }
         GobStorage inTheRootsPane = outermost;
-        return childrenOfTheRoot().stream()
+        return listTheChildrenOfTheRoot().stream()
                 .filter(child -> child.storage() == inTheRootsPane)
                 .findFirst();
     }
 
-    protected List<GobValue> childrenOfTheRoot() {
+    protected List<GobValue> listTheChildrenOfTheRoot() {
         List<GobValue> children = new ArrayList<>();
         for (Value child : root.storage().pane()) {
             if (child instanceof GobValue held) {
@@ -138,6 +138,6 @@ public abstract class GobScreen implements ScreenPort {
     }
 
     protected boolean isInTheRootsPane(GobValue gob) {
-        return childrenOfTheRoot().stream().anyMatch(gob::sharesStorageWith);
+        return listTheChildrenOfTheRoot().stream().anyMatch(gob::sharesStorageWith);
     }
 }

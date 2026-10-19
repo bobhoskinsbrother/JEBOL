@@ -19,8 +19,8 @@ public class MapGobOffsetNative extends GobMappingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("gob", Set.of(GobValue.TYPE)),
-                Parameter.required("xy", Set.of(PairValue.TYPE)));
+                Parameter.of("gob", Set.of(GobValue.TYPE)),
+                Parameter.of("xy", Set.of(PairValue.TYPE)));
     }
 
     @Override
@@ -34,12 +34,12 @@ public class MapGobOffsetNative extends GobMappingNative {
             GobValue from = (GobValue) arguments.get(0);
             PairValue point = (PairValue) arguments.get(1);
             return refinements.contains("reverse")
-                    ? mappedOutwards(from, point)
-                    : mappedInwards(from, point);
+                    ? mapOutwards(from, point)
+                    : mapInwards(from, point);
         };
     }
 
-    private Value mappedOutwards(GobValue from, PairValue point) {
+    private Value mapOutwards(GobValue from, PairValue point) {
         GobValue reached = from;
         double addedX = point.x();
         double addedY = point.y();
@@ -48,6 +48,6 @@ public class MapGobOffsetNative extends GobMappingNative {
             addedY += reached.storage().offset().y();
             reached = new GobValue(reached.storage().parent(), 1);
         }
-        return gobAndPoint(reached, PairValue.of(addedX, addedY));
+        return pairTheGobWithThePoint(reached, PairValue.of(addedX, addedY));
     }
 }

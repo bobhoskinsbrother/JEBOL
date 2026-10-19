@@ -14,64 +14,64 @@ class EnumTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("names with no values count from zero")
-    void theCountingStartsAtZero() {
+    void startsCountingAtZero() {
         assertThat(answerTo("e: enum [a b c] \"letters\" e/a")).isEqualTo("0");
         assertThat(answerTo("e: enum [a b c] \"letters\" e/c")).isEqualTo("2");
     }
 
     @Test
     @DisplayName("a bare number after a name is refused, not read as that name's value")
-    void aBareNumberIsRefused() {
-        assertThat(errorIdOf("enum [a 5 b] \"x\"")).isEqualTo("invalid-data");
+    void refusesABareNumber() {
+        assertThat(readTheErrorIdOf("enum [a 5 b] \"x\"")).isEqualTo("invalid-data");
         assertThat(answerTo("e: enum [a: 5 b] \"x\" e/b")).isEqualTo("6");
     }
 
     @Test
     @DisplayName("NAME gives back the name of a value")
-    void aValueCanBeNamed() {
+    void namesAValue() {
         assertThat(answerTo("e: enum [a b c] \"letters\" e/name 1")).isEqualTo("b");
     }
 
     @Test
     @DisplayName("NAME of a value that is not there answers none")
-    void anUnknownValueHasNoName() {
+    void givesAnUnknownValueNoName() {
         assertThat(answerTo("e: enum [a b] \"x\" none? e/name 9")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("ASSERT holds for a value in the enumeration")
-    void aKnownValuePasses() {
+    void passesAKnownValue() {
         assertThat(answerTo("e: enum [a b c] \"letters\" e/assert 2")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("ASSERT fails for a value that is not there")
-    void anUnknownValueFails() {
-        assertThat(errorIdOf("e: enum [a b] \"x\" e/assert 9"))
+    void failsAnUnknownValue() {
+        assertThat(readTheErrorIdOf("e: enum [a b] \"x\" e/assert 9"))
                 .isEqualTo("invalid-value-for");
     }
 
     @Test
     @DisplayName("the title is kept on the object")
-    void theEnumerationKnowsItsName() {
+    void knowsItsName() {
         assertThat(answerTo("e: enum [a] \"letters\" e/title*")).isEqualTo("\"letters\"");
     }
 
     @Test
     @DisplayName("something that is not a name is refused")
-    void aWrongItemIsRefused() {
-        assertThat(errorIdOf("enum [1 2] \"x\"")).isEqualTo("invalid-data");
+    void refusesAWrongItem() {
+        assertThat(readTheErrorIdOf("enum [1 2] \"x\"")).isEqualTo("invalid-data");
     }
 
     @Test
     @DisplayName("an empty specification makes an empty enumeration")
-    void theDegenerateSpecification() {
+    void handlesTheDegenerateSpecification() {
         assertThat(answerTo("e: enum [] \"nothing\" empty? values-of e")).isEqualTo("#(false)");
     }
 }

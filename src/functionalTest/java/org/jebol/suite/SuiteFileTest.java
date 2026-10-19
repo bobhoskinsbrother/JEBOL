@@ -22,7 +22,7 @@ class SuiteFileTest {
     @TempDir
     Path folder;
 
-    private SuiteFile fileHolding(String body) {
+    private SuiteFile makeAFileHolding(String body) {
         Path written = folder.resolve("made-up-test.r3");
         try {
             Files.writeString(written, """
@@ -46,51 +46,51 @@ class SuiteFileTest {
     class Slicing {
 
         @Test
-        void oneAssertionIsFound() {
-            assertThat(fileHolding("\t--assert true").assertions()).hasSize(1);
+        void findsOneAssertion() {
+            assertThat(makeAFileHolding("\t--assert true").assertions()).hasSize(1);
         }
 
         @Test
-        void twoAssertionsAreFoundSeparately() {
-            assertThat(fileHolding("\t--assert true\n\t--assert false").assertions())
+        void findsTwoAssertionsSeparately() {
+            assertThat(makeAFileHolding("\t--assert true\n\t--assert false").assertions())
                     .hasSize(2);
         }
 
         @Test
-        void aFileWithNoAssertionsYieldsNone() {
-            assertThat(fileHolding("").assertions()).isEmpty();
+        void findsNoneInAFileWithNoAssertions() {
+            assertThat(makeAFileHolding("").assertions()).isEmpty();
         }
 
         @Test
-        void theHarnessWordsAreNotThemselvesAssertions() {
-            assertThat(fileHolding("\t--assert true").steps())
+        void skipsTheHarnessWords() {
+            assertThat(makeAFileHolding("\t--assert true").steps())
                     .allSatisfy(step -> assertThat(step.isAssertion()
                             || step.setup() != null).isTrue());
         }
 
         @Test
-        void anAssertionKnowsWhichGroupItCameFrom() {
-            assertThat(fileHolding("\t--assert true").assertions().getFirst().group())
+        void tellsAnAssertionItsGroup() {
+            assertThat(makeAFileHolding("\t--assert true").assertions().getFirst().group())
                     .isEqualTo("a group");
         }
 
         @Test
-        void anAssertionKnowsWhichTestItCameFrom() {
-            assertThat(fileHolding("\t--assert true").assertions().getFirst().test())
+        void tellsAnAssertionItsTest() {
+            assertThat(makeAFileHolding("\t--assert true").assertions().getFirst().test())
                     .isEqualTo("a test");
         }
 
         @Test
         void setupBetweenAssertionsIsKeptAsAStep() {
-            SuiteFile read = fileHolding("\ta: 5\n\t--assert a = 5");
+            SuiteFile read = makeAFileHolding("\ta: 5\n\t--assert a = 5");
 
             assertThat(read.steps()).anySatisfy(step ->
                     assertThat(step.isAssertion()).isFalse());
         }
 
         @Test
-        void stepsComeBackInFileOrder() {
-            SuiteFile read = fileHolding("\ta: 5\n\t--assert a = 5");
+        void returnsStepsInFileOrder() {
+            SuiteFile read = makeAFileHolding("\ta: 5\n\t--assert a = 5");
             List<SuiteFile.Step> steps = read.steps();
 
             int setupAt = -1;
@@ -111,45 +111,45 @@ class SuiteFileTest {
     class Fidelity {
 
         @Test
-        void aDecimalKeepsEveryDigitItWasWrittenWith() {
-            SuiteFile read = fileHolding("\t--assert even? 1.7976931348623157e308");
+        void keepsEveryDigitOfADecimal() {
+            SuiteFile read = makeAFileHolding("\t--assert even? 1.7976931348623157e308");
 
             assertThat(read.assertions().getFirst().source())
                     .contains("1.7976931348623157e308");
         }
 
         @Test
-        void aSmallDecimalKeepsItsDigitsToo() {
-            SuiteFile read = fileHolding("\t--assert 0.1234567890123456 > 0");
+        void keepsTheDigitsOfASmallDecimal() {
+            SuiteFile read = makeAFileHolding("\t--assert 0.1234567890123456 > 0");
 
             assertThat(read.assertions().getFirst().source())
                     .contains("0.1234567890123456");
         }
 
         @Test
-        void anIntegerIsUnchanged() {
-            SuiteFile read = fileHolding("\t--assert 42 = 42");
+        void leavesAnIntegerUnchanged() {
+            SuiteFile read = makeAFileHolding("\t--assert 42 = 42");
 
             assertThat(read.assertions().getFirst().source()).contains("42");
         }
 
         @Test
-        void aStringKeepsItsQuotes() {
-            SuiteFile read = fileHolding("\t--assert \"ab\" = \"ab\"");
+        void keepsAStringsQuotes() {
+            SuiteFile read = makeAFileHolding("\t--assert \"ab\" = \"ab\"");
 
             assertThat(read.assertions().getFirst().source()).contains("\"ab\"");
         }
 
         @Test
-        void aTimeIsNotTurnedIntoSomethingElse() {
-            SuiteFile read = fileHolding("\t--assert 0:00:01 = 0:00:01");
+        void keepsATimeATime() {
+            SuiteFile read = makeAFileHolding("\t--assert 0:00:01 = 0:00:01");
 
             assertThat(read.assertions().getFirst().source()).contains("0:00:01");
         }
 
         @Test
-        void aLitWordKeepsItsTick() {
-            SuiteFile read = fileHolding("\t--assert 'invalid-compare = 'invalid-compare");
+        void keepsALitWordsTick() {
+            SuiteFile read = makeAFileHolding("\t--assert 'invalid-compare = 'invalid-compare");
 
             assertThat(read.assertions().getFirst().source()).contains("'invalid-compare");
         }
@@ -161,7 +161,7 @@ class SuiteFileTest {
 
         @Test
         @DisplayName("every assertion's source can still be read")
-        void everySourceStillReads() {
+        void stillReadsEverySource() {
             List<String> unreadable = new java.util.ArrayList<>();
 
             for (SuiteFile file : RebolSuiteTest.filesInSuite()) {
@@ -181,14 +181,14 @@ class SuiteFileTest {
 
         @Test
         @DisplayName("every assertion's source is text the file actually contains")
-        void nothingIsRewrittenOnTheWayOut() {
+        void rewritesNothingOnTheWayOut() {
             List<String> rewritten = new java.util.ArrayList<>();
 
             for (SuiteFile file : RebolSuiteTest.filesInSuite()) {
-                String original = withoutWhitespace(read(
+                String original = stripWhitespace(read(
                         Path.of("src", "testFixtures", "resources", "rebol-suite", file.name())));
                 for (SuiteFile.Assertion assertion : file.assertions()) {
-                    String source = withoutWhitespace(assertion.source());
+                    String source = stripWhitespace(assertion.source());
                     if (!source.isEmpty() && !original.contains(source)) {
                         rewritten.add(assertion + "  ->  " + assertion.source());
                     }
@@ -198,7 +198,7 @@ class SuiteFileTest {
             assertThat(rewritten).isEmpty();
         }
 
-        private static String withoutWhitespace(String text) {
+        private static String stripWhitespace(String text) {
             return text.replaceAll("\\s+", "");
         }
 
@@ -218,7 +218,7 @@ class SuiteFileTest {
         @Test
         @DisplayName("carries the mark, and an unmarked one does not")
         void carriesTheMark() {
-            List<SuiteFile.Assertion> assertions = fileHolding("""
+            List<SuiteFile.Assertion> assertions = makeAFileHolding("""
                     --assert 1 = 1
                     --red-- --assert 2 = 3""").assertions();
 
@@ -228,8 +228,8 @@ class SuiteFileTest {
 
         @Test
         @DisplayName("the mark covers one assertion, not the rest of the file")
-        void theMarkCoversOneAssertion() {
-            List<SuiteFile.Assertion> assertions = fileHolding("""
+        void coversOneAssertion() {
+            List<SuiteFile.Assertion> assertions = makeAFileHolding("""
                     --red-- --assert 2 = 3
                     --assert 1 = 1""").assertions();
 
@@ -239,8 +239,8 @@ class SuiteFileTest {
 
         @Test
         @DisplayName("and the mark is not left in the assertion's own source")
-        void theMarkIsNotInTheSource() {
-            List<SuiteFile.Assertion> assertions = fileHolding("""
+        void staysOutOfTheSource() {
+            List<SuiteFile.Assertion> assertions = makeAFileHolding("""
                     --red-- --assert 2 = 3""").assertions();
 
             assertThat(assertions).singleElement()
@@ -250,7 +250,7 @@ class SuiteFileTest {
 
         @Test
         @DisplayName("Rebol's own files use it, and power-test is where it bites")
-        void rebolsOwnFilesUseIt() {
+        void appearsInRebolsOwnFiles() {
             List<SuiteFile.Assertion> marked = RebolSuiteTest.filesInSuite().stream()
                     .flatMap(file -> file.assertions().stream())
                     .filter(SuiteFile.Assertion::redOnly)

@@ -13,7 +13,7 @@ import org.jebol.domain.value.AnyWordValue;
 public abstract class SteppingThroughNative extends LoopingNative {
 
     protected Value walkBySteps(Evaluator evaluator, AnyWordValue word, int step, AnyBlockValue body) {
-        ContextSlot slot = word.boundSlot();
+        ContextSlot slot = word.findTheBoundSlot();
         if (slot.value() instanceof NoneValue nothing) {
             return nothing;
         }
@@ -24,31 +24,31 @@ public abstract class SteppingThroughNative extends LoopingNative {
             slot.setValue(start.atIndex(start.storageLength() + 1 + step));
         }
         return answerOfTheLoop(() -> {
-            Value last = walkedFrom(evaluator, slot, start.datatype(), step, body);
+            Value last = walkFrom(evaluator, slot, start.datatype(), step, body);
             slot.setValue(start);
             return last;
         });
     }
 
-    private Value walkedFrom(Evaluator evaluator, ContextSlot slot, Datatype walkingA,
-            int step, AnyBlockValue body) {
+    private Value walkFrom(Evaluator evaluator, ContextSlot slot, Datatype walkingA,
+                           int step, AnyBlockValue body) {
 
         Value last = NoneValue.none();
         while (slot.value() instanceof RebolSeries here
                 && here.index() >= 1 && here.index() <= here.storageLength()) {
-            last = oneRoundCatchingContinue(evaluator, body, evaluator.systemContext());
+            last = runOneRoundCatchingContinue(evaluator, body, evaluator.systemContext());
             if (!(slot.value() instanceof RebolSeries moved)
                     || moved.datatype() != walkingA) {
                 throw Raised.cannotUse(slot.value(), "forall");
             }
-            if (!steppedOnwards(slot, moved, step)) {
+            if (!stepOnwards(slot, moved, step)) {
                 break;
             }
         }
         return last;
     }
 
-    private boolean steppedOnwards(ContextSlot slot, RebolSeries moved, int step) {
+    private boolean stepOnwards(ContextSlot slot, RebolSeries moved, int step) {
         int next = moved.index() + step;
         if (next > moved.storageLength() && step < 0) {
             next = moved.storageLength() + 1 + step;

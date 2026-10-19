@@ -26,7 +26,7 @@ class CopyingAnErrorFromTheSourceTest {
 
     @Test
     @DisplayName("and writing a field of the copy leaves the original alone")
-    void writingAFieldOfTheCopyLeavesTheOriginalAlone() {
+    void leavesTheOriginalAloneWhenTheCopyIsWritten() {
         assertThat(answerTo("""
                 raised: try [1 / 0]
                 taken: copy raised
@@ -36,7 +36,7 @@ class CopyingAnErrorFromTheSourceTest {
 
     @Test
     @DisplayName("the fields themselves are shared until /DEEP says otherwise")
-    void theFieldsAreSharedUntilDeepSaysOtherwise() {
+    void sharesTheFieldsUntilDeepSaysOtherwise() {
         assertThat(answerTo("""
                 raised: make error! [type: 'User id: 'message arg1: [1 2]]
                 shallow: copy raised

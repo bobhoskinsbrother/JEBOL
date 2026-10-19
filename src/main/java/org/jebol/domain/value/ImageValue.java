@@ -20,7 +20,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     private record PixelWrite(int red, int green, int blue, int alpha,
             boolean writesTheColour, boolean writesTheAlpha) {
 
-        void into(ImageStorage storage, int pixel) {
+        void writeInto(ImageStorage storage, int pixel) {
             if (writesTheColour) {
                 storage.setColourAt(pixel, red, green, blue);
             }
@@ -50,29 +50,29 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     }
 
     @Override
-    public long positionNamedBy(Value given, boolean countingFromOne) {
+    public long findThePositionNamedBy(Value given, boolean countingFromOne) {
         if (!(given instanceof PairValue(double x, double y))) {
-            return RebolSeries.super.positionNamedBy(given, countingFromOne);
+            return RebolSeries.super.findThePositionNamedBy(given, countingFromOne);
         }
         return ((long) y - (countingFromOne ? 1 : 0)) * storage.wide() + (long) x;
     }
 
     @Override
-    public Value itemAt(int positionFromTheHead) {
-        int[] channels = storage.pixelAt(positionFromTheHead);
+    public Value readTheItemAt(int positionFromTheHead) {
+        int[] channels = storage.readThePixelAt(positionFromTheHead);
         return TupleValue.of(channels[0], channels[1], channels[2], channels[3]);
     }
 
     @Override
-    public Value frontCopied(int howMany, boolean deeply, Set<Datatype> kinds) {
+    public Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds) {
         return copyOfTheFirstWholeRows(howMany);
     }
 
     @Override
-    public RebolSeries reversedFront(int howMany) {
+    public RebolSeries reverseTheFront(int howMany) {
         for (int at = 0; at < howMany / 2; at++) {
-            int[] near = pixelAt(at + 1);
-            int[] far = pixelAt(howMany - at);
+            int[] near = readThePixelAt(at + 1);
+            int[] far = readThePixelAt(howMany - at);
             writePixel(at + 1, far);
             writePixel(howMany - at, near);
         }
@@ -90,7 +90,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         storage.setAlphaAt(pixel, channels[3]);
     }
 
-    public Value whereItStands(int countingFrom) {
+    public Value findWhereItStands(int countingFrom) {
         int across = storage.wide();
         if (across <= 0) {
             return IntegerValue.of(index - 1 + countingFrom);
@@ -100,10 +100,10 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     }
 
     @Override
-    public List<Value> items() {
+    public List<Value> listTheItems() {
         List<Value> read = new ArrayList<>(lengthFromHere());
         for (int at = index; at <= storageLength(); at++) {
-            int[] channels = storage.pixelAt(at);
+            int[] channels = storage.readThePixelAt(at);
             read.add(TupleValue.of(channels[0], channels[1], channels[2], channels[3]));
         }
         return List.copyOf(read);
@@ -133,22 +133,22 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         }
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             if (spec instanceof ImageValue original) {
                 return new ImageValue(original.storage().copy(), 1);
             }
             if (spec instanceof PairValue(double x, double y)) {
-                return ImageValue.of(sideOfClampedBelowAndRefusedAbove(x),
-                        sideOfClampedBelowAndRefusedAbove(y));
+                return ImageValue.of(clampTheSide(x),
+                        clampTheSide(y));
             }
             if (spec instanceof AnyBlockValue parts && !parts.remaining().isEmpty()) {
-                return imageFromParts(parts);
+                return makeAnImageFromParts(parts);
             }
-            throw malconstructed(spec);
+            throw refuseAsMalconstructed(spec);
         }
 
         @Override
-        public Value convertedFrom(Value value, Maker maker) {
+        public Value convert(Value value, Maker maker) {
             if (value instanceof ImageValue already) {
                 return new ImageValue(already.storage().copy(), 1);
             }
@@ -157,7 +157,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
             }
             int pixels = bytes.lengthFromHere() / BYTES_A_PIXEL;
             if (pixels == 0) {
-                throw refusing(value);
+                throw refuse(value);
             }
             int across = pixels < WIDEST_ROW_OF_ITS_OWN_LENGTH
                     ? pixels
@@ -181,11 +181,11 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
-            return construction.madeOf(this, BlockValue.block(contents));
+        public Value construct(List<Value> contents, Construction construction) {
+            return construction.make(this, BlockValue.of(contents));
         }
 
-        private int sideOfClampedBelowAndRefusedAbove(double given) {
+        private int clampTheSide(double given) {
             int side = (int) given;
             if (side > ImageStorage.LONGEST_SIDE) {
                 throw Raised.of(EvaluationFailure.SIZE_LIMIT, this);
@@ -193,14 +193,14 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
             return Math.max(side, 0);
         }
 
-        private Value imageFromParts(AnyBlockValue specification) {
+        private Value makeAnImageFromParts(AnyBlockValue specification) {
             List<Value> parts = specification.remaining();
             if (!(parts.getFirst() instanceof PairValue(double x, double y))) {
-                throw malconstructed(specification);
+                throw refuseAsMalconstructed(specification);
             }
             ImageValue made = ImageValue.of(
-                    sideThatCanExist(x, specification),
-                    sideThatCanExist(y, specification));
+                    limitTheSide(x, specification),
+                    limitTheSide(y, specification));
             int at = 1;
             if (at < parts.size() && parts.get(at) instanceof BinaryValue colours) {
                 fillColoursFrom(made, colours);
@@ -210,7 +210,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
                     at++;
                 }
                 if (at < parts.size() && parts.get(at) instanceof IntegerValue start) {
-                    made = made.standingAt(aPositionOfAtLeastOne(start));
+                    made = made.standAt(raiseToAtLeastOne(start));
                     at++;
                 }
             } else if (at < parts.size() && parts.get(at) instanceof TupleValue colour) {
@@ -224,19 +224,19 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
                 }
             }
             if (at != parts.size()) {
-                throw malconstructed(specification);
+                throw refuseAsMalconstructed(specification);
             }
             return made;
         }
 
-        private int sideThatCanExist(double given, AnyBlockValue specification) {
+        private int limitTheSide(double given, AnyBlockValue specification) {
             if (given < 0 || given > ImageStorage.LONGEST_SIDE) {
-                throw malconstructed(specification);
+                throw refuseAsMalconstructed(specification);
             }
             return (int) given;
         }
 
-        private int aPositionOfAtLeastOne(IntegerValue start) {
+        private int raiseToAtLeastOne(IntegerValue start) {
             if (start.magnitude() < 1) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, start);
             }
@@ -274,7 +274,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
             }
         }
 
-        private Raised malconstructed(Value from) {
+        private Raised refuseAsMalconstructed(Value from) {
             return Raised.of(EvaluationFailure.MALCONSTRUCT, Molder.mold(from));
         }
     }
@@ -289,7 +289,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return new ImageValue(storage, oneBasedIndex);
     }
 
-    public ImageValue standingAt(int oneBasedIndex) {
+    public ImageValue standAt(int oneBasedIndex) {
         return atIndex(Math.min(oneBasedIndex, storage.length() + 1));
     }
 
@@ -308,12 +308,12 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return other instanceof ImageValue image && image.storage == storage;
     }
 
-    public int[] pixelAt(int offsetFromHere) {
-        return storage.pixelAt(index + offsetFromHere - 1);
+    public int[] readThePixelAt(int offsetFromHere) {
+        return storage.readThePixelAt(index + offsetFromHere - 1);
     }
 
     @Override
-    public Value copied(boolean deeply, Set<Datatype> kinds) {
+    public Value copy(boolean deeply, Set<Datatype> kinds) {
         return copyOfTheFirstWholeRows(lengthFromHere());
     }
 
@@ -325,64 +325,64 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
                 : taking <= wideEnoughForARow ? 1 : taking / wideEnoughForARow;
         ImageStorage into = ImageStorage.of(wide, high);
         for (int at = 1; at <= wide * high; at++) {
-            int[] channels = pixelAt(at);
+            int[] channels = readThePixelAt(at);
             into.setColourAt(at, channels[0], channels[1], channels[2]);
             into.setAlphaAt(at, channels[3]);
         }
         return new ImageValue(into, 1);
     }
 
-    public Value appended(Value given, long howManyTimes) {
-        List<PixelWrite> pixels = everyPixelOrNoneOfThem(given, WRITES_THE_ALPHA_TOO);
+    public Value append(Value given, long howManyTimes) {
+        List<PixelWrite> pixels = collectEveryPixelOrNone(given, WRITES_THE_ALPHA_TOO);
         for (long again = 0; again < howManyTimes; again++) {
             for (PixelWrite pixel : pixels) {
-                grownWhiteAndThenWritten(storage.length() + 1, pixel);
+                growWhiteAndWrite(storage.length() + 1, pixel);
             }
         }
         return head();
     }
 
-    public Value inserted(Value given, long howManyTimes) {
-        List<PixelWrite> pixels = everyPixelOrNoneOfThem(given, WRITES_THE_ALPHA_TOO);
+    public Value insert(Value given, long howManyTimes) {
+        List<PixelWrite> pixels = collectEveryPixelOrNone(given, WRITES_THE_ALPHA_TOO);
         int at = index;
         for (long again = 0; again < howManyTimes; again++) {
             for (PixelWrite pixel : pixels) {
-                grownWhiteAndThenWritten(at, pixel);
+                growWhiteAndWrite(at, pixel);
                 at++;
             }
         }
         return atIndex(at);
     }
 
-    public Value changed(Value given, long howManyTimes, boolean colourOnly,
-            Value shapeOfTheRectangle) {
+    public Value change(Value given, long howManyTimes, boolean colourOnly,
+                        Value shapeOfTheRectangle) {
         if (given instanceof ImageValue rectangle) {
-            return rectangleWritten(rectangle, howManyTimes, shapeOfTheRectangle);
+            return writeARectangle(rectangle, howManyTimes, shapeOfTheRectangle);
         }
-        List<PixelWrite> pixels = everyPixelOrNoneOfThem(given, colourOnly);
+        List<PixelWrite> pixels = collectEveryPixelOrNone(given, colourOnly);
         int at = index;
         for (long again = 0; again < howManyTimes; again++) {
             for (PixelWrite pixel : pixels) {
                 if (at > storage.length()) {
                     return atIndex(at);
                 }
-                pixel.into(storage, at);
+                pixel.writeInto(storage, at);
                 at++;
             }
         }
         return atIndex(at);
     }
 
-    public ImageValue rectangleCopied(int wanted, int tall) {
+    public ImageValue copyARectangle(int wanted, int tall) {
         int from = Math.min(index - 1, storage.length());
         int column = storage.wide() == 0 ? 0 : from % storage.wide();
         int row = storage.wide() == 0 ? 0 : from / storage.wide();
-        int columns = clippedToWhatIsLeft(wanted, storage.wide() - column);
-        int rows = clippedToWhatIsLeft(tall, storage.high() - row);
+        int columns = clipToWhatIsLeft(wanted, storage.wide() - column);
+        int rows = clipToWhatIsLeft(tall, storage.high() - row);
         ImageStorage into = ImageStorage.of(columns, Math.max(rows, 0));
         for (int down = 0; down < rows; down++) {
             for (int across = 0; across < columns; across++) {
-                int[] pixel = storage.pixelAt(
+                int[] pixel = storage.readThePixelAt(
                         ((row + down) * storage.wide()) + column + across + 1);
                 int at = (down * columns) + across + 1;
                 into.setColourAt(at, pixel[0], pixel[1], pixel[2]);
@@ -392,36 +392,36 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return new ImageValue(into, 1);
     }
 
-    public Value thePixelFound(Value wanted, boolean onlyWhereItStands, boolean colourOnly,
-            boolean landingPastIt) {
+    public Value findThePixel(Value wanted, boolean onlyWhereItStands, boolean colourOnly,
+                              boolean landingPastIt) {
         if (!(wanted instanceof TupleValue || wanted instanceof IntegerValue)) {
             return NoneValue.none();
         }
-        int at = positionOfThePixel(wanted, onlyWhereItStands, colourOnly);
+        int at = findThePositionOfThePixel(wanted, onlyWhereItStands, colourOnly);
         if (at == 0) {
             return NoneValue.none();
         }
         return atIndex(landingPastIt ? at + 1 : at);
     }
 
-    private int positionOfThePixel(Value wanted, boolean onlyWhereItStands,
-            boolean colourOnly) {
+    private int findThePositionOfThePixel(Value wanted, boolean onlyWhereItStands,
+                                          boolean colourOnly) {
         if (onlyWhereItStands) {
-            return pixelMatches(index, wanted, colourOnly) ? index : 0;
+            return matchesThePixel(index, wanted, colourOnly) ? index : 0;
         }
         for (int at = index; at <= storage.length(); at++) {
-            if (pixelMatches(at, wanted, colourOnly)) {
+            if (matchesThePixel(at, wanted, colourOnly)) {
                 return at;
             }
         }
         return 0;
     }
 
-    private boolean pixelMatches(int oneBasedPixel, Value wanted, boolean colourOnly) {
+    private boolean matchesThePixel(int oneBasedPixel, Value wanted, boolean colourOnly) {
         if (oneBasedPixel < 1 || oneBasedPixel > storage.length()) {
             return false;
         }
-        int[] there = storage.pixelAt(oneBasedPixel);
+        int[] there = storage.readThePixelAt(oneBasedPixel);
         if (wanted instanceof IntegerValue(long magnitude)) {
             return there[3] == ((int) magnitude & 0xFF);
         }
@@ -437,8 +437,8 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return colourOnly || parts.length <= 3 || there[3] == parts[3];
     }
 
-    private Value rectangleWritten(ImageValue rectangle, long howManyTimes,
-            Value shapeOfTheRectangle) {
+    private Value writeARectangle(ImageValue rectangle, long howManyTimes,
+                                  Value shapeOfTheRectangle) {
         if (storage.wide() == 0 || howManyTimes == 0) {
             return this;
         }
@@ -458,18 +458,18 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         for (int down = 0; down < rows; down++) {
             for (int across = 0; across < columns; across++) {
                 int[] pixel = rectangle.storage
-                        .pixelAt((down * rectangle.storage.wide()) + across + 1);
+                        .readThePixelAt((down * rectangle.storage.wide()) + across + 1);
                 int into = ((row + down) * storage.wide()) + column + across + 1;
                 storage.setColourAt(into, pixel[0], pixel[1], pixel[2]);
                 storage.setAlphaAt(into, pixel[3]);
             }
         }
-        return standingAt(index + (int) howManyTimes);
+        return standAt(index + (int) howManyTimes);
     }
 
-    private List<PixelWrite> everyPixelOrNoneOfThem(Value given, boolean colourOnly) {
+    private List<PixelWrite> collectEveryPixelOrNone(Value given, boolean colourOnly) {
         if (given instanceof BinaryValue bytes) {
-            return theBytesReadFourAtATime(bytes, colourOnly);
+            return readTheBytesFourAtATime(bytes, colourOnly);
         }
         List<Value> named = given instanceof BlockValue block
                 ? block.remaining()
@@ -496,7 +496,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return Optional.empty();
     }
 
-    private List<PixelWrite> theBytesReadFourAtATime(BinaryValue bytes, boolean colourOnly) {
+    private List<PixelWrite> readTheBytesFourAtATime(BinaryValue bytes, boolean colourOnly) {
         List<PixelWrite> pixels = new ArrayList<>();
         int howMany = bytes.lengthFromHere() / PARTS_OF_A_PIXEL;
         for (int pixel = 0; pixel < howMany; pixel++) {
@@ -509,23 +509,23 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return pixels;
     }
 
-    private void grownWhiteAndThenWritten(int at, PixelWrite pixel) {
+    private void growWhiteAndWrite(int at, PixelWrite pixel) {
         storage.insertAt(at, WHOLLY, WHOLLY, WHOLLY, WHOLLY);
-        pixel.into(storage, at);
+        pixel.writeInto(storage, at);
     }
 
     private int partOr(int[] parts, int which, int missing) {
         return which < parts.length ? parts[which] : missing;
     }
 
-    private int clippedToWhatIsLeft(int wanted, int room) {
+    private int clipToWhatIsLeft(int wanted, int room) {
         return Math.min(Math.max(wanted, 0), room);
     }
 
-    public byte[] everyPixel() {
+    public byte[] copyEveryPixel() {
         byte[] octets = new byte[storageLength() * PARTS_OF_A_PIXEL];
         for (int pixel = 0; pixel < storageLength(); pixel++) {
-            int[] parts = pixelAt(pixel + 1);
+            int[] parts = readThePixelAt(pixel + 1);
             for (int part = 0; part < PARTS_OF_A_PIXEL; part++) {
                 octets[pixel * PARTS_OF_A_PIXEL + part] = (byte) parts[part];
             }
@@ -548,7 +548,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
             return false;
         }
         for (int offset = 1; offset <= lengthFromHere(); offset++) {
-            if (!java.util.Arrays.equals(pixelAt(offset), image.pixelAt(offset))) {
+            if (!java.util.Arrays.equals(readThePixelAt(offset), image.readThePixelAt(offset))) {
                 return false;
             }
         }
@@ -559,7 +559,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     public int hashCode() {
         int hash = storage.wide() * 31 + storage.high();
         for (int offset = 1; offset <= lengthFromHere(); offset++) {
-            hash = hash * 31 + java.util.Arrays.hashCode(pixelAt(offset));
+            hash = hash * 31 + java.util.Arrays.hashCode(readThePixelAt(offset));
         }
         return hash;
     }

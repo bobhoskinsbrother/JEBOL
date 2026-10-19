@@ -25,7 +25,7 @@ public class RequestColorNative extends WindowNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.belongingTo("default", "color", Set.of(TupleValue.TYPE)));
+        return List.of(Parameter.belongTo("default", "color", Set.of(TupleValue.TYPE)));
     }
 
     @Override
@@ -37,10 +37,10 @@ public class RequestColorNative extends WindowNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
-            Optional<int[]> suggested = argumentOf("default", 0, arguments, refinements)
+            Optional<int[]> suggested = readTheArgumentOf("default", 0, arguments, refinements)
                     .filter(TupleValue.class::isInstance)
                     .map(given -> ((TupleValue) given).segments());
-            return throughTheWindows(() -> evaluator.windows().chooseColour(suggested)
+            return runThroughTheWindows(() -> evaluator.windows().chooseColour(suggested)
                     .<Value>map(TupleValue::of)
                     .orElseGet(NoneValue::none));
         };

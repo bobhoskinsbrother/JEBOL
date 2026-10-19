@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class XxHash3FromTheSourceTest {
 
-    private static byte[] bytesOf(int length) {
+    private static byte[] readTheBytesOf(int length) {
         byte[] made = new byte[length];
         for (int at = 0; at < length; at++) {
             made[at] = (byte) ((at * 167 + 13) % 256);
@@ -20,16 +20,16 @@ class XxHash3FromTheSourceTest {
         return made;
     }
 
-    private static String hexOf(byte[] digest) {
+    private static String writeTheHexOf(byte[] digest) {
         return HexFormat.of().withUpperCase().formatHex(digest);
     }
 
     @Test
     @DisplayName("the generated input is the input the reference was given")
-    void theGeneratedInputIsWhatTheReferenceWasGiven() {
-        assertThat(hexOf(bytesOf(5))).isEqualTo("0DB45B02A9");
-        assertThat(bytesOf(1024)).hasSize(1024);
-        assertThat(bytesOf(0)).isEmpty();
+    void generatesTheInputTheReferenceWasGiven() {
+        assertThat(writeTheHexOf(readTheBytesOf(5))).isEqualTo("0DB45B02A9");
+        assertThat(readTheBytesOf(1024)).hasSize(1024);
+        assertThat(readTheBytesOf(0)).isEmpty();
     }
 
     @Nested
@@ -72,15 +72,15 @@ class XxHash3FromTheSourceTest {
                 "4096, 5B1812436F21D06D, C86B5857C54D0BE95B1812436F21D06D",
         })
         @DisplayName("answers what a real 3.22.5 answers")
-        void itAnswersWhatTheReferenceAnswers(
+        void answerAsTheReferenceDoes(
                 int length, String expected64, String expected128) {
 
-            byte[] subject = bytesOf(length);
+            byte[] subject = readTheBytesOf(length);
 
-            assertThat(hexOf(new XxHash3().of64MostSignificantByteFirst(subject)))
+            assertThat(writeTheHexOf(new XxHash3().of64MostSignificantByteFirst(subject)))
                     .as("xxh3 of %d bytes", length)
                     .isEqualTo(expected64);
-            assertThat(hexOf(new XxHash3().of128MostSignificantByteFirst(subject)))
+            assertThat(writeTheHexOf(new XxHash3().of128MostSignificantByteFirst(subject)))
                     .as("xxh128 of %d bytes", length)
                     .isEqualTo(expected128);
         }
@@ -92,22 +92,22 @@ class XxHash3FromTheSourceTest {
 
         @Test
         @DisplayName("the sentence every hash is demonstrated on")
-        void theSentenceEveryHashIsDemonstratedOn() {
+        void hashTheSentenceEveryHashIsDemonstratedOn() {
             byte[] sentence =
                     "The quick brown fox jumps over the lazy dog".getBytes(
                             java.nio.charset.StandardCharsets.UTF_8);
 
-            assertThat(hexOf(new XxHash3().of64MostSignificantByteFirst(sentence)))
+            assertThat(writeTheHexOf(new XxHash3().of64MostSignificantByteFirst(sentence)))
                     .isEqualTo("CE7D19A5418FB365");
-            assertThat(hexOf(new XxHash3().of128MostSignificantByteFirst(sentence)))
+            assertThat(writeTheHexOf(new XxHash3().of128MostSignificantByteFirst(sentence)))
                     .isEqualTo("DDD650205CA3E7FA24A1CC2E3A8A7651");
         }
 
         @Test
         @DisplayName("and the digest widths are eight and sixteen bytes")
-        void theDigestWidthsAreEightAndSixteen() {
-            assertThat(new XxHash3().of64MostSignificantByteFirst(bytesOf(300))).hasSize(8);
-            assertThat(new XxHash3().of128MostSignificantByteFirst(bytesOf(300))).hasSize(16);
+        void giveDigestsOfEightAndSixteen() {
+            assertThat(new XxHash3().of64MostSignificantByteFirst(readTheBytesOf(300))).hasSize(8);
+            assertThat(new XxHash3().of128MostSignificantByteFirst(readTheBytesOf(300))).hasSize(16);
         }
     }
 }

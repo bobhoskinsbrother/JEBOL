@@ -31,7 +31,7 @@ final class ConstructedValues {
         }
     }
 
-    Optional<Value> built(List<Value> contents) {
+    Optional<Value> build(List<Value> contents) {
         try {
             return Optional.of(construct(contents));
         } catch (CannotConstruct refused) {
@@ -46,7 +46,7 @@ final class ConstructedValues {
         if (contents.size() == 1) {
             Optional<Value> simple = switch (leading.canonical()) {
                 case "true" -> Optional.of(LogicValue.yes());
-                case "false" -> Optional.of(LogicValue.no());
+                case "false" -> Optional.of(LogicValue.answerNo());
                 case "none" -> Optional.of(NoneValue.none());
                 case "unset" -> Optional.of(UnsetValue.unset());
                 default -> Optional.empty();
@@ -58,19 +58,19 @@ final class ConstructedValues {
         if (namesAVector(leading, contents.size())) {
             return VectorSpec.readConstruction(contents).orElseThrow(CannotConstruct::new);
         }
-        Value resolved = datatypeNamed(leading);
+        Value resolved = findTheDatatypeNamed(leading);
         if (contents.size() == 1) {
             return resolved;
         }
         if (!(resolved instanceof Datatype datatype)) {
             throw new CannotConstruct();
         }
-        return builtBy(datatype, contents.subList(1, contents.size()));
+        return buildWith(datatype, contents.subList(1, contents.size()));
     }
 
-    private Value builtBy(Datatype datatype, List<Value> contents) {
+    private Value buildWith(Datatype datatype, List<Value> contents) {
         try {
-            return datatype.constructedFrom(contents, construction);
+            return datatype.construct(contents, construction);
         } catch (RuntimeException refused) {
             throw new CannotConstruct();
         }
@@ -80,18 +80,18 @@ final class ConstructedValues {
         if ("vector!".equals(leading.canonical())) {
             return howManyParts > 1;
         }
-        return VectorKind.named(leading.spelling()).isPresent();
+        return VectorKind.findTheKindNamed(leading.spelling()).isPresent();
     }
 
-    private Value datatypeNamed(AnyWordValue word) {
+    private Value findTheDatatypeNamed(AnyWordValue word) {
         if (!word.spelling().endsWith("!")) {
             throw new CannotConstruct();
         }
-        Optional<Datatype> datatype = Catalogue.DATATYPES.named(word.spelling());
+        Optional<Datatype> datatype = Catalogue.DATATYPES.findTheDatatypeNamed(word.spelling());
         if (datatype.isPresent()) {
             return datatype.get();
         }
-        return Catalogue.DATATYPES.typesetNamed(word.spelling())
+        return Catalogue.DATATYPES.findTheTypesetNamed(word.spelling())
                 .<Value>map(typeset -> typeset)
                 .orElseThrow(CannotConstruct::new);
     }

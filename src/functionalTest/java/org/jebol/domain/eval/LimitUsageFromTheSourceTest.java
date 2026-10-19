@@ -1,6 +1,7 @@
 package org.jebol.domain.eval;
 
 import org.jebol.application.Interpreter;
+import org.jebol.application.JavaMachine;
 import org.jebol.domain.eval.natives.LimitUsageNative;
 import org.jebol.domain.value.*;
 import org.junit.jupiter.api.DisplayName;
@@ -28,7 +29,7 @@ class LimitUsageFromTheSourceTest {
 
         @Test
         @DisplayName("nothing: the boot takes the word away")
-        void theWordIsGoneByTheTimeAScriptRuns() {
+        void removesTheWordBeforeAScriptRuns() {
             assertThat(answerTo("value? 'limit-usage")).isEqualTo("#(false)");
         }
 
@@ -51,55 +52,55 @@ class LimitUsageFromTheSourceTest {
     @DisplayName("what the native does when it is reached")
     class TheNativeItself {
 
-        private static Value called(Evaluator evaluator, String field, Value limit) {
+        private static Value call(Evaluator evaluator, String field, Value limit) {
             return new LimitUsageNative().behaviour()
                     .call(List.of(WordValue.of(field), limit),
                             evaluator, null, Set.of());
         }
 
-        private static Evaluator anEvaluator() {
-            Boot boot = Boot.standard(Set.of());
+        private static Evaluator makeAnEvaluator() {
+            Boot boot = Boot.makeStandard(new JavaMachine(), Set.of());
             return new Evaluator(boot.start().lib(), line -> { });
         }
 
         @Test
         @DisplayName("it answers nothing")
-        void itAnswersUnset() {
-            assertThat(called(anEvaluator(), "eval", IntegerValue.of(1000)))
+        void answersUnset() {
+            assertThat(call(makeAnEvaluator(), "eval", IntegerValue.of(1000)))
                     .isInstanceOf(UnsetValue.class);
         }
 
         @Test
         @DisplayName("records the first limit for a field")
-        void theFirstCallIsRecorded() {
-            Evaluator evaluator = anEvaluator();
-            called(evaluator, "eval", IntegerValue.of(4321));
+        void recordsTheFirstCall() {
+            Evaluator evaluator = makeAnEvaluator();
+            call(evaluator, "eval", IntegerValue.of(4321));
             assertThat(evaluator.limitRecorded(UsageLimit.EVALUATIONS)).hasValue(4321L);
         }
 
         @Test
         @DisplayName("and not the second, because the C writes only into a zero")
-        void theSecondCallIsNot() {
-            Evaluator evaluator = anEvaluator();
-            called(evaluator, "eval", IntegerValue.of(100));
-            called(evaluator, "eval", IntegerValue.of(999999));
+        void ignoresTheSecondCall() {
+            Evaluator evaluator = makeAnEvaluator();
+            call(evaluator, "eval", IntegerValue.of(100));
+            call(evaluator, "eval", IntegerValue.of(999999));
             assertThat(evaluator.limitRecorded(UsageLimit.EVALUATIONS)).hasValue(100L);
         }
 
         @Test
         @DisplayName("the two fields are recorded apart")
-        void theTwoFieldsAreSeparate() {
-            Evaluator evaluator = anEvaluator();
-            called(evaluator, "memory", IntegerValue.of(65536));
+        void keepsTheTwoFieldsSeparate() {
+            Evaluator evaluator = makeAnEvaluator();
+            call(evaluator, "memory", IntegerValue.of(65536));
             assertThat(evaluator.limitRecorded(UsageLimit.MEMORY_BYTES)).hasValue(65536L);
             assertThat(evaluator.limitRecorded(UsageLimit.EVALUATIONS)).isEmpty();
         }
 
         @Test
         @DisplayName("a field it does not know records nothing and still answers unset")
-        void anUnknownFieldIsIgnored() {
-            Evaluator evaluator = anEvaluator();
-            assertThat(called(evaluator, "nonsense", IntegerValue.of(5)))
+        void ignoresAnUnknownField() {
+            Evaluator evaluator = makeAnEvaluator();
+            assertThat(call(evaluator, "nonsense", IntegerValue.of(5)))
                     .isInstanceOf(UnsetValue.class);
             assertThat(evaluator.limitRecorded(UsageLimit.EVALUATIONS)).isEmpty();
             assertThat(evaluator.limitRecorded(UsageLimit.MEMORY_BYTES)).isEmpty();
@@ -107,17 +108,17 @@ class LimitUsageFromTheSourceTest {
 
         @Test
         @DisplayName("nothing is recorded until something asks")
-        void nothingIsRecordedToStartWith() {
-            Evaluator evaluator = anEvaluator();
+        void recordsNothingToStartWith() {
+            Evaluator evaluator = makeAnEvaluator();
             assertThat(evaluator.limitRecorded(UsageLimit.EVALUATIONS)).isEmpty();
             assertThat(evaluator.limitRecorded(UsageLimit.MEMORY_BYTES)).isEmpty();
         }
 
         @Test
         @DisplayName("and a decimal has its fraction cut off, as Int64 does")
-        void aDecimalIsCut() {
-            Evaluator evaluator = anEvaluator();
-            called(evaluator, "eval", DecimalValue.of(1000.9));
+        void cutsADecimal() {
+            Evaluator evaluator = makeAnEvaluator();
+            call(evaluator, "eval", DecimalValue.of(1000.9));
             assertThat(evaluator.limitRecorded(UsageLimit.EVALUATIONS)).hasValue(1000L);
         }
     }

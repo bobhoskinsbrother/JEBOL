@@ -28,7 +28,7 @@ final class Qoi {
 
         static final Colour TO_BEGIN_WITH = new Colour(0, 0, 0, 255);
 
-        int whereItSitsInTheTable() {
+        int findWhereItSitsInTheTable() {
             return (first * 3 + second * 5 + third * 7 + alpha * 11) % TABLE_SIZE;
         }
     }
@@ -45,27 +45,27 @@ final class Qoi {
         return true;
     }
 
-    static Decoded decoded(byte[] bytes) {
-        if (!identifies(bytes) || aHeaderWithNothingAfterItIsRefused(bytes)) {
+    static Decoded decode(byte[] bytes) {
+        if (!identifies(bytes) || isAHeaderWithNothingAfterIt(bytes)) {
             return null;
         }
-        int wide = wholeNumberAt(bytes, 4);
-        int high = wholeNumberAt(bytes, 8);
+        int wide = readAWholeNumberAt(bytes, 4);
+        int high = readAWholeNumberAt(bytes, 8);
         if (wide <= 0 || high <= 0) {
             return null;
         }
-        return new Decoded(wide, high, pixelsIn(bytes, wide * high));
+        return new Decoded(wide, high, readThePixelsIn(bytes, wide * high));
     }
 
     record Decoded(int wide, int high, byte[] pixels) {
     }
 
-    private static boolean aHeaderWithNothingAfterItIsRefused(byte[] bytes) {
+    private static boolean isAHeaderWithNothingAfterIt(byte[] bytes) {
         return bytes.length < HEADER_LENGTH + END_MARKER.length;
     }
 
-    private static byte[] pixelsIn(byte[] bytes, int howMany) {
-        byte[] pixels = whatAStreamThatRunsOutEarlyLeavesBehind(howMany);
+    private static byte[] readThePixelsIn(byte[] bytes, int howMany) {
+        byte[] pixels = fillWhatAShortStreamLeaves(howMany);
         Colour[] seen = new Colour[TABLE_SIZE];
         java.util.Arrays.fill(seen, new Colour(0, 0, 0, 0));
         Colour here = Colour.TO_BEGIN_WITH;
@@ -101,7 +101,7 @@ final class Qoi {
                 } else if ((chunk & TAG_MASK) == OP_RUN) {
                     run = chunk & 0x3F;
                 }
-                seen[here.whereItSitsInTheTable()] = here;
+                seen[here.findWhereItSitsInTheTable()] = here;
             }
             int into = pixel * CHANNELS;
             pixels[into] = (byte) here.first();
@@ -112,18 +112,18 @@ final class Qoi {
         return pixels;
     }
 
-    private static int wholeNumberAt(byte[] bytes, int at) {
+    private static int readAWholeNumberAt(byte[] bytes, int at) {
         return (bytes[at] & 0xFF) << 24 | (bytes[at + 1] & 0xFF) << 16
                 | (bytes[at + 2] & 0xFF) << 8 | (bytes[at + 3] & 0xFF);
     }
 
-    private static byte[] whatAStreamThatRunsOutEarlyLeavesBehind(int howMany) {
+    private static byte[] fillWhatAShortStreamLeaves(int howMany) {
         byte[] opaqueWhite = new byte[howMany * CHANNELS];
         java.util.Arrays.fill(opaqueWhite, (byte) 0xFF);
         return opaqueWhite;
     }
 
-    static byte[] encoded(int wide, int high, byte[] pixels) {
+    static byte[] encode(int wide, int high, byte[] pixels) {
         Written written = new Written(HEADER_LENGTH + wide * high * (CHANNELS + 1)
                 + END_MARKER.length);
         written.add(MAGIC);
@@ -158,7 +158,7 @@ final class Qoi {
                 written.add(OP_RUN | (run - 1));
                 run = 0;
             }
-            int where = here.whereItSitsInTheTable();
+            int where = here.findWhereItSitsInTheTable();
             if (seen[where].equals(here)) {
                 written.add(OP_INDEX | where);
             } else {
@@ -180,11 +180,11 @@ final class Qoi {
             written.add(here.alpha());
             return;
         }
-        int firstStep = signedByteWrappingAsTheFormatStates(
+        int firstStep = wrapAsASignedByte(
                 here.first() - before.first());
-        int middleStep = signedByteWrappingAsTheFormatStates(
+        int middleStep = wrapAsASignedByte(
                 here.second() - before.second());
-        int thirdStep = signedByteWrappingAsTheFormatStates(
+        int thirdStep = wrapAsASignedByte(
                 here.third() - before.third());
         if (fitsInTwoBits(firstStep) && fitsInTwoBits(middleStep)
                 && fitsInTwoBits(thirdStep)) {
@@ -192,9 +192,9 @@ final class Qoi {
                     | (middleStep + 2) << 2 | (thirdStep + 2));
             return;
         }
-        int firstApart = signedByteWrappingAsTheFormatStates(
+        int firstApart = wrapAsASignedByte(
                 firstStep - middleStep);
-        int thirdApart = signedByteWrappingAsTheFormatStates(
+        int thirdApart = wrapAsASignedByte(
                 thirdStep - middleStep);
         if (middleStep > -33 && middleStep < 32
                 && firstApart > -9 && firstApart < 8
@@ -209,7 +209,7 @@ final class Qoi {
         written.add(here.third());
     }
 
-    private static int signedByteWrappingAsTheFormatStates(int step) {
+    private static int wrapAsASignedByte(int step) {
         int wrapped = step & 0xFF;
         return wrapped > 127 ? wrapped - 256 : wrapped;
     }

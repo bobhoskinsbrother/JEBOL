@@ -21,7 +21,7 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("values past the frame's end are dropped")
-        void theExtraValuesAreDropped() {
+        void dropsValuesPastTheEnd() {
             assertThat(answerTo("""
                     takes-one: func [a] [a]
                     (apply :takes-one [1 2 3]) = 1""")).isEqualTo("#(true)");
@@ -29,7 +29,7 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("a short block is padded out with none")
-        void aShortBlockIsPadded() {
+        void padsAShortBlockWithNone() {
             assertThat(answerTo("""
                     takes-two: func [a b] [reduce [a b]]
                     (apply :takes-two [1]) = [1 #(none)]""")).isEqualTo("#(true)");
@@ -37,7 +37,7 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("a function taking nothing accepts an empty block")
-        void anEmptyFrameTakesAnEmptyBlock() {
+        void acceptsAnEmptyBlockForNoParameters() {
             assertThat(answerTo("""
                     takes-nothing: func [] [7]
                     (apply :takes-nothing []) = 7""")).isEqualTo("#(true)");
@@ -45,7 +45,7 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("and drops everything a longer block offers it")
-        void anEmptyFrameDropsWhatItIsOffered() {
+        void dropsEverythingForNoParameters() {
             assertThat(answerTo("""
                     takes-nothing: func [] [7]
                     (apply :takes-nothing [1 2 3]) = 7""")).isEqualTo("#(true)");
@@ -53,7 +53,7 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("the refinements and their arguments are frame slots too")
-        void theRefinementsAreInTheFrame() {
+        void countsRefinementsAsFrameSlots() {
             assertThat(answerTo("""
                     with-a-refinement: func [a /b c] [reduce [a b c]]
                     (apply :with-a-refinement [1 2 3]) = [1 #(true) 3]"""))
@@ -62,7 +62,7 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("the block is reduced first")
-        void theBlockIsReduced() {
+        void reducesTheBlockFirst() {
             assertThat(answerTo("""
                     takes-one: func [a] [a]
                     (apply :takes-one [1 + 1]) = 2""")).isEqualTo("#(true)");
@@ -78,7 +78,7 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("a path is not a function value and is refused")
-        void aPathIsRefused() {
+        void refusesAPath() {
             assertThat(answerTo("""
                     holder: object [f: func [/a] []]
                     error? try [apply 'holder/f [true]]""")).isEqualTo("#(true)");
@@ -98,7 +98,7 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("and a chain of DOs collapses")
-        void aChainOfDosCollapses() {
+        void collapsesAChainOfDos() {
             assertThat(answerTo("""
                     (apply :do [:do :add 1 1]) = 2""")).isEqualTo("#(true)");
         }
@@ -110,21 +110,21 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("an operator takes both values from the block")
-        void anOperatorTakesTwo() {
+        void takesBothValuesForAnOperator() {
             assertThat(answerTo("""
                     (apply :+ [1 2]) = 3""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("the action behind it counts the same")
-        void theActionCountsTheSame() {
+        void countsTheActionBehindItTheSame() {
             assertThat(answerTo("""
                     (apply :add [1 2]) = 3""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and a one-value block pads the second slot, which the argument check refuses")
-        void aShortOperatorBlockIsPaddedAndRefused() {
+        void padsAndRefusesAOneValueBlock() {
             assertThat(answerTo("""
                     e: try [apply :+ [1]] e/id = 'expect-arg""")).isEqualTo("#(true)");
         }
@@ -136,28 +136,28 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("offset zero answers a block")
-        void offsetZeroIsABlock() {
+        void answersABlockAtOffsetZero() {
             assertThat(answerTo("""
                     block? stack 0""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("whose first word is STACK itself")
-        void theBacktraceBeginsWithStack() {
+        void beginsWithStackItself() {
             assertThat(answerTo("""
                     'stack = first stack 0""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and /WORD of zero names STACK as well")
-        void theWordOfZeroIsStack() {
+        void namesStackForWordOfZero() {
             assertThat(answerTo("""
                     'stack = stack/word 0""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("offset one names the call STACK was written inside")
-        void offsetOneNamesTheEnclosingCall() {
+        void namesTheEnclosingCallAtOffsetOne() {
             assertThat(answerTo("""
                     asks-where-it-is: func [] [stack/word 1]
                     'asks-where-it-is = asks-where-it-is""")).isEqualTo("#(true)");
@@ -165,21 +165,21 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("an offset naming no frame answers none")
-        void anOffsetPastTheEndIsNone() {
+        void answersNonePastTheEnd() {
             assertThat(answerTo("""
                     none? stack 999""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("whatever refinement was asked for")
-        void anOffsetPastTheEndIsNoneUnderARefinement() {
+        void answersNonePastTheEndUnderARefinement() {
             assertThat(answerTo("""
                     none? stack/word 999""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and a negative offset answers none too")
-        void aNegativeOffsetIsNone() {
+        void answersNoneForANegativeOffset() {
             assertThat(answerTo("""
                     none? stack -1""")).isEqualTo("#(true)");
         }
@@ -191,28 +191,28 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("a FOREACH word lives in a loop frame, which is none")
-        void aForeachWordHasNoContext() {
+        void answersNoneForAForeachWord() {
             assertThat(answerTo("""
                     none? foreach x [1] [context? 'x]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a FOR word does as well")
-        void aForWordHasNoContext() {
+        void answersNoneForAForWord() {
             assertThat(answerTo("""
                     none? for counter 1 1 1 [context? 'counter]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and a REPEAT word")
-        void aRepeatWordHasNoContext() {
+        void answersNoneForARepeatWord() {
             assertThat(answerTo("""
                     none? repeat counter 1 [context? 'counter]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a function's argument answers the function itself")
-        void aFunctionsArgumentAnswersTheFunction() {
+        void answersTheFunctionForItsArgument() {
             assertThat(answerTo("""
                     asks-its-own-frame: func [arg1 arg2] [context? 'arg1]
                     same? :asks-its-own-frame asks-its-own-frame 1 2"""))
@@ -221,7 +221,7 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("which is how a body reaches its own spec")
-        void aFunctionReachesItsOwnSpec() {
+        void letsABodyReachItsOwnSpec() {
             assertThat(answerTo("""
                     asks-its-own-spec: func [arg1 arg2] [spec-of context? 'arg1]
                     (asks-its-own-spec 1 2) = [arg1 arg2]""")).isEqualTo("#(true)");
@@ -229,7 +229,7 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("an inner function answers its own frame, not the outer one")
-        void anInnerFunctionAnswersItsOwn() {
+        void answersAnInnerFunctionsOwnFrame() {
             assertThat(answerTo("""
                     outer: func [arg1 arg2 /local inner] [
                         inner: func [a] [spec-of context? 'a]
@@ -240,7 +240,7 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("a word kept past the end of its call still names a frame")
-        void aWordOutlivingItsCallStillNamesAFrame() {
+        void stillNamesAFrameForAWordOutlivingItsCall() {
             assertThat(answerTo("""
                     keeps-its-word: func [arg] [kept: 'arg]
                     keeps-its-word 1
@@ -249,7 +249,7 @@ class ApplyStackAndContextFromTheSourceTest {
 
         @Test
         @DisplayName("a closure's argument answers a real object holding it")
-        void aClosuresArgumentAnswersAnObject() {
+        void answersAnObjectForAClosuresArgument() {
             assertThat(answerTo("""
                     closes-over-it: closure [a] [context? 'a]
                     frame: closes-over-it 1

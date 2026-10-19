@@ -17,18 +17,18 @@ public class PickzNative extends PickingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series"),
-                Parameter.required("index", Set.of(IntegerValue.TYPE)));
+        return List.of(Parameter.of("series"),
+                Parameter.of("index", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             if (arguments.getFirst() instanceof BitsetValue members) {
-                return pickedBy(members, arguments.get(1));
+                return pickBy(members, arguments.get(1));
             }
             int countedFromNought = (int) ((IntegerValue) arguments.get(1)).magnitude();
-            return arguments.getFirst().picked(countedFromNought >= 0
+            return arguments.getFirst().pick(countedFromNought >= 0
                     ? countedFromNought + 1
                     : countedFromNought);
         };

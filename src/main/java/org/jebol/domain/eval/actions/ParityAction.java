@@ -20,25 +20,25 @@ public abstract class ParityAction extends DefaultNative implements ActionValue 
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> LogicValue.of(
                 arguments.getFirst() instanceof PairValue pair
-                        ? pair.bothHalves(half -> isOdd(roundedHalfUp(half)) == asksForOdd())
-                        : isOdd(roundedWholeOf(arguments.getFirst())) == asksForOdd());
+                        ? pair.holdsForBothHalves(half -> isOdd(roundHalfUp(half)) == asksForOdd())
+                        : isOdd(roundToWhole(arguments.getFirst())) == asksForOdd());
     }
 
     private boolean isOdd(long whole) {
         return Math.abs(whole % 2) == 1;
     }
 
-    private long roundedHalfUp(double half) {
+    private long roundHalfUp(double half) {
         return (long) Math.floor(half + 0.5);
     }
 
-    private long roundedWholeOf(Value value) {
+    private long roundToWhole(Value value) {
         return switch (value) {
             case MoneyValue amount -> (int) amount.asDeci().toLong();
             case CharacterValue(int codepoint) -> codepoint;
             case TimeValue moment -> moment.nanoseconds() / 1_000_000_000L;
             case DateValue date -> date.day();
-            case AnyDecimalValue fractional -> roundedHalfAwayFromZero(fractional.quantity());
+            case AnyDecimalValue fractional -> roundHalfAwayFromZero(fractional.quantity());
             case IntegerValue whole -> whole.magnitude();
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     nativeName() + " takes a whole number, not "
@@ -46,7 +46,7 @@ public abstract class ParityAction extends DefaultNative implements ActionValue 
         };
     }
 
-    private long roundedHalfAwayFromZero(double magnitude) {
+    private long roundHalfAwayFromZero(double magnitude) {
         if (Math.abs(magnitude) >= WHERE_A_DECIMAL_STOPS_COUNTING_IN_ONES) {
             return 0;
         }

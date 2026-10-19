@@ -16,7 +16,7 @@ class UnsignedProductsTest {
         for (int sample = 0; sample < 250_000; sample++) {
             long left = random.nextLong();
             long right = random.nextLong();
-            assertThat(UnsignedProducts.highOf(left, right))
+            assertThat(UnsignedProducts.multiplyForTheHighHalf(left, right))
                     .isEqualTo(Math.unsignedMultiplyHigh(left, right));
         }
     }
@@ -33,7 +33,7 @@ class UnsignedProductsTest {
         };
         for (long left : patterns) {
             for (long right : patterns) {
-                assertThat(UnsignedProducts.highOf(left, right))
+                assertThat(UnsignedProducts.multiplyForTheHighHalf(left, right))
                         .isEqualTo(Math.unsignedMultiplyHigh(left, right));
             }
         }

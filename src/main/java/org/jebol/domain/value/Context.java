@@ -31,21 +31,21 @@ public final class Context {
         return new Context(null, false);
     }
 
-    public static Context childOf(Context parent) {
+    public static Context makeChildOf(Context parent) {
         if (parent == null) {
             throw new IllegalArgumentException("a child context needs a parent");
         }
         return new Context(parent, false);
     }
 
-    public static Context theWordsAFunctionDeclares() {
+    public static Context collectTheWordsAFunctionDeclares() {
         Context declared = new Context(null, false);
         declared.onlyThroughACallThatIsRunning = true;
         return declared;
     }
 
     public static Context loopFrameOf(Context parent) {
-        Context frame = childOf(parent);
+        Context frame = makeChildOf(parent);
         frame.loopFrameWhichContextQuestionCannotReach = true;
         return frame;
     }
@@ -70,10 +70,10 @@ public final class Context {
     }
 
     public Value functionOwningThisFrame() {
-        return supersededBy != null ? frameThatResolvesForThisOne().functionOwningThisFrame() : ownedByFunction;
+        return supersededBy != null ? findTheResolvingFrame().functionOwningThisFrame() : ownedByFunction;
     }
 
-    public void supersededBy(Context newer) {
+    public void giveWayTo(Context newer) {
         this.supersededBy = newer;
     }
 
@@ -83,7 +83,7 @@ public final class Context {
 
     public boolean callHasEnded() {
         if (supersededBy != null) {
-            return frameThatResolvesForThisOne().callHasEnded();
+            return findTheResolvingFrame().callHasEnded();
         }
         return callEnded || onlyThroughACallThatIsRunning;
     }
@@ -101,14 +101,14 @@ public final class Context {
     }
 
     public boolean knows(String canonicalName) {
-        if (unbound || noCallIsLendingItAFrame()) {
+        if (unbound || lacksALentFrame()) {
             return false;
         }
         if (supersededBy != null) {
-            return frameThatResolvesForThisOne().knows(canonicalName);
+            return findTheResolvingFrame().knows(canonicalName);
         }
         return slotsByCanonicalName.containsKey(canonicalName)
-                || itsOwnSelfAnswersTo(canonicalName)
+                || answersToItsOwnSelf(canonicalName)
                 || (parent != null && parent.knows(canonicalName));
     }
 
@@ -124,11 +124,11 @@ public final class Context {
     }
 
     public boolean bindsAWordSpelt(String canonicalName) {
-        return holds(canonicalName) || itsOwnSelfAnswersTo(canonicalName);
+        return holds(canonicalName) || answersToItsOwnSelf(canonicalName);
     }
 
-    public boolean alreadyAnswersTo(String canonicalName) {
-        return hasItsOwnSlotFor(canonicalName) || itsOwnSelfAnswersTo(canonicalName);
+    public boolean answersAlreadyTo(String canonicalName) {
+        return hasItsOwnSlotFor(canonicalName) || answersToItsOwnSelf(canonicalName);
     }
 
     public boolean hasItsOwnSelf() {
@@ -140,17 +140,17 @@ public final class Context {
     }
 
     public void refuseAFieldSpeltLikeItsOwnSelf(Value named) {
-        if (named instanceof AnyWordValue word && itsOwnSelfAnswersTo(word.canonical())) {
+        if (named instanceof AnyWordValue word && answersToItsOwnSelf(word.canonical())) {
             throw Raised.of(EvaluationFailure.SELF_PROTECTED);
         }
     }
 
-    private boolean itsOwnSelfAnswersTo(String canonicalName) {
+    private boolean answersToItsOwnSelf(String canonicalName) {
         return itsOwnSelf.isPresent() && canonicalName.equals(THE_WORD_AN_OBJECT_ANSWERS_TO_FOR_ITSELF);
     }
 
     public boolean holds(String canonicalName) {
-        ContextSlot slot = unbound || noCallIsLendingItAFrame() ? null : slotsByCanonicalName.get(canonicalName);
+        ContextSlot slot = unbound || lacksALentFrame() ? null : slotsByCanonicalName.get(canonicalName);
         return slot != null && !slot.isHidden();
     }
 
@@ -158,54 +158,54 @@ public final class Context {
         return onlyThroughACallThatIsRunning && slotsByCanonicalName.containsKey(canonicalName);
     }
 
-    public Context holderOf(String canonicalName) {
+    public Context findTheHolderOf(String canonicalName) {
         if (supersededBy != null) {
-            return frameThatResolvesForThisOne().holderOf(canonicalName);
+            return findTheResolvingFrame().findTheHolderOf(canonicalName);
         }
-        if (holds(canonicalName) || itsOwnSelfAnswersTo(canonicalName)) {
+        if (holds(canonicalName) || answersToItsOwnSelf(canonicalName)) {
             return this;
         }
         if (!unbound && parent != null) {
-            return parent.holderOf(canonicalName);
+            return parent.findTheHolderOf(canonicalName);
         }
         throw new IllegalStateException("no context holds \"" + canonicalName + "\"; ask knows() first");
     }
 
-    public ContextSlot slotFor(String canonicalName) {
+    public ContextSlot findSlotFor(String canonicalName) {
         if (unbound) {
             throw new IllegalStateException("the unbound context holds no slots; ask knows() first");
         }
         if (supersededBy != null) {
-            return frameThatResolvesForThisOne().slotFor(canonicalName);
+            return findTheResolvingFrame().findSlotFor(canonicalName);
         }
         ContextSlot slot = slotsByCanonicalName.get(canonicalName);
         if (slot != null) {
             return slot;
         }
-        if (itsOwnSelfAnswersTo(canonicalName)) {
+        if (answersToItsOwnSelf(canonicalName)) {
             return itsOwnSelf.orElseThrow();
         }
         if (parent != null) {
-            return parent.slotFor(canonicalName);
+            return parent.findSlotFor(canonicalName);
         }
         throw new IllegalStateException("no slot for \"" + canonicalName + "\"; ask knows() first");
     }
 
-    public ContextSlot slotOrNone(String canonicalName) {
-        if (unbound || noCallIsLendingItAFrame()) {
+    public ContextSlot findTheSlotOrNone(String canonicalName) {
+        if (unbound || lacksALentFrame()) {
             return null;
         }
         if (supersededBy != null) {
-            return frameThatResolvesForThisOne().slotOrNone(canonicalName);
+            return findTheResolvingFrame().findTheSlotOrNone(canonicalName);
         }
         ContextSlot slot = slotsByCanonicalName.get(canonicalName);
         if (slot != null) {
             return slot;
         }
-        if (itsOwnSelfAnswersTo(canonicalName)) {
+        if (answersToItsOwnSelf(canonicalName)) {
             return itsOwnSelf.orElse(null);
         }
-        return parent != null ? parent.slotOrNone(canonicalName) : null;
+        return parent != null ? parent.findTheSlotOrNone(canonicalName) : null;
     }
 
     public ContextSlot register(String spelling) {
@@ -213,7 +213,7 @@ public final class Context {
             throw new IllegalStateException("the unbound context cannot be extended");
         }
         if (supersededBy != null) {
-            return frameThatResolvesForThisOne().register(spelling);
+            return findTheResolvingFrame().register(spelling);
         }
         String canonical = canonicalise(spelling);
         ContextSlot existing = slotsByCanonicalName.get(canonical);
@@ -239,8 +239,8 @@ public final class Context {
         return slot;
     }
 
-    public Value valueAt(String first, String... fieldsAfter) {
-        Value reached = knows(first) ? slotFor(first).value() : NoneValue.none();
+    public Value readValueAt(String first, String... fieldsAfter) {
+        Value reached = knows(first) ? findSlotFor(first).value() : NoneValue.none();
         for (String field : fieldsAfter) {
             if (!(reached instanceof ObjectValue(Context object)) || !object.holds(field)) {
                 return NoneValue.none();
@@ -250,14 +250,14 @@ public final class Context {
         return reached;
     }
 
-    public Value systemFunctionNamed(String name) {
-        if (!(valueAt("system", "contexts", "sys") instanceof ObjectValue(Context sys))) {
+    public Value findTheSystemFunctionNamed(String name) {
+        if (!(readValueAt("system", "contexts", "sys") instanceof ObjectValue(Context sys))) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, name);
         }
         if (!sys.knows(name)) {
             throw Raised.of(EvaluationFailure.BAD_SYS_FUNC, UnsetValue.unset());
         }
-        Value held = sys.slotFor(name).value();
+        Value held = sys.findSlotFor(name).value();
         if (!isAFunctionTheInterpreterCanCall(held)) {
             throw Raised.of(EvaluationFailure.BAD_SYS_FUNC, held);
         }
@@ -280,7 +280,7 @@ public final class Context {
         return slots().isEmpty();
     }
 
-    public Map<String, Value> fieldsExcludingSelf() {
+    public Map<String, Value> listTheFieldsExceptSelf() {
         Map<String, Value> fields = new LinkedHashMap<>();
         slotsByCanonicalName.forEach((name, slot) -> {
             if (!slot.isHidden()) {
@@ -303,18 +303,18 @@ public final class Context {
     }
 
     public AnyBlockValue setWordsAndValuesOnLines() {
-        AnyBlockValue block = BlockValue.block(setWordsAndValues());
+        AnyBlockValue block = BlockValue.of(setWordsAndValues());
         block.putEachPairOnALine();
         return block;
     }
 
     public AnyBlockValue wordsExcludingSelf() {
-        return BlockValue.block(fieldsExcludingSelf().keySet().stream()
-                .<Value>map(spelling -> WordValue.of(spelling).boundTo(this)).toList());
+        return BlockValue.of(listTheFieldsExceptSelf().keySet().stream()
+                .<Value>map(spelling -> WordValue.of(spelling).bindTo(this)).toList());
     }
 
     public AnyBlockValue valuesExcludingSelf() {
-        return BlockValue.block(List.copyOf(fieldsExcludingSelf().values()));
+        return BlockValue.of(List.copyOf(listTheFieldsExceptSelf().values()));
     }
 
     public List<ContextSlot> slots() {
@@ -325,20 +325,20 @@ public final class Context {
         return slots().stream().map(ContextSlot::canonical).collect(Collectors.toSet());
     }
 
-    public Set<String> theNamesItBinds() {
+    public Set<String> listTheNamesItBinds() {
         Set<String> bound = new HashSet<>(ownFieldNames());
         itsOwnSelf.ifPresent(self -> bound.add(THE_WORD_AN_OBJECT_ANSWERS_TO_FOR_ITSELF));
         return bound;
     }
 
-    public List<ContextSlot> everySlot() {
+    public List<ContextSlot> listEverySlot() {
         return new ArrayList<>(slotsByCanonicalName.values());
     }
 
-    public List<Value> boundWordsAndValues() {
+    public List<Value> listTheBoundWordsAndValues() {
         return slots().stream()
                 .<Value>mapMulti((slot, accept) -> {
-                    accept.accept(WordValue.of(slot.spelling()).boundTo(this));
+                    accept.accept(WordValue.of(slot.spelling()).bindTo(this));
                     accept.accept(slot.value());
                 })
                 .toList();
@@ -349,7 +349,7 @@ public final class Context {
         return unbound ? "Context(unbound)" : "Context(" + slotCount() + " slots)";
     }
 
-    private Context frameThatResolvesForThisOne() {
+    private Context findTheResolvingFrame() {
         Context frame = this;
         while (frame.supersededBy != null) {
             frame = frame.supersededBy;
@@ -357,7 +357,7 @@ public final class Context {
         return frame;
     }
 
-    private boolean noCallIsLendingItAFrame() {
+    private boolean lacksALentFrame() {
         return onlyThroughACallThatIsRunning && supersededBy == null;
     }
 

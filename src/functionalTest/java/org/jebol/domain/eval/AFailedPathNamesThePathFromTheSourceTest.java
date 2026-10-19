@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AFailedPathNamesThePathFromTheSourceTest {
 
-    private String whatComesBackFrom(String code) {
+    private String readWhatComesBackFrom(String code) {
         Interpreter interpreter = Interpreter.create();
         String asking = "e: try [" + code + "] either error? e [reduce [e/id e/arg1 e/arg2]] [e]";
         interpreter.defineFreshWordsIn(asking);
@@ -39,7 +39,7 @@ class AFailedPathNamesThePathFromTheSourceTest {
                 e: make error! {x} e/foo: 1         | [invalid-path e/foo: foo]
                 """)
         void namesThePathAsWrittenAndTheSegment(String code, String expected) {
-            assertThat(whatComesBackFrom(code)).isEqualTo(expected);
+            assertThat(readWhatComesBackFrom(code)).isEqualTo(expected);
         }
     }
 
@@ -76,7 +76,7 @@ class AFailedPathNamesThePathFromTheSourceTest {
                 v: make vector! [integer! 8 2] v/1: {a} | [invalid-arg "a" _]
                 """)
         void writesAsPdStringAndPdBlockDo(String code, String expected) {
-            assertThat(whatComesBackFrom(code)).isEqualTo(expected);
+            assertThat(readWhatComesBackFrom(code)).isEqualTo(expected);
         }
     }
 
@@ -118,7 +118,7 @@ class AFailedPathNamesThePathFromTheSourceTest {
                 i: make image! 2x2 i/9: 1.2.3           | [bad-path-set i/9: 9]
                 """)
         void refusesAsTheirHandlersDo(String code, String expected) {
-            assertThat(whatComesBackFrom(code)).isEqualTo(expected);
+            assertThat(readWhatComesBackFrom(code)).isEqualTo(expected);
         }
     }
 
@@ -139,7 +139,7 @@ class AFailedPathNamesThePathFromTheSourceTest {
                 x: 1:2:3 x/1: 2147483648                | [out-of-range 2147483648 _]
                 """)
         void splitsReplacesAndJoins(String code, String expected) {
-            assertThat(whatComesBackFrom(code)).isEqualTo(expected);
+            assertThat(readWhatComesBackFrom(code)).isEqualTo(expected);
         }
     }
 }

@@ -29,7 +29,7 @@ public enum GradientShape {
 
     DIAMOND;
 
-    public static Optional<GradientShape> named(String spelling) {
+    public static Optional<GradientShape> findTheShapeNamed(String spelling) {
         for (GradientShape shape : values()) {
             if (shape.name().toLowerCase(Locale.ROOT).equals(spelling)) {
                 return Optional.of(shape);
@@ -39,7 +39,7 @@ public enum GradientShape {
     }
 
     /** Whether a toolkit's own gradient can carry this one. */
-    public boolean aToolkitCanDrawIt() {
+    public boolean canBeDrawnByAToolkit() {
         return this != CONIC && this != DIAMOND;
     }
 

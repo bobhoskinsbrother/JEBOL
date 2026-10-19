@@ -33,7 +33,7 @@ class RebolSuiteTest {
     private static final Path FAILS_ON_REBOL_TOO =
             SUITE.resolve("fails-on-rebol-too.txt");
 
-    static Stream<SuiteFile.Assertion> everyAssertion() {
+    static Stream<SuiteFile.Assertion> listEveryAssertion() {
         return filesInSuite().stream()
                 .flatMap(file -> file.assertions().stream())
                 .toList()
@@ -57,9 +57,9 @@ class RebolSuiteTest {
         return linesOf(FAILS_ON_REBOL_TOO);
     }
 
-    static Stream<SuiteFile.Assertion> assertionsExpectedToPass() {
+    static Stream<SuiteFile.Assertion> listTheAssertionsExpectedToPass() {
         List<String> alsoFailingOnRebol = failingOnRebolToo();
-        return everyAssertion()
+        return listEveryAssertion()
                 .filter(assertion -> !assertion.redOnly())
                 .filter(assertion -> !alsoFailingOnRebol.contains(assertion.toString()));
     }
@@ -78,7 +78,7 @@ class RebolSuiteTest {
     private static final Pattern REFINEMENT =
             Pattern.compile("([^\\s]+) has no (/[^\\s]+) refinement");
 
-    private static String reasonFrom(ScriptOutcome outcome) {
+    private static String readTheReasonFrom(ScriptOutcome outcome) {
         if (outcome.succeeded()) {
             return "answered false";
         }
@@ -94,13 +94,13 @@ class RebolSuiteTest {
         return "error " + outcome.errorId().orElse("?");
     }
 
-    private static Interpreter withAHost() {
+    private static Interpreter makeAnInterpreterWithAHost() {
         return SuiteHost.installOn(
-                Interpreter.withBounds(SuiteHost.grantingEverything()));
+                Interpreter.withBounds(SuiteHost.grantEverything()));
     }
 
     private static void runFile(SuiteFile file) {
-        Interpreter interpreter = withAHost();
+        Interpreter interpreter = makeAnInterpreterWithAHost();
         interpreter.defineFreshWordsIn(THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION);
         interpreter.run(THE_DIALECT_WORD_FOR_A_NESTED_ASSERTION);
         Map<Integer, Boolean> reports = new LinkedHashMap<>();
@@ -119,12 +119,12 @@ class RebolSuiteTest {
                             interpreter.runNext(step.sourceToRun());
                     verdict = taken.outcome().succeeded() && taken.outcome().value().isTruthy()
                             ? Verdict.passed()
-                            : new Verdict(false, reasonFrom(taken.outcome()));
+                            : new Verdict(false, readTheReasonFrom(taken.outcome()));
                     if (!taken.rest().isBlank()) {
                         interpreter.defineFreshWordsIn(taken.rest());
                         ScriptOutcome after = interpreter.run(taken.rest());
                         recordWhatRanInside(interpreter, step,
-                                after.succeeded() ? "" : reasonFrom(after));
+                                after.succeeded() ? "" : readTheReasonFrom(after));
                     }
                 } else {
                     String toRun = step.sourceToRun();
@@ -132,7 +132,7 @@ class RebolSuiteTest {
                     ScriptOutcome ran = interpreter.run(toRun);
                     verdict = new Verdict(ran.succeeded(), "");
                     recordWhatRanInside(interpreter, step,
-                            ran.succeeded() ? "" : reasonFrom(ran));
+                            ran.succeeded() ? "" : readTheReasonFrom(ran));
                 }
             } catch (RuntimeException refused) {
                 verdict = new Verdict(false,
@@ -205,7 +205,7 @@ class RebolSuiteTest {
         if (step.numberedSetup() != null) {
             return;
         }
-        String letters = lettersRecordedBy(interpreter);
+        String letters = readTheLettersRecordedBy(interpreter);
         for (int at = 0; at < step.nested().size(); at++) {
             boolean everyRunHeld = at < letters.length() && letters.charAt(at) == 't';
             if (at == step.nested().size() - 1 && letters.length() > step.nested().size()) {
@@ -237,7 +237,7 @@ class RebolSuiteTest {
     private static final Pattern NUMBERED_REPORT =
             Pattern.compile("(\\d+) #\\((true|false)\\)");
 
-    private static String lettersRecordedBy(Interpreter interpreter) {
+    private static String readTheLettersRecordedBy(Interpreter interpreter) {
         String shown = interpreter.display(
                 interpreter.run("also copy jebol-nested clear jebol-nested"));
         if (shown.length() >= 2
@@ -252,10 +252,10 @@ class RebolSuiteTest {
     }
 
     static boolean holds(SuiteFile.Assertion assertion) {
-        return verdictFor(assertion).held();
+        return judge(assertion).held();
     }
 
-    static Verdict verdictFor(SuiteFile.Assertion assertion) {
+    static Verdict judge(SuiteFile.Assertion assertion) {
         Verdict known = OUTCOMES.get(assertion.toString());
         if (known != null) {
             return known;
@@ -287,10 +287,10 @@ class RebolSuiteTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("assertionsExpectedToPass")
+    @MethodSource("listTheAssertionsExpectedToPass")
     @DisplayName("Rebol's own suite")
-    void theAssertionHolds(SuiteFile.Assertion assertion) {
-        Verdict verdict = verdictFor(assertion);
+    void holdsTheAssertion(SuiteFile.Assertion assertion) {
+        Verdict verdict = judge(assertion);
         assertThat(verdict.held())
                 .as("%s%n  why: %s%n  %s",
                         assertion, verdict.reason(), assertion.source())
@@ -299,15 +299,15 @@ class RebolSuiteTest {
 
     @Test
     @DisplayName("the suite was found and read, so this test is doing something")
-    void theSuiteIsNotEmpty() {
-        assertThat(everyAssertion().toList()).hasSizeGreaterThan(500);
+    void findsAssertions() {
+        assertThat(listEveryAssertion().toList()).hasSizeGreaterThan(500);
     }
 
     @Test
     @DisplayName("no finding about Rebol has quietly started passing here")
-    void theFindingsListHasNoPassingEntries() {
+    void keepsNoPassingEntryInTheFindings() {
         List<String> findings = failingOnRebolToo();
-        List<String> nowPassing = everyAssertion()
+        List<String> nowPassing = listEveryAssertion()
                 .filter(assertion -> findings.contains(assertion.toString()))
                 .filter(RebolSuiteTest::holds)
                 .map(SuiteFile.Assertion::toString)

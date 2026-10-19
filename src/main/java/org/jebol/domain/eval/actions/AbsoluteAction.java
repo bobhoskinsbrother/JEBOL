@@ -22,6 +22,6 @@ public class AbsoluteAction extends ArithmeticNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                arguments.getFirst().absolute();
+                arguments.getFirst().makeAbsolute();
     }
 }

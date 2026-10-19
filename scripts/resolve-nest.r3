@@ -113,14 +113,14 @@ spec/os:       'macos
 spec/arch:     'arm64
 spec/compiler: 'clang
 
-written: copy ajoin ["REBOL [Title: {generated " wanted " spec}]" newline]
+text: copy ajoin ["REBOL [Title: {generated " wanted " spec}]" newline]
 foreach key [root source version product os arch compiler] [
-	repend written [key ": " mold spec/:key newline]
+	repend text [key ": " mold spec/:key newline]
 ]
 foreach key listed [
-	repend written [key ": " mold unique spec/:key newline]
+	repend text [key ": " mold unique spec/:key newline]
 ]
-write to file! third arguments written
+write to file! third arguments text
 print [
 	"resolved" wanted "-"
 	length? unique spec/core-files "core files,"

@@ -17,18 +17,18 @@ public class PokeAction extends DefaultNative implements ActionValue {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("series", TypesetValue.SERIES.membersAnd(
+                Parameter.of("series", TypesetValue.SERIES.membersAnd(
                         PortValue.TYPE, MapValue.TYPE, GobValue.TYPE, BitsetValue.TYPE)),
-                Parameter.required("index"),
-                Parameter.required("value", TypesetValue.ANY_TYPE.members()));
+                Parameter.of("index"),
+                Parameter.of("value", TypesetValue.ANY_TYPE.members()));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .theRebolActorsAnswer("poke", arguments, Set.of())
+                .askTheRebolActor("poke", arguments, Set.of())
                 .orElseGet(() -> Actions.of(arguments.getFirst())
                         .orElseThrow(() -> Raised.cannotUse(arguments.getFirst(), this))
-                        .poked(arguments.get(1), arguments.get(2)));
+                        .poke(arguments.get(1), arguments.get(2)));
     }
 }

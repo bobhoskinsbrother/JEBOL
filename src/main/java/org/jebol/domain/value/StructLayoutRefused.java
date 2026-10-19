@@ -28,11 +28,11 @@ public final class StructLayoutRefused extends RuntimeException {
         this.malconstructed = malconstructed;
     }
 
-    public static StructLayoutRefused becauseTheShapeIsWrong(Value offending, String why) {
+    public static StructLayoutRefused refuseTheShape(Value offending, String why) {
         return new StructLayoutRefused(offending, why, true);
     }
 
-    public static StructLayoutRefused becauseTheFieldIsWrong(Value offending, String why) {
+    public static StructLayoutRefused refuseTheField(Value offending, String why) {
         return new StructLayoutRefused(offending, why, false);
     }
 

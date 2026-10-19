@@ -24,14 +24,14 @@ class BitsetPathFromTheSourceTest {
 
         @Test
         @DisplayName("a character the set holds answers true")
-        void aHeldCharacterAnswersTrue() {
+        void answersTrueForAHeldCharacter() {
             assertThat(answerTo("b: charset \"abc\" b/(#\"a\")")).isEqualTo(TRUE);
             assertThat(answerTo("b: charset \"abc\" b/(#\"c\")")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a character it does not hold answers false, never none")
-        void anAbsentCharacterAnswersFalse() {
+        void answersFalseForAnAbsentCharacter() {
             assertThat(answerTo("b: charset \"abc\" b/(#\"z\")")).isEqualTo(FALSE);
             assertThat(answerTo("b: charset \"abc\" logic? b/(#\"z\")")).isEqualTo(TRUE);
             assertThat(answerTo("b: charset \"abc\" none? b/(#\"z\")")).isEqualTo(FALSE);
@@ -39,7 +39,7 @@ class BitsetPathFromTheSourceTest {
 
         @Test
         @DisplayName("a complemented set answers the other way round")
-        void aComplementedSetIsInverted() {
+        void invertsAComplementedSet() {
             assertThat(answerTo("b: complement charset \"abc\" b/(#\"a\")")).isEqualTo(FALSE);
             assertThat(answerTo("b: complement charset \"abc\" b/(#\"z\")")).isEqualTo(TRUE);
         }
@@ -51,14 +51,14 @@ class BitsetPathFromTheSourceTest {
 
         @Test
         @DisplayName("writing true puts a character in the set")
-        void writingTrueAddsACharacter() {
+        void addsACharacterForTrue() {
             assertThat(answerTo("b: charset \"a\" b/(#\"z\"): true b/(#\"z\")"))
                     .isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("writing false takes one out")
-        void writingFalseRemovesACharacter() {
+        void removesACharacterForFalse() {
             assertThat(answerTo("b: charset \"az\" b/(#\"z\"): false b/(#\"z\")"))
                     .isEqualTo(FALSE);
             assertThat(answerTo("b: charset \"az\" b/(#\"z\"): false b/(#\"a\")"))
@@ -67,14 +67,14 @@ class BitsetPathFromTheSourceTest {
 
         @Test
         @DisplayName("the set the word holds changes, so a parse rule sees it")
-        void theSetItselfChanges() {
+        void changesTheSetTheWordHolds() {
             assertThat(answerTo("b: charset \"a\" b/(#\"z\"): true "
                     + "parse \"z\" [some b]")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("writing to a complemented set inverts what true means")
-        void writingToAComplementedSetIsInverted() {
+        void invertsWhatTrueMeansForAComplementedSet() {
             assertThat(answerTo("b: complement charset \"a\" b/(#\"z\"): true b/(#\"z\")"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("b: complement charset \"a\" b/(#\"z\"): false b/(#\"z\")"))
@@ -90,14 +90,14 @@ class BitsetPathFromTheSourceTest {
 
         @Test
         @DisplayName("the URI set can be copied and widened by one character")
-        void theUriSetCanBeWidened() {
+        void includesWideningTheUriSet() {
             assertThat(answerTo("bits: copy system/catalog/bitsets/uri "
                     + "bits/(#\"%\"): true bits/(#\"%\")")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and the copy is independent of the catalogue's own set")
-        void theCopyIsIndependent() {
+        void keepsTheCopyIndependent() {
             assertThat(answerTo("bits: copy system/catalog/bitsets/uri "
                     + "bits/(#\"%\"): true system/catalog/bitsets/uri/(#\"%\")"))
                     .isEqualTo(FALSE);
@@ -105,7 +105,7 @@ class BitsetPathFromTheSourceTest {
 
         @Test
         @DisplayName("the four bitsets Rebol has in its catalogue and JEBOL had not")
-        void theCatalogueIsComplete() {
+        void completesTheCatalogue() {
             assertThat(answerTo("bitset? system/catalog/bitsets/uri")).isEqualTo(TRUE);
             assertThat(answerTo("bitset? system/catalog/bitsets/uri-component"))
                     .isEqualTo(TRUE);
@@ -116,7 +116,7 @@ class BitsetPathFromTheSourceTest {
 
         @Test
         @DisplayName("URI holds what needs no encoding and not what does")
-        void theUriSetIsRight() {
+        void getsTheUriSetRight() {
             assertThat(answerTo("system/catalog/bitsets/uri/(#\"a\")")).isEqualTo(TRUE);
             assertThat(answerTo("system/catalog/bitsets/uri/(#\"9\")")).isEqualTo(TRUE);
             assertThat(answerTo("system/catalog/bitsets/uri/(#\"/\")")).isEqualTo(TRUE);
@@ -126,7 +126,7 @@ class BitsetPathFromTheSourceTest {
 
         @Test
         @DisplayName("NOT-CRLF is the complement of CRLF, computed rather than written out")
-        void notCrlfIsComputed() {
+        void computesNotCrlf() {
             assertThat(answerTo("system/catalog/bitsets/not-crlf/(#\"a\")")).isEqualTo(TRUE);
             assertThat(answerTo("system/catalog/bitsets/not-crlf/(#\"^/\")"))
                     .isEqualTo(FALSE);

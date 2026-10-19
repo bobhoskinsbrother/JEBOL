@@ -20,23 +20,23 @@ class APortsStorageFromTheSourceTest {
 
         private final Deque<byte[]> replies = new ArrayDeque<>();
 
-        private ACannedServer willReply(String text) {
+        private ACannedServer reply(String text) {
             replies.add(text.getBytes(StandardCharsets.ISO_8859_1));
             return this;
         }
 
         @Override
-        public Optional<String> theFirstIpv4AddressOf(String hostName) {
+        public Optional<String> resolveTheFirstIpv4Address(String hostName) {
             return Optional.of("203.0.113.1");
         }
 
         @Override
-        public Optional<String> theNameAt(String ipv4Address) {
+        public Optional<String> resolveHostName(String ipv4Address) {
             return Optional.empty();
         }
 
         @Override
-        public String thisMachinesName() {
+        public String hostName() {
             return "a-canned-server";
         }
 
@@ -78,14 +78,14 @@ class APortsStorageFromTheSourceTest {
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
                 .grant(HostService.NETWORK)
                 .grant(HostService.CLOCK));
-        interpreter.useNetwork(new ACannedServer().willReply("what came back"));
+        interpreter.useNetwork(new ACannedServer().reply("what came back"));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
     @Test
     @DisplayName("a connection is the port's state, and its extra is left empty")
-    void aConnectionIsThePortsStateAndItsExtraIsLeftEmpty() {
+    void keepsTheConnectionInStateAndLeavesExtraEmpty() {
         assertThat(answerTo("""
                 c: open tcp://example.com:80
                 reduce [true? c/state  none? c/extra]""")).isEqualTo("[#(true) #(true)]");
@@ -93,7 +93,7 @@ class APortsStorageFromTheSourceTest {
 
     @Test
     @DisplayName("and a script may write extra without disturbing the connection")
-    void aScriptMayWriteExtraWithoutDisturbingTheConnection() {
+    void letsAScriptWriteExtraWithoutDisturbingTheConnection() {
         assertThat(answerTo("""
                 c: open tcp://example.com:80
                 c/extra: make object! [mine: "the script's own"]
@@ -105,7 +105,7 @@ class APortsStorageFromTheSourceTest {
 
     @Test
     @DisplayName("a port is open while its actor has storage, and closing takes it away")
-    void aPortIsOpenWhileItsActorHasStorage() {
+    void staysOpenWhileItsActorHasStorage() {
         assertThat(answerTo("""
                 c: open tcp://example.com:80
                 was-open: open? c
@@ -116,7 +116,7 @@ class APortsStorageFromTheSourceTest {
 
     @Test
     @DisplayName("and something else written into state does not make it open")
-    void somethingElseWrittenIntoStateDoesNotMakeItOpen() {
+    void staysClosedWithSomethingElseWrittenIntoState() {
         assertThat(answerTo("""
                 c: make port! [scheme: 'tcp host: "example.com" port: 80]
                 c/state: make object! [borrowed: "somebody else's"]
@@ -125,7 +125,7 @@ class APortsStorageFromTheSourceTest {
 
     @Test
     @DisplayName("and a cipher port does the same")
-    void aCipherPortDoesTheSame() {
+    void behavesTheSameOnACipherPort() {
         assertThat(answerTo("""
                 k: open [
                     scheme: 'crypt

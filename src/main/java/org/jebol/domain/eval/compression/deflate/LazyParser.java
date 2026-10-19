@@ -29,19 +29,19 @@ final class LazyParser extends DeflateParser {
         int next = 0;
         do {
             int blockBegin = next;
-            int blockEnd = maxBlockEnd(next, length, SOFT_MAX_BLOCK_LENGTH);
+            int blockEnd = findTheMaxBlockEnd(next, length, SOFT_MAX_BLOCK_LENGTH);
             int nextRecalculation = next + Math.min(length - next, RECALCULATION_INTERVAL);
             int sequence = 0;
             splitStatistics.reset();
             beginSequences(sequences);
-            int minLength = minMatchLengthScanning(input, next, blockEnd - next);
+            int minLength = chooseTheMinMatchLengthByScanning(input, next, blockEnd - next);
             do {
                 if (next >= nextRecalculation) {
-                    minLength = minMatchLengthFromTheFrequencies();
+                    minLength = chooseTheMinMatchLengthFromTheFrequencies();
                     nextRecalculation += Math.min(length - nextRecalculation, next - blockBegin);
                 }
                 adjustMaxAndNiceLength(length - next);
-                int currentLength = finder.longestMatch(
+                int currentLength = finder.findTheLongestMatch(
                         input, next, minLength - 1, maxLength, niceLength, maxSearchDepth);
                 int currentOffset = finder.offset();
                 if (currentLength < minLength
@@ -58,10 +58,10 @@ final class LazyParser extends DeflateParser {
                         break;
                     }
                     adjustMaxAndNiceLength(length - next);
-                    int nextLength = finder.longestMatch(
+                    int nextLength = finder.findTheLongestMatch(
                             input, next++, currentLength - 1, maxLength, niceLength, maxSearchDepth >> 1);
                     int nextOffset = finder.offset();
-                    if (betterBy(nextLength, nextOffset, currentLength, currentOffset, GAIN_TO_WAIT_ONE_BYTE)) {
+                    if (isBetterBy(nextLength, nextOffset, currentLength, currentOffset, GAIN_TO_WAIT_ONE_BYTE)) {
                         chooseLiteral(input[next - 2] & 0xFF, true, sequences, sequence);
                         currentLength = nextLength;
                         currentOffset = nextOffset;
@@ -69,10 +69,10 @@ final class LazyParser extends DeflateParser {
                     }
                     if (looksTwoBytesAhead) {
                         adjustMaxAndNiceLength(length - next);
-                        nextLength = finder.longestMatch(
+                        nextLength = finder.findTheLongestMatch(
                                 input, next++, currentLength - 1, maxLength, niceLength, maxSearchDepth >> 2);
                         nextOffset = finder.offset();
-                        if (betterBy(nextLength, nextOffset, currentLength, currentOffset, GAIN_TO_WAIT_TWO_BYTES)) {
+                        if (isBetterBy(nextLength, nextOffset, currentLength, currentOffset, GAIN_TO_WAIT_TWO_BYTES)) {
                             chooseLiteral(input[next - 3] & 0xFF, true, sequences, sequence);
                             chooseLiteral(input[next - 2] & 0xFF, true, sequences, sequence);
                             currentLength = nextLength;
@@ -97,12 +97,12 @@ final class LazyParser extends DeflateParser {
         } while (next != length);
     }
 
-    private boolean betterBy(int nextLength, int nextOffset, int currentLength, int currentOffset, int gain) {
+    private boolean isBetterBy(int nextLength, int nextOffset, int currentLength, int currentOffset, int gain) {
         return nextLength >= currentLength
-                && 4 * (nextLength - currentLength) + (highestBitOf(currentOffset) - highestBitOf(nextOffset)) > gain;
+                && 4 * (nextLength - currentLength) + (findTheHighestBitOf(currentOffset) - findTheHighestBitOf(nextOffset)) > gain;
     }
 
-    private int highestBitOf(int value) {
+    private int findTheHighestBitOf(int value) {
         return 31 - Integer.numberOfLeadingZeros(value);
     }
 }

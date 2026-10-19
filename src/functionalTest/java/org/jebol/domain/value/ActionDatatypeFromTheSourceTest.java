@@ -52,7 +52,7 @@ class ActionDatatypeFromTheSourceTest {
 
     @Test
     @DisplayName("every name actions.reb declares answers action!")
-    void everyDeclaredActionAnswersSo() {
+    void coversEveryDeclaredAction() {
         assertThat(answerTo("""
                 wrong: copy []
                 foreach name system/catalog/actions [
@@ -106,7 +106,7 @@ class ActionDatatypeFromTheSourceTest {
 
     @Test
     @DisplayName("every datatype in the catalogue has a test, and it is an action")
-    void everyDatatypeTestIsAnAction() {
+    void coversEveryDatatypeTest() {
         assertThat(answerTo("""
                 wrong: copy []
                 foreach kind system/catalog/datatypes [

@@ -27,8 +27,8 @@ public class AtAction extends SeriesOrFileAction {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series"),
-                Parameter.required("index", anOffset()));
+        return List.of(Parameter.of("series"),
+                Parameter.of("index", listTheOffsetTypes()));
     }
 
     @Override
@@ -36,10 +36,10 @@ public class AtAction extends SeriesOrFileAction {
         return (arguments, evaluator, context, refinements) -> {
             Value index = arguments.get(1);
             return switch (arguments.getFirst()) {
-                case PortValue port when port.isAFile() -> theFileBehind(port, evaluator)
-                        .movedTo((long) Arithmetic.asMagnitude(index) - WHERE_IT_STANDS_IS_ONE);
+                case PortValue port when port.isAFile() -> findTheFileBehind(port, evaluator)
+                        .moveTo((long) Arithmetic.asMagnitude(index) - WHERE_IT_STANDS_IS_ONE);
                 case RebolSeries series -> series.atClamped(series.index()
-                        + series.positionNamedBy(index, COUNTING_FROM_ONE)
+                        + series.findThePositionNamedBy(index, COUNTING_FROM_ONE)
                         - WHERE_IT_STANDS_IS_ONE);
                 case Value anythingElse -> refuseTheDatatype(anythingElse);
             };

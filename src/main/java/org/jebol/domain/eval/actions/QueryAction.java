@@ -61,10 +61,10 @@ public class QueryAction extends PortAction {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("target", Set.of(FileValue.TYPE, DateValue.TYPE,
+                Parameter.of("target", Set.of(FileValue.TYPE, DateValue.TYPE,
                         HandleValue.TYPE, PortValue.TYPE, UrlValue.TYPE,
                         BlockValue.TYPE, WordValue.TYPE, VectorValue.TYPE)),
-                Parameter.required("field",
+                Parameter.of("field",
                         Set.of(WordValue.TYPE, BlockValue.TYPE, NoneValue.TYPE, Datatype.TYPE)));
     }
 
@@ -76,42 +76,42 @@ public class QueryAction extends PortAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            Optional<Value> itsOwn = evaluator.theRebolActorsAnswer(nativeName(), arguments, refinements);
+            Optional<Value> itsOwn = evaluator.askTheRebolActor(nativeName(), arguments, refinements);
             if (itsOwn.isPresent()) {
                 return itsOwn.get();
             }
             Value target = arguments.getFirst();
             Value field = arguments.get(1);
             return switch (target) {
-                case VectorValue vector -> new TheFieldsOfAVector(vector).answering(field, evaluator);
-                case DateValue date -> new TheFieldsOfADate(date).answering(field, evaluator);
-                case HandleValue handle -> new TheFieldsOfAHandle(handle).answering(field, evaluator);
+                case VectorValue vector -> new TheFieldsOfAVector(vector).answer(field, evaluator);
+                case DateValue date -> new TheFieldsOfADate(date).answer(field, evaluator);
+                case HandleValue handle -> new TheFieldsOfAHandle(handle).answer(field, evaluator);
                 case PortValue console when console.schemeName().equals("console") ->
-                        new TheMeasurementsOfTheConsole().answering(field, evaluator);
+                        new TheMeasurementsOfTheConsole().answer(field, evaluator);
                 default -> field instanceof NoneValue
-                        ? theNamesThatPortMayBeAskedFor(target, evaluator, context)
-                        : aFileOrARoutedPortAsked(target, field, evaluator, context);
+                        ? listTheNamesThatPortMayBeAskedFor(target, evaluator, context)
+                        : askAFileOrARoutedPort(target, field, evaluator, context);
             };
         };
     }
 
-    private Value aFileOrARoutedPortAsked(Value target, Value field, Evaluator evaluator, Context context) {
+    private Value askAFileOrARoutedPort(Value target, Value field, Evaluator evaluator, Context context) {
         if (target instanceof FileValue file) {
-            return aFileAsked(file.text(), field, evaluator);
+            return askAFile(file.text(), field, evaluator);
         }
-        PortValue port = ports.portMadeFor(target, evaluator, context);
-        return evaluator.theRebolActorsAnswer(nativeName(), List.of(port, field), Set.of())
-                .orElseGet(() -> aNativelyServedPortAsked(port, field, evaluator));
+        PortValue port = ports.makeAPortFor(target, evaluator, context);
+        return evaluator.askTheRebolActor(nativeName(), List.of(port, field), Set.of())
+                .orElseGet(() -> askANativelyServedPort(port, field, evaluator));
     }
 
-    private Value aNativelyServedPortAsked(PortValue port, Value field, Evaluator evaluator) {
+    private Value askANativelyServedPort(PortValue port, Value field, Evaluator evaluator) {
         if (!port.isAFile()) {
-            throw ports.noActionFor(nativeName());
+            throw ports.refuseWithNoActionFor(nativeName());
         }
-        return aFileAsked(ports.pathOf(port), field, evaluator);
+        return askAFile(ports.readThePathOf(port), field, evaluator);
     }
 
-    private Value aFileAsked(String path, Value field, Evaluator evaluator) {
+    private Value askAFile(String path, Value field, Evaluator evaluator) {
         granted.require(HostService.FILES);
         if (path.isEmpty()) {
             return NoneValue.none();
@@ -120,32 +120,32 @@ public class QueryAction extends PortAction {
             ports.requireTheFilePolicy(path, evaluator, Set.of(PolicyAccess.READ));
         }
         FilePort files = evaluator.files();
-        return ports.throughTheFileSystem(() -> files.informationAbout(path)
+        return ports.runThroughTheFileSystem(() -> files.describe(path)
                 .<Value>map(about -> new TheFieldsOfAFile(about,
-                                Optional.ofNullable(files.canonicalPathOf(path)).orElse(path))
-                        .answering(field, evaluator))
+                                files.locationFor(path))
+                        .answer(field, evaluator))
                 .orElseGet(NoneValue::none));
     }
 
-    private Value theNamesThatPortMayBeAskedFor(Value target, Evaluator evaluator, Context context) {
-        PortValue port = ports.portMadeFor(target, evaluator, context);
-        return theNamesItsJavaActorGives(port, evaluator)
-                .orElseGet(() -> theNamesInTheSchemesInfo(port));
+    private Value listTheNamesThatPortMayBeAskedFor(Value target, Evaluator evaluator, Context context) {
+        PortValue port = ports.makeAPortFor(target, evaluator, context);
+        return listTheNamesItsJavaActorGives(port, evaluator)
+                .orElseGet(() -> listTheNamesInTheSchemesInfo(port));
     }
 
-    private Optional<Value> theNamesItsJavaActorGives(PortValue port, Evaluator evaluator) {
-        if (!(port.fieldValue("actor") instanceof ServesPortActions served)) {
+    private Optional<Value> listTheNamesItsJavaActorGives(PortValue port, Evaluator evaluator) {
+        if (!(port.readTheFieldValue("actor") instanceof ServesPortActions served)) {
             return Optional.empty();
         }
         return served.answers(nativeName(), List.of(port, NoneValue.none()), Set.of(), evaluator);
     }
 
-    private Value theNamesInTheSchemesInfo(PortValue port) {
-        Value described = port.context().valueAt("scheme", "info");
+    private Value listTheNamesInTheSchemesInfo(PortValue port) {
+        Value described = port.context().readValueAt("scheme", "info");
         if (!(described instanceof ObjectValue(Context info))) {
-            return BlockValue.block(List.of());
+            return BlockValue.of(List.of());
         }
-        return BlockValue.block(info.slots().stream()
+        return BlockValue.of(info.slots().stream()
                 .<Value>map(slot -> WordValue.of(slot.spelling()))
                 .toList());
     }
@@ -153,7 +153,7 @@ public class QueryAction extends PortAction {
     private abstract static class TheFieldsOfAnObjectWithoutASelf extends QueriedFields {
 
         @Override
-        protected Value everyFieldAsAnObject(Evaluator evaluator) {
+        protected Value gatherEveryFieldIntoAnObject(Evaluator evaluator) {
             return withEveryFieldIn(new ObjectValue(Context.root()));
         }
     }
@@ -172,12 +172,12 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Optional<Value> fieldNamed(String asked) {
-            return VectorQuery.field(vector, asked);
+        protected Optional<Value> findTheFieldNamed(String asked) {
+            return VectorQuery.readTheField(vector, asked);
         }
 
         @Override
-        protected Value unknownAlone(AnyWordValue asked) {
+        protected Value answerAnUnknownAlone(AnyWordValue asked) {
             throw cannotUse(asked, VectorValue.TYPE);
         }
     }
@@ -196,19 +196,19 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Optional<Value> fieldNamed(String asked) {
+        protected Optional<Value> findTheFieldNamed(String asked) {
             return names().contains(asked)
                     ? Optional.of(DatePart.readFrom(date, WordValue.of(asked)))
                     : Optional.empty();
         }
 
         @Override
-        protected Value unknownAlone(AnyWordValue asked) {
+        protected Value answerAnUnknownAlone(AnyWordValue asked) {
             return UnsetValue.unset();
         }
 
         @Override
-        protected Value unknownInABlock(AnyWordValue asked) {
+        protected Value answerAnUnknownInABlock(AnyWordValue asked) {
             return NoneValue.none();
         }
 
@@ -232,12 +232,12 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Optional<Value> fieldNamed(String asked) {
+        protected Optional<Value> findTheFieldNamed(String asked) {
             return names().contains(asked) ? Optional.of(WordValue.of(handle.typeName())) : Optional.empty();
         }
 
         @Override
-        protected Value unknownAlone(AnyWordValue asked) {
+        protected Value answerAnUnknownAlone(AnyWordValue asked) {
             throw cannotUse(asked, HandleValue.TYPE);
         }
 
@@ -257,7 +257,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Optional<Value> fieldNamed(String asked) {
+        protected Optional<Value> findTheFieldNamed(String asked) {
             if (!names().contains(asked)) {
                 return Optional.empty();
             }
@@ -267,12 +267,12 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Value fieldInTheObject(String part) {
+        protected Value readTheFieldInTheObject(String part) {
             return IntegerValue.of(A_MEASURE_THE_HOST_DOES_NOT_REPORT);
         }
 
         @Override
-        protected Value unknownAlone(AnyWordValue asked) {
+        protected Value answerAnUnknownAlone(AnyWordValue asked) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
     }
@@ -293,7 +293,7 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Optional<Value> fieldNamed(String asked) {
+        protected Optional<Value> findTheFieldNamed(String asked) {
             return switch (asked) {
                 case "name" -> Optional.of(FileValue.of(wholePath));
                 case "size" -> Optional.of(about.size().<Value>map(IntegerValue::of).orElseGet(NoneValue::none));
@@ -306,13 +306,13 @@ public class QueryAction extends PortAction {
         }
 
         @Override
-        protected Value unknownAlone(AnyWordValue asked) {
+        protected Value answerAnUnknownAlone(AnyWordValue asked) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
         }
 
         @Override
-        protected Value fieldInTheObject(String part) {
-            return part.equals("date") ? NoneValue.none() : super.fieldInTheObject(part);
+        protected Value readTheFieldInTheObject(String part) {
+            return part.equals("date") ? NoneValue.none() : super.readTheFieldInTheObject(part);
         }
 
         private Value asDateValue(Optional<Instant> moment) {

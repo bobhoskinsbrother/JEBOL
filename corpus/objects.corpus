@@ -223,7 +223,7 @@ width
 --- origin adapted from REBOL/Core User Guide 2.3 section 10
 --- requires object control
 --- note A word the object does not define falls through to where the body
---- note was written, which is how a method can call an ordinary function.
+--- note was text, which is how a method can call an ordinary function.
 --- code
 example: make object! [
     doubled: multiply 21 2
@@ -267,7 +267,7 @@ same-thing/size
 --- requires object control op
 --- note The entry above proves a copied *field* is independent. This proves
 --- note a copied *method* is, which is a different thing and was broken: the
---- note function still closed over the object it was written in, so
+--- note function still closed over the object it was text in, so
 --- note depositing into the copy moved money in the original.
 --- code
 account: make object! [

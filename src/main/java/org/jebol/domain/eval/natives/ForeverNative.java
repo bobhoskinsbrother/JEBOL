@@ -15,7 +15,7 @@ public class ForeverNative extends LoopingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("body", A_BLOCK));
+        return List.of(Parameter.of("body", A_BLOCK));
     }
 
     @Override
@@ -24,7 +24,7 @@ public class ForeverNative extends LoopingNative {
             AnyBlockValue body = (AnyBlockValue) arguments.getFirst();
             return answerOfTheLoop(() -> {
                 while (true) {
-                    oneRoundCatchingContinue(evaluator, body, context);
+                    runOneRoundCatchingContinue(evaluator, body, context);
                 }
             });
         };

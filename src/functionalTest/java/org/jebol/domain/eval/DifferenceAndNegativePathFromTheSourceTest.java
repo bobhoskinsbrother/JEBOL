@@ -16,7 +16,7 @@ class DifferenceAndNegativePathFromTheSourceTest {
 
     @Test
     @DisplayName("DIFFERENCE works over text as well as blocks")
-    void differenceWorksOverText() {
+    void takesTheDifferenceOverText() {
         assertThat(answerTo("""
                 reduce [
                     difference "ač" "čbš"
@@ -27,14 +27,14 @@ class DifferenceAndNegativePathFromTheSourceTest {
 
     @Test
     @DisplayName("and it is the symmetric one, taking from both sides")
-    void differenceTakesFromBothSides() {
+    void takesTheDifferenceFromBothSides() {
         assertThat(answerTo("""
                 difference ["a" "b"] ["b" "c"]""")).isEqualTo("[\"a\" \"c\"]");
     }
 
     @Test
     @DisplayName("/CASE stops it folding, so two spellings are two members")
-    void caseStopsItFolding() {
+    void stopsFoldingForCase() {
         assertThat(answerTo("""
                 reduce [
                     difference ["a"] ["A"]
@@ -44,7 +44,7 @@ class DifferenceAndNegativePathFromTheSourceTest {
 
     @Test
     @DisplayName("a negative path index counts back from the series position")
-    void aNegativePathIndexCountsBack() {
+    void countsBackForANegativePathIndex() {
         assertThat(answerTo("""
                 s: tail "áb"
                 reduce [s/-1 s/-2]""")).isEqualTo("[#\"b\" #\"á\"]");
@@ -52,7 +52,7 @@ class DifferenceAndNegativePathFromTheSourceTest {
 
     @Test
     @DisplayName("including past a character that takes two of Java's")
-    void aNegativeIndexOverAWideCharacter() {
+    void countsBackOverAWideCharacter() {
         assertThat(answerTo("""
                 s: tail "🙂b"
                 reduce [s/-1 s/-2]""")).isEqualTo("[#\"b\" #\"🙂\"]");
@@ -60,7 +60,7 @@ class DifferenceAndNegativePathFromTheSourceTest {
 
     @Test
     @DisplayName("and reaching past either end is none, not an error")
-    void reachingPastEitherEndIsNone() {
+    void answersNonePastEitherEnd() {
         assertThat(answerTo("""
                 reduce [
                     none? all [s: "áb" s/3]
@@ -88,7 +88,7 @@ class DifferenceAndNegativePathFromTheSourceTest {
 
     @Test
     @DisplayName("but a char up to 255 is that one byte, not its encoding")
-    void aCharThatFitsInAByteIsThatByte() {
+    void findsACharThatFitsInAByteAsThatByte() {
         assertThat(answerTo("""
                 reduce [
                     find #{00FF} #"^(ff)"
@@ -99,7 +99,7 @@ class DifferenceAndNegativePathFromTheSourceTest {
 
     @Test
     @DisplayName("and a needle that is not there is still none")
-    void aNeedleThatIsNotThereIsNone() {
+    void answersNoneForANeedleThatIsNotThere() {
         assertThat(answerTo("""
                 needle: #"x"
                 none? find (to binary! {ačb}) needle""")).isEqualTo("#(true)");

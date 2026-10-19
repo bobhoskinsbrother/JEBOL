@@ -10,8 +10,8 @@ record WrittenText(String text) {
 
     private static final int LONGEST_TIME_A_STRING_MAY_SPELL = 30;
 
-    String theOneNumberIn(String reading, int mostCharacters) {
-        int start = theFirstNonSpace();
+    String findTheOneNumberIn(String reading, int mostCharacters) {
+        int start = findTheFirstNonSpace();
         int past = start;
         while (past < text.length() && !isLexicalSpace(text.charAt(past))) {
             if (text.charAt(past) > MOST_LETTERS_ARE_ONE_BYTE) {
@@ -28,15 +28,15 @@ record WrittenText(String text) {
             throw Raised.of(EvaluationFailure.TOO_SHORT,
                     "there is nothing in \"" + text + "\" to read as " + reading);
         }
-        if (anythingButSpacesAndTabsFrom(past)) {
+        if (hasAnythingButSpacesAndTabsFrom(past)) {
             throw Raised.of(EvaluationFailure.INVALID_CHARS,
                     "\"" + text + "\" has more than one value in it");
         }
         return text.substring(start, past);
     }
 
-    String theOneWordIn() {
-        int from = theFirstNonSpace();
+    String findTheOneWord() {
+        int from = findTheFirstNonSpace();
         int end = from;
         while (end < text.length() && !isLexicalSpace(text.charAt(end))) {
             end++;
@@ -45,13 +45,13 @@ record WrittenText(String text) {
         if (trimmed.isEmpty()) {
             throw Raised.of(EvaluationFailure.TOO_SHORT);
         }
-        if (anythingButSpacesAndTabsFrom(end)) {
+        if (hasAnythingButSpacesAndTabsFrom(end)) {
             throw Raised.of(EvaluationFailure.INVALID_CHARS);
         }
         return trimmed;
     }
 
-    String theOneTimeIn() {
+    String findTheOneTime() {
         int from = 0;
         while (from < text.length() && isSpaceOrTab(text.charAt(from))) {
             from++;
@@ -69,13 +69,13 @@ record WrittenText(String text) {
         if (to - from > LONGEST_TIME_A_STRING_MAY_SPELL) {
             throw Raised.of(EvaluationFailure.TOO_LONG, text);
         }
-        if (anythingButSpacesAndTabsFrom(to)) {
+        if (hasAnythingButSpacesAndTabsFrom(to)) {
             throw Raised.of(EvaluationFailure.INVALID_CHARS, text);
         }
         return text.substring(from, to);
     }
 
-    private int theFirstNonSpace() {
+    private int findTheFirstNonSpace() {
         int at = 0;
         while (at < text.length() && isLexicalSpace(text.charAt(at))) {
             at++;
@@ -83,7 +83,7 @@ record WrittenText(String text) {
         return at;
     }
 
-    private boolean anythingButSpacesAndTabsFrom(int start) {
+    private boolean hasAnythingButSpacesAndTabsFrom(int start) {
         for (int after = start; after < text.length(); after++) {
             if (!isSpaceOrTab(text.charAt(after))) {
                 return true;

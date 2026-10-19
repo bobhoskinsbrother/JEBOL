@@ -9,7 +9,7 @@ public enum TextVerticalAlignment {
     MIDDLE,
     BOTTOM;
 
-    public static Optional<TextVerticalAlignment> spelt(String canonical) {
+    public static Optional<TextVerticalAlignment> findTheAlignmentSpelt(String canonical) {
         return Arrays.stream(values()).filter(each -> each.asJson().equals(canonical)).findFirst();
     }
 

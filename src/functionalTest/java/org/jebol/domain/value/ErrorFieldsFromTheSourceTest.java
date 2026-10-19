@@ -27,7 +27,7 @@ class ErrorFieldsFromTheSourceTest {
 
         @Test
         @DisplayName("the id, which is what a rethrow changes")
-        void theIdCanBeWritten() {
+        void includeTheId() {
             assertThat(answerTo(A_CAUGHT_ERROR + """
                     e/id: 'boom
                     mold e/id""")).isEqualTo("\"boom\"");
@@ -46,7 +46,7 @@ class ErrorFieldsFromTheSourceTest {
         @ValueSource(strings = {"code", "type", "id", "arg1", "arg2", "arg3",
                 "near", "where"})
         @DisplayName("every one of the eight the frame holds")
-        void everyFieldCanBeWritten(String field) {
+        void includeEveryField(String field) {
             assertThat(answerTo(A_CAUGHT_ERROR + """
                     e/%s: 99
                     e/%s""".formatted(field, field)))
@@ -56,7 +56,7 @@ class ErrorFieldsFromTheSourceTest {
 
         @Test
         @DisplayName("a string into arg1, which is what an argument usually is")
-        void astringIntoArgOne() {
+        void includeAStringIntoArgOne() {
             assertThat(answerTo(A_CAUGHT_ERROR + """
                     e/arg1: "hello"
                     mold e/arg1""")).isEqualTo("{\"hello\"}");
@@ -85,7 +85,7 @@ class ErrorFieldsFromTheSourceTest {
 
         @Test
         @DisplayName("and reading one is refused the same way")
-        void readingAnUnknownFieldIsRefusedToo() {
+        void refuseReadingAnUnknownFieldToo() {
             assertThat(answerTo(A_CAUGHT_ERROR + """
                     error? try [e/nosuch]""")).isEqualTo("#(true)");
         }
@@ -97,7 +97,7 @@ class ErrorFieldsFromTheSourceTest {
 
         @Test
         @DisplayName("so two words holding one error see one change")
-        void twoWordsSeeOneChange() {
+        void showsOneChangeToTwoWords() {
             assertThat(answerTo(A_CAUGHT_ERROR + """
                     f: e
                     e/id: 'boom

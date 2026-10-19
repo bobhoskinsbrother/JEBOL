@@ -66,19 +66,19 @@ final class BrotliCommand {
         return insertLength[which];
     }
 
-    int distanceExtraAt(int which) {
+    int readTheDistanceExtraAt(int which) {
         return distanceExtra[which];
     }
 
-    int commandPrefixAt(int which) {
+    int readTheCommandPrefixAt(int which) {
         return commandPrefix[which];
     }
 
-    int distancePrefixAt(int which) {
+    int readTheDistancePrefixAt(int which) {
         return distancePrefixAndItsExtraBitsInTheTopSixBits[which];
     }
 
-    void commandPrefixIs(int which, int prefix) {
+    void setTheCommandPrefix(int which, int prefix) {
         commandPrefix[which] = prefix;
     }
 
@@ -101,7 +101,7 @@ final class BrotliCommand {
                 + (copyLengthAndItsCodeDeltaInTheTopSevenBits[which] >>> 25);
     }
 
-    int distanceContextAt(int which) {
+    int readTheDistanceContextAt(int which) {
         int row = commandPrefix[which] >> 6;
         int column = commandPrefix[which] & 7;
         if ((row == 0 || row == 2 || row == 4 || row == 7) && column <= 2) {
@@ -110,11 +110,11 @@ final class BrotliCommand {
         return 3;
     }
 
-    void distancePrefixIs(int which, int prefix) {
+    void setTheDistancePrefix(int which, int prefix) {
         distancePrefixAndItsExtraBitsInTheTopSixBits[which] = prefix;
     }
 
-    void distanceExtraIs(int which, int extra) {
+    void setTheDistanceExtra(int which, int extra) {
         distanceExtra[which] = extra;
     }
 
@@ -126,10 +126,10 @@ final class BrotliCommand {
         insertLength[count] = insertLengthGiven;
         copyLengthAndItsCodeDeltaInTheTopSevenBits[count] =
                 copyLengthGiven | (delta << 25);
-        long encoded = encodedDistance(distanceCode, directCodes, postfixBits);
+        long encoded = encodeTheDistance(distanceCode, directCodes, postfixBits);
         distancePrefixAndItsExtraBitsInTheTopSixBits[count] = (int) (encoded >>> 32);
         distanceExtra[count] = (int) encoded;
-        commandPrefix[count] = lengthCode(insertLengthGiven,
+        commandPrefix[count] = codeTheLength(insertLengthGiven,
                 copyLengthGiven + copyCodeDelta,
                 (distancePrefixAndItsExtraBitsInTheTopSixBits[count] & 0x3FF) == 0);
         count++;
@@ -141,11 +141,11 @@ final class BrotliCommand {
         copyLengthAndItsCodeDeltaInTheTopSevenBits[count] = 4 << 25;
         distanceExtra[count] = 0;
         distancePrefixAndItsExtraBitsInTheTopSixBits[count] = DISTANCE_SHORT_CODES;
-        commandPrefix[count] = lengthCode(insertLengthGiven, 4, false);
+        commandPrefix[count] = codeTheLength(insertLengthGiven, 4, false);
         count++;
     }
 
-    int restoredDistanceCodeAt(int which, int directCodes, int postfixBits) {
+    int restoreTheDistanceCodeAt(int which, int directCodes, int postfixBits) {
         int code = distancePrefixAndItsExtraBitsInTheTopSixBits[which] & 0x3FF;
         if (code < DISTANCE_SHORT_CODES + directCodes) {
             return code;
@@ -159,13 +159,13 @@ final class BrotliCommand {
                 + directCodes + DISTANCE_SHORT_CODES;
     }
 
-    static long encodedDistance(int distanceCode, int directCodes, int postfixBits) {
+    static long encodeTheDistance(int distanceCode, int directCodes, int postfixBits) {
         if (distanceCode < DISTANCE_SHORT_CODES + directCodes) {
             return (long) distanceCode << 32;
         }
         int distance = (1 << (postfixBits + 2))
                 + (distanceCode - DISTANCE_SHORT_CODES - directCodes);
-        int bucket = BrotliCodes.log2Floor(distance) - 1;
+        int bucket = BrotliCodes.floorTheLog2(distance) - 1;
         int postfixMask = (1 << postfixBits) - 1;
         int postfix = distance & postfixMask;
         int prefix = (distance >>> bucket) & 1;
@@ -182,11 +182,11 @@ final class BrotliCommand {
             return insertLength;
         }
         if (insertLength < 130) {
-            int width = BrotliCodes.log2Floor(insertLength - 2) - 1;
+            int width = BrotliCodes.floorTheLog2(insertLength - 2) - 1;
             return (width << 1) + ((insertLength - 2) >> width) + 2;
         }
         if (insertLength < 2114) {
-            return BrotliCodes.log2Floor(insertLength - 66) + 10;
+            return BrotliCodes.floorTheLog2(insertLength - 66) + 10;
         }
         if (insertLength < 6210) {
             return 21;
@@ -199,24 +199,24 @@ final class BrotliCommand {
             return copyLength - 2;
         }
         if (copyLength < 134) {
-            int width = BrotliCodes.log2Floor(copyLength - 6) - 1;
+            int width = BrotliCodes.floorTheLog2(copyLength - 6) - 1;
             return (width << 1) + ((copyLength - 6) >> width) + 4;
         }
         if (copyLength < 2118) {
-            return BrotliCodes.log2Floor(copyLength - 70) + 12;
+            return BrotliCodes.floorTheLog2(copyLength - 70) + 12;
         }
         return 23;
     }
 
-    static int lengthCode(int insertLength, int copyLength,
-            boolean useLastDistance) {
+    static int codeTheLength(int insertLength, int copyLength,
+                             boolean useLastDistance) {
 
-        return combinedLengthCode(insertLengthCode(insertLength),
+        return combineTheLengthCodes(insertLengthCode(insertLength),
                 copyLengthCode(copyLength), useLastDistance);
     }
 
-    static int combinedLengthCode(int insertCode, int copyCode,
-            boolean useLastDistance) {
+    static int combineTheLengthCodes(int insertCode, int copyCode,
+                                     boolean useLastDistance) {
 
         int low = (copyCode & 7) | ((insertCode & 7) << 3);
         if (useLastDistance && insertCode < 8 && copyCode < 16) {

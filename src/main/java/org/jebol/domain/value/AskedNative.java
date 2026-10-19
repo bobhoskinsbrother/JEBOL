@@ -39,12 +39,12 @@ public record AskedNative(NativeValue asked, Set<String> askedRefinements) imple
     }
 
     @Override
-    public NativeValue askedFor(Set<String> refinements) {
-        return asked.askedFor(refinements);
+    public NativeValue askFor(Set<String> refinements) {
+        return asked.askFor(refinements);
     }
 
     @Override
-    public NativeValue derivedWith(AnyBlockValue spec, List<Parameter> declared) {
-        return asked.derivedWith(spec, declared).askedFor(askedRefinements);
+    public NativeValue deriveWith(AnyBlockValue spec, List<Parameter> declared) {
+        return asked.deriveWith(spec, declared).askFor(askedRefinements);
     }
 }

@@ -32,10 +32,10 @@ public class ReadAction extends PortAction {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("source",
+                Parameter.of("source",
                         Set.of(FileValue.TYPE, PortValue.TYPE, UrlValue.TYPE, BlockValue.TYPE, WordValue.TYPE)),
-                Parameter.belongingTo("part", "length", TypesetValue.NUMBER.members()),
-                Parameter.belongingTo("seek", "index", TypesetValue.NUMBER.members()));
+                Parameter.belongTo("part", "length", TypesetValue.NUMBER.members()),
+                Parameter.belongTo("seek", "index", TypesetValue.NUMBER.members()));
     }
 
     @Override
@@ -46,17 +46,17 @@ public class ReadAction extends PortAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            PortRequest asked = asked(arguments, refinements);
+            PortRequest asked = readTheRequest(arguments, refinements);
             Value source = arguments.getFirst();
             if (source instanceof PortValue port) {
-                return evaluator.theRebolActorsAnswer(nativeName(), arguments, refinements)
+                return evaluator.askTheRebolActor(nativeName(), arguments, refinements)
                         .orElseGet(() -> port.isAFile()
                                 ? ports.readFromTheFileBehind(port, evaluator, asked)
                                 : ports.readFrom(port, evaluator, arguments, asked));
             }
-            Optional<String> behindTheUrl = ports.theFileNamedByAUrl(source, evaluator, context);
+            Optional<String> behindTheUrl = ports.findTheFileNamedByAUrl(source, evaluator, context);
             if (behindTheUrl.isEmpty() && ports.routesToAScheme(source)) {
-                return ports.readFrom(ports.portOpenedFor(source, evaluator, context),
+                return ports.readFrom(ports.openAPortFor(source, evaluator, context),
                         evaluator, arguments, asked);
             }
             return ports.readTheFile(

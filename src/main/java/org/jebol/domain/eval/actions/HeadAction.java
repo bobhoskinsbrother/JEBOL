@@ -23,7 +23,7 @@ public class HeadAction extends SeriesOrFileAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case PortValue port when port.isAFile() ->
-                    theFileBehind(port, evaluator).movedTo(THE_FIRST_BYTE);
+                    findTheFileBehind(port, evaluator).moveTo(THE_FIRST_BYTE);
             case RebolSeries series -> series.head();
             case Value anythingElse -> refuseTheDatatype(anythingElse);
         };

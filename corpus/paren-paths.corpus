@@ -1,7 +1,7 @@
 --- title A paren as a path segment
 --- about `data/(k)` reaches the field named by whatever K holds. It is
 --- about the only way a path selects something decided at run time: a
---- about word segment is a name taken as written, so without this a
+--- about word segment is a name taken as text, so without this a
 --- about path can only reach what the source spelled out.
 
 --- id paren-paths/a-path-with-a-paren-is-still-a-path

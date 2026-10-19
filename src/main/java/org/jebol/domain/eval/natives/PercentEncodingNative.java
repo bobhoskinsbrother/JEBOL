@@ -19,14 +19,14 @@ public abstract class PercentEncodingNative extends EncodingNative {
     }
 
     protected char escapeCharacterIn(List<Value> arguments, Set<String> refinements) {
-        return argumentOf("escape", 0, arguments, refinements)
+        return readTheArgumentOf("escape", 0, arguments, refinements)
                 .map(asked -> (char) ((CharacterValue) asked).codepoint())
                 .orElse(ESCAPE_UNLESS_ASKED);
     }
 
     protected Value asTheSameKindAs(Value original, byte[] octets) {
         return original instanceof AnyStringValue text
-                ? text.holding(new String(octets, StandardCharsets.UTF_8))
+                ? text.wrap(new String(octets, StandardCharsets.UTF_8))
                 : BinaryValue.ofBytes(octets);
     }
 }

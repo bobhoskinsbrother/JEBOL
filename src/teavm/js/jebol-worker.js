@@ -20,7 +20,7 @@ onmessage = function (event) {
     if (jebol) {
       jebol.runTheScript(said.run);
     } else {
-      self.postMessage({ kind: 'failed', text: 'the interpreter was not ready to run a script' });
+      self.postMessage({ type: 'failed', text: 'the interpreter was not ready to run a script' });
     }
     return;
   }
@@ -29,7 +29,7 @@ onmessage = function (event) {
 
 self.addEventListener('unhandledrejection', function (event) {
   var why = event.reason && event.reason.stack ? event.reason.stack : String(event.reason);
-  self.postMessage({ kind: 'failed', text: 'the worker dropped a promise: ' + why });
+  self.postMessage({ type: 'failed', text: 'the worker dropped a promise: ' + why });
 });
 
 self.addEventListener('error', function (event) {
@@ -37,7 +37,7 @@ self.addEventListener('error', function (event) {
   if (event.error && event.error.stack) {
     detail = detail + '\n' + event.error.stack;
   }
-  self.postMessage({ kind: 'failed', text: 'the worker errored: ' + detail });
+  self.postMessage({ type: 'failed', text: 'the worker errored: ' + detail });
 });
 
 var jebolStoreRoot = null;
@@ -162,14 +162,14 @@ TeaVM.wasmGC.load('jebol-web.wasm').then(function (teavm) {
     teavm.exports.main([]);
   } catch (problem) {
     var why = problem && problem.stack ? problem.stack : String(problem);
-    self.postMessage({ kind: 'failed', text: 'booting the interpreter threw: ' + why });
+    self.postMessage({ type: 'failed', text: 'booting the interpreter threw: ' + why });
     return;
   }
   self.postMessage({
-    kind: 'loaded',
+    type: 'loaded',
     loadMs: Math.round(loadedAt - jebolStartedLoadingAt),
     mainMs: Math.round(performance.now() - loadedAt)
   });
 }, function (why) {
-  self.postMessage({ kind: 'failed', text: 'failed to load the interpreter: ' + why });
+  self.postMessage({ type: 'failed', text: 'failed to load the interpreter: ' + why });
 });

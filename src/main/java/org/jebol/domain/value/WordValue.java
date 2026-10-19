@@ -5,7 +5,7 @@ public final class WordValue extends AnyWordValue {
     public static final AnyWordDatatype TYPE = new AnyWordDatatype("word") {
 
         @Override
-        public AnyWordValue spelt(String spelling, Context binding) {
+        public AnyWordValue spell(String spelling, Context binding) {
             return new WordValue(spelling, binding);
         }
     };
@@ -24,7 +24,7 @@ public final class WordValue extends AnyWordValue {
     }
 
     @Override
-    public WordValue boundTo(Context context) {
+    public WordValue bindTo(Context context) {
         return new WordValue(spelling(), context);
     }
 

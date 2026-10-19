@@ -14,22 +14,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class FilePortFromTheSourceTest {
 
-    private static Interpreter grantedFilesUnder(Path root) {
+    private static Interpreter makeAnInterpreterGrantedFilesUnder(Path root) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         return interpreter;
     }
 
     private static String answerTo(Path root, String source) {
-        Interpreter interpreter = grantedFilesUnder(root);
+        Interpreter interpreter = makeAnInterpreterGrantedFilesUnder(root);
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(Path root, String source) {
+    private static String readTheErrorIdFrom(Path root, String source) {
         return answerTo(root, "failure: try [" + source + "] failure/id");
     }
 
@@ -39,7 +39,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("a second read answers nothing, the position being past it all")
-        void aSecondReadAnswersNothing(@TempDir Path root) {
+        void answersNothingOnASecondRead(@TempDir Path root) {
             assertThat(answerTo(root, """
                     write %f "abc"
                     p: open %f
@@ -49,7 +49,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("and reading a closed port opens it, reads it and closes it again")
-        void readingAClosedPort(@TempDir Path root) {
+        void opensReadsAndClosesAClosedPort(@TempDir Path root) {
             assertThat(answerTo(root, """
                     write %f "abc"
                     p: open %f
@@ -71,7 +71,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("a negative /PART reads backwards from where the position stands")
-        void aNegativePartReadsBackwards(@TempDir Path root) {
+        void readsBackwardsForANegativePart(@TempDir Path root) {
             assertThat(answerTo(root, """
                     write %f "12345"
                     p: open/read/seek %f
@@ -82,7 +82,7 @@ class FilePortFromTheSourceTest {
         @Test
         @DisplayName("and one that reaches back past the start is out of range")
         void backPastTheStart(@TempDir Path root) {
-            assertThat(errorIdFrom(root, """
+            assertThat(readTheErrorIdFrom(root, """
                     write %f "12345"
                     p: open/read/seek %f
                     read/part p -20""")).isEqualTo("out-of-range");
@@ -106,7 +106,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("a write goes at the position and pushes it along")
-        void aWriteGoesAtThePosition(@TempDir Path root) {
+        void writesAtThePosition(@TempDir Path root) {
             assertThat(answerTo(root, """
                     p: open/new %f
                     write p "a"
@@ -163,7 +163,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("LENGTH? is what is left and SIZE? is the whole of it")
-        void lengthLeftAndWholeSize(@TempDir Path root) {
+        void measuresWhatIsLeftAndTheWholeSize(@TempDir Path root) {
             assertThat(answerTo(root, """
                     write %f "12345"
                     p: open/read/seek %f
@@ -173,11 +173,11 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("the position questions refuse a closed port")
-        void thePositionQuestionsRefuseIt(@TempDir Path root) {
+        void refusesThePositionQuestionsWhenClosed(@TempDir Path root) {
             for (String asking : new String[] {
                     "index? p", "length? p", "tail? p",
                     "head p", "tail p", "skip p 1", "back p", "next p"}) {
-                assertThat(errorIdFrom(root, """
+                assertThat(readTheErrorIdFrom(root, """
                         write %f "12345"
                         p: open %f
                         close p
@@ -189,7 +189,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("and SIZE? does not, being about the file rather than the port")
-        void sizeDoesNotRefuseIt(@TempDir Path root) {
+        void stillAnswersSizeWhenClosed(@TempDir Path root) {
             assertThat(answerTo(root, """
                     write %f "12345"
                     p: open %f
@@ -199,7 +199,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("AT counts from one and ATZ from nothing, both moving in place")
-        void atAndAtzMoveInPlace(@TempDir Path root) {
+        void movesInPlaceForAtAndAtz(@TempDir Path root) {
             assertThat(answerTo(root, """
                     write %f "12345"
                     p: open/read/seek %f
@@ -214,7 +214,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("what is from the position onwards goes, and what is before stays")
-        void fromThePositionOnwardsGoes(@TempDir Path root) {
+        void cutsFromThePositionOnwards(@TempDir Path root) {
             assertThat(answerTo(root, """
                     write %f "12345"
                     p: open %f
@@ -226,7 +226,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("so clearing at the head empties it")
-        void clearingAtTheHeadEmptiesIt(@TempDir Path root) {
+        void emptiesItAtTheHead(@TempDir Path root) {
             assertThat(answerTo(root, """
                     write %f "12345"
                     p: open %f
@@ -237,7 +237,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("and clearing at the tail does nothing at all")
-        void clearingAtTheTailDoesNothing(@TempDir Path root) {
+        void doesNothingAtTheTail(@TempDir Path root) {
             assertThat(answerTo(root, """
                     write %f "12345"
                     p: open %f
@@ -249,8 +249,8 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("and a closed port cannot be cleared, having no position")
-        void aClosedPortCannotBeCleared(@TempDir Path root) {
-            assertThat(errorIdFrom(root, """
+        void cannotClearAClosedPort(@TempDir Path root) {
+            assertThat(readTheErrorIdFrom(root, """
                     write %f "12345"
                     p: open %f
                     close p
@@ -268,14 +268,14 @@ class FilePortFromTheSourceTest {
             assertThat(answerTo(root, """
                     p: open/new %never-existed
                     reduce [port? p size? p exists? %never-existed]"""))
-                    .as("EXISTS? answers what kind of thing is there, not a logic")
+                    .as("EXISTS? answers what type of thing is there, not a logic")
                     .isEqualTo("[#(true) 0 file]");
         }
 
         @Test
         @DisplayName("and without it, only an open that cannot write is refused")
-        void withoutItOnlyAReadIsRefused(@TempDir Path root) {
-            assertThat(errorIdFrom(root, "open/read %never-existed"))
+        void refusesOnlyAnOpenThatCannotWriteWithoutNew(@TempDir Path root) {
+            assertThat(readTheErrorIdFrom(root, "open/read %never-existed"))
                     .isEqualTo("cannot-open");
             assertThat(answerTo(root, """
                     p: open %never-existed
@@ -285,7 +285,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("a directory opens as a dir port and names itself so")
-        void aDirectoryOpensAsADirPort(@TempDir Path root) {
+        void opensADirectoryAsADirPort(@TempDir Path root) {
             assertThat(answerTo(root, """
                     p: open %.
                     reduce [port? p p/scheme/name p/spec/scheme]"""))
@@ -294,7 +294,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("reading a dir port answers its names")
-        void readingADirPort(@TempDir Path root) throws IOException {
+        void answersTheNamesInADirPort(@TempDir Path root) throws IOException {
             Files.writeString(root.resolve("one.txt"), "a");
             Files.writeString(root.resolve("two.txt"), "b");
 
@@ -304,7 +304,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("and EMPTY? on one asks whether the directory is empty")
-        void emptyOnADirPort(@TempDir Path root) throws IOException {
+        void asksWhetherADirPortIsEmpty(@TempDir Path root) throws IOException {
             Files.createDirectories(root.resolve("nothing-in-here"));
             Files.writeString(root.resolve("something.txt"), "a");
 
@@ -320,7 +320,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("reading one reads the file the path would have")
-        void readingAFileUrl(@TempDir Path root) throws IOException {
+        void readsTheFileAUrlNames(@TempDir Path root) throws IOException {
             Files.writeString(root.resolve("temp.txt"), "hello");
 
             assertThat(answerTo(root, "read file://temp.txt"))
@@ -331,7 +331,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("an empty file reads as no bytes rather than failing")
-        void readingAnEmptyFileUrl(@TempDir Path root) throws IOException {
+        void readsAnEmptyFileAsNoBytes(@TempDir Path root) throws IOException {
             Files.writeString(root.resolve("temp.txt"), "");
 
             assertThat(answerTo(root, "#{} = read file://temp.txt"))
@@ -341,7 +341,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("none, one and two slashes all name the same relative file")
-        void theSlashesAreOptional(@TempDir Path root) throws IOException {
+        void takesTheSlashesAsOptional(@TempDir Path root) throws IOException {
             Files.writeString(root.resolve("temp.txt"), "hello");
 
             assertThat(answerTo(root, "read file:temp.txt")).isEqualTo("#{68656C6C6F}");
@@ -361,13 +361,13 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("a file that is not there is cannot-open, as a path would be")
-        void amissingFileUrl(@TempDir Path root) {
-            assertThat(errorIdFrom(root, "read file://nope.txt")).isEqualTo("cannot-open");
+        void cannotOpenAMissingFileUrl(@TempDir Path root) {
+            assertThat(readTheErrorIdFrom(root, "read file://nope.txt")).isEqualTo("cannot-open");
         }
 
         @Test
         @DisplayName("the port keeps the path it worked out beside the url it was given")
-        void theSpecCarriesBoth(@TempDir Path root) throws IOException {
+        void carriesBothInTheSpec(@TempDir Path root) throws IOException {
             Files.writeString(root.resolve("temp.txt"), "hello");
 
             assertThat(answerTo(root, "p: open file://temp.txt  p/spec/path"))
@@ -378,7 +378,7 @@ class FilePortFromTheSourceTest {
 
         @Test
         @DisplayName("writing, deleting and asking after one work the same way")
-        void theOtherVerbsReachItToo(@TempDir Path root) throws IOException {
+        void reachesItWithTheOtherVerbsToo(@TempDir Path root) throws IOException {
             assertThat(answerTo(root, """
                     write file://w.txt "w"  read %w.txt"""))
                     .isEqualTo("#{77}");

@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ImagesAndTextInADrawBlockFromTheSourceTest {
 
-    private static List<PaintInstruction> drawingOf(String setUp, String drawBlock) {
+    private static List<PaintInstruction> drawTheDrawingOf(String setUp, String drawBlock) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         String source = setUp + """
@@ -42,7 +42,7 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
         @DisplayName("one corner draws it at its own size")
         void onecornerDrawsItAtItsOwnSize() {
             List<PaintInstruction> painted =
-                    drawingOf(A_SMALL_ORANGE_SQUARE, "image (held) 30x40");
+                    drawTheDrawingOf(A_SMALL_ORANGE_SQUARE, "image (held) 30x40");
 
             assertThat(painted).hasSize(1);
             PaintInstruction.Picture shown = (PaintInstruction.Picture) painted.getFirst();
@@ -54,8 +54,8 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
 
         @Test
         @DisplayName("two corners stretch it into the box between them")
-        void twoCornersStretchItIntoTheBox() {
-            PaintInstruction.Picture shown = (PaintInstruction.Picture) drawingOf(
+        void stretchIntoTheBoxBetweenTwoCorners() {
+            PaintInstruction.Picture shown = (PaintInstruction.Picture) drawTheDrawingOf(
                     A_SMALL_ORANGE_SQUARE, "image (held) 10x10 110x60").getFirst();
 
             assertThat(shown.where().across()).isEqualTo(10);
@@ -65,9 +65,9 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
 
         @Test
         @DisplayName("with no corner at all it goes at the top left")
-        void withNoCornerItGoesAtTheTopLeft() {
+        void goAtTheTopLeftWithNoCorner() {
             PaintInstruction.Picture shown = (PaintInstruction.Picture)
-                    drawingOf(A_SMALL_ORANGE_SQUARE, "image (held)").getFirst();
+                    drawTheDrawingOf(A_SMALL_ORANGE_SQUARE, "image (held)").getFirst();
 
             assertThat(shown.where().across()).isZero();
             assertThat(shown.where().down()).isZero();
@@ -75,8 +75,8 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
 
         @Test
         @DisplayName("it carries the transform standing when it was reached")
-        void itCarriesTheTransform() {
-            PaintInstruction.Picture turned = (PaintInstruction.Picture) drawingOf(
+        void carryTheTransform() {
+            PaintInstruction.Picture turned = (PaintInstruction.Picture) drawTheDrawingOf(
                     A_SMALL_ORANGE_SQUARE, "rotate 90 image (held) 10x10").getFirst();
 
             assertThat(turned.transform().isNone()).isFalse();
@@ -84,8 +84,8 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
 
         @Test
         @DisplayName("and the clip standing when it was reached")
-        void itCarriesTheClip() {
-            PaintInstruction.Picture clipped = (PaintInstruction.Picture) drawingOf(
+        void carryTheClip() {
+            PaintInstruction.Picture clipped = (PaintInstruction.Picture) drawTheDrawingOf(
                     A_SMALL_ORANGE_SQUARE,
                     "clip 5x5 40x40 image (held) 10x10").getFirst();
 
@@ -94,8 +94,8 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
 
         @Test
         @DisplayName("a scaled image is resized here, so both renderers blit the same pixels")
-        void ascaledImageIsResizedHere() {
-            PaintInstruction.Picture shown = (PaintInstruction.Picture) drawingOf(
+        void resizeHereWhenScaled() {
+            PaintInstruction.Picture shown = (PaintInstruction.Picture) drawTheDrawingOf(
                     A_SMALL_ORANGE_SQUARE, "image (held) 10x10 110x60").getFirst();
 
             assertThat(shown.pixels().size().x())
@@ -106,31 +106,31 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
 
         @Test
         @DisplayName("IMAGE-FILTER says how, and NEAREST keeps the hard edges")
-        void imageFilterSaysHow() {
+        void followTheImageFilter() {
             String twoColours = "held: make image! [2x2 255.0.0] held/2: 0.0.255";
-            PaintInstruction.Picture blocky = (PaintInstruction.Picture) drawingOf(
+            PaintInstruction.Picture blocky = (PaintInstruction.Picture) drawTheDrawingOf(
                     twoColours,
                     "image-filter nearest resample 1 image (held) 0x0 40x40").getFirst();
-            PaintInstruction.Picture smooth = (PaintInstruction.Picture) drawingOf(
+            PaintInstruction.Picture smooth = (PaintInstruction.Picture) drawTheDrawingOf(
                     twoColours,
                     "image-filter bilinear resample 1 image (held) 0x0 40x40").getFirst();
 
-            assertThat(everyColourIn(blocky))
+            assertThat(collectEveryColourIn(blocky))
                     .as("nearest only ever repeats the colours it was given")
                     .hasSizeLessThanOrEqualTo(2);
-            assertThat(everyColourIn(smooth))
+            assertThat(collectEveryColourIn(smooth))
                     .as("bilinear blends, so there are colours in between")
                     .hasSizeGreaterThan(2);
         }
 
-        private static java.util.Set<String> everyColourIn(
+        private static java.util.Set<String> collectEveryColourIn(
                 PaintInstruction.Picture shown) {
 
             java.util.Set<String> seen = new java.util.HashSet<>();
             int wide = (int) Math.round(shown.pixels().size().x());
             int high = (int) Math.round(shown.pixels().size().y());
             for (int pixel = 1; pixel <= wide * high; pixel++) {
-                int[] parts = shown.pixels().pixelAt(pixel);
+                int[] parts = shown.pixels().readThePixelAt(pixel);
                 seen.add(parts[0] + "," + parts[1] + "," + parts[2]);
             }
             return seen;
@@ -138,8 +138,8 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
 
         @Test
         @DisplayName("and anything that is not an image paints nothing")
-        void anythingThatIsNotAnImagePaintsNothing() {
-            assertThat(drawingOf("", "image 10x10 20x20")).isEmpty();
+        void paintNothingForAnythingElse() {
+            assertThat(drawTheDrawingOf("", "image 10x10 20x20")).isEmpty();
         }
     }
 
@@ -151,7 +151,7 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
         @DisplayName("writes the strings of its block at the offset it was given")
         void writesTheStringsOfItsBlock() {
             List<PaintInstruction> painted =
-                    drawingOf("", "text vectorial 20x30 160x40 [{hello}]");
+                    drawTheDrawingOf("", "text vectorial 20x30 160x40 [{hello}]");
 
             assertThat(painted).hasSize(1);
             PaintInstruction.Writing written =
@@ -163,9 +163,9 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
 
         @Test
         @DisplayName("each string is its own run of one line, in the order written")
-        void eachStringIsItsOwnRun() {
+        void writesEachStringAsItsOwnRun() {
             List<PaintInstruction> painted =
-                    drawingOf("", "text vectorial 0x0 200x40 [{one} {two}]");
+                    drawTheDrawingOf("", "text vectorial 0x0 200x40 [{one} {two}]");
 
             assertThat(painted).hasSize(1);
             assertThat(((PaintInstruction.Writing) painted.getFirst()).runs())
@@ -175,7 +175,7 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
         @Test
         @DisplayName("BOLD and ITALIC before a string style it, and the slash turns it off")
         void boldAndItalicStyleWhatFollows() {
-            List<TextRun> runs = ((PaintInstruction.Writing) drawingOf("",
+            List<TextRun> runs = ((PaintInstruction.Writing) drawTheDrawingOf("",
                     "text vectorial 0x0 200x40 [bold {loud} /bold {quiet} italic {leaning}]")
                     .getFirst()).runs();
 
@@ -188,7 +188,7 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
         @Test
         @DisplayName("a number sets the size and a tuple sets the colour of what follows")
         void anumberSetsTheSizeAndATupleTheColour() {
-            List<PaintInstruction> painted = drawingOf("",
+            List<PaintInstruction> painted = drawTheDrawingOf("",
                     "text vectorial 0x0 200x40 [24 255.0.0 {big and red}]");
 
             TextRun written = ((PaintInstruction.Writing) painted.getFirst()).runs().getFirst();
@@ -199,7 +199,7 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
         @Test
         @DisplayName("it takes its colour from the pen")
         void ittakesItsColourFromThePen() {
-            TextRun written = ((PaintInstruction.Writing) drawingOf(
+            TextRun written = ((PaintInstruction.Writing) drawTheDrawingOf(
                     "", "pen 255.0.0 text vectorial 0x0 200x40 [{red}]").getFirst()).runs().getFirst();
 
             assertThat(written.colour()).isEqualTo(new Colour(255, 0, 0));
@@ -207,17 +207,17 @@ class ImagesAndTextInADrawBlockFromTheSourceTest {
 
         @Test
         @DisplayName("with the pen off there is nothing to write with, so nothing is written")
-        void withThePenOffNothingIsWritten() {
-            assertThat(drawingOf("", "pen off text vectorial 0x0 200x40 [{none}]"))
+        void writesNothingWithThePenOff() {
+            assertThat(drawTheDrawingOf("", "pen off text vectorial 0x0 200x40 [{none}]"))
                     .isEmpty();
         }
 
         @Test
         @DisplayName("and a block with no strings in it writes nothing")
         void ablockWithNoStringsWritesNothing() {
-            assertThat(drawingOf("", "text vectorial 0x0 200x40 [bold italic]"))
+            assertThat(drawTheDrawingOf("", "text vectorial 0x0 200x40 [bold italic]"))
                     .isEmpty();
-            assertThat(drawingOf("", "text vectorial 0x0 200x40 []")).isEmpty();
+            assertThat(drawTheDrawingOf("", "text vectorial 0x0 200x40 []")).isEmpty();
         }
     }
 }

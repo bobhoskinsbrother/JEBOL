@@ -27,9 +27,9 @@ public class UniqueNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("set1", Set.of(BlockValue.TYPE, StringValue.TYPE,
+                Parameter.of("set1", Set.of(BlockValue.TYPE, StringValue.TYPE,
                         BitsetValue.TYPE, TypesetValue.TYPE, MapValue.TYPE)),
-                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)));
+                Parameter.belongTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -40,13 +40,13 @@ public class UniqueNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            int stride = argumentOf("skip", 0, arguments, refinements)
+            int stride = readTheArgumentOf("skip", 0, arguments, refinements)
                     .filter(IntegerValue.class::isInstance)
                     .map(size -> (int) Math.max(EVERY_MEMBER_ON_ITS_OWN,
                             ((IntegerValue) size).magnitude()))
                     .orElse(EVERY_MEMBER_ON_ITS_OWN);
             return Combining.sets(arguments.getFirst(), arguments.getFirst(),
-                    SetOperation.named("union").orElseThrow(),
+                    SetOperation.findTheOperationNamed("union").orElseThrow(),
                     refinements.contains("case"), stride);
         };
     }

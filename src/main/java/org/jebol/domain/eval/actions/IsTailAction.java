@@ -26,7 +26,7 @@ public class IsTailAction extends SeriesOrFileAction {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series", TypesetValue.SERIES.membersAnd(
+        return List.of(Parameter.of("series", TypesetValue.SERIES.membersAnd(
                 GobValue.TYPE, PortValue.TYPE, BitsetValue.TYPE, TypesetValue.TYPE, MapValue.TYPE)));
     }
 
@@ -34,7 +34,7 @@ public class IsTailAction extends SeriesOrFileAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case PortValue port when port.isAFile() ->
-                    LogicValue.of(theFileBehind(port, evaluator).atItsEnd());
+                    LogicValue.of(findTheFileBehind(port, evaluator).atItsEnd());
             case Value anythingElse -> LogicValue.of(anythingElse.atTail());
         };
     }

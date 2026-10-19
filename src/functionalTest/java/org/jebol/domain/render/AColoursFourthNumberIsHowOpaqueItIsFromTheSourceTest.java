@@ -19,7 +19,7 @@ class AColoursFourthNumberIsHowOpaqueItIsFromTheSourceTest {
     private final Interpreter interpreter = Interpreter.withBounds(
             Bounds.standard().grant(HostService.WINDOWS));
 
-    private PaintInstruction.Drawn theOnlyShapeOf(String drawBlock) {
+    private PaintInstruction.Drawn findTheOnlyShapeOf(String drawBlock) {
         String source = "make gob! [size: 100x100 draw: [" + drawBlock + "]]";
         interpreter.defineFreshWordsIn(source);
         GobValue gob = (GobValue) interpreter.run(source).value();
@@ -40,8 +40,8 @@ class AColoursFourthNumberIsHowOpaqueItIsFromTheSourceTest {
             "10.20.30.40, 40",
     })
     @DisplayName("a fill-pen's fourth number is its opacity, and three numbers are solid")
-    void aFillPensFourthNumberIsItsOpacity(String colour, int opacity) {
-        assertThat(theOnlyShapeOf("fill-pen " + colour + " box 0x0 10x10")
+    void setsAFillPensOpacity(String colour, int opacity) {
+        assertThat(findTheOnlyShapeOf("fill-pen " + colour + " box 0x0 10x10")
                 .painted().fillColour().orElseThrow().opacity()).isEqualTo(opacity);
     }
 
@@ -52,15 +52,15 @@ class AColoursFourthNumberIsHowOpaqueItIsFromTheSourceTest {
             "200.0.0.0,   0",
     })
     @DisplayName("and so is a pen's")
-    void aPensFourthNumberIsItsOpacity(String colour, int opacity) {
-        assertThat(theOnlyShapeOf("pen " + colour + " box 0x0 10x10")
+    void setsAPensOpacity(String colour, int opacity) {
+        assertThat(findTheOnlyShapeOf("pen " + colour + " box 0x0 10x10")
                 .painted().strokeColour().orElseThrow().opacity()).isEqualTo(opacity);
     }
 
     @Test
     @DisplayName("the colour is kept apart from its opacity, so 0.0.0.128 is still black")
-    void theColourIsKept() {
-        Colour painted = theOnlyShapeOf("fill-pen 10.20.30.128 box 0x0 10x10")
+    void keepsTheColour() {
+        Colour painted = findTheOnlyShapeOf("fill-pen 10.20.30.128 box 0x0 10x10")
                 .painted().fillColour().orElseThrow();
 
         assertThat(painted).isEqualTo(new Colour(10, 20, 30, 128));
@@ -71,15 +71,15 @@ class AColoursFourthNumberIsHowOpaqueItIsFromTheSourceTest {
 
     @Test
     @DisplayName("the 2010 GUI's scroller track, 0.0.0.128, is half-transparent black")
-    void theScrollerTrackIsHalfTransparent() {
-        assertThat(theOnlyShapeOf("fill-pen 0.0.0.128 box 0x0 21x21 3")
+    void makesTheScrollerTrackHalfTransparent() {
+        assertThat(findTheOnlyShapeOf("fill-pen 0.0.0.128 box 0x0 21x21 3")
                 .painted().fillColour()).contains(new Colour(0, 0, 0, 128));
     }
 
     @Test
     @DisplayName("a gradient's colours keep their opacity too")
-    void aGradientsColoursKeepTheirOpacity() {
-        Gradient gradient = theOnlyShapeOf(
+    void keepsTheOpacityOfAGradientsColours() {
+        Gradient gradient = findTheOnlyShapeOf(
                 "grad-pen linear normal 50x50 0 100 0 1 1 [255.0.0.64 0.0.255] box 0x0 100x100")
                 .painted().fillGradient().orElseThrow();
 
@@ -88,14 +88,14 @@ class AColoursFourthNumberIsHowOpaqueItIsFromTheSourceTest {
 
     @Test
     @DisplayName("a colour of three numbers is equal to the same colour written solid with four")
-    void threeNumbersAreSolid() {
+    void staysSolidWithThreeNumbers() {
         assertThat(new Colour(1, 2, 3)).isEqualTo(new Colour(1, 2, 3, 255));
     }
 
     @ParameterizedTest(name = "an opacity of {0} is held as {1}")
     @CsvSource({"-1, 0", "0, 0", "255, 255", "256, 255"})
     @DisplayName("an opacity outside 0 to 255 is held at the nearer end, as each colour channel is")
-    void opacityIsClamped(int asked, int held) {
+    void clampsTheOpacity(int asked, int held) {
         assertThat(new Colour(0, 0, 0, asked).opacity()).isEqualTo(held);
     }
 
@@ -107,7 +107,7 @@ class AColoursFourthNumberIsHowOpaqueItIsFromTheSourceTest {
             "255;255;255;1  | rgba(255,255,255,0.004)",
     })
     @DisplayName("a browser is handed #rrggbb for a solid colour and rgba for one it can see through")
-    void aBrowserIsHandedRgbaWhenNeeded(String channels, String css) {
+    void handsABrowserRgbaWhenNeeded(String channels, String css) {
         String[] parts = channels.split(";");
         Colour colour = new Colour(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]),
                 Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));

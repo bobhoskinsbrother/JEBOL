@@ -33,7 +33,7 @@ class RoundTripInvariantTest {
 
         @Test
         @DisplayName("a bound block round-trips")
-        void boundBlockSurvives() {
+        void keepABoundBlock() {
             Context context = Context.root();
             context.register("known", IntegerValue.of(1));
 
@@ -51,8 +51,8 @@ class RoundTripInvariantTest {
             second.register("shared", IntegerValue.of(2));
 
             AnyWordValue unbound = WordValue.of("shared");
-            AnyWordValue inFirst = unbound.boundTo(first);
-            AnyWordValue inSecond = unbound.boundTo(second);
+            AnyWordValue inFirst = unbound.bindTo(first);
+            AnyWordValue inSecond = unbound.bindTo(second);
 
             assertThat(inFirst).as("equal? ignores binding").isEqualTo(inSecond);
             assertThat(inFirst).as("and ignores whether there is one at all").isEqualTo(unbound);
@@ -65,15 +65,15 @@ class RoundTripInvariantTest {
             context.register("shared", IntegerValue.of(1));
 
             AnyWordValue unbound = WordValue.of("shared");
-            AnyWordValue bound = unbound.boundTo(context);
+            AnyWordValue bound = unbound.bindTo(context);
 
             assertThat(bound.isSameAs(unbound)).isFalse();
-            assertThat(bound.isSameAs(unbound.boundTo(context))).isTrue();
+            assertThat(bound.isSameAs(unbound.bindTo(context))).isTrue();
         }
 
         @Test
         @DisplayName("== stays case sensitive even though binding is ignored")
-        void strictEqualityIsStillCaseSensitive() {
+        void stayCaseSensitiveUnderStrictEquality() {
             assertThat(WordValue.of("Print")).isNotEqualTo(WordValue.of("print"));
             assertThat(WordValue.of("Print").namesSameAs(WordValue.of("print"))).isTrue();
         }
@@ -92,15 +92,15 @@ class RoundTripInvariantTest {
 
         @Test
         @DisplayName("a block read from partway through round-trips")
-        void repositionedBlockSurvives() {
+        void keepARepositionedBlock() {
             AnyBlockValue whole = read("a b c d");
             assertRoundTrips(whole.atIndex(3), "a block positioned at its third item");
         }
 
         @Test
-        void repositionedStringSurvives() {
+        void keepARepositionedString() {
             AnyStringValue whole = StringValue.of("hello world");
-            AnyBlockValue holding = BlockValue.block(whole.atIndex(7));
+            AnyBlockValue holding = BlockValue.of(whole.atIndex(7));
 
             assertRoundTrips(holding, "a string positioned partway through");
         }
@@ -111,7 +111,7 @@ class RoundTripInvariantTest {
     class MutatedValues {
 
         @Test
-        void appendedBlockSurvives() {
+        void keepAnAppendedBlock() {
             AnyBlockValue block = read("[a b]");
             AnyBlockValue inner = (AnyBlockValue) block.remaining().get(0);
             inner.storage().append(WordValue.of("c"));
@@ -120,7 +120,7 @@ class RoundTripInvariantTest {
         }
 
         @Test
-        void mutatedStringSurvives() {
+        void keepAMutatedString() {
             AnyBlockValue block = read("\"ab\"");
             AnyStringValue text = (AnyStringValue) block.remaining().get(0);
             text.storage().append('c');
@@ -135,7 +135,7 @@ class RoundTripInvariantTest {
 
         @Test
         @DisplayName("one of each, in a single block")
-        void oneOfEachSurvives() {
+        void survivesOneOfEach() {
             String everything = String.join(" ", List.of(
                     "none", "true", "false",
                     "42", "-7", "1.5", ".5", "3.0e8",
@@ -151,7 +151,7 @@ class RoundTripInvariantTest {
 
         @Test
         @DisplayName("and the empty forms, which are easy to lose")
-        void emptyFormsSurvive() {
+        void survivesTheEmptyForms() {
             assertRoundTrips(read("[] () \"\" #{}"), "the empty forms");
         }
     }

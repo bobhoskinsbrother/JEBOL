@@ -28,7 +28,7 @@ public class IsDirectoryNative extends HostNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("target", Set.of(FileValue.TYPE, UrlValue.TYPE, NoneValue.TYPE)));
+        return List.of(Parameter.of("target", Set.of(FileValue.TYPE, UrlValue.TYPE, NoneValue.TYPE)));
     }
 
     @Override
@@ -59,6 +59,6 @@ public class IsDirectoryNative extends HostNative {
 
     private boolean liesOnTheDiskAsADirectory(Evaluator evaluator, String path) {
         granted.require(HostService.FILES);
-        return throughTheFileSystem(() -> LogicValue.of(evaluator.files().isDirectory(path))).isTruthy();
+        return runThroughTheFileSystem(() -> LogicValue.of(evaluator.files().isDirectory(path))).isTruthy();
     }
 }

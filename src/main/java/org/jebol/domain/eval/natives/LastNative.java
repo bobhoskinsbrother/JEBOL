@@ -14,15 +14,15 @@ public class LastNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value",
+        return List.of(Parameter.of("value",
                 TypesetValue.SERIES.membersAnd(TupleValue.TYPE, GobValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
-            case TupleValue parts -> IntegerValue.of(parts.octetAt(parts.segmentCount()));
-            case RebolSeries series -> series.picked(series.lengthFromHere());
+            case TupleValue parts -> IntegerValue.of(parts.readTheOctetAt(parts.segmentCount()));
+            case RebolSeries series -> series.pick(series.lengthFromHere());
             case Value anythingElse -> refuseTheDatatype(anythingElse);
         };
     }

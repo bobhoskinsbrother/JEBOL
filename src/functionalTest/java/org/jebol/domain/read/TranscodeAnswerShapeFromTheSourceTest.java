@@ -15,7 +15,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String call) {
+    private static String readTheErrorIdOf(String call) {
         return answerTo("e: try [" + call + "] "
                 + "either error? e [e/id] ['no-error]");
     }
@@ -28,7 +28,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("no unread text, because there is none")
-        void theWholeSourceHasNoRemainder() {
+        void leavesNoUnreadText() {
             assertThat(answerTo("""
                     [1 2] = transcode "1 2\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -37,7 +37,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("and an empty source is an empty block rather than a failure")
-        void anEmptySourceIsAnEmptyBlock() {
+        void answersAnEmptyBlockForAnEmptySource() {
             assertThat(answerTo("""
                     [] = transcode "\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -51,7 +51,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("/next keeps a block whole, because a block is one value")
-        void nextKeepsABlockWhole() {
+        void keepsABlockWholeUnderNext() {
             assertThat(answerTo("""
                     [1 " + 1"] = transcode/next "1 + 1\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -76,7 +76,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("and skipping that check means an unclosed block is not a failure")
-        void anUnclosedBlockIsNotAFailureUnderOnly() {
+        void acceptsAnUnclosedBlockUnderOnly() {
             assertThat(answerTo("""
                     error? try [transcode "[1"]""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -85,7 +85,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("and the two are the same block read two ways, which is the pair to read")
-        void theContrastBetweenTheTwo() {
+        void readsTheSameBlockTwoWays() {
             assertThat(answerTo("""
                     [1 2] = first transcode/next "[1 2]\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -94,7 +94,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("/one answers the value alone, with no room for the rest")
-        void oneAnswersTheValueAlone() {
+        void answersTheValueAloneUnderOne() {
             assertThat(answerTo("""
                     1 = transcode/one "1 2\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -102,8 +102,8 @@ class TranscodeAnswerShapeFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and what is left comes back as the kind that went in")
-        void theRemainderKeepsItsKind() {
+        @DisplayName("and what is left comes back as the type that went in")
+        void keepsTheKindOfTheRemainder() {
             assertThat(answerTo("""
                     [1 #{202B2031}] = transcode/next to binary! "1 + 1\""""))
                     .isEqualTo(TRUE);
@@ -119,7 +119,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("/error alone appends the unread text, with no other refinement")
-        void errorAloneAppendsTheRest() {
+        void appendsTheUnreadTextUnderErrorAlone() {
             assertThat(answerTo("""
                     [1 2 ""] = transcode/error "1 2\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -128,7 +128,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("and the values read before the failure survive it")
-        void theValuesBeforeTheFailureSurvive() {
+        void keepsTheValuesReadBeforeTheFailure() {
             assertThat(answerTo("""
                     all [
                         block? blk: transcode/error "1 2d"
@@ -140,7 +140,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("and a failure on the very first value leaves the error at the head")
-        void aFailureOnTheFirstValue() {
+        void leavesTheErrorAtTheHeadOnTheFirstValue() {
             assertThat(answerTo("""
                     all [
                         block? blk: transcode/error "1d"
@@ -151,7 +151,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("and Rebol's own binary case, where the remainder is the unread byte")
-        void theBinaryCaseFromRebolsSuite() {
+        void leavesTheUnreadByteAsTheRemainder() {
             assertThat(answerTo("""
                     all [
                         block? e: transcode/error to binary! {"test^/}
@@ -162,18 +162,18 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("but without it a failure is raised, which is what makes it worth asking for")
-        void withoutItTheFailureIsRaised() {
-            assertThat(errorIdOf("""
+        void isRaisedWithoutTheRefinement() {
+            assertThat(readTheErrorIdOf("""
                     transcode "1 2d\"""")).isEqualTo("invalid");
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/next "1d\"""")).isEqualTo("invalid");
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/only "1d\"""")).isEqualTo("invalid");
         }
 
         @Test
         @DisplayName("and a failure under /next is not an answer of none")
-        void aFailureIsNotNone() {
+        void isNotNoneUnderNext() {
             assertThat(answerTo("""
                     not error? transcode/next/error "1d\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -191,10 +191,10 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("/next and /one, which Rebol's own suite asserts")
-        void theTwoTheSuiteAsserts() {
-            assertThat(errorIdOf("""
+        void failsUnderNextAndOne() {
+            assertThat(readTheErrorIdOf("""
                     transcode/next "\"""")).isEqualTo("past-end");
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/one "\"""")).isEqualTo("past-end");
             assertThat(answerTo("""
                     all [error? e: transcode/next/error "" e/id = 'past-end]"""))
@@ -207,7 +207,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
         @Test
         @DisplayName("and /only, by the same one condition")
         void onlyFailsTheSameWay() {
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/only "\"""")).isEqualTo("past-end");
             assertThat(answerTo("""
                     all [error? e: transcode/only/error "" e/id = 'past-end]"""))
@@ -216,7 +216,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("and /error alone, which answers the failure rather than raising it")
-        void errorAloneAnswersPastEnd() {
+        void answersTheFailureUnderErrorAlone() {
             assertThat(answerTo("""
                     all [error? e: transcode/error "" e/id = 'past-end]"""))
                     .isEqualTo(TRUE);
@@ -225,11 +225,11 @@ class TranscodeAnswerShapeFromTheSourceTest {
         @Test
         @DisplayName("and whitespace alone is nothing, for every one of them")
         void whitespaceIsNothing() {
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/next "  ^/ \"""")).isEqualTo("past-end");
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/only "  ^/ \"""")).isEqualTo("past-end");
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/one ";just a comment\"""")).isEqualTo("past-end");
         }
     }
@@ -240,7 +240,7 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("under /only, which is the shape Rebol's own loader reads headers with")
-        void underOnly() {
+        void followsTheUnreadTextUnderOnly() {
             assertThat(answerTo("""
                     [1 " 2" 1] = transcode/only/line "1 2" 1""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -249,21 +249,21 @@ class TranscodeAnswerShapeFromTheSourceTest {
 
         @Test
         @DisplayName("and under /error, after the values and the unread text")
-        void underError() {
+        void followsTheUnreadTextUnderError() {
             assertThat(answerTo("""
                     [1 2 "" 10] = transcode/error/line "1 2" 10""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("but not under /one, which has nothing to append it to")
-        void notUnderOne() {
+        void isLeftOutUnderOne() {
             assertThat(answerTo("""
                     1 = transcode/one/line "1 2" 10""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and not without one of the three, because nothing was appended")
-        void notOnItsOwn() {
+        void isLeftOutWithoutARefinement() {
             assertThat(answerTo("""
                     [1 2] = transcode/line "1 2" 10""")).isEqualTo(TRUE);
         }

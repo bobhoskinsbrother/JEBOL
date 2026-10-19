@@ -16,45 +16,45 @@ class ConstructWithPositionTest {
 
     @Test
     @DisplayName("a string construct stands where it was told to")
-    void aStringStandsAtItsPosition() {
+    void placesAStringAtItsPosition() {
         assertThat(answerTo("load {#(string! \"ab\" 2)}")).isEqualTo("\"b\"");
     }
 
     @Test
     @DisplayName("position one is the head, which is the same as no position")
-    void positionOneIsTheHead() {
+    void placesPositionOneAtTheHead() {
         assertThat(answerTo("load {#(string! \"ab\" 1)}")).isEqualTo("\"ab\"");
         assertThat(answerTo("load {#(string! \"ab\")}")).isEqualTo("\"ab\"");
     }
 
     @Test
     @DisplayName("a file construct takes a position too")
-    void aFileTakesAPosition() {
+    void givesAFileAPosition() {
         assertThat(answerTo("mold load {#(file! \"ab\" 2)}")).isEqualTo("\"%b\"");
     }
 
     @Test
     @DisplayName("a block construct stands where it was told to")
-    void aBlockStandsAtItsPosition() {
+    void placesABlockAtItsPosition() {
         assertThat(answerTo("mold load {#(block! [1 2 3] 2)}")).isEqualTo("\"[2 3]\"");
     }
 
     @Test
     @DisplayName("the block family converts within itself")
-    void theBlockFamilyConverts() {
+    void convertsTheBlockFamily() {
         assertThat(answerTo("mold load {#(paren! [1 2])}")).isEqualTo("\"(1 2)\"");
     }
 
     @Test
     @DisplayName("a construct naming a block and holding something else is refused")
-    void aWrongContentIsRefused() {
+    void refusesTheWrongContent() {
         assertThat(answerTo("e: try [load {#(block! 1)}] either error? e [e/id] ['no-error]"))
                 .isEqualTo("malconstruct");
     }
 
     @Test
     @DisplayName("a position past the tail clamps rather than failing")
-    void aPositionPastTheEndClamps() {
+    void clampsAPositionPastTheEnd() {
         assertThat(answerTo("load {#(string! \"ab\" 9)}")).isEqualTo("\"\"");
         assertThat(answerTo("load {#(string! \"ab\" 3)}")).isEqualTo("\"\"");
         assertThat(answerTo("load {#(string! \"ab\" 2147483647)}")).isEqualTo("\"\"");
@@ -86,7 +86,7 @@ class ConstructWithPositionTest {
             "#(ref! {ab} 2 x)",
             "#(binary! #{0102} 2 x)",
         }) {
-            assertThat(errorIdFrom(refused)).as(refused).isEqualTo("malconstruct");
+            assertThat(readTheErrorIdFrom(refused)).as(refused).isEqualTo("malconstruct");
         }
     }
 
@@ -104,10 +104,10 @@ class ConstructWithPositionTest {
         assertThat(answerTo("mold load {#(binary! {ab})}")).isEqualTo("\"#{6162}\"");
         assertThat(answerTo("load {#(string! #{6162})}")).isEqualTo("\"ab\"");
         assertThat(answerTo("mold load {#(file! #{6162})}")).isEqualTo("\"%ab\"");
-        assertThat(errorIdFrom("#(string! [1 2])")).isEqualTo("malconstruct");
+        assertThat(readTheErrorIdFrom("#(string! [1 2])")).isEqualTo("malconstruct");
     }
 
-    private static String errorIdFrom(String literal) {
+    private static String readTheErrorIdFrom(String literal) {
         return answerTo("e: try [load {" + literal + "}] "
                 + "either error? e [e/id] ['no-error]");
     }

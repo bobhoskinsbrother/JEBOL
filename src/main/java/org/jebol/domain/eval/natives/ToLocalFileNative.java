@@ -32,7 +32,7 @@ public class ToLocalFileNative extends HostNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("path", Set.of(FileValue.TYPE, StringValue.TYPE)));
+        return List.of(Parameter.of("path", Set.of(FileValue.TYPE, StringValue.TYPE)));
     }
 
     @Override
@@ -48,19 +48,19 @@ public class ToLocalFileNative extends HostNative {
             String from = "";
             if (resolvingDots && !path.startsWith("/")) {
                 granted.require(HostService.WORKING_DIRECTORY);
-                from = ((AnyStringValue) throughTheFileSystem(() ->
+                from = ((AnyStringValue) runThroughTheFileSystem(() ->
                         StringValue.of(evaluator.files().workingDirectory()))).text();
             }
-            return StringValue.of(localPathOf(from + path, resolvingDots, localSeparator.separator()));
+            return StringValue.of(writeTheLocalPathOf(from + path, resolvingDots, localSeparator.separator()));
         };
     }
 
-    private String localPathOf(String path, boolean resolvingDots, char separator) {
+    private String writeTheLocalPathOf(String path, boolean resolvingDots, char separator) {
         StringBuilder built = new StringBuilder();
         int at = 0;
         while (at < path.length()) {
             if (resolvingDots) {
-                at = pastAnyDots(path, at, built, separator);
+                at = skipAnyDots(path, at, built, separator);
             }
             while (at < path.length()) {
                 char letter = path.charAt(at);
@@ -77,7 +77,7 @@ public class ToLocalFileNative extends HostNative {
         return built.toString();
     }
 
-    private int pastAnyDots(String path, int at, StringBuilder built, char separator) {
+    private int skipAnyDots(String path, int at, StringBuilder built, char separator) {
         if (at >= path.length() || path.charAt(at) != A_DOT) {
             return at;
         }

@@ -17,8 +17,8 @@ public class ParseNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("input", TypesetValue.SERIES.members()),
-                Parameter.required("rules", Set.of(BlockValue.TYPE)));
+                Parameter.of("input", TypesetValue.SERIES.members()),
+                Parameter.of("rules", Set.of(BlockValue.TYPE)));
     }
 
     @Override
@@ -29,7 +29,7 @@ public class ParseNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.get(1)) {
-            case AnyBlockValue rules -> Parser.over(
+            case AnyBlockValue rules -> Parser.parseOver(
                             evaluator, context, arguments.getFirst(), refinements.contains("case"))
                     .answerFor(rules);
             case Value other -> refuseTheArgument(other, "rules");

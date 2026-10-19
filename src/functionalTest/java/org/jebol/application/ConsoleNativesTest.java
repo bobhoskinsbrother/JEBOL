@@ -32,7 +32,7 @@ class ConsoleNativesTest {
         }
     }
 
-    private static Interpreter reaching(boolean granted, String... lines) {
+    private static Interpreter makeAnInterpreterReaching(boolean granted, String... lines) {
         Bounds bounds = granted
                 ? Bounds.standard().grant(HostService.CONSOLE)
                 : Bounds.standard();
@@ -46,54 +46,54 @@ class ConsoleNativesTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(Interpreter interpreter, String source) {
+    private static String readTheErrorIdOf(Interpreter interpreter, String source) {
         return answerTo(interpreter,
                 "e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("INPUT gives one line")
-    void oneLineIsRead() {
-        assertThat(answerTo(reaching(true, "hello"), "input")).isEqualTo("\"hello\"");
+    void readsOneLine() {
+        assertThat(answerTo(makeAnInterpreterReaching(true, "hello"), "input")).isEqualTo("\"hello\"");
     }
 
     @Test
     @DisplayName("each call takes the next line")
-    void theLinesComeInOrder() {
-        assertThat(answerTo(reaching(true, "one", "two"), "input input"))
+    void readsTheLinesInOrder() {
+        assertThat(answerTo(makeAnInterpreterReaching(true, "one", "two"), "input input"))
                 .isEqualTo("\"two\"");
     }
 
     @Test
     @DisplayName("nothing more to read answers none")
-    void theEndIsNone() {
-        assertThat(answerTo(reaching(true), "none? input")).isEqualTo("#(true)");
+    void answersNoneAtTheEnd() {
+        assertThat(answerTo(makeAnInterpreterReaching(true), "none? input")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("an empty line is an empty string")
-    void anEmptyLineIsNotTheEnd() {
-        assertThat(answerTo(reaching(true, ""), "input")).isEqualTo("\"\"");
+    void readsPastAnEmptyLine() {
+        assertThat(answerTo(makeAnInterpreterReaching(true, ""), "input")).isEqualTo("\"\"");
     }
 
     @Test
     @DisplayName("ASK writes the question and then reads")
-    void theQuestionComesFirst() {
-        assertThat(answerTo(reaching(true, "yes"), "ask \"go on? \"")).isEqualTo("\"yes\"");
+    void asksTheQuestionFirst() {
+        assertThat(answerTo(makeAnInterpreterReaching(true, "yes"), "ask \"go on? \"")).isEqualTo("\"yes\"");
     }
 
     @Test
     @DisplayName("without the grant both are refused")
-    void theGrantIsNeeded() {
-        assertThat(errorIdOf(reaching(false, "x"), "input")).isEqualTo("no-service");
-        assertThat(errorIdOf(reaching(false, "x"), "ask \"q\"")).isEqualTo("no-service");
+    void needsTheGrant() {
+        assertThat(readTheErrorIdOf(makeAnInterpreterReaching(false, "x"), "input")).isEqualTo("no-service");
+        assertThat(readTheErrorIdOf(makeAnInterpreterReaching(false, "x"), "ask \"q\"")).isEqualTo("no-service");
     }
 
     @Test
     @DisplayName("with the grant and no console, reading still fails")
-    void aPortIsAlsoNeeded() {
+    void needsAPortToo() {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.CONSOLE));
-        assertThat(errorIdOf(interpreter, "input")).isEqualTo("no-port");
+        assertThat(readTheErrorIdOf(interpreter, "input")).isEqualTo("no-port");
     }
 }

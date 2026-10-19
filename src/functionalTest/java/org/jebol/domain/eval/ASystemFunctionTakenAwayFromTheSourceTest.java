@@ -22,7 +22,7 @@ class ASystemFunctionTakenAwayFromTheSourceTest {
 
     @Test
     @DisplayName("a port cannot be made when MAKE-PORT* has been overwritten")
-    void aPortCannotBeMadeWhenMakePortHasBeenOverwritten() {
+    void stopsAPortBeingMadeWhenMakePortIsOverwritten() {
         assertThat(failureOf("""
                 system/contexts/sys/make-port*: 5
                 make port! [scheme: 'file ref: %x]"""))
@@ -32,7 +32,7 @@ class ASystemFunctionTakenAwayFromTheSourceTest {
 
     @Test
     @DisplayName("and a module cannot be made when MAKE-MODULE* has been")
-    void aModuleCannotBeMadeWhenMakeModuleHasBeenOverwritten() {
+    void stopsAModuleBeingMadeWhenMakeModuleIsOverwritten() {
         assertThat(failureOf("""
                 system/contexts/sys/make-module*: 5
                 make module! [[title: "x"][]]"""))
@@ -42,7 +42,7 @@ class ASystemFunctionTakenAwayFromTheSourceTest {
 
     @Test
     @DisplayName("anything that is not a function does it, and the error names what was found")
-    void anythingThatIsNotAFunctionDoesIt() {
+    void stopsItWithAnythingThatIsNotAFunction() {
         assertThat(failureOf("""
                 system/contexts/sys/make-port*: none
                 make port! [scheme: 'file ref: %x]"""))
@@ -62,7 +62,7 @@ class ASystemFunctionTakenAwayFromTheSourceTest {
 
     @Test
     @DisplayName("another function is accepted, because the check is that it is callable")
-    void anotherFunctionIsAccepted() {
+    void acceptsAnotherFunctionInItsPlace() {
         assertThat(answerTo("""
                 kept: :system/contexts/sys/make-port*
                 system/contexts/sys/make-port*: func [spec] [kept spec]
@@ -71,7 +71,7 @@ class ASystemFunctionTakenAwayFromTheSourceTest {
 
     @Test
     @DisplayName("and an untouched interpreter makes its port as it always did")
-    void anUntouchedInterpreterMakesItsPort() {
+    void stillMakesAPortWhenNothingIsTakenAway() {
         assertThat(answerTo("""
                 port? make port! [scheme: 'file ref: %x]""")).isEqualTo("#(true)");
     }

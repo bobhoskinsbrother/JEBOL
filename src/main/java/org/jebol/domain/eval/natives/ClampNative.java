@@ -24,7 +24,7 @@ public class ClampNative extends ArithmeticNative {
             Value lowest = arguments.get(1);
             Value highest = arguments.get(2);
             refuseARangeOfAnotherDatatype(value, lowest, highest);
-            return value.heldBetween(lowest, highest);
+            return value.holdBetween(lowest, highest);
         };
     }
 

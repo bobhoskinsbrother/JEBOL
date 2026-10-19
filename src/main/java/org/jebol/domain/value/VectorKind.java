@@ -62,7 +62,7 @@ public enum VectorKind {
     }
 
     /**
-     * The one spelling this kind molds as, whichever alias built it.
+     * The one spelling this type molds as, whichever alias built it.
      *
      * <p>Rebol normalises {@code byte!} to {@code uint8!} and {@code double!}
      * to {@code float64!} before it stores anything, so the alias is gone by
@@ -72,11 +72,11 @@ public enum VectorKind {
         return settledName + "!";
     }
 
-    public static Optional<VectorKind> named(String word) {
+    public static Optional<VectorKind> findTheKindNamed(String word) {
         return Optional.ofNullable(BY_NAME.get(word.toLowerCase(Locale.ROOT)));
     }
 
-    /** The kind a {@code [kind! width]} pair names, or nothing if there is none. */
+    /** The type a {@code [type! width]} pair names, or nothing if there is none. */
     public static Optional<VectorKind> of(boolean wantsDecimals, boolean wantsUnsigned,
             int askedBits) {
         for (VectorKind candidate : values()) {
@@ -105,7 +105,7 @@ public enum VectorKind {
     /**
      * What {@code v/signed} answers.
      *
-     * <p>True for every kind but the four unsigned integers, which means a
+     * <p>True for every type but the four unsigned integers, which means a
      * float vector is signed even though it has no sign bit to speak of.
      */
     public boolean isSigned() {
@@ -118,7 +118,7 @@ public enum VectorKind {
     }
 
     /**
-     * A whole number reduced to what this kind can hold.
+     * A whole number reduced to what this type can hold.
      *
      * <p>Truncating rather than refusing is the behaviour: the C assigns
      * through a narrower pointer and lets the machine drop the high bits, so
@@ -139,7 +139,7 @@ public enum VectorKind {
         };
     }
 
-    /** A decimal reduced to what this kind can hold, truncating towards zero. */
+    /** A decimal reduced to what this type can hold, truncating towards zero. */
     public long storeMeasured(double number) {
         return switch (this) {
             case FLOAT32 -> Float.floatToRawIntBits((float) number) & 0xFFFFFFFFL;
@@ -152,11 +152,11 @@ public enum VectorKind {
      * A REBOL value reduced to one stored element.
      *
      * <p>{@code Set_Vector_Value} takes an integer, a decimal or a character
-     * and converts between the first two as the kind needs. Anything else
+     * and converts between the first two as the type needs. Anything else
      * reaches {@code Trap_Arg}, which the caller reports: this is the value
      * layer and knows nothing about errors a script can catch.
      */
-    public long storedForm(Value written) {
+    public long encodeForStorage(Value written) {
         return switch (written) {
             case IntegerValue number -> store(number.magnitude());
             case CharacterValue letter -> store(letter.codepoint());
@@ -169,10 +169,10 @@ public enum VectorKind {
     /**
      * A stored element as a decimal, which is what the statistics work on.
      *
-     * <p>The widest unsigned kind is read here as though it were signed, which
+     * <p>The widest unsigned type is read here as though it were signed, which
      * is what the C does: {@code get_vect_decimal} tests {@code type <= VTUI64}
-     * before it tests for an unsigned kind, and that first test already covers
-     * every integer kind, so the unsigned branch behind it cannot be reached.
+     * before it tests for an unsigned type, and that first test already covers
+     * every integer type, so the unsigned branch behind it cannot be reached.
      * Minimum and maximum do not come through here and are unsigned properly.
      */
     public double asDecimal(long stored) {
@@ -191,7 +191,7 @@ public enum VectorKind {
     }
 
     /** The element's bytes as they sit in memory, least significant first. */
-    public byte[] octetsOf(long stored) {
+    public byte[] writeTheOctetsOf(long stored) {
         byte[] octets = new byte[bytes()];
         for (int at = 0; at < octets.length; at++) {
             octets[at] = (byte) (stored >>> (8 * at));
@@ -214,29 +214,29 @@ public enum VectorKind {
         return measuring ? gathered : store(gathered);
     }
 
-    public List<Value> numbersContributedBy(Value value) {
+    public List<Value> collectTheNumbersContributedBy(Value value) {
         return switch (value) {
-            case VectorValue source -> source.remaining();
+            case VectorValue source -> source.listTheRemaining();
             case AnyBlockValue block -> block.remaining();
-            case BinaryValue bytes -> numbersSpeltByWithTheOddBytesDropped(bytes, bytes.lengthFromHere());
+            case BinaryValue bytes -> readTheNumbersSpeltBy(bytes, bytes.lengthFromHere());
             default -> List.of(value);
         };
     }
 
-    public List<Value> numbersOfferedBy(Value value, int limit) {
+    public List<Value> collectTheNumbersOfferedBy(Value value, int limit) {
         if (!(value instanceof RebolSeries source)) {
-            return numbersContributedBy(value);
+            return collectTheNumbersContributedBy(value);
         }
-        RebolSeries run = source.reachingBackIfNegative(limit);
+        RebolSeries run = source.reachBackIfNegative(limit);
         long wanted = limit >= 0 ? limit : source.index() - run.index();
         if (run instanceof BinaryValue bytes) {
-            return numbersSpeltByWithTheOddBytesDropped(bytes, (int) Math.min(wanted, bytes.lengthFromHere()));
+            return readTheNumbersSpeltBy(bytes, (int) Math.min(wanted, bytes.lengthFromHere()));
         }
-        List<Value> offered = numbersContributedBy(run);
+        List<Value> offered = collectTheNumbersContributedBy(run);
         return offered.subList(0, (int) Math.min(wanted, offered.size()));
     }
 
-    private List<Value> numbersSpeltByWithTheOddBytesDropped(BinaryValue bytes, int taking) {
+    private List<Value> readTheNumbersSpeltBy(BinaryValue bytes, int taking) {
         int wholeNumbers = Math.max(0, taking) / bytes();
         if (wholeNumbers == 0) {
             throw Raised.of(EvaluationFailure.INVALID_DATA, bytes);

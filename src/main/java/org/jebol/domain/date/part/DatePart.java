@@ -49,30 +49,30 @@ public enum DatePart implements DateField {
                 : field.readFrom(date);
     }
 
-    public DateValue writtenOn(DateValue date, Value given) {
+    public DateValue writeOn(DateValue date, Value given) {
         if (field instanceof WritableDateField writable) {
-            return writable.writtenOn(date, new Assigned(given, WordValue.of(spelling())));
+            return writable.writeOn(date, new Assigned(given, WordValue.of(spelling())));
         }
         throw Raised.of(EvaluationFailure.BAD_PATH_SET, spelling());
     }
 
     public static Value readFrom(DateValue date, Value selector) {
-        return named(selector)
+        return findThePartNamed(selector)
                 .map(part -> part.readFrom(date))
                 .orElseGet(NoneValue::none);
     }
 
-    public static DateValue writtenOn(DateValue date, Value selector, Value given) {
-        return named(selector)
-                .orElseThrow(() -> noPartGoesByThatName(selector))
-                .writtenOn(date, given);
+    public static DateValue writeOn(DateValue date, Value selector, Value given) {
+        return findThePartNamed(selector)
+                .orElseThrow(() -> refuseAnUnknownPart(selector))
+                .writeOn(date, given);
     }
 
     public static List<String> partNames() {
         return Arrays.stream(values()).map(DatePart::spelling).toList();
     }
 
-    private static Optional<DatePart> named(Value selector) {
+    private static Optional<DatePart> findThePartNamed(Value selector) {
         if (selector instanceof AnyWordValue asked) {
             return Arrays.stream(values())
                     .filter(part -> part.spelling().equals(asked.canonical()))
@@ -90,7 +90,7 @@ public enum DatePart implements DateField {
         return name().toLowerCase(Locale.ROOT);
     }
 
-    private static Raised noPartGoesByThatName(Value selector) {
+    private static Raised refuseAnUnknownPart(Value selector) {
         return Raised.of(EvaluationFailure.INVALID_PATH,
                 selector instanceof AnyWordValue word ? word.spelling() : "date");
     }

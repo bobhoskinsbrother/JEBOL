@@ -30,23 +30,23 @@ class TheRebolGrammarFromTheSourceTest {
             "&quot;", "\"",
             "&apos;", "'");
 
-    private static String theGrammar() throws Exception {
+    private static String readTheGrammar() throws Exception {
         return Files.readString(THE_GRAMMAR, StandardCharsets.UTF_8);
     }
 
-    private static List<String> everyRegexIn(String grammar) {
+    private static List<String> listEveryRegexIn(String grammar) {
         List<String> found = new ArrayList<>();
         var pattern = java.util.regex.Pattern.compile(
                 "<key>(match|begin|end)</key>\\s*<string>(.*?)</string>",
                 java.util.regex.Pattern.DOTALL);
         var matcher = pattern.matcher(grammar);
         while (matcher.find()) {
-            found.add(readingEntitiesBack(matcher.group(2)));
+            found.add(readEntitiesBack(matcher.group(2)));
         }
         return found;
     }
 
-    private static String readingEntitiesBack(String escaped) {
+    private static String readEntitiesBack(String escaped) {
         String read = escaped;
         for (var entity : THE_XML_ENTITIES.entrySet()) {
             read = read.replace(entity.getKey(), entity.getValue());
@@ -54,7 +54,7 @@ class TheRebolGrammarFromTheSourceTest {
         return read;
     }
 
-    private static List<String> everyScopeIn(String grammar) {
+    private static List<String> listEveryScopeIn(String grammar) {
         List<String> found = new ArrayList<>();
         var matcher = java.util.regex.Pattern
                 .compile("<key>name</key>\\s*<string>(.*?)</string>")
@@ -67,7 +67,7 @@ class TheRebolGrammarFromTheSourceTest {
 
     @Test
     @DisplayName("both plists are well-formed, so an editor can read them at all")
-    void bothPlistsParse() throws Exception {
+    void parsesBothPlists() throws Exception {
         DocumentBuilderFactory parsing = DocumentBuilderFactory.newInstance();
         Document info = parsing.newDocumentBuilder().parse(THE_BUNDLE_INFO.toFile());
         Document grammar = parsing.newDocumentBuilder().parse(THE_GRAMMAR.toFile());
@@ -78,8 +78,8 @@ class TheRebolGrammarFromTheSourceTest {
 
     @Test
     @DisplayName("the grammar names itself, the files it claims and a first line")
-    void theGrammarDeclaresItself() throws Exception {
-        String grammar = theGrammar();
+    void declaresItself() throws Exception {
+        String grammar = readTheGrammar();
 
         assertThat(grammar).contains("<string>source.rebol</string>");
         assertThat(grammar).contains("<string>reb</string>")
@@ -90,8 +90,8 @@ class TheRebolGrammarFromTheSourceTest {
 
     @Test
     @DisplayName("every regex compiles the way IntelliJ will compile it")
-    void everyRegexCompiles() throws Exception {
-        List<String> every = everyRegexIn(theGrammar());
+    void compilesEveryRegex() throws Exception {
+        List<String> every = listEveryRegexIn(readTheGrammar());
 
         assertThat(every)
                 .as("a grammar with no patterns in it would pass anything")
@@ -105,8 +105,8 @@ class TheRebolGrammarFromTheSourceTest {
 
     @Test
     @DisplayName("and carries the scopes an editor colours: comments, strings, words, numbers")
-    void theScopesAreThere() throws Exception {
-        assertThat(everyScopeIn(theGrammar()))
+    void holdsTheScopes() throws Exception {
+        assertThat(listEveryScopeIn(readTheGrammar()))
                 .contains(
                         "comment.line.semicolon.rebol",
                         "string.quoted.double.rebol",

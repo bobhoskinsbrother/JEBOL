@@ -24,8 +24,8 @@ public class OpenAction extends PortAction {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("spec"),
-                Parameter.belongingTo("allow", "access", Set.of(BlockValue.TYPE)));
+                Parameter.of("spec"),
+                Parameter.belongTo("allow", "access", Set.of(BlockValue.TYPE)));
     }
 
     @Override
@@ -36,9 +36,9 @@ public class OpenAction extends PortAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            PortValue port = ports.portMadeFor(arguments.getFirst(), evaluator, context);
-            return evaluator.theRebolActorsAnswer(nativeName(), List.of(port), refinements)
-                    .orElseGet(() -> ports.opened(port, evaluator, refinements));
+            PortValue port = ports.makeAPortFor(arguments.getFirst(), evaluator, context);
+            return evaluator.askTheRebolActor(nativeName(), List.of(port), refinements)
+                    .orElseGet(() -> ports.open(port, evaluator, refinements));
         };
     }
 }

@@ -12,13 +12,13 @@ public enum EvaluationFailure {
     EXPECT_ARG(ErrorCategory.SCRIPT, "expect-arg", "an argument of the wrong datatype"),
     INVALID_PATH(ErrorCategory.SCRIPT, "invalid-path", "a path segment that selects nothing"),
     EXPECT_VAL(ErrorCategory.SCRIPT, "expect-val",
-            "a value of the wrong kind where a spec block wanted one"),
+            "a value of the wrong type where a spec block wanted one"),
     BAD_FIELD_SET(ErrorCategory.SCRIPT, "bad-field-set",
             "a field this thing has not got, or a value that field will not hold"),
     PAST_END(ErrorCategory.SCRIPT, "past-end",
             "a change at a position the series does not reach"),
     INVALID_HANDLE(ErrorCategory.SCRIPT, "invalid-handle",
-            "a handle of the wrong kind for what was asked of it"),
+            "a handle of the wrong type for what was asked of it"),
     CANNOT_OPEN(ErrorCategory.ACCESS, "cannot-open",
             "a port that could not be opened on what it names"),
     NO_DELETE(ErrorCategory.ACCESS, "no-delete",
@@ -158,7 +158,7 @@ public enum EvaluationFailure {
     BAD_COMMAND(ErrorCategory.SCRIPT, "bad-command",
             "a command called with more arguments than a command carries"),
     HANDLE_EXISTS(ErrorCategory.SCRIPT, "handle-exists",
-            "a kind of handle already known holding something else"),
+            "a type of handle already known holding something else"),
     NO_EXTENSION(ErrorCategory.ACCESS, "no-extension",
             "an extension that could not be opened"),
     BAD_EXTENSION(ErrorCategory.ACCESS, "bad-extension",
@@ -237,7 +237,7 @@ public enum EvaluationFailure {
     VECTOR_NOT_COMPATIBLE(ErrorCategory.SCRIPT, "vector-not-compatible",
             "two vectors that do not hold their numbers the same way"),
     NOT_SAME_TYPE(ErrorCategory.SCRIPT, "not-same-type",
-            "two values that are not the same kind of thing"),
+            "two values that are not the same type of thing"),
     OVERFLOW(ErrorCategory.MATH, "overflow", "arithmetic outside the representable range");
 
     private final ErrorCategory category;

@@ -75,45 +75,45 @@ class WhatEachSettingNativeDeclaresTest {
     Stream<Arguments> whatEachDeclares() {
         return Stream.of(
                 Arguments.of(new SetNative(), "set",
-                        List.of(Parameter.required("word", whatSetTakes()),
-                                Parameter.required("value", ANY_TYPE)),
+                        List.of(Parameter.of("word", whatSetTakes()),
+                                Parameter.of("value", ANY_TYPE)),
                         Set.of("any", "only", "some")),
                 Arguments.of(new GetNative(), "get",
-                        List.of(Parameter.required("word")), Set.of("any")),
+                        List.of(Parameter.of("word")), Set.of("any")),
                 Arguments.of(new TakeAction(new CryptPort()), "take",
-                        List.of(Parameter.required("series"),
-                                Parameter.belongingTo("part", "count", Set.of())),
+                        List.of(Parameter.of("series"),
+                                Parameter.belongTo("part", "count", Set.of())),
                         Set.of("part", "last", "deep", "all")),
                 Arguments.of(new AjoinNative(), "ajoin",
-                        List.of(Parameter.required("block", Set.of(BlockValue.TYPE)),
-                                Parameter.belongingTo("with", "separator", ANY_TYPE)),
+                        List.of(Parameter.of("block", Set.of(BlockValue.TYPE)),
+                                Parameter.belongTo("with", "separator", ANY_TYPE)),
                         Set.of("all", "with")),
                 Arguments.of(new PokeAction(), "poke",
-                        List.of(Parameter.required("series", whatPokeTakes()),
-                                Parameter.required("index"),
-                                Parameter.required("value", ANY_TYPE)),
+                        List.of(Parameter.of("series", whatPokeTakes()),
+                                Parameter.of("index"),
+                                Parameter.of("value", ANY_TYPE)),
                         NOTHING),
                 Arguments.of(new DifferenceNative(), "difference",
-                        List.of(Parameter.required("first", whatDifferenceTakes()),
-                                Parameter.required("second", whatDifferenceTakes()),
-                                Parameter.belongingTo("skip", "size", AN_INTEGER)),
+                        List.of(Parameter.of("first", whatDifferenceTakes()),
+                                Parameter.of("second", whatDifferenceTakes()),
+                                Parameter.belongTo("skip", "size", AN_INTEGER)),
                         Set.of("case", "skip")),
                 Arguments.of(new ReflectAction(new BootDeclarations()), "reflect",
-                        List.of(Parameter.required("value"),
-                                Parameter.required("field", Set.of(WordValue.TYPE))),
+                        List.of(Parameter.of("value"),
+                                Parameter.of("field", Set.of(WordValue.TYPE))),
                         NOTHING),
                 Arguments.of(new PutAction(), "put",
-                        List.of(Parameter.required("target"),
-                                Parameter.required("key", ANY_TYPE),
-                                Parameter.required("value", ANY_TYPE),
-                                Parameter.belongingTo("skip", "size", AN_INTEGER)),
+                        List.of(Parameter.of("target"),
+                                Parameter.of("key", ANY_TYPE),
+                                Parameter.of("value", ANY_TYPE),
+                                Parameter.belongTo("skip", "size", AN_INTEGER)),
                         Set.of("case", "skip")),
                 Arguments.of(new SelectAction(), "select",
-                        List.of(Parameter.required("series"),
-                                Parameter.required("value", ANY_TYPE),
-                                Parameter.belongingTo("part", "range", whatBoundsAPart()),
-                                Parameter.belongingTo("with", "wild", Set.of(StringValue.TYPE)),
-                                Parameter.belongingTo("skip", "size", AN_INTEGER)),
+                        List.of(Parameter.of("series"),
+                                Parameter.of("value", ANY_TYPE),
+                                Parameter.belongTo("part", "range", whatBoundsAPart()),
+                                Parameter.belongTo("with", "wild", Set.of(StringValue.TYPE)),
+                                Parameter.belongTo("skip", "size", AN_INTEGER)),
                         Set.of("case", "skip", "any", "only", "last", "part", "same", "with",
                                 "reverse")));
     }
@@ -138,10 +138,10 @@ class WhatEachSettingNativeDeclaresTest {
             Context fields = holding("a", NoneValue.none());
 
             Value answer = answerOf(new SetNative(),
-                    WordValue.of("a").boundTo(fields), IntegerValue.of(7));
+                    WordValue.of("a").bindTo(fields), IntegerValue.of(7));
 
             assertThat(answer).isEqualTo(IntegerValue.of(7));
-            assertThat(fields.slotFor("a").value()).isEqualTo(IntegerValue.of(7));
+            assertThat(fields.findSlotFor("a").value()).isEqualTo(IntegerValue.of(7));
         }
 
         @Test
@@ -150,7 +150,7 @@ class WhatEachSettingNativeDeclaresTest {
             Context fields = holding("a", NoneValue.none());
 
             assertThatThrownBy(() -> answerOf(new SetNative(),
-                    WordValue.of("a").boundTo(fields), UnsetValue.unset()))
+                    WordValue.of("a").bindTo(fields), UnsetValue.unset()))
                     .isInstanceOf(Raised.class);
         }
 
@@ -161,12 +161,12 @@ class WhatEachSettingNativeDeclaresTest {
             fields.register("b", IntegerValue.of(9));
 
             answerOf(new SetNative(),
-                    BlockValue.block(List.of(WordValue.of("a").boundTo(fields),
-                            WordValue.of("b").boundTo(fields))),
-                    BlockValue.block(List.of(IntegerValue.of(1))));
+                    BlockValue.of(List.of(WordValue.of("a").bindTo(fields),
+                            WordValue.of("b").bindTo(fields))),
+                    BlockValue.of(List.of(IntegerValue.of(1))));
 
-            assertThat(fields.slotFor("a").value()).isEqualTo(IntegerValue.of(1));
-            assertThat(fields.slotFor("b").value()).isEqualTo(NoneValue.none());
+            assertThat(fields.findSlotFor("a").value()).isEqualTo(IntegerValue.of(1));
+            assertThat(fields.findSlotFor("b").value()).isEqualTo(NoneValue.none());
         }
 
         @Test
@@ -175,13 +175,13 @@ class WhatEachSettingNativeDeclaresTest {
             Context fields = holding("a", IntegerValue.of(3));
             fields.register("u", UnsetValue.unset());
 
-            assertThat(answerOf(new GetNative(), WordValue.of("a").boundTo(fields)))
+            assertThat(answerOf(new GetNative(), WordValue.of("a").bindTo(fields)))
                     .isEqualTo(IntegerValue.of(3));
             assertThatThrownBy(() -> answerOf(new GetNative(),
-                    WordValue.of("u").boundTo(fields)))
+                    WordValue.of("u").bindTo(fields)))
                     .isInstanceOf(Raised.class);
             assertThat(answerOf(new GetNative(), Set.of("any"),
-                    WordValue.of("u").boundTo(fields)))
+                    WordValue.of("u").bindTo(fields)))
                     .isInstanceOf(UnsetValue.class);
         }
     }
@@ -280,7 +280,7 @@ class WhatEachSettingNativeDeclaresTest {
         @Test
         @DisplayName("take removes the first item and answers it")
         void takeFromABlock() {
-            AnyBlockValue block = BlockValue.block(List.of(IntegerValue.of(1), IntegerValue.of(2)));
+            AnyBlockValue block = BlockValue.of(List.of(IntegerValue.of(1), IntegerValue.of(2)));
 
             assertThat(answerOf(new TakeAction(new CryptPort()), block)).isEqualTo(IntegerValue.of(1));
             assertThat(block.remaining()).containsExactly(IntegerValue.of(2));
@@ -308,8 +308,8 @@ class WhatEachSettingNativeDeclaresTest {
         @DisplayName("difference keeps what only one side holds")
         void differenceOfBlocks() {
             Value kept = answerOf(new DifferenceNative(),
-                    BlockValue.block(List.of(IntegerValue.of(1), IntegerValue.of(2))),
-                    BlockValue.block(List.of(IntegerValue.of(2), IntegerValue.of(3))));
+                    BlockValue.of(List.of(IntegerValue.of(1), IntegerValue.of(2))),
+                    BlockValue.of(List.of(IntegerValue.of(2), IntegerValue.of(3))));
 
             assertThat(((AnyBlockValue) kept).remaining())
                     .containsExactly(IntegerValue.of(1), IntegerValue.of(3));

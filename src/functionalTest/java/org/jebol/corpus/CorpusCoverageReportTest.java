@@ -16,7 +16,7 @@ class CorpusCoverageReportTest {
     @Test
     @DisplayName("report every entry that asserts behaviour")
     void reportCoverage() {
-        List<CorpusEntry> assertable = CorpusReader.allEntries().stream()
+        List<CorpusEntry> assertable = CorpusReader.readAllEntries().stream()
                 .filter(CorpusEntry::assertsSomething)
                 .filter(entry -> entry.expectedTypes().isEmpty())
                 .toList();
@@ -27,7 +27,7 @@ class CorpusCoverageReportTest {
         for (CorpusEntry entry : assertable) {
             try {
                 CorpusRunner.Result result = CorpusRunner.run(entry);
-                result.mismatch(entry).ifPresentOrElse(
+                result.describeTheMismatch(entry).ifPresentOrElse(
                         reason -> failing.put(entry.id(), reason),
                         () -> passing.add(entry.id()));
             } catch (RuntimeException unexpected) {

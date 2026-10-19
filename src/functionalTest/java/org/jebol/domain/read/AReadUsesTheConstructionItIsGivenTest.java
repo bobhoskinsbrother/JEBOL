@@ -28,13 +28,13 @@ class AReadUsesTheConstructionItIsGivenTest {
         private final List<Datatype> asked = new ArrayList<>();
 
         @Override
-        public Value madeOf(Datatype datatype, Value specification) {
+        public Value make(Datatype datatype, Value specification) {
             asked.add(datatype);
             return WHAT_THE_CONSTRUCTION_MADE;
         }
 
         @Override
-        public Value functionMadeFrom(AnyBlockValue spec, AnyBlockValue body) {
+        public Value makeAFunction(AnyBlockValue spec, AnyBlockValue body) {
             return WHAT_THE_FUNCTION_BUILDER_MADE;
         }
     }
@@ -42,12 +42,12 @@ class AReadUsesTheConstructionItIsGivenTest {
     private static final class RefusingConstruction implements Construction {
 
         @Override
-        public Value madeOf(Datatype datatype, Value specification) {
+        public Value make(Datatype datatype, Value specification) {
             throw new IllegalArgumentException("refused");
         }
 
         @Override
-        public Value functionMadeFrom(AnyBlockValue spec, AnyBlockValue body) {
+        public Value makeAFunction(AnyBlockValue spec, AnyBlockValue body) {
             throw new IllegalArgumentException("refused");
         }
     }
@@ -56,7 +56,7 @@ class AReadUsesTheConstructionItIsGivenTest {
         return read.error().orElseThrow().errorId();
     }
 
-    private static List<Value> valuesOf(TranscodeResult read) {
+    private static List<Value> readTheValuesOf(TranscodeResult read) {
         return read.values().orElseThrow().remaining();
     }
 
@@ -66,21 +66,21 @@ class AReadUsesTheConstructionItIsGivenTest {
 
         @Test
         @DisplayName("a struct literal is refused")
-        void aStructIsRefused() {
+        void refusesAStruct() {
             assertThat(failureOf(Transcoder.transcode(A_STRUCT_LITERAL)))
                     .isEqualTo("malconstruct");
         }
 
         @Test
         @DisplayName("a function literal is refused")
-        void aFunctionIsRefused() {
+        void refusesAFunction() {
             assertThat(failureOf(Transcoder.transcode(A_FUNCTION_LITERAL)))
                     .isEqualTo("malconstruct");
         }
 
         @Test
         @DisplayName("and an interpreter existing somewhere in the process changes nothing")
-        void anotherInterpreterDoesNotLendItsConstruction() {
+        void borrowsNoConstructionFromAnotherInterpreter() {
             Interpreter.create();
 
             assertThat(failureOf(Transcoder.transcode(A_STRUCT_LITERAL)))
@@ -91,7 +91,7 @@ class AReadUsesTheConstructionItIsGivenTest {
 
         @Test
         @DisplayName("the explicit refusal reads the same as giving none")
-        void theRefusalIsTheSameAsNone() {
+        void refusesAsNoneDoes() {
             assertThat(failureOf(Transcoder.transcode(A_STRUCT_LITERAL, Construction.refused())))
                     .isEqualTo("malconstruct");
         }
@@ -103,28 +103,28 @@ class AReadUsesTheConstructionItIsGivenTest {
 
         @Test
         @DisplayName("a struct literal is whatever the construction makes")
-        void aStructIsMadeByTheConstruction() {
+        void makesAStruct() {
             RecordingConstruction construction = new RecordingConstruction();
 
-            assertThat(valuesOf(Transcoder.transcode(A_STRUCT_LITERAL, construction)))
+            assertThat(readTheValuesOf(Transcoder.transcode(A_STRUCT_LITERAL, construction)))
                     .containsExactly(WHAT_THE_CONSTRUCTION_MADE);
             assertThat(construction.asked).containsExactly(StructValue.TYPE);
         }
 
         @Test
         @DisplayName("a function literal is whatever the construction builds")
-        void aFunctionIsBuiltByTheConstruction() {
-            assertThat(valuesOf(Transcoder.transcode(A_FUNCTION_LITERAL,
+        void buildsAFunction() {
+            assertThat(readTheValuesOf(Transcoder.transcode(A_FUNCTION_LITERAL,
                     new RecordingConstruction())))
                     .containsExactly(WHAT_THE_FUNCTION_BUILDER_MADE);
         }
 
         @Test
         @DisplayName("a literal nested in a block reaches the same construction")
-        void insideABlock() {
+        void buildsInsideABlock() {
             RecordingConstruction construction = new RecordingConstruction();
 
-            List<Value> read = valuesOf(Transcoder.transcode(
+            List<Value> read = readTheValuesOf(Transcoder.transcode(
                     "[" + A_STRUCT_LITERAL + "]", construction));
 
             assertThat(((AnyBlockValue) read.getFirst()).remaining())
@@ -134,7 +134,7 @@ class AReadUsesTheConstructionItIsGivenTest {
 
         @Test
         @DisplayName("a literal inside a path segment, which is read on its own, reaches it too")
-        void insideAPathSegment() {
+        void buildsInsideAPathSegment() {
             RecordingConstruction construction = new RecordingConstruction();
 
             Transcoder.transcode("p/(" + A_STRUCT_LITERAL + ")", construction);
@@ -144,7 +144,7 @@ class AReadUsesTheConstructionItIsGivenTest {
 
         @Test
         @DisplayName("a construction that refuses makes the literal malconstruct")
-        void aRefusalIsMalconstruct() {
+        void refusesAsMalconstruct() {
             assertThat(failureOf(Transcoder.transcode(A_STRUCT_LITERAL,
                     new RefusingConstruction())))
                     .isEqualTo("malconstruct");
@@ -155,7 +155,7 @@ class AReadUsesTheConstructionItIsGivenTest {
 
         @Test
         @DisplayName("a literal the reader builds itself never reaches the construction")
-        void aLiteralTheReaderBuildsItself() {
+        void leavesTheReaderToBuildItsOwnLiterals() {
             RecordingConstruction construction = new RecordingConstruction();
 
             Transcoder.transcode("#(block! [1 2])", construction);

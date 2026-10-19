@@ -9,11 +9,11 @@ import java.util.Set;
 
 public abstract class ObjectFromSpecNative extends DefaultNative {
 
-    protected abstract String whatTheSpecIsCalled();
+    protected abstract String nameTheSpec();
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required(whatTheSpecIsCalled(), Set.of(BlockValue.TYPE)));
+        return List.of(Parameter.of(nameTheSpec(), Set.of(BlockValue.TYPE)));
     }
 
     @Override
@@ -24,13 +24,13 @@ public abstract class ObjectFromSpecNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                objectMadeFrom((AnyBlockValue) arguments.getFirst(), evaluator, context);
+                makeAnObjectFrom((AnyBlockValue) arguments.getFirst(), evaluator, context);
     }
 
-    protected ObjectValue objectMadeFrom(
+    protected ObjectValue makeAnObjectFrom(
             AnyBlockValue spec, Evaluator evaluator, Context enclosing) {
 
-        return evaluator.evaluatedInto(evaluator.freshObjectWithin(enclosing), spec);
+        return evaluator.evaluateInto(evaluator.makeAFreshObjectWithin(enclosing), spec);
     }
 
 }

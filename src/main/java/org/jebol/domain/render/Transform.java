@@ -26,7 +26,7 @@ public record Transform(
     }
 
     /** This transform followed by another, as one. */
-    public Transform combinedWith(Transform then) {
+    public Transform combineWith(Transform then) {
         return new Transform(
                 acrossScale * then.acrossScale + acrossSkew * then.downSkew,
                 downSkew * then.acrossScale + downScale * then.downSkew,
@@ -44,7 +44,7 @@ public record Transform(
      * divides by the determinant without looking; dividing by zero here would
      * put infinities into every coordinate that followed.
      */
-    public Transform inverted() {
+    public Transform invert() {
         double determinant = acrossScale * downScale - downSkew * acrossSkew;
         if (determinant == 0 || !Double.isFinite(determinant)) {
             return this;
@@ -58,16 +58,16 @@ public record Transform(
                 (downSkew * acrossMove - acrossScale * downMove) / determinant);
     }
 
-    public static Transform movedBy(double across, double down) {
+    public static Transform moveBy(double across, double down) {
         return new Transform(1, 0, 0, 1, across, down);
     }
 
-    public static Transform scaledBy(double across, double down) {
+    public static Transform scaleBy(double across, double down) {
         return new Transform(across, 0, 0, down, 0, 0);
     }
 
     /** Clockwise, in degrees, which is how the dialect writes an angle. */
-    public static Transform turnedBy(double degrees) {
+    public static Transform turnBy(double degrees) {
         double turn = Math.toRadians(degrees);
         return new Transform(
                 Math.cos(turn), Math.sin(turn),
@@ -75,7 +75,7 @@ public record Transform(
     }
 
     /** Skewed by an angle in each direction, in degrees. */
-    public static Transform skewedBy(double across, double down) {
+    public static Transform skewBy(double across, double down) {
         return new Transform(
                 1, Math.tan(Math.toRadians(down)),
                 Math.tan(Math.toRadians(across)), 1, 0, 0);

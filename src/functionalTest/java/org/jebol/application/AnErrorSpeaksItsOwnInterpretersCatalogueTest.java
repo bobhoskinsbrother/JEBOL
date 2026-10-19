@@ -23,7 +23,7 @@ class AnErrorSpeaksItsOwnInterpretersCatalogueTest {
 
     private static final String THE_REWORDED_CATALOGUE_SAYS = "attempt to divide by zero now";
 
-    private static String messageLineOf(String formed) {
+    private static String readTheMessageLineOf(String formed) {
         return formed.lines()
                 .filter(line -> line.startsWith("** Math error: "))
                 .findFirst()
@@ -37,38 +37,38 @@ class AnErrorSpeaksItsOwnInterpretersCatalogueTest {
 
         @Test
         @DisplayName("when the rewording interpreter was made first")
-        void theRewordingOneMadeFirst() {
+        void keepsTheRewordingOneMadeFirst() {
             Interpreter rewording = Interpreter.create();
             Interpreter untouched = Interpreter.create();
             rewording.run(REWORD_DIVIDING_BY_ZERO);
 
-            assertThat(messageLineOf(rewording.run(FORM_A_DIVISION_BY_ZERO).display()))
+            assertThat(readTheMessageLineOf(rewording.run(FORM_A_DIVISION_BY_ZERO).display()))
                     .isEqualTo(THE_REWORDED_CATALOGUE_SAYS);
-            assertThat(messageLineOf(untouched.run(FORM_A_DIVISION_BY_ZERO).display()))
+            assertThat(readTheMessageLineOf(untouched.run(FORM_A_DIVISION_BY_ZERO).display()))
                     .isEqualTo(THE_CATALOGUE_SAYS);
         }
 
         @Test
         @DisplayName("and when it was made last")
-        void theRewordingOneMadeLast() {
+        void keepsTheRewordingOneMadeLast() {
             Interpreter untouched = Interpreter.create();
             Interpreter rewording = Interpreter.create();
             rewording.run(REWORD_DIVIDING_BY_ZERO);
 
-            assertThat(messageLineOf(rewording.run(FORM_A_DIVISION_BY_ZERO).display()))
+            assertThat(readTheMessageLineOf(rewording.run(FORM_A_DIVISION_BY_ZERO).display()))
                     .isEqualTo(THE_REWORDED_CATALOGUE_SAYS);
-            assertThat(messageLineOf(untouched.run(FORM_A_DIVISION_BY_ZERO).display()))
+            assertThat(readTheMessageLineOf(untouched.run(FORM_A_DIVISION_BY_ZERO).display()))
                     .isEqualTo(THE_CATALOGUE_SAYS);
         }
 
         @Test
         @DisplayName("an error caught before the rewording speaks the rewording when formed after it")
-        void theCatalogueIsReadWhenFormingNotWhenRaising() {
+        void readsTheCatalogueWhenFormingNotWhenRaising() {
             Interpreter interpreter = Interpreter.create();
             interpreter.run("caught: try [1 / 0]");
             interpreter.run(REWORD_DIVIDING_BY_ZERO);
 
-            assertThat(messageLineOf(interpreter.run("form caught").display()))
+            assertThat(readTheMessageLineOf(interpreter.run("form caught").display()))
                     .isEqualTo(THE_REWORDED_CATALOGUE_SAYS);
         }
     }
@@ -79,7 +79,7 @@ class AnErrorSpeaksItsOwnInterpretersCatalogueTest {
 
         @Test
         @DisplayName("a made error forms from the catalogue")
-        void aMadeErrorFormsFromTheCatalogue() {
+        void formsAMadeErrorFromTheCatalogue() {
             String formed = Interpreter.create().run("""
                     form make error! [type: 'math id: 'zero-divide]""").display();
 
@@ -88,7 +88,7 @@ class AnErrorSpeaksItsOwnInterpretersCatalogueTest {
 
         @Test
         @DisplayName("and from its own interpreter's rewording")
-        void aMadeErrorFormsFromItsOwnRewording() {
+        void formsAMadeErrorFromItsOwnRewording() {
             Interpreter rewording = Interpreter.create();
             Interpreter.create();
             rewording.run(REWORD_DIVIDING_BY_ZERO);
@@ -106,7 +106,7 @@ class AnErrorSpeaksItsOwnInterpretersCatalogueTest {
 
         @Test
         @DisplayName("it forms as Rebol forms an id its catalogue lacks, whatever interpreters exist")
-        void itFormsAsAnUnknownId() {
+        void formsAsAnUnknownId() {
             Interpreter.create().run(REWORD_DIVIDING_BY_ZERO);
 
             String formed = Molder.form(

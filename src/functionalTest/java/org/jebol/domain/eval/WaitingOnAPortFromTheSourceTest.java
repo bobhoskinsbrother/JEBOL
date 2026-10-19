@@ -30,17 +30,17 @@ class WaitingOnAPortFromTheSourceTest {
         }
 
         @Override
-        public Optional<String> theFirstIpv4AddressOf(String hostName) {
+        public Optional<String> resolveTheFirstIpv4Address(String hostName) {
             return Optional.of("203.0.113.1");
         }
 
         @Override
-        public Optional<String> theNameAt(String ipv4Address) {
+        public Optional<String> resolveHostName(String ipv4Address) {
             return Optional.empty();
         }
 
         @Override
-        public String thisMachinesName() {
+        public String hostName() {
             return "a-canned-server";
         }
 

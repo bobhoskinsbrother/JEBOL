@@ -24,13 +24,13 @@ public final class ClosureValue extends DefinedFunctionValue {
     }
 
     @Override
-    public ClosureValue sameKindRunning(AnyBlockValue anotherBody, Context closedOverInstead) {
+    public ClosureValue makeTheSameKindRunning(AnyBlockValue anotherBody, Context closedOverInstead) {
         return new ClosureValue(spec(), anotherBody, parameters(), localNames(), closedOverInstead,
-                Context.theWordsAFunctionDeclares());
+                Context.collectTheWordsAFunctionDeclares());
     }
 
     @Override
-    public Context aFreshCallFrame() {
-        return Context.childOf(closedOver());
+    public Context makeAFreshCallFrame() {
+        return Context.makeChildOf(closedOver());
     }
 }

@@ -21,7 +21,7 @@ class MissingDelimiterFromTheSourceTest {
 
         @Test
         @DisplayName("an open block runs out of script and wants a bracket")
-        void anOpenBlock() {
+        void wantsABracketForAnOpenBlock() {
             assertThat(answerTo("""
                     e: try [load "[1"]
                     all [e/id = 'missing e/arg1 = "end-of-script" e/arg2 = "]"]"""))
@@ -30,7 +30,7 @@ class MissingDelimiterFromTheSourceTest {
 
         @Test
         @DisplayName("an open paren wants a parenthesis")
-        void anOpenParen() {
+        void wantsAParenthesisForAnOpenParen() {
             assertThat(answerTo("""
                     e: try [load "(1"]
                     all [e/id = 'missing e/arg1 = "end-of-script" e/arg2 = ")"]"""))
@@ -39,7 +39,7 @@ class MissingDelimiterFromTheSourceTest {
 
         @Test
         @DisplayName("and the inner of two open blocks is the one reported")
-        void theInnerOfTwoOpenBlocks() {
+        void isTheInnerOfTwoOpenBlocks() {
             assertThat(answerTo("""
                     e: try [load "[[1]"]
                     all [e/id = 'missing e/arg2 = "]"]""")).isEqualTo("#(true)");
@@ -47,7 +47,7 @@ class MissingDelimiterFromTheSourceTest {
 
         @Test
         @DisplayName("a balanced source loads and raises nothing")
-        void theBalancedSourceIsTheOffPoint() {
+        void raisesNothingForABalancedSource() {
             assertThat(answerTo("""
                     block? load {[1]}""")).isEqualTo("#(true)");
         }
@@ -59,7 +59,7 @@ class MissingDelimiterFromTheSourceTest {
 
         @Test
         @DisplayName("a stray bracket ends a block that was not open")
-        void aStrayBracket() {
+        void endsABlockThatWasNotOpen() {
             assertThat(answerTo("""
                     e: try [load "1]"]
                     all [e/id = 'missing e/arg1 = "end-of-block" e/arg2 = "["]"""))
@@ -68,7 +68,7 @@ class MissingDelimiterFromTheSourceTest {
 
         @Test
         @DisplayName("a stray parenthesis ends a paren that was not open")
-        void aStrayParenthesis() {
+        void endsAParenThatWasNotOpen() {
             assertThat(answerTo("""
                     e: try [load "1)"]
                     all [e/id = 'missing e/arg1 = "end-of-paren" e/arg2 = "("]"""))
@@ -77,7 +77,7 @@ class MissingDelimiterFromTheSourceTest {
 
         @Test
         @DisplayName("a bracket closing an open paren names the paren it interrupted")
-        void aBracketClosingAParen() {
+        void namesTheParenABracketInterrupted() {
             assertThat(answerTo("""
                     e: try [load "[(]"]
                     all [e/id = 'missing e/arg1 = "end-of-block" e/arg2 = ")"]"""))
@@ -86,7 +86,7 @@ class MissingDelimiterFromTheSourceTest {
 
         @Test
         @DisplayName("and a lone closer on its own is refused as well")
-        void aLoneCloser() {
+        void isRefusedOnItsOwn() {
             assertThat(answerTo("""
                     error? try [load "]"]""")).isEqualTo("#(true)");
         }
@@ -98,14 +98,14 @@ class MissingDelimiterFromTheSourceTest {
 
         @Test
         @DisplayName("an unterminated string is not a missing delimiter")
-        void anUnterminatedString() {
+        void reportAnUnterminatedStringByItsOwnId() {
             assertThat(answerTo("""
                     e: try [load {"abc}] e/id = 'invalid""")).isEqualTo("#(true)");
         }
 
         @Test
-        @DisplayName("an unterminated binary is an invalid token naming its kind")
-        void anUnterminatedBinary() {
+        @DisplayName("an unterminated binary is an invalid token naming its type")
+        void reportAnUnterminatedBinaryAsAnInvalidToken() {
             assertThat(answerTo("""
                     e: try [load "#{01"]
                     all [e/id = 'invalid e/arg1 = "binary"]""")).isEqualTo("#(true)");

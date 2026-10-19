@@ -17,7 +17,7 @@ import java.util.OptionalInt;
 public final class Parser implements ParseWalk {
 
 
-    private static final ParseKeyword THE_WORD_NOT = ParseKeyword.named("not").orElseThrow();
+    private static final ParseKeyword THE_WORD_NOT = ParseKeyword.findTheKeywordNamed("not").orElseThrow();
 
     Evaluator evaluator;
     Context context;
@@ -38,7 +38,7 @@ public final class Parser implements ParseWalk {
             return decided.answer();
         }
         if (gathered != null) {
-            return BlockValue.block(gathered);
+            return BlockValue.of(gathered);
         }
         return LogicValue.of(matched && atEnd());
     }
@@ -117,23 +117,23 @@ public final class Parser implements ParseWalk {
     }
 
     int applyKeyword(ParseKeyword keyword, List<Value> rules, int at) {
-        Optional<Integer> refused = refusalForAMissingArgument(keyword, rules, at);
+        Optional<Integer> refused = refuseAMissingArgument(keyword, rules, at);
         return refused.isPresent() ? refused.orElseThrow() : applyKeywordThatHasWhatItNeeds(keyword, rules, at);
     }
 
-    private Optional<Integer> refusalForAMissingArgument(ParseKeyword keyword, List<Value> rules, int at) {
+    private Optional<Integer> refuseAMissingArgument(ParseKeyword keyword, List<Value> rules, int at) {
 
         if (!keyword.needsSomethingAfterIt()) {
             return Optional.empty();
         }
         if (at + 1 >= rules.size()) {
-            return Optional.of(whatAKeywordWithNothingAfterItAnswers(keyword));
+            return Optional.of(answerForAKeywordAlone(keyword));
         }
         return keyword.ownsTheRuleAfterIt() && at + keyword.slotsBeforeTheRuleSpan() >= rules.size() ? Optional.of(NO_MATCH) : Optional.empty();
     }
 
-    private int whatAKeywordWithNothingAfterItAnswers(ParseKeyword keyword) {
-        return switch (keyword.whenNothingFollowsIt()) {
+    private int answerForAKeywordAlone(ParseKeyword keyword) {
+        return switch (keyword.describeWhenNothingFollows()) {
             case DOES_NOT_MATCH -> NO_MATCH;
             case RAISES_PARSE_END -> throw Raised.of(EvaluationFailure.PARSE_END, keyword.spelling());
             case RAISES_PARSE_VARIABLE -> throw Raised.of(EvaluationFailure.PARSE_VARIABLE, keyword.spelling());
@@ -153,12 +153,12 @@ public final class Parser implements ParseWalk {
             if (word.canonical().equals("collect") && at + 2 < rules.size() && rules.get(at + 1) instanceof WordValue keyword && ParseTargets.THE_WORDS_THAT_NAME_WHERE_COLLECT_PUTS_IT.contains(keyword.canonical()) && rules.get(at + 2) instanceof AnyWordValue) {
                 return 3 + ruleSpan(rules, at + 3);
             }
-            return ParseKeyword.named(word.canonical()).map(keyword -> slotsTakenBy(keyword, rules, at)).orElse(1);
+            return ParseKeyword.findTheKeywordNamed(word.canonical()).map(keyword -> countTheSlotsTakenBy(keyword, rules, at)).orElse(1);
         }
         return 1;
     }
 
-    private int slotsTakenBy(ParseKeyword keyword, List<Value> rules, int at) {
+    private int countTheSlotsTakenBy(ParseKeyword keyword, List<Value> rules, int at) {
         int fixed = keyword.slotsBeforeTheRuleSpan();
         return keyword.ownsTheRuleAfterIt() ? fixed + ruleSpan(rules, at + fixed) : fixed;
     }
@@ -175,18 +175,18 @@ public final class Parser implements ParseWalk {
 
     Integer countBehind(AnyWordValue word) {
         Context target = word.isBound() ? word.binding() : context;
-        return target.knows(word.canonical()) && target.slotFor(word.canonical()).value() instanceof IntegerValue(
+        return target.knows(word.canonical()) && target.findSlotFor(word.canonical()).value() instanceof IntegerValue(
                 long magnitude
         ) ? (int) magnitude : null;
     }
 
     @Override
-    public Value whatTheWordHolds(Value wanted) {
+    public Value readWhatTheWordHolds(Value wanted) {
         if (!(wanted instanceof WordValue word)) {
             return wanted;
         }
         Context target = word.isBound() ? word.binding() : context;
-        return target.knows(word.canonical()) ? target.slotFor(word.canonical()).value() : wanted;
+        return target.knows(word.canonical()) ? target.findSlotFor(word.canonical()).value() : wanted;
     }
 
     boolean matchNamedRule(AnyWordValue word) {
@@ -194,7 +194,7 @@ public final class Parser implements ParseWalk {
         if (!target.knows(word.canonical())) {
             return false;
         }
-        Value held = target.slotFor(word.canonical()).value();
+        Value held = target.findSlotFor(word.canonical()).value();
         if (held instanceof UnsetValue || held instanceof AnyFunctionValue) {
             throw Raised.of(EvaluationFailure.PARSE_RULE, word);
         }
@@ -225,7 +225,7 @@ public final class Parser implements ParseWalk {
     }
 
     private static boolean isTheWordNot(List<Value> rules, int at) {
-        return at < rules.size() && rules.get(at) instanceof WordValue word && ParseKeyword.named(word.canonical()).filter(THE_WORD_NOT::equals).isPresent();
+        return at < rules.size() && rules.get(at) instanceof WordValue word && ParseKeyword.findTheKeywordNamed(word.canonical()).filter(THE_WORD_NOT::equals).isPresent();
     }
 
     @Override
@@ -294,11 +294,11 @@ public final class Parser implements ParseWalk {
         } else {
             this.source = (RebolSeries) given;
             this.walkingBytes = given instanceof BinaryValue;
-            this.codePoints = codePointsOfSeries((RebolSeries) given);
+            this.codePoints = readTheCodePointsOf((RebolSeries) given);
         }
     }
 
-    public static Parser over(Evaluator evaluator, Context context, Value given, boolean mindingCase) {
+    public static Parser parseOver(Evaluator evaluator, Context context, Value given, boolean mindingCase) {
 
         Parser parser = new Parser(evaluator, context, given);
         parser.mindingCase = mindingCase || parser.walkingBytes;
@@ -325,12 +325,12 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public Value firstItemBetween(int from, int to) {
-        return firstOf(List.copyOf(input.subList(from, to)));
+    public Value readTheFirstItemBetween(int from, int to) {
+        return takeTheFirstOf(List.copyOf(input.subList(from, to)));
     }
 
     @Override
-    public Integer sameStorageOffset(Value item) {
+    public Integer findTheSameStorageOffset(Value item) {
         if (source == null || !(item instanceof AnyWordValue word) || !word.looksUpItsDeclaration() || (word instanceof WordValue && ParseTargets.THE_WORDS_THE_DIALECT_RESERVES.contains(word.canonical()))) {
             return null;
         }
@@ -338,7 +338,7 @@ public final class Parser implements ParseWalk {
         if (!holder.knows(word.canonical())) {
             return null;
         }
-        return holder.slotFor(word.canonical()).value() instanceof RebolSeries marked && marked.sharesStorageWith(source) ? marked.index() - source.index() : null;
+        return holder.findSlotFor(word.canonical()).value() instanceof RebolSeries marked && marked.sharesStorageWith(source) ? marked.index() - source.index() : null;
     }
 
     @Override
@@ -350,7 +350,7 @@ public final class Parser implements ParseWalk {
         for (int taken = from + howMany; taken > from; taken--) {
             removeFromSource(source.index() + taken - 1);
         }
-        codePoints = codePointsOfSeries(source);
+        codePoints = readTheCodePointsOf(source);
     }
 
     @Override
@@ -358,18 +358,18 @@ public final class Parser implements ParseWalk {
         for (int added = putting.size(); added > 0; added--) {
             input.add(where, putting.get(added - 1));
             if (source != null) {
-                theBlockBeingWalked().storage().insertAt(source.index() + where, putting.get(added - 1));
+                readTheBlockBeingWalked().storage().insertAt(source.index() + where, putting.get(added - 1));
             }
         }
     }
 
     @Override
     public int putValueIntoTheTextAt(int where, Value added) {
-        int[] units = unitsToLayInWhichTheSeriesRatherThanTheValueDecides(added);
+        int[] units = chooseTheUnitsToLayIn(added);
         for (int step = 0; step < units.length; step++) {
             insertIntoSource(source.index() + where + step, units[step]);
         }
-        codePoints = codePointsOfSeries(source);
+        codePoints = readTheCodePointsOf(source);
         return units.length;
     }
 
@@ -390,7 +390,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public boolean noCollectionIsOpen() {
+    public boolean hasNoCollectionOpen() {
         return collectionsOpenInnermostLast.isEmpty();
     }
 
@@ -416,15 +416,15 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public java.util.Optional<Value> whatMatchedBetween(int from, int to) {
+    public java.util.Optional<Value> readWhatMatchedBetween(int from, int to) {
         if (!walkingABlock) {
-            return to > from ? java.util.Optional.of(oneOrSliceFrom(from)) : java.util.Optional.empty();
+            return to > from ? java.util.Optional.of(takeOneOrASliceFrom(from)) : java.util.Optional.empty();
         }
         List<Value> matched = input.subList(from, to);
         if (matched.isEmpty()) {
             return java.util.Optional.empty();
         }
-        return java.util.Optional.of(matched.size() == 1 ? matched.getFirst() : BlockValue.block(matched));
+        return java.util.Optional.of(matched.size() == 1 ? matched.getFirst() : BlockValue.of(matched));
     }
 
     @Override
@@ -440,11 +440,11 @@ public final class Parser implements ParseWalk {
     @Override
     public void deliverTheCollected(List<Value> mine) {
         if (!collectionsOpenInnermostLast.isEmpty()) {
-            collectionsOpenInnermostLast.peek().add(BlockValue.block(mine));
+            collectionsOpenInnermostLast.peek().add(BlockValue.of(mine));
         } else if (gathered == null) {
             gathered = mine;
         } else {
-            gathered.add(BlockValue.block(mine));
+            gathered.add(BlockValue.of(mine));
         }
     }
 
@@ -459,8 +459,8 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public ParseWalk walkingOver(RebolSeries nested) {
-        return over(evaluator, context, nested, mindingCase);
+    public ParseWalk walkOver(RebolSeries nested) {
+        return parseOver(evaluator, context, nested, mindingCase);
     }
 
     @Override
@@ -468,7 +468,7 @@ public final class Parser implements ParseWalk {
         return walkingABlock ? sliceOfTheInputKeepingItsOwnDatatype(List.copyOf(input.subList(from, to))) : textSliceBetween(from, to);
     }
 
-    private AnyBlockValue theBlockBeingWalked() {
+    private AnyBlockValue readTheBlockBeingWalked() {
         return (AnyBlockValue) source;
     }
 
@@ -504,7 +504,7 @@ public final class Parser implements ParseWalk {
             return;
         }
         input.clear();
-        input.addAll(theBlockBeingWalked().remaining());
+        input.addAll(readTheBlockBeingWalked().remaining());
         position = Math.min(position, input.size());
     }
 
@@ -516,7 +516,7 @@ public final class Parser implements ParseWalk {
 
     private int seekToMark(AnyWordValue back) {
         Context holder = back.isBound() ? back.binding() : context;
-        Value held = holder.knows(back.canonical()) ? holder.slotFor(back.canonical()).value() : NoneValue.none();
+        Value held = holder.knows(back.canonical()) ? holder.findSlotFor(back.canonical()).value() : NoneValue.none();
         ParseTargets.refuseAnInputThatIsNotASeries(back, held);
         if (!(held instanceof AnyBlockValue marked)) {
             return NO_MATCH;
@@ -539,7 +539,7 @@ public final class Parser implements ParseWalk {
             return matchCountedRule(rules, at);
         }
         if (rule instanceof SetWordValue mark) {
-            assignOverABlock(mark, source == null ? BlockValue.block(input.subList(position, input.size())) : source.atIndex(source.index() + position));
+            assignOverABlock(mark, source == null ? BlockValue.of(input.subList(position, input.size())) : source.atIndex(source.index() + position));
             return 1;
         }
         if (rule instanceof GetWordValue back) {
@@ -559,11 +559,11 @@ public final class Parser implements ParseWalk {
             throw Raised.of(EvaluationFailure.PARSE_RULE, rule);
         }
         if (rule instanceof PathValue path) {
-            Value resolved = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
+            Value resolved = evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
             return matchValueOverABlock(resolved) ? 1 : NO_MATCH;
         }
         if (rule instanceof GetPathValue path) {
-            ParseTargets.refuseAnInputThatIsNotASeries(path, evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context));
+            ParseTargets.refuseAnInputThatIsNotASeries(path, evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context));
             return NO_MATCH;
         }
         return matchValueOverABlock(rule) ? 1 : NO_MATCH;
@@ -596,25 +596,25 @@ public final class Parser implements ParseWalk {
     }
 
     private OptionalInt matchKeyword(String spelling, List<Value> rules, int at) {
-        Optional<ParseKeyword> keyword = ParseKeyword.named(spelling);
+        Optional<ParseKeyword> keyword = ParseKeyword.findTheKeywordNamed(spelling);
         return keyword.isPresent() ? OptionalInt.of(applyKeyword(keyword.get(), rules, at)) : OptionalInt.empty();
     }
 
 
     @Override
-    public Value theValueToInsert(Value written) {
+    public Value chooseTheValueToInsert(Value written) {
         if (written instanceof ParenValue paren) {
             return evaluator.evaluateOrRaise(paren.asBlock(), context);
         }
         if (written instanceof AnyWordValue word) {
             return switch (word) {
                 case LitWordValue quoted -> quoted.asWord();
-                case WordValue plain -> evaluator.evaluateOrRaise(BlockValue.block(List.of(plain)), context);
+                case WordValue plain -> evaluator.evaluateOrRaise(BlockValue.of(List.of(plain)), context);
                 default -> word;
             };
         }
         if (written instanceof PathValue path) {
-            return evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
+            return evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
         }
         return written;
     }
@@ -624,7 +624,7 @@ public final class Parser implements ParseWalk {
         for (int taken = begin + count; taken > begin; taken--) {
             input.remove(taken - 1);
             if (source != null) {
-                theBlockBeingWalked().storage().removeAt(source.index() + taken - 1);
+                readTheBlockBeingWalked().storage().removeAt(source.index() + taken - 1);
             }
         }
     }
@@ -640,22 +640,22 @@ public final class Parser implements ParseWalk {
 
 
     @Override
-    public AnyWordValue theWordToWriteInto(List<Value> rules, int at) {
+    public AnyWordValue findTheWordToWriteInto(List<Value> rules, int at) {
         return ParseTargets.refuseAnythingSetAndCopyCannotWriteInto(at + 1 < rules.size() ? rules.get(at + 1) : null);
     }
 
     Value sliceOfTheInputKeepingItsOwnDatatype(List<Value> taken) {
-        AnyBlockValue slice = BlockValue.block(taken);
-        return source instanceof AnyBlockValue whole ? whole.holding(taken) : slice;
+        AnyBlockValue slice = BlockValue.of(taken);
+        return source instanceof AnyBlockValue whole ? whole.wrap(taken) : slice;
     }
 
-    Value firstOf(List<Value> taken) {
+    Value takeTheFirstOf(List<Value> taken) {
         return taken.isEmpty() ? NoneValue.none() : taken.getFirst();
     }
 
     private Value valueOf(AnyWordValue word) {
         Context target = word.isBound() ? word.binding() : context;
-        return target.knows(word.canonical()) ? target.slotFor(word.canonical()).value() : NoneValue.none();
+        return target.knows(word.canonical()) ? target.findSlotFor(word.canonical()).value() : NoneValue.none();
     }
 
     private void assignOverABlock(AnyWordValue word, Value value) {
@@ -663,11 +663,11 @@ public final class Parser implements ParseWalk {
         if (!target.knows(word.canonical())) {
             target.register(word.spelling());
         }
-        ContextSlot slot = target.knows(word.canonical()) ? target.slotFor(word.canonical()) : target.register(word.spelling());
+        ContextSlot slot = target.knows(word.canonical()) ? target.findSlotFor(word.canonical()) : target.register(word.spelling());
         slot.setValue(value);
     }
 
-    Value following(List<Value> rules, int at, String keyword) {
+    Value readTheFollowing(List<Value> rules, int at, String keyword) {
         if (at + 1 >= rules.size()) {
             throw Raised.of(EvaluationFailure.PARSE_END, keyword + " has no rule after it to apply to");
         }
@@ -698,14 +698,14 @@ public final class Parser implements ParseWalk {
     }
 
 
-    private boolean samePath(AnyBlockValue here, AnyBlockValue wanted) {
+    private boolean isTheSamePath(AnyBlockValue here, AnyBlockValue wanted) {
         List<Value> ours = here.remaining();
         List<Value> theirs = wanted.remaining();
         if (ours.size() != theirs.size()) {
             return false;
         }
         for (int at = 0; at < ours.size(); at++) {
-            boolean same = mindingCase ? ours.get(at).equals(theirs.get(at)) : looselyEqual(ours.get(at), theirs.get(at));
+            boolean same = mindingCase ? ours.get(at).equals(theirs.get(at)) : areLooselyEqual(ours.get(at), theirs.get(at));
             if (!same) {
                 return false;
             }
@@ -729,7 +729,7 @@ public final class Parser implements ParseWalk {
         if (wanted instanceof IntegerValue count && !(current() instanceof IntegerValue)) {
             return false;
         }
-        boolean fits = wanted instanceof PathValue path && current() instanceof PathValue here ? samePath(here, path) : mindingCase ? current().equals(wanted) : looselyEqual(current(), wanted);
+        boolean fits = wanted instanceof PathValue path && current() instanceof PathValue here ? isTheSamePath(here, path) : mindingCase ? current().equals(wanted) : areLooselyEqual(current(), wanted);
         if (!fits) {
             return false;
         }
@@ -737,7 +737,7 @@ public final class Parser implements ParseWalk {
         return true;
     }
 
-    private static boolean looselyEqual(Value left, Value right) {
+    private static boolean areLooselyEqual(Value left, Value right) {
         if (left instanceof AnyStringValue leftText && right instanceof AnyStringValue rightText) {
             return leftText.datatype() == rightText.datatype() && leftText.equalsIgnoringCase(rightText);
         }
@@ -760,7 +760,7 @@ public final class Parser implements ParseWalk {
     private void adoptInput(RebolSeries newInput) {
         this.source = newInput;
         this.walkingBytes = newInput instanceof BinaryValue;
-        this.codePoints = codePointsOfSeries(newInput);
+        this.codePoints = readTheCodePointsOf(newInput);
         this.position = 0;
     }
 
@@ -782,7 +782,7 @@ public final class Parser implements ParseWalk {
         }
     }
 
-    private static int[] codePointsOfSeries(RebolSeries series) {
+    private static int[] readTheCodePointsOf(RebolSeries series) {
         if (series instanceof AnyStringValue text) {
             return text.text().codePoints().toArray();
         }
@@ -805,10 +805,10 @@ public final class Parser implements ParseWalk {
         }
         if (replacement instanceof WordValue word) {
             Context holder = word.isBound() ? word.binding() : context;
-            if (!holder.knows(word.canonical()) || holder.slotFor(word.canonical()).value() instanceof UnsetValue) {
+            if (!holder.knows(word.canonical()) || holder.findSlotFor(word.canonical()).value() instanceof UnsetValue) {
                 throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
             }
-            return holder.slotFor(word.canonical()).value();
+            return holder.findSlotFor(word.canonical()).value();
         }
         return replacement;
     }
@@ -822,8 +822,8 @@ public final class Parser implements ParseWalk {
         }
         if (rule instanceof GetWordValue back) {
             Context holder = back.isBound() ? back.binding() : context;
-            ParseTargets.refuseAnInputThatIsNotASeries(back, whatTheSlotHolds(holder, back));
-            if (holder.slotFor(back.canonical()).value() instanceof AnyStringValue marked) {
+            ParseTargets.refuseAnInputThatIsNotASeries(back, readWhatTheSlotHolds(holder, back));
+            if (holder.findSlotFor(back.canonical()).value() instanceof AnyStringValue marked) {
                 if (!marked.sharesStorageWith(source)) {
                     adoptInput(marked);
                     return 1;
@@ -838,7 +838,7 @@ public final class Parser implements ParseWalk {
             return NO_MATCH;
         }
         if (rule instanceof WordValue word) {
-            Optional<ParseKeyword> keyword = ParseKeyword.named(word.canonical());
+            Optional<ParseKeyword> keyword = ParseKeyword.findTheKeywordNamed(word.canonical());
             if (keyword.isPresent()) {
                 return applyKeyword(keyword.get(), rules, at);
             }
@@ -851,7 +851,7 @@ public final class Parser implements ParseWalk {
             throw Raised.of(EvaluationFailure.PARSE_RULE, rule);
         }
         if (rule instanceof PathValue path) {
-            Value resolved = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
+            Value resolved = evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
             return matchValueOverAString(resolved) ? 1 : -1;
         }
         if (rule instanceof GetPathValue path) {
@@ -862,7 +862,7 @@ public final class Parser implements ParseWalk {
 
 
     private int switchTheInputToWhatThisNames(AnyBlockValue path) {
-        Value held = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
+        Value held = evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
         ParseTargets.refuseAnInputThatIsNotASeries(path, held);
         if (held instanceof AnyStringValue marked) {
             adoptInput(marked);
@@ -871,11 +871,11 @@ public final class Parser implements ParseWalk {
         return NO_MATCH;
     }
 
-    private static Value whatTheSlotHolds(Context holder, AnyWordValue word) {
-        return holder.knows(word.canonical()) ? holder.slotFor(word.canonical()).value() : NoneValue.none();
+    private static Value readWhatTheSlotHolds(Context holder, AnyWordValue word) {
+        return holder.knows(word.canonical()) ? holder.findSlotFor(word.canonical()).value() : NoneValue.none();
     }
 
-    private int countedRepeat(List<Value> rules, int ruleAt, int least, int most, int countWidth) {
+    private int repeatACount(List<Value> rules, int ruleAt, int least, int most, int countWidth) {
 
         if (ruleAt >= rules.size()) {
             throw Raised.of(EvaluationFailure.PARSE_END, rules.get(ruleAt - countWidth));
@@ -899,7 +899,7 @@ public final class Parser implements ParseWalk {
 
 
     @Override
-    public Value firstCharacterMatchedFrom(int before) {
+    public Value readTheFirstCharacterMatchedFrom(int before) {
         if (position == before) {
             return NoneValue.none();
         }
@@ -907,7 +907,7 @@ public final class Parser implements ParseWalk {
     }
 
 
-    Value oneOrSliceFrom(int before) {
+    Value takeOneOrASliceFrom(int before) {
         if (position - before != 1) {
             return textSliceBetween(before, position);
         }
@@ -918,7 +918,7 @@ public final class Parser implements ParseWalk {
     public Value textSliceBetween(int from, int to) {
         String taken = textBetween(from, to);
         if (!walkingBytes) {
-            return source instanceof AnyStringValue text ? text.holding(taken) : StringValue.of(taken);
+            return source instanceof AnyStringValue text ? text.wrap(taken) : StringValue.of(taken);
         }
         int[] octets = new int[taken.length()];
         for (int at = 0; at < octets.length; at++) {
@@ -940,7 +940,7 @@ public final class Parser implements ParseWalk {
 
     private void deliver(AnyWordValue word, List<Value> gathered, boolean past) {
         Context holder = word.isBound() ? word.binding() : context;
-        Value target = whatTheSlotHolds(holder, word);
+        Value target = readWhatTheSlotHolds(holder, word);
         refuseATargetThatCannotHoldWhatThisParseYieldsOverAString(target);
         switch (target) {
             case AnyBlockValue existing -> {
@@ -988,7 +988,7 @@ public final class Parser implements ParseWalk {
         int least = countIn(rules, at);
         Integer second = countIn(rules, at + 1);
         int ruleAt = second == null ? at + 1 : at + 2;
-        return countedRepeat(rules, ruleAt, least, second == null ? least : second, ruleAt - at);
+        return repeatACount(rules, ruleAt, least, second == null ? least : second, ruleAt - at);
     }
 
     boolean endOfInput() {
@@ -996,7 +996,7 @@ public final class Parser implements ParseWalk {
     }
 
 
-    private boolean bitsetHoldsFoldingCaseUnlessAskedNotTo(BitsetValue members, int character) {
+    private boolean holdsFoldingCase(BitsetValue members, int character) {
         if (members.holds(character)) {
             return true;
         }
@@ -1007,8 +1007,8 @@ public final class Parser implements ParseWalk {
     }
 
 
-    private int[] unitsToLayInWhichTheSeriesRatherThanTheValueDecides(Value value) {
-        return source instanceof BinaryValue ? SeriesContents.octetsContributedBy(value) : SeriesContents.charactersContributedBy(value);
+    private int[] chooseTheUnitsToLayIn(Value value) {
+        return source instanceof BinaryValue ? SeriesContents.collectTheOctetsContributedBy(value) : SeriesContents.collectTheCharactersContributedBy(value);
     }
 
 
@@ -1018,7 +1018,7 @@ public final class Parser implements ParseWalk {
         }
         if (rule instanceof ParenValue nested) {
             evaluator.evaluateOrRaise(nested.asBlock(), context);
-            codePoints = codePointsOfSeries(source);
+            codePoints = readTheCodePointsOf(source);
             position = Math.min(position, codePoints.length);
             return true;
         }
@@ -1026,7 +1026,7 @@ public final class Parser implements ParseWalk {
             return matchSequence(nested.remaining());
         }
         if (rule instanceof BitsetValue members) {
-            if (position >= codePoints.length || !bitsetHoldsFoldingCaseUnlessAskedNotTo(members, codePoints[position])) {
+            if (position >= codePoints.length || !holdsFoldingCase(members, codePoints[position])) {
                 return false;
             }
             position++;
@@ -1049,19 +1049,19 @@ public final class Parser implements ParseWalk {
             return false;
         }
         for (int at = 0; at < wanted.length; at++) {
-            if (!theSameLetter(codePoints[from + at], wanted[at])) {
+            if (!isTheSameLetter(codePoints[from + at], wanted[at])) {
                 return false;
             }
         }
         return true;
     }
 
-    private boolean theSameLetter(int one, int other) {
+    private boolean isTheSameLetter(int one, int other) {
         return one == other || !mindingCase && Character.toLowerCase(one) == Character.toLowerCase(other);
     }
 
     @Override
-    public int firstMatchFrom(int[] needle, int from) {
+    public int findTheFirstMatchFrom(int[] needle, int from) {
         for (int at = from; at + needle.length <= codePoints.length; at++) {
             if (matchesAt(needle, at)) {
                 return at;
@@ -1071,7 +1071,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public String theTextOf(Value value) {
+    public String readTheTextOf(Value value) {
         return textOf(value);
     }
 
@@ -1083,7 +1083,7 @@ public final class Parser implements ParseWalk {
             return text.text();
         }
         if (value instanceof BinaryValue bytes) {
-            return new String(codePointsOfSeries(bytes), 0, bytes.lengthFromHere());
+            return new String(readTheCodePointsOf(bytes), 0, bytes.lengthFromHere());
         }
         return Molder.form(value);
     }

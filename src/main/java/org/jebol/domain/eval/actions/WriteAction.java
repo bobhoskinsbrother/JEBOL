@@ -30,12 +30,12 @@ public class WriteAction extends PortAction {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("destination",
+                Parameter.of("destination",
                         Set.of(FileValue.TYPE, PortValue.TYPE, UrlValue.TYPE, BlockValue.TYPE, WordValue.TYPE)),
-                Parameter.required("data"),
-                Parameter.belongingTo("part", "length", TypesetValue.NUMBER.members()),
-                Parameter.belongingTo("seek", "index", TypesetValue.NUMBER.members()),
-                Parameter.belongingTo("allow", "access", Set.of(BlockValue.TYPE)));
+                Parameter.of("data"),
+                Parameter.belongTo("part", "length", TypesetValue.NUMBER.members()),
+                Parameter.belongTo("seek", "index", TypesetValue.NUMBER.members()),
+                Parameter.belongTo("allow", "access", Set.of(BlockValue.TYPE)));
     }
 
     @Override
@@ -46,14 +46,14 @@ public class WriteAction extends PortAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            PortRequest asked = asked(arguments, refinements);
+            PortRequest asked = readTheRequest(arguments, refinements);
             Value destination = arguments.getFirst();
             Value data = arguments.get(1);
             if (destination instanceof PortValue port) {
                 return ports.writeTo(port, data, evaluator, asked);
             }
             if (ports.routesToAScheme(destination)) {
-                return ports.writeTo(ports.portOpenedFor(destination, evaluator, context),
+                return ports.writeTo(ports.openAPortFor(destination, evaluator, context),
                         data, evaluator, asked);
             }
             return ports.writeTheFile(destination, data, evaluator, asked);

@@ -52,7 +52,7 @@ public final class BinaryStorage extends ProtectableStorage {
         refuseIfProtected();
         if (length == bytes.length) {
             bytes = Arrays.copyOf(bytes, Math.max(INITIAL_CAPACITY, bytes.length * 2));
-            reserved.nowHolds(bytes.length);
+            reserved.growTo(bytes.length);
         }
         bytes[length] = requireOctet(octet);
         length++;

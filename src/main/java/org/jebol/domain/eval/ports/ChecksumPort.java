@@ -30,7 +30,7 @@ final class ChecksumPort {
     }
 
     void startEvenOnAnAlreadyOpenPort(PortValue port, String method) {
-        port.setField("extra", HandleValue.context(HANDLE_TYPE,
+        port.setField("extra", HandleValue.wrapAContext(HANDLE_TYPE,
                 System.identityHashCode(port.context()),
                 JavaObjectValue.of(sumNamed(method))));
         port.setField("data", NoneValue.none());
@@ -40,9 +40,9 @@ final class ChecksumPort {
         String algorithm = Optional.ofNullable(Encodings.DIGESTS.get(method))
                 .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_SPEC, method));
         if (DIGESTS_THAT_KEEP_THE_BYTES.contains(algorithm)) {
-            return keepingTheBytes(method);
+            return keepTheBytes(method);
         }
-        DigestPort.RunningDigest running = encodings.runningDigestOf(method);
+        DigestPort.RunningDigest running = encodings.startARunningDigest(method);
         return new RunningSumThatAReadDoesNotEnd() {
 
             @Override
@@ -57,7 +57,7 @@ final class ChecksumPort {
         };
     }
 
-    private RunningSumThatAReadDoesNotEnd keepingTheBytes(String method) {
+    private RunningSumThatAReadDoesNotEnd keepTheBytes(String method) {
         return new RunningSumThatAReadDoesNotEnd() {
 
             private byte[] kept = new byte[0];
@@ -76,9 +76,9 @@ final class ChecksumPort {
         };
     }
 
-    private Optional<RunningSumThatAReadDoesNotEnd> inProgress(PortValue port) {
+    private Optional<RunningSumThatAReadDoesNotEnd> findTheSumInProgress(PortValue port) {
         if (port.isOpen()
-                && port.fieldValue("extra") instanceof HandleValue held
+                && port.readTheFieldValue("extra") instanceof HandleValue held
                 && HANDLE_TYPE.equals(held.typeName())
                 && held.payload() instanceof JavaObjectValue wrapped) {
             return wrapped.held()
@@ -93,7 +93,7 @@ final class ChecksumPort {
         port.setField("data", NoneValue.none());
     }
 
-    long seekedFrom(byte[] whole, int startsAt, long seekBy) {
+    long seekFrom(byte[] whole, int startsAt, long seekBy) {
         return Math.clamp(startsAt + seekBy, 0L, whole.length);
     }
 
@@ -102,19 +102,19 @@ final class ChecksumPort {
     }
 
     void addPart(PortValue port, byte[] whole, long from, long wanted) {
-        long length = lengthOfTheWindowCountingBackwardsWhenNegative(
+        long length = measureTheWindowCountingBackwardsWhenNegative(
                 wanted, from, whole.length - from);
         addTheWindow(port, whole, wanted < 0 ? Math.max(0, from + wanted) : from, length);
     }
 
     private void addTheWindow(PortValue port, byte[] whole, long from, long length) {
         if (length > 0) {
-            inProgress(port).ifPresent(sum -> sum.add(
+            findTheSumInProgress(port).ifPresent(sum -> sum.add(
                     whole, (int) from, (int) Math.min(length, whole.length - from)));
         }
     }
 
-    private long lengthOfTheWindowCountingBackwardsWhenNegative(
+    private long measureTheWindowCountingBackwardsWhenNegative(
             long wanted, long from, long remaining) {
         if (wanted >= 0) {
             return Math.min(wanted, remaining);
@@ -125,15 +125,15 @@ final class ChecksumPort {
     }
 
     Value digestSoFarLeftInTheDataFieldAsWell(PortValue port) {
-        return inProgress(port).<Value>map(sum -> {
+        return findTheSumInProgress(port).<Value>map(sum -> {
             BinaryValue answered = BinaryValue.ofBytes(sum.soFar());
             port.setField("data", answered);
             return answered;
         }).orElseGet(NoneValue::none);
     }
 
-    String methodOf(PortValue port) {
-        if (!(port.fieldValue("spec") instanceof ObjectValue(Context context))
+    String readTheMethodOf(PortValue port) {
+        if (!(port.readTheFieldValue("spec") instanceof ObjectValue(Context context))
                 || !context.holds("method")
                 || !(context.ownSlotFor("method").value() instanceof AnyWordValue method)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, "checksum");

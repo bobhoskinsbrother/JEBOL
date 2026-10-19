@@ -19,7 +19,7 @@ final class BrotliQuickHasher implements BrotliHasher {
     private final int[] buckets;
     private final BrotliDictionarySearch dictionary = new BrotliDictionarySearch();
 
-    static BrotliQuickHasher forQuality(int quality, boolean theInputIsLarge) {
+    static BrotliQuickHasher chooseForQuality(int quality, boolean theInputIsLarge) {
         return switch (quality) {
             case 2 -> new BrotliQuickHasher(16, 0, 5, true);
             case 3 -> new BrotliQuickHasher(16, 1, 5, false);
@@ -44,11 +44,11 @@ final class BrotliQuickHasher implements BrotliHasher {
     }
 
     @Override
-    public int howManyBytesItLooksAhead() {
+    public int countTheBytesItLooksAhead() {
         return 8;
     }
 
-    private int slotFor(byte[] data, int at) {
+    private int hashTheSlotFor(byte[] data, int at) {
         long eightBytes = 0;
         for (int which = 0; which < 8; which++) {
             eightBytes |= (long) (data[at + which] & 0xFF) << (which * 8);
@@ -64,7 +64,7 @@ final class BrotliQuickHasher implements BrotliHasher {
         if (theWholeInputAtOnce
                 && inputSize <= (1 << bucketBits) >> TOO_SMALL_TO_CLEAR_WHOLESALE_SHIFT) {
             for (int at = 0; at < inputSize; at++) {
-                int slot = slotFor(data, at);
+                int slot = hashTheSlotFor(data, at);
                 if (sweep == 1) {
                     buckets[slot] = 0;
                 } else {
@@ -80,7 +80,7 @@ final class BrotliQuickHasher implements BrotliHasher {
 
     @Override
     public void remember(byte[] data, int mask, int at) {
-        int slot = slotFor(data, at & mask);
+        int slot = hashTheSlotFor(data, at & mask);
         if (sweep == 1) {
             buckets[slot] = at;
         } else {
@@ -92,7 +92,7 @@ final class BrotliQuickHasher implements BrotliHasher {
     public void stitchToPreviousBlock(byte[] data, int mask, int howManyBytes,
             int position) {
 
-        if (howManyBytes >= howManyBytesItLooksAhead() - 1 && position >= 3) {
+        if (howManyBytes >= countTheBytesItLooksAhead() - 1 && position >= 3) {
             remember(data, mask, position - 3);
             remember(data, mask, position - 2);
             remember(data, mask, position - 1);
@@ -112,7 +112,7 @@ final class BrotliQuickHasher implements BrotliHasher {
         int lengthBefore = (int) best.length;
         int here = at & mask;
         int compareCharacter = data[here + lengthBefore] & 0xFF;
-        int slot = slotFor(data, here);
+        int slot = hashTheSlotFor(data, here);
         int bestLength = lengthBefore;
         long bestScore = best.score;
         best.lengthCodeDelta = 0;
@@ -121,7 +121,7 @@ final class BrotliQuickHasher implements BrotliHasher {
         if (cachedBackward > 0 && cachedBackward <= at) {
             int previous = (at - cachedBackward) & mask;
             if (compareCharacter == (data[previous + bestLength] & 0xFF)) {
-                int length = matchingBytes.counted(data, previous, here, maxLength);
+                int length = matchingBytes.count(data, previous, here, maxLength);
                 if (length >= SHORTEST_MATCH_WORTH_TAKING) {
                     long score = BrotliMatch.scoreUsingLastDistance(length);
                     if (bestScore < score) {
@@ -150,9 +150,9 @@ final class BrotliQuickHasher implements BrotliHasher {
                     || backward == 0 || backward > maxBackward) {
                 return;
             }
-            int length = matchingBytes.counted(data, previous, here, maxLength);
+            int length = matchingBytes.count(data, previous, here, maxLength);
             if (length >= SHORTEST_MATCH_WORTH_TAKING) {
-                long score = BrotliMatch.scoreFor(length, backward);
+                long score = BrotliMatch.score(length, backward);
                 if (bestScore < score) {
                     best.length = length;
                     best.distance = backward;
@@ -174,9 +174,9 @@ final class BrotliQuickHasher implements BrotliHasher {
                         || backward == 0 || backward > maxBackward) {
                     continue;
                 }
-                int length = matchingBytes.counted(data, previous, here, maxLength);
+                int length = matchingBytes.count(data, previous, here, maxLength);
                 if (length >= SHORTEST_MATCH_WORTH_TAKING) {
-                    long score = BrotliMatch.scoreFor(length, backward);
+                    long score = BrotliMatch.score(length, backward);
                     if (bestScore < score) {
                         bestLength = length;
                         best.length = length;

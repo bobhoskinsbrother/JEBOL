@@ -24,7 +24,7 @@ class PreludeTest {
         "/org/jebol/mezz/base-funcs.reb"
     };
 
-    private static Set<String> theWordsSetAtTheTopOf(String resource) {
+    private static Set<String> listTheWordsSetAtTheTopOf(String resource) {
         try (InputStream source = PreludeTest.class.getResourceAsStream(resource)) {
             assertThat(source).as(resource).isNotNull();
             String text = new String(source.readAllBytes(), StandardCharsets.UTF_8);
@@ -42,7 +42,7 @@ class PreludeTest {
 
     @Test
     @DisplayName("a function the prelude defines is callable")
-    void aPreludeFunctionIsCallable() {
+    void callsAPreludeFunction() {
         Interpreter interpreter = Interpreter.create();
 
         assertThat(interpreter.display(interpreter.run("length? rejoin [{ab} {c}]")))
@@ -51,7 +51,7 @@ class PreludeTest {
 
     @Test
     @DisplayName("a prelude function is an ordinary function value")
-    void aPreludeFunctionIsAValue() {
+    void holdsAPreludeFunctionAsAValue() {
         Interpreter interpreter = Interpreter.create();
 
         assertThat(interpreter.display(interpreter.run("type? :rejoin")))
@@ -60,7 +60,7 @@ class PreludeTest {
 
     @Test
     @DisplayName("a caller cannot tell it from a native")
-    void aPreludeFunctionCanBeRenamedAndCalled() {
+    void callsARenamedPreludeFunction() {
         Interpreter interpreter = Interpreter.create();
 
         assertThat(interpreter.display(interpreter.run(
@@ -70,7 +70,7 @@ class PreludeTest {
 
     @Test
     @DisplayName("the prelude can use the natives")
-    void thePreludeSeesTheNatives() {
+    void letsThePreludeSeeTheNatives() {
         Interpreter interpreter = Interpreter.create();
 
         assertThat(interpreter.display(interpreter.run(
@@ -80,7 +80,7 @@ class PreludeTest {
 
     @Test
     @DisplayName("a script's own words do not disturb it for the next interpreter")
-    void aScriptCannotBreakThePreludeForTheNextInterpreter() {
+    void keepsTheNextInterpretersPreludeFromAScript() {
         Interpreter.create().run("rejoin: 3");
 
         Interpreter next = Interpreter.create();
@@ -89,14 +89,14 @@ class PreludeTest {
 
     @Test
     @DisplayName("the prelude sets no word that Rebol's own library has already set before it")
-    void thePreludeShadowsNothingRebolDefinesFirst() {
+    void shadowsNothingRebolDefinesFirst() {
         Set<String> alreadySet = new TreeSet<>();
         for (String earlier : THE_LIBRARY_FILES_LOADED_BEFORE_THE_PRELUDE) {
-            alreadySet.addAll(theWordsSetAtTheTopOf(earlier));
+            alreadySet.addAll(listTheWordsSetAtTheTopOf(earlier));
         }
         assertThat(alreadySet).contains("func", "function", "funct", "does");
 
-        Set<String> setAgain = theWordsSetAtTheTopOf(PRELUDE);
+        Set<String> setAgain = listTheWordsSetAtTheTopOf(PRELUDE);
         setAgain.retainAll(alreadySet);
 
         assertThat(setAgain)

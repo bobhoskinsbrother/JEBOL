@@ -1,5 +1,6 @@
 package org.jebol.adapter.cli;
 
+import org.jebol.adapter.host.JavaProcess;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,7 +24,7 @@ class ReplEndToEndTest {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
 
-        Interpreter interpreter = Interpreter.writingTo(new StreamOutput(output));
+        Interpreter interpreter = Interpreter.createWithOutput(new StreamOutput(output));
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
 
         return captured.toString(StandardCharsets.UTF_8);
@@ -35,7 +36,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("a name Rebol declares is there to be asked about")
-        void aDeclaredSchemeIsThere() {
+        void includeADeclaredScheme() {
             assertThat(session("object? get in system/schemes (quote udp)",
                     "object? get in system/schemes (quote clipboard)"))
                     .contains("== #(true)");
@@ -43,7 +44,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("opening one says the device is missing, not that the scheme is")
-        void openingOneSaysTheDeviceIsMissing() {
+        void sayTheDeviceIsMissingOnOpening() {
             assertThat(session("failure: try [open udp://:40999] failure/id"))
                     .contains("no-service")
                     .doesNotContain("no-scheme");
@@ -51,7 +52,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("and a name nobody declares still says there is no such scheme")
-        void anUndeclaredNameSaysNoScheme() {
+        void sayNoSchemeForAnUndeclaredName() {
             assertThat(session("failure: try [open frobozz://] failure/id"))
                     .contains("no-scheme");
         }
@@ -62,11 +63,11 @@ class ReplEndToEndTest {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
 
-        Interpreter interpreter = Interpreter.writingTo(new StreamOutput(output),
+        Interpreter interpreter = Interpreter.createWithOutput(new StreamOutput(output),
                 org.jebol.application.Bounds.standard()
                         .grant(org.jebol.domain.host.HostService.FILES));
         interpreter.useFileSystem(
-                org.jebol.application.FileSystemPort.rootedAt(directory));
+                org.jebol.application.FileSystemPort.rootFileSystem(directory));
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
 
         return captured.toString(StandardCharsets.UTF_8);
@@ -117,7 +118,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("a set-word produces what it assigned, so chains work")
-        void chainedAssignment() {
+        void chainAssignments() {
             assertThat(session("a: b: 7", "add a b")).contains("== 14");
         }
 
@@ -139,18 +140,18 @@ class ReplEndToEndTest {
         }
 
         @Test
-        void emptyBlockIsTrue() {
+        void treatsAnEmptyBlockAsTrue() {
             assertThat(session("if [] [\"taken\"]")).contains("== \"taken\"");
         }
 
         @Test
-        void noneIsFalse() {
+        void treatsNoneAsFalse() {
             assertThat(session("if none [\"taken\"]")).contains("== _");
         }
 
         @Test
         @DisplayName("any returns the value, which is how defaults are written")
-        void anyReturnsAValue() {
+        void returnsAValueFromAny() {
             assertThat(session("any [none none 100]")).contains("== 100");
         }
     }
@@ -166,7 +167,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("and the prompt comes back afterwards")
-        void theSessionCarriesOnAfterAnError() {
+        void leaveTheSessionRunning() {
             String transcript = session("divide 1 0", "1 + 1");
 
             assertThat(transcript).contains("** Math error: attempt to divide by zero");
@@ -175,7 +176,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("a word nobody defined is reported, not a crash")
-        void undefinedWordIsReported() {
+        void reportAnUndefinedWord() {
             String transcript = session("nosuchword", "2 + 2");
 
             assertThat(transcript).contains("** Script error: nosuchword has no value");
@@ -184,7 +185,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("a syntax error is reported like any other")
-        void syntaxErrorIsReported() {
+        void reportASyntaxError() {
             String transcript = session("1 + ]", "3 + 3");
 
             assertThat(transcript).contains("error");
@@ -217,14 +218,14 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("an unclosed block asks for more rather than failing")
-        void unclosedBlockContinues() {
+        void continuesAnUnclosedBlock() {
             assertThat(session("either true [", "  \"yes\"", "][", "  \"no\"", "]"))
                     .contains("== \"yes\"");
         }
 
         @Test
         @DisplayName("a string spanning lines is not an unclosed block")
-        void bracedStringsSpanLines() {
+        void spansLinesWithBracedStrings() {
             assertThat(session("length? {one", "two}")).contains("== 7");
         }
     }
@@ -240,18 +241,18 @@ class ReplEndToEndTest {
         }
 
         @Test
-        void lengthCountsCharacters() {
+        void countCharactersForLength() {
             assertThat(session("length? \"abc\"")).contains("== 3");
         }
 
         @Test
         @DisplayName("an astral character counts as one")
-        void lengthCountsCodepoints() {
+        void countCodepointsForLength() {
             assertThat(session("length? \"a😀b\"")).contains("== 3");
         }
 
         @Test
-        void firstTakesTheHead() {
+        void takeTheHeadForFirst() {
             assertThat(session("first [a b c]")).contains("== a");
         }
     }
@@ -262,7 +263,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("a walk through three lines names each line it reaches")
-        void aWalkKeepsItsOwnLineCount() {
+        void keepsAWalksOwnLineCount() {
             String session = session(
                     "code: rejoin [{first} newline {second} newline {third}]",
                     "line: 1",
@@ -281,7 +282,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("and a mistake on the fourth line is reported as the fourth line")
-        void aFailureNamesTheLineInTheWholeFile() {
+        void namesTheFailingLineInTheWholeFile() {
             assertThat(session(
                     "e: try [transcode/line \"1d\" 4]",
                     "e/near"))
@@ -290,7 +291,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("and asking to start counting from nothing is refused, not guessed at")
-        void aStartOfZeroIsRefused() {
+        void refusesAStartOfZero() {
             assertThat(session("transcode/line {1 2} 0"))
                     .contains("** Script error: value out of range: 0");
         }
@@ -302,14 +303,14 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("a module typed at the prompt answers a module")
-        void aTypedModuleAnswersAModule() {
+        void answerATypedModule() {
             assertThat(session("module? make module! [[Title: \"t\"] [a: 1]]"))
                     .contains("== #(true)");
         }
 
         @Test
         @DisplayName("none of a module's words are left behind in the session")
-        void noModuleWordEscapesIntoTheSession() {
+        void keepTheirWordsOutOfTheSession() {
             String transcript = session(
                     "m: make module! [[Title: \"t\" Exports: [shown]] "
                             + "[shown: 1 kept-back: 2]]",
@@ -339,7 +340,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("a log function writes a line, which is the whole point of the five")
-        void aLogFunctionWrites() {
+        void writeWithALogFunction() {
             assertThat(session("log-info 'app \"a message\"")).contains("a message");
         }
     }
@@ -375,7 +376,7 @@ class ReplEndToEndTest {
         }
 
         @Test
-        void emptyInputIsHarmless() {
+        void survivesEmptyInput() {
             assertThat(session("", "", "1 + 1")).contains("== 2");
         }
     }
@@ -385,10 +386,10 @@ class ReplEndToEndTest {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
 
-        Interpreter interpreter = Interpreter.writingTo(new StreamOutput(output),
+        Interpreter interpreter = Interpreter.createWithOutput(new StreamOutput(output),
                 org.jebol.application.Bounds.standard()
                         .grant(org.jebol.domain.host.HostService.PROCESSES));
-        interpreter.useProcesses(new org.jebol.adapter.host.JavaProcesses());
+        interpreter.useProcesses(new JavaProcess());
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
 
         return captured.toString(StandardCharsets.UTF_8);
@@ -400,7 +401,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("what echo prints lands in the caller's buffer")
-        void whatEchoPrintsLandsInTheBuffer() {
+        void landsWhatEchoPrintsInTheBuffer() {
             String transcript = sessionWithProcesses(
                     "buf: copy {}",
                     "call/wait/output [{echo} {hello from a child}] buf",
@@ -411,7 +412,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("the shell reads only the first entry as its command line")
-        void theShellReadsOnlyTheFirstEntry() {
+        void readsOnlyTheFirstShellEntry() {
             String transcript = sessionWithProcesses(
                     "buf: copy {}",
                     "call/wait/shell/output [{echo} {spilled}] buf",
@@ -425,7 +426,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("a program that is not there is an error, not a hang")
-        void aMissingProgramIsAnError() {
+        void failsForAMissingProgram() {
             String transcript = sessionWithProcesses(
                     "call [{jebol-no-such-program-e2e}]",
                     "1 + 1");
@@ -443,7 +444,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("lines written, a line appended, the whole read back")
-        void aListGrowsALineAtATime(@TempDir java.nio.file.Path directory) {
+        void growsAListALineAtATime(@TempDir java.nio.file.Path directory) {
             String transcript = sessionWithFiles(directory,
                     "write/lines %list.txt [{milk} {eggs}]",
                     "write/append %list.txt {jam^/}",
@@ -456,7 +457,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("a correction seeks back and overwrites in place")
-        void aCorrectionOverwritesInPlace(@TempDir java.nio.file.Path directory) {
+        void overwritesACorrectionInPlace(@TempDir java.nio.file.Path directory) {
             String transcript = sessionWithFiles(directory,
                     "write %score.txt {score 0}",
                     "write/seek %score.txt {9} 6",
@@ -467,7 +468,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("a negative bound is reported as an error, not obeyed")
-        void aNegativeBoundIsReported(@TempDir java.nio.file.Path directory) {
+        void reportsANegativeBound(@TempDir java.nio.file.Path directory) {
             String transcript = sessionWithFiles(directory,
                     "write/part %a.txt {abc} -1",
                     "1 + 1");
@@ -483,10 +484,10 @@ class ReplEndToEndTest {
     @DisplayName("a script named on the command line")
     class AScriptOnTheCommandLine {
 
-        private static Ran running(java.nio.file.Path directory, String... arguments) {
+        private static Ran run(java.nio.file.Path directory, String... arguments) {
             ByteArrayOutputStream captured = new ByteArrayOutputStream();
             ByteArrayOutputStream reported = new ByteArrayOutputStream();
-            int status = Repl.runTheCommandLine(arguments,
+            int status = Repl.runCommandLine(arguments,
                     new PrintStream(captured, true, StandardCharsets.UTF_8),
                     new PrintStream(reported, true, StandardCharsets.UTF_8),
                     directory.toString());
@@ -497,7 +498,7 @@ class ReplEndToEndTest {
         private record Ran(int exitStatus, String printed, String reported) {
         }
 
-        private static java.nio.file.Path scriptSaying(
+        private static java.nio.file.Path writeAScriptSaying(
                 java.nio.file.Path directory, String fileName, String source)
                 throws java.io.IOException {
 
@@ -508,10 +509,10 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("runs, prints what it prints, and leaves with nought")
-        void itRunsTheScript(@TempDir java.nio.file.Path directory) throws Exception {
-            scriptSaying(directory, "hello.r3", "print [{two and two is} 2 + 2]\n");
+        void runs(@TempDir java.nio.file.Path directory) throws Exception {
+            writeAScriptSaying(directory, "hello.r3", "print [{two and two is} 2 + 2]\n");
 
-            Ran ran = running(directory, directory.resolve("hello.r3").toString());
+            Ran ran = run(directory, directory.resolve("hello.r3").toString());
 
             assertThat(ran.printed()).isEqualTo("two and two is 4\n");
             assertThat(ran.exitStatus()).isZero();
@@ -521,10 +522,10 @@ class ReplEndToEndTest {
         @DisplayName("a script with a header runs the same way")
         void aheaderChangesNothing(@TempDir java.nio.file.Path directory)
                 throws Exception {
-            scriptSaying(directory, "hdr.r3",
+            writeAScriptSaying(directory, "hdr.r3",
                     "Rebol [Title: {T}]\nprint {with header}\n");
 
-            assertThat(running(directory, directory.resolve("hdr.r3").toString())
+            assertThat(run(directory, directory.resolve("hdr.r3").toString())
                     .printed()).isEqualTo("with header\n");
         }
 
@@ -539,7 +540,7 @@ class ReplEndToEndTest {
             java.nio.file.Files.writeString(beside.resolve("reader.r3"),
                     "print read/string %data.txt\n");
 
-            Ran ran = running(directory, beside.resolve("reader.r3").toString());
+            Ran ran = run(directory, beside.resolve("reader.r3").toString());
 
             assertThat(ran.printed()).isEqualTo("found it\n");
             assertThat(ran.exitStatus()).isZero();
@@ -547,16 +548,16 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("a directory is an app, and the main.reb in it is what runs")
-        void aDirectoryRunsItsMain(@TempDir java.nio.file.Path directory)
+        void runsADirectorysMain(@TempDir java.nio.file.Path directory)
                 throws Exception {
 
             java.nio.file.Path app = directory.resolve("app");
             java.nio.file.Files.createDirectory(app);
             java.nio.file.Files.writeString(app.resolve("data.txt"), "its own file");
-            scriptSaying(app, "main.reb",
+            writeAScriptSaying(app, "main.reb",
                     "print join {from the app: } read/string %data.txt\n");
 
-            Ran ran = running(directory, app.toString());
+            Ran ran = run(directory, app.toString());
 
             assertThat(ran.printed()).isEqualTo("from the app: its own file\n");
             assertThat(ran.exitStatus()).isZero();
@@ -564,13 +565,13 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("and a directory with no main.reb says what an app needs")
-        void aDirectoryWithNoMainIsRefused(@TempDir java.nio.file.Path directory)
+        void refusesADirectoryWithNoMain(@TempDir java.nio.file.Path directory)
                 throws Exception {
 
             java.nio.file.Path empty = directory.resolve("empty");
             java.nio.file.Files.createDirectory(empty);
 
-            assertThatThrownBy(() -> running(directory, empty.toString()))
+            assertThatThrownBy(() -> run(directory, empty.toString()))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("main.reb");
         }
@@ -578,11 +579,11 @@ class ReplEndToEndTest {
         @Test
         @DisplayName("it can say where it is, where it came from and what followed it")
         void itcanSayWhereItIs(@TempDir java.nio.file.Path directory) throws Exception {
-            scriptSaying(directory, "where.r3",
+            writeAScriptSaying(directory, "where.r3",
                     "print [what-dir system/options/script system/options/path]\n"
                     + "print mold system/options/args\n");
 
-            Ran ran = running(directory,
+            Ran ran = run(directory,
                     directory.resolve("where.r3").toString(), "one", "two");
 
             assertThat(ran.printed())
@@ -594,19 +595,19 @@ class ReplEndToEndTest {
         @DisplayName("QUIT/RETURN decides the number the process leaves with")
         void quitDecidesTheStatus(@TempDir java.nio.file.Path directory)
                 throws Exception {
-            scriptSaying(directory, "q.r3", "quit/return 42\n");
+            writeAScriptSaying(directory, "q.r3", "quit/return 42\n");
 
-            assertThat(running(directory, directory.resolve("q.r3").toString())
+            assertThat(run(directory, directory.resolve("q.r3").toString())
                     .exitStatus()).isEqualTo(42);
         }
 
         @Test
         @DisplayName("a script that fails says so and leaves with one")
-        void afailingScriptLeavesWithOne(@TempDir java.nio.file.Path directory)
+        void leavesWithOneWhenItFails(@TempDir java.nio.file.Path directory)
                 throws Exception {
-            scriptSaying(directory, "boom.r3", "print {before} 1 / 0 print {after}\n");
+            writeAScriptSaying(directory, "boom.r3", "print {before} 1 / 0 print {after}\n");
 
-            Ran ran = running(directory, directory.resolve("boom.r3").toString());
+            Ran ran = run(directory, directory.resolve("boom.r3").toString());
 
             assertThat(ran.printed())
                     .as("nothing after the failure runs")
@@ -617,8 +618,8 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("a path that names nothing is a failure, not a console")
-        void amissingScriptIsAFailure(@TempDir java.nio.file.Path directory) {
-            Ran ran = running(directory, directory.resolve("nope.r3").toString());
+        void failsWhenMissing(@TempDir java.nio.file.Path directory) {
+            Ran ran = run(directory, directory.resolve("nope.r3").toString());
 
             assertThat(ran.reported()).contains("nope.r3");
             assertThat(ran.exitStatus()).isEqualTo(1);
@@ -628,10 +629,10 @@ class ReplEndToEndTest {
         @DisplayName("and it is granted the machine, as a shell tool has to be")
         void itisGrantedTheMachine(@TempDir java.nio.file.Path directory)
                 throws Exception {
-            scriptSaying(directory, "writes.r3",
+            writeAScriptSaying(directory, "writes.r3",
                     "write %made.txt {by the script} print read/string %made.txt\n");
 
-            Ran ran = running(directory, directory.resolve("writes.r3").toString());
+            Ran ran = run(directory, directory.resolve("writes.r3").toString());
 
             assertThat(ran.printed()).isEqualTo("by the script\n");
             assertThat(java.nio.file.Files.exists(directory.resolve("made.txt"))).isTrue();
@@ -648,7 +649,7 @@ class ReplEndToEndTest {
             java.nio.file.Files.writeString(inside.resolve("s.r3"),
                     "print read/string %data.txt print mold what-dir\n");
 
-            Ran ran = running(directory, "--root", directory.toString(),
+            Ran ran = run(directory, "--root", directory.toString(),
                     "/inside/s.r3");
 
             assertThat(ran.printed()).isEqualTo("inside it\n%/inside/\n");
@@ -657,7 +658,7 @@ class ReplEndToEndTest {
 
         @Test
         @DisplayName("and a rooted script cannot read above its root")
-        void arootedScriptCannotReachAbove(@TempDir java.nio.file.Path directory)
+        void staysBelowItsRoot(@TempDir java.nio.file.Path directory)
                 throws Exception {
 
             java.nio.file.Path inside = directory.resolve("inside");
@@ -666,7 +667,7 @@ class ReplEndToEndTest {
             java.nio.file.Files.writeString(inside.resolve("peek.r3"),
                     "print mold try [read/string %/../secret.txt]\n");
 
-            Ran ran = running(directory, "--root", inside.toString(), "/peek.r3");
+            Ran ran = run(directory, "--root", inside.toString(), "/peek.r3");
 
             assertThat(ran.printed()).doesNotContain("not yours");
         }
@@ -677,17 +678,17 @@ class ReplEndToEndTest {
                 throws Exception {
 
             java.nio.file.Files.write(directory.resolve("marked.r3"),
-                    concatenated(new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF},
+                    concatenate(new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF},
                             "Rebol [Title: {T}]\nprint {ran anyway}\n"
                                     .getBytes(StandardCharsets.UTF_8)));
 
-            Ran ran = running(directory, directory.resolve("marked.r3").toString());
+            Ran ran = run(directory, directory.resolve("marked.r3").toString());
 
             assertThat(ran.printed()).isEqualTo("ran anyway\n");
             assertThat(ran.exitStatus()).isZero();
         }
 
-        private static byte[] concatenated(byte[] first, byte[] second) {
+        private static byte[] concatenate(byte[] first, byte[] second) {
             byte[] both = new byte[first.length + second.length];
             System.arraycopy(first, 0, both, 0, first.length);
             System.arraycopy(second, 0, both, first.length, second.length);
@@ -698,9 +699,9 @@ class ReplEndToEndTest {
         @DisplayName("-s is accepted and changes nothing, there being no security to lift")
         void thesecuritySwitchIsAccepted(@TempDir java.nio.file.Path directory)
                 throws Exception {
-            scriptSaying(directory, "s.r3", "print {ran}\n");
+            writeAScriptSaying(directory, "s.r3", "print {ran}\n");
 
-            Ran ran = running(directory, "-s", directory.resolve("s.r3").toString());
+            Ran ran = run(directory, "-s", directory.resolve("s.r3").toString());
 
             assertThat(ran.printed()).isEqualTo("ran\n");
             assertThat(ran.exitStatus()).isZero();

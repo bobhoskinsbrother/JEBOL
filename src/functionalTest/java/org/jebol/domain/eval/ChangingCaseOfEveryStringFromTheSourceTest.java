@@ -14,20 +14,20 @@ class ChangingCaseOfEveryStringFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("a file changes case and stays a file")
-    void aFileChangesCaseAndStaysAFile() {
+    void keepsAFileAFile() {
         assertThat(answerTo("lowercase %Thru-Cache.reb")).isEqualTo("%thru-cache.reb");
         assertThat(answerTo("uppercase %thru-cache.reb")).isEqualTo("%THRU-CACHE.REB");
     }
 
     @Test
     @DisplayName("and so do a url, a tag and an email")
-    void andSoDoAUrlATagAndAnEmail() {
+    void keepsAUrlATagAndAnEmailTheirKind() {
         assertThat(answerTo("lowercase https://A.B/C")).isEqualTo("https://a.b/c");
         assertThat(answerTo("lowercase <A>")).isEqualTo("<a>");
         assertThat(answerTo("lowercase A@B.com")).isEqualTo("a@b.com");
@@ -35,7 +35,7 @@ class ChangingCaseOfEveryStringFromTheSourceTest {
 
     @Test
     @DisplayName("a character does too, which it always did")
-    void aCharacterDoesToo() {
+    void changesACharactersCase() {
         assertThat(answerTo("lowercase #\"A\"")).isEqualTo("#\"a\"");
         assertThat(answerTo("uppercase #\"a\"")).isEqualTo("#\"A\"");
     }
@@ -49,16 +49,16 @@ class ChangingCaseOfEveryStringFromTheSourceTest {
 
     @Test
     @DisplayName("and what is not a string is refused")
-    void whatIsNotAStringIsRefused() {
-        assertThat(errorIdOf("lowercase #{4142}")).isEqualTo("expect-arg");
-        assertThat(errorIdOf("lowercase 5")).isEqualTo("expect-arg");
-        assertThat(errorIdOf("lowercase [a]")).isEqualTo("expect-arg");
-        assertThat(errorIdOf("lowercase none")).isEqualTo("expect-arg");
+    void refusesWhatIsNotAString() {
+        assertThat(readTheErrorIdOf("lowercase #{4142}")).isEqualTo("expect-arg");
+        assertThat(readTheErrorIdOf("lowercase 5")).isEqualTo("expect-arg");
+        assertThat(readTheErrorIdOf("lowercase [a]")).isEqualTo("expect-arg");
+        assertThat(readTheErrorIdOf("lowercase none")).isEqualTo("expect-arg");
     }
 
     @Test
     @DisplayName("the line the module loader stopped on")
-    void theLineTheModuleLoaderStoppedOn() {
+    void passesTheLineTheModuleLoaderStoppedOn() {
         assertThat(answerTo("""
                 lowercase second split-path https://src.rebol.tech/Modules/Thru-Cache.reb"""))
                 .isEqualTo("%thru-cache.reb");

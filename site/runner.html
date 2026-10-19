@@ -38,13 +38,13 @@ function paintOneCall(call) {
     clipToTheShape(call);
   }
   brush.globalAlpha = call.opacity / 255;
-  if (call.kind === 'fill') {
+  if (call.type === 'fill') {
     fillThePath(call);
-  } else if (call.kind === 'stroke') {
+  } else if (call.type === 'stroke') {
     strokeThePath(call);
-  } else if (call.kind === 'picture') {
+  } else if (call.type === 'picture') {
     showPicture(call);
-  } else if (call.kind === 'text') {
+  } else if (call.type === 'text') {
     writeTheText(call);
   }
   brush.restore();
@@ -199,7 +199,7 @@ const theAppFiles = __THE_APP_FILES__;
 function theAppFilesAreInTheStore() {
   return Promise.all(theAppFiles.map(name =>
       fetch(name).then(response => response.text()).then(text =>
-          theWorker.postMessage({ kind: 'file', path: name, text: text }))));
+          theWorker.postMessage({ type: 'file', path: name, text: text }))));
 }
 
 function theEntryScript() {
@@ -208,25 +208,25 @@ function theEntryScript() {
 
 function theWorkerSays(message) {
   const said = typeof message.data === 'string' ? JSON.parse(message.data) : message.data;
-  if (said.kind === 'paint') {
+  if (said.type === 'paint') {
     paint(said.picture);
-  } else if (said.kind === 'printed') {
+  } else if (said.type === 'printed') {
     out.push(said.text);
     shown.textContent = out.join('');
-  } else if (said.kind === 'booted') {
+  } else if (said.type === 'booted') {
     out.push('booted in ' + Math.round(performance.now() - thePageOpenedAt) + ' ms\n');
     shown.textContent = out.join('');
     theAppFilesAreInTheStore()
         .then(() => theEntryScript())
         .then(source => theWorker.postMessage({ run: source }));
-  } else if (said.kind === 'loaded') {
+  } else if (said.type === 'loaded') {
     out.push('worker loaded in ' + said.loadMs + ' ms and started the interpreter in '
         + said.mainMs + ' ms\n');
     shown.textContent = out.join('');
-  } else if (said.kind === 'finished') {
+  } else if (said.type === 'finished') {
     out.push(said.text);
     shown.textContent = out.join('');
-  } else if (said.kind === 'failed') {
+  } else if (said.type === 'failed') {
     out.push('failed ' + said.text);
     shown.textContent = out.join('');
   }
@@ -245,7 +245,7 @@ function tellTheWorker(fields) {
 }
 
 function sayHowBigWeAre() {
-  tellTheWorker({ kind: 'measure', wide: window.innerWidth, high: window.innerHeight });
+  tellTheWorker({ type: 'measure', wide: window.innerWidth, high: window.innerHeight });
 }
 
 const keysThatTypeNothing = {
@@ -261,7 +261,7 @@ const keysThatTypeAControlCharacter = {
 };
 
 function tellWhereThePointerIs(kind, pointer) {
-  tellTheWorker({ kind: kind, across: Math.round(pointer.offsetX), down: Math.round(pointer.offsetY) });
+  tellTheWorker({ type: kind, across: Math.round(pointer.offsetX), down: Math.round(pointer.offsetY) });
 }
 
 function theCharacterTyped(pressed) {
@@ -273,12 +273,12 @@ function theCharacterTyped(pressed) {
 
 function tellTheKey(pressed, typing, naming) {
   if (pressed.key in keysThatTypeNothing) {
-    tellTheWorker({ kind: naming, named: keysThatTypeNothing[pressed.key] });
+    tellTheWorker({ type: naming, named: keysThatTypeNothing[pressed.key] });
     return;
   }
   const typed = theCharacterTyped(pressed);
   if (typed !== null) {
-    tellTheWorker({ kind: typing, code: typed });
+    tellTheWorker({ type: typing, code: typed });
   }
 }
 
@@ -288,7 +288,7 @@ canvas.addEventListener('mouseup', pointer => tellWhereThePointerIs('up', pointe
 canvas.addEventListener('mousemove', pointer => tellWhereThePointerIs('move', pointer));
 window.addEventListener('keydown', pressed => tellTheKey(pressed, 'key', 'control'));
 window.addEventListener('keyup', pressed => tellTheKey(pressed, 'key-up', 'control-up'));
-window.addEventListener('beforeunload', () => tellTheWorker({ kind: 'close' }));
+window.addEventListener('beforeunload', () => tellTheWorker({ type: 'close' }));
 
 document.fonts.load('12px "Jebol Carried"').then(() => {
   if (theLastPicture) paint(theLastPicture);

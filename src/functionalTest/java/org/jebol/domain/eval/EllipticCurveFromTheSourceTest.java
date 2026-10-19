@@ -31,14 +31,14 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("it is a handle of type ECDH")
-        void itIsAnEcdhHandle() {
+        void isAnEcdhHandle() {
             assertThat(answerTo("handle? alice")).isEqualTo(TRUE);
             assertThat(answerTo("alice/type = 'ecdh")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("/CURVE names the curve it was made on, which a peer needs to know")
-        void itRemembersItsCurve() {
+        void remembersItsCurve() {
             assertThat(answerTo("(ecdh/curve alice) = 'secp256r1")).isEqualTo(TRUE);
             assertThat(answerTo("""
                     (ecdh/curve ecdh/init none 'secp384r1) = 'secp384r1""")).isEqualTo(TRUE);
@@ -46,13 +46,13 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("a curve this build has not got answers none")
-        void anUnknownCurveAnswersNone() {
+        void isNoneForAnUnknownCurve() {
             assertThat(answerTo("none? ecdh/init none 'nosuchcurve")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and the curves it does have are in the catalogue")
-        void theCurvesAreCatalogued() {
+        void hasItsCurvesCatalogued() {
             assertThat(answerTo("true? find system/catalog/elliptic-curves 'secp256r1"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("true? find system/catalog/elliptic-curves 'secp521r1"))
@@ -61,13 +61,13 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("ECDH is in the handle catalogue")
-        void theTypeIsCatalogued() {
+        void hasItsTypeCatalogued() {
             assertThat(answerTo("true? find system/catalog/handles 'ecdh")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("naming two actions is bad-refines")
-        void twoActionsAreRefused() {
+        void refusesTwoActions() {
             assertThat(answerTo("""
                     e: try [ecdh/public/curve alice] e/id""")).isEqualTo("bad-refines");
         }
@@ -79,7 +79,7 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("the published value is a lead byte and two coordinates")
-        void thePublishedPointIsUncompressed() {
+        void publishesAnUncompressedPoint() {
             assertThat(answerTo("length? ecdh/public alice"))
                     .as("one byte plus two 32-byte coordinates on P-256")
                     .isEqualTo("65");
@@ -88,21 +88,21 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("a wider curve gives a wider value")
-        void aWiderCurveIsWider() {
+        void widensForAWiderCurve() {
             assertThat(answerTo("""
                     97 = length? ecdh/public ecdh/init none 'secp384r1""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("two contexts publish different points")
-        void twoContextsDiffer() {
+        void differsBetweenTwoContexts() {
             assertThat(answerTo("(ecdh/public alice) = (ecdh/public bob)"))
                     .isEqualTo("#(false)");
         }
 
         @Test
         @DisplayName("both sides reach the same secret")
-        void bothSidesAgree() {
+        void agreesOnBothSides() {
             assertThat(answerTo("""
                     (ecdh/secret alice ecdh/public bob)
                         = (ecdh/secret bob ecdh/public alice)""")).isEqualTo(TRUE);
@@ -110,14 +110,14 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("and it is one coordinate wide, not two")
-        void theSecretIsOneCoordinate() {
+        void sharesOneCoordinateAsTheSecret() {
             assertThat(answerTo("length? ecdh/secret alice ecdh/public bob"))
                     .isEqualTo("32");
         }
 
         @Test
         @DisplayName("a point from another curve answers none rather than a useless secret")
-        void aPointFromAnotherCurveAnswersNone() {
+        void answersNoneForAPointFromAnotherCurve() {
             assertThat(answerTo("""
                     none? ecdh/secret alice ecdh/public ecdh/init none 'secp384r1"""))
                     .isEqualTo(TRUE);
@@ -131,7 +131,7 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("a handle of another type answers none")
-        void aWrongHandleAnswersNone() {
+        void answersNoneForAWrongHandle() {
             assertThat(answerTo("none? ecdh/public rc4/key #{01}")).isEqualTo(TRUE);
         }
     }
@@ -151,7 +151,7 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("and both sides reach the same secret, one coordinate wide")
-        void bothSidesReachTheSameSecret() {
+        void reachTheSameSecretOnBothSides() {
             assertThat(answerTo("""
                     a: ecdh/init none 'curve25519
                     b: ecdh/init none 'curve25519
@@ -170,7 +170,7 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("two contexts publish different points")
-        void twoContextsPublishDifferentPoints() {
+        void publishDifferentPointsForTwoContexts() {
             assertThat(answerTo("""
                     (ecdh/public ecdh/init none 'curve25519)
                         = (ecdh/public ecdh/init none 'curve25519)"""))
@@ -179,7 +179,7 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("and each names the curve it was made on")
-        void eachNamesTheCurveItWasMadeOn() {
+        void nameTheCurveTheyWereMadeOn() {
             assertThat(answerTo("""
                     reduce [
                         ecdh/curve ecdh/init none 'curve25519
@@ -189,7 +189,7 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("a peer value of the wrong width answers none")
-        void aPeerValueOfTheWrongWidthAnswersNone() {
+        void answerNoneForAPeerValueOfTheWrongWidth() {
             assertThat(answerTo("""
                     a: ecdh/init none 'curve25519
                     reduce [
@@ -201,7 +201,7 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("and neither of them signs anything")
-        void neitherOfThemSignsAnything() {
+        void signNothing() {
             assertThat(answerTo("""
                     k: ecdh/init none 'curve25519
                     reduce [none? ecdsa/sign k hash  none? ecdsa/verify k hash #{3045}]"""))
@@ -213,7 +213,7 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("and one from another curve answers none")
-        void oneFromAnotherCurveAnswersNone() {
+        void answerNoneForAPointFromAnotherCurve() {
             assertThat(answerTo("""
                     reduce [
                         none? ecdh/secret (ecdh/init none 'curve25519)
@@ -232,7 +232,7 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("a signature is ASN.1, so it is a sequence rather than two numbers")
-        void theSignatureIsAsn1() {
+        void isAsn1() {
             assertThat(answerTo("binary? ecdsa/sign alice hash")).isEqualTo(TRUE);
             assertThat(answerTo("48 = first ecdsa/sign alice hash"))
                     .as("0x30 is the ASN.1 tag for a sequence")
@@ -241,14 +241,14 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("and it verifies against the key that made it")
-        void itVerifies() {
+        void verifies() {
             assertThat(answerTo("true? ecdsa/verify alice hash ecdsa/sign alice hash"))
                     .isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("signing is randomised, so two signatures differ and both hold")
-        void signingIsRandomised() {
+        void isRandomised() {
             assertThat(answerTo("(ecdsa/sign alice hash) = (ecdsa/sign alice hash)"))
                     .as("unlike RSA's, which is deterministic")
                     .isEqualTo("#(false)");
@@ -261,21 +261,21 @@ class EllipticCurveFromTheSourceTest {
 
         @Test
         @DisplayName("a signature that does not hold answers NONE, not false")
-        void aFailedVerifyAnswersNone() {
+        void answersNoneWhenVerifyFails() {
             assertThat(answerTo("none? ecdsa/verify alice other ecdsa/sign alice hash"))
                     .isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and one made by another key likewise")
-        void anotherKeysSignatureDoesNotHold() {
+        void failsForAnotherKeysSignature() {
             assertThat(answerTo("none? ecdsa/verify alice hash ecdsa/sign bob hash"))
                     .isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a handle of another type answers none")
-        void aWrongHandleAnswersNone() {
+        void answersNoneForAWrongHandle() {
             assertThat(answerTo("none? ecdsa/sign (rc4/key #{01}) hash")).isEqualTo(TRUE);
         }
     }

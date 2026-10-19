@@ -35,7 +35,7 @@ class InsertedValueFromTheSourceTest {
 
         @Test
         @DisplayName("a word holding a block is spread, and ONLY puts it in whole")
-        void aWordHoldingABlock() {
+        void looksUpAWordHoldingABlock() {
             assertThat(answerTo("v: [1 2] b: [a] parse b [insert v] mold b"))
                     .isEqualTo("\"[1 2 a]\"");
             assertThat(answerTo("v: [1 2] b: [a] parse b [insert only v] mold b"))
@@ -54,14 +54,14 @@ class InsertedValueFromTheSourceTest {
 
         @Test
         @DisplayName("a paren is still evaluated, which it already was")
-        void aParenIsEvaluated() {
+        void evaluatesAParen() {
             assertThat(answerTo("b: [a] parse b [insert (3 + 4)] mold b"))
                     .isEqualTo("\"[7 a]\"");
         }
 
         @Test
         @DisplayName("anything that is not a word, a path or a paren goes in as it stands")
-        void everythingElseIsTakenAsItIs() {
+        void takesEverythingElseAsItIs() {
             assertThat(answerTo("b: [a] parse b [insert 9] mold b")).isEqualTo("\"[9 a]\"");
             assertThat(answerTo("b: [a] parse b [insert \"x\"] mold b"))
                     .isEqualTo("{[\"x\" a]}");
@@ -87,7 +87,7 @@ class InsertedValueFromTheSourceTest {
 
         @Test
         @DisplayName("this is the only way to put a plain word in")
-        void itIsTheOnlyWayToInsertAWord() {
+        void areTheOnlyWayToInsertAWord() {
             assertThat(answerTo("b: [a] parse b [insert 'zz] first b"))
                     .isEqualTo("zz");
             assertThat(answerTo("b: [a] parse b [insert 'zz] word? first b"))

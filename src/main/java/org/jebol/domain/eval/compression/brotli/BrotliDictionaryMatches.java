@@ -16,7 +16,7 @@ final class BrotliDictionaryMatches {
     private static final int UPPERCASE_FIRST = 10;
     private static final int MIXING_MULTIPLIER = 0x1E35A7BD;
 
-    static int[] room() {
+    static int[] makeRoom() {
         int[] matches = new int[LONGEST_MATCH + 1];
         Arrays.fill(matches, NOTHING_FOUND_WHICH_IS_SEVEN_FS_NOT_EIGHT);
         return matches;
@@ -39,11 +39,11 @@ final class BrotliDictionaryMatches {
         }
     }
 
-    private static int howMuchOfTheWordMatches(byte[] data, int at, int id,
-            int length, int mostThatCouldMatch) {
+    private static int measureHowMuchOfTheWordMatches(byte[] data, int at, int id,
+                                                      int length, int mostThatCouldMatch) {
 
-        byte[] words = BrotliDictionary.words();
-        int wordAt = BrotliDictionary.offsetFor(length) + length * id;
+        byte[] words = BrotliDictionary.readTheWords();
+        int wordAt = BrotliDictionary.findTheOffsetFor(length) + length * id;
         int limit = Math.min(length, mostThatCouldMatch);
         int agreeing = 0;
         while (agreeing < limit && words[wordAt + agreeing] == data[at + agreeing]) {
@@ -52,14 +52,14 @@ final class BrotliDictionaryMatches {
         return agreeing;
     }
 
-    private static boolean wordMatches(byte[] data, int at, int wordLength,
-            int wordTransform, int wordIndex, int mostThatCouldMatch) {
+    private static boolean matchesTheWord(byte[] data, int at, int wordLength,
+                                          int wordTransform, int wordIndex, int mostThatCouldMatch) {
 
         if (wordLength > mostThatCouldMatch) {
             return false;
         }
-        byte[] words = BrotliDictionary.words();
-        int wordAt = BrotliDictionary.offsetFor(wordLength)
+        byte[] words = BrotliDictionary.readTheWords();
+        int wordAt = BrotliDictionary.findTheOffsetFor(wordLength)
                 + wordLength * wordIndex;
         if (wordTransform == 0) {
             for (int each = 0; each < wordLength; each++) {
@@ -96,21 +96,21 @@ final class BrotliDictionaryMatches {
 
         boolean hasFoundMatch = false;
       {
-        int offset = BrotliDictionaryWords.firstWordOfBucket(hash15(data, at));
+        int offset = BrotliDictionaryWords.findTheFirstWordOfBucket(hash15(data, at));
         boolean end = offset == 0;
         while (!end) {
-          int wordLength = BrotliDictionaryWords.lengthAndFlagOf(offset);
+          int wordLength = BrotliDictionaryWords.readTheLengthAndFlagOf(offset);
           int wordTransform = BrotliDictionaryWords.transformOf(offset);
-          int wordIndex = BrotliDictionaryWords.indexOf(offset);
+          int wordIndex = BrotliDictionaryWords.readTheIndexOf(offset);
           offset++;
           int l = wordLength & 0x1F;
-          int n = 1 << BrotliDictionary.sizeBitsFor(l);
+          int n = 1 << BrotliDictionary.readTheSizeBitsFor(l);
           int id = wordIndex;
           end = (wordLength & BrotliDictionaryWords.LAST_IN_ITS_BUCKET) != 0;
           wordLength = l;
           if (wordTransform == 0) {
             int matchlen =
-                howMuchOfTheWordMatches(data, at, id, l, maxLength);
+                measureHowMuchOfTheWordMatches(data, at, id, l, maxLength);
             int minlen;
             int maxlen;
             int len;
@@ -293,7 +293,7 @@ final class BrotliDictionaryMatches {
 
             boolean isAllCaps =
                 wordTransform != UPPERCASE_FIRST;
-            if (!wordMatches(data, at, wordLength, wordTransform, wordIndex, maxLength)) {
+            if (!matchesTheWord(data, at, wordLength, wordTransform, wordIndex, maxLength)) {
               continue;
             }
 
@@ -337,20 +337,20 @@ final class BrotliDictionaryMatches {
 
       if (maxLength >= 5 && (data[at] == ' ' || data[at] == '.')) {
         boolean isSpace = data[at] == ' ';
-        int offset = BrotliDictionaryWords.firstWordOfBucket(hash15(data, at + 1));
+        int offset = BrotliDictionaryWords.findTheFirstWordOfBucket(hash15(data, at + 1));
         boolean end = offset == 0;
         while (!end) {
-          int wordLength = BrotliDictionaryWords.lengthAndFlagOf(offset);
+          int wordLength = BrotliDictionaryWords.readTheLengthAndFlagOf(offset);
           int wordTransform = BrotliDictionaryWords.transformOf(offset);
-          int wordIndex = BrotliDictionaryWords.indexOf(offset);
+          int wordIndex = BrotliDictionaryWords.readTheIndexOf(offset);
           offset++;
           int l = wordLength & 0x1F;
-          int n = 1 << BrotliDictionary.sizeBitsFor(l);
+          int n = 1 << BrotliDictionary.readTheSizeBitsFor(l);
           int id = wordIndex;
           end = (wordLength & BrotliDictionaryWords.LAST_IN_ITS_BUCKET) != 0;
           wordLength = l;
           if (wordTransform == 0) {
-            if (!wordMatches(data, at + 1, wordLength, wordTransform, wordIndex, maxLength - 1)) {
+            if (!matchesTheWord(data, at + 1, wordLength, wordTransform, wordIndex, maxLength - 1)) {
               continue;
             }
 
@@ -387,7 +387,7 @@ final class BrotliDictionaryMatches {
 
             boolean isAllCaps =
                 wordTransform != UPPERCASE_FIRST;
-            if (!wordMatches(data, at + 1, wordLength, wordTransform, wordIndex, maxLength - 1)) {
+            if (!matchesTheWord(data, at + 1, wordLength, wordTransform, wordIndex, maxLength - 1)) {
               continue;
             }
 
@@ -426,20 +426,20 @@ final class BrotliDictionaryMatches {
         if ((data[at + 1] == ' ' &&
              (data[at] == 'e' || data[at] == 's' || data[at] == ',')) ||
             ((data[at] & 0xFF) == 0xC2 && (data[at + 1] & 0xFF) == 0xA0)) {
-          int offset = BrotliDictionaryWords.firstWordOfBucket(hash15(data, at + 2));
+          int offset = BrotliDictionaryWords.findTheFirstWordOfBucket(hash15(data, at + 2));
           boolean end = offset == 0;
           while (!end) {
-            int wordLength = BrotliDictionaryWords.lengthAndFlagOf(offset);
+            int wordLength = BrotliDictionaryWords.readTheLengthAndFlagOf(offset);
           int wordTransform = BrotliDictionaryWords.transformOf(offset);
-          int wordIndex = BrotliDictionaryWords.indexOf(offset);
+          int wordIndex = BrotliDictionaryWords.readTheIndexOf(offset);
           offset++;
             int l = wordLength & 0x1F;
-            int n = 1 << BrotliDictionary.sizeBitsFor(l);
+            int n = 1 << BrotliDictionary.readTheSizeBitsFor(l);
             int id = wordIndex;
             end = (wordLength & BrotliDictionaryWords.LAST_IN_ITS_BUCKET) != 0;
             wordLength = l;
             if (wordTransform == 0 &&
-                wordMatches(data, at + 2, wordLength, wordTransform, wordIndex, maxLength - 2)) {
+                matchesTheWord(data, at + 2, wordLength, wordTransform, wordIndex, maxLength - 2)) {
               if ((data[at] & 0xFF) == 0xC2) {
                 addMatch(matches, id + 102 * n, l + 2, l);
                 hasFoundMatch = true;
@@ -458,20 +458,20 @@ final class BrotliDictionaryMatches {
              data[at + 3] == 'e' && data[at + 4] == ' ') ||
             (data[at] == '.' && data[at + 1] == 'c' && data[at + 2] == 'o' &&
              data[at + 3] == 'm' && data[at + 4] == '/')) {
-          int offset = BrotliDictionaryWords.firstWordOfBucket(hash15(data, at + 5));
+          int offset = BrotliDictionaryWords.findTheFirstWordOfBucket(hash15(data, at + 5));
           boolean end = offset == 0;
           while (!end) {
-            int wordLength = BrotliDictionaryWords.lengthAndFlagOf(offset);
+            int wordLength = BrotliDictionaryWords.readTheLengthAndFlagOf(offset);
           int wordTransform = BrotliDictionaryWords.transformOf(offset);
-          int wordIndex = BrotliDictionaryWords.indexOf(offset);
+          int wordIndex = BrotliDictionaryWords.readTheIndexOf(offset);
           offset++;
             int l = wordLength & 0x1F;
-            int n = 1 << BrotliDictionary.sizeBitsFor(l);
+            int n = 1 << BrotliDictionary.readTheSizeBitsFor(l);
             int id = wordIndex;
             end = (wordLength & BrotliDictionaryWords.LAST_IN_ITS_BUCKET) != 0;
             wordLength = l;
             if (wordTransform == 0 &&
-                wordMatches(data, at + 5, wordLength, wordTransform, wordIndex, maxLength - 5)) {
+                matchesTheWord(data, at + 5, wordLength, wordTransform, wordIndex, maxLength - 5)) {
               addMatch(matches, id + (data[at] == ' ' ? 41 : 72) * n, l + 5, l);
               hasFoundMatch = true;
               if (l + 5 < maxLength) {

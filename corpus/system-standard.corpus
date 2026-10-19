@@ -14,7 +14,7 @@
 --- about never asks the SYSTEM object anything.
 --- about
 --- about Every result below was run on a real 3.22.1 before being
---- about written down. That caught four wrong expectations out of
+--- about text down. That caught four wrong expectations out of
 --- about twenty-two, all of them a guess about which layer fills a
 --- about slot: font and para are none without VID, and bincode and
 --- about utype are objects where sysobj.reb declares none.
@@ -123,7 +123,7 @@ same? system/standard/port-spec-head system/standard/port-spec-file
 --- result
 #(false)
 
---- id system-standard/enum-is-filled-by-a-borrowed-rebol-file
+--- id system-standard/enum-is-fill-by-a-borrowed-rebol-file
 --- note sysobj.reb declares `enum: none` and mezz-func.reb line 110
 --- note replaces it with an object. This is the layer rule working:
 --- note the interpreter declares the slot and REBOL fills it.
@@ -149,7 +149,7 @@ object? make system/standard/enum [name: 'colours]
 --- result
 #(true)
 
---- id system-standard/font-is-filled-because-jebol-loads-view-funcs
+--- id system-standard/font-is-fill-because-jebol-loads-view-funcs
 --- note A deliberate divergence, recorded rather than hidden. A stock
 --- note 3.22.1 answers NONE here: view-funcs.reb sits in vid-files in
 --- note make/pre-make.r3 and ships only when include-vid is set, and
@@ -174,7 +174,7 @@ mold words-of system/standard/font
 --- result
 "[name style size color offset space shadow]"
 
---- id system-standard/para-is-filled-for-the-same-reason
+--- id system-standard/para-is-fill-for-the-same-reason
 --- origin view-funcs.reb line 28; divergence confirmed against R3 3.22.1
 --- code
 object? system/standard/para
@@ -199,7 +199,7 @@ mold words-of system/standard/para
 --- note ported: its BINARY native is one of the seventeen library
 --- note functions still missing, and it is what stops prot-tls.reb.
 --- note
---- note Asserted as JEBOL is, with the target written here. When
+--- note Asserted as JEBOL is, with the target text here. When
 --- note BINARY lands this entry changes to the shape above.
 --- origin boot/sysobj.reb; target confirmed against R3 3.22.1
 --- code

@@ -11,16 +11,16 @@ public interface SetOperation {
 
     String spelling();
 
-    boolean theFirstSetKeeps(boolean inTheirs);
+    boolean keepsFromTheFirstSet(boolean inTheirs);
 
-    boolean theSecondSetContributes();
+    boolean takesFromTheSecondSet();
 
-    boolean theSecondSetKeeps(boolean inOurs);
+    boolean keepsFromTheSecondSet(boolean inOurs);
 
-    int combinedBits(int mine, int yours);
+    int combineTheBits(int mine, int yours);
 
     default boolean holdsWhen(boolean inMine, boolean inYours) {
-        return combinedBits(inMine ? 1 : 0, inYours ? 1 : 0) != 0;
+        return combineTheBits(inMine ? 1 : 0, inYours ? 1 : 0) != 0;
     }
 
     Map<String, SetOperation> BY_SPELLING = Stream.of(
@@ -28,7 +28,7 @@ public interface SetOperation {
             .collect(toUnmodifiableMap(
                     SetOperation::spelling, identity()));
 
-    static Optional<SetOperation> named(String spelling) {
+    static Optional<SetOperation> findTheOperationNamed(String spelling) {
         return Optional.ofNullable(BY_SPELLING.get(spelling));
     }
 }

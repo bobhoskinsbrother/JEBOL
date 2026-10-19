@@ -16,7 +16,7 @@ class ParseInsertsIntoBytesFromTheSourceTest {
 
     @Test
     @DisplayName("a binary inserted into a binary goes in as its bytes")
-    void aBinaryInsertedIntoABinaryGoesInAsItsBytes() {
+    void insertsABinaryAsItsBytes() {
         assertThat(answerTo("""
                 b: copy #{01020304}
                 parse b [skip insert #{FFFF} to end]
@@ -25,7 +25,7 @@ class ParseInsertsIntoBytesFromTheSourceTest {
 
     @Test
     @DisplayName("a character goes in as its UTF-8")
-    void aCharacterGoesInAsItsUtf8() {
+    void insertsACharacterAsItsUtf8() {
         assertThat(answerTo("""
                 b: copy #{01020304}
                 parse b [skip insert #"^(FF)" to end]
@@ -34,7 +34,7 @@ class ParseInsertsIntoBytesFromTheSourceTest {
 
     @Test
     @DisplayName("an ASCII character is the one byte it always was")
-    void anAsciiCharacterIsOneByte() {
+    void insertsAnAsciiCharacterAsOneByte() {
         assertThat(answerTo("""
                 b: copy #{01020304}
                 parse b [skip insert #"A" to end]
@@ -43,7 +43,7 @@ class ParseInsertsIntoBytesFromTheSourceTest {
 
     @Test
     @DisplayName("a whole number goes in as the single byte it names")
-    void aWholeNumberGoesInAsOneByte() {
+    void insertsAWholeNumberAsOneByte() {
         assertThat(answerTo("""
                 b: copy #{01020304}
                 parse b [skip insert 255 to end]
@@ -52,7 +52,7 @@ class ParseInsertsIntoBytesFromTheSourceTest {
 
     @Test
     @DisplayName("a string goes in as its UTF-8")
-    void aStringGoesInAsItsUtf8() {
+    void insertsAStringAsItsUtf8() {
         assertThat(answerTo("""
                 b: copy #{01020304}
                 parse b [skip insert "AB" to end]
@@ -61,7 +61,7 @@ class ParseInsertsIntoBytesFromTheSourceTest {
 
     @Test
     @DisplayName("a paren is run first and its answer follows the same rule")
-    void aParenIsRunFirstAndFollowsTheSameRule() {
+    void runsAParenFirstUnderTheSameRule() {
         assertThat(answerTo("""
                 b: copy #{01020304}
                 parse b [skip insert (#{FFFF}) to end]
@@ -70,7 +70,7 @@ class ParseInsertsIntoBytesFromTheSourceTest {
 
     @Test
     @DisplayName("into a string the same values contribute the text they form to")
-    void intoAStringTheValuesContributeTheirText() {
+    void insertsTheTextOfEachValueIntoAString() {
         assertThat(answerTo("""
                 s: copy "abcd"
                 parse s [skip insert #{FFFF} to end]
@@ -103,7 +103,7 @@ class ParseInsertsIntoBytesFromTheSourceTest {
 
     @Test
     @DisplayName("the line folding Rebol's own quoted-printable encoder does")
-    void theLineFoldingTheQuotedPrintableEncoderDoes() {
+    void foldsLinesAsTheQuotedPrintableEncoderDoes() {
         assertThat(answerTo("""
                 out: copy #{6162636465}
                 parse out [any [3 skip [end | 1 skip end | insert #{3D0D0A}]]]

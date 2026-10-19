@@ -21,7 +21,7 @@ names-the-event-port?: func [path] [
 	]
 ]
 
-event-port-written-as-a-word: func [path /local rest] [
+event-port-text-as-a-word: func [path /local rest] [
 	rest: skip to block! path 3
 	either empty? rest [
 		either set-path? path [to set-word! 'gui-event-port] [to word! 'gui-event-port]
@@ -31,7 +31,7 @@ event-port-written-as-a-word: func [path /local rest] [
 	]
 ]
 
-a-ports-locals-written-as-its-extra: func [path /local at] [
+a-ports-locals-text-as-its-extra: func [path /local at] [
 	if all [
 		any [path? path set-path? path get-path? path]
 		at: find path 'locals
@@ -41,8 +41,8 @@ a-ports-locals-written-as-its-extra: func [path /local at] [
 
 move-the-event-port-out-of-system-view: func [block] [
 	forall block [
-		if names-the-event-port? block/1 [change/only block event-port-written-as-a-word block/1]
-		a-ports-locals-written-as-its-extra block/1
+		if names-the-event-port? block/1 [change/only block event-port-text-as-a-word block/1]
+		a-ports-locals-text-as-its-extra block/1
 		if block? block/1 [move-the-event-port-out-of-system-view block/1]
 		if paren? block/1 [move-the-event-port-out-of-system-view block/1]
 	]

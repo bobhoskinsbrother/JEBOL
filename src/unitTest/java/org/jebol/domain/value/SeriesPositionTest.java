@@ -6,15 +6,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SeriesPositionTest {
 
-    private static AnyBlockValue threeItems() {
-        return BlockValue.block(
+    private static AnyBlockValue makeThreeItems() {
+        return BlockValue.of(
                 IntegerValue.of(1), IntegerValue.of(2), IntegerValue.of(3));
     }
 
@@ -24,53 +22,53 @@ class SeriesPositionTest {
 
         @Test
         @DisplayName("1 is the head: the ON point at the lower end")
-        void headIsOne() {
-            assertThat(threeItems().atIndex(1).atHead()).isTrue();
+        void startAtOneForTheHead() {
+            assertThat(makeThreeItems().atIndex(1).atHead()).isTrue();
         }
 
         @Test
         @DisplayName("0 is one below the head: the OFF point")
         void zeroIsRejected() {
-            assertThatThrownBy(() -> threeItems().atIndex(0))
+            assertThatThrownBy(() -> makeThreeItems().atIndex(0))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("outside");
         }
 
         @Test
         @DisplayName("-1 is further below and equally rejected")
-        void negativeIsRejected() {
-            assertThatThrownBy(() -> threeItems().atIndex(-1))
+        void rejectANegative() {
+            assertThatThrownBy(() -> makeThreeItems().atIndex(-1))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         @DisplayName("3 is the last element: the IN point at the upper end")
-        void lastElementIsLength() {
-            AnyBlockValue last = threeItems().atIndex(3);
+        void endAtTheLengthForTheLastElement() {
+            AnyBlockValue last = makeThreeItems().atIndex(3);
             assertThat(last.atTail()).isFalse();
-            assertThat(last.first()).isEqualTo(IntegerValue.of(3));
+            assertThat(last.pickTheFirst()).isEqualTo(IntegerValue.of(3));
         }
 
         @Test
         @DisplayName("4 is the tail: legal to hold, one past the last element")
-        void tailIsLengthPlusOne() {
-            AnyBlockValue tail = threeItems().atIndex(4);
+        void placeTheTailOnePastTheLength() {
+            AnyBlockValue tail = makeThreeItems().atIndex(4);
             assertThat(tail.atTail()).isTrue();
             assertThat(tail.lengthFromHere()).isZero();
         }
 
         @Test
         @DisplayName("5 is past the tail: the OFF point at the upper end")
-        void pastTailIsRejected() {
-            assertThatThrownBy(() -> threeItems().atIndex(5))
+        void rejectPastTheTail() {
+            assertThatThrownBy(() -> makeThreeItems().atIndex(5))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("outside");
         }
 
         @Test
         @DisplayName("reading at the tail fails, because it holds nothing")
-        void readingAtTailFails() {
-            assertThatThrownBy(() -> threeItems().tail().first())
+        void failToReadAtTheTail() {
+            assertThatThrownBy(() -> makeThreeItems().tail().pickTheFirst())
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("tail");
         }
@@ -82,8 +80,8 @@ class SeriesPositionTest {
 
         @Test
         @DisplayName("head and tail are the same position")
-        void headIsAlsoTheTail() {
-            AnyBlockValue empty = BlockValue.block();
+        void startAtTheTail() {
+            AnyBlockValue empty = BlockValue.of();
             assertThat(empty.atHead()).isTrue();
             assertThat(empty.atTail()).isTrue();
             assertThat(empty.storageLength()).isZero();
@@ -91,13 +89,13 @@ class SeriesPositionTest {
         }
 
         @Test
-        void position2IsRejected() {
-            assertThatThrownBy(() -> BlockValue.block().atIndex(2))
+        void rejectPositionTwo() {
+            assertThatThrownBy(() -> BlockValue.of().atIndex(2))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
-        void anEmptyStringBehavesTheSame() {
+        void includeAnEmptyString() {
             AnyStringValue empty = StringValue.of("");
             assertThat(empty.atHead()).isTrue();
             assertThat(empty.atTail()).isTrue();
@@ -112,14 +110,14 @@ class SeriesPositionTest {
         @ParameterizedTest(name = "from position {0}")
         @ValueSource(ints = {1, 2, 3, 4})
         void countsWhatRemains(int position) {
-            assertThat(threeItems().atIndex(position).lengthFromHere())
+            assertThat(makeThreeItems().atIndex(position).lengthFromHere())
                     .isEqualTo(4 - position);
         }
 
         @Test
         @DisplayName("storage length ignores the position")
-        void storageLengthIsPositionIndependent() {
-            assertThat(threeItems().atIndex(3).storageLength()).isEqualTo(3);
+        void ignoresThePositionForTheStorageLength() {
+            assertThat(makeThreeItems().atIndex(3).storageLength()).isEqualTo(3);
         }
     }
 
@@ -130,18 +128,18 @@ class SeriesPositionTest {
         @Test
         @DisplayName("a mutation through one value is visible through another")
         void mutationIsVisibleThroughEveryAlias() {
-            AnyBlockValue atHead = threeItems();
+            AnyBlockValue atHead = makeThreeItems();
             AnyBlockValue atSecond = atHead.atIndex(2);
 
             atHead.storage().set(2, StringValue.of("changed"));
 
-            assertThat(atSecond.first()).isEqualTo(StringValue.of("changed"));
+            assertThat(atSecond.pickTheFirst()).isEqualTo(StringValue.of("changed"));
         }
 
         @Test
         @DisplayName("appending through one alias lengthens the other")
-        void appendingIsVisibleThroughEveryAlias() {
-            AnyBlockValue atHead = threeItems();
+        void showsAnAppendThroughEveryAlias() {
+            AnyBlockValue atHead = makeThreeItems();
             AnyBlockValue atSecond = atHead.atIndex(2);
 
             atHead.storage().append(IntegerValue.of(4));
@@ -152,10 +150,10 @@ class SeriesPositionTest {
 
         @Test
         @DisplayName("same? is about storage, equal? is about contents")
-        void sharingStorageIsNotTheSameAsBeingEqual() {
-            AnyBlockValue original = threeItems();
+        void separatesSharingStorageFromEquality() {
+            AnyBlockValue original = makeThreeItems();
             AnyBlockValue repositioned = original.atIndex(2);
-            AnyBlockValue separateButIdentical = threeItems();
+            AnyBlockValue separateButIdentical = makeThreeItems();
 
             assertThat(original.sharesStorageWith(repositioned)).isTrue();
             assertThat(original.sharesStorageWith(separateButIdentical)).isFalse();
@@ -164,14 +162,14 @@ class SeriesPositionTest {
         @Test
         @DisplayName("a string and a block never share storage")
         void differentSeriesKindsNeverShare() {
-            assertThat(BlockValue.block().sharesStorageWith(StringValue.of(""))).isFalse();
-            assertThat(StringValue.of("").sharesStorageWith(BlockValue.block())).isFalse();
+            assertThat(BlockValue.of().sharesStorageWith(StringValue.of(""))).isFalse();
+            assertThat(StringValue.of("").sharesStorageWith(BlockValue.of())).isFalse();
         }
 
         @Test
         @DisplayName("repositioning does not copy")
-        void repositioningKeepsTheSameStorage() {
-            AnyBlockValue original = threeItems();
+        void keepsTheStorageWhenRepositioned() {
+            AnyBlockValue original = makeThreeItems();
             assertThat(original.atIndex(3).storage()).isSameAs(original.storage());
             assertThat(original.head().storage()).isSameAs(original.storage());
             assertThat(original.tail().storage()).isSameAs(original.storage());
@@ -194,10 +192,10 @@ class SeriesPositionTest {
 
         @Test
         @DisplayName("the second character is the whole emoji, not half of it")
-        void secondCharacterIsWhole() {
+        void keepTheSecondCharacterWhole() {
             AnyStringValue withEmoji = StringValue.of("a😀b");
 
-            assertThat(withEmoji.atIndex(2).first().codepoint()).isEqualTo(0x1F600);
+            assertThat(withEmoji.atIndex(2).pickTheFirst().codepoint()).isEqualTo(0x1F600);
         }
 
         @Test
@@ -211,29 +209,29 @@ class SeriesPositionTest {
     class WrongDatatype {
 
         @Test
-        void aBlockDatatypeCannotSeeAStringAsABlock() {
+        void hidesAStringFromABlockDatatype() {
             assertThatThrownBy(() -> BlockValue.TYPE.as(StringValue.of("")))
                     .isInstanceOfSatisfying(Raised.class, raised ->
                             assertThat(raised.error().errorId()).isEqualTo("not-same-class"));
         }
 
         @Test
-        void aStringDatatypeCannotSeeABlockAsAString() {
-            assertThatThrownBy(() -> StringValue.TYPE.as(BlockValue.block()))
+        void hidesABlockFromAStringDatatype() {
+            assertThatThrownBy(() -> StringValue.TYPE.as(BlockValue.of()))
                     .isInstanceOfSatisfying(Raised.class, raised ->
                             assertThat(raised.error().errorId()).isEqualTo("not-same-class"));
         }
 
         @Test
-        void aPathDatatypeSeesABlockAsAPathButNotAString() {
-            assertThat(PathValue.TYPE.as(BlockValue.block())).isInstanceOf(PathValue.class);
+        void showsABlockButNotAStringToAPathDatatype() {
+            assertThat(PathValue.TYPE.as(BlockValue.of())).isInstanceOf(PathValue.class);
             assertThatThrownBy(() -> PathValue.TYPE.as(StringValue.of("a")))
                     .isInstanceOf(Raised.class);
         }
 
         @Test
-        void storageIsRequired() {
-            assertThatThrownBy(() -> BlockValue.TYPE.holding(null, 1))
+        void requiresStorage() {
+            assertThatThrownBy(() -> BlockValue.TYPE.wrap(null, 1))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("storage");
         }

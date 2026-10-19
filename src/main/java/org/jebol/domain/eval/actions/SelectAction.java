@@ -31,50 +31,50 @@ public class SelectAction extends SeriesSearchAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .theRebolActorsAnswer("select", arguments, refinements)
-                .orElseGet(() -> selected(arguments, refinements));
+                .askTheRebolActor("select", arguments, refinements)
+                .orElseGet(() -> select(arguments, refinements));
     }
 
-    private Value selected(List<Value> arguments, Set<String> refinements) {
+    private Value select(List<Value> arguments, Set<String> refinements) {
         Value subject = arguments.getFirst();
         Value wanted = arguments.get(1);
         return switch (subject) {
             case MapValue map -> map.select(wanted, refinements.contains("case"));
             case VectorValue numbers -> refuseTheDatatype(numbers);
             case NoneValue nothing -> nothing;
-            case Value object when object.isAnyObject() -> theFieldWanted(object, wanted);
+            case Value object when object.isAnyObject() -> readTheFieldWanted(object, wanted);
             case RebolSeries series -> {
                 series.refuseANeedleItCannotHold(wanted, nativeName());
-                yield theItemAfterTheMatch(series, wanted, arguments, refinements);
+                yield findTheItemAfterTheMatch(series, wanted, arguments, refinements);
             }
             case Value anythingElse -> refuseTheDatatype(anythingElse);
         };
     }
 
-    private Value theFieldWanted(Value object, Value wanted) {
+    private Value readTheFieldWanted(Value object, Value wanted) {
         if (!object.declaresAFieldFindCanReachBy(wanted)) {
             return NoneValue.none();
         }
-        return object.fieldValue(((AnyWordValue) wanted).canonical());
+        return object.readTheFieldValue(((AnyWordValue) wanted).canonical());
     }
 
-    private Value theItemAfterTheMatch(
+    private Value findTheItemAfterTheMatch(
             RebolSeries series, Value wanted, List<Value> arguments, Set<String> refinements) {
         SeriesSearch search = new SeriesSearch(series, wanted, refinements,
-                argumentOf("part", 0, arguments, refinements),
-                argumentOf("skip", 0, arguments, refinements),
-                argumentOf("with", 0, arguments, refinements));
+                readTheArgumentOf("part", 0, arguments, refinements),
+                readTheArgumentOf("skip", 0, arguments, refinements),
+                readTheArgumentOf("with", 0, arguments, refinements));
         if (search.stridesForwardByLessThanOne()) {
             return refuseARecordWidthBelowOne(series, search.stride());
         }
-        int found = search.position();
+        int found = search.findThePosition();
         if (found < 0) {
             return NoneValue.none();
         }
-        int after = found - 1 + search.lengthMatchedAt(found);
+        int after = found - 1 + search.measureTheLengthMatchedAt(found);
         return after >= search.end()
                 ? NoneValue.none()
-                : series.head().items().get(after);
+                : series.head().listTheItems().get(after);
     }
 
     private Value refuseARecordWidthBelowOne(RebolSeries series, long stride) {

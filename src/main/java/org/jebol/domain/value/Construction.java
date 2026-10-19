@@ -2,9 +2,9 @@ package org.jebol.domain.value;
 
 public interface Construction {
 
-    Value madeOf(Datatype datatype, Value specification);
+    Value make(Datatype datatype, Value specification);
 
-    Value functionMadeFrom(AnyBlockValue spec, AnyBlockValue body);
+    Value makeAFunction(AnyBlockValue spec, AnyBlockValue body);
 
     static Construction refused() {
         return Refused.INSTANCE;
@@ -18,13 +18,13 @@ public interface Construction {
         }
 
         @Override
-        public Value madeOf(Datatype datatype, Value specification) {
+        public Value make(Datatype datatype, Value specification) {
             throw new IllegalStateException(
                     "nothing here makes a " + datatype.literalSpelling());
         }
 
         @Override
-        public Value functionMadeFrom(AnyBlockValue spec, AnyBlockValue body) {
+        public Value makeAFunction(AnyBlockValue spec, AnyBlockValue body) {
             throw new IllegalStateException("nothing here makes a function");
         }
     }

@@ -16,7 +16,7 @@ class NamedThrowTest {
         ScriptOutcome outcome = interpreter.run(source);
         assertThat(outcome.conclusion())
                 .as("%s must not escape as a host exception", source)
-                .isEqualTo(Conclusion.PRODUCED_A_VALUE);
+                .isEqualTo(Conclusion.PRODUCED_VALUE);
         return interpreter.display(outcome);
     }
 

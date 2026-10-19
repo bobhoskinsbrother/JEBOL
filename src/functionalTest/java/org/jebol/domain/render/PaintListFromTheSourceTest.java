@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PaintListFromTheSourceTest {
 
-    private static GobValue gobFrom(String source) {
+    private static GobValue makeAGobFrom(String source) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.defineFreshWordsIn(source);
@@ -24,7 +24,7 @@ class PaintListFromTheSourceTest {
     }
 
     private static List<PaintInstruction> listFor(String source) {
-        return PaintList.of(gobFrom(source)).instructions();
+        return PaintList.of(makeAGobFrom(source)).instructions();
     }
 
     private static PaintInstruction.Fill fillAt(List<PaintInstruction> list, int at) {
@@ -37,7 +37,7 @@ class PaintListFromTheSourceTest {
 
         @Test
         @DisplayName("a gob comes before its children, which is what in front means")
-        void aParentComesFirst() {
+        void putsAParentFirst() {
             List<PaintInstruction> list = listFor("""
                     parent: make gob! [size: 40x40 color: 1.1.1]
                     append parent make gob! [size: 10x10 color: 2.2.2]
@@ -49,7 +49,7 @@ class PaintListFromTheSourceTest {
 
         @Test
         @DisplayName("and children come in the order the pane holds them")
-        void childrenComeInPaneOrder() {
+        void putsChildrenInPaneOrder() {
             List<PaintInstruction> list = listFor("""
                     parent: make gob! [size: 40x40 color: 1.1.1]
                     append parent make gob! [size: 10x10 color: 2.2.2]
@@ -189,7 +189,7 @@ class PaintListFromTheSourceTest {
 
         @Test
         @DisplayName("a child touching its parent's edge is clipped to nothing")
-        void touchingTheEdgeIsNothing() {
+        void showsNothingTouchingTheEdge() {
             assertThat(listFor("""
                     parent: make gob! [size: 20x20 color: 1.1.1]
                     append parent make gob! [offset: 20x0 size: 10x10 color: 2.2.2]
@@ -198,7 +198,7 @@ class PaintListFromTheSourceTest {
 
         @Test
         @DisplayName("and one pixel inside it is not")
-        void onePixelInsideShows() {
+        void showsOnePixelInside() {
             assertThat(listFor("""
                     parent: make gob! [size: 20x20 color: 1.1.1]
                     append parent make gob! [offset: 19x0 size: 10x10 color: 2.2.2]
@@ -213,14 +213,14 @@ class PaintListFromTheSourceTest {
         @ParameterizedTest
         @CsvSource({"0x0", "0x40", "40x0"})
         @DisplayName("paints nothing, whichever side is missing")
-        void nothingIsPaintedForNoArea(String size) {
+        void paintNothingWithNoArea(String size) {
             assertThat(listFor(
                     "make gob! [size: " + size + " color: 1.1.1]")).isEmpty();
         }
 
         @Test
         @DisplayName("and nothing under it is painted either")
-        void nothingUnderItIsPainted() {
+        void paintNothingUnderThem() {
             assertThat(listFor("""
                     parent: make gob! [size: 0x0 color: 1.1.1]
                     append parent make gob! [size: 10x10 color: 2.2.2]
@@ -233,7 +233,7 @@ class PaintListFromTheSourceTest {
 
         @Test
         @DisplayName("but one pixel of area is area")
-        void onePixelIsArea() {
+        void countOnePixelAsArea() {
             assertThat(listFor("make gob! [size: 1x1 color: 1.1.1]")).hasSize(1);
         }
     }
@@ -251,7 +251,7 @@ class PaintListFromTheSourceTest {
 
         @Test
         @DisplayName("a gob's own alpha shows on what it paints")
-        void itsOwnAlphaShows() {
+        void showsTheGobsOwnAlpha() {
             assertThat(fillAt(listFor(
                     "make gob! [size: 10x10 color: 1.1.1 alpha: 128]"), 0)
                     .where().opacity()).isEqualTo(128);
@@ -259,7 +259,7 @@ class PaintListFromTheSourceTest {
 
         @Test
         @DisplayName("and a parent's multiplies with it, so half inside half is a quarter")
-        void alphaMultipliesDownTheTree() {
+        void multipliesAlphaDownTheTree() {
             assertThat(fillAt(listFor("""
                     parent: make gob! [size: 40x40 color: 1.1.1 alpha: 128]
                     append parent make gob! [size: 10x10 color: 2.2.2 alpha: 128]
@@ -287,14 +287,14 @@ class PaintListFromTheSourceTest {
 
         @Test
         @DisplayName("and three octets of colour mean the colour is opaque")
-        void threeOctetsAreOpaque() {
+        void treatsThreeOctetsAsOpaque() {
             assertThat(fillAt(listFor("make gob! [size: 10x10 color: 1.1.1]"), 0)
                     .where().opacity()).isEqualTo(255);
         }
     }
 
     @Nested
-    @DisplayName("what each content kind becomes")
+    @DisplayName("what each content type becomes")
     class TheKinds {
 
         @Test
@@ -310,7 +310,7 @@ class PaintListFromTheSourceTest {
 
         @Test
         @DisplayName("a string becomes writing")
-        void astringBecomesWriting() {
+        void writeAString() {
             PaintInstruction only = listFor("""
                     make gob! [size: 100x20 text: "hello"]""").getFirst();
 
@@ -360,8 +360,8 @@ class PaintListFromTheSourceTest {
 
         @Test
         @DisplayName("counts what it holds")
-        void itCountsWhatItHolds() {
-            assertThat(PaintList.of(gobFrom("""
+        void countsWhatItHolds() {
+            assertThat(PaintList.of(makeAGobFrom("""
                     parent: make gob! [size: 40x40 color: 1.1.1]
                     append parent make gob! [size: 10x10 color: 2.2.2]
                     parent""")).count()).isEqualTo(2);
@@ -369,21 +369,21 @@ class PaintListFromTheSourceTest {
 
         @Test
         @DisplayName("and says when it holds nothing")
-        void itSaysWhenEmpty() {
-            assertThat(PaintList.of(gobFrom("make gob! [size: 0x0]")).isEmpty())
+        void saysWhenEmpty() {
+            assertThat(PaintList.of(makeAGobFrom("make gob! [size: 0x0]")).isEmpty())
                     .isTrue();
         }
 
         @Test
         @DisplayName("the same tree flattens to the same list, every time")
-        void itIsDeterministic() {
+        void comesOutTheSameEveryTime() {
             String source = """
                     parent: make gob! [size: 60x60 color: 1.1.1 alpha: 200]
                     child: make gob! [offset: 5x5 size: 40x40 color: 2.2.2]
                     append child make gob! [offset: 3x3 size: 10x10 color: 3.3.3]
                     append parent child
                     parent""";
-            GobValue tree = gobFrom(source);
+            GobValue tree = makeAGobFrom(source);
 
             assertThat(PaintList.of(tree)).isEqualTo(PaintList.of(tree));
         }
@@ -392,7 +392,7 @@ class PaintListFromTheSourceTest {
         @DisplayName("and a surface bigger than the root does not widen what it may paint")
         void alargerSurfaceDoesNotWidenTheRoot() {
             assertThat(PaintList.onASurface(
-                    gobFrom("make gob! [size: 20x20 color: 1.1.1]"), 500, 500)
+                    makeAGobFrom("make gob! [size: 20x20 color: 1.1.1]"), 500, 500)
                     .instructions().getFirst().where().clip())
                     .isEqualTo(new ClipRectangle(0, 0, 20, 20));
         }
@@ -401,7 +401,7 @@ class PaintListFromTheSourceTest {
         @DisplayName("while a surface smaller than the root narrows it")
         void asmallerSurfaceNarrowsTheRoot() {
             assertThat(PaintList.onASurface(
-                    gobFrom("make gob! [size: 200x200 color: 1.1.1]"), 50, 40)
+                    makeAGobFrom("make gob! [size: 200x200 color: 1.1.1]"), 50, 40)
                     .instructions().getFirst().where().clip())
                     .isEqualTo(new ClipRectangle(0, 0, 50, 40));
         }
@@ -429,10 +429,10 @@ class PaintListFromTheSourceTest {
 
         @Test
         @DisplayName("an opacity outside nought to 255 is brought back inside it")
-        void opacityIsClamped() {
-            assertThat(new Placement(0, 0, 1, 1, ClipRectangle.nothing(), 900)
+        void clampTheOpacity() {
+            assertThat(new Placement(0, 0, 1, 1, ClipRectangle.coverNothing(), 900)
                     .opacity()).isEqualTo(255);
-            assertThat(new Placement(0, 0, 1, 1, ClipRectangle.nothing(), -5)
+            assertThat(new Placement(0, 0, 1, 1, ClipRectangle.coverNothing(), -5)
                     .opacity()).isZero();
         }
 
@@ -444,8 +444,8 @@ class PaintListFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and every paint kind has a word it travels under")
-        void everyKindHasAWord() {
+        @DisplayName("and every paint type has a word it travels under")
+        void giveEveryKindAWord() {
             assertThat(java.util.Arrays.stream(PaintKind.values())
                     .map(PaintKind::spelling))
                     .containsExactly("fill", "writing", "picture", "drawing");

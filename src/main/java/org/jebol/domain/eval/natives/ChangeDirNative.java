@@ -26,7 +26,7 @@ public class ChangeDirNative extends HostNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("path", Set.of(FileValue.TYPE)));
+        return List.of(Parameter.of("path", Set.of(FileValue.TYPE)));
     }
 
     @Override
@@ -34,7 +34,7 @@ public class ChangeDirNative extends HostNative {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WORKING_DIRECTORY);
             String asked = ((AnyStringValue) arguments.getFirst()).text();
-            return throughTheFileSystem(() -> {
+            return runThroughTheFileSystem(() -> {
                 evaluator.files().changeDirectory(asked);
                 sayWhereTheInterpreterIsStanding(evaluator);
                 return FileValue.of(evaluator.files().workingDirectory());
@@ -44,7 +44,7 @@ public class ChangeDirNative extends HostNative {
 
     private void sayWhereTheInterpreterIsStanding(Evaluator evaluator) {
         if (granted.allow(HostService.ENVIRONMENT)) {
-            evaluator.environment().nameHolds(
+            evaluator.environment().assign(
                     WHERE_A_SHELL_SAYS_IT_IS_STANDING, evaluator.files().workingDirectory());
         }
     }

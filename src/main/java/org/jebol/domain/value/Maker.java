@@ -7,7 +7,7 @@ public interface Maker {
 
     Value makeObjectFrom(ObjectValue prototype, BlockValue body);
 
-    Value objectMergedFrom(ObjectValue prototype, ObjectValue other);
+    Value mergeAnObject(ObjectValue prototype, ObjectValue other);
 
     Value makeFunctionFrom(AnyFunctionValue prototype, AnyBlockValue spec);
 
@@ -15,19 +15,19 @@ public interface Maker {
 
     Value makeStructFrom(StructValue prototype, Value spec);
 
-    ObjectValue objectEvaluatedFrom(AnyBlockValue body);
+    ObjectValue evaluateAnObject(AnyBlockValue body);
 
-    FunctionValue functionBoundFrom(AnyBlockValue spec, AnyBlockValue body);
+    FunctionValue bindAFunction(AnyBlockValue spec, AnyBlockValue body);
 
-    Value systemFunctionApplied(String name, Value argument);
+    Value applyASystemFunction(String name, Value argument);
 
-    Value simpleValueOf(Value piece);
+    Value readASimpleValue(Value piece);
 
-    ErrorValue spokenHere(ErrorValue error);
+    ErrorValue speakHere(ErrorValue error);
 
     StructSpec.LayoutRegistry structLayouts();
 
-    Optional<List<Value>> valuesReadFrom(String source);
+    Optional<List<Value>> readTheValuesFrom(String source);
 
-    AnyBlockValue sourceRead(String source);
+    AnyBlockValue readTheSource(String source);
 }

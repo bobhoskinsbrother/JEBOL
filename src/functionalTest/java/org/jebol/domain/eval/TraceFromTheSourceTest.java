@@ -11,7 +11,7 @@ class TraceFromTheSourceTest {
 
     private static String outputOf(String source) {
         StringBuilder captured = new StringBuilder();
-        Interpreter interpreter = Interpreter.writingTo(captured::append);
+        Interpreter interpreter = Interpreter.createWithOutput(captured::append);
         interpreter.defineFreshWordsIn(source);
         interpreter.run(source);
         return captured.toString();

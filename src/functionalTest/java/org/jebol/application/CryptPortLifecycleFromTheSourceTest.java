@@ -20,34 +20,34 @@ class CryptPortLifecycleFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
-    private static String errorArgumentFrom(String source) {
+    private static String readTheErrorArgumentFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/arg1] ['no-error]");
     }
 
-    private static String openedOn(String algorithm) {
+    private static String openOn(String algorithm) {
         return "p: open make port! [scheme: 'crypt algorithm: '" + algorithm + "]\n";
     }
 
     @Test
     @DisplayName("an algorithm is required, and it must be one this build serves")
-    void anAlgorithmIsRequired() {
-        assertThat(errorIdFrom("open make port! [scheme: 'crypt]"))
+    void requiresAnAlgorithm() {
+        assertThat(readTheErrorIdFrom("open make port! [scheme: 'crypt]"))
                 .isEqualTo("invalid-spec");
-        assertThat(errorIdFrom("""
+        assertThat(readTheErrorIdFrom("""
                 open make port! [scheme: 'crypt algorithm: 'NONSENSE-1]"""))
                 .isEqualTo("invalid-spec");
-        assertThat(errorArgumentFrom("""
+        assertThat(readTheErrorArgumentFrom("""
                 open make port! [scheme: 'crypt algorithm: 'NONSENSE-1]"""))
                 .isEqualTo("NONSENSE-1");
     }
 
     @Test
     @DisplayName("the url form names the algorithm, and its fragment the direction")
-    void theUrlFormNamesTheAlgorithmAndTheDirection() {
+    void namesTheAlgorithmAndTheDirectionInTheUrlForm() {
         assertThat(answerTo("""
                 p: open crypt://AES-128-CBC#decrypt
                 reduce [p/spec/algorithm p/spec/direction]"""))
@@ -59,16 +59,16 @@ class CryptPortLifecycleFromTheSourceTest {
 
     @Test
     @DisplayName("a direction that is neither encrypting nor decrypting is refused")
-    void aDirectionThatIsNeitherIsRefused() {
-        assertThat(errorIdFrom("open crypt://AES-128-CBC#sideways"))
+    void refusesADirectionThatIsNeither() {
+        assertThat(readTheErrorIdFrom("open crypt://AES-128-CBC#sideways"))
                 .isEqualTo("invalid-spec");
-        assertThat(errorArgumentFrom("open crypt://AES-128-CBC#sideways"))
+        assertThat(readTheErrorArgumentFrom("open crypt://AES-128-CBC#sideways"))
                 .isEqualTo("\"sideways\"");
     }
 
     @Test
     @DisplayName("the key and the vector do not stay in the specification")
-    void theKeyAndTheVectorDoNotStayInTheSpecification() {
+    void keepsTheKeyAndTheVectorOutOfTheSpecification() {
         assertThat(answerTo("""
                 p: open make port! [
                     scheme: 'crypt algorithm: 'AES-128-CBC
@@ -81,7 +81,7 @@ class CryptPortLifecycleFromTheSourceTest {
 
     @Test
     @DisplayName("and the port still has them, so the key went somewhere")
-    void theKeyWentSomewhere() {
+    void keepsTheKeySomewhere() {
         assertThat(answerTo("""
                 p: open make port! [
                     scheme: 'crypt algorithm: 'AES-128-CBC
@@ -94,8 +94,8 @@ class CryptPortLifecycleFromTheSourceTest {
 
     @Test
     @DisplayName("opening checks the algorithm, not only making the port")
-    void openingChecksTheAlgorithmAgain() {
-        assertThat(errorIdFrom(openedOn("AES-128-ECB") + """
+    void checksTheAlgorithmAgainOnOpening() {
+        assertThat(readTheErrorIdFrom(openOn("AES-128-ECB") + """
                 close p
                 p/spec/algorithm: 'NONSENSE-1
                 open p
@@ -105,76 +105,76 @@ class CryptPortLifecycleFromTheSourceTest {
 
     @Test
     @DisplayName("opening a port that is already open is refused")
-    void openingAnOpenPortIsRefused() {
-        assertThat(errorIdFrom(openedOn("AES-128-CBC") + "open p"))
+    void refusesOpeningAnOpenPort() {
+        assertThat(readTheErrorIdFrom(openOn("AES-128-CBC") + "open p"))
                 .isEqualTo("already-open");
-        assertThat(errorArgumentFrom(openedOn("AES-128-CBC") + "open p"))
+        assertThat(readTheErrorArgumentFrom(openOn("AES-128-CBC") + "open p"))
                 .isEqualTo("crypt://AES-128-CBC#encrypt");
     }
 
     @Test
     @DisplayName("every action on a closed port is refused, and names the port")
-    void everyActionOnAClosedPortIsRefused() {
+    void refusesEveryActionOnAClosedPort() {
         for (String action : new String[] {
                 "write p #{00}", "read p", "update p", "take p",
                 "modify p 'key " + KEY, "close p"}) {
-            assertThat(errorIdFrom(openedOn("AES-128-CBC") + "close p\n" + action))
+            assertThat(readTheErrorIdFrom(openOn("AES-128-CBC") + "close p\n" + action))
                     .as(action).isEqualTo("not-open");
         }
-        assertThat(errorArgumentFrom(openedOn("AES-128-CBC") + "close p\nread p"))
+        assertThat(readTheErrorArgumentFrom(openOn("AES-128-CBC") + "close p\nread p"))
                 .isEqualTo("crypt://AES-128-CBC#encrypt");
     }
 
     @Test
     @DisplayName("asking whether a closed port is open raises rather than answering")
-    void askingWhetherAClosedPortIsOpenRaises() {
-        assertThat(answerTo(openedOn("AES-128-CBC") + "open? p")).isEqualTo("#(true)");
-        assertThat(errorIdFrom(openedOn("AES-128-CBC") + "close p\nopen? p"))
+    void raisesOnAskingWhetherAClosedPortIsOpen() {
+        assertThat(answerTo(openOn("AES-128-CBC") + "open? p")).isEqualTo("#(true)");
+        assertThat(readTheErrorIdFrom(openOn("AES-128-CBC") + "close p\nopen? p"))
                 .isEqualTo("not-open");
     }
 
     @Test
     @DisplayName("only bytes can be written to it")
-    void onlyBytesCanBeWritten() {
+    void writesOnlyBytes() {
         for (String data : new String[] {"{hello}", "5", "none", "[1 2 3]", "1.5"}) {
-            assertThat(errorIdFrom(openedOn("AES-128-CBC") + "write p " + data))
+            assertThat(readTheErrorIdFrom(openOn("AES-128-CBC") + "write p " + data))
                     .as(data).isEqualTo("feature-na");
         }
-        assertThat(errorArgumentFrom(openedOn("AES-128-CBC") + "write p 5"))
+        assertThat(readTheErrorArgumentFrom(openOn("AES-128-CBC") + "write p 5"))
                 .isEqualTo("crypt://AES-128-CBC#encrypt");
     }
 
     @Test
     @DisplayName("a field that is not a word changes nothing and is not refused")
-    void aFieldThatIsNotAWordChangesNothing() {
-        assertThat(answerTo(openedOn("AES-128-CBC") + "port? modify p none 1"))
+    void changesNothingForAFieldThatIsNotAWord() {
+        assertThat(answerTo(openOn("AES-128-CBC") + "port? modify p none 1"))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a field the port has not got is refused, and named")
-    void aFieldThePortHasNotGotIsRefused() {
-        assertThat(errorIdFrom(openedOn("AES-128-CBC") + "modify p 'nonsense 1"))
+    void refusesAFieldThePortHasNotGot() {
+        assertThat(readTheErrorIdFrom(openOn("AES-128-CBC") + "modify p 'nonsense 1"))
                 .isEqualTo("invalid-arg");
-        assertThat(errorArgumentFrom(openedOn("AES-128-CBC") + "modify p 'nonsense 1"))
+        assertThat(readTheErrorArgumentFrom(openOn("AES-128-CBC") + "modify p 'nonsense 1"))
                 .isEqualTo("nonsense");
     }
 
     @Test
     @DisplayName("a value a field cannot hold answers false")
-    void aValueAFieldCannotHoldAnswersFalse() {
-        assertThat(answerTo(openedOn("AES-128-CBC") + "modify p 'direction 'sideways"))
+    void answersFalseForAValueAFieldCannotHold() {
+        assertThat(answerTo(openOn("AES-128-CBC") + "modify p 'direction 'sideways"))
                 .isEqualTo("#(false)");
-        assertThat(answerTo(openedOn("AES-128-CBC") + "modify p 'algorithm 'NOPE"))
+        assertThat(answerTo(openOn("AES-128-CBC") + "modify p 'algorithm 'NOPE"))
                 .isEqualTo("#(false)");
-        assertThat(answerTo(openedOn("AES-128-CBC") + """
+        assertThat(answerTo(openOn("AES-128-CBC") + """
                 modify p 'init-vector {abc}""")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("a key may be text where a vector may not")
-    void aKeyMayBeTextWhereAVectorMayNot() {
-        assertThat(answerTo(openedOn("AES-128-ECB") + """
+    void takesTextForAKeyButNotForAVector() {
+        assertThat(answerTo(openOn("AES-128-ECB") + """
                 modify p 'key {abcdefghijklmnop}
                 write p %s
                 enbase/flat read p 16""".formatted(BLOCK)))
@@ -184,7 +184,7 @@ class CryptPortLifecycleFromTheSourceTest {
     @Test
     @DisplayName("IV is the other spelling of INIT-VECTOR")
     void ivIsTheOtherSpellingOfInitVector() {
-        assertThat(answerTo(openedOn("AES-128-CBC") + """
+        assertThat(answerTo(openOn("AES-128-CBC") + """
                 modify p 'key %s
                 modify p 'iv %s
                 write p %s
@@ -194,8 +194,8 @@ class CryptPortLifecycleFromTheSourceTest {
 
     @Test
     @DisplayName("the algorithm can be changed on an open port")
-    void theAlgorithmCanBeChangedOnAnOpenPort() {
-        assertThat(answerTo(openedOn("AES-128-ECB") + """
+    void changesTheAlgorithmOnAnOpenPort() {
+        assertThat(answerTo(openOn("AES-128-ECB") + """
                 modify p 'key %s
                 write p %s
                 first-answer: enbase/flat read p 16

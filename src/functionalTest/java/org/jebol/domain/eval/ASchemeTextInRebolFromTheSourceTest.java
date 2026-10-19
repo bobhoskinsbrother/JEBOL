@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ASchemeWrittenInRebolFromTheSourceTest {
+class ASchemeTextInRebolFromTheSourceTest {
 
     private static final String A_COUNTING_SCHEME = """
             sys/make-scheme [
@@ -35,7 +35,7 @@ class ASchemeWrittenInRebolFromTheSourceTest {
 
     @Test
     @DisplayName("the scheme registers, keeping the actor it was written with")
-    void theSchemeRegistersKeepingItsActor() {
+    void registersKeepingItsActor() {
         assertThat(answerToScheming("""
                 reduce [
                     true? find words-of system/schemes 'tally
@@ -45,7 +45,7 @@ class ASchemeWrittenInRebolFromTheSourceTest {
 
     @Test
     @DisplayName("opening one runs the actor's own OPEN")
-    void openingOneRunsTheActorsOwnOpen() {
+    void runsTheActorsOwnOpenWhenOpened() {
         assertThat(answerToScheming("""
                 counter: open [scheme: 'tally]
                 reduce [port? counter  counter/data]""")).isEqualTo("[#(true) 0]");
@@ -53,7 +53,7 @@ class ASchemeWrittenInRebolFromTheSourceTest {
 
     @Test
     @DisplayName("and a URL is the same doorway spelled differently")
-    void aUrlIsTheSameDoorwaySpelledDifferently() {
+    void takesAUrlAsTheSameDoorwaySpelledDifferently() {
         assertThat(answerToScheming("""
                 counter: open tally://
                 reduce [port? counter  counter/data]""")).isEqualTo("[#(true) 0]");
@@ -61,7 +61,7 @@ class ASchemeWrittenInRebolFromTheSourceTest {
 
     @Test
     @DisplayName("every action reaches the function of its own name")
-    void everyActionReachesTheFunctionOfItsOwnName() {
+    void sendsEveryActionToTheFunctionOfItsOwnName() {
         assertThat(answerToScheming("""
                 counter: open [scheme: 'tally]
                 reduce [
@@ -84,7 +84,7 @@ class ASchemeWrittenInRebolFromTheSourceTest {
 
     @Test
     @DisplayName("an action the actor has no function for is refused by name")
-    void anActionTheActorHasNoFunctionForIsRefusedByName() {
+    void refusesByNameAnActionTheActorHasNoFunctionFor() {
         assertThat(answerToScheming("""
                 counter: open [scheme: 'tally]
                 e: try [read counter]
@@ -100,7 +100,7 @@ class ASchemeWrittenInRebolFromTheSourceTest {
 
     @Test
     @DisplayName("and an actor that is neither a word nor an object is invalid")
-    void anActorThatIsNeitherIsInvalid() {
+    void refusesAnActorThatIsNeither() {
         assertThat(answerTo("""
                 sys/make-scheme [title: "Broken" name: 'broken actor: 42]
                 e: try [open [scheme: 'broken]] e/id""")).isEqualTo("invalid-actor");
@@ -142,7 +142,7 @@ class ASchemeWrittenInRebolFromTheSourceTest {
 
     @Test
     @DisplayName("and the refinements the caller asked for reach it")
-    void theRefinementsTheCallerAskedForReachIt() {
+    void passesOnTheRefinementsTheCallerAsksFor() {
         assertThat(answerToTelling("read teller"))
                 .isEqualTo("[read _ _ _ _ _ _]");
         assertThat(answerToTelling("read/binary teller"))
@@ -157,7 +157,7 @@ class ASchemeWrittenInRebolFromTheSourceTest {
 
     @Test
     @DisplayName("and what a refinement carries arrives with it")
-    void whatARefinementCarriesArrivesWithIt() {
+    void passesOnWhatARefinementCarries() {
         assertThat(answerToTelling("read/part teller 3"))
                 .isEqualTo("[read _ _ _ _ 3 _]");
         assertThat(answerToTelling("read/seek teller 7"))
@@ -168,7 +168,7 @@ class ASchemeWrittenInRebolFromTheSourceTest {
 
     @Test
     @DisplayName("a built-in actor still needs its service granted")
-    void aBuiltInActorStillNeedsItsServiceGranted() {
+    void stillNeedsTheServiceGrantedForABuiltInActor() {
         assertThat(answerTo("""
                 e: try [open %somewhere.txt] e/id""")).isEqualTo("no-service");
         assertThat(answerTo("type? :system/schemes/file/actor")).isEqualTo("#(native!)");

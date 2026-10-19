@@ -24,7 +24,7 @@ public final class MapValue implements Value, PathTarget {
     private static final boolean MINDING_CASE = true;
 
     @Override
-    public boolean equalTo(Value other, Sameness how) {
+    public boolean isEqualTo(Value other, Sameness how) {
         if (!(other instanceof MapValue theirs) || pairCount() != theirs.pairCount()) {
             return false;
         }
@@ -33,7 +33,7 @@ public final class MapValue implements Value, PathTarget {
                 return false;
             }
             Value ours = select(key, MINDING_CASE);
-            if (!ours.equalTo(theirs.select(key, MINDING_CASE), Sameness.insideASeries())) {
+            if (!ours.isEqualTo(theirs.select(key, MINDING_CASE), Sameness.insideASeries())) {
                 return false;
             }
         }
@@ -46,27 +46,27 @@ public final class MapValue implements Value, PathTarget {
     }
 
     @Override
-    public Value pickedBy(Value selector) {
+    public Value pickBy(Value selector) {
         return select(selector);
     }
 
     @Override
     public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
         MapValue theirs = other instanceof MapValue map ? map : MapValue.empty();
-        return combinedWith(theirs, keeping.how(), mindingCase);
+        return combineWith(theirs, keeping.how(), mindingCase);
     }
 
-    MapValue combinedWith(MapValue theirs, SetOperation how, boolean mindingCase) {
+    MapValue combineWith(MapValue theirs, SetOperation how, boolean mindingCase) {
         MapValue kept = MapValue.empty();
         for (Value key : keys()) {
-            if (how.theFirstSetKeeps(theirs.holds(key, mindingCase))
+            if (how.keepsFromTheFirstSet(theirs.holds(key, mindingCase))
                     && !kept.holds(key, mindingCase)) {
                 kept.put(key, select(key, mindingCase), mindingCase);
             }
         }
-        if (how.theSecondSetContributes()) {
+        if (how.takesFromTheSecondSet()) {
             for (Value key : theirs.keys()) {
-                if (how.theSecondSetKeeps(holds(key, mindingCase))
+                if (how.keepsFromTheSecondSet(holds(key, mindingCase))
                         && !kept.holds(key, mindingCase)) {
                     kept.put(key, theirs.select(key, mindingCase), mindingCase);
                 }
@@ -86,40 +86,40 @@ public final class MapValue implements Value, PathTarget {
         }
         Map<Value, Value> built = new LinkedHashMap<>();
         for (int at = 0; at < pairs.size(); at += 2) {
-            built.put(copiedAndLockedIfItIsText(
-                    anyWordStoredAsTheSetWordItNames(pairs.get(at))), pairs.get(at + 1));
+            built.put(copyAndLockText(
+                    storeAnyWordAsASetWord(pairs.get(at))), pairs.get(at + 1));
         }
         return new MapValue(built);
     }
 
-    private static Value anyWordStoredAsTheSetWordItNames(Value written) {
+    private static Value storeAnyWordAsASetWord(Value written) {
         return written instanceof AnyWordValue word && !(word instanceof SetWordValue)
                 ? word.asSetWord()
                 : written;
     }
 
-    private static Value copiedAndLockedIfItIsText(Value key) {
+    private static Value copyAndLockText(Value key) {
         if (!(key instanceof AnyStringValue text)) {
             return key;
         }
-        AnyStringValue own = text.holding(text.text());
+        AnyStringValue own = text.wrap(text.text());
         own.storage().protectFromChange(true);
         return own;
     }
 
-    private static Value keyHandedBackAsAWordNotASetWord(Value stored) {
+    private static Value handBackTheKeyAsAWord(Value stored) {
         return stored instanceof SetWordValue word
                 ? word.asWord()
                 : stored;
     }
 
-    private Value theFirstStoredKeyMatchingNotTheExactOne(
+    private Value findTheFirstStoredKeyMatching(
             Value asked, boolean mindingCase) {
-        Value wanted = anyWordStoredAsTheSetWordItNames(asked);
+        Value wanted = storeAnyWordAsASetWord(asked);
         if (mindingCase) {
             return entries.containsKey(wanted) ? wanted : NoneValue.none();
         }
-        return keysAlikeApartFromCase.firstStoredLike(wanted);
+        return keysAlikeApartFromCase.findTheFirstStoredLike(wanted);
     }
 
     public Value select(Value key) {
@@ -127,7 +127,7 @@ public final class MapValue implements Value, PathTarget {
     }
 
     public Value select(Value key, boolean mindingCase) {
-        Value found = theFirstStoredKeyMatchingNotTheExactOne(key, mindingCase);
+        Value found = findTheFirstStoredKeyMatching(key, mindingCase);
         return found instanceof NoneValue
                 ? NoneValue.none()
                 : entries.getOrDefault(found, NoneValue.none());
@@ -138,12 +138,12 @@ public final class MapValue implements Value, PathTarget {
     }
 
     public boolean holds(Value key, boolean mindingCase) {
-        return !(theFirstStoredKeyMatchingNotTheExactOne(key, mindingCase)
+        return !(findTheFirstStoredKeyMatching(key, mindingCase)
                 instanceof NoneValue);
     }
 
-    public Value storedKeyLike(Value asked, boolean mindingCase) {
-        return theFirstStoredKeyMatchingNotTheExactOne(asked, mindingCase);
+    public Value findTheStoredKeyLike(Value asked, boolean mindingCase) {
+        return findTheFirstStoredKeyMatching(asked, mindingCase);
     }
 
     public void put(Value key, Value value) {
@@ -151,7 +151,7 @@ public final class MapValue implements Value, PathTarget {
     }
 
     @Override
-    public Value steppedIntoBy(Value selector) {
+    public Value stepIntoBy(Value selector) {
         return select(selector);
     }
 
@@ -181,9 +181,9 @@ public final class MapValue implements Value, PathTarget {
     }
 
     public void putWhetherProtectedOrNot(Value key, Value value, boolean mindingCase) {
-        Value existing = theFirstStoredKeyMatchingNotTheExactOne(key, mindingCase);
+        Value existing = findTheFirstStoredKeyMatching(key, mindingCase);
         if (existing instanceof NoneValue) {
-            Value added = copiedAndLockedIfItIsText(anyWordStoredAsTheSetWordItNames(key));
+            Value added = copyAndLockText(storeAnyWordAsASetWord(key));
             entries.put(added, value);
             keysAlikeApartFromCase.add(added);
         } else {
@@ -199,7 +199,7 @@ public final class MapValue implements Value, PathTarget {
 
     public void remove(Value key) {
         refuseChangeIfProtected();
-        Value stored = anyWordStoredAsTheSetWordItNames(key);
+        Value stored = storeAnyWordAsASetWord(key);
         if (entries.containsKey(stored)) {
             entries.remove(stored);
             keysAlikeApartFromCase.remove(stored);
@@ -212,14 +212,14 @@ public final class MapValue implements Value, PathTarget {
 
     public List<Value> keys() {
         return entries.keySet().stream()
-                .map(MapValue::keyHandedBackAsAWordNotASetWord).toList();
+                .map(MapValue::handBackTheKeyAsAWord).toList();
     }
 
     public List<Value> values() {
         return List.copyOf(entries.values());
     }
 
-    public List<Value> flattened() {
+    public List<Value> flatten() {
         List<Value> flat = new ArrayList<>();
         entries.forEach((key, value) -> {
             flat.add(key);
@@ -228,27 +228,27 @@ public final class MapValue implements Value, PathTarget {
         return List.copyOf(flat);
     }
 
-    public AnyBlockValue pairsOnLines() {
-        AnyBlockValue block = BlockValue.block(flattened());
+    public AnyBlockValue layThePairsOnLines() {
+        AnyBlockValue block = BlockValue.of(flatten());
         block.putEachPairOnALine();
         return block;
     }
 
     @Override
-    public Value reflected(AnyWordValue field) {
+    public Value reflect(AnyWordValue field) {
         return switch (field.canonical()) {
-            case "words" -> BlockValue.block(keys());
-            case "values" -> BlockValue.block(values());
-            case "body" -> pairsOnLines();
+            case "words" -> BlockValue.of(keys());
+            case "values" -> BlockValue.of(values());
+            case "body" -> layThePairsOnLines();
             default -> NoneValue.none();
         };
     }
 
     @Override
-    public List<Value> items() {
+    public List<Value> listTheItems() {
         List<Value> flat = new ArrayList<>();
         entries.forEach((key, value) -> {
-            flat.add(keyHandedBackAsAWordNotASetWord(key));
+            flat.add(handBackTheKeyAsAWord(key));
             flat.add(value);
         });
         return List.copyOf(flat);
@@ -264,13 +264,13 @@ public final class MapValue implements Value, PathTarget {
     }
 
     @Override
-    public Value copied(boolean deeply, Set<Datatype> kinds) {
-        List<Value> flattened = flattened();
+    public Value copy(boolean deeply, Set<Datatype> kinds) {
+        List<Value> flattened = flatten();
         List<Value> copiedPairs = new ArrayList<>(flattened.size());
         for (int at = 0; at < flattened.size(); at++) {
             boolean isAValueRatherThanAKey = at % 2 == 1;
             copiedPairs.add(isAValueRatherThanAKey
-                    ? flattened.get(at).copiedAsAMember(deeply, kinds)
+                    ? flattened.get(at).copyAsAMember(deeply, kinds)
                     : flattened.get(at));
         }
         return MapValue.of(copiedPairs);
@@ -306,20 +306,20 @@ public final class MapValue implements Value, PathTarget {
         }
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             return switch (spec) {
                 case IntegerValue(long magnitude) -> withRoomFor(spec, magnitude);
                 case DecimalValue number -> withRoomFor(spec, number.quantity());
-                default -> madeOfPairsIn(spec);
+                default -> makeFromPairsIn(spec);
             };
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             if (from instanceof IntegerValue || from instanceof DecimalValue) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, from);
             }
-            return madeOfPairsIn(from);
+            return makeFromPairsIn(from);
         }
 
         private Value withRoomFor(Value spec, double asked) {
@@ -331,12 +331,12 @@ public final class MapValue implements Value, PathTarget {
             return MapValue.empty();
         }
 
-        private Value madeOfPairsIn(Value source) {
-            List<Value> pairs = MapActions.pairsOffered(source);
+        private Value makeFromPairsIn(Value source) {
+            List<Value> pairs = MapActions.listThePairsOffered(source);
             if (pairs == null) {
-                throw refusing(source);
+                throw refuse(source);
             }
-            return MapActions.madeFrom(source, pairs);
+            return MapActions.makeFrom(source, pairs);
         }
     }
 

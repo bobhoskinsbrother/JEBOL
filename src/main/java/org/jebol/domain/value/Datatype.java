@@ -26,7 +26,7 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
     }
 
     public int position() {
-        return Catalogue.DATATYPES.positionOf(this);
+        return Catalogue.DATATYPES.findThePositionOf(this);
     }
 
     public int numberTheCGivesIt() {
@@ -39,32 +39,32 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
     }
 
     @Override
-    public Datatype theDatatypeItStandsFor() {
+    public Datatype findTheDatatypeItStandsFor() {
         return this;
     }
 
     @Override
     public Value make(Value spec, Maker maker) {
-        return madeFrom(spec, maker);
+        return makeFrom(spec, maker);
     }
 
-    public Value madeFrom(Value spec, Maker maker) {
+    public Value makeFrom(Value spec, Maker maker) {
         refuseToBuildSomethingOutOfNothing(spec);
-        return built(Conversion.MAKE, spec, maker);
+        return build(Conversion.MAKE, spec, maker);
     }
 
-    public Value convertedFrom(Value value, Maker maker) {
+    public Value convert(Value value, Maker maker) {
         refuseToBuildSomethingOutOfNothing(value);
-        return built(Conversion.TO, value, maker);
+        return build(Conversion.TO, value, maker);
     }
 
-    protected Value built(Conversion asking, Value from, Maker maker) {
-        throw refusing(from);
+    protected Value build(Conversion asking, Value from, Maker maker) {
+        throw refuse(from);
     }
 
     protected void refuseToBuildSomethingOutOfNothing(Value from) {
         if (from instanceof NoneValue) {
-            throw refusing(from);
+            throw refuse(from);
         }
     }
 
@@ -75,12 +75,12 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
         throw Raised.of(EvaluationFailure.NOT_SAME_CLASS, value.datatype(), this);
     }
 
-    public Value constructedFrom(List<Value> contents, Construction construction) {
-        return construction.madeOf(this, theSpecificationIn(contents));
+    public Value construct(List<Value> contents, Construction construction) {
+        return construction.make(this, readTheSpecificationIn(contents));
     }
 
-    protected Value theSpecificationIn(List<Value> contents) {
-        return contents.size() == 1 ? contents.getFirst() : BlockValue.block(contents);
+    protected Value readTheSpecificationIn(List<Value> contents) {
+        return contents.size() == 1 ? contents.getFirst() : BlockValue.of(contents);
     }
 
     protected void refuseMoreRoomThanFits(double asked, int bytesAnItemTakes) {
@@ -90,7 +90,7 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
         }
     }
 
-    protected Value whatTheHostHadRoomFor(Supplier<Value> allocating) {
+    protected Value allocateWithinTheHost(Supplier<Value> allocating) {
         try {
             return allocating.get();
         } catch (OutOfMemoryError nothingLeftToGive) {
@@ -98,16 +98,16 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
         }
     }
 
-    public Raised refusing(Value given) {
+    public Raised refuse(Value given) {
         return Raised.of(EvaluationFailure.BAD_MAKE_ARG, this, given);
     }
 
-    protected Raised refusingConstruction(List<Value> contents) {
-        return Raised.of(EvaluationFailure.MALCONSTRUCT, BlockValue.block(contents));
+    protected Raised refuseTheConstruction(List<Value> contents) {
+        return Raised.of(EvaluationFailure.MALCONSTRUCT, BlockValue.of(contents));
     }
 
     @Override
-    public Value bitwise(Value right, BitwiseOperation operation) {
+    public Value combineBitwise(Value right, BitwiseOperation operation) {
         throw Raised.cannotUse(this, "a bit operation");
     }
 
@@ -128,13 +128,13 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             if (!(from instanceof AnyWordValue word) || !word.spelling().endsWith("!")) {
-                throw refusing(from);
+                throw refuse(from);
             }
-            return Catalogue.DATATYPES.named(word.spelling())
+            return Catalogue.DATATYPES.findTheDatatypeNamed(word.spelling())
                     .<Value>map(found -> found)
-                    .orElseThrow(() -> refusing(from));
+                    .orElseThrow(() -> refuse(from));
         }
     }
 }

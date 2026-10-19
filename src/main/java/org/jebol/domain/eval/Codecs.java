@@ -24,16 +24,16 @@ public final class Codecs {
             return new Answer(Kind.STRING, text, 0);
         }
 
-        static Answer block(Value items) {
+        static Answer answerWithABlock(Value items) {
             return new Answer(Kind.BLOCK, items, 0);
         }
 
-        static Answer binary(Value bytes) {
+        static Answer answerWithABinary(Value bytes) {
             return new Answer(Kind.BINARY, bytes, 0);
         }
 
-        static Answer notAvailable() {
-            return new Answer(Kind.ERROR, LogicValue.no(), NOT_AVAILABLE);
+        static Answer answerNotAvailable() {
+            return new Answer(Kind.ERROR, LogicValue.answerNo(), NOT_AVAILABLE);
         }
     }
 
@@ -44,18 +44,18 @@ public final class Codecs {
     public Answer run(String codec, Action action, Value data) {
         return switch (codec) {
             case "text" -> text(action, data);
-            case "markup" -> markup(action, data);
-            case "qoi" -> qoi(action, data);
-            default -> Answer.notAvailable();
+            case "markup" -> handleMarkup(action, data);
+            case "qoi" -> handleQoi(action, data);
+            default -> Answer.answerNotAvailable();
         };
     }
 
-    private Answer qoi(Action action, Value data) {
+    private Answer handleQoi(Action action, Value data) {
         return switch (action) {
             case IDENTIFY -> Answer.checkWhoseErrorCodeIsTheInvertedResult(
-                    Qoi.identifies(bytesOf(data)) ? YES : NO);
-            case DECODE -> theImageIn(bytesOf(data));
-            case ENCODE -> Answer.binary(theBytesBlueFirstOf((ImageValue) data));
+                    Qoi.identifies(readTheBytesOf(data)) ? YES : NO);
+            case DECODE -> decodeTheImageIn(readTheBytesOf(data));
+            case ENCODE -> Answer.answerWithABinary(writeTheBytesBlueFirst((ImageValue) data));
         };
     }
 
@@ -63,10 +63,10 @@ public final class Codecs {
 
     private static final int NO = 1;
 
-    private Answer theImageIn(byte[] bytes) {
-        Qoi.Decoded read = Qoi.decoded(bytes);
+    private Answer decodeTheImageIn(byte[] bytes) {
+        Qoi.Decoded read = Qoi.decode(bytes);
         if (read == null) {
-            return Answer.notAvailable();
+            return Answer.answerNotAvailable();
         }
         ImageValue picture = ImageValue.of(read.wide(), read.high());
         byte[] pixels = read.pixels();
@@ -79,19 +79,19 @@ public final class Codecs {
         return new Answer(Answer.Kind.IMAGE, picture, 0);
     }
 
-    private Value theBytesBlueFirstOf(ImageValue picture) {
+    private Value writeTheBytesBlueFirst(ImageValue picture) {
         int wide = picture.storage().wide();
         int high = picture.storage().high();
         byte[] pixels = new byte[wide * high * 4];
         for (int pixel = 1; pixel <= wide * high; pixel++) {
-            int[] channels = picture.storage().pixelAt(pixel);
+            int[] channels = picture.storage().readThePixelAt(pixel);
             int at = (pixel - 1) * 4;
             pixels[at] = (byte) channels[2];
             pixels[at + 1] = (byte) channels[1];
             pixels[at + 2] = (byte) channels[0];
             pixels[at + 3] = (byte) channels[3];
         }
-        byte[] written = Qoi.encoded(wide, high, pixels);
+        byte[] written = Qoi.encode(wide, high, pixels);
         int[] octets = new int[written.length];
         for (int at = 0; at < octets.length; at++) {
             octets[at] = written[at] & 0xFF;
@@ -103,21 +103,21 @@ public final class Codecs {
         return switch (action) {
             case IDENTIFY -> Answer.checkWhoseErrorCodeIsTheInvertedResult(YES);
             case DECODE -> Answer.string(StringValue.of(
-                    encodings.textBehindAnyMark(bytesOf(data))));
-            case ENCODE -> Answer.binary(BinaryValue.of());
+                    encodings.textBehindAnyMark(readTheBytesOf(data))));
+            case ENCODE -> Answer.answerWithABinary(BinaryValue.of());
         };
     }
 
-    private Answer markup(Action action, Value data) {
+    private Answer handleMarkup(Action action, Value data) {
         return switch (action) {
             case IDENTIFY -> Answer.checkWhoseErrorCodeIsTheInvertedResult(NO);
-            case DECODE -> Answer.block(BlockValue.block(
-                    markupOf(new String(bytesOf(data), StandardCharsets.UTF_8))));
-            case ENCODE -> Answer.notAvailable();
+            case DECODE -> Answer.answerWithABlock(BlockValue.of(
+                    parseTheMarkupOf(new String(readTheBytesOf(data), StandardCharsets.UTF_8))));
+            case ENCODE -> Answer.answerNotAvailable();
         };
     }
 
-    private byte[] bytesOf(Value data) {
+    private byte[] readTheBytesOf(Value data) {
         BinaryValue binary = (BinaryValue) data;
         byte[] bytes = new byte[binary.lengthFromHere()];
         for (int at = 0; at < bytes.length; at++) {
@@ -126,7 +126,7 @@ public final class Codecs {
         return bytes;
     }
 
-    private List<Value> markupOf(String source) {
+    private List<Value> parseTheMarkupOf(String source) {
         List<Value> parts = new ArrayList<>();
         int textFrom = 0;
         int at = 0;
@@ -135,7 +135,7 @@ public final class Codecs {
             if (opened < 0) {
                 break;
             }
-            if (!couldStartATag(source, opened + 1)) {
+            if (!canStartATag(source, opened + 1)) {
                 at = opened + 1;
                 continue;
             }
@@ -144,7 +144,7 @@ public final class Codecs {
             }
             int closed = endOfTag(source, opened + 1);
             if (closed < 0) {
-                textFrom = aTagThatNeverClosesIsText(opened);
+                textFrom = treatANeverClosedTagAsText(opened);
                 at = source.length();
                 break;
             }
@@ -158,11 +158,11 @@ public final class Codecs {
         return parts;
     }
 
-    private int aTagThatNeverClosesIsText(int opened) {
+    private int treatANeverClosedTagAsText(int opened) {
         return opened;
     }
 
-    private boolean couldStartATag(String source, int at) {
+    private boolean canStartATag(String source, int at) {
         if (at >= source.length()) {
             return false;
         }
@@ -180,7 +180,7 @@ public final class Codecs {
                 return at;
             }
             if (here == '"' || here == '\'') {
-                int closed = aQuotedRunMayHoldAClosingSign(source, here, at);
+                int closed = skipAQuotedRun(source, here, at);
                 if (closed < 0) {
                     return NOWHERE;
                 }
@@ -195,7 +195,7 @@ public final class Codecs {
         return ended < 0 ? NOWHERE : ended + 2;
     }
 
-    private int aQuotedRunMayHoldAClosingSign(
+    private int skipAQuotedRun(
             String source, char quote, int at) {
         return source.indexOf(quote, at + 1);
     }

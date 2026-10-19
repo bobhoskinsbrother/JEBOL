@@ -10,14 +10,14 @@ class UnicodeUtilsModuleLoadsTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = SuiteHost.installOn(
-                Interpreter.withBounds(SuiteHost.grantingEverything()));
+                Interpreter.withBounds(SuiteHost.grantEverything()));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
     @Test
     @DisplayName("the module whose bracket upstream never closes is repaired here and imports")
-    void theRepairedModuleLoads() {
+    void loadsTheRepairedModule() {
         assertThat(answerTo("""
                 module? import 'unicode-utils""")).isEqualTo("#(true)");
         assertThat(answerTo("""
@@ -27,7 +27,7 @@ class UnicodeUtilsModuleLoadsTest {
 
     @Test
     @DisplayName("and its decoder turns UTF-8 octets back into characters")
-    void theDecoderWorks() {
+    void decodes() {
         assertThat(answerTo("""
                 import 'unicode-utils
                 (decode-utf8 #{41 42 43}) = {ABC}""")).isEqualTo("#(true)");

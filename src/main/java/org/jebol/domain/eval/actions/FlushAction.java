@@ -18,13 +18,13 @@ public class FlushAction extends DefaultNative implements ActionValue {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("port", Set.of(PortValue.TYPE)));
+        return List.of(Parameter.of("port", Set.of(PortValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            evaluator.output().flush();
+            evaluator.findTheOutput().flush();
             return arguments.getFirst();
         };
     }

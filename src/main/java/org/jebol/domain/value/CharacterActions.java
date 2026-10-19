@@ -10,8 +10,8 @@ public final class CharacterActions {
 
     private static final long PAST_THE_WIDEST_CODEPOINT_COUNT = 1L << 32;
 
-    public Value combinedWith(Value right, ArithmeticOperation operation) {
-        long other = codepointOfferedBy(right);
+    public Value combineWith(Value right, ArithmeticOperation operation) {
+        long other = readTheCodepointOfferedBy(right);
         long codepoint = letter.codepoint();
         long answered = operation.onCodepoints(codepoint, other);
         if (operation.subtractsOneFromTheOther() && right instanceof CharacterValue) {
@@ -26,24 +26,24 @@ public final class CharacterActions {
                 : answered;
     }
 
-    private long codepointOfferedBy(Value right) {
+    private long readTheCodepointOfferedBy(Value right) {
         return switch (right) {
             case CharacterValue another -> another.codepoint();
             case IntegerValue whole -> whole.magnitude();
             case DecimalValue fraction ->
                     (long) fraction.quantity();
-            default -> throw Raised.notRelated(letter, right);
+            default -> throw Raised.ofUnrelated(letter, right);
         };
     }
 
-    private static long dividedBy(long codepoint, long other) {
+    private static long divide(long codepoint, long other) {
         if (other == 0) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
         }
         return codepoint / other;
     }
 
-    private static long restOf(long codepoint, long other) {
+    private static long takeTheRemainder(long codepoint, long other) {
         if (other == 0) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
         }

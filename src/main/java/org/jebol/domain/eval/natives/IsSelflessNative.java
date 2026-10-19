@@ -14,7 +14,7 @@ public class IsSelflessNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("context"));
+        return List.of(Parameter.of("context"));
     }
 
     @Override

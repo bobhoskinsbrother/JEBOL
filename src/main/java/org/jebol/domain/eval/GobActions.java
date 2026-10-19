@@ -18,7 +18,7 @@ public final class GobActions extends SeriesActions {
     }
 
     @Override
-    public Value poked(Value position, Value written) {
+    public Value poke(Value position, Value written) {
         GobPath.pokeWhichInsertsRatherThanReplaces(gob, (int) position.asPosition(), written);
         return written;
     }
@@ -30,11 +30,11 @@ public final class GobActions extends SeriesActions {
 
     @Override
     Value ofTheSameKindHolding(List<Value> items) {
-        return BlockValue.block(items);
+        return BlockValue.of(items);
     }
 
     @Override
-    public Value cleared() {
+    public Value clear() {
         gob.storage().removeChildren(gob.index(),
                 gob.storage().length() - gob.index() + 1);
         return gob;
@@ -43,20 +43,20 @@ public final class GobActions extends SeriesActions {
     @Override
     public Value append(Asked asked) {
         asked.refuseRefinementsThisDatatypeDoesNotServe("append");
-        givenTheChildrenOf(asked.given(), gob.storage().length() + 1);
+        takeTheChildrenOf(asked.given(), gob.storage().length() + 1);
         return gob;
     }
 
     @Override
     public Value insert(Asked asked) {
         asked.refuseRefinementsThisDatatypeDoesNotServe("insert");
-        givenTheChildrenOf(asked.given(), gob.positionWithinThePane());
+        takeTheChildrenOf(asked.given(), gob.findThePositionWithinThePane());
         return gob;
     }
 
-    Value givenTheChildrenOf(Value value, int at) {
+    Value takeTheChildrenOf(Value value, int at) {
         int goesAt = at;
-        for (Value child : theChildrenOffered(value)) {
+        for (Value child : listTheChildrenOffered(value)) {
             if (!(child instanceof GobValue one)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
                         "a pane holds gobs, not "
@@ -68,7 +68,7 @@ public final class GobActions extends SeriesActions {
         return gob;
     }
 
-    private static List<Value> theChildrenOffered(Value value) {
+    private static List<Value> listTheChildrenOffered(Value value) {
         return switch (value) {
             case GobValue only -> List.of(only);
             case BlockValue block ->

@@ -19,9 +19,9 @@ public class NewLineNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("position", Set.of(BlockValue.TYPE, ParenValue.TYPE)),
-                Parameter.required("value"),
-                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)));
+                Parameter.of("position", Set.of(BlockValue.TYPE, ParenValue.TYPE)),
+                Parameter.of("value"),
+                Parameter.belongTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -34,7 +34,7 @@ public class NewLineNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             AnyBlockValue block = (AnyBlockValue) arguments.getFirst();
             boolean wanted = arguments.get(1).isTruthy();
-            OptionalInt stride = theStride(arguments, refinements);
+            OptionalInt stride = readTheStride(arguments, refinements);
             if (stride.isEmpty()) {
                 if (!block.atTail()) {
                     block.storage().setLineBreakAt(block.index(), wanted);
@@ -49,7 +49,7 @@ public class NewLineNative extends DefaultNative {
         };
     }
 
-    private OptionalInt theStride(List<Value> arguments, Set<String> refinements) {
+    private OptionalInt readTheStride(List<Value> arguments, Set<String> refinements) {
         if (refinements.contains("skip") && arguments.size() > WHERE_THE_SKIP_SIZE_ARRIVES
                 && arguments.get(WHERE_THE_SKIP_SIZE_ARRIVES) instanceof IntegerValue size) {
             if (size.magnitude() < 1) {

@@ -8,9 +8,9 @@ import java.nio.file.StandardCopyOption;
 import java.util.stream.Stream;
 
 import org.jebol.adapter.host.JavaCertificateAuthority;
-import org.jebol.adapter.host.JavaImages;
-import org.jebol.adapter.host.JavaProcesses;
-import org.jebol.adapter.host.JavaSockets;
+import org.jebol.adapter.host.JavaImage;
+import org.jebol.adapter.host.JavaProcess;
+import org.jebol.adapter.host.JavaSocket;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.application.Bounds;
 import org.jebol.application.FileSystemPort;
@@ -22,7 +22,7 @@ final class SuiteHost {
     private SuiteHost() {
     }
 
-    static Bounds grantingEverything() {
+    static Bounds grantEverything() {
         Bounds bounds = Bounds.standard();
         for (HostService service : HostService.values()) {
             bounds = bounds.grant(service);
@@ -35,14 +35,14 @@ final class SuiteHost {
         try {
             theRootOfThisRun = Files.createTempDirectory("jebol-suite");
             layOutTheFilesTheSuiteReads(theRootOfThisRun);
-            interpreter.useFileSystem(FileSystemPort.rootedAt(theRootOfThisRun));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(theRootOfThisRun));
         } catch (IOException noDirectory) {
             throw new UncheckedIOException(noDirectory);
         }
         interpreter.useEnvironment(new ProcessEnvironment());
-        interpreter.useProcesses(new JavaProcesses());
-        interpreter.useImages(new JavaImages());
-        interpreter.useNetwork(new JavaSockets());
+        interpreter.useProcesses(new JavaProcess());
+        interpreter.useImages(new JavaImage());
+        interpreter.useNetwork(new JavaSocket());
         interpreter.useCertificateAuthority(new JavaCertificateAuthority());
         putHomeInsideTheDirectoryTheRunCanReach(interpreter);
         putTheApplicationDataDirectoryThereToo(interpreter);
@@ -69,7 +69,7 @@ final class SuiteHost {
                 set '~ system/options/data""";
         interpreter.defineFreshWordsIn(sayingSo);
         interpreter.run(sayingSo);
-        interpreter.followTheApplicationDataDirectory();
+        interpreter.followApplicationDataDirectory();
     }
 
     private static void putTheModulesTheSuiteImportsWhereImportLooks(Path root)

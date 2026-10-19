@@ -18,7 +18,7 @@ class DrawDialectFromTheSourceTest {
             GobValue gob, org.jebol.domain.value.ObjectValue dialect) {
     }
 
-    private static AGobAndItsDialect gobAndDialectFrom(String source) {
+    private static AGobAndItsDialect readTheGobAndDialectFrom(String source) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.defineFreshWordsIn(source);
@@ -28,18 +28,18 @@ class DrawDialectFromTheSourceTest {
                         interpreter.run("system/dialects/draw").value());
     }
 
-    private static GobValue gobFrom(String source) {
-        return gobAndDialectFrom(source).gob();
+    private static GobValue makeAGobFrom(String source) {
+        return readTheGobAndDialectFrom(source).gob();
     }
 
-    private static List<PaintInstruction> drawingOf(String drawBlock) {
-        AGobAndItsDialect drawn = gobAndDialectFrom(
+    private static List<PaintInstruction> drawTheDrawingOf(String drawBlock) {
+        AGobAndItsDialect drawn = readTheGobAndDialectFrom(
                 "make gob! [size: 100x100 draw: [" + drawBlock + "]]");
         return PaintList.of(drawn.gob(), drawn.dialect()).instructions();
     }
 
     private static PaintInstruction.Drawn onlyDrawing(String drawBlock) {
-        List<PaintInstruction> painted = drawingOf(drawBlock);
+        List<PaintInstruction> painted = drawTheDrawingOf(drawBlock);
         assertThat(painted).hasSize(1);
         return (PaintInstruction.Drawn) painted.getFirst();
     }
@@ -61,13 +61,13 @@ class DrawDialectFromTheSourceTest {
         @Test
         @DisplayName("which is what makes a one-line draw block draw something")
         void aoneLineBlockDrawsSomething() {
-            assertThat(drawingOf("box 10x10 50x50")).hasSize(1);
+            assertThat(drawTheDrawingOf("box 10x10 50x50")).hasSize(1);
         }
 
         @Test
         @DisplayName("and smoothing is on, because a jagged diagonal is nobody's default")
-        void smoothingIsOn() {
-            assertThat(onlyDrawing("box 10x10 50x50").painted().antiAliased()).isTrue();
+        void hasSmoothingOn() {
+            assertThat(onlyDrawing("box 10x10 50x50").painted().isAntiAlias()).isTrue();
         }
     }
 
@@ -100,8 +100,8 @@ class DrawDialectFromTheSourceTest {
 
         @Test
         @DisplayName("and a shape with neither paints nothing at all")
-        void neitherPaintsNothing() {
-            assertThat(drawingOf("pen off fill-pen off box 10x10 50x50"))
+        void paintsNothingWithNeither() {
+            assertThat(drawTheDrawingOf("pen off fill-pen off box 10x10 50x50"))
                     .as("`pen off fill-pen off` is a legal way to say it, so the "
                             + "shape is dropped rather than drawn invisibly")
                     .isEmpty();
@@ -111,7 +111,7 @@ class DrawDialectFromTheSourceTest {
         @DisplayName("the state stands until something changes it")
         void thestateStands() {
             List<PaintInstruction> painted =
-                    drawingOf("pen 255.0.0 box 0x0 10x10 box 20x20 30x30");
+                    drawTheDrawingOf("pen 255.0.0 box 0x0 10x10 box 20x20 30x30");
 
             assertThat(painted).hasSize(2);
             assertThat(painted).allSatisfy(each ->
@@ -149,9 +149,9 @@ class DrawDialectFromTheSourceTest {
 
         @Test
         @DisplayName("and ANTI-ALIAS can be turned off")
-        void smoothingCanBeTurnedOff() {
+        void turnsSmoothingOff() {
             assertThat(onlyDrawing("anti-alias off box 10x10 50x50")
-                    .painted().antiAliased()).isFalse();
+                    .painted().isAntiAlias()).isFalse();
         }
     }
 
@@ -231,11 +231,11 @@ class DrawDialectFromTheSourceTest {
         @Test
         @DisplayName("and either of fewer than two points paints nothing")
         void toofewPointsPaintNothing() {
-            assertThat(drawingOf("line 5x5"))
+            assertThat(drawTheDrawingOf("line 5x5"))
                     .as("one point is a position rather than a shape, and "
                             + "painting a dot would invent a decision")
                     .isEmpty();
-            assertThat(drawingOf("polygon 5x5")).isEmpty();
+            assertThat(drawTheDrawingOf("polygon 5x5")).isEmpty();
         }
 
         @Test
@@ -342,7 +342,7 @@ class DrawDialectFromTheSourceTest {
         @DisplayName("TRANSLATE moves what comes after it")
         void translateMoves() {
             assertThat(onlyDrawing("translate 10x20 box 0x0 10x10").transform())
-                    .isEqualTo(Transform.movedBy(10, 20));
+                    .isEqualTo(Transform.moveBy(10, 20));
         }
 
         @Test
@@ -353,8 +353,8 @@ class DrawDialectFromTheSourceTest {
 
             assertThat(carried)
                     .as("moved then scaled, as one")
-                    .isEqualTo(Transform.movedBy(10, 0)
-                            .combinedWith(Transform.scaledBy(2, 2)));
+                    .isEqualTo(Transform.moveBy(10, 0)
+                            .combineWith(Transform.scaleBy(2, 2)));
         }
 
         @Test
@@ -367,20 +367,20 @@ class DrawDialectFromTheSourceTest {
 
         @Test
         @DisplayName("and a shape carries the transform standing when it was reached")
-        void eachShapeCarriesItsOwn() {
+        void travelWithEachShape() {
             List<PaintInstruction> painted =
-                    drawingOf("box 0x0 10x10 translate 30x30 box 0x0 10x10");
+                    drawTheDrawingOf("box 0x0 10x10 translate 30x30 box 0x0 10x10");
 
             assertThat(((PaintInstruction.Drawn) painted.getFirst())
                     .transform().isNone()).isTrue();
             assertThat(((PaintInstruction.Drawn) painted.get(1)).transform())
-                    .isEqualTo(Transform.movedBy(30, 30));
+                    .isEqualTo(Transform.moveBy(30, 30));
         }
 
         @Test
         @DisplayName("PUSH puts back both the state and the transform")
         void pushRestoresEverything() {
-            List<PaintInstruction> painted = drawingOf("""
+            List<PaintInstruction> painted = drawTheDrawingOf("""
                     push [pen 255.0.0 translate 50x50 box 0x0 10x10]
                     box 20x20 30x30""");
 
@@ -388,7 +388,7 @@ class DrawDialectFromTheSourceTest {
             PaintInstruction.Drawn after = (PaintInstruction.Drawn) painted.get(1);
 
             assertThat(inside.painted().strokeColour()).contains(new Colour(255, 0, 0));
-            assertThat(inside.transform()).isEqualTo(Transform.movedBy(50, 50));
+            assertThat(inside.transform()).isEqualTo(Transform.moveBy(50, 50));
             assertThat(after.painted().strokeColour())
                     .as("what a push set is put back, so a piece of drawing composes")
                     .contains(Colour.BLACK);
@@ -402,16 +402,16 @@ class DrawDialectFromTheSourceTest {
 
         @Test
         @DisplayName("a command this build does not paint is skipped")
-        void anunpaintedCommandIsSkipped() {
-            assertThat(drawingOf("grad-pen linear normal box 10x10 50x50"))
+        void skipAnUnpaintedCommand() {
+            assertThat(drawTheDrawingOf("grad-pen linear normal box 10x10 50x50"))
                     .as("the box still draws")
                     .hasSize(1);
         }
 
         @Test
         @DisplayName("and a block that will not parse paints what it managed, not nothing")
-        void amalformedBlockPaintsWhatItManaged() {
-            assertThat(drawingOf("box 10x10 50x50 grad-pen linear normal 0x0 0x100 1x1"))
+        void paintWhatAMalformedBlockManaged() {
+            assertThat(drawTheDrawingOf("box 10x10 50x50 grad-pen linear normal 0x0 0x100 1x1"))
                     .as("the box drew before the bad arguments were reached")
                     .hasSize(1);
         }
@@ -419,7 +419,7 @@ class DrawDialectFromTheSourceTest {
         @Test
         @DisplayName("and the gap is the same gap everywhere, because it is decided here")
         void thegapIsInOnePlace() {
-            assertThat(drawingOf("gamma 2.2 arrow 1x1 255.0.0 box 10x10 50x50"))
+            assertThat(drawTheDrawingOf("gamma 2.2 arrow 1x1 255.0.0 box 10x10 50x50"))
                     .hasSize(1);
         }
     }
@@ -430,7 +430,7 @@ class DrawDialectFromTheSourceTest {
 
         @Test
         @DisplayName("a draw block is clipped to its own gob, like any other content")
-        void drawingIsClippedToItsGob() {
+        void clipsDrawingToItsGob() {
             assertThat(onlyDrawing("box 0x0 500x500").where().clip())
                     .isEqualTo(new ClipRectangle(0, 0, 100, 100));
         }
@@ -438,7 +438,7 @@ class DrawDialectFromTheSourceTest {
         @Test
         @DisplayName("and a child gob's drawing is clipped by its parent too")
         void achildsDrawingIsClippedByItsParent() {
-            AGobAndItsDialect drawn = gobAndDialectFrom("""
+            AGobAndItsDialect drawn = readTheGobAndDialectFrom("""
                     parent: make gob! [size: 40x40 color: 1.1.1]
                     append parent make gob! [
                         offset: 10x10 size: 100x100 draw: [box 0x0 100x100]

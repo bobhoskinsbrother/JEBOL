@@ -14,18 +14,18 @@ public class FirstPlusNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.softQuoted("word"));
+        return List.of(Parameter.quoteSoftly("word"));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            ContextSlot slot = theSlotNamedBy(arguments.getFirst());
+            ContextSlot slot = findTheSlotNamedBy(arguments.getFirst());
             if (!(slot.value() instanceof RebolSeries series)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG,
                         WordValue.of(((AnyWordValue) arguments.getFirst()).spelling()));
             }
-            Value first = series.picked(1);
+            Value first = series.pick(1);
             if (!series.atTail()) {
                 slot.setValue(series.atIndex(series.index() + 1));
             }
@@ -33,12 +33,12 @@ public class FirstPlusNative extends DefaultNative {
         };
     }
 
-    private ContextSlot theSlotNamedBy(Value given) {
+    private ContextSlot findTheSlotNamedBy(Value given) {
         if (!(given instanceof AnyWordValue word)
                 || !word.isBound()
                 || !word.binding().knows(word.canonical())) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, given);
         }
-        return word.binding().slotFor(word.canonical());
+        return word.binding().findSlotFor(word.canonical());
     }
 }

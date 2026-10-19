@@ -28,12 +28,12 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
         }
 
         @Override
-        public Map<String, String> all() {
+        public Map<String, String> readAll() {
             return Map.copyOf(names);
         }
 
         @Override
-        public void nameHolds(String name, String value) {
+        public void assign(String name, String value) {
             if (value == null) {
                 names.remove(name);
             } else {
@@ -48,7 +48,7 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY)
                         .grant(HostService.ENVIRONMENT));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         interpreter.useEnvironment(environment);
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
@@ -56,7 +56,7 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
 
     @Test
     @DisplayName("moving writes PWD, so the two agree afterwards")
-    void movingWritesPwd(@TempDir Path root) {
+    void writesPwdOnMoving(@TempDir Path root) {
         assertThat(answerTo(root, new AShellThatExported("PWD", "/nowhere/at/all"), """
                 make-dir %inner/
                 change-dir %inner/
@@ -66,7 +66,7 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
 
     @Test
     @DisplayName("and again after moving back up")
-    void andAgainAfterMovingBackUp(@TempDir Path root) {
+    void writesPwdAgainAfterMovingBackUp(@TempDir Path root) {
         assertThat(answerTo(root, new AShellThatExported("PWD", "/nowhere/at/all"), """
                 make-dir %inner/
                 change-dir %inner/
@@ -77,7 +77,7 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
 
     @Test
     @DisplayName("and what the shell exported is overwritten, not preferred")
-    void whatTheShellExportedIsOverwritten(@TempDir Path root) {
+    void overwritesWhatTheShellExported(@TempDir Path root) {
         assertThat(answerTo(root, new AShellThatExported("PWD", "/nowhere/at/all"), """
                 make-dir %inner/
                 change-dir %inner/
@@ -86,7 +86,7 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
 
     @Test
     @DisplayName("but every other name is left alone")
-    void everyOtherNameIsLeftAlone(@TempDir Path root) {
+    void leavesEveryOtherNameAlone(@TempDir Path root) {
         assertThat(answerTo(root, new AShellThatExported("EDITOR", "vi"), """
                 make-dir %inner/
                 change-dir %inner/
@@ -109,7 +109,7 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
 
     @Test
     @DisplayName("and a move that failed names the absolute path it meant")
-    void aMoveThatFailedNamesTheAbsolutePath(@TempDir Path root) {
+    void namesTheAbsolutePathOfAFailedMove(@TempDir Path root) {
         assertThat(answerTo(root, new AShellThatExported("PWD", "/nowhere"), """
                 make-dir %inner/
                 change-dir %inner/
@@ -120,12 +120,12 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
 
     @Test
     @DisplayName("and a host that granted no environment still moves")
-    void aHostThatGrantedNoEnvironmentStillMoves(@TempDir Path root) {
+    void stillMovesForAHostThatGrantedNoEnvironment(@TempDir Path root) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         String source = """
                 make-dir %inner/
                 change-dir %inner/
@@ -136,7 +136,7 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
 
     @Test
     @DisplayName("and a move that was refused writes nothing")
-    void aMoveThatWasRefusedWritesNothing(@TempDir Path root) {
+    void writesNothingForARefusedMove(@TempDir Path root) {
         assertThat(answerTo(root, new AShellThatExported("PWD", "/nowhere/at/all"), """
                 try [change-dir %no-such-dir/]
                 reduce [pwd  get-env "PWD"]"""))

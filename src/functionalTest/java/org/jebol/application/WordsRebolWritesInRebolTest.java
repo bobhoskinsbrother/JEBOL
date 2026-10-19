@@ -19,7 +19,7 @@ class WordsRebolWritesInRebolTest {
         "any-word?", "quote", "scalar?", "series?", "use", "exists?", "make-dir",
         "load", "ask", "input", "split"})
     @DisplayName("Rebol's library defines it, so the catalogue of natives does not list it")
-    void notANative(String word) {
+    void areNotNatives(String word) {
         assertThat(answerTo("none? find system/catalog/natives '" + word))
                 .isEqualTo("#(true)");
     }
@@ -30,26 +30,26 @@ class WordsRebolWritesInRebolTest {
         "any-word?", "quote", "scalar?", "series?", "use", "exists?", "make-dir",
         "load", "ask", "input", "split"})
     @DisplayName("what a script holds is the function! Rebol's library made")
-    void aFunctionOfRebolsOwn(String word) {
+    void areFunctionsOfRebolsOwn(String word) {
         assertThat(answerTo("type? :" + word)).isEqualTo("#(function!)");
     }
 
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"any-type?", "copyable?", "immediate?", "internal?"})
     @DisplayName("a typeset predicate Rebol has no definition for is still JEBOL's native")
-    void aPredicateOnlyJebolOffersStays(String word) {
+    void keepAPredicateOnlyJebolOffers(String word) {
         assertThat(answerTo("type? :" + word)).isEqualTo("#(native!)");
     }
 
     @Test
     @DisplayName("NUMBER? is a native in Rebol and stays one")
-    void numberIsANative() {
+    void leaveNumberANative() {
         assertThat(answerTo("type? :number?")).isEqualTo("#(native!)");
     }
 
     @Test
     @DisplayName("and each still answers as Rebol's does")
-    void theyStillWork() {
+    void stillWork() {
         assertThat(answerTo("""
                 reduce [
                     any-block? [a] any-word? 'a series? "s" scalar? 1

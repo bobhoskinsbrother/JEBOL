@@ -68,7 +68,7 @@ class WhatParseDeclaresTest {
     }
 
     @Nested
-    @DisplayName("every kind of series is parsed")
+    @DisplayName("every type of series is parsed")
     class EverySeries {
 
         @ParameterizedTest(name = "{0} answers {1}")

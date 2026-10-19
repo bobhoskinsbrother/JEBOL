@@ -17,10 +17,10 @@ class WavCodecFromTheSourceTest {
     private static final Path VENDORED =
             Path.of("src", "testFixtures", "resources", "rebol-suite", "units", "files");
 
-    private static Interpreter reaching(Path directory) {
+    private static Interpreter makeAnInterpreterReaching(Path directory) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         return interpreter;
     }
 
@@ -29,7 +29,7 @@ class WavCodecFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(Interpreter interpreter, String source) {
+    private static String readTheErrorIdFrom(Interpreter interpreter, String source) {
         return answerTo(interpreter,
                 "e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
@@ -43,11 +43,11 @@ class WavCodecFromTheSourceTest {
 
     @Test
     @DisplayName("a WAV file loads as its declared format and its samples")
-    void aFileLoadsAsItsFormatAndItsSamples(@TempDir Path directory)
+    void loadsAFileAsItsFormatAndItsSamples(@TempDir Path directory)
             throws IOException {
 
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 sound: load %drumloop.wav
                 reduce [
                     sound/type sound/rate sound/channels sound/bits
@@ -57,11 +57,11 @@ class WavCodecFromTheSourceTest {
 
     @Test
     @DisplayName("and its samples are these, whatever REBOL's own test asks for")
-    void theSamplesAreTheseWhateverTheSuiteAsksFor(@TempDir Path directory)
+    void answersTheseSamplesWhateverTheSuiteAsksFor(@TempDir Path directory)
             throws IOException {
 
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 sound: load %drumloop.wav
                 reduce [
                     checksum to-binary sound/data 'crc24
@@ -74,11 +74,11 @@ class WavCodecFromTheSourceTest {
 
     @Test
     @DisplayName("DECODE of the bytes answers the same as LOAD of the file")
-    void decodingTheBytesMatchesLoadingTheFile(@TempDir Path directory)
+    void decodesTheBytesAsLoadingTheFileDoes(@TempDir Path directory)
             throws IOException {
 
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 sound: decode 'WAV read %zblunk_02.wav
                 reduce [
                     sound/type sound/rate sound/channels sound/bits
@@ -93,7 +93,7 @@ class WavCodecFromTheSourceTest {
     @Test
     @DisplayName("ENCODE writes a forty-four byte header and the samples after it")
     void encodeWritesAHeaderAndTheSamples(@TempDir Path directory) {
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 enbase/flat encode 'wav #(i16! [0 -1000 -2000 -1000 0 1000 2000 1000 0]) 16"""))
                 .isEqualTo("""
                         {524946463600000057415645666D7420100000000100010044AC0000885801000200\
@@ -102,8 +102,8 @@ class WavCodecFromTheSourceTest {
 
     @Test
     @DisplayName("and what it wrote decodes back to the samples it was given")
-    void whatItWroteDecodesBack(@TempDir Path directory) {
-        assertThat(answerTo(reaching(directory), """
+    void decodesBackWhatItWrote(@TempDir Path directory) {
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 samples: #(i16! [0 -1000 -2000 -1000 0 1000 2000 1000 0])
                 sound: decode 'wav encode 'wav :samples
                 reduce [
@@ -114,13 +114,13 @@ class WavCodecFromTheSourceTest {
 
     @Test
     @DisplayName("decoding what is not a WAV runs off the end of the bytes")
-    void decodingWhatIsNotAWavRunsOffTheEnd(@TempDir Path directory) {
-        Interpreter interpreter = reaching(directory);
-        assertThat(errorIdFrom(interpreter, "decode 'wav #{}"))
+    void runsOffTheEndDecodingWhatIsNotAWav(@TempDir Path directory) {
+        Interpreter interpreter = makeAnInterpreterReaching(directory);
+        assertThat(readTheErrorIdFrom(interpreter, "decode 'wav #{}"))
                 .isEqualTo("out-of-range");
-        assertThat(errorIdFrom(interpreter, "decode 'wav #{00010203}"))
+        assertThat(readTheErrorIdFrom(interpreter, "decode 'wav #{00010203}"))
                 .isEqualTo("out-of-range");
-        assertThat(errorIdFrom(interpreter, """
+        assertThat(readTheErrorIdFrom(interpreter, """
                 decode 'wav to-binary {RIFF}""")).isEqualTo("out-of-range");
     }
 
@@ -128,7 +128,7 @@ class WavCodecFromTheSourceTest {
     @DisplayName("IDENTIFY says yes to a WAV and no to anything else")
     void identifySaysYesToAWavOnly(@TempDir Path directory) throws IOException {
         layOut(directory);
-        assertThat(answerTo(reaching(directory), """
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 reduce [
                     codecs/wav/identify read %drumloop.wav
                     codecs/wav/identify #{00010203}
@@ -139,12 +139,12 @@ class WavCodecFromTheSourceTest {
     @Test
     @DisplayName("ENCODE refuses anything that is not a vector of samples")
     void encodeRefusesWhatIsNotAVector(@TempDir Path directory) {
-        Interpreter interpreter = reaching(directory);
-        assertThat(errorIdFrom(interpreter, "encode 'wav [1 2 3]"))
+        Interpreter interpreter = makeAnInterpreterReaching(directory);
+        assertThat(readTheErrorIdFrom(interpreter, "encode 'wav [1 2 3]"))
                 .isEqualTo("expect-arg");
-        assertThat(errorIdFrom(interpreter, """
+        assertThat(readTheErrorIdFrom(interpreter, """
                 encode 'wav {hello}""")).isEqualTo("expect-arg");
-        assertThat(errorIdFrom(interpreter, "encode 'wav 5"))
+        assertThat(readTheErrorIdFrom(interpreter, "encode 'wav 5"))
                 .isEqualTo("expect-arg");
     }
 }

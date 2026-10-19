@@ -23,11 +23,11 @@ public abstract class QueriedFields {
 
     protected abstract List<String> names();
 
-    protected abstract Optional<Value> fieldNamed(String asked);
+    protected abstract Optional<Value> findTheFieldNamed(String asked);
 
-    protected abstract Value unknownAlone(AnyWordValue asked);
+    protected abstract Value answerAnUnknownAlone(AnyWordValue asked);
 
-    protected Value unknownInABlock(AnyWordValue asked) {
+    protected Value answerAnUnknownInABlock(AnyWordValue asked) {
         throw Raised.of(EvaluationFailure.INVALID_ARG, asked);
     }
 
@@ -35,26 +35,26 @@ public abstract class QueriedFields {
         return false;
     }
 
-    protected String theFieldItAsksFor(AnyWordValue asked) {
+    protected String findTheFieldItAsksFor(AnyWordValue asked) {
         return asked.canonical();
     }
 
-    public Value answering(Value field, Evaluator evaluator) {
+    public Value answer(Value field, Evaluator evaluator) {
         return switch (field) {
             case AnyWordValue asked when asked.canonical().equals(THE_NAMES_THEMSELVES)
-                    && answersItsNames() -> theNames();
-            case AnyWordValue asked -> fieldNamed(theFieldItAsksFor(asked)).orElseGet(() -> unknownAlone(asked));
-            case AnyBlockValue several -> eachOf(several);
-            case NoneValue nothing -> theNames();
-            default -> everyFieldAsAnObject(evaluator);
+                    && answersItsNames() -> listTheNames();
+            case AnyWordValue asked -> findTheFieldNamed(findTheFieldItAsksFor(asked)).orElseGet(() -> answerAnUnknownAlone(asked));
+            case AnyBlockValue several -> answerEachOf(several);
+            case NoneValue nothing -> listTheNames();
+            default -> gatherEveryFieldIntoAnObject(evaluator);
         };
     }
 
-    private Value theNames() {
-        return BlockValue.block(names().stream().<Value>map(WordValue::of).toList());
+    private Value listTheNames() {
+        return BlockValue.of(names().stream().<Value>map(WordValue::of).toList());
     }
 
-    private Value eachOf(AnyBlockValue several) {
+    private Value answerEachOf(AnyBlockValue several) {
         List<Value> answer = new ArrayList<>();
         List<Integer> whereEachLabelStartsALine = new ArrayList<>();
         for (Value item : several.remaining()) {
@@ -65,28 +65,28 @@ public abstract class QueriedFields {
                 answer.add(asked.asSetWord());
                 whereEachLabelStartsALine.add(answer.size());
             }
-            answer.add(fieldNamed(theFieldItAsksFor(asked)).orElseGet(() -> unknownInABlock(asked)));
+            answer.add(findTheFieldNamed(findTheFieldItAsksFor(asked)).orElseGet(() -> answerAnUnknownInABlock(asked)));
         }
-        BlockValue answered = BlockValue.block(answer);
+        BlockValue answered = BlockValue.of(answer);
         whereEachLabelStartsALine.forEach(position -> answered.storage().setLineBreakAt(position, true));
         return answered;
     }
 
-    protected Value everyFieldAsAnObject(Evaluator evaluator) {
-        ObjectValue described = new ObjectValue(Context.childOf(evaluator.systemContext()));
+    protected Value gatherEveryFieldIntoAnObject(Evaluator evaluator) {
+        ObjectValue described = new ObjectValue(Context.makeChildOf(evaluator.systemContext()));
         described.context().pointItsOwnSelfAt(described);
         return withEveryFieldIn(described);
     }
 
     protected ObjectValue withEveryFieldIn(ObjectValue described) {
         for (String part : names()) {
-            described.context().register(part, fieldInTheObject(part));
+            described.context().register(part, readTheFieldInTheObject(part));
         }
         return described;
     }
 
-    protected Value fieldInTheObject(String part) {
-        return fieldNamed(part).orElseGet(NoneValue::none);
+    protected Value readTheFieldInTheObject(String part) {
+        return findTheFieldNamed(part).orElseGet(NoneValue::none);
     }
 
     protected Raised cannotUse(AnyWordValue asked, Datatype datatype) {

@@ -32,32 +32,32 @@ public class DeleteAction extends PortAction {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("path", Set.of(FileValue.TYPE, UrlValue.TYPE)));
+        return List.of(Parameter.of("path", Set.of(FileValue.TYPE, UrlValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value target = arguments.getFirst();
-            PortValue port = ports.portMadeFor(target, evaluator, context);
-            return evaluator.theRebolActorsAnswer(nativeName(), List.of(port), Set.of())
-                    .orElseGet(() -> deleted(target, port, evaluator));
+            PortValue port = ports.makeAPortFor(target, evaluator, context);
+            return evaluator.askTheRebolActor(nativeName(), List.of(port), Set.of())
+                    .orElseGet(() -> delete(target, port, evaluator));
         };
     }
 
-    private Value deleted(Value target, PortValue port, Evaluator evaluator) {
+    private Value delete(Value target, PortValue port, Evaluator evaluator) {
         if (!port.isAFile()) {
-            throw ports.noActionFor(nativeName());
+            throw ports.refuseWithNoActionFor(nativeName());
         }
         granted.require(HostService.FILES);
         if (port.schemeName().equals("dir")) {
-            ports.requireTheFilePolicy(ports.pathOf(port), evaluator, Set.of(PolicyAccess.WRITE));
+            ports.requireTheFilePolicy(ports.readThePathOf(port), evaluator, Set.of(PolicyAccess.WRITE));
         }
         try {
-            return evaluator.files().delete(ports.pathOf(port)) ? port : LogicValue.of(false);
+            return evaluator.files().delete(ports.readThePathOf(port)) ? port : LogicValue.of(false);
         } catch (FilePort.Denied refused) {
-            if (refused.isASecurityRefusal()) {
-                throw refused.raised();
+            if (refused.isRefusedByHost()) {
+                throw refused.raise();
             }
             throw Raised.of(EvaluationFailure.NO_DELETE, target);
         }

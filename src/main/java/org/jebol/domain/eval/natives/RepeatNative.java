@@ -33,9 +33,9 @@ public class RepeatNative extends LoopingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.softQuoted("counter"),
-                Parameter.required("count", WHAT_REPEAT_COUNTS_BY),
-                Parameter.required("body", A_BLOCK));
+        return List.of(Parameter.quoteSoftly("counter"),
+                Parameter.of("count", WHAT_REPEAT_COUNTS_BY),
+                Parameter.of("body", A_BLOCK));
     }
 
     @Override
@@ -44,20 +44,20 @@ public class RepeatNative extends LoopingNative {
             AnyWordValue counter = (AnyWordValue) arguments.get(0);
             AnyBlockValue body = (AnyBlockValue) arguments.get(2);
             return switch (arguments.get(1)) {
-                case PairValue grid -> repeatedOverGrid(evaluator, context, counter, grid, body);
+                case PairValue grid -> repeatOverAGrid(evaluator, context, counter, grid, body);
                 case NoneValue nothing -> nothing;
-                case RebolSeries walked -> countedLoop(evaluator, context, counter, body,
+                case RebolSeries walked -> loopACountedNumberOfTimes(evaluator, context, counter, body,
                         index -> walked.atIndex(walked.index() + (int) index),
                         walked.lengthFromHere());
-                case Value count -> countedLoop(evaluator, context, counter, body,
+                case Value count -> loopACountedNumberOfTimes(evaluator, context, counter, body,
                         index -> IntegerValue.of(index + 1),
                         (long) Arithmetic.asMagnitude(count));
             };
         };
     }
 
-    private Value countedLoop(Evaluator evaluator, Context within, AnyWordValue counter,
-                              AnyBlockValue body, LongFunction<Value> valueAt, long passes) {
+    private Value loopACountedNumberOfTimes(Evaluator evaluator, Context within, AnyWordValue counter,
+                                            AnyBlockValue body, LongFunction<Value> valueAt, long passes) {
 
         Context locals = Context.loopFrameOf(within);
         locals.register(counter.spelling());
@@ -66,14 +66,14 @@ public class RepeatNative extends LoopingNative {
             Value last = NoneValue.none();
             for (long pass = 0; pass < passes; pass++) {
                 locals.register(counter.spelling(), valueAt.apply(pass));
-                last = oneRoundCatchingContinue(evaluator, bound, locals);
+                last = runOneRoundCatchingContinue(evaluator, bound, locals);
             }
             return last;
         });
     }
 
-    private Value repeatedOverGrid(Evaluator evaluator, Context within, AnyWordValue counter,
-            PairValue grid, AnyBlockValue body) {
+    private Value repeatOverAGrid(Evaluator evaluator, Context within, AnyWordValue counter,
+                                  PairValue grid, AnyBlockValue body) {
 
         Context locals = Context.loopFrameOf(within);
         locals.register(counter.spelling());
@@ -85,7 +85,7 @@ public class RepeatNative extends LoopingNative {
             for (long onDown = 1; onDown <= down; onDown++) {
                 for (long onAcross = 1; onAcross <= across; onAcross++) {
                     locals.register(counter.spelling(), PairValue.of(onAcross, onDown));
-                    last = oneRoundCatchingContinue(evaluator, bound, locals);
+                    last = runOneRoundCatchingContinue(evaluator, bound, locals);
                 }
             }
             return last;

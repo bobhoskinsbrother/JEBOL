@@ -10,23 +10,23 @@ final class BlockPath {
     }
 
     static Value read(AnyBlockValue block, Value selector) {
-        return positionOf(block, selector)
+        return findThePositionOf(block, selector)
                 .map(at -> block.storage().at(at))
                 .orElseGet(NoneValue::none);
     }
 
-    static Optional<Integer> positionOf(AnyBlockValue block, Value selector) {
+    static Optional<Integer> findThePositionOf(AnyBlockValue block, Value selector) {
         int at = switch (selector) {
-            case IntegerValue position -> positionFrom(position.magnitude(), block.index());
+            case IntegerValue position -> countThePositionFrom(position.magnitude(), block.index());
             case AnyDecimalValue fraction ->
-                    positionFrom((long) fraction.quantity(), block.index());
-            case AnyWordValue name -> afterTheFirstMatchFromWhereTheBlockStands(
+                    countThePositionFrom((long) fraction.quantity(), block.index());
+            case AnyWordValue name -> findAfterTheFirstMatch(
                     block, item ->
                     item instanceof AnyWordValue held
                             && held.canonical().equals(name.canonical()));
-            default -> afterTheFirstMatchFromWhereTheBlockStands(
+            default -> findAfterTheFirstMatch(
                     block, item ->
-                    Comparison.looselyEqual(item, selector));
+                    Comparison.areLooselyEqual(item, selector));
         };
         return at >= 1 && at <= block.storageLength() ? Optional.of(at) : Optional.empty();
     }
@@ -39,7 +39,7 @@ final class BlockPath {
         };
     }
 
-    private static int positionFrom(long wanted, int here) {
+    private static int countThePositionFrom(long wanted, int here) {
         if (wanted == 0) {
             return 0;
         }
@@ -47,7 +47,7 @@ final class BlockPath {
         return (int) (counted + here - 1);
     }
 
-    private static int afterTheFirstMatchFromWhereTheBlockStands(
+    private static int findAfterTheFirstMatch(
             AnyBlockValue block, java.util.function.Predicate<Value> matches) {
 
         for (int at = block.index(); at <= block.storageLength(); at++) {

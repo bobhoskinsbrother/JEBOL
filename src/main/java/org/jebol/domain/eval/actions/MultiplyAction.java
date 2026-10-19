@@ -27,7 +27,7 @@ public class MultiplyAction extends ArithmeticNative implements ActionValue {
         {
             Value left = arguments.get(0);
             Value right = arguments.get(1);
-            return left.arithmetic(right, new Multiply());
+            return left.calculate(right, new Multiply());
         };
     }
 

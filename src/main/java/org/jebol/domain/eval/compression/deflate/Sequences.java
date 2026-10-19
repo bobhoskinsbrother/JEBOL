@@ -18,7 +18,7 @@ final class Sequences implements BlockContent {
         offsetSlots = new int[capacity + 1];
     }
 
-    Sequences holdingOnlyLiterals(int count) {
+    Sequences holdOnlyLiterals(int count) {
         literalRunAndLength[0] = count;
         return this;
     }

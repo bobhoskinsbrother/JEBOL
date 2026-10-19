@@ -15,7 +15,7 @@ public final class SuiteStops {
 
     private static Interpreter fullyBounded() {
         Interpreter interpreter = SuiteHost.installOn(
-                Interpreter.withBounds(SuiteHost.grantingEverything()));
+                Interpreter.withBounds(SuiteHost.grantEverything()));
         String dialect = String.join("\n",
                 "--assert: func [x [any-type!]][:x]",
                 "--assert-numbered: func [n [integer!] x [any-type!]][:x]",

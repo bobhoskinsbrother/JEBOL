@@ -22,7 +22,7 @@ class ComposeFromTheSourceTest {
 
     @Test
     @DisplayName("a block a paren answered is spread")
-    void aBlockAnswerIsSpread() {
+    void spreadsABlockAnswer() {
         assertThat(answerTo("(compose [a (reduce [1 2]) b]) = [a 1 2 b]")).isEqualTo("#(true)");
     }
 
@@ -35,20 +35,20 @@ class ComposeFromTheSourceTest {
 
     @Test
     @DisplayName("an unset a paren answered is dropped")
-    void anUnsetLeavesNothingBehind() {
+    void leavesNothingForAnUnset() {
         assertThat(answerTo("(compose [a (()) b]) = [a b]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("without /DEEP a nested block is the one that was there")
-    void theShallowWalkShares() {
+    void sharesOnTheShallowWalk() {
         assertThat(answerTo("inner: [1] outer: reduce [inner] same? inner first compose outer"))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("/DEEP copies every block it passes over")
-    void theDeepWalkCopies() {
+    void copiesOnTheDeepWalk() {
         assertThat(answerTo(
                 "inner: [1] outer: reduce [inner] not same? inner first compose/deep outer"))
                 .isEqualTo("#(true)");
@@ -56,7 +56,7 @@ class ComposeFromTheSourceTest {
 
     @Test
     @DisplayName("/DEEP reaches a paren inside a nested block")
-    void theDeepWalkRecurses() {
+    void recursesOnTheDeepWalk() {
         assertThat(answerTo("(compose/deep [a [b (1 + 1)]]) = [a [b 2]]")).isEqualTo("#(true)");
         assertThat(answerTo("(compose [a [b (1 + 1)]]) = [a [b (1 + 1)]]"))
                 .as("and without /DEEP it does not")
@@ -65,14 +65,14 @@ class ComposeFromTheSourceTest {
 
     @Test
     @DisplayName("a map composes as the pairs it holds")
-    void aMapIsComposed() {
+    void composesAMap() {
         assertThat(answerTo("m: make map! [a (1 + 1)] (select compose m 'a) = 2"))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a paren in a map is never spread")
-    void aMapNeverSpreads() {
+    void neverSpreadsAMap() {
         assertThat(answerTo(
                 "m: make map! [a (reduce [1 2])] (select compose m 'a) = [1 2]"))
                 .isEqualTo("#(true)");
@@ -80,13 +80,13 @@ class ComposeFromTheSourceTest {
 
     @Test
     @DisplayName("a value that is not a block composes to itself")
-    void aBareValueIsUnchanged() {
+    void leavesABareValueUnchanged() {
         assertThat(answerTo("(compose 5) = 5")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("an empty block composes to an empty block")
-    void theDegenerateBlock() {
+    void handlesTheDegenerateBlock() {
         assertThat(answerTo("empty? compose []")).isEqualTo("#(true)");
         assertThat(answerTo("empty? compose/deep []")).isEqualTo("#(true)");
     }
@@ -102,7 +102,7 @@ class ComposeFromTheSourceTest {
 
     @Test
     @DisplayName("which is what keeps two functions built from one template apart")
-    void whichKeepsTwoFunctionsApart() {
+    void keepsTwoFunctionsApart() {
         assertThat(answerTo("""
                 f: func [c] [make function! reduce [copy [a] compose/deep [print a/1 (c)]]]
                 f1: f [print 1]

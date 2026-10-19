@@ -24,7 +24,7 @@ import java.util.Optional;
 public record StructValue(StructSpec spec, StructData data, int offset) implements Value {
 
     @Override
-    public boolean equalTo(Value other, Sameness how) {
+    public boolean isEqualTo(Value other, Sameness how) {
         return other instanceof StructValue theirs && holdsTheSameAs(theirs);
     }
 
@@ -43,9 +43,9 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         }
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             if (!(spec instanceof AnyBlockValue given)) {
-                throw refusing(spec);
+                throw refuse(spec);
             }
             List<Value> written = given.remaining();
             boolean carriesInitialValues = written.size() == 2
@@ -54,19 +54,19 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
             AnyBlockValue layout = carriesInitialValues && written.getFirst() instanceof AnyBlockValue first
                     ? first
                     : given;
-            StructValue made = StructValue.of(laidOutBy(layout, maker));
+            StructValue made = StructValue.of(layOutBy(layout, maker));
             if (carriesInitialValues) {
-                made.startedWith(written.get(1));
+                made.startWith(written.get(1));
             }
             return made;
         }
 
         @Override
-        public Value convertedFrom(Value value, Maker maker) {
-            return madeFrom(value, maker);
+        public Value convert(Value value, Maker maker) {
+            return makeFrom(value, maker);
         }
 
-        private StructSpec laidOutBy(AnyBlockValue layout, Maker maker) {
+        private StructSpec layOutBy(AnyBlockValue layout, Maker maker) {
             try {
                 return StructSpec.of(layout, maker.structLayouts());
             } catch (StructLayoutRefused refused) {
@@ -87,11 +87,11 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
     }
 
     public byte[] octets() {
-        return data.bytesFrom(offset, spec.size());
+        return data.readTheBytesFrom(offset, spec.size());
     }
 
-    public Optional<StructField> fieldCalled(String name) {
-        return spec.fieldCalled(name);
+    public Optional<StructField> findTheFieldCalled(String name) {
+        return spec.findTheFieldCalled(name);
     }
 
     /** Where one element of a field starts in the shared bytes. */
@@ -107,11 +107,11 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
      * That is {@code get_scalar} testing {@code *(REBINT *)data == 0} before
      * it builds either.
      */
-    public Value elementOf(StructField field, int element) {
+    public Value readTheElementOf(StructField field, int element) {
         int at = addressOf(field, element);
         return switch (field.type()) {
             case StructFieldType.Numeric number ->
-                    number.kind().read(data.numberAt(at, number.kind()));
+                    number.kind().read(data.readTheNumberAt(at, number.kind()));
             case StructFieldType.NamedWord ignored ->
                     data.liveValueAt(at).orElseGet(NoneValue::none);
             case StructFieldType.LiveValue ignored ->
@@ -130,23 +130,23 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
      */
     public Value valueOf(StructField field) {
         if (!field.isArray()) {
-            return elementOf(field, 0);
+            return readTheElementOf(field, 0);
         }
         if (field.type() instanceof StructFieldType.Numeric(VectorKind kind)) {
             long[] stored = new long[field.dimension()];
             for (int element = 0; element < stored.length; element++) {
-                stored[element] = data.numberAt(addressOf(field, element), kind);
+                stored[element] = data.readTheNumberAt(addressOf(field, element), kind);
             }
-            return VectorValue.holding(kind, stored);
+            return VectorValue.hold(kind, stored);
         }
-        return BlockValue.block(elementsOf(field));
+        return BlockValue.of(readTheElementsOf(field));
     }
 
     /** Every element of a field, whatever its type, as a plain list. */
-    public List<Value> elementsOf(StructField field) {
+    public List<Value> readTheElementsOf(StructField field) {
         List<Value> found = new ArrayList<>(field.dimension());
         for (int element = 0; element < field.dimension(); element++) {
-            found.add(elementOf(field, element));
+            found.add(readTheElementOf(field, element));
         }
         return found;
     }
@@ -160,10 +160,10 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
      * {@code [uint8! [1]]} reflects as a bare number while reading it through
      * a path gives a vector of one.
      */
-    public Value reflectedValueOf(StructField field) {
+    public Value reflectTheValueOf(StructField field) {
         return field.dimension() > 1
-                ? BlockValue.block(elementsOf(field))
-                : elementOf(field, 0);
+                ? BlockValue.of(readTheElementsOf(field))
+                : readTheElementOf(field, 0);
     }
 
     /**
@@ -183,22 +183,22 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
             case StructFieldType.LiveValue ignored -> data.putLiveValueAt(at, written);
             case StructFieldType.NamedWord ignored -> {
                 if (!(written instanceof WordValue word)) {
-                    throw refusedBy(field, written);
+                    throw refuseFor(field, written);
                 }
                 data.putLiveValueAt(at, word);
             }
             case StructFieldType.Numeric number -> {
                 if (!(written instanceof IntegerValue) && !(written instanceof AnyDecimalValue)) {
-                    throw refusedBy(field, written);
+                    throw refuseFor(field, written);
                 }
-                data.writeNumberAt(at, number.kind(), narrowedFor(number.kind(), written));
+                data.writeNumberAt(at, number.kind(), narrowFor(number.kind(), written));
             }
             case StructFieldType.Nested inside -> writeInnerStruct(inside, at, written);
         }
     }
 
-    private static long narrowedFor(VectorKind kind, Value written) {
-        return kind.storedForm(written);
+    private static long narrowFor(VectorKind kind, Value written) {
+        return kind.encodeForStorage(written);
     }
 
     private void writeInnerStruct(StructFieldType.Nested inside, int at, Value written) {
@@ -212,13 +212,13 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
             data.write(at, given.octets(), inside.spec().size());
             return;
         }
-        throw StructLayoutRefused.becauseTheFieldIsWrong(written,
+        throw StructLayoutRefused.refuseTheField(written,
                 "an inner struct takes a block or a struct of the same shape, not "
                         + written.datatype().literalSpelling());
     }
 
-    private static StructLayoutRefused refusedBy(StructField field, Value written) {
-        return StructLayoutRefused.becauseTheFieldIsWrong(written,
+    private static StructLayoutRefused refuseFor(StructField field, Value written) {
+        return StructLayoutRefused.refuseTheField(written,
                 "the field " + field.name() + " holds " + field.type().spelling()
                         + " and cannot take " + written.datatype().literalSpelling());
     }
@@ -241,7 +241,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         }
         if (!(written instanceof AnyBlockValue given)
                 || given.remaining().size() != field.dimension()) {
-            throw StructLayoutRefused.becauseTheFieldIsWrong(written,
+            throw StructLayoutRefused.refuseTheField(written,
                     "the field " + field.name() + " holds " + field.dimension()
                             + " values and takes a block of exactly that many");
         }
@@ -255,11 +255,11 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         if (!(field.type() instanceof StructFieldType.Numeric(VectorKind kind))
                 || given.lengthFromHere() != field.dimension()
                 || given.storage().kind().bytes() != kind.bytes()) {
-            throw StructLayoutRefused.becauseTheFieldIsWrong(given,
+            throw StructLayoutRefused.refuseTheField(given,
                     "the field " + field.name() + " takes " + field.dimension()
                             + " values of its own width and this vector is not that");
         }
-        data.write(addressOf(field, 0), given.octetsFromHere(), field.width());
+        data.write(addressOf(field, 0), given.readTheOctetsFromHere(), field.width());
     }
 
     /**
@@ -270,9 +270,9 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
      * walks the fields in order and stops when the block runs out, which is
      * how {@code make proto! [10]} sets the first field and leaves the rest.
      */
-    public void startedWith(Value given) {
+    public void startWith(Value given) {
         if (given instanceof BinaryValue octets) {
-            changeFrom(octets.bytesFromHere());
+            changeFrom(octets.readTheBytesFromHere());
             return;
         }
         AnyBlockValue written = (AnyBlockValue) given;
@@ -288,11 +288,11 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         if (!written.isEmpty() && written.getFirst() instanceof SetWordValue) {
             for (int at = 0; at + 1 < written.size(); at += 2) {
                 if (!(written.get(at) instanceof AnyWordValue name)) {
-                    throw StructLayoutRefused.becauseTheFieldIsWrong(written.get(at),
+                    throw StructLayoutRefused.refuseTheField(written.get(at),
                             "a named initialiser is a set-word and then a value");
                 }
-                writeField(spec.fieldCalled(name.spelling()).orElseThrow(
-                        () -> StructLayoutRefused.becauseTheFieldIsWrong(name,
+                writeField(spec.findTheFieldCalled(name.spelling()).orElseThrow(
+                        () -> StructLayoutRefused.refuseTheField(name,
                                 "this struct has no field called " + name.spelling())),
                         written.get(at + 1));
             }
@@ -335,22 +335,22 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
 
     /** VALUES-OF: what each field currently holds. */
     public List<Value> fieldValues() {
-        return spec.fields().stream().map(this::reflectedValueOf).toList();
+        return spec.fields().stream().map(this::reflectTheValueOf).toList();
     }
 
     /** BODY-OF: the field names as set-words, each followed by its value. */
-    public List<Value> body() {
+    public List<Value> readTheBody() {
         List<Value> written = new ArrayList<>();
         for (StructField field : spec.fields()) {
             written.add(SetWordValue.of(field.name()));
-            written.add(reflectedValueOf(field));
+            written.add(reflectTheValueOf(field));
         }
         return written;
     }
 
-    public StructValue changedBy(Value given) {
+    public StructValue changeBy(Value given) {
         if (given instanceof AnyBlockValue written) {
-            startedWith(written);
+            startWith(written);
             return this;
         }
         if (!(given instanceof BinaryValue octets)) {
@@ -360,17 +360,17 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         if (!acceptsRawBytes()) {
             throw Raised.of(EvaluationFailure.PROTECTED);
         }
-        changeFrom(octets.bytesFromHere());
+        changeFrom(octets.readTheBytesFromHere());
         return this;
     }
 
     @Override
-    public Value reflected(AnyWordValue asked) {
+    public Value reflect(AnyWordValue asked) {
         return switch (asked.canonical()) {
             case "spec" -> spec.declaration();
-            case "words", "keys" -> BlockValue.block(fieldNames());
-            case "values" -> BlockValue.block(fieldValues());
-            case "body" -> BlockValue.block(body());
+            case "words", "keys" -> BlockValue.of(fieldNames());
+            case "values" -> BlockValue.of(fieldValues());
+            case "body" -> BlockValue.of(readTheBody());
             default -> throw Raised.cannotUse(asked, "reflect struct!");
         };
     }

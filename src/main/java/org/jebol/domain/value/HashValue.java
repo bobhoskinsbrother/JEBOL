@@ -5,7 +5,7 @@ public final class HashValue extends AnyBlockValue {
     public static final AnyBlockDatatype TYPE = new AnyBlockDatatype("hash") {
 
         @Override
-        public AnyBlockValue holding(BlockStorage storage, int index) {
+        public AnyBlockValue wrap(BlockStorage storage, int index) {
             return new HashValue(storage, index);
         }
 
@@ -30,7 +30,7 @@ public final class HashValue extends AnyBlockValue {
     }
 
     @Override
-    HashValue sameKindOver(BlockStorage storage, int index) {
+    HashValue makeTheSameKindOver(BlockStorage storage, int index) {
         return new HashValue(storage, index);
     }
 }

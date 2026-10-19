@@ -22,14 +22,14 @@ public class SizeTextNative extends TextMeasuringNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("gob", Set.of(GobValue.TYPE)));
+        return List.of(Parameter.of("gob", Set.of(GobValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            TextLines lines = theTextOf((GobValue) arguments.getFirst(), evaluator).lines();
-            return inWholePixels(lines.widest(), lines.tallness());
+            TextLines lines = readTheTextOf((GobValue) arguments.getFirst(), evaluator).lines();
+            return roundToWholePixels(lines.widest(), lines.tallness());
         };
     }
 }

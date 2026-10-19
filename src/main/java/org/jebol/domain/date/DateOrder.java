@@ -7,23 +7,23 @@ public final class DateOrder {
     private DateOrder() {
     }
 
-    public static int comparing(DateValue first, DateValue second) {
-        return first.moment().compareTo(second.moment());
+    public static int compare(DateValue first, DateValue second) {
+        return first.findTheMoment().compareTo(second.findTheMoment());
     }
 
-    public static boolean theSameMoment(DateValue first, DateValue second) {
-        return comparing(first, second) == 0;
+    public static boolean isTheSameMoment(DateValue first, DateValue second) {
+        return compare(first, second) == 0;
     }
 
-    public static boolean writtenTheSameWay(DateValue first, DateValue second) {
+    public static boolean isWrittenTheSameWay(DateValue first, DateValue second) {
         return first.year() == second.year()
                 && first.month() == second.month()
                 && first.day() == second.day()
                 && first.timeOfDay().equals(second.timeOfDay())
-                && zoneOrNoOffset(first).equals(zoneOrNoOffset(second));
+                && readTheZoneOrNoOffset(first).equals(readTheZoneOrNoOffset(second));
     }
 
-    private static Integer zoneOrNoOffset(DateValue date) {
+    private static Integer readTheZoneOrNoOffset(DateValue date) {
         return date.zoneMinutes().orElse(0);
     }
 }

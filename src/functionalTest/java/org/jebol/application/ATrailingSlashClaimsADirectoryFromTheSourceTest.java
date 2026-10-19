@@ -16,7 +16,7 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
     private static Path root;
 
     @BeforeEach
-    void freshRoot(@TempDir Path made) {
+    void makeAFreshRoot(@TempDir Path made) {
         root = made;
     }
 
@@ -25,12 +25,12 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorFrom(String source) {
+    private static String readTheErrorFrom(String source) {
         return answerTo("e: try [" + source
                 + "] either error? e [reduce [e/id e/arg1]] ['no-error]");
     }
@@ -46,7 +46,7 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
 
         @Test
         @DisplayName("a file answers to its own name and not to one with a slash")
-        void aFileAnswersToItsOwnNameOnly() {
+        void answersAFileToItsOwnNameOnly() {
             assertThat(answerTo(A_FILE_AND_A_DIRECTORY + "exists? %f.txt"))
                     .isEqualTo("file");
             assertThat(answerTo(A_FILE_AND_A_DIRECTORY + "exists? %f.txt/"))
@@ -55,7 +55,7 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
 
         @Test
         @DisplayName("but a directory answers to both, because the slash is not needed")
-        void aDirectoryAnswersToBoth() {
+        void answersADirectoryToBoth() {
             assertThat(answerTo(A_FILE_AND_A_DIRECTORY + "exists? %d/")).isEqualTo("dir");
             assertThat(answerTo(A_FILE_AND_A_DIRECTORY + "exists? %d")).isEqualTo("dir");
         }
@@ -75,10 +75,10 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
 
         @Test
         @DisplayName("and none rather than a raise")
-        void noneRatherThanARaise() {
-            assertThat(errorFrom(A_FILE_AND_A_DIRECTORY + "query %f.txt/ 'type"))
+        void answersNoneRatherThanRaising() {
+            assertThat(readTheErrorFrom(A_FILE_AND_A_DIRECTORY + "query %f.txt/ 'type"))
                     .isEqualTo("no-error");
-            assertThat(errorFrom(A_FILE_AND_A_DIRECTORY + "exists? %f.txt/"))
+            assertThat(readTheErrorFrom(A_FILE_AND_A_DIRECTORY + "exists? %f.txt/"))
                     .isEqualTo("no-error");
         }
     }
@@ -89,21 +89,21 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
 
         @Test
         @DisplayName("reading a file through a slash is refused")
-        void readingAFileThroughASlashIsRefused() {
-            assertThat(errorFrom(A_FILE_AND_A_DIRECTORY + "read %f.txt/"))
+        void refusesReadingAFileThroughASlash() {
+            assertThat(readTheErrorFrom(A_FILE_AND_A_DIRECTORY + "read %f.txt/"))
                     .isEqualTo("[cannot-open %f.txt/]");
         }
 
         @Test
         @DisplayName("where reading a directory without one still lists it")
-        void readingADirectoryWithoutOneStillListsIt() {
+        void stillListsADirectoryReadWithoutOne() {
             assertThat(answerTo(A_FILE_AND_A_DIRECTORY + "mold read %d")).isEqualTo("\"[]\"");
         }
 
         @Test
         @DisplayName("deleting a file through a slash is no-delete")
-        void deletingAFileThroughASlashIsNoDelete() {
-            assertThat(errorFrom(A_FILE_AND_A_DIRECTORY + "delete %f.txt/"))
+        void saysNoDeleteOnDeletingAFileThroughASlash() {
+            assertThat(readTheErrorFrom(A_FILE_AND_A_DIRECTORY + "delete %f.txt/"))
                     .isEqualTo("[no-delete %f.txt/]");
             assertThat(answerTo(A_FILE_AND_A_DIRECTORY + """
                     try [delete %f.txt/] exists? %f.txt""")).isEqualTo("file");
@@ -117,27 +117,27 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
         @Test
         @DisplayName("is no-create, not cannot-open")
         void isNoCreateNotCannotOpen() {
-            assertThat(errorFrom(A_FILE_AND_A_DIRECTORY + "make-dir %f.txt/"))
+            assertThat(readTheErrorFrom(A_FILE_AND_A_DIRECTORY + "make-dir %f.txt/"))
                     .isEqualTo("[no-create %f.txt/]");
         }
 
         @Test
         @DisplayName("whether or not the caller wrote the slash")
-        void whetherOrNotTheCallerWroteTheSlash() {
-            assertThat(errorFrom(A_FILE_AND_A_DIRECTORY + "make-dir %f.txt"))
+        void saysNoCreateWhetherOrNotTheCallerWroteTheSlash() {
+            assertThat(readTheErrorFrom(A_FILE_AND_A_DIRECTORY + "make-dir %f.txt"))
                     .isEqualTo("[no-create %f.txt/]");
         }
 
         @Test
         @DisplayName("and CREATE says the same on its own")
         void createSaysTheSameOnItsOwn() {
-            assertThat(errorFrom(A_FILE_AND_A_DIRECTORY + "create %f.txt/"))
+            assertThat(readTheErrorFrom(A_FILE_AND_A_DIRECTORY + "create %f.txt/"))
                     .isEqualTo("[no-create %f.txt/]");
         }
 
         @Test
         @DisplayName("and the file is left alone")
-        void theFileIsLeftAlone() {
+        void leavesTheFileAlone() {
             assertThat(answerTo(A_FILE_AND_A_DIRECTORY + """
                     try [make-dir %f.txt/]
                     reduce [exists? %f.txt  to string! read %f.txt]"""))
@@ -146,14 +146,14 @@ class ATrailingSlashClaimsADirectoryFromTheSourceTest {
 
         @Test
         @DisplayName("but a directory already there answers the path")
-        void aDirectoryAlreadyThereAnswersThePath() {
+        void answersThePathOfADirectoryAlreadyThere() {
             assertThat(answerTo(A_FILE_AND_A_DIRECTORY + "make-dir %d/")).isEqualTo("%d/");
         }
 
         @Test
         @DisplayName("and reaching through a file with /DEEP is refused")
-        void reachingThroughAFileWithDeepIsRefused() {
-            assertThat(errorFrom(A_FILE_AND_A_DIRECTORY + "make-dir/deep %f.txt/sub/"))
+        void refusesReachingThroughAFileWithDeep() {
+            assertThat(readTheErrorFrom(A_FILE_AND_A_DIRECTORY + "make-dir/deep %f.txt/sub/"))
                     .isEqualTo("[cannot-open %f.txt/]");
         }
     }

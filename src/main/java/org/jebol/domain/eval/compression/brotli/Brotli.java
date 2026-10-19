@@ -5,12 +5,12 @@ public final class Brotli {
     private Brotli() {
     }
 
-    public static byte[] compressed(byte[] octets, int level) {
-        return BrotliEncoder.encoded(octets, level);
+    public static byte[] compress(byte[] octets, int level) {
+        return BrotliEncoder.encode(octets, level);
     }
 
-    public static byte[] decompressed(byte[] octets, int wanted) {
-        return BrotliDecoder.decodedStoppingOnceTheAnswerPassesTheLimit(octets,
+    public static byte[] decompress(byte[] octets, int wanted) {
+        return BrotliDecoder.decodeUpToTheLimit(octets,
                 wanted > 0 ? wanted : BrotliDecoder.NO_LIMIT);
     }
 }

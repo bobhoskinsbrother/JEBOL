@@ -23,9 +23,9 @@ final class WritingIntoATime {
 
     private static final int THE_SECOND = 2;
 
-    TimeValue written(TimeValue time, Value selector, Value written) {
-        int part = thePartNamedBy(selector);
-        long whole = theWholeNumberIn(written);
+    TimeValue write(TimeValue time, Value selector, Value written) {
+        int part = findThePartNamedBy(selector);
+        long whole = readTheWholeNumberIn(written);
         long unsigned = Math.abs(time.nanoseconds());
         long hours = unsigned / NANOSECONDS_IN_AN_HOUR;
         long minutes = unsigned % NANOSECONDS_IN_AN_HOUR / NANOSECONDS_IN_A_MINUTE;
@@ -50,7 +50,7 @@ final class WritingIntoATime {
                 + seconds * NANOSECONDS_IN_A_SECOND + fraction);
     }
 
-    private int thePartNamedBy(Value selector) {
+    private int findThePartNamedBy(Value selector) {
         return switch (selector) {
             case AnyWordValue name when name.canonical().equals("hour") -> THE_HOUR;
             case AnyWordValue name when name.canonical().equals("minute") -> THE_MINUTE;
@@ -60,10 +60,10 @@ final class WritingIntoATime {
         };
     }
 
-    private long theWholeNumberIn(Value written) {
+    private long readTheWholeNumberIn(Value written) {
         return switch (written) {
-            case IntegerValue(long magnitude) -> notNegativeWithinThirtyTwoBits(magnitude, written);
-            case AnyDecimalValue fractional -> notNegativeWithinThirtyTwoBits(
+            case IntegerValue(long magnitude) -> checkWithinThirtyTwoBits(magnitude, written);
+            case AnyDecimalValue fractional -> checkWithinThirtyTwoBits(
                     withinThirtyTwoBits(fractional.quantity(), written), written);
             case NoneValue _ -> 0;
             default -> throw Raised.of(EvaluationFailure.BAD_PATH_SET);
@@ -77,7 +77,7 @@ final class WritingIntoATime {
         return (long) quantity;
     }
 
-    private long notNegativeWithinThirtyTwoBits(long whole, Value written) {
+    private long checkWithinThirtyTwoBits(long whole, Value written) {
         if (whole > Integer.MAX_VALUE || whole < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, written);
         }

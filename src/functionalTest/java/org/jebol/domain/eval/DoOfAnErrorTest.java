@@ -21,14 +21,14 @@ class DoOfAnErrorTest {
 
     @Test
     @DisplayName("DO of an error raises it")
-    void anErrorValueRaises() {
+    void raisesAnErrorValue() {
         assertThat(outcomeOf("do make error! [type: 'script id: 'invalid-data]"))
                 .isEqualTo("\"raised invalid-data\"");
     }
 
     @Test
     @DisplayName("the raise stops what follows it")
-    void nothingAfterItRuns() {
+    void runsNothingAfterIt() {
         assertThat(outcomeOf("do make error! [type: 'script id: 'invalid-data] \"after\""))
                 .isEqualTo("\"raised invalid-data\"");
     }
@@ -42,7 +42,7 @@ class DoOfAnErrorTest {
 
     @Test
     @DisplayName("a raise inside a function body leaves the function")
-    void theRaiseLeavesTheBody() {
+    void leavesTheBodyOnTheRaise() {
         assertThat(outcomeOf(
                 "f: func [v] [cause-error 'script 'invalid-data v \"after\"] f 9"))
                 .isEqualTo("\"raised invalid-data\"");
@@ -50,7 +50,7 @@ class DoOfAnErrorTest {
 
     @Test
     @DisplayName("a raise inside a conditional's block leaves the body too")
-    void theRaiseLeavesANestedBlock() {
+    void leavesANestedBlockOnTheRaise() {
         assertThat(outcomeOf(
                 "f: func [v] [unless find [0 1] v [cause-error 'script 'invalid-data v] true] "
                         + "f 9"))
@@ -59,7 +59,7 @@ class DoOfAnErrorTest {
 
     @Test
     @DisplayName("the same function answers ordinarily when nothing is wrong")
-    void theOffPoint() {
+    void handlesTheOffPoint() {
         assertThat(outcomeOf(
                 "f: func [v] [unless find [0 1] v [cause-error 'script 'invalid-data v] true] "
                         + "f 1"))
@@ -68,7 +68,7 @@ class DoOfAnErrorTest {
 
     @Test
     @DisplayName("DO of anything else is unaffected")
-    void theOrdinaryDoStillWorks() {
+    void stillDoesTheOrdinaryDo() {
         assertThat(outcomeOf("do [1 + 1]")).isEqualTo("\"answered 2\"");
         assertThat(outcomeOf("do \"1 + 1\"")).isEqualTo("\"answered 2\"");
         assertThat(outcomeOf("do 5")).isEqualTo("\"answered 5\"");

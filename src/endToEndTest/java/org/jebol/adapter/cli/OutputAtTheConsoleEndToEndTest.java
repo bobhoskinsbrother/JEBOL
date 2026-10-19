@@ -14,10 +14,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class OutputAtTheConsoleEndToEndTest {
 
-    private String whatTheConsolePrints(String typed) {
+    private String readWhatTheConsolePrints(String typed) {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
-        Interpreter interpreter = Interpreter.writingTo(new StreamOutput(output));
+        Interpreter interpreter = Interpreter.createWithOutput(new StreamOutput(output));
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
         return captured.toString(StandardCharsets.UTF_8);
     }
@@ -25,7 +25,7 @@ class OutputAtTheConsoleEndToEndTest {
     @Test
     @DisplayName("a path and a paren are printed as they stand, and a block is reduced and formed")
     void printsWhatFormGives() {
-        assertThat(whatTheConsolePrints("""
+        assertThat(readWhatTheConsolePrints("""
                 print 'a/b
                 print quote (1 + 2)
                 print [quote (1 2) [3] "x"]
@@ -41,7 +41,7 @@ class OutputAtTheConsoleEndToEndTest {
     @Test
     @DisplayName("form drops a paren's parens, mold/part takes the largest integer, and quit/return none carries unset")
     void formsMoldsAndQuitsAsRebolDoes() {
-        assertThat(whatTheConsolePrints("""
+        assertThat(readWhatTheConsolePrints("""
                 form [1 () (2 3)]
                 mold/part "abc" 9223372036854775807
                 mold/part "abc" -9223372036854775808
@@ -61,7 +61,7 @@ class OutputAtTheConsoleEndToEndTest {
     @Test
     @DisplayName("a wrong limit, an unknown word in a printed block, and make-error are refused as r3 refuses them")
     void refusesAsRebolDoes() {
-        assertThat(whatTheConsolePrints("""
+        assertThat(readWhatTheConsolePrints("""
                 mold/part "abc" 2.5
                 print [no-such-word-here]
                 make-error 1 2

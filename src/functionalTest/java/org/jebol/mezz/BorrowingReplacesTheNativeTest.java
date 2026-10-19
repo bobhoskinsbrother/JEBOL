@@ -10,7 +10,7 @@ class BorrowingReplacesTheNativeTest {
 
     @Test
     @DisplayName("a borrowed definition takes the word from the native")
-    void theBorrowedDefinitionWins() {
+    void letsTheBorrowedDefinitionWin() {
         Interpreter interpreter = Interpreter.create();
 
         assertThat(interpreter.display(interpreter.run("type? :split")))
@@ -19,7 +19,7 @@ class BorrowingReplacesTheNativeTest {
 
     @Test
     @DisplayName("a built-in no borrowed file defines is left alone")
-    void theUnclaimedBuiltInSurvives() {
+    void keepsTheUnclaimedBuiltIn() {
         Interpreter borrowing = Interpreter.create();
 
         assertThat(borrowing.display(borrowing.run("type? :add")))

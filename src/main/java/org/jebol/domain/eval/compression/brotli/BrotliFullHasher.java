@@ -21,7 +21,7 @@ final class BrotliFullHasher implements BrotliHasher {
     private final int[] positions;
     private final BrotliDictionarySearch dictionary = new BrotliDictionarySearch();
 
-    static BrotliFullHasher forQuality(int quality, boolean theInputIsLarge) {
+    static BrotliFullHasher chooseForQuality(int quality, boolean theInputIsLarge) {
         int bucketBits = theInputIsLarge || quality >= 7 ? 15 : 14;
         int blockBits = quality - 1;
         int recentDistances = quality < 7 ? 4 : quality < 9 ? 10 : 16;
@@ -43,11 +43,11 @@ final class BrotliFullHasher implements BrotliHasher {
     }
 
     @Override
-    public int howManyBytesItLooksAhead() {
+    public int countTheBytesItLooksAhead() {
         return hashesFiveBytesOfEight ? 8 : 4;
     }
 
-    private int slotFor(byte[] data, int at) {
+    private int hashTheSlotFor(byte[] data, int at) {
         if (hashesFiveBytesOfEight) {
             long eightBytes = 0;
             for (int which = 0; which < 8; which++) {
@@ -69,7 +69,7 @@ final class BrotliFullHasher implements BrotliHasher {
         if (theWholeInputAtOnce
                 && inputSize <= bucketCount >> TOO_SMALL_TO_CLEAR_WHOLESALE_SHIFT) {
             for (int at = 0; at < inputSize; at++) {
-                howManySeen[slotFor(data, at)] = 0;
+                howManySeen[hashTheSlotFor(data, at)] = 0;
             }
         } else {
             Arrays.fill(howManySeen, (char) 0);
@@ -78,7 +78,7 @@ final class BrotliFullHasher implements BrotliHasher {
 
     @Override
     public void remember(byte[] data, int mask, int at) {
-        int slot = slotFor(data, at & mask);
+        int slot = hashTheSlotFor(data, at & mask);
         int within = howManySeen[slot] & blockMask;
         positions[within + (slot << blockBits)] = at;
         howManySeen[slot]++;
@@ -88,7 +88,7 @@ final class BrotliFullHasher implements BrotliHasher {
     public void stitchToPreviousBlock(byte[] data, int mask, int howManyBytes,
             int position) {
 
-        if (howManyBytes >= howManyBytesItLooksAhead() - 1 && position >= 3) {
+        if (howManyBytes >= countTheBytesItLooksAhead() - 1 && position >= 3) {
             remember(data, mask, position - 3);
             remember(data, mask, position - 2);
             remember(data, mask, position - 1);
@@ -127,7 +127,7 @@ final class BrotliFullHasher implements BrotliHasher {
         long scoreToBeat = best.score;
         long bestScore = best.score;
         int bestLength = (int) best.length;
-        int slot = slotFor(data, here);
+        int slot = hashTheSlotFor(data, here);
         int bucketAt = slot << blockBits;
         best.length = 0;
         best.lengthCodeDelta = 0;
@@ -145,12 +145,12 @@ final class BrotliFullHasher implements BrotliHasher {
                     || data[here + bestLength] != data[previous + bestLength]) {
                 continue;
             }
-            int length = matchingBytes.counted(data, previous, here, maxLength);
+            int length = matchingBytes.count(data, previous, here, maxLength);
             if (length >= 3 || (length == 2 && which < 2)) {
                 long score = BrotliMatch.scoreUsingLastDistance(length);
                 if (bestScore < score) {
                     if (which != 0) {
-                        score -= BrotliMatch.penaltyForRecentDistance(which);
+                        score -= BrotliMatch.penaliseARecentDistance(which);
                     }
                     if (bestScore < score) {
                         bestScore = score;
@@ -180,24 +180,24 @@ final class BrotliFullHasher implements BrotliHasher {
                 break;
             }
             if (previous + bestLength > mask
-                    || !fourBytesAgree(data, here + bestLength - 3,
+                    || !doFourBytesAgree(data, here + bestLength - 3,
                             previous + bestLength - 3)) {
                 continue;
             }
             int length;
             if (hashesFiveBytesOfEight) {
-                if (!fourBytesAgree(data, here, previous)) {
+                if (!doFourBytesAgree(data, here, previous)) {
                     continue;
                 }
-                length = matchingBytes.counted(data, previous + 4, here + 4,
+                length = matchingBytes.count(data, previous + 4, here + 4,
                         maxLength - 4) + 4;
             } else {
-                length = matchingBytes.counted(data, previous, here, maxLength);
+                length = matchingBytes.count(data, previous, here, maxLength);
                 if (length < SHORTEST_MATCH_FROM_THE_TABLE) {
                     continue;
                 }
             }
-            long score = BrotliMatch.scoreFor(length, backward);
+            long score = BrotliMatch.score(length, backward);
             if (bestScore < score) {
                 bestScore = score;
                 bestLength = length;
@@ -215,7 +215,7 @@ final class BrotliFullHasher implements BrotliHasher {
         }
     }
 
-    private static boolean fourBytesAgree(byte[] data, int first, int second) {
+    private static boolean doFourBytesAgree(byte[] data, int first, int second) {
         return data[first] == data[second]
                 && data[first + 1] == data[second + 1]
                 && data[first + 2] == data[second + 2]

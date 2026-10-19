@@ -16,13 +16,13 @@ class ComposeTest {
 
     @Test
     @DisplayName("a paren at the top level is filled in")
-    void topLevelParensAreFilled() {
+    void fillsTopLevelParens() {
         assertThat(answerTo("mold compose [1 (2 + 3) 4]")).isEqualTo("\"[1 5 4]\"");
     }
 
     @Test
     @DisplayName("a paren inside a block is left alone without /deep")
-    void nestedParensAreLeftAloneByDefault() {
+    void leavesNestedParensAloneByDefault() {
         assertThat(answerTo("mold compose [[(7 - 6)]]")).isEqualTo("\"[[(7 - 6)]]\"");
     }
 
@@ -47,7 +47,7 @@ class ComposeTest {
 
     @Test
     @DisplayName("a paren answering a block splices its contents in")
-    void aBlockAnswerIsSpliced() {
+    void splicesABlockAnswer() {
         assertThat(answerTo("mold compose [a (reduce [1 2]) b]")).isEqualTo("\"[a 1 2 b]\"");
     }
 
@@ -60,31 +60,31 @@ class ComposeTest {
 
     @Test
     @DisplayName("an empty paren contributes nothing")
-    void anEmptyParenLeavesNothingBehind() {
+    void leavesNothingForAnEmptyParen() {
         assertThat(answerTo("mold compose [a () b]")).isEqualTo("\"[a b]\"");
     }
 
     @Test
     @DisplayName("a template with no parens comes back as it went in")
-    void aTemplateWithoutParensIsUnchanged() {
+    void leavesATemplateWithoutParensUnchanged() {
         assertThat(answerTo("mold compose [a b]")).isEqualTo("\"[a b]\"");
     }
 
     @Test
     @DisplayName("an empty template gives an empty block")
-    void anEmptyTemplateGivesAnEmptyBlock() {
+    void givesAnEmptyBlockForAnEmptyTemplate() {
         assertThat(answerTo("mold compose []")).isEqualTo("\"[]\"");
     }
 
     @Test
     @DisplayName("a paren that answers nothing contributes nothing")
-    void anUnsetParenLeavesNothingBehind() {
+    void leavesNothingForAnUnsetParen() {
         assertThat(answerTo("mold compose [x (print \"\") y]")).isEqualTo("\"[x y]\"");
     }
 
     @Test
     @DisplayName("the awkward parens all behave together")
-    void theAwkwardCasesTogether() {
+    void handlesTheAwkwardCasesTogether() {
         assertThat(answerTo(
                 "mold compose [a (1 + 2) b () (print \"\") ([]) 789 ([1 2 3])]"))
                 .as("empty paren, unset paren and empty block all vanish; "
@@ -94,14 +94,14 @@ class ComposeTest {
 
     @Test
     @DisplayName("/into fills a block the caller already has")
-    void intoFillsAnExistingBlock() {
+    void fillsAnExistingBlockWithInto() {
         assertThat(answerTo("a: [] compose/into [1 (1 + 1) 3] a mold head a"))
                 .isEqualTo("\"[1 2 3]\"");
     }
 
     @Test
     @DisplayName("/into puts them at the position, pushing what was there along")
-    void intoInsertsAtThePosition() {
+    void insertsAtThePositionWithInto() {
         assertThat(answerTo("b: [9] compose/into [1] b mold head b"))
                 .isEqualTo("\"[1 9]\"");
         assertThat(answerTo("c: [8 9] compose/into [1] next c mold head c"))
@@ -110,19 +110,19 @@ class ComposeTest {
 
     @Test
     @DisplayName("/into answers the position after what it put there")
-    void intoAnswersThePositionAfter() {
+    void answersThePositionAfterWithInto() {
         assertThat(answerTo("a: [] mold compose/into [1 2] a")).isEqualTo("\"[]\"");
     }
 
     @Test
     @DisplayName("/into of an empty template leaves the block alone")
-    void intoNothingIsTheDegenerateCase() {
+    void handlesIntoNothing() {
         assertThat(answerTo("b: [9] compose/into [] b mold head b")).isEqualTo("\"[9]\"");
     }
 
     @Test
     @DisplayName("/into refuses a string, which has no text for values")
-    void intoRefusesAString() {
+    void refusesAStringForInto() {
         assertThat(answerTo("e: try [compose/into [1] \"x\"] "
                 + "either error? e ['refused] ['no-error]"))
                 .isEqualTo("refused");
@@ -130,7 +130,7 @@ class ComposeTest {
 
     @Test
     @DisplayName("something that is not a block is handed straight back")
-    void aNonBlockPassesThrough() {
+    void passesANonBlockThrough() {
         assertThat(answerTo("compose 1")).isEqualTo("1");
         assertThat(answerTo("compose \"a-string\"")).isEqualTo("\"a-string\"");
         assertThat(answerTo("compose none")).isEqualTo("_");

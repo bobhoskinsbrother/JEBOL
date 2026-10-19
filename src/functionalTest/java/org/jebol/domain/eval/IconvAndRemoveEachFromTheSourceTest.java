@@ -17,7 +17,7 @@ class IconvAndRemoveEachFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String theTextOf(String source) {
+    private static String readTheTextOf(String source) {
         return answerTo(source).replace("\"", "");
     }
 
@@ -43,17 +43,17 @@ class IconvAndRemoveEachFromTheSourceTest {
         @Test
         @DisplayName("and decodes the octets that number's encoding says")
         void anumberDecodes() {
-            assertThat(theTextOf("iconv #{50F869686CE1736974} 28592"))
+            assertThat(readTheTextOf("iconv #{50F869686CE1736974} 28592"))
                     .isEqualTo("Přihlásit");
-            assertThat(theTextOf("iconv #{C5A1} 65001")).isEqualTo("š");
-            assertThat(theTextOf("iconv #{C5A1} 'CP65001"))
+            assertThat(readTheTextOf("iconv #{C5A1} 65001")).isEqualTo("š");
+            assertThat(readTheTextOf("iconv #{C5A1} 'CP65001"))
                     .as("the same table gives the CP-prefixed word spelling too")
                     .isEqualTo("š");
         }
 
         @Test
         @DisplayName("a number for an encoding the host has not got is still refused")
-        void anencodingTheHostLacks() {
+        void refusesAnEncodingTheHostLacks() {
             assertThat(answerTo("either error? e: try [iconv #{41} 20905] [e/id] ['read]"))
                     .as("Rebol's table lists a hundred and thirty-five encodings no "
                             + "JVM ships, and guessing a near one would be worse than "
@@ -74,12 +74,12 @@ class IconvAndRemoveEachFromTheSourceTest {
                             + "how a REBOL string is held, so there is nothing left "
                             + "to convert and no reason to hand back octets")
                     .isEqualTo("#(true)");
-            assertThat(theTextOf("iconv/to #{9AE96D} 1250 65001")).isEqualTo("šém");
+            assertThat(readTheTextOf("iconv/to #{9AE96D} 1250 65001")).isEqualTo("šém");
         }
 
         @Test
         @DisplayName("and any other target gives back the octets")
-        void toanythingElseGivesOctets() {
+        void givesOctetsForAnythingElse() {
             assertThat(answerTo("binary? iconv/to #{50F8} 28592 'UTF-16LE"))
                     .isEqualTo("#(true)");
             assertThat(answerTo("iconv/to #{50F8} 28592 'UTF-16LE"))
@@ -91,9 +91,9 @@ class IconvAndRemoveEachFromTheSourceTest {
         @Test
         @DisplayName("named however the caller likes")
         void thenamesMayBeWrittenFourWays() {
-            assertThat(theTextOf("iconv/to #{9AE96D} 1250 'utf8")).isEqualTo("šém");
-            assertThat(theTextOf("iconv/to #{9AE96D} {CP1250} {utf8}")).isEqualTo("šém");
-            assertThat(theTextOf("iconv/to #{9AE96D} <CP1250> <UTF-8>")).isEqualTo("šém");
+            assertThat(readTheTextOf("iconv/to #{9AE96D} 1250 'utf8")).isEqualTo("šém");
+            assertThat(readTheTextOf("iconv/to #{9AE96D} {CP1250} {utf8}")).isEqualTo("šém");
+            assertThat(readTheTextOf("iconv/to #{9AE96D} <CP1250> <UTF-8>")).isEqualTo("šém");
         }
     }
 
@@ -141,7 +141,7 @@ class IconvAndRemoveEachFromTheSourceTest {
 
         @Test
         @DisplayName("with nothing to break out of, it removes as it always did")
-        void withoutABreak() {
+        void runsToTheEndWithoutABreak() {
             assertThat(answerTo("mold remove-each n s: [1 2 3 4] [n < 3]")
                     .replace("\"", "")).isEqualTo("[3 4]");
         }

@@ -34,14 +34,14 @@ class MarkupRenderingTest {
 
         @Test
         @DisplayName("a field becomes an input")
-        void fieldBecomesAnInput() {
+        void turnAFieldIntoAnInput() {
             assertThat(render("[field \"typed\"]"))
                     .contains("<input").contains("value=\"typed\"");
         }
 
         @Test
         @DisplayName("a box becomes a div")
-        void boxBecomesADiv() {
+        void turnABoxIntoADiv() {
             assertThat(render("[box \"contents\"]"))
                     .contains("<div").contains("contents");
         }
@@ -58,7 +58,7 @@ class MarkupRenderingTest {
 
         @Test
         @DisplayName("an empty layout is still a page")
-        void anEmptyLayoutIsStillAPage() {
+        void makeAPageOfAnEmptyLayout() {
             assertThat(render("[]")).contains("<div").contains("</div>");
         }
     }
@@ -69,7 +69,7 @@ class MarkupRenderingTest {
 
         @Test
         @DisplayName("a pair becomes a width and a height")
-        void pairsBecomeSizes() {
+        void turnsPairsIntoSizes() {
             assertThat(render("[box 140x32]"))
                     .contains("width:140px").contains("height:32px");
         }
@@ -83,7 +83,7 @@ class MarkupRenderingTest {
 
         @Test
         @DisplayName("a colour word becomes its colour")
-        void colourWordsBecomeColours() {
+        void turnsColourWordsIntoColours() {
             assertThat(render("[box red]")).contains("rgb(255,0,0)");
         }
 
@@ -105,7 +105,7 @@ class MarkupRenderingTest {
 
         @Test
         @DisplayName("text from a script is escaped, not injected")
-        void scriptTextIsEscaped() {
+        void escapesScriptText() {
             String html = render("[text \"<script>alert(1)</script>\"]");
 
             assertThat(html)
@@ -129,7 +129,7 @@ class MarkupRenderingTest {
 
         @Test
         @DisplayName("the same layout renders the same markup")
-        void renderingIsDeterministic() {
+        void rendersTheSameEachTime() {
             String source = "[text \"a\" button \"b\" box 10x10 blue]";
 
             assertThat(render(source)).isEqualTo(render(source));
@@ -150,7 +150,7 @@ class MarkupRenderingTest {
 
         @Test
         @DisplayName("the smallest demo's layout renders")
-        void clockLayoutRenders() {
+        void renderTheClockLayout() {
             String html = render(
                     "[origin 0 banner 140x32 rate 1]");
 
@@ -159,7 +159,7 @@ class MarkupRenderingTest {
 
         @Test
         @DisplayName("a layout with a nested block of styling renders")
-        void nestedBlocksRender() {
+        void renderNestedBlocks() {
             String html = render(
                     "[box 100x50 effect [gradient 0x1 0.0.150 0.0.50]]");
 

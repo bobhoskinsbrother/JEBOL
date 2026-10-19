@@ -2,6 +2,9 @@ package org.jebol.adapter.web;
 
 import org.jebol.domain.host.FileInformation;
 import org.jebol.domain.host.FilePort;
+import org.jebol.domain.value.FileValue;
+import org.jebol.domain.value.NoneValue;
+import org.jebol.domain.value.Value;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -24,16 +27,16 @@ public final class WebFiles implements FilePort {
     private final Store store;
 
     public WebFiles() {
-        this(Store.memory());
+        this(Store.keepInMemory());
     }
 
     public WebFiles(Store store) {
         this.store = store;
-        Store.Tree stored = store.everything();
+        Store.Tree stored = store.listAll();
         directories.addAll(stored.directories());
         stored.files().forEach((path, contents) -> {
             files.put(path, contents.clone());
-            for (String parent = parentOf(path); !directories.contains(parent); parent = parentOf(parent)) {
+            for (String parent = parent(path); !directories.contains(parent); parent = parent(parent)) {
                 directories.add(parent);
             }
         });
@@ -51,7 +54,7 @@ public final class WebFiles implements FilePort {
     @Override
     public void write(String path, byte[] contents) {
         String target = absolute(path);
-        requireTheParentDirectory(target, path);
+        requireParentDirectory(target, path);
         store.wrote(target, contents.clone());
         files.put(target, contents.clone());
     }
@@ -59,7 +62,7 @@ public final class WebFiles implements FilePort {
     @Override
     public void writeAt(String path, long position, byte[] contents) {
         String target = absolute(path);
-        requireTheParentDirectory(target, path);
+        requireParentDirectory(target, path);
         byte[] held = files.getOrDefault(target, new byte[0]);
         int grown = (int) Math.max(held.length, position + contents.length);
         byte[] written = new byte[grown];
@@ -72,7 +75,7 @@ public final class WebFiles implements FilePort {
     @Override
     public void appendTo(String path, byte[] contents) {
         String target = absolute(path);
-        requireTheParentDirectory(target, path);
+        requireParentDirectory(target, path);
         byte[] held = files.getOrDefault(target, new byte[0]);
         byte[] grown = new byte[held.length + contents.length];
         System.arraycopy(held, 0, grown, 0, held.length);
@@ -84,7 +87,7 @@ public final class WebFiles implements FilePort {
     @Override
     public boolean exists(String path) {
         String target = absolute(path);
-        return namesADirectory(path) ? directories.contains(target) : files.containsKey(target)
+        return hasTrailingSlash(path) ? directories.contains(target) : files.containsKey(target)
                 || directories.contains(target);
     }
 
@@ -96,7 +99,7 @@ public final class WebFiles implements FilePort {
     }
 
     @Override
-    public String hostPathOf(String path) {
+    public String hostPath(String path) {
         return absolute(path);
     }
 
@@ -104,7 +107,7 @@ public final class WebFiles implements FilePort {
     public void changeDirectory(String path) {
         String target = absolute(path);
         if (!directories.contains(target)) {
-            throw new Denied("cannot-open", path + " is not a directory", directoryNameOf(target));
+            throw new Denied("cannot-open", path + " is not a directory", directory(target));
         }
         whereARelativePathCountsFromNow = target;
     }
@@ -118,20 +121,20 @@ public final class WebFiles implements FilePort {
         if (directories.contains(target)) {
             return;
         }
-        if (!andItsParents && !directories.contains(parentOf(target))) {
+        if (!andItsParents && !directories.contains(parent(target))) {
             throw new Denied("cannot-open", "cannot make a directory at " + path, path);
         }
-        for (String made = parentOf(target); !directories.contains(made); made = parentOf(made)) {
+        for (String made = parent(target); !directories.contains(made); made = parent(made)) {
             directories.add(made);
         }
         directories.add(target);
-        store.madeADirectory(target);
+        store.makeDirectory(target);
     }
 
     @Override
     public boolean delete(String path) {
         String target = absolute(path);
-        if (namesADirectory(path)) {
+        if (hasTrailingSlash(path)) {
             if (!directories.contains(target)) {
                 return false;
             }
@@ -140,7 +143,7 @@ public final class WebFiles implements FilePort {
                 throw new Denied("no-delete", "cannot delete " + path, path);
             }
             directories.remove(target);
-            store.removed(target);
+            store.remove(target);
             return true;
         }
         if (directories.contains(target)) {
@@ -149,7 +152,7 @@ public final class WebFiles implements FilePort {
         if (files.remove(target) == null) {
             return false;
         }
-        store.removed(target);
+        store.remove(target);
         return true;
     }
 
@@ -160,14 +163,14 @@ public final class WebFiles implements FilePort {
             throw new Denied("cannot-open", "cannot rename " + from);
         }
         String target = absolute(to);
-        requireTheParentDirectory(target, to);
-        store.removed(absolute(from));
+        requireParentDirectory(target, to);
+        store.remove(absolute(from));
         store.wrote(target, held.clone());
         files.put(target, held);
     }
 
     @Override
-    public List<String> namesIn(String path) {
+    public List<String> listFileNames(String path) {
         String target = withSlash(absolute(path));
         if (!target.equals("/") && !directories.contains(withoutTrailingSlash(target))) {
             throw cannotOpen(path);
@@ -193,36 +196,36 @@ public final class WebFiles implements FilePort {
     }
 
     @Override
-    public String canonicalPathOf(String path) {
+    public Value resolvedFile(String path) {
         String target = absolute(path);
         if (directories.contains(target)) {
-            return directoryNameOf(target);
+            return FileValue.of(directory(target));
         }
-        return files.containsKey(target) ? target : null;
+        return files.containsKey(target) ? FileValue.of(target) : NoneValue.none();
     }
 
     @Override
-    public String realLocationOf(String path) {
+    public String locationFor(String path) {
         String target = absolute(path);
-        return path.endsWith("/") || directories.contains(target) ? directoryNameOf(target) : target;
+        return path.endsWith("/") || directories.contains(target) ? directory(target) : target;
     }
 
     @Override
-    public Optional<FileInformation> informationAbout(String path) {
+    public Optional<FileInformation> describe(String path) {
         String target = absolute(path);
         if (directories.contains(target)) {
-            return Optional.of(FileInformation.directory(
-                    directoryNameOf(target), Optional.empty(), Optional.empty(), Optional.empty()));
+            return Optional.of(FileInformation.describeADirectory(
+                    directory(target), Optional.empty(), Optional.empty(), Optional.empty()));
         }
         byte[] held = files.get(target);
         return held == null
                 ? Optional.empty()
-                : Optional.of(FileInformation.file(target, held.length,
+                : Optional.of(FileInformation.describeAFile(target, held.length,
                         Optional.empty(), Optional.empty(), Optional.empty()));
     }
 
-    private void requireTheParentDirectory(String target, String asWritten) {
-        if (!directories.contains(parentOf(target))) {
+    private void requireParentDirectory(String target, String asWritten) {
+        if (!directories.contains(parent(target))) {
             throw cannotOpen(asWritten);
         }
     }
@@ -240,7 +243,7 @@ public final class WebFiles implements FilePort {
         return "/" + String.join("/", segments);
     }
 
-    private static void addEach(String path, Deque<String> segments) {
+    private void addEach(String path, Deque<String> segments) {
         for (String segment : path.split("/")) {
             if (segment.isEmpty() || segment.equals(".")) {
                 continue;
@@ -253,38 +256,38 @@ public final class WebFiles implements FilePort {
         }
     }
 
-    private static String parentOf(String target) {
+    private String parent(String target) {
         int lastSlash = target.lastIndexOf('/');
         return lastSlash <= 0 ? "/" : target.substring(0, lastSlash);
     }
 
-    private static String withSlash(String target) {
+    private String withSlash(String target) {
         return target.endsWith("/") ? target : target + "/";
     }
 
-    private static String withoutTrailingSlash(String target) {
+    private String withoutTrailingSlash(String target) {
         return target.length() > 1 && target.endsWith("/")
                 ? target.substring(0, target.length() - 1)
                 : target;
     }
 
-    private static String directoryNameOf(String target) {
+    private String directory(String target) {
         return target.equals("/") ? "/" : target + "/";
     }
 
-    private static boolean namesADirectory(String path) {
+    private boolean hasTrailingSlash(String path) {
         return path.endsWith("/");
     }
 
     public interface Store {
 
-        Tree everything();
+        Tree listAll();
 
         void wrote(String path, byte[] contents);
 
-        void removed(String path);
+        void remove(String path);
 
-        void madeADirectory(String path);
+        void makeDirectory(String path);
 
         record Tree(Map<String, byte[]> files, Set<String> directories) {
 
@@ -298,11 +301,11 @@ public final class WebFiles implements FilePort {
             }
         }
 
-        static Store memory() {
+        static Store keepInMemory() {
             return new Store() {
 
                 @Override
-                public Tree everything() {
+                public Tree listAll() {
                     return Tree.empty();
                 }
 
@@ -311,11 +314,11 @@ public final class WebFiles implements FilePort {
                 }
 
                 @Override
-                public void removed(String path) {
+                public void remove(String path) {
                 }
 
                 @Override
-                public void madeADirectory(String path) {
+                public void makeDirectory(String path) {
                 }
             };
         }

@@ -35,7 +35,7 @@ class WindowServiceTest {
                     Optional.empty(), Optional.empty());
         }
 
-        static Screen answering(String file) {
+        static Screen makeOneAnswering(String file) {
             return new Screen(List.of(file), Optional.of("/chosen/"),
                     Optional.of(new int[] {10, 20, 30}), Optional.of("hunter2"));
         }
@@ -80,7 +80,7 @@ class WindowServiceTest {
         }
     }
 
-    private static Interpreter withAScreen(WindowPort screen) {
+    private static Interpreter makeAnInterpreterWithAScreen(WindowPort screen) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useWindows(screen);
@@ -92,7 +92,7 @@ class WindowServiceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(Interpreter interpreter, String source) {
+    private static String readTheErrorIdFrom(Interpreter interpreter, String source) {
         return answerFrom(interpreter,
                 "e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
@@ -107,8 +107,8 @@ class WindowServiceTest {
         @Test
         @DisplayName("REQUEST-FILE/FILTER hands the name and pattern pairs to the screen")
         void filterPairsReachTheScreen() {
-            Screen screen = Screen.answering("/chosen/file.r3");
-            Interpreter interpreter = withAScreen(screen);
+            Screen screen = Screen.makeOneAnswering("/chosen/file.r3");
+            Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
 
             answerFrom(interpreter, """
                     request-file/filter [{Rebol scripts} {*.r3}]""");
@@ -119,8 +119,8 @@ class WindowServiceTest {
         @Test
         @DisplayName("filter items are formed to text, whatever they are")
         void filterItemsAreFormed() {
-            Screen screen = Screen.answering("/chosen/file.r3");
-            Interpreter interpreter = withAScreen(screen);
+            Screen screen = Screen.makeOneAnswering("/chosen/file.r3");
+            Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
 
             answerFrom(interpreter, """
                     request-file/filter [%scripts 12]""");
@@ -130,25 +130,25 @@ class WindowServiceTest {
 
         @Test
         @DisplayName("an odd number of filter items is refused before the dialog opens")
-        void anOddFilterListIsRefused() {
-            Screen screen = Screen.answering("/chosen/file.r3");
-            assertThat(errorIdFrom(withAScreen(screen), """
+        void refusesAnOddFilterList() {
+            Screen screen = Screen.makeOneAnswering("/chosen/file.r3");
+            assertThat(readTheErrorIdFrom(makeAnInterpreterWithAScreen(screen), """
                     request-file/filter [{orphaned name}]""")).isEqualTo("invalid-arg");
             assertThat(screen.filtersAsked).isEmpty();
         }
 
         @Test
         @DisplayName("a filter that is not a block is refused")
-        void aFilterOfTheWrongTypeIsRefused() {
-            assertThat(errorIdFrom(withAScreen(Screen.answering("x")), """
+        void refusesAFilterOfTheWrongType() {
+            assertThat(readTheErrorIdFrom(makeAnInterpreterWithAScreen(Screen.makeOneAnswering("x")), """
                     request-file/filter 5""")).isEqualTo("expect-arg");
         }
 
         @Test
         @DisplayName("the suggested name and the title each reach their own place")
-        void nameAndTitleStayApart() {
-            Screen screen = Screen.answering("/chosen/file.txt");
-            Interpreter interpreter = withAScreen(screen);
+        void keepsNameAndTitleApart() {
+            Screen screen = Screen.makeOneAnswering("/chosen/file.txt");
+            Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
 
             answerFrom(interpreter, """
                     request-file/file/title %start.txt {Pick a script}""");
@@ -160,8 +160,8 @@ class WindowServiceTest {
         @Test
         @DisplayName("BROWSE hands the target to the screen")
         void browseReachesTheScreen() {
-            Screen screen = Screen.answering("/chosen/file.txt");
-            Interpreter interpreter = withAScreen(screen);
+            Screen screen = Screen.makeOneAnswering("/chosen/file.txt");
+            Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
 
             answerFrom(interpreter, "browse http://example.com");
 
@@ -171,50 +171,50 @@ class WindowServiceTest {
         @Test
         @DisplayName("BROWSE takes a url, a file or none")
         void browseTakesThreeDatatypes() {
-            Screen screen = Screen.answering("x");
-            assertThat(errorIdFrom(withAScreen(screen), "browse http://a"))
+            Screen screen = Screen.makeOneAnswering("x");
+            assertThat(readTheErrorIdFrom(makeAnInterpreterWithAScreen(screen), "browse http://a"))
                     .isEqualTo("no-error");
-            assertThat(errorIdFrom(withAScreen(screen), "browse %a.txt"))
+            assertThat(readTheErrorIdFrom(makeAnInterpreterWithAScreen(screen), "browse %a.txt"))
                     .isEqualTo("no-error");
-            assertThat(errorIdFrom(withAScreen(screen), "browse none"))
+            assertThat(readTheErrorIdFrom(makeAnInterpreterWithAScreen(screen), "browse none"))
                     .isEqualTo("no-error");
-            assertThat(errorIdFrom(withAScreen(screen), "browse 1"))
+            assertThat(readTheErrorIdFrom(makeAnInterpreterWithAScreen(screen), "browse 1"))
                     .isEqualTo("expect-arg");
         }
 
         @Test
         @DisplayName("REQUEST-FILE answers one file, and a block only with /MULTI")
         void requestFileAnswersOneFileUnlessAskedForMany() {
-            Interpreter one = withAScreen(Screen.answering("/chosen/a.txt"));
+            Interpreter one = makeAnInterpreterWithAScreen(Screen.makeOneAnswering("/chosen/a.txt"));
             assertThat(answerFrom(one, "file? request-file")).isEqualTo(TRUE);
 
-            Interpreter many = withAScreen(Screen.answering("/chosen/a.txt"));
+            Interpreter many = makeAnInterpreterWithAScreen(Screen.makeOneAnswering("/chosen/a.txt"));
             assertThat(answerFrom(many, "block? request-file/multi")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("REQUEST-DIR answers a file, because a directory is one")
         void requestDirAnswersAFile() {
-            Interpreter interpreter = withAScreen(Screen.answering("x"));
+            Interpreter interpreter = makeAnInterpreterWithAScreen(Screen.makeOneAnswering("x"));
             assertThat(answerFrom(interpreter, "file? request-dir")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("REQUEST-COLOR answers a tuple")
         void requestColourAnswersATuple() {
-            Interpreter interpreter = withAScreen(Screen.answering("x"));
+            Interpreter interpreter = makeAnInterpreterWithAScreen(Screen.makeOneAnswering("x"));
             assertThat(answerFrom(interpreter, "tuple? request-color")).isEqualTo(TRUE);
-            assertThat(answerFrom(withAScreen(Screen.answering("x")),
+            assertThat(answerFrom(makeAnInterpreterWithAScreen(Screen.makeOneAnswering("x")),
                     "10.20.30 = request-color")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("REQUEST-PASSWORD answers a string, and takes nothing at all")
         void requestPasswordAnswersAString() {
-            Interpreter interpreter = withAScreen(Screen.answering("x"));
+            Interpreter interpreter = makeAnInterpreterWithAScreen(Screen.makeOneAnswering("x"));
             assertThat(answerFrom(interpreter, "string? request-password"))
                     .isEqualTo(TRUE);
-            assertThat(errorIdFrom(interpreter, "request-password/title \"q\""))
+            assertThat(readTheErrorIdFrom(interpreter, "request-password/title \"q\""))
                     .isEqualTo("no-refine");
         }
     }
@@ -225,30 +225,30 @@ class WindowServiceTest {
 
         @Test
         @DisplayName("every dialog answers none rather than raising")
-        void aDeclinedDialogAnswersNone() {
-            assertThat(answerFrom(withAScreen(Screen.decliningEverything()),
+        void answersNoneForADeclinedDialog() {
+            assertThat(answerFrom(makeAnInterpreterWithAScreen(Screen.decliningEverything()),
                     "request-file")).isEqualTo(NONE);
-            assertThat(answerFrom(withAScreen(Screen.decliningEverything()),
+            assertThat(answerFrom(makeAnInterpreterWithAScreen(Screen.decliningEverything()),
                     "request-dir")).isEqualTo(NONE);
-            assertThat(answerFrom(withAScreen(Screen.decliningEverything()),
+            assertThat(answerFrom(makeAnInterpreterWithAScreen(Screen.decliningEverything()),
                     "request-color")).isEqualTo(NONE);
-            assertThat(answerFrom(withAScreen(Screen.decliningEverything()),
+            assertThat(answerFrom(makeAnInterpreterWithAScreen(Screen.decliningEverything()),
                     "request-password")).isEqualTo(NONE);
         }
 
         @Test
         @DisplayName("and raises nothing, so no TRY is needed around it")
-        void decliningRaisesNothing() {
-            assertThat(errorIdFrom(withAScreen(Screen.decliningEverything()),
+        void raisesNothing() {
+            assertThat(readTheErrorIdFrom(makeAnInterpreterWithAScreen(Screen.decliningEverything()),
                     "request-file")).isEqualTo("no-error");
-            assertThat(errorIdFrom(withAScreen(Screen.decliningEverything()),
+            assertThat(readTheErrorIdFrom(makeAnInterpreterWithAScreen(Screen.decliningEverything()),
                     "request-password")).isEqualTo("no-error");
         }
 
         @Test
         @DisplayName("/MULTI declined answers an empty block, not none")
-        void decliningTheManyFormAnswersAnEmptyBlock() {
-            assertThat(answerFrom(withAScreen(Screen.decliningEverything()),
+        void answersAnEmptyBlockForTheManyForm() {
+            assertThat(answerFrom(makeAnInterpreterWithAScreen(Screen.decliningEverything()),
                     "mold request-file/multi")).isEqualTo("\"[]\"");
         }
     }
@@ -259,12 +259,12 @@ class WindowServiceTest {
 
         @Test
         @DisplayName("without the grant, every one of the five raises")
-        void withoutTheGrantEveryDialogRaises() {
+        void raiseForEveryDialogWithoutTheGrant() {
             Interpreter walled = Interpreter.create();
             for (String call : new String[] {
                     "browse http://a", "request-file", "request-dir",
                     "request-color", "request-password"}) {
-                assertThat(errorIdFrom(Interpreter.create(), call))
+                assertThat(readTheErrorIdFrom(Interpreter.create(), call))
                         .as("%s must raise without the windows grant", call)
                         .isEqualTo("no-service");
             }
@@ -273,11 +273,11 @@ class WindowServiceTest {
 
         @Test
         @DisplayName("granted with no screen behind it is not-present, not not-granted")
-        void grantedWithNoScreenIsNotPresent() {
+        void sayNotPresentWhenGrantedWithNoScreen() {
             Interpreter granted = Interpreter.withBounds(
                     Bounds.standard().grant(HostService.WINDOWS));
 
-            assertThat(errorIdFrom(granted, "request-file")).isEqualTo("no-service");
+            assertThat(readTheErrorIdFrom(granted, "request-file")).isEqualTo("no-service");
 
             Interpreter again = Interpreter.withBounds(
                     Bounds.standard().grant(HostService.WINDOWS));
@@ -289,12 +289,12 @@ class WindowServiceTest {
 
         @Test
         @DisplayName("the windows grant does not open anything else")
-        void oneGrantIsOneService() {
+        void grantOneServicePerGrant() {
             Interpreter interpreter = Interpreter.withBounds(
                     Bounds.standard().grant(HostService.WINDOWS));
-            interpreter.useWindows(Screen.answering("x"));
+            interpreter.useWindows(Screen.makeOneAnswering("x"));
 
-            assertThat(errorIdFrom(interpreter, "read %a.txt")).isEqualTo("no-service");
+            assertThat(readTheErrorIdFrom(interpreter, "read %a.txt")).isEqualTo("no-service");
         }
     }
 }

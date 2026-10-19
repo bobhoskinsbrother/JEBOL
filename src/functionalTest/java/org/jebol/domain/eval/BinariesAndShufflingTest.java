@@ -14,26 +14,26 @@ class BinariesAndShufflingTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("INSERT puts a binary into a binary byte by byte")
-    void aBinaryGoesInByteByByte() {
+    void putsABinaryInByteByByte() {
         assertThat(answerTo("b: #{0102} insert b #{03} mold head b"))
                 .isEqualTo("\"#{030102}\"");
     }
 
     @Test
     @DisplayName("INSERT still takes a single byte as a number")
-    void aNumberStillGoesIn() {
+    void stillPutsANumberIn() {
         assertThat(answerTo("b: #{0102} insert b 3 mold head b"))
                 .isEqualTo("\"#{030102}\"");
     }
 
     @Test
-    @DisplayName("RANDOM answers a series of the kind it was given")
+    @DisplayName("RANDOM answers a series of the type it was given")
     void randomKeepsTheDatatype() {
         assertThat(answerTo("mold reduce [type? random \"abc\" type? random #{010203} "
                 + "type? random [1 2 3]]"))
@@ -55,21 +55,21 @@ class BinariesAndShufflingTest {
 
     @Test
     @DisplayName("a protected series refuses to be shuffled")
-    void aProtectedSeriesRefusesToShuffle() {
-        assertThat(errorIdOf("s: protect \"abc\" random s")).isEqualTo("protected");
-        assertThat(errorIdOf("b: protect #{010203} random b")).isEqualTo("protected");
-        assertThat(errorIdOf("k: protect [1 2 3] random k")).isEqualTo("protected");
+    void refusesToShuffleAProtectedSeries() {
+        assertThat(readTheErrorIdOf("s: protect \"abc\" random s")).isEqualTo("protected");
+        assertThat(readTheErrorIdOf("b: protect #{010203} random b")).isEqualTo("protected");
+        assertThat(readTheErrorIdOf("k: protect [1 2 3] random k")).isEqualTo("protected");
     }
 
     @Test
     @DisplayName("a protected binary refuses an insert")
-    void aProtectedBinaryRefusesInsert() {
-        assertThat(errorIdOf("b: protect #{0102} insert b #{03}")).isEqualTo("protected");
+    void refusesInsertIntoAProtectedBinary() {
+        assertThat(readTheErrorIdOf("b: protect #{0102} insert b #{03}")).isEqualTo("protected");
     }
 
     @Test
     @DisplayName("shuffling an empty series is the degenerate case")
-    void anEmptySeriesShufflesToItself() {
+    void shufflesAnEmptySeriesToItself() {
         assertThat(answerTo("s: \"\" random s s")).isEqualTo("\"\"");
         assertThat(answerTo("mold random #{}")).isEqualTo("\"#{}\"");
     }

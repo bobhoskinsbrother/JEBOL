@@ -35,20 +35,20 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
     private static final int DNS_NAME = 2;
     private static final int IP_ADDRESS = 7;
 
-    private final Set<TrustAnchor> trusted;
+    private final Set<TrustAnchor> trustAnchors;
     private final Clock clock;
 
     public JavaCertificateAuthority() {
-        this.trusted = jdkTrustAnchors();
+        this.trustAnchors = loadTheJdkTrustAnchors();
         this.clock = Clock.systemUTC();
     }
 
-    public JavaCertificateAuthority(Set<TrustAnchor> trusted, Clock clock) {
-        if (trusted.isEmpty()) {
+    public JavaCertificateAuthority(Set<TrustAnchor> trustAnchors, Clock clock) {
+        if (trustAnchors.isEmpty()) {
             throw new IllegalArgumentException(
                     "an authority that trusts no root trusts nothing; say so with TrustingNoAuthority");
         }
-        this.trusted = Set.copyOf(trusted);
+        this.trustAnchors = Set.copyOf(trustAnchors);
         this.clock = clock;
     }
 
@@ -59,16 +59,16 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
         }
         try {
             List<X509Certificate> certificates = parse(chain);
-            if (!linksInOrder(certificates)) {
+            if (!isLinksInOrder(certificates)) {
                 return new ChainVerdict.Mistrusted(CertificateMistrust.BROKEN_CHAIN);
             }
-            return verdictOn(trimAtTrustedRoot(certificates));
+            return reachAVerdict(trimAtTrustedRoot(certificates));
         } catch (CertificateException unreadable) {
             return new ChainVerdict.Mistrusted(CertificateMistrust.BROKEN_CHAIN);
         }
     }
 
-    private boolean linksInOrder(List<X509Certificate> certificates) {
+    private boolean isLinksInOrder(List<X509Certificate> certificates) {
         for (int at = 0; at + 1 < certificates.size(); at++) {
             X500Principal issuer = certificates.get(at).getIssuerX500Principal();
             if (!issuer.equals(certificates.get(at + 1).getSubjectX500Principal())) {
@@ -78,10 +78,10 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
         return true;
     }
 
-    private ChainVerdict verdictOn(List<X509Certificate> certificates) {
+    private ChainVerdict reachAVerdict(List<X509Certificate> certificates) {
         try {
             validate(certificates);
-            return new ChainVerdict.Trusted(vouchedNames(certificates.getFirst()));
+            return new ChainVerdict.Trusted(readTheVouchedNames(certificates.getFirst()));
         } catch (CertPathValidatorException refused) {
             return new ChainVerdict.Mistrusted(mistrustFor(refused));
         } catch (GeneralSecurityException unusable) {
@@ -108,7 +108,7 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
     }
 
     private boolean isTrustedRoot(X509Certificate certificate) {
-        return trusted.stream()
+        return trustAnchors.stream()
                 .map(TrustAnchor::getTrustedCert)
                 .anyMatch(root -> root.getSubjectX500Principal().equals(certificate.getSubjectX500Principal())
                         && root.getPublicKey().equals(certificate.getPublicKey()));
@@ -116,7 +116,7 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
 
     private void validate(List<X509Certificate> certificates) throws GeneralSecurityException {
         CertPath path = CertificateFactory.getInstance("X.509").generateCertPath(certificates);
-        PKIXParameters parameters = new PKIXParameters(trusted);
+        PKIXParameters parameters = new PKIXParameters(trustAnchors);
         parameters.setRevocationEnabled(false);
         parameters.setDate(Date.from(clock.instant()));
         CertPathValidator.getInstance("PKIX").validate(path, parameters);
@@ -135,22 +135,22 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
         return CertificateMistrust.BROKEN_CHAIN;
     }
 
-    private VouchedNames vouchedNames(X509Certificate leaf) throws CertificateParsingException {
+    private VouchedNames readTheVouchedNames(X509Certificate leaf) throws CertificateParsingException {
         Collection<List<?>> alternatives = leaf.getSubjectAlternativeNames();
         if (alternatives == null) {
             return new VouchedNames(Set.of(), Set.of());
         }
-        return new VouchedNames(alternativeNames(alternatives, DNS_NAME), alternativeNames(alternatives, IP_ADDRESS));
+        return new VouchedNames(readTheAlternativeNames(alternatives, DNS_NAME), readTheAlternativeNames(alternatives, IP_ADDRESS));
     }
 
-    private Set<String> alternativeNames(Collection<List<?>> alternatives, int kind) {
+    private Set<String> readTheAlternativeNames(Collection<List<?>> alternatives, int kind) {
         return alternatives.stream()
                 .filter(alternative -> Integer.valueOf(kind).equals(alternative.getFirst()))
                 .map(alternative -> String.valueOf(alternative.get(1)))
                 .collect(Collectors.toSet());
     }
 
-    private Set<TrustAnchor> jdkTrustAnchors() {
+    private Set<TrustAnchor> loadTheJdkTrustAnchors() {
         try {
             TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
             factory.init((KeyStore) null);

@@ -26,12 +26,12 @@ public final class StringActions extends SeriesActions {
     }
 
     @Override
-    public Value poked(Value position, Value written) {
-        text.storage().set(pokedStoragePosition(position), codepointPokedFrom(written));
+    public Value poke(Value position, Value written) {
+        text.storage().set(findThePokedStoragePosition(position), readTheCodepointPokedFrom(written));
         return written;
     }
 
-    private int codepointPokedFrom(Value written) {
+    private int readTheCodepointPokedFrom(Value written) {
         return switch (written) {
             case CharacterValue letter -> letter.codepoint();
             case IntegerValue number
@@ -51,42 +51,42 @@ public final class StringActions extends SeriesActions {
 
     @Override
     Value ofTheSameKindHolding(List<Value> items) {
-        return text.holding(items.stream()
+        return text.wrap(items.stream()
                 .map(Molder::form).collect(Collectors.joining()));
     }
 
     @Override
-    public Value cleared() {
-        return clearedOneAtATime();
+    public Value clear() {
+        return clearOneAtATime();
     }
 
     @Override
     public Value append(Asked asked) {
-        contributedBy(asked).codePoints().forEach(text.storage()::append);
+        collectWhatIsContributedBy(asked).codePoints().forEach(text.storage()::append);
         return text.head();
     }
 
     @Override
     public Value insert(Asked asked) {
-        AnyStringValue held = (AnyStringValue) text.clampedToTail();
-        int[] added = contributedBy(asked).codePoints().toArray();
+        AnyStringValue held = (AnyStringValue) text.clampToTail();
+        int[] added = collectWhatIsContributedBy(asked).codePoints().toArray();
         for (int at = 0; at < added.length; at++) {
             held.storage().insertAt(held.index() + at, added[at]);
         }
         return held.atIndex(held.index() + added.length);
     }
 
-    private String contributedBy(Asked asked) {
+    private String collectWhatIsContributedBy(Asked asked) {
         Value adding = asked.duplicated();
         String written = adding instanceof BlockValue added
                 ? added.runTogether()
                 : Molder.form(adding);
         return asked.howMuchOfIt()
-                .map(count -> theFirstCodePointsOf(written, count.intValue()))
+                .map(count -> takeTheFirstCodePointsOf(written, count.intValue()))
                 .orElse(written);
     }
 
-    private String theFirstCodePointsOf(String written, int wanted) {
+    private String takeTheFirstCodePointsOf(String written, int wanted) {
         int taking = Math.min(wanted, written.codePointCount(0, written.length()));
         return written.substring(0, written.offsetByCodePoints(0, taking));
     }

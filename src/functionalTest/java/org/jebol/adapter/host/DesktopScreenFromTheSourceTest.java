@@ -20,14 +20,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DesktopScreenFromTheSourceTest {
 
-    private static GobValue gobFrom(String source) {
+    private static GobValue makeAGobFrom(String source) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.defineFreshWordsIn(source);
         return (GobValue) interpreter.run(source).value();
     }
 
-    private static BufferedImage painted(GobValue gob, int wide, int high) {
+    private static BufferedImage paint(GobValue gob, int wide, int high) {
         BufferedImage surface =
                 new BufferedImage(wide, high, BufferedImage.TYPE_INT_ARGB);
         Graphics2D onto = surface.createGraphics();
@@ -39,7 +39,7 @@ class DesktopScreenFromTheSourceTest {
         return surface;
     }
 
-    private static Color colourAt(BufferedImage surface, int across, int down) {
+    private static Color readTheColourAt(BufferedImage surface, int across, int down) {
         return new Color(surface.getRGB(across, down), true);
     }
 
@@ -49,72 +49,72 @@ class DesktopScreenFromTheSourceTest {
 
         @Test
         @DisplayName("a colour gob fills its whole area with that colour")
-        void aColourFillsItsArea() {
-            BufferedImage surface = painted(
-                    gobFrom("make gob! [size: 40x30 color: 200.100.50]"), 60, 50);
+        void fillsAColoursArea() {
+            BufferedImage surface = paint(
+                    makeAGobFrom("make gob! [size: 40x30 color: 200.100.50]"), 60, 50);
 
-            assertThat(colourAt(surface, 0, 0)).isEqualTo(new Color(200, 100, 50));
-            assertThat(colourAt(surface, 39, 29)).isEqualTo(new Color(200, 100, 50));
+            assertThat(readTheColourAt(surface, 0, 0)).isEqualTo(new Color(200, 100, 50));
+            assertThat(readTheColourAt(surface, 39, 29)).isEqualTo(new Color(200, 100, 50));
         }
 
         @Test
         @DisplayName("and nothing outside it, because a gob is clipped to its size")
-        void itPaintsNothingOutsideItself() {
-            BufferedImage surface = painted(
-                    gobFrom("make gob! [size: 40x30 color: 200.100.50]"), 60, 50);
+        void paintsNothingOutsideItself() {
+            BufferedImage surface = paint(
+                    makeAGobFrom("make gob! [size: 40x30 color: 200.100.50]"), 60, 50);
 
-            assertThat(colourAt(surface, 40, 0).getAlpha())
+            assertThat(readTheColourAt(surface, 40, 0).getAlpha())
                     .as("one pixel past the right edge")
                     .isZero();
-            assertThat(colourAt(surface, 0, 30).getAlpha())
+            assertThat(readTheColourAt(surface, 0, 30).getAlpha())
                     .as("one pixel past the bottom edge")
                     .isZero();
         }
 
         @Test
         @DisplayName("a gob of no size paints nothing at all")
-        void nothingIsPaintedForNoSize() {
-            BufferedImage surface = painted(
-                    gobFrom("make gob! [size: 0x0 color: 255.0.0]"), 10, 10);
+        void paintsNothingForNoSize() {
+            BufferedImage surface = paint(
+                    makeAGobFrom("make gob! [size: 0x0 color: 255.0.0]"), 10, 10);
 
-            assertThat(colourAt(surface, 0, 0).getAlpha()).isZero();
+            assertThat(readTheColourAt(surface, 0, 0).getAlpha()).isZero();
         }
 
         @Test
         @DisplayName("the fourth octet is opacity, running the same way Java's alpha does")
-        void theFourthOctetIsOpacity() {
-            BufferedImage opaque = painted(
-                    gobFrom("make gob! [size: 10x10 color: 255.0.0.255]"), 10, 10);
-            BufferedImage invisible = painted(
-                    gobFrom("make gob! [size: 10x10 color: 255.0.0.0]"), 10, 10);
+        void readsTheFourthOctetAsOpacity() {
+            BufferedImage opaque = paint(
+                    makeAGobFrom("make gob! [size: 10x10 color: 255.0.0.255]"), 10, 10);
+            BufferedImage invisible = paint(
+                    makeAGobFrom("make gob! [size: 10x10 color: 255.0.0.0]"), 10, 10);
 
-            assertThat(colourAt(opaque, 5, 5).getAlpha()).isEqualTo(255);
-            assertThat(colourAt(invisible, 5, 5).getAlpha()).isZero();
+            assertThat(readTheColourAt(opaque, 5, 5).getAlpha()).isEqualTo(255);
+            assertThat(readTheColourAt(invisible, 5, 5).getAlpha()).isZero();
         }
 
         @Test
         @DisplayName("and three octets mean opaque, because a fourth of 255 is filled in")
-        void threeOctetsMeanOpaque() {
-            assertThat(colourAt(painted(
-                    gobFrom("make gob! [size: 10x10 color: 0.128.0]"), 10, 10), 5, 5))
+        void paintsThreeOctetsOpaque() {
+            assertThat(readTheColourAt(paint(
+                    makeAGobFrom("make gob! [size: 10x10 color: 0.128.0]"), 10, 10), 5, 5))
                     .isEqualTo(new Color(0, 128, 0, 255));
         }
 
         @Test
         @DisplayName("a child paints over its parent, at the child's own offset")
         void achildPaintsOverItsParent() {
-            BufferedImage surface = painted(gobFrom("""
+            BufferedImage surface = paint(makeAGobFrom("""
                     parent: make gob! [size: 40x40 color: 0.0.255]
                     append parent make gob! [offset: 10x10 size: 10x10 color: 255.255.0]
                     parent"""), 40, 40);
 
-            assertThat(colourAt(surface, 5, 5))
+            assertThat(readTheColourAt(surface, 5, 5))
                     .as("outside the child, the parent shows")
                     .isEqualTo(new Color(0, 0, 255));
-            assertThat(colourAt(surface, 15, 15))
+            assertThat(readTheColourAt(surface, 15, 15))
                     .as("inside it, the child does")
                     .isEqualTo(new Color(255, 255, 0));
-            assertThat(colourAt(surface, 25, 25))
+            assertThat(readTheColourAt(surface, 25, 25))
                     .as("and past the child again, the parent")
                     .isEqualTo(new Color(0, 0, 255));
         }
@@ -122,26 +122,26 @@ class DesktopScreenFromTheSourceTest {
         @Test
         @DisplayName("and a child is clipped to its parent, however big it says it is")
         void achildIsClippedToItsParent() {
-            BufferedImage surface = painted(gobFrom("""
+            BufferedImage surface = paint(makeAGobFrom("""
                     parent: make gob! [size: 20x20 color: 0.0.255]
                     append parent make gob! [offset: 10x10 size: 100x100 color: 255.255.0]
                     parent"""), 60, 60);
 
-            assertThat(colourAt(surface, 15, 15)).isEqualTo(new Color(255, 255, 0));
-            assertThat(colourAt(surface, 25, 25).getAlpha())
+            assertThat(readTheColourAt(surface, 15, 15)).isEqualTo(new Color(255, 255, 0));
+            assertThat(readTheColourAt(surface, 25, 25).getAlpha())
                     .as("the child claimed a hundred pixels and the parent has twenty")
                     .isZero();
         }
 
         @Test
         @DisplayName("a gob's alpha makes what it paints see-through")
-        void alphaMakesItSeeThrough() {
-            BufferedImage surface = painted(gobFrom("""
+        void seesThroughWithAlpha() {
+            BufferedImage surface = paint(makeAGobFrom("""
                     parent: make gob! [size: 20x20 color: 0.0.0]
                     append parent make gob! [size: 20x20 color: 255.255.255 alpha: 128]
                     parent"""), 20, 20);
 
-            Color blended = colourAt(surface, 10, 10);
+            Color blended = readTheColourAt(surface, 10, 10);
             assertThat(blended.getRed())
                     .as("half white over black is a grey, not either of them")
                     .isBetween(100, 155);
@@ -150,11 +150,11 @@ class DesktopScreenFromTheSourceTest {
         @Test
         @DisplayName("a draw block paints nothing yet, and that is a named gap")
         void adrawBlockPaintsNothing() {
-            BufferedImage surface = painted(
-                    gobFrom("make gob! [size: 20x20 draw: [pen red line 0x0 20x20]]"),
+            BufferedImage surface = paint(
+                    makeAGobFrom("make gob! [size: 20x20 draw: [pen red line 0x0 20x20]]"),
                     20, 20);
 
-            assertThat(colourAt(surface, 10, 10).getAlpha()).isZero();
+            assertThat(readTheColourAt(surface, 10, 10).getAlpha()).isZero();
         }
     }
 
@@ -164,7 +164,7 @@ class DesktopScreenFromTheSourceTest {
 
         @Test
         @DisplayName("the suite really is headless, or the rest of this proves nothing")
-        void theSuiteIsHeadless() {
+        void runsTheSuiteHeadless() {
             assertThat(GraphicsEnvironment.isHeadless())
                     .as("build.gradle.kts sets java.awt.headless=true, and these "
                             + "tests exist to exercise the refusal path")
@@ -173,13 +173,13 @@ class DesktopScreenFromTheSourceTest {
 
         @Test
         @DisplayName("the adapter says it has no display")
-        void itHasNoDisplay() {
-            assertThat(DesktopScreen.onThisMachine().hasADisplay()).isFalse();
+        void hasNoDisplay() {
+            assertThat(DesktopScreen.onThisMachine().hasDisplay()).isFalse();
         }
 
         @Test
         @DisplayName("every measurement is zero rather than a guess")
-        void everyMeasurementIsZero() {
+        void measuresZeroEverywhere() {
             DesktopScreen screen = DesktopScreen.onThisMachine();
 
             for (ScreenMetric metric : ScreenMetric.values()) {
@@ -194,23 +194,23 @@ class DesktopScreenFromTheSourceTest {
 
         @Test
         @DisplayName("and there are no displays to count")
-        void thereAreNoDisplays() {
+        void countsNoDisplays() {
             assertThat(DesktopScreen.onThisMachine().displayCount()).isZero();
         }
 
         @Test
         @DisplayName("taking the root gob is accepted, so the library still loads")
-        void takingTheRootIsAccepted() {
+        void acceptsTakingTheRoot() {
             DesktopScreen screen = DesktopScreen.onThisMachine();
 
-            screen.takeAsTheRoot(GobValue.empty());
+            screen.takeAsRoot(GobValue.empty());
 
-            assertThat(screen.takeTheNextEvent()).isEmpty();
+            assertThat(screen.acceptNextEvent()).isEmpty();
         }
 
         @Test
         @DisplayName("but showing refuses, because that is the one that needs pixels")
-        void showingRefuses() {
+        void refusesToShow() {
             DesktopScreen screen = DesktopScreen.onThisMachine();
 
             assertThatThrownBy(() -> screen.show(GobValue.empty()))
@@ -220,7 +220,7 @@ class DesktopScreenFromTheSourceTest {
 
         @Test
         @DisplayName("and an interpreter given this screen refuses to view, by that name")
-        void anInterpreterRefusesToView() {
+        void refusesAnInterpretersView() {
             Interpreter interpreter = Interpreter.withBounds(
                     Bounds.standard().grant(HostService.WINDOWS));
             interpreter.useScreen(DesktopScreen.onThisMachine());
@@ -235,7 +235,7 @@ class DesktopScreenFromTheSourceTest {
 
         @Test
         @DisplayName("and the root gob it is given is sized at nothing")
-        void theRootIsSizedAtNothing() {
+        void sizesTheRootAtNothing() {
             Interpreter interpreter = Interpreter.withBounds(
                     Bounds.standard().grant(HostService.WINDOWS));
             interpreter.useScreen(DesktopScreen.onThisMachine());

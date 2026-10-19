@@ -16,26 +16,26 @@ class DatatypeSelfDescriptionTest {
 
     @Test
     @DisplayName("SPEC gives an object holding a title and a type")
-    void specGivesBoth() {
+    void givesBothForSpec() {
         assertThat(answerTo("mold words-of reflect integer! 'spec"))
                 .isEqualTo("\"[title type]\"");
     }
 
     @Test
     @DisplayName("TITLE gives the wording a script can compare against")
-    void titleGivesTheWording() {
+    void givesTheWordingForTitle() {
         assertThat(answerTo("reflect integer! 'title")).isEqualTo("\"64 bit integer\"");
     }
 
     @Test
     @DisplayName("TYPE gives the family the datatype belongs to")
-    void typeGivesTheFamily() {
+    void givesTheFamilyForType() {
         assertThat(answerTo("mold reflect integer! 'type")).isEqualTo("\"scalar\"");
     }
 
     @Test
     @DisplayName("the spec object's fields hold the same two answers")
-    void theSpecFieldsAgree() {
+    void agreesAcrossTheSpecFields() {
         assertThat(answerTo("sp: reflect integer! 'spec sp/type = 'scalar"))
                 .isEqualTo("#(true)");
         assertThat(answerTo(
@@ -45,7 +45,7 @@ class DatatypeSelfDescriptionTest {
 
     @Test
     @DisplayName("the families other than scalar are named too")
-    void theOtherFamiliesAreThere() {
+    void coversTheOtherFamilies() {
         assertThat(answerTo("mold reduce [reflect string! 'type reflect block! 'type "
                 + "reflect word! 'type reflect object! 'type reflect native! 'type]"))
                 .isEqualTo("\"[string block word object function]\"");
@@ -53,13 +53,13 @@ class DatatypeSelfDescriptionTest {
 
     @Test
     @DisplayName("a datatype JEBOL has not built still describes itself")
-    void anUnbuiltDatatypeStillDescribesItself() {
+    void stillDescribesAnUnbuiltDatatype() {
         assertThat(answerTo("reflect gob! 'title")).isEqualTo("\"graphical object\"");
     }
 
     @Test
     @DisplayName("a field a datatype does not describe answers none")
-    void anUnknownFieldAnswersNone() {
+    void answersNoneForAnUnknownField() {
         assertThat(answerTo("mold reflect integer! 'nonsense")).isEqualTo("\"_\"");
     }
 }

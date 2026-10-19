@@ -39,7 +39,7 @@ public sealed interface PaintInstruction {
             this(where, runs, layout, TextCaret.NONE);
         }
 
-        public static Writing plain(Placement where, String text, Colour colour) {
+        public static Writing writePlainly(Placement where, String text, Colour colour) {
             return new Writing(where,
                     List.of(new TextRun(text, colour, THE_ORDINARY_SIZE, false, false)),
                     TextLayout.STANDARD);

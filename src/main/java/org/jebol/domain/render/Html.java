@@ -33,11 +33,11 @@ public final class Html {
     }
 
     private static String renderFace(Face face, String handle) {
-        String element = Layout.elementFor(face.kind());
+        String element = Layout.findTheElementFor(face.kind());
         StringBuilder rendered = new StringBuilder("<").append(element);
 
         rendered.append(" class=\"jebol-").append(face.kind()).append('"');
-        face.styleAttribute().ifPresent(styles ->
+        face.writeTheStyleAttribute().ifPresent(styles ->
                 rendered.append(" style=\"").append(escape(styles)).append('"'));
         if (!handle.isEmpty()) {
             rendered.append(" data-jebol-action=\"").append(escape(handle)).append('"');

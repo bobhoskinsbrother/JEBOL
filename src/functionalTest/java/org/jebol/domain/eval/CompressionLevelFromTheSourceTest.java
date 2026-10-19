@@ -30,7 +30,7 @@ class CompressionLevelFromTheSourceTest {
 
         @Test
         @DisplayName("one above the top answers what the top answers")
-        void oneAboveTheTop() {
+        void takesOneAboveTheTop() {
             assertThat(answerTo(THE_METHODS_AND_THEIR_TOPS + """
                     collect [
                         repeat at length? methods [
@@ -44,7 +44,7 @@ class CompressionLevelFromTheSourceTest {
 
         @Test
         @DisplayName("and so does a level far above it")
-        void farAboveTheTop() {
+        void takesFarAboveTheTop() {
             assertThat(answerTo(THE_METHODS_AND_THEIR_TOPS + """
                     collect [
                         repeat at length? methods [
@@ -70,7 +70,7 @@ class CompressionLevelFromTheSourceTest {
 
         @Test
         @DisplayName("and so does a level far below it")
-        void farBelowZero() {
+        void takesFarBelowZero() {
             assertThat(answerTo(THE_METHODS_AND_THEIR_TOPS + """
                     collect [
                         repeat at length? methods [
@@ -83,7 +83,7 @@ class CompressionLevelFromTheSourceTest {
 
         @Test
         @DisplayName("none of the seven refuses any of those")
-        void noneOfThemRefuses() {
+        void refusesNoneOfThem() {
             assertThat(answerTo(THE_METHODS_AND_THEIR_TOPS + """
                     refused: copy []
                     foreach method methods [
@@ -103,7 +103,7 @@ class CompressionLevelFromTheSourceTest {
 
         @Test
         @DisplayName("minus one is how nobody asked is spelled")
-        void minusOneIsTheDefault() {
+        void defaultsForMinusOne() {
             assertThat(answerTo(THE_METHODS_AND_THEIR_TOPS + """
                     collect [
                         foreach method methods [
@@ -128,7 +128,7 @@ class CompressionLevelFromTheSourceTest {
 
         @Test
         @DisplayName("LZMA defaults to five of nine and Brotli to six of eleven")
-        void twoDefaultToAMiddleLevel() {
+        void defaultsTwoToAMiddleLevel() {
             assertThat(answerTo(THE_METHODS_AND_THEIR_TOPS + """
                     reduce [
                         (compress data 'lzma) = compress/level data 'lzma 5
@@ -145,7 +145,7 @@ class CompressionLevelFromTheSourceTest {
 
         @Test
         @DisplayName("for all seven methods, at eighteen levels each")
-        void everyMethodAtEveryLevel() {
+        void holdForEveryMethodAtEveryLevel() {
             assertThat(answerTo(THE_METHODS_AND_THEIR_TOPS + """
                     bad: copy []
                     foreach method methods [
@@ -173,7 +173,7 @@ class CompressionLevelFromTheSourceTest {
     @DisplayName("what the level argument may be")
     class WhatTheLevelMayBe {
 
-        private static String refusalFor(String written) {
+        private static String readTheRefusalFor(String written) {
             return answerTo(
                     "raised: try [compress/level {x} 'zlib " + written + "]\n"
                             + "either error? raised [raised/id]['accepted]");
@@ -181,25 +181,25 @@ class CompressionLevelFromTheSourceTest {
 
         @Test
         @DisplayName("a whole number, and nothing else")
-        void aWholeNumberAndNothingElse() {
-            assertThat(refusalFor("1")).isEqualTo("accepted");
-            assertThat(refusalFor("1.5")).isEqualTo("expect-arg");
-            assertThat(refusalFor("{1}")).isEqualTo("expect-arg");
-            assertThat(refusalFor("'one")).isEqualTo("expect-arg");
-            assertThat(refusalFor("[1]")).isEqualTo("expect-arg");
-            assertThat(refusalFor("#{01}")).isEqualTo("expect-arg");
-            assertThat(refusalFor("1x1")).isEqualTo("expect-arg");
+        void isAWholeNumberAndNothingElse() {
+            assertThat(readTheRefusalFor("1")).isEqualTo("accepted");
+            assertThat(readTheRefusalFor("1.5")).isEqualTo("expect-arg");
+            assertThat(readTheRefusalFor("{1}")).isEqualTo("expect-arg");
+            assertThat(readTheRefusalFor("'one")).isEqualTo("expect-arg");
+            assertThat(readTheRefusalFor("[1]")).isEqualTo("expect-arg");
+            assertThat(readTheRefusalFor("#{01}")).isEqualTo("expect-arg");
+            assertThat(readTheRefusalFor("1x1")).isEqualTo("expect-arg");
         }
 
         @Test
         @DisplayName("even a decimal that is a whole number")
         void evenAWholeDecimal() {
-            assertThat(refusalFor("1.0")).isEqualTo("expect-arg");
+            assertThat(readTheRefusalFor("1.0")).isEqualTo("expect-arg");
         }
 
         @Test
         @DisplayName("and the refinement without its argument is refused")
-        void theRefinementNeedsItsArgument() {
+        void needsTheRefinementsArgument() {
             assertThat(answerTo("""
                     raised: try [compress "x" 'zlib]
                     either error? raised [raised/id]['accepted]"""))

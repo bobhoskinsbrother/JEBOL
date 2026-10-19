@@ -29,9 +29,9 @@ public class EcdhNative extends CipherNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("key", Set.of(HandleValue.TYPE, NoneValue.TYPE)),
-                Parameter.belongingTo("init", "type", Set.of(WordValue.TYPE)),
-                Parameter.belongingTo("secret", "public-key", Set.of(BinaryValue.TYPE)));
+        return List.of(Parameter.of("key", Set.of(HandleValue.TYPE, NoneValue.TYPE)),
+                Parameter.belongTo("init", "type", Set.of(WordValue.TYPE)),
+                Parameter.belongTo("secret", "public-key", Set.of(BinaryValue.TYPE)));
     }
 
     @Override
@@ -44,10 +44,10 @@ public class EcdhNative extends CipherNative {
         return (arguments, evaluator, context, refinements) -> {
             refuseMoreThanOneThingAtOnce(refinements);
             if (refinements.contains("init")) {
-                return curveKeyMadeOn(arguments.getFirst(),
+                return makeACurveKeyOn(arguments.getFirst(),
                         ((AnyWordValue) arguments.get(1)).canonical(), evaluator);
             }
-            Optional<EllipticCurveKey> key = keyHeldBy(
+            Optional<EllipticCurveKey> key = readTheKeyHeldBy(
                     arguments.getFirst(), ECDH_HANDLE_TYPE, EllipticCurveKey.class)
                     .filter(held -> !held.released());
             if (key.isEmpty()) {
@@ -57,10 +57,10 @@ public class EcdhNative extends CipherNative {
                 return WordValue.of(key.get().curveName());
             }
             if (refinements.contains("public")) {
-                return BinaryValue.ofBytes(key.get().publishedPoint());
+                return BinaryValue.ofBytes(key.get().publishThePoint());
             }
             if (refinements.contains("secret")) {
-                return secretAgreedBetween(key.get(), ((BinaryValue) argumentOf(
+                return agreeASecretBetween(key.get(), ((BinaryValue) readTheArgumentOf(
                         "secret", 0, arguments, refinements).orElseThrow()).octetsFromHere());
             }
             return UnsetValue.unset();
@@ -73,19 +73,19 @@ public class EcdhNative extends CipherNative {
         }
     }
 
-    private Value curveKeyMadeOn(Value given, String curveName, Evaluator evaluator) {
+    private Value makeACurveKeyOn(Value given, String curveName, Evaluator evaluator) {
         Optional<EllipticCurveKey> standing =
-                keyHeldBy(given, ECDH_HANDLE_TYPE, EllipticCurveKey.class);
+                readTheKeyHeldBy(given, ECDH_HANDLE_TYPE, EllipticCurveKey.class);
         if (standing.isPresent()) {
             return standing.get().startAgainOn(curveName) ? given : NoneValue.none();
         }
         return EllipticCurveKey.onCurve(curveName)
-                .map(key -> aHandleHolding(ECDH_HANDLE_TYPE, key, evaluator))
+                .map(key -> wrapInAHandle(ECDH_HANDLE_TYPE, key, evaluator))
                 .orElseGet(NoneValue::none);
     }
 
-    private Value secretAgreedBetween(EllipticCurveKey key, byte[] peersPoint) {
-        return key.agreedWith(peersPoint)
+    private Value agreeASecretBetween(EllipticCurveKey key, byte[] peersPoint) {
+        return key.agreeWith(peersPoint)
                 .<Value>map(BinaryValue::ofBytes)
                 .orElseGet(NoneValue::none);
     }

@@ -30,26 +30,26 @@ public class CreateAction extends PortAction {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("path", Set.of(FileValue.TYPE, UrlValue.TYPE)));
+        return List.of(Parameter.of("path", Set.of(FileValue.TYPE, UrlValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            PortValue port = ports.portMadeFor(arguments.getFirst(), evaluator, context);
-            return evaluator.theRebolActorsAnswer(nativeName(), List.of(port), Set.of())
-                    .orElseGet(() -> created(port, evaluator));
+            PortValue port = ports.makeAPortFor(arguments.getFirst(), evaluator, context);
+            return evaluator.askTheRebolActor(nativeName(), List.of(port), Set.of())
+                    .orElseGet(() -> create(port, evaluator));
         };
     }
 
-    private Value created(PortValue port, Evaluator evaluator) {
+    private Value create(PortValue port, Evaluator evaluator) {
         if (!port.isAFile()) {
-            throw ports.noActionFor(nativeName());
+            throw ports.refuseWithNoActionFor(nativeName());
         }
         granted.require(HostService.FILES);
-        String path = ports.pathOf(port);
+        String path = ports.readThePathOf(port);
         ports.requireTheFilePolicy(path, evaluator, Set.of(PolicyAccess.WRITE));
-        return ports.throughTheFileSystem(() -> {
+        return ports.runThroughTheFileSystem(() -> {
             if (path.endsWith("/")) {
                 evaluator.files().makeDirectory(path, NOT_ITS_PARENTS);
             } else {

@@ -24,9 +24,9 @@ public class DoNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value", TypesetValue.ANY_TYPE.members()),
-                Parameter.belongingTo("args", "arg", Set.of()),
-                Parameter.belongingTo("next", "var", Set.of(WordValue.TYPE)));
+        return List.of(Parameter.of("value", TypesetValue.ANY_TYPE.members()),
+                Parameter.belongTo("args", "arg", Set.of()),
+                Parameter.belongTo("next", "var", Set.of(WordValue.TYPE)));
     }
 
     @Override
@@ -43,71 +43,71 @@ public class DoNative extends DefaultNative {
             }
             if (refinements.contains("next") && arguments.size() > 1
                     && arguments.getLast() instanceof AnyWordValue var) {
-                return oneStepThrough(arguments.getFirst(), var, evaluator, context);
+                return stepOnceThrough(arguments.getFirst(), var, evaluator, context);
             }
-            return evaluated(arguments.getFirst(), evaluator, context);
+            return evaluate(arguments.getFirst(), evaluator, context);
         };
     }
 
-    private Value oneStepThrough(
+    private Value stepOnceThrough(
             Value value, AnyWordValue var, Evaluator evaluator, Context context) {
 
-        Optional<AnyBlockValue> steppable = steppable(value, evaluator, context);
+        Optional<AnyBlockValue> steppable = findTheSteppableBlock(value, evaluator, context);
         if (steppable.isEmpty()) {
-            var.boundSlot().setValue(NoneValue.none());
+            var.findTheBoundSlot().setValue(NoneValue.none());
             return value;
         }
         AnyBlockValue stepping = steppable.get();
         if (stepping.atTail()) {
-            var.boundSlot().setValue(stepping);
+            var.findTheBoundSlot().setValue(stepping);
             return UnsetValue.unset();
         }
         Evaluator.Step taken = evaluator.evaluateNextOrRaise(stepping, context);
-        var.boundSlot().setValue(stepping.atIndex(taken.nextIndex()));
+        var.findTheBoundSlot().setValue(stepping.atIndex(taken.nextIndex()));
         return taken.value();
     }
 
-    private Optional<AnyBlockValue> steppable(
+    private Optional<AnyBlockValue> findTheSteppableBlock(
             Value value, Evaluator evaluator, Context context) {
 
         return switch (value) {
             case BlockValue block -> Optional.of(block);
             case ParenValue paren -> Optional.of(paren);
             case StringValue text ->
-                    Optional.of(loadedForStepping(text.text(), evaluator, context));
+                    Optional.of(loadForStepping(text.text(), evaluator, context));
             default -> Optional.empty();
         };
     }
 
-    private Value evaluated(Value value, Evaluator evaluator, Context context) {
+    private Value evaluate(Value value, Evaluator evaluator, Context context) {
         return switch (value) {
             case BlockValue block -> evaluator.evaluateOrRaise(block, context);
             case ParenValue paren -> evaluator.evaluateOrRaise(paren, context);
             case AnyStringValue address when address.isALocation() ->
                     runAsAScript(address, evaluator);
-            case AnyStringValue text -> evaluatedSource(text.text(), evaluator);
-            case BinaryValue bytes -> doneAsAScript(bytes, evaluator);
+            case AnyStringValue text -> evaluateTheSource(text.text(), evaluator);
+            case BinaryValue bytes -> doAsAScript(bytes, evaluator);
             case ErrorValue built -> throw new Raised(built.raisedAsItStands());
             case AnyWordValue word when word.looksUpItsDeclaration() ->
-                    evaluator.valueOfWordIn(word, context);
+                    evaluator.readTheValueOfWordIn(word, context);
             case LitWordValue quoted -> quoted.asWord();
             case LitPathValue quoted -> quoted.asPath();
-            case PathValue path -> evaluator.valueOfPathIn(path, context);
+            case PathValue path -> evaluator.readTheValueOfPathIn(path, context);
             case SetWordValue assigning ->
                     raiseHalfAnExpression(assigning);
             case SetPathValue assigning ->
                     raiseHalfAnExpression(assigning);
-            case TaskValue task -> handedToWhereverTheHostRunsABody(task, evaluator);
+            case TaskValue task -> handToTheHost(task, evaluator);
             default -> value;
         };
     }
 
-    private Value handedToWhereverTheHostRunsABody(TaskValue task, Evaluator evaluator) {
-        evaluator.tasks().runTheBody(Molder.mold(task.body()), evaluator.output());
+    private Value handToTheHost(TaskValue task, Evaluator evaluator) {
+        evaluator.tasks().runTheBody(Molder.mold(task.body()), evaluator.findTheOutput());
         return task;
     }
 
-    private Value evaluatedSource(String source, Evaluator evaluator) {
+    private Value evaluateTheSource(String source, Evaluator evaluator) {
         try {
             return evaluator.evaluateSource(source);
         } catch (ReturnSignal returned) {
@@ -115,15 +115,15 @@ public class DoNative extends DefaultNative {
         }
     }
 
-    private Value doneAsAScript(BinaryValue bytes, Evaluator evaluator) {
-        Value loadHeader = evaluator.systemContext().systemFunctionNamed("load-header");
+    private Value doAsAScript(BinaryValue bytes, Evaluator evaluator) {
+        Value loadHeader = evaluator.systemContext().findTheSystemFunctionNamed("load-header");
         Value read = evaluator.applyFunction(loadHeader, List.of(bytes));
         if (read instanceof AnyWordValue why) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, why.spelling());
         }
         List<Value> parts = ((AnyBlockValue) read).remaining();
         refuseAScriptThatNeedsANewerInterpreter(parts.getFirst(), evaluator);
-        return evaluatedSource(theBodyOf(parts), evaluator);
+        return evaluateTheSource(readTheBodyOf(parts), evaluator);
     }
 
     private void refuseAScriptThatNeedsANewerInterpreter(
@@ -131,15 +131,15 @@ public class DoNative extends DefaultNative {
 
         if (header instanceof ObjectValue(Context fields)
                 && fields.holds("needs")
-                && fields.slotFor("needs").value() instanceof TupleValue wanted
-                && !interpreterMeets(wanted, evaluator)) {
+                && fields.findSlotFor("needs").value() instanceof TupleValue wanted
+                && !doesTheInterpreterMeet(wanted, evaluator)) {
             throw new Raised(ErrorValue.of(SyntaxFailure.NEEDS.category(),
                     SyntaxFailure.NEEDS.errorId(),
                     SyntaxFailure.NEEDS.description()));
         }
     }
 
-    private String theBodyOf(List<Value> parts) {
+    private String readTheBodyOf(List<Value> parts) {
         return parts.get(1) instanceof BinaryValue mark
                 && parts.get(2) instanceof BinaryValue remaining
                 && mark.sharesStorageWith(remaining)
@@ -147,17 +147,17 @@ public class DoNative extends DefaultNative {
                 : ((BinaryValue) parts.get(1)).asStrictText();
     }
 
-    private boolean interpreterMeets(TupleValue wanted, Evaluator evaluator) {
-        return evaluator.systemContext().valueAt("system", "version") instanceof TupleValue own
+    private boolean doesTheInterpreterMeet(TupleValue wanted, Evaluator evaluator) {
+        return evaluator.systemContext().readValueAt("system", "version") instanceof TupleValue own
                 && !Comparison.holds(wanted, own, Comparison.Strictness.GREATER);
     }
 
     private Value runAsAScript(AnyStringValue address, Evaluator evaluator) {
-        Value doStar = evaluator.systemContext().systemFunctionNamed("do*");
+        Value doStar = evaluator.systemContext().findTheSystemFunctionNamed("do*");
         return evaluator.applyFunction(doStar, List.of(address));
     }
 
-    private AnyBlockValue loadedForStepping(
+    private AnyBlockValue loadForStepping(
             String source, Evaluator evaluator, Context context) {
 
         TranscodeResult read = evaluator.read(source);
@@ -173,7 +173,7 @@ public class DoNative extends DefaultNative {
     }
 
     private void recordTheScriptArguments(Evaluator evaluator, Value given) {
-        if (evaluator.systemContext().valueAt("system", "script")
+        if (evaluator.systemContext().readValueAt("system", "script")
                 instanceof ObjectValue(Context script)) {
             script.register("args", given);
         }

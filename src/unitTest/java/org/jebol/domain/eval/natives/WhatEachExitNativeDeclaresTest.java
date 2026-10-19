@@ -29,26 +29,26 @@ class WhatEachExitNativeDeclaresTest {
         definition.behaviour().call(List.of(arguments), null, null, refinements);
     }
 
-    Stream<Arguments> whatEachDeclares() {
+    Stream<Arguments> listWhatEachDeclares() {
         return Stream.of(
                 Arguments.of(new ReturnNative(), "return",
-                        List.of(Parameter.required("value", TypesetValue.ANY_TYPE.members())),
+                        List.of(Parameter.of("value", TypesetValue.ANY_TYPE.members())),
                         NOTHING),
                 Arguments.of(new ExitNative(), "exit", List.of(), NOTHING),
                 Arguments.of(new ThrowNative(), "throw",
-                        List.of(Parameter.required("value", TypesetValue.ANY_TYPE.members()),
-                                Parameter.belongingTo("name", "word", Set.of(WordValue.TYPE))),
+                        List.of(Parameter.of("value", TypesetValue.ANY_TYPE.members()),
+                                Parameter.belongTo("name", "word", Set.of(WordValue.TYPE))),
                         Set.of("name")),
                 Arguments.of(new CatchNative(), "catch",
-                        List.of(Parameter.required("block", Set.of(BlockValue.TYPE)),
-                                Parameter.belongingTo("name", "word",
+                        List.of(Parameter.of("block", Set.of(BlockValue.TYPE)),
+                                Parameter.belongTo("name", "word",
                                         Set.of(WordValue.TYPE, BlockValue.TYPE)),
-                                Parameter.belongingTo("with", "callback", Set.of())),
+                                Parameter.belongTo("with", "callback", Set.of())),
                         Set.of("name", "all", "quit", "with")));
     }
 
     @ParameterizedTest(name = "{1}")
-    @MethodSource("whatEachDeclares")
+    @MethodSource("listWhatEachDeclares")
     @DisplayName("each declares exactly what the inline definition declared")
     void declaresWhatItDeclaredInline(DefaultNative definition, String name,
             List<Parameter> parameters, Set<String> refinements) {
@@ -90,7 +90,7 @@ class WhatEachExitNativeDeclaresTest {
 
         @Test
         @DisplayName("a plain throw carries its value and no name")
-        void aPlainThrow() {
+        void throwsPlainly() {
             assertThatThrownBy(() -> call(new ThrowNative(), NOTHING, IntegerValue.of(3)))
                     .isInstanceOf(ThrownSignal.class)
                     .satisfies(signal -> {
@@ -101,7 +101,7 @@ class WhatEachExitNativeDeclaresTest {
 
         @Test
         @DisplayName("throw/name carries the name, in the case Rebol compares words in")
-        void aNamedThrow() {
+        void throwsWithAName() {
             assertThatThrownBy(() -> call(new ThrowNative(), Set.of("name"),
                     IntegerValue.of(5), WordValue.of("Foo")))
                     .isInstanceOf(ThrownSignal.class)
@@ -111,7 +111,7 @@ class WhatEachExitNativeDeclaresTest {
 
         @Test
         @DisplayName("throw/name with no name argument behind it throws unnamed")
-        void aNamedThrowMissingItsName() {
+        void refusesANamedThrowMissingItsName() {
             assertThatThrownBy(() -> call(new ThrowNative(), Set.of("name"), IntegerValue.of(5)))
                     .isInstanceOf(ThrownSignal.class)
                     .extracting(signal -> ((ThrownSignal) signal).name())

@@ -21,9 +21,9 @@ public class CatchNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("block", Set.of(BlockValue.TYPE)),
-                Parameter.belongingTo("name", "word", Set.of(WordValue.TYPE, BlockValue.TYPE)),
-                Parameter.belongingTo("with", "callback", Set.of()));
+        return List.of(Parameter.of("block", Set.of(BlockValue.TYPE)),
+                Parameter.belongTo("name", "word", Set.of(WordValue.TYPE, BlockValue.TYPE)),
+                Parameter.belongTo("with", "callback", Set.of()));
     }
 
     @Override
@@ -77,10 +77,10 @@ public class CatchNative extends DefaultNative {
                 && !refinements.contains("all");
         return catchesQuitOnly
                 || (!refinements.contains("all")
-                        && !answersTo(thrown, expectedNames(arguments, refinements)));
+                        && !answersTo(thrown, listTheExpectedNames(arguments, refinements)));
     }
 
-    private Set<String> expectedNames(List<Value> arguments, Set<String> refinements) {
+    private Set<String> listTheExpectedNames(List<Value> arguments, Set<String> refinements) {
         if (!refinements.contains("name") || arguments.size() <= WHERE_THE_NAMES_ARRIVE) {
             return Set.of();
         }

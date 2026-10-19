@@ -15,17 +15,17 @@ public class GrayscaleNative extends ColourNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("target", aColourOrAnImage()));
+        return List.of(Parameter.of("target", acceptAColourOrAnImage()));
     }
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> overEveryColour(arguments.getFirst(),
-                colour -> IntegerValue.of(grey(threeParts(colour))),
-                parts -> allThreeAt(grey(parts)));
+        return (arguments, evaluator, context, refinements) -> recolourEveryColour(arguments.getFirst(),
+                colour -> IntegerValue.of(measureTheGrey(readThreeParts(colour))),
+                parts -> setAllThreeTo(measureTheGrey(parts)));
     }
 
-    private int grey(int[] parts) {
+    private int measureTheGrey(int[] parts) {
         return (parts[0] + parts[1] + parts[2]) / 3;
     }
 }

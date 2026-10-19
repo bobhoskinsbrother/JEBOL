@@ -17,18 +17,18 @@ class DeleteAnswersThePortFromTheSourceTest {
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(Path root, String source) {
+    private static String readTheErrorIdFrom(Path root, String source) {
         return answerTo(root, "failure: try [" + source + "] failure/id");
     }
 
     @Test
     @DisplayName("deleting a file answers the port it opened, referring to the file")
-    void deletingAFileAnswersThePortItOpened(@TempDir Path root) {
+    void answersThePortItOpenedOnDeletingAFile(@TempDir Path root) {
         assertThat(answerTo(root, """
                 write %gone.txt "x"
                 d: delete %gone.txt
@@ -38,7 +38,7 @@ class DeleteAnswersThePortFromTheSourceTest {
 
     @Test
     @DisplayName("and deleting a directory does the same")
-    void deletingADirectoryDoesTheSame(@TempDir Path root) {
+    void answersThePortOnDeletingADirectory(@TempDir Path root) {
         assertThat(answerTo(root, """
                 make-dir %empty/
                 reduce [port? delete %empty/  exists? %empty/]"""))
@@ -48,15 +48,15 @@ class DeleteAnswersThePortFromTheSourceTest {
 
     @Test
     @DisplayName("deleting what is not there answers false, without failing")
-    void deletingWhatIsNotThereAnswersFalse(@TempDir Path root) {
+    void answersFalseOnDeletingWhatIsNotThere(@TempDir Path root) {
         assertThat(answerTo(root, "delete %never-existed.txt")).isEqualTo("#(false)");
         assertThat(answerTo(root, "delete %never-existed/")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("a directory with something in it is refused, with the path")
-    void aDirectoryWithSomethingInItIsRefused(@TempDir Path root) {
-        assertThat(errorIdFrom(root, """
+    void refusesADirectoryWithSomethingInIt(@TempDir Path root) {
+        assertThat(readTheErrorIdFrom(root, """
                 make-dir %full/
                 write %full/x.txt "y"
                 delete %full/""")).isEqualTo("no-delete");

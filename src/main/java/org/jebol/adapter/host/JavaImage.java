@@ -26,18 +26,9 @@ import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 import org.w3c.dom.Node;
 
-/**
- * The JVM's own image codec, which is the platform's as far as REBOL is
- * concerned.
- *
- * <p>Pixels cross the port as four bytes each, red first and alpha last, which
- * is how REBOL holds an image. Decision 20 in {@code docs/decisions.md} settles
- * that order; decision 21 records what ImageIO gets wrong and why parts of this
- * are written by hand.
- */
-public final class JavaImages implements ImagePort {
+public final class JavaImage implements ImagePort {
 
-    private static final Map<String, String> FORMAT_NAMES = Map.of(
+    private static final Map<String, String> IMAGE_TYPES = Map.of(
             "png", "png",
             "jpeg", "jpeg",
             "jpg", "jpeg",
@@ -71,25 +62,25 @@ public final class JavaImages implements ImagePort {
             "javax_imageio_gif_image_1.0";
 
     @Override
-    public boolean knows(String type) {
-        return FORMAT_NAMES.containsKey(type.toLowerCase(Locale.ROOT));
+    public boolean hasImageType(String type) {
+        return IMAGE_TYPES.containsKey(type.toLowerCase(Locale.ROOT));
     }
 
     @Override
-    public Pixels decoded(byte[] encoded, String type, int frame) {
+    public Pixels decode(byte[] encoded, String type, int frame) {
         try (ImageInputStream stream =
                      ImageIO.createImageInputStream(new ByteArrayInputStream(encoded))) {
             if (stream == null) {
                 return null;
             }
-            BufferedImage read = theFrameAt(stream, frame);
-            return read == null ? null : pixelsOf(read);
+            BufferedImage read = readFrameAt(stream, frame);
+            return read == null ? null : readPixels(read);
         } catch (IOException | RuntimeException unreadable) {
             return null;
         }
     }
 
-    private static BufferedImage theFrameAt(ImageInputStream stream, int frame)
+    private BufferedImage readFrameAt(ImageInputStream stream, int frame)
             throws IOException {
 
         Iterator<ImageReader> readers = ImageIO.getImageReaders(stream);
@@ -105,13 +96,13 @@ public final class JavaImages implements ImagePort {
             if (frame == 1) {
                 return reader.read(0);
             }
-            return everyEarlierFrameLaidDownFirstBecauseEachIsOnlyAPatch(reader, frame);
+            return composeEveryEarlierFrame(reader, frame);
         } finally {
             reader.dispose();
         }
     }
 
-    private static BufferedImage everyEarlierFrameLaidDownFirstBecauseEachIsOnlyAPatch(
+    private BufferedImage composeEveryEarlierFrame(
             ImageReader reader, int frame) throws IOException {
 
         BufferedImage first = reader.read(0);
@@ -124,7 +115,7 @@ public final class JavaImages implements ImagePort {
             onto.drawImage(first, 0, 0, null);
             for (int step = 1; step < frame; step++) {
                 BufferedImage patch = reader.read(step);
-                Point corner = whereItGoes(reader, step);
+                Point corner = findFrame(reader, step);
                 onto.drawImage(patch, corner.x, corner.y, null);
             }
         } finally {
@@ -133,7 +124,7 @@ public final class JavaImages implements ImagePort {
         return canvas;
     }
 
-    private static Point whereItGoes(ImageReader reader, int frame) {
+    private Point findFrame(ImageReader reader, int frame) {
         try {
             Node tree = reader.getImageMetadata(frame)
                     .getAsTree(THE_GIF_IMAGE_DESCRIPTOR_TREE);
@@ -141,8 +132,8 @@ public final class JavaImages implements ImagePort {
                     child != null; child = child.getNextSibling()) {
                 if (child.getNodeName().equals("ImageDescriptor")) {
                     return new Point(
-                            numberIn(child, "imageLeftPosition"),
-                            numberIn(child, "imageTopPosition"));
+                            readTheNumberIn(child, "imageLeftPosition"),
+                            readTheNumberIn(child, "imageTopPosition"));
                 }
             }
         } catch (IOException | RuntimeException noMetadata) {
@@ -151,12 +142,12 @@ public final class JavaImages implements ImagePort {
         return AT_THE_CORNER;
     }
 
-    private static int numberIn(Node descriptor, String attribute) {
+    private int readTheNumberIn(Node descriptor, String attribute) {
         Node held = descriptor.getAttributes().getNamedItem(attribute);
         return held == null ? 0 : Integer.parseInt(held.getNodeValue());
     }
 
-    private static Pixels pixelsOf(BufferedImage read) {
+    private Pixels readPixels(BufferedImage read) {
         int wide = read.getWidth();
         int high = read.getHeight();
         byte[] rgba = new byte[wide * high * CHANNELS_A_PIXEL];
@@ -174,42 +165,42 @@ public final class JavaImages implements ImagePort {
     }
 
     @Override
-    public byte[] encoded(Pixels image, String type) {
-        String format = FORMAT_NAMES.get(type.toLowerCase(Locale.ROOT));
+    public byte[] encode(Pixels image, String type) {
+        String format = IMAGE_TYPES.get(type.toLowerCase(Locale.ROOT));
         if (format == null) {
             return null;
         }
         if (format.equals(WRITTEN_BY_HAND)) {
-            return aBitmapOfThirtyTwoBits(image);
+            return encode32BitBitmap(image);
         }
-        BufferedImage written = bufferedFrom(image, HAVE_NO_ALPHA.contains(format));
+        BufferedImage written = bufferFrom(image, HAVE_NO_ALPHA.contains(format));
         if (STORES_AN_INDEX_INTO_A_PALETTE.contains(format)) {
             written = withAPaletteOfItsOwnColours(written);
         }
-        return theBytesWriting(written, format);
+        return writeBytes(written, format);
     }
 
-    private static byte[] aBitmapOfThirtyTwoBits(Pixels image) {
+    private byte[] encode32BitBitmap(Pixels image) {
         int pixelBytes = image.wide() * image.high() * CHANNELS_A_PIXEL;
         byte[] file = new byte[FILE_HEADER_BYTES + FIFTH_HEADER_BYTES + pixelBytes];
         file[0] = 'B';
         file[1] = 'M';
-        putFourBytes(file, 2, file.length);
-        putFourBytes(file, 10, FILE_HEADER_BYTES + FIFTH_HEADER_BYTES);
+        addFourBytes(file, 2, file.length);
+        addFourBytes(file, 10, FILE_HEADER_BYTES + FIFTH_HEADER_BYTES);
 
         int header = FILE_HEADER_BYTES;
-        putFourBytes(file, header, FIFTH_HEADER_BYTES);
-        putFourBytes(file, header + 4, image.wide());
-        putFourBytes(file, header + 8, -image.high());
-        putTwoBytes(file, header + 12, 1);
-        putTwoBytes(file, header + 14, Byte.SIZE * CHANNELS_A_PIXEL);
-        putFourBytes(file, header + 16, EACH_CHANNEL_HAS_A_MASK);
-        putFourBytes(file, header + 20, pixelBytes);
-        putFourBytes(file, header + 40, 0x00FF0000);
-        putFourBytes(file, header + 44, 0x0000FF00);
-        putFourBytes(file, header + 48, 0x000000FF);
-        putFourBytes(file, header + 52, 0xFF000000);
-        putFourBytes(file, header + 56, THE_USUAL_COLOUR_SPACE);
+        addFourBytes(file, header, FIFTH_HEADER_BYTES);
+        addFourBytes(file, header + 4, image.wide());
+        addFourBytes(file, header + 8, -image.high());
+        addTwoBytes(file, header + 12, 1);
+        addTwoBytes(file, header + 14, Byte.SIZE * CHANNELS_A_PIXEL);
+        addFourBytes(file, header + 16, EACH_CHANNEL_HAS_A_MASK);
+        addFourBytes(file, header + 20, pixelBytes);
+        addFourBytes(file, header + 40, 0x00FF0000);
+        addFourBytes(file, header + 44, 0x0000FF00);
+        addFourBytes(file, header + 48, 0x000000FF);
+        addFourBytes(file, header + 52, 0xFF000000);
+        addFourBytes(file, header + 56, THE_USUAL_COLOUR_SPACE);
 
         byte[] rgba = image.rgba();
         int writing = FILE_HEADER_BYTES + FIFTH_HEADER_BYTES;
@@ -222,19 +213,19 @@ public final class JavaImages implements ImagePort {
         return file;
     }
 
-    private static void putFourBytes(byte[] file, int at, int value) {
+    private void addFourBytes(byte[] file, int at, int value) {
         file[at] = (byte) value;
         file[at + 1] = (byte) (value >> 8);
         file[at + 2] = (byte) (value >> 16);
         file[at + 3] = (byte) (value >> 24);
     }
 
-    private static void putTwoBytes(byte[] file, int at, int value) {
+    private void addTwoBytes(byte[] file, int at, int value) {
         file[at] = (byte) value;
         file[at + 1] = (byte) (value >> 8);
     }
 
-    private static byte[] theBytesWriting(BufferedImage written, String format) {
+    private byte[] writeBytes(BufferedImage written, String format) {
         Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(format);
         if (!writers.hasNext()) {
             return null;
@@ -255,30 +246,30 @@ public final class JavaImages implements ImagePort {
         }
     }
 
-    private static void leaveTheRowsInOrderRatherThanInterlaced(ImageWriteParam asked) {
-        if (asked.canWriteProgressive()) {
-            asked.setProgressiveMode(ImageWriteParam.MODE_DISABLED);
+    private void leaveTheRowsInOrderRatherThanInterlaced(ImageWriteParam param) {
+        if (param.canWriteProgressive()) {
+            param.setProgressiveMode(ImageWriteParam.MODE_DISABLED);
         }
     }
 
-    private static BufferedImage withAPaletteOfItsOwnColours(BufferedImage picture) {
+    private BufferedImage withAPaletteOfItsOwnColours(BufferedImage picture) {
         LinkedHashSet<Integer> colours = new LinkedHashSet<>();
         for (int down = 0; down < picture.getHeight(); down++) {
             for (int across = 0; across < picture.getWidth(); across++) {
                 colours.add(picture.getRGB(across, down) | 0xFF000000);
                 if (colours.size() > PALETTE_ENTRIES) {
-                    return leftForTheWritersOwnQuantiser(picture);
+                    return leaveToTheWritersOwnQuantiser(picture);
                 }
             }
         }
-        return laidOutAgainstThePalette(picture, colours);
+        return layOutAgainstThePalette(picture, colours);
     }
 
-    private static BufferedImage leftForTheWritersOwnQuantiser(BufferedImage picture) {
+    private BufferedImage leaveToTheWritersOwnQuantiser(BufferedImage picture) {
         return picture;
     }
 
-    private static BufferedImage laidOutAgainstThePalette(
+    private BufferedImage layOutAgainstThePalette(
             BufferedImage picture, Collection<Integer> colours) {
 
         byte[] reds = new byte[colours.size()];
@@ -307,7 +298,7 @@ public final class JavaImages implements ImagePort {
         return indexed;
     }
 
-    private static BufferedImage bufferedFrom(Pixels image, boolean withoutAlpha) {
+    private BufferedImage bufferFrom(Pixels image, boolean withoutAlpha) {
         BufferedImage written = new BufferedImage(image.wide(), image.high(),
                 withoutAlpha ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB);
         byte[] rgba = image.rgba();

@@ -19,8 +19,8 @@ public class WakeUpNative extends PortWakingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("port", Set.of(PortValue.TYPE)),
-                Parameter.required("event", Set.of(EventValue.TYPE)));
+                Parameter.of("port", Set.of(PortValue.TYPE)),
+                Parameter.of("event", Set.of(EventValue.TYPE)));
     }
 
     @Override

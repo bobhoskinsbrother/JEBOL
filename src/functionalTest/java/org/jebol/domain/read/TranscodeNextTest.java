@@ -14,20 +14,20 @@ class TranscodeNextTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("asking for a value where there is none is a failure")
-    void anEmptySourceIsPastItsEnd() {
-        assertThat(errorIdOf("transcode/next \"\"")).isEqualTo("past-end");
-        assertThat(errorIdOf("transcode/one \"\"")).isEqualTo("past-end");
+    void failsOnAnEmptySource() {
+        assertThat(readTheErrorIdOf("transcode/next \"\"")).isEqualTo("past-end");
+        assertThat(readTheErrorIdOf("transcode/one \"\"")).isEqualTo("past-end");
     }
 
     @Test
     @DisplayName("a value is taken as far as it goes")
-    void theLongestReadingWins() {
+    void takesAValueAsFarAsItGoes() {
         assertThat(answerTo("(transcode/part/next \"123]\" 2) = [12 \"3]\"]"))
                 .isEqualTo("#(true)");
         assertThat(answerTo("(transcode/part/next \"123]\" 3) = [123 \"]\"]"))
@@ -36,7 +36,7 @@ class TranscodeNextTest {
 
     @Test
     @DisplayName("the whitespace after a value belongs to what follows")
-    void trailingSpaceIsGivenBack() {
+    void givesTheTrailingSpaceToWhatFollows() {
         assertThat(answerTo("(transcode/next \"1 2\") = [1 \" 2\"]")).isEqualTo("#(true)");
         assertThat(answerTo("(transcode/part/next \"1 23]\" 3) = [1 \" 23]\"]"))
                 .isEqualTo("#(true)");
@@ -44,21 +44,21 @@ class TranscodeNextTest {
 
     @Test
     @DisplayName("/PART bounds what is read, not what is left")
-    void theBoundIsOnTheReading() {
+    void boundsWhatIsReadNotWhatIsLeft() {
         assertThat(answerTo("(transcode/part/next \"123]\" 1) = [1 \"23]\"]"))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a bound past the end reads everything it can")
-    void aBoundBeyondTheSourceIsHarmless() {
+    void readsEverythingForABoundPastTheEnd() {
         assertThat(answerTo("(transcode/part/next \"123]\" 10) = [123 \"]\"]"))
                 .isEqualTo("#(true)");
     }
 
     @Test
-    @DisplayName("what is left comes back as the kind that went in")
-    void theRemainderKeepsItsType() {
+    @DisplayName("what is left comes back as the type that went in")
+    void keepsTheKindOfTheRemainder() {
         assertThat(answerTo(
                 "(transcode/next to binary! \"1 + 1\") = reduce [1 to binary! \" + 1\"]"))
                 .isEqualTo("#(true)");
@@ -69,7 +69,7 @@ class TranscodeNextTest {
 
     @Test
     @DisplayName("reading a whole source is unaffected")
-    void theOrdinaryCallStillWorks() {
+    void leavesReadingAWholeSourceAlone() {
         assertThat(answerTo("(transcode \"1 2\") = [1 2]")).isEqualTo("#(true)");
         assertThat(answerTo("(transcode/one \"1 2\") = 1")).isEqualTo("#(true)");
     }

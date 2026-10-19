@@ -16,7 +16,7 @@ class RefusingADecimalNamesTheTypeAndTheValueFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String refusalOf(String source) {
+    private static String readTheRefusalOf(String source) {
         return answerTo("e: try [" + source + "] "
                 + "reduce [e/id mold e/arg1 e/arg2]");
     }
@@ -29,8 +29,8 @@ class RefusingADecimalNamesTheTypeAndTheValueFromTheSourceTest {
         "'[]'         | []",
         "'1x1'        | 1x1"})
     @DisplayName("arg1 is the datatype and arg2 is what was offered")
-    void bothAreNamed(String written, String expectedArgTwo) {
-        assertThat(refusalOf("to decimal! " + written))
+    void namesBoth(String written, String expectedArgTwo) {
+        assertThat(readTheRefusalOf("to decimal! " + written))
                 .isEqualTo("[bad-make-arg \"#(decimal!)\" " + expectedArgTwo + "]");
     }
 

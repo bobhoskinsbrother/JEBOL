@@ -5,5 +5,6 @@ import org.jebol.domain.value.Value;
 @FunctionalInterface
 public interface CommandBehaviour {
 
-    Value answer(CommandCall call);
+    Value answer(Command call);
+
 }

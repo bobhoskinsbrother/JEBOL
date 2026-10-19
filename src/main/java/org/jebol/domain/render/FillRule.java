@@ -19,7 +19,7 @@ public enum FillRule {
     }
 
     /** The one a word names, or empty when no word names one. */
-    public static Optional<FillRule> named(String canonical) {
+    public static Optional<FillRule> findTheRuleNamed(String canonical) {
         for (FillRule each : values()) {
             if (each.spelling().equals(canonical)) {
                 return Optional.of(each);

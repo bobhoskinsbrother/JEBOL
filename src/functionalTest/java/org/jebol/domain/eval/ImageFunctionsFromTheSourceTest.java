@@ -23,7 +23,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("a half-transparent red becomes a half red")
-        void aHalfTransparentRed() {
+        void halvesAHalfTransparentRed() {
             assertThat(answerTo("""
                     i: make image! 4x4
                     i/1: 255.0.0.128
@@ -33,7 +33,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("a fully opaque pixel is left exactly as it was")
-        void anOpaquePixelIsUntouched() {
+        void leavesAnOpaquePixelUntouched() {
             assertThat(answerTo("""
                     i: make image! 2x2
                     i/1: 200.100.50.255
@@ -43,7 +43,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("a wholly transparent pixel loses its colour altogether")
-        void aTransparentPixelGoesBlack() {
+        void blackensATransparentPixel() {
             assertThat(answerTo("""
                     i: make image! 2x2
                     i/1: 255.255.255.0
@@ -53,7 +53,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("and it answers the image it was given, not a copy")
-        void itAnswersTheSameValue() {
+        void answersTheSameValue() {
             assertThat(answerTo("i: make image! 2x2  same? i premultiply i"))
                     .isEqualTo(TRUE);
         }
@@ -65,13 +65,13 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("answers the image it was given")
-        void itAnswersTheSameValue() {
+        void answersTheSameValue() {
             assertThat(answerTo("i: make image! 4x4  same? i blur i 2")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a radius of nothing or less leaves the image alone")
-        void aRadiusOfNoneDoesNothing() {
+        void doesNothingForARadiusOfNone() {
             assertThat(answerTo("""
                     i: make image! 2x2
                     i/1: 255.0.0.255
@@ -86,7 +86,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("and a real radius spreads one bright pixel into its neighbour")
-        void aRealRadiusSpreadsColour() {
+        void spreadsColourForARealRadius() {
             assertThat(answerTo("""
                     i: make image! 4x4
                     repeat n 16 [poke i n 0.0.0.255]
@@ -95,7 +95,7 @@ class ImageFunctionsFromTheSourceTest {
                     (mold i/2) <> "0.0.0.255\"""")).isEqualTo(TRUE);
         }
 
-        private static String aSpotBlurred(int wide, int high, String radius) {
+        private static String blurASpot(int wide, int high, String radius) {
             return answerTo("""
                     i: make image! [%dx%d 0.0.0]
                     i/1: 255.255.255
@@ -105,8 +105,8 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("a spot spreads by the shape of three box blurs, to the byte")
-        void aSpotSpreadsByTheShapeOfThreeBoxBlurs() {
-            assertThat(aSpotBlurred(4, 4, "1")).isEqualTo("""
+        void spreadsASpotByTheShapeOfThreeBoxBlurs() {
+            assertThat(blurASpot(4, 4, "1")).isEqualTo("""
                     {717171FF383838FF000000FF000000FF\
                     383838FF1C1C1CFF000000FF000000FF\
                     000000FF000000FF000000FF000000FF\
@@ -115,8 +115,8 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("and a wider radius spreads it further")
-        void aWiderRadiusSpreadsItFurther() {
-            assertThat(aSpotBlurred(5, 5, "2")).isEqualTo("""
+        void spreadsFurtherForAWiderRadius() {
+            assertThat(blurASpot(5, 5, "2")).isEqualTo("""
                     {2C2C2CFF202020FF141414FF090909FF020202FF\
                     202020FF171717FF0F0F0FFF060606FF010101FF\
                     151515FF0F0F0FFF090909FF040404FF000000FF\
@@ -126,32 +126,32 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("a radius wider than the picture comes down to half its shorter side")
-        void aRadiusWiderThanThePictureComesDown() {
-            String atTheLimit = aSpotBlurred(4, 4, "2");
+        void bringsDownARadiusWiderThanThePicture() {
+            String atTheLimit = blurASpot(4, 4, "2");
             assertThat(atTheLimit).isEqualTo("""
                     {2C2C2CFF202020FF1B1B1BFF0F0F0FFF\
                     202020FF171717FF131313F40A0A0AF4\
                     151515F40F0F0FCC0C0C0CC1060606C1\
                     090909F4060606CC040404B7020202B7}""");
-            assertThat(aSpotBlurred(4, 4, "5")).isEqualTo(atTheLimit);
-            assertThat(aSpotBlurred(4, 4, "100000")).isEqualTo(atTheLimit);
+            assertThat(blurASpot(4, 4, "5")).isEqualTo(atTheLimit);
+            assertThat(blurASpot(4, 4, "100000")).isEqualTo(atTheLimit);
         }
 
         @Test
         @DisplayName("a picture too small to blur comes back untouched")
-        void aPictureTooSmallToBlurComesBackUntouched() {
-            assertThat(aSpotBlurred(1, 1, "1")).isEqualTo("\"FFFFFFFF\"");
-            assertThat(aSpotBlurred(3, 1, "1")).isEqualTo("""
+        void leavesAPictureTooSmallToBlurUntouched() {
+            assertThat(blurASpot(1, 1, "1")).isEqualTo("\"FFFFFFFF\"");
+            assertThat(blurASpot(3, 1, "1")).isEqualTo("""
                     "FFFFFFFF000000FF000000FF\"""");
-            assertThat(aSpotBlurred(1, 3, "1")).isEqualTo("""
+            assertThat(blurASpot(1, 3, "1")).isEqualTo("""
                     "FFFFFFFF000000FF000000FF\"""");
-            assertThat(aSpotBlurred(3, 1, "100000")).isEqualTo("""
+            assertThat(blurASpot(3, 1, "100000")).isEqualTo("""
                     "FFFFFFFF000000FF000000FF\"""");
         }
 
         @Test
         @DisplayName("and a picture with no pixels is left alone rather than refused")
-        void aPictureWithNoPixelsIsLeftAlone() {
+        void leavesAPictureWithNoPixelsAlone() {
             assertThat(answerTo("""
                     i: make image! 0x0
                     blur i 1
@@ -161,14 +161,14 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("the smallest picture there is anything to do on")
-        void theSmallestPictureThereIsAnythingToDoOn() {
-            assertThat(aSpotBlurred(2, 2, "1"))
+        void blursTheSmallestPictureThereIsAnythingToDoOn() {
+            assertThat(blurASpot(2, 2, "1"))
                     .isEqualTo("\"717171FF383838E2383838E21C1C1C8D\"");
         }
 
         @Test
         @DisplayName("and alpha is blurred with the colour, not carried past it")
-        void alphaIsBlurredWithTheColour() {
+        void blursAlphaWithTheColour() {
             assertThat(answerTo("""
                     i: make image! [3x3 0.0.0]
                     i/5: 10.20.30.255
@@ -186,28 +186,28 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("a pair is the size to make")
-        void aPairIsTheSize() {
+        void takesAPairAsTheSize() {
             assertThat(answerTo("r: resize (make image! 4x4) 2x2  mold r/size"))
                     .isEqualTo("\"2x2\"");
         }
 
         @Test
         @DisplayName("a whole number is a width, and the height follows to keep the shape")
-        void aWholeNumberIsAWidth() {
+        void takesAWholeNumberAsAWidth() {
             assertThat(answerTo("r: resize (make image! 8x4) 4  mold r/size"))
                     .isEqualTo("\"4x2\"");
         }
 
         @Test
         @DisplayName("a percentage is a proportion of what it was")
-        void aPercentageIsAProportion() {
+        void takesAPercentageAsAProportion() {
             assertThat(answerTo("r: resize (make image! 4x4) 50%  mold r/size"))
                     .isEqualTo("\"2x2\"");
         }
 
         @Test
         @DisplayName("and it is a new image, so the original is left as it was")
-        void theOriginalIsUntouched() {
+        void leavesTheOriginalUntouched() {
             assertThat(answerTo("""
                     i: make image! 4x4
                     r: resize i 2x2
@@ -216,14 +216,14 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("a size of nothing is refused rather than making an empty image")
-        void aZeroSizeIsRefused() {
+        void refusesAZeroSize() {
             assertThat(answerTo("""
                     e: try [resize (make image! 4x4) 0x0] e/id""")).isEqualTo("invalid-arg");
         }
 
         @Test
         @DisplayName("but one side at nought is taken from the shape instead")
-        void oneSideAtNoughtIsTakenFromTheShape() {
+        void takesOneSideAtNoughtFromTheShape() {
             assertThat(answerTo("r: resize (make image! 10x4) 5x0  mold r/size"))
                     .isEqualTo("\"5x2\"");
             assertThat(answerTo("r: resize (make image! 10x4) 0x5  mold r/size"))
@@ -234,7 +234,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("a width that leaves no height at all is refused")
-        void aWidthThatLeavesNoHeightIsRefused() {
+        void refusesAWidthThatLeavesNoHeight() {
             assertThat(answerTo("""
                     e: try [resize (make image! 10x1) 3] e/id""")).isEqualTo("no-create");
             assertThat(answerTo("""
@@ -245,7 +245,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("and a filter it has never heard of is refused by name")
-        void aFilterItHasNeverHeardOfIsRefused() {
+        void refusesAFilterItHasNeverHeardOf() {
             assertThat(answerTo("""
                     e: try [resize/filter (make image! 4x4) 2x2 'nonsense]
                     reduce [e/id  word? e/arg1  e/arg1]"""))
@@ -260,7 +260,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("the catalogue names the fifteen it can be asked for")
-        void theCatalogueNamesTheFifteen() {
+        void knowsTheFifteenFiltersInTheCatalogue() {
             assertThat(answerTo("length? system/catalog/filters")).isEqualTo("15");
             assertThat(answerTo("""
                     reduce [
@@ -277,21 +277,21 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("two images the same are nought per cent apart")
-        void theSameIsNought() {
+        void isNoughtForTheSame() {
             assertThat(answerTo("image-diff (make image! 2x2) (make image! 2x2)"))
                     .isEqualTo("0%");
         }
 
         @Test
         @DisplayName("but comparing no pixels at all is not a number")
-        void comparingNoPixelsAtAllIsNotANumber() {
+        void isNotANumberForNoPixelsAtAll() {
             assertThat(answerTo("image-diff (make image! 0x0) (make image! 0x0)"))
                     .isEqualTo("1.#NaN");
         }
 
         @Test
         @DisplayName("black against white is exactly a hundred, thanks to the rounding")
-        void blackAgainstWhiteIsAHundred() {
+        void isAHundredForBlackAgainstWhite() {
             assertThat(answerTo("""
                     a: make image! 2x2
                     c: make image! 2x2
@@ -301,7 +301,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("alpha takes no part, so transparency alone is no difference at all")
-        void alphaIsNotCounted() {
+        void leavesAlphaUncounted() {
             assertThat(answerTo("""
                     a: make image! 2x2
                     c: make image! 2x2
@@ -311,7 +311,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("and the weighting is the redmean one, to the last digit")
-        void theWeightingIsRedmean() {
+        void weightsByRedmean() {
             assertThat(answerTo("""
                     a: make image! 2x2
                     c: make image! 2x2
@@ -321,7 +321,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("where the sizes differ only the overlap counts")
-        void onlyTheOverlapCounts() {
+        void countsOnlyTheOverlap() {
             assertThat(answerTo("""
                     image-diff (make image! 4x4) (make image! 2x2)""")).isEqualTo("0%");
         }
@@ -338,12 +338,12 @@ class ImageFunctionsFromTheSourceTest {
                 i1/2: 255.255.255
                 """;
 
-        private static String comparing(String refinement) {
+        private static String compare(String refinement) {
             return answerTo(A_HALF_BLACK_PAIR
                     + "round/to image-diff/part i1 i2 " + refinement + " 1%");
         }
 
-        private static String refusing(String refinement) {
+        private static String refuse(String refinement) {
             return answerTo(A_HALF_BLACK_PAIR
                     + "e: try [image-diff/part i1 i2 " + refinement + "]"
                     + " either error? e [e/id] ['no-error]");
@@ -351,62 +351,62 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("the corner is counted from nought")
-        void theCornerIsCountedFromNought() {
-            assertThat(comparing("0x0 1x1")).isEqualTo("0%");
-            assertThat(comparing("1x0 1x1")).isEqualTo("0%");
-            assertThat(comparing("0x1 1x1")).isEqualTo("100%");
-            assertThat(comparing("1x1 1x1")).isEqualTo("100%");
+        void countsTheCornerFromNought() {
+            assertThat(compare("0x0 1x1")).isEqualTo("0%");
+            assertThat(compare("1x0 1x1")).isEqualTo("0%");
+            assertThat(compare("0x1 1x1")).isEqualTo("100%");
+            assertThat(compare("1x1 1x1")).isEqualTo("100%");
         }
 
         @Test
         @DisplayName("and the size says how far the rectangle reaches")
-        void theSizeSaysHowFarItReaches() {
-            assertThat(comparing("0x0 2x1")).isEqualTo("0%");
-            assertThat(comparing("0x1 2x1")).isEqualTo("100%");
-            assertThat(comparing("0x0 1x2")).isEqualTo("50%");
-            assertThat(comparing("0x0 2x2")).isEqualTo("50%");
+        void reachesAsFarAsTheSizeSays() {
+            assertThat(compare("0x0 2x1")).isEqualTo("0%");
+            assertThat(compare("0x1 2x1")).isEqualTo("100%");
+            assertThat(compare("0x0 1x2")).isEqualTo("50%");
+            assertThat(compare("0x0 2x2")).isEqualTo("50%");
         }
 
         @Test
         @DisplayName("a negative size reaches back from the corner")
-        void aNegativeSizeReachesBack() {
-            assertThat(comparing("2x2 -1x-2")).isEqualTo("50%");
-            assertThat(comparing("1x0 1x2")).isEqualTo("50%");
-            assertThat(comparing("1x2 1x-1")).isEqualTo("100%");
+        void reachesBackForANegativeSize() {
+            assertThat(compare("2x2 -1x-2")).isEqualTo("50%");
+            assertThat(compare("1x0 1x2")).isEqualTo("50%");
+            assertThat(compare("1x2 1x-1")).isEqualTo("100%");
         }
 
         @Test
         @DisplayName("and a negative corner is brought back to nought, taking the size with it")
-        void aNegativeCornerIsBroughtBack() {
-            assertThat(comparing("-1x0 2x2")).isEqualTo("50%");
+        void bringsBackANegativeCorner() {
+            assertThat(compare("-1x0 2x2")).isEqualTo("50%");
         }
 
         @Test
         @DisplayName("a rectangle with no area is refused")
-        void aRectangleWithNoAreaIsRefused() {
-            assertThat(refusing("0x0 0x0")).isEqualTo("invalid-data");
-            assertThat(refusing("0x0 1x0")).isEqualTo("invalid-data");
-            assertThat(refusing("0x0 0x2")).isEqualTo("invalid-data");
+        void refusesARectangleWithNoArea() {
+            assertThat(refuse("0x0 0x0")).isEqualTo("invalid-data");
+            assertThat(refuse("0x0 1x0")).isEqualTo("invalid-data");
+            assertThat(refuse("0x0 0x2")).isEqualTo("invalid-data");
         }
 
         @Test
         @DisplayName("and so is a corner outside the picture")
-        void aCornerOutsideThePictureIsRefused() {
-            assertThat(refusing("2x0 1x1")).isEqualTo("invalid-data");
-            assertThat(refusing("0x2 1x1")).isEqualTo("invalid-data");
-            assertThat(refusing("3x0 1x2")).isEqualTo("invalid-data");
-            assertThat(refusing("0x2 1x2")).isEqualTo("invalid-data");
+        void refusesACornerOutsideThePicture() {
+            assertThat(refuse("2x0 1x1")).isEqualTo("invalid-data");
+            assertThat(refuse("0x2 1x1")).isEqualTo("invalid-data");
+            assertThat(refuse("3x0 1x2")).isEqualTo("invalid-data");
+            assertThat(refuse("0x2 1x2")).isEqualTo("invalid-data");
         }
 
         @Test
         @DisplayName("one column inside the edge still works")
-        void oneInsideTheEdgeStillWorks() {
-            assertThat(comparing("1x1 1x1")).isEqualTo("100%");
+        void acceptsACornerOneInsideTheEdge() {
+            assertThat(compare("1x1 1x1")).isEqualTo("100%");
         }
 
         @Test
         @DisplayName("the pair that was wrong is the one named in the error")
-        void theWrongPairIsNamedInTheError() {
+        void namesTheWrongPairInTheError() {
             assertThat(answerTo(A_HALF_BLACK_PAIR
                     + "e: try [image-diff/part i1 i2 0x0 0x2] mold e/arg1"))
                     .isEqualTo("\"0x2\"");
@@ -417,7 +417,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("the corner is measured against the larger of the two")
-        void theCornerIsMeasuredAgainstTheLarger() {
+        void measuresTheCornerAgainstTheLarger() {
             assertThat(answerTo(A_HALF_BLACK_PAIR
                     + "i3: make image! [1x1 0.0.0]\n"
                     + "round/to image-diff/part i1 i3 0x0 1x1 1%")).isEqualTo("100%");
@@ -425,10 +425,10 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("and a rectangle reaching past the edge compares nothing at all")
-        void aRectanglePastTheEdgeComparesNothing() {
-            assertThat(comparing("0x0 1x3")).isEqualTo("0%");
-            assertThat(comparing("0x0 3x1")).isEqualTo("0%");
-            assertThat(comparing("0x1 1x3")).isEqualTo("0%");
+        void comparesNothingPastTheEdge() {
+            assertThat(compare("0x0 1x3")).isEqualTo("0%");
+            assertThat(compare("0x0 3x1")).isEqualTo("0%");
+            assertThat(compare("0x1 1x3")).isEqualTo("0%");
         }
     }
 
@@ -438,21 +438,21 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("/LOAD is feature-na before it is a missing file")
-        void loadingIsRefused() {
+        void refusesLoading() {
             assertThat(answerTo("""
                     e: try [image/load %picture.png] e/id""")).isEqualTo("feature-na");
         }
 
         @Test
         @DisplayName("and /SAVE before it is a bad argument")
-        void savingIsRefused() {
+        void refusesSaving() {
             assertThat(answerTo("""
                     e: try [image/save none none] e/id""")).isEqualTo("feature-na");
         }
 
         @Test
         @DisplayName("asked for nothing it answers nothing")
-        void noRefinementAnswersUnset() {
+        void answersUnsetWithoutARefinement() {
             assertThat(answerTo("unset? image")).isEqualTo(TRUE);
         }
     }
@@ -463,7 +463,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("PREMULTIPLY changes the pixels before the position too")
-        void premultiplyIgnoresThePosition() {
+        void ignoresThePositionForPremultiply() {
             assertThat(answerTo("""
                     i: make image! 2x2
                     i/1: 255.0.0.128
@@ -473,7 +473,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("and IMAGE-DIFF compares from the first pixel of each")
-        void imageDiffIgnoresThePosition() {
+        void ignoresThePositionForImageDiff() {
             assertThat(answerTo("""
                     a: make image! 2x2
                     c: make image! 2x2
@@ -482,7 +482,7 @@ class ImageFunctionsFromTheSourceTest {
 
         @Test
         @DisplayName("and the spare pixel of a partly-filled row is past all of them")
-        void theSparePixelOfAPartlyFilledRowIsPastAllOfThem() {
+        void putsTheSparePixelOfAPartlyFilledRowPastAllOfThem() {
             assertThat(answerTo("""
                     i: make image! [2x1 200.100.50]
                     append i 200.100.50

@@ -8,22 +8,22 @@ final class Union implements SetOperation {
     }
 
     @Override
-    public boolean theFirstSetKeeps(boolean inTheirs) {
+    public boolean keepsFromTheFirstSet(boolean inTheirs) {
         return true;
     }
 
     @Override
-    public boolean theSecondSetContributes() {
+    public boolean takesFromTheSecondSet() {
         return true;
     }
 
     @Override
-    public boolean theSecondSetKeeps(boolean inOurs) {
+    public boolean keepsFromTheSecondSet(boolean inOurs) {
         return true;
     }
 
     @Override
-    public int combinedBits(int mine, int yours) {
+    public int combineTheBits(int mine, int yours) {
         return mine | yours;
     }
 }

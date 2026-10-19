@@ -17,7 +17,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-final class OneCommandCall implements CommandCall {
+final class SingleCommand implements Command {
 
     private final Extension extension;
 
@@ -33,8 +33,8 @@ final class OneCommandCall implements CommandCall {
 
     private Optional<RuntimeException> escaped = Optional.empty();
 
-    OneCommandCall(Extension extension, List<Value> arguments, Set<String> refinements,
-            Evaluator evaluator, Context context, AtomicInteger handlesMade) {
+    SingleCommand(Extension extension, List<Value> arguments, Set<String> refinements,
+                  Evaluator evaluator, Context context, AtomicInteger handlesMade) {
         this.extension = extension;
         this.arguments = List.copyOf(arguments);
         this.refinements = Set.copyOf(refinements);
@@ -54,7 +54,7 @@ final class OneCommandCall implements CommandCall {
     }
 
     @Override
-    public Value evaluated(AnyBlockValue block) {
+    public Value evaluate(AnyBlockValue block) {
         try {
             return evaluator.evaluateOrRaise(block, context);
         } catch (RuntimeException fromTheScript) {
@@ -63,22 +63,22 @@ final class OneCommandCall implements CommandCall {
         }
     }
 
-    boolean escapedFromTheScript(RuntimeException failed) {
+    boolean escapesFromTheScript(RuntimeException failed) {
         return escaped.filter(failed::equals).isPresent();
     }
 
     @Override
-    public HandleValue handleOf(String kind, Object held) {
-        if (theKindNamed(kind).isEmpty()) {
-            throw new IllegalArgumentException(extension.name() + " declares no handle kind called " + kind);
+    public HandleValue makeHandle(String type, Object held) {
+        if (findTheTypeNamed(type).isEmpty()) {
+            throw new IllegalArgumentException(extension.name() + " declares no handle type called " + type);
         }
-        return HandleValue.context(kind, handlesMade.incrementAndGet(), JavaObjectValue.of(held));
+        return HandleValue.wrapAContext(type, handlesMade.incrementAndGet(), JavaObjectValue.of(held));
     }
 
     @Override
-    public <T> T heldBy(Value handle, Class<T> type) {
+    public <T> T unwrap(Value handle, Class<T> type) {
         if (handle instanceof HandleValue ours
-                && theKindNamed(ours.typeName()).isPresent()
+                && findTheTypeNamed(ours.typeName()).isPresent()
                 && ours.payload() instanceof JavaObjectValue carried
                 && carried.held().filter(type::isInstance).isPresent()) {
             return type.cast(carried.held().get());
@@ -86,17 +86,17 @@ final class OneCommandCall implements CommandCall {
         throw Raised.of(EvaluationFailure.INVALID_HANDLE, handle);
     }
 
-    private Optional<HandleKind> theKindNamed(String kind) {
-        return extension.handleKinds().stream().filter(declared -> declared.name().equals(kind)).findFirst();
+    private Optional<HandleType> findTheTypeNamed(String kind) {
+        return extension.handleTypes().stream().filter(declared -> declared.name().equals(kind)).findFirst();
     }
 
     @Override
     public Raised failure(ErrorCategory category, String id, Value... about) {
         return new Raised(switch (about.length) {
             case 0 -> ErrorValue.of(category, id, id);
-            case 1 -> ErrorValue.about(category, id, id, about[0]);
-            case 2 -> ErrorValue.about(category, id, id, about[0], about[1]);
-            default -> ErrorValue.about(category, id, id, about[0], about[1], about[2]);
+            case 1 -> ErrorValue.of(category, id, id, about[0]);
+            case 2 -> ErrorValue.of(category, id, id, about[0], about[1]);
+            default -> ErrorValue.of(category, id, id, about[0], about[1], about[2]);
         });
     }
 

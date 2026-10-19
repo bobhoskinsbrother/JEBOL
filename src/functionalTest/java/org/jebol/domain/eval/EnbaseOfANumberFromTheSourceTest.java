@@ -16,7 +16,7 @@ class EnbaseOfANumberFromTheSourceTest {
 
     @Test
     @DisplayName("the leading nought bytes come off, and one byte is always left")
-    void theLeadingNoughtsComeOff() {
+    void dropsTheLeadingNoughts() {
         assertThat(answerTo("""
                 collect [
                     foreach n [0 1 255 256 65535 65536 16777216][
@@ -28,14 +28,14 @@ class EnbaseOfANumberFromTheSourceTest {
 
     @Test
     @DisplayName("a negative keeps all eight, having no leading noughts to drop")
-    void aNegativeKeepsEveryByte() {
+    void keepsEveryByteOfANegative() {
         assertThat(answerTo("""
                 enbase -1 16""")).isEqualTo("\"FFFFFFFFFFFFFFFF\"");
     }
 
     @Test
     @DisplayName("base two writes the same bytes as bits")
-    void baseTwoWritesTheBits() {
+    void writesTheBitsInBaseTwo() {
         assertThat(answerTo("""
                 reduce [enbase 0 2 enbase 2#00010111 2 enbase 256 2]"""))
                 .isEqualTo("[\"00000000\" \"00010111\" \"0000000100000000\"]");
@@ -43,7 +43,7 @@ class EnbaseOfANumberFromTheSourceTest {
 
     @Test
     @DisplayName("and base sixty-four pads to its own boundary")
-    void baseSixtyFourPads() {
+    void padsInBaseSixtyFour() {
         assertThat(answerTo("""
                 reduce [enbase 0 64 enbase 256 64]""")).isEqualTo("[\"AA==\" \"AQA=\"]");
     }

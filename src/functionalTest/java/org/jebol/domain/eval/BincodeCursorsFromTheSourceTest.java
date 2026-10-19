@@ -14,13 +14,13 @@ class BincodeCursorsFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("raised: try [" + source + "] raised/id");
     }
 
     @Test
     @DisplayName("what is written stays in the context that was written to")
-    void writingLandsInTheContextGiven() {
+    void keepsWhatIsWrittenInTheContextGiven() {
         assertThat(answerTo("""
                 b: binary 64
                 binary/write b [ui64 1 ui32 1 ui24 1 ui16 1 ui8 1]
@@ -29,7 +29,7 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("a write moves the write cursor and leaves the read cursor alone")
-    void aWriteMovesOnlyTheWriteCursor() {
+    void movesOnlyTheWriteCursorOnAWrite() {
         assertThat(answerTo("""
                 b: binary 64
                 binary/write b [ui64 1 ui32 1 ui24 1 ui16 1 ui8 1]
@@ -39,7 +39,7 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("so what was written can be read straight back from the head")
-    void whatWasWrittenReadsBack() {
+    void readsBackWhatWasWritten() {
         assertThat(answerTo("""
                 b: binary 64
                 binary/write b [ui64 1 ui32 1 ui24 1 ui16 1 ui8 1]
@@ -58,7 +58,7 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("a write pokes at its cursor rather than appending")
-    void aWritePokes() {
+    void pokesAtTheCursorOnAWrite() {
         assertThat(answerTo("""
                 d: binary #{0102}
                 binary/write d [ui8 9]
@@ -77,7 +77,7 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("a binary laid in on its own is its own bytes")
-    void aBareBinaryIsItsOwnBytes() {
+    void laysABareBinaryInAsItsOwnBytes() {
         assertThat(answerTo("""
                 g: binary 16
                 binary/write g [ui8 1 #{FFFF} ui8 2]
@@ -95,8 +95,8 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("a tag is not, although it is a string")
-    void aTagIsRefused() {
-        assertThat(errorIdFrom("""
+    void refusesATag() {
+        assertThat(readTheErrorIdFrom("""
                 binary/write binary 16 [<x>]""")).isEqualTo("dialect");
     }
 
@@ -120,7 +120,7 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("every length-prefixed form reads its bytes back")
-    void everyLengthPrefixedFormReadsBack() {
+    void readsBackEveryLengthPrefixedForm() {
         assertThat(answerTo("""
                 reduce [
                     binary/read #{02CAFE} 'UI8BYTES
@@ -136,7 +136,7 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("BYTES reads what is left, and consumes it")
-    void bytesReadsTheRestAndConsumesIt() {
+    void consumesTheRestForBytes() {
         assertThat(answerTo("""
                 b: binary 32
                 binary/write b [#{cafe}]
@@ -146,7 +146,7 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("a signed field refuses a number outside its symmetric range")
-    void signedFieldsAreSymmetric() {
+    void refusesANumberOutsideASignedFieldsRange() {
         assertThat(answerTo("""
                 collect [
                     foreach spec [
@@ -162,7 +162,7 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("an unsigned field has a ceiling but takes a negative")
-    void unsignedFieldsTakeNegatives() {
+    void letsAnUnsignedFieldTakeANegative() {
         assertThat(answerTo("""
                 b: binary 16
                 binary/write b [UI8 -1 UI16 -1 UI24 -1 UI32 -1 UI64 -1]
@@ -171,15 +171,15 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("and refuses one over its ceiling")
-    void unsignedFieldsHaveACeiling() {
-        assertThat(errorIdFrom("""
+    void refusesANumberOverAnUnsignedFieldsCeiling() {
+        assertThat(readTheErrorIdFrom("""
                 binary/write binary 16 [UI8 256]""")).isEqualTo("out-of-range");
     }
 
     @Test
     @DisplayName("AT counts from one and will not go before the head")
-    void atCountsFromOne() {
-        assertThat(errorIdFrom("""
+    void countsFromOneForAt() {
+        assertThat(readTheErrorIdFrom("""
                 binary/write binary 8 [AT 0 UI8 1]""")).isEqualTo("out-of-range");
     }
 
@@ -194,14 +194,14 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("writing into a protected binary is refused")
-    void aProtectedBinaryIsRefused() {
-        assertThat(errorIdFrom("""
+    void refusesAProtectedBinary() {
+        assertThat(readTheErrorIdFrom("""
                 out: protect #{0000} binary/write out #{babe}""")).isEqualTo("protected");
     }
 
     @Test
     @DisplayName("a set-word takes the next value the read produces")
-    void aSetWordTakesTheNextValue() {
+    void givesASetWordTheNextValue() {
         assertThat(answerTo("""
                 b: binary #{01020304}
                 i: 0
@@ -210,7 +210,7 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("and skips a code that produces nothing to take")
-    void aSetWordSkipsAPositionCode() {
+    void skipsAPositionCodeForASetWord() {
         assertThat(answerTo("""
                 b: binary #{01020304}
                 x: 0
@@ -219,7 +219,7 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("a set-word with nothing produced after it leaves its word alone")
-    void aTrailingSetWordChangesNothing() {
+    void leavesATrailingSetWordAlone() {
         assertThat(answerTo("""
                 b: binary #{01020304}
                 z: 'untouched
@@ -229,7 +229,7 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("it works for a run of bytes as well as a number")
-    void aSetWordTakesBytesToo() {
+    void givesASetWordARunOfBytes() {
         assertThat(answerTo("""
                 b: binary #{01020304}
                 w: 0
@@ -239,16 +239,16 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("reading past the end is out of range, not a short number")
-    void readingPastTheEndRaises() {
-        assertThat(errorIdFrom("""
+    void raisesOutOfRangeReadingPastTheEnd() {
+        assertThat(readTheErrorIdFrom("""
                 binary/read #{01020304} [AT 5 UI8]""")).isEqualTo("out-of-range");
-        assertThat(errorIdFrom("""
+        assertThat(readTheErrorIdFrom("""
                 binary/read #{01} [UI16]""")).isEqualTo("out-of-range");
     }
 
     @Test
     @DisplayName("LENGTH? answers the bytes still to come")
-    void lengthAnswersWhatIsLeft() {
+    void answersWhatIsLeftForLength() {
         assertThat(answerTo("""
                 reduce [
                     binary/read #{01020304} [LENGTH?]
@@ -284,7 +284,7 @@ class BincodeCursorsFromTheSourceTest {
 
     @Test
     @DisplayName("a binary handed straight to WRITE is written into")
-    void aBareBinaryIsWrittenInto() {
+    void writesIntoABareBinary() {
         assertThat(answerTo("""
                 c: #{}
                 binary/write c [UI8 255 PAD 4 UI8 255]

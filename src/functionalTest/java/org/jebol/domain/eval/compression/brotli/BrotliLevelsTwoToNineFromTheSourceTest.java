@@ -179,7 +179,7 @@ class BrotliLevelsTwoToNineFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and two whole blocks of the wider kind")
+        @DisplayName("and two whole blocks of the wider type")
         void twoWholeBlocks() {
             assertThat(answerTo(THE_DATA_AND_HOW_TO_MEASURE_IT + """
                     collect [

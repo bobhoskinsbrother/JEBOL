@@ -16,7 +16,7 @@ public class AssertNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("conditions", Set.of(BlockValue.TYPE)));
+        return List.of(Parameter.of("conditions", Set.of(BlockValue.TYPE)));
     }
 
     @Override
@@ -29,16 +29,16 @@ public class AssertNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             AnyBlockValue conditions = (AnyBlockValue) arguments.getFirst();
             return refinements.contains("type")
-                    ? everyTypeHeld(conditions, evaluator, context)
-                    : everyConditionHeld(conditions, evaluator, context);
+                    ? assertEveryType(conditions, evaluator, context)
+                    : assertEveryCondition(conditions, evaluator, context);
         };
     }
 
-    private Value everyTypeHeld(AnyBlockValue pairs, Evaluator evaluator, Context context) {
+    private Value assertEveryType(AnyBlockValue pairs, Evaluator evaluator, Context context) {
         List<Value> items = pairs.remaining();
         for (int at = 0; at < items.size(); at += 2) {
             Value subject = items.get(at);
-            Value held = theValueNamedBy(subject, evaluator, context);
+            Value held = readTheValueNamedBy(subject, evaluator, context);
             if (at + 1 >= items.size()) {
                 throw Raised.of(EvaluationFailure.MISSING_ARG);
             }
@@ -49,15 +49,15 @@ public class AssertNative extends DefaultNative {
         return LogicValue.of(true);
     }
 
-    private Value theValueNamedBy(Value subject, Evaluator evaluator, Context context) {
+    private Value readTheValueNamedBy(Value subject, Evaluator evaluator, Context context) {
         boolean namesAValue = subject instanceof WordValue || subject instanceof PathValue;
         if (!namesAValue) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, subject);
         }
-        return evaluator.evaluateOrRaise(BlockValue.block(List.of(subject)), context);
+        return evaluator.evaluateOrRaise(BlockValue.of(List.of(subject)), context);
     }
 
-    private Value everyConditionHeld(
+    private Value assertEveryCondition(
             AnyBlockValue conditions, Evaluator evaluator, Context context) {
 
         AnyBlockValue at = conditions;
@@ -66,7 +66,7 @@ public class AssertNative extends DefaultNative {
             at = at.atIndex(step.nextIndex());
             if (!step.value().isTruthy()) {
                 throw Raised.of(EvaluationFailure.ASSERT_FAILED,
-                        BlockValue.block(conditions.remaining()));
+                        BlockValue.of(conditions.remaining()));
             }
         }
         return LogicValue.of(true);
@@ -78,7 +78,7 @@ public class AssertNative extends DefaultNative {
             case TypesetValue set -> set.holds(held.datatype());
             case AnyWordValue word -> {
                 Value resolved = context.knows(word.canonical())
-                        ? context.slotFor(word.canonical()).value()
+                        ? context.findSlotFor(word.canonical()).value()
                         : NoneValue.none();
                 yield resolved != type && isOfType(held, resolved, context);
             }

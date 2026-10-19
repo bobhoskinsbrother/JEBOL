@@ -41,21 +41,21 @@ public record PlacedText(
     public static PlacedText of(PaintInstruction.Writing written, TextMeasure measure) {
         Placement where = written.where();
         TextLayout layout = written.layout();
-        TextLines lines = new TextLines(written.runs(), measure, layout.roomForEachLine(where));
+        TextLines lines = new TextLines(written.runs(), measure, layout.measureTheRoomForEachLine(where));
         return new PlacedText(
-                placedLinesOf(lines, layout, where),
-                theSelectionIn(written.caret(), lines, layout, where),
-                theCaretIn(written, lines, layout, where),
-                theShadowOf(layout));
+                placeTheLinesOf(lines, layout, where),
+                findTheSelectionIn(written.caret(), lines, layout, where),
+                findTheCaretIn(written, lines, layout, where),
+                placeTheShadowOf(layout));
     }
 
-    private static List<PlacedLine> placedLinesOf(
+    private static List<PlacedLine> placeTheLinesOf(
             TextLines lines, TextLayout layout, Placement where) {
 
-        double top = layout.whereTheStackStarts(where, lines.tallness());
+        double top = layout.findWhereTheStackStarts(where, lines.tallness());
         List<PlacedLine> placed = new ArrayList<>();
         for (TextLines.Line line : lines.lines()) {
-            double along = layout.whereALineStarts(where, line.wide());
+            double along = layout.findWhereALineStarts(where, line.wide());
             double baseline = top + line.ascent();
             List<PlacedPiece> pieces = new ArrayList<>();
             for (TextLines.Piece piece : line.pieces()) {
@@ -68,40 +68,40 @@ public record PlacedText(
         return placed;
     }
 
-    private static List<PlacedPatch> theSelectionIn(
+    private static List<PlacedPatch> findTheSelectionIn(
             TextCaret caret, TextLines lines, TextLayout layout, Placement where) {
 
         if (!caret.marksASelection()) {
             return List.of();
         }
-        TextLines.CaretPlace from = lines.whereTheCaretIs(
+        TextLines.CaretPlace from = lines.findWhereTheCaretIs(
                 caret.selectionFrom().run(), caret.selectionFrom().character(), layout, where);
-        TextLines.CaretPlace to = lines.whereTheCaretIs(
+        TextLines.CaretPlace to = lines.findWhereTheCaretIs(
                 caret.selectionTo().run(), caret.selectionTo().character(), layout, where);
         TextLines.CaretPlace first = from.top() < to.top()
                 || (from.top() == to.top() && from.across() <= to.across()) ? from : to;
         TextLines.CaretPlace last = first == from ? to : from;
         if (first.top() == last.top()) {
-            return List.of(aPatch(first.across(), first.top(), last.across(), first.top() + first.high()));
+            return List.of(makeAPatch(first.across(), first.top(), last.across(), first.top() + first.high()));
         }
         return List.of(
-                aPatch(first.across(), first.top(), where.across() + where.wide(), first.top() + first.high()),
-                aPatch(where.across(), first.top() + first.high(), where.across() + where.wide(), last.top()),
-                aPatch(where.across(), last.top(), last.across(), last.top() + last.high()));
+                makeAPatch(first.across(), first.top(), where.across() + where.wide(), first.top() + first.high()),
+                makeAPatch(where.across(), first.top() + first.high(), where.across() + where.wide(), last.top()),
+                makeAPatch(where.across(), last.top(), last.across(), last.top() + last.high()));
     }
 
-    private static PlacedPatch aPatch(double left, double top, double right, double bottom) {
+    private static PlacedPatch makeAPatch(double left, double top, double right, double bottom) {
         return new PlacedPatch(left, top, Math.max(0, right - left), Math.max(0, bottom - top));
     }
 
-    private static Optional<PlacedCaret> theCaretIn(
+    private static Optional<PlacedCaret> findTheCaretIn(
             PaintInstruction.Writing written, TextLines lines, TextLayout layout, Placement where) {
 
         TextCaret caret = written.caret();
         if (!caret.isShown()) {
             return Optional.empty();
         }
-        TextLines.CaretPlace placed = lines.whereTheCaretIs(caret.run(), caret.character(), layout, where);
+        TextLines.CaretPlace placed = lines.findWhereTheCaretIs(caret.run(), caret.character(), layout, where);
         Colour inked = caret.run() < written.runs().size()
                 ? written.runs().get(caret.run()).colour()
                 : Colour.BLACK;
@@ -109,7 +109,7 @@ public record PlacedText(
                 THE_WIDTH_OF_A_CARET, placed.high(), inked));
     }
 
-    private static Optional<PlacedShadow> theShadowOf(TextLayout layout) {
+    private static Optional<PlacedShadow> placeTheShadowOf(TextLayout layout) {
         return layout.castsAShadow()
                 ? Optional.of(new PlacedShadow(layout.shadowAcross(), layout.shadowDown(), Colour.BLACK))
                 : Optional.empty();

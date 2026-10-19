@@ -54,7 +54,7 @@ class InteropTest {
 
         @Test
         @DisplayName("anything else stays a host value REBOL can hold but not read")
-        void otherThingsStayOpaque() {
+        void keepsOtherThingsOpaque() {
             Interpreter interpreter = Interpreter.create();
             interpreter.define("thing", new StringBuilder("mutable"));
 
@@ -63,7 +63,7 @@ class InteropTest {
 
         @Test
         @DisplayName("a host null is not none, and says so")
-        void hostNullIsNotNone() {
+        void keepsHostNullFromBeingNone() {
             Interpreter interpreter = Interpreter.create();
             interpreter.defineNull("absent", String.class);
 
@@ -78,21 +78,21 @@ class InteropTest {
     class OutOfRebol {
 
         @Test
-        void anIntegerComesBackAsALong() {
+        void returnsAnIntegerAsALong() {
             Interpreter interpreter = Interpreter.create();
 
             assertThat(interpreter.run("add 20 22").asHostValue()).isEqualTo(42L);
         }
 
         @Test
-        void aStringComesBackAsAString() {
+        void returnsAStringAsAString() {
             Interpreter interpreter = Interpreter.create();
 
             assertThat(interpreter.run("uppercase \"hello\"").asHostValue()).isEqualTo("HELLO");
         }
 
         @Test
-        void aBlockComesBackAsAList() {
+        void returnsABlockAsAList() {
             Interpreter interpreter = Interpreter.create();
 
             assertThat(interpreter.run("reduce [1 2 3]").asHostValue())
@@ -100,7 +100,7 @@ class InteropTest {
         }
 
         @Test
-        void aLogicComesBackAsABoolean() {
+        void returnsALogicAsABoolean() {
             Interpreter interpreter = Interpreter.create();
 
             assertThat(interpreter.run("greater? 2 1").asHostValue()).isEqualTo(true);
@@ -108,7 +108,7 @@ class InteropTest {
 
         @Test
         @DisplayName("none comes back as an empty optional, not as null")
-        void noneComesBackAsAbsence() {
+        void returnsNoneAsAbsence() {
             Interpreter interpreter = Interpreter.create();
 
             assertThat(interpreter.run("if false [1]").asOptionalHostValue()).isEmpty();
@@ -121,7 +121,7 @@ class InteropTest {
 
         @Test
         @DisplayName("a host object handed in can be changed by the host afterwards")
-        void hostObjectsAreNotFrozen() {
+        void leavesHostObjectsUnfrozen() {
             List<String> shared = new ArrayList<>(List.of("first"));
             Extension counting = new Extension("counting", "1.0.0", List.of(new ExtensionCommand(
                     "count-of", "anything", call -> IntegerValue.of(shared.size()))));

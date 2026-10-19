@@ -14,7 +14,7 @@ public class IsProtectedNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value"));
+        return List.of(Parameter.of("value"));
     }
 
     @Override
@@ -35,7 +35,7 @@ public class IsProtectedNative extends DefaultNative {
                     .anyMatch(ContextSlot::isProtected);
             case AnyWordValue word -> word.isBound()
                     && word.binding().knows(word.canonical())
-                    && word.binding().slotFor(word.canonical()).isProtected();
+                    && word.binding().findSlotFor(word.canonical()).isProtected();
             default -> false;
         };
     }

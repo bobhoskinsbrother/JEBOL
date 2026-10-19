@@ -21,10 +21,10 @@ final class CorpusRunner {
             Optional<String> errorId) {
 
         boolean matches(CorpusEntry entry) {
-            return mismatch(entry).isEmpty();
+            return describeTheMismatch(entry).isEmpty();
         }
 
-        Optional<String> mismatch(CorpusEntry entry) {
+        Optional<String> describeTheMismatch(CorpusEntry entry) {
             if (entry.expectedError().isPresent()) {
                 List<String> wanted = List.of(entry.expectedError().orElseThrow().split("\\s+"));
                 if (completed) {
@@ -77,7 +77,7 @@ final class CorpusRunner {
         }
     }
 
-    private static String categoryOf(ScriptOutcome outcome) {
+    private static String categorise(ScriptOutcome outcome) {
         return outcome.value() instanceof ErrorValue error
                 ? error.category().spelling()
                 : "script";
@@ -85,7 +85,7 @@ final class CorpusRunner {
 
     static Result run(CorpusEntry entry) {
         Captured captured = new Captured();
-        Interpreter interpreter = Interpreter.writingTo(captured);
+        Interpreter interpreter = Interpreter.createWithOutput(captured);
         interpreter.defineFreshWordsIn(entry.code());
 
         ScriptOutcome outcome = interpreter.run(entry.code());
@@ -96,7 +96,7 @@ final class CorpusRunner {
                 captured.text(),
                 outcome.succeeded()
                         ? Optional.empty()
-                        : Optional.of(categoryOf(outcome)),
+                        : Optional.of(categorise(outcome)),
                 outcome.errorId());
     }
 }

@@ -15,7 +15,7 @@ public class TanNative extends OneNumberNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value", Set.of(DecimalValue.TYPE)));
+        return List.of(Parameter.of("value", Set.of(DecimalValue.TYPE)));
     }
 
     @Override

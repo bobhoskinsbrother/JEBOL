@@ -3969,7 +3969,7 @@ open question "BIND with a bound word as its target walks up from that word's co
 
 open question "`wait [connection]` with no timeout in the block answers none at once, where the C waits for ever. Nothing here can arrive during that wait -- a connection is read on the thread that asked for it, so an empty queue cannot fill while WAIT spins -- which makes answering none the honest end of a wait that could never finish. Whether that is right depends on whether a connection will ever be read on a thread of its own, and until it is, waiting for ever would be a hang rather than a wait."
 
-open question "Where home is does not come from the filesystem a script was given. `system/options/home` is read off the machine, so an interpreter whose files are confined to one directory still reports the real home -- a path it will then refuse to read or write. Nothing notices until a script keeps something there, which is what REBOL's own user storage does: it puts a user's encrypted file at home and a confined interpreter cannot make one. The measuring harness now says home is the directory it made, which is the honest answer for a confined filesystem and is a decision the host is entitled to make. The question left is whether the interpreter should be asking the filesystem where home is instead of being told, so that every host gets a coherent answer rather than the ones that remember."
+open question "Where home is does not come from the filesystem a script was given. `system/options/home` is what the host's machine says (ScriptSeesHostMachine in spec/embed.allium), so an interpreter whose files are confined to one directory still reports the real home -- a path it will then refuse to read or write. Nothing notices until a script keeps something there, which is what REBOL's own user storage does: it puts a user's encrypted file at home and a confined interpreter cannot make one. The measuring harness now says home is the directory it made, which is the honest answer for a confined filesystem and is a decision the host is entitled to make. The question left is whether the interpreter should be asking the filesystem where home is instead of being told, so that every host gets a coherent answer rather than the ones that remember."
 
 -- A cipher port encrypts what is written to it, `crypt://`.
 --
@@ -5052,6 +5052,20 @@ rule AnythingElseAsACommandRaises {
 -- The number may be given alone, which sends the terminate signal, or as a
 -- pair of numbers naming the process and the signal. Both answer the same
 -- way about a process that is not there.
+--
+-- Ending a process is asking the host, through the same port that starts one.
+-- A host that gave the script no way to start a program gave it no way to end
+-- one either, and the refusal is the one CALL gets: `no-port`.
+rule EndingProcessAsksHost {
+    when: EvaluateCall(access_os, pid, number, signal)
+    requires: asked_for(set)
+    requires: processes in granted_services
+
+    ensures:
+        if not host_has_process_port(): CallFails(error: no_port)
+        else: host_asked_to_end(number, signal)
+}
+
 rule EndingAProcessThatIsNotThereNamesTheNumber {
     when: EvaluateCall(access_os, pid, number)
     requires: asked_for(set)
@@ -5100,7 +5114,7 @@ rule AccessOsReadsTheProcessesIdentityFromTheHost {
 
     ensures:
         if field not in {uid, euid, gid, egid, pid}: CallFails(error: invalid_arg, about: field)
-        else if field = pid: CallResult(value: the_process_number)
+        else if field = pid: CallResult(value: host_machine_process_number)
         else if the_host_can_read(field): CallResult(value: the_hosts_number_for(field))
         else: CallFails(error: not_here, about: field)
 
@@ -6634,7 +6648,7 @@ rule NonPositiveStepSizeOnABlockRaises {
         -- Zero is the one that catches an implementation out: a step of
         -- zero reads as "do not move", and a search that does not move
         -- does not end. JEBOL's SELECT looped on it until this rule
-        -- existed, and no wall-clock bound stopped it, because nothing
+        -- existed, and no time limit stopped it, because nothing
         -- inside a native's own loop asks whether to keep running.
 }
 
@@ -11213,7 +11227,7 @@ rule DoCallbackRunsWhatTheEventCarries {
 -- WAIT takes what an extension posted, before each look at the ports. Given
 -- a time, it looks again after every slice of that time until a port wakes,
 -- the time is up or the run is stopped. The time is counted in the slices
--- the host's pause lets pass, never by the wall clock: a host whose pause
+-- the host's pause lets pass, never by real time: a host whose pause
 -- passes no real time still ends the wait after the slices it was asked for.
 -- Given no time, it looks once, as it did before extensions existed.
 rule WaitTakesWhatWasPosted {

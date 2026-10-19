@@ -16,7 +16,7 @@ class FunctTest {
 
     @Test
     @DisplayName("a set-word in the body does not reach outside")
-    void theAssignmentsStayIn() {
+    void keepsTheAssignmentsIn() {
         assertThat(answerTo("x: 1 f: funct [] [x: 2] f x")).isEqualTo("1");
     }
 
@@ -28,13 +28,13 @@ class FunctTest {
 
     @Test
     @DisplayName("the body still answers what it computed")
-    void theLocalStillHoldsItsValue() {
+    void keepsTheLocalsValue() {
         assertThat(answerTo("f: funct [] [x: 2 x] f")).isEqualTo("2");
     }
 
     @Test
     @DisplayName("arguments work beside the locals")
-    void argumentsAreUnaffected() {
+    void leavesArgumentsUnaffected() {
         assertThat(answerTo("f: funct [a] [b: a + 1 b] f 2")).isEqualTo("3");
     }
 
@@ -46,19 +46,19 @@ class FunctTest {
 
     @Test
     @DisplayName("the collected names go after /local in the spec")
-    void theSpecShowsTheLocals() {
+    void showsTheLocalsInTheSpec() {
         assertThat(answerTo("(spec-of funct [a] [b: 1]) = [a /local b]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a body with no set-word gets no locals")
-    void theDegenerateBody() {
+    void handlesTheDegenerateBody() {
         assertThat(answerTo("(spec-of funct [a] [a]) = [a /local]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a spec that already has /local keeps it")
-    void anExistingLocalIsNotDoubled() {
+    void neverDoublesAnExistingLocal() {
         assertThat(answerTo("(spec-of funct [a /local c] [b: 1]) = [a /local b c]"))
                 .isEqualTo("#(true)");
     }

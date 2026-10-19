@@ -14,11 +14,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ValuePropertiesTest {
 
     @Property
-    void everyLegalPositionIsAcceptedAndNoOtherIs(
+    void acceptsEveryLegalPositionAndNoOther(
             @ForAll @Size(max = 12) List<@IntRange(min = -50, max = 50) Integer> contents,
             @ForAll @IntRange(min = -5, max = 25) int position) {
 
-        AnyBlockValue block = BlockValue.block(
+        AnyBlockValue block = BlockValue.of(
                 contents.stream().map(number -> (Value) IntegerValue.of(number)).toList());
         boolean legal = position >= 1 && position <= contents.size() + 1;
 
@@ -33,11 +33,11 @@ class ValuePropertiesTest {
     }
 
     @Property
-    void lengthFromHerePlusPositionAlwaysReachesTheTail(
+    void reachesTheTailFromAnyPosition(
             @ForAll @Size(max = 12) List<@IntRange(min = 0, max = 9) Integer> contents,
             @ForAll @IntRange(min = 1, max = 13) int rawPosition) {
 
-        AnyBlockValue block = BlockValue.block(
+        AnyBlockValue block = BlockValue.of(
                 contents.stream().map(number -> (Value) IntegerValue.of(number)).toList());
         int position = Math.min(rawPosition, contents.size() + 1);
         AnyBlockValue positioned = block.atIndex(position);
@@ -47,9 +47,9 @@ class ValuePropertiesTest {
     }
 
     @Property
-    void headAndTailAreAlwaysLegalPositions(
+    void allowsTheHeadAndTailAlways(
             @ForAll @Size(max = 20) List<@IntRange(min = 0, max = 9) Integer> contents) {
-        AnyBlockValue block = BlockValue.block(
+        AnyBlockValue block = BlockValue.of(
                 contents.stream().map(number -> (Value) IntegerValue.of(number)).toList());
 
         assertThat(block.head().atHead()).isTrue();
@@ -58,11 +58,11 @@ class ValuePropertiesTest {
     }
 
     @Property
-    void repositioningNeverCopiesTheStorage(
+    void sharesTheStorageWhenRepositioned(
             @ForAll @Size(min = 1, max = 12) List<@IntRange(min = 0, max = 9) Integer> contents,
             @ForAll @IntRange(min = 1, max = 12) int rawPosition) {
 
-        AnyBlockValue block = BlockValue.block(
+        AnyBlockValue block = BlockValue.of(
                 contents.stream().map(number -> (Value) IntegerValue.of(number)).toList());
         int position = Math.min(rawPosition, contents.size() + 1);
 
@@ -70,7 +70,7 @@ class ValuePropertiesTest {
     }
 
     @Property
-    void aWordAlwaysComparesByItsLowercasedSpelling(@ForAll("wordSpellings") String spelling) {
+    void comparesAWordByItsLowercasedSpelling(@ForAll("generateWordSpellings") String spelling) {
         AnyWordValue word = WordValue.of(spelling);
 
         assertThat(word.canonical()).isEqualTo(spelling.toLowerCase(Locale.ROOT));
@@ -80,8 +80,8 @@ class ValuePropertiesTest {
     }
 
     @Property
-    void changingAWordsShapeNeverChangesWhatItNames(
-            @ForAll("wordSpellings") String spelling) {
+    void keepsWhatAWordNamesAcrossShapes(
+            @ForAll("generateWordSpellings") String spelling) {
         AnyWordValue plain = WordValue.of(spelling);
 
         for (AnyWordValue.AnyWordDatatype shape : List.of(SetWordValue.TYPE, GetWordValue.TYPE,
@@ -94,7 +94,7 @@ class ValuePropertiesTest {
     }
 
     @Provide
-    Arbitrary<String> wordSpellings() {
+    Arbitrary<String> generateWordSpellings() {
         Arbitrary<Character> first = Arbitraries.chars().alpha();
         Arbitrary<String> rest = Arbitraries.strings()
                 .withCharRange('a', 'z')
@@ -105,41 +105,41 @@ class ValuePropertiesTest {
     }
 
     @Property
-    void moldingAnIntegerAlwaysReadsBackEqual(@ForAll long magnitude) {
+    void readsBackAMoldedInteger(@ForAll long magnitude) {
         assertReadsBackEqual(IntegerValue.of(magnitude));
     }
 
     @Property
-    void moldingAPairAlwaysReadsBackEqual(
+    void readsBackAMoldedPair(
             @ForAll @IntRange(min = -9999, max = 9999) int x,
             @ForAll @IntRange(min = -9999, max = 9999) int y) {
         assertReadsBackEqual(PairValue.of(x, y));
     }
 
     @Property
-    void moldingATupleAlwaysReadsBackEqual(
+    void readsBackAMoldedTuple(
             @ForAll @Size(min = 3, max = 12) List<@IntRange(min = 0, max = 255) Integer> segments) {
         assertReadsBackEqual(
                 TupleValue.of(segments.stream().mapToInt(Integer::intValue).toArray()));
     }
 
     @Property
-    void moldingAStringAlwaysReadsBackEqual(@ForAll @Size(max = 30) String text) {
+    void readsBackAMoldedString(@ForAll @Size(max = 30) String text) {
         assertReadsBackEqual(StringValue.of(text));
     }
 
     @Property
-    void moldingAWordAlwaysReadsBackEqual(@ForAll("wordSpellings") String spelling) {
+    void readsBackAMoldedWord(@ForAll("generateWordSpellings") String spelling) {
         for (AnyWordValue.AnyWordDatatype shape : List.of(WordValue.TYPE, SetWordValue.TYPE,
                 GetWordValue.TYPE, LitWordValue.TYPE, RefinementValue.TYPE)) {
-            assertReadsBackEqual(shape.spelt(spelling));
+            assertReadsBackEqual(shape.spell(spelling));
         }
     }
 
     @Property
-    void moldingABlockOfIntegersAlwaysReadsBackEqual(
+    void readsBackAMoldedBlockOfIntegers(
             @ForAll @Size(max = 10) List<@IntRange(min = -999, max = 999) Integer> contents) {
-        assertReadsBackEqual(BlockValue.block(
+        assertReadsBackEqual(BlockValue.of(
                 contents.stream().map(number -> (Value) IntegerValue.of(number)).toList()));
     }
 

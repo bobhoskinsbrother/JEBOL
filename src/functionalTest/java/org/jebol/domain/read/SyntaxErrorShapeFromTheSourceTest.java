@@ -23,7 +23,7 @@ class SyntaxErrorShapeFromTheSourceTest {
 
         @Test
         @DisplayName("a quoted one is refused, and the error says which was read")
-        void aQuotedUnderscore() {
+        void refusesAQuote() {
             assertThat(answerTo("e: transcode/error/one \"'_\" "
                     + "reduce [error? e e/id e/arg1]"))
                     .isEqualTo("[#(true) invalid \"word-lit\"]");
@@ -31,7 +31,7 @@ class SyntaxErrorShapeFromTheSourceTest {
 
         @Test
         @DisplayName("so is a read one")
-        void aGetUnderscore() {
+        void refusesAGet() {
             assertThat(answerTo("e: transcode/error/one \":_\" "
                     + "reduce [error? e e/id e/arg1]"))
                     .isEqualTo("[#(true) invalid \"word-get\"]");
@@ -39,7 +39,7 @@ class SyntaxErrorShapeFromTheSourceTest {
 
         @Test
         @DisplayName("and an assigned one")
-        void aSetUnderscore() {
+        void refusesASet() {
             assertThat(answerTo("e: transcode/error/one \"_:\" "
                     + "reduce [error? e e/id e/arg1]"))
                     .isEqualTo("[#(true) invalid \"word-set\"]");
@@ -47,7 +47,7 @@ class SyntaxErrorShapeFromTheSourceTest {
 
         @Test
         @DisplayName("while a bare underscore is none, which is the whole point")
-        void aBareUnderscoreIsNone() {
+        void isNoneWhenBare() {
             assertThat(answerTo("none? transcode/one \"_\"")).isEqualTo(TRUE);
             assertThat(answerTo("2 = length? transcode \"[_ _]\"")).isEqualTo("#(false)");
             assertThat(answerTo("b: transcode/one \"[_ _]\" "
@@ -62,14 +62,14 @@ class SyntaxErrorShapeFromTheSourceTest {
 
         @Test
         @DisplayName("written the way R3 writes it")
-        void theShapeOfNear() {
+        void isWrittenTheWayR3WritesIt() {
             assertThat(answerTo("e: try [transcode \"#(\"] e/near"))
                     .isEqualTo("\"(line 1) #(\"");
         }
 
         @Test
         @DisplayName("and the line it names is the line the failure is on")
-        void theLineIsTheFailuresLine() {
+        void namesTheLineTheFailureIsOn() {
             assertThat(answerTo("e: try [transcode \"1^/#(\"] e/near"))
                     .isEqualTo("\"(line 2) #(\"");
         }
@@ -81,7 +81,7 @@ class SyntaxErrorShapeFromTheSourceTest {
 
         @Test
         @DisplayName("including a source with nothing left to read")
-        void nothingLeftToRead() {
+        void includesASourceWithNothingLeftToRead() {
             assertThat(answerTo("e: transcode/one/error \"\" reduce [error? e e/id]"))
                     .isEqualTo("[#(true) past-end]");
             assertThat(answerTo("e: transcode/next/error \"\" reduce [error? e e/id]"))
@@ -90,7 +90,7 @@ class SyntaxErrorShapeFromTheSourceTest {
 
         @Test
         @DisplayName("and without it the same read raises")
-        void withoutItTheReadRaises() {
+        void isRaisedWithoutTheRefinement() {
             assertThat(answerTo("e: try [transcode/one \"\"] "
                     + "reduce [error? e e/id]")).isEqualTo("[#(true) past-end]");
         }

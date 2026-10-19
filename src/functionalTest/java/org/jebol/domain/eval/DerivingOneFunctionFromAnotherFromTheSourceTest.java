@@ -31,7 +31,7 @@ class DerivingOneFunctionFromAnotherFromTheSourceTest {
 
     @Test
     @DisplayName("and the original is left with the specification it always had")
-    void theOriginalIsLeftAlone() {
+    void leavesTheOriginalAlone() {
         assertThat(answerTo("""
                 before: mold spec-of :tail?
                 mine: make :tail? [[{Mine} series [series! none!]]]
@@ -40,7 +40,7 @@ class DerivingOneFunctionFromAnotherFromTheSourceTest {
 
     @Test
     @DisplayName("the derived one is a different value from the original")
-    void thederivedOneIsADifferentValue() {
+    void makesADifferentValue() {
         assertThat(answerTo("""
                 same? :tail? make :tail? [[{Mine} series [series!]]]"""))
                 .isEqualTo("#(false)");
@@ -48,7 +48,7 @@ class DerivingOneFunctionFromAnotherFromTheSourceTest {
 
     @Test
     @DisplayName("it keeps the behaviour when no new body is given")
-    void itKeepsTheBehaviourWithoutANewBody() {
+    void keepsTheBehaviourWithoutANewBody() {
         assertThat(answerTo("""
                 mine: make :tail? [[{Mine} series [series! none!]]]
                 reduce [mine tail [1 2] mine [1 2]]""")).isEqualTo("[#(true) #(false)]");
@@ -56,7 +56,7 @@ class DerivingOneFunctionFromAnotherFromTheSourceTest {
 
     @Test
     @DisplayName("the derived types are checked, not merely documented")
-    void thederivedTypesAreChecked() {
+    void checksTheDerivedTypes() {
         assertThat(failureOf("""
                 narrow: make :tail? [[{Mine} series [block!]]]
                 narrow "text\""""))
@@ -101,7 +101,7 @@ class DerivingOneFunctionFromAnotherFromTheSourceTest {
 
     @Test
     @DisplayName("EMPTY? is the library deriving TAIL?, and reads as its own")
-    void emptyIsTheLibraryDerivingTail() {
+    void derivesEmptyFromTailAsTheLibraryDoes() {
         assertThat(answerTo("mold spec-of :empty?"))
                 .as("mezz-series.reb widens TAIL? with object! and none!")
                 .contains("object!")

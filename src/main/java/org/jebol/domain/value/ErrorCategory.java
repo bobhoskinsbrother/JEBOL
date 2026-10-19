@@ -26,7 +26,7 @@ public enum ErrorCategory {
     THROW("throw");
 
     /** The category a spelling names, ignoring case. */
-    public static Optional<ErrorCategory> named(String spelling) {
+    public static Optional<ErrorCategory> findTheCategoryNamed(String spelling) {
         for (ErrorCategory category : values()) {
             if (category.spelling.equalsIgnoreCase(spelling)) {
                 return Optional.of(category);

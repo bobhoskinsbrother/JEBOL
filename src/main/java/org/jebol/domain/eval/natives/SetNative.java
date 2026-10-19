@@ -18,9 +18,9 @@ public class SetNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("word", TypesetValue.ANY_PATH.membersAnd(
+                Parameter.of("word", TypesetValue.ANY_PATH.membersAnd(
                         WordValue.TYPE, LitWordValue.TYPE, BlockValue.TYPE, ObjectValue.TYPE)),
-                Parameter.required("value", TypesetValue.ANY_TYPE.members()));
+                Parameter.of("value", TypesetValue.ANY_TYPE.members()));
     }
 
     @Override
@@ -40,18 +40,18 @@ public class SetNative extends DefaultNative {
             }
             return switch (target) {
                 case AnyWordValue word -> {
-                    word.boundSlot().setValue(supplied);
+                    word.findTheBoundSlot().setValue(supplied);
                     yield supplied;
                 }
                 case AnyPathValue path ->
-                        writtenThroughPath(path, supplied);
+                        writeThroughAPath(path, supplied);
                 case ObjectValue into when supplied instanceof ObjectValue from
                         && !refinements.contains("only") -> {
-                    refuseEachUnassignable(wordsOf(into));
+                    refuseEachUnassignable(listTheWordsOf(into));
                     setFieldsFromObjectMatchedByName(into, from, refinements);
                     yield supplied;
                 }
-                case ObjectValue into -> spreadOver(wordsOf(into), supplied, refinements);
+                case ObjectValue into -> spreadOver(listTheWordsOf(into), supplied, refinements);
                 case AnyBlockValue words -> spreadOver(words.remaining(), supplied, refinements);
                 default -> refuseTheDatatype(target);
             };
@@ -80,7 +80,7 @@ public class SetNative extends DefaultNative {
             if (onlySome && assigned instanceof NoneValue) {
                 continue;
             }
-            ((AnyWordValue) words.get(index)).boundSlot().setValue(assigned);
+            ((AnyWordValue) words.get(index)).findTheBoundSlot().setValue(assigned);
         }
         return supplied;
     }
@@ -93,9 +93,9 @@ public class SetNative extends DefaultNative {
         }
     }
 
-    private List<Value> wordsOf(ObjectValue object) {
+    private List<Value> listTheWordsOf(ObjectValue object) {
         return object.context().slots().stream()
-                .<Value>map(slot -> WordValue.of(slot.spelling()).boundTo(object.context()))
+                .<Value>map(slot -> WordValue.of(slot.spelling()).bindTo(object.context()))
                 .toList();
     }
 
@@ -111,19 +111,19 @@ public class SetNative extends DefaultNative {
         }
     }
 
-    private Value writtenThroughPath(AnyBlockValue path, Value supplied) {
+    private Value writeThroughAPath(AnyBlockValue path, Value supplied) {
         List<Value> segments = path.remaining();
         if (segments.size() < 2 || !(segments.getFirst() instanceof AnyWordValue head)) {
             return refuseTheDatatype(path);
         }
-        Value holder = head.boundSlot().value();
+        Value holder = head.findTheBoundSlot().value();
         for (int at = 1; at < segments.size() - 1; at++) {
             if (!(segments.get(at) instanceof AnyWordValue field)
                     || !(holder instanceof ObjectValue(Context fields))
                     || !fields.holds(field.canonical())) {
                 return refuseTheDatatype(path);
             }
-            holder = fields.slotFor(field.canonical()).value();
+            holder = fields.findSlotFor(field.canonical()).value();
         }
         if (!(segments.getLast() instanceof AnyWordValue field)
                 || !(holder instanceof ObjectValue(Context fields))) {
@@ -140,7 +140,7 @@ public class SetNative extends DefaultNative {
             ObjectValue into, ObjectValue from, Set<String> refinements) {
         boolean anyValue = refinements.contains("any");
         boolean onlySome = refinements.contains("some");
-        for (ContextSlot slot : fieldsBothDeclare(into, from)) {
+        for (ContextSlot slot : listTheFieldsBothDeclare(into, from)) {
             Value supplied = from.context().ownSlotFor(slot.canonical()).value();
             if (!anyValue && supplied instanceof UnsetValue) {
                 continue;
@@ -150,13 +150,13 @@ public class SetNative extends DefaultNative {
             }
             slot.setValue(supplied);
         }
-        for (ContextSlot slot : fieldsBothDeclare(into, from)) {
-            slot.setValue(Binder.clonedAndRebound(slot.value(),
+        for (ContextSlot slot : listTheFieldsBothDeclare(into, from)) {
+            slot.setValue(Binder.cloneAndRebind(slot.value(),
                     Set.of(from.context()), into.context()));
         }
     }
 
-    private List<ContextSlot> fieldsBothDeclare(ObjectValue into, ObjectValue from) {
+    private List<ContextSlot> listTheFieldsBothDeclare(ObjectValue into, ObjectValue from) {
         return into.context().slots().stream()
                 .filter(slot -> from.context().holds(slot.canonical()))
                 .toList();

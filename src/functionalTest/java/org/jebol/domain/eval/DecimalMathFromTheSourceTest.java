@@ -15,7 +15,7 @@ class DecimalMathFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -28,7 +28,7 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("REMAINDER and MOD are the same answer, with the dividend's sign")
-        void truncatedDivisionFollowsTheDividend() {
+        void followTheDividendForTruncatedDivision() {
             assertThat(answerTo("b: copy [] for i -7 7 1 [append b i % 3] "
                     + "b = [-1 0 -2 -1 0 -2 -1 0 1 2 0 1 2 0 1]")).isEqualTo(TRUE);
             assertThat(answerTo("b: copy [] for i -7 7 1 [append b mod i 3] "
@@ -50,7 +50,7 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("MODULO/FLOOR takes the divisor's sign, which is the third answer")
-        void flooredModuloFollowsTheDivisor() {
+        void followTheDivisorForFlooredModulo() {
             assertThat(answerTo("b: copy [] for i -7 7 1 [append b modulo/floor i 3] "
                     + "b = [2 0 1 2 0 1 2 0 1 2 0 1 2 0 1]")).isEqualTo(TRUE);
             assertThat(answerTo("b: copy [] for i -7 7 1 [append b modulo/floor i -3] "
@@ -59,7 +59,7 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("all four agree on two positive numbers, which is why a wrong pairing is quiet")
-        void theyAgreeOnPositives() {
+        void agreeOnPositives() {
             assertThat(answerTo("(7 % 3) = 1")).isEqualTo(TRUE);
             assertThat(answerTo("(mod 7 3) = 1")).isEqualTo(TRUE);
             assertThat(answerTo("(7 %% 3) = 1")).isEqualTo(TRUE);
@@ -78,7 +78,7 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("the answer keeps the dividend's datatype")
-        void theDividendDecidesTheDatatype() {
+        void takeTheDatatypeFromTheDividend() {
             assertThat(answerTo("integer? 7 % 3")).isEqualTo(TRUE);
             assertThat(answerTo("decimal? 7.0 % 3")).isEqualTo(TRUE);
             assertThat(answerTo("integer? 7 %% 3")).isEqualTo(TRUE);
@@ -87,16 +87,16 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("a zero divisor raises zero-divide whichever definition asked")
-        void aZeroDivisorRaises() {
-            assertThat(errorIdOf("7 % 0")).isEqualTo("zero-divide");
-            assertThat(errorIdOf("mod 7 0")).isEqualTo("zero-divide");
-            assertThat(errorIdOf("7 %% 0")).isEqualTo("zero-divide");
-            assertThat(errorIdOf("modulo/floor 7 0")).isEqualTo("zero-divide");
+        void raiseForAZeroDivisor() {
+            assertThat(readTheErrorIdOf("7 % 0")).isEqualTo("zero-divide");
+            assertThat(readTheErrorIdOf("mod 7 0")).isEqualTo("zero-divide");
+            assertThat(readTheErrorIdOf("7 %% 0")).isEqualTo("zero-divide");
+            assertThat(readTheErrorIdOf("modulo/floor 7 0")).isEqualTo("zero-divide");
         }
 
         @Test
         @DisplayName("the negative cases Rebol's suite names for MOD")
-        void theNamedNegativeCases() {
+        void handleTheNamedNegativeCases() {
             assertThat(answerTo("-3 == mod -8 -5")).isEqualTo(TRUE);
             assertThat(answerTo("-3.0 == mod -8.0 -5")).isEqualTo(TRUE);
             assertThat(answerTo("1.1 = mod 3.3 1.1")).isEqualTo(TRUE);
@@ -112,7 +112,7 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("a sine or cosine within one step of the representation is exactly zero")
-        void aNegligibleAnswerSnapsToZero() {
+        void snapsANegligibleAnswerToZero() {
             assertThat(answerTo("0.0 = cosine 90")).isEqualTo(TRUE);
             assertThat(answerTo("0.0 = cosine/radians pi / 2")).isEqualTo(TRUE);
             assertThat(answerTo("0.0 = sine/radians pi")).isEqualTo(TRUE);
@@ -121,7 +121,7 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("the snap is only near zero, so an ordinary answer is untouched")
-        void anOrdinaryAnswerIsUntouched() {
+        void leavesAnOrdinaryAnswerUntouched() {
             assertThat(answerTo("1.0 = cosine 0")).isEqualTo(TRUE);
             assertThat(answerTo("1.0 = sine 90")).isEqualTo(TRUE);
             assertThat(answerTo("0.5 = cosine 60")).isEqualTo(TRUE);
@@ -169,7 +169,7 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("a NaN is a decimal and is not a number")
-        void aNotANumberIsNotANumber() {
+        void rejectsANotANumber() {
             assertThat(answerTo("not number? to decimal! #{7FFFFFFFFFFFFFFF}"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("decimal? to decimal! #{7FFFFFFFFFFFFFFF}")).isEqualTo(TRUE);
@@ -179,7 +179,7 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("a money counts as a number here, where the typeset says otherwise")
-        void aMoneyIsANumber() {
+        void acceptsAMoney() {
             assertThat(answerTo("number? $1")).isEqualTo(TRUE);
             assertThat(answerTo("number? 1")).isEqualTo(TRUE);
             assertThat(answerTo("number? 100%")).isEqualTo(TRUE);
@@ -188,12 +188,12 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("nothing else is a number, and asking never raises")
-        void nothingElseIsANumber() {
+        void rejectsEverythingElse() {
             assertThat(answerTo("number? \"1\"")).isEqualTo(FALSE);
             assertThat(answerTo("number? 1x1")).isEqualTo(FALSE);
             assertThat(answerTo("number? 0:0:1")).isEqualTo(FALSE);
             assertThat(answerTo("number? none")).isEqualTo(FALSE);
-            assertThat(errorIdOf("number? none")).isEqualTo("no-error");
+            assertThat(readTheErrorIdOf("number? none")).isEqualTo("no-error");
         }
     }
 
@@ -203,7 +203,7 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("a zero scale rounds nothing, rather than rounding to a whole number")
-        void aZeroScaleRoundsNothing() {
+        void roundsNothingForAZeroScale() {
             assertThat(answerTo("x: 11.6543212345679 11.6543212345679 == round/to x 0.0"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("x: 11.6543212345679 11.6543212345679 == round/to x 1e-400"))
@@ -213,7 +213,7 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("the scale decides the datatype of the answer")
-        void theScaleDecidesTheDatatype() {
+        void takesTheDatatypeFromTheScale() {
             assertThat(answerTo("integer? round/to 0.5 1")).isEqualTo(TRUE);
             assertThat(answerTo("money? round/to 0.5 $1")).isEqualTo(TRUE);
             assertThat(answerTo("150% = to percent! round/to 1.45677 to decimal! 10%"))
@@ -223,7 +223,7 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("plain ROUND keeps the subject's datatype")
-        void plainRoundKeepsTheSubject() {
+        void keepsTheSubjectForPlainRound() {
             assertThat(answerTo("decimal? round 1.5")).isEqualTo(TRUE);
             assertThat(answerTo("integer? round 2")).isEqualTo(TRUE);
         }
@@ -235,7 +235,7 @@ class DecimalMathFromTheSourceTest {
 
         @Test
         @DisplayName("a decimal times a character is the code point, as a decimal")
-        void aCharacterIsItsCodePoint() {
+        void countAsTheirCodePoint() {
             assertThat(answerTo("97.0 = try [1.0 * #\"a\"]")).isEqualTo(TRUE);
             assertThat(answerTo("decimal? 1.0 * #\"a\"")).isEqualTo(TRUE);
             assertThat(answerTo("98.0 = (1.0 + #\"a\")")).isEqualTo(TRUE);

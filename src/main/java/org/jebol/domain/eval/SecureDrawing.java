@@ -31,14 +31,14 @@ final class SecureDrawing extends RandomDrawing {
         while (hashed.hasRemaining()) {
             hashed.put(lowestByte);
         }
-        byte[] digest = sha1Of(hashed.array());
+        byte[] digest = hashWithSha1(hashed.array());
         return ByteBuffer.wrap(Arrays.copyOf(digest, Long.BYTES))
                 .order(ByteOrder.LITTLE_ENDIAN).getLong();
     }
 
-    private static byte[] sha1Of(byte[] octets) {
+    private static byte[] hashWithSha1(byte[] octets) {
         try {
-            return DigestPorts.theOneForThisBuild().digestOf("sha1", octets);
+            return DigestPorts.chooseTheOneForThisBuild().digestOf("sha1", octets);
         } catch (DigestPort.Refused refused) {
             throw Raised.of(EvaluationFailure.FEATURE_NA, "sha1");
         }

@@ -28,7 +28,7 @@ class RandomRangeAndSeedFromTheSourceTest {
                 && shown.charAt(shown.length() - 1) == closing;
     }
 
-    private static String whatHappensTo(String source) {
+    private static String describeWhatHappensTo(String source) {
         return answerTo("either error? e: try [" + source + "] [e/id] ['worked]");
     }
 
@@ -62,13 +62,13 @@ class RandomRangeAndSeedFromTheSourceTest {
         @Test
         @DisplayName("a limit past that range is refused rather than drawn unevenly")
         void alimitPastTheRange() {
-            assertThat(whatHappensTo("random 4611686018427387905")).isEqualTo("overflow");
+            assertThat(describeWhatHappensTo("random 4611686018427387905")).isEqualTo("overflow");
         }
 
         @Test
         @DisplayName("and so is the largest integer there is")
         void thelargestInteger() {
-            assertThat(whatHappensTo("random to integer! #{7ffffffffffffffe}"))
+            assertThat(describeWhatHappensTo("random to integer! #{7ffffffffffffffe}"))
                     .isEqualTo("overflow");
         }
 
@@ -183,7 +183,7 @@ class RandomRangeAndSeedFromTheSourceTest {
         @Test
         @DisplayName("a vector has no arm for /ONLY")
         void avectorHasNoArmForOnly() {
-            assertThat(whatHappensTo("random/only #(u8! [1 2 3])")).isEqualTo("bad-refines");
+            assertThat(describeWhatHappensTo("random/only #(u8! [1 2 3])")).isEqualTo("bad-refines");
         }
 
         @Test
@@ -280,19 +280,19 @@ class RandomRangeAndSeedFromTheSourceTest {
         @Test
         @DisplayName("a block has no arm for seeding")
         void ablockHasNoArmForSeeding() {
-            assertThat(whatHappensTo("random/seed [1 2]")).isEqualTo("bad-refines");
+            assertThat(describeWhatHappensTo("random/seed [1 2]")).isEqualTo("bad-refines");
         }
 
         @Test
         @DisplayName("nor has a vector")
         void norhasAVector() {
-            assertThat(whatHappensTo("random/seed #(u8! [1 2])")).isEqualTo("bad-refines");
+            assertThat(describeWhatHappensTo("random/seed #(u8! [1 2])")).isEqualTo("bad-refines");
         }
 
         @Test
         @DisplayName("and a map is not something to make a seed out of")
         void amapIsNotSomethingToSeedWith() {
-            assertThat(whatHappensTo("random/seed make map! [a 1]")).isEqualTo("cannot-use");
+            assertThat(describeWhatHappensTo("random/seed make map! [a 1]")).isEqualTo("cannot-use");
         }
 
         @Test

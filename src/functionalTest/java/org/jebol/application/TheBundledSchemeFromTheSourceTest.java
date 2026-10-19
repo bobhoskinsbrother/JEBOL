@@ -22,20 +22,20 @@ class TheBundledSchemeFromTheSourceTest {
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         String makingIt = """
                 system/options/data: %/data/
                 make-dir/deep system/options/data""";
         interpreter.defineFreshWordsIn(makingIt);
         interpreter.run(makingIt);
-        interpreter.followTheApplicationDataDirectory();
+        interpreter.followApplicationDataDirectory();
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
     @Test
     @DisplayName("a bundled module reads as its own source")
-    void aBundledModuleReadsAsItsOwnSource() {
+    void readsABundledModuleAsItsOwnSource() {
         assertThat(answerTo("""
                 reduce [
                     binary? read bundled://thru-cache.reb
@@ -45,7 +45,7 @@ class TheBundledSchemeFromTheSourceTest {
 
     @Test
     @DisplayName("and /STRING reads it as text, like any other read")
-    void andStringReadsItAsText() {
+    void readsItAsTextWithString() {
         assertThat(answerTo("""
                 true? find read/string bundled://soundex.reb {soundex}"""))
                 .isEqualTo("#(true)");
@@ -53,7 +53,7 @@ class TheBundledSchemeFromTheSourceTest {
 
     @Test
     @DisplayName("a name nothing is bundled as is refused, not answered empty")
-    void aNameNothingIsBundledAsIsRefused() {
+    void refusesANameNothingIsBundledAs() {
         assertThat(answerTo("""
                 e: try [read bundled://no-such-module.reb] e/id""")).isEqualTo("cannot-open");
         assertThat(answerTo("""
@@ -62,13 +62,13 @@ class TheBundledSchemeFromTheSourceTest {
 
     @Test
     @DisplayName("and it asks for no service, having nothing to reach")
-    void itAsksForNoService() {
+    void asksForNoService() {
         assertThat(answerTo("binary? read bundled://upgrade.reb")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("and a name that tries to climb out of it is refused")
-    void aNameThatTriesToClimbOutIsRefused() {
+    void refusesANameThatTriesToClimbOut() {
         assertThat(answerTo("""
                 e: try [read bundled://../mezz/prot-http.reb] e/id"""))
                 .isEqualTo("cannot-open");
@@ -79,7 +79,7 @@ class TheBundledSchemeFromTheSourceTest {
 
     @Test
     @DisplayName("the module table names the scheme, not an address on the wire")
-    void theModuleTableNamesTheScheme() {
+    void namesTheSchemeInTheModuleTable() {
         assertThat(answerTo("select system/modules 'thru-cache"))
                 .isEqualTo("bundled://thru-cache.reb");
         assertThat(answerTo("select system/modules 'httpd"))

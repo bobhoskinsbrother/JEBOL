@@ -17,9 +17,9 @@ class ACommaEndsNothingFromTheSourceTest {
                         ajoin [mold answer " " mold type? first answer]
                     ]
                 ]
-                each: func [written] [
+                each: func [text] [
                     collect [
-                        foreach one written [
+                        foreach one text [
                             keep said try [load ajoin ["[" one "]"]]
                         ]
                     ]
@@ -35,7 +35,7 @@ class ACommaEndsNothingFromTheSourceTest {
 
         @Test
         @DisplayName("one comma reads as the point, wherever the digits sit")
-        void oneCommaReadsAsThePoint() {
+        void readsOneCommaAsThePoint() {
             assertThat(answerTo("""
                     each ["1,2" "1," ",1" "1,5%" "$1,5" "1:2,5"]""")).isEqualTo("""
                             ["[1.2] #(decimal!)" "[1.0] #(decimal!)" \
@@ -45,7 +45,7 @@ class ACommaEndsNothingFromTheSourceTest {
 
         @Test
         @DisplayName("and there is exactly one of it, spelt one way")
-        void thereIsExactlyOneOfItSpeltOneWay() {
+        void readsExactlyOneSpeltOneWay() {
             assertThat(answerTo("""
                     each ["1,2,3" "1.2,3" ",.5" "1.,5" ",," ","]"""))
                     .isEqualTo("""
@@ -55,7 +55,7 @@ class ACommaEndsNothingFromTheSourceTest {
 
         @Test
         @DisplayName("a tuple still takes dots alone")
-        void aTupleStillTakesDotsAlone() {
+        void stillTakesOnlyDotsInATuple() {
             assertThat(answerTo("""
                     each ["1.2.3" "1,2,3"]""")).isEqualTo("""
                             ["[1.2.3] #(tuple!)" "!invalid"]""");
@@ -64,7 +64,7 @@ class ACommaEndsNothingFromTheSourceTest {
 
     @Test
     @DisplayName("a word with a comma in it is invalid, not two words")
-    void aWordWithACommaIsInvalid() {
+    void refusesAWordWithACommaAsInvalid() {
         assertThat(answerTo("""
                 each ["a,b" "a," "a,,b" ",a"]""")).isEqualTo("""
                         ["!invalid" "!invalid" "!invalid" "!invalid"]""");
@@ -72,7 +72,7 @@ class ACommaEndsNothingFromTheSourceTest {
 
     @Test
     @DisplayName("a file, a url, an email, an issue and a tag all keep it")
-    void theOnesThatRunToADelimiterAllKeepIt() {
+    void keepsItInEveryOneThatRunsToADelimiter() {
         assertThat(answerTo("""
                 each ["%a,b" "a:/x,y" "x@y,z" "#a,b" "<a,b>"]"""))
                 .isEqualTo("""
@@ -83,7 +83,7 @@ class ACommaEndsNothingFromTheSourceTest {
 
     @Test
     @DisplayName("and a string keeps it without any of this applying")
-    void aStringKeepsItWithoutAnyOfThisApplying() {
+    void keepsItInAStringWithoutAnyOfThisApplying() {
         assertThat(answerTo("""
                 each [{"a,b"}]""")).isEqualTo("""
                         [{["a,b"] #(string!)}]""");

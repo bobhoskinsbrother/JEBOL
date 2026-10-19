@@ -10,7 +10,7 @@ import java.util.Optional;
  * A port offering more would be offering something no script can ask for, and
  * a port offering less would leave QUERY with a field it could not fill.
  *
- * <p>Every fact but the name and the kind is optional, and a fact the host has
+ * <p>Every fact but the name and the type is optional, and a fact the host has
  * not got is none for that field alone. A host that knows a file's size and
  * not when it was last read is an ordinary host rather than a broken one, so
  * the absence is modelled here and not treated as a refusal. The refusal is
@@ -53,14 +53,14 @@ public record FileInformation(
      * <p>A directory has no byte count a script can use, and the C reports
      * none for it rather than the size of the entry on disk.
      */
-    public static FileInformation directory(
+    public static FileInformation describeADirectory(
             String name, Optional<Instant> modified,
             Optional<Instant> accessed, Optional<Instant> created) {
 
         return new FileInformation(name, true, Optional.empty(), modified, accessed, created);
     }
 
-    public static FileInformation file(
+    public static FileInformation describeAFile(
             String name, long size, Optional<Instant> modified,
             Optional<Instant> accessed, Optional<Instant> created) {
 

@@ -22,14 +22,14 @@ class CheckWalksTheWholeSeriesFromTheSourceTest {
 
     @Test
     @DisplayName("a text carrying a zero breaks the invariant CHECK is for")
-    void aTextCarryingAZeroIsRefused() {
+    void refusesATextCarryingAZero() {
         assertThat(failureOf("""
                 check {a^(00)b}""")).isEqualTo("[Internal bad-series]");
     }
 
     @Test
     @DisplayName("and it does not matter where in the text the zero sits")
-    void whereTheZeroSitsDoesNotMatter() {
+    void refusesWhereverTheZeroSits() {
         assertThat(failureOf("""
                 check {^(00)ab}""")).isEqualTo("[Internal bad-series]");
         assertThat(failureOf("""
@@ -38,14 +38,14 @@ class CheckWalksTheWholeSeriesFromTheSourceTest {
 
     @Test
     @DisplayName("a binary carrying a zero byte is refused the same way")
-    void aBinaryCarryingAZeroByteIsRefused() {
+    void refusesABinaryCarryingAZeroByte() {
         assertThat(failureOf("check #{610062}")).isEqualTo("[Internal bad-series]");
         assertThat(failureOf("check #{616200}")).isEqualTo("[Internal bad-series]");
     }
 
     @Test
     @DisplayName("the whole series is walked, not the part after the position")
-    void theWholeSeriesIsWalkedNotThePartAfterThePosition() {
+    void walksTheWholeSeriesNotJustAfterThePosition() {
         assertThat(failureOf("""
                 held: {a^(00)b}
                 check skip held 2""")).isEqualTo("[Internal bad-series]");
@@ -53,7 +53,7 @@ class CheckWalksTheWholeSeriesFromTheSourceTest {
 
     @Test
     @DisplayName("an ordinary series answers the very series it was given")
-    void anOrdinarySeriesAnswersItself() {
+    void answersAnOrdinarySeriesItself() {
         assertThat(answerTo("""
                 held: {ab}
                 same? held check held""")).isEqualTo("#(true)");
@@ -69,7 +69,7 @@ class CheckWalksTheWholeSeriesFromTheSourceTest {
 
     @Test
     @DisplayName("a block never raises, whatever it holds")
-    void aBlockNeverRaises() {
+    void neverRaisesForABlock() {
         assertThat(answerTo("check [1 2]")).isEqualTo("[1 2]");
         assertThat(answerTo("check []")).isEqualTo("[]");
         assertThat(answerTo("""
@@ -79,7 +79,7 @@ class CheckWalksTheWholeSeriesFromTheSourceTest {
 
     @Test
     @DisplayName("and what is not a series at all is refused where arguments are gathered")
-    void whatIsNotASeriesIsRefusedAsAnArgument() {
+    void refusesWhatIsNotASeriesAsAnArgument() {
         assertThat(failureOf("check 5")).isEqualTo("[Script expect-arg]");
     }
 }

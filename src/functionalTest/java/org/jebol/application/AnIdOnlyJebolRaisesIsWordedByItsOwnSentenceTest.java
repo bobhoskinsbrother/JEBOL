@@ -13,15 +13,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
 
-    private String formedIn(Interpreter interpreter, String source) {
+    private String formIn(Interpreter interpreter, String source) {
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
     @Test
     @DisplayName("a window refused for want of a grant says so, as no-service")
-    void aRefusedWindowSaysWhy() {
-        String formed = formedIn(Interpreter.withBounds(Bounds.standard()),
+    void saysWhyAWindowWasRefused() {
+        String formed = formIn(Interpreter.withBounds(Bounds.standard()),
                 "form try [view/no-wait make gob! [size: 10x10]]");
 
         assertThat(formed)
@@ -32,13 +32,13 @@ class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
 
     @Test
     @DisplayName("a command whose extension fails says how, in the catalogue's words for command-fail")
-    void aFailingCommandSaysHow() {
+    void saysHowACommandFailed() {
         Extension breaking = new Extension("breaking", "1.0.0", List.of(new ExtensionCommand(
                 "break-the-host", "", call -> {
                     throw new IllegalStateException("the host fell over");
                 })));
 
-        String formed = formedIn(Interpreter.withBounds(Bounds.standard().add(breaking)),
+        String formed = formIn(Interpreter.withBounds(Bounds.standard().add(breaking)),
                 "form try [break-the-host]");
 
         assertThat(formed)
@@ -50,7 +50,7 @@ class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
 
     @Test
     @DisplayName("an error a view raises outside any interpreter still says its own sentence")
-    void aViewsErrorSaysItsSentence() {
+    void saysAViewErrorsSentence() {
         String formed = Molder.form(ErrorValue.of(ErrorCategory.SCRIPT, "no-such-action",
                 "nothing on this view is called \"go\""));
 
@@ -62,15 +62,15 @@ class AnIdOnlyJebolRaisesIsWordedByItsOwnSentenceTest {
 
     @Test
     @DisplayName("an id Rebol names keeps its catalogue's wording")
-    void anIdRebolNamesKeepsItsWording() {
-        String formed = formedIn(Interpreter.create(), "form try [1 / 0]");
+    void keepsTheWordingOfAnIdRebolNames() {
+        String formed = formIn(Interpreter.create(), "form try [1 / 0]");
 
         assertThat(formed).contains("** Math error: attempt to divide by zero");
     }
 
     @Test
     @DisplayName("each of the two ids only JEBOL raises is worded, never left improperly formatted")
-    void neitherIsLeftImproperlyFormatted() {
+    void leavesNeitherImproperlyFormatted() {
         for (List<String> raised : List.of(
                 List.of("ACCESS", "no-service"),
                 List.of("SCRIPT", "no-such-action"))) {

@@ -51,7 +51,7 @@ class RunningOutOfMemoryEndToEndTest {
         return new Ran(process.exitValue(), Files.readString(output, StandardCharsets.UTF_8));
     }
 
-    private String catching(String work) {
+    private String catchTheErrorOf(String work) {
         return """
                 Rebol []
                 grown: none
@@ -87,18 +87,18 @@ class RunningOutOfMemoryEndToEndTest {
             "expanding a tab past the heap      | grown: detab/size {^-a} 2000000000",
     })
     @DisplayName("running out of memory is a no-memory error the script catches, and it carries on afterwards")
-    void caughtWhileGrowing(String what, String work, @TempDir Path directory) throws Exception {
-        assertCaughtAndCarriedOn(runInSmallHeap(directory, catching(work)));
+    void catchesWhileGrowing(String what, String work, @TempDir Path directory) throws Exception {
+        assertCaughtAndCarriedOn(runInSmallHeap(directory, catchTheErrorOf(work)));
     }
 
     @Test
     @DisplayName("reading a file larger than the heap is a no-memory error the script catches")
-    void readingAFileLargerThanTheHeap(@TempDir Path directory) throws Exception {
+    void readsAFileLargerThanTheHeap(@TempDir Path directory) throws Exception {
         Path large = directory.resolve("large.bin");
         Files.write(large, new byte[LARGE_FILE_BYTES]);
         assertThat(Files.size(large)).isEqualTo(LARGE_FILE_BYTES);
 
-        assertCaughtAndCarriedOn(runInSmallHeap(directory, catching("grown: read %large.bin")));
+        assertCaughtAndCarriedOn(runInSmallHeap(directory, catchTheErrorOf("grown: read %large.bin")));
     }
 
     @Test

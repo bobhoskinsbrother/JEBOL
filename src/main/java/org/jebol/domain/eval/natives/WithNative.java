@@ -20,8 +20,8 @@ public class WithNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("context", Set.of(ObjectValue.TYPE)),
-                Parameter.required("body", Set.of(BlockValue.TYPE)));
+        return List.of(Parameter.of("context", Set.of(ObjectValue.TYPE)),
+                Parameter.of("body", Set.of(BlockValue.TYPE)));
     }
 
     @Override

@@ -8,7 +8,7 @@ public class ObjectNative extends ObjectFromSpecNative {
     }
 
     @Override
-    protected String whatTheSpecIsCalled() {
+    protected String nameTheSpec() {
         return "spec";
     }
 }

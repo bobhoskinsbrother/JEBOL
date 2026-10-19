@@ -13,81 +13,81 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class WeierstrassCurveFromTheSourceTest {
 
-    static Stream<String> everyCurveCarriedHere() {
+    static Stream<String> listEveryCurveCarriedHere() {
         return WeierstrassCurve.namesCarriedHere().stream();
     }
 
     @Test
     @DisplayName("the eight the JDK dropped are the eight carried here")
-    void theEightTheJdkDroppedAreCarriedHere() {
+    void carriesTheEightTheJdkDropped() {
         assertThat(WeierstrassCurve.namesCarriedHere())
                 .containsExactlyInAnyOrder("secp192r1", "secp224r1", "secp192k1",
                         "secp224k1", "secp256k1", "bp256r1", "bp384r1", "bp512r1");
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("everyCurveCarriedHere")
+    @MethodSource("listEveryCurveCarriedHere")
     @DisplayName("the generator is on the curve and has the order written beside it")
-    void theGeneratorIsOnTheCurveAndHasTheStatedOrder(String name) {
-        WeierstrassCurve curve = WeierstrassCurve.named(name).orElseThrow();
+    void placesTheGeneratorOnTheCurveWithTheStatedOrder(String name) {
+        WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
 
-        assertThat(curve.itsGeneratorIsOnItAndHasTheStatedOrder())
+        assertThat(curve.hasAValidGenerator())
                 .as("%s: a mistyped parameter would fail this and nothing else", name)
                 .isTrue();
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("everyCurveCarriedHere")
+    @MethodSource("listEveryCurveCarriedHere")
     @DisplayName("and the arithmetic obeys the laws a group obeys")
-    void theArithmeticObeysTheGroupLaws(String name) {
-        WeierstrassCurve curve = WeierstrassCurve.named(name).orElseThrow();
+    void obeysTheGroupLaws(String name) {
+        WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
         SecureRandom randomly = new SecureRandom();
-        BigInteger first = curve.aPrivateNumber(randomly);
-        BigInteger second = curve.aPrivateNumber(randomly);
+        BigInteger first = curve.drawAPrivateNumber(randomly);
+        BigInteger second = curve.drawAPrivateNumber(randomly);
 
-        WeierstrassCurve.Point onePoint = curve.timesTheGenerator(first);
-        WeierstrassCurve.Point another = curve.timesTheGenerator(second);
+        WeierstrassCurve.Point onePoint = curve.multiplyTheGenerator(first);
+        WeierstrassCurve.Point another = curve.multiplyTheGenerator(second);
 
         assertThat(curve.holds(onePoint)).as("%s: a multiple is on the curve", name)
                 .isTrue();
-        assertThat(curve.added(onePoint, another))
+        assertThat(curve.addPoints(onePoint, another))
                 .as("%s: adding commutes", name)
-                .isEqualTo(curve.added(another, onePoint));
-        assertThat(curve.timesTheGenerator(first.add(second).mod(curve.order())))
+                .isEqualTo(curve.addPoints(another, onePoint));
+        assertThat(curve.multiplyTheGenerator(first.add(second).mod(curve.order())))
                 .as("%s: the generator's multiples add", name)
-                .isEqualTo(curve.added(onePoint, another));
-        assertThat(curve.doubled(onePoint))
+                .isEqualTo(curve.addPoints(onePoint, another));
+        assertThat(curve.doublePoint(onePoint))
                 .as("%s: doubling is adding to itself", name)
-                .isEqualTo(curve.added(onePoint, onePoint));
+                .isEqualTo(curve.addPoints(onePoint, onePoint));
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("everyCurveCarriedHere")
+    @MethodSource("listEveryCurveCarriedHere")
     @DisplayName("and the exchange agrees from either side")
-    void theExchangeAgreesFromEitherSide(String name) {
-        WeierstrassCurve curve = WeierstrassCurve.named(name).orElseThrow();
+    void agreesFromEitherSide(String name) {
+        WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
         SecureRandom randomly = new SecureRandom();
-        BigInteger hers = curve.aPrivateNumber(randomly);
-        BigInteger his = curve.aPrivateNumber(randomly);
+        BigInteger hers = curve.drawAPrivateNumber(randomly);
+        BigInteger his = curve.drawAPrivateNumber(randomly);
 
-        assertThat(curve.multiply(curve.timesTheGenerator(his), hers))
+        assertThat(curve.multiply(curve.multiplyTheGenerator(his), hers))
                 .as("%s", name)
-                .isEqualTo(curve.multiply(curve.timesTheGenerator(hers), his));
+                .isEqualTo(curve.multiply(curve.multiplyTheGenerator(hers), his));
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("everyCurveCarriedHere")
+    @MethodSource("listEveryCurveCarriedHere")
     @DisplayName("a point survives the round trip through the wire form")
-    void aPointSurvivesTheWireForm(String name) {
-        WeierstrassCurve curve = WeierstrassCurve.named(name).orElseThrow();
+    void carriesAPointThroughTheWireForm(String name) {
+        WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
         WeierstrassCurve.Point point =
-                curve.timesTheGenerator(curve.aPrivateNumber(new SecureRandom()));
+                curve.multiplyTheGenerator(curve.drawAPrivateNumber(new SecureRandom()));
 
         byte[] written = new byte[1 + 2 * curve.coordinateWidth()];
         written[0] = 0x04;
-        System.arraycopy(curve.coordinateOnTheWire(point.x()), 0,
+        System.arraycopy(curve.writeTheCoordinateOnTheWire(point.x()), 0,
                 written, 1, curve.coordinateWidth());
-        System.arraycopy(curve.coordinateOnTheWire(point.y()), 0,
+        System.arraycopy(curve.writeTheCoordinateOnTheWire(point.y()), 0,
                 written, 1 + curve.coordinateWidth(), curve.coordinateWidth());
 
         assertThat(curve.pointFromTheWire(written)).as("%s", name)
@@ -95,10 +95,10 @@ class WeierstrassCurveFromTheSourceTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("everyCurveCarriedHere")
+    @MethodSource("listEveryCurveCarriedHere")
     @DisplayName("and a point that is not on the curve is refused rather than used")
-    void aPointNotOnTheCurveIsRefused(String name) {
-        WeierstrassCurve curve = WeierstrassCurve.named(name).orElseThrow();
+    void refusesAPointNotOnTheCurve(String name) {
+        WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
 
         byte[] written = new byte[1 + 2 * curve.coordinateWidth()];
         written[0] = 0x04;

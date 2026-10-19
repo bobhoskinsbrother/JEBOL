@@ -33,35 +33,35 @@ final class FileReading {
     FileReading(String path, PortRequest asked) {
         this.path = path;
         this.bound = asked.part();
-        this.position = refusingANegative(asked.seek());
+        this.position = refuseANegative(asked.seek());
         this.answersText = asked.refinements().contains("string");
         this.answersLines = asked.refinements().contains("lines");
     }
 
-    private Optional<Value> refusingANegative(Optional<Value> asked) {
-        if (asked.isPresent() && magnitudeOf(asked.get()) < 0) {
+    private Optional<Value> refuseANegative(Optional<Value> asked) {
+        if (asked.isPresent() && measureTheMagnitudeOf(asked.get()) < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, asked.get());
         }
         return asked;
     }
 
-    private long magnitudeOf(Value number) {
+    private long measureTheMagnitudeOf(Value number) {
         return (long) Arithmetic.asMagnitude(number);
     }
 
     Value answerThrough(FilePort files) {
         Wildcard wildcard = new Wildcard(path);
         if (wildcard.isPresent()) {
-            return wildcard.inTheDirectory()
-                    ? BlockValue.block(List.of())
-                    : namesMatchingThePattern(wildcard, files);
+            return wildcard.isInTheDirectory()
+                    ? BlockValue.of(List.of())
+                    : listTheNamesMatchingThePattern(wildcard, files);
         }
         if (path.endsWith("/") || files.isDirectory(path)) {
-            return asFiles(files.namesIn(path));
+            return asFiles(files.listFileNames(path));
         }
-        byte[] chosen = theBytesAskedFor(files.readBytes(path));
+        byte[] chosen = takeTheBytesAskedFor(files.readBytes(path));
         if (answersLines || answersText) {
-            Optional<String> text = new TextBehindItsMark().decoded(chosen);
+            Optional<String> text = new TextBehindItsMark().decode(chosen);
             if (text.isPresent()) {
                 return answersLines ? linesOf(text.orElseThrow()) : StringValue.of(text.orElseThrow());
             }
@@ -69,26 +69,26 @@ final class FileReading {
         return new BinaryValue(new BinaryStorage(chosen), 1);
     }
 
-    private Value namesMatchingThePattern(Wildcard wildcard, FilePort files) {
+    private Value listTheNamesMatchingThePattern(Wildcard wildcard, FilePort files) {
         try {
-            return asFiles(wildcard.namesMatchingIn(files));
+            return asFiles(wildcard.listTheNamesMatchingIn(files));
         } catch (RuntimeException nothingThere) {
-            return BlockValue.block(List.of());
+            return BlockValue.of(List.of());
         }
     }
 
     private Value asFiles(List<String> names) {
-        return BlockValue.block(names.stream()
+        return BlockValue.of(names.stream()
                 .<Value>map(FileValue::of)
                 .toList());
     }
 
-    private byte[] theBytesAskedFor(byte[] whole) {
-        int from = (int) Math.min(position.map(this::magnitudeOf).orElse(0L), whole.length);
+    private byte[] takeTheBytesAskedFor(byte[] whole) {
+        int from = (int) Math.min(position.map(this::measureTheMagnitudeOf).orElse(0L), whole.length);
         if (bound.isEmpty()) {
             return Arrays.copyOfRange(whole, from, whole.length);
         }
-        long asked = magnitudeOf(bound.get());
+        long asked = measureTheMagnitudeOf(bound.get());
         if (asked >= 0) {
             return Arrays.copyOfRange(whole, from, (int) Math.min(from + asked, whole.length));
         }
@@ -114,7 +114,7 @@ final class FileReading {
         if (!line.isEmpty()) {
             lines.add(StringValue.of(line.toString()));
         }
-        return BlockValue.block(lines);
+        return BlockValue.of(lines);
     }
 
     static final class Wildcard {
@@ -134,12 +134,12 @@ final class FileReading {
             return present;
         }
 
-        boolean inTheDirectory() {
+        boolean isInTheDirectory() {
             return holdsAWildcard(directory);
         }
 
-        List<String> namesMatchingIn(FilePort files) {
-            return files.namesIn(directory.isEmpty() ? "." : directory).stream()
+        List<String> listTheNamesMatchingIn(FilePort files) {
+            return files.listFileNames(directory.isEmpty() ? "." : directory).stream()
                     .filter(listed -> Wildcards.STARS_AND_QUESTION_MARKS.matchTheWholeOf(
                             withoutItsSlash(listed), pattern))
                     .toList();
@@ -156,35 +156,35 @@ final class FileReading {
 
     static final class TextBehindItsMark {
 
-        Optional<String> decoded(byte[] bytes) {
+        Optional<String> decode(byte[] bytes) {
             try {
-                return Optional.of(StringValue.of(strictlyDecodedByItsMark(bytes))
+                return Optional.of(StringValue.of(decodeStrictlyByItsMark(bytes))
                         .withOneLineFeedPerEnding().text());
             } catch (CharacterCodingException undecodable) {
                 return Optional.empty();
             }
         }
 
-        private String strictlyDecodedByItsMark(byte[] bytes) throws CharacterCodingException {
+        private String decodeStrictlyByItsMark(byte[] bytes) throws CharacterCodingException {
             if (startsWith(bytes, 0xEF, 0xBB, 0xBF)) {
-                return strictlyDecoded(bytes, 3, StandardCharsets.UTF_8);
+                return decodeStrictly(bytes, 3, StandardCharsets.UTF_8);
             }
             if (startsWith(bytes, 0xFF, 0xFE, 0x00, 0x00)) {
-                return strictlyDecoded(bytes, 4, Charset.forName("UTF-32LE"));
+                return decodeStrictly(bytes, 4, Charset.forName("UTF-32LE"));
             }
             if (startsWith(bytes, 0x00, 0x00, 0xFE, 0xFF)) {
-                return strictlyDecoded(bytes, 4, Charset.forName("UTF-32BE"));
+                return decodeStrictly(bytes, 4, Charset.forName("UTF-32BE"));
             }
             if (startsWith(bytes, 0xFE, 0xFF)) {
-                return strictlyDecoded(bytes, 2, StandardCharsets.UTF_16BE);
+                return decodeStrictly(bytes, 2, StandardCharsets.UTF_16BE);
             }
             if (startsWith(bytes, 0xFF, 0xFE)) {
-                return strictlyDecoded(bytes, 2, StandardCharsets.UTF_16LE);
+                return decodeStrictly(bytes, 2, StandardCharsets.UTF_16LE);
             }
-            return strictlyDecoded(bytes, 0, StandardCharsets.UTF_8);
+            return decodeStrictly(bytes, 0, StandardCharsets.UTF_8);
         }
 
-        private String strictlyDecoded(byte[] bytes, int from, Charset charset)
+        private String decodeStrictly(byte[] bytes, int from, Charset charset)
                 throws CharacterCodingException {
             return charset.newDecoder()
                     .onMalformedInput(CodingErrorAction.REPORT)

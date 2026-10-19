@@ -25,7 +25,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("four behind the tail are the last four bytes")
-        void fourBehindTheTail() {
+        void readsFourBehindTheTail() {
             assertThat(answerTo(FOURTEEN_BYTES + """
                     decompress compress/part tail data 'zlib -4 'zlib"""))
                     .isEqualTo("#{74657374}");
@@ -33,7 +33,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("one behind the tail is the last byte alone")
-        void oneBehindTheTail() {
+        void readsOneBehindTheTail() {
             assertThat(answerTo(FOURTEEN_BYTES + """
                     decompress compress/part tail data 'zlib -1 'zlib"""))
                     .isEqualTo("#{74}");
@@ -41,7 +41,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("a count as long as the string takes all of it")
-        void exactlyAsManyAsAreBehind() {
+        void readsExactlyAsManyAsAreBehind() {
             assertThat(answerTo(FOURTEEN_BYTES + """
                     decompress compress/part tail data 'zlib -14 'zlib"""))
                     .isEqualTo("#{7465737420746573742074657374}");
@@ -49,7 +49,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("one more than that is clamped rather than refused")
-        void oneMoreThanIsBehind() {
+        void readsAllWhenAskedForOneMoreThanIsBehind() {
             assertThat(answerTo(FOURTEEN_BYTES + """
                     decompress compress/part tail data 'zlib -15 'zlib"""))
                     .isEqualTo("#{7465737420746573742074657374}");
@@ -57,7 +57,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("far more than that is clamped the same way")
-        void farMoreThanIsBehind() {
+        void readsAllWhenAskedForFarMoreThanIsBehind() {
             assertThat(answerTo(FOURTEEN_BYTES + """
                     decompress compress/part tail data 'zlib -99 'zlib"""))
                     .isEqualTo("#{7465737420746573742074657374}");
@@ -65,7 +65,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("at the head there is nothing behind, so the answer is empty")
-        void nothingIsBehindTheHead() {
+        void readsNothingBehindTheHead() {
             assertThat(answerTo(FOURTEEN_BYTES + """
                     decompress compress/part data 'zlib -1 'zlib"""))
                     .isEqualTo("#{}");
@@ -73,7 +73,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("from the middle it reaches back to the head and no further")
-        void fromTheMiddle() {
+        void readsBackFromTheMiddle() {
             assertThat(answerTo(FOURTEEN_BYTES + """
                     decompress compress/part skip data 5 'zlib -5 'zlib"""))
                     .isEqualTo("#{7465737420}");
@@ -89,7 +89,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("a positive count still counts forwards")
-        void aPositiveCountCountsForwards() {
+        void countsForwardsForAPositiveCount() {
             assertThat(answerTo(FOURTEEN_BYTES + """
                     decompress compress/part data 'zlib 4 'zlib"""))
                     .isEqualTo("#{74657374}");
@@ -97,7 +97,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("and a positive count past the tail is clamped to the tail")
-        void aPositiveCountPastTheTail() {
+        void stopsAPositiveCountAtTheTail() {
             assertThat(answerTo(FOURTEEN_BYTES + """
                     decompress compress/part data 'zlib 99 'zlib"""))
                     .isEqualTo("#{7465737420746573742074657374}");
@@ -105,7 +105,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("a fraction is truncated towards zero before it is turned round")
-        void aFractionIsTruncated() {
+        void truncatesAFraction() {
             assertThat(answerTo(FOURTEEN_BYTES + """
                     decompress compress/part tail data 'zlib -4.9 'zlib"""))
                     .isEqualTo("#{74657374}");
@@ -113,7 +113,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("a position earlier in the same series names a backwards span")
-        void anEarlierPositionNamesABackwardsSpan() {
+        void readsBackToAnEarlierPosition() {
             assertThat(answerTo(FOURTEEN_BYTES + """
                     decompress compress/part tail data 'zlib (skip data 4) 'zlib"""))
                     .isEqualTo("#{20746573742074657374}");
@@ -121,7 +121,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("and the head as a limit reads the four bytes before position five")
-        void theHeadAsALimit() {
+        void takesTheHeadAsALimit() {
             assertThat(answerTo(FOURTEEN_BYTES + """
                     decompress compress/part (skip data 4) 'zlib data 'zlib"""))
                     .isEqualTo("#{74657374}");
@@ -129,7 +129,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("the caller's own position is left where it was")
-        void theCallersPositionIsUntouched() {
+        void leavesTheCallersPositionUntouched() {
             assertThat(answerTo(FOURTEEN_BYTES + """
                     here: tail data
                     compress/part here 'zlib -4
@@ -147,7 +147,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("two behind the tail are the last two octets")
-        void twoBehindTheTail() {
+        void readsTwoBehindTheTail() {
             assertThat(answerTo(FIVE_BYTES + """
                     decompress compress/part tail bytes 'zlib -2 'zlib"""))
                     .isEqualTo("#{0405}");
@@ -155,7 +155,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("more than there are is clamped to all of them")
-        void moreThanThereAre() {
+        void readsAllWhenAskedForMoreThanThereAre() {
             assertThat(answerTo(FIVE_BYTES + """
                     decompress compress/part tail bytes 'zlib -9 'zlib"""))
                     .isEqualTo("#{0102030405}");
@@ -168,7 +168,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("CHECKSUM of the last two octets is the checksum of those two")
-        void checksumReadsBehind() {
+        void readBehindForChecksum() {
             assertThat(answerTo("""
                     bytes: #{0102030405}
                     (checksum/part tail bytes 'crc32 -2) = checksum #{0405} 'crc32"""))
@@ -177,7 +177,7 @@ class ANegativePartOfBytesFromTheSourceTest {
 
         @Test
         @DisplayName("CHECKSUM clamps to the head like everything else")
-        void checksumClampsToTheHead() {
+        void clampToTheHeadForChecksum() {
             assertThat(answerTo("""
                     bytes: #{0102030405}
                     (checksum/part tail bytes 'crc32 -9) = checksum bytes 'crc32"""))

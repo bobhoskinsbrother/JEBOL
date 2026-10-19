@@ -22,15 +22,15 @@ final class BrotliCostModel {
         this.literalCostUpTo = new float[howManyBytes + 2];
     }
 
-    float commandCost(int symbol) {
+    float priceTheCommand(int symbol) {
         return commandCost[symbol];
     }
 
-    float distanceCost(int symbol) {
+    float priceTheDistance(int symbol) {
         return distanceCost[symbol];
     }
 
-    float literalCost(int from, int to) {
+    float priceTheLiterals(int from, int to) {
         return literalCostUpTo[to] - literalCostUpTo[from];
     }
 
@@ -43,12 +43,12 @@ final class BrotliCostModel {
         BrotliLiteralCosts.estimate(data, from, howManyBytes, mask, perByte);
         accumulateCarryingWhatFloatAdditionWouldLose(perByte);
         for (int symbol = 0; symbol < BrotliCodes.COMMAND_SYMBOLS; symbol++) {
-            commandCost[symbol] = (float) BrotliCodes.fastLog2(11 + symbol);
+            commandCost[symbol] = (float) BrotliCodes.computeLog2Quickly(11 + symbol);
         }
         for (int symbol = 0; symbol < distanceSymbols; symbol++) {
-            distanceCost[symbol] = (float) BrotliCodes.fastLog2(20 + symbol);
+            distanceCost[symbol] = (float) BrotliCodes.computeLog2Quickly(20 + symbol);
         }
-        cheapestCommand = (float) BrotliCodes.fastLog2(11);
+        cheapestCommand = (float) BrotliCodes.computeLog2Quickly(11);
     }
 
     void measureFromTheCommands(byte[] data, int from, int mask,
@@ -64,10 +64,10 @@ final class BrotliCostModel {
             int which = firstCommand + step;
             int insertLength = commands.insertLengthAt(which);
             int copyLength = commands.copyLengthAt(which);
-            int commandSymbol = commands.commandPrefixAt(which);
+            int commandSymbol = commands.readTheCommandPrefixAt(which);
             commandSymbols[commandSymbol]++;
             if (commandSymbol >= 128) {
-                distances[commands.distancePrefixAt(which) & 0x3FF]++;
+                distances[commands.readTheDistancePrefixAt(which) & 0x3FF]++;
             }
             for (int each = 0; each < insertLength; each++) {
                 literals[data[(at + each) & mask] & 0xFF]++;
@@ -110,7 +110,7 @@ final class BrotliCostModel {
         for (int each = 0; each < size; each++) {
             total += histogram[each];
         }
-        float logOfTotal = (float) BrotliCodes.fastLog2(total);
+        float logOfTotal = (float) BrotliCodes.computeLog2Quickly(total);
         long totalWithTheMissingOnes = total;
         if (!literals) {
             for (int each = 0; each < size; each++) {
@@ -120,13 +120,13 @@ final class BrotliCostModel {
             }
         }
         float costOfSomethingUnseenPricedAsIfItAppearedOncePlusTwoBits =
-                (float) BrotliCodes.fastLog2(totalWithTheMissingOnes) + 2;
+                (float) BrotliCodes.computeLog2Quickly(totalWithTheMissingOnes) + 2;
         for (int each = 0; each < size; each++) {
             if (histogram[each] == 0) {
                 cost[each] = costOfSomethingUnseenPricedAsIfItAppearedOncePlusTwoBits;
                 continue;
             }
-            cost[each] = logOfTotal - (float) BrotliCodes.fastLog2(histogram[each]);
+            cost[each] = logOfTotal - (float) BrotliCodes.computeLog2Quickly(histogram[each]);
             if (cost[each] < 1) {
                 cost[each] = 1;
             }

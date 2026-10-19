@@ -31,13 +31,13 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
     }
 
     @Override
-    public Value madeOf(Datatype datatype, Value specification) {
-        return datatype.madeFrom(specification, this);
+    public Value make(Datatype datatype, Value specification) {
+        return datatype.makeFrom(specification, this);
     }
 
     @Override
-    public Value functionMadeFrom(AnyBlockValue spec, AnyBlockValue body) {
-        return functionBoundFrom(spec, body);
+    public Value makeAFunction(AnyBlockValue spec, AnyBlockValue body) {
+        return bindAFunction(spec, body);
     }
 
     @Override
@@ -46,7 +46,7 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
     }
 
     @Override
-    public Value objectMergedFrom(ObjectValue prototype, ObjectValue other) {
+    public Value mergeAnObject(ObjectValue prototype, ObjectValue other) {
         throw Raised.cannotUseTheAction(other, "make");
     }
 
@@ -66,27 +66,27 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
     }
 
     @Override
-    public ObjectValue objectEvaluatedFrom(AnyBlockValue body) {
+    public ObjectValue evaluateAnObject(AnyBlockValue body) {
         throw Raised.cannotUseTheAction(body, "make");
     }
 
     @Override
-    public FunctionValue functionBoundFrom(AnyBlockValue spec, AnyBlockValue body) {
-        return Binder.functionWithItsBodyBound(spec, body, Context.root());
+    public FunctionValue bindAFunction(AnyBlockValue spec, AnyBlockValue body) {
+        return Binder.bindTheFunctionsBody(spec, body, Context.root());
     }
 
     @Override
-    public Value systemFunctionApplied(String name, Value argument) {
+    public Value applyASystemFunction(String name, Value argument) {
         throw Raised.cannotUseTheAction(argument, "make");
     }
 
     @Override
-    public Value simpleValueOf(Value piece) {
+    public Value readASimpleValue(Value piece) {
         return piece;
     }
 
     @Override
-    public ErrorValue spokenHere(ErrorValue error) {
+    public ErrorValue speakHere(ErrorValue error) {
         return error;
     }
 
@@ -99,12 +99,12 @@ public final class MakingWithoutEvaluating implements Maker, Construction {
     }
 
     @Override
-    public Optional<List<Value>> valuesReadFrom(String source) {
+    public Optional<List<Value>> readTheValuesFrom(String source) {
         return Transcoder.transcode(source).values().map(AnyBlockValue::remaining);
     }
 
     @Override
-    public AnyBlockValue sourceRead(String source) {
+    public AnyBlockValue readTheSource(String source) {
         TranscodeResult read = Transcoder.transcode(source, this);
         if (!read.succeeded()) {
             throw new Raised(read.error().orElseThrow());

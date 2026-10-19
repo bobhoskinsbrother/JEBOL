@@ -46,7 +46,7 @@ class VouchedNamesTest {
 
         @Test
         @DisplayName("is one of several, and any of them covering the host is enough")
-        void anyOfSeveral() {
+        void matchesAnyOfSeveral() {
             assertThat(dnsNames("a.test", "b.test", "c.test").cover("b.test")).isTrue();
             assertThat(dnsNames("a.test", "b.test", "c.test").cover("d.test")).isFalse();
         }
@@ -68,7 +68,7 @@ class VouchedNamesTest {
                 "*.example.com,     wwwexample.com,       false",
         })
         @DisplayName("stands for exactly one label that is not empty")
-        void exactlyOneLabel(String vouched, String host, boolean covered) {
+        void coversExactlyOneLabel(String vouched, String host, boolean covered) {
             assertThat(dnsNames(vouched).cover(host)).isEqualTo(covered);
         }
 
@@ -83,7 +83,7 @@ class VouchedNamesTest {
                 "**.example.com,    www.example.com",
         })
         @DisplayName("anywhere but the whole of the leftmost label covers nothing")
-        void wholeLeftmostLabelOnly(String vouched, String host) {
+        void coversTheWholeLeftmostLabelOnly(String vouched, String host) {
             assertThat(dnsNames(vouched).cover(host)).isFalse();
         }
 
@@ -97,13 +97,13 @@ class VouchedNamesTest {
                 "*.a.b.c,           x.a.b.c,            true",
         })
         @DisplayName("with fewer than two labels after it covers nothing, and with two it covers one more")
-        void twoLabelsAfterIt(String vouched, String host, boolean covered) {
+        void needsTwoLabelsAfterIt(String vouched, String host, boolean covered) {
             assertThat(dnsNames(vouched).cover(host)).isEqualTo(covered);
         }
 
         @Test
         @DisplayName("never covers an address")
-        void neverCoversIp() {
+        void coversNoIpAddress() {
             assertThat(dnsNames("*.0.0.1").cover("127.0.0.1")).isFalse();
             assertThat(dnsNames("*.168.1.1").cover("192.168.1.1")).isFalse();
         }
@@ -132,13 +132,13 @@ class VouchedNamesTest {
                 "0:0:0:0:0:0:0:1,           127.0.0.1,          false",
         })
         @DisplayName("is covered only by the same address, compared as an address")
-        void sameAddress(String vouched, String host, boolean covered) {
+        void matchesTheSameAddress(String vouched, String host, boolean covered) {
             assertThat(ipAddresses(vouched).cover(host)).isEqualTo(covered);
         }
 
         @Test
         @DisplayName("is never covered by a name written the same way")
-        void notByDnsName() {
+        void doesNotMatchByDnsName() {
             assertThat(dnsNames("127.0.0.1").cover("127.0.0.1")).isFalse();
         }
 
@@ -155,14 +155,14 @@ class VouchedNamesTest {
 
         @Test
         @DisplayName("a certificate naming nothing covers no host")
-        void noNames() {
+        void vouchesForNoNames() {
             assertThat(new VouchedNames(Set.of(), Set.of()).cover("localhost")).isFalse();
         }
 
         @ParameterizedTest(name = "the host {0}")
         @CsvSource({"''", "'.'", "' '", "'*.example.com'", "'*'"})
         @DisplayName("an empty host, or one that is no name, is covered by nothing")
-        void malformedHost(String host) {
+        void vouchesForAMalformedHost(String host) {
             assertThat(dnsNames("example.com", "*.example.com", "*").cover(host)).isFalse();
         }
     }

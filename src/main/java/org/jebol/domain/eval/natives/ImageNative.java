@@ -24,12 +24,12 @@ public class ImageNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.belongingTo("load", "src-file", Set.of(FileValue.TYPE, BinaryValue.TYPE)),
-                Parameter.belongingTo("save", "dst-file",
+                Parameter.belongTo("load", "src-file", Set.of(FileValue.TYPE, BinaryValue.TYPE)),
+                Parameter.belongTo("save", "dst-file",
                         Set.of(NoneValue.TYPE, FileValue.TYPE, BinaryValue.TYPE)),
-                Parameter.belongingTo("save", "dst-image", Set.of(NoneValue.TYPE, ImageValue.TYPE)),
-                Parameter.belongingTo("frame", "num", Set.of(IntegerValue.TYPE)),
-                Parameter.belongingTo("as", "type", Set.of(WordValue.TYPE)));
+                Parameter.belongTo("save", "dst-image", Set.of(NoneValue.TYPE, ImageValue.TYPE)),
+                Parameter.belongTo("frame", "num", Set.of(IntegerValue.TYPE)),
+                Parameter.belongTo("as", "type", Set.of(WordValue.TYPE)));
     }
 
     @Override
@@ -41,47 +41,47 @@ public class ImageNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             if (refinements.contains("load")) {
-                return imageLoaded(arguments, evaluator, refinements);
+                return loadTheImage(arguments, evaluator, refinements);
             }
             if (refinements.contains("save")) {
-                return imageSaved(arguments, evaluator, refinements);
+                return saveTheImage(arguments, evaluator, refinements);
             }
             return UnsetValue.unset();
         };
     }
 
-    private String codecNamed(List<Value> arguments, Evaluator evaluator,
-            Set<String> refinements) {
+    private String readTheCodecName(List<Value> arguments, Evaluator evaluator,
+                                    Set<String> refinements) {
 
-        Optional<Value> asked = argumentOf("as", 0, arguments, refinements);
+        Optional<Value> asked = readTheArgumentOf("as", 0, arguments, refinements);
         String type = asked.filter(AnyWordValue.class::isInstance)
                 .map(word -> ((AnyWordValue) word).canonical())
                 .orElse("");
-        boolean theHostKnowsIt = evaluator.images().knows(type);
+        boolean theHostKnowsIt = evaluator.images().hasImageType(type);
         if (asked.isPresent() && !theHostKnowsIt) {
             throw Raised.of(EvaluationFailure.BAD_FUNC_ARG, asked.get());
         }
         return type;
     }
 
-    private Value imageLoaded(List<Value> arguments, Evaluator evaluator,
-            Set<String> refinements) {
+    private Value loadTheImage(List<Value> arguments, Evaluator evaluator,
+                               Set<String> refinements) {
 
-        String type = codecNamed(arguments, evaluator, refinements);
-        Value source = argumentOf("load", 0, arguments, refinements)
+        String type = readTheCodecName(arguments, evaluator, refinements);
+        Value source = readTheArgumentOf("load", 0, arguments, refinements)
                 .orElseGet(NoneValue::none);
-        int which = argumentOf("frame", 0, arguments, refinements)
+        int which = readTheArgumentOf("frame", 0, arguments, refinements)
                 .filter(IntegerValue.class::isInstance)
                 .map(frame -> (int) ((IntegerValue) frame).magnitude())
                 .orElse(THE_FIRST_FRAME);
-        return whatTheCodecMadeOf(source, type, which, evaluator)
-                .map(this::imageOf)
+        return decodeWithTheCodec(source, type, which, evaluator)
+                .map(this::makeAnImageOf)
                 .orElseThrow(() -> source instanceof BinaryValue
                         ? Raised.of(EvaluationFailure.NO_CODEC, IntegerValue.of(0))
                         : Raised.of(EvaluationFailure.CANNOT_OPEN, source));
     }
 
-    private Optional<ImagePort.Pixels> whatTheCodecMadeOf(
+    private Optional<ImagePort.Pixels> decodeWithTheCodec(
             Value source, String type, int frame, Evaluator evaluator) {
 
         byte[] encoded;
@@ -92,10 +92,10 @@ public class ImageNative extends DefaultNative {
         } catch (FilePort.Denied unreadable) {
             return Optional.empty();
         }
-        return Optional.ofNullable(evaluator.images().decoded(encoded, type, frame));
+        return Optional.ofNullable(evaluator.images().decode(encoded, type, frame));
     }
 
-    private Value imageOf(ImagePort.Pixels read) {
+    private Value makeAnImageOf(ImagePort.Pixels read) {
         ImageValue image = ImageValue.of(read.wide(), read.high());
         byte[] rgba = read.rgba();
         for (int pixel = 1; pixel <= read.wide() * read.high(); pixel++) {
@@ -107,20 +107,20 @@ public class ImageNative extends DefaultNative {
         return image;
     }
 
-    private Value imageSaved(List<Value> arguments, Evaluator evaluator,
-            Set<String> refinements) {
+    private Value saveTheImage(List<Value> arguments, Evaluator evaluator,
+                               Set<String> refinements) {
 
-        String type = Optional.of(codecNamed(arguments, evaluator, refinements))
+        String type = Optional.of(readTheCodecName(arguments, evaluator, refinements))
                 .filter(named -> !named.isEmpty())
                 .orElse(THE_CODEC_NOBODY_NAMED_IS);
-        Value destination = argumentOf("save", 0, arguments, refinements)
+        Value destination = readTheArgumentOf("save", 0, arguments, refinements)
                 .orElseGet(NoneValue::none);
-        Value given = argumentOf("save", 1, arguments, refinements)
+        Value given = readTheArgumentOf("save", 1, arguments, refinements)
                 .orElseGet(NoneValue::none);
         if (!(given instanceof ImageValue image)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
         }
-        byte[] written = evaluator.images().encoded(theWholeOf(image), type);
+        byte[] written = evaluator.images().encode(readTheWholeOf(image), type);
         if (written == null) {
             throw Raised.of(EvaluationFailure.NO_CODEC, IntegerValue.of(0));
         }
@@ -129,12 +129,12 @@ public class ImageNative extends DefaultNative {
             return destination;
         }
         if (destination instanceof BinaryValue holding) {
-            return filledWithTheEncodedBytes(holding, written);
+            return fillWithTheEncodedBytes(holding, written);
         }
         return BinaryValue.ofBytes(written);
     }
 
-    private Value filledWithTheEncodedBytes(BinaryValue destination, byte[] written) {
+    private Value fillWithTheEncodedBytes(BinaryValue destination, byte[] written) {
         BinaryStorage storage = destination.storage();
         while (storage.length() >= destination.index()) {
             storage.removeAt(destination.index());
@@ -145,8 +145,8 @@ public class ImageNative extends DefaultNative {
         return destination;
     }
 
-    private ImagePort.Pixels theWholeOf(ImageValue image) {
+    private ImagePort.Pixels readTheWholeOf(ImageValue image) {
         return new ImagePort.Pixels(image.storage().wide(), image.storage().high(),
-                image.head().everyPixel());
+                image.head().copyEveryPixel());
     }
 }

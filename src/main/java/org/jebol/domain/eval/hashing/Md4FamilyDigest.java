@@ -14,18 +14,18 @@ abstract class Md4FamilyDigest {
 
     public byte[] of(byte[] message) {
         int[] words = startingWords();
-        byte[] padded = padded(message);
+        byte[] padded = pad(message);
         int[] block = new int[WORDS_IN_A_BLOCK];
         for (int at = 0; at < padded.length; at += BLOCK_BYTES) {
             for (int word = 0; word < WORDS_IN_A_BLOCK; word++) {
-                block[word] = octets.littleEndianWordAt(padded, at + word * 4);
+                block[word] = octets.readTheLittleEndianWordAt(padded, at + word * 4);
             }
             compress(words, block);
         }
         return digestOf(words);
     }
 
-    private byte[] padded(byte[] message) {
+    private byte[] pad(byte[] message) {
         int blocks = (message.length + ROOM_FOR_THE_END_MARK_AND_THE_LENGTH + BLOCK_BYTES - 1)
                 / BLOCK_BYTES;
         byte[] padded = new byte[blocks * BLOCK_BYTES];

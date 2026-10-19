@@ -16,7 +16,7 @@ class AStringKnowsItsOwnKindTest {
     private final List<AnyStringValue.AnyStringDatatype> everyStringDatatype = List.of(
             StringValue.TYPE, FileValue.TYPE, EmailValue.TYPE, RefValue.TYPE, UrlValue.TYPE, TagValue.TYPE);
 
-    private String quoted(String text) {
+    private String quote(String text) {
         return '"' + text + '"';
     }
 
@@ -26,28 +26,28 @@ class AStringKnowsItsOwnKindTest {
 
         @Test
         @DisplayName("each any-string! datatype builds a value that answers to that datatype")
-        void eachStringDatatypeBuildsItsOwnKind() {
+        void buildsEachStringDatatypesOwnKind() {
             assertThat(everyStringDatatype).allSatisfy(asked ->
-                    assertThat(asked.holding("abc").datatype()).isSameAs(asked));
+                    assertThat(asked.wrap("abc").datatype()).isSameAs(asked));
         }
 
         @Test
-        @DisplayName("and the class is the kind, so the tag never has to be asked")
-        void theClassIsTheKind() {
-            assertThat(StringValue.TYPE.holding("a")).isInstanceOf(StringValue.class);
-            assertThat(FileValue.TYPE.holding("a")).isInstanceOf(FileValue.class);
-            assertThat(EmailValue.TYPE.holding("a")).isInstanceOf(EmailValue.class);
-            assertThat(RefValue.TYPE.holding("a")).isInstanceOf(RefValue.class);
-            assertThat(UrlValue.TYPE.holding("a")).isInstanceOf(UrlValue.class);
-            assertThat(TagValue.TYPE.holding("a")).isInstanceOf(TagValue.class);
+        @DisplayName("and the class is the type, so the tag never has to be asked")
+        void takesItsKindFromTheClass() {
+            assertThat(StringValue.TYPE.wrap("a")).isInstanceOf(StringValue.class);
+            assertThat(FileValue.TYPE.wrap("a")).isInstanceOf(FileValue.class);
+            assertThat(EmailValue.TYPE.wrap("a")).isInstanceOf(EmailValue.class);
+            assertThat(RefValue.TYPE.wrap("a")).isInstanceOf(RefValue.class);
+            assertThat(UrlValue.TYPE.wrap("a")).isInstanceOf(UrlValue.class);
+            assertThat(TagValue.TYPE.wrap("a")).isInstanceOf(TagValue.class);
         }
 
         @ParameterizedTest
         @ValueSource(strings = {"block", "binary", "issue", "word", "char"})
         @DisplayName("a value outside any-string! cannot be seen as a string")
-        void aValueOutsideTheFamilyIsRefused(String spelling) {
+        void refusesAValueOutsideTheFamily(String spelling) {
             Value outside = switch (spelling) {
-                case "block" -> BlockValue.block();
+                case "block" -> BlockValue.of();
                 case "binary" -> BinaryValue.ofBytes(new byte[0]);
                 case "issue" -> IssueValue.of("a");
                 case "word" -> WordValue.of("a");
@@ -65,38 +65,38 @@ class AStringKnowsItsOwnKindTest {
 
         @Test
         @DisplayName("the head is position one")
-        void theHeadIsOne() {
-            assertThat(FileValue.TYPE.holding(StringStorage.of("abc"), 1).index())
+        void startsTheHeadAtOne() {
+            assertThat(FileValue.TYPE.wrap(StringStorage.of("abc"), 1).index())
                     .isEqualTo(1);
         }
 
         @Test
         @DisplayName("the tail, one past the last letter, is still a place to stand")
-        void theTailIsAllowed() {
-            assertThat(FileValue.TYPE.holding(StringStorage.of("abc"), 4).text())
+        void allowsTheTail() {
+            assertThat(FileValue.TYPE.wrap(StringStorage.of("abc"), 4).text())
                     .isEmpty();
         }
 
         @ParameterizedTest
         @ValueSource(ints = {0, -1, 5})
         @DisplayName("before the head or past the tail is refused")
-        void outsideTheStorageIsRefused(int index) {
-            assertThatThrownBy(() -> FileValue.TYPE.holding(StringStorage.of("abc"), index))
+        void refusesOutsideTheStorage(int index) {
+            assertThatThrownBy(() -> FileValue.TYPE.wrap(StringStorage.of("abc"), index))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("outside 1..4");
         }
 
         @Test
         @DisplayName("storage is required")
-        void storageIsRequired() {
-            assertThatThrownBy(() -> FileValue.TYPE.holding(null, 1))
+        void requiresStorage() {
+            assertThatThrownBy(() -> FileValue.TYPE.wrap(null, 1))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("needs storage");
         }
 
         @Test
-        @DisplayName("moving along keeps the kind and shares the storage")
-        void movingAlongKeepsTheKind() {
+        @DisplayName("moving along keeps the type and shares the storage")
+        void keepsTheKindMovingAlong() {
             AnyStringValue file = FileValue.of("abc");
             AnyStringValue moved = file.atIndex(2);
 
@@ -107,15 +107,15 @@ class AStringKnowsItsOwnKindTest {
     }
 
     @Nested
-    @DisplayName("making another of the same kind")
+    @DisplayName("making another of the same type")
     class TheSameKind {
 
         @Test
-        @DisplayName("holding new text keeps the kind and starts at the head of fresh storage")
-        void holdingKeepsTheKind() {
+        @DisplayName("holding new text keeps the type and starts at the head of fresh storage")
+        void keepsTheKindWhenHeld() {
             assertThat(everyStringDatatype).allSatisfy(kind -> {
-                AnyStringValue original = kind.holding("old").atIndex(2);
-                AnyStringValue held = original.holding("new");
+                AnyStringValue original = kind.wrap("old").atIndex(2);
+                AnyStringValue held = original.wrap("new");
 
                 assertThat(held.datatype()).isSameAs(kind);
                 assertThat(held.text()).isEqualTo("new");
@@ -125,28 +125,28 @@ class AStringKnowsItsOwnKindTest {
         }
 
         @Test
-        @DisplayName("holding nothing at all is still that kind")
-        void holdingNothing() {
-            AnyStringValue held = TagValue.of("a").holding("");
+        @DisplayName("holding nothing at all is still that type")
+        void holdsNothing() {
+            AnyStringValue held = TagValue.of("a").wrap("");
 
             assertThat(held).isInstanceOf(TagValue.class);
             assertThat(held.text()).isEmpty();
         }
 
         @Test
-        @DisplayName("a copy keeps the kind")
-        void aCopyKeepsTheKind() {
-            assertThat(UrlValue.of("http://a").copied(false)).isInstanceOf(UrlValue.class);
+        @DisplayName("a copy keeps the type")
+        void keepsTheKindInACopy() {
+            assertThat(UrlValue.of("http://a").copy(false)).isInstanceOf(UrlValue.class);
         }
     }
 
     @Nested
-    @DisplayName("seeing the same letters as another kind")
+    @DisplayName("seeing the same letters as another type")
     class AsAnotherKind {
 
         @Test
-        @DisplayName("the letters, the position and the storage are shared, only the kind changes")
-        void onlyTheKindChanges() {
+        @DisplayName("the letters, the position and the storage are shared, only the type changes")
+        void changesOnlyTheKind() {
             AnyStringValue file = FileValue.of("abc").atIndex(2);
             Value seen = UrlValue.TYPE.as(file);
 
@@ -158,8 +158,8 @@ class AStringKnowsItsOwnKindTest {
         }
 
         @Test
-        @DisplayName("a kind outside any-string! cannot see a string as itself")
-        void outsideTheFamilyIsRefused() {
+        @DisplayName("a type outside any-string! cannot see a string as itself")
+        void refusesOutsideTheFamily() {
             assertThatThrownBy(() -> BinaryValue.TYPE.as(StringValue.of("a")))
                     .isInstanceOfSatisfying(Raised.class, raised ->
                             assertThat(raised.error().errorId()).isEqualTo("not-same-class"));
@@ -172,14 +172,14 @@ class AStringKnowsItsOwnKindTest {
 
         @Test
         @DisplayName("a file and a url name a location")
-        void aFileAndAUrlNameALocation() {
+        void namesALocationForAFileOrAUrl() {
             assertThat(FileValue.of("a").isALocation()).isTrue();
             assertThat(UrlValue.of("http://a").isALocation()).isTrue();
         }
 
         @Test
         @DisplayName("no other string does, an email included")
-        void nothingElseNamesALocation() {
+        void namesNoLocationOtherwise() {
             assertThat(StringValue.of("a").isALocation()).isFalse();
             assertThat(EmailValue.of("a@b").isALocation()).isFalse();
             assertThat(TagValue.of("a").isALocation()).isFalse();
@@ -199,92 +199,92 @@ class AStringKnowsItsOwnKindTest {
         }
 
         @Test
-        @DisplayName("the same letters in one kind are equal, and hash alike")
-        void theSameKindIsEqual() {
+        @DisplayName("the same letters in one type are equal, and hash alike")
+        void holdsForTheSameKind() {
             assertThat(RefValue.of("a")).isEqualTo(RefValue.of("a"));
             assertThat(RefValue.of("a")).hasSameHashCodeAs(RefValue.of("a"));
         }
 
         @Test
         @DisplayName("Rebol's own equality still lets two kinds that were brought together compare by letters")
-        void broughtTogetherTheyCompareByLetters() {
-            assertThat(FileValue.of("a").equalTo(StringValue.of("A"), Sameness.afterBeingBroughtTogether()))
+        void comparesByLettersWhenBroughtTogether() {
+            assertThat(FileValue.of("a").isEqualTo(StringValue.of("A"), Sameness.bringTogether()))
                     .isTrue();
         }
     }
 
     @Nested
-    @DisplayName("how each kind writes itself")
+    @DisplayName("how each type writes itself")
     class WritingItself {
 
         @Test
         @DisplayName("a string is formed bare and molded in quotes")
-        void aString() {
+        void writesAString() {
             assertThat(StringValue.of("abc").form()).isEqualTo("abc");
-            assertThat(StringValue.of("abc").mold()).isEqualTo(quoted("abc"));
+            assertThat(StringValue.of("abc").mold()).isEqualTo(quote("abc"));
         }
 
         @Test
         @DisplayName("a tag is in angle brackets either way")
-        void aTag() {
+        void writesATag() {
             assertThat(TagValue.of("a").form()).isEqualTo("<a>");
             assertThat(TagValue.of("a").mold()).isEqualTo("<a>");
         }
 
         @Test
         @DisplayName("a file is molded behind a percent, with what would break it written in hex")
-        void aFile() {
+        void writesAFile() {
             assertThat(FileValue.of("a b").mold()).isEqualTo("%a%20b");
             assertThat(FileValue.of("a b").form()).isEqualTo("a b");
         }
 
         @Test
         @DisplayName("an empty file is molded as an empty quoted path")
-        void anEmptyFile() {
-            assertThat(FileValue.of("").mold()).isEqualTo("%" + quoted(""));
+        void writesAnEmptyFile() {
+            assertThat(FileValue.of("").mold()).isEqualTo("%" + quote(""));
         }
 
         @Test
         @DisplayName("the delete character is written in hex in a file")
-        void theDeleteCharacterInAFile() {
+        void writesTheDeleteCharacterInAFile() {
             assertThat(FileValue.of("a\u007Fb").mold()).isEqualTo("%a%7Fb");
         }
 
         @Test
         @DisplayName("a url that reads back is molded as itself")
-        void aUrlThatReadsBack() {
+        void writesAUrlThatReadsBack() {
             assertThat(UrlValue.of("http://a").mold()).isEqualTo("http://a");
         }
 
         @Test
         @DisplayName("an email that reads back is molded as itself")
-        void anEmailThatReadsBack() {
+        void writesAnEmailThatReadsBack() {
             assertThat(EmailValue.of("a@b").mold()).isEqualTo("a@b");
         }
 
         @Test
         @DisplayName("an email with a slash would not read back, so it is molded as a construct")
-        void anEmailWithASlash() {
+        void writesAnEmailWithASlash() {
             assertThat(EmailValue.of("a/b@c").mold()).isEqualTo("""
                     #(email! "a/b@c")""");
         }
 
         @Test
         @DisplayName("a ref that reads back is molded behind an at sign")
-        void aRefThatReadsBack() {
+        void writesARefThatReadsBack() {
             assertThat(RefValue.of("abc").mold()).isEqualTo("@abc");
         }
 
         @Test
         @DisplayName("a ref holding an at sign would read back as an email, so it is molded as a construct")
-        void aRefHoldingAnAtSign() {
+        void writesARefHoldingAnAtSign() {
             assertThat(RefValue.of("a@b").mold()).isEqualTo("""
                     #(ref! "a@b")""");
         }
 
         @Test
         @DisplayName("a construct past the head names where it stands")
-        void aConstructPastTheHead() {
+        void writesAConstructPastTheHead() {
             assertThat(RefValue.of("a@b").atIndex(2).mold()).isEqualTo("""
                     #(ref! "a@b" 2)""");
         }
@@ -296,7 +296,7 @@ class AStringKnowsItsOwnKindTest {
 
         @Test
         @DisplayName("the user is in front of the at sign and the host behind it")
-        void bothHalves() {
+        void splitIntoBothHalves() {
             EmailValue address = EmailValue.of("bob@rebol.tech");
 
             assertThat(address.user()).isEqualTo(StringValue.of("bob"));
@@ -305,7 +305,7 @@ class AStringKnowsItsOwnKindTest {
 
         @Test
         @DisplayName("with no at sign the whole is the user and there is no host")
-        void noAtSign() {
+        void splitWithoutAnAtSign() {
             EmailValue address = EmailValue.of("bob");
 
             assertThat(address.user()).isEqualTo(StringValue.of("bob"));
@@ -314,7 +314,7 @@ class AStringKnowsItsOwnKindTest {
 
         @Test
         @DisplayName("an at sign at the very end leaves an empty host")
-        void anAtSignAtTheEnd() {
+        void splitAtAnAtSignAtTheEnd() {
             assertThat(EmailValue.of("bob@").host()).isEqualTo(StringValue.of(""));
         }
 
@@ -329,36 +329,36 @@ class AStringKnowsItsOwnKindTest {
 
         @Test
         @DisplayName("rewriting the user leaves the host alone")
-        void rewritingTheUser() {
+        void rewriteTheUser() {
             EmailValue address = EmailValue.of("bob@x");
-            address.userRewrittenAs("ann");
+            address.rewriteTheUserAs("ann");
 
             assertThat(address.text()).isEqualTo("ann@x");
         }
 
         @Test
         @DisplayName("rewriting the host leaves the user alone")
-        void rewritingTheHost() {
+        void rewriteTheHost() {
             EmailValue address = EmailValue.of("bob@x");
-            address.hostRewrittenAs("y");
+            address.rewriteTheHostAs("y");
 
             assertThat(address.text()).isEqualTo("bob@y");
         }
 
         @Test
         @DisplayName("rewriting a host where there was none adds the at sign")
-        void addingAHost() {
+        void addAHost() {
             EmailValue address = EmailValue.of("bob");
-            address.hostRewrittenAs("y");
+            address.rewriteTheHostAs("y");
 
             assertThat(address.text()).isEqualTo("bob@y");
         }
 
         @Test
         @DisplayName("rewriting the user of an email with no host replaces the whole")
-        void rewritingAUserWithNoHost() {
+        void rewriteAUserWithNoHost() {
             EmailValue address = EmailValue.of("bob");
-            address.userRewrittenAs("ann");
+            address.rewriteTheUserAs("ann");
 
             assertThat(address.text()).isEqualTo("ann");
         }

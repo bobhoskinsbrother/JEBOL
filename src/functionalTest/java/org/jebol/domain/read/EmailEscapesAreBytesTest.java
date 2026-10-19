@@ -16,7 +16,7 @@ class EmailEscapesAreBytesTest {
 
     @Test
     @DisplayName("two escapes that spell one letter arrive as one letter")
-    void twoEscapesSpellOneLetter() {
+    void spellsOneLetterWithTwoEscapes() {
         assertThat(answerTo("""
                 reduce [mold a@%C5%A1 form a@%C5%A1 length? a@%C5%A1]"""))
                 .isEqualTo("[\"a@š\" \"a@š\" 3]");
@@ -24,7 +24,7 @@ class EmailEscapesAreBytesTest {
 
     @Test
     @DisplayName("an escape inside the seven-bit range is that character")
-    void anAsciiEscapeIsThatCharacter() {
+    void readsAnAsciiEscapeAsThatCharacter() {
         assertThat(answerTo("""
                 reduce [mold a@%62 mold a@%2E]"""))
                 .isEqualTo("[\"a@b\" \"a@.\"]");
@@ -32,7 +32,7 @@ class EmailEscapesAreBytesTest {
 
     @Test
     @DisplayName("an escaped at-sign does not count as the one an email needs")
-    void anEscapedAtSignDoesNotCount() {
+    void ignoresAnEscapedAtSign() {
         assertThat(answerTo("""
                 e: try [load "a%40b"]
                 error? e""")).isEqualTo("#(true)");
@@ -40,7 +40,7 @@ class EmailEscapesAreBytesTest {
 
     @Test
     @DisplayName("and a second unescaped one is still refused")
-    void aSecondAtSignIsRefused() {
+    void refusesASecondAtSign() {
         assertThat(answerTo("""
                 e: try [load "a@b@c"]
                 error? e""")).isEqualTo("#(true)");
@@ -48,7 +48,7 @@ class EmailEscapesAreBytesTest {
 
     @Test
     @DisplayName("four escapes spelling a character above the basic plane")
-    void fourEscapesSpellAWideCharacter() {
+    void spellsAWideCharacterWithFourEscapes() {
         assertThat(answerTo("""
                 reduce [mold a@%F0%9F%99%82 length? a@%F0%9F%99%82]"""))
                 .isEqualTo("[\"a@🙂\" 3]");
@@ -63,7 +63,7 @@ class EmailEscapesAreBytesTest {
 
     @Test
     @DisplayName("a truncated or non-hex escape is a syntax error")
-    void aBadEscapeIsRefused() {
+    void refusesABadEscape() {
         assertThat(answerTo("""
                 collect [
                     foreach text ["a@%C" "a@%" "a@%ZZ" "a@%C5%"][

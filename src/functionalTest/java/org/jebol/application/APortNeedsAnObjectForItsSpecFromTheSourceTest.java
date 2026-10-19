@@ -13,11 +13,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class APortNeedsAnObjectForItsSpecFromTheSourceTest {
 
-    private static Interpreter reaching(Path directory) throws IOException {
+    private static Interpreter makeAnInterpreterReaching(Path directory) throws IOException {
         Files.writeString(directory.resolve("held.txt"), "carried");
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         return interpreter;
     }
 
@@ -34,9 +34,9 @@ class APortNeedsAnObjectForItsSpecFromTheSourceTest {
 
     @Test
     @DisplayName("closing a port whose spec was overwritten is an invalid port")
-    void closingAPortWhoseSpecWasOverwrittenIsInvalid(@TempDir Path directory)
+    void refusesClosingAPortWhoseSpecWasOverwritten(@TempDir Path directory)
             throws IOException {
-        assertThat(failureOf(reaching(directory), """
+        assertThat(failureOf(makeAnInterpreterReaching(directory), """
                 held: open %held.txt
                 held/spec: 5
                 close held""")).isEqualTo("[Access invalid-port]");
@@ -44,8 +44,8 @@ class APortNeedsAnObjectForItsSpecFromTheSourceTest {
 
     @Test
     @DisplayName("and so is reading it or writing to it, because the port is what is wrong")
-    void everyVerbAnswersTheSameWay(@TempDir Path directory) throws IOException {
-        Interpreter interpreter = reaching(directory);
+    void answersEveryVerbTheSameWay(@TempDir Path directory) throws IOException {
+        Interpreter interpreter = makeAnInterpreterReaching(directory);
         assertThat(answerTo(interpreter, """
                 broken: does [held: open %held.txt held/spec: 5 held]
                 idOf: func [e] [either error? e [e/id] ['ok]]
@@ -58,8 +58,8 @@ class APortNeedsAnObjectForItsSpecFromTheSourceTest {
 
     @Test
     @DisplayName("a spec that is none rather than an object is refused the same way")
-    void aSpecThatIsNoneIsRefusedTheSameWay(@TempDir Path directory) throws IOException {
-        assertThat(failureOf(reaching(directory), """
+    void refusesASpecOfNoneTheSameWay(@TempDir Path directory) throws IOException {
+        assertThat(failureOf(makeAnInterpreterReaching(directory), """
                 held: open %held.txt
                 held/spec: none
                 read held""")).isEqualTo("[Access invalid-port]");
@@ -67,8 +67,8 @@ class APortNeedsAnObjectForItsSpecFromTheSourceTest {
 
     @Test
     @DisplayName("an untouched port still reads what it was opened on")
-    void anUntouchedPortStillReads(@TempDir Path directory) throws IOException {
-        assertThat(answerTo(reaching(directory), """
+    void stillReadsAnUntouchedPort(@TempDir Path directory) throws IOException {
+        assertThat(answerTo(makeAnInterpreterReaching(directory), """
                 held: open %held.txt
                 text: to string! read held
                 close held

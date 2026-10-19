@@ -31,7 +31,7 @@ public final class VectorQuery {
     }
 
     /** One field, or nothing at all when the name is not one of them. */
-    public static Optional<Value> field(VectorValue vector, String field) {
+    public static Optional<Value> readTheField(VectorValue vector, String field) {
         VectorKind kind = vector.kind();
         return switch (field) {
             case "signed" -> Optional.of(LogicValue.of(kind.isSigned()));
@@ -39,9 +39,9 @@ public final class VectorQuery {
                     WordValue.of(kind.elementDatatype().literalSpelling()));
             case "size" -> Optional.of(IntegerValue.of(kind.bits()));
             case "length" -> Optional.of(IntegerValue.of(vector.storageLength()));
-            case "min", "minimum" -> Optional.of(extreme(vector, true));
-            case "max", "maximum" -> Optional.of(extreme(vector, false));
-            default -> statistic(vector, field);
+            case "min", "minimum" -> Optional.of(findTheExtreme(vector, true));
+            case "max", "maximum" -> Optional.of(findTheExtreme(vector, false));
+            default -> computeTheStatistic(vector, field);
         };
     }
 
@@ -49,10 +49,10 @@ public final class VectorQuery {
      * The spec a vector reflects, which is how it would be written down again.
      *
      * <p>{@code [unsigned integer! 32 2]}, with the first word left out when
-     * the kind is signed, because that is the default the older spelling
+     * the type is signed, because that is the default the older spelling
      * assumes.
      */
-    public static AnyBlockValue specOf(VectorValue vector) {
+    public static AnyBlockValue makeTheSpecOf(VectorValue vector) {
         VectorKind kind = vector.kind();
         java.util.List<Value> written = new java.util.ArrayList<>();
         if (!kind.isSigned()) {
@@ -61,10 +61,10 @@ public final class VectorQuery {
         written.add(WordValue.of(kind.elementDatatype().literalSpelling()));
         written.add(IntegerValue.of(kind.bits()));
         written.add(IntegerValue.of(vector.storageLength()));
-        return BlockValue.block(written);
+        return BlockValue.of(written);
     }
 
-    private static Value extreme(VectorValue vector, boolean wantingTheLeast) {
+    private static Value findTheExtreme(VectorValue vector, boolean wantingTheLeast) {
         int held = vector.storageLength();
         if (held == 0) {
             return NoneValue.none();
@@ -93,7 +93,7 @@ public final class VectorQuery {
                 : Long.compareUnsigned(left, right) < 0;
     }
 
-    private static Optional<Value> statistic(VectorValue vector, String field) {
+    private static Optional<Value> computeTheStatistic(VectorValue vector, String field) {
         if (!FIELDS.contains(field) && !"average".equals(field)) {
             return Optional.empty();
         }
@@ -107,7 +107,7 @@ public final class VectorQuery {
             case "range" -> asTheVectorCounts(kind,
                     spread.largest - spread.smallest);
             case "mean", "average" -> DecimalValue.of(spread.mean);
-            case "median" -> DecimalValue.of(medianOf(vector));
+            case "median" -> DecimalValue.of(findTheMedianOf(vector));
             case "variance" -> DecimalValue.of(spread.variance());
             case "population-deviation" -> DecimalValue.of(Math.sqrt(spread.variance()));
             case "sample-variance" -> spread.count <= 1
@@ -124,7 +124,7 @@ public final class VectorQuery {
         return kind.measures() ? DecimalValue.of(answer) : IntegerValue.of((long) answer);
     }
 
-    private static double medianOf(VectorValue vector) {
+    private static double findTheMedianOf(VectorValue vector) {
         VectorKind kind = vector.kind();
         long[] sorted = vector.storage().snapshot();
         sortAscending(kind, sorted);
@@ -136,7 +136,7 @@ public final class VectorQuery {
         return (kind.asDecimal(sorted[middle - 1]) + above) / 2.0;
     }
 
-    /** Ascending by the kind's own ordering, which is not the ordering of the bits. */
+    /** Ascending by the type's own ordering, which is not the ordering of the bits. */
     public static void sortAscending(VectorKind kind, long[] elements) {
         Long[] boxed = Arrays.stream(elements).boxed().toArray(Long[]::new);
         Arrays.sort(boxed, (left, right) -> {

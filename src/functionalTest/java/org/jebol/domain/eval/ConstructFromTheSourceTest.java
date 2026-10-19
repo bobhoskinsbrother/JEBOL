@@ -21,7 +21,7 @@ class ConstructFromTheSourceTest {
 
         @Test
         @DisplayName("the three spellings of true all become true")
-        void theTruthfulWords() {
+        void readTheTruthfulWords() {
             assertThat(answerTo("(get in construct [a: true] 'a) = true")).isEqualTo("#(true)");
             assertThat(answerTo("(get in construct [a: on] 'a) = true")).isEqualTo("#(true)");
             assertThat(answerTo("(get in construct [a: yes] 'a) = true")).isEqualTo("#(true)");
@@ -29,7 +29,7 @@ class ConstructFromTheSourceTest {
 
         @Test
         @DisplayName("the three spellings of false all become false")
-        void theFalseWords() {
+        void readTheFalseWords() {
             assertThat(answerTo("(get in construct [a: false] 'a) = false"))
                     .isEqualTo("#(true)");
             assertThat(answerTo("(get in construct [a: off] 'a) = false")).isEqualTo("#(true)");
@@ -38,7 +38,7 @@ class ConstructFromTheSourceTest {
 
         @Test
         @DisplayName("all six answer a logic rather than a word")
-        void theyAreLogics() {
+        void areLogics() {
             assertThat(answerTo("logic? get in construct [a: true] 'a")).isEqualTo("#(true)");
             assertThat(answerTo("logic? get in construct [a: on] 'a")).isEqualTo("#(true)");
             assertThat(answerTo("logic? get in construct [a: yes] 'a")).isEqualTo("#(true)");
@@ -49,13 +49,13 @@ class ConstructFromTheSourceTest {
 
         @Test
         @DisplayName("NONE becomes none")
-        void theEmptyWord() {
+        void readTheEmptyWord() {
             assertThat(answerTo("none? get in construct [a: none] 'a")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("any other word stays a word")
-        void everythingElseIsLeftAlone() {
+        void leaveEverythingElseAlone() {
             assertThat(answerTo("word? get in construct [a: b] 'a")).isEqualTo("#(true)");
             assertThat(answerTo("(get in construct [a: b] 'a) = 'b")).isEqualTo("#(true)");
             assertThat(answerTo("word? get in construct [a: print] 'a"))
@@ -81,7 +81,7 @@ class ConstructFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("the three kinds of path each keep their own kind")
+        @DisplayName("the three kinds of path each keep their own type")
         void paths() {
             assertThat(answerTo("path? get in construct [a: b/c] 'a")).isEqualTo("#(true)");
             assertThat(answerTo("lit-path? get in construct [a: 'b/c] 'a"))
@@ -92,7 +92,7 @@ class ConstructFromTheSourceTest {
 
         @Test
         @DisplayName("an ordinary value is itself")
-        void plainValues() {
+        void keepPlainValues() {
             assertThat(answerTo("(get in construct [a: 1] 'a) = 1")).isEqualTo("#(true)");
             assertThat(answerTo("(get in construct [a: \"x\"] 'a) = \"x\""))
                     .isEqualTo("#(true)");
@@ -107,7 +107,7 @@ class ConstructFromTheSourceTest {
 
         @Test
         @DisplayName("several set-words in a row all take the value that follows")
-        void cascadingSetWords() {
+        void cascade() {
             assertThat(answerTo("""
                     o: construct [a: b: 1]
                     all [1 = get in o 'a  1 = get in o 'b]
@@ -116,7 +116,7 @@ class ConstructFromTheSourceTest {
 
         @Test
         @DisplayName("a set-word with nothing after it is left holding nothing")
-        void aDanglingSetWord() {
+        void handleADanglingSetWord() {
             assertThat(answerTo("not none? find words-of construct [a:] 'a"))
                     .as("the field exists")
                     .isEqualTo("#(true)");
@@ -124,14 +124,14 @@ class ConstructFromTheSourceTest {
 
         @Test
         @DisplayName("a value with no set-word before it is dropped")
-        void aValueWithNowhereToGo() {
+        void dropAValueWithNowhereToGo() {
             assertThat(answerTo("(length? words-of construct [1 2 a: 3]) = 1"))
                     .isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("an empty block gives an empty object")
-        void theDegenerateBlock() {
+        void handleTheDegenerateBlock() {
             assertThat(answerTo("empty? words-of construct []")).isEqualTo("#(true)");
         }
     }
@@ -142,7 +142,7 @@ class ConstructFromTheSourceTest {
 
         @Test
         @DisplayName("the seven words stay words")
-        void noSubstitution() {
+        void substitutesNothing() {
             assertThat(answerTo("word? get in construct/only [a: true] 'a"))
                     .isEqualTo("#(true)");
             assertThat(answerTo("word? get in construct/only [a: false] 'a"))
@@ -159,7 +159,7 @@ class ConstructFromTheSourceTest {
 
         @Test
         @DisplayName("everything else is unaffected")
-        void theShapesAreStillKept() {
+        void stillKeepsTheShapes() {
             assertThat(answerTo("word? get in construct/only [a: b] 'a")).isEqualTo("#(true)");
             assertThat(answerTo("lit-word? get in construct/only [a: 'b] 'a"))
                     .isEqualTo("#(true)");
@@ -176,13 +176,13 @@ class ConstructFromTheSourceTest {
 
         @Test
         @DisplayName("one field per line, and the value is text")
-        void oneField() {
+        void readsOneField() {
             assertThat(answerTo("[\"1\"] = values-of construct \"a: 1\"")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a binary is read the same way")
-        void fromABinary() {
+        void readsFromABinary() {
             assertThat(answerTo("[\"1\"] = values-of construct to-binary \"a: 1\""))
                     .isEqualTo("#(true)");
         }
@@ -197,14 +197,14 @@ class ConstructFromTheSourceTest {
 
         @Test
         @DisplayName("without a newline it is all one value")
-        void theOffPointForAField() {
+        void handlesTheOffPointForAField() {
             assertThat(answerTo("[\"1 b: yes\"] = values-of construct \"a: 1 b: yes\""))
                     .isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a line that begins with whitespace continues the one before")
-        void continuationLines() {
+        void joinsContinuationLines() {
             assertThat(answerTo("[\"a b c\"] = values-of construct \"f: a b^M^/ c\""))
                     .isEqualTo("#(true)");
             assertThat(answerTo("[\"a b c\"] = values-of construct \"f: a b^M^/    c\""))
@@ -213,7 +213,7 @@ class ConstructFromTheSourceTest {
 
         @Test
         @DisplayName("an empty string gives an empty object")
-        void theDegenerateHeader() {
+        void handlesTheDegenerateHeader() {
             assertThat(answerTo("empty? words-of construct \"\"")).isEqualTo("#(true)");
         }
     }

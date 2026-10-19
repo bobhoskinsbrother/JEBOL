@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class DateZoneWrittenFromTheSourceTest {
+class DateZoneTextFromTheSourceTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
@@ -14,13 +14,13 @@ class DateZoneWrittenFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("raised: try [" + source + "] raised/id");
     }
 
     @Test
     @DisplayName("ZONE keeps the clock, so a bare date gains midnight and an offset")
-    void zoneKeepsTheClock() {
+    void keepsTheClockForZone() {
         assertThat(answerTo("""
                 d: 1-Jan-2000
                 d/zone: 2
@@ -29,7 +29,7 @@ class DateZoneWrittenFromTheSourceTest {
 
     @Test
     @DisplayName("and it replaces an offset that was already there")
-    void zoneReplacesAnOffset() {
+    void replacesAnOffsetForZone() {
         assertThat(answerTo("""
                 d: 28-Oct-2009/10:09:38-7:00
                 d/zone: 2
@@ -68,7 +68,7 @@ class DateZoneWrittenFromTheSourceTest {
 
     @Test
     @DisplayName("the two disagree wherever the offset actually changes")
-    void theTwoDisagreeWhenTheOffsetChanges() {
+    void disagreesWhenTheOffsetChanges() {
         assertThat(answerTo("""
                 byClock: 1-Jan-2000
                 byClock/zone: 2
@@ -80,7 +80,7 @@ class DateZoneWrittenFromTheSourceTest {
 
     @Test
     @DisplayName("and agree only where it does not")
-    void theTwoAgreeWhenTheOffsetStays() {
+    void agreesWhenTheOffsetStays() {
         assertThat(answerTo("""
                 d: 1-Jan-2000
                 d/zone: 2
@@ -91,7 +91,7 @@ class DateZoneWrittenFromTheSourceTest {
 
     @Test
     @DisplayName("an offset may be given as a time as well as a number of hours")
-    void anOffsetMayBeATime() {
+    void acceptsATimeAsAnOffset() {
         assertThat(answerTo("""
                 d: 1-Jan-2000
                 d/zone: 2:30
@@ -100,7 +100,7 @@ class DateZoneWrittenFromTheSourceTest {
 
     @Test
     @DisplayName("fifteen hours and three quarters is as far as either goes")
-    void theOffsetHasAReach() {
+    void limitsTheOffsetsReach() {
         assertThat(answerTo("""
                 d: 1-Jan-2000
                 d/zone: 15
@@ -109,21 +109,21 @@ class DateZoneWrittenFromTheSourceTest {
 
     @Test
     @DisplayName("and past it is out of range rather than wrapping round")
-    void pastTheReachIsRefused() {
-        assertThat(errorIdFrom("""
+    void refusesPastTheReach() {
+        assertThat(readTheErrorIdFrom("""
                 d: 1-Jan-2000 d/zone: 16""")).isEqualTo("out-of-range");
-        assertThat(errorIdFrom("""
+        assertThat(readTheErrorIdFrom("""
                 d: 1-Jan-2000 d/timezone: -70""")).isEqualTo("out-of-range");
     }
 
     @Test
     @DisplayName("a part that cannot be written says so, and a word that is no part says something else")
-    void theTwoRefusalsAreDifferent() {
-        assertThat(errorIdFrom("""
+    void refusesInTwoDifferentWays() {
+        assertThat(readTheErrorIdFrom("""
                 d: 1-1-2000 d/date: 1""")).isEqualTo("bad-field-set");
-        assertThat(errorIdFrom("""
+        assertThat(readTheErrorIdFrom("""
                 d: 1-1-2000 d/utc: 1""")).isEqualTo("bad-field-set");
-        assertThat(errorIdFrom("""
+        assertThat(readTheErrorIdFrom("""
                 d: 1-1-2000 d/foo: 1""")).isEqualTo("invalid-path");
     }
 }

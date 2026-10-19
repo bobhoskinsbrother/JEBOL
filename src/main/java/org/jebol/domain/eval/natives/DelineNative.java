@@ -15,7 +15,7 @@ public class DelineNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("string", TypesetValue.ANY_STRING.members()));
+        return List.of(Parameter.of("string", TypesetValue.ANY_STRING.members()));
     }
 
     @Override
@@ -28,7 +28,7 @@ public class DelineNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             AnyStringValue text = (AnyStringValue) arguments.getFirst();
             return refinements.contains("lines")
-                    ? BlockValue.block(text.linesDroppingOneTrailingEmptyLine())
+                    ? BlockValue.of(text.linesDroppingOneTrailingEmptyLine())
                     : text.withOneLineFeedPerEnding();
         };
     }

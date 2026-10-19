@@ -16,7 +16,7 @@ class ToRealFileEndsADirectoryFromTheSourceTest {
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -28,7 +28,7 @@ class ToRealFileEndsADirectoryFromTheSourceTest {
 
     @Test
     @DisplayName("a directory comes back with a slash, asked for with one or without")
-    void aDirectoryComesBackWithASlash(@TempDir Path root) {
+    void endsADirectoryWithASlash(@TempDir Path root) {
         assertThat(answerTo(root, A_DIRECTORY_AND_A_FILE + """
                 reduce [to-real-file %a-dir/  to-real-file %a-dir]"""))
                 .isEqualTo("[%/a-dir/ %/a-dir/]");
@@ -36,7 +36,7 @@ class ToRealFileEndsADirectoryFromTheSourceTest {
 
     @Test
     @DisplayName("and a file does not, asked for with a slash or without")
-    void aFileDoesNot(@TempDir Path root) {
+    void leavesAFileWithoutOne(@TempDir Path root) {
         assertThat(answerTo(root, A_DIRECTORY_AND_A_FILE + """
                 reduce [to-real-file %a-file.txt  to-real-file %a-file.txt/]"""))
                 .isEqualTo("[%/a-file.txt %/a-file.txt]");
@@ -44,7 +44,7 @@ class ToRealFileEndsADirectoryFromTheSourceTest {
 
     @Test
     @DisplayName("the dots resolve and the slash still follows what is there")
-    void theDotsResolveAndTheSlashStillFollows(@TempDir Path root) {
+    void resolvesTheDotsAndStillEndsWithASlash(@TempDir Path root) {
         assertThat(answerTo(root, A_DIRECTORY_AND_A_FILE + """
                 reduce [to-real-file %a-dir/../a-dir/  to-real-file %.  to-real-file %./]"""))
                 .isEqualTo("[%/a-dir/ %/ %/]");
@@ -52,14 +52,14 @@ class ToRealFileEndsADirectoryFromTheSourceTest {
 
     @Test
     @DisplayName("a string is read as a path the same way")
-    void aStringIsReadAsAPathTheSameWay(@TempDir Path root) {
+    void readsAStringAsAPathTheSameWay(@TempDir Path root) {
         assertThat(answerTo(root, A_DIRECTORY_AND_A_FILE + """
                 to-real-file "a-dir\"""")).isEqualTo("%/a-dir/");
     }
 
     @Test
     @DisplayName("nothing there is none, and so is an empty path")
-    void nothingThereIsNoneAndSoIsAnEmptyPath(@TempDir Path root) {
+    void answersNoneForNothingThereAndForAnEmptyPath(@TempDir Path root) {
         assertThat(answerTo(root, "to-real-file %not-there.txt")).isEqualTo("_");
         assertThat(answerTo(root, "to-real-file %\"\"")).isEqualTo("_");
     }

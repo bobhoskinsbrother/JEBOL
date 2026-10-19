@@ -20,16 +20,16 @@ final class BrotliMatch {
         lengthCodeDelta = 0;
     }
 
-    static long scoreFor(long copyLength, long distance) {
+    static long score(long copyLength, long distance) {
         return FLOOR_KEEPING_EVERY_SCORE_POSITIVE + WORTH_PER_LITERAL_BYTE * copyLength
-                - COST_PER_DISTANCE_BIT * (long) BrotliCodes.log2Floor((int) distance);
+                - COST_PER_DISTANCE_BIT * (long) BrotliCodes.floorTheLog2((int) distance);
     }
 
     static long scoreUsingLastDistance(long copyLength) {
         return WORTH_PER_LITERAL_BYTE * copyLength + FLOOR_KEEPING_EVERY_SCORE_POSITIVE + 15;
     }
 
-    static long penaltyForRecentDistance(int shortCode) {
+    static long penaliseARecentDistance(int shortCode) {
         return 39 + ((0x1CA10 >> (shortCode & 0xE)) & 0xE);
     }
 }

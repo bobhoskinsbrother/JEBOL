@@ -8,22 +8,22 @@ final class Difference implements SetOperation {
     }
 
     @Override
-    public boolean theFirstSetKeeps(boolean inTheirs) {
+    public boolean keepsFromTheFirstSet(boolean inTheirs) {
         return !inTheirs;
     }
 
     @Override
-    public boolean theSecondSetContributes() {
+    public boolean takesFromTheSecondSet() {
         return true;
     }
 
     @Override
-    public boolean theSecondSetKeeps(boolean inOurs) {
+    public boolean keepsFromTheSecondSet(boolean inOurs) {
         return !inOurs;
     }
 
     @Override
-    public int combinedBits(int mine, int yours) {
+    public int combineTheBits(int mine, int yours) {
         return mine ^ yours;
     }
 }

@@ -14,7 +14,7 @@ abstract class XxHashFamily {
 
     final EndianOctets octets = new EndianOctets();
 
-    long avalanched64(long hash) {
+    long avalanche64(long hash) {
         long mixed = hash ^ hash >>> 33;
         mixed *= P64_2;
         mixed ^= mixed >>> 29;

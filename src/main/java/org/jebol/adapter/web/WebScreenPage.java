@@ -23,22 +23,22 @@ final class WebScreenPage {
             const canvas = document.getElementById('screen');
             const brush = canvas.getContext('2d');
 
-            let sendingEvents = Promise.resolve();
+            let eventResponse = Promise.resolve();
 
-            function tell(fields) {
-              sendingEvents = sendingEvents
+            function dispatch(fields) {
+              eventResponse = eventResponse
                   .then(() => fetch('/event', { method: 'POST', body: JSON.stringify(fields) }))
                   .catch(() => {});
             }
 
-            function sayHowBigWeAre() {
-              tell({ kind: 'measure', wide: window.innerWidth, high: window.innerHeight });
+            function windowSize() {
+              dispatch({ type: 'measure', wide: window.innerWidth, high: window.innerHeight });
             }
 
-            let theLastPicture = null;
+            let lastPicture = null;
 
             function paint(picture) {
-              theLastPicture = picture;
+              lastPicture = picture;
               canvas.width = picture.wide;
               canvas.height = picture.high;
               brush.clearRect(0, 0, picture.wide, picture.high);
@@ -53,17 +53,17 @@ final class WebScreenPage {
               brush.rect(call.clip.across, call.clip.down, call.clip.wide, call.clip.high);
               brush.clip();
               if (call['clip-shape'] && call['clip-shape'].length) {
-                clipToTheShape(call);
+                clipToShape(call);
               }
               brush.globalAlpha = call.opacity / 255;
-              if (call.kind === 'fill') {
-                fillThePath(call);
-              } else if (call.kind === 'stroke') {
-                strokeThePath(call);
-              } else if (call.kind === 'picture') {
+              if (call.type === 'fill') {
+                fillPath(call);
+              } else if (call.type === 'stroke') {
+                strokePath(call);
+              } else if (call.type === 'picture') {
                 showPicture(call);
-              } else if (call.kind === 'text') {
-                writeTheText(call);
+              } else if (call.type === 'text') {
+                writeText(call);
               }
               brush.restore();
             }
@@ -73,7 +73,7 @@ final class WebScreenPage {
                   && t[3] === 1 && t[4] === 0 && t[5] === 0);
             }
 
-            function clipToTheShape(call) {
+            function clipToShape(call) {
               const inside = asPath(call['clip-shape']);
               if (isIdentity(call.transform)) {
                 brush.clip(inside);
@@ -94,13 +94,13 @@ final class WebScreenPage {
             const joinNames = { 'miter': 'miter', 'miter-bevel': 'miter',
                                 'round': 'round', 'bevel': 'bevel' };
 
-            function fillThePath(call) {
+            function fillPath(call) {
               applyTransform(call);
               brush.fillStyle = call.gradient ? asGradient(call.gradient) : call.colour;
               brush.fill(asPath(call.path), call.rule === 'even-odd' ? 'evenodd' : 'nonzero');
             }
 
-            function strokeThePath(call) {
+            function strokePath(call) {
               applyTransform(call);
               brush.strokeStyle = call.colour;
               brush.lineWidth = call.width;
@@ -127,7 +127,7 @@ final class WebScreenPage {
                   + piece.size + 'px "Jebol Carried", sans-serif';
             }
 
-            function writeTheText(call) {
+            function writeText(call) {
               if (call.selection && call.selection.length) {
                 brush.fillStyle = call['selection-colour'];
                 for (const patch of call.selection) {
@@ -135,10 +135,10 @@ final class WebScreenPage {
                 }
               }
               if (call.shadow) {
-                writeThePieces(call.lines, call.shadow.across, call.shadow.down,
+                writeLines(call.lines, call.shadow.across, call.shadow.down,
                     call.shadow.colour);
               }
-              writeThePieces(call.lines, 0, 0, null);
+              writeLines(call.lines, 0, 0, null);
               if (call.caret) {
                 brush.fillStyle = call.caret.colour;
                 brush.fillRect(call.caret.across, call.caret.top,
@@ -146,7 +146,7 @@ final class WebScreenPage {
               }
             }
 
-            function writeThePieces(lines, movedAcross, movedDown, everyPieceIn) {
+            function writeLines(lines, movedAcross, movedDown, everyPieceIn) {
               for (const line of lines) {
                 for (const piece of line.pieces) {
                   brush.font = fontOf(piece);
@@ -213,13 +213,13 @@ final class WebScreenPage {
 
             const pictures = new EventSource('/paint');
             pictures.addEventListener('paint', message => paint(JSON.parse(message.data)));
-            pictures.addEventListener('open', sayHowBigWeAre);
+            pictures.addEventListener('open', windowSize);
 
             document.fonts.load('12px "Jebol Carried"').then(() => {
-              if (theLastPicture) paint(theLastPicture);
+              if (lastPicture) paint(lastPicture);
             });
 
-            const keysThatTypeNothing = {
+            const keysWithoutCharacters = {
               PageUp: 'page-up', PageDown: 'page-down', End: 'end', Home: 'home',
               ArrowLeft: 'left', ArrowUp: 'up', ArrowRight: 'right', ArrowDown: 'down',
               Insert: 'insert',
@@ -231,37 +231,37 @@ final class WebScreenPage {
               Backspace: 8, Tab: 9, Enter: 13, Escape: 27, Delete: 127
             };
 
-            function tellWhereThePointerIs(kind, pointer) {
-              tell({ kind: kind, across: Math.round(pointer.offsetX), down: Math.round(pointer.offsetY) });
+            function pointerLocation(kind, pointer) {
+              dispatch({ type: kind, across: Math.round(pointer.offsetX), down: Math.round(pointer.offsetY) });
             }
 
-            function theCharacterTyped(pressed) {
+            function characterTyped(pressed) {
               if (pressed.key in keysThatTypeAControlCharacter) {
                 return keysThatTypeAControlCharacter[pressed.key];
               }
               return [...pressed.key].length === 1 ? pressed.key.codePointAt(0) : null;
             }
 
-            function tellTheKey(pressed, typing, naming) {
-              if (pressed.key in keysThatTypeNothing) {
-                tell({ kind: naming, named: keysThatTypeNothing[pressed.key] });
+            function dispatchKey(pressed, typing, naming) {
+              if (pressed.key in keysWithoutCharacters) {
+                dispatch({ type: naming, named: keysWithoutCharacters[pressed.key] });
                 return;
               }
-              const typed = theCharacterTyped(pressed);
+              const typed = characterTyped(pressed);
               if (typed !== null) {
-                tell({ kind: typing, code: typed });
+                dispatch({ type: typing, code: typed });
               }
             }
 
-            window.addEventListener('resize', sayHowBigWeAre);
-            canvas.addEventListener('mousedown', pointer => tellWhereThePointerIs('down', pointer));
-            canvas.addEventListener('mouseup', pointer => tellWhereThePointerIs('up', pointer));
-            canvas.addEventListener('mousemove', pointer => tellWhereThePointerIs('move', pointer));
-            window.addEventListener('keydown', pressed => tellTheKey(pressed, 'key', 'control'));
-            window.addEventListener('keyup', pressed => tellTheKey(pressed, 'key-up', 'control-up'));
-            window.addEventListener('beforeunload', () => tell({ kind: 'close' }));
+            window.addEventListener('resize', windowSize);
+            canvas.addEventListener('mousedown', pointer => pointerLocation('down', pointer));
+            canvas.addEventListener('mouseup', pointer => pointerLocation('up', pointer));
+            canvas.addEventListener('mousemove', pointer => pointerLocation('move', pointer));
+            window.addEventListener('keydown', pressed => dispatchKey(pressed, 'key', 'control'));
+            window.addEventListener('keyup', pressed => dispatchKey(pressed, 'key-up', 'control-up'));
+            window.addEventListener('beforeunload', () => dispatch({ type: 'close' }));
 
-            sayHowBigWeAre();
+            windowSize();
             </script>
             </body>
             </html>

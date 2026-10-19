@@ -68,24 +68,24 @@ public record ErrorValue(
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
-            throw refusingConstruction(contents);
+        public Value construct(List<Value> contents, Construction construction) {
+            throw refuseTheConstruction(contents);
         }
 
         @Override
-        public Value convertedFrom(Value value, Maker maker) {
-            return madeFrom(value, maker);
+        public Value convert(Value value, Maker maker) {
+            return makeFrom(value, maker);
         }
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             return switch (spec) {
                 case ObjectValue(Context fields) ->
-                        anErrorSpeltOutBy(BlockValue.block(fields.setWordsAndValues()), true, spec, maker);
-                case BlockValue body -> anErrorSpeltOutBy(BlockValue.block(
-                        maker.objectEvaluatedFrom(body).context().setWordsAndValues()), false, spec, maker);
-                case AnyBlockValue fields -> anErrorSpeltOutBy(fields, false, spec, maker);
-                case StringValue written -> maker.spokenHere(new ErrorValue(ErrorCategory.USER, "message",
+                        makeAnErrorSpeltOutBy(BlockValue.of(fields.setWordsAndValues()), true, spec, maker);
+                case BlockValue body -> makeAnErrorSpeltOutBy(BlockValue.of(
+                        maker.evaluateAnObject(body).context().setWordsAndValues()), false, spec, maker);
+                case AnyBlockValue fields -> makeAnErrorSpeltOutBy(fields, false, spec, maker);
+                case StringValue written -> maker.speakHere(new ErrorValue(ErrorCategory.USER, "message",
                         written.text(), Optional.of(spec),
                         Optional.empty(), Optional.empty(),
                         Optional.empty(), Optional.empty(),
@@ -94,7 +94,7 @@ public record ErrorValue(
             };
         }
 
-        private Value anErrorSpeltOutBy(
+        private Value makeAnErrorSpeltOutBy(
                 AnyBlockValue fields, boolean fromAnObject, Value theSpecAsWritten, Maker maker) {
 
             List<Value> items = fields.remaining();
@@ -121,7 +121,7 @@ public record ErrorValue(
                         typeWordAsSpelled = asWritten instanceof AnyWordValue spelled
                                 ? spelled.spelling()
                                 : said;
-                        category = ErrorCategory.named(said).orElseThrow(() ->
+                        category = ErrorCategory.findTheCategoryNamed(said).orElseThrow(() ->
                                 Raised.of(EvaluationFailure.INVALID_ARG, asWritten));
                     }
                     case "id" -> {
@@ -145,17 +145,17 @@ public record ErrorValue(
                     second, third, Optional.empty(), Optional.empty(),
                     new LinkedHashMap<>());
             built.write("type", WordValue.of(typeWordAsSpelled));
-            return maker.spokenHere(built);
+            return maker.speakHere(built);
         }
 
         private void refuseAnErrorTheCatalogueHasNot(
                 ErrorCategory category, String errorId, Value asWritten, Value spec,
                 boolean fromAnObject) {
 
-            if (!ErrorCatalogue.idsIn(category.spelling()).contains(errorId)) {
+            if (!ErrorCatalogue.listTheIdsIn(category.spelling()).contains(errorId)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, asWritten);
             }
-            if (!fromAnObject && ErrorCatalogue.codeFor(category.spelling(), errorId)
+            if (!fromAnObject && ErrorCatalogue.findTheCodeFor(category.spelling(), errorId)
                     < ErrorCatalogue.LOWEST_CODE_AN_ENTRY_HAS) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, spec);
             }
@@ -166,13 +166,13 @@ public record ErrorValue(
     public Optional<Context> fieldsAsAContext() {
         Context fields = Context.root();
         for (String name : FIELDS) {
-            fields.register(name, field(name).orElseGet(NoneValue::none));
+            fields.register(name, readTheField(name).orElseGet(NoneValue::none));
         }
         return Optional.of(fields);
     }
 
     @Override
-    public Value trimmed(Trimming trimming) {
+    public Value trim(Trimming trimming) {
         trimming.refuseEveryRefinementOnFields();
         return new ObjectValue(fieldsAsAContext().orElseThrow().withoutTheFieldsHoldingNothing());
     }
@@ -183,29 +183,29 @@ public record ErrorValue(
     }
 
     @Override
-    public Value reflected(AnyWordValue field) {
+    public Value reflect(AnyWordValue field) {
         return switch (field.canonical()) {
-            case "words" -> BlockValue.block(FIELDS.stream()
+            case "words" -> BlockValue.of(FIELDS.stream()
                     .<Value>map(WordValue::of).toList());
-            case "values" -> BlockValue.block(FIELDS.stream()
-                    .map(name -> field(name).orElseGet(NoneValue::none))
+            case "values" -> BlockValue.of(FIELDS.stream()
+                    .map(name -> readTheField(name).orElseGet(NoneValue::none))
                     .toList());
             default -> NoneValue.none();
         };
     }
 
     @Override
-    public Value copied(boolean deeply, Set<Datatype> kinds) {
+    public Value copy(boolean deeply, Set<Datatype> kinds) {
         Map<String, Value> fields = new LinkedHashMap<>();
         for (String name : FIELDS) {
-            field(name).ifPresent(held ->
-                    fields.put(name, held.copiedAsAMember(deeply, kinds)));
+            readTheField(name).ifPresent(held ->
+                    fields.put(name, held.copyAsAMember(deeply, kinds)));
         }
         return new ErrorValue(category, errorId, message, subject, secondArgument,
                 thirdArgument, near, whereChain, fields, wording);
     }
 
-    public ErrorValue spokenBy(ErrorWording catalogue) {
+    public ErrorValue speakWith(ErrorWording catalogue) {
         return new ErrorValue(category, errorId, message, subject,
                 secondArgument, thirdArgument, near, whereChain, writtenFields, catalogue);
     }
@@ -217,7 +217,7 @@ public record ErrorValue(
     }
 
     /** The same, naming what the failure was about. */
-    public static ErrorValue about(
+    public static ErrorValue of(
             ErrorCategory category, String errorId, String message, Value subject) {
         return new ErrorValue(category, errorId, message,
                 Optional.of(subject), Optional.empty(), Optional.empty(),
@@ -233,7 +233,7 @@ public record ErrorValue(
      * Building those through the three-argument form would put a none in ARG3
      * where the entry has nothing at all.
      */
-    public static ErrorValue about(
+    public static ErrorValue of(
             ErrorCategory category, String errorId, String message,
             Value first, Value second) {
 
@@ -252,7 +252,7 @@ public record ErrorValue(
      * own suite asserts on arg3 directly, which is why the three cannot all
      * live in the message.
      */
-    public static ErrorValue about(
+    public static ErrorValue of(
             ErrorCategory category, String errorId, String message,
             Value first, Value second, Value third) {
 
@@ -306,14 +306,14 @@ public record ErrorValue(
      * always none. That made `e/arg3 = integer!` false for every expect-arg,
      * which is an assertion Rebol's own suite makes.
      */
-    public Optional<Value> field(String name) {
+    public Optional<Value> readTheField(String name) {
         if (writtenFields.containsKey(name)) {
             return Optional.of(writtenFields.get(name));
         }
         return switch (name) {
             case "code" ->
-                    Optional.of(IntegerValue.of(codeNumberedInHundredsByCategory()));
-            case "type" -> Optional.of(WordValue.of(theTypeWordAsThisErrorReportsIt()));
+                    Optional.of(IntegerValue.of(numberTheCode()));
+            case "type" -> Optional.of(WordValue.of(reportTheTypeWord()));
             case "id" -> Optional.of(WordValue.of(errorId));
             case "arg1" -> Optional.of(subject.orElseGet(NoneValue::none));
             case "arg2" -> Optional.of(secondArgument.orElseGet(NoneValue::none));
@@ -324,8 +324,8 @@ public record ErrorValue(
         };
     }
 
-    private long codeNumberedInHundredsByCategory() {
-        int fromCatalogue = ErrorCatalogue.codeFor(
+    private long numberTheCode() {
+        int fromCatalogue = ErrorCatalogue.findTheCodeFor(
                 category.name().charAt(0) + category.name().substring(1).toLowerCase(
                         Locale.ROOT),
                 errorId);
@@ -345,7 +345,7 @@ public record ErrorValue(
         };
     }
 
-    private String theTypeWordAsThisErrorReportsIt() {
+    private String reportTheTypeWord() {
         if (writtenFields.get("type") instanceof AnyWordValue written) {
             return written.spelling();
         }
@@ -364,34 +364,34 @@ public record ErrorValue(
      * the catalogue rather than from here, so a script that changes an
      * argument changes the message.
      */
-    public String formedAsRebolFormsIt() {
+    public String formAsRebolDoes() {
         StringBuilder written = new StringBuilder("\n** ")
-                .append(theTypeWordAsThisErrorReportsIt())
+                .append(reportTheTypeWord())
                 .append(" error: ")
-                .append(theMessageTheCatalogueGives())
+                .append(readTheCataloguesMessage())
                 .append('\n');
-        field("where").filter(said -> !(said instanceof NoneValue)).ifPresent(chain ->
+        readTheField("where").filter(said -> !(said instanceof NoneValue)).ifPresent(chain ->
                 written.append("** Where: ").append(Molder.form(chain)).append('\n'));
-        field("near").filter(said -> !(said instanceof NoneValue)).ifPresent(where ->
-                written.append("** Near: ").append(theLocationShown(where)).append('\n'));
+        readTheField("near").filter(said -> !(said instanceof NoneValue)).ifPresent(where ->
+                written.append("** Near: ").append(showTheLocation(where)).append('\n'));
         return written.toString();
     }
 
-    private String theMessageTheCatalogueGives() {
-        return wording.forTheId(category.spelling(), errorId)
-                .map(this::theMessageWrittenFrom)
-                .orElseGet(this::theWordsWhenTheCatalogueHasNone);
+    private String readTheCataloguesMessage() {
+        return wording.wordTheId(category.spelling(), errorId)
+                .map(this::writeTheMessageFrom)
+                .orElseGet(this::fallBackToPlainWords);
     }
 
-    private String theWordsWhenTheCatalogueHasNone() {
+    private String fallBackToPlainWords() {
         return rebolsCatalogueNamesIt() ? ErrorWording.NOTHING_IN_THE_CATALOGUE : message;
     }
 
     private boolean rebolsCatalogueNamesIt() {
-        return ErrorCatalogue.idsIn(category.spelling()).contains(errorId);
+        return ErrorCatalogue.listTheIdsIn(category.spelling()).contains(errorId);
     }
 
-    private String theMessageWrittenFrom(Value said) {
+    private String writeTheMessageFrom(Value said) {
         if (!(said instanceof AnyBlockValue words)) {
             return Molder.form(said);
         }
@@ -400,14 +400,14 @@ public record ErrorValue(
             if (!built.isEmpty() && built.charAt(built.length() - 1) != '\n') {
                 built.append(' ');
             }
-            built.append(theFieldItNamesOrTheItemItself(item));
+            built.append(nameTheFieldOrTheItem(item));
         }
         return built.toString();
     }
 
-    private String theFieldItNamesOrTheItemItself(Value item) {
+    private String nameTheFieldOrTheItem(Value item) {
         if (item instanceof AnyWordValue word) {
-            Optional<Value> held = field(word.canonical());
+            Optional<Value> held = readTheField(word.canonical());
             if (held.isPresent()) {
                 return Molder.mold(held.get());
             }
@@ -415,7 +415,7 @@ public record ErrorValue(
         return Molder.form(item);
     }
 
-    private static String theLocationShown(Value where) {
+    private static String showTheLocation(Value where) {
         if (where instanceof StringValue text) {
             return text.text();
         }
@@ -437,15 +437,15 @@ public record ErrorValue(
                 : built.toString();
     }
 
-    public static ErrorValue script(String errorId, String message) {
+    public static ErrorValue makeAScriptError(String errorId, String message) {
         return of(ErrorCategory.SCRIPT, errorId, message);
     }
 
-    public static ErrorValue math(String errorId, String message) {
+    public static ErrorValue makeAMathError(String errorId, String message) {
         return of(ErrorCategory.MATH, errorId, message);
     }
 
-    public static ErrorValue syntax(String errorId, String message) {
+    public static ErrorValue makeASyntaxError(String errorId, String message) {
         return of(ErrorCategory.SYNTAX, errorId, message);
     }
 
@@ -456,7 +456,7 @@ public record ErrorValue(
      * because this is the same error rather than another like it: an error
      * that picked up its NEAR on the way out must not lose an id somebody set.
      */
-    public ErrorValue near(Value fragment) {
+    public ErrorValue placeNear(Value fragment) {
         return new ErrorValue(category, errorId, message, subject,
                 secondArgument, thirdArgument, Optional.of(fragment), whereChain,
                 writtenFields, wording);
@@ -470,14 +470,14 @@ public record ErrorValue(
      * whose frames run down into the console's own evaluation; what matches
      * is the part that is about the script.
      */
-    public ErrorValue raisedThrough(Value chain) {
+    public ErrorValue traceThrough(Value chain) {
         return new ErrorValue(category, errorId, message, subject,
                 secondArgument, thirdArgument, near, Optional.of(chain),
                 writtenFields, wording);
     }
 
     public ErrorValue raisedAsItStands() {
-        return whereChain.isPresent() ? this : raisedThrough(NoneValue.none());
+        return whereChain.isPresent() ? this : traceThrough(NoneValue.none());
     }
 
     @Override

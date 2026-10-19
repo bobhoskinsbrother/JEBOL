@@ -38,14 +38,14 @@ public final class ParseTargets {
                 && (word instanceof WordValue || word instanceof SetWordValue)) {
             return word;
         }
-        throw somewhereThatIsNotAVariable(written);
+        throw refuseANonVariable(written);
     }
 
     public static AnyWordValue refuseAnythingButAWordOrAGetWord(Value read) {
         if (read instanceof AnyWordValue word && word.looksUpItsDeclaration()) {
             return word;
         }
-        throw somewhereThatIsNotAVariable(read);
+        throw refuseANonVariable(read);
     }
 
     public static void refuseAnInputThatIsNotASeries(Value rule, Value held) {
@@ -54,7 +54,7 @@ public final class ParseTargets {
         }
     }
 
-    private static Raised somewhereThatIsNotAVariable(Value written) {
+    private static Raised refuseANonVariable(Value written) {
         return written == null
                 ? Raised.of(EvaluationFailure.PARSE_VARIABLE)
                 : Raised.of(EvaluationFailure.PARSE_VARIABLE, written);

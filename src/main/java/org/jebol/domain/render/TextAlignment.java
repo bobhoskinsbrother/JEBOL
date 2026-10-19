@@ -15,7 +15,7 @@ public enum TextAlignment {
         this.spelling = spelling;
     }
 
-    public static Optional<TextAlignment> spelt(String canonical) {
+    public static Optional<TextAlignment> findTheAlignmentSpelt(String canonical) {
         return Arrays.stream(values()).filter(each -> each.spelling.equals(canonical)).findFirst();
     }
 

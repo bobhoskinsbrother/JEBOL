@@ -11,18 +11,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SuiteFailureReportTest {
 
-    private static String reasonFor(SuiteFile.Assertion assertion) {
-        return RebolSuiteTest.verdictFor(assertion).reason();
+    private static String readTheReasonFor(SuiteFile.Assertion assertion) {
+        return RebolSuiteTest.judge(assertion).reason();
     }
 
     @Test
     @DisplayName("the assertions that run and answer false, by group")
-    void theQuietDisagreementsAreGrouped() {
+    void groupsTheQuietDisagreements() {
         Map<String, Integer> byGroup = new LinkedHashMap<>();
         Map<String, String> anExample = new LinkedHashMap<>();
 
-        for (SuiteFile.Assertion assertion : RebolSuiteTest.everyAssertion().toList()) {
-            if (RebolSuiteTest.holds(assertion) || !"answered false".equals(reasonFor(assertion))) {
+        for (SuiteFile.Assertion assertion : RebolSuiteTest.listEveryAssertion().toList()) {
+            if (RebolSuiteTest.holds(assertion) || !"answered false".equals(readTheReasonFor(assertion))) {
                 continue;
             }
             String group = assertion.file() + " / " + assertion.group();
@@ -42,9 +42,9 @@ class SuiteFailureReportTest {
 
     @Test
     @DisplayName("several examples from the two largest groups")
-    void theLargestGroupsAreSampled() {
+    void samplesTheLargestGroups() {
         Map<String, List<String>> examples = new LinkedHashMap<>();
-        for (SuiteFile.Assertion assertion : RebolSuiteTest.everyAssertion().toList()) {
+        for (SuiteFile.Assertion assertion : RebolSuiteTest.listEveryAssertion().toList()) {
             if (RebolSuiteTest.holds(assertion)) {
                 continue;
             }
@@ -63,7 +63,7 @@ class SuiteFailureReportTest {
 
     @Test
     @DisplayName("how many steps each file has, and how many are setup")
-    void stepsAreCounted() {
+    void countsSteps() {
         RebolSuiteTest.filesInSuite().stream().limit(6).forEach(file ->
                 System.out.printf("  %-24s %4d steps, %4d assertions, %4d setup%n",
                         file.name(), file.steps().size(), file.assertions().size(),
@@ -72,23 +72,23 @@ class SuiteFailureReportTest {
 
     @Test
     @DisplayName("every assertion that escaped as a Java exception, named")
-    void theHostExceptionsAreNamed() {
-        List<SuiteFile.Assertion> escaping = RebolSuiteTest.everyAssertion()
+    void namesTheHostExceptions() {
+        List<SuiteFile.Assertion> escaping = RebolSuiteTest.listEveryAssertion()
                 .filter(assertion -> !RebolSuiteTest.holds(assertion))
-                .filter(assertion -> reasonFor(assertion).startsWith("host exception"))
+                .filter(assertion -> readTheReasonFor(assertion).startsWith("host exception"))
                 .toList();
 
         System.out.printf("%n%d assertions escaped as a host exception:%n", escaping.size());
         escaping.forEach(assertion -> System.out.printf("  %-34s %s%n      %s%n",
-                reasonFor(assertion),
+                readTheReasonFor(assertion),
                 assertion.file() + " / " + assertion.group(),
                 assertion.source().replace("\n", " ")));
     }
 
     @Test
     @DisplayName("every failing assertion's name, for diffing two runs")
-    void everyFailureNamed() {
-        RebolSuiteTest.everyAssertion()
+    void namesEveryFailure() {
+        RebolSuiteTest.listEveryAssertion()
                 .filter(assertion -> !RebolSuiteTest.holds(assertion))
                 .map(SuiteFile.Assertion::toString)
                 .sorted()
@@ -97,11 +97,11 @@ class SuiteFailureReportTest {
 
     @Test
     @DisplayName("the assertions that answer false, named, group by group")
-    void theQuietDisagreementsAreNamed() {
+    void namesTheQuietDisagreements() {
         Map<String, List<String>> byGroup = new LinkedHashMap<>();
-        for (SuiteFile.Assertion assertion : RebolSuiteTest.everyAssertion().toList()) {
+        for (SuiteFile.Assertion assertion : RebolSuiteTest.listEveryAssertion().toList()) {
             if (RebolSuiteTest.holds(assertion)
-                    || !"answered false".equals(reasonFor(assertion))) {
+                    || !"answered false".equals(readTheReasonFor(assertion))) {
                 continue;
             }
             byGroup.computeIfAbsent(assertion.file() + " / " + assertion.group(),
@@ -122,16 +122,16 @@ class SuiteFailureReportTest {
 
     @Test
     @DisplayName("the assertions that raised, named, so the reason can be checked")
-    void theRaisingAssertionsAreNamed() {
-        List<SuiteFile.Assertion> raising = RebolSuiteTest.everyAssertion()
+    void namesTheRaisingAssertions() {
+        List<SuiteFile.Assertion> raising = RebolSuiteTest.listEveryAssertion()
                 .filter(assertion -> !RebolSuiteTest.holds(assertion))
-                .filter(assertion -> reasonFor(assertion).startsWith("error "))
+                .filter(assertion -> readTheReasonFor(assertion).startsWith("error "))
                 .toList();
 
         int shown = Math.min(60, raising.size());
         System.out.printf("%n%d assertions raised; showing %d:%n", raising.size(), shown);
         raising.stream().limit(shown).forEach(assertion -> System.out.printf(
-                "  %-22s %s%n", reasonFor(assertion),
+                "  %-22s %s%n", readTheReasonFor(assertion),
                 assertion.source().replace("\n", " ").substring(
                         0, Math.min(110, assertion.source().length()))));
         if (raising.size() > shown) {
@@ -141,16 +141,16 @@ class SuiteFailureReportTest {
 
     @Test
     @DisplayName("what the failures are failing on, most common first")
-    void theFailuresAreCounted() {
+    void countsTheFailures() {
         Map<String, Integer> byReason = new LinkedHashMap<>();
         int failures = 0;
 
-        for (SuiteFile.Assertion assertion : RebolSuiteTest.everyAssertion().toList()) {
+        for (SuiteFile.Assertion assertion : RebolSuiteTest.listEveryAssertion().toList()) {
             if (RebolSuiteTest.holds(assertion)) {
                 continue;
             }
             failures++;
-            byReason.merge(reasonFor(assertion), 1, Integer::sum);
+            byReason.merge(readTheReasonFor(assertion), 1, Integer::sum);
         }
 
         System.out.printf("%n%d failing assertions, by what they trip over:%n", failures);
@@ -161,7 +161,7 @@ class SuiteFailureReportTest {
                 .forEach(entry -> System.out.printf("  %5d  %s%n",
                         entry.getValue(), entry.getKey()));
 
-        assertThat(RebolSuiteTest.everyAssertion().toList())
+        assertThat(RebolSuiteTest.listEveryAssertion().toList())
                 .as("nothing to report must mean everything held, not that nothing ran")
                 .isNotEmpty();
     }

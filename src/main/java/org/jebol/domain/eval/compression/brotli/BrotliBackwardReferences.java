@@ -9,13 +9,13 @@ final class BrotliBackwardReferences {
     private BrotliBackwardReferences() {
     }
 
-    static int furthestBack(int windowBits) {
+    static int measureTheFurthestBack(int windowBits) {
         return (1 << windowBits) - SHORT_OF_THE_WINDOW_SO_THE_TWO_CANNOT_BE_CONFUSED;
     }
 
     private static final int SHORT_OF_THE_WINDOW_SO_THE_TWO_CANNOT_BE_CONFUSED = 16;
 
-    private static int howFarApartCopiesMayBeBeforeSearchingSparsely(int quality) {
+    private static int measureTheSparseSearchDistance(int quality) {
         return quality < 9 ? 64 : 512;
     }
 
@@ -31,15 +31,15 @@ final class BrotliBackwardReferences {
             int[] recentDistances, int insertLengthCarriedIn,
             BrotliCommand commands) {
 
-        int furthestBack = furthestBack(windowBits);
+        int furthestBack = measureTheFurthestBack(windowBits);
         int insertLength = insertLengthCarriedIn;
         int end = position + howManyBytes;
-        int lookahead = hasher.howManyBytesItLooksAhead();
+        int lookahead = hasher.countTheBytesItLooksAhead();
         int rememberUntil = howManyBytes >= lookahead
                 ? position + howManyBytes - lookahead + 1
                 : position;
 
-        int searchSparselyAfter = howFarApartCopiesMayBeBeforeSearchingSparsely(quality);
+        int searchSparselyAfter = measureTheSparseSearchDistance(quality);
         int giveUpLookingAfter = position + searchSparselyAfter;
 
         BrotliMatch best = new BrotliMatch();
@@ -100,7 +100,7 @@ final class BrotliBackwardReferences {
 
             giveUpLookingAfter = (int) (at + 2 * best.length + searchSparselyAfter);
             int reachOfTheDictionary = Math.min(at, furthestBack);
-            int distanceCode = distanceCodeFor(best.distance, reachOfTheDictionary,
+            int distanceCode = findTheDistanceCodeFor(best.distance, reachOfTheDictionary,
                     recentDistances);
             if (best.distance <= reachOfTheDictionary && distanceCode > 0) {
                 recentDistances[3] = recentDistances[2];
@@ -134,8 +134,8 @@ final class BrotliBackwardReferences {
         hasher.rememberRange(ringBuffer, mask, from, until);
     }
 
-    static int distanceCodeFor(long distance, long furthestBack,
-            int[] recentDistances) {
+    static int findTheDistanceCodeFor(long distance, long furthestBack,
+                                      int[] recentDistances) {
 
         if (distance <= furthestBack) {
             long distancePlusThree = distance + 3;

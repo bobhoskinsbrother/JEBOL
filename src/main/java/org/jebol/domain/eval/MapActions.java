@@ -20,53 +20,53 @@ public final class MapActions implements Actions {
     }
 
     @Override
-    public Value poked(Value key, Value written) {
+    public Value poke(Value key, Value written) {
         pairs.put(key, written, false);
         return written;
     }
 
     @Override
-    public Value cleared() {
+    public Value clear() {
         pairs.requireChangeable();
         pairs.clear();
         return pairs;
     }
 
     @Override
-    public int length() {
+    public int measureTheLength() {
         return pairs.pairCount();
     }
 
     @Override
     public Value append(Asked asked) {
-        return givenTheBlockOfPairs(asked, "append");
+        return takeTheBlockOfPairs(asked, "append");
     }
 
     @Override
     public Value insert(Asked asked) {
-        return givenTheBlockOfPairs(asked, "insert");
+        return takeTheBlockOfPairs(asked, "insert");
     }
 
-    Value givenTheBlockOfPairs(Asked asked, String nativeName) {
+    Value takeTheBlockOfPairs(Asked asked, String nativeName) {
         pairs.requireChangeable();
         refuseWhatIsNotAWholeBlockOfPairs(
                 asked.given(), asked.refinementsAsked().contains("dup"), nativeName);
-        return given(theWantedPairsOf((AnyBlockValue) asked.given(), asked));
+        return takeTheWanted(pickTheWantedPairsOf((AnyBlockValue) asked.given(), asked));
     }
 
-    public MapValue combinedWith(Value other, SetOperation how, boolean mindingCase) {
+    public MapValue combineWith(Value other, SetOperation how, boolean mindingCase) {
         MapValue theirs = other instanceof MapValue map ? map : MapValue.empty();
         MapValue kept = MapValue.empty();
         for (Value key : pairs.keys()) {
             boolean inTheirs = theirs.holds(key, mindingCase);
-            if (how.theFirstSetKeeps(inTheirs) && !kept.holds(key, mindingCase)) {
+            if (how.keepsFromTheFirstSet(inTheirs) && !kept.holds(key, mindingCase)) {
                 kept.put(key, pairs.select(key, mindingCase), mindingCase);
             }
         }
-        if (how.theSecondSetContributes()) {
+        if (how.takesFromTheSecondSet()) {
             for (Value key : theirs.keys()) {
                 boolean inOurs = pairs.holds(key, mindingCase);
-                if (how.theSecondSetKeeps(inOurs)
+                if (how.keepsFromTheSecondSet(inOurs)
                         && !kept.holds(key, mindingCase)) {
                     kept.put(key, theirs.select(key, mindingCase), mindingCase);
                 }
@@ -75,7 +75,7 @@ public final class MapActions implements Actions {
         return kept;
     }
 
-    static List<Value> theWantedPairsOf(AnyBlockValue block, Asked asked) {
+    static List<Value> pickTheWantedPairsOf(AnyBlockValue block, Asked asked) {
         List<Value> whole = block.head().remaining();
         int here = block.index() - 1;
         long asking = asked.howMuchOfIt().orElse((long) (whole.size() - here));
@@ -91,7 +91,7 @@ public final class MapActions implements Actions {
         return whole.subList(from, from + count);
     }
 
-    public Value given(List<Value> wanted) {
+    public Value takeTheWanted(List<Value> wanted) {
         for (int at = 0; at + 1 < wanted.size(); at += 2) {
             pairs.put(wanted.get(at), wanted.get(at + 1));
         }
@@ -113,7 +113,7 @@ public final class MapActions implements Actions {
         }
     }
 
-    public static Value madeFrom(Value given, List<Value> flattened) {
+    public static Value makeFrom(Value given, List<Value> flattened) {
         if (flattened.size() % 2 != 0) {
             throw Raised.of(EvaluationFailure.INVALID_ARG,
                     "a map needs a value for every key, and this has "
@@ -122,9 +122,9 @@ public final class MapActions implements Actions {
         return MapValue.of(flattened);
     }
 
-    public static List<Value> pairsOffered(Value given) {
+    public static List<Value> listThePairsOffered(Value given) {
         return switch (given) {
-            case MapValue already -> already.flattened();
+            case MapValue already -> already.flatten();
             case ObjectValue object -> object.context().slots().stream()
                     .<Value>mapMulti((slot, accept) -> {
                         accept.accept(WordValue.of(slot.spelling()));
@@ -137,7 +137,7 @@ public final class MapActions implements Actions {
         };
     }
 
-    public MapValue composedThrough(java.util.function.UnaryOperator<Value> compose) {
+    public MapValue composeThrough(java.util.function.UnaryOperator<Value> compose) {
         List<Value> built = new ArrayList<>();
         for (Value key : pairs.keys()) {
             built.add(key);

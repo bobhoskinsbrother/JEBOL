@@ -14,7 +14,7 @@ class CharacterComparisonTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -28,20 +28,20 @@ class CharacterComparisonTest {
 
     @Test
     @DisplayName("ordering goes by code point and folds nothing")
-    void orderingDoesNotFoldCase() {
+    void ordersWithoutFoldingCase() {
         assertThat(answerTo("#\"a\" < #\"B\"")).isEqualTo("#(false)");
         assertThat(answerTo("#\"a\" > #\"B\"")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("two characters that are genuinely different are still different")
-    void unrelatedCharactersAreUnaffected() {
+    void leavesUnrelatedCharactersUnaffected() {
         assertThat(answerTo("#\"a\" = #\"b\"")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("a character is not a one-character string")
-    void aCharacterIsNotAString() {
+    void treatsACharacterAsNoString() {
         assertThat(answerTo("#\"a\" = \"A\"")).isEqualTo("#(false)");
     }
 
@@ -53,7 +53,7 @@ class CharacterComparisonTest {
 
     @Test
     @DisplayName("SELECT and FIND fold case for a character too")
-    void theSearchesFoldCase() {
+    void foldsCaseInTheSearches() {
         assertThat(answerTo("first select [#\"A\" [1] #\"a\" [2]] #\"a\"")).isEqualTo("1");
         assertThat(answerTo("first first find/tail [#\"A\" [1] #\"a\" [2]] #\"a\""))
                 .isEqualTo("1");
@@ -61,20 +61,20 @@ class CharacterComparisonTest {
 
     @Test
     @DisplayName("/CASE turns the folding off where it is offered")
-    void caseTurnsTheFoldingOff() {
+    void stopsFoldingForCase() {
         assertThat(answerTo("first first find/case/tail [#\"A\" [1] #\"a\" [2]] #\"a\""))
                 .isEqualTo("2");
     }
 
     @Test
     @DisplayName("a character nested in a block folds case as well")
-    void theFoldingReachesInsideABlock() {
+    void foldsInsideABlock() {
         assertThat(answerTo("(reduce [#\"a\"]) = reduce [#\"A\"]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("INDEX? and LENGTH? answer none for none, and EMPTY? answers true")
-    void threeReflectorsTolerateNone() {
+    void letsThreeReflectorsTolerateNone() {
         assertThat(answerTo("none? index? none")).isEqualTo("#(true)");
         assertThat(answerTo("none? length? none")).isEqualTo("#(true)");
         assertThat(answerTo("empty? none")).isEqualTo("#(true)");
@@ -82,15 +82,15 @@ class CharacterComparisonTest {
 
     @Test
     @DisplayName("the rest of the family still refuses none")
-    void theOthersAreNotSoForgiving() {
-        assertThat(errorIdOf("first none")).isNotEqualTo("no-error");
-        assertThat(errorIdOf("head none")).isNotEqualTo("no-error");
-        assertThat(errorIdOf("next none")).isNotEqualTo("no-error");
+    void refusesNoneInTheOtherReflectors() {
+        assertThat(readTheErrorIdOf("first none")).isNotEqualTo("no-error");
+        assertThat(readTheErrorIdOf("head none")).isNotEqualTo("no-error");
+        assertThat(readTheErrorIdOf("next none")).isNotEqualTo("no-error");
     }
 
     @Test
     @DisplayName("and TAIL? refuses none: the declaration is the door")
-    void tailRefusesNone() {
-        assertThat(errorIdOf("tail? none")).isEqualTo("expect-arg");
+    void refusesNoneForTail() {
+        assertThat(readTheErrorIdOf("tail? none")).isEqualTo("expect-arg");
     }
 }

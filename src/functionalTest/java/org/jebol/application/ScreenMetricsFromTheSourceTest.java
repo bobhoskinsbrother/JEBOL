@@ -13,7 +13,7 @@ class ScreenMetricsFromTheSourceTest {
 
     private static final String ROOM = "1024x768";
 
-    private static Interpreter withAScreen(RecordingScreen screen) {
+    private static Interpreter makeAnInterpreterWithAScreen(RecordingScreen screen) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useScreen(screen);
@@ -21,12 +21,12 @@ class ScreenMetricsFromTheSourceTest {
     }
 
     private static String answerFrom(RecordingScreen screen, String source) {
-        Interpreter interpreter = withAScreen(screen);
+        Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
         return interpreter.display(interpreter.run(source));
     }
 
     private static String answerTo(String source) {
-        return answerFrom(RecordingScreen.measuring(1024, 768), source);
+        return answerFrom(RecordingScreen.measure(1024, 768), source);
     }
 
     @Nested
@@ -35,67 +35,67 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("the whole display")
-        void theScreenSize() {
+        void includeTheScreenSize() {
             assertThat(answerTo("gui-metric 'screen-size")).isEqualTo(ROOM);
         }
 
         @Test
         @DisplayName("where this display starts in the desktop")
-        void theScreenOrigin() {
+        void includeTheScreenOrigin() {
             assertThat(answerTo("gui-metric 'screen-origin")).isEqualTo("0x0");
         }
 
         @Test
         @DisplayName("dots per inch, across and down")
-        void theScreenDpi() {
+        void includeTheScreenDpi() {
             assertThat(answerTo("gui-metric 'screen-dpi")).isEqualTo("96x96");
         }
 
         @Test
         @DisplayName("where the usable area starts, inside the furniture")
-        void theWorkOrigin() {
+        void includeTheWorkOrigin() {
             assertThat(answerTo("gui-metric 'work-origin")).isEqualTo("0x25");
         }
 
         @Test
         @DisplayName("and how big the usable area is, which is less than the screen")
-        void theWorkSize() {
+        void includeTheWorkSize() {
             assertThat(answerTo("gui-metric 'work-size")).isEqualTo("1024x743");
         }
 
         @Test
         @DisplayName("the frame around a window that can be resized")
-        void theBorderSize() {
+        void includeTheBorderSize() {
             assertThat(answerTo("gui-metric 'border-size")).isEqualTo("4x4");
         }
 
         @Test
         @DisplayName("and the frame around one that cannot, which is thinner")
-        void theFixedBorder() {
+        void includeTheFixedBorder() {
             assertThat(answerTo("gui-metric 'border-fixed")).isEqualTo("3x3");
         }
 
         @Test
         @DisplayName("the smallest a window is allowed to be")
-        void theMinimumWindow() {
+        void includeTheMinimumWindow() {
             assertThat(answerTo("gui-metric 'window-min-size")).isEqualTo("112x27");
         }
 
         @Test
         @DisplayName("the scaling factor from logical pixels to physical ones")
-        void theLogicalSize() {
+        void includeTheLogicalSize() {
             assertThat(answerTo("gui-metric 'log-size")).isEqualTo("1x1");
         }
 
         @Test
         @DisplayName("and its reciprocal")
-        void thePhysicalSize() {
+        void includeThePhysicalSize() {
             assertThat(answerTo("gui-metric 'phys-size")).isEqualTo("1x1");
         }
 
         @Test
         @DisplayName("every one of them is a pair, which is what a caller computes with")
-        void theyAreAllPairs() {
+        void areAllPairs() {
             assertThat(answerTo("""
                     not-pairs: copy []
                     foreach m [screen-size screen-origin screen-dpi work-origin work-size
@@ -113,7 +113,7 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("how many displays there are, as an integer and not a pair")
-        void theNumberOfDisplays() {
+        void countsTheDisplays() {
             assertThat(answerTo("gui-metric 'screens")).isEqualTo("1");
             assertThat(answerTo("integer? gui-metric 'screens")).isEqualTo("#(true)");
             assertThat(answerTo("pair? gui-metric 'screens")).isEqualTo("#(false)");
@@ -121,9 +121,9 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("and it counts what the host has, not always one")
-        void twoDisplaysCountAsTwo() {
+        void countsTwoDisplaysAsTwo() {
             assertThat(answerFrom(
-                    RecordingScreen.measuring(1024, 768).withDisplays(2),
+                    RecordingScreen.measure(1024, 768).withDisplays(2),
                     "gui-metric 'screens")).isEqualTo("2");
         }
     }
@@ -134,14 +134,14 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("so the first number of the pair is zero")
-        void itsWidthIsZero() {
+        void hasNoWidth() {
             assertThat(answerTo("gui-metric 'title-size")).isEqualTo("0x22");
             assertThat(answerTo("first gui-metric 'title-size")).isEqualTo("0.0");
         }
 
         @Test
         @DisplayName("which matters because VIEW uses the whole pair as an offset")
-        void theZeroIsLoadBearing() {
+        void offsetsViewByTheWholePair() {
             assertThat(answerTo("""
                     zero? first gui-metric 'title-size""")).isEqualTo("#(true)");
         }
@@ -154,7 +154,7 @@ class ScreenMetricsFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"virtual-screen-size", "nosuch", "screen-height", "size"})
         @DisplayName("a word no host serves is refused, never answered with none")
-        void anUnservedWordIsRefused(String word) {
+        void refuseAnUnservedWord(String word) {
             assertThat(answerTo("error? try [gui-metric '" + word + "]"))
                     .as("%s is not one of the twelve", word)
                     .isEqualTo("#(true)");
@@ -162,7 +162,7 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("virtual-screen-size especially, because the word list promises it")
-        void theWordListPromisesOneNobodyServes() {
+        void refuseTheWordTheListPromisesButNobodyServes() {
             assertThat(answerTo("error? try [gui-metric 'virtual-screen-size]"))
                     .as("boot/window.reb lists it and neither host has a branch for it")
                     .isEqualTo("#(true)");
@@ -170,7 +170,7 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("and refusing rather than answering none is the whole point")
-        void theRefusalIsNotNone() {
+        void raiseRatherThanAnswerNone() {
             assertThat(answerTo("none? attempt [gui-metric 'nosuch]"))
                     .as("an attempt swallows the raise, so this being none proves it raised")
                     .isEqualTo("#(true)");
@@ -184,7 +184,7 @@ class ScreenMetricsFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"5", "\"screen-size\"", "#(none)", "1x1", "[screen-size]"})
         @DisplayName("a value that is not a word is refused rather than coerced")
-        void aNonWordIsRefused(String written) {
+        void refuseANonWord(String written) {
             assertThat(answerTo("error? try [gui-metric " + written + "]"))
                     .as("%s is not a word", written)
                     .isEqualTo("#(true)");
@@ -192,7 +192,7 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("a string spelling the right word is still not that word")
-        void aStringIsNotAWord() {
+        void refuseAStringSpellingTheWord() {
             assertThat(answerTo("""
                     error? try [gui-metric {screen-size}]"""))
                     .as("silent coercion here would make a typo answer a number")
@@ -201,7 +201,7 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("and a display index that is not an integer is refused")
-        void aNonIntegerDisplayIsRefused() {
+        void refuseANonIntegerDisplay() {
             assertThat(answerTo("""
                     error? try [gui-metric/display 'screen-size {0}]"""))
                     .isEqualTo("#(true)");
@@ -214,7 +214,7 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("without saying, it is the first one")
-        void theDefaultIsTheFirst() {
+        void defaultsToTheFirst() {
             assertThat(answerTo("gui-metric 'screen-size"))
                     .as("the C starts `REBINT display = 0` and only overwrites it "
                             + "when /display was written")
@@ -229,7 +229,7 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("and saying zero is the same as not saying")
-        void sayingZeroChangesNothing() {
+        void changesNothingForZero() {
             assertThat(answerTo("""
                     (gui-metric 'screen-size) = (gui-metric/display 'screen-size 0)"""))
                     .isEqualTo("#(true)");
@@ -237,7 +237,7 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("one past the last display is refused, not answered with the first's")
-        void oneTooManyIsRefused() {
+        void refusesOneTooMany() {
             assertThat(answerTo("error? try [gui-metric/display 'screen-size 1]"))
                     .as("one display means index 0 and nothing else; answering the "
                             + "laptop's numbers for display 1 is silently wrong")
@@ -246,22 +246,22 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("and the last of two is served when there are two")
-        void theSecondOfTwoIsServed() {
+        void servesTheSecondOfTwo() {
             assertThat(answerFrom(
-                    RecordingScreen.measuring(1024, 768).withDisplays(2),
+                    RecordingScreen.measure(1024, 768).withDisplays(2),
                     "pair? gui-metric/display 'screen-size 1")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a negative index is refused like any other that is not there")
-        void aNegativeIndexIsRefused() {
+        void refusesANegativeIndex() {
             assertThat(answerTo("error? try [gui-metric/display 'screen-size -1]"))
                     .isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("but a machine with no displays answers zero whichever is named")
-        void noDisplaysStillAnswersZero() {
+        void stillAnswersZeroWithNoDisplays() {
             assertThat(answerFrom(RecordingScreen.absent(),
                     "gui-metric/display 'screen-size 0")).isEqualTo("0x0");
             assertThat(answerFrom(RecordingScreen.absent(),
@@ -275,7 +275,7 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("every metric is zero, which is what a GTK build answers for ten of them")
-        void everyMetricIsZero() {
+        void measuresZeroEverywhere() {
             assertThat(answerFrom(RecordingScreen.absent(), """
                     not-zero: copy []
                     foreach m [screen-size screen-origin screen-dpi work-origin work-size
@@ -288,14 +288,14 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("and there are no displays to count")
-        void thereAreNoDisplays() {
+        void countsNoDisplays() {
             assertThat(answerFrom(RecordingScreen.absent(), "gui-metric 'screens"))
                     .isEqualTo("0");
         }
 
         @Test
         @DisplayName("but a word no host serves is still refused, screen or no screen")
-        void anUnservedWordIsStillRefused() {
+        void stillRefusesAnUnservedWord() {
             assertThat(answerFrom(RecordingScreen.absent(),
                     "error? try [gui-metric 'nosuch]")).isEqualTo("#(true)");
         }
@@ -307,7 +307,7 @@ class ScreenMetricsFromTheSourceTest {
 
         @Test
         @DisplayName("an interpreter that was not granted the screen refuses")
-        void anUngrantedScriptIsRefused() {
+        void refusesAnUngrantedScript() {
             Interpreter walled = Interpreter.create();
             assertThat(walled.display(walled.run("error? try [gui-metric 'screen-size]")))
                     .isEqualTo("#(true)");

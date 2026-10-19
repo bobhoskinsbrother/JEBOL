@@ -10,21 +10,21 @@ public final class EmailValue extends AnyStringValue {
     public static final AnyStringDatatype TYPE = new AnyStringDatatype("email") {
 
         @Override
-        public AnyStringValue holding(StringStorage storage, int index) {
+        public AnyStringValue wrap(StringStorage storage, int index) {
             return new EmailValue(storage, index);
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return from instanceof AnyBlockValue parts
                     ? addressBuiltFrom(parts)
-                    : super.built(asking, from, maker);
+                    : super.build(asking, from, maker);
         }
 
         private Value addressBuiltFrom(AnyBlockValue parts) {
             List<Value> written = parts.remaining();
             if (written.isEmpty()) {
-                throw refusing(parts);
+                throw refuse(parts);
             }
             String user = Molder.form(written.getFirst());
             if (written.size() == 1) {
@@ -51,13 +51,13 @@ public final class EmailValue extends AnyStringValue {
     }
 
     @Override
-    EmailValue sameKindOver(StringStorage storage, int index) {
+    EmailValue makeTheSameKindOver(StringStorage storage, int index) {
         return new EmailValue(storage, index);
     }
 
     @Override
     public String mold() {
-        return moldedUnlessItWouldNotReadBackWhenMarkedBy(SEPARATES_THE_USER_FROM_THE_HOST);
+        return moldUnlessItFailsToReadBack(SEPARATES_THE_USER_FROM_THE_HOST);
     }
 
     public Value user() {
@@ -72,13 +72,13 @@ public final class EmailValue extends AnyStringValue {
         return at < 0 ? NoneValue.none() : StringValue.of(whole.substring(at + 1));
     }
 
-    public void userRewrittenAs(String replacement) {
+    public void rewriteTheUserAs(String replacement) {
         String whole = text();
         int at = whole.indexOf(SEPARATES_THE_USER_FROM_THE_HOST);
         replaceEverythingWith(replacement + (at < 0 ? "" : whole.substring(at)));
     }
 
-    public void hostRewrittenAs(String replacement) {
+    public void rewriteTheHostAs(String replacement) {
         String whole = text();
         int at = whole.indexOf(SEPARATES_THE_USER_FROM_THE_HOST);
         replaceEverythingWith(at < 0

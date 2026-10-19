@@ -22,15 +22,15 @@ class VectorQueryFromTheSourceTest {
         return answerTo("mold " + source).replace("\"", "");
     }
 
-    private static String whatHappensTo(String source) {
+    private static String describeWhatHappensTo(String source) {
         return answerTo("either error? e: try [" + source + "] [e/id] ['accepted]");
     }
 
-    private static String fieldOf(String vector, String field) {
+    private static String readTheFieldOf(String vector, String field) {
         return answerTo("v: " + vector + " v/" + field);
     }
 
-    private static String moldedFieldOf(String vector, String field) {
+    private static String moldTheFieldOf(String vector, String field) {
         return answerTo("v: " + vector + " mold v/" + field).replace("\"", "");
     }
 
@@ -48,29 +48,29 @@ class VectorQueryFromTheSourceTest {
                 "'#(u16! [])',     length,  0",
         })
         @DisplayName("read through a path")
-        void throughApath(String vector, String field, String expected) {
-            assertThat(fieldOf(vector, field)).isEqualTo(expected);
+        void readsThroughAPath(String vector, String field, String expected) {
+            assertThat(readTheFieldOf(vector, field)).isEqualTo(expected);
         }
 
         @Test
         @DisplayName("and a measuring vector calls itself signed, having no sign bit")
-        void ameasuringVectorIsSigned() {
-            assertThat(fieldOf("#(f32! [1])", "signed"))
-                    .as("the C asks whether the kind is one of the four unsigned "
+        void callsAMeasuringVectorSigned() {
+            assertThat(readTheFieldOf("#(f32! [1])", "signed"))
+                    .as("the C asks whether the type is one of the four unsigned "
                             + "integers, so everything else answers true")
                     .isEqualTo("#(true)");
         }
 
         @Test
-        @DisplayName("the element type is a datatype word, not the vector's own kind")
+        @DisplayName("the element type is a datatype word, not the vector's own type")
         void theelementType() {
-            assertThat(fieldOf("#(u16! [1 2])", "type")).isEqualTo("integer!");
-            assertThat(fieldOf("#(f32! [1 2])", "type")).isEqualTo("decimal!");
+            assertThat(readTheFieldOf("#(u16! [1 2])", "type")).isEqualTo("integer!");
+            assertThat(readTheFieldOf("#(f32! [1 2])", "type")).isEqualTo("decimal!");
         }
 
         @Test
         @DisplayName("and the length counts the whole storage where LENGTH? counts from here")
-        void lengthAgainstLengthOf() {
+        void countsTheWholeStorageForLength() {
             assertThat(answerTo("w: next #(u16! [1 2 3]) w/length"))
                     .as("Query_Vector_Field reads vect->tail, which is the whole of it")
                     .isEqualTo("3");
@@ -83,7 +83,7 @@ class VectorQueryFromTheSourceTest {
         @Test
         @DisplayName("a name that is no field at all is an invalid path")
         void anunknownField() {
-            assertThat(whatHappensTo("v: #(u16! [1 2]) v/nonsense"))
+            assertThat(describeWhatHappensTo("v: #(u16! [1 2]) v/nonsense"))
                     .isEqualTo("invalid-path");
         }
     }
@@ -95,7 +95,7 @@ class VectorQueryFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"i8!", "i16!", "i32!", "i64!", "f32!", "f64!"})
         @DisplayName("a signed vector finds a negative one")
-        void thesignedKinds(String kind) {
+        void includeANegativeForASignedKind(String kind) {
             String makes = "v: #(" + kind + " [1 -2 0]) ";
             boolean measuring = kind.startsWith("f");
             assertThat(answerTo(makes + "v/min")).isEqualTo(measuring ? "-2.0" : "-2");
@@ -105,7 +105,7 @@ class VectorQueryFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"u8!", "u16!", "u32!", "u64!"})
         @DisplayName("and an unsigned one never does")
-        void theunsignedKinds(String kind) {
+        void neverIncludeANegativeForAnUnsignedKind(String kind) {
             String makes = "v: #(" + kind + " [1 2 0]) ";
             assertThat(answerTo(makes + "v/min")).isEqualTo("0");
             assertThat(answerTo(makes + "v/max")).isEqualTo("2");
@@ -119,7 +119,7 @@ class VectorQueryFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and the widest unsigned kind is ordered as unsigned")
+        @DisplayName("and the widest unsigned type is ordered as unsigned")
         void thewidestUnsignedIsOrderedUnsigned() {
             assertThat(answerTo("v: #(u64! [1 -1]) v/max"))
                     .as("Find_Maximum_Of_Vector compares through a u64 pointer, so "
@@ -132,8 +132,8 @@ class VectorQueryFromTheSourceTest {
         @ValueSource(strings = {"i8!", "u64!", "f32!"})
         @DisplayName("an empty vector has neither")
         void anemptyVectorHasNeither(String kind) {
-            assertThat(moldedFieldOf("#(" + kind + " [])", "min")).isEqualTo("_");
-            assertThat(moldedFieldOf("#(" + kind + " [])", "max")).isEqualTo("_");
+            assertThat(moldTheFieldOf("#(" + kind + " [])", "min")).isEqualTo("_");
+            assertThat(moldTheFieldOf("#(" + kind + " [])", "max")).isEqualTo("_");
         }
     }
 
@@ -155,7 +155,7 @@ class VectorQueryFromTheSourceTest {
                 "sample-variance,       5.7",
         })
         @DisplayName("over a counting vector, quoted from Rebol's own test file")
-        void overACountingVector(String field, String expected) {
+        void matchRebolsOwnTestOverACountingVector(String field, String expected) {
             assertThat(answerTo(WHOLE_NUMBERS + "v/" + field)).isEqualTo(expected);
         }
 
@@ -170,7 +170,7 @@ class VectorQueryFromTheSourceTest {
 
         @Test
         @DisplayName("a sum and a range come back as whole numbers, a mean never does")
-        void thecountingOnesStayWhole() {
+        void keepTheSumAndRangeWhole() {
             assertThat(answerTo(WHOLE_NUMBERS + "integer? v/sum")).isEqualTo("#(true)");
             assertThat(answerTo(WHOLE_NUMBERS + "integer? v/range")).isEqualTo("#(true)");
             assertThat(answerTo(WHOLE_NUMBERS + "decimal? v/mean"))
@@ -183,7 +183,7 @@ class VectorQueryFromTheSourceTest {
 
         @Test
         @DisplayName("over a measuring vector they stay decimals throughout")
-        void overAmeasuringVector() {
+        void stayDecimalOverAMeasuringVector() {
             String makes = "v: #(float64! [1.62 1.72 1.64 1.7 1.78 1.64 1.65 1.64 1.66 1.74]) ";
             assertThat(answerTo(makes + "v/minimum")).isEqualTo("1.62");
             assertThat(answerTo(makes + "v/maximum")).isEqualTo("1.78");
@@ -204,18 +204,18 @@ class VectorQueryFromTheSourceTest {
                 "sample-variance", "population-deviation", "sample-deviation"})
         @DisplayName("an empty vector answers none to every one of them")
         void anemptyVectorAnswersNone(String field) {
-            assertThat(moldedFieldOf("#(u8! [])", field)).isEqualTo("_");
+            assertThat(moldTheFieldOf("#(u8! [])", field)).isEqualTo("_");
         }
 
         @Test
         @DisplayName("and one number is not enough for the two that need a sample")
-        void oneNumberIsNotASample() {
+        void needMoreThanOneNumberForASample() {
             assertThat(answerTo("v: #(u8! [1]) v/variance")).isEqualTo("0.0");
             assertThat(answerTo("v: #(u8! [1]) v/population-deviation")).isEqualTo("0.0");
-            assertThat(moldedFieldOf("#(u8! [1])", "sample-variance"))
+            assertThat(moldTheFieldOf("#(u8! [1])", "sample-variance"))
                     .as("dividing by one less than the count has nothing to divide by")
                     .isEqualTo("_");
-            assertThat(moldedFieldOf("#(u8! [1])", "sample-deviation")).isEqualTo("_");
+            assertThat(moldTheFieldOf("#(u8! [1])", "sample-deviation")).isEqualTo("_");
         }
     }
 
@@ -244,7 +244,7 @@ class VectorQueryFromTheSourceTest {
 
         @Test
         @DisplayName("with the sign word left off when there is nothing to say")
-        void asignedSpecSaysNothingAboutIt() {
+        void leavesTheSignWordOffWhenThereIsNothingToSay() {
             assertThat(moldOf("spec-of #(i32! [1 2])")).isEqualTo("[integer! 32 2]");
             assertThat(moldOf("spec-of #(f32! [1 2])")).isEqualTo("[decimal! 32 2]");
         }
@@ -265,7 +265,7 @@ class VectorQueryFromTheSourceTest {
 
         @Test
         @DisplayName("none lists what there is to ask for")
-        void listingTheFields() {
+        void listsTheFieldsForNone() {
             assertThat(moldOf(MAKES + "query v none")).isEqualTo(
                     "[signed type size length minimum maximum range sum mean median "
                             + "variance sample-variance population-deviation "
@@ -302,7 +302,7 @@ class VectorQueryFromTheSourceTest {
         @Test
         @DisplayName("and a word that is no field is an invalid argument")
         void anunknownWordInABlock() {
-            assertThat(whatHappensTo(MAKES + "query v [nonsense]"))
+            assertThat(describeWhatHappensTo(MAKES + "query v [nonsense]"))
                     .isEqualTo("invalid-arg");
         }
     }

@@ -16,7 +16,7 @@ class CatalogueAsRebolListsItEndToEndTest {
 
     @TestFactory
     @DisplayName("system/catalog lists the natives and actions a real 3.22.5 lists, in its order")
-    Stream<DynamicTest> eachRowPrintsWhatRebolPrinted() throws IOException {
-        return new RecordedRebolScript("catalogue", directory).eachRowPrintsWhatRebolPrinted();
+    Stream<DynamicTest> printsWhatRebolPrintedOnEachRow() throws IOException {
+        return new RecordedRebolScript("catalogue", directory).replayEachRow();
     }
 }

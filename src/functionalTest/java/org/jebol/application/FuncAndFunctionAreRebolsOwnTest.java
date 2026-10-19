@@ -16,7 +16,7 @@ class FuncAndFunctionAreRebolsOwnTest {
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"func", "function", "funct"})
     @DisplayName("Rebol defines it in its own library, so the catalogue of natives does not list it")
-    void notANative(String word) {
+    void isNotANative(String word) {
         assertThat(answerTo("none? find system/catalog/natives '" + word))
                 .isEqualTo("#(true)");
     }
@@ -24,13 +24,13 @@ class FuncAndFunctionAreRebolsOwnTest {
     @ParameterizedTest(name = "{0}")
     @ValueSource(strings = {"func", "function", "funct", "does", "has", "closure"})
     @DisplayName("what a script holds is a function!, as Rebol's library leaves it")
-    void aFunctionOfRebolsOwn(String word) {
+    void isAFunctionOfRebolsOwn(String word) {
         assertThat(answerTo("type? :" + word)).isEqualTo("#(function!)");
     }
 
     @Test
     @DisplayName("FUNCTION declares what base-funcs.reb declares, refinements and all")
-    void functionDeclaresWhatTheLibraryDeclares() {
+    void declaresWhatTheLibraryDeclares() {
         assertThat(answerTo("words-of :function"))
                 .isEqualTo("[spec body /with object /extern words]");
     }
@@ -58,19 +58,19 @@ class FuncAndFunctionAreRebolsOwnTest {
 
     @Test
     @DisplayName("FUNCTION makes its set-words local, leaving the caller's alone")
-    void functionMakesSetWordsLocal() {
+    void makesSetWordsLocal() {
         assertThat(answerTo("x: 1 f: function [] [x: 2] f x")).isEqualTo("1");
     }
 
     @Test
     @DisplayName("FUNCTION/EXTERN leaves a named word outside")
-    void functionExternLeavesAWordOutside() {
+    void leavesAnExternWordOutside() {
         assertThat(answerTo("x: 1 f: function/extern [] [x: 2] [x] f x")).isEqualTo("2");
     }
 
     @Test
     @DisplayName("FUNCTION/WITH binds the body into the object it is given")
-    void functionWithBindsIntoAnObject() {
+    void bindsIntoAnObjectWithWith() {
         assertThat(answerTo("""
                 counter: make object! [n: 0]
                 bump: function/with [] [n: n + 1] counter

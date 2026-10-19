@@ -18,7 +18,7 @@ class GenerateFromTheSourceTest {
 
     @Test
     @DisplayName("it answers a single zero byte, whatever curve is named")
-    void itAnswersThePointAtInfinity() {
+    void answersThePointAtInfinity() {
         assertThat(answerTo("generate 'secp256r1")).isEqualTo("#{00}");
         assertThat(answerTo("generate 'secp192r1")).isEqualTo("#{00}");
         assertThat(answerTo("generate 'secp521r1")).isEqualTo("#{00}");
@@ -26,7 +26,7 @@ class GenerateFromTheSourceTest {
 
     @Test
     @DisplayName("and every curve in the catalogue gives the same, including ones ECDH declines")
-    void everyCatalogueCurveAnswersTheSame() {
+    void answersTheSameForEveryCatalogueCurve() {
         assertThat(answerTo("""
                 empty? remove-each c copy system/catalog/elliptic-curves [
                     #{00} = generate c
@@ -35,21 +35,21 @@ class GenerateFromTheSourceTest {
 
     @Test
     @DisplayName("a word naming no curve is invalid-arg, which is the part that works")
-    void anUnknownCurveIsRefused() {
+    void refusesAnUnknownCurve() {
         assertThat(answerTo("""
                 e: try [generate 'nosuchcurve] e/id""")).isEqualTo("invalid-arg");
     }
 
     @Test
     @DisplayName("and the refusal names the word that was wrong")
-    void theRefusalNamesTheWord() {
+    void namesTheWordInTheRefusal() {
         assertThat(answerTo("""
                 e: try [generate 'nosuchcurve] e/arg1 = 'nosuchcurve""")).isEqualTo(TRUE);
     }
 
     @Test
     @DisplayName("something that is not a word is refused by the declaration")
-    void aNonWordIsRefused() {
+    void refusesANonWord() {
         assertThat(answerTo("""
                 e: try [generate 5] e/id""")).isEqualTo("expect-arg");
         assertThat(answerTo("""
@@ -58,7 +58,7 @@ class GenerateFromTheSourceTest {
 
     @Test
     @DisplayName("and it needs an argument")
-    void itNeedsAnArgument() {
+    void needsAnArgument() {
         assertThat(answerTo("""
                 e: try [generate] e/id""")).isEqualTo("no-arg");
     }

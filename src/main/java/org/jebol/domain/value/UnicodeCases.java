@@ -175,11 +175,11 @@ public final class UnicodeCases {
         }
     }
 
-    public int upper(int codepoint) {
+    public int toUpper(int codepoint) {
         return isInTheTable(codepoint) ? upper[codepoint] : codepoint;
     }
 
-    public int lower(int codepoint) {
+    public int toLower(int codepoint) {
         return isInTheTable(codepoint) ? lower[codepoint] : codepoint;
     }
 

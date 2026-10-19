@@ -22,15 +22,15 @@ public class BinaryNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("ctx", Set.of(ObjectValue.TYPE, BinaryValue.TYPE,
+                Parameter.of("ctx", Set.of(ObjectValue.TYPE, BinaryValue.TYPE,
                         IntegerValue.TYPE, NoneValue.TYPE)),
-                Parameter.belongingTo("init", "spec",
+                Parameter.belongTo("init", "spec",
                         Set.of(BinaryValue.TYPE, IntegerValue.TYPE, NoneValue.TYPE)),
-                Parameter.belongingTo("write", "data", Set.of(BinaryValue.TYPE, BlockValue.TYPE)),
-                Parameter.belongingTo("read", "code", Set.of(WordValue.TYPE, BlockValue.TYPE,
+                Parameter.belongTo("write", "data", Set.of(BinaryValue.TYPE, BlockValue.TYPE)),
+                Parameter.belongTo("read", "code", Set.of(WordValue.TYPE, BlockValue.TYPE,
                         IntegerValue.TYPE, BinaryValue.TYPE)),
-                Parameter.belongingTo("into", "out", Set.of(BlockValue.TYPE)),
-                Parameter.belongingTo("with", "num", Set.of(IntegerValue.TYPE)));
+                Parameter.belongTo("into", "out", Set.of(BlockValue.TYPE)),
+                Parameter.belongTo("with", "num", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -41,45 +41,45 @@ public class BinaryNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            UnaryOperator<Value> lookedUp = item -> fetchedIfItAsksToBe(item, evaluator, context);
-            ObjectValue held = theDialectContextOf(arguments.getFirst());
-            argumentOf("init", 0, arguments, refinements)
-                    .ifPresent(replacement -> restartedWith(held, replacement));
+            UnaryOperator<Value> lookedUp = item -> fetchIfItAsksToBe(item, evaluator, context);
+            ObjectValue held = findTheDialectContextOf(arguments.getFirst());
+            readTheArgumentOf("init", 0, arguments, refinements)
+                    .ifPresent(replacement -> restartWith(held, replacement));
             if (refinements.contains("write")) {
                 arguments.getFirst().requireChangeable();
-                writeThroughTheDialect(held, codesWrittenIn(
-                        argumentOf("write", 0, arguments, refinements).orElseThrow()), lookedUp);
+                writeThroughTheDialect(held, readTheCodesWrittenIn(
+                        readTheArgumentOf("write", 0, arguments, refinements).orElseThrow()), lookedUp);
                 if (arguments.getFirst() instanceof BinaryValue given) {
-                    laidBackInto(given, cursorNamed(held, "buffer").head());
+                    layBackInto(given, findTheCursorNamed(held, "buffer").head());
                 }
             }
             if (refinements.contains("read")) {
                 return readThroughTheDialect(held,
-                        argumentOf("read", 0, arguments, refinements).orElseThrow(),
+                        readTheArgumentOf("read", 0, arguments, refinements).orElseThrow(),
                         lookedUp,
-                        argumentOf("with", 0, arguments, refinements)
+                        readTheArgumentOf("with", 0, arguments, refinements)
                                 .orElseGet(NoneValue::none),
-                        argumentOf("into", 0, arguments, refinements)
+                        readTheArgumentOf("into", 0, arguments, refinements)
                                 .filter(into -> !(into instanceof NoneValue)));
             }
             return held;
         };
     }
 
-    private Value fetchedIfItAsksToBe(Value item, Evaluator evaluator, Context context) {
+    private Value fetchIfItAsksToBe(Value item, Evaluator evaluator, Context context) {
         boolean fetches = item instanceof GetWordValue || item instanceof GetPathValue;
         return fetches
-                ? evaluator.evaluateOrRaise(BlockValue.block(List.of(item)), context)
+                ? evaluator.evaluateOrRaise(BlockValue.of(List.of(item)), context)
                 : item;
     }
 
-    private ObjectValue theDialectContextOf(Value given) {
+    private ObjectValue findTheDialectContextOf(Value given) {
         if (given instanceof ObjectValue existing
                 && existing.context().knows("buffer")
-                && existing.context().slotFor("buffer").value() instanceof BinaryValue) {
+                && existing.context().findSlotFor("buffer").value() instanceof BinaryValue) {
             return existing;
         }
-        return theDialectContextFor(bufferOfTheDialectContext(given));
+        return findTheDialectContextFor(bufferOfTheDialectContext(given));
     }
 
     private BinaryValue bufferOfTheDialectContext(Value given) {
@@ -88,13 +88,13 @@ public class BinaryNative extends DefaultNative {
         }
         if (given instanceof ObjectValue(Context context)
                 && context.knows("buffer")
-                && context.slotFor("buffer").value() instanceof BinaryValue held) {
+                && context.findSlotFor("buffer").value() instanceof BinaryValue held) {
             return held;
         }
         return BinaryValue.of();
     }
 
-    private ObjectValue theDialectContextFor(BinaryValue buffer) {
+    private ObjectValue findTheDialectContextFor(BinaryValue buffer) {
         Context made = Context.root();
         made.register("type", WordValue.of("bincode"));
         made.register("buffer", buffer);
@@ -104,7 +104,7 @@ public class BinaryNative extends DefaultNative {
         return new ObjectValue(made);
     }
 
-    private void restartedWith(ObjectValue held, Value replacement) {
+    private void restartWith(ObjectValue held, Value replacement) {
         BinaryValue fresh = replacement instanceof BinaryValue given
                 ? BinaryValue.ofBytes(given.octetsFromHere())
                 : BinaryValue.of();
@@ -112,7 +112,7 @@ public class BinaryNative extends DefaultNative {
         held.context().register("buffer-write", fresh);
     }
 
-    private void laidBackInto(BinaryValue given, BinaryValue written) {
+    private void layBackInto(BinaryValue given, BinaryValue written) {
         BinaryStorage storage = given.storage();
         byte[] octets = written.octetsFromHere();
         while (storage.length() > octets.length) {
@@ -127,9 +127,9 @@ public class BinaryNative extends DefaultNative {
         }
     }
 
-    private BinaryValue cursorNamed(ObjectValue held, String field) {
+    private BinaryValue findTheCursorNamed(ObjectValue held, String field) {
         return held.context().knows(field)
-                && held.context().slotFor(field).value() instanceof BinaryValue at
+                && held.context().findSlotFor(field).value() instanceof BinaryValue at
                 ? at
                 : BinaryValue.of();
     }
@@ -137,29 +137,29 @@ public class BinaryNative extends DefaultNative {
     private void writeThroughTheDialect(ObjectValue held, List<Value> dialect,
             UnaryOperator<Value> lookedUp) {
 
-        BinaryValue writing = cursorNamed(held, "buffer-write");
+        BinaryValue writing = findTheCursorNamed(held, "buffer-write");
         Bincode.Cursor cursor = new Bincode.Cursor(
-                octetsOfTheBuffer(writing.head()), writing.index() - 1);
+                listTheOctetsOfTheBuffer(writing.head()), writing.index() - 1);
         Bincode.write(cursor, new Bincode.Script(dialect, lookedUp),
                 () -> Instant.now().getEpochSecond(), this::nameTheValueRead);
         BinaryValue written = BinaryValue.of(
                 cursor.octets().stream().mapToInt(Integer::intValue).toArray());
-        held.context().register("buffer", written.atIndex(cursorNamed(held, "buffer").index()));
+        held.context().register("buffer", written.atIndex(findTheCursorNamed(held, "buffer").index()));
         held.context().register("buffer-write", written.atIndex(cursor.at() + 1));
     }
 
     private Value readThroughTheDialect(ObjectValue held, Value asked,
             UnaryOperator<Value> lookedUp, Value count, Optional<Value> into) {
 
-        BinaryValue reading = cursorNamed(held, "buffer");
+        BinaryValue reading = findTheCursorNamed(held, "buffer");
         Bincode.Cursor cursor = new Bincode.Cursor(
-                octetsOfTheBuffer(reading.head()), reading.index() - 1,
-                bitsAlreadyTakenIn(held));
+                listTheOctetsOfTheBuffer(reading.head()), reading.index() - 1,
+                countTheBitsAlreadyTakenIn(held));
         Value theBlockItself = lookedUp.apply(asked);
         if (theBlockItself instanceof IntegerValue howMany) {
-            return theseManyBytesRead(held, reading, cursor, howMany, into);
+            return readTheseManyBytes(held, reading, cursor, howMany, into);
         }
-        List<Value> codes = new ArrayList<>(codesWrittenIn(theBlockItself));
+        List<Value> codes = new ArrayList<>(readTheCodesWrittenIn(theBlockItself));
         if (!(count instanceof NoneValue)) {
             codes.add(count);
         }
@@ -167,16 +167,16 @@ public class BinaryNative extends DefaultNative {
                 this::nameTheValueRead);
         held.context().register("r-mask", IntegerValue.of(cursor.bitsTaken()));
         if (cursor.cropped() > 0) {
-            shortenedFromTheFront(held, cursor);
+            shortenFromTheFront(held, cursor);
         } else {
             held.context().register("buffer", reading.atIndex(cursor.at() + 1));
         }
-        return into.map(target -> laidInto(target, read))
-                .orElseGet(() -> shapedLikeTheAsking(theBlockItself, read));
+        return into.map(target -> layInto(target, read))
+                .orElseGet(() -> shapeLikeTheAsking(theBlockItself, read));
     }
 
-    private Value theseManyBytesRead(ObjectValue held, BinaryValue reading,
-            Bincode.Cursor cursor, IntegerValue howMany, Optional<Value> into) {
+    private Value readTheseManyBytes(ObjectValue held, BinaryValue reading,
+                                     Bincode.Cursor cursor, IntegerValue howMany, Optional<Value> into) {
 
         if (into.isPresent()) {
             throw Raised.of(EvaluationFailure.FEATURE_NA,
@@ -190,8 +190,8 @@ public class BinaryNative extends DefaultNative {
         return read.getFirst();
     }
 
-    private void shortenedFromTheFront(ObjectValue held, Bincode.Cursor cursor) {
-        int writingWas = cursorNamed(held, "buffer-write").index();
+    private void shortenFromTheFront(ObjectValue held, Bincode.Cursor cursor) {
+        int writingWas = findTheCursorNamed(held, "buffer-write").index();
         BinaryValue shortened = BinaryValue.of(
                 cursor.octets().stream().mapToInt(Integer::intValue).toArray());
         held.context().register("buffer", shortened.atIndex(cursor.at() + 1));
@@ -199,9 +199,9 @@ public class BinaryNative extends DefaultNative {
                 shortened.atIndex(Math.max(1, writingWas - cursor.cropped())));
     }
 
-    private int bitsAlreadyTakenIn(ObjectValue held) {
+    private int countTheBitsAlreadyTakenIn(ObjectValue held) {
         return held.context().knows("r-mask")
-                && held.context().slotFor("r-mask").value() instanceof IntegerValue(long magnitude)
+                && held.context().findSlotFor("r-mask").value() instanceof IntegerValue(long magnitude)
                 ? (int) magnitude
                 : 0;
     }
@@ -210,14 +210,14 @@ public class BinaryNative extends DefaultNative {
         if (!word.isBound() || !word.binding().knows(word.canonical())) {
             throw Raised.of(EvaluationFailure.NOT_DEFINED, word.spelling());
         }
-        ContextSlot slot = word.binding().slotFor(word.canonical());
+        ContextSlot slot = word.binding().findSlotFor(word.canonical());
         if (slot.isProtected()) {
             throw Raised.of(EvaluationFailure.LOCKED_WORD, word.spelling());
         }
         slot.setValue(read);
     }
 
-    private List<Integer> octetsOfTheBuffer(BinaryValue buffer) {
+    private List<Integer> listTheOctetsOfTheBuffer(BinaryValue buffer) {
         List<Integer> octets = new ArrayList<>();
         for (byte octet : buffer.octetsFromHere()) {
             octets.add(octet & 0xFF);
@@ -225,18 +225,18 @@ public class BinaryNative extends DefaultNative {
         return octets;
     }
 
-    private List<Value> codesWrittenIn(Value asked) {
+    private List<Value> readTheCodesWrittenIn(Value asked) {
         return asked instanceof AnyBlockValue block ? block.remaining() : List.of(asked);
     }
 
-    private Value shapedLikeTheAsking(Value asked, List<Value> values) {
+    private Value shapeLikeTheAsking(Value asked, List<Value> values) {
         if (asked instanceof AnyBlockValue) {
-            return BlockValue.block(values);
+            return BlockValue.of(values);
         }
         return values.isEmpty() ? NoneValue.none() : values.getFirst();
     }
 
-    private Value laidInto(Value target, List<Value> read) {
+    private Value layInto(Value target, List<Value> read) {
         if (!(target instanceof AnyBlockValue into)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(target));
         }

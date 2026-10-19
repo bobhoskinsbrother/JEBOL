@@ -14,25 +14,27 @@ import java.util.Optional;
 final class ChosenScreen {
 
     private static final String SWITCH = "--screen=";
-    private static final String A_WINDOW = "window";
-    private static final String A_PAGE = "web";
+    private static final String WINDOW = "window";
+    private static final String PAGE = "web";
 
-    private static final int WHICHEVER_PORT_IS_FREE = 0;
+    private static final int ANY_AVAILABLE_PORT = 0;
 
-    private static final String THE_HEADLESS_PROPERTY = "java.awt.headless";
+    private static final String HEADLESS_PROPERTY = "java.awt.headless";
+
+    private static final long BROWSER_POLLING_WAIT_MILLISECONDS = 50;
 
     private ChosenScreen() {
     }
 
-    static void makeTheProcessSuitTheScreenAskedFor(String[] arguments) {
-        boolean aWindowWasAskedFor = theSwitchValueIn(arguments)
-                .filter(A_WINDOW::equalsIgnoreCase)
+    static void setHeadlessBasedOnWhetherAScreenIsNeeded(String[] arguments) {
+        boolean isWindow = switchValue(arguments)
+                .filter(WINDOW::equalsIgnoreCase)
                 .isPresent();
-        System.setProperty(THE_HEADLESS_PROPERTY, Boolean.toString(!aWindowWasAskedFor));
+        System.setProperty(HEADLESS_PROPERTY, Boolean.toString(!isWindow));
     }
 
-    static boolean wasAskedFor(String[] arguments) {
-        return theSwitchValueIn(arguments).isPresent();
+    static boolean isAskedFor(String[] arguments) {
+        return switchValue(arguments).isPresent();
     }
 
     static String[] withoutTheSwitch(String[] arguments) {
@@ -42,32 +44,32 @@ final class ChosenScreen {
     }
 
     static void attachTo(Interpreter interpreter, String[] arguments, PrintStream out, boolean forAScript) {
-        String asked = theSwitchValueIn(arguments).orElseThrow();
+        String asked = switchValue(arguments).orElseThrow();
         switch (asked.toLowerCase(Locale.ROOT)) {
-            case A_WINDOW -> attachAWindow(interpreter, out);
-            case A_PAGE -> attachAPage(interpreter, out, forAScript);
-            default -> refuseRatherThanStartWithoutTheScreenAsked(asked);
+            case WINDOW -> attachWindow(interpreter, out);
+            case PAGE -> attachPage(interpreter, out, forAScript);
+            default -> refuseAsNotUnderstood(asked);
         }
     }
 
-    private static void attachAWindow(Interpreter interpreter, PrintStream out) {
+    private static void attachWindow(Interpreter interpreter, PrintStream out) {
         DesktopScreen screen = DesktopScreen.onThisMachine();
         interpreter.useScreen(screen);
-        out.println(screen.hasADisplay()
+        out.println(screen.hasDisplay()
                 ? "Screen: a native window."
                 : "Screen: asked for a window and this machine has no display.");
     }
 
-    private static void attachAPage(Interpreter interpreter, PrintStream out, boolean forAScript) {
+    private static void attachPage(Interpreter interpreter, PrintStream out, boolean forAScript) {
         try {
-            WebScreenServer serving = WebScreenServer.on(WHICHEVER_PORT_IS_FREE);
-            BrowserScreen screen = BrowserScreen.seenBy(serving);
+            WebScreenServer serving = WebScreenServer.on(ANY_AVAILABLE_PORT);
+            BrowserScreen screen = BrowserScreen.showTo(serving);
             serving.reportTo(screen);
             interpreter.useScreen(screen);
             if (forAScript) {
                 out.println("Screen: a page at " + serving.address()
                         + " -- the script starts once it is open.");
-                untilABrowserHasOpened(screen);
+                waitForABrowser(screen);
                 return;
             }
             out.println("Screen: a page at " + serving.address()
@@ -79,12 +81,10 @@ final class ChosenScreen {
         }
     }
 
-    private static final long HOW_OFTEN_TO_LOOK_FOR_A_BROWSER_MILLISECONDS = 50;
-
-    private static void untilABrowserHasOpened(BrowserScreen screen) {
-        while (!screen.hasADisplay()) {
+    private static void waitForABrowser(BrowserScreen screen) {
+        while (!screen.hasDisplay()) {
             try {
-                Thread.sleep(HOW_OFTEN_TO_LOOK_FOR_A_BROWSER_MILLISECONDS);
+                Thread.sleep(BROWSER_POLLING_WAIT_MILLISECONDS);
             } catch (InterruptedException stopped) {
                 Thread.currentThread().interrupt();
                 return;
@@ -92,13 +92,13 @@ final class ChosenScreen {
         }
     }
 
-    private static void refuseRatherThanStartWithoutTheScreenAsked(String asked) {
+    private static void refuseAsNotUnderstood(String asked) {
         throw new IllegalArgumentException(
                 "there is no screen called " + asked
-                        + "; it is " + A_WINDOW + " or " + A_PAGE);
+                        + "; it is " + WINDOW + " or " + PAGE);
     }
 
-    private static Optional<String> theSwitchValueIn(String[] arguments) {
+    private static Optional<String> switchValue(String[] arguments) {
         for (String each : arguments) {
             if (each.startsWith(SWITCH)) {
                 return Optional.of(each.substring(SWITCH.length()));

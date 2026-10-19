@@ -39,7 +39,7 @@ public class EvokeNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("chant",
+        return List.of(Parameter.of("chant",
                 Set.of(WordValue.TYPE, BlockValue.TYPE, IntegerValue.TYPE)));
     }
 
@@ -63,7 +63,7 @@ public class EvokeNative extends DefaultNative {
         }
         if (chant instanceof IntegerValue(long magnitude)
                 && (magnitude < THE_FIRST_NUMBERED_CHECK || magnitude > THE_LAST_NUMBERED_CHECK)) {
-            evaluator.output().write(EVOKE_HELP);
+            evaluator.findTheOutput().write(EVOKE_HELP);
         }
         return 0;
     }
@@ -77,7 +77,7 @@ public class EvokeNative extends DefaultNative {
             return 1;
         }
         if (!A_CHANT_THAT_DOES_NOTHING_HERE.equals(asked)) {
-            evaluator.output().write(EVOKE_HELP);
+            evaluator.findTheOutput().write(EVOKE_HELP);
         }
         return 0;
     }

@@ -25,7 +25,7 @@ public class GetEnvNative extends EnvironmentNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("name", aVariablesName()));
+        return List.of(Parameter.of("name", acceptAVariablesName()));
     }
 
     @Override
@@ -33,8 +33,8 @@ public class GetEnvNative extends EnvironmentNative {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.ENVIRONMENT);
             evaluator.policies().require(PolicyClass.ENVR, PolicyAccess.READ, Optional.of(arguments.getFirst()));
-            return throughTheFileSystem(() -> {
-                String held = evaluator.environment().valueOf(theVariableNamedBy(arguments.getFirst()));
+            return runThroughTheFileSystem(() -> {
+                String held = evaluator.environment().valueOf(readTheVariableNamedBy(arguments.getFirst()));
                 return held == null ? NoneValue.none() : StringValue.of(held);
             });
         };

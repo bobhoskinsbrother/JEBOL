@@ -15,7 +15,7 @@ class MalformedNumberFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String refusedAsAnInteger(String source) {
+    private static String readTheRefusalOf(String source) {
         return answerTo("e: try [load " + source + "] "
                 + "all [error? e e/id = 'invalid e/arg1 = \"integer\"]");
     }
@@ -28,8 +28,8 @@ class MalformedNumberFromTheSourceTest {
 
         @Test
         @DisplayName("which is the token Rebol's own suite uses as its canonical bad one")
-        void theCanonicalBadToken() {
-            assertThat(refusedAsAnInteger("""
+        void coversTheCanonicalBadToken() {
+            assertThat(readTheRefusalOf("""
                     {1d}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
                     error? try [load {1 1d}]""")).isEqualTo(TRUE);
@@ -37,16 +37,16 @@ class MalformedNumberFromTheSourceTest {
 
         @Test
         @DisplayName("and any other letters after the digits")
-        void otherLetters() {
-            assertThat(refusedAsAnInteger("""
+        void coversOtherLetters() {
+            assertThat(readTheRefusalOf("""
                     {1a}""")).isEqualTo(TRUE);
-            assertThat(refusedAsAnInteger("""
+            assertThat(readTheRefusalOf("""
                     {12abc}""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("but letters after a letter are an ordinary word")
-        void aWordIsStillAWord() {
+        void leavesAWordAWord() {
             assertThat(answerTo("""
                     (load {a1}) = to word! "a1\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -60,7 +60,7 @@ class MalformedNumberFromTheSourceTest {
 
         @Test
         @DisplayName("the plain numbers")
-        void plainNumbers() {
+        void includesPlainNumbers() {
             assertThat(answerTo("""
                     integer? load {1}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -71,7 +71,7 @@ class MalformedNumberFromTheSourceTest {
 
         @Test
         @DisplayName("and every other datatype that opens with a digit")
-        void theOtherDigitLeadingDatatypes() {
+        void includesTheOtherDigitLeadingDatatypes() {
             assertThat(answerTo("""
                     pair? load {1x2}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -88,7 +88,7 @@ class MalformedNumberFromTheSourceTest {
 
         @Test
         @DisplayName("and the time shape that had to be fixed first")
-        void theTimeThatWasAWord() {
+        void includesTheTimeShapeFixedFirst() {
             assertThat(answerTo("""
                     time? load {0:0.001}""")).isEqualTo(TRUE);
         }
@@ -100,34 +100,34 @@ class MalformedNumberFromTheSourceTest {
 
         @Test
         @DisplayName("a base that is not 2, 16 or 64")
-        void anUnsupportedBase() {
-            assertThat(refusedAsAnInteger("""
+        void coversAnUnsupportedBase() {
+            assertThat(readTheRefusalOf("""
                     {000016#{FF}}""")).isEqualTo(TRUE);
-            assertThat(refusedAsAnInteger("""
+            assertThat(readTheRefusalOf("""
                     {3#{01}}""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and a base may not carry a sign")
-        void aSignedBase() {
-            assertThat(refusedAsAnInteger("""
+        void coversASignedBase() {
+            assertThat(readTheRefusalOf("""
                     {+2#{}}""")).isEqualTo(TRUE);
-            assertThat(refusedAsAnInteger("""
+            assertThat(readTheRefusalOf("""
                     {-2#{01}}""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and a hash form other than a binary is not a base at all")
-        void aHashThatIsNotABinary() {
-            assertThat(refusedAsAnInteger("""
+        void coversAHashThatIsNotABinary() {
+            assertThat(readTheRefusalOf("""
                     {2#"a"}""")).isEqualTo(TRUE);
-            assertThat(refusedAsAnInteger("""
+            assertThat(readTheRefusalOf("""
                     {1#(logic! 1)}""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("but the three bases that exist still read")
-        void theThreeBases() {
+        void leavesTheThreeRealBasesReading() {
             assertThat(answerTo("""
                     2#{01} = #{01}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -143,7 +143,7 @@ class MalformedNumberFromTheSourceTest {
 
         @Test
         @DisplayName("a number ends at the bracket and what follows is read afresh")
-        void theBracketStillSplits() {
+        void endsANumberAtTheBracket() {
             assertThat(answerTo("""
                     mold load {1<}""")).isEqualTo("\"[1 <]\"");
             assertThat(answerTo("""
@@ -158,7 +158,7 @@ class MalformedNumberFromTheSourceTest {
 
         @Test
         @DisplayName("and what the bracket leaves behind still has to be a value")
-        void whatIsLeftMustReadToo() {
+        void readsWhatTheBracketLeavesBehind() {
             assertThat(answerTo("""
                     error? try [load {1<2}]""")).isEqualTo(TRUE);
         }

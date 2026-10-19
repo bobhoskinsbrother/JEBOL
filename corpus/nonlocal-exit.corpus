@@ -51,7 +51,7 @@ plain
 --- origin adapted from REBOL/Core User Guide 2.3 section 9
 --- requires control
 --- note The boundary. RETURN must leave one function, not every function
---- note on the way out, or a helper could not be written.
+--- note on the way out, or a helper could not be text.
 --- code
 inner: func [] [return "inner"]
 outer: func [] [

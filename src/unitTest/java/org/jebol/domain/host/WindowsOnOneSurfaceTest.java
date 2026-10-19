@@ -20,49 +20,49 @@ class WindowsOnOneSurfaceTest {
     private WindowsOnOneSurface surface;
     private final List<Reported> reported = new ArrayList<>();
 
-    private record Reported(ScreenEventKind kind, ScreenEventDetail detail) {
+    private record Reported(ScreenEventType kind, ScreenEventDetail detail) {
     }
     private List<GobValue> showing;
     private GobValue lower;
     private GobValue upper;
 
     @BeforeEach
-    void twoOverlappingWindows() {
+    void openTwoOverlappingWindows() {
         surface = new WindowsOnOneSurface();
-        lower = aWindowAt(10, 20, 100, 100);
-        upper = aWindowAt(60, 70, 100, 100);
+        lower = makeAWindowAt(10, 20, 100, 100);
+        upper = makeAWindowAt(60, 70, 100, 100);
         showing = new ArrayList<>(List.of(lower, upper));
     }
 
-    private GobValue aWindowAt(int across, int down, int wide, int high) {
+    private GobValue makeAWindowAt(int across, int down, int wide, int high) {
         GobValue window = GobValue.empty();
-        window.storage().offset(PairValue.of(across, down));
+        window.storage().setTheOffset(PairValue.of(across, down));
         window.storage().size(PairValue.of(wide, high));
         return window;
     }
 
-    private void theSurfaceReports(ScreenEventKind kind, ScreenEventDetail detail) {
+    private void report(ScreenEventType kind, ScreenEventDetail detail) {
         reported.add(new Reported(kind, detail));
     }
 
-    private void thePointer(ScreenEventKind kind, int across, int down) {
-        theSurfaceReports(kind, new ScreenEventDetail.At(across, down));
+    private void reportThePointer(ScreenEventType kind, int across, int down) {
+        report(kind, new ScreenEventDetail.At(across, down));
     }
 
-    private List<ScreenEvent> whatIsDelivered() {
+    private List<ScreenEvent> deliverWhatWasReported() {
         List<ScreenEvent> delivered = new ArrayList<>();
         for (Reported each : reported) {
-            delivered.addAll(surface.addressed(each.kind(), each.detail(), List.copyOf(showing)));
+            delivered.addAll(surface.address(each.kind(), each.detail(), List.copyOf(showing)));
         }
         reported.clear();
         return delivered;
     }
 
-    private ScreenEvent anEvent(ScreenEventKind kind, GobValue window, int across, int down) {
+    private ScreenEvent makeAnEvent(ScreenEventType kind, GobValue window, int across, int down) {
         return new ScreenEvent(kind, window, new ScreenEventDetail.At(across, down));
     }
 
-    private ScreenEvent anEvent(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
+    private ScreenEvent makeAnEvent(ScreenEventType kind, GobValue window, ScreenEventDetail detail) {
         return new ScreenEvent(kind, window, detail);
     }
 
@@ -79,10 +79,10 @@ class WindowsOnOneSurfaceTest {
                 "10,  119, 0,  99",
         })
         @DisplayName("over one window belongs to it, counted from its top left, its edges included")
-        void overOneWindowBelongsToIt(int across, int down, int inAcross, int inDown) {
-            thePointer(ScreenEventKind.DOWN, across, down);
+        void belongsToTheWindowItIsOver(int across, int down, int inAcross, int inDown) {
+            reportThePointer(ScreenEventType.DOWN, across, down);
 
-            assertThat(whatIsDelivered()).containsExactly(anEvent(ScreenEventKind.DOWN, lower, inAcross, inDown));
+            assertThat(deliverWhatWasReported()).containsExactly(makeAnEvent(ScreenEventType.DOWN, lower, inAcross, inDown));
         }
 
         @ParameterizedTest(name = "at {0}x{1} reaches nothing")
@@ -98,10 +98,10 @@ class WindowsOnOneSurfaceTest {
                 "10,  120",
         })
         @DisplayName("over no window reaches nothing, one pixel past each edge included")
-        void overNoWindowReachesNothing(int across, int down) {
-            thePointer(ScreenEventKind.DOWN, across, down);
+        void reachesNothingOverNoWindow(int across, int down) {
+            reportThePointer(ScreenEventType.DOWN, across, down);
 
-            assertThat(whatIsDelivered()).isEmpty();
+            assertThat(deliverWhatWasReported()).isEmpty();
         }
 
         @ParameterizedTest(name = "at {0}x{1}, where both windows are, belongs to the upper as {2}x{3}")
@@ -111,61 +111,61 @@ class WindowsOnOneSurfaceTest {
                 "80,  90,  20, 20",
         })
         @DisplayName("where two windows overlap belongs to the one later in the root's pane")
-        void whereTwoOverlapBelongsToTheUpper(int across, int down, int inAcross, int inDown) {
-            thePointer(ScreenEventKind.DOWN, across, down);
+        void belongsToTheUpperWhereTwoOverlap(int across, int down, int inAcross, int inDown) {
+            reportThePointer(ScreenEventType.DOWN, across, down);
 
-            assertThat(whatIsDelivered()).containsExactly(anEvent(ScreenEventKind.DOWN, upper, inAcross, inDown));
+            assertThat(deliverWhatWasReported()).containsExactly(makeAnEvent(ScreenEventType.DOWN, upper, inAcross, inDown));
         }
 
         @Test
         @DisplayName("and when the pane's order is the other way round, the other window is on top")
-        void thePanesOrderDecidesWhichIsOnTop() {
+        void followsThePanesOrderToTheTop() {
             showing = new ArrayList<>(List.of(upper, lower));
 
-            thePointer(ScreenEventKind.DOWN, 80, 90);
+            reportThePointer(ScreenEventType.DOWN, 80, 90);
 
-            assertThat(whatIsDelivered()).containsExactly(anEvent(ScreenEventKind.DOWN, lower, 70, 70));
+            assertThat(deliverWhatWasReported()).containsExactly(makeAnEvent(ScreenEventType.DOWN, lower, 70, 70));
         }
 
         @Test
         @DisplayName("with no window showing reaches nothing")
-        void withNoWindowShowingReachesNothing() {
+        void reachesNothingWithNoWindowShowing() {
             showing.clear();
 
-            thePointer(ScreenEventKind.DOWN, 50, 50);
+            reportThePointer(ScreenEventType.DOWN, 50, 50);
 
-            assertThat(whatIsDelivered()).isEmpty();
+            assertThat(deliverWhatWasReported()).isEmpty();
         }
 
         @Test
         @DisplayName("a window of no size covers no point at all, not even its own offset")
-        void aWindowOfNoSizeCoversNothing() {
-            GobValue empty = aWindowAt(300, 300, 0, 0);
+        void missesAWindowOfNoSize() {
+            GobValue empty = makeAWindowAt(300, 300, 0, 0);
             showing.add(empty);
 
-            thePointer(ScreenEventKind.DOWN, 300, 300);
+            reportThePointer(ScreenEventType.DOWN, 300, 300);
 
-            assertThat(whatIsDelivered()).isEmpty();
+            assertThat(deliverWhatWasReported()).isEmpty();
         }
 
         @Test
         @DisplayName("a window placed partly off the surface still takes a press on the part that shows")
-        void aWindowPartlyOffTheSurface() {
-            GobValue offTheEdge = aWindowAt(-50, -50, 100, 100);
+        void reachesAWindowPartlyOffTheSurface() {
+            GobValue offTheEdge = makeAWindowAt(-50, -50, 100, 100);
             showing = new ArrayList<>(List.of(offTheEdge));
 
-            thePointer(ScreenEventKind.DOWN, 0, 0);
+            reportThePointer(ScreenEventType.DOWN, 0, 0);
 
-            assertThat(whatIsDelivered()).containsExactly(anEvent(ScreenEventKind.DOWN, offTheEdge, 50, 50));
+            assertThat(deliverWhatWasReported()).containsExactly(makeAnEvent(ScreenEventType.DOWN, offTheEdge, 50, 50));
         }
 
         @Test
         @DisplayName("is judged against where the windows stand when it is addressed, not when it was reported")
         void isJudgedWhenAddressed() {
-            thePointer(ScreenEventKind.DOWN, 300, 300);
-            lower.storage().offset(PairValue.of(250, 250));
+            reportThePointer(ScreenEventType.DOWN, 300, 300);
+            lower.storage().setTheOffset(PairValue.of(250, 250));
 
-            assertThat(whatIsDelivered()).containsExactly(anEvent(ScreenEventKind.DOWN, lower, 50, 50));
+            assertThat(deliverWhatWasReported()).containsExactly(makeAnEvent(ScreenEventType.DOWN, lower, 50, 50));
         }
     }
 
@@ -175,58 +175,58 @@ class WindowsOnOneSurfaceTest {
 
         @Test
         @DisplayName("a move off every window still belongs to the window the press began in, counted from it")
-        void aMoveOffEveryWindowBelongsToThePressedWindow() {
-            thePointer(ScreenEventKind.DOWN, 20, 30);
-            thePointer(ScreenEventKind.MOVE, 0, 0);
+        void givesAMoveOffEveryWindowToThePressedWindow() {
+            reportThePointer(ScreenEventType.DOWN, 20, 30);
+            reportThePointer(ScreenEventType.MOVE, 0, 0);
 
-            assertThat(whatIsDelivered()).containsExactly(
-                    anEvent(ScreenEventKind.DOWN, lower, 10, 10),
-                    anEvent(ScreenEventKind.MOVE, lower, -10, -20));
+            assertThat(deliverWhatWasReported()).containsExactly(
+                    makeAnEvent(ScreenEventType.DOWN, lower, 10, 10),
+                    makeAnEvent(ScreenEventType.MOVE, lower, -10, -20));
         }
 
         @Test
         @DisplayName("a move over another window, and the release there, still belong to the pressed window")
-        void aMoveAndReleaseOverAnotherWindowBelongToThePressedWindow() {
-            thePointer(ScreenEventKind.DOWN, 20, 30);
-            thePointer(ScreenEventKind.MOVE, 150, 150);
-            thePointer(ScreenEventKind.UP, 150, 150);
+        void givesAMoveAndReleaseOverAnotherWindowToThePressedWindow() {
+            reportThePointer(ScreenEventType.DOWN, 20, 30);
+            reportThePointer(ScreenEventType.MOVE, 150, 150);
+            reportThePointer(ScreenEventType.UP, 150, 150);
 
-            assertThat(whatIsDelivered()).containsExactly(
-                    anEvent(ScreenEventKind.DOWN, lower, 10, 10),
-                    anEvent(ScreenEventKind.MOVE, lower, 140, 130),
-                    anEvent(ScreenEventKind.UP, lower, 140, 130));
+            assertThat(deliverWhatWasReported()).containsExactly(
+                    makeAnEvent(ScreenEventType.DOWN, lower, 10, 10),
+                    makeAnEvent(ScreenEventType.MOVE, lower, 140, 130),
+                    makeAnEvent(ScreenEventType.UP, lower, 140, 130));
         }
 
         @Test
         @DisplayName("and once released, the next move belongs to the window under the pointer again")
-        void afterTheReleaseTheWindowUnderThePointerHearsAgain() {
-            thePointer(ScreenEventKind.DOWN, 20, 30);
-            thePointer(ScreenEventKind.UP, 150, 150);
-            thePointer(ScreenEventKind.MOVE, 150, 150);
+        void returnsToTheWindowUnderThePointerAfterTheRelease() {
+            reportThePointer(ScreenEventType.DOWN, 20, 30);
+            reportThePointer(ScreenEventType.UP, 150, 150);
+            reportThePointer(ScreenEventType.MOVE, 150, 150);
 
-            assertThat(whatIsDelivered()).last().isEqualTo(anEvent(ScreenEventKind.MOVE, upper, 90, 80));
+            assertThat(deliverWhatWasReported()).last().isEqualTo(makeAnEvent(ScreenEventType.MOVE, upper, 90, 80));
         }
 
         @Test
         @DisplayName("a press held over a window that then closes holds nothing, so the window under the pointer hears")
-        void aPressedWindowThatClosesHoldsNoPress() {
-            thePointer(ScreenEventKind.DOWN, 20, 30);
-            whatIsDelivered();
+        void dropsThePressWhenThePressedWindowCloses() {
+            reportThePointer(ScreenEventType.DOWN, 20, 30);
+            deliverWhatWasReported();
             showing.remove(lower);
 
-            thePointer(ScreenEventKind.MOVE, 150, 150);
-            thePointer(ScreenEventKind.MOVE, 0, 0);
+            reportThePointer(ScreenEventType.MOVE, 150, 150);
+            reportThePointer(ScreenEventType.MOVE, 0, 0);
 
-            assertThat(whatIsDelivered()).containsExactly(anEvent(ScreenEventKind.MOVE, upper, 90, 80));
+            assertThat(deliverWhatWasReported()).containsExactly(makeAnEvent(ScreenEventType.MOVE, upper, 90, 80));
         }
 
         @Test
         @DisplayName("a press on nothing holds nothing, so a move over a window afterwards belongs to that window")
-        void aPressOnNothingHoldsNothing() {
-            thePointer(ScreenEventKind.DOWN, 0, 0);
-            thePointer(ScreenEventKind.MOVE, 20, 30);
+        void holdsNothingForAPressOnNothing() {
+            reportThePointer(ScreenEventType.DOWN, 0, 0);
+            reportThePointer(ScreenEventType.MOVE, 20, 30);
 
-            assertThat(whatIsDelivered()).containsExactly(anEvent(ScreenEventKind.MOVE, lower, 10, 10));
+            assertThat(deliverWhatWasReported()).containsExactly(makeAnEvent(ScreenEventType.MOVE, lower, 10, 10));
         }
     }
 
@@ -235,21 +235,21 @@ class WindowsOnOneSurfaceTest {
     class WithNoPressHeld {
 
         @ParameterizedTest(name = "a {0} over the upper window belongs to it")
-        @EnumSource(value = ScreenEventKind.class, names = {"MOVE", "UP"})
+        @EnumSource(value = ScreenEventType.class, names = {"MOVE", "UP"})
         @DisplayName("a move or a release belongs to the topmost window under the pointer")
-        void belongsToTheWindowUnderThePointer(ScreenEventKind kind) {
-            thePointer(kind, 80, 90);
+        void belongsToTheWindowUnderThePointer(ScreenEventType kind) {
+            reportThePointer(kind, 80, 90);
 
-            assertThat(whatIsDelivered()).containsExactly(anEvent(kind, upper, 20, 20));
+            assertThat(deliverWhatWasReported()).containsExactly(makeAnEvent(kind, upper, 20, 20));
         }
 
         @ParameterizedTest(name = "a {0} over no window reaches nothing")
-        @EnumSource(value = ScreenEventKind.class, names = {"MOVE", "UP"})
+        @EnumSource(value = ScreenEventType.class, names = {"MOVE", "UP"})
         @DisplayName("and over no window reaches nothing")
-        void overNoWindowReachesNothing(ScreenEventKind kind) {
-            thePointer(kind, 9, 19);
+        void reachesNothingOverNoWindow(ScreenEventType kind) {
+            reportThePointer(kind, 9, 19);
 
-            assertThat(whatIsDelivered()).isEmpty();
+            assertThat(deliverWhatWasReported()).isEmpty();
         }
     }
 
@@ -260,67 +260,67 @@ class WindowsOnOneSurfaceTest {
         private final ScreenEventDetail typedA = new ScreenEventDetail.Typed('a');
 
         @ParameterizedTest(name = "a {0} before any press belongs to the topmost window")
-        @EnumSource(value = ScreenEventKind.class, names = {"KEY", "KEY_UP", "CONTROL", "CONTROL_UP"})
+        @EnumSource(value = ScreenEventType.class, names = {"KEY", "KEY_UP", "CONTROL", "CONTROL_UP"})
         @DisplayName("before any press belongs to the topmost window, which a desktop gives a new window")
-        void beforeAnyPressBelongsToTheTopmost(ScreenEventKind kind) {
-            theSurfaceReports(kind, typedA);
+        void goesToTheTopmostBeforeAnyPress(ScreenEventType kind) {
+            report(kind, typedA);
 
-            assertThat(whatIsDelivered()).containsExactly(anEvent(kind, upper, typedA));
+            assertThat(deliverWhatWasReported()).containsExactly(makeAnEvent(kind, upper, typedA));
         }
 
         @Test
         @DisplayName("after a press in the lower window belongs to the lower window")
-        void afterAPressBelongsToThePressedWindow() {
-            thePointer(ScreenEventKind.DOWN, 20, 30);
-            thePointer(ScreenEventKind.UP, 20, 30);
-            theSurfaceReports(ScreenEventKind.KEY, typedA);
+        void goesToThePressedWindowAfterAPress() {
+            reportThePointer(ScreenEventType.DOWN, 20, 30);
+            reportThePointer(ScreenEventType.UP, 20, 30);
+            report(ScreenEventType.KEY, typedA);
 
-            assertThat(whatIsDelivered()).last().isEqualTo(anEvent(ScreenEventKind.KEY, lower, typedA));
+            assertThat(deliverWhatWasReported()).last().isEqualTo(makeAnEvent(ScreenEventType.KEY, lower, typedA));
         }
 
         @Test
         @DisplayName("a named key follows the press too")
-        void aNamedKeyFollowsThePress() {
+        void followsThePressWhenNamed() {
             ScreenEventDetail left = new ScreenEventDetail.NamedKey("left");
-            thePointer(ScreenEventKind.DOWN, 20, 30);
-            theSurfaceReports(ScreenEventKind.CONTROL, left);
+            reportThePointer(ScreenEventType.DOWN, 20, 30);
+            report(ScreenEventType.CONTROL, left);
 
-            assertThat(whatIsDelivered()).last().isEqualTo(anEvent(ScreenEventKind.CONTROL, lower, left));
+            assertThat(deliverWhatWasReported()).last().isEqualTo(makeAnEvent(ScreenEventType.CONTROL, lower, left));
         }
 
         @Test
         @DisplayName("a press on nothing leaves the keyboard where it was")
-        void aPressOnNothingLeavesTheKeyboard() {
-            thePointer(ScreenEventKind.DOWN, 20, 30);
-            thePointer(ScreenEventKind.UP, 20, 30);
-            thePointer(ScreenEventKind.DOWN, 0, 0);
-            theSurfaceReports(ScreenEventKind.KEY, typedA);
+        void staysAfterAPressOnNothing() {
+            reportThePointer(ScreenEventType.DOWN, 20, 30);
+            reportThePointer(ScreenEventType.UP, 20, 30);
+            reportThePointer(ScreenEventType.DOWN, 0, 0);
+            report(ScreenEventType.KEY, typedA);
 
-            assertThat(whatIsDelivered()).last().isEqualTo(anEvent(ScreenEventKind.KEY, lower, typedA));
+            assertThat(deliverWhatWasReported()).last().isEqualTo(makeAnEvent(ScreenEventType.KEY, lower, typedA));
         }
 
         @Test
         @DisplayName("once the window pressed in has closed belongs to the topmost window again")
         void onceThePressedWindowClosesBelongsToTheTopmost() {
-            GobValue third = aWindowAt(400, 400, 50, 50);
+            GobValue third = makeAWindowAt(400, 400, 50, 50);
             showing.add(third);
-            thePointer(ScreenEventKind.DOWN, 20, 30);
-            whatIsDelivered();
+            reportThePointer(ScreenEventType.DOWN, 20, 30);
+            deliverWhatWasReported();
             showing.remove(lower);
 
-            theSurfaceReports(ScreenEventKind.KEY, typedA);
+            report(ScreenEventType.KEY, typedA);
 
-            assertThat(whatIsDelivered()).containsExactly(anEvent(ScreenEventKind.KEY, third, typedA));
+            assertThat(deliverWhatWasReported()).containsExactly(makeAnEvent(ScreenEventType.KEY, third, typedA));
         }
 
         @Test
         @DisplayName("with no window showing reaches nothing")
-        void withNoWindowShowingReachesNothing() {
+        void reachesNothingWithNoWindowShowing() {
             showing.clear();
 
-            theSurfaceReports(ScreenEventKind.KEY, typedA);
+            report(ScreenEventType.KEY, typedA);
 
-            assertThat(whatIsDelivered()).isEmpty();
+            assertThat(deliverWhatWasReported()).isEmpty();
         }
     }
 
@@ -331,61 +331,61 @@ class WindowsOnOneSurfaceTest {
         @Test
         @DisplayName("is one close for each window showing, in the order of the root's pane")
         void isOneCloseForEachWindow() {
-            theSurfaceReports(ScreenEventKind.CLOSE, new ScreenEventDetail.NothingMore());
+            report(ScreenEventType.CLOSE, new ScreenEventDetail.NothingMore());
 
-            assertThat(whatIsDelivered()).containsExactly(
-                    anEvent(ScreenEventKind.CLOSE, lower, new ScreenEventDetail.NothingMore()),
-                    anEvent(ScreenEventKind.CLOSE, upper, new ScreenEventDetail.NothingMore()));
+            assertThat(deliverWhatWasReported()).containsExactly(
+                    makeAnEvent(ScreenEventType.CLOSE, lower, new ScreenEventDetail.NothingMore()),
+                    makeAnEvent(ScreenEventType.CLOSE, upper, new ScreenEventDetail.NothingMore()));
         }
 
         @Test
         @DisplayName("with one window showing is one close")
-        void withOneWindowIsOneClose() {
+        void closesTheOneWindow() {
             showing.remove(upper);
 
-            theSurfaceReports(ScreenEventKind.CLOSE, new ScreenEventDetail.NothingMore());
+            report(ScreenEventType.CLOSE, new ScreenEventDetail.NothingMore());
 
-            assertThat(whatIsDelivered()).containsExactly(
-                    anEvent(ScreenEventKind.CLOSE, lower, new ScreenEventDetail.NothingMore()));
+            assertThat(deliverWhatWasReported()).containsExactly(
+                    makeAnEvent(ScreenEventType.CLOSE, lower, new ScreenEventDetail.NothingMore()));
         }
 
         @Test
         @DisplayName("with no window showing reaches nothing")
-        void withNoWindowShowingReachesNothing() {
+        void reachesNothingWithNoWindowShowing() {
             showing.clear();
 
-            theSurfaceReports(ScreenEventKind.CLOSE, new ScreenEventDetail.NothingMore());
+            report(ScreenEventType.CLOSE, new ScreenEventDetail.NothingMore());
 
-            assertThat(whatIsDelivered()).isEmpty();
+            assertThat(deliverWhatWasReported()).isEmpty();
         }
     }
 
     @ParameterizedTest(name = "a {0} names no window and reaches nothing")
-    @EnumSource(value = ScreenEventKind.class, names = {"RESIZE", "OFFSET"})
+    @EnumSource(value = ScreenEventType.class, names = {"RESIZE", "OFFSET"})
     @DisplayName("the surface never moves or resizes one of its windows")
-    void aResizeOrMoveReachesNothing(ScreenEventKind kind) {
-        theSurfaceReports(kind, new ScreenEventDetail.At(10, 10));
+    void deliversNoResizeOrMove(ScreenEventType kind) {
+        report(kind, new ScreenEventDetail.At(10, 10));
 
-        assertThat(whatIsDelivered()).isEmpty();
+        assertThat(deliverWhatWasReported()).isEmpty();
     }
 
     @Test
     @DisplayName("events are delivered in the order they were reported")
-    void eventsKeepTheirOrder() {
-        theSurfaceReports(ScreenEventKind.KEY, new ScreenEventDetail.Typed('x'));
-        thePointer(ScreenEventKind.MOVE, 20, 30);
-        theSurfaceReports(ScreenEventKind.KEY, new ScreenEventDetail.Typed('y'));
+    void keepsTheEventsInOrder() {
+        report(ScreenEventType.KEY, new ScreenEventDetail.Typed('x'));
+        reportThePointer(ScreenEventType.MOVE, 20, 30);
+        report(ScreenEventType.KEY, new ScreenEventDetail.Typed('y'));
 
-        assertThat(whatIsDelivered()).extracting(ScreenEvent::kind).containsExactly(
-                ScreenEventKind.KEY, ScreenEventKind.MOVE, ScreenEventKind.KEY);
+        assertThat(deliverWhatWasReported()).extracting(ScreenEvent::type).containsExactly(
+                ScreenEventType.KEY, ScreenEventType.MOVE, ScreenEventType.KEY);
     }
 
     @Test
     @DisplayName("what is delivered once is not delivered again")
-    void deliveredOnce() {
-        thePointer(ScreenEventKind.MOVE, 20, 30);
-        whatIsDelivered();
+    void deliversOnce() {
+        reportThePointer(ScreenEventType.MOVE, 20, 30);
+        deliverWhatWasReported();
 
-        assertThat(whatIsDelivered()).isEmpty();
+        assertThat(deliverWhatWasReported()).isEmpty();
     }
 }

@@ -1,6 +1,6 @@
 package org.jebol.domain.eval.natives;
 
-import org.jebol.adapter.host.JavaProcesses;
+import org.jebol.adapter.host.JavaProcess;
 import org.jebol.application.Bounds;
 import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
@@ -44,12 +44,12 @@ class WhatEachPortNativeDeclaresTest {
         }
 
         @Override
-        public Map<String, String> all() {
+        public Map<String, String> readAll() {
             return Map.copyOf(held);
         }
 
         @Override
-        public void nameHolds(String variable, String value) {
+        public void assign(String variable, String value) {
             if (value == null) {
                 held.remove(variable);
             } else {
@@ -65,9 +65,9 @@ class WhatEachPortNativeDeclaresTest {
                 .grant(HostService.ENVIRONMENT)
                 .grant(HostService.PROCESSES)
                 .grant(HostService.CLOCK));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         interpreter.useEnvironment(new AnEnvironmentOfItsOwn());
-        interpreter.useProcesses(new JavaProcesses());
+        interpreter.useProcesses(new JavaProcess());
         interpreter.defineFreshWordsIn(source);
         return Molder.moldFlat(interpreter.run(source).value());
     }
@@ -208,7 +208,7 @@ class WhatEachPortNativeDeclaresTest {
     }
 
     @Nested
-    @DisplayName("query answers each kind of target by its own fields")
+    @DisplayName("query answers each type of target by its own fields")
     class Query {
 
         @ParameterizedTest(name = "{0}")

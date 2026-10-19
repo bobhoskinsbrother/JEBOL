@@ -29,14 +29,14 @@ public final class RsaKey {
                 .getModulus().bitLength() + 7) / 8;
     }
 
-    private static BigInteger unsignedMostSignificantByteFirst(byte[] octets) {
+    private static BigInteger readUnsignedMostSignificantByteFirst(byte[] octets) {
         return new BigInteger(1, octets);
     }
 
-    public static Optional<RsaKey> publicKeyFrom(byte[] modulus, byte[] publicExponent) {
+    public static Optional<RsaKey> makeAPublicKeyFrom(byte[] modulus, byte[] publicExponent) {
         try {
-            BigInteger n = unsignedMostSignificantByteFirst(modulus);
-            BigInteger e = unsignedMostSignificantByteFirst(publicExponent);
+            BigInteger n = readUnsignedMostSignificantByteFirst(modulus);
+            BigInteger e = readUnsignedMostSignificantByteFirst(publicExponent);
             if (n.signum() <= 0 || e.signum() <= 0 || !n.testBit(0) || n.bitLength() < 16) {
                 return Optional.empty();
             }
@@ -47,19 +47,19 @@ public final class RsaKey {
         }
     }
 
-    public static Optional<RsaKey> privateKeyFrom(byte[] modulus, byte[] publicExponent,
-            byte[] privateExponent, byte[] firstPrime, byte[] secondPrime) {
+    public static Optional<RsaKey> makeAPrivateKeyFrom(byte[] modulus, byte[] publicExponent,
+                                                       byte[] privateExponent, byte[] firstPrime, byte[] secondPrime) {
         try {
-            BigInteger n = unsignedMostSignificantByteFirst(modulus);
-            BigInteger e = unsignedMostSignificantByteFirst(publicExponent);
-            BigInteger d = unsignedMostSignificantByteFirst(privateExponent);
-            BigInteger p = unsignedMostSignificantByteFirst(firstPrime);
-            BigInteger q = unsignedMostSignificantByteFirst(secondPrime);
+            BigInteger n = readUnsignedMostSignificantByteFirst(modulus);
+            BigInteger e = readUnsignedMostSignificantByteFirst(publicExponent);
+            BigInteger d = readUnsignedMostSignificantByteFirst(privateExponent);
+            BigInteger p = readUnsignedMostSignificantByteFirst(firstPrime);
+            BigInteger q = readUnsignedMostSignificantByteFirst(secondPrime);
             if (p.signum() <= 0 || q.signum() <= 0 || !p.multiply(q).equals(n)) {
                 return Optional.empty();
             }
             BigInteger one = BigInteger.ONE;
-            if (!theExponentsAgreeModuloTheCarmichaelFunction(e, d, p, q)) {
+            if (!doTheExponentsAgree(e, d, p, q)) {
                 return Optional.empty();
             }
             KeyFactory factory = KeyFactory.getInstance("RSA");
@@ -76,7 +76,7 @@ public final class RsaKey {
         }
     }
 
-    private static boolean theExponentsAgreeModuloTheCarmichaelFunction(
+    private static boolean doTheExponentsAgree(
             BigInteger e, BigInteger d, BigInteger p, BigInteger q) {
 
         BigInteger one = BigInteger.ONE;
@@ -86,28 +86,28 @@ public final class RsaKey {
         return e.multiply(d).mod(smallestPeriod).equals(one);
     }
 
-    private static String cipherStatingTheDigestRatherThanLeavingItToAProvider(
+    private static String nameTheCipher(
             boolean optimalPadding) {
         return optimalPadding
                 ? "RSA/ECB/OAEPWithSHA-256AndMGF1Padding"
                 : "RSA/ECB/PKCS1Padding";
     }
 
-    public byte[] enciphered(byte[] data, boolean optimalPadding) throws Exception {
+    public byte[] encipher(byte[] data, boolean optimalPadding) throws Exception {
         Cipher cipher = Cipher.getInstance(
-                cipherStatingTheDigestRatherThanLeavingItToAProvider(optimalPadding));
+                nameTheCipher(optimalPadding));
         cipher.init(Cipher.ENCRYPT_MODE, publicHalf);
         return cipher.doFinal(data);
     }
 
-    public byte[] deciphered(byte[] data, boolean optimalPadding) throws Exception {
+    public byte[] decipher(byte[] data, boolean optimalPadding) throws Exception {
         Cipher cipher = Cipher.getInstance(
-                cipherStatingTheDigestRatherThanLeavingItToAProvider(optimalPadding));
+                nameTheCipher(optimalPadding));
         cipher.init(Cipher.DECRYPT_MODE, privateHalf);
         return cipher.doFinal(data);
     }
 
-    private static String theDigestOrSha256(String asked) {
+    private static String pickTheDigestOrSha256(String asked) {
         return switch (asked) {
             case "md5" -> "MD5";
             case "sha1" -> "SHA-1";
@@ -118,9 +118,9 @@ public final class RsaKey {
         };
     }
 
-    private static Signature signatureFor(String digest, boolean probabilistic)
+    private static Signature makeASignatureFor(String digest, boolean probabilistic)
             throws java.security.GeneralSecurityException {
-        String algorithm = theDigestOrSha256(digest);
+        String algorithm = pickTheDigestOrSha256(digest);
         if (!probabilistic) {
             return Signature.getInstance(algorithm.replace("-", "") + "withRSA");
         }
@@ -128,18 +128,18 @@ public final class RsaKey {
         scheme.setParameter(new java.security.spec.PSSParameterSpec(
                 algorithm, "MGF1",
                 new java.security.spec.MGF1ParameterSpec(algorithm),
-                saltAsLongAsTheDigest(algorithm),
+                measureTheSaltAsLongAsTheDigest(algorithm),
                 java.security.spec.PSSParameterSpec.TRAILER_FIELD_BC));
         return scheme;
     }
 
-    private static int saltAsLongAsTheDigest(String algorithm)
+    private static int measureTheSaltAsLongAsTheDigest(String algorithm)
             throws java.security.NoSuchAlgorithmException {
         return java.security.MessageDigest.getInstance(algorithm).getDigestLength();
     }
 
-    public byte[] signed(byte[] data, String digest, boolean probabilistic) throws Exception {
-        Signature signing = signatureFor(digest, probabilistic);
+    public byte[] sign(byte[] data, String digest, boolean probabilistic) throws Exception {
+        Signature signing = makeASignatureFor(digest, probabilistic);
         signing.initSign(privateHalf);
         signing.update(data);
         return signing.sign();
@@ -147,7 +147,7 @@ public final class RsaKey {
 
     public boolean verifies(byte[] data, byte[] signature, String digest, boolean probabilistic) {
         try {
-            Signature checking = signatureFor(digest, probabilistic);
+            Signature checking = makeASignatureFor(digest, probabilistic);
             checking.initVerify(publicHalf);
             checking.update(data);
             return checking.verify(signature);

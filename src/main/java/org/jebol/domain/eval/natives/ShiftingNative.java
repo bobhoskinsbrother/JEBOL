@@ -9,7 +9,7 @@ import java.util.List;
 
 public abstract class ShiftingNative extends ArithmeticNative {
 
-    protected abstract long movedBy(long bits, long places);
+    protected abstract long moveBy(long bits, long places);
 
     @Override
     public List<Parameter> parametersAsWritten() {
@@ -21,7 +21,7 @@ public abstract class ShiftingNative extends ArithmeticNative {
         return (arguments, evaluator, context, refinements) -> {
             long bits = ((IntegerValue) arguments.get(0)).magnitude();
             long places = ((IntegerValue) arguments.get(1)).magnitude();
-            return IntegerValue.of(places < 0 ? bits : movedBy(bits, places));
+            return IntegerValue.of(places < 0 ? bits : moveBy(bits, places));
         };
     }
 }

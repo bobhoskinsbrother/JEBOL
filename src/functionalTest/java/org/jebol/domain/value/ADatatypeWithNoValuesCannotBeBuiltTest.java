@@ -38,7 +38,7 @@ class ADatatypeWithNoValuesCannotBeBuiltTest {
     @ParameterizedTest
     @ValueSource(strings = {"end", "frame", "rebcode", "command", "library"})
     @DisplayName("to refuses to build one")
-    void toRefuses(String datatype) {
+    void refusesTo(String datatype) {
         assertThat(answerTo("e: try [to " + datatype + "! 1] mold reduce [e/id e/arg1 e/arg2]"))
                 .isEqualTo("[bad-make-arg #(" + datatype + "!) 1]");
     }
@@ -52,7 +52,7 @@ class ADatatypeWithNoValuesCannotBeBuiltTest {
 
     @Test
     @DisplayName("to refuses a utype!, as an invalid type")
-    void toRefusesAUtype() {
+    void refusesToForAUtype() {
         assertThat(answerTo("e: try [to utype! 1] mold reduce [e/id e/arg1 e/arg2]"))
                 .isEqualTo("[invalid-type #(utype!) _]");
     }
@@ -60,7 +60,7 @@ class ADatatypeWithNoValuesCannotBeBuiltTest {
     @ParameterizedTest
     @ValueSource(strings = {"end", "frame", "rebcode", "command", "library", "utype"})
     @DisplayName("the construction syntax refuses to build one")
-    void constructionRefuses(String datatype) {
+    void refusesConstruction(String datatype) {
         assertThat(answerTo("e: try [load {#(" + datatype + "! [])}] mold reduce [e/id e/arg1]"))
                 .isEqualTo("[malconstruct [" + datatype + "! []]]");
     }
@@ -68,7 +68,7 @@ class ADatatypeWithNoValuesCannotBeBuiltTest {
     @ParameterizedTest
     @ValueSource(strings = {"end", "frame", "rebcode", "command", "library", "utype"})
     @DisplayName("the datatype itself is still a value, of datatype!")
-    void theDatatypeIsAValue(String datatype) {
+    void isStillAValueItself(String datatype) {
         assertThat(answerTo("mold reduce [type? " + datatype + "! datatype? " + datatype + "!]"))
                 .isEqualTo("[#(datatype!) #(true)]");
     }
@@ -77,7 +77,7 @@ class ADatatypeWithNoValuesCannotBeBuiltTest {
     @ValueSource(classes = {EndValue.class, FrameValue.class, RebcodeValue.class,
             LibraryValue.class, UtypeValue.class})
     @DisplayName("the class that holds the datatype offers no way to make an instance")
-    void theClassCannotBeInstantiated(Class<?> holder) {
+    void hasNoInstantiableClass(Class<?> holder) {
         assertThat(holder.getDeclaredConstructors())
                 .allMatch(constructor -> Modifier.isPrivate(constructor.getModifiers()));
         assertThat(Arrays.stream(holder.getDeclaredMethods())
@@ -94,13 +94,13 @@ class ADatatypeWithNoValuesCannotBeBuiltTest {
     @ValueSource(classes = {EndValue.class, FrameValue.class, RebcodeValue.class,
             LibraryValue.class, UtypeValue.class})
     @DisplayName("and is not a value, so nothing could ever hold one")
-    void theClassIsNotAValue(Class<?> holder) {
+    void hasAClassThatIsNotAValue(Class<?> holder) {
         assertThat(Value.class.isAssignableFrom(holder)).isFalse();
     }
 
     @Test
     @DisplayName("any-type! holds every datatype but end!")
-    void anyTypeHoldsAllButEnd() {
+    void leavesAnyTypeHoldingAllButEnd() {
         assertThat(answerTo("mold reduce [find any-type! end! find any-type! unset!]"))
                 .isEqualTo("[#(false) #(true)]");
     }

@@ -30,7 +30,7 @@ class ParseCountsCharactersTest {
 
         @Test
         @DisplayName("a count of skips counts characters")
-        void aCountOfSkips() {
+        void skipsACountOfCharacters() {
             assertThat(answerTo("""
                     reduce [parse "a🙂b" [3 skip] parse "a🙂b" [4 skip]]"""))
                     .isEqualTo("[#(true) #(false)]");
@@ -46,7 +46,7 @@ class ParseCountsCharactersTest {
 
         @Test
         @DisplayName("and one skip copies the whole character, not half of it")
-        void oneSkipCopiesTheWholeCharacter() {
+        void copiesTheWholeCharacterInOneSkip() {
             assertThat(answerTo("""
                     parse "🙂b" [copy x skip to end]
                     reduce [x length? x]""")).isEqualTo("[\"🙂\" 1]");
@@ -75,7 +75,7 @@ class ParseCountsCharactersTest {
 
         @Test
         @DisplayName("a literal holding a wide character matches it")
-        void aWideLiteralMatches() {
+        void matchesAWideLiteral() {
             assertThat(answerTo("""
                     reduce [parse "a🙂b" ["a" "🙂" "b"] parse "a🙂b" ["a🙂b"]]"""))
                     .isEqualTo("[#(true) #(true)]");
@@ -94,7 +94,7 @@ class ParseCountsCharactersTest {
 
         @Test
         @DisplayName("a charset holding one matches it and nothing else")
-        void aCharsetHoldingOne() {
+        void matchesACharsetHoldingOne() {
             assertThat(answerTo("""
                     wide: charset "🙂"
                     reduce [parse "🙂" [wide] parse "a" [wide]]"""))
@@ -103,7 +103,7 @@ class ParseCountsCharactersTest {
 
         @Test
         @DisplayName("and the position after a match counts characters")
-        void thePositionAfterAMatch() {
+        void countsThePositionAfterAMatch() {
             assertThat(answerTo("""
                     parse "a🙂bc" ["a🙂" mark: (found: index? mark) to end]
                     found""")).isEqualTo("3");
@@ -148,7 +148,7 @@ class ParseCountsCharactersTest {
 
         @Test
         @DisplayName("every byte is one step, including those above 127")
-        void everyByteIsOneStep() {
+        void stepOneByteAtATime() {
             assertThat(answerTo("""
                     reduce [parse #{41F0429F} [4 skip] parse #{41F0429F} [5 skip]]"""))
                     .isEqualTo("[#(true) #(false)]");
@@ -156,7 +156,7 @@ class ParseCountsCharactersTest {
 
         @Test
         @DisplayName("and a byte comes back as its number")
-        void aByteComesBackAsItsNumber() {
+        void answerAByteAsItsNumber() {
             assertThat(answerTo("""
                     parse #{41F042} [skip set b skip to end]
                     b""")).isEqualTo("240");

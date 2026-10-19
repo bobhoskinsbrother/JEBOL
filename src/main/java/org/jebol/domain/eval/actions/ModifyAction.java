@@ -36,19 +36,19 @@ public class ModifyAction extends PortAction {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("target", Set.of(PortValue.TYPE, FileValue.TYPE)),
-                Parameter.required("field", Set.of(WordValue.TYPE, NoneValue.TYPE)),
-                Parameter.required("value"));
+                Parameter.of("target", Set.of(PortValue.TYPE, FileValue.TYPE)),
+                Parameter.of("field", Set.of(WordValue.TYPE, NoneValue.TYPE)),
+                Parameter.of("value"));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .theRebolActorsAnswer(nativeName(), arguments, Set.of())
-                .orElseGet(() -> modified(arguments.getFirst(), arguments.get(1), arguments.get(2)));
+                .askTheRebolActor(nativeName(), arguments, Set.of())
+                .orElseGet(() -> modify(arguments.getFirst(), arguments.get(1), arguments.get(2)));
     }
 
-    private Value modified(Value target, Value field, Value given) {
+    private Value modify(Value target, Value field, Value given) {
         if (target instanceof PortValue port && port.schemeName().equals("crypt")) {
             ports.cryptPort().refuseWhenClosed(port);
             return field instanceof AnyWordValue setting
@@ -56,19 +56,19 @@ public class ModifyAction extends PortAction {
                     : port;
         }
         if (target instanceof FileValue || target instanceof PortValue port && port.isAFile()) {
-            return aFileModified(target, field);
+            return modifyAFile(target, field);
         }
-        return aConsoleModeSet(target, field, given);
+        return setAConsoleMode(target, field, given);
     }
 
-    private Value aFileModified(Value target, Value field) {
+    private Value modifyAFile(Value target, Value field) {
         if (field instanceof AnyWordValue mode && !THE_MODES_A_FILE_TAKES.contains(mode.canonical())) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, field);
         }
         return target instanceof PortValue ? LogicValue.of(true) : NoneValue.none();
     }
 
-    private Value aConsoleModeSet(Value target, Value field, Value given) {
+    private Value setAConsoleMode(Value target, Value field, Value given) {
         if (!(field instanceof AnyWordValue mode) || !ports.consoleModes().contains(mode.canonical())) {
             throw Raised.of(EvaluationFailure.BAD_FILE_MODE, field);
         }

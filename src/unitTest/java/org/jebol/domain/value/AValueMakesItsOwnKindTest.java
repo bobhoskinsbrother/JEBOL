@@ -16,7 +16,7 @@ class AValueMakesItsOwnKindTest {
 
     private final ObjectValue anEvaluatedObject = new ObjectValue(Context.root());
 
-    private final FunctionValue aBoundFunction = new FunctionValue(BlockValue.block(), BlockValue.block(),
+    private final FunctionValue aBoundFunction = new FunctionValue(BlockValue.of(), BlockValue.of(),
             List.of(), List.of(), Context.root());
 
     private final Value whatAPrototypeMade = IntegerValue.of(42);
@@ -32,7 +32,7 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
-        public Value objectMergedFrom(ObjectValue prototype, ObjectValue other) {
+        public Value mergeAnObject(ObjectValue prototype, ObjectValue other) {
             asked.add("object merged");
             return whatAPrototypeMade;
         }
@@ -56,30 +56,30 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
-        public ObjectValue objectEvaluatedFrom(AnyBlockValue body) {
+        public ObjectValue evaluateAnObject(AnyBlockValue body) {
             asked.add("object evaluated");
             return anEvaluatedObject;
         }
 
         @Override
-        public FunctionValue functionBoundFrom(AnyBlockValue spec, AnyBlockValue body) {
+        public FunctionValue bindAFunction(AnyBlockValue spec, AnyBlockValue body) {
             asked.add("function bound");
             return aBoundFunction;
         }
 
         @Override
-        public Value systemFunctionApplied(String name, Value argument) {
+        public Value applyASystemFunction(String name, Value argument) {
             asked.add("applied " + name);
             return whatAPrototypeMade;
         }
 
         @Override
-        public Value simpleValueOf(Value piece) {
+        public Value readASimpleValue(Value piece) {
             return piece;
         }
 
         @Override
-        public ErrorValue spokenHere(ErrorValue error) {
+        public ErrorValue speakHere(ErrorValue error) {
             asked.add("error spoken");
             return error;
         }
@@ -90,35 +90,35 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
-        public Optional<List<Value>> valuesReadFrom(String source) {
+        public Optional<List<Value>> readTheValuesFrom(String source) {
             return Optional.empty();
         }
 
         @Override
-        public AnyBlockValue sourceRead(String source) {
+        public AnyBlockValue readTheSource(String source) {
             asked.add("read " + source);
-            return BlockValue.block();
+            return BlockValue.of();
         }
     }
 
     private final RecordingMaker maker = new RecordingMaker();
 
-    private AnyBlockValue aBlock() {
-        return BlockValue.block(List.of(IntegerValue.of(1)));
+    private AnyBlockValue readABlock() {
+        return BlockValue.of(List.of(IntegerValue.of(1)));
     }
 
-    private FunctionValue aFunction() {
-        return new FunctionValue(BlockValue.block(), BlockValue.block(),
+    private FunctionValue makeAFunction() {
+        return new FunctionValue(BlockValue.of(), BlockValue.of(),
                 List.of(), List.of(), Context.root());
     }
 
-    private StructValue aStruct() {
-        AnyBlockValue layout = BlockValue.block(List.of(WordValue.of("a"),
-                BlockValue.block(List.of(WordValue.of("uint8!")))));
+    private StructValue makeAStruct() {
+        AnyBlockValue layout = BlockValue.of(List.of(WordValue.of("a"),
+                BlockValue.of(List.of(WordValue.of("uint8!")))));
         return StructValue.of(StructSpec.of(layout, name -> Optional.empty()));
     }
 
-    private String errorIdOf(Runnable making) {
+    private String readTheErrorIdOf(Runnable making) {
         try {
             making.run();
         } catch (Raised raised) {
@@ -128,66 +128,66 @@ class AValueMakesItsOwnKindTest {
     }
 
     @Nested
-    @DisplayName("a datatype makes one of the kind it is, asking the maker only to evaluate")
+    @DisplayName("a datatype makes one of the type it is, asking the maker only to evaluate")
     class ADatatype {
 
         @Test
         @DisplayName("an integer is made from a string without the maker")
-        void anInteger() {
+        void makesAnInteger() {
             assertThat(IntegerValue.TYPE.make(StringValue.of("7"), maker)).isEqualTo(IntegerValue.of(7));
             assertThat(maker.asked).isEmpty();
         }
 
         @Test
         @DisplayName("a map is made from a block of pairs without the maker")
-        void aMap() {
-            assertThat(MapValue.TYPE.make(BlockValue.block(List.of(WordValue.of("a"), IntegerValue.of(1))), maker))
+        void makesAMap() {
+            assertThat(MapValue.TYPE.make(BlockValue.of(List.of(WordValue.of("a"), IntegerValue.of(1))), maker))
                     .isInstanceOf(MapValue.class);
             assertThat(maker.asked).isEmpty();
         }
 
         @Test
         @DisplayName("a block and a string are made from a number as room, without the maker")
-        void roomForABlockAndAString() {
-            assertThat(BlockValue.TYPE.make(IntegerValue.of(3), maker)).isEqualTo(BlockValue.block());
+        void makesRoomForABlockAndAString() {
+            assertThat(BlockValue.TYPE.make(IntegerValue.of(3), maker)).isEqualTo(BlockValue.of());
             assertThat(StringValue.TYPE.make(IntegerValue.of(3), maker)).isEqualTo(StringValue.of(""));
             assertThat(maker.asked).isEmpty();
         }
 
         @Test
         @DisplayName("an object asks the maker to evaluate its body")
-        void anObject() {
-            assertThat(ObjectValue.TYPE.make(aBlock(), maker)).isSameAs(anEvaluatedObject);
+        void makesAnObject() {
+            assertThat(ObjectValue.TYPE.make(readABlock(), maker)).isSameAs(anEvaluatedObject);
             assertThat(maker.asked).containsExactly("object evaluated");
         }
 
         @Test
         @DisplayName("a function asks the maker to bind its body")
-        void aFunction() {
-            assertThat(FunctionValue.TYPE.make(BlockValue.block(List.of(BlockValue.block(), BlockValue.block())), maker))
+        void makesAFunction() {
+            assertThat(FunctionValue.TYPE.make(BlockValue.of(List.of(BlockValue.of(), BlockValue.of())), maker))
                     .isSameAs(aBoundFunction);
             assertThat(maker.asked).containsExactly("function bound");
         }
 
         @Test
         @DisplayName("a closure binds a function and turns it into a closure")
-        void aClosure() {
-            assertThat(ClosureValue.TYPE.make(BlockValue.block(List.of(BlockValue.block(), BlockValue.block())), maker))
+        void makesAClosure() {
+            assertThat(ClosureValue.TYPE.make(BlockValue.of(List.of(BlockValue.of(), BlockValue.of())), maker))
                     .isInstanceOf(ClosureValue.class);
             assertThat(maker.asked).containsExactly("function bound");
         }
 
         @Test
         @DisplayName("an error from a message is spoken where it was made")
-        void anErrorFromAMessage() {
+        void makesAnErrorFromAMessage() {
             assertThat(ErrorValue.TYPE.make(StringValue.of("b"), maker)).isInstanceOf(ErrorValue.class);
             assertThat(maker.asked).containsExactly("error spoken");
         }
 
         @Test
         @DisplayName("a module asks the maker to run make-module*, and refuses an answer that is not a module")
-        void aModule() {
-            assertThat(errorIdOf(() -> ModuleValue.TYPE.madeFrom(aBlock(), maker))).isEqualTo("invalid-spec");
+        void makesAModule() {
+            assertThat(readTheErrorIdOf(() -> ModuleValue.TYPE.makeFrom(readABlock(), maker))).isEqualTo("invalid-spec");
             assertThat(maker.asked).containsExactly("applied make-module*");
         }
     }
@@ -198,41 +198,41 @@ class AValueMakesItsOwnKindTest {
 
         @Test
         @DisplayName("an object is made like itself")
-        void anObject() {
-            assertThat(new ObjectValue(Context.root()).make(aBlock(), maker)).isSameAs(whatAPrototypeMade);
+        void makesAnObject() {
+            assertThat(new ObjectValue(Context.root()).make(readABlock(), maker)).isSameAs(whatAPrototypeMade);
             assertThat(maker.asked).containsExactly("object like");
         }
 
         @Test
         @DisplayName("a function given a block derives from itself")
-        void aFunctionGivenABlock() {
-            aFunction().make(aBlock(), maker);
+        void makesAFunctionGivenABlock() {
+            makeAFunction().make(readABlock(), maker);
             assertThat(maker.asked).containsExactly("derived from function!");
         }
 
         @Test
         @DisplayName("a function given anything but a block refuses to be its prototype")
-        void aFunctionGivenSomethingElse() {
-            assertThat(errorIdOf(() -> aFunction().make(IntegerValue.of(1), maker))).isEqualTo("cannot-use");
+        void makesAFunctionGivenSomethingElse() {
+            assertThat(readTheErrorIdOf(() -> makeAFunction().make(IntegerValue.of(1), maker))).isEqualTo("cannot-use");
             assertThat(maker.asked).isEmpty();
         }
 
         @Test
         @DisplayName("a native given a block derives from itself")
-        void aNativeGivenABlock() {
-            new PrintNative().make(aBlock(), maker);
+        void makesANativeGivenABlock() {
+            new PrintNative().make(readABlock(), maker);
             assertThat(maker.asked).containsExactly("derived from native!");
         }
 
         @Test
         @DisplayName("a native given anything but a block refuses to be its prototype")
-        void aNativeGivenSomethingElse() {
-            assertThat(errorIdOf(() -> new PrintNative().make(IntegerValue.of(1), maker))).isEqualTo("cannot-use");
+        void makesANativeGivenSomethingElse() {
+            assertThat(readTheErrorIdOf(() -> new PrintNative().make(IntegerValue.of(1), maker))).isEqualTo("cannot-use");
         }
 
         @Test
         @DisplayName("an error given a message makes an error from it")
-        void anErrorGivenAMessage() {
+        void makesAnErrorGivenAMessage() {
             assertThat(ErrorValue.of(ErrorCategory.USER, "message", "a").make(StringValue.of("b"), maker))
                     .isInstanceOf(ErrorValue.class);
             assertThat(maker.asked).containsExactly("error spoken");
@@ -240,24 +240,24 @@ class AValueMakesItsOwnKindTest {
 
         @Test
         @DisplayName("a struct is made like itself")
-        void aStruct() {
-            AValueMakesItsOwnKindTest.this.aStruct().make(aBlock(), maker);
+        void makesAStruct() {
+            AValueMakesItsOwnKindTest.this.makeAStruct().make(readABlock(), maker);
             assertThat(maker.asked).containsExactly("struct like");
         }
 
         @Test
         @DisplayName("an event is made from a block of its fields")
-        void anEvent() {
-            assertThat(EventValue.fresh().make(BlockValue.block(), maker)).isInstanceOf(EventValue.class);
+        void makesAnEvent() {
+            assertThat(EventValue.fresh().make(BlockValue.of(), maker)).isInstanceOf(EventValue.class);
         }
 
         @Test
         @DisplayName("anything else is made as any other value of its datatype would be")
-        void anythingElse() {
-            assertThat(aBlock().make(IntegerValue.of(3), maker)).isEqualTo(BlockValue.block());
+        void makesAnythingElse() {
+            assertThat(readABlock().make(IntegerValue.of(3), maker)).isEqualTo(BlockValue.of());
             assertThat(StringValue.of("a").make(IntegerValue.of(3), maker)).isEqualTo(StringValue.of(""));
             assertThat(IntegerValue.of(1).make(StringValue.of("7"), maker)).isEqualTo(IntegerValue.of(7));
-            assertThatThrownBy(() -> TupleValue.of(1, 2, 3).make(BlockValue.block(List.of(WordValue.of("x"))), maker))
+            assertThatThrownBy(() -> TupleValue.of(1, 2, 3).make(BlockValue.of(List.of(WordValue.of("x"))), maker))
                     .isInstanceOf(Raised.class);
         }
     }

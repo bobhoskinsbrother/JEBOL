@@ -26,18 +26,18 @@ public class AppendAction extends AddingAction {
         return (arguments, evaluator, context, refinements) -> {
             Value added = arguments.get(1);
             return switch (arguments.getFirst()) {
-                case PortValue queue when queue.eventQueue().isPresent() ->
-                        queue.queued(added, AT_THE_END);
+                case PortValue queue when queue.findTheEventQueue().isPresent() ->
+                        queue.queue(added, AT_THE_END);
                 case PortValue file when file.isAFile() -> {
                     if (refinements.contains("dup") || refinements.contains("only")) {
                         throw Raised.of(EvaluationFailure.BAD_REFINES,
                                 "append on a file port is a write, and takes no dup or only");
                     }
-                    yield theFileBehind(file, evaluator).appended(added);
+                    yield findTheFileBehind(file, evaluator).append(added);
                 }
                 case Value subject when Actions.of(subject).isPresent() ->
                         Actions.of(subject).orElseThrow().append(
-                                askedOf(subject, arguments, refinements, evaluator, context));
+                                readWhatIsAskedOf(subject, arguments, refinements, evaluator, context));
                 case Value anythingElse -> refuseTheDatatype(anythingElse);
             };
         };

@@ -29,19 +29,19 @@ class CryptPortBlocksFromTheSourceTest {
                 """.formatted(FORTY_EIGHT_BYTES, KEY);
     }
 
-    private static String hexOf(String expression) {
+    private static String writeTheHexOf(String expression) {
         return "either binary? r: " + expression + " [enbase/flat r 16] [r]";
     }
 
     @Test
     @DisplayName("the fixture is three whole blocks")
-    void theFixtureIsThreeWholeBlocks() {
+    void holdsThreeWholeBlocksInTheFixture() {
         assertThat(answerTo("length? " + FORTY_EIGHT_BYTES)).isEqualTo("48");
     }
 
     @Test
     @DisplayName("nothing is ready until a whole block has arrived")
-    void nothingIsReadyUntilAWholeBlockArrives() {
+    void readiesNothingUntilAWholeBlockArrives() {
         for (int howMany : new int[] {0, 1, 15}) {
             assertThat(answerTo(codebook()
                     + "write p copy/part whole " + howMany + "\nread p"))
@@ -52,11 +52,11 @@ class CryptPortBlocksFromTheSourceTest {
 
     @Test
     @DisplayName("a whole block comes out as soon as it is whole, and no more")
-    void aWholeBlockComesOutAtOnce() {
+    void releasesAWholeBlockAtOnce() {
         for (int howMany : new int[] {16, 17, 31}) {
             assertThat(answerTo(codebook()
                     + "write p copy/part whole " + howMany + "\n"
-                    + hexOf("read p")))
+                    + writeTheHexOf("read p")))
                     .as("after " + howMany + " bytes")
                     .isEqualTo("\"3AD77BB40D7A3660A89ECAF32466EF97\"");
         }
@@ -64,11 +64,11 @@ class CryptPortBlocksFromTheSourceTest {
 
     @Test
     @DisplayName("and two blocks come out together once both are whole")
-    void twoBlocksComeOutTogether() {
+    void releasesTwoBlocksTogether() {
         for (int howMany : new int[] {32, 33}) {
             assertThat(answerTo(codebook()
                     + "write p copy/part whole " + howMany + "\n"
-                    + hexOf("read p")))
+                    + writeTheHexOf("read p")))
                     .as("after " + howMany + " bytes")
                     .isEqualTo("""
                             {3AD77BB40D7A3660A89ECAF32466EF97F5D3D58503B9699DE785895A96FDBAAF}""");
@@ -77,13 +77,13 @@ class CryptPortBlocksFromTheSourceTest {
 
     @Test
     @DisplayName("how the bytes are cut up does not change the answer")
-    void howTheBytesAreCutUpDoesNotChangeTheAnswer() {
+    void answersTheSameHoweverTheBytesAreCutUp() {
         for (int firstWrite : new int[] {1, 8, 15}) {
             assertThat(answerTo(codebook()
                     + "write p copy/part whole " + firstWrite + "\n"
                     + "write p copy/part skip whole " + firstWrite
                     + " " + (16 - firstWrite) + "\n"
-                    + hexOf("read p")))
+                    + writeTheHexOf("read p")))
                     .as("cut after " + firstWrite)
                     .isEqualTo("\"3AD77BB40D7A3660A89ECAF32466EF97\"");
         }
@@ -91,7 +91,7 @@ class CryptPortBlocksFromTheSourceTest {
 
     @Test
     @DisplayName("reading twice leaves nothing the second time")
-    void readingTwiceLeavesNothingTheSecondTime() {
+    void leavesNothingOnASecondRead() {
         assertThat(answerTo(codebook()
                 + "write p copy/part whole 16\nread p\nread p"))
                 .isEqualTo("_");
@@ -101,41 +101,41 @@ class CryptPortBlocksFromTheSourceTest {
     @DisplayName("update pads a partial block with noughts")
     void updatePadsThePartialBlockWithNoughts() {
         assertThat(answerTo(codebook()
-                + "write p copy/part whole 1\n" + hexOf("read update p")))
+                + "write p copy/part whole 1\n" + writeTheHexOf("read update p")))
                 .isEqualTo("\"DE7676F065818C2070D758ABE6870EB6\"");
         assertThat(answerTo(codebook()
-                + "write p copy/part whole 15\n" + hexOf("read update p")))
+                + "write p copy/part whole 15\n" + writeTheHexOf("read update p")))
                 .isEqualTo("\"5F7D4099C9D261848BE41DF98A4F8021\"");
     }
 
     @Test
     @DisplayName("update with nothing held back does nothing at all")
     void updateWithNothingHeldDoesNothing() {
-        assertThat(answerTo(codebook() + hexOf("read update p")))
+        assertThat(answerTo(codebook() + writeTheHexOf("read update p")))
                 .isEqualTo("_");
         assertThat(answerTo(codebook()
-                + "write p copy/part whole 16\n" + hexOf("read update p")))
+                + "write p copy/part whole 16\n" + writeTheHexOf("read update p")))
                 .isEqualTo("\"3AD77BB40D7A3660A89ECAF32466EF97\"");
         assertThat(answerTo(codebook()
                 + "write p copy/part whole 1\nread update p\n"
-                + hexOf("read update p"))).isEqualTo("_");
+                + writeTheHexOf("read update p"))).isEqualTo("_");
     }
 
     @Test
     @DisplayName("taking is updating and then reading")
-    void takingIsUpdatingAndThenReading() {
+    void takesByUpdatingAndThenReading() {
         assertThat(answerTo(codebook()
-                + "write p copy/part whole 1\n" + hexOf("take p")))
+                + "write p copy/part whole 1\n" + writeTheHexOf("take p")))
                 .isEqualTo("\"DE7676F065818C2070D758ABE6870EB6\"");
-        assertThat(answerTo(codebook() + hexOf("take p"))).isEqualTo("_");
+        assertThat(answerTo(codebook() + writeTheHexOf("take p"))).isEqualTo("_");
         assertThat(answerTo(codebook()
-                + "write p copy/part whole 17\nread p\n" + hexOf("take p")))
+                + "write p copy/part whole 17\nread p\n" + writeTheHexOf("take p")))
                 .isEqualTo("\"8EE6979FDE06A0590BB075BE7F125F5C\"");
     }
 
     @Test
     @DisplayName("the padding is noughts and comes back as noughts")
-    void thePaddingIsNoughtsAndComesBackAsNoughts() {
+    void padsWithNoughtsAndGivesNoughtsBack() {
         assertThat(answerTo("""
                 c: open make port! [
                     scheme: 'crypt algorithm: 'AES-128-CBC key: %s init-vector: %s
@@ -153,7 +153,7 @@ class CryptPortBlocksFromTheSourceTest {
 
     @Test
     @DisplayName("chaining carries between writes until the vector is set again")
-    void chainingCarriesBetweenWritesUntilTheVectorIsSetAgain() {
+    void carriesTheChainBetweenWritesUntilTheVectorIsSetAgain() {
         String chaining = """
                 p: open make port! [
                     scheme: 'crypt algorithm: 'AES-128-CBC key: %s init-vector: %s

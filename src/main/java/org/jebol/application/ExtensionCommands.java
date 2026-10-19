@@ -12,13 +12,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-final class CommandsOfAnExtension implements ExtensionDispatcher {
+final class ExtensionCommands implements ExtensionDispatcher {
 
     private final Extension extension;
 
-    private final AtomicInteger handlesMade = new AtomicInteger();
+    private final AtomicInteger handlerCount = new AtomicInteger();
 
-    CommandsOfAnExtension(Extension extension) {
+    ExtensionCommands(Extension extension) {
         this.extension = extension;
     }
 
@@ -29,21 +29,21 @@ final class CommandsOfAnExtension implements ExtensionDispatcher {
             throw Raised.of(EvaluationFailure.COMMAND_FAIL,
                     StringValue.of(extension.name() + " has no command " + command));
         }
-        OneCommandCall call = new OneCommandCall(
-                extension, arguments, refinements, evaluator, context, handlesMade);
+        SingleCommand call = new SingleCommand(
+                extension, arguments, refinements, evaluator, context, handlerCount);
         try {
             return extension.commands().get((int) command).behaviour().answer(call);
         } catch (Raised raised) {
             throw raised;
         } catch (RuntimeException failed) {
-            if (call.escapedFromTheScript(failed)) {
+            if (call.escapesFromTheScript(failed)) {
                 throw failed;
             }
-            throw Raised.of(EvaluationFailure.COMMAND_FAIL, StringValue.of(theMessageOf(failed)));
+            throw Raised.of(EvaluationFailure.COMMAND_FAIL, StringValue.of(readTheMessageOf(failed)));
         }
     }
 
-    private String theMessageOf(RuntimeException failed) {
+    private String readTheMessageOf(RuntimeException failed) {
         return failed.getMessage() == null ? failed.getClass().getSimpleName() : failed.getMessage();
     }
 }

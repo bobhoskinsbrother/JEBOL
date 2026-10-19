@@ -26,7 +26,7 @@ class DelectFromTheSourceTest {
 
         @Test
         @DisplayName("a string and a number, written in slot order")
-        void inSlotOrder() {
+        void fillInSlotOrder() {
             assertThat(answerTo(REBOLS_OWN_DIALECT + """
                     delect d [cmd "a" 1] out
                     mold out""")).isEqualTo("{[cmd \"a\" 1]}");
@@ -50,7 +50,7 @@ class DelectFromTheSourceTest {
 
         @Test
         @DisplayName("a slot nobody filled is none, and the answer is still full length")
-        void anUnfilledSlotIsNone() {
+        void leaveAnUnfilledSlotNone() {
             assertThat(answerTo(REBOLS_OWN_DIALECT + """
                     delect d [cmd http://] out
                     mold out""")).isEqualTo("\"[cmd http:// _]\"");
@@ -58,7 +58,7 @@ class DelectFromTheSourceTest {
 
         @Test
         @DisplayName("and the none can be the first slot as readily as the last")
-        void theNoneCanComeFirst() {
+        void letTheNoneComeFirst() {
             assertThat(answerTo(REBOLS_OWN_DIALECT + """
                     delect d [cmd 5] out
                     mold out""")).isEqualTo("\"[cmd _ 5]\"");
@@ -71,7 +71,7 @@ class DelectFromTheSourceTest {
 
         @Test
         @DisplayName("it answers the input standing after the command it read")
-        void itAnswersTheInputAdvanced() {
+        void answersTheInputAdvanced() {
             assertThat(answerTo(REBOLS_OWN_DIALECT + """
                     mold delect d [cmd "a" 1 cmd 5] out"""))
                     .isEqualTo("\"[cmd 5]\"");
@@ -109,7 +109,7 @@ class DelectFromTheSourceTest {
 
         @Test
         @DisplayName("the output holds only the command just read, never the one before")
-        void theOutputIsRebuilt() {
+        void rebuildsTheOutput() {
             assertThat(answerTo(REBOLS_OWN_DIALECT + """
                     inp: delect d [cmd "a" 1 cmd 5] out
                     delect d inp out
@@ -136,7 +136,7 @@ class DelectFromTheSourceTest {
 
         @Test
         @DisplayName("and one just under a half is cut down the same way")
-        void thecuttingIsNotRoundingEither() {
+        void cutRatherThanRound() {
             assertThat(answerTo(NUMBERS + """
                     delect d [whole 3.2] out
                     mold out""")).isEqualTo("\"[whole 3]\"");
@@ -152,7 +152,7 @@ class DelectFromTheSourceTest {
 
         @Test
         @DisplayName("which is what lets somebody write line-width 2 rather than 2.0")
-        void thatIsWhyADialectIsWritable() {
+        void letADialectBeWritten() {
             assertThat(answerTo(NUMBERS + """
                     delect d [fraction 4] out
                     decimal? second out""")).isEqualTo("#(true)");
@@ -237,7 +237,7 @@ class DelectFromTheSourceTest {
 
         @Test
         @DisplayName("reach the dialect's own DEFAULT, named like any other command")
-        void theyReachTheDefault() {
+        void isReached() {
             assertThat(answerTo("""
                     d: context [default: [pair!] box: [pair! pair!]]
                     out: make block! 8
@@ -282,7 +282,7 @@ class DelectFromTheSourceTest {
 
         @Test
         @DisplayName("and its arguments are placed exactly as a plain command's are")
-        void itsArgumentsArePlacedTheSame() {
+        void placesItsArgumentsTheSame() {
             assertThat(answerTo("""
                     d: context [default: [] box: [pair! decimal!]]
                     out: make block! 8
@@ -317,7 +317,7 @@ class DelectFromTheSourceTest {
 
         @Test
         @DisplayName("which is what a renderer wants: one pass, no loop around the parser")
-        void onePassIsWhatARendererWants() {
+        void takesOnePassAsARendererWants() {
             assertThat(answerTo("""
                     d: context [default: [] pen: [tuple!] box: [pair! pair!]]
                     o: make block! 30
@@ -332,7 +332,7 @@ class DelectFromTheSourceTest {
 
         @Test
         @DisplayName("an output block that may not be changed")
-        void aprotectedOutputIsRefused() {
+        void refuseAProtectedOutput() {
             assertThat(answerTo("""
                     d: context [default: [] cmd: [integer!]]
                     out: protect make block! 4

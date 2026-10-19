@@ -16,9 +16,9 @@ class ThePageConsoleFromTheSourceTest {
 
     @Test
     @DisplayName("a line the page posted is a line the script reads")
-    void aPostedLineIsRead() {
+    void readsAPostedLine() {
         WebConsole console = new WebConsole(() -> { });
-        console.aLineWasTyped("typed here");
+        console.takeATypedLine("typed here");
 
         assertThat(console.readLine()).isEqualTo("typed here");
     }
@@ -27,8 +27,8 @@ class ThePageConsoleFromTheSourceTest {
     @DisplayName("lines are read in the order they were typed")
     void linesKeepTheirOrder() {
         WebConsole console = new WebConsole(() -> { });
-        console.aLineWasTyped("first");
-        console.aLineWasTyped("second");
+        console.takeATypedLine("first");
+        console.takeATypedLine("second");
 
         assertThat(console.readLine()).isEqualTo("first");
         assertThat(console.readLine()).isEqualTo("second");
@@ -36,9 +36,9 @@ class ThePageConsoleFromTheSourceTest {
 
     @Test
     @DisplayName("an empty line is a line, and none of the ending")
-    void anEmptyLineIsALine() {
+    void readsAnEmptyLineAsALine() {
         WebConsole console = new WebConsole(() -> { });
-        console.aLineWasTyped("");
+        console.takeATypedLine("");
 
         assertThat(console.readLine()).isEmpty();
     }
@@ -46,12 +46,12 @@ class ThePageConsoleFromTheSourceTest {
     @Test
     @Timeout(10)
     @DisplayName("reading waits for the page rather than answering nothing")
-    void readingWaitsForThePage() throws Exception {
+    void waitsForThePageToRead() throws Exception {
         CountDownLatch taken = new CountDownLatch(1);
         WebConsole console = new WebConsole(taken::countDown);
         Thread typist = new Thread(() -> {
             awaitCountdown(taken);
-            console.aLineWasTyped("arrived");
+            console.takeATypedLine("arrived");
         });
         typist.start();
 
@@ -71,7 +71,7 @@ class ThePageConsoleFromTheSourceTest {
 
     @Test
     @DisplayName("a hidden line is refused rather than read in the open")
-    void aHiddenLineIsRefused() {
+    void refusesAHiddenLine() {
         WebConsole console = new WebConsole(() -> { });
 
         assertThatThrownBy(console::readHiddenLine)
@@ -81,7 +81,7 @@ class ThePageConsoleFromTheSourceTest {
 
     @Test
     @DisplayName("a page is not a terminal and reads no single keys")
-    void notATerminal() {
+    void isNotATerminal() {
         WebConsole console = new WebConsole(() -> { });
 
         assertThat(console.readKey()).isEqualTo(-1);

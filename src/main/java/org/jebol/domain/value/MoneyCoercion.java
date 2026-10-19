@@ -20,7 +20,7 @@ public final class MoneyCoercion {
         };
     }
 
-    public int ordering(Value left, Value right) {
+    public int compareTheOrder(Value left, Value right) {
         Deci ours = asDeci(left);
         Deci theirs = asDeci(right);
         if (ours.isEqualTo(theirs)) {
@@ -29,7 +29,7 @@ public final class MoneyCoercion {
         return theirs.isLesserOrEqualTo(ours) ? 1 : -1;
     }
 
-    public int sortingOrder(Value left, Value right) {
+    public int compareTheSortingOrder(Value left, Value right) {
         boolean cmpValueComparesTheAmounts = right instanceof MoneyValue
                 && (left instanceof MoneyValue || left instanceof AnyDecimalValue);
         if (!cmpValueComparesTheAmounts) {

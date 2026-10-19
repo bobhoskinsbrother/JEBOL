@@ -1,7 +1,7 @@
 REBOL [
     Title: "JEBOL prelude"
     Purpose: {
-        The half of the standard library that is written in REBOL.
+        The half of the standard library that is text in REBOL.
 
         A function belongs here when it can be said in REBOL. It belongs
         in Java only when it reaches something the language cannot:
@@ -13,7 +13,7 @@ REBOL [
 ]
 
 ;; Moved here from Java, following how Rebol splits its own library:
-;; two thirds of theirs is written in REBOL, and none of these needs
+;; two thirds of theirs is text in REBOL, and none of these needs
 ;; anything the language cannot say.
 
 rejoin: func [
@@ -27,7 +27,7 @@ rejoin: func [
     ajoin block
 ]
 
-; NEGATIVE? and POSITIVE? are not here. They were, written as a
+; NEGATIVE? and POSITIVE? are not here. They were, text as a
 ; comparison against zero, and R3 refuses to compare a pair with a
 ; number at all -- so the only way to ask the question of a pair is to
 ; ask it of each half, which needs the halves.
@@ -118,7 +118,7 @@ closure: :func
 ; The TO-X family: one function per datatype a value can be made of, each
 ; a second name for the same call to TO.
 ;
-; Generated from the catalogue rather than written out forty-five times,
+; Generated from the catalogue rather than text out forty-five times,
 ; so a new datatype cannot arrive with the family half updated, and so no
 ; one of them can quietly answer something TO does not.
 ;

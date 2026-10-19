@@ -33,14 +33,14 @@ public record TaskValue(Context context, AnyBlockValue body) implements Value, P
     }
 
     /** A task whose header holds nothing, which is what an empty spec gives. */
-    public static TaskValue running(AnyBlockValue body) {
+    public static TaskValue run(AnyBlockValue body) {
         Context header = Context.root();
         THE_FIELDS_A_TASK_HAS.forEach(name -> header.register(name, NoneValue.none()));
         return new TaskValue(header, body);
     }
 
     @Override
-    public Value reflected(AnyWordValue field) {
+    public Value reflect(AnyWordValue field) {
         return switch (field.canonical()) {
             case "body" -> context.setWordsAndValuesOnLines();
             case "words" -> context.wordsExcludingSelf();
@@ -57,18 +57,18 @@ public record TaskValue(Context context, AnyBlockValue body) implements Value, P
     public static final Datatype TYPE = new AnyObjectDatatype("task") {
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             if (!asking.builds() || !(from instanceof BlockValue given)) {
-                throw refusing(from);
+                throw refuse(from);
             }
             List<Value> written = given.remaining();
             if (written.isEmpty() || !(written.getFirst() instanceof BlockValue spec)) {
-                return running(given);
+                return run(given);
             }
             if (written.size() < 2 || !(written.get(1) instanceof BlockValue body)) {
-                throw refusing(from);
+                throw refuse(from);
             }
-            TaskValue task = running(body);
+            TaskValue task = run(body);
             List<Value> fields = spec.remaining();
             for (int at = 0; at + 1 < fields.size(); at++) {
                 if (fields.get(at) instanceof SetWordValue field
@@ -83,13 +83,13 @@ public record TaskValue(Context context, AnyBlockValue body) implements Value, P
     @Override
     public boolean equals(Object other) {
         return other instanceof TaskValue task
-                && context.fieldsExcludingSelf().equals(
-                        task.context.fieldsExcludingSelf());
+                && context.listTheFieldsExceptSelf().equals(
+                        task.context.listTheFieldsExceptSelf());
     }
 
     @Override
     public int hashCode() {
-        return context.fieldsExcludingSelf().hashCode();
+        return context.listTheFieldsExceptSelf().hashCode();
     }
 
     @Override

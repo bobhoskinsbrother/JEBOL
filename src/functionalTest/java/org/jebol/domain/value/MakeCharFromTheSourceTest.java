@@ -18,7 +18,7 @@ class MakeCharFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String codePointOfMaking(String from) {
+    private static String readTheCodePointOfMaking(String from) {
         return answerTo("either error? e: try [make char! " + from + "] "
                 + "[e/id] [to integer! e]");
     }
@@ -35,33 +35,33 @@ class MakeCharFromTheSourceTest {
             "#{E282AC}, 8364",
         })
         @DisplayName("decoding UTF-8 where the first byte says to")
-        void decodingUtf8WhereTheFirstByteSaysTo(String from, String expected) {
-            assertThat(codePointOfMaking(from)).isEqualTo(expected);
+        void decodesUtf8WhereTheFirstByteSaysTo(String from, String expected) {
+            assertThat(readTheCodePointOfMaking(from)).isEqualTo(expected);
         }
 
         @Test
         @DisplayName("bytes after the first character are ignored")
-        void bytesAfterTheFirstCharacterAreIgnored() {
-            assertThat(codePointOfMaking("to-binary {ša}")).isEqualTo("353");
-            assertThat(codePointOfMaking("#{3132333435}")).isEqualTo("49");
+        void ignoresBytesAfterTheFirstCharacter() {
+            assertThat(readTheCodePointOfMaking("to-binary {ša}")).isEqualTo("353");
+            assertThat(readTheCodePointOfMaking("#{3132333435}")).isEqualTo("49");
         }
 
         @Test
         @DisplayName("the boundary is above 0x80, not at it")
-        void theBoundaryIsAboveNotAt() {
-            assertThat(codePointOfMaking("#{7F}")).isEqualTo("127");
-            assertThat(codePointOfMaking("#{80}"))
+        void setsTheBoundaryAboveHex80() {
+            assertThat(readTheCodePointOfMaking("#{7F}")).isEqualTo("127");
+            assertThat(readTheCodePointOfMaking("#{80}"))
                     .as("the C tests *bp > 0x80, so 128 alone is a code point "
                             + "rather than a malformed lead byte")
                     .isEqualTo("128");
-            assertThat(codePointOfMaking("#{81}")).isEqualTo("bad-make-arg");
+            assertThat(readTheCodePointOfMaking("#{81}")).isEqualTo("bad-make-arg");
         }
 
         @ParameterizedTest(name = "make char! {0} is refused")
         @ValueSource(strings = {"#{}", "#{81}", "#{C5}", "#{C541}", "#{FF}"})
         @DisplayName("and an empty or malformed binary is a bad make argument")
-        void anEmptyOrMalformedBinary(String from) {
-            assertThat(codePointOfMaking(from)).isEqualTo("bad-make-arg");
+        void refusesAnEmptyOrMalformedBinary(String from) {
+            assertThat(readTheCodePointOfMaking(from)).isEqualTo("bad-make-arg");
         }
     }
 
@@ -77,15 +77,15 @@ class MakeCharFromTheSourceTest {
             "#161,  353",
         })
         @DisplayName("with leading zeroes making no difference")
-        void withLeadingZeroesMakingNoDifference(String from, String expected) {
-            assertThat(codePointOfMaking(from)).isEqualTo(expected);
+        void ignoresLeadingZeroes(String from, String expected) {
+            assertThat(readTheCodePointOfMaking(from)).isEqualTo(expected);
         }
 
         @ParameterizedTest(name = "make char! {0} is refused")
         @ValueSource(strings = {"#zz", "#6g", "#FFFFFFFFFFFFFFFFFF"})
         @DisplayName("and anything not hexadecimal throughout is refused")
-        void anythingNotHexadecimalThroughout(String from) {
-            assertThat(codePointOfMaking(from)).isEqualTo("bad-make-arg");
+        void refusesAnythingNotHexadecimal(String from) {
+            assertThat(readTheCodePointOfMaking(from)).isEqualTo("bad-make-arg");
         }
     }
 
@@ -108,16 +108,16 @@ class MakeCharFromTheSourceTest {
             "{abc}, 97",
         })
         @DisplayName("an integer, a decimal and a string")
-        void anIntegerADecimalAndAString(String from, String expected) {
-            assertThat(codePointOfMaking(from)).isEqualTo(expected);
+        void includeAnIntegerADecimalAndAString(String from, String expected) {
+            assertThat(readTheCodePointOfMaking(from)).isEqualTo(expected);
         }
 
         @Test
         @DisplayName("an empty string is refused, and a code point Unicode has not")
-        void anEmptyStringAndACodePointUnicodeHasNot() {
-            assertThat(codePointOfMaking("{}")).isEqualTo("bad-make-arg");
-            assertThat(codePointOfMaking("-1")).isEqualTo("invalid-char");
-            assertThat(codePointOfMaking("1114112")).isEqualTo("invalid-char");
+        void refuseAnEmptyStringAndAMissingCodePoint() {
+            assertThat(readTheCodePointOfMaking("{}")).isEqualTo("bad-make-arg");
+            assertThat(readTheCodePointOfMaking("-1")).isEqualTo("invalid-char");
+            assertThat(readTheCodePointOfMaking("1114112")).isEqualTo("invalid-char");
         }
     }
 
@@ -127,7 +127,7 @@ class MakeCharFromTheSourceTest {
 
         @Test
         @DisplayName("case A_MAKE falls into case A_TO with no branch between them")
-        void caseMakeFallsIntoCaseTo() {
+        void sharesTheArmWithMake() {
             assertThat(answerTo("to integer! to char! #{3132}")).isEqualTo("49");
             assertThat(answerTo("to integer! to char! #61")).isEqualTo("97");
         }

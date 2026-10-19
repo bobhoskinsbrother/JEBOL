@@ -29,10 +29,10 @@ public class FactorialNative extends WholeNumberNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                theProductOfEveryWholeNumberUpTo(wholeNumberOf(arguments.getFirst()));
+                multiplyEveryWholeNumberUpTo(readTheWholeNumberOf(arguments.getFirst()));
     }
 
-    private Value theProductOfEveryWholeNumberUpTo(long value) {
+    private Value multiplyEveryWholeNumberUpTo(long value) {
         if (value < 0 || value > LARGEST_FACTORIAL_AT_ALL) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                     "factorial takes 0 to " + LARGEST_FACTORIAL_AT_ALL

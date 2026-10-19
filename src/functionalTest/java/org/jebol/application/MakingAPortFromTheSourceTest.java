@@ -17,7 +17,7 @@ class MakingAPortFromTheSourceTest {
 
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         return answerFrom(interpreter, source);
     }
 
@@ -26,17 +26,17 @@ class MakingAPortFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
-    private static String errorArgumentFrom(String source) {
+    private static String readTheErrorArgumentFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/arg1] ['no-error]");
     }
 
     @Test
     @DisplayName("a block names its scheme in a set-word")
-    void aBlockNamesItsScheme() {
+    void takesTheSchemeABlockNames() {
         assertThat(answerTo("""
                 p: make port! [scheme: 'checksum method: 'sha256]
                 reduce [type? p p/spec/scheme p/spec/method]"""))
@@ -45,7 +45,7 @@ class MakingAPortFromTheSourceTest {
 
     @Test
     @DisplayName("and a port made from a block opens and works")
-    void aPortMadeFromABlockWorks() {
+    void worksFromABlock() {
         assertThat(answerTo("""
                 p: open make port! [scheme: 'checksum method: 'sha256]
                 write p #{00}
@@ -56,7 +56,7 @@ class MakingAPortFromTheSourceTest {
 
     @Test
     @DisplayName("a url names its scheme, and the rest of the url is spec too")
-    void aUrlNamesItsScheme() {
+    void takesTheSchemeAUrlNames() {
         assertThat(answerTo("""
                 p: make port! crypt://AES-128-CBC#decrypt
                 reduce [p/spec/scheme p/spec/algorithm p/spec/direction]"""))
@@ -65,7 +65,7 @@ class MakingAPortFromTheSourceTest {
 
     @Test
     @DisplayName("a word names its scheme and nothing else")
-    void aWordNamesItsSchemeAndNothingElse() {
+    void takesOnlyTheSchemeAWordNames() {
         assertThat(answerTo("""
                 p: make port! 'checksum
                 p/spec/scheme""")).isEqualTo("checksum");
@@ -73,7 +73,7 @@ class MakingAPortFromTheSourceTest {
 
     @Test
     @DisplayName("an object names its scheme in a field")
-    void anObjectNamesItsScheme() {
+    void takesTheSchemeAnObjectNames() {
         assertThat(answerTo("""
                 p: make port! make object! [scheme: 'checksum]
                 p/spec/scheme""")).isEqualTo("checksum");
@@ -81,7 +81,7 @@ class MakingAPortFromTheSourceTest {
 
     @Test
     @DisplayName("a file is the file scheme, and a wildcard is the directory scheme")
-    void aFileIsTheFileSchemeAndAWildcardIsTheDirectoryScheme(
+    void takesAFileAsTheFileSchemeAndAWildcardAsTheDirectoryScheme(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) {
 
         assertThat(answerReachingTheFilesystem(directory, """
@@ -96,40 +96,40 @@ class MakingAPortFromTheSourceTest {
 
     @Test
     @DisplayName("a specification whose scheme nobody serves names the scheme")
-    void aSchemeNobodyServesNamesTheScheme() {
-        assertThat(errorIdFrom("make port! [scheme: 'nonsense]"))
+    void namesASchemeNobodyServes() {
+        assertThat(readTheErrorIdFrom("make port! [scheme: 'nonsense]"))
                 .isEqualTo("no-scheme");
-        assertThat(errorArgumentFrom("make port! [scheme: 'nonsense]"))
+        assertThat(readTheErrorArgumentFrom("make port! [scheme: 'nonsense]"))
                 .isEqualTo("nonsense");
-        assertThat(errorIdFrom("make port! make object! [scheme: 'nonsense]"))
+        assertThat(readTheErrorIdFrom("make port! make object! [scheme: 'nonsense]"))
                 .isEqualTo("no-scheme");
-        assertThat(errorIdFrom("make port! 'nonsense")).isEqualTo("no-scheme");
-        assertThat(errorArgumentFrom("make port! 'nonsense")).isEqualTo("nonsense");
-        assertThat(errorIdFrom("make port! nonsense://x")).isEqualTo("no-scheme");
+        assertThat(readTheErrorIdFrom("make port! 'nonsense")).isEqualTo("no-scheme");
+        assertThat(readTheErrorArgumentFrom("make port! 'nonsense")).isEqualTo("nonsense");
+        assertThat(readTheErrorIdFrom("make port! nonsense://x")).isEqualTo("no-scheme");
     }
 
     @Test
     @DisplayName("and a specification naming no scheme at all is the same refusal")
-    void aSpecificationWithNoSchemeAtAllIsTheSameRefusal() {
-        assertThat(errorIdFrom("make port! [algorithm: 'AES-128-CBC]"))
+    void refusesASpecificationWithNoSchemeTheSameWay() {
+        assertThat(readTheErrorIdFrom("make port! [algorithm: 'AES-128-CBC]"))
                 .isEqualTo("no-scheme");
-        assertThat(errorArgumentFrom("make port! [algorithm: 'AES-128-CBC]"))
+        assertThat(readTheErrorArgumentFrom("make port! [algorithm: 'AES-128-CBC]"))
                 .isEqualTo("_");
-        assertThat(errorIdFrom("make port! []")).isEqualTo("no-scheme");
-        assertThat(errorIdFrom("make port! make object! [other: 1]"))
+        assertThat(readTheErrorIdFrom("make port! []")).isEqualTo("no-scheme");
+        assertThat(readTheErrorIdFrom("make port! make object! [other: 1]"))
                 .isEqualTo("no-scheme");
     }
 
     @Test
     @DisplayName("what is no specification at all is refused as a specification")
-    void whatIsNoSpecificationAtAllIsRefusedAsOne() {
-        assertThat(errorIdFrom("make port! 5")).isEqualTo("invalid-spec");
-        assertThat(errorArgumentFrom("make port! 5")).isEqualTo("5");
-        assertThat(errorIdFrom("make port! 1.5")).isEqualTo("invalid-spec");
-        assertThat(errorArgumentFrom("make port! 1.5")).isEqualTo("1.5");
-        assertThat(errorIdFrom("""
+    void refusesWhatIsNoSpecificationAtAll() {
+        assertThat(readTheErrorIdFrom("make port! 5")).isEqualTo("invalid-spec");
+        assertThat(readTheErrorArgumentFrom("make port! 5")).isEqualTo("5");
+        assertThat(readTheErrorIdFrom("make port! 1.5")).isEqualTo("invalid-spec");
+        assertThat(readTheErrorArgumentFrom("make port! 1.5")).isEqualTo("1.5");
+        assertThat(readTheErrorIdFrom("""
                 make port! {x}""")).isEqualTo("invalid-spec");
-        assertThat(errorIdFrom("make port! none")).isEqualTo("invalid-spec");
-        assertThat(errorArgumentFrom("make port! none")).isEqualTo("_");
+        assertThat(readTheErrorIdFrom("make port! none")).isEqualTo("invalid-spec");
+        assertThat(readTheErrorArgumentFrom("make port! none")).isEqualTo("_");
     }
 }

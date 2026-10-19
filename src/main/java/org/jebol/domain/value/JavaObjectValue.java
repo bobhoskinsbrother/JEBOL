@@ -30,7 +30,7 @@ public record JavaObjectValue(String className, Optional<Object> held) implement
         return new JavaObjectValue(held.getClass().getName(), Optional.of(held));
     }
 
-    public static JavaObjectValue hostNull(String className) {
+    public static JavaObjectValue holdHostNull(String className) {
         return new JavaObjectValue(className, Optional.empty());
     }
 

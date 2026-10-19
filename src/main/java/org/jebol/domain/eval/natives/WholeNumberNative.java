@@ -6,11 +6,11 @@ import org.jebol.domain.value.Value;
 
 public abstract class WholeNumberNative extends ArithmeticNative {
 
-    protected long wholeNumberOf(Value given) {
+    protected long readTheWholeNumberOf(Value given) {
         return ((IntegerValue) given).magnitude();
     }
 
-    protected long theGreatestDivisorSharedBy(long first, long second) {
+    protected long findTheGreatestDivisorSharedBy(long first, long second) {
         long larger = Math.abs(first);
         long smaller = Math.abs(second);
         while (smaller != 0) {

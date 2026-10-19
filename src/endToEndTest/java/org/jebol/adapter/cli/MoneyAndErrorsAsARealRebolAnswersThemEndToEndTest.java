@@ -16,7 +16,7 @@ class MoneyAndErrorsAsARealRebolAnswersThemEndToEndTest {
 
     @TestFactory
     @DisplayName("each money, comparison, rounding, error and assignment row prints what a real 3.22.5 printed")
-    Stream<DynamicTest> eachRowPrintsWhatRebolPrinted() throws IOException {
-        return new RecordedRebolScript("money-and-errors", directory).eachRowPrintsWhatRebolPrinted();
+    Stream<DynamicTest> printsWhatRebolPrintedOnEachRow() throws IOException {
+        return new RecordedRebolScript("money-and-errors", directory).replayEachRow();
     }
 }

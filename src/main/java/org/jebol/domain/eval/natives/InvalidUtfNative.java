@@ -15,8 +15,8 @@ public class InvalidUtfNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("data", Set.of(BinaryValue.TYPE)),
-                Parameter.belongingTo("utf", "num", Set.of(IntegerValue.TYPE)));
+        return List.of(Parameter.of("data", Set.of(BinaryValue.TYPE)),
+                Parameter.belongTo("utf", "num", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -27,7 +27,7 @@ public class InvalidUtfNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                ((BinaryValue) arguments.getFirst()).theFirstMalformedUtf8()
+                ((BinaryValue) arguments.getFirst()).findTheFirstMalformedUtf8()
                         .<Value>map(found -> found)
                         .orElseGet(NoneValue::none);
     }

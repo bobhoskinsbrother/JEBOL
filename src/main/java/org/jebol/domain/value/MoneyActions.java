@@ -12,11 +12,11 @@ public final class MoneyActions {
         this.amount = amount;
     }
 
-    public Value combinedWith(Value other, ArithmeticOperation operation) {
-        return new MoneyValue(operation.onAmounts(amount.asDeci(), widenedToMeet(other, operation)));
+    public Value combineWith(Value other, ArithmeticOperation operation) {
+        return new MoneyValue(operation.onAmounts(amount.asDeci(), widenToMeet(other, operation)));
     }
 
-    private Deci widenedToMeet(Value other, ArithmeticOperation operation) {
+    private Deci widenToMeet(Value other, ArithmeticOperation operation) {
         return switch (other) {
             case MoneyValue money -> money.asDeci();
             case IntegerValue(long magnitude) -> new Deci(magnitude);
@@ -34,7 +34,7 @@ public final class MoneyActions {
         }
     }
 
-    public Value heldBetween(MoneyValue lowest, MoneyValue highest) {
+    public Value holdBetween(MoneyValue lowest, MoneyValue highest) {
         if (amount.asDeci().isLesserOrEqualTo(lowest.asDeci())) {
             return lowest;
         }

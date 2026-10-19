@@ -16,7 +16,7 @@ public class CaseNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("choices", Set.of(BlockValue.TYPE)));
+        return List.of(Parameter.of("choices", Set.of(BlockValue.TYPE)));
     }
 
     @Override
@@ -33,7 +33,7 @@ public class CaseNative extends DefaultNative {
                 Evaluator.Step condition = evaluator.evaluateNextOrRaise(at, context);
                 AnyBlockValue afterCondition = at.atIndex(condition.nextIndex());
                 if (!condition.value().isTruthy()) {
-                    at = pastTheBranch(afterCondition);
+                    at = skipPastTheBranch(afterCondition);
                     continue;
                 }
                 if (afterCondition.atTail()) {
@@ -52,7 +52,7 @@ public class CaseNative extends DefaultNative {
         };
     }
 
-    private AnyBlockValue pastTheBranch(AnyBlockValue afterCondition) {
+    private AnyBlockValue skipPastTheBranch(AnyBlockValue afterCondition) {
         return afterCondition.atTail()
                 ? afterCondition
                 : afterCondition.atIndex(afterCondition.index() + 1);

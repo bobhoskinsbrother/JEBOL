@@ -29,9 +29,9 @@ public class TranscodeNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("source"),
-                Parameter.belongingTo("line", "count", Set.of(IntegerValue.TYPE)),
-                Parameter.belongingTo("part", "length", Set.of(IntegerValue.TYPE)));
+        return List.of(Parameter.of("source"),
+                Parameter.belongTo("line", "count", Set.of(IntegerValue.TYPE)),
+                Parameter.belongTo("part", "length", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -42,18 +42,18 @@ public class TranscodeNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                answer(readingAskedFor(arguments, refinements), evaluator);
+                answer(readTheReadingAskedFor(arguments, refinements), evaluator);
     }
 
-    private Reading readingAskedFor(List<Value> arguments, Set<String> refinements) {
+    private Reading readTheReadingAskedFor(List<Value> arguments, Set<String> refinements) {
         Value source = arguments.getFirst();
         String whole = textOf(source);
-        String readable = argumentOf("part", 0, arguments, refinements)
-                .map(asked -> boundedTo(whole, charactersPermittedBy(asked)))
+        String readable = readTheArgumentOf("part", 0, arguments, refinements)
+                .map(asked -> boundTo(whole, countTheCharactersPermittedBy(asked)))
                 .orElse(whole);
         return new Reading(whole, readable,
-                firstLineNumberIn(argumentOf("line", 0, arguments, refinements)),
-                extentAskedFor(refinements),
+                readTheFirstLineNumberIn(readTheArgumentOf("line", 0, arguments, refinements)),
+                readTheExtentAskedFor(refinements),
                 refinements.contains("line"),
                 refinements.contains("error"),
                 refinements.contains("one"),
@@ -71,28 +71,28 @@ public class TranscodeNative extends DefaultNative {
             throw new Raised(failure.error().orElseThrow());
         });
         List<Value> values = reading.valuesReadBeforeStopping().stream()
-                .map(value -> madeWhereTheCallIs(value, evaluator))
+                .map(value -> bindWhereTheCallIs(value, evaluator))
                 .toList();
         if (stopsBeforeTheEndOfTheSource(asked) && values.isEmpty()) {
-            return handedBackOrRaised(asked, pastEnd());
+            return handBackOrRaise(asked, pastEnd());
         }
         if (asked.answeringTheValueAlone()) {
             return values.getFirst();
         }
-        return BlockValue.block(stopsBeforeTheEndOfTheSource(asked)
+        return BlockValue.of(stopsBeforeTheEndOfTheSource(asked)
                 ? withWhatWasLeftUnread(asked, values, reading)
                 : values);
     }
 
-    private Value madeWhereTheCallIs(Value read, Evaluator evaluator) {
+    private Value bindWhereTheCallIs(Value read, Evaluator evaluator) {
         switch (read) {
             case ErrorValue error -> {
-                error.subject().ifPresent(inside -> madeWhereTheCallIs(inside, evaluator));
-                return evaluator.madeWhereTheCallIs(error);
+                error.subject().ifPresent(inside -> bindWhereTheCallIs(inside, evaluator));
+                return evaluator.placeWhereTheCallIs(error);
             }
             case AnyBlockValue block -> {
                 for (int at = 1; at <= block.storageLength(); at++) {
-                    block.storage().set(at, madeWhereTheCallIs(block.storage().at(at), evaluator));
+                    block.storage().set(at, bindWhereTheCallIs(block.storage().at(at), evaluator));
                 }
                 return block;
             }
@@ -111,10 +111,10 @@ public class TranscodeNative extends DefaultNative {
             Reading asked, List<Value> values, Transcoder.Reading reading) {
         List<Value> answer = new ArrayList<>(values);
         String whole = asked.whole();
-        String left = skippingCodePoints(whole, reading.endedAtCodePoint());
+        String left = skipCodePoints(whole, reading.endedAtCodePoint());
         answer.add(switch (asked.source()) {
             case BinaryValue bytes -> bytes.atIndex(bytes.index()
-                    + utf8LengthOf(whole) - utf8LengthOf(left));
+                    + measureTheUtf8LengthOf(whole) - measureTheUtf8LengthOf(left));
             case AnyStringValue text -> text.atIndex(text.index() + whole.length() - left.length());
             default -> StringValue.of(left);
         });
@@ -124,7 +124,7 @@ public class TranscodeNative extends DefaultNative {
         return answer;
     }
 
-    private Value handedBackOrRaised(Reading asked, ErrorValue failure) {
+    private Value handBackOrRaise(Reading asked, ErrorValue failure) {
         if (asked.handingBackFailures()) {
             return failure;
         }
@@ -146,7 +146,7 @@ public class TranscodeNative extends DefaultNative {
         };
     }
 
-    private Transcoder.Extent extentAskedFor(Set<String> refinements) {
+    private Transcoder.Extent readTheExtentAskedFor(Set<String> refinements) {
         if (refinements.contains("only")) {
             return Transcoder.Extent.THE_FIRST_VALUE_AT_EVERY_DEPTH;
         }
@@ -156,7 +156,7 @@ public class TranscodeNative extends DefaultNative {
         return Transcoder.Extent.THE_WHOLE_SOURCE;
     }
 
-    private long firstLineNumberIn(Optional<Value> line) {
+    private long readTheFirstLineNumberIn(Optional<Value> line) {
         if (line.isEmpty()) {
             return THE_FIRST_LINE_OF_ANY_SOURCE;
         }
@@ -167,7 +167,7 @@ public class TranscodeNative extends DefaultNative {
         return asked;
     }
 
-    private int charactersPermittedBy(Value part) {
+    private int countTheCharactersPermittedBy(Value part) {
         long asked = (long) Arithmetic.asMagnitude(part);
         if (asked < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, part);
@@ -175,17 +175,17 @@ public class TranscodeNative extends DefaultNative {
         return (int) Math.min(asked, Integer.MAX_VALUE);
     }
 
-    private String boundedTo(String whole, int charactersPermitted) {
+    private String boundTo(String whole, int charactersPermitted) {
         return whole.substring(0, Math.min(whole.length(), charactersPermitted));
     }
 
-    private String skippingCodePoints(String whole, int howMany) {
+    private String skipCodePoints(String whole, int howMany) {
         int[] codepoints = whole.codePoints().toArray();
         int taken = Math.min(howMany, codepoints.length);
         return new String(codepoints, taken, codepoints.length - taken);
     }
 
-    private int utf8LengthOf(String text) {
+    private int measureTheUtf8LengthOf(String text) {
         return text.getBytes(StandardCharsets.UTF_8).length;
     }
 }

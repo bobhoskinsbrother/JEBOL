@@ -14,7 +14,7 @@ class BorrowedFilesLoadWholeTest {
 
     @Test
     @DisplayName("no borrowed file stops partway except the ones known to")
-    void everyBorrowedFileRunsToItsEnd() {
+    void runsEveryBorrowedFileToItsEnd() {
         Map<String, String> failures = Interpreter.create().borrowedLoadFailures();
 
         assertThat(failures.keySet())
@@ -24,7 +24,7 @@ class BorrowedFilesLoadWholeTest {
 
     @Test
     @DisplayName("each known stop is on the word this test says it is")
-    void theKnownStopsAreWhereTheyAreSaidToBe() {
+    void stopsWhereTheKnownStopsAreSaidToBe() {
         Map<String, String> failures = Interpreter.create().borrowedLoadFailures();
 
         STOPS_ON.forEach((file, word) -> assertThat(failures.get(file))
@@ -34,7 +34,7 @@ class BorrowedFilesLoadWholeTest {
 
     @Test
     @DisplayName("base-defs.reb generates reflectors that outlive its USE scope")
-    void theReflectorsSurvive() {
+    void keepsTheReflectors() {
         Interpreter interpreter = Interpreter.create();
 
         assertThat(interpreter.display(interpreter.run("mold words-of make object! [a: 1]")))

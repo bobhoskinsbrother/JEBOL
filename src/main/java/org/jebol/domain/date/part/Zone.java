@@ -16,7 +16,7 @@ final class Zone implements WritableDateField {
     }
 
     @Override
-    public DateValue writtenOn(DateValue date, Assigned given) {
+    public DateValue writeOn(DateValue date, Assigned given) {
         return given.isNothing()
                 ? date.withTheZoneDropped()
                 : date.atMidnightIfItHasNoClock()

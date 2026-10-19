@@ -21,35 +21,35 @@ class AppendOnlyAndDynamicRefinementFromTheSourceTest {
 
         @Test
         @DisplayName("a block appended whole is one item")
-        void aBlockGoesInWhole() {
+        void addsABlockAsOneItem() {
             assertThat(answerTo("""
                     (append/only copy [] [9 8]) = [[9 8]]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("where without it the items are spread")
-        void aBlockSpreadsWithoutIt() {
+        void spreadsABlockWithoutIt() {
             assertThat(answerTo("""
                     (append copy [] [9 8]) = [9 8]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a paren goes in whole without being asked")
-        void aParenGoesInWholeAnyway() {
+        void addsAParenWholeAnyway() {
             assertThat(answerTo("""
                     (append copy [] quote (9 8)) = [(9 8)]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and /ONLY leaves it exactly as it was")
-        void aParenIsUnchangedByOnly() {
+        void leavesAParenAsItWas() {
             assertThat(answerTo("""
                     (append/only copy [] quote (9 8)) = [(9 8)]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a string is one item with or without it")
-        void aStringIsOneItemEitherWay() {
+        void addsAStringAsOneItemEitherWay() {
             assertThat(answerTo("""
                     all [
                         (append copy [] "ab") = ["ab"]
@@ -59,14 +59,14 @@ class AppendOnlyAndDynamicRefinementFromTheSourceTest {
 
         @Test
         @DisplayName("an empty block spreads to nothing")
-        void anEmptyBlockAddsNothing() {
+        void spreadsAnEmptyBlockToNothing() {
             assertThat(answerTo("""
                     (append copy [1] []) = [1]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and under /ONLY is one empty item")
-        void anEmptyBlockUnderOnlyIsAnItem() {
+        void addsAnEmptyBlockAsOneItem() {
             assertThat(answerTo("""
                     (append/only copy [1] []) = [1 []]""")).isEqualTo("#(true)");
         }
@@ -87,7 +87,7 @@ class AppendOnlyAndDynamicRefinementFromTheSourceTest {
 
         @Test
         @DisplayName("and a false one declines it, so the values are spread")
-        void aFalseWordDeclinesIt() {
+        void isDeclinedByAFalseWord() {
             assertThat(answerTo("""
                     only: no gathered: []
                     repend/:only gathered [4 + 5 6 * 7]
@@ -96,7 +96,7 @@ class AppendOnlyAndDynamicRefinementFromTheSourceTest {
 
         @Test
         @DisplayName("a declined refinement leaves its argument unread")
-        void aDeclinedRefinementLeavesItsArgument() {
+        void leavesItsArgumentUnreadWhenDeclined() {
             assertThat(answerTo("""
                     part: no length: 10
                     found: find/:part "abcdef" "d" length
@@ -105,7 +105,7 @@ class AppendOnlyAndDynamicRefinementFromTheSourceTest {
 
         @Test
         @DisplayName("where a granted one reads it and bounds the search")
-        void agrantedRefinementReadsItsArgument() {
+        void readsItsArgumentWhenGranted() {
             assertThat(answerTo("""
                     part: yes length: 2
                     none? find/:part "abcdef" "d" length""")).isEqualTo("#(true)");
@@ -113,7 +113,7 @@ class AppendOnlyAndDynamicRefinementFromTheSourceTest {
 
         @Test
         @DisplayName("a granted refinement the function has not got is refused")
-        void agrantedRefinementThatIsNotThere() {
+        void isRefusedWhenGrantedButAbsent() {
             assertThat(answerTo("""
                     made-up: yes
                     e: try [append/:made-up copy [] 1] e/id = 'no-refine"""))
@@ -122,7 +122,7 @@ class AppendOnlyAndDynamicRefinementFromTheSourceTest {
 
         @Test
         @DisplayName("and a declined one the function has not got is refused as well, naming it as written")
-        void adeclinedRefinementThatIsNotThere() {
+        void isRefusedWhenDeclinedButAbsent() {
             assertThat(answerTo("""
                     made-up: no
                     e: try [append/:made-up copy [] 1] reduce [e/id e/arg1 e/arg2]"""))

@@ -43,10 +43,10 @@ public class CallNative extends HostNative {
     public List<Parameter> parametersAsWritten() {
         Set<Datatype> aRedirection = Set.of(StringValue.TYPE, BinaryValue.TYPE, FileValue.TYPE, NoneValue.TYPE);
         return List.of(
-                Parameter.required("command", TypesetValue.ANY_STRING.membersAnd(BlockValue.TYPE)),
-                Parameter.belongingTo("input", "in", aRedirection),
-                Parameter.belongingTo("output", "out", aRedirection),
-                Parameter.belongingTo("error", "err", aRedirection));
+                Parameter.of("command", TypesetValue.ANY_STRING.membersAnd(BlockValue.TYPE)),
+                Parameter.belongTo("input", "in", aRedirection),
+                Parameter.belongTo("output", "out", aRedirection),
+                Parameter.belongTo("error", "err", aRedirection));
     }
 
     @Override
@@ -60,15 +60,15 @@ public class CallNative extends HostNative {
             granted.require(HostService.PROCESSES);
             evaluator.policies().require(PolicyClass.CALL, PolicyAccess.EXECUTE, Optional.of(arguments.getFirst()));
             ProgramCalling calling = new ProgramCalling(
-                    commandWordsOf(arguments.getFirst(), evaluator, context), refinements,
-                    argumentOf("input", 0, arguments, refinements),
-                    argumentOf("output", 0, arguments, refinements),
-                    argumentOf("error", 0, arguments, refinements));
-            return throughTheFileSystem(() -> calling.answerThrough(evaluator.processes(), evaluator));
+                    readTheCommandWordsOf(arguments.getFirst(), evaluator, context), refinements,
+                    readTheArgumentOf("input", 0, arguments, refinements),
+                    readTheArgumentOf("output", 0, arguments, refinements),
+                    readTheArgumentOf("error", 0, arguments, refinements));
+            return runThroughTheFileSystem(() -> calling.answerThrough(evaluator.processes(), evaluator));
         };
     }
 
-    private List<String> commandWordsOf(Value command, Evaluator evaluator, Context context) {
+    private List<String> readTheCommandWordsOf(Value command, Evaluator evaluator, Context context) {
         if (!(command instanceof BlockValue block)) {
             return List.of(((AnyStringValue) command).text());
         }
@@ -76,15 +76,15 @@ public class CallNative extends HostNative {
         if (items.isEmpty()) {
             throw Raised.of(EvaluationFailure.TOO_SHORT);
         }
-        return items.stream().map(item -> commandWordOf(item, evaluator, context)).toList();
+        return items.stream().map(item -> readTheCommandWordOf(item, evaluator, context)).toList();
     }
 
-    private String commandWordOf(Value item, Evaluator evaluator, Context context) {
+    private String readTheCommandWordOf(Value item, Evaluator evaluator, Context context) {
         Value resolved = item;
         if (item instanceof GetWordValue word) {
-            resolved = word.boundSlot().value();
+            resolved = word.findTheBoundSlot().value();
         } else if (item instanceof GetPathValue path) {
-            resolved = evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
+            resolved = evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
         }
         return switch (resolved) {
             case AnyStringValue text -> text.text();

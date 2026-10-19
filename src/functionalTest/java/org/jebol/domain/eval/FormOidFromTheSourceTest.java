@@ -44,13 +44,13 @@ class FormOidFromTheSourceTest {
 
         @Test
         @DisplayName("one twenty-seven is three and seven")
-        void oneTwentySevenSplits() {
+        void splitsOneTwentySeven() {
             assertThat(oidOf("#{7F}")).isEqualTo("\"3.7\"");
         }
 
         @Test
         @DisplayName("and the largest byte gives six and fifteen, so no first arc passes six")
-        void theLargestByte() {
+        void splitsTheLargestByte() {
             assertThat(oidOf("#{FF}")).isEqualTo("\"6.15\"");
         }
     }
@@ -61,7 +61,7 @@ class FormOidFromTheSourceTest {
 
         @Test
         @DisplayName("a byte under 128 is its own group")
-        void aSmallByteStandsAlone() {
+        void leaveASmallByteAlone() {
             assertThat(oidOf("#{2A00}")).isEqualTo("\"1.2.0\"");
             assertThat(oidOf("#{2A09}")).isEqualTo("\"1.2.9\"");
             assertThat(oidOf("#{2A0A}")).isEqualTo("\"1.2.10\"");
@@ -70,14 +70,14 @@ class FormOidFromTheSourceTest {
 
         @Test
         @DisplayName("two bytes with the high bit set on the first make one number")
-        void twoBytesMakeOneNumber() {
+        void makeOneNumberFromTwoBytes() {
             assertThat(oidOf("#{2A8100}")).isEqualTo("\"1.2.128\"");
             assertThat(oidOf("#{2A817F}")).isEqualTo("\"1.2.255\"");
         }
 
         @Test
         @DisplayName("and three bytes reach well past what one would hold")
-        void threeBytesReachFurther() {
+        void reachFurtherWithThreeBytes() {
             assertThat(oidOf("#{2A81FF7F}")).isEqualTo("\"1.2.32767\"");
         }
 
@@ -91,7 +91,7 @@ class FormOidFromTheSourceTest {
 
         @Test
         @DisplayName("RSA encryption, the identifier a certificate reader meets first")
-        void theRsaIdentifier() {
+        void formTheRsaIdentifier() {
             assertThat(oidOf("#{2A864886F70D010101}"))
                     .isEqualTo("\"1.2.840.113549.1.1.1\"");
         }
@@ -103,34 +103,34 @@ class FormOidFromTheSourceTest {
 
         @Test
         @DisplayName("no bytes, no arcs: an empty string rather than a refusal")
-        void anEmptyBinaryGivesAnEmptyString() {
+        void giveAnEmptyStringForAnEmptyBinary() {
             assertThat(oidOf("#{}")).isEqualTo("\"\"");
         }
 
         @Test
         @DisplayName("a group whose last byte never comes is dropped, silently")
-        void anUnterminatedGroupIsDropped() {
+        void dropAnUnterminatedGroup() {
             assertThat(oidOf("#{2A81}")).isEqualTo("\"1.2\"");
             assertThat(oidOf("#{2A818181}")).isEqualTo("\"1.2\"");
         }
 
         @Test
         @DisplayName("it reads from where the binary stands, not from its head")
-        void itReadsFromThePosition() {
+        void readFromThePosition() {
             assertThat(answerTo("form-oid next #{FF2A}")).isEqualTo("\"1.2\"");
             assertThat(answerTo("form-oid skip #{FFFF2A} 2")).isEqualTo("\"1.2\"");
         }
 
         @Test
         @DisplayName("and answers a string, whatever it was given")
-        void itAlwaysAnswersAString() {
+        void alwaysAnswerAString() {
             assertThat(answerTo("string? form-oid #{2A}")).isEqualTo("#(true)");
             assertThat(answerTo("string? form-oid #{}")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a value that is not a binary is refused by the declaration")
-        void anythingElseIsRefused() {
+        void refuseAnythingElse() {
             assertThat(answerTo("""
                     e: try [form-oid "1.2"] e/id""")).isEqualTo("expect-arg");
             assertThat(answerTo("""
@@ -141,7 +141,7 @@ class FormOidFromTheSourceTest {
 
         @Test
         @DisplayName("and it needs one, so no argument is no-arg")
-        void itNeedsAnArgument() {
+        void needAnArgument() {
             assertThat(answerTo("""
                     e: try [form-oid] e/id""")).isEqualTo("no-arg");
         }
@@ -153,21 +153,21 @@ class FormOidFromTheSourceTest {
 
         @Test
         @DisplayName("a two-byte OID whose second arc needs three digits")
-        void theThreeDigitSecondArc() {
+        void hitsTheThreeDigitSecondArc() {
             assertThat(oidOf("#{2A64}")).isEqualTo("\"1.2.100\"");
             assertThat(oidOf("#{2A7F}")).isEqualTo("\"1.2.127\"");
         }
 
         @Test
         @DisplayName("and it carries no NUL, which is how the fault showed itself")
-        void theAnswerHoldsNoNul() {
+        void leavesNoNulInTheAnswer() {
             assertThat(answerTo("""
                     none? find form-oid #{2A64} #"^(00)\"""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("while the shapes either side of it were right all along")
-        void theNeighbouringShapesAreUnchanged() {
+        void leavesTheNeighbouringShapesUnchanged() {
             assertThat(oidOf("#{2A63}")).isEqualTo("\"1.2.99\"");
             assertThat(oidOf("#{2A817F}")).isEqualTo("\"1.2.255\"");
             assertThat(oidOf("#{2A64FF7F}")).isEqualTo("\"1.2.100.16383\"");

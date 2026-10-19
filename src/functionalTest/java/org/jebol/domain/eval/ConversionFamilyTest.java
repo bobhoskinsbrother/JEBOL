@@ -28,7 +28,7 @@ class ConversionFamilyTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorFrom(String source) {
+    private static String readTheErrorFrom(String source) {
         String shown = answerTo(
                 "e: try [" + source + "] either error? e [form e/id] [\"no error\"]");
         return shown.replace("\"", "");
@@ -36,7 +36,7 @@ class ConversionFamilyTest {
 
     @Test
     @DisplayName("every datatype a value can be made of has a TO-X function")
-    void theFamilyIsComplete() {
+    void isComplete() {
         String missing = answerTo("""
                 lacking: copy []
                 foreach name %s [
@@ -47,13 +47,13 @@ class ConversionFamilyTest {
                     ] [append lacking name]
                 ]
                 mold lacking
-                """.formatted(quoted(CONVERTIBLE)));
+                """.formatted(quote(CONVERTIBLE)));
         assertThat(missing).isEqualTo("\"[]\"");
     }
 
     @Test
     @DisplayName("the datatypes with nothing to convert to have no TO-X")
-    void theInternalDatatypesAreLeftOut() {
+    void leavesTheInternalDatatypesOut() {
         String present = answerTo("""
                 showing: copy []
                 foreach name %s [
@@ -62,13 +62,13 @@ class ConversionFamilyTest {
                     ]
                 ]
                 mold showing
-                """.formatted(quoted(NOT_CONVERTIBLE)));
+                """.formatted(quote(NOT_CONVERTIBLE)));
         assertThat(present).isEqualTo("\"[]\"");
     }
 
     @Test
     @DisplayName("a generated conversion is the same call as TO")
-    void aGeneratedConversionAgreesWithTheGeneralOne() {
+    void agreesWithTheGeneralConversion() {
         assertThat(answerTo("""
                 disagreeing: copy []
                 foreach [name value] [
@@ -96,7 +96,7 @@ class ConversionFamilyTest {
 
     @Test
     @DisplayName("each one carries the title mezz-types.reb builds for it")
-    void theyCarryAtitle() {
+    void carriesATitle() {
         assertThat(answerTo("""
                 {Converts to tuple! value.} = first spec-of :to-tuple"""))
                 .isEqualTo("#(true)");
@@ -104,27 +104,27 @@ class ConversionFamilyTest {
 
     @Test
     @DisplayName("each one takes exactly one argument, after that title")
-    void theyTakeOneArgument() {
+    void takesOneArgument() {
         assertThat(answerTo("length? spec-of :to-tuple"))
                 .as("the title and the one parameter")
                 .isEqualTo("2");
         assertThat(answerTo("mold words-of :to-tuple"))
                 .as("WORDS-OF is the question about parameters alone")
                 .isEqualTo("\"[value]\"");
-        assertThat(errorFrom("to-tuple")).isEqualTo("no-arg");
+        assertThat(readTheErrorFrom("to-tuple")).isEqualTo("no-arg");
     }
 
     @Test
     @DisplayName("a value the target type cannot be made from is refused")
-    void aValueThatCannotConvertIsRefused() {
-        assertThat(errorFrom("to-tuple \"abc\"")).isEqualTo("bad-make-arg");
-        assertThat(errorFrom("to-tuple none")).isEqualTo("bad-make-arg");
-        assertThat(errorFrom("to-integer none")).isEqualTo("bad-make-arg");
+    void refusesAValueThatCannotConvert() {
+        assertThat(readTheErrorFrom("to-tuple \"abc\"")).isEqualTo("bad-make-arg");
+        assertThat(readTheErrorFrom("to-tuple none")).isEqualTo("bad-make-arg");
+        assertThat(readTheErrorFrom("to-integer none")).isEqualTo("bad-make-arg");
     }
 
     @Test
     @DisplayName("an empty source converts rather than failing, type by type")
-    void theDegenerateSourcesConvert() {
+    void convertsTheDegenerateSources() {
         assertThat(answerTo("(to-tuple []) = 0.0.0")).isEqualTo("#(true)");
         assertThat(answerTo("empty? to-binary \"\"")).isEqualTo("#(true)");
         assertThat(answerTo("(to-file \"\") = to file! \"\"")).isEqualTo("#(true)");
@@ -133,25 +133,25 @@ class ConversionFamilyTest {
 
     @Test
     @DisplayName("a word cannot be made from nothing, unlike the others")
-    void anEmptyWordHasNoCharactersToBeMadeOf() {
-        assertThat(errorFrom("to-word \"\"")).isEqualTo("too-short");
+    void refusesAnEmptyWord() {
+        assertThat(readTheErrorFrom("to-word \"\"")).isEqualTo("too-short");
     }
 
     @Test
     @DisplayName("converting to logic asks whether the value is truthy, not whether it is zero")
-    void toLogicFollowsTruthiness() {
+    void followsTruthinessForToLogic() {
         assertThat(answerTo("mold to-logic 0")).isEqualTo("\"#(true)\"");
         assertThat(answerTo("mold to-logic none")).isEqualTo("\"#(false)\"");
     }
 
     @Test
     @DisplayName("converting a whole number away from a fraction truncates")
-    void toIntegerTruncates() {
+    void truncatesForToInteger() {
         assertThat(answerTo("mold to-integer 1.9")).isEqualTo("\"1\"");
         assertThat(answerTo("mold to-integer -1.9")).isEqualTo("\"-1\"");
     }
 
-    private static String quoted(List<String> names) {
+    private static String quote(List<String> names) {
         return "[" + String.join(" ", names.stream().map(name -> "\"" + name + "\"").toList())
                 + "]";
     }

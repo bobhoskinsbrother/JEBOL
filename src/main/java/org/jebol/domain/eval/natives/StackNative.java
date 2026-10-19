@@ -21,7 +21,7 @@ public class StackNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("offset", Set.of(IntegerValue.TYPE)));
+        return List.of(Parameter.of("offset", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -34,7 +34,7 @@ public class StackNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             evaluator.policies().require(PolicyClass.DEBUG, PolicyAccess.READ, Optional.empty());
             int offset = (int) ((IntegerValue) arguments.getFirst()).magnitude();
-            List<String> callsOpen = evaluator.everyCallOpenNamedInnermostFirst();
+            List<String> callsOpen = evaluator.nameEveryCallOpenInnermostFirst();
             if (offset < 0 || offset >= callsOpen.size()) {
                 return NoneValue.none();
             }
@@ -50,7 +50,7 @@ public class StackNative extends DefaultNative {
             if (refinements.contains("size")) {
                 return IntegerValue.of((long) callsOpen.size() * FRAME_VALUE_UNITS);
             }
-            return BlockValue.block(callsOpen.subList(offset, callsOpen.size()).stream()
+            return BlockValue.of(callsOpen.subList(offset, callsOpen.size()).stream()
                     .<Value>map(WordValue::of)
                     .toList());
         };

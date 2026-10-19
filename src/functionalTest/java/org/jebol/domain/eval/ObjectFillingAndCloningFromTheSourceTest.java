@@ -20,7 +20,7 @@ class ObjectFillingAndCloningFromTheSourceTest {
     class FillingFromAnObject {
 
         @Test
-        @DisplayName("only the target's own fields are written, and the extras are ignored")
+        @DisplayName("only the target's own fields are text, and the extras are ignored")
         void onlyTheTargetsFieldsAreWritten() {
             assertThat(answerTo("""
                     target: object [a: 3 b: 4] source: object [z: 0 a: 6 b: 7 c: 9]
@@ -107,7 +107,7 @@ class ObjectFillingAndCloningFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a method written in the object reads the copy's own field")
+        @DisplayName("a method text in the object reads the copy's own field")
         void aMethodIsRehomed() {
             assertThat(answerTo("""
                     original: make object! [n: 'o f: func [] [n]]
@@ -137,10 +137,10 @@ class ObjectFillingAndCloningFromTheSourceTest {
 
     @Nested
     @DisplayName("a value that came from outside keeps the binding its author gave it")
-    class WhatIsLeftAsWritten {
+    class WhatIsLeftAsText {
 
         @Test
-        @DisplayName("a function written outside still reads the outer word")
+        @DisplayName("a function text outside still reads the outer word")
         void aBorrowedFunctionKeepsItsBinding() {
             assertThat(answerTo("""
                     a: 1 outer: func [] [a]
@@ -169,11 +169,11 @@ class ObjectFillingAndCloningFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a block written outside keeps its words bound outside")
+        @DisplayName("a block text outside keeps its words bound outside")
         void aBorrowedBlockKeepsItsBinding() {
             assertThat(answerTo("""
-                    a: 1 written-outside: [a]
-                    o1: make object! [a: 2 c: written-outside]
+                    a: 1 text-outside: [a]
+                    o1: make object! [a: 2 c: text-outside]
                     (do o1/c) = 1""")).isEqualTo("#(true)");
         }
 
@@ -181,8 +181,8 @@ class ObjectFillingAndCloningFromTheSourceTest {
         @DisplayName("and keeps it through a merge")
         void aBorrowedBlockSurvivesAMerge() {
             assertThat(answerTo("""
-                    a: 1 written-outside: [a]
-                    o1: make object! [a: 2 c: written-outside]
+                    a: 1 text-outside: [a]
+                    o1: make object! [a: 2 c: text-outside]
                     o3: make o1 [a: 4]
                     (do o3/c) = 1""")).isEqualTo("#(true)");
         }
@@ -209,7 +209,7 @@ class ObjectFillingAndCloningFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("an absence written after a set-word floors to none as well")
+        @DisplayName("an absence text after a set-word floors to none as well")
         void anAbsenceFloorsToNone() {
             assertThat(answerTo("""
                     none? get/any in construct head insert tail [a:] () 'a"""))

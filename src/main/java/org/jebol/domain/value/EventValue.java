@@ -53,7 +53,7 @@ public record EventValue(
     }
 
     /**
-     * Which kind of thing the shared slot holds. {@code EVM_*} in reb-event.h.
+     * Which type of thing the shared slot holds. {@code EVM_*} in reb-event.h.
      *
      * <p>Declared in this order because the C's enum is, and the order is what a
      * cleared event means: {@code CLEARS} leaves the model at zero, which is
@@ -86,7 +86,7 @@ public record EventValue(
 
     @Override
     public Value make(Value spec, Maker maker) {
-        return EventPath.made(spec, maker::simpleValueOf);
+        return EventPath.make(spec, maker::readASimpleValue);
     }
 
     @Override
@@ -97,13 +97,13 @@ public record EventValue(
     public static final Datatype TYPE = new Datatype("event") {
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
-            return EventPath.made(spec, maker::simpleValueOf);
+        public Value makeFrom(Value spec, Maker maker) {
+            return EventPath.make(spec, maker::readASimpleValue);
         }
 
         @Override
-        public Value convertedFrom(Value value, Maker maker) {
-            return madeFrom(value, maker);
+        public Value convert(Value value, Maker maker) {
+            return makeFrom(value, maker);
         }
     };
 
@@ -150,7 +150,7 @@ public record EventValue(
     }
 
     /** {@code SET_EVENT_XY(v,x,y)}: {@code ((y << 16) | (x & 0xffff))}. */
-    public static int packedOffset(int x, int y) {
+    public static int packTheOffset(int x, int y) {
         return (y << 16) | (x & 0xFFFF);
     }
 
@@ -170,10 +170,10 @@ public record EventValue(
      * fills one of them, the resolution has to move to where the system object is
      * reachable.
      */
-    public List<Value> moldingSpec() {
+    public List<Value> moldTheSpec() {
         List<Value> spec = new ArrayList<>();
         if (typeIndex != 0) {
-            setWord(spec,"type", WordValue.of(EventCatalogue.typeAt(typeIndex)));
+            setWord(spec,"type", WordValue.of(EventCatalogue.readTheTypeAt(typeIndex)));
         }
         if (model == Model.PORT || model == Model.OBJECT || model == Model.MIDI) {
             setWord(spec,"port", attached);
@@ -184,9 +184,9 @@ public record EventValue(
         if (has(Flag.HAS_XY)) {
             setWord(spec,"offset", PairValue.of(offsetX(), offsetY()));
         }
-        keyRead().ifPresent(key -> setWord(spec, "key", key));
-        if (!raisedFlagWords().isEmpty()) {
-            setWord(spec,"flags", BlockValue.block(raisedFlagWords()));
+        readTheKey().ifPresent(key -> setWord(spec, "key", key));
+        if (!listTheRaisedFlagWords().isEmpty()) {
+            setWord(spec,"flags", BlockValue.of(listTheRaisedFlagWords()));
         }
         if (has(Flag.HAS_CODE)) {
             setWord(spec,"code", IntegerValue.of(data));
@@ -207,7 +207,7 @@ public record EventValue(
      * as a position in {@code event-keys}. Every other type answers none, even
      * though the number is still there and {@code e/code} will hand it over.
      */
-    public Optional<Value> keyRead() {
+    public Optional<Value> readTheKey() {
         if (typeIndex == EventCatalogue.KEY || typeIndex == EventCatalogue.KEY_UP) {
             if (!Character.isValidCodePoint(data)) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
@@ -224,7 +224,7 @@ public record EventValue(
     }
 
     /** The three flag words a script can read, in the C's order. */
-    public List<Value> raisedFlagWords() {
+    public List<Value> listTheRaisedFlagWords() {
         List<Value> words = new ArrayList<>();
         for (Flag flag : List.of(Flag.DOUBLE, Flag.CONTROL, Flag.SHIFT)) {
             if (flags.contains(flag)) {

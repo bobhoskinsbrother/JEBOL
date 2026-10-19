@@ -13,7 +13,7 @@ final class Remove extends SameForABlockAndAString {
 
     @Override
     int apply(ParseWalk walk, List<Value> rules, int at) {
-        Integer markOffset = walk.sameStorageOffset(rules.get(at + 1));
+        Integer markOffset = walk.findTheSameStorageOffset(rules.get(at + 1));
         return markOffset != null
                 ? takeOutWhatReachesBackToTheMark(walk, markOffset)
                 : takeOutWhatTheRuleMatches(walk, rules, at);

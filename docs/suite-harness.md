@@ -13,9 +13,9 @@ JEBOL test of its own that outlives it.
 
 ## Why the suite is here at all
 
-The corpus in `corpus/` says what we believe REBOL does, and was written from
+The corpus in `corpus/` says what we believe REBOL does, and was text from
 documentation. The suite says what the people who maintain REBOL believe it does,
-and was written from the implementation. **It is the stronger of the two and it is
+and was text from the implementation. **It is the stronger of the two and it is
 not ours**, which is the point: a case here is one nobody on this side thought to
 try.
 
@@ -35,7 +35,7 @@ retired.
 they came from: JEBOL answers what that Rebol answers. Counting them as work
 to do would say the port owes something when it does not, and deleting them
 would lose the finding, so they sit in a file of their own with the `r3-head`
-output that settled each one written beside it.
+output that settled each one text beside it.
 
 **Why nothing owed is kept in a list any more.** A hand-kept list of
 outstanding assertions rots in the one direction nobody looks: a line comes off
@@ -71,7 +71,7 @@ Rebol. **A stricter rule is only safer when the thing it is strict about is true
 
 The mark is read from the suite's own text rather than from a list, deliberately:
 a list would have to be kept in step with the vendored files by hand, and the mark
-cannot drift from the assertion it is written beside.
+cannot drift from the assertion it is text beside.
 
 `--assert-er` is ASSERT with an error whose id is `feature-na` let through. It is
 not counted at all - one assertion in ten thousand, spelled differently enough
@@ -121,18 +121,18 @@ every assertion after it in that block was never reached: **371 of them**, which
 read as failures of the port and were failures of the harness.
 
 **Nested reports are folded per assertion at the end of the file, not step by
-step.** An assertion written inside a function runs when the function is called,
+step.** An assertion text inside a function runs when the function is called,
 which is a later step and often a much later one; reading per step throws those
 reports away as belonging to nobody. An assertion in a loop body runs once per
 turn and there is one of it in the file - it holds when every run of it held, so
 the letters fold onto the assertions in order and extra runs fold onto the last
 one. That is the same reading Rebol's own count of thirteen thousand executions
-against ten thousand written implies.
+against ten thousand text implies.
 
 **Each nested `--assert` is told which assertion it is.** Reporting only whether it
 held means matching reports to assertions by counting, and counting is wrong twice
 over: a function defined in one step and called in another reports where it ran
-rather than where it was written, and a loop reports three assertions a hundred
+rather than where it was text, and a loop reports three assertions a hundred
 times.
 
 **The number goes into the text, not into a molded copy of the values.** Molding
@@ -142,14 +142,14 @@ broke would quietly change the tests rather than fail. The reader is unavoidable
 (nothing can slice the file without reading it); MOLD is not, so it stays out.
 Scanning text for a word is a guess, so the result is checked against the source it
 came from: read both, walk them together, and every value must be the same except
-the numbered ones. A step that fails that check keeps the source it was written
+the numbered ones. A step that fails that check keeps the source it was text
 with.
 
 ---
 
 ## Four places where the obvious implementation is wrong
 
-**A run of setup must be cut into the expressions it was written as.** Left whole,
+**A run of setup must be cut into the expressions it was text as.** Left whole,
 one raise takes the rest of the run with it - and a run is everything up to the
 next *top-level* dialect word. `codecs-test.r3` is a sequence of
 `if find codecs 'wav [...]`, `if find codecs 'der [...]`, `if find codecs 'crt [...]`
@@ -159,7 +159,7 @@ and **187 assertions were recorded as failures of the port when they had never b
 asked.**
 
 The cut is where a **word** begins a line, because that is how these files are
-written and because nothing here knows REBOL's arity well enough to find an
+text and because nothing here knows REBOL's arity well enough to find an
 expression boundary properly. **Only a word may open one**: cutting at any value
 that begins a line splits `switch-fun: func [/local i][` from its body block
 whenever the bracket starts a line, and both halves read perfectly well on their
@@ -182,7 +182,7 @@ lands on - it cost `error-test.r3` thirteen assertions the reader could already
 have had, and it named line 14 of `copy-test.r3` as the stop when the refusal is on
 line 30.
 
-**The source text of a run is taken as written, never molded back.** Molding is
+**The source text of a run is taken as text, never molded back.** Molding is
 lossy in REBOL and equally lossy in R3: molding `1.7976931348623157e308` gives
 fifteen digits, and reading that back gives `1.#INF`. Sixteen assertions were being
 run in a form the file never contained, and a measuring tool built on this then
@@ -220,7 +220,7 @@ can perfectly well read. That made every count too low, and made a fix to
 construction syntax look like no fix at all.
 
 **The suite interpreter gets the host services Rebol's own tests assume.** Those
-tests were written for a full host, so a suite that grants nothing measures the
+tests were text for a full host, so a suite that grants nothing measures the
 grant and not the port. Files are confined to a directory made for the run, so a
 test that writes one cannot reach anything the build did not make.
 
@@ -277,14 +277,14 @@ and never raise it: going up means an arm that used to answer does not any more.
 
 `SuiteHost` exists because there were three definitions of the suite interpreter
 and they disagreed. `RebolSuiteTest` is the gate; `SuiteStops` says where a file
-stops and `SweepRunner` diffs a file against a real Rebol, and both were written
+stops and `SweepRunner` diffs a file against a real Rebol, and both were text
 by copying the gate's setup. Each granted every host service and rooted a
 filesystem, and **neither installed the environment or the process runner - and
 granting a service is not providing one.**
 
 So both tools reported stops the gate never sees. Every one reading "given no
 environment to read" or "given no way to start a program" was the tool's own
-doing, and **four entries in `goals.md` were written from them**: a goal to make
+doing, and **four entries in `goals.md` were text from them**: a goal to make
 the environment work that nothing was waiting on, a dependency on it that did not
 exist, three stops in `port-test.r3` that do not happen, and a shared CALL blocker
 that was neither shared nor a blocker. A capability added in one place now reaches
@@ -370,7 +370,7 @@ against anything; the source says what the language is and explains itself.**
 Where the two disagreed the source was right every time.
 
 **Three kinds of line in `c-surface.txt` name a function**: ACTION and NATIVE for
-the third of the library Rebol writes in C, and LIBRARY for the rest, written in
+the third of the library Rebol writes in C, and LIBRARY for the rest, text in
 REBOL in `src/mezz/*.reb`. The audit has to tell three things apart - a function
 JEBOL has in Java, one it has in REBOL, and one it has not got - so both the
 native registry and the booted interpreter are asked. Without both, a function
@@ -393,7 +393,7 @@ number that only describes what it was given cannot report what it was not
 given**, so the absence has to be checked separately or not at all.
 
 Rebol's own `run-tests.r3` names the files it runs, and that list is the
-authority. Every name on it is either vendored here or written in
+authority. Every name on it is either vendored here or text in
 `not-vendored.txt` with the reason; a file that appears upstream and lands in
 neither place fails the build. That check only runs when the Rebol checkout is
 present - it is a gitignored symlink and not everybody has one - and it is
@@ -405,7 +405,7 @@ files** - fifty-five lines gone and none added - and nothing in the build could
 see it, because the coverage test counts the vendored text against itself and
 reported every assertion present, which was true of the text it was given.
 
-They were cut for reasons written down at the time and kept in a directory beside
+They were cut for reasons text down at the time and kept in a directory beside
 the suite, **and the reasons went stale without anything to notice**: three of the
 thirty-three were live failures of this port, excluded on the grounds that they
 needed files that had since been vendored; twenty-four had been excluded as
@@ -422,7 +422,7 @@ Cutting an assertion out leaves its `--test--` header standing, so `pair-test.r3
 carried nine test names and no assertions under any of them. That check reads the
 text rather than the slicer, on purpose: **the slicer gives an assertion the last
 *top-level* test name**, so an assertion inside an `if` block is attributed to a
-name written above the block, and asking the slicer which tests own assertions
+name text above the block, and asking the slicer which tests own assertions
 calls forty innocent tests empty.
 
 **Tests Rebol itself leaves empty are named rather than pattern-matched.** Each
@@ -457,7 +457,7 @@ It builds its interpreter through `SuiteHost`, the same one the gate uses. It us
 to build its own, granting every service and installing only a filesystem -
 granting a service is not providing one, so it reported stops on `get-env`,
 `list-env` and `call/shell` that the gate never sees, and four pieces of work in
-`goals.md` were written from them.
+`goals.md` were text from them.
 
 ## The borrowed-file ratchet
 
@@ -483,7 +483,7 @@ what the WINDOWS port serves. See ORDER.txt.
 **Read an entry as the first thing in the way, never as the whole of what is
 missing.** `prot-tls.reb` made the point five times: it stopped on `binary` until
 the binary dialect was ported, then on `system/catalog/ciphers` until the
-catalogues were filled, then inside `decode-list` until a single-word read answered
+catalogues were fill, then inside `decode-list` until a single-word read answered
 a value rather than a block, then on a get-path in a dialect block, and under all of
 it REPEND answered NONE because a declined refinement's argument was not being
 taken. Not one of those five words was the whole of what that file wanted, and the

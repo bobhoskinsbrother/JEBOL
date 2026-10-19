@@ -4,6 +4,7 @@ import org.jebol.domain.eval.crypto.EllipticCurveKey;
 import org.jebol.domain.eval.natives.CipherNative;
 import org.jebol.domain.eval.natives.ResizeNative;
 import org.jebol.domain.eval.ports.Ports;
+import org.jebol.domain.host.MachinePort;
 import org.jebol.domain.value.*;
 
 import java.util.List;
@@ -21,14 +22,14 @@ public final class SystemObject {
     private final MapValue registeredStructLayouts;
 
     public SystemObject(LibContext lib, BootDeclarations declarations, Ports ports, Encodings encodings,
-            MapValue registeredStructLayouts, String operatingSystemName) {
+            MapValue registeredStructLayouts, MachinePort machine) {
         this.lib = lib;
-        this.internals = Context.childOf(lib.context());
+        this.internals = Context.makeChildOf(lib.context());
         this.declarations = declarations;
         this.ports = ports;
         this.encodings = encodings;
         this.registeredStructLayouts = registeredStructLayouts;
-        lib.context().register("system", system(operatingSystemName));
+        lib.context().register("system", makeTheSystem(machine));
     }
 
     public Context lib() {
@@ -44,22 +45,22 @@ public final class SystemObject {
         runState.register("last-result", NoneValue.none());
     }
 
-    private ObjectValue system(String operatingSystemName) {
+    private ObjectValue makeTheSystem(MachinePort machine) {
         Context system = Context.root();
-        system.register("catalog", catalog());
-        system.register("options", options());
-        system.register("state", state());
+        system.register("catalog", makeTheCatalog());
+        system.register("options", makeTheOptions(machine));
+        system.register("state", makeTheState());
         system.register("version", lib.version().numbered());
-        system.register("platform", WordValue.of(operatingSystemName));
+        system.register("platform", WordValue.of(machine.operatingSystem()));
         system.register("product", WordValue.of("core"));
         system.register("license", NoneValue.none());
-        system.register("modules", modules());
-        system.register("codecs", codecs());
-        system.register("contexts", contexts());
+        system.register("modules", makeTheModules());
+        system.register("codecs", makeTheCodecs());
+        system.register("contexts", makeTheContexts());
         return new ObjectValue(system);
     }
 
-    private Value contexts() {
+    private Value makeTheContexts() {
         Context contexts = Context.root();
         contexts.register("lib", new ObjectValue(lib.context()));
         contexts.register("sys", new ObjectValue(internals));
@@ -67,22 +68,22 @@ public final class SystemObject {
         return new ObjectValue(contexts);
     }
 
-    private Value codecs() {
+    private Value makeTheCodecs() {
         Context codecs = Context.root();
         for (int at = 0; at < Codecs.REGISTERED.size(); at++) {
             String codec = Codecs.REGISTERED.get(at);
-            codecs.register(codec, HandleValue.function("codec", CODEC_HANDLE_IDENTITY + at, WordValue.of(codec)));
+            codecs.register(codec, HandleValue.wrapAFunction("codec", CODEC_HANDLE_IDENTITY + at, WordValue.of(codec)));
         }
         return new ObjectValue(codecs);
     }
 
-    private Value modules() {
+    private Value makeTheModules() {
         Context modules = Context.root();
         modules.register("help", NoneValue.none());
         return new ObjectValue(modules);
     }
 
-    private Value state() {
+    private Value makeTheState() {
         Context policies = Context.root();
         for (String policy : new String[]{"file", "net", "eval", "memory", "secure", "protect", "debug", "envr", "call", "browse", "extension"}) {
             policies.register(policy, TupleValue.of(0, 0, 0));
@@ -91,26 +92,33 @@ public final class SystemObject {
         for (String field : new String[]{"note", "confirm-policy", "control?", "shift?", "alt?", "quit?"}) {
             runState.register(field, NoneValue.none());
         }
-        runState.register("wait-list", BlockValue.block(List.of()));
+        runState.register("wait-list", BlockValue.of(List.of()));
         runState.register("last-error", NoneValue.none());
         runState.register("last-result", NoneValue.none());
         return new ObjectValue(runState);
     }
 
-    private Value options() {
+    private Value makeTheOptions(MachinePort machine) {
         Context options = Context.root();
-        for (String field : new String[]{"boot", "path", "home", "data", "modules", "flags", "script", "args", "do-arg", "import", "debug", "secure", "version", "boot-level", "domain-name", "module-paths", "result-types"}) {
+        String[] fields = {"boot", "path", "home", "data", "modules", "flags", "script", "args", "do-arg",
+                "import", "debug", "secure", "version", "boot-level", "domain-name", "module-paths", "result-types"};
+        for (String field : fields) {
             options.register(field, NoneValue.none());
         }
-        options.register("flags", BlockValue.block(List.of(LogicValue.yes())));
-        options.register("home", FileValue.of(System.getProperty("user.home", "") + "/"));
+        options.register("flags", BlockValue.of(List.of(LogicValue.yes())));
+        String home = asDirectory(machine.homeDirectory());
+        options.register("home", FileValue.of(home));
         options.register("boot", NoneValue.none());
-        options.register("path", FileValue.of(System.getProperty("user.dir", "") + "/"));
-        options.register("data", FileValue.of(System.getProperty("user.home", "") + "/.jebol/"));
+        options.register("path", FileValue.of(asDirectory(machine.currentDirectory())));
+        options.register("data", FileValue.of(home + ".jebol/"));
         return new ObjectValue(options);
     }
 
-    private Value errors() {
+    private String asDirectory(String path) {
+        return path.endsWith("/") ? path : path + "/";
+    }
+
+    private Value makeTheErrors() {
         Context errors = Context.root();
         List<Value> catalogued = declarations.errorCatalogueRows();
         for (int at = 0; at + 1 < catalogued.size(); at += 2) {
@@ -129,20 +137,20 @@ public final class SystemObject {
         return new ObjectValue(errors);
     }
 
-    private Value catalog() {
+    private Value makeTheCatalog() {
         Context catalog = Context.root();
-        catalog.register("datatypes", BlockValue.block(List.copyOf(Catalogue.DATATYPES.entries())));
+        catalog.register("datatypes", BlockValue.of(List.copyOf(Catalogue.DATATYPES.entries())));
         catalog.register("structs", registeredStructLayouts);
         catalog.register("actions", lib.actionsInOrder());
         catalog.register("natives", lib.nativesInOrder());
-        catalog.register("ciphers", BlockValue.block(ports.cryptPort().catalogue()));
-        catalog.register("filters", BlockValue.block(ResizeNative.THE_FILTERS.stream().<Value>map(WordValue::of).toList()));
-        catalog.register("elliptic-curves", BlockValue.block(EllipticCurveKey.curveNamesInTheCataloguesOrder().stream().<Value>map(WordValue::of).toList()));
-        catalog.register("handles", BlockValue.block(List.of(WordValue.of(CipherNative.RC4_HANDLE_TYPE), WordValue.of(CipherNative.DHM_HANDLE_TYPE), WordValue.of(CipherNative.RSA_HANDLE_TYPE), WordValue.of(CipherNative.ECDH_HANDLE_TYPE), WordValue.of("codec"))));
-        catalog.register("checksums", BlockValue.block(encodings.checksumMethods().stream().<Value>map(WordValue::of).toList()));
-        catalog.register("compressions", BlockValue.block(Encodings.COMPRESSIONS.stream().<Value>map(WordValue::of).toList()));
-        catalog.register("file-types", BlockValue.block(List.of(FileValue.of(".txt"), WordValue.of("text"), FileValue.of(".html"), WordValue.of("markup"), FileValue.of(".htm"), WordValue.of("markup"), FileValue.of(".qoi"), WordValue.of("qoi"))));
-        catalog.register("errors", errors());
+        catalog.register("ciphers", BlockValue.of(ports.cryptPort().catalogue()));
+        catalog.register("filters", BlockValue.of(ResizeNative.THE_FILTERS.stream().<Value>map(WordValue::of).toList()));
+        catalog.register("elliptic-curves", BlockValue.of(EllipticCurveKey.curveNamesInTheCataloguesOrder().stream().<Value>map(WordValue::of).toList()));
+        catalog.register("handles", BlockValue.of(List.of(WordValue.of(CipherNative.RC4_HANDLE_TYPE), WordValue.of(CipherNative.DHM_HANDLE_TYPE), WordValue.of(CipherNative.RSA_HANDLE_TYPE), WordValue.of(CipherNative.ECDH_HANDLE_TYPE), WordValue.of("codec"))));
+        catalog.register("checksums", BlockValue.of(encodings.listTheChecksumMethods().stream().<Value>map(WordValue::of).toList()));
+        catalog.register("compressions", BlockValue.of(Encodings.COMPRESSIONS.stream().<Value>map(WordValue::of).toList()));
+        catalog.register("file-types", BlockValue.of(List.of(FileValue.of(".txt"), WordValue.of("text"), FileValue.of(".html"), WordValue.of("markup"), FileValue.of(".htm"), WordValue.of("markup"), FileValue.of(".qoi"), WordValue.of("qoi"))));
+        catalog.register("errors", makeTheErrors());
         return new ObjectValue(catalog);
     }
 }

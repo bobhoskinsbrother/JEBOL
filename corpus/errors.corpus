@@ -1,6 +1,6 @@
 --- title Reading an error
 --- about An error is read through paths, and that is how REBOL code asks
---- about which failure happened. Rebol's own suite is written in this
+--- about which failure happened. Rebol's own suite is text in this
 --- about idiom throughout, so an implementation whose errors are opaque
 --- about cannot run any of it.
 

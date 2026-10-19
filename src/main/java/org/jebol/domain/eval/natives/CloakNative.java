@@ -26,8 +26,8 @@ public abstract class CloakNative extends EncodingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("data", Set.of(BinaryValue.TYPE)),
-                Parameter.required("key", Set.of(StringValue.TYPE, BinaryValue.TYPE, IntegerValue.TYPE)));
+                Parameter.of("data", Set.of(BinaryValue.TYPE)),
+                Parameter.of("key", Set.of(StringValue.TYPE, BinaryValue.TYPE, IntegerValue.TYPE)));
     }
 
     @Override
@@ -44,7 +44,7 @@ public abstract class CloakNative extends EncodingNative {
             }
             Value key = arguments.get(1);
             byte[] octets = data.octetsFromHere();
-            if (!encodings.cloak(decodes(), octets, keyBytesFor(key, refinements.contains("with")))) {
+            if (!encodings.cloak(decodes(), octets, readTheKeyBytesFor(key, refinements.contains("with")))) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, key);
             }
             for (int at = 0; at < octets.length; at++) {
@@ -54,16 +54,16 @@ public abstract class CloakNative extends EncodingNative {
         };
     }
 
-    private byte[] keyBytesFor(Value key, boolean asItStands) {
+    private byte[] readTheKeyBytesFor(Value key, boolean asItStands) {
         return switch (key) {
             case IntegerValue(long magnitude) ->
-                    encodings.hashedKey(Long.toString(magnitude).getBytes(StandardCharsets.UTF_8));
-            case BinaryValue octets -> hashedUnless(asItStands, octets.octetsFromHere());
-            default -> hashedUnless(asItStands, ((AnyStringValue) key).text().getBytes(StandardCharsets.UTF_8));
+                    encodings.hashTheKey(Long.toString(magnitude).getBytes(StandardCharsets.UTF_8));
+            case BinaryValue octets -> hashUnless(asItStands, octets.octetsFromHere());
+            default -> hashUnless(asItStands, ((AnyStringValue) key).text().getBytes(StandardCharsets.UTF_8));
         };
     }
 
-    private byte[] hashedUnless(boolean asItStands, byte[] key) {
-        return asItStands ? key : encodings.hashedKey(key);
+    private byte[] hashUnless(boolean asItStands, byte[] key) {
+        return asItStands ? key : encodings.hashTheKey(key);
     }
 }

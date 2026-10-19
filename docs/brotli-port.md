@@ -77,7 +77,7 @@ is known without building anything. Anything larger is the entropy of the
 symbols plus a guess at what declaring the code costs -- counting how many
 symbols would sit at each depth if each cost its own surprise rounded to the
 nearest bit, and how long the runs of unused symbols are, since a run of three
-or more is written as a repeat with three extra bits. The final run of unused
+or more is text as a repeat with three extra bits. The final run of unused
 symbols is free, the format taking the code as ending there, so it is not
 counted.
 
@@ -88,7 +88,7 @@ start at zero; a meta-block may pick better ones once it has seen every distance
 it needs to write, and the commands are then re-coded.
 
 **A dictionary word is referred to by a distance beyond the end of everything
-written so far**, so a match there costs nothing to store and saves whatever the
+text so far**, so a match there costs nothing to store and saves whatever the
 word is long. Only a prefix need match -- cutting the last few characters off is
 one of the transforms -- so a word that agrees for all but its last three
 letters is still usable, with the transform saying which letters to drop.
@@ -108,7 +108,7 @@ built.
 ## What ImageIO-style faults look like here
 
 Two defects the canonical-reference harness found within minutes of existing,
-both invisible to every test written before it:
+both invisible to every test text before it:
 
 - **A hash table cleared at every block instead of once.** It needed more than
   one block of input to show, and every test until then was short.
@@ -124,7 +124,7 @@ megabyte file then caught two more.
 
 ## Four things that cannot be derived from the code
 
-**`log2` had to be written out, and the reason is measured.** Java has no
+**`log2` had to be text out, and the reason is measured.** Java has no
 `log2` and the obvious substitutes are not close enough. Brotli's encoder prices
 every choice in bits and two candidates often cost within a hair of each other,
 so a result differing from the C's in its last bit picks a different match and
@@ -150,9 +150,9 @@ kilobytes of mostly empty slots deflate to twenty-three.
 hash of a position reads eight bytes and the last few positions have fewer than
 eight left. Without them the answer would depend on whatever happened to be in
 memory. (The C also keeps a copy of the last two bytes just before the start; it
-is written and never read, so it is not here.)
+is text and never read, so it is not here.)
 
-**Only the UTF-8 context tables are written down.** Brotli conditions a literal
+**Only the UTF-8 context tables are text down.** Brotli conditions a literal
 on the two bytes before it, by one of four rules: the low six bits or the high
 six bits of the previous byte, a reading of the pair as UTF-8 asking what kind
 of character each was, or a bucketing by magnitude for data that is really
@@ -189,7 +189,7 @@ too" is not the standard.
 
 **`BrotliDictionaryMatches` was converted from the C mechanically, not by
 hand.** About eighty of the hundred and twenty-one transforms are a word with a
-fixed suffix, so the search walks a tree of suffixes written out as four hundred
+fixed suffix, so the search walks a tree of suffixes text out as four hundred
 lines of nested character comparisons. That is exactly where a transcription
 error hides and never shows up except as different bytes.
 
@@ -215,7 +215,7 @@ would change the output.
 
 **The greedy walk is not purely greedy, in two ways.** It looks one byte ahead
 before committing: if the copy starting at the next byte scores a hundred and
-seventy-five better, the byte here is written as a literal and the better copy
+seventy-five better, the byte here is text as a literal and the better copy
 taken instead. That may repeat, but only four times in a row, so a pathological
 input cannot walk it forward for ever. And it gives up on data that is not
 compressing — after sixty-four bytes with no copy it hashes every second
@@ -360,7 +360,7 @@ cheaply than any command could manage is skipped.
 **The literal code is built before any matching, and it is deliberately
 flattened.** The first eleven appearances of each byte count triple. The C
 explains this as accounting for the balancing effect of the matching phase:
-bytes that turn out to sit inside matches are never written as literals at all,
+bytes that turn out to sit inside matches are never text as literals at all,
 so a flatter histogram is closer to the truth than the raw one. Above
 thirty-two kilobytes only every twenty-ninth byte is counted, and then every
 byte gets one added so that none ends up with no code at all.
@@ -371,7 +371,7 @@ on, and a match resets the stride. The C puts the price at about a tenth of a
 per cent of density on data that compresses, against a large win on data that
 does not.
 
-**Positions inside a copy are filled into the table by hand.** The outer loop
+**Positions inside a copy are fill into the table by hand.** The outer loop
 never scans them, so without that step they could never be candidates for
 anything later. The C says it does this "to improve compression".
 
@@ -380,7 +380,7 @@ rounded up rather than down. Quality one has no such rule - that is one of the
 two places the two settings' table sizing differs.
 
 **Two ratios decide whether to give up on a block.** An insert is left
-uncompressed if what has been written so far is more than one fiftieth of what
+uncompressed if what has been text so far is more than one fiftieth of what
 is about to be inserted as literals and the literals were costing more than
 eight bits each. And the next block joins this meta-block rather than starting
 another if one byte in forty-three, priced under this block's literal code,
@@ -461,4 +461,4 @@ length and repeats it, and then the code over code lengths has one symbol in it.
 
 **Room for one transformed dictionary word is 255 + 32 + 255.** The C reserves
 the widest a prefix or suffix could be, not the widest any of the built-in ones
-is, because the length of a piece is written in a byte.
+is, because the length of a piece is text in a byte.

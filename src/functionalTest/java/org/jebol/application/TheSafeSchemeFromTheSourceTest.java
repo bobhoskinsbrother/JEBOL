@@ -13,19 +13,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class TheSafeSchemeFromTheSourceTest {
 
-    private static Interpreter reaching(Path directory) {
+    private static Interpreter makeAnInterpreterReaching(Path directory) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.ENVIRONMENT)
                         .grant(HostService.CLOCK));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         interpreter.useEnvironment(new ProcessEnvironment());
         return interpreter;
     }
 
     private static String answerTo(Path directory, String source) {
-        Interpreter interpreter = reaching(directory);
+        Interpreter interpreter = makeAnInterpreterReaching(directory);
         String withAPassword = """
                 set-env "REBOL_SAFE_PASS" "my-pass"
                 system/options/home: %./
@@ -39,8 +39,8 @@ class TheSafeSchemeFromTheSourceTest {
     class TheCodec {
 
         @Test
-        @DisplayName("every kind of value survives the round trip")
-        void everyKindOfValueSurvivesTheRoundTrip(@TempDir Path directory) {
+        @DisplayName("every type of value survives the round trip")
+        void roundTripsEveryKindOfValue(@TempDir Path directory) {
             assertThat(answerTo(directory, """
                     collect [
                         foreach data [#[key: "Hello"] 43 #{DEADBEEF} [key: "aaa" value: 12]][
@@ -52,19 +52,19 @@ class TheSafeSchemeFromTheSourceTest {
 
         @Test
         @DisplayName("and the bytes it writes start with the name of the format")
-        void theBytesItWritesStartWithTheNameOfTheFormat() {
+        void startsItsBytesWithTheNameOfTheFormat() {
             assertThat(answerTo(Path.of("."), """
-                    written: system/codecs/safe/encode #{DEADBEEF}
-                    to string! copy/part written 8"""))
+                    text: system/codecs/safe/encode #{DEADBEEF}
+                    to string! copy/part text 8"""))
                     .isEqualTo("\"SAFE 1.0\"");
         }
 
         @Test
         @DisplayName("a wrong password reads nothing back rather than rubbish")
-        void aWrongPasswordReadsNothingBack(@TempDir Path directory) {
+        void readsNothingBackWithAWrongPassword(@TempDir Path directory) {
             assertThat(answerTo(directory, """
-                    written: system/codecs/safe/encode/key #{DEADBEEF} "right"
-                    none? system/codecs/safe/decode/key written "wrong\""""))
+                    text: system/codecs/safe/encode/key #{DEADBEEF} "right"
+                    none? system/codecs/safe/decode/key text "wrong\""""))
                     .isEqualTo("#(true)");
         }
     }
@@ -75,7 +75,7 @@ class TheSafeSchemeFromTheSourceTest {
 
         @Test
         @DisplayName("opening one makes the file and answers a port")
-        void openingOneMakesTheFileAndAnswersAPort(@TempDir Path directory) {
+        void makesTheFileAndAnswersAPortOnOpening(@TempDir Path directory) {
             assertThat(answerTo(directory, """
                     store: open [scheme: 'safe pass: "pw" path: %./ target: %store.safe]
                     reduce [port? store  open? store  true? exists? %store.safe]"""))
@@ -84,7 +84,7 @@ class TheSafeSchemeFromTheSourceTest {
 
         @Test
         @DisplayName("what is put in comes back out")
-        void whatIsPutInComesBackOut(@TempDir Path directory) {
+        void givesBackWhatIsPutIn(@TempDir Path directory) {
             assertThat(answerTo(directory, """
                     store: open [scheme: 'safe pass: "pw" path: %./ target: %store.safe]
                     put store 'greeting "hello"
@@ -94,7 +94,7 @@ class TheSafeSchemeFromTheSourceTest {
 
         @Test
         @DisplayName("and it is still there after the port is closed and opened again")
-        void itIsStillThereAfterClosingAndOpeningAgain(@TempDir Path directory) {
+        void keepsItAfterClosingAndOpeningAgain(@TempDir Path directory) {
             assertThat(answerTo(directory, """
                     store: open [scheme: 'safe pass: "pw" path: %./ target: %store.safe]
                     put store 'greeting "hello"
@@ -105,7 +105,7 @@ class TheSafeSchemeFromTheSourceTest {
 
         @Test
         @DisplayName("a key that was removed is gone")
-        void aKeyThatWasRemovedIsGone(@TempDir Path directory) {
+        void forgetsARemovedKey(@TempDir Path directory) {
             assertThat(answerTo(directory, """
                     store: open [scheme: 'safe pass: "pw" path: %./ target: %store.safe]
                     put store 'greeting "hello"
@@ -120,7 +120,7 @@ class TheSafeSchemeFromTheSourceTest {
 
         @Test
         @DisplayName("a user who does not exist is not an error")
-        void aUserWhoDoesNotExistIsNotAnError(@TempDir Path directory) {
+        void acceptsAUserWhoDoesNotExist(@TempDir Path directory) {
             assertThat(answerTo(directory, """
                     reduce [
                         not error? try [set-user not-existing-user]
@@ -130,7 +130,7 @@ class TheSafeSchemeFromTheSourceTest {
 
         @Test
         @DisplayName("and /N sets one up, with a storage file to show for it")
-        void andSlashNSetsOneUp(@TempDir Path directory) {
+        void setsOneUpWithN(@TempDir Path directory) {
             assertThat(answerTo(directory, """
                     set-user/n/p temp-user "passw"
                     reduce [
@@ -141,7 +141,7 @@ class TheSafeSchemeFromTheSourceTest {
 
         @Test
         @DisplayName("data stored under a user is read back by USER'S")
-        void dataStoredUnderAUserIsReadBack(@TempDir Path directory) {
+        void readsBackDataStoredUnderAUser(@TempDir Path directory) {
             assertThat(answerTo(directory, """
                     set-user/n/p temp-user "passw"
                     put system/user/data 'key "hello"

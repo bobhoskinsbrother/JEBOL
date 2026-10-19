@@ -16,14 +16,14 @@ An arithmetic coder over adaptive bit models. Each step writes either a literal
 byte or a repeat of something earlier, and a twelve-value state remembers what
 the last few steps were so the models can be conditioned on it. A repeat is
 either one of the four most recent distances, which are cheap to name, or a
-fresh distance written as a slot, some direct bits and four aligned bits.
+fresh distance text as a slot, some direct bits and four aligned bits.
 
 The five property bytes a stream opens with pack three numbers into the first -
 how many bits of the previous byte condition a literal, how many bits of the
 position do, and how many bits of the position condition everything else -
 followed by the dictionary size, little endian, floored at four kilobytes.
 
-**The dictionary size written is not the size asked for.** Below four megabytes
+**The dictionary size text is not the size asked for.** Below four megabytes
 it is rounded up to two or three times a power of two, and above that to a whole
 number of megabytes, so a reader can size its window from one byte of exponent
 rather than from an arbitrary number.
@@ -40,7 +40,7 @@ output buffer is made once and the decoder stops when it is full.
 at the caller's output buffer and sizes it to how much output was asked for, so
 nothing wraps and nothing is copied twice.
 
-**The end marker is never written.** `CompressLzma` passes zero for it and states
+**The end marker is never text.** `CompressLzma` passes zero for it and states
 the length in four bytes of its own instead. A stream from anywhere else may
 carry one, and the C treats it as the end rather than as damage: it stops and
 reports how much it made.
@@ -67,13 +67,13 @@ first two decisions come to when both go that way.
 
 **A single-byte repeat cannot be reported as a length of zero.** Zero is the
 shortest length a real repeat has - the symbol zero means two bytes, lengths
-being written with two subtracted. Conflating the two lost the last two bytes of
+being text with two subtracted. Conflating the two lost the last two bytes of
 anything that ended on a two-byte repeat, and only the last two, which is exactly
 the kind of fault a round trip through short data never shows.
 
 **`checkDicSize` changes what bounds a distance.** Until the answer is longer
 than the dictionary, a distance may not reach before the start of the answer;
-after it, it may not reach further back than the window the stream was written
+after it, it may not reach further back than the window the stream was text
 with. The C sets the flag between calls to the inner loop and caps that loop so
 the crossing lands on a boundary; noticing the crossing at the next symbol
 instead is the same boundary.
@@ -123,11 +123,11 @@ counter, the distance and alignment tables when enough matches have gone by.
 
 **A run of `FF` bytes is held back until something below it decides whether it
 carries.** The arithmetic coder keeps a range and a low bound, both notionally
-thirty-two bits wide; each bit written splits the range in proportion to its
+thirty-two bits wide; each bit text splits the range in proportion to its
 model, and whenever the range gets too narrow a byte of the low bound is settled
-and shifted out. The carry is why a byte cannot simply be written.
+and shifted out. The carry is why a byte cannot simply be text.
 
-**A match length is written as one of three brackets**: eight short lengths per
+**A match length is text as one of three brackets**: eight short lengths per
 position state, eight more, and then 256 long ones shared between every position
 state.
 
@@ -152,7 +152,7 @@ stream-reading half of the original is not ported, and the fields it would have 
 are not here.
 
 **Matches are reported as pairs pushed into a caller's array**, each pair a length and
-then a distance less one, in increasing order of length. The count written back is
+then a distance less one, in increasing order of length. The count text back is
 always even.
 
 **The four-byte table's width is the history size rounded up to one less than a power of
@@ -164,7 +164,7 @@ compressing fourteen bytes does not build a sixty-four megabyte table.
 **The cyclic buffer can safely be sized at whichever is smaller, the dictionary or the
 data.** The C sizes it at the dictionary and nothing else, so the default level asks for
 sixteen megabytes of positions to compress fourteen bytes and level nine asks for
-sixty-four. Nothing is ever written past the end of the data, so a buffer longer than the
+sixty-four. Nothing is ever text past the end of the data, so a buffer longer than the
 data cannot change an answer: every distance a real match has is at most how far into the
 data this position is, and every empty hash slot is cut by the same test either way.
 

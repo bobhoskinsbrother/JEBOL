@@ -31,7 +31,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
     @Override
     public abstract Datatype datatype();
 
-    abstract AnyStringValue sameKindOver(StringStorage storage, int index);
+    abstract AnyStringValue makeTheSameKindOver(StringStorage storage, int index);
 
     public abstract String mold();
 
@@ -49,25 +49,25 @@ public abstract sealed class AnyStringValue implements RebolSeries
             super(spelling);
         }
 
-        public abstract AnyStringValue holding(StringStorage storage, int index);
+        public abstract AnyStringValue wrap(StringStorage storage, int index);
 
-        public AnyStringValue holding(String text) {
-            return holding(StringStorage.of(text), 1);
+        public AnyStringValue wrap(String text) {
+            return wrap(StringStorage.of(text), 1);
         }
 
         @Override
         protected Value withRoomFor(int asked) {
-            return holding(StringStorage.withRoomFor(asked), 1);
+            return wrap(StringStorage.withRoomFor(asked), 1);
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
-            return holding(textOf(from));
+        protected Value build(Conversion asking, Value from, Maker maker) {
+            return wrap(textOf(from));
         }
 
         protected String textOf(Value value) {
             return switch (value) {
-                case BinaryValue octets -> octets.decodedAsText();
+                case BinaryValue octets -> octets.decodeAsText();
                 case AnyStringValue already -> already.text();
                 default -> value.runTogether();
             };
@@ -76,22 +76,22 @@ public abstract sealed class AnyStringValue implements RebolSeries
         @Override
         public Value as(Value value) {
             return value instanceof AnyStringValue text
-                    ? holding(text.storage(), text.index())
+                    ? wrap(text.storage(), text.index())
                     : super.as(value);
         }
 
         @Override
-        protected Value constructedFromOne(Value only, Construction construction) {
+        protected Value constructFromOne(Value only, Construction construction) {
             return switch (only) {
                 case AnyStringValue text -> as(text);
-                case BinaryValue _ -> construction.madeOf(this, only);
-                default -> throw refusingConstruction(List.of(only));
+                case BinaryValue _ -> construction.make(this, only);
+                default -> throw refuseTheConstruction(List.of(only));
             };
         }
     }
 
-    public AnyStringValue holding(String text) {
-        return sameKindOver(StringStorage.of(text), 1);
+    public AnyStringValue wrap(String text) {
+        return makeTheSameKindOver(StringStorage.of(text), 1);
     }
 
     public StringStorage storage() {
@@ -104,7 +104,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public Value randomised(RandomDraw draw) {
+    public Value randomise(RandomDraw draw) {
         List<Integer> letters = new ArrayList<>();
         for (int at = index; at <= storageLength(); at++) {
             letters.add(storage.at(at));
@@ -117,12 +117,12 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public Value pickedAtRandom(RandomDraw draw) {
+    public Value pickAtRandom(RandomDraw draw) {
         byte[] octets = text().getBytes(StandardCharsets.UTF_8);
         if (octets.length == 0) {
             return NoneValue.none();
         }
-        int at = new CharacterBoundary().drawnIn(octets, draw);
+        int at = new CharacterBoundary().drawIn(octets, draw);
         return CharacterValue.of(
                 new String(octets, at, octets.length - at, StandardCharsets.UTF_8).codePointAt(0));
     }
@@ -138,8 +138,8 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public Value copied(boolean deeply, Set<Datatype> kinds) {
-        return holding(text());
+    public Value copy(boolean deeply, Set<Datatype> kinds) {
+        return wrap(text());
     }
 
     @Override
@@ -148,20 +148,20 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public Value itemAt(int positionFromTheHead) {
+    public Value readTheItemAt(int positionFromTheHead) {
         return CharacterValue.of(storage.at(positionFromTheHead));
     }
 
     @Override
-    public Value frontCopied(int howMany, boolean deeply, Set<Datatype> kinds) {
+    public Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds) {
         String whole = text();
         int taking = Math.min(howMany, whole.codePointCount(0, whole.length()));
-        return holding(whole.substring(0, whole.offsetByCodePoints(0, taking)));
+        return wrap(whole.substring(0, whole.offsetByCodePoints(0, taking)));
     }
 
     @Override
-    public RebolSeries reversedFront(int howMany) {
-        return rewrittenFromHere(whole -> new StringBuilder(whole.substring(0, howMany)).reverse()
+    public RebolSeries reverseTheFront(int howMany) {
+        return rewriteFromHere(whole -> new StringBuilder(whole.substring(0, howMany)).reverse()
                 + whole.substring(howMany));
     }
 
@@ -174,7 +174,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
         return this;
     }
 
-    public AnyStringValue rewrittenFromHere(UnaryOperator<String> change) {
+    public AnyStringValue rewriteFromHere(UnaryOperator<String> change) {
         int[] replacement = change.apply(text()).codePoints().toArray();
         for (int at = storageLength(); at >= index; at--) {
             storage.removeAt(at);
@@ -186,16 +186,16 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     public AnyStringValue withOneLineFeedPerEnding() {
-        return rewrittenFromHere(this::oneLineFeedPerEnding);
+        return rewriteFromHere(this::standardiseTheLineEndings);
     }
 
-    private String oneLineFeedPerEnding(String text) {
+    private String standardiseTheLineEndings(String text) {
         StringBuilder standardised = new StringBuilder(text.length());
         int at = 0;
         while (at < text.length()) {
             char here = text.charAt(at++);
             if (here == '\n' || here == '\r') {
-                if (at < text.length() && text.charAt(at) == theOtherEnding(here)) {
+                if (at < text.length() && text.charAt(at) == findTheOtherEnding(here)) {
                     at++;
                 }
                 here = '\n';
@@ -205,7 +205,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
         return standardised.toString();
     }
 
-    private char theOtherEnding(char one) {
+    private char findTheOtherEnding(char one) {
         return one == '\n' ? '\r' : '\n';
     }
 
@@ -223,8 +223,8 @@ public abstract sealed class AnyStringValue implements RebolSeries
         return lines;
     }
 
-    public AnyStringValue frontRewritten(int howMany, UnaryOperator<String> change) {
-        return rewrittenFromHere(whole -> {
+    public AnyStringValue rewriteTheFront(int howMany, UnaryOperator<String> change) {
+        return rewriteFromHere(whole -> {
             int taking = Math.min(howMany, whole.codePointCount(0, whole.length()));
             int split = whole.offsetByCodePoints(0, taking);
             return change.apply(whole.substring(0, split)) + whole.substring(split);
@@ -232,12 +232,12 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public Value trimmed(Trimming trimming) {
+    public Value trim(Trimming trimming) {
         trimming.refuseContradictions();
-        return rewrittenFromHere(text -> trimmedText(text, trimming));
+        return rewriteFromHere(text -> trimTheText(text, trimming));
     }
 
-    private String trimmedText(String text, Trimming trimming) {
+    private String trimTheText(String text, Trimming trimming) {
         if (trimming.ofTheGivenCharacters()) {
             StringBuilder kept = new StringBuilder();
             text.codePoints()
@@ -257,7 +257,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
         }
         return trimming.ofTheCommonIndent() || trimming.atBothNamedEnds()
                 ? indented.strip()
-                : trimmedEachLine(indented);
+                : trimEachLine(indented);
     }
 
     private String withoutCommonIndent(String text) {
@@ -282,7 +282,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
         return trimmed.toString();
     }
 
-    private String trimmedEachLine(String text) {
+    private String trimEachLine(String text) {
         String afterLead = text.stripLeading();
         String core = afterLead.stripTrailing();
         boolean endedWithLineFeed =
@@ -307,27 +307,27 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     @Override
-    public List<Value> items() {
+    public List<Value> listTheItems() {
         return text().codePoints()
                 .<Value>mapToObj(CharacterValue::of)
                 .toList();
     }
 
     @Override
-    public boolean equalTo(Value other, Sameness how) {
+    public boolean isEqualTo(Value other, Sameness how) {
         return other instanceof AnyStringValue theirs
                 && (how.theyWereBroughtTogetherFirst() || datatype() == theirs.datatype())
                 && equalsIgnoringCase(theirs);
     }
 
     @Override
-    public Optional<Value[]> broughtTogetherWith(Value other) {
-        return other instanceof AnyStringValue ? both(this, other) : Optional.empty();
+    public Optional<Value[]> bringTogetherWith(Value other) {
+        return other instanceof AnyStringValue ? pairUp(this, other) : Optional.empty();
     }
 
     @Override
     public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
-        return holding(textOf(keeping.from(charactersOf(this), charactersOf(other))));
+        return wrap(textOf(keeping.from(listTheCharactersOf(this), listTheCharactersOf(other))));
     }
 
     static String textOf(List<Value> letters) {
@@ -337,7 +337,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
         return written.toString();
     }
 
-    static List<Value> charactersOf(Value value) {
+    static List<Value> listTheCharactersOf(Value value) {
         if (!(value instanceof AnyStringValue text)) {
             return value instanceof AnyBlockValue block ? block.remaining() : List.of(value);
         }
@@ -351,7 +351,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
 
     @Override
     public AnyStringValue atIndex(int oneBasedIndex) {
-        return sameKindOver(storage, oneBasedIndex);
+        return makeTheSameKindOver(storage, oneBasedIndex);
     }
 
     @Override
@@ -368,7 +368,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
         return storage.textFrom(index);
     }
 
-    public CharacterValue first() {
+    public CharacterValue pickTheFirst() {
         if (atTail()) {
             throw new IllegalStateException("nothing to read at the tail");
         }
@@ -402,15 +402,15 @@ public abstract sealed class AnyStringValue implements RebolSeries
     }
 
     String constructed() {
-        return "#(" + datatype().literalSpelling() + " " + Molder.moldedText(head().text())
+        return "#(" + datatype().literalSpelling() + " " + Molder.moldTheText(head().text())
                 + (index > 1 ? " " + index : "") + ")";
     }
 
-    String moldedUnlessItWouldNotReadBackWhenMarkedBy(char required) {
-        return wouldNotReadBackAsItselfWhenMarkedBy(required) ? constructed() : text();
+    String moldUnlessItFailsToReadBack(char required) {
+        return failsToReadBackWhenMarkedBy(required) ? constructed() : text();
     }
 
-    private boolean wouldNotReadBackAsItselfWhenMarkedBy(char required) {
+    private boolean failsToReadBackWhenMarkedBy(char required) {
         String remaining = text();
         String whole = head().text();
         if (remaining.isEmpty() || whole.isEmpty() || remaining.charAt(0) == '%') {

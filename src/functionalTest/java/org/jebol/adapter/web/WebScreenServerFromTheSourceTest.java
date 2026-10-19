@@ -5,7 +5,7 @@ import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
-import org.jebol.domain.host.ScreenEventKind;
+import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.Value;
 import org.junit.jupiter.api.*;
@@ -33,7 +33,7 @@ class WebScreenServerFromTheSourceTest {
     @BeforeEach
     void startServing() throws IOException {
         serving = WebScreenServer.on(0);
-        screen = BrowserScreen.seenBy(serving);
+        screen = BrowserScreen.showTo(serving);
         serving.reportTo(screen);
         client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5)).build();
@@ -49,17 +49,17 @@ class WebScreenServerFromTheSourceTest {
         serving.close();
     }
 
-    private void aBrowserOpensThePage() throws Exception {
+    private void openThePageInABrowser() throws Exception {
         pictureStream = openThePictureStream();
     }
 
-    private void aBrowserOpensThePage(int wide, int high) throws Exception {
-        aBrowserOpensThePage();
+    private void openThePageInABrowser(int wide, int high) throws Exception {
+        openThePageInABrowser();
         post("event", """
-                {"kind":"measure","wide":%d,"high":%d}""".formatted(wide, high));
+                {"type":"measure","wide":%d,"high":%d}""".formatted(wide, high));
     }
 
-    private String theNextPicture() throws IOException {
+    private String waitForTheNextPicture() throws IOException {
         StringBuilder message = new StringBuilder();
         while (true) {
             int startsAt = message.indexOf("event: paint");
@@ -74,7 +74,7 @@ class WebScreenServerFromTheSourceTest {
         }
     }
 
-    private Interpreter anInterpreterOnThisScreen() {
+    private Interpreter makeAnInterpreterOnThisScreen() {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useScreen(screen);
@@ -116,7 +116,7 @@ class WebScreenServerFromTheSourceTest {
         @Test
         @DisplayName("is HTML, and says so")
         @Timeout(20)
-        void itIsHtml() throws Exception {
+        void isHtml() throws Exception {
             HttpResponse<String> page = get("");
 
             assertThat(page.statusCode()).isEqualTo(200);
@@ -127,7 +127,7 @@ class WebScreenServerFromTheSourceTest {
         @Test
         @DisplayName("holds a canvas and the script that paints on it")
         @Timeout(20)
-        void itHoldsACanvasAndTheScript() throws Exception {
+        void holdsACanvasAndTheScript() throws Exception {
             String page = get("").body();
 
             assertThat(page).contains("<canvas");
@@ -137,7 +137,7 @@ class WebScreenServerFromTheSourceTest {
         @Test
         @DisplayName("and nothing it loads comes from anywhere else")
         @Timeout(20)
-        void itLoadsNothingFromElsewhere() throws Exception {
+        void loadsNothingFromElsewhere() throws Exception {
             String page = get("").body();
 
             assertThat(page).doesNotContain("<script src");
@@ -153,9 +153,9 @@ class WebScreenServerFromTheSourceTest {
         @Test
         @DisplayName("the screen has no display, so a script cannot draw on it")
         @Timeout(20)
-        void thereIsNoDisplay() {
+        void countsNoDisplay() {
             assertThat(serving.isConnected()).isFalse();
-            assertThat(screen.hasADisplay()).isFalse();
+            assertThat(screen.hasDisplay()).isFalse();
         }
     }
 
@@ -166,28 +166,28 @@ class WebScreenServerFromTheSourceTest {
         @Test
         @DisplayName("the screen has a display")
         @Timeout(20)
-        void thereIsADisplay() throws Exception {
-            aBrowserOpensThePage();
+        void countsADisplay() throws Exception {
+            openThePageInABrowser();
 
             assertThat(serving.isConnected()).isTrue();
-            assertThat(screen.hasADisplay()).isTrue();
+            assertThat(screen.hasDisplay()).isTrue();
         }
 
         @Test
         @DisplayName("and a paint list crosses whole, clip and opacity included")
         @Timeout(20)
         void thelistCrossesWhole() throws Exception {
-            aBrowserOpensThePage(640, 480);
-            Interpreter interpreter = anInterpreterOnThisScreen();
+            openThePageInABrowser(640, 480);
+            Interpreter interpreter = makeAnInterpreterOnThisScreen();
             String script = """
                     view/no-wait make gob! [size: 200x100 color: 10.20.30]""";
             interpreter.defineFreshWordsIn(script);
             interpreter.run(script);
 
-            String message = theNextPicture();
+            String message = waitForTheNextPicture();
             assertThat(message).contains("event: paint");
             assertThat(message).contains("""
-                    "kind":"fill",""");
+                    "type":"fill",""");
             assertThat(message).contains("""
                     "colour":"#0a141e",""");
             assertThat(message).contains("""
@@ -201,29 +201,29 @@ class WebScreenServerFromTheSourceTest {
 
         private GobValue theWindow;
 
-        private void aWindowIsShowingAt(int across, int down) throws Exception {
-            aBrowserOpensThePage(640, 480);
-            Interpreter interpreter = anInterpreterOnThisScreen();
+        private void showAWindowAt(int across, int down) throws Exception {
+            openThePageInABrowser(640, 480);
+            Interpreter interpreter = makeAnInterpreterOnThisScreen();
             String opening = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     system/view/screen-gob/1/offset: %dx%d""".formatted(across, down);
             interpreter.defineFreshWordsIn(opening);
             interpreter.run(opening);
-            theWindow = theFirstWindowIn(interpreter);
+            theWindow = findTheFirstWindowIn(interpreter);
         }
 
-        private GobValue theFirstWindowIn(Interpreter interpreter) {
+        private GobValue findTheFirstWindowIn(Interpreter interpreter) {
             Value window = interpreter.run("system/view/screen-gob/1").value();
             assertThat(window).isInstanceOf(GobValue.class);
             return (GobValue) window;
         }
 
-        private Optional<ScreenEvent> whatIsQueuedAfterPosting(String body) throws Exception {
+        private Optional<ScreenEvent> readWhatIsQueuedAfterPosting(String body) throws Exception {
             assertThat(post("event", body)).as("%s", lastPostSaid).isEqualTo(204);
-            return screen.takeTheNextEvent();
+            return screen.acceptNextEvent();
         }
 
-        private ScreenEvent anEvent(ScreenEventKind kind, ScreenEventDetail detail) {
+        private ScreenEvent makeAnEvent(ScreenEventType kind, ScreenEventDetail detail) {
             return new ScreenEvent(kind, theWindow, detail);
         }
 
@@ -239,13 +239,13 @@ class WebScreenServerFromTheSourceTest {
         })
         @DisplayName("a pointer event counts from the window's top left, the window's place taken off the page's")
         @Timeout(20)
-        void aPointerEventCountsFromTheWindow(String kind, int pageAcross, int pageDown,
-                int windowAcross, int windowDown) throws Exception {
-            aWindowIsShowingAt(10, 20);
+        void countsAPointerEventFromTheWindow(String kind, int pageAcross, int pageDown,
+                                              int windowAcross, int windowDown) throws Exception {
+            showAWindowAt(10, 20);
 
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"%s","across":%d,"down":%d}""".formatted(kind, pageAcross, pageDown)))
-                    .contains(anEvent(ScreenEventKind.valueOf(kind.toUpperCase(Locale.ROOT)),
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"%s","across":%d,"down":%d}""".formatted(kind, pageAcross, pageDown)))
+                    .contains(makeAnEvent(ScreenEventType.valueOf(kind.toUpperCase(Locale.ROOT)),
                             new ScreenEventDetail.At(windowAcross, windowDown)));
         }
 
@@ -264,76 +264,76 @@ class WebScreenServerFromTheSourceTest {
         })
         @DisplayName("a pointer event on no window, with no press held, reaches nothing")
         @Timeout(20)
-        void aPointerEventOnNoWindowIsDropped(String kind, int pageAcross, int pageDown) throws Exception {
-            aWindowIsShowingAt(10, 20);
+        void dropsAPointerEventOnNoWindow(String kind, int pageAcross, int pageDown) throws Exception {
+            showAWindowAt(10, 20);
 
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"%s","across":%d,"down":%d}""".formatted(kind, pageAcross, pageDown))).isEmpty();
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"%s","across":%d,"down":%d}""".formatted(kind, pageAcross, pageDown))).isEmpty();
         }
 
         @Test
         @DisplayName("a drag that leaves the window still belongs to it, counted from its top left")
         @Timeout(20)
-        void aDragThatLeavesTheWindowStillBelongsToIt() throws Exception {
-            aWindowIsShowingAt(10, 20);
+        void keepsADragThatLeavesTheWindowWithIt() throws Exception {
+            showAWindowAt(10, 20);
 
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"down","across":50,"down":60}""")).isPresent();
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"move","across":0,"down":0}"""))
-                    .contains(anEvent(ScreenEventKind.MOVE, new ScreenEventDetail.At(-10, -20)));
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"up","across":200,"down":300}"""))
-                    .contains(anEvent(ScreenEventKind.UP, new ScreenEventDetail.At(190, 280)));
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"down","across":50,"down":60}""")).isPresent();
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"move","across":0,"down":0}"""))
+                    .contains(makeAnEvent(ScreenEventType.MOVE, new ScreenEventDetail.At(-10, -20)));
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"up","across":200,"down":300}"""))
+                    .contains(makeAnEvent(ScreenEventType.UP, new ScreenEventDetail.At(190, 280)));
         }
 
         @ParameterizedTest(name = "a {0} posted from the page is not delivered")
         @ValueSource(strings = {"resize", "offset"})
         @DisplayName("a page never moves or resizes one window, so a resize or offset posted names none")
         @Timeout(20)
-        void aResizeOrOffsetIsDropped(String kind) throws Exception {
-            aWindowIsShowingAt(10, 20);
+        void dropsAResizeOrOffset(String kind) throws Exception {
+            showAWindowAt(10, 20);
 
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"%s","across":5,"down":5}""".formatted(kind))).isEmpty();
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"%s","across":5,"down":5}""".formatted(kind))).isEmpty();
         }
 
         @ParameterizedTest(name = "a move posted with {0} is not delivered")
         @ValueSource(strings = {
                 """
-                {"kind":"move"}""",
+                {"type":"move"}""",
                 """
-                {"kind":"move","across":5}""",
+                {"type":"move","across":5}""",
                 """
-                {"kind":"move","down":5}""",
+                {"type":"move","down":5}""",
                 """
-                {"kind":"move","across":"x","down":5}""",
+                {"type":"move","across":"x","down":5}""",
                 """
-                {"kind":"move","across":5.5,"down":5}""",
+                {"type":"move","across":5.5,"down":5}""",
                 """
-                {"kind":"move","across":true,"down":5}""",
+                {"type":"move","across":true,"down":5}""",
                 """
-                {"kind":"down","across":"","down":5}""",
+                {"type":"down","across":"","down":5}""",
                 """
-                {"kind":"up","across":"5","down":5}""",
+                {"type":"up","across":"5","down":5}""",
         })
         @DisplayName("a pointer event without two whole numbers for where it is is not delivered at all")
         @Timeout(20)
-        void aPointerEventWithoutAPlaceIsDropped(String body) throws Exception {
-            aWindowIsShowingAt(10, 20);
+        void dropsAPointerEventWithoutAPlace(String body) throws Exception {
+            showAWindowAt(10, 20);
 
-            assertThat(whatIsQueuedAfterPosting(body)).isEmpty();
+            assertThat(readWhatIsQueuedAfterPosting(body)).isEmpty();
         }
 
         @Test
         @DisplayName("a field the page adds that nobody reads is ignored")
         @Timeout(20)
-        void anExtraFieldIsIgnored() throws Exception {
-            aWindowIsShowingAt(10, 20);
+        void ignoresAnExtraField() throws Exception {
+            showAWindowAt(10, 20);
 
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"move","across":15,"down":25,"buttons":1}"""))
-                    .contains(anEvent(ScreenEventKind.MOVE, new ScreenEventDetail.At(5, 5)));
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"move","across":15,"down":25,"buttons":1}"""))
+                    .contains(makeAnEvent(ScreenEventType.MOVE, new ScreenEventDetail.At(5, 5)));
         }
 
         @ParameterizedTest(name = "{0} with code {1} types the character {1}")
@@ -348,38 +348,38 @@ class WebScreenServerFromTheSourceTest {
         })
         @DisplayName("a key event carries the character it typed, a comma included")
         @Timeout(20)
-        void aKeyCarriesItsCharacter(String kind, int code) throws Exception {
-            aWindowIsShowingAt(10, 20);
+        void carriesAKeysCharacter(String kind, int code) throws Exception {
+            showAWindowAt(10, 20);
 
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"%s","code":%d}""".formatted(kind, code)))
-                    .contains(anEvent(kind.equals("key") ? ScreenEventKind.KEY : ScreenEventKind.KEY_UP,
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"%s","code":%d}""".formatted(kind, code)))
+                    .contains(makeAnEvent(kind.equals("key") ? ScreenEventType.KEY : ScreenEventType.KEY_UP,
                             new ScreenEventDetail.Typed(code)));
         }
 
         @ParameterizedTest(name = "a key posted with {0} is not delivered")
         @ValueSource(strings = {
                 """
-                {"kind":"key"}""",
+                {"type":"key"}""",
                 """
-                {"kind":"key","code":-1}""",
+                {"type":"key","code":-1}""",
                 """
-                {"kind":"key","code":1114112}""",
+                {"type":"key","code":1114112}""",
                 """
-                {"kind":"key","code":55296}""",
+                {"type":"key","code":55296}""",
                 """
-                {"kind":"key","code":"a"}""",
+                {"type":"key","code":"a"}""",
                 """
-                {"kind":"key","code":97.5}""",
+                {"type":"key","code":97.5}""",
                 """
-                {"kind":"key","code":"97"}""",
+                {"type":"key","code":"97"}""",
         })
         @DisplayName("a key whose number is no character is not delivered")
         @Timeout(20)
-        void aKeyThatIsNoCharacterIsDropped(String body) throws Exception {
-            aWindowIsShowingAt(10, 20);
+        void dropsAKeyThatIsNoCharacter(String body) throws Exception {
+            showAWindowAt(10, 20);
 
-            assertThat(whatIsQueuedAfterPosting(body)).isEmpty();
+            assertThat(readWhatIsQueuedAfterPosting(body)).isEmpty();
         }
 
         @ParameterizedTest(name = "{0} named {1} is that key")
@@ -391,12 +391,12 @@ class WebScreenServerFromTheSourceTest {
         })
         @DisplayName("a key that types nothing carries its name from the catalogue")
         @Timeout(20)
-        void aControlKeyCarriesItsName(String kind, String named) throws Exception {
-            aWindowIsShowingAt(10, 20);
+        void carriesAControlKeysName(String kind, String named) throws Exception {
+            showAWindowAt(10, 20);
 
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"%s","named":"%s"}""".formatted(kind, named)))
-                    .contains(anEvent(kind.equals("control") ? ScreenEventKind.CONTROL : ScreenEventKind.CONTROL_UP,
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"%s","named":"%s"}""".formatted(kind, named)))
+                    .contains(makeAnEvent(kind.equals("control") ? ScreenEventType.CONTROL : ScreenEventType.CONTROL_UP,
                             new ScreenEventDetail.NamedKey(named)));
         }
 
@@ -404,32 +404,32 @@ class WebScreenServerFromTheSourceTest {
         @ValueSource(strings = {"sideways", "PAGE-UP", "Page-Up", ""})
         @DisplayName("a name the catalogue does not hold, spelt exactly, is not delivered")
         @Timeout(20)
-        void anUnknownNameIsDropped(String named) throws Exception {
-            aWindowIsShowingAt(10, 20);
+        void dropsAnUnknownName(String named) throws Exception {
+            showAWindowAt(10, 20);
 
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"control","named":"%s"}""".formatted(named))).isEmpty();
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"control","named":"%s"}""".formatted(named))).isEmpty();
         }
 
         @Test
         @DisplayName("a control key with no name at all is not delivered")
         @Timeout(20)
-        void aControlKeyWithNoNameIsDropped() throws Exception {
-            aWindowIsShowingAt(10, 20);
+        void dropsAControlKeyWithNoName() throws Exception {
+            showAWindowAt(10, 20);
 
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"control"}""")).isEmpty();
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"control"}""")).isEmpty();
         }
 
         @Test
         @DisplayName("a close carries nothing more, and is delivered")
         @Timeout(20)
-        void aCloseCarriesNothing() throws Exception {
-            aWindowIsShowingAt(10, 20);
+        void carriesNothingForAClose() throws Exception {
+            showAWindowAt(10, 20);
 
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"close"}"""))
-                    .contains(anEvent(ScreenEventKind.CLOSE, new ScreenEventDetail.NothingMore()));
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"close"}"""))
+                    .contains(makeAnEvent(ScreenEventType.CLOSE, new ScreenEventDetail.NothingMore()));
         }
     }
 
@@ -441,9 +441,9 @@ class WebScreenServerFromTheSourceTest {
         private GobValue upper;
 
         @BeforeEach
-        void twoOverlappingWindows() throws Exception {
-            aBrowserOpensThePage(640, 480);
-            Interpreter interpreter = anInterpreterOnThisScreen();
+        void showTwoOverlappingWindows() throws Exception {
+            openThePageInABrowser(640, 480);
+            Interpreter interpreter = makeAnInterpreterOnThisScreen();
             String opening = """
                     lower: view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     lower/offset: 10x20
@@ -451,63 +451,63 @@ class WebScreenServerFromTheSourceTest {
                     upper/offset: 60x70""";
             interpreter.defineFreshWordsIn(opening);
             interpreter.run(opening);
-            lower = theGobIn(interpreter, "lower");
-            upper = theGobIn(interpreter, "upper");
+            lower = findTheGobIn(interpreter, "lower");
+            upper = findTheGobIn(interpreter, "upper");
         }
 
-        private GobValue theGobIn(Interpreter interpreter, String word) {
+        private GobValue findTheGobIn(Interpreter interpreter, String word) {
             Value gob = interpreter.run(word).value();
             assertThat(gob).isInstanceOf(GobValue.class);
             return (GobValue) gob;
         }
 
-        private Optional<ScreenEvent> whatIsQueuedAfterPosting(String body) throws Exception {
+        private Optional<ScreenEvent> readWhatIsQueuedAfterPosting(String body) throws Exception {
             assertThat(post("event", body)).as("%s", lastPostSaid).isEqualTo(204);
-            return screen.takeTheNextEvent();
+            return screen.acceptNextEvent();
         }
 
         @Test
         @DisplayName("a click where only the lower window is reaches the lower window")
         @Timeout(20)
-        void aClickOnTheLowerReachesIt() throws Exception {
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"down","across":20,"down":30}"""))
-                    .contains(new ScreenEvent(ScreenEventKind.DOWN, lower, new ScreenEventDetail.At(10, 10)));
+        void reachTheLowerWithAClickOnIt() throws Exception {
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"down","across":20,"down":30}"""))
+                    .contains(new ScreenEvent(ScreenEventType.DOWN, lower, new ScreenEventDetail.At(10, 10)));
         }
 
         @Test
         @DisplayName("a click where both windows are reaches the upper one, opened last")
         @Timeout(20)
-        void aClickOnTheOverlapReachesTheUpper() throws Exception {
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"down","across":80,"down":90}"""))
-                    .contains(new ScreenEvent(ScreenEventKind.DOWN, upper, new ScreenEventDetail.At(20, 20)));
+        void reachTheUpperWithAClickOnTheOverlap() throws Exception {
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"down","across":80,"down":90}"""))
+                    .contains(new ScreenEvent(ScreenEventType.DOWN, upper, new ScreenEventDetail.At(20, 20)));
         }
 
         @Test
         @DisplayName("a key before any click reaches the upper window, and after a click on the lower, the lower")
         @Timeout(20)
-        void aKeyFollowsTheClick() throws Exception {
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"key","code":97}"""))
-                    .contains(new ScreenEvent(ScreenEventKind.KEY, upper, new ScreenEventDetail.Typed('a')));
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"down","across":20,"down":30}""")).isPresent();
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"key","code":98}"""))
-                    .contains(new ScreenEvent(ScreenEventKind.KEY, lower, new ScreenEventDetail.Typed('b')));
+        void sendAKeyWhereTheClickWent() throws Exception {
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"key","code":97}"""))
+                    .contains(new ScreenEvent(ScreenEventType.KEY, upper, new ScreenEventDetail.Typed('a')));
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"down","across":20,"down":30}""")).isPresent();
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"key","code":98}"""))
+                    .contains(new ScreenEvent(ScreenEventType.KEY, lower, new ScreenEventDetail.Typed('b')));
         }
 
         @Test
         @DisplayName("a close from the page is one close for each window")
         @Timeout(20)
-        void aCloseClosesBoth() throws Exception {
-            assertThat(whatIsQueuedAfterPosting("""
-                    {"kind":"close"}"""))
-                    .contains(new ScreenEvent(ScreenEventKind.CLOSE, lower));
-            assertThat(screen.takeTheNextEvent())
-                    .contains(new ScreenEvent(ScreenEventKind.CLOSE, upper));
-            assertThat(screen.takeTheNextEvent()).isEmpty();
+        void closeBothOnAClose() throws Exception {
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"close"}"""))
+                    .contains(new ScreenEvent(ScreenEventType.CLOSE, lower));
+            assertThat(screen.acceptNextEvent())
+                    .contains(new ScreenEvent(ScreenEventType.CLOSE, upper));
+            assertThat(screen.acceptNextEvent()).isEmpty();
         }
     }
 
@@ -519,12 +519,12 @@ class WebScreenServerFromTheSourceTest {
         @DisplayName("a measurement becomes the screen a script reads")
         @Timeout(20)
         void ameasurementBecomesTheScreen() throws Exception {
-            aBrowserOpensThePage();
+            openThePageInABrowser();
 
             assertThat(post("event", """
-                    {"kind":"measure","wide":1024,"high":768}""")).isEqualTo(204);
+                    {"type":"measure","wide":1024,"high":768}""")).isEqualTo(204);
 
-            Interpreter interpreter = anInterpreterOnThisScreen();
+            Interpreter interpreter = makeAnInterpreterOnThisScreen();
 
             assertThat(interpreter.display(interpreter.run("gui-metric 'screen-size")))
                     .isEqualTo("1024x768");
@@ -534,8 +534,8 @@ class WebScreenServerFromTheSourceTest {
         @DisplayName("and a keypress becomes an event on the same queue")
         @Timeout(20)
         void akeypressBecomesAnEvent() throws Exception {
-            aBrowserOpensThePage(640, 480);
-            Interpreter interpreter = anInterpreterOnThisScreen();
+            openThePageInABrowser(640, 480);
+            Interpreter interpreter = makeAnInterpreterOnThisScreen();
             String setUp = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     seen: copy []
@@ -548,9 +548,9 @@ class WebScreenServerFromTheSourceTest {
             interpreter.run(setUp);
 
             post("event", """
-                    {"kind":"key","code":97}""");
+                    {"type":"key","code":97}""");
             post("event", """
-                    {"kind":"close"}""");
+                    {"type":"close"}""");
             interpreter.run("do-events");
 
             assertThat(interpreter.display(interpreter.run("mold seen")))
@@ -560,16 +560,16 @@ class WebScreenServerFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("a kind nobody serves is ignored rather than passed on")
+        @DisplayName("a type nobody serves is ignored rather than passed on")
         @Timeout(20)
         void anunknownKindIsIgnored() throws Exception {
-            aBrowserOpensThePage();
+            openThePageInABrowser();
 
             assertThat(post("event", """
-                    {"kind":"jump"}"""))
+                    {"type":"jump"}"""))
                     .as("%s", lastPostSaid)
                     .isEqualTo(204);
-            assertThat(screen.takeTheNextEvent()).isEmpty();
+            assertThat(screen.acceptNextEvent()).isEmpty();
         }
 
         @Test
@@ -579,7 +579,7 @@ class WebScreenServerFromTheSourceTest {
             assertThat(post("event", "not json at all")).isEqualTo(204);
             assertThat(post("event", "")).isEqualTo(204);
             assertThat(post("event", """
-                    {"kind":"measure","wide":"wide","high":[]}""")).isEqualTo(204);
+                    {"type":"measure","wide":"wide","high":[]}""")).isEqualTo(204);
         }
     }
 
@@ -589,12 +589,12 @@ class WebScreenServerFromTheSourceTest {
 
         @Test
         @DisplayName("takes the fields of a flat object, text as text and a whole number as a number")
-        void itTakesTheFields() {
-            FieldsOfAPostedEvent posted = new FieldsOfAPostedEvent("""
-                    {"kind":"measure","wide":1024}""");
+        void takesTheFields() {
+            EventFields posted = new EventFields("""
+                    {"type":"measure","wide":1024}""");
 
-            assertThat(posted.text("kind")).contains("measure");
-            assertThat(posted.wholeNumber("wide")).contains(1024);
+            assertThat(posted.text("type")).contains("measure");
+            assertThat(posted.readWholeNumber("wide")).contains(1024);
         }
 
         @ParameterizedTest(name = "{0} holds no whole number")
@@ -613,23 +613,23 @@ class WebScreenServerFromTheSourceTest {
                 {"other":5}""",
         })
         @DisplayName("a whole number is digits as posted: quoted text, a fraction or anything else is not one")
-        void aWholeNumberIsOnlyDigits(String body) {
-            assertThat(new FieldsOfAPostedEvent(body).wholeNumber("wide")).isEmpty();
+        void acceptsOnlyDigitsAsAWholeNumber(String body) {
+            assertThat(new EventFields(body).readWholeNumber("wide")).isEmpty();
         }
 
         @Test
-        @DisplayName("and a number is not text, so an unquoted kind is no kind")
-        void aNumberIsNotText() {
-            assertThat(new FieldsOfAPostedEvent("""
-                    {"kind":5}""").text("kind")).isEmpty();
+        @DisplayName("and a number is not text, so an unquoted type is no type")
+        void refusesTextAsANumber() {
+            assertThat(new EventFields("""
+                    {"type":5}""").text("type")).isEmpty();
         }
 
         @Test
         @DisplayName("and answers nothing for anything that is not one")
-        void itAnswersNothingForNonsense() {
-            assertThat(new FieldsOfAPostedEvent("").saysNothing()).isTrue();
-            assertThat(new FieldsOfAPostedEvent("hello").saysNothing()).isTrue();
-            assertThat(new FieldsOfAPostedEvent("[1,2]").saysNothing()).isTrue();
+        void answersNothingForNonsense() {
+            assertThat(new EventFields("").saysNothing()).isTrue();
+            assertThat(new EventFields("hello").saysNothing()).isTrue();
+            assertThat(new EventFields("[1,2]").saysNothing()).isTrue();
         }
     }
 }

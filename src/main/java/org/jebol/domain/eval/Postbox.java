@@ -13,9 +13,9 @@ public final class Postbox {
 
     public interface CallbackAnswer {
 
-        void answered(Value value);
+        void answer(Value value);
 
-        void failed(RuntimeException failure);
+        void fail(RuntimeException failure);
     }
 
     public record PortEvent(PortValue port, String eventType) {

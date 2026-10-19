@@ -1,5 +1,5 @@
 --- title Tuples
---- about A tuple is a run of bytes written with dots, which is what
+--- about A tuple is a run of bytes text with dots, which is what
 --- about makes it right for a version or a colour. The part worth
 --- about pinning is that arithmetic on one clamps at each end rather
 --- about than wrapping, so a segment never leaves 0 to 255.

@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LoadingCorpusTest {
 
     static Stream<CorpusEntry> entriesWithTypeAssertions() {
-        return CorpusReader.allEntries().stream()
+        return CorpusReader.readAllEntries().stream()
                 .filter(entry -> entry.expectedTypes().isPresent());
     }
 
@@ -46,7 +46,7 @@ class LoadingCorpusTest {
 
     @Test
     @DisplayName("the loading corpus is actually being exercised")
-    void loadingCorpusIsNotEmpty() {
+    void holdsEntries() {
         assertThat(entriesWithTypeAssertions().toList())
                 .as("corpus entries carrying a types assertion")
                 .hasSizeGreaterThan(20);
@@ -54,8 +54,8 @@ class LoadingCorpusTest {
 
     @Test
     @DisplayName("reading is a function of the text alone")
-    void readingIsDeterministic() {
-        CorpusReader.allEntries().stream()
+    void readsTheSameEachTime() {
+        CorpusReader.readAllEntries().stream()
                 .filter(entry -> entry.expectedTypes().isPresent())
                 .forEach(entry -> {
                     TranscodeResult first = Transcoder.transcode(entry.code());
@@ -72,8 +72,8 @@ class LoadingCorpusTest {
 
     @Test
     @DisplayName("nothing the reader produces carries a binding")
-    void everyWordComesBackUnbound() {
-        CorpusReader.allEntries().stream()
+    void leavesEveryWordUnbound() {
+        CorpusReader.readAllEntries().stream()
                 .filter(entry -> entry.expectedTypes().isPresent())
                 .map(entry -> Transcoder.transcode(entry.code()))
                 .filter(TranscodeResult::succeeded)

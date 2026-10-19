@@ -19,26 +19,26 @@ class StrandedPositionTest {
         ScriptOutcome outcome = interpreter.run(source);
         assertThat(outcome.conclusion())
                 .as("%s must not escape as a host exception", source)
-                .isEqualTo(Conclusion.PRODUCED_A_VALUE);
+                .isEqualTo(Conclusion.PRODUCED_VALUE);
         return interpreter.display(outcome);
     }
 
     @Test
     @DisplayName("a stranded block reads as empty")
-    void aStrandedBlockIsEmpty() {
+    void readsAStrandedBlockAsEmpty() {
         assertThat(answerTo(STRANDED + "mold b")).isEqualTo("\"[]\"");
     }
 
     @Test
     @DisplayName("it answers true to EMPTY? and TAIL?")
-    void itIsEmptyAndAtTheTail() {
+    void answersTrueToEmptyAndTail() {
         assertThat(answerTo(STRANDED + "empty? b")).isEqualTo("#(true)");
         assertThat(answerTo(STRANDED + "tail? b")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("PAST? is what tells it apart from an ordinary tail")
-    void pastIsTheDistinguishingQuestion() {
+    void isToldApartByPast() {
         assertThat(answerTo(STRANDED + "past? b")).isEqualTo("#(true)");
         assertThat(answerTo("past? tail [1 2 3]"))
                 .as("a value at the tail is not past it")
@@ -56,7 +56,7 @@ class StrandedPositionTest {
 
     @Test
     @DisplayName("a stranded string behaves the same way")
-    void aStrandedStringIsEmptyToo() {
+    void readsAStrandedStringAsEmptyToo() {
         String stranded = "s: \"1234\" t: skip s 3 ignore: remove/part s 3 ";
         assertThat(answerTo(stranded + "t")).isEqualTo("\"\"");
         assertThat(answerTo(stranded + "tail? t")).isEqualTo("#(true)");

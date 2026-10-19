@@ -26,26 +26,26 @@ public class ForEachNative extends LoopingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.softQuoted("target"),
-                Parameter.required("series"),
-                Parameter.required("body", A_BLOCK));
+        return List.of(Parameter.quoteSoftly("target"),
+                Parameter.of("series"),
+                Parameter.of("body", A_BLOCK));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> arguments.get(1) instanceof NoneValue
                 ? NoneValue.none()
-                : forEachLoop(evaluator, context, arguments.get(0), arguments.get(1),
+                : loopOverEach(evaluator, context, arguments.get(0), arguments.get(1),
                         (AnyBlockValue) arguments.get(2));
     }
 
-    private Value forEachLoop(Evaluator evaluator, Context within,
-            Value target, Value series, AnyBlockValue body) {
+    private Value loopOverEach(Evaluator evaluator, Context within,
+                               Value target, Value series, AnyBlockValue body) {
 
         List<AnyWordValue> names = loopNamesIn(target);
-        List<AnyWordValue> taking = namesThatTakeAValue(names);
+        List<AnyWordValue> taking = keepTheNamesThatTakeAValue(names);
         MapActions.refuseMoreNamesThanAPairHas(series, taking);
-        Supplier<List<Value>> itemsAsTheyStandNow = () -> keysOnly(series, taking.size());
+        Supplier<List<Value>> itemsAsTheyStandNow = () -> takeTheKeysOnly(series, taking.size());
 
         Context locals = Context.loopFrameOf(within);
         names.forEach(name -> locals.register(name.spelling()));
@@ -57,23 +57,23 @@ public class ForEachNative extends LoopingNative {
             List<Value> items = itemsAsTheyStandNow.get();
             while (at < items.size()) {
                 at = setLoopNamesFillingWithNonePastTheEnd(locals, names, items, at, series);
-                last = oneRoundCatchingContinue(evaluator, bound, locals);
+                last = runOneRoundCatchingContinue(evaluator, bound, locals);
                 items = itemsAsTheyStandNow.get();
             }
             return last;
         });
     }
 
-    private List<Value> keysOnly(Value series, int howManyNames) {
+    private List<Value> takeTheKeysOnly(Value series, int howManyNames) {
         if (howManyNames != 1) {
-            return series.items();
+            return series.listTheItems();
         }
         return switch (series) {
             case ObjectValue object -> object.context().slots().stream()
                     .<Value>map(slot -> WordValue.of(slot.spelling()))
                     .toList();
             case MapValue map -> map.keys();
-            default -> series.items();
+            default -> series.listTheItems();
         };
     }
 }

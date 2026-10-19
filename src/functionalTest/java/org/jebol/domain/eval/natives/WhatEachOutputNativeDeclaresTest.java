@@ -32,7 +32,7 @@ class WhatEachOutputNativeDeclaresTest {
     private String writtenBy(String source) {
         StringBuilder written = new StringBuilder();
         OutputPort output = written::append;
-        Interpreter.writingTo(output).run(source);
+        Interpreter.createWithOutput(output).run(source);
         return written.toString();
     }
 

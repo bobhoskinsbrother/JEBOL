@@ -9,16 +9,16 @@ public final class ImageOperations {
 
     private static final int OPAQUE = 0xFF;
 
-    private static int everyPixelOfTheRectangleAndNotTheSpareRow(ImageStorage storage) {
+    private static int countEveryPixelOfTheRectangle(ImageStorage storage) {
         return storage.wide() * storage.high();
     }
 
     public static void premultiply(ImageValue image) {
         ImageStorage storage = image.storage();
         for (int pixel = 1;
-                pixel <= everyPixelOfTheRectangleAndNotTheSpareRow(storage);
+                pixel <= countEveryPixelOfTheRectangle(storage);
                 pixel++) {
-            int[] rgba = storage.pixelAt(pixel);
+            int[] rgba = storage.readThePixelAt(pixel);
             int alpha = rgba[3];
             if (alpha == OPAQUE) {
                 continue;
@@ -37,20 +37,20 @@ public final class ImageOperations {
         }
         int wide = storage.wide();
         int high = storage.high();
-        int spread = noWiderThanHalfTheShorterSide(radius, wide, high);
-        byte[] picture = channelsOf(storage, wide, high);
+        int spread = limitToHalfTheShorterSide(radius, wide, high);
+        byte[] picture = readTheChannelsOf(storage, wide, high);
         byte[] working = new byte[picture.length];
-        for (int boxWidth : boxWidthsMatching(spread)) {
-            boxBlur(picture, working, wide, high, (boxWidth - 1) / 2);
+        for (int boxWidth : findTheBoxWidthsMatching(spread)) {
+            blurWithBoxes(picture, working, wide, high, (boxWidth - 1) / 2);
         }
         writeChannelsBack(storage, picture, wide, high);
     }
 
-    private static int noWiderThanHalfTheShorterSide(int radius, int wide, int high) {
+    private static int limitToHalfTheShorterSide(int radius, int wide, int high) {
         return Math.min(radius, Math.min(wide / 2, high / 2));
     }
 
-    private static int[] boxWidthsMatching(double spread) {
+    private static int[] findTheBoxWidthsMatching(double spread) {
         int narrower = (int) Math.floor(Math.sqrt((12 * spread * spread / 3) + 1));
         if (narrower % 2 == 0) {
             narrower--;
@@ -68,17 +68,17 @@ public final class ImageOperations {
         return widths;
     }
 
-    private static void boxBlur(byte[] picture, byte[] working,
-            int wide, int high, int spread) {
+    private static void blurWithBoxes(byte[] picture, byte[] working,
+                                      int wide, int high, int spread) {
 
         System.arraycopy(picture, 0, working, 0, wide * high * CHANNELS);
-        alongTheRows(working, picture, wide, high, spread);
-        downTheColumns(picture, working, wide, high, spread);
+        blurAlongTheRows(working, picture, wide, high, spread);
+        blurDownTheColumns(picture, working, wide, high, spread);
         System.arraycopy(working, 0, picture, 0, wide * high * CHANNELS);
     }
 
-    private static void alongTheRows(byte[] from, byte[] into,
-            int wide, int high, int spread) {
+    private static void blurAlongTheRows(byte[] from, byte[] into,
+                                         int wide, int high, int spread) {
 
         for (int row = 0; row < high; row++) {
             for (int channel = 0; channel < CHANNELS; channel++) {
@@ -114,8 +114,8 @@ public final class ImageOperations {
         }
     }
 
-    private static void downTheColumns(byte[] from, byte[] into,
-            int wide, int high, int spread) {
+    private static void blurDownTheColumns(byte[] from, byte[] into,
+                                           int wide, int high, int spread) {
 
         int aRow = wide * CHANNELS;
         for (int column = 0; column < wide; column++) {
@@ -152,15 +152,15 @@ public final class ImageOperations {
         }
     }
 
-    private static int roomTheBlurRunsIntoReadingZerosAsTheCDoes(int wide) {
+    private static int measureTheRoomTheBlurRunsInto(int wide) {
         return (wide * CHANNELS) + CHANNELS;
     }
 
-    private static byte[] channelsOf(ImageStorage storage, int wide, int high) {
+    private static byte[] readTheChannelsOf(ImageStorage storage, int wide, int high) {
         byte[] channels = new byte[(wide * high * CHANNELS)
-                + roomTheBlurRunsIntoReadingZerosAsTheCDoes(wide)];
+                + measureTheRoomTheBlurRunsInto(wide)];
         for (int pixel = 1; pixel <= wide * high; pixel++) {
-            int[] rgba = storage.pixelAt(pixel);
+            int[] rgba = storage.readThePixelAt(pixel);
             for (int channel = 0; channel < CHANNELS; channel++) {
                 channels[((pixel - 1) * CHANNELS) + channel] = (byte) rgba[channel];
             }
@@ -189,12 +189,12 @@ public final class ImageOperations {
 
     private static final int CHANNELS = 4;
 
-    public static ImageValue resized(ImageValue image, int wide, int high) {
+    public static ImageValue resize(ImageValue image, int wide, int high) {
         ImageStorage from = image.storage();
         ImageStorage into = ImageStorage.of(wide, high);
         for (int row = 0; row < high; row++) {
             for (int column = 0; column < wide; column++) {
-                int[] sampled = theNearestPixelOf(from, row, column, wide, high);
+                int[] sampled = readTheNearestPixelOf(from, row, column, wide, high);
                 int pixel = (row * wide) + column + 1;
                 into.setColourAt(pixel, sampled[0], sampled[1], sampled[2]);
                 into.setAlphaAt(pixel, sampled[3]);
@@ -203,26 +203,26 @@ public final class ImageOperations {
         return new ImageValue(into, 1);
     }
 
-    private static int[] theNearestPixelOf(
+    private static int[] readTheNearestPixelOf(
             ImageStorage from, int row, int column, int wide, int high) {
-        return from.pixelAt(((row * from.high() / high) * from.wide())
+        return from.readThePixelAt(((row * from.high() / high) * from.wide())
                 + (column * from.wide() / wide) + 1);
     }
 
-    public static double differenceBetween(ImageValue first, ImageValue second) {
+    public static double measureTheDifferenceBetween(ImageValue first, ImageValue second) {
         ImageStorage left = first.storage();
         ImageStorage right = second.storage();
-        int wide = onlyTheOverlapIsCompared(left.wide(), right.wide());
-        int high = onlyTheOverlapIsCompared(left.high(), right.high());
-        return howFarApart(left, right, 0, 0, wide, high);
+        int wide = measureTheOverlap(left.wide(), right.wide());
+        int high = measureTheOverlap(left.high(), right.high());
+        return measureHowFarApart(left, right, 0, 0, wide, high);
     }
 
-    private static int onlyTheOverlapIsCompared(int ours, int theirs) {
+    private static int measureTheOverlap(int ours, int theirs) {
         return Math.min(ours, theirs);
     }
 
-    public static double differenceOverTheRectangle(ImageValue first, ImageValue second,
-            int cornerX, int cornerY, int rectangleWide, int rectangleHigh) {
+    public static double measureTheDifferenceOverTheRectangle(ImageValue first, ImageValue second,
+                                                              int cornerX, int cornerY, int rectangleWide, int rectangleHigh) {
 
         ImageStorage left = first.storage();
         ImageStorage right = second.storage();
@@ -263,11 +263,11 @@ public final class ImageOperations {
             throw Raised.of(EvaluationFailure.INVALID_DATA,
                     PairValue.of(cornerX, cornerY));
         }
-        return howFarApart(left, right, fromX, fromY, wide, high);
+        return measureHowFarApart(left, right, fromX, fromY, wide, high);
     }
 
-    private static double howFarApart(ImageStorage left, ImageStorage right,
-            int fromX, int fromY, int wide, int high) {
+    private static double measureHowFarApart(ImageStorage left, ImageStorage right,
+                                             int fromX, int fromY, int wide, int high) {
 
         long leftCursor = (long) left.wide() * fromY;
         long rightCursor = (long) right.wide() * fromY;
@@ -276,9 +276,9 @@ public final class ImageOperations {
             leftCursor += fromX;
             rightCursor += fromX;
             for (int column = 0; column < wide; column++) {
-                apart += redmeanDistanceIgnoringAlpha(
-                        left.pixelAt((int) leftCursor + 1),
-                        right.pixelAt((int) rightCursor + 1));
+                apart += measureTheRedmeanDistance(
+                        left.readThePixelAt((int) leftCursor + 1),
+                        right.readThePixelAt((int) rightCursor + 1));
                 leftCursor++;
                 rightCursor++;
             }
@@ -299,7 +299,7 @@ public final class ImageOperations {
 
     private static final double WIDEST_DISTANCE_IN_PICOUNITS = 764_833_315_173_967.0;
 
-    private static double redmeanDistanceIgnoringAlpha(int[] left, int[] right) {
+    private static double measureTheRedmeanDistance(int[] left, int[] right) {
         long red = left[0] - right[0];
         long green = left[1] - right[1];
         long blue = left[2] - right[2];

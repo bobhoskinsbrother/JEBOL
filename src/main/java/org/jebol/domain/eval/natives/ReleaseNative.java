@@ -16,7 +16,7 @@ public class ReleaseNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("handle", Set.of(HandleValue.TYPE)));
+        return List.of(Parameter.of("handle", Set.of(HandleValue.TYPE)));
     }
 
     @Override

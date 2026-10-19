@@ -21,45 +21,45 @@ public final class VectorPath {
 
     public static Value read(VectorValue vector, Value selector) {
         if (selector instanceof AnyWordValue asked) {
-            return VectorQuery.field(vector, asked.canonical())
+            return VectorQuery.readTheField(vector, asked.canonical())
                     .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
                             asked.spelling()));
         }
-        Integer chosen = positionChosenBy(vector, selector);
+        Integer chosen = findThePositionChosenBy(vector, selector);
         if (chosen == null) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, Molder.mold(selector));
         }
         if (chosen < 1 || chosen > vector.storageLength()) {
             return NoneValue.none();
         }
-        return vector.itemAt(chosen);
+        return vector.readTheItemAt(chosen);
     }
 
     public static void write(VectorValue vector, Value selector, Value written) {
         if (!(selector instanceof IntegerValue) && !(selector instanceof AnyDecimalValue)) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET, Molder.mold(selector));
         }
-        Integer chosen = positionChosenBy(vector, selector);
+        Integer chosen = findThePositionChosenBy(vector, selector);
         if (chosen == null || chosen < 1 || chosen > vector.storageLength()) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(selector));
         }
         try {
-            vector.storage().set(chosen, storedFormOf(vector.kind(), written));
+            vector.storage().set(chosen, encodeForStorage(vector.kind(), written));
         } catch (ProtectedFromChange locked) {
             throw Raised.of(EvaluationFailure.PROTECTED);
         }
     }
 
     /** A number reduced to what this vector holds, or an error a script can catch. */
-    public static long storedFormOf(VectorKind kind, Value written) {
+    public static long encodeForStorage(VectorKind kind, Value written) {
         try {
-            return kind.storedForm(written);
+            return kind.encodeForStorage(written);
         } catch (IllegalArgumentException notANumber) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(written));
         }
     }
 
-    private static Integer positionChosenBy(VectorValue vector, Value selector) {
+    private static Integer findThePositionChosenBy(VectorValue vector, Value selector) {
         long asked;
         if (selector instanceof IntegerValue(long magnitude)) {
             asked = magnitude;

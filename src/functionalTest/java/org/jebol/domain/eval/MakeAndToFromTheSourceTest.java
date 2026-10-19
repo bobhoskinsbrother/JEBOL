@@ -40,7 +40,7 @@ class MakeAndToFromTheSourceTest {
             "1686360600.0,   10-Jun-2023/1:30",
         })
         @DisplayName("whole seconds and fractions, forwards and back through zero")
-        void wholeSecondsAndFractions(String seconds, String expected) {
+        void readsWholeSecondsAndFractions(String seconds, String expected) {
             assertThat(answerTo("mold to date! " + seconds)).isEqualTo(expected);
         }
 
@@ -51,7 +51,7 @@ class MakeAndToFromTheSourceTest {
             "0.1,   1-Jan-1970/0:00:00.1",
         })
         @DisplayName("a fraction is kept to the microsecond, which is the C's own choice")
-        void afractionIsKeptToTheMicrosecond(String seconds, String expected) {
+        void keepsAFractionToTheMicrosecond(String seconds, String expected) {
             assertThat(answerTo("mold to date! " + seconds))
                     .as("Timestamp_Decimal_To_Date multiplies out to microseconds "
                             + "rather than nanoseconds, and says why: a decimal "
@@ -61,7 +61,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("MAKE and TO answer the same, because the C shares the arm")
-        void makeAndToAnswerTheSame() {
+        void answersTheSameForMakeAndTo() {
             assertThat(answerTo("mold make date! 1632142001"))
                     .isEqualTo("20-Sep-2021/12:46:41");
         }
@@ -78,13 +78,13 @@ class MakeAndToFromTheSourceTest {
             "02-May-2003/12:00:00,  1051876800.0",
         })
         @DisplayName("as a decimal, which keeps the fraction")
-        void asadecimal(String written, String expected) {
+        void answersADecimalThatKeepsTheFraction(String written, String expected) {
             assertThat(answerTo("mold to decimal! " + written)).isEqualTo(expected);
         }
 
         @Test
         @DisplayName("as an integer, rounding the fraction rather than dropping it")
-        void asanIntegerRounding() {
+        void roundsTheFractionForAnInteger() {
             assertThat(answerTo("to integer! 20-Sep-2021/12:46:41.7"))
                     .as("the second after 12:46:41, not the same one")
                     .isEqualTo("1632142002");
@@ -92,7 +92,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("and the zone comes off, because it says how far ahead of UTC")
-        void thezoneComesOff() {
+        void takesTheZoneOff() {
             assertThat(answerTo("to integer! 20-Sep-2021/12:58:32+2:00"))
                     .isEqualTo("1632135512");
         }
@@ -104,7 +104,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("however the zone was or was not written down")
-        void howeverTheZoneWasWritten() {
+        void matchHoweverTheZoneIsWritten() {
             assertThat(answerTo("20-Sep-2021/12:46:41 = make date! 1632142001"))
                     .as("the timestamp writes a zone of zero down and the literal "
                             + "leaves it out, and comparing the two records whole "
@@ -117,7 +117,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("and equality agrees with ordering, which it did not")
-        void equalityAgreesWithOrdering() {
+        void agreeOnEqualityAndOrdering() {
             assertThat(answerTo("""
                     a: make date! 1632142001
                     b: 20-Sep-2021/12:46:41
@@ -133,7 +133,7 @@ class MakeAndToFromTheSourceTest {
             "'2-Feb-1999 < 1-Jan-2000',    '#(true)'",
         })
         @DisplayName("ordered by the day they name, not by how they are written")
-        void orderedByTheDayTheyName(String asked, String expected) {
+        void orderByTheDayTheyName(String asked, String expected) {
             assertThat(answerTo(asked))
                     .as("as text, 9-Jan comes after 10-Jan and 1-Jan-2000 comes "
                             + "before 2-Feb-1999, and both of those were the "
@@ -143,7 +143,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("and the zone counts, because it says which instant is meant")
-        void thezoneCounts() {
+        void countTheZone() {
             assertThat(answerTo("""
                     mold reduce [
                         20-Sep-2021/12:00+2:00 = 20-Sep-2021/10:00
@@ -154,7 +154,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("but strict equality reads the written form, zone included")
-        void strictEqualityReadsTheWrittenForm() {
+        void readTheWrittenFormForStrictEquality() {
             assertThat(answerTo("20-Sep-2021/12:00+2:00 == 20-Sep-2021/10:00"))
                     .as("the same instant, written two ways, and == is the "
                             + "question about the writing")
@@ -168,7 +168,7 @@ class MakeAndToFromTheSourceTest {
         @Test
         @DisplayName("a date with no time is its midnight for ordering and is not "
                 + "midnight for the written form")
-        void adateWithNoTimeIsItsMidnight() {
+        void treatADateWithNoTimeAsItsMidnight() {
             assertThat(answerTo("""
                     mold reduce [
                         1-Jan-2000 = 1-Jan-2000/0:00
@@ -181,7 +181,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("and SORT puts them in order too, for the same reason")
-        void sortputsThemInOrder() {
+        void sortInOrder() {
             assertThat(answerTo(
                     "mold sort [10-Jan-2000 9-Jan-2000 1-Jan-2000 2-Feb-1999]"))
                     .isEqualTo("[2-Feb-1999 1-Jan-2000 9-Jan-2000 10-Jan-2000]");
@@ -203,7 +203,7 @@ class MakeAndToFromTheSourceTest {
         })
         @DisplayName("a whole number is days, and the clock and the zone come "
                 + "through untouched")
-        void awholeNumberIsDays(String asked, String expected) {
+        void countsAWholeNumberAsDays(String asked, String expected) {
             assertThat(answerTo("mold " + asked))
                     .as("the C ends every arm at Normalize_Date with the zone it "
                             + "read off the original, and dropping both of them "
@@ -220,7 +220,7 @@ class MakeAndToFromTheSourceTest {
             "'1-Jan-2000/0:00 - 0:00:01',      31-Dec-1999/23:59:59",
         })
         @DisplayName("a time is a duration and carries into the day either way")
-        void atimeIsADuration(String asked, String expected) {
+        void countsATimeAsADuration(String asked, String expected) {
             assertThat(answerTo("mold " + asked))
                     .as("reading a time as a count of days put "
                             + "20-Sep-2021 + 1:00 five years out")
@@ -229,7 +229,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("and a date carrying no time comes back carrying one")
-        void adateWithNoTimeComesBackWithOne() {
+        void givesATimeToADateCarryingNone() {
             assertThat(answerTo("mold 20-Sep-2021 + 1:00"))
                     .as("if (secs == NO_TIME) secs = 0, before anything is added")
                     .isEqualTo("20-Sep-2021/1:00");
@@ -244,7 +244,7 @@ class MakeAndToFromTheSourceTest {
             "'20-Sep-2021/12:00+2:00 + 0.0',   20-Sep-2021/12:00+2:00",
         })
         @DisplayName("a decimal is a fraction of a day, so it moves the clock too")
-        void adecimalIsAFractionOfADay(String asked, String expected) {
+        void countsADecimalAsAFractionOfADay(String asked, String expected) {
             assertThat(answerTo("mold " + asked))
                     .as("1.9 days is one day and 21.6 hours, which lands two days "
                             + "on at 9:36 rather than one day on at noon")
@@ -258,7 +258,7 @@ class MakeAndToFromTheSourceTest {
             "'20-Sep-2021/12:00+2:00 - 20-Sep-2021/10:00',   0",
         })
         @DisplayName("but one date from another counts whole days and no clock")
-        void onedateFromAnotherCountsDays(String asked, String expected) {
+        void countsWholeDaysBetweenTwoDates(String asked, String expected) {
             assertThat(answerTo(asked))
                     .as("Diff_Date never looks at the time, so twenty-two hours "
                             + "apart is a difference of nothing -- and that is the "
@@ -274,7 +274,7 @@ class MakeAndToFromTheSourceTest {
         @ParameterizedTest(name = "make block! {0} is an empty block")
         @ValueSource(strings = {"4.0", "2x2", "0x2.2", "10"})
         @DisplayName("a number or a pair is room for values, not a value")
-        void anumberOrAPairIsRoom(String given) {
+        void takesANumberOrAPairAsRoom(String given) {
             assertThat(answerTo("mold make block! quote " + given)).isEqualTo("[]");
         }
 
@@ -283,13 +283,13 @@ class MakeAndToFromTheSourceTest {
             "4%", "$4", "%file", "u@email", "@ref", "http://aa", "<tag>",
         })
         @DisplayName("and everything else is an invalid argument, as Trap_Arg says")
-        void everythingElseIsRefused(String given) {
+        void refusesEverythingElse(String given) {
             assertThat(errorOr("make block! quote " + given)).isEqualTo("invalid-arg");
         }
 
         @Test
         @DisplayName("while TO wraps the same values without complaint")
-        void towrapsTheSameValues() {
+        void letsToWrapTheSameValues() {
             assertThat(answerTo("""
                     letter: #"a"
                     mold to block! letter""")).isEqualTo("""
@@ -302,7 +302,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("a percent is not a decimal, which is what makes 4% refused")
-        void apercentIsNotADecimal() {
+        void refusesAPercentAsADecimal() {
             assertThat(errorOr("make block! quote 4%")).isEqualTo("invalid-arg");
             assertThat(answerTo("mold make block! quote 4.0")).isEqualTo("[]");
         }
@@ -315,7 +315,7 @@ class MakeAndToFromTheSourceTest {
         @ParameterizedTest(name = "make {0}! none is refused")
         @ValueSource(strings = {"string", "file", "email", "ref", "url", "tag", "object"})
         @DisplayName("a string or an object refuses it as a bad make argument")
-        void astringOrAnObjectRefusesIt(String datatype) {
+        void isRefusedByAStringOrAnObject(String datatype) {
             assertThat(errorOr("make " + datatype + "! none")).isEqualTo("bad-make-arg");
         }
 
@@ -324,7 +324,7 @@ class MakeAndToFromTheSourceTest {
             "block", "paren", "path", "set-path", "get-path", "lit-path",
         })
         @DisplayName("and a block shape as an invalid argument, which is a different arm")
-        void ablockShapeRefusesItDifferently(String datatype) {
+        void isRefusedDifferentlyByABlockShape(String datatype) {
             assertThat(errorOr("make " + datatype + "! none"))
                     .as("Make_Block_Type reaches Trap_Arg where the string maker "
                             + "reaches Trap_Make, and Rebol reports the two "
@@ -335,13 +335,13 @@ class MakeAndToFromTheSourceTest {
         @ParameterizedTest(name = "to {0}! none is refused")
         @ValueSource(strings = {"string", "file", "email", "ref", "url", "tag"})
         @DisplayName("and TO refuses it too, where it used to answer the word none")
-        void toRefusesItToo(String datatype) {
+        void isRefusedByToToo(String datatype) {
             assertThat(errorOr("to " + datatype + "! none")).isEqualTo("bad-make-arg");
         }
 
         @Test
         @DisplayName("but UNSET and NONE answer their own single value")
-        void unsetAndNoneAnswerTheirOwn() {
+        void answersUnsetAndNoneAsThemselves() {
             assertThat(answerTo("unset? make unset! none")).isEqualTo("#(true)");
             assertThat(answerTo("none? make none! none")).isEqualTo("#(true)");
         }
@@ -359,7 +359,7 @@ class MakeAndToFromTheSourceTest {
             "money,   $1",
         })
         @DisplayName("true")
-        void whenTrue(String datatype, String expected) {
+        void makesOneFromTrue(String datatype, String expected) {
             assertThat(answerTo("mold make " + datatype + "! true")).isEqualTo(expected);
         }
 
@@ -371,13 +371,13 @@ class MakeAndToFromTheSourceTest {
             "money,   $0",
         })
         @DisplayName("and false")
-        void whenFalse(String datatype, String expected) {
+        void makesZeroFromFalse(String datatype, String expected) {
             assertThat(answerTo("mold make " + datatype + "! false")).isEqualTo(expected);
         }
 
         @Test
         @DisplayName("a value standing in for the datatype works the same way")
-        void avalueStandingInForTheDatatype() {
+        void acceptsAValueStandingInForTheDatatype() {
             assertThat(answerTo("mold make 0.0 true")).isEqualTo("1.0");
             assertThat(answerTo("mold make 42 false")).isEqualTo("0");
             assertThat(answerTo("mold make $111 true")).isEqualTo("$1");
@@ -387,7 +387,7 @@ class MakeAndToFromTheSourceTest {
         @ValueSource(strings = {"integer", "decimal", "percent", "money"})
         @DisplayName("but TO will not read one at all, which is the sharpest place "
                 + "MAKE and TO come apart")
-        void tostillWillNotReadOne(String datatype) {
+        void isRefusedByTo(String datatype) {
             assertThat(errorOr("to " + datatype + "! true"))
                     .as("the C leaves a note where it refuses: no integer is "
                             + "uniquely representative of true, so converting one "
@@ -407,7 +407,7 @@ class MakeAndToFromTheSourceTest {
             "block", "paren", "path", "set-path", "get-path", "lit-path",
         })
         @DisplayName("nothing included, where MAKE calls the same thing invalid")
-        void nothingIncluded(String datatype) {
+        void includesNothing(String datatype) {
             assertThat(answerTo("mold reduce ["
                     + "(" + datatype + "? made: to " + datatype + "! none) "
                     + "(1 = length? made) "
@@ -421,7 +421,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("and text stays text, where MAKE reads it as source")
-        void textStaysText() {
+        void keepsTextAsText() {
             assertThat(answerTo("""
                     mold to block! "1 2\"""")).isEqualTo("""
                     ["1 2"]""");
@@ -431,14 +431,14 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("a binary the same way, decoded rather than read, one way only")
-        void abinaryTheSameWay() {
+        void decodesABinaryTheSameWay() {
             assertThat(answerTo("mold to block! #{312032}")).isEqualTo("[#{312032}]");
             assertThat(answerTo("mold make block! #{312032}")).isEqualTo("[1 2]");
         }
 
         @Test
         @DisplayName("a typeset names its members, and only into a block or a paren")
-        void atypesetNamesItsMembers() {
+        void namesATypesetsMembers() {
             assertThat(answerTo("mold to block! #(typeset! [integer! percent!])"))
                     .isEqualTo("[#(integer!) #(percent!)]");
             assertThat(errorOr("make block! #(typeset! [integer! percent!])"))
@@ -447,7 +447,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("a hash is an any-block! for the typeset and not for this")
-        void ahashIsNotOneOfThem() {
+        void excludesAHash() {
             assertThat(errorOr("to hash! 4"))
                     .as("ANY_BLOCK_TYPE is a range test over the datatype table, "
                             + "block to lit-path, and hash sits one row past the "
@@ -464,7 +464,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("so both MAKE and TO answer its fields rather than wrapping it")
-        void bothAnswerItsFields() {
+        void answersItsFieldsToMakeAndTo() {
             assertThat(answerTo("mold to block! make object! [a: 1]"))
                     .as("the answer is a string holding a line break, and showing "
                             + "a string molds it a second time, so the break "
@@ -476,7 +476,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("with SELF left out, because the C starts counting one slot in")
-        void withSelfLeftOut() {
+        void leavesSelfOut() {
             assertThat(answerTo("mold to block! make object! [a: 1 b: 2]"))
                     .as("two fields put enough line breaks in the answer that "
                             + "showing it reaches for braces instead of quotes, "
@@ -486,7 +486,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("and the fields come back whatever is asked for them")
-        void thefieldsComeBackWhateverIsAsked() {
+        void answersTheFieldsWhateverIsAsked() {
             assertThat(answerTo("mold words-of make object! [a: 1 b: 2]"))
                     .isEqualTo("[a b]");
             assertThat(answerTo("mold values-of make object! [a: 1 b: 2]"))
@@ -509,7 +509,7 @@ class MakeAndToFromTheSourceTest {
             "'[2000 2 1 23 59 59.99]',      1-Feb-2000/23:59:59.99",
         })
         @DisplayName("a calendar day, then a clock written either way")
-        void acalendarDayThenAClock(String parts, String expected) {
+        void readsACalendarDayThenAClock(String parts, String expected) {
             assertThat(answerTo("mold make date! " + parts))
                     .as("a first number over ninety-nine is the year, so "
                             + "[2000 2 1] and [1 2 2000] are the same day and "
@@ -524,7 +524,7 @@ class MakeAndToFromTheSourceTest {
             "'[1-Feb-2000 1 2 3 2:00]',     1-Feb-2000/1:02:03+2:00",
         })
         @DisplayName("and then a zone, which is a second time after the first")
-        void andthenAZone(String parts, String expected) {
+        void readsAZoneAfterTheClock(String parts, String expected) {
             assertThat(answerTo("mold make date! " + parts))
                     .as("that a block may hold two times and the second is not "
                             + "another clock is the part worth knowing. Feeding "
@@ -538,7 +538,7 @@ class MakeAndToFromTheSourceTest {
             "[2000 2 1 24 0 0]", "[2000 2 1 23 60 0]", "[2000 2 1 23 59 60]",
         })
         @DisplayName("a clock is held to its own bounds, which a time is not")
-        void aclockIsHeldToItsOwnBounds(String parts) {
+        void holdsAClockToItsOwnBounds(String parts) {
             assertThat(errorOr("make date! " + parts))
                     .as("make time! [24 0 0] is a legal day's worth of hours and "
                             + "make date! [2000 2 1 24 0 0] is no date at all")
@@ -547,7 +547,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("and the twenty-fourth hour is a time, to show the difference")
-        void thetwentyFourthHourIsATime() {
+        void acceptsTheTwentyFourthHourAsATime() {
             assertThat(answerTo("mold make time! [24 0 0]")).isEqualTo("24:00");
         }
 
@@ -557,7 +557,7 @@ class MakeAndToFromTheSourceTest {
             "[2000 2 1 1 2 3 2:00 9]",
         })
         @DisplayName("and a day that is not one, or a part left over, is refused")
-        void adaythatIsNotOneIsRefused(String parts) {
+        void refusesADayThatIsNotOne(String parts) {
             assertThat(errorOr("make date! " + parts))
                     .as("a part the grammar cannot account for is not something "
                             + "to step over: if (!IS_END(arg)) return FALSE")
@@ -566,7 +566,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("while a leap year takes the twenty-ninth of February")
-        void aleapYearTakesTheTwentyNinth() {
+        void acceptsTheTwentyNinthInALeapYear() {
             assertThat(answerTo("mold make date! [2000 2 29]"))
                     .isEqualTo("29-Feb-2000");
         }
@@ -579,7 +579,7 @@ class MakeAndToFromTheSourceTest {
         @Test
         @DisplayName("which for a date is parts only, where MAKE also takes a count "
                 + "of seconds")
-        void adateFromPartsOnly() {
+        void readsADateFromPartsOnly() {
             assertThat(errorOr("load {#(date! 1)}"))
                     .as("MT_Date reads a date or a block of parts and nothing "
                             + "else; the timestamp lives in the arm one level up")
@@ -590,7 +590,7 @@ class MakeAndToFromTheSourceTest {
 
         @Test
         @DisplayName("and a block of parts still reads")
-        void ablockOfPartsStillReads() {
+        void stillReadsABlockOfParts() {
             assertThat(answerTo("mold load {#(date! [2000 1 1])}"))
                     .isEqualTo("1-Jan-2000");
         }
@@ -603,10 +603,10 @@ class MakeAndToFromTheSourceTest {
         @ParameterizedTest(name = "to {0}! #FF is refused")
         @ValueSource(strings = {"decimal", "percent"})
         @DisplayName("an issue has digits in it and is still not a number")
-        void anissueIsStillNotANumber(String datatype) {
+        void refusesAnIssue(String datatype) {
             assertThat(errorOr("to " + datatype + "! #FF"))
                     .as("bad-make-arg rather than expect-arg: the caller passed a "
-                            + "value this conversion cannot use, not the wrong kind "
+                            + "value this conversion cannot use, not the wrong type "
                             + "of thing to a function")
                     .isEqualTo("bad-make-arg");
         }
@@ -626,7 +626,7 @@ class MakeAndToFromTheSourceTest {
         })
         @DisplayName("a number-like source is the value itself, so four is four "
                 + "hundred percent")
-        void anumberLikeSourceIsTheValueItself(String source, String expected) {
+        void takesANumberLikeSourceAsTheValue(String source, String expected) {
             assertThat(answerTo("mold to percent! " + source))
                     .as("these reach setDec, which is above the division by a "
                             + "hundred rather than through it")
@@ -642,7 +642,7 @@ class MakeAndToFromTheSourceTest {
         })
         @DisplayName("and everything else is a count of hundredths, which is the "
                 + "one thing here that cannot be guessed")
-        void everythingElseIsACountOfHundredths(String source, String expected) {
+        void countsEverythingElseInHundredths(String source, String expected) {
             assertThat(answerTo("mold to percent! " + source))
                     .as("ten hours is thirty-six thousand seconds, and thirty-six "
                             + "thousand percent -- not a hundred times that")
@@ -658,7 +658,7 @@ class MakeAndToFromTheSourceTest {
             "$4,                     4.0",
         })
         @DisplayName("a decimal never divides, so the two agree there")
-        void adecimalNeverDivides(String source, String expected) {
+        void neverDividesADecimal(String source, String expected) {
             assertThat(answerTo("mold to decimal! " + source)).isEqualTo(expected);
         }
     }

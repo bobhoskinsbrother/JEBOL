@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class MalformedSourceAsRebolReportsItFromTheSourceTest {
 
-    private String whatLoadingAnswers(String source) {
+    private String describeWhatLoadingAnswers(String source) {
         String written = HexFormat.of().formatHex(source.getBytes(StandardCharsets.UTF_8));
         String asked = """
                 e: try [load to string! #{%s}]
@@ -113,6 +113,6 @@ class MalformedSourceAsRebolReportsItFromTheSourceTest {
             `#{0102}x` | `[#(block!) [#{0102} x]]`
             """)
     void answersAsRebolDoes(String source, String wanted) {
-        assertThat(whatLoadingAnswers(source)).isEqualTo(wanted);
+        assertThat(describeWhatLoadingAnswers(source)).isEqualTo(wanted);
     }
 }

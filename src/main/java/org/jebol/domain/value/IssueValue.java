@@ -5,7 +5,7 @@ public final class IssueValue extends AnyWordValue {
     public static final AnyWordDatatype TYPE = new AnyWordDatatype("issue") {
 
         @Override
-        public AnyWordValue spelt(String spelling, Context binding) {
+        public AnyWordValue spell(String spelling, Context binding) {
             return new IssueValue(spelling, binding);
         }
 
@@ -15,7 +15,7 @@ public final class IssueValue extends AnyWordValue {
         }
 
         @Override
-        Datatype theDatatypeTheScannerReadsItAs() {
+        Datatype findTheDatatypeTheScannerReads() {
             return this;
         }
     };
@@ -34,7 +34,7 @@ public final class IssueValue extends AnyWordValue {
     }
 
     @Override
-    public IssueValue boundTo(Context context) {
+    public IssueValue bindTo(Context context) {
         return new IssueValue(spelling(), context);
     }
 

@@ -23,7 +23,7 @@ class DatePartsFromTheSourceTest {
 
         @Test
         @DisplayName("a date and a time read as a date")
-        void aDateAndATimeAreADate() {
+        void readsADateAndATimeAsADate() {
             assertThat(answerTo("type? first load \"[1-Jan-2000/12:00]\""))
                     .isEqualTo("#(date!)");
             assertThat(answerTo("type? first load \"[1-Jan-2000/12:30:15+2:00]\""))
@@ -32,14 +32,14 @@ class DatePartsFromTheSourceTest {
 
         @Test
         @DisplayName("and a bare date still reads as one")
-        void aBareDateStillReads() {
+        void stillReadsABareDate() {
             assertThat(answerTo("type? first load \"[1-Jan-2000]\""))
                     .isEqualTo("#(date!)");
         }
 
         @Test
         @DisplayName("what it molds to reads back as the same date")
-        void itRoundTrips() {
+        void roundTrips() {
             for (String written : new String[] {
                 "1-Jan-2000", "1-Jan-2000/12:00", "1-Jan-2000/12:30:15",
                 "1-Jan-2000/12:00:00.5", "1-Jan-2000/12:00+2:00",
@@ -52,7 +52,7 @@ class DatePartsFromTheSourceTest {
 
         @Test
         @DisplayName("an offset of zero is written as nothing")
-        void anOffsetOfZeroIsWrittenAsNothing() {
+        void writesAnOffsetOfZeroAsNothing() {
             assertThat(answerTo("mold 1-Jan-2000/12:00+0:00"))
                     .isEqualTo("\"1-Jan-2000/12:00\"");
             assertThat(answerTo("d: 1-Jan-2000/12:00+0:00 d/zone")).isEqualTo("0:00");
@@ -61,7 +61,7 @@ class DatePartsFromTheSourceTest {
 
         @Test
         @DisplayName("an offset needs its colon, and Z is not an offset")
-        void anOffsetNeedsItsColon() {
+        void needsTheOffsetsColon() {
             assertThat(answerTo("d: first load \"[1-Jan-2000/12:00+2]\" d/zone"))
                     .isEqualTo("0:00");
             assertThat(answerTo("d: first load \"[1-Jan-2000/12:00Z]\" d/zone"))
@@ -70,7 +70,7 @@ class DatePartsFromTheSourceTest {
 
         @Test
         @DisplayName("a path that looks like a date is still a path")
-        void aPathIsStillAPath() {
+        void stillReadsAPathAsAPath() {
             assertThat(answerTo("type? first load \"[a/b/c]\"")).isEqualTo("#(path!)");
             assertThat(answerTo("type? first load \"[system/options]\""))
                     .isEqualTo("#(path!)");
@@ -85,21 +85,21 @@ class DatePartsFromTheSourceTest {
 
         @Test
         @DisplayName("year, month and day are integers")
-        void theCalendarParts() {
+        void readTheCalendarParts() {
             assertThat(answerTo(NOON + "reduce [d/year d/month d/day]"))
                     .isEqualTo("[2000 1 1]");
         }
 
         @Test
         @DisplayName("hour, minute and second read the local clock")
-        void theClockParts() {
+        void readTheClockParts() {
             assertThat(answerTo(NOON + "reduce [d/hour d/minute d/second]"))
                     .isEqualTo("[12 30 15]");
         }
 
         @Test
         @DisplayName("time and zone are times")
-        void timeAndZone() {
+        void readTimeAndZone() {
             assertThat(answerTo(NOON + "reduce [d/time d/zone d/timezone]"))
                     .isEqualTo("[12:30:15 2:00 2:00]");
         }
@@ -114,7 +114,7 @@ class DatePartsFromTheSourceTest {
 
         @Test
         @DisplayName("date drops both the time and the offset")
-        void dateDropsTheTime() {
+        void dropTheTimeForDate() {
             assertThat(answerTo(NOON + "d/date")).isEqualTo("1-Jan-2000");
             assertThat(answerTo(NOON + "e: d/date none? e/time")).isEqualTo(TRUE);
         }
@@ -131,7 +131,7 @@ class DatePartsFromTheSourceTest {
 
         @Test
         @DisplayName("second is whole until there is a fraction, and then it is a decimal")
-        void theSecondChangesDatatype() {
+        void changeDatatypeForTheSecond() {
             assertThat(answerTo("d: 1-Jan-2000/12:00:01 reduce [d/second integer? d/second]"))
                     .isEqualTo("[1 #(true)]");
             assertThat(answerTo("d: 1-Jan-2000/12:00:01.5 reduce [d/second decimal? d/second]"))
@@ -147,7 +147,7 @@ class DatePartsFromTheSourceTest {
 
         @Test
         @DisplayName("a number names a part by its place in the C's word list")
-        void aNumberNamesAPart() {
+        void answerToAPartsNumber() {
             assertThat(answerTo(NOON + "reduce [d/1 d/2 d/3 d/4]"))
                     .isEqualTo("[2000 1 1 12:30:15]");
             assertThat(answerTo(NOON + "reduce [d/5 d/6 d/7 d/8 d/9]"))
@@ -160,7 +160,7 @@ class DatePartsFromTheSourceTest {
 
         @Test
         @DisplayName("and a number outside the list answers none, as an unknown name does")
-        void aNumberOutsideTheList() {
+        void answerNoneForANumberOutsideTheList() {
             assertThat(answerTo(NOON + "reduce [none? d/0 none? d/15 none? d/invented]"))
                     .isEqualTo("[#(true) #(true) #(true)]");
         }
@@ -172,7 +172,7 @@ class DatePartsFromTheSourceTest {
 
         @Test
         @DisplayName("time, hour, minute, second and zone are all none")
-        void theClockPartsAreNone() {
+        void answersNoneForTheClockParts() {
             assertThat(answerTo(
                     "d: 1-Jan-2000 reduce [none? d/time none? d/hour none? d/minute "
                     + "none? d/second none? d/zone]"))
@@ -181,7 +181,7 @@ class DatePartsFromTheSourceTest {
 
         @Test
         @DisplayName("but the calendar parts all answer")
-        void theCalendarPartsAnswer() {
+        void answersTheCalendarParts() {
             assertThat(answerTo(
                     "d: 1-Jan-2000 reduce [d/year d/month d/day d/weekday d/yearday]"))
                     .isEqualTo("[2000 1 1 6 1]");
@@ -189,7 +189,7 @@ class DatePartsFromTheSourceTest {
 
         @Test
         @DisplayName("and so do date, utc and julian")
-        void theWholeDayParts() {
+        void answersTheWholeDayParts() {
             assertThat(answerTo("d: 1-Jan-2000 reduce [d/date d/utc d/julian]"))
                     .isEqualTo("[1-Jan-2000 1-Jan-2000 2451545.0]");
         }

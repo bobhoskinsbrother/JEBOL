@@ -16,7 +16,7 @@ class CompressionThisBuildLacksFromTheSourceTest {
 
     @Test
     @DisplayName("a real method this build has not got is a feature that is not available")
-    void aMissingMethodIsFeatureNa() {
+    void raisesFeatureNaForAMissingMethod() {
         assertThat(answerTo("""
                 collect [
                     foreach method [lz4 lzav][
@@ -28,7 +28,7 @@ class CompressionThisBuildLacksFromTheSourceTest {
 
     @Test
     @DisplayName("and the names are the ones Rebol's own catalogue uses")
-    void theNamesAreRebolsOwn() {
+    void usesRebolsOwnNames() {
         assertThat(answerTo("""
                 collect [
                     foreach method [deflate zlib gzip br crush lz4 lzav lzma lzw][
@@ -43,7 +43,7 @@ class CompressionThisBuildLacksFromTheSourceTest {
 
     @Test
     @DisplayName("and a name that is no method at all is an invalid argument")
-    void anUnknownMethodIsInvalidArg() {
+    void raisesInvalidArgForAnUnknownMethod() {
         assertThat(answerTo("""
                 raised: try [compress "test" 'nosuch]
                 raised/id""")).isEqualTo("invalid-arg");
@@ -61,7 +61,7 @@ class CompressionThisBuildLacksFromTheSourceTest {
 
     @Test
     @DisplayName("the methods this build does have still work")
-    void theMethodsItHasStillWork() {
+    void stillRunsTheMethodsItHas() {
         assertThat(answerTo("""
                 collect [
                     foreach method [gzip zlib deflate][

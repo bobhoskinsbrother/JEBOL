@@ -24,37 +24,37 @@ public final class SeriesChange {
         this.dup = dup;
     }
 
-    public Value changed(Value subject) {
+    public Value change(Value subject) {
         if (subject instanceof StructValue struct) {
             refuseWhatAGobOrAStructDoesNotServe();
-            return struct.changedBy(replacement);
+            return struct.changeBy(replacement);
         }
         if (subject instanceof ImageValue picture) {
-            return picture.changed(replacement, howManyTimesOver(),
+            return picture.change(replacement, countHowManyTimesOver(),
                     refinements.contains("only"), part.orElseGet(NoneValue::none));
         }
         if (part.isPresent() && subject instanceof RebolSeries stranded) {
-            return replacedAcrossThePart(stranded, part.get());
+            return replaceAcrossThePart(stranded, part.get());
         }
         if (subject instanceof GobValue gob) {
             refuseWhatAGobOrAStructDoesNotServe();
             GobPath.pokeWhichInsertsRatherThanReplaces(gob, gob.index(), replacement);
             return gob.atIndex(gob.index() + 1);
         }
-        Value replacing = dup.<Value>map(replacement::repeatedInABlock).orElse(replacement);
+        Value replacing = dup.<Value>map(replacement::repeatInABlock).orElse(replacement);
         return switch (subject) {
-            case BinaryValue bytes -> overwritten(bytes, replacing);
-            case AnyStringValue text -> overwritten((AnyStringValue) text.clampedToTail(), replacing);
-            case VectorValue vector -> overwritten((VectorValue) vector.clampedToTail());
-            case AnyBlockValue block -> overwritten((AnyBlockValue) block.clampedToTail(), replacing);
+            case BinaryValue bytes -> overwrite(bytes, replacing);
+            case AnyStringValue text -> overwrite((AnyStringValue) text.clampToTail(), replacing);
+            case VectorValue vector -> overwrite((VectorValue) vector.clampToTail());
+            case AnyBlockValue block -> overwrite((AnyBlockValue) block.clampToTail(), replacing);
             case Value anythingElse -> throw Raised.cannotUseTheAction(anythingElse, "change");
         };
     }
 
-    private Value replacedAcrossThePart(RebolSeries stranded, Value limit) {
-        Value copiedReplacement = replacement.copied(replacement instanceof AnyBlockValue);
+    private Value replaceAcrossThePart(RebolSeries stranded, Value limit) {
+        Value copiedReplacement = replacement.copy(replacement instanceof AnyBlockValue);
         long taking = stranded.countUpTo(limit);
-        RebolSeries series = stranded.clampedToTail();
+        RebolSeries series = stranded.clampToTail();
         if (taking < 0) {
             long back = Math.min(-taking, series.index() - 1L);
             series = series.atIndex((int) (series.index() - back));
@@ -69,8 +69,8 @@ public final class SeriesChange {
         return series.atIndex(series.index() + series.storageLength() - before);
     }
 
-    private Value overwritten(BinaryValue bytes, Value replacing) {
-        int[] octets = SeriesContents.octetsContributedBy(replacing);
+    private Value overwrite(BinaryValue bytes, Value replacing) {
+        int[] octets = SeriesContents.collectTheOctetsContributedBy(replacing);
         for (int at = 0; at < octets.length; at++) {
             int where = bytes.index() + at;
             if (where > bytes.storage().length()) {
@@ -82,7 +82,7 @@ public final class SeriesChange {
         return bytes.atIndex(bytes.index() + octets.length);
     }
 
-    private Value overwritten(AnyStringValue text, Value replacing) {
+    private Value overwrite(AnyStringValue text, Value replacing) {
         String written = replacing instanceof AnyBlockValue several
                 ? several.runTogether()
                 : Molder.form(replacing);
@@ -97,8 +97,8 @@ public final class SeriesChange {
         return text.atIndex(text.index() + letters.length);
     }
 
-    private Value overwritten(VectorValue vector) {
-        List<Value> numbers = numbersAdded(vector);
+    private Value overwrite(VectorValue vector) {
+        List<Value> numbers = collectTheNumbersAdded(vector);
         int asked = refinements.contains("part") ? partCount() : numbers.size();
         int removing = Math.max(0, Math.min(asked, vector.lengthFromHere()));
         for (int gone = 0; gone < removing; gone++) {
@@ -106,12 +106,12 @@ public final class SeriesChange {
         }
         for (int at = numbers.size(); at > 0; at--) {
             vector.storage().insertAt(vector.index(),
-                    VectorPath.storedFormOf(vector.kind(), numbers.get(at - 1)));
+                    VectorPath.encodeForStorage(vector.kind(), numbers.get(at - 1)));
         }
         return vector.atIndex(vector.index() + numbers.size());
     }
 
-    private Value overwritten(AnyBlockValue block, Value replacing) {
+    private Value overwrite(AnyBlockValue block, Value replacing) {
         Optional<AnyBlockValue> spread = !refinements.contains("only")
                 && replacing instanceof BlockValue several
                 ? Optional.of(several)
@@ -134,7 +134,7 @@ public final class SeriesChange {
     }
 
     private void insertInto(RebolSeries stranded, Value value) {
-        RebolSeries series = stranded.clampedToTail();
+        RebolSeries series = stranded.clampToTail();
         switch (series) {
             case AnyBlockValue block -> {
                 if (value instanceof AnyBlockValue added) {
@@ -150,18 +150,18 @@ public final class SeriesChange {
                     text.storage().insertAt(text.index() + at, added[at]);
                 }
             }
-            case ImageValue image -> pixelsInserted(image, value);
+            case ImageValue image -> insertPixels(image, value);
             case GobValue gob -> new GobActions(gob)
-                    .givenTheChildrenOf(value, gob.positionWithinThePane());
+                    .takeTheChildrenOf(value, gob.findThePositionWithinThePane());
             case VectorValue vector -> {
-                List<Value> numbers = vector.kind().numbersContributedBy(value);
+                List<Value> numbers = vector.kind().collectTheNumbersContributedBy(value);
                 for (int at = numbers.size(); at > 0; at--) {
                     vector.storage().insertAt(vector.index(),
-                            VectorPath.storedFormOf(vector.kind(), numbers.get(at - 1)));
+                            VectorPath.encodeForStorage(vector.kind(), numbers.get(at - 1)));
                 }
             }
             case BinaryValue bytes -> {
-                int[] octets = SeriesContents.octetsContributedBy(value);
+                int[] octets = SeriesContents.collectTheOctetsContributedBy(value);
                 for (int at = octets.length; at > 0; at--) {
                     bytes.storage().insertAt(bytes.index(), octets[at - 1]);
                 }
@@ -169,11 +169,11 @@ public final class SeriesChange {
         }
     }
 
-    private void pixelsInserted(ImageValue image, Value value) {
+    private void insertPixels(ImageValue image, Value value) {
         List<int[]> pixels = new ArrayList<>();
         if (value instanceof ImageValue added) {
             for (int at = 1; at <= added.lengthFromHere(); at++) {
-                pixels.add(added.pixelAt(at));
+                pixels.add(added.readThePixelAt(at));
             }
         } else if (value instanceof TupleValue colour) {
             int[] parts = colour.segments();
@@ -194,8 +194,8 @@ public final class SeriesChange {
         }
     }
 
-    private List<Value> numbersAdded(VectorValue vector) {
-        List<Value> once = vector.kind().numbersContributedBy(replacement);
+    private List<Value> collectTheNumbersAdded(VectorValue vector) {
+        List<Value> once = vector.kind().collectTheNumbersContributedBy(replacement);
         long rounds = refinements.contains("dup")
                 && dup.orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
                 ? magnitude
@@ -220,7 +220,7 @@ public final class SeriesChange {
         return EVERY_ONE;
     }
 
-    private long howManyTimesOver() {
+    private long countHowManyTimesOver() {
         return refinements.contains("dup")
                 && dup.orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
                 ? Math.max(0, magnitude)

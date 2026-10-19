@@ -19,23 +19,19 @@ import org.jebol.domain.host.TaskPort;
  *
  * <p>Specified in {@code spec/natives.allium}.
  */
-public final class TasksOnThreads implements TaskPort {
+public final class ThreadTasks implements TaskPort {
 
-    private final Bounds theBodyRunsUnder;
+    private final Bounds bounds;
 
-    public TasksOnThreads(Bounds theBodyRunsUnder) {
-        this.theBodyRunsUnder = theBodyRunsUnder;
+    public ThreadTasks(Bounds bounds) {
+        this.bounds = bounds;
     }
 
     @Override
     public void runTheBody(String bodyAsWritten, OutputPort output) {
-        Interpreter bodyInterpreter = Interpreter.writingTo(
-                output, withoutADeadline(theBodyRunsUnder));
+        Interpreter interpreter = Interpreter.createWithOutput(output, bounds.withoutATimeLimit());
         Thread.ofPlatform().daemon().name("jebol-task")
-                .start(() -> bodyInterpreter.run("do " + bodyAsWritten));
+                .start(() -> interpreter.run("do " + bodyAsWritten));
     }
 
-    private static Bounds withoutADeadline(Bounds given) {
-        return given.withoutAWallClockLimit();
-    }
 }

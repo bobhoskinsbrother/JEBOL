@@ -40,7 +40,7 @@ public interface ImagePort {
      * is the caller's mistake and a different failure from bytes it cannot
      * make sense of.
      */
-    boolean knows(String type);
+    boolean hasImageType(String type);
 
     /**
      * The pixels of an encoded image, or null where the bytes are not one.
@@ -52,26 +52,26 @@ public interface ImagePort {
      * <p>{@code type} may be empty, which means the bytes should say what they
      * are.
      */
-    Pixels decoded(byte[] encoded, String type, int frame);
+    Pixels decode(byte[] encoded, String type, int frame);
 
     /** The bytes of an image in the named format. */
-    byte[] encoded(Pixels image, String type);
+    byte[] encode(Pixels image, String type);
 
     /** A port that answers nothing, which is what a script gets by default. */
     static ImagePort none() {
         return new ImagePort() {
             @Override
-            public boolean knows(String type) {
+            public boolean hasImageType(String type) {
                 throw refuse();
             }
 
             @Override
-            public Pixels decoded(byte[] encoded, String type, int frame) {
+            public Pixels decode(byte[] encoded, String type, int frame) {
                 throw refuse();
             }
 
             @Override
-            public byte[] encoded(Pixels image, String type) {
+            public byte[] encode(Pixels image, String type) {
                 throw refuse();
             }
 

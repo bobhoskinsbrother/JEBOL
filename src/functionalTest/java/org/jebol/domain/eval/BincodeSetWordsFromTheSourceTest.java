@@ -14,13 +14,13 @@ class BincodeSetWordsFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("raised: try [" + source + "] raised/id");
     }
 
     @Test
     @DisplayName("a set-word names the value the next code reads")
-    void aSetWordNamesTheValueTheNextCodeReads() {
+    void givesASetWordTheValueTheNextCodeReads() {
         assertThat(answerTo("""
                 reduce [binary/read #{0102} [a: UI8 UI8] a]"""))
                 .isEqualTo("[[1 2] 1]");
@@ -28,7 +28,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a set-word with no code after it names nothing")
-    void aSetWordWithNoCodeAfterItNamesNothing() {
+    void namesNothingForASetWordWithNoCodeAfterIt() {
         assertThat(answerTo("""
                 spare: 99
                 reduce [binary/read #{01} [UI8 spare:] spare]"""))
@@ -37,7 +37,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a block of only a set-word reads nothing")
-    void aBlockOfOnlyASetWordReadsNothing() {
+    void readsNothingForABlockOfOnlyASetWord() {
         assertThat(answerTo("""
                 lone: 99
                 reduce [binary/read #{01} [lone:] lone]"""))
@@ -46,7 +46,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a set-word overwrites what the word already held")
-    void aSetWordOverwritesWhatTheWordAlreadyHeld() {
+    void overwritesWhatTheWordAlreadyHeld() {
         assertThat(answerTo("""
                 held: 99
                 binary/read #{07} [held: UI8]
@@ -55,7 +55,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("naming the same word twice keeps the second value")
-    void namingTheSameWordTwiceKeepsTheSecondValue() {
+    void keepsTheSecondValueForAWordNamedTwice() {
         assertThat(answerTo("""
                 binary/read #{0A0B} [twice: UI8 twice: UI8]
                 twice""")).isEqualTo("11");
@@ -63,7 +63,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a name given before a code that raises still stands")
-    void anEarlierNameSurvivesALaterRefusal() {
+    void keepsAnEarlierNameThroughALaterRefusal() {
         assertThat(answerTo("""
                 early: 5
                 try [binary/read #{01} [early: UI8 UI64]]
@@ -72,7 +72,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a length named on one code is spent on the next")
-    void aLengthNamedOnOneCodeIsSpentOnTheNext() {
+    void spendsALengthNamedOnOneCodeOnTheNext() {
         assertThat(answerTo("""
                 binary/read #{02414243} [n: UI8 BYTES :n]"""))
                 .isEqualTo("[2 #{4142}]");
@@ -80,7 +80,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a count of nothing reads no bytes")
-    void aCountOfNothingReadsNoBytes() {
+    void readsNoBytesForACountOfNothing() {
         assertThat(answerTo("""
                 binary/read #{0041} [n: UI8 BYTES :n UI8]"""))
                 .isEqualTo("[0 #{} 65]");
@@ -88,7 +88,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a position named earlier moves the read cursor")
-    void aPositionNamedEarlierMovesTheReadCursor() {
+    void movesTheReadCursorToAPositionNamedEarlier() {
         assertThat(answerTo("""
                 binary/read #{0301020304} [p: UI8 AT :p UI8]"""))
                 .isEqualTo("[3 2]");
@@ -96,7 +96,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a skip named earlier moves the read cursor")
-    void aSkipNamedEarlierMovesTheReadCursor() {
+    void movesTheReadCursorByASkipNamedEarlier() {
         assertThat(answerTo("""
                 binary/read #{020A0B0C0D} [s: UI8 SKIP :s UI8]"""))
                 .isEqualTo("[2 12]");
@@ -104,7 +104,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a width named earlier sizes a bit field")
-    void aWidthNamedEarlierSizesABitField() {
+    void sizesABitFieldByAWidthNamedEarlier() {
         assertThat(answerTo("""
                 binary/read #{04F0} [w: UI8 UB :w]"""))
                 .isEqualTo("[4 15]");
@@ -112,7 +112,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("the name lasts for the rest of the block, not just the next code")
-    void theNameLastsForTheRestOfTheBlock() {
+    void keepsTheNameForTheRestOfTheBlock() {
         assertThat(answerTo("""
                 binary/read #{020941424344} [n: UI8 UI8 BYTES :n]"""))
                 .isEqualTo("[2 9 #{4142}]");
@@ -120,7 +120,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("the end-of-central-directory record Rebol's own ZIP codec reads")
-    void theRecordRebolsZipCodecReads() {
+    void readsTheRecordRebolsZipCodecReads() {
         assertThat(answerTo("""
                 binary/read #{000000000100010050000000000000000300414243} [
                     UI16LE UI16LE UI16LE UI16LE UI32LE
@@ -130,7 +130,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("two set-words in a row name the one value, and add nothing")
-    void twoSetWordsInARowNameTheOneValue() {
+    void givesTwoSetWordsInARowTheOneValue() {
         assertThat(answerTo("""
                 reduce [binary/read #{01} [a: b: UI8] a b]"""))
                 .isEqualTo("[[1] 1 1]");
@@ -138,7 +138,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("three set-words in a row all name the one value")
-    void threeSetWordsInARowNameTheOneValue() {
+    void givesThreeSetWordsInARowTheOneValue() {
         assertThat(answerTo("""
                 reduce [binary/read #{09} [x: y: z: UI8] x y z]"""))
                 .isEqualTo("[[9] 9 9 9]");
@@ -146,7 +146,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a set-word adds no entry to what reading answers")
-    void aSetWordAddsNoEntryToTheAnswer() {
+    void addsNoEntryForASetWord() {
         assertThat(answerTo("""
                 binary/read #{010203} [a: UI8 UI8 UI8]"""))
                 .isEqualTo("[1 2 3]");
@@ -154,7 +154,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a code that only moves the cursor leaves the set-word waiting")
-    void aPositioningCodeLeavesTheSetWordWaiting() {
+    void leavesTheSetWordWaitingAfterAPositioningCode() {
         assertThat(answerTo("""
                 reduce [
                     binary/read #{0A0B0C} [m: AT 3 UI8] m
@@ -176,7 +176,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a set-word in a write block names a one-based position")
-    void aSetWordInAWriteBlockNamesAOneBasedPosition() {
+    void namesAOneBasedPositionInAWriteBlock() {
         assertThat(answerTo("""
                 b: binary 0 binary/write b [at-one: UI8 255]
                 c: binary 0 binary/write c [UI8 255 at-two: UI8 254]
@@ -186,7 +186,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a write block of only a set-word names the head")
-    void aWriteBlockOfOnlyASetWordNamesTheHead() {
+    void namesTheHeadForAWriteBlockOfOnlyASetWord() {
         assertThat(answerTo("""
                 b: binary 0
                 binary/write b [head-of-it:]
@@ -195,7 +195,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("two set-words in a write block name the one position")
-    void twoSetWordsInAWriteBlockNameTheOnePosition() {
+    void givesTwoSetWordsInAWriteBlockTheOnePosition() {
         assertThat(answerTo("""
                 b: binary 0
                 binary/write b [p: q: UI8 9]
@@ -204,7 +204,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a set-word after written bytes names where they end")
-    void aSetWordAfterWrittenBytesNamesWhereTheyEnd() {
+    void namesWhereWrittenBytesEnd() {
         assertThat(answerTo("""
                 b: binary 0
                 binary/write b [BYTES #{01020304} p: UI8 9]
@@ -213,7 +213,7 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("moving the write cursor moves where a set-word lands")
-    void movingTheWriteCursorMovesWhereASetWordLands() {
+    void movesWhereASetWordLandsWithTheWriteCursor() {
         assertThat(answerTo("""
                 b: binary 0
                 binary/write b [UI32 0 AT 2 p: UI8 9]
@@ -222,8 +222,8 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a name holding text where a count is wanted is refused")
-    void aCountThatIsNotANumberIsRefused() {
-        assertThat(errorIdFrom("""
+    void refusesACountThatIsNotANumber() {
+        assertThat(readTheErrorIdFrom("""
                 not-a-count: "nope"
                 binary/read #{02414243} [n: UI8 BYTES :not-a-count]"""))
                 .isEqualTo("invalid-spec");
@@ -231,11 +231,11 @@ class BincodeSetWordsFromTheSourceTest {
 
     @Test
     @DisplayName("a count outside the data is refused, negative or too large")
-    void aCountOutsideTheDataIsRefused() {
-        assertThat(errorIdFrom("""
+    void refusesACountOutsideTheData() {
+        assertThat(readTheErrorIdFrom("""
                 binary/read #{FF414243} [n: SI8 BYTES :n]"""))
                 .isEqualTo("out-of-range");
-        assertThat(errorIdFrom("""
+        assertThat(readTheErrorIdFrom("""
                 binary/read #{0941} [n: UI8 BYTES :n]"""))
                 .isEqualTo("out-of-range");
     }

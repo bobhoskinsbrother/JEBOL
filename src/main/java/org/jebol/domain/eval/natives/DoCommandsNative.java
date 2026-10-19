@@ -35,14 +35,14 @@ public class DoCommandsNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("commands", Set.of(BlockValue.TYPE)));
+        return List.of(Parameter.of("commands", Set.of(BlockValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
                 new CommandsInTurn(((AnyBlockValue) arguments.getFirst()).remaining(), evaluator, context)
-                        .theLastAnswer();
+                        .runToTheLastAnswer();
     }
 
     private static final class CommandsInTurn {
@@ -61,7 +61,7 @@ public class DoCommandsNative extends DefaultNative {
             this.context = context;
         }
 
-        private Value theLastAnswer() {
+        private Value runToTheLastAnswer() {
             Value last = UnsetValue.unset();
             while (at < items.size()) {
                 Optional<SetWordValue> answerGoesTo = items.get(at) instanceof SetWordValue named
@@ -70,23 +70,23 @@ public class DoCommandsNative extends DefaultNative {
                 if (answerGoesTo.isPresent()) {
                     at++;
                 }
-                Value answer = theNextCommandsAnswer();
-                answerGoesTo.ifPresent(named -> named.boundSlot().setValue(answer));
+                Value answer = runTheNextCommand();
+                answerGoesTo.ifPresent(named -> named.findTheBoundSlot().setValue(answer));
                 last = answer;
             }
             return last;
         }
 
-        private Value theNextCommandsAnswer() {
+        private Value runTheNextCommand() {
             Value named = items.get(at++);
-            Value function = named instanceof WordValue word ? word.boundSlot().value() : named;
+            Value function = named instanceof WordValue word ? word.findTheBoundSlot().value() : named;
             if (!(function instanceof CommandValue command)) {
                 throw Raised.of(EvaluationFailure.EXPECT_VAL, SetWordValue.of("command!"), named);
             }
             List<Value> gathered = new ArrayList<>();
             for (Parameter parameter : command.parameters()) {
                 if (parameter.consumesAnArgument() && parameter.owningRefinement().isEmpty()) {
-                    gathered.add(theArgumentFor(parameter, named));
+                    gathered.add(readTheArgumentFor(parameter, named));
                 }
             }
             try {
@@ -99,13 +99,13 @@ public class DoCommandsNative extends DefaultNative {
             }
         }
 
-        private Value theArgumentFor(Parameter parameter, Value named) {
+        private Value readTheArgumentFor(Parameter parameter, Value named) {
             if (at >= items.size()) {
                 throw Raised.of(EvaluationFailure.NO_ARG, named, parameter.asWrittenInTheSpec());
             }
-            Value given = whatTheArgumentIs(items.get(at++), parameter);
+            Value given = evaluateTheArgument(items.get(at++), parameter);
             if (!parameter.accepts(given.datatype())) {
-                throw new Raised(ErrorValue.about(
+                throw new Raised(ErrorValue.of(
                         EvaluationFailure.EXPECT_ARG.category(),
                         EvaluationFailure.EXPECT_ARG.errorId(),
                         "a command does not allow " + given.datatype().literalSpelling()
@@ -115,13 +115,13 @@ public class DoCommandsNative extends DefaultNative {
             return given;
         }
 
-        private Value whatTheArgumentIs(Value written, Parameter parameter) {
+        private Value evaluateTheArgument(Value written, Parameter parameter) {
             boolean fetched = parameter.kind() == ParameterKind.NORMAL;
             return switch (written) {
                 case ParenValue paren -> evaluator.evaluateOrRaise(paren, context);
-                case WordValue word when fetched -> word.boundSlot().value();
+                case WordValue word when fetched -> word.findTheBoundSlot().value();
                 case AnyPathValue path when fetched ->
-                        evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
+                        evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
                 default -> written;
             };
         }

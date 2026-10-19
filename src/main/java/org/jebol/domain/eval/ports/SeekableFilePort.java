@@ -39,7 +39,7 @@ public final class SeekableFilePort {
     }
 
     public long position() {
-        return switch (port.fieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE)) {
+        return switch (port.readTheFieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE)) {
             case IntegerValue at -> at.magnitude();
             case AnyBlockValue kept
                     when kept.remaining().get(THE_POSITION) instanceof IntegerValue(long magnitude) ->
@@ -53,21 +53,21 @@ public final class SeekableFilePort {
     }
 
     public boolean mayWriteThrough() {
-        return !(port.fieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE) instanceof AnyBlockValue kept)
+        return !(port.readTheFieldValue(THE_POSITION_AND_WHETHER_IT_MAY_WRITE) instanceof AnyBlockValue kept)
                 || kept.remaining().get(WHETHER_IT_MAY_WRITE).isTruthy();
     }
 
-    public void openedAt(long position, boolean mayWrite) {
+    public void openAt(long position, boolean mayWrite) {
         rememberOnThePort(position, mayWrite);
     }
 
     private void rememberOnThePort(long position, boolean mayWrite) {
-        port.setField(THE_POSITION_AND_WHETHER_IT_MAY_WRITE, BlockValue.block(
+        port.setField(THE_POSITION_AND_WHETHER_IT_MAY_WRITE, BlockValue.of(
                 List.of(IntegerValue.of(position), LogicValue.of(mayWrite))));
     }
 
     public String path() {
-        if (!(port.fieldValue("spec") instanceof ObjectValue spec)) {
+        if (!(port.readTheFieldValue("spec") instanceof ObjectValue spec)) {
             return "";
         }
         if (!spec.context().holds(WHAT_THE_PORT_WAS_MADE_FROM)) {
@@ -75,7 +75,7 @@ public final class SeekableFilePort {
         }
         Value made = spec.context().ownSlotFor(WHAT_THE_PORT_WAS_MADE_FROM).value();
         if (made instanceof UrlValue) {
-            return spec.fieldValue(WHERE_A_URL_LEAVES_ITS_PATH) instanceof AnyStringValue path ? path.text() : "";
+            return spec.readTheFieldValue(WHERE_A_URL_LEAVES_ITS_PATH) instanceof AnyStringValue path ? path.text() : "";
         }
         if (!(made instanceof FileValue file)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, made);
@@ -83,14 +83,14 @@ public final class SeekableFilePort {
         return file.text();
     }
 
-    private long sizeIn(FilePort files) {
-        return files.informationAbout(path())
+    private long measureTheSizeIn(FilePort files) {
+        return files.describe(path())
                 .flatMap(FileInformation::size)
                 .orElse(0L);
     }
 
     public Value readFrom(FilePort files, Optional<Long> howMany) {
-        long size = sizeIn(files);
+        long size = measureTheSizeIn(files);
         long at = Math.min(position(), size);
         long wanted = howMany.orElse(size - at);
         if (wanted < 0) {
@@ -113,22 +113,22 @@ public final class SeekableFilePort {
         moveTo(at + contents.length);
     }
 
-    public Value lengthLeft(FilePort files) {
+    public Value measureTheLengthLeft(FilePort files) {
         if (namesARunOfNamesRatherThanBytes()) {
-            return IntegerValue.of(files.namesIn(path()).size());
+            return IntegerValue.of(files.listFileNames(path()).size());
         }
-        return IntegerValue.of(Math.max(0, sizeIn(files) - position()));
+        return IntegerValue.of(Math.max(0, measureTheSizeIn(files) - position()));
     }
 
-    public Value wholeSize(FilePort files) {
-        return IntegerValue.of(sizeIn(files));
+    public Value measureTheWholeSize(FilePort files) {
+        return IntegerValue.of(measureTheSizeIn(files));
     }
 
     public boolean atTail(FilePort files) {
         if (namesARunOfNamesRatherThanBytes()) {
-            return files.namesIn(path()).isEmpty();
+            return files.listFileNames(path()).isEmpty();
         }
-        return position() >= sizeIn(files);
+        return position() >= measureTheSizeIn(files);
     }
 
     private boolean namesARunOfNamesRatherThanBytes() {

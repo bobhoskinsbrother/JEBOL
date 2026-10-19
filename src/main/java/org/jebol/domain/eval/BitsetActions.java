@@ -22,40 +22,40 @@ public final class BitsetActions implements Actions {
     }
 
     @Override
-    public Value poked(Value position, Value written) {
+    public Value poke(Value position, Value written) {
         members.requireChangeable();
         holdAllOf(position, written.isTruthy());
         return members;
     }
 
     @Override
-    public Value cleared() {
+    public Value clear() {
         members.requireChangeable();
         members.clear();
         return members;
     }
 
     @Override
-    public int length() {
+    public int measureTheLength() {
         return bitsReachedOver();
     }
 
     @Override
-    public Value complemented() {
-        return members.complemented();
+    public Value complement() {
+        return members.complement();
     }
 
     @Override
     public Value append(Asked asked) {
-        return givenTheBitsOf(asked);
+        return takeTheBitsOf(asked);
     }
 
     @Override
     public Value insert(Asked asked) {
-        return givenTheBitsOf(asked);
+        return takeTheBitsOf(asked);
     }
 
-    private Value givenTheBitsOf(Asked asked) {
+    private Value takeTheBitsOf(Asked asked) {
         members.requireChangeable();
         addAllOf(asked.given());
         return members;
@@ -68,28 +68,28 @@ public final class BitsetActions implements Actions {
                     : members.holds(codepoint);
         }
         if (asked instanceof IntegerValue(long magnitude)) {
-            return members.holds(bitAsked(magnitude));
+            return members.holds(findTheBitAsked(magnitude));
         }
-        return holdsEachOf(codePointsAskedAboutBy(asked), anyWillDo);
+        return holdsEachOf(collectTheCodePointsAskedAboutBy(asked), anyWillDo);
     }
 
     public boolean holds(Value asked) {
         return holds(asked, false, false);
     }
 
-    public Value heldForAPath(Value selector) {
+    public Value pickForAPath(Value selector) {
         return LogicValue.of(holds(selector));
     }
 
     public void addAllOf(Value asked) {
-        members.holdAll(meantBy(asked), true);
+        members.holdAll(readWhatIsMeantBy(asked), true);
     }
 
     public void holdAllOf(Value asked, boolean wanted) {
-        members.holdAll(meantBy(asked), wanted);
+        members.holdAll(readWhatIsMeantBy(asked), wanted);
     }
 
-    public Value removed(Set<String> refinements, Function<String, Value> theArgumentFor) {
+    public Value remove(Set<String> refinements, Function<String, Value> theArgumentFor) {
         boolean byKey = refinements.contains("key");
         boolean byPart = refinements.contains("part");
         if (byKey && byPart) {
@@ -97,13 +97,13 @@ public final class BitsetActions implements Actions {
                     "/key and /part each say what to remove, and only one can");
         }
         if (byKey) {
-            members.clearAllDirectly(meantBy(theArgumentFor.apply("key")));
+            members.clearAllDirectly(readWhatIsMeantBy(theArgumentFor.apply("key")));
             return members;
         }
         if (byPart) {
             Value range = theArgumentFor.apply("part");
             refuseWhatNamesNoRange(range);
-            members.clearAllDirectly(meantBy(range));
+            members.clearAllDirectly(readWhatIsMeantBy(range));
             return members;
         }
         throw Raised.of(EvaluationFailure.MISSING_ARG,
@@ -156,13 +156,13 @@ public final class BitsetActions implements Actions {
         return !anyWillDo;
     }
 
-    public static Value madeFrom(Value source) {
+    public static Value makeFrom(Value source) {
         return switch (source) {
             case AnyStringValue text ->
                     BitsetValue.ofCharacters(text.text().codePoints().toArray());
             case CharacterValue character -> BitsetValue.ofCharacters(character.codepoint());
             case IntegerValue room -> BitsetValue.of(
-                    new byte[(bitAsked(room.magnitude()) + 7) / 8]);
+                    new byte[(findTheBitAsked(room.magnitude()) + 7) / 8]);
             case BinaryValue octets -> BitsetValue.of(octets.octetsFromHere());
             case BitsetValue existing -> existing.duplicate();
             case AnyBlockValue members -> fromBlock(members);
@@ -171,15 +171,15 @@ public final class BitsetActions implements Actions {
         };
     }
 
-    public static BitsetValue meantBy(Value source) {
+    public static BitsetValue readWhatIsMeantBy(Value source) {
         if (source instanceof IntegerValue(long magnitude)) {
-            return BitsetValue.of(withBitSet(new byte[0], bitAsked(magnitude)));
+            return BitsetValue.of(withBitSet(new byte[0], findTheBitAsked(magnitude)));
         }
         if (!(source instanceof CharacterValue || source instanceof AnyStringValue
                 || source instanceof BinaryValue || source instanceof AnyBlockValue)) {
             throw Raised.of(EvaluationFailure.INVALID_TYPE, Molder.mold(source));
         }
-        return (BitsetValue) madeFrom(source);
+        return (BitsetValue) makeFrom(source);
     }
 
     private static Value fromBlock(AnyBlockValue written) {
@@ -188,11 +188,11 @@ public final class BitsetActions implements Actions {
                 && items.getFirst() instanceof AnyWordValue word
                 && word.canonical().equals("not");
         AnyBlockValue rest = complemented ? written.atIndex(written.index() + 1) : written;
-        BitsetValue set = BitsetValue.of(octetsNamedBy(rest.remaining(), written));
-        return complemented ? set.complemented() : set;
+        BitsetValue set = BitsetValue.of(collectTheOctetsNamedBy(rest.remaining(), written));
+        return complemented ? set.complement() : set;
     }
 
-    private static byte[] octetsNamedBy(List<Value> specs, AnyBlockValue whole) {
+    private static byte[] collectTheOctetsNamedBy(List<Value> specs, AnyBlockValue whole) {
         byte[] octets = new byte[0];
         for (int at = 0; at < specs.size(); at++) {
             Value spec = specs.get(at);
@@ -210,12 +210,12 @@ public final class BitsetActions implements Actions {
                     octets = withBitSet(octets, point);
                 }
             } else if (spec instanceof CharacterValue || spec instanceof IntegerValue) {
-                int from = bitAsked(codePointOf(spec));
+                int from = findTheBitAsked(readTheCodePointOf(spec));
                 int to = from;
                 if (at + 1 < specs.size()
                         && specs.get(at + 1) instanceof AnyWordValue dash
                         && dash.spelling().equals("-")) {
-                    to = bitAsked(codePointOf(farEndOfTheRun(spec, specs, at + 2)));
+                    to = findTheBitAsked(readTheCodePointOf(findTheFarEndOfTheRun(spec, specs, at + 2)));
                     at += 2;
                 }
                 if (to < from) {
@@ -231,7 +231,7 @@ public final class BitsetActions implements Actions {
         return octets;
     }
 
-    private static Value farEndOfTheRun(Value opening, List<Value> specs, int at) {
+    private static Value findTheFarEndOfTheRun(Value opening, List<Value> specs, int at) {
         Value closing = at < specs.size() ? specs.get(at) : UnsetValue.unset();
         if (opening.datatype() != closing.datatype()) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(closing));
@@ -239,7 +239,7 @@ public final class BitsetActions implements Actions {
         return closing;
     }
 
-    private static int[] codePointsAskedAboutBy(Value asked) {
+    private static int[] collectTheCodePointsAskedAboutBy(Value asked) {
         if (asked instanceof AnyStringValue text) {
             return text.text().codePoints().toArray();
         }
@@ -252,16 +252,16 @@ public final class BitsetActions implements Actions {
             return points;
         }
         if (asked instanceof AnyBlockValue specs) {
-            int[] points = codePointsIn(specs);
+            int[] points = collectTheCodePointsIn(specs);
             for (int point : points) {
-                bitAsked(point);
+                findTheBitAsked(point);
             }
             return points;
         }
         throw Raised.of(EvaluationFailure.INVALID_TYPE, Molder.mold(asked));
     }
 
-    private static int[] codePointsIn(AnyBlockValue written) {
+    private static int[] collectTheCodePointsIn(AnyBlockValue written) {
         List<Value> items = written.remaining();
         List<Integer> points = new ArrayList<>();
         for (int at = 0; at < items.size(); at++) {
@@ -269,8 +269,8 @@ public final class BitsetActions implements Actions {
                     && items.get(at + 1) instanceof AnyWordValue dash
                     && dash.spelling().equals("-");
             if (isRange) {
-                int from = codePointOf(items.get(at));
-                int to = codePointOf(items.get(at + 2));
+                int from = readTheCodePointOf(items.get(at));
+                int to = readTheCodePointOf(items.get(at + 2));
                 for (int point = from; point <= to; point++) {
                     points.add(point);
                 }
@@ -279,7 +279,7 @@ public final class BitsetActions implements Actions {
             }
             if (items.get(at) instanceof CharacterValue
                     || items.get(at) instanceof IntegerValue) {
-                points.add(codePointOf(items.get(at)));
+                points.add(readTheCodePointOf(items.get(at)));
             } else if (items.get(at) instanceof AnyStringValue text) {
                 text.text().codePoints().forEach(points::add);
             }
@@ -287,13 +287,13 @@ public final class BitsetActions implements Actions {
         return points.stream().mapToInt(Integer::intValue).toArray();
     }
 
-    private static int codePointOf(Value value) {
+    private static int readTheCodePointOf(Value value) {
         return value instanceof CharacterValue(int codepoint)
                 ? codepoint
                 : (int) Comparison.asDouble(value);
     }
 
-    static int bitAsked(long codepoint) {
+    static int findTheBitAsked(long codepoint) {
         if (codepoint < 0 || codepoint > Integer.MAX_VALUE) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                     codepoint + " names no bit a set could hold");
@@ -320,11 +320,11 @@ public final class BitsetActions implements Actions {
         return grown;
     }
 
-    public static BitsetValue charactersIn(String characters) {
+    public static BitsetValue collectTheCharactersIn(String characters) {
         return BitsetValue.ofCharacters(characters.chars().toArray());
     }
 
-    public static BitsetValue rangeOfCharacters(int from, int to) {
+    public static BitsetValue makeARangeOfCharacters(int from, int to) {
         int[] codes = new int[to - from + 1];
         for (int at = 0; at < codes.length; at++) {
             codes[at] = from + at;
@@ -333,22 +333,22 @@ public final class BitsetActions implements Actions {
     }
 
     public static BitsetValue lettersOfBothCases() {
-        return together(rangeOfCharacters('a', 'z'), rangeOfCharacters('A', 'Z'));
+        return join(makeARangeOfCharacters('a', 'z'), makeARangeOfCharacters('A', 'Z'));
     }
 
-    public static BitsetValue quotedPrintableOctets() {
+    public static BitsetValue listTheQuotedPrintableOctets() {
         StringBuilder allowed = new StringBuilder();
         for (int character = 0; character <= LAST_ASCII_CHARACTER; character++) {
             if (character != '=') {
                 allowed.append((char) character);
             }
         }
-        return charactersIn(allowed.toString());
+        return collectTheCharactersIn(allowed.toString());
     }
 
     private static final int LAST_ASCII_CHARACTER = 127;
 
-    public static BitsetValue together(BitsetValue first, BitsetValue second) {
+    public static BitsetValue join(BitsetValue first, BitsetValue second) {
         byte[] left = first.octets();
         byte[] right = second.octets();
         byte[] both = new byte[Math.max(left.length, right.length)];

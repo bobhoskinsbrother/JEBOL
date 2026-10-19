@@ -18,7 +18,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
 
     private static final double CLOSE_ENOUGH = 0.0001;
 
-    private static List<PaintInstruction> drawingOf(String drawBlock) {
+    private static List<PaintInstruction> drawTheDrawingOf(String drawBlock) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         String source = "make gob! [size: 100x100 draw: [" + drawBlock + "]]";
@@ -30,7 +30,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
     }
 
     private static PaintInstruction.Drawn onlyDrawing(String drawBlock) {
-        List<PaintInstruction> painted = drawingOf(drawBlock);
+        List<PaintInstruction> painted = drawTheDrawingOf(drawBlock);
         assertThat(painted).hasSize(1);
         return (PaintInstruction.Drawn) painted.getFirst();
     }
@@ -39,22 +39,22 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
     @DisplayName("LINE-PATTERN")
     class Dashes {
 
-        private static PaintState theDashedStrokeIn(String drawBlock) {
-            List<PaintInstruction> painted = drawingOf(drawBlock);
+        private static PaintState readTheDashedStrokeIn(String drawBlock) {
+            List<PaintInstruction> painted = drawTheDrawingOf(drawBlock);
             return ((PaintInstruction.Drawn) painted.getLast()).painted();
         }
 
         @Test
         @DisplayName("turns the stroke into dashes of the lengths given")
         void turnsTheStrokeIntoDashes() {
-            assertThat(theDashedStrokeIn("line-pattern 255.0.0 10 4 line 0x0 90x90")
+            assertThat(readTheDashedStrokeIn("line-pattern 255.0.0 10 4 line 0x0 90x90")
                     .dashes()).containsExactly(10.0, 4.0);
         }
 
         @Test
         @DisplayName("one length is equal dashes and gaps")
-        void oneLengthIsEqualDashesAndGaps() {
-            assertThat(theDashedStrokeIn("line-pattern 255.0.0 6 line 0x0 90x90")
+        void evenOutDashesAndGapsForOneLength() {
+            assertThat(readTheDashedStrokeIn("line-pattern 255.0.0 6 line 0x0 90x90")
                     .dashes()).containsExactly(6.0);
         }
 
@@ -66,8 +66,8 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
 
         @Test
         @DisplayName("and with no lengths at all it is a solid line again")
-        void withNoLengthsItIsSolidAgain() {
-            List<PaintInstruction> painted = drawingOf(
+        void turnSolidAgainWithNoLengths() {
+            List<PaintInstruction> painted = drawTheDrawingOf(
                     "line-pattern 255.0.0 10 4 line 0x0 90x90 "
                             + "line-pattern line 0x0 90x10");
 
@@ -83,7 +83,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
         @Test
         @DisplayName("PUSH puts the dashes back with everything else")
         void pushPutsTheDashesBack() {
-            List<PaintInstruction> painted = drawingOf(
+            List<PaintInstruction> painted = drawTheDrawingOf(
                     "push [line-pattern 255.0.0 8 line 0x0 90x90] line 0x0 90x10");
 
             assertThat(((PaintInstruction.Drawn) painted.get(1)).painted().dashes())
@@ -102,7 +102,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
         @DisplayName("puts a head on the far end of a line, as a shape of its own")
         void putsAHeadOnTheFarEnd() {
             List<PaintInstruction> painted =
-                    drawingOf("arrow 255.0.0 0x1 line 10x10 90x10");
+                    drawTheDrawingOf("arrow 255.0.0 0x1 line 10x10 90x10");
 
             assertThat(painted).hasSize(2);
             PaintInstruction.Drawn head = (PaintInstruction.Drawn) painted.get(1);
@@ -112,9 +112,9 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
 
         @Test
         @DisplayName("and the head is filled in the colour the command named")
-        void theHeadIsFilledInItsOwnColour() {
+        void fillTheHeadInTheNamedColour() {
             PaintInstruction.Drawn head = (PaintInstruction.Drawn)
-                    drawingOf("pen 0.0.255 arrow 255.0.0 0x1 line 10x10 90x10").get(1);
+                    drawTheDrawingOf("pen 0.0.255 arrow 255.0.0 0x1 line 10x10 90x10").get(1);
 
             assertThat(head.painted().fillColour()).contains(new Colour(255, 0, 0));
             assertThat(head.painted().strokeColour()).isEmpty();
@@ -122,28 +122,28 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
 
         @Test
         @DisplayName("with no colour of its own it takes the pen's")
-        void withNoColourOfItsOwnItTakesThePens() {
+        void takeThePensColourWithNoneOfTheirOwn() {
             PaintInstruction.Drawn head = (PaintInstruction.Drawn)
-                    drawingOf("pen 0.0.255 arrow 0x1 line 10x10 90x10").get(1);
+                    drawTheDrawingOf("pen 0.0.255 arrow 0x1 line 10x10 90x10").get(1);
 
             assertThat(head.painted().fillColour()).contains(new Colour(0, 0, 255));
         }
 
         @Test
         @DisplayName("and on the near end when the first flag says so")
-        void andOnTheNearEndToo() {
+        void goOnTheNearEndWhenAsked() {
             int withFarHead = ((PaintInstruction.Drawn)
-                    drawingOf("arrow 255.0.0 0x1 line 10x10 90x10").get(1)).path().size();
+                    drawTheDrawingOf("arrow 255.0.0 0x1 line 10x10 90x10").get(1)).path().size();
             int withBothHeads = ((PaintInstruction.Drawn)
-                    drawingOf("arrow 255.0.0 1x1 line 10x10 90x10").get(1)).path().size();
+                    drawTheDrawingOf("arrow 255.0.0 1x1 line 10x10 90x10").get(1)).path().size();
 
             assertThat(withBothHeads).isGreaterThan(withFarHead);
         }
 
         @Test
         @DisplayName("with both flags zero it is the line it always was")
-        void withBothFlagsZeroItIsJustALine() {
-            assertThat(drawingOf("arrow 255.0.0 0x0 line 10x10 90x10")).hasSize(1);
+        void leaveJustALineWithBothFlagsZero() {
+            assertThat(drawTheDrawingOf("arrow 255.0.0 0x0 line 10x10 90x10")).hasSize(1);
             assertThat(onlyDrawing("arrow 255.0.0 0x0 line 10x10 90x10").path())
                     .isEqualTo(onlyDrawing("line 10x10 90x10").path());
         }
@@ -151,7 +151,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
         @Test
         @DisplayName("and the gaps between dashes are drawn in the dash colour")
         void thegapsBetweenDashesAreDrawnInTheDashColour() {
-            List<PaintInstruction> painted = drawingOf(
+            List<PaintInstruction> painted = drawTheDrawingOf(
                     "pen 0.0.255 line-pattern 255.0.0 10 6 line 10x50 90x50");
 
             assertThat(painted).hasSize(2);
@@ -165,17 +165,17 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
 
         @Test
         @DisplayName("a head is four line widths long, so a heavier line carries a bigger one")
-        void aheadIsSizedFromTheLineWidth() {
-            List<PathStep> thin = ((PaintInstruction.Drawn) drawingOf(
+        void growWithTheLineWidth() {
+            List<PathStep> thin = ((PaintInstruction.Drawn) drawTheDrawingOf(
                     "line-width 1 arrow 255.0.0 0x1 line 10x50 90x50").get(1)).path();
-            List<PathStep> thick = ((PaintInstruction.Drawn) drawingOf(
+            List<PathStep> thick = ((PaintInstruction.Drawn) drawTheDrawingOf(
                     "line-width 4 arrow 255.0.0 0x1 line 10x50 90x50").get(1)).path();
 
-            assertThat(headWidthOf(thin)).isCloseTo(4, within(0.5));
-            assertThat(headWidthOf(thick)).isCloseTo(16, within(0.5));
+            assertThat(measureTheHeadWidthOf(thin)).isCloseTo(4, within(0.5));
+            assertThat(measureTheHeadWidthOf(thick)).isCloseTo(16, within(0.5));
         }
 
-        private double headWidthOf(List<PathStep> path) {
+        private double measureTheHeadWidthOf(List<PathStep> path) {
             double lowest = Double.MAX_VALUE;
             double highest = -Double.MAX_VALUE;
             for (PathStep step : path) {
@@ -189,8 +189,8 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
 
         @Test
         @DisplayName("and a closed shape gets no head, having no ends")
-        void aclosedShapeGetsNoHead() {
-            assertThat(drawingOf("arrow 255.0.0 1x1 box 10x10 90x90")).hasSize(1);
+        void skipAClosedShape() {
+            assertThat(drawTheDrawingOf("arrow 255.0.0 1x1 box 10x10 90x90")).hasSize(1);
         }
     }
 
@@ -200,7 +200,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
 
         @Test
         @DisplayName("a gradient with no type word is linear, as host-draw.c makes it")
-        void noTypeIsLinear() {
+        void areLinearWithNoType() {
             Gradient made = onlyDrawing(
                     "grad-pen 1x1 0 20 90 [10.10.10 200.200.200] box 0x0 100x20")
                     .painted().fillGradient().orElseThrow();
@@ -212,7 +212,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
 
         @Test
         @DisplayName("and keeps the offset, the range and the angle it was given")
-        void noTypeKeepsItsNumbers() {
+        void keepTheirNumbersWithNoType() {
             Gradient made = onlyDrawing(
                     "grad-pen 1x1 0 20 90 [10.10.10 200.200.200] box 0x0 100x20")
                     .painted().fillGradient().orElseThrow();
@@ -226,7 +226,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
 
         @Test
         @DisplayName("the 2010 GUI's progress bar track, half-transparent greys with no type, is a gradient")
-        void theProgressBarsTrackIsAGradient() {
+        void includeTheProgressBarsTrack() {
             assertThat(onlyDrawing(
                     "pen 96.96.96 line-width 1.5 grad-pen 1x1 0 20 90 [24.24.24.128 40.40.40.128 80.80.80.128] "
                             + "box 1x1 200x20 3").painted().fillGradient()).isPresent();
@@ -234,8 +234,8 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
 
         @Test
         @DisplayName("a fill-pen after a gradient fills with the colour, as the 2010 GUI's slider knob shows")
-        void aFillPenReplacesTheGradient() {
-            List<PaintInstruction> painted = drawingOf(
+        void giveWayToAFillPen() {
+            List<PaintInstruction> painted = drawTheDrawingOf(
                     "grad-pen 1x1 0 4 90 [40.40.40 160.160.160] box 1x1 200x10 3 "
                             + "fill-pen 255.0.0 triangle -6x16 0x2 6x16");
             PaintState theKnob = ((PaintInstruction.Drawn) painted.getLast()).painted();
@@ -257,7 +257,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
 
         @Test
         @DisplayName("and a gradient after a fill-pen is the gradient again")
-        void aGradientAfterAFillPenWins() {
+        void winAfterAFillPen() {
             assertThat(onlyDrawing(
                     "fill-pen 255.0.0 grad-pen 1x1 0 4 90 [40.40.40 160.160.160] box 1x1 200x10")
                     .painted().fillGradient()).isPresent();
@@ -265,7 +265,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
 
         @Test
         @DisplayName("a gradient with no type and one colour is still no gradient")
-        void noTypeAndOneColourIsNone() {
+        void vanishWithNoTypeAndOneColour() {
             assertThat(onlyDrawing("grad-pen 1x1 0 20 90 [10.10.10] box 0x0 100x20")
                     .painted().fillGradient()).isEmpty();
         }
@@ -298,7 +298,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
         @Test
         @DisplayName("a conic gradient is drawn as a fan of wedges, worked out here")
         void aconicGradientIsAFanOfWedges() {
-            List<PaintInstruction> painted = drawingOf(
+            List<PaintInstruction> painted = drawTheDrawingOf(
                     "pen off grad-pen conic normal 50x50 0 100 0 1 1 "
                             + "[255.0.0 0.0.255] box 0x0 100x100");
 
@@ -312,7 +312,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
         @Test
         @DisplayName("and a diamond one as rings stood on their corners")
         void adiamondGradientIsRings() {
-            List<PaintInstruction> painted = drawingOf(
+            List<PaintInstruction> painted = drawTheDrawingOf(
                     "pen off grad-pen diamond normal 50x50 0 100 0 1 1 "
                             + "[255.0.0 0.0.255] box 0x0 100x100");
 
@@ -332,7 +332,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
                             + "box 0x0 100x100").painted().fillGradient().orElseThrow();
 
             assertThat(diagonal.angle()).isEqualTo(straight.angle() + 45);
-            assertThat(diagonal.shape().aToolkitCanDrawIt()).isTrue();
+            assertThat(diagonal.shape().canBeDrawnByAToolkit()).isTrue();
         }
 
         @Test
@@ -369,7 +369,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
         @Test
         @DisplayName("a shape with a gradient and no fill colour still paints")
         void ashapeWithAGradientAndNoFillColourStillPaints() {
-            assertThat(drawingOf(
+            assertThat(drawTheDrawingOf(
                     "pen off grad-pen linear normal 50x50 0 100 0 1 1 "
                             + "[255.0.0 0.0.255] box 0x0 100x100")).hasSize(1);
         }

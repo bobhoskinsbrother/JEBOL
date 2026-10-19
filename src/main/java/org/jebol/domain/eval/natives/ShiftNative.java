@@ -29,19 +29,19 @@ public class ShiftNative extends ArithmeticNative {
             long value = ((IntegerValue) arguments.get(0)).magnitude();
             long places = ((IntegerValue) arguments.get(1)).magnitude();
             return IntegerValue.of(refinements.contains("logical")
-                    ? bitsShifted(value, places)
-                    : shiftedKeepingTheSign(value, places));
+                    ? shiftTheBits(value, places)
+                    : shiftKeepingTheSign(value, places));
         };
     }
 
-    private long bitsShifted(long value, long places) {
+    private long shiftTheBits(long value, long places) {
         if (Math.abs(places) >= Long.SIZE) {
             return 0;
         }
         return places >= 0 ? value << places : value >>> -places;
     }
 
-    private long shiftedKeepingTheSign(long value, long places) {
+    private long shiftKeepingTheSign(long value, long places) {
         if (places < 0) {
             long rightwards = -places;
             return rightwards >= Long.SIZE ? value >> (Long.SIZE - 1) : value >> rightwards;

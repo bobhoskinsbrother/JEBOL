@@ -29,41 +29,41 @@ public abstract non-sealed class DefaultNative implements NativeValue {
         return declaredSpec;
     }
 
-    public final void declaredBy(AnyBlockValue spec, List<Parameter> declared) {
+    public final void declare(AnyBlockValue spec, List<Parameter> declared) {
         this.declaredSpec = Optional.of(spec);
         this.declaredParameters = Optional.of(List.copyOf(declared));
     }
 
     @Override
     public String toString() {
-        return "native " + nativeName() + "/" + arity();
+        return "native " + nativeName() + "/" + countTheArity();
     }
 
     protected List<Parameter> acceptsAnyType(String... names) {
-        return each(names, TypesetValue.ANY_TYPE.members());
+        return declareEach(names, TypesetValue.ANY_TYPE.members());
     }
 
-    protected Set<Datatype> aPartLimit() {
+    protected Set<Datatype> listThePartLimitTypes() {
         return Stream.concat(
                         TypesetValue.NUMBER.membersAnd(PairValue.TYPE).stream(),
                         TypesetValue.SERIES.members().stream())
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    protected Set<Datatype> aDuplicateCount() {
+    protected Set<Datatype> listTheDuplicateCountTypes() {
         return TypesetValue.NUMBER.membersAnd(PairValue.TYPE);
     }
 
     protected List<Parameter> acceptsWhateverComesAlong(String... names) {
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
-            parameters.add(Parameter.required(name));
+            parameters.add(Parameter.of(name));
         }
         return parameters;
     }
 
-    protected Optional<Value> argumentOf(String refinement, int which,
-            List<Value> arguments, Set<String> asked) {
+    protected Optional<Value> readTheArgumentOf(String refinement, int which,
+                                                List<Value> arguments, Set<String> asked) {
 
         if (!asked.contains(refinement)) {
             return Optional.empty();
@@ -92,7 +92,7 @@ public abstract non-sealed class DefaultNative implements NativeValue {
     }
 
     protected Value refuseTheArgument(Value given, String declaredArgument) {
-        throw new Raised(ErrorValue.about(
+        throw new Raised(ErrorValue.of(
                 EvaluationFailure.EXPECT_ARG.category(),
                 EvaluationFailure.EXPECT_ARG.errorId(),
                 nativeName() + " does not allow " + given.datatype().literalSpelling()
@@ -106,10 +106,10 @@ public abstract non-sealed class DefaultNative implements NativeValue {
         throw Raised.cannotUse(given, this);
     }
 
-    protected List<Parameter> each(String[] names, Set<Datatype> allowed) {
+    protected List<Parameter> declareEach(String[] names, Set<Datatype> allowed) {
         List<Parameter> parameters = new ArrayList<>();
         for (String name : names) {
-            parameters.add(Parameter.required(name, allowed));
+            parameters.add(Parameter.of(name, allowed));
         }
         return parameters;
     }

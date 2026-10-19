@@ -18,19 +18,19 @@ public class HsvToRgbNative extends ColourNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("hsv", Set.of(TupleValue.TYPE)));
+        return List.of(Parameter.of("hsv", Set.of(TupleValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                recolouredTuple((TupleValue) arguments.getFirst(), this::hsvToRgb);
+                recolourTheTuple((TupleValue) arguments.getFirst(), this::convertHsvToRgb);
     }
 
-    private int[] hsvToRgb(int[] hsv) {
+    private int[] convertHsvToRgb(int[] hsv) {
         int saturation = hsv[1];
         if (saturation == 0) {
-            return allThreeAt(hsv[2]);
+            return setAllThreeTo(hsv[2]);
         }
         double sixths = hsv[0] / A_SIXTH_OF_THE_WHEEL;
         int sector = (int) sixths;

@@ -207,7 +207,7 @@ rounding division uses, since `$10 / 3` does not terminate.
 ## 11. Five choices the implementation made, now ratified
 
 These were decided while building milestone 1 and were working before they
-were written down. Recorded here so they are decisions rather than
+were text down. Recorded here so they are decisions rather than
 accidents, and so reversing one is a visible act.
 
 **Incomplete console input is detected by asking the reader, not by
@@ -349,11 +349,11 @@ a black box means guessing where the boundaries are. `to-integer` on a
 string fails in three distinguishable ways, and the third was found by
 chance rather than by design. The branches are all in the C, and
 `src/boot/errors.reb` lists all 158 error ids in one file where JEBOL
-reaches 18. A good deal of REBOL is also written in REBOL, in `src/mezz/`,
+reaches 18. A good deal of REBOL is also text in REBOL, in `src/mezz/`,
 which reads directly as a specification of what those functions do.
 
 The fork also ships `src/tests/units/`: 77 files, 3,290 named tests and
-11,899 assertions, written by the people who maintain the implementation.
+11,899 assertions, text by the people who maintain the implementation.
 That is a far better source of cases than boundaries we invent. Sixty-seven of
 those files are now imported under `src/testFixtures/resources/rebol-suite/` and run on
 every build as `RebolSuiteTest`: 10,133 assertions, none of them skipped.
@@ -376,7 +376,7 @@ The method that works, four steps in order: read the whole C function;
 copy its structure into Java, branch for branch; write the tests by
 reading the C again rather than by reading the port; then run Rebol's own
 suite. Step three is the one that is easy to skip and the one that pays.
-Tests written by reading the port only prove that the port agrees with
+Tests text by reading the port only prove that the port agrees with
 itself.
 
 The C carries rules that no amount of probing will show. Four found in a
@@ -394,16 +394,16 @@ single day, each of which had been implemented plausibly and wrongly:
   to whichever refinement the path names next, under a comment saying so.
   Declared order agrees whenever the two happen to match, which is most
   calls, so the defect hides.
-- A refinement written as `f/:flag` and turned down still takes its
+- A refinement text as `f/:flag` and turned down still takes its
   arguments out of the block and drops them. It has to: the values are
-  already written down and something must consume them, or everything
+  already text down and something must consume them, or everything
   after the call shifts by one.
 - A REBOL comparator handed to SORT need not behave like one. A plain
   predicate such as `[a < b]` answers false for a pair either way round,
   which is a contradiction as far as a sort is concerned. The C's merge
   takes from the left run whenever the comparison is at or below zero, so
   that contradiction leaves the order alone; TimSort reads it as a
-  descending run and reverses it. The merge sort is therefore written out
+  descending run and reverses it. The merge sort is therefore text out
   rather than handed to the JVM, and the difference shows up only as
   equal keys coming back shuffled.
 
@@ -413,13 +413,13 @@ JEBOL's own specification as its origin -- exactly what `corpus/README.md`
 warns against. An entry is worth nothing unless it says where the claim
 came from, and "the implementation does this" is not a source.
 
-## 13. Only Rebol's C functions may be written in Java
+## 13. Only Rebol's C functions may be text in Java
 
 Rebol implements its library in two layers. About a third is C, in
 `src/core/*.c`. The rest is REBOL, in `src/mezz/*.reb`, and it is twenty-five
 thousand lines.
 
-**A function Rebol writes in C is written in Java here. A function Rebol
+**A function Rebol writes in C is text in Java here. A function Rebol
 writes in REBOL is imported from its own file and loaded as a resource. It is
 never rewritten and never copied into `prelude.reb`, not even verbatim.**
 
@@ -443,7 +443,7 @@ this project has -- better than any inventory, because it is driven by what
 the language actually needs. Rewriting the function in the prelude throws the
 signal away and leaves the native wrong.
 
-### What this cost before it was written down
+### What this cost before it was text down
 
 `mezz-shell.reb` opens with `ls: dir: :list-dir`. LIST-DIR lives in
 `mezz-files.reb`, which was not imported. So the file raised `not-defined` on
@@ -456,7 +456,7 @@ Following the chain down: LIST-DIR is `closure/with`, CLOSURE with `/with`
 lives in `mezz-func.reb`, which was not imported either -- the prelude had
 `closure: :func`, a copy, and `/with` was therefore absent. And LIST-DIR's own
 body asks QUERY for three fields at once, and QUERY is a C native
-(`p-file.c`) that nobody had written.
+(`p-file.c`) that nobody had text.
 
 One unwritten C native hid three unimported REBOL files, which hid nineteen
 functions. `PortingBacklogTest` counted every one of them as missing and could
@@ -538,7 +538,7 @@ The consequence worth knowing: `make module!` works only after
 answer `not-defined` on the helper before that, which is the right failure and
 not a graceful one.
 
-## 16. The load order is Rebol's, and it is written down in Rebol's own build
+## 16. The load order is Rebol's, and it is text down in Rebol's own build
 
 `make/rebol3.nest` holds three ordered lists -- `mezz-base-files`,
 `mezz-sys-files`, `mezz-lib-files` -- and `Do_Global_Block` runs them in that
@@ -611,13 +611,13 @@ because `LibrarySource` reads each file once for the whole process.
 
 `Bind_Relative` in the C. A call rebinds the function's arguments,
 refinements and locals; every other word in the body keeps the binding it was
-written with.
+text with.
 
 JEBOL rebound the whole body through the frame chain at every call, and that is
 wrong in a way that only shows up through one door. FUNC is itself a REBOL
 function, so `make function!` runs inside FUNC's frame. A body rebound through
 that chain resolves its free words in the library rather than where they were
-written.
+text.
 
 Rebol's own COLLECT is exactly that shape. It creates its KEEP function inside
 itself, and KEEP writes to COLLECT's own OUTPUT:
@@ -629,7 +629,7 @@ itself, and KEEP writes to COLLECT's own OUTPUT:
     ]
 
 With the body rebound, KEEP's OUTPUT was a different slot from COLLECT's, and
-it held none. So did SPLIT, which is written on COLLECT, and so did every
+it held none. So did SPLIT, which is text on COLLECT, and so did every
 corpus case that uses either.
 
 The fix is `Binder.bindOnly`, which takes the set of names the function owns.
@@ -671,13 +671,13 @@ over; under DO, that is DO.
 ### A declaration *is* a spec, and Rebol keeps them in three places
 
 The docstring, the parameters with their types and their own docstrings, and the
-refinements in the order they were written with their arguments after them. That
+refinements in the order they were text with their arguments after them. That
 is what SPEC-OF and WORDS-OF answer out of - not something rebuilt from the
 native registry, which knows the types and not the order, not the documentation,
 and not which refinements take no argument at all.
 
-`actions.reb` declares the sixty actions and `natives.reb` the hand-written
-natives. The rest are written as comments beside the C that implements them, and
+`actions.reb` declares the sixty actions and `natives.reb` the hand-text
+natives. The rest are text as comments beside the C that implements them, and
 Rebol's build collects those into `generated/gen-natives.reb`. Missing that third
 file left 45 functions - `gcd`, `access-os`, `compress` and the like - still
 answering a rebuilt spec with no refinements in it.
@@ -691,9 +691,14 @@ application keeps its own files. A JVM on Windows has Windows conventions, so th
 answer has to be Windows - and a word true of no operating system at all sends
 all six down the arm meant for something else.
 
-The application supplies it, because only the application may ask the machine.
-The domain's default is `JVM`, which is the C's own name for a build that knows
-nothing about where it is.
+The host supplies it, through the machine it hands the interpreter
+(`MachinePort`), because only something outside the domain may ask the machine.
+A host that supplies none gets `JavaMachine`, which reads the JVM's own answer and
+falls back to `JVM` - the C's own name for a build that knows nothing about where
+it is - only when the JVM reports no operating system at all. The same machine
+answers the home and start directories, the separator TO-LOCAL-FILE writes, the
+process number ACCESS-OS reads, and the launcher behind `system/options/boot`, so a
+host describing Windows gets a script that sees Windows throughout.
 
 ### Control-flow signals stop being signals at the outermost walk
 
@@ -711,9 +716,9 @@ TRY does **not** do this itself, and that is deliberate: the C's TRY traps error
 lets a thrown value past, so `try [break]` still ends the script. Only TRY/ALL disarms
 one, and it makes the same four errors.
 
-### NEAR and WHERE are filled in on the way out, once
+### NEAR and WHERE are fill in on the way out, once
 
-Both fields exist because a script reads them, and they cannot be filled in where the
+Both fields exist because a script reads them, and they cannot be fill in where the
 failure happens - a native raising `zero-divide` has no idea what block it is in. So
 they are attached at the one place that has the frames: the walk's own catch.
 
@@ -748,7 +753,7 @@ process.
 
 ## 18. No runtime dependencies. The JDK, or write it out
 
-A function with no direct equivalent in Java is written in Java. It does not
+A function with no direct equivalent in Java is text in Java. It does not
 acquire a library.
 
 `build.gradle.kts` has four dependencies and all four are `testImplementation`:
@@ -885,27 +890,27 @@ nothing: the value stores RGBA, and nothing above `ImageValue` ever sees a byte
 order. If that holds, adding the three adapters later is additive. If it does not,
 the language has become three languages.
 
-## 21. What ImageIO gets wrong, and what is written by hand because of it
+## 21. What ImageIO gets wrong, and what is text by hand because of it
 
 The JVM's own image codec arrives with the runtime and reads and writes PNG,
 JPEG, GIF and BMP everywhere Java runs, so the "only on Windows and macOS so
 far" the C says of its own shim is not a limit this platform has. Four of its
 behaviours are wrong for this port, and each cost a real defect before it was
-understood. They are recorded here because `JavaImages` now reads as ordinary
+understood. They are recorded here because `JavaImage` now reads as ordinary
 code and nothing in it says why.
 
 **The BMP writer refuses every thirty-two-bit picture it is offered**, under
 every compression type: "Image can not be encoded with compression type BI_RGB
 and 32 bits per pixel". Going through it means writing twenty-four bits and
 losing the transparency, or not writing a BMP at all. A real 3.22.5 loses
-nothing, so the file is written out directly instead. The fifth version of the
+nothing, so the file is text out directly instead. The fifth version of the
 header is what makes the alpha possible -- `BITMAPV5HEADER` carries a mask per
 channel, so the file says which bits are which rather than leaving a reader to
 assume. The runtime reads that back perfectly; only writing it is missing.
 
 **Left to itself the GIF writer sets the interlace flag**, and its own reader
 then hands back a picture with the rows in the wrong order. A two-by-two of four
-colours came back as three, and JEBOL could not read a GIF it had just written
+colours came back as three, and JEBOL could not read a GIF it had just text
 even though a real 3.22.5 read it perfectly. A real 3.22.5 writes those flags as
 nought, so the writer is driven directly and progressive mode is disabled.
 
@@ -962,8 +967,8 @@ forced by something. The code now reads as a plain list of calls, so the
 reasons live here.
 
 **The prelude before anything else.** The standard function set is two layers:
-natives written in Java because they reach something the language cannot, and
-`prelude.reb`, written in REBOL because it can be. Loading it in the
+natives text in Java because they reach something the language cannot, and
+`prelude.reb`, text in REBOL because it can be. Loading it in the
 constructor rather than lazily means its functions see the natives and each
 other, and that nothing can observe an interpreter without it. A failure there
 is a defect in JEBOL rather than something a script did, so it raises rather
@@ -1018,12 +1023,12 @@ build rather than something a script did.
 how a shrunken photograph looks; it does not change what RESIZE is, and nothing
 here can yet ask for one.
 
-**MD4 and RIPEMD-160 are written out, because the catalogue lists them and
+**MD4 and RIPEMD-160 are text out, because the catalogue lists them and
 `java.security` has not got them.** The shipped jar takes no dependencies, so the
 alternative to writing them is not offering them, and a name in
 `system/catalog/checksums` that cannot do anything is the one thing a catalogue
 must not be. MD4 is thoroughly broken as a cryptographic hash and has been since
-the nineties; it is here because file formats and protocols written when it was
+the nineties; it is here because file formats and protocols text when it was
 new still carry MD4 sums, and reading one of those means computing one.
 
 **A `string!` is stored as codepoints, not as the host language's string type.**
@@ -1032,8 +1037,8 @@ Java's `String` is immutable and indexed by UTF-16 code unit, so `"a😀b".charA
 is half an emoji. Neither property is negotiable for a `string!`.
 
 **SHAPE is read directly rather than through DELECT**, because its arguments are
-all pairs and numbers in written order - ten commands, each with a relative form
-written as a lit-word. Specified in `spec/draw.allium`.
+all pairs and numbers in text order - ten commands, each with a relative form
+text as a lit-word. Specified in `spec/draw.allium`.
 
 ## 24. Two renderers are held to the paint list exactly, and to each other only where it is physical
 
@@ -1099,7 +1104,7 @@ are decided in the domain; the shapes of the letters are the toolkit's.
 with TeaVM exactly as the JVM compiles it. `src/teavm` holds the web's own
 additions and nothing else: the entry point the page calls, one substitution
 policy, the classlib stand-ins for the JDK classes the browser does not have,
-and the resource list. No core class is forked, and no library file is written
+and the resource list. No core class is forked, and no library file is text
 twice. Where TeaVM cannot compile a construct at all, the construct is rewritten
 in place to one it can, and the rewrite is answer-preserving rather than a
 switch: for example two guarded `case Whole(long magnitude) when ...` arms of one
@@ -1174,7 +1179,7 @@ interrupted thread takes, which `isEndedByAnInterrupt` in
 `synchronized`, because only the interpreter's own thread touches it. The
 crossing belongs to the adapter: `GobScreen.posted` leaves an event in a
 `ConcurrentLinkedQueue` from whatever thread the toolkit calls on, and
-`takeTheNextEvent` moves what was posted into the interpreter's queue when the
+`acceptNextEvent` moves what was posted into the interpreter's queue when the
 interpreter asks for one. `BrowserScreen` already worked this way; a desktop
 window now does too. The cross-thread tests in
 `ScreenInvariantsFromTheSourceTest` exercise the crossing, including an event
@@ -1184,7 +1189,7 @@ posted while the interpreter is inside `do-events`.
 page script that waits prints its later lines once the fiber is resumed by
 `setTimeout`. But `teavm.exports.main` returns at the first suspension, so the
 page harness must be told when the script has really finished rather than
-writing its output when `main` returns; that is the worker's business, written
+writing its output when `main` returns; that is the worker's business, text
 down next.
 
 ## 28. The interpreter runs in a worker, and the run loop lives on main's fiber
@@ -1245,7 +1250,7 @@ new size.
 **Events are left where they were.** The run-start take takes measurements
 only. A click posted between two runs is still judged when the interpreter
 takes it inside a wait, which is what
-`aClickIsJudgedWhenTaken` in `BrowserScreenFromTheSourceTest` pins - taking
+`judgeAClickWhenTaken` in `BrowserScreenFromTheSourceTest` pins - taking
 events at run start as well broke that, and the take was narrowed until it
 did not.
 
@@ -1264,7 +1269,7 @@ assertion (`do make task! [1 / 0]` answers the task) stays green.
 **On the JVM, by a fresh interpreter on a thread of its own.** The seam is
 `TaskPort` (`org.jebol.domain.host`), wired by the host like the file system
 and the screen; every interpreter starts with the port that starts nothing.
-`TasksOnThreads` (`org.jebol.adapter.host`) runs the body in a fresh
+`ThreadTasks` (`org.jebol.adapter.host`) runs the body in a fresh
 interpreter on a daemon thread: the parent's output, none of the parent's
 contexts, no deadline, and what it raises stays at its own edge. The console
 wires it; the web build does not.
@@ -1290,10 +1295,11 @@ a browser offers it and grants it. Building the examples with no server is
 what showed it: the 2010 GUI's own files are loaded by name, and a page
 without a working directory cannot `do %gui-322.r` at all.
 
-**So `Bounds` carries a second set beside the grants.** `lacking(NETWORK)`
-says this host has no such service at all, and `granting` refuses a service
-the same bounds lack, because a host that could change its mind should have
-granted it. A refusal picks its reason from the two sets: in `lacking`, it
+**So `Bounds` carries a second set beside the grants.** `markUnavailable(NETWORK)`
+says this host has no such service at all, and `grant` refuses a service
+the same bounds mark unavailable, because a host that could change its mind
+should have left it ungranted. A refusal picks its reason from the two sets:
+in the unavailable set, it
 is `not_present`; merely ungranted, it stays `not_granted`. The sentence
 names the host, which names itself once with `calls("a browser")`, because
 the domain knows nothing about browsers and should not learn.
@@ -1338,7 +1344,7 @@ an image, no declared type at all -- is answered as the bytes it is, and
 `/string` and `/lines` force text whatever the type says. The first probe of
 this was read as saying a 404 answered rather than raised, and turned out to
 be pointing at a file that existed, so its "404" was a 200. The corrected
-probe is what the rule was written from.
+probe is what the rule was text from.
 
 **The body crosses decoded.** Undoing a content coding is part of fetching:
 a browser's own `fetch` has done it before it answers, so the actor does not
@@ -1397,12 +1403,12 @@ becomes calls on a surface -- clip, opacity, transform, fill, stroke, image,
 text -- each call carrying its own state so nothing is saved or restored
 between them. An adapter implements those calls on one toolkit and decides
 nothing: `Java2DSurface` for a desktop window, the page's replayer for a
-canvas, `Canvas` and CoreGraphics later. The spec's `SurfaceCall` is that
+canvas, `Canvas` and CoreGraphics later. The spec's `DrawingCommand` is that
 list, and the rule is that the same paint list produces the same calls on
 every surface.
 
 **The alternative was a rasteriser in the domain, and it is not taken.**
-The web port's plan as first written wanted fills, strokes, curves,
+The web port's plan as first text wanted fills, strokes, curves,
 coverage, gradients, images, clipping and glyphs all scan-converted in
 JEBOL, with every platform copying the finished grid. It buys pixels that
 are identical everywhere. It costs a rasteriser and a TrueType glyph
@@ -1449,7 +1455,7 @@ its own.
 
 **So a show is remembered, and the picture offered is the tree as it stands
 when the interpreter next looks at the screen.** `ScreenPort` gained
-`offerWhatWasShown`: the interpreter calls it before a run, when one ends,
+`offerShown`: the interpreter calls it before a run, when one ends,
 and `BrowserScreen` calls it inside a wait once there are no more events to
 take. That is the whole rule, and it is what the spec's browser rule now
 says: nothing but the timing changes, because the list is always the whole
@@ -1542,7 +1548,7 @@ ranked actions of goal 19, in the order decision 37 measured them:
   which streamed the open-call stack on every function call, is a loop.
 - `MapValue`'s case-insensitive match walks its keys instead of streaming
   them.
-- `AnyBlockValue.copied` and `frontCopied` copy with loops, and the per-boot
+- `AnyBlockValue.copied` and `copyTheFront` copy with loops, and the per-boot
   copies of the whole library go through them.
 - `SeriesMemory`'s outstanding set is a plain `HashSet`; the class's own
   claim is one writer at a time, and a `ConcurrentHashMap` was paying a lock
@@ -1668,7 +1674,7 @@ for, and the refusal is a divergence in the right direction besides.
 
 **The same shape on the web: a directory of REBOL is a web app.** The runner
 page (`site/runner.html`, the canvas, the replayer and the worker hookup) is
-filled in by the build with the app's file list and its `main.reb` as the entry;
+fill in by the build with the app's file list and its `main.reb` as the entry;
 every file is fetched into the worker's store before the entry runs. So
 `./gradlew assembleTheSite -PsiteDir=my-app` is the whole of making one, a
 directory with an `index.html` in it keeps that page instead, and the shipped
@@ -1682,7 +1688,7 @@ run.** It used to skip start and print a banner of its own, so the box, the
 home and data paths, the user context and the colours a real 3.22.5 console
 shows were all missing. R3's host calls `RL_Start` before it opens the console
 whether or not anything was asked, and `host-main.c` says so; now JEBOL has
-one path through `runTheCommandLine`, and the console is what
+one path through `runCommandLine`, and the console is what
 `TheHostDecidesAfterStart` in `spec/repl.allium` opens when no script was
 named.
 
@@ -1704,7 +1710,7 @@ empty build fields are goal 17's next part, not this one.
 
 **One difference this leaves open.** A `quit/return 42` typed at the prompt
 leaves the process with nought here and with 42 in R3, because the console
-loop returns without carrying what QUIT held. It is written down in goal 17
+loop returns without carrying what QUIT held. It is text down in goal 17
 rather than fixed here, since nothing asked for it and the fix is a behaviour
 of its own.
 
@@ -1785,7 +1791,7 @@ it.
 everywhere JEBOL allocates on a script's say-so. That would be hundreds of
 sites, and one forgotten site is a crash on a phone. Every one of them runs
 inside a native or a walk, so converting there covers the ones nobody has
-written yet. TABBING's own catch is gone for that reason. `Datatype`'s stays,
+text yet. TABBING's own catch is gone for that reason. `Datatype`'s stays,
 because the value layer can be reached without the evaluator, through a host
 building values.
 
@@ -1839,7 +1845,7 @@ needs Chrome and the internet too, and that is the price of the names being
 true.
 
 **A test's kind is where it lives, not an annotation on it.** Each suite is a
-Gradle source set, so a new test is filed by the directory it is written in and
+Gradle source set, so a new test is filed by the directory it is text in and
 there is no tag to forget. An untagged class used to fall into whichever task
 excluded nothing; now there is no such task. The browser and network tags went
 with the gates they selected for.

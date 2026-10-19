@@ -41,7 +41,7 @@ class SuiteCoverageTest {
             for (Path path : files.filter(p -> p.toString().endsWith(".r3"))
                     .sorted(Comparator.comparing(Path::toString)).toList()) {
                 String source = Files.readString(path, StandardCharsets.UTF_8);
-                long written = assertionsWrittenIn(source);
+                long written = countTheAssertionsWrittenIn(source);
                 found.add(coverageOf(path, (int) written, source));
             }
         } catch (IOException unreadable) {
@@ -50,14 +50,14 @@ class SuiteCoverageTest {
         return found;
     }
 
-    private static long assertionsWrittenIn(String source) {
+    private static long countTheAssertionsWrittenIn(String source) {
         return Pattern.compile("--assert(?![A-Za-z0-9?!*+<>=~-])")
-                .matcher(withoutCommentsOrStrings(source))
+                .matcher(stripCommentsAndStrings(source))
                 .results()
                 .count();
     }
 
-    private static String withoutCommentsOrStrings(String source) {
+    private static String stripCommentsAndStrings(String source) {
         StringBuilder kept = new StringBuilder(source.length());
         boolean inQuotes = false;
         int braces = 0;
@@ -99,7 +99,7 @@ class SuiteCoverageTest {
         try {
             Interpreter reader = Interpreter.create();
             TranscodeResult loaded = reader.read(source);
-            String note = loaded.succeeded() ? "read" : firstLineThatWillNotRead(reader, source);
+            String note = loaded.succeeded() ? "read" : findTheFirstLineThatWillNotRead(reader, source);
             return new Coverage(name, written, SuiteFile.read(path).assertions().size(), note);
         } catch (RuntimeException thrown) {
             return new Coverage(name, written, 0,
@@ -108,7 +108,7 @@ class SuiteCoverageTest {
         }
     }
 
-    private static String firstLineThatWillNotRead(Interpreter reader, String source) {
+    private static String findTheFirstLineThatWillNotRead(Interpreter reader, String source) {
         List<String> lines = source.lines().toList();
         int lastGood = 0;
         for (int upTo = 1; upTo <= lines.size(); upTo++) {
@@ -127,7 +127,7 @@ class SuiteCoverageTest {
 
     @Test
     @DisplayName("every suite file is read to the end")
-    void everyFileIsReadToTheEnd() {
+    void readsEveryFileToTheEnd() {
         List<String> short_ = coverage().stream()
                 .filter(entry -> !entry.note().startsWith("read"))
                 .map(entry -> "  %-26s reaches %4d of %4d   %s".formatted(
@@ -149,7 +149,7 @@ class SuiteCoverageTest {
 
     @Test
     @DisplayName("every assertion a file writes is one the harness runs")
-    void everyAssertionWrittenIsRun() {
+    void runsEveryAssertionWritten() {
         List<String> lost = coverage().stream()
                 .filter(entry -> entry.missed() > 0)
                 .map(entry -> "  %-26s reaches %4d of %4d".formatted(
@@ -167,7 +167,7 @@ class SuiteCoverageTest {
 
     @Test
     @DisplayName("what the reader still cannot take in, as a countable backlog")
-    void theRemainingBacklogIsRecorded() {
+    void recordsTheRemainingBacklog() {
         int written = coverage().stream().mapToInt(Coverage::assertionsInSource).sum();
         int read = coverage().stream().mapToInt(Coverage::assertionsRead).sum();
         List<Coverage> incomplete = coverage().stream()

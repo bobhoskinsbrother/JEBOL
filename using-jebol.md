@@ -1,754 +1,543 @@
-# Using JEBOL
+# **Using JEBOL**
 
-This document is for a person or an agent that wants to execute REBOL scripts
-with JEBOL. It is not about how JEBOL is built. For that, read
-`docs/porting-guide.md` and `goals.md`.
+This user guide explains how to execute REBOL scripts using JEBOL. For details on building and porting JEBOL itself, please consult docs/porting-guide.md and goals.md.
 
-Two sections at the end are not written yet. They are named, and what each one
-must hold is stated, because a gap that is named is safer than a gap that is
-not.
+Sections 8 and 9 outline planned future documentation. Their scope and requirements are explicitly noted to clarify missing content.
 
 ---
 
-## 1. What JEBOL is
+## **1. What is JEBOL?**
 
-JEBOL is Rebol 3, as Oldes/Rebol3 3.22.5, ported from C to the Java Virtual
-Machine. A Java program holds an interpreter, gives it a script, and gets a
-value back.
+JEBOL is a port of Rebol 3 (specifically Oldes/Rebol3 version 3.22.5) from C to the Java Virtual Machine (JVM). It allows host Java applications to instantiate an interpreter, execute REBOL scripts, and retrieve evaluation results.
 
-Two limits make JEBOL different from most embedded languages. A script stops
-when its time limit passes. A script reaches nothing outside itself until the
-host permits it, and the default is nothing at all.
+JEBOL enforces two key security principles by default: strictly enforced execution time limits and complete isolation from external resources unless explicitly permitted by the host environment.
 
 ```java
-Interpreter interpreter = Interpreter.create();
-ScriptOutcome outcome = interpreter.run("1 + 2");
+Interpreter interpreter = Interpreter.create();  
+ScriptOutcome outcome = interpreter.run("1 + 2");  
 System.out.println(outcome.asHostValue());   // 3
 ```
 
-Nothing a script does arrives at the host as a Java exception. A script that
-fails, that takes too long, or that nests too deep gives back a
-`ScriptOutcome` like any other. Thus a host that catches a throwable knows
-that JEBOL itself has a defect.
+Script execution errors, timeouts, or stack overflows do not throw Java exceptions. Instead, execution results are encapsulated in a ScriptOutcome object. If a Java throwable is caught, it indicates an internal error within JEBOL itself.
 
-The shipped file has no dependencies.
+The JEBOL distribution artifact has no external third-party dependencies.
 
-JEBOL is a port of Oldes/Rebol3 (https://github.com/Oldes/Rebol3), and part of
-that project ships unmodified inside the jar. The section named "Licence and
-attribution" at the end of this document states what and under which terms.
+As a port of Oldes/Rebol3 ([https://github.com/Oldes/Rebol3](https://github.com/Oldes/Rebol3)), unmodified components of the original project are bundled inside the JAR archive. See the "Licence and Attribution" section for licensing details.
 
 ---
 
-## 2. How to get JEBOL and start a script
+## **2. Installation and Execution**
 
-**JEBOL needs a Java 25 runtime on the machine already.** The distribution
-does not contain one. A Java that is older stops with a class version error
-that does not name the cause.
+**Prerequisite:** JEBOL requires Java 25 or higher. Running on earlier Java versions will result in unsupported class file version errors.
 
-### From the distribution file
+### **Running from the Distribution Package**
 
-The distribution holds a launcher for Unix, a launcher for Windows, one jar,
-this document, `LICENSE` and `NOTICE`.
+The binary release contains launch scripts for Unix and Windows, the compiled JAR file, documentation, and licensing files (LICENSE and NOTICE).
 
-```
-unzip jebol-3.22.5.zip
+```commandline
+unzip jebol-3.22.5.zip  
 JAVA_HOME=/path/to/java25 jebol-3.22.5/bin/jebol
 ```
-
-### From the sources
-
-```
-./gradlew installDist
-JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1) \
-    ./build/install/jebol/bin/jebol
-```
-
-Both start the console, which runs REBOL's own `start` first, as `r3` does:
-that is where the banner comes from. Type an expression and press enter.
+### **Building and Running from Source**
 
 ```
-╔══════════════════════════════════════════════════════════════════════════╗
-║  REBOL/core 3.22.5 (JEBOL port)                                          ║
-...
->> 2 + 3 * 4
-== 20
->> name: "world"  append name "!"
-== "world!"
->> divide 1 0
+./gradlew installDist  
+JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1)   
+./build/install/jebol/bin/jebol
+```
+Launching the REBOL interactive console initializes start (similar to r3) and presents the startup banner. Enter REBOL expressions directly at the prompt:
+
+```commandline
+╔══════════════════════════════════════════════════════════════════════════╗  
+║  REBOL/core 3.22.5 (JEBOL port)                                          ║  
+...  
+>> 2 + 3 * 4  
+== 20  
+>> name: "world"  append name "!"  
+== "world!"  
+>> divide 1 0  
 ** math error: division by zero
 ```
-
-To execute one piece of text and stop, give the `--do` argument.
+To evaluate a one-line expression and terminate, use the --do flag:
 
 ```
 ./build/install/jebol/bin/jebol --do "print 1 + 2"
 ```
 
-Rebuild with `./gradlew installDist` after any change to the Java sources. The
-installed files do not change until you do.
+Rebuild the application using `./gradlew installDist` following any modifications to Java source files.
 
-A script file or an app directory goes on the command line. A directory is an
-app: it runs the `main.reb` inside it, with the app as the working directory,
-so the app's own files are what `do %...` and `read %...` find. A directory
-with no `main.reb` in it is refused with a sentence that says so.
+You can pass a script file or an application directory path to the command line. When an application directory is specified, JEBOL executes `main.reb` using that directory as the working path for relative operations like `do %...` or `read %...`. 
+Directories lacking a `main.reb` file will produce an error.
 
 ```
-jebol my-script.reb
+jebol my-script.reb  
 jebol my-app/
 ```
-
-Otherwise a script arrives on standard input or inside `--do`.
+Alternatively, pass script content via standard input:
 
 ```
 cat my-script.reb | jebol
 ```
-
 ---
 
-## 3. How to embed JEBOL in a Java program
+## **3. Embedding JEBOL in Java Applications**
 
-Five calls do the whole job.
+Embedding JEBOL requires configuring bounds, defining optional extensions or variables, and executing the script:
 
 ```java
-Extension shop = new Extension("shop", "1.0.0", List.of(new ExtensionCommand(
-        "lookup-price", "{The price of one item.} item [string!]",
-        call -> DecimalValue.of(priceOf(((StringValue) call.arguments().getFirst()).text())))));
+Extension shop = new Extension("shop", "1.0.0", List.of(new ExtensionCommand(  
+"lookup-price", "{The price of one item.} item [string!]", call -> DecimalValue.of(priceOf(((StringValue) call.arguments().getFirst()).text())))));
 
-Interpreter interpreter = Interpreter.withBounds(
-        Bounds.standard()
-              .withWallClockLimit(Duration.ofMillis(200))
-              .add(shop));
-
+Interpreter interpreter = Interpreter.withBounds(Bounds.standard().withWallClockLimit(Duration.ofMillis(200)).add(shop));
 interpreter.define("vatRate", 0.2);
-
-ScriptOutcome outcome = interpreter.run("multiply lookup-price {widget} add 1 vatRate");
+ScriptOutcome outcome = interpreter.run("multiply lookup-price {widget} add 1 vatRate");  
 Object total = outcome.asHostValue();
 ```
 
-`Bounds.standard()` holds a default for every limit except one. The defaults
-are a time limit of 5 seconds, a nesting limit of 10000, and a check for
-whether to stop after every 1000 steps. The exception is the set of host
-services, which starts empty, because the correct set is the one that nobody
-guesses.
+`Bounds.standard()` sets default execution constraints: a 5-second wall-clock time limit, a maximum call stack depth of 10,000, and instruction checks every 1,000 steps. Host services and external capabilities are disabled by default.
 
-A script calls into the host only through an extension the bounds carry.
-Section 4 says what an extension is.
+Scripts interact with host Java logic exclusively through extensions declared in the Bounds configuration (detailed in Section 4).
 
-Braces mark a REBOL string. Write `{widget}` inside a Java string and no
-character needs an escape. Do not write `\"widget\"`.
+REBOL string literals use curly braces `({...})`. This allows embedding strings inside Java string literals without quote escaping (e.g., "{widget}" instead of "widget").
 
-One interpreter belongs to one thread. A host that wants more than one thread
-makes more than one interpreter. The exception is `cancel()`, which another
-thread calls to stop a script that is executing.
+An Interpreter instance is single-threaded and must be confined to one thread at a time. Concurrent execution requires multiple interpreter instances. The only thread-safe cross-thread method is cancel(), which halts execution from another thread.
 
-The first interpreter takes about 430 milliseconds to start, and about 50
-milliseconds once the JVM has settled. A service that makes a new interpreter
-for every request must know those numbers before it is deployed. `goals.md`
-has the current figures, and `scripts/timing.py boot` measures them.
+Initial interpreter instantiation takes approximately 430 ms, settling to around 50 ms after JVM warmup. High-throughput applications creating per-request interpreters should account for initialization overhead (see goals.md and scripts/timing.py boot for benchmarks).
 
 ---
 
-## 4. What a script can reach
+## **4. Capabilities and Security Model**
 
-By default a script reaches nothing outside itself. No files, no network, no
-clock, no console, no other program.
+By default, scripts execute in a strict sandbox without access to file systems, network adapters, system clocks, consoles, or subprocesses.
 
-Each kind of access needs two steps. Give the service in the bounds, then give
-the port that serves it.
+Enabling external capabilities requires granting the corresponding service in Bounds and providing a port implementation to the interpreter:
 
-| What the script must do | The service | The port to supply |
-| --- | --- | --- |
-| Read, write, delete, rename, list files | `FILES` | `useFileSystem(FileSystemPort.rootedAt(path))` |
-| Know where a relative path starts | `WORKING_DIRECTORY` | the same file port |
-| Read the names and values of the environment | `ENVIRONMENT` | `useEnvironment(port)` |
-| Start another program and wait for it | `PROCESSES` | `useProcesses(port)` |
-| Read a line from the operator | `CONSOLE` | `useConsole(port)` |
-| Ask what the time is | `CLOCK` | none |
-| Open a connection to another machine | `NETWORK` | `useNetwork(port)` |
-| Fetch a url with HTTP or HTTPS | `WEB` | `useHttp(port)` |
-| Trust a server's certificates over TLS | `CERTIFICATES` | `useCertificateAuthority(authority)` |
-| Ask the operator through a window | `WINDOWS` | `useWindows(port)` and `useScreen(port)` |
-| Read and write what the operator copied | `CLIPBOARD` | `useClipboard(port)` |
-| List, hear and play MIDI instruments | `MIDI` | `useMidiDevices(devices)` |
+| What the script must do                      | The service       | The port to supply                           |
+|----------------------------------------------|-------------------|----------------------------------------------|
+| Read, write, delete, rename, list files      | FILES             | useFileSystem(FileSystemPort.rootedAt(path)) |
+| Know where a relative path starts            | WORKING_DIRECTORY | the same file port                           |
+| Read the names and values of the environment | ENVIRONMENT       | useEnvironment(port)                         |
+| Start another program and wait for it        | PROCESSES         | useProcesses(port)                           |
+| Read a line from the operator                | CONSOLE           | useConsole(port)                             |
+| Ask what the time is                         | CLOCK             | none                                         |
+| Open a connection to another machine         | NETWORK           | useNetwork(port)                             |
+| Fetch a url with HTTP or HTTPS               | WEB               | useHttp(port)                                |
+| Trust a server's certificates over TLS       | CERTIFICATES      | useCertificateAuthority(authority)           |
+| Ask the operator through a window            | WINDOWS           | useWindows(port) and useScreen(port)         |
+| Read and write what the operator copied      | CLIPBOARD         | useClipboard(port)                           |
+| List, hear and play MIDI instruments         | MIDI              | useMidiDevices(devices)                      |
 ```java
-Interpreter interpreter = Interpreter.withBounds(
-        Bounds.standard().grant(HostService.FILES));
+Interpreter interpreter = Interpreter.withBounds(  
+Bounds.standard().grant(HostService.FILES));  
 interpreter.useFileSystem(FileSystemPort.rootedAt(Path.of("/srv/scripts")).readOnly());
 ```
 
-A host that has no way to offer a service at all says so once, on the bounds.
-`lacking(NETWORK)` means this host has no network, whatever it grants later.
-A script that asks for one reads `not_present` rather than `not_granted`. Use
-`calls("a phone")` to name the host in that sentence.
+A host can explicitly mark capabilities as unavailable using lacking(...). Scripts requesting unavailable services receive a not_present error rather than not_granted.
 
-`useHttp(port)` is the web build's shape of `WEB`: the host fetches, and the
-http and https schemes answer through it. A host that supplies no HTTP port
-leaves those schemes to Rebol's own protocol, which opens a `NETWORK`
-connection of its own.
+useHttp(port) delegates HTTP/HTTPS requests to the host platform. If no HTTP port is supplied, REBOL's default scheme handler falls back to establishing direct TCP connections via the NETWORK service.
 
-Each interpreter keeps its own working directory inside the file port's root.
-A Java
-process cannot change its own working directory, thus the port holds it. One
-interpreter can never move another.
+Each interpreter manages its working directory within the file port's rooted path. Because the underlying JVM process working directory remains fixed, directory state is isolated per interpreter instance.
 
-A script that asks for a service that it does not have gets an error. The
-outcome is `RAISED` and the error names one of three reasons. `not_granted`
-means that the host has the service and did not give it. `not_present` means
-that the host has no such service. `never_portable` means that no host can
-ever offer it.
+Accessing an ungranted service raises a RAISED outcome error specifying one of three causes: not_granted (service exists but was not allowed), not_present (service unsupported by host), or never_portable (feature unsupported across hosts).
 
-This error is more important than it looks. A read that quietly answered none
-would read as an empty file. A script could not tell the two apart.
+Explicit security errors prevent ambiguous failures, ensuring scripts can distinguish between missing permissions and empty or missing files.
 
-### Adding your own words: extensions
+### **Creating Custom Extensions**
 
-A step-by-step guide, with a worked example and a map of the tests that
-cover each part, is in `docs/writing-an-extension.md`. What follows is the
-short version.
+For a complete guide and worked example, see `docs/writing-an-extension.md`. Below is a summary of the extension architecture.
 
-An extension is the one way a host adds words a script can call. It has the
-shape R3's own hosted extensions have: a name, a version, and commands, each
-with a REBOL spec and Java behind it. Add it to the bounds, and every
-interpreter built with those bounds installs it, a task's included.
+Extensions allow the Java host to expose native commands to REBOL. An extension defines a name, version string, and a list of commands pairing REBOL specifications with Java handlers. Adding an extension to Bounds registers it across created interpreters.
 
 ```java
-Extension camera = new Extension("camera", "1.0.0", List.of(
-        new ExtensionCommand("snap", "{Takes a photo.} quality [integer!] /flash", call -> {
-            boolean flash = call.refinements().contains("flash");
-            return call.handleOf("photo", takeAPhoto(call.arguments().getFirst(), flash));
-        }),
-        new ExtensionCommand("photo-size", "photo [handle!]",
-                call -> IntegerValue.of(call.heldBy(call.arguments().getFirst(), Photo.class).bytes()))))
-        .withHandleKind(new HandleKind("photo", Photo.class))
-        .startingWith(postbox -> requireACamera());
-
+Extension camera = new Extension("camera", "1.0.0", List.of(  
+new ExtensionCommand("snap", "{Takes a photo.} quality [integer!] /flash", call -> {
+    boolean flash = call.refinements().contains("flash");  
+    return call.handleOf("photo", takeAPhoto(call.arguments().getFirst(), flash));  
+}),  
+new ExtensionCommand("photo-size", "photo [handle!]", call -> IntegerValue.of(call.heldBy(call.arguments().getFirst(), Photo.class).bytes()))))  
+                    .withHandleKind(new HandleKind("photo", Photo.class))  
+                    .startingWith(postbox -> requireACamera());
 Interpreter interpreter = Interpreter.withBounds(Bounds.standard().add(camera));
 ```
+Extension behavior in REBOL:
 
-What a script then sees:
+* Command words are exported to lib as command! datatypes. Functions like spec-of and help inspect their signatures.
+* Argument type validation occurs automatically before Java handlers are invoked. Passing invalid types raises an expect-arg error.
+* Java handlers receive native REBOL value wrappers (e.g., FileValue) and return valid REBOL values.
+* Custom errors can be thrown via call.failure(...). Uncaught Java exceptions inside extension commands translate to REBOL command-fail errors carrying the exception message.
+* call.evaluated(block) evaluates block arguments within the active interpreter context.
+* Extensions register under system/modules and can be imported using import '<extension-name>.
 
-- `snap` and `photo-size` are words in `lib`, of datatype `command!` as an
-  R3 extension's words are. `spec-of :snap` is the spec you wrote, and `help`
-  shows it.
-- A wrong datatype is refused before your Java runs, in REBOL's words:
-  `snap {x}` is `expect-arg` naming `snap`, `quality` and `string!`.
-- Your Java receives the REBOL values themselves. A `file!` arrives as a
-  `FileValue` and a block as a block, and you answer with any value.
-- `throw call.failure(ErrorCategory.ACCESS, "cannot-open", FileValue.of("camera"))`
-  raises that error, with its id and arguments. Anything else your Java
-  throws becomes `command-fail` carrying its message:
-  `** Command error: "the camera fell over"`.
-- `call.evaluated(block)` evaluates a block the script gave you, in the
-  script's interpreter.
-- The module is in `system/modules` under its name, and `import 'camera`
-  answers it.
-
-The extension can carry REBOL of its own, run in its module after the
-commands are made. That is where it makes a scheme or registers a codec, so
-a library's scheme is built exactly the way Rebol builds `http`:
-
+Extensions can embed initialization REBOL scripts executed after native command creation, facilitating custom schemes or codec registrations:
 ```java
-.withScript("""
-        sys/make-scheme [
-            name: 'greet
-            title: "Greetings"
-            actor: [read: func [port] [greeting-for port/spec/host]]
-        ]""")
+.withScript("""  
+sys/make-scheme [  
+name: 'greet  
+title: "Greetings"  
+actor: [read: func [port] [greeting-for port/spec/host]]  
+]""");
+
 ```
 
-`read greet://world` then answers whatever `greeting-for` answers.
+For example, read greet://world delegates execution to the registered scheme actor.
 
-**From another thread.** Starting an extension hands it the interpreter's
-`Postbox`, which it may keep. From any thread, at any time,
-`postbox.post(port, "read")` queues an event for a port, and
-`postbox.callBack(object, "heard", arguments, answer)` asks for a function in
-an object to be called. Both arrive the next time the script waits: `wait [port 5]`
-wakes on the posted event, and a callback runs on the script's own thread,
-handing its answer, or its failure, to your `CallbackAnswer`.
+**Asynchronous Events and Callbacks:** Extensions receive a reference to the interpreter's Postbox. Calling postbox.post(port, "read") queues port events across threads, while postbox.callBack(...) schedules REBOL object method execution on the interpreter thread during wait cycles (e.g., wait [port 5]).
 
-**What is refused.** Installing is all or nothing: a refused extension leaves
-no word, no module and no handle kind behind. Ask
-`interpreter.extensions()` what happened:
+**Extension Refusal Reasons:** Extension installation is atomic; failure leaves no partial state. Call interpreter.extensions() to inspect status and refusal causes:
 
-| Refusal | Why |
-| --- | --- |
-| `already-used` | A command is named like a word `lib` already holds: a native, an action, or one of Rebol's own functions such as `secure`. Between two extensions, the first installed wins. |
-| `bad-extension` | The name is blank, the version is not a tuple, a spec does not read, or two commands share a name. |
-| `handle-exists` | A handle kind another extension declared holding a different class. |
-| `extension-init` | Your start step threw. |
-
+| Refusal        | Why                                                                                                                                                                      |
+|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| already-used   | A command is named like a word lib already holds: a native, an action, or one of Rebol's own functions such as secure. Between two extensions, the first installed wins. |
+| bad-extension  | The name is blank, the version is not a tuple, a spec does not read, or two commands share a name.                                                                       |
+| handle-exists  | A handle kind another extension declared holding a different class.                                                                                                      |
+| extension-init | Your start step threw.                                                                                                                                                   |
 ```java
-Extension clash = new Extension("clash", "1.0.0", List.of(
-        new ExtensionCommand("add", "a b", call -> StringValue.of("mine"))));
+Extension clash = new Extension("clash", "1.0.0", List.of(  
+new ExtensionCommand("add", "a b", call -> StringValue.of("mine"))));
 
-Interpreter.withBounds(Bounds.standard().add(clash)).extensions();
+Interpreter.withBounds(Bounds.standard().add(clash)).extensions();  
 // [ExtensionReport[name=clash, refusal=Optional[already-used]]]
-```
-
-`lib` is sealed against extensions, not against scripts. A script may still
-write `lib/add: func [a b] [{mine}]`, as it may in r3.
-
-### Two layers decide what a file access may do
-
-Every file access passes two checks, in this order.
-
-1. **The host's root.** The file port is rooted at one folder, and nothing
-   outside that folder can be read, written, listed, deleted or renamed. The
-   host decides this, and the script cannot change it.
-2. **Rebol's security policies.** Rebol's own SECURE function records what
-   the script may touch, and JEBOL checks those records where R3 checks them.
-   SECURE can only narrow what the root and the grants allow. It can never
-   widen them.
-
-The same order holds for every other service. A service the host did not
-grant is refused before any policy is read, so `secure allow` does not bring
-it back.
-
-The examples below use this folder. Every one was run through JEBOL. In the
-output, the folder is shortened to `/work/projects` and the home folder to
-`/Users/ana`. Each error also prints its `** Where:` and `** Near:` lines,
-which are left out here.
 
 ```
-/work/projects/
-    secret.txt
-    shared/logo.txt
-    app/
-        main.r3
-        notes.txt               "app notes"
-        again.txt         ->    notes.txt                 (a link inside app)
-        logo.txt          ->    ../shared/logo.txt        (a link out of app)
-        assets/door.txt   ->    ../../secret.txt          (a link out of app)
-        dangling.txt      ->    ../../outside-new.txt     (points at nothing yet)
+
+While lib prevents extensions from overriding existing command names, user scripts retain the standard REBOL ability to rebind words (e.g., lib/add: func [a b] [...]).
+
+### **File Access Security Controls**
+
+File system access undergoes a two-tier evaluation sequence:
+
+1. **1. Host File System Root:** The file port restricts all file operations to a configured root directory. Path traversal attempts above this root are constrained to the root directory itself.
+2. **2. REBOL Security Policies:** Fine-grained permission rules configured via SECURE. Policy rules can further restrict access but cannot override or expand the root boundary established by the host.
+
+This ordering applies across all host capabilities: ungranted host capabilities cannot be re-enabled using secure allow within the script.
+
+The following file structure illustrates traversal behavior. In error outputs below, directory paths are abbreviated for readability (/work/projects and /Users/ana), and standard ** Where: / ** Near: stack traces are omitted:
+```
+/work/projects/  
+secret.txt  
+shared/logo.txt  
+app/  
+main.r3  
+notes.txt               "app notes"  
+again.txt         ->    notes.txt                 (a link inside app)  
+logo.txt          ->    ../shared/logo.txt        (a link out of app)  
+assets/door.txt   ->    ../../secret.txt          (a link out of app)  
+dangling.txt      ->    ../../outside-new.txt     (points at nothing yet)
 ```
 
-### The root
+### **Root Boundary Behavior**
 
-The script sees the root as `/`. A path that climbs with `..` stops at the
-root, because `/..` is `/` on any machine. An absolute path names a file
-inside the root, never one on the machine.
+Scripts observe the root folder as /. Path resolution attempting to climb above the root via .. terminates at /. Absolute paths map relative to the configured root rather than the host system root.
 
-Symbolic links are followed. A link that lands inside the root works like any
-other path. A link that leads out of the root is refused with a `security`
-error that names the path as the script wrote it, so the script never learns
-where the root sits. A link that points at nothing yet is judged by where a
-write through it would land, so a script cannot use one to make a file
-outside. More than forty links in a row are refused, which is where a POSIX
-kernel gives up too.
+Symbolic links pointing within the root execute normally. Links pointing outside the root raise a security violation error displaying the path as requested, preventing host path disclosure. Symbolic link resolution supports up to 40 consecutive links before raising an error.
 
-With the command line, `--root /work/projects/app` gives a script that root.
-The script is then named inside the root, as `/main.r3`. With `-s`, every
-policy allows, so only the root decides:
-
-```
->> what-dir
-== %/
->> read/string %again.txt
-== "app notes^/"
->> read/string %../secret.txt          ; .. stops at the root: this is /secret.txt
-** Access error: cannot open: %../secret.txt reason: 3
->> read/string %logo.txt               ; a link out of the root
-** Access error: security violation: %logo.txt  (refer to SECURE function)
->> read/string %assets/door.txt        ; the same, one folder down
-** Access error: security violation: %assets/door.txt  (refer to SECURE function)
->> write %dangling.txt "x"             ; writing through a link to nothing yet
-** Access error: security violation: %dangling.txt  (refer to SECURE function)
->> exists? %logo.txt                   ; a link out looks like nothing there
-== _
+When using the CLI, --root /work/projects/app sets the root directory. Combined with -s (unrestricted security policy), file operations remain constrained by the root boundary:
+```commandline
+>> what-dir  
+== %/  
+>> read/string %again.txt  
+== "app notes^/"  
+>> read/string %../secret.txt          ; .. stops at the root: this is /secret.txt  
+** Access error: cannot open: %../secret.txt reason: 3  
+>> read/string %logo.txt               ; a link out of the root  
+** Access error: security violation: %logo.txt  (refer to SECURE function)  
+>> read/string %assets/door.txt        ; the same, one folder down  
+** Access error: security violation: %assets/door.txt  (refer to SECURE function)  
+>> write %dangling.txt "x"             ; writing through a link to nothing yet  
+** Access error: security violation: %dangling.txt  (refer to SECURE function)  
+>> exists? %logo.txt                   ; a link out looks like nothing there  
+== _  
 >> delete %logo.txt                    ; removes the link; shared/logo.txt stays
 ```
 
-From Java, a host gets the same behaviour by rooting the port:
-
+In Java, root restrictions are established during port initialization:
 ```java
-Interpreter interpreter = Interpreter.withBounds(
-        Bounds.standard().grant(HostService.FILES));
+Interpreter interpreter = Interpreter.withBounds(  
+Bounds.standard().grant(HostService.FILES));  
 interpreter.useFileSystem(FileSystemPort.rootedAt(Path.of("/work/projects/app")));
 
-ScriptOutcome linked = interpreter.run("read %assets/door.txt");
+ScriptOutcome linked = interpreter.run("read %assets/door.txt");  
 // RAISED: ** Access error: security violation: %assets/door.txt
-```
-
-Deleting, renaming and making a folder act on the entry the path names. They
-do not act on what a link points to. The folders above that entry are still
-followed, and they must still land inside the root.
-
-### Rebol's security policies
-
-An embedded interpreter starts with every policy at allow. Only the root and
-the grants limit it until the script, or the host, calls SECURE.
-
-The command line runs Rebol's own start, as r3 does, and start sets Rebol's
-default policy. A script may read and write in its own folder and in the data
-folder. It may read in the home folder but not write there. Anything else
-asks first. No one can answer a question while a script runs, so the answer
-is no. `secure query` shows what is in force:
 
 ```
-[
-    file ask
-    %/work/projects/app/ allow
-    %/Users/ana/.rebol/ allow
-    %/Users/ana/ [allow read ask write allow execute]
-    net allow
-    secure allow
-    protect allow
-    debug allow
-    envr allow
-    call allow
-    browse allow
-    extension allow
+
+Directory mutations (delete, rename, make directory) operate on the entry path itself rather than symlink targets. Ancestor path components must remain strictly within the root.
+
+### **REBOL Policy Rules**
+
+Embedded interpreters default to allowing operations unless restricted by SECURE or host bounds.
+
+CLI execution triggers default initialization (matching r3), allowing reads and writes within the application and user settings directories while prompting or denying access elsewhere. Inspect active settings via secure query:
+```rebol
+[  
+file ask  
+%/work/projects/app/ allow  
+%/Users/ana/.rebol/ allow  
+%/Users/ana/ [allow read ask write allow execute]  
+net allow  
+secure allow  
+protect allow  
+debug allow  
+envr allow  
+call allow  
+browse allow  
+extension allow  
 ]
 ```
 
-So `jebol main.r3`, run in `/work/projects/app`:
-
+Executing jebol main.r3 within /work/projects/app demonstrates policy enforcement:
 ```
->> read/string %notes.txt
-== "app notes^/"
->> read/string %again.txt             ; a link inside the folder is followed
-== "app notes^/"
->> read/string %../secret.txt
+>> read/string %notes.txt  
+== "app notes^/"  
+>> read/string %again.txt             ; a link inside the folder is followed  
+== "app notes^/"  
+>> read/string %../secret.txt  
+** Access error: security violation: %/work/projects/secret.txt  (refer to SECURE function)  
+>> write %../text.txt "x"          ; refused, and nothing is text  
+** Access error: security violation: %/work/projects/text.txt  (refer to SECURE function)  
+>> read/string %logo.txt              ; judged by where the link leads  
+** Access error: security violation: %/work/projects/shared/logo.txt  (refer to SECURE function)  
+>> read/string %assets/door.txt  
 ** Access error: security violation: %/work/projects/secret.txt  (refer to SECURE function)
->> write %../written.txt "x"          ; refused, and nothing is written
-** Access error: security violation: %/work/projects/written.txt  (refer to SECURE function)
->> read/string %logo.txt              ; judged by where the link leads
-** Access error: security violation: %/work/projects/shared/logo.txt  (refer to SECURE function)
->> read/string %assets/door.txt
-** Access error: security violation: %/work/projects/secret.txt  (refer to SECURE function)
 ```
 
-A bare `jebol`, with no script, has no folder of its own. A file in the
-folder where it started therefore asks first. At a terminal, you answer, and
-yes is remembered. With input piped in, the answer is no. This is the same as
-r3. Start it with `-s` to reach everything.
+Interactive execution without a script context prompts for confirmation on ungranted file access. Non-interactive pipe executions deny access automatically. Use -s to bypass interactive prompts.
 
-A script that does not catch the violation stops there, and the command line
-exits with status 1. A script can catch it like any error. The error is
-`access`/`security`, and `arg1` names the file.
+Uncaught policy violations terminate CLI execution with status code 1. Scripts can catch violations using standard error handlers (error category: access/security, argument: target file).
 
-**Here JEBOL differs from R3 on purpose.** R3 checks the path as it is
-written and never looks at where a link points. In R3, `logo.txt` and
-`assets/door.txt` above are read. JEBOL checks where the link really leads,
-and the violation names that place.
+**Symlink Security Difference from R3:** Unlike original C-Rebol (which validates literal path strings), JEBOL evaluates resolved symlink target destinations. If a symlink points outside permitted boundaries, access is denied.
 
-#### The switches
+#### **CLI Security Flags**
 
-| Command | What happens |
-| --- | --- |
-| `jebol main.r3` | Rebol's default policy, as above. |
-| `jebol -s main.r3` | Every policy allows. The script reads `../secret.txt`. |
-| `jebol --secure allow main.r3` | The same as `-s`. |
-| `jebol +s main.r3` | Every policy asks, so start's own PROTECT is refused. The script never runs. The command line prints `security violation: system/options/boot-level` and exits with 1. |
-| `jebol --secure throw main.r3` | The same as `+s`. |
-| `jebol --secure quit main.r3` | Start's own PROTECT ends the process at once. Nothing is printed, and the exit status is 101. |
+| Command                      | What happens                                                                                                                                                         |
+|------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| jebol main.r3                | Rebol's default policy, as above.                                                                                                                                    |
+| jebol -s main.r3             | Every policy allows. The script reads ../secret.txt.                                                                                                                 |
+| jebol --secure allow main.r3 | The same as -s.                                                                                                                                                      |
+| jebol +s main.r3             | Every policy asks, so start's own PROTECT is refused. The script never runs. The command line prints security violation: system/options/boot-level and exits with 1. |
+| jebol --secure throw main.r3 | The same as +s.                                                                                                                                                      |
+| jebol --secure quit main.r3  | Start's own PROTECT ends the process at once. Nothing is printed, and the exit status is 101.                                                                        |
 
-The `+s` result surprises people. It is what a real r3 3.22.5 does, and
-JEBOL agrees with it.
+Note: The behavior of +s matches Oldes/Rebol3 3.22.5 behavior, halting execution when system protection settings are violated.
 
-#### A script can narrow its own policy
+#### **Programmatic Policy Restrictions**
 
-A script can only narrow its own policy. It can never get past the root or
-the grants:
-
+Scripts can reduce their own permissions but cannot exceed host grants or root limits:
 ```
->> secure [file [allow read throw write]]
->> read/string %notes.txt
-== "app notes^/"
->> write %notes.txt "changed"
+>> secure [file [allow read throw write]]  
+>> read/string %notes.txt  
+== "app notes^/"  
+>> write %notes.txt "changed"  
 ** Access error: security violation: %/work/projects/app/notes.txt  (refer to SECURE function)
 
->> secure [envr throw call throw net throw debug throw]
->> get-env "HOME"
-** Access error: security violation: "HOME"  (refer to SECURE function)
->> call/wait "true"
-** Access error: security violation: "true"  (refer to SECURE function)
->> open tcp://example.com:80
-** Access error: security violation: tcp://example.com:80  (refer to SECURE function)
->> trace on                            ; no subject, so the class is named
+>> secure [envr throw call throw net throw debug throw]  
+>> get-env "HOME"  
+** Access error: security violation: "HOME"  (refer to SECURE function)  
+>> call/wait "true"  
+** Access error: security violation: "true"  (refer to SECURE function)  
+>> open tcp://example.com:80  
+** Access error: security violation: tcp://example.com:80  (refer to SECURE function)  
+>> trace on                            ; no subject, so the class is named  
 ** Access error: security violation: debug  (refer to SECURE function)
-
->> secure [file 5]
+>> secure [file 5]  
 ** access error: invalid file security policy: 5
-```
 
-Note the parentheses when the policy is built. SECURE takes its argument
-unevaluated, so write `secure (compose [file throw (folder) allow])`, as
-Rebol's own start does. Without them, SECURE receives the word `compose`:
+**Evaluation Note:** SECURE receives unevaluated block arguments. Dynamic block composition requires parenthesized expressions: secure (compose [file throw (folder) allow]).
 
-```
->> secure compose [file throw (folder) allow]
+>> secure compose [file throw (folder) allow]  
 ** access error: invalid all security policy: compose
 ```
 
-Each level means one thing:
+Security levels and actions:
 
-| Level | What happens |
-| --- | --- |
-| `allow` | The access goes ahead. |
-| `ask` | Rebol's own `confirm-policy` asks at the terminal: yes, no, once or quit. Yes is remembered as a policy for that file. With no terminal, the answer is no. |
-| `throw` | A `security` error, naming the file, url or variable. Where nothing is named, as for TRACE, it names the class. |
-| `quit` | The run ends at once with 101. TRY does not catch it. A host sees `QUIT_EARLY` with the value 101. |
+| Level | What happens                                                                                            |
+|-------|---------------------------------------------------------------------------------------------------------|
+| allow | Permits the requested operation.                                                                        |
+| ask   | Prompts interactively at the console. Without interactive console support, requests fail automatically. |
+| throw | Raises a catchable REBOL security error identifying the target resource.                                |
+| quit  | Terminates script execution immediately with exit status 101. Cannot be caught using try.               |
 
-A host can set a policy for the script before it runs. The host's grants are
-still the ceiling:
-
+Java hosts can apply policies prior to running user code, bound by maximum host capability grants:
 ```java
-interpreter.run("secure [file [allow read throw write]]");
-interpreter.run("write %notes.txt {changed}");
+interpreter.run("secure [file [allow read throw write]]");  
+interpreter.run("write %notes.txt {changed}");  
 // RAISED: ** Access error: security violation: %/notes.txt
 
-interpreter.run("secure allow");
-interpreter.run("call/wait {true}");
+interpreter.run("secure allow");  
+interpreter.run("call/wait {true}");  
 // RAISED: processes is not granted. SECURE cannot grant what the host held back.
 ```
 
-#### What is checked and what is not
+#### **Checked Operations vs. Unchecked Operations**
 
-JEBOL checks a policy at the same points the C does, and nowhere else.
+JEBOL matches REBOL C security check placement precisely:
 
-| Checked | Against |
-| --- | --- |
-| READ, LOAD and DO of a file. OPEN without /write, and OPEN/read. | `file` read |
-| WRITE, WRITE/append, CREATE. OPEN without /read, OPEN/write and OPEN/new. | `file` write |
-| READ, OPEN, QUERY and EXISTS? of a folder | `file` read |
-| MAKE-DIR, DELETE and RENAME of a folder | `file` write |
-| OPEN of a tcp or udp port. HTTP and HTTPS are checked through the tcp port they open. | `net` execute, naming the address |
-| CALL | `call` execute |
-| BROWSE | `browse` execute |
-| GET-ENV / SET-ENV | `envr` read / write |
-| PROTECT / UNPROTECT | `protect` write / read |
-| EVOKE, STACK, TRACE | `debug` read |
-| LOAD-EXTENSION of a file | `extension` execute |
+| Checked                                                                               | Against                         |
+|---------------------------------------------------------------------------------------|---------------------------------|
+| READ, LOAD and DO of a file. OPEN without /write, and OPEN/read.                      | file read                       |
+| WRITE, WRITE/append, CREATE. OPEN without /read, OPEN/write and OPEN/new.             | file write                      |
+| READ, OPEN, QUERY and EXISTS? of a folder                                             | file read                       |
+| MAKE-DIR, DELETE and RENAME of a folder                                               | file write                      |
+| OPEN of a tcp or udp port. HTTP and HTTPS are checked through the tcp port they open. | net execute, naming the address |
+| CALL                                                                                  | call execute                    |
+| BROWSE                                                                                | browse execute                  |
+| GET-ENV / SET-ENV                                                                     | envr read / write               |
+| PROTECT / UNPROTECT                                                                   | protect write / read            |
+| EVOKE, STACK, TRACE                                                                   | debug read                      |
+| LOAD-EXTENSION of a file                                                              | extension execute               |
 
-The C does not check these, so JEBOL does not check them either. Under the
-default policy, each one works one folder up:
-
+The following operations do not perform policy checks (matching C behavior), though they remain strictly constrained by the host file system root:
 ```
->> size? %../secret.txt
-== 7
->> rename %../secret.txt %../renamed.txt    ; goes ahead
->> delete %../renamed.txt                   ; goes ahead
->> exists? %../shared/                      ; a folder: queried, refused, so none
+>> size? %../secret.txt  
+== 7  
+>> rename %../secret.txt %../renamed.txt    ; goes ahead  
+>> delete %../renamed.txt                   ; goes ahead  
+>> exists? %../shared/                      ; a folder: queried, refused, so none  
 == _
 ```
+* DELETE, RENAME, QUERY and MODIFY of a file. This includes SIZE?, MODIFIED? and EXISTS? of a file.
+* ECHO and IMAGE/SAVE, which write without the file actor.
+* A port that is already open. OPEN was checked, and reads and writes after it are not.
+* LIST-ENV, PROTECTED? and reading a dns:// url.
+* The eval and memory limits. LIMIT-USAGE is gone before any script runs, in R3 as here, so secure [eval 1000] fails with limit-usage has no value.
 
-- DELETE, RENAME, QUERY and MODIFY of a file. This includes SIZE?,
-  MODIFIED? and EXISTS? of a file.
-- ECHO and IMAGE/SAVE, which write without the file actor.
-- A port that is already open. OPEN was checked, and reads and writes after
-  it are not.
-- LIST-ENV, PROTECTED? and reading a `dns://` url.
-- The `eval` and `memory` limits. LIMIT-USAGE is gone before any script runs,
-  in R3 as here, so `secure [eval 1000]` fails with `limit-usage has no
-  value`.
-
-The root still bounds every one of these. A host that roots a script in its
-own folder keeps it there, whatever the policy allows.
+File root constraints remain active across all unchecked operations.
 
 ---
 
-## 5. What happens when a script stops
+## **5. Execution Outcomes and Termination**
 
-Every way out is one of six conclusions. Ask `outcome.conclusion()`, or ask
-`outcome.succeeded()` when only the first one matters.
+Every script execution returns a ScriptOutcome representing one of six outcome conclusions. Inspect status using outcome.conclusion() or outcome.succeeded():
 
-| Conclusion | What it means | Where the value is |
-| --- | --- | --- |
-| `PRODUCED_A_VALUE` | The script finished. | `asHostValue()` |
-| `RAISED` | The script failed, and it could have caught the error itself. | `errorId()` and `display()` |
-| `TIMED_OUT` | The time limit passed first. | none |
-| `CANCELLED` | The host called `cancel()`. | none |
-| `QUIT_EARLY` | The script called QUIT. | `asHostValue()` |
-| `HALTED` | The script called HALT and gave control back. | none |
+| Conclusion       | What it means                                                 | Where the value is      |
+|------------------|---------------------------------------------------------------|-------------------------|
+| PRODUCED_A_VALUE | The script finished.                                          | asHostValue()           |
+| RAISED           | The script failed, and it could have caught the error itself. | errorId() and display() |
+| TIMED_OUT        | The time limit passed first.                                  | none                    |
+| CANCELLED        | The host called cancel().                                     | none                    |
+| QUIT_EARLY       | The script called QUIT.                                       | asHostValue()           |
+| HALTED           | The script called HALT and gave control back.                 | none                    |
 
-The two that hosts confuse are `CANCELLED` and `QUIT_EARLY`. The first is the
-host that stops the script. The second is the script that stops itself because
-it meant to.
+**Note:** Distinguish between CANCELLED (host initiated termination) and QUIT_EARLY (script self-termination via QUIT).
 
-Examine the conclusion before you take the value. `asHostValue()` answers for
-a failed script as well as a finished one, and the answer is then the error.
-This is the most common defect in code that embeds JEBOL, because the shortest
-code that compiles does not do the examination.
-
+Always verify outcome.succeeded() before calling asHostValue(), as failed executions return the error representation when coerced directly:
 ```java
-ScriptOutcome outcome = interpreter.run(source);
-if (!outcome.succeeded()) {
-    log.warn("script stopped: {} {}", outcome.conclusion(), outcome.display());
-    return fallbackValue;
-}
+ScriptOutcome outcome = interpreter.run(source);  
+if (!outcome.succeeded()) {  
+    log.warn("script stopped: {} {}", outcome.conclusion(), outcome.display());  
+    return fallbackValue;  
+}  
 return outcome.asHostValue();
 ```
-
-An interpreter that stopped a script still operates. A time limit that passes
-does not damage it, and a script that stops in the middle never leaves a
-series half changed.
+Interpreter instances remain valid and reusable after script termination, timeouts, or errors. Execution state transitions leave data structures in a consistent state.
 
 ---
 
-## 6. How values cross between Java and the script
+## **6. Data Type Conversion between Java and REBOL**
 
-The mappings are the obvious ones and nothing more. A value with no obvious
-counterpart stays what it is, because an incorrect conversion is worse than no
-conversion.
+Data values map naturally between Java and REBOL types. Unmapped types are preserved as host object wrappers to avoid lossy conversions.
 
-Into the script, through `define`:
+**Java to REBOL Type Mapping (via** define**):**
 
-| Java | REBOL |
-| --- | --- |
-| `Boolean` | `logic!` |
-| `Long`, `Integer`, `Short`, `Byte` | `integer!` |
-| `Double`, `Float` | `decimal!` |
-| `BigDecimal` | `money!` |
-| `String`, `Character` | `string!` |
-| `List<?>` | `block!` |
-| a REBOL value | itself |
-| `null` | a `java-object!` holding a host null, which is not `none` |
-| anything else | `java-object!`, held and not converted |
+| Java                       | REBOL                                                                   |
+|----------------------------|-------------------------------------------------------------------------|
+| Boolean                    | logic!                                                                  |
+| Long, Integer, Short, Byte | integer!                                                                |
+| Double, Float              | decimal!                                                                |
+| BigDecimal                 | money!                                                                  |
+| String, Character          | string!                                                                 |
+| List<?>                    | block!                                                                  |
+| a REBOL value              | itself                                                                  |
+| null                       | Wrapped as java-object! containing Java null (distinct from REBOL none) |
+| anything else              | java-object!, held and not converted                                    |
 
-Out of the script, through `asHostValue()`:
+**REBOL to Java Type Mapping (via** asHostValue()**):**
 
-| REBOL | Java |
-| --- | --- |
-| `integer!` | `long` |
-| `decimal!`, `percent!` | `double` |
-| `money!` | `BigDecimal` |
-| `logic!` | `boolean` |
-| `string!`, `file!`, `url!`, `tag!`, `email!` and every other string | `String` |
-| `block!`, `paren!`, `path!` and every other block | `List<Object>` |
-| `java-object!` | the object it holds |
-| `none!`, `unset!` | `null` |
-| anything else | the molded text, as a `String` |
+| REBOL                                                     | Java                         |
+|-----------------------------------------------------------|------------------------------|
+| integer!                                                  | long                         |
+| decimal!, percent!                                        | double                       |
+| money!                                                    | BigDecimal                   |
+| logic!                                                    | boolean                      |
+| string!, file!, url!, tag!, email! and every other string | String                       |
+| block!, paren!, path! and every other block               | List\<Object>                |
+| java-object!                                              | the object it holds          |
+| none!, unset!                                             | null                         |
+| anything else                                             | the molded text, as a String |
 
-A Java null and REBOL's `none` stay apart in both directions. A Java null is
-the absence of a value. REBOL's `none` is a value that means nothing. Use
-`asOptionalHostValue()` when you want both to arrive as an empty `Optional`.
+Java null and REBOL none are kept distinct during conversion. Use asOptionalHostValue() to map both to an empty Java Optional.
 
 ---
 
-## 7. What is not complete
+## **7. Known Limitations and Status**
 
-Read this section before you build on JEBOL. Some of what is here is absent,
-and some of it answers incorrectly, which is worse.
+Review this section prior to integration. It details feature coverage, pending work, and intentional deviations from C-Rebol.
 
-**Rebol's own suite.** Every assertion in its sixty-seven files either holds
-here or fails on a real 3.22.5 too; those are listed in
-`fails-on-rebol-too.txt` with the `./r3-head` session that settles each one.
-Where JEBOL differs from Rebol on purpose is in `goals.md` under "Standing".
+**Test Suite Parity:** All assertions in REBOL's test suite either pass in JEBOL or represent known failures present in standard Oldes/Rebol3 3.22.5 (documented in fails-on-rebol-too.txt). Intentional architectural differences are tracked in goals.md.
 
-**Words and types that are absent.** Every datatype R3 has is here. A
-`task!`'s body runs only where the host supplies a way to run it with
-`useTasks`: the command line runs it on a thread of its own in a fresh
-interpreter, an embedded interpreter runs nothing unless told to, and a
-browser never runs it. Four fields of `access-os` (`uid`, `euid`, `gid`,
-`egid`) answer `not-here`, because the JVM cannot ask a portable question.
-Every scheme name R3 registers is registered here too. A scheme name in R3
-promises less than it looks — it registers whether or not the build can serve
-it, and refuses at open time. `midi` is one such: the command line lists no
-instruments and refuses to open one, as a real 3.22.5 with nothing attached
-does.
+**Datatypes and System Features:** All standard R3 datatypes are implemented. task! execution requires host thread support enabled via useTasks. OS user context fields in access-os (uid, euid, gid, egid) return not-here due to JVM platform abstractions. Scheme names match R3 registrations, failing at open time if unhandled by the host.
 
-**Transport.** `read https://` works. Unlike a real 3.22.5, the TLS client
-checks the server: an expired certificate, a self-signed one, one issued for
-another host and one from an untrusted root are refused. A host must grant
-`CERTIFICATES` and supply an authority; the command line uses the JDK's own
-trust store. Every module this build imports is bundled inside it, so nothing
-is fetched over the network.
+**TLS Transport Security:** Unlike stock R3 3.22.5, JEBOL enforces strict TLS certificate validation. HTTPS connections verify server certificates using host trust stores configured via CERTIFICATES grants.
 
-**Memory.** Running out of memory is Rebol's `no-memory` error, raised where
-the script's work asked for the memory, and a script can catch it and carry
-on. The heap is still shared with the host, so bound the heap of a process
-that runs untrusted scripts.
+**Memory Management:** Memory exhaustion raises REBOL no-memory errors which scripts can catch. Process heap allocation should be restricted at the JVM level when executing untrusted scripts.
 
-**Graphics.** DRAW paints every command its dialect table declares except
-`effect`. VID is absent. There is no Rebol to compare a picture against — a
-stock 3.22.5 has no `draw` at all — so the check is that Java2D and a real
-browser draw the same paint list the same way, which `./gradlew endToEndTests`
-does on every run. The same suite builds the interpreter for the web and runs a
-script that sits in a page's tag.
+**Graphics and Rendering:** DRAW supports all dialect commands except effect. VID is not included. Rendering parity between Java2D and browser targets is verified via automated end-to-end tests (./gradlew endToEndTests).
 
-Every count here comes from `goals.md` and changes with the work. Take the
-current numbers from a run of `./gradlew allTests` rather than from this page.
+For current test statistics and benchmark numbers, run ./gradlew allTests.
 
 ---
 
-## 8. Worked examples
+## **8. Worked Examples (Pending Documentation)**
 
-**Not written yet.** This section must hold about six complete programs. Each
-one must be a file that executes. Each one must have a test, so that it stays
-true. The set must cover these tasks:
+**Upcoming content:** This section will include six fully executable reference programs with accompanying automated tests, covering the following integration scenarios:
 
-- a script under a time limit
-- a call from the script back into Java
-- a read of a file through a granted directory
-- a script that fails, and a host that handles the failure
-- a small dialect
+* a script under a time limit
+* a call from the script back into Java
+* a read of a file through a granted directory
+* a script that fails, and a host that handles the failure
+* a small dialect
 
-They must ship inside the distribution file, because a reader who has only
-that file has no other example.
+These samples will be bundled directly within the distribution package.
 
-Prose in this document can become incorrect without anything noticing. A
-program that the gate executes cannot.
+Automated test execution ensures code examples remain accurate across releases.
 
 ---
 
-## 9. The word reference
+## **9. Word Reference (Pending Documentation)**
 
-**Not written yet.** This section must name every function that the
-interpreter has, with the arguments that each one takes. It must be generated
-from the interpreter rather than typed, for the same reason as section 8.
+**Upcoming content:** This section will provide an automatically generated reference listing all functions, signatures, and arguments exported by the interpreter engine.
 
-`scripts/c-surface.py` and `scripts/c-parity.py` already report the surface
-against Rebol's own C. A reference for a reader is a third report of the same
-shape.
+Reference generation utilizes API parity reports generated by scripts/c-surface.py and scripts/c-parity.py.
 
 ---
 
-## Where to read more
+## **Further Reading**
 
-These files are in the source repository. The distribution file does not hold
-them.
+Additional specifications available in the source repository:
 
-| The question | The file |
-| --- | --- |
-| What a host can decide, and what a script can reach | `spec/embed.allium` |
-| What PARSE supports, keyword by keyword | `spec/parse.allium` |
-| How a dialect is read by DELECT | `spec/dialect.allium` |
-| What a REBOL value is | `spec/values.allium` |
-| What each function does | `spec/natives.allium` |
-| How source text becomes values | `spec/load.allium` |
-| How a block is evaluated | `spec/eval.allium` |
+| The question                                        | The file            |
+|-----------------------------------------------------|---------------------|
+| What a host can decide, and what a script can reach | spec/embed.allium   |
+| What PARSE supports, keyword by keyword             | spec/parse.allium   |
+| How a dialect is read by DELECT                     | spec/dialect.allium |
+| What a REBOL value is                               | spec/values.allium  |
+| What each function does                             | spec/natives.allium |
+| How source text becomes values                      | spec/load.allium    |
+| How a block is evaluated                            | spec/eval.allium    |
 
-Every claim in those files was put to a real Rebol, built from the source
-JEBOL ports, before it was written down. They say what the language must do. This build does not agree
-with them everywhere, and section 7 names where.
+Specification files reflect target language behaviors verified against C-Rebol. Known implementation differences in JEBOL are detailed in Section 7.
 
 ---
 
-## Licence and attribution
+## **Licence and Attribution**
 
-JEBOL is Copyright 2026 Ben Hoskins, under the Apache License, Version 2.0.
-The full text is in the `LICENSE` file, beside this one in the distribution.
+JEBOL is Copyright © 2026 Ben Hoskins, licensed under the Apache License, Version 2.0. The full license text is available in the LICENSE file included with the distribution.
 
-**JEBOL is a port of Oldes/Rebol3.** The source is at
-https://github.com/Oldes/Rebol3, and that project is itself a continuation of
-REBOL, Copyright 2012 REBOL Technologies, with Copyright 2012-2026 Rebol Open
-Source Contributors. It is under the Apache License, Version 2.0. Every
-function that JEBOL writes in Java was read from that project's C, and the
-behavior was put to a real Rebol built from it.
+**Oldes/Rebol3 Port Attribution:** JEBOL is a port of Oldes/Rebol3 ([https://github.com/Oldes/Rebol3](https://github.com/Oldes/Rebol3)), which derives from REBOL (Copyright © 2012 REBOL Technologies, Copyright © 2012–2026 Rebol Open Source Contributors) under the Apache License 2.0.
 
-**Part of that project ships inside this jar.** Rebol writes about a third of
-its library in C and the rest in REBOL. JEBOL ports the C and borrows the
-REBOL. The files under `org/jebol/mezz/` in the jar are as published upstream,
-with two exceptions: `prot-tls.reb` carries four edits that make it check a
-server's certificates, and `mezz-banner.reb` one that names the JEBOL port in
-the banner. Each file carries its own copyright and licence header. They are the larger part of the jar. JEBOL loads and evaluates them at
-startup, thus much of what a script calls is Rebol's own code and not a
-rewrite of it.
+**Bundled REBOL Mezzanine Libraries:** Files located under org/jebol/mezz/ inside the JAR are upstream REBOL mezzanine scripts, modified only in prot-tls.reb (adding certificate checks) and mezz-banner.reb (updating the startup banner). Each file preserves its respective copyright header.
 
-The `NOTICE` file states this in full, and the Apache License requires you to
-keep it with any copy that you give to somebody else.
+See the NOTICE file for complete attribution listings, which must be retained when redistributing JEBOL.
 
-REBOL is a trademark of REBOL Technologies. JEBOL is not associated with
-REBOL Technologies, and neither REBOL Technologies nor the maintainers of
-Oldes/Rebol3 endorse it.
+REBOL is a registered trademark of REBOL Technologies. JEBOL is an independent project and is not affiliated with or endorsed by REBOL Technologies or the maintainers of Oldes/Rebol3.
+

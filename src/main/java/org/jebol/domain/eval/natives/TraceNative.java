@@ -19,7 +19,7 @@ public class TraceNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("mode", Set.of(IntegerValue.TYPE, LogicValue.TYPE)));
+        return List.of(Parameter.of("mode", Set.of(IntegerValue.TYPE, LogicValue.TYPE)));
     }
 
     @Override
@@ -33,18 +33,18 @@ public class TraceNative extends DefaultNative {
             evaluator.policies().require(PolicyClass.DEBUG, PolicyAccess.READ, Optional.empty());
             Value mode = arguments.getFirst();
             Trace tracing = evaluator.tracing();
-            tracing.writeTo(evaluator.output());
+            tracing.writeTo(evaluator.findTheOutput());
             if (refinements.contains("back") && mode instanceof IntegerValue(long lines)) {
                 tracing.showTheLastAndStopTracing((int) lines);
                 return UnsetValue.unset();
             }
             tracing.keepRatherThanPrint(refinements.contains("back") && mode.isTruthy());
-            tracing.level(levelAskedFor(mode), refinements.contains("function"));
+            tracing.setTheLevel(readTheLevelAskedFor(mode), refinements.contains("function"));
             return UnsetValue.unset();
         };
     }
 
-    private int levelAskedFor(Value mode) {
+    private int readTheLevelAskedFor(Value mode) {
         if (mode instanceof IntegerValue(long level)) {
             return (int) level;
         }

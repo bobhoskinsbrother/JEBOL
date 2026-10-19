@@ -10,17 +10,17 @@ import org.jebol.domain.value.Value;
 import java.util.List;
 import java.util.Set;
 
-public interface CommandCall {
+public interface Command {
 
     List<Value> arguments();
 
     Set<String> refinements();
 
-    Value evaluated(AnyBlockValue block);
+    Value evaluate(AnyBlockValue block);
 
-    HandleValue handleOf(String kind, Object held);
+    HandleValue makeHandle(String type, Object held);
 
-    <T> T heldBy(Value handle, Class<T> type);
+    <T> T unwrap(Value handle, Class<T> type);
 
     Raised failure(ErrorCategory category, String id, Value... arguments);
 

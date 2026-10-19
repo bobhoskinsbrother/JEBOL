@@ -22,7 +22,7 @@ class LineCountFromTheSourceTest {
                 + "] [0]");
     }
 
-    private static String errorIdOf(String call) {
+    private static String readTheErrorIdOf(String call) {
         return answerTo("e: try [" + call + "] "
                 + "either error? e [e/id] ['no-error]");
     }
@@ -35,7 +35,7 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("with no line given, the first line of the source is line one")
-        void theDefaultIsLineOne() {
+        void startsAtLineOneByDefault() {
             assertThat(lineNamedBy("""
                     transcode "1d\"""")).isEqualTo("1");
             assertThat(lineNamedBy("""
@@ -44,7 +44,7 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("one is the lowest a caller may ask for, and two is the next")
-        void theLowestStartIsOne() {
+        void startsNoLowerThanOne() {
             assertThat(lineNamedBy("""
                     transcode/line "1d" 1""")).isEqualTo("1");
             assertThat(lineNamedBy("""
@@ -53,7 +53,7 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("and a start further down the file carries through")
-        void aStartFurtherDownTheFile() {
+        void carriesAStartFurtherDownTheFile() {
             assertThat(answerTo("""
                     all [error? e: try [transcode/line "1 1d" 10] \
                     e/near = "(line 10) 1 1d"]""")).isEqualTo(TRUE);
@@ -65,30 +65,30 @@ class LineCountFromTheSourceTest {
         @Test
         @DisplayName("zero is refused, and so is anything below it")
         void zeroAndBelowAreRefused() {
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/line "1 1d" 0""")).isEqualTo("out-of-range");
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/line "1 1d" -1""")).isEqualTo("out-of-range");
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/line "1 2" 0""")).isEqualTo("out-of-range");
         }
 
         @Test
         @DisplayName("and anything that is not a whole number is refused as an argument")
-        void aCountThatIsNotAWholeNumberIsRefused() {
-            assertThat(errorIdOf("""
+        void refusesACountThatIsNotAWholeNumber() {
+            assertThat(readTheErrorIdOf("""
                     transcode/line "1 1d" "ten\"""")).isEqualTo("expect-arg");
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/line "1 1d" 1.5""")).isEqualTo("expect-arg");
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/line "1 1d" none""")).isEqualTo("expect-arg");
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/line "1 1d" [10]""")).isEqualTo("expect-arg");
         }
     }
 
     @Nested
-    @DisplayName("and every kind of line break adds one")
+    @DisplayName("and every type of line break adds one")
     class WhatCountsAsALine {
 
         @Test
@@ -102,7 +102,7 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("a break inside a string counts, because the reader crossed it")
-        void aBreakInsideAStringCounts() {
+        void includesABreakInsideAString() {
             assertThat(lineNamedBy("""
                     transcode rejoin ["{x" newline "y} 1d"]""")).isEqualTo("2");
             assertThat(lineNamedBy("""
@@ -112,7 +112,7 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("a bare carriage return is a line of its own")
-        void aCarriageReturnIsALineBreakToo() {
+        void includesABareCarriageReturn() {
             assertThat(lineNamedBy("""
                     transcode rejoin ["1" cr "1d"]""")).isEqualTo("2");
             assertThat(lineNamedBy("""
@@ -121,7 +121,7 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("but a carriage return and a line feed together are one line")
-        void theTwoTogetherCountOnce() {
+        void includesACarriageReturnAndLineFeedOnce() {
             assertThat(lineNamedBy("""
                     transcode rejoin ["1" cr lf "1d"]""")).isEqualTo("2");
             assertThat(lineNamedBy("""
@@ -130,21 +130,21 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("and a line feed followed by a carriage return is two lines")
-        void theTwoTheOtherWayRoundAreTwoLines() {
+        void includesALineFeedThenACarriageReturnTwice() {
             assertThat(lineNamedBy("""
                     transcode rejoin ["1" lf cr "1d"]""")).isEqualTo("3");
         }
 
         @Test
         @DisplayName("and a break inside a binary counts")
-        void aBreakInsideABinaryCounts() {
+        void includesABreakInsideABinary() {
             assertThat(lineNamedBy("""
                     transcode rejoin ["#{00" newline "00} 1d"]""")).isEqualTo("2");
         }
 
         @Test
         @DisplayName("and the break that ends a comment counts")
-        void aBreakAfterACommentCounts() {
+        void includesTheBreakThatEndsAComment() {
             assertThat(lineNamedBy("""
                     transcode ";note^/1d\"""")).isEqualTo("2");
         }
@@ -156,7 +156,7 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("as a third item, so a walk can pass it straight in again")
-        void theWalkHandsBackTheLineItStoppedOn() {
+        void includesTheLineTheWalkStoppedOn() {
             assertThat(answerTo("""
                     all [
                         code: "1^/2" line: 1
@@ -169,14 +169,14 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("and a step that crosses no break reports the line it started on")
-        void aWalkThatCrossesNoBreak() {
+        void includesTheStartingLineForAStepCrossingNoBreak() {
             assertThat(answerTo("""
                     [1 " 2" 1] = transcode/next/line "1 2" 1""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and a walk that starts further down keeps the offset")
-        void aWalkThatStartsFurtherDown() {
+        void keepsTheOffsetForAWalkStartingFurtherDown() {
             assertThat(answerTo("""
                     [1 " 2" 40] = transcode/next/line "1 2" 40""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -185,7 +185,7 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("but it does not come back to a caller reading the whole source")
-        void theCountOnlyComesBackWhenWalking() {
+        void leavesTheCountOutWhenReadingTheWholeSource() {
             assertThat(answerTo("""
                     [1 2] = transcode/line "1 2" 10""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -194,7 +194,7 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("and a value spanning lines reports the line it ended on")
-        void aValueThatSpansLines() {
+        void includesTheLineAValueSpanningLinesEndedOn() {
             assertThat(answerTo("""
                     all [
                         result: transcode/next/line rejoin ["[1" newline "2] 3"] 1
@@ -205,8 +205,8 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("and asking for a value where there is none left still raises past-end")
-        void nothingLeftToWalk() {
-            assertThat(errorIdOf("""
+        void stillRaisesPastEndWithNothingLeft() {
+            assertThat(readTheErrorIdOf("""
                     transcode/next/line "" 10""")).isEqualTo("past-end");
             assertThat(answerTo("""
                     all [error? e: transcode/next/line/error "" 10 \
@@ -215,7 +215,7 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("and a source with nothing in it is still an empty block")
-        void anEmptySourceIsStillAnEmptyBlock() {
+        void isStillAnEmptyBlockForAnEmptySource() {
             assertThat(answerTo("""
                     [] = transcode/line "" 10""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -229,7 +229,7 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("the error handed back as a value names the offset line")
-        void theOffsetReachesTheErrorValue() {
+        void namesTheOffsetLineInTheErrorValue() {
             assertThat(answerTo("""
                     all [
                         blk: transcode/error/line "1d" 10
@@ -240,7 +240,7 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("and both arguments arrive in the order they were declared")
-        void bothArgumentsAtOnce() {
+        void takesBothArgumentsInDeclaredOrder() {
             assertThat(answerTo("""
                     [1 1] = transcode/line/part "1 1d" 10 3""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -250,14 +250,14 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("a bound of zero reads nothing, which is legal")
-        void aBoundOfZeroReadsNothing() {
+        void readsNothingForABoundOfZero() {
             assertThat(answerTo("""
                     [] = transcode/part "1 2" 0""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a bound of one reads the first character, and a longer one reads it all")
-        void theBoundEitherSideOfZero() {
+        void readsAsFarAsTheBound() {
             assertThat(answerTo("""
                     [1] = transcode/part "1 2" 1""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -266,17 +266,17 @@ class LineCountFromTheSourceTest {
 
         @Test
         @DisplayName("but a negative bound is refused")
-        void aNegativeBoundIsRefused() {
-            assertThat(errorIdOf("""
+        void refusesANegativeBound() {
+            assertThat(readTheErrorIdOf("""
                     transcode/part "1 2" -1""")).isEqualTo("out-of-range");
         }
 
         @Test
         @DisplayName("and a bound that is not a whole number is refused as an argument")
-        void aBoundThatIsNotAWholeNumberIsRefused() {
-            assertThat(errorIdOf("""
+        void refusesABoundThatIsNotAWholeNumber() {
+            assertThat(readTheErrorIdOf("""
                     transcode/part "1 2" "three\"""")).isEqualTo("expect-arg");
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     transcode/part "1 2" 1.5""")).isEqualTo("expect-arg");
         }
     }

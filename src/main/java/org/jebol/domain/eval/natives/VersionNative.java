@@ -43,8 +43,8 @@ public class VersionNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> StringValue.of(refinements.contains("data")
-                ? loadableDescription(evaluator)
-                : THE_LANGUAGE + BETWEEN_LANGUAGE_AND_PRODUCT + theSystemSays(evaluator, "product")
+                ? describeLoadably(evaluator)
+                : THE_LANGUAGE + BETWEEN_LANGUAGE_AND_PRODUCT + readWhatTheSystemSays(evaluator, "product")
                         + BETWEEN_FIELDS + VERSION_TEXT);
     }
 
@@ -52,17 +52,17 @@ public class VersionNative extends DefaultNative {
         return TupleValue.of(VERSION_PARTS);
     }
 
-    private String loadableDescription(Evaluator evaluator) {
+    private String describeLoadably(Evaluator evaluator) {
         List<String> fields = new ArrayList<>(List.of(
                 THE_LANGUAGE,
-                theSystemSays(evaluator, "product"),
+                readWhatTheSystemSays(evaluator, "product"),
                 VERSION_TEXT,
-                theSystemSays(evaluator, "platform")));
+                readWhatTheSystemSays(evaluator, "platform")));
         fields.addAll(Collections.nCopies(BUILD_FIELDS_ONLY_A_C_BUILD_KNOWS, AN_UNKNOWN_FIELD));
         return String.join(BETWEEN_FIELDS, fields);
     }
 
-    private String theSystemSays(Evaluator evaluator, String field) {
-        return Molder.form(evaluator.systemContext().valueAt("system", field));
+    private String readWhatTheSystemSays(Evaluator evaluator, String field) {
+        return Molder.form(evaluator.systemContext().readValueAt("system", field));
     }
 }

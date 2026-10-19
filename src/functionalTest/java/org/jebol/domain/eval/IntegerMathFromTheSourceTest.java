@@ -15,7 +15,7 @@ class IntegerMathFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -29,7 +29,7 @@ class IntegerMathFromTheSourceTest {
 
         @Test
         @DisplayName("an ordinary shift is an ordinary shift")
-        void theEasyCases() {
+        void handlesTheEasyCases() {
             assertThat(answerTo("0 = shift 0 0")).isEqualTo(TRUE);
             assertThat(answerTo("0 = shift 0 1")).isEqualTo(TRUE);
             assertThat(answerTo("0 = shift 0 63")).isEqualTo(TRUE);
@@ -41,29 +41,29 @@ class IntegerMathFromTheSourceTest {
 
         @Test
         @DisplayName("shifting a positive number into the sign bit raises")
-        void theOverflowCheckOnALeftShift() {
-            assertThat(errorIdOf("shift 1 63")).isEqualTo("overflow");
-            assertThat(errorIdOf("shift 2 62")).isEqualTo("overflow");
-            assertThat(errorIdOf("shift 4611686018427387904 1")).isEqualTo("overflow");
+        void checksForOverflowOnALeftShift() {
+            assertThat(readTheErrorIdOf("shift 1 63")).isEqualTo("overflow");
+            assertThat(readTheErrorIdOf("shift 2 62")).isEqualTo("overflow");
+            assertThat(readTheErrorIdOf("shift 4611686018427387904 1")).isEqualTo("overflow");
         }
 
         @Test
         @DisplayName("the most negative number is reachable, and is the one exception")
-        void theMostNegativeNumberIsNotAnOverflow() {
+        void reachesTheMostNegativeNumberWithoutOverflow() {
             assertThat(answerTo(MOST_NEGATIVE + "m = shift -1 63")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a count of sixty-four or more raises, unless the value is already zero")
-        void aCountPastTheWidthRaises() {
-            assertThat(errorIdOf("shift 1 64")).isEqualTo("overflow");
-            assertThat(errorIdOf("shift 1 100")).isEqualTo("overflow");
+        void raisesForACountPastTheWidth() {
+            assertThat(readTheErrorIdOf("shift 1 64")).isEqualTo("overflow");
+            assertThat(readTheErrorIdOf("shift 1 100")).isEqualTo("overflow");
             assertThat(answerTo("0 = shift 0 64")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("shifting right past the width repeats the sign bit")
-        void aRightShiftPastTheWidth() {
+        void shiftsRightPastTheWidth() {
             assertThat(answerTo(MOST_NEGATIVE + "-1 = shift m -63")).isEqualTo(TRUE);
             assertThat(answerTo(MOST_NEGATIVE + "-1 = shift m -64")).isEqualTo(TRUE);
             assertThat(answerTo("-1 = shift -1 -100")).isEqualTo(TRUE);
@@ -73,7 +73,7 @@ class IntegerMathFromTheSourceTest {
 
         @Test
         @DisplayName("/LOGICAL shifts the bits and refuses nothing")
-        void theLogicalRefinementDropsTheFussiness() {
+        void dropsTheFussinessForLogical() {
             assertThat(answerTo(MOST_NEGATIVE + "m = shift/logical 1 63")).isEqualTo(TRUE);
             assertThat(answerTo("-9223372036854775808 = shift/logical 1 63"))
                     .isEqualTo(TRUE);
@@ -89,7 +89,7 @@ class IntegerMathFromTheSourceTest {
 
         @Test
         @DisplayName("// is INTEGER-DIVIDE and not REMAINDER")
-        void theOperatorIsTheQuotient() {
+        void answersTheQuotient() {
             assertThat(answerTo("2 == (23 // 10)")).isEqualTo(TRUE);
             assertThat(answerTo("3 == (23 % 10)")).isEqualTo(TRUE);
             assertThat(answerTo("2 == integer-divide 23 10")).isEqualTo(TRUE);
@@ -97,7 +97,7 @@ class IntegerMathFromTheSourceTest {
 
         @Test
         @DisplayName("both sides truncate to whole numbers, and so does the answer")
-        void bothSidesTruncate() {
+        void truncatesBothSides() {
             assertThat(answerTo("2 == (23.5 // 10)")).isEqualTo(TRUE);
             assertThat(answerTo("2 == (23 // 10.5)")).isEqualTo(TRUE);
             assertThat(answerTo("2 == integer-divide 23.5 10")).isEqualTo(TRUE);
@@ -107,10 +107,10 @@ class IntegerMathFromTheSourceTest {
 
         @Test
         @DisplayName("dividing by zero raises, and the fraction does not save it")
-        void aZeroDivisorRaises() {
-            assertThat(errorIdOf("2 // 0")).isEqualTo("zero-divide");
-            assertThat(errorIdOf("integer-divide 2 0")).isEqualTo("zero-divide");
-            assertThat(errorIdOf("2 // 0.5")).isEqualTo("zero-divide");
+        void raisesForAZeroDivisor() {
+            assertThat(readTheErrorIdOf("2 // 0")).isEqualTo("zero-divide");
+            assertThat(readTheErrorIdOf("integer-divide 2 0")).isEqualTo("zero-divide");
+            assertThat(readTheErrorIdOf("2 // 0.5")).isEqualTo("zero-divide");
         }
     }
 
@@ -120,10 +120,10 @@ class IntegerMathFromTheSourceTest {
 
         @Test
         @DisplayName("a number too large for a machine word raises rather than saturating")
-        void anOversizedNumberRaises() {
-            assertThat(errorIdOf("to integer! \"11111111111111111111111\""))
+        void raisesForAnOversizedNumber() {
+            assertThat(readTheErrorIdOf("to integer! \"11111111111111111111111\""))
                     .isNotEqualTo("no-error");
-            assertThat(errorIdOf("to integer! \"9223372036854775808\""))
+            assertThat(readTheErrorIdOf("to integer! \"9223372036854775808\""))
                     .isNotEqualTo("no-error");
             assertThat(answerTo("9223372036854775807 = to integer! \"9223372036854775807\""))
                     .isEqualTo(TRUE);
@@ -138,7 +138,7 @@ class IntegerMathFromTheSourceTest {
 
         @Test
         @DisplayName("the small answers")
-        void theSmallAnswers() {
+        void answersForSmallNumbers() {
             assertThat(answerTo("not prime? 42")).isEqualTo(TRUE);
             assertThat(answerTo("prime? 43")).isEqualTo(TRUE);
             assertThat(answerTo("not prime? 1")).isEqualTo(TRUE);
@@ -150,7 +150,7 @@ class IntegerMathFromTheSourceTest {
 
         @Test
         @DisplayName("a fourteen digit prime is answered rather than refused")
-        void aLargePrimeIsAnswered() {
+        void answersForALargePrime() {
             assertThat(answerTo("prime? 99'504'028'301'131")).isEqualTo(TRUE);
         }
 
@@ -168,15 +168,15 @@ class IntegerMathFromTheSourceTest {
 
         @Test
         @DisplayName("a number is expect-arg, from the argument check")
-        void aNumberIsRefusedAtTheDoor() {
-            assertThat(errorIdOf("set 1 1")).isEqualTo("expect-arg");
-            assertThat(errorIdOf("set \"a\" 1")).isEqualTo("expect-arg");
-            assertThat(errorIdOf("set 1x1 1")).isEqualTo("expect-arg");
+        void refusesANumberAtTheDoor() {
+            assertThat(readTheErrorIdOf("set 1 1")).isEqualTo("expect-arg");
+            assertThat(readTheErrorIdOf("set \"a\" 1")).isEqualTo("expect-arg");
+            assertThat(readTheErrorIdOf("set 1x1 1")).isEqualTo("expect-arg");
         }
 
         @Test
         @DisplayName("the shapes it does take still work")
-        void theAcceptedShapes() {
+        void acceptsTheseShapes() {
             assertThat(answerTo("set 'a 1 a")).isEqualTo("1");
             assertThat(answerTo("set [a b] [1 2] a")).isEqualTo("1");
         }

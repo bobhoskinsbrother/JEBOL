@@ -20,7 +20,7 @@ final class Change extends DeclaredKeyword {
     @Override
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
         refuseTheModifierBeforeTheRule(rules.get(at + 1));
-        Integer markOffset = walk.sameStorageOffset(rules.get(at + 1));
+        Integer markOffset = walk.findTheSameStorageOffset(rules.get(at + 1));
         if (markOffset != null) {
             if (at + 2 >= rules.size()) {
                 throw Raised.of(EvaluationFailure.PARSE_END,
@@ -46,7 +46,7 @@ final class Change extends DeclaredKeyword {
 
     @Override
     public int applyToString(ParseWalk walk, List<Value> rules, int at) {
-        Integer markOffset = walk.sameStorageOffset(rules.get(at + 1));
+        Integer markOffset = walk.findTheSameStorageOffset(rules.get(at + 1));
         if (markOffset != null) {
             if (at + 2 >= rules.size()) {
                 return ParseWalk.NO_MATCH;
@@ -76,7 +76,7 @@ final class Change extends DeclaredKeyword {
 
         boolean wholeBlock = saysToPutTheBlockInWhole(rules, replacementSlot);
         int lastRuleAt = wholeBlock ? replacementSlot + 1 : replacementSlot;
-        Value replacement = walk.theValueToInsert(rules.get(lastRuleAt));
+        Value replacement = walk.chooseTheValueToInsert(rules.get(lastRuleAt));
         List<Value> putting = !wholeBlock && replacement instanceof BlockValue spread
                 ? spread.remaining()
                 : List.of(replacement);

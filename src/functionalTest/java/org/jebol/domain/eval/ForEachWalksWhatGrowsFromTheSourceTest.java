@@ -11,11 +11,11 @@ class ForEachWalksWhatGrowsFromTheSourceTest {
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn(source);
-        return withoutTheDelimitersAroundAText(
+        return stripTheDelimitersAroundAText(
                 interpreter.display(interpreter.run(source)));
     }
 
-    private static String withoutTheDelimitersAroundAText(String shown) {
+    private static String stripTheDelimitersAroundAText(String shown) {
         return isWrappedIn(shown, '"', '"') || isWrappedIn(shown, '{', '}')
                 ? shown.substring(1, shown.length() - 1)
                 : shown;

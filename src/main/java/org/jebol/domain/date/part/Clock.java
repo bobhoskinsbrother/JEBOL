@@ -20,7 +20,7 @@ final class Clock implements WritableDateField {
     }
 
     @Override
-    public DateValue writtenOn(DateValue date, Assigned given) {
+    public DateValue writeOn(DateValue date, Assigned given) {
         return switch (given.value()) {
             case NoneValue _ -> date.asJustTheDay();
             case TimeValue clock -> date.atTheTime(clock);

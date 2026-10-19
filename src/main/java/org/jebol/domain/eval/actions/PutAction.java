@@ -18,10 +18,10 @@ public class PutAction extends DefaultNative implements ActionValue {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("target"),
-                Parameter.required("key", TypesetValue.ANY_TYPE.members()),
-                Parameter.required("value", TypesetValue.ANY_TYPE.members()),
-                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)));
+        return List.of(Parameter.of("target"),
+                Parameter.of("key", TypesetValue.ANY_TYPE.members()),
+                Parameter.of("value", TypesetValue.ANY_TYPE.members()),
+                Parameter.belongTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -32,7 +32,7 @@ public class PutAction extends DefaultNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .theRebolActorsAnswer("put", arguments, refinements)
+                .askTheRebolActor("put", arguments, refinements)
                 .orElseGet(() -> put(arguments, refinements));
     }
 
@@ -63,7 +63,7 @@ public class PutAction extends DefaultNative implements ActionValue {
     private void putIntoTheBlock(
             AnyBlockValue block, Value key, Value written, int stride, boolean mindingCase) {
         List<Value> items = block.remaining();
-        int found = positionOfTheKey(items, key, stride, mindingCase);
+        int found = findThePositionOfTheKey(items, key, stride, mindingCase);
         if (found == NOT_FOUND) {
             block.storage().append(key);
             block.storage().append(written);
@@ -74,12 +74,12 @@ public class PutAction extends DefaultNative implements ActionValue {
         }
     }
 
-    private int positionOfTheKey(
+    private int findThePositionOfTheKey(
             List<Value> items, Value key, int stride, boolean mindingCase) {
         for (int at = 0; at < items.size(); at += stride) {
             boolean matches = mindingCase
-                    ? Comparison.identicallyEqual(items.get(at), key)
-                    : Comparison.looselyEqual(items.get(at), key);
+                    ? Comparison.areIdenticallyEqual(items.get(at), key)
+                    : Comparison.areLooselyEqual(items.get(at), key);
             if (matches) {
                 return at;
             }
@@ -88,7 +88,7 @@ public class PutAction extends DefaultNative implements ActionValue {
     }
 
     private int recordWidth(List<Value> arguments, Set<String> refinements) {
-        return argumentOf("skip", 0, arguments, refinements)
+        return readTheArgumentOf("skip", 0, arguments, refinements)
                 .map(size -> Math.max(1, (int) ((IntegerValue) size).magnitude()))
                 .orElse(1);
     }

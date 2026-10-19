@@ -25,21 +25,21 @@ public final class CounterWithGalois {
      * keystream is the same either way, because counting is its own inverse;
      * only the tag differs, being always taken over the cipher text.
      */
-    public static Sealed through(OneBlock cipher, byte[] vector, byte[] header,
-            byte[] octets, boolean deciphering) {
+    public static Sealed seal(OneBlock cipher, byte[] vector, byte[] header,
+                              byte[] octets, boolean deciphering) {
 
-        byte[] hashKey = cipher.enciphered(new byte[BLOCK]);
-        byte[] startingCount = theStartingCount(cipher, hashKey, vector);
-        byte[] masked = maskedFrom(cipher, startingCount, octets);
+        byte[] hashKey = cipher.encipher(new byte[BLOCK]);
+        byte[] startingCount = computeTheStartingCount(cipher, hashKey, vector);
+        byte[] masked = maskFrom(cipher, startingCount, octets);
         byte[] overTheCipherText = deciphering ? octets : masked;
 
         byte[] running = new byte[BLOCK];
-        running = hashedThrough(running, hashKey, header);
-        running = hashedThrough(running, hashKey, overTheCipherText);
-        running = hashedThrough(running, hashKey,
-                theTwoLengthsInBitsAsOneBlock(header.length, overTheCipherText.length));
+        running = hashThrough(running, hashKey, header);
+        running = hashThrough(running, hashKey, overTheCipherText);
+        running = hashThrough(running, hashKey,
+                packTheTwoLengthsInBits(header.length, overTheCipherText.length));
 
-        byte[] maskedWith = cipher.enciphered(startingCount);
+        byte[] maskedWith = cipher.encipher(startingCount);
         byte[] tag = new byte[WHOLE_TAG];
         for (int at = 0; at < WHOLE_TAG; at++) {
             tag[at] = (byte) (running[at] ^ maskedWith[at]);
@@ -47,7 +47,7 @@ public final class CounterWithGalois {
         return new Sealed(masked, tag);
     }
 
-    private static byte[] theStartingCount(
+    private static byte[] computeTheStartingCount(
             OneBlock cipher, byte[] hashKey, byte[] vector) {
 
         if (vector.length == THE_VECTOR_LENGTH_THAT_NEEDS_NO_HASHING) {
@@ -55,8 +55,8 @@ public final class CounterWithGalois {
             counting[BLOCK - 1] = 1;
             return counting;
         }
-        byte[] running = hashedThrough(new byte[BLOCK], hashKey, vector);
-        return hashedThrough(running, hashKey, theTwoLengthsInBitsAsOneBlock(0, vector.length));
+        byte[] running = hashThrough(new byte[BLOCK], hashKey, vector);
+        return hashThrough(running, hashKey, packTheTwoLengthsInBits(0, vector.length));
     }
 
     private static final int THE_VECTOR_LENGTH_THAT_NEEDS_NO_HASHING = 12;
@@ -65,14 +65,14 @@ public final class CounterWithGalois {
 
     private static final int OCTETS_IN_A_SIXTY_FOUR_BIT_LENGTH = 8;
 
-    private static byte[] maskedFrom(
+    private static byte[] maskFrom(
             OneBlock cipher, byte[] startingCount, byte[] octets) {
 
         byte[] masked = new byte[octets.length];
         byte[] counting = startingCount.clone();
         for (int at = 0; at < octets.length; at += BLOCK) {
             countOnce(counting);
-            byte[] keystream = cipher.enciphered(counting);
+            byte[] keystream = cipher.encipher(counting);
             for (int within = 0;
                     within < BLOCK && at + within < octets.length; within++) {
                 masked[at + within] =
@@ -90,7 +90,7 @@ public final class CounterWithGalois {
         }
     }
 
-    private static byte[] theTwoLengthsInBitsAsOneBlock(
+    private static byte[] packTheTwoLengthsInBits(
             int headerOctets, int cipherTextOctets) {
 
         byte[] lengths = new byte[BLOCK];
@@ -107,7 +107,7 @@ public final class CounterWithGalois {
         }
     }
 
-    private static byte[] hashedThrough(
+    private static byte[] hashThrough(
             byte[] running, byte[] hashKey, byte[] octets) {
 
         byte[] total = running;
@@ -117,12 +117,12 @@ public final class CounterWithGalois {
                 byte next = at + within < octets.length ? octets[at + within] : 0;
                 combined[within] = (byte) (total[within] ^ next);
             }
-            total = multiplied(combined, hashKey);
+            total = multiply(combined, hashKey);
         }
         return total;
     }
 
-    private static byte[] multiplied(byte[] left, byte[] right) {
+    private static byte[] multiply(byte[] left, byte[] right) {
         byte[] product = new byte[BLOCK];
         byte[] running = right.clone();
         for (int bit = 0; bit < BLOCK * Byte.SIZE; bit++) {

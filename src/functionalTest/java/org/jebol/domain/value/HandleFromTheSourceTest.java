@@ -15,7 +15,7 @@ class HandleFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -28,7 +28,7 @@ class HandleFromTheSourceTest {
 
         @Test
         @DisplayName("the boot registers two codecs as handles, and REBOL wraps each in an object")
-        void theBootRegistersTwo() {
+        void includesTheTwoTheBootRegisters() {
             assertThat(answerTo("handle? system/codecs/text/entry")).isEqualTo(TRUE);
             assertThat(answerTo("handle? system/codecs/markup/entry")).isEqualTo(TRUE);
             assertThat(answerTo("object? system/codecs/text")).isEqualTo(TRUE);
@@ -40,7 +40,7 @@ class HandleFromTheSourceTest {
 
         @Test
         @DisplayName("and the suffixes reach the file-type table, which is what LOAD reads")
-        void theSuffixesReachTheTable() {
+        void putsTheSuffixesInTheFileTypeTable() {
             assertThat(answerTo("select system/catalog/file-types %.txt"))
                     .isEqualTo("text");
             assertThat(answerTo("select system/catalog/file-types %.html"))
@@ -49,7 +49,7 @@ class HandleFromTheSourceTest {
 
         @Test
         @DisplayName("and the kinds of handle are a catalogue, as an event's types are")
-        void theKindsAreACatalogue() {
+        void keepsTheKindsInACatalogue() {
             assertThat(answerTo("true? find system/catalog/handles 'codec"))
                     .isEqualTo("#(true)");
             assertThat(answerTo("true? find system/catalog/handles 'rc4"))
@@ -57,8 +57,8 @@ class HandleFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and every kind in it is a word, as Register_Handle appends one")
-        void everyKindIsAWord() {
+        @DisplayName("and every type in it is a word, as Register_Handle appends one")
+        void namesEveryKindWithAWord() {
             assertThat(answerTo("block? system/catalog/handles")).isEqualTo("#(true)");
             assertThat(answerTo("""
                     empty? remove-each k copy system/catalog/handles [word? k]"""))
@@ -68,13 +68,13 @@ class HandleFromTheSourceTest {
         @Test
         @DisplayName("MAKE cannot build one")
         void makeCannotBuildOne() {
-            assertThat(errorIdFrom("make handle! []")).isNotEqualTo("no-error");
-            assertThat(errorIdFrom("make handle! \"codec\"")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdFrom("make handle! []")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdFrom("make handle! \"codec\"")).isNotEqualTo("no-error");
         }
 
         @Test
-        @DisplayName("and it molds as its kind, which is all there is to say about it")
-        void itMoldsAsItsKind() {
+        @DisplayName("and it molds as its type, which is all there is to say about it")
+        void moldsAsItsKind() {
             assertThat(answerTo("mold system/codecs/text/entry"))
                     .isEqualTo("\"#(handle! codec)\"");
             assertThat(answerTo("mold system/codecs/markup/entry"))
@@ -88,7 +88,7 @@ class HandleFromTheSourceTest {
 
         @Test
         @DisplayName("SAME? is identity, and a codec read twice is the same codec")
-        void sameIsIdentity() {
+        void treatsSameAsIdentity() {
             assertThat(answerTo("same? system/codecs/text/entry system/codecs/text/entry"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("same? system/codecs/text/entry system/codecs/markup/entry"))
@@ -99,7 +99,7 @@ class HandleFromTheSourceTest {
 
         @Test
         @DisplayName("and EQUAL? needs two context handles, so a codec equals nothing at all")
-        void equalNeedsContextHandles() {
+        void needsContextHandlesForEqual() {
             assertThat(answerTo("equal? system/codecs/text/entry system/codecs/text/entry"))
                     .isEqualTo(FALSE);
             assertThat(answerTo("h: system/codecs/text/entry equal? h h")).isEqualTo(FALSE);
@@ -108,7 +108,7 @@ class HandleFromTheSourceTest {
 
         @Test
         @DisplayName("two codecs can be put in an order, by identity")
-        void theyCanBeOrdered() {
+        void ordersByIdentity() {
             assertThat(answerTo(
                     "a: system/codecs/text/entry b: system/codecs/markup/entry "
                     + "one: a < b other: b < a one <> other")).isEqualTo(TRUE);
@@ -131,15 +131,15 @@ class HandleFromTheSourceTest {
 
         @Test
         @DisplayName("a function handle answers none for every name")
-        void aFunctionHandleAnswersNone() {
+        void answersNoneForAFunctionHandle() {
             assertThat(answerTo("none? system/codecs/text/entry/type")).isEqualTo(TRUE);
             assertThat(answerTo("none? system/codecs/text/entry/nonsense")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and a selector that is not a name is refused")
-        void aNonWordSelectorIsRefused() {
-            assertThat(errorIdFrom("system/codecs/text/entry/1")).isEqualTo("invalid-path");
+        void refusesANonWordSelector() {
+            assertThat(readTheErrorIdFrom("system/codecs/text/entry/1")).isEqualTo("invalid-path");
         }
     }
 
@@ -169,14 +169,14 @@ class HandleFromTheSourceTest {
 
         @Test
         @DisplayName("the markup codec identifies nothing, and says so by setting an error")
-        void markupIdentifiesNothing() {
+        void identifiesNothingAsMarkup() {
             assertThat(answerTo("do-codec system/codecs/markup/entry 'identify #{3C623E}"))
                     .isEqualTo(FALSE);
         }
 
         @Test
         @DisplayName("and it decodes markup into a block of strings and tags")
-        void markupDecodes() {
+        void decodesMarkup() {
             assertThat(answerTo(
                     "mold do-codec system/codecs/markup/entry 'decode to binary! \"a<b>c\""))
                     .isEqualTo("{[\"a\" <b> \"c\"]}");
@@ -188,44 +188,44 @@ class HandleFromTheSourceTest {
         @Test
         @DisplayName("a handle that is not a codec's is refused by name")
         void onlyACodecHandle() {
-            assertThat(errorIdFrom("do-codec system/codecs/text/entry 'decode #{41}"))
+            assertThat(readTheErrorIdFrom("do-codec system/codecs/text/entry 'decode #{41}"))
                     .isEqualTo("no-error");
         }
 
         @Test
         @DisplayName("and an action word it does not know is refused")
-        void anUnknownActionIsRefused() {
-            assertThat(errorIdFrom("do-codec system/codecs/text/entry 'nonsense #{41}"))
+        void refusesAnUnknownAction() {
+            assertThat(readTheErrorIdFrom("do-codec system/codecs/text/entry 'nonsense #{41}"))
                     .isEqualTo("invalid-arg");
         }
 
         @Test
         @DisplayName("decoding wants a binary and encoding wants an image, whatever the spec allows")
-        void eachActionWantsItsOwnDatatype() {
-            assertThat(errorIdFrom("do-codec system/codecs/text/entry 'decode \"AB\""))
+        void wantsEachActionsOwnDatatype() {
+            assertThat(readTheErrorIdFrom("do-codec system/codecs/text/entry 'decode \"AB\""))
                     .isEqualTo("invalid-arg");
-            assertThat(errorIdFrom("do-codec system/codecs/text/entry 'encode #{41}"))
+            assertThat(readTheErrorIdFrom("do-codec system/codecs/text/entry 'encode #{41}"))
                     .isEqualTo("invalid-arg");
-            assertThat(errorIdFrom(
+            assertThat(readTheErrorIdFrom(
                     "do-codec system/codecs/text/entry 'encode make image! 1x1"))
                     .isEqualTo("no-error");
         }
 
         @Test
         @DisplayName("and a codec asked to do what it cannot is bad media")
-        void whatACodecCannotDo() {
-            assertThat(errorIdFrom(
+        void reportsBadMediaForWhatACodecCannotDo() {
+            assertThat(readTheErrorIdFrom(
                     "do-codec system/codecs/markup/entry 'encode make image! 1x1"))
                     .isEqualTo("bad-media");
         }
 
         @Test
         @DisplayName("and it takes a handle, a word and data, in that order")
-        void itsArguments() {
-            assertThat(errorIdFrom("do-codec 1 'decode #{41}")).isEqualTo("expect-arg");
-            assertThat(errorIdFrom("do-codec system/codecs/text/entry \"decode\" #{41}"))
+        void takesAHandleAWordAndData() {
+            assertThat(readTheErrorIdFrom("do-codec 1 'decode #{41}")).isEqualTo("expect-arg");
+            assertThat(readTheErrorIdFrom("do-codec system/codecs/text/entry \"decode\" #{41}"))
                     .isEqualTo("expect-arg");
-            assertThat(errorIdFrom("do-codec system/codecs/text/entry 'decode 1"))
+            assertThat(readTheErrorIdFrom("do-codec system/codecs/text/entry 'decode 1"))
                     .isEqualTo("expect-arg");
         }
     }
@@ -245,7 +245,7 @@ class HandleFromTheSourceTest {
 
         @Test
         @DisplayName("and ENCODING? asks every codec to identify the data")
-        void encodingAsksEachCodec() {
+        void asksEachCodecForEncoding() {
             assertThat(answerTo("word? encoding? #{4142}")).isEqualTo(TRUE);
         }
     }
@@ -256,14 +256,14 @@ class HandleFromTheSourceTest {
 
         @Test
         @DisplayName("a function handle has nothing to release, and says so")
-        void aFunctionHandleIsNotReleased() {
+        void findsNothingToReleaseInAFunctionHandle() {
             assertThat(answerTo("release system/codecs/text/entry")).isEqualTo(FALSE);
             assertThat(answerTo("release system/codecs/markup/entry")).isEqualTo(FALSE);
         }
 
         @Test
         @DisplayName("releasing does not spoil the handle, because there was nothing to spoil")
-        void itChangesNothing() {
+        void leavesTheHandleUnspoiled() {
             assertThat(answerTo(
                     "release system/codecs/text/entry "
                     + "do-codec system/codecs/text/entry 'decode #{41}")).isEqualTo("\"A\"");
@@ -271,9 +271,9 @@ class HandleFromTheSourceTest {
 
         @Test
         @DisplayName("and it takes a handle and nothing else")
-        void itsArgument() {
-            assertThat(errorIdFrom("release 1")).isEqualTo("expect-arg");
-            assertThat(errorIdFrom("release none")).isEqualTo("expect-arg");
+        void takesAHandleAndNothingElse() {
+            assertThat(readTheErrorIdFrom("release 1")).isEqualTo("expect-arg");
+            assertThat(readTheErrorIdFrom("release none")).isEqualTo("expect-arg");
         }
     }
 
@@ -281,50 +281,50 @@ class HandleFromTheSourceTest {
     @DisplayName("Load_Markup, which is the markup codec's whole body")
     class SplittingMarkup {
 
-        private static String decoded(String markup) {
+        private static String decode(String markup) {
             return answerTo("mold do-codec system/codecs/markup/entry 'decode to binary! "
                     + "\"" + markup + "\"");
         }
 
         @Test
         @DisplayName("text with no tags in it is one string")
-        void plainText() {
-            assertThat(decoded("hello")).isEqualTo("{[\"hello\"]}");
-            assertThat(decoded("")).isEqualTo("\"[]\"");
+        void keepsPlainTextAsOneString() {
+            assertThat(decode("hello")).isEqualTo("{[\"hello\"]}");
+            assertThat(decode("")).isEqualTo("\"[]\"");
         }
 
         @Test
         @DisplayName("a less-than sign that could not start a tag is ordinary text")
-        void aLoneLessThan() {
-            assertThat(decoded("a < b")).isEqualTo("{[\"a < b\"]}");
-            assertThat(decoded("a<1>b")).isEqualTo("{[\"a<1>b\"]}");
+        void keepsALoneLessThanAsText() {
+            assertThat(decode("a < b")).isEqualTo("{[\"a < b\"]}");
+            assertThat(decode("a<1>b")).isEqualTo("{[\"a<1>b\"]}");
         }
 
         @Test
         @DisplayName("and a slash, a question mark or an exclamation mark can start one")
-        void theThreeOtherStarters() {
-            assertThat(decoded("</b>")).isEqualTo("\"[</b>]\"");
-            assertThat(decoded("<?xml?>")).isEqualTo("\"[<?xml?>]\"");
+        void startsATagWithASlashQuestionOrExclamation() {
+            assertThat(decode("</b>")).isEqualTo("\"[</b>]\"");
+            assertThat(decode("<?xml?>")).isEqualTo("\"[<?xml?>]\"");
         }
 
         @Test
         @DisplayName("a quoted attribute may hold a closing bracket")
         void quotesProtectABracket() {
-            assertThat(decoded("<a href='x>y'>"))
+            assertThat(decode("<a href='x>y'>"))
                     .isEqualTo("\"[<a href='x>y'>]\"");
         }
 
         @Test
         @DisplayName("a comment runs to its own ending and not to the first bracket")
-        void aCommentRunsToItsEnd() {
-            assertThat(decoded("<!-- a > b -->after"))
+        void runsACommentToItsOwnEnd() {
+            assertThat(decode("<!-- a > b -->after"))
                     .isEqualTo("{[<!-- a > b --> \"after\"]}");
         }
 
         @Test
         @DisplayName("and a tag that never closes is treated as text")
-        void anUnclosedTagIsText() {
-            assertThat(decoded("a<b")).isEqualTo("{[\"a\" \"<b\"]}");
+        void treatsAnUnclosedTagAsText() {
+            assertThat(decode("a<b")).isEqualTo("{[\"a\" \"<b\"]}");
         }
     }
 }

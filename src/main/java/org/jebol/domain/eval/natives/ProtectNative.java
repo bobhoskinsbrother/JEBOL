@@ -34,7 +34,7 @@ public class ProtectNative extends ProtectingNative {
             Value target = arguments.getFirst();
             evaluator.policies().require(PolicyClass.PROTECT, PolicyAccess.WRITE, Optional.of(target));
             if (refinements.contains("hide") && target instanceof AnyWordValue word) {
-                word.boundSlot().hide(true);
+                word.findTheBoundSlot().hide(true);
                 return target;
             }
             if (refinements.contains("hide") && refinements.contains("words")
@@ -45,7 +45,7 @@ public class ProtectNative extends ProtectingNative {
             if (refinements.contains("hide") && !namesAField(target, refinements)) {
                 throw Raised.of(EvaluationFailure.BAD_REFINES, "protect/hide needs a word");
             }
-            protectionChanged(target, PROTECTED, refinements);
+            changeTheProtection(target, PROTECTED, refinements);
             return target;
         };
     }
@@ -59,6 +59,6 @@ public class ProtectNative extends ProtectingNative {
         names.remaining().stream()
                 .filter(AnyWordValue.class::isInstance)
                 .map(AnyWordValue.class::cast)
-                .forEach(word -> word.boundSlot().hide(true));
+                .forEach(word -> word.findTheBoundSlot().hide(true));
     }
 }

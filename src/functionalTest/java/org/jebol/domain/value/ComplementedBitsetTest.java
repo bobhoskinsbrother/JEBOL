@@ -16,7 +16,7 @@ class ComplementedBitsetTest {
 
     @Test
     @DisplayName("COMPLEMENT? tells the two kinds apart")
-    void theFlagCanBeRead() {
+    void readsTheFlag() {
         assertThat(answerTo("complement? complement charset \"a\"")).isEqualTo("#(true)");
         assertThat(answerTo("complement? charset \"a\"")).isEqualTo("#(false)");
     }
@@ -30,14 +30,14 @@ class ComplementedBitsetTest {
 
     @Test
     @DisplayName("the plain set is unaffected")
-    void theOrdinarySetStillWorks() {
+    void stillHandlesTheOrdinarySet() {
         assertThat(answerTo("true? find charset \"a\" #\"a\"")).isEqualTo("#(true)");
         assertThat(answerTo("true? find charset \"a\" #\"b\"")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("MOLD prints the bits that were named, with NOT before them")
-    void theMoldedFormSaysWhatWasWritten() {
+    void moldsWhatWasWritten() {
         assertThat(answerTo("true? find mold complement charset \"a\" \"not\""))
                 .isEqualTo("#(true)");
         assertThat(answerTo("none? find mold charset \"a\" \"not\""))
@@ -57,14 +57,14 @@ class ComplementedBitsetTest {
 
     @Test
     @DisplayName("complementing twice gives the first set back")
-    void theFlagTurnsBothWays() {
+    void turnsTheFlagBothWays() {
         assertThat(answerTo("complement? complement complement charset \"a\""))
                 .isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("COMPLEMENT still works on a logic and a number")
-    void theOtherKindsAreUnaffected() {
+    void leavesTheOtherKindsAlone() {
         assertThat(answerTo("complement true")).isEqualTo("#(false)");
         assertThat(answerTo("complement 0")).isEqualTo("-1");
     }

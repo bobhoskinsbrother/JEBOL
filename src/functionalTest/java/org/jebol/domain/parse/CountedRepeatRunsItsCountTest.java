@@ -16,7 +16,7 @@ class CountedRepeatRunsItsCountTest {
 
     @Test
     @DisplayName("a counted rule whose rounds consume nothing still runs them all")
-    void aCountedRuleRunsEveryRound() {
+    void runsACountedRuleEveryRound() {
         assertThat(answerTo(
                 "x: 0 mold parse [1 2] [collect 2 [collect [] (x: x + 1) keep (x)]]"))
                 .as("both rounds run although neither consumes any input")
@@ -25,7 +25,7 @@ class CountedRepeatRunsItsCountTest {
 
     @Test
     @DisplayName("the paren really ran twice")
-    void theSideEffectHappenedEachRound() {
+    void runsTheSideEffectEachRound() {
         assertThat(answerTo(
                 "x: 0 parse [1 2] [collect 2 [collect [] (x: x + 1) keep (x)]] x"))
                 .isEqualTo("2");
@@ -33,41 +33,41 @@ class CountedRepeatRunsItsCountTest {
 
     @Test
     @DisplayName("a counted rule that does consume input is unaffected")
-    void anOrdinaryCountedRuleStillWorks() {
+    void stillRunsAnOrdinaryCountedRule() {
         assertThat(answerTo("mold parse [1 2 3] [collect 3 [keep skip]]"))
                 .isEqualTo("\"[1 2 3]\"");
     }
 
     @Test
     @DisplayName("a count of one runs once")
-    void aCountOfOneIsTheLowerBoundary() {
+    void runsOnceForACountOfOne() {
         assertThat(answerTo("mold parse [1 2] [collect 1 [keep skip] to end]"))
                 .isEqualTo("\"[1]\"");
     }
 
     @Test
     @DisplayName("a count of zero runs nothing")
-    void aCountOfZeroIsTheDegenerateCase() {
+    void runsNothingForACountOfZero() {
         assertThat(answerTo("mold parse [1 2] [collect 0 [keep skip] to end]"))
                 .isEqualTo("\"[]\"");
     }
 
     @Test
     @DisplayName("a count range still runs up to its upper bound")
-    void aCountRangeStillWorks() {
+    void stillRunsACountRange() {
         assertThat(answerTo("mold parse [1 2 3] [collect 2 4 [keep skip]]"))
                 .isEqualTo("\"[1 2 3]\"");
     }
 
     @Test
     @DisplayName("SOME still stops when a round gets nowhere")
-    void theOpenEndedGuardIsUntouched() {
+    void leavesTheOpenEndedGuardAlone() {
         assertThat(answerTo("parse \"\" [some [remove \"a\"]]")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("SOME with REMOVE still treats a shorter input as progress")
-    void removingCountsAsProgress() {
+    void countsRemovingAsProgress() {
         assertThat(answerTo("parse s: \"aa\" [some [remove \"a\"]] s")).isEqualTo("\"\"");
     }
 }

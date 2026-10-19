@@ -38,7 +38,7 @@ foreach operator operators [
 ]
 
 print ""
-print "=== the same pairs written as operators ==="
+print "=== the same pairs text as operators ==="
 foreach [operator symbol] [add + subtract - multiply * divide /] [
     foreach left lefts [
         foreach right rights [

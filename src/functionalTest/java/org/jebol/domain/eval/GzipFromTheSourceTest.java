@@ -21,7 +21,7 @@ class GzipFromTheSourceTest {
 
         @Test
         @DisplayName("nothing, at level zero, is a header, a stored block and a trailer")
-        void nothingAtLevelZero() {
+        void compressNothingAtLevelZero() {
             assertThat(answerTo("""
                     compress/level "" 'gzip 0"""))
                     .isEqualTo("#{1F8B08000000000004FF010000FFFF0000000000000000}");
@@ -38,7 +38,7 @@ class GzipFromTheSourceTest {
 
         @Test
         @DisplayName("the trailer is the CRC-32 and then the length, little endian")
-        void theTrailerIsTheChecksumAndTheLength() {
+        void endWithTheChecksumAndTheLength() {
             assertThat(answerTo("""
                     packed: compress/level "test test test" 'gzip 0
                     skip packed (length? packed) - 8"""))
@@ -58,28 +58,28 @@ class GzipFromTheSourceTest {
 
         @Test
         @DisplayName("four below level two")
-        void fourBelowLevelTwo() {
+        void readsFourBelowLevelTwo() {
             assertThat(extraFlagsAtLevel("0")).isEqualTo("4");
             assertThat(extraFlagsAtLevel("1")).isEqualTo("4");
         }
 
         @Test
         @DisplayName("nothing between two and seven")
-        void nothingInTheMiddle() {
+        void readsNothingInTheMiddle() {
             assertThat(extraFlagsAtLevel("2")).isEqualTo("0");
             assertThat(extraFlagsAtLevel("7")).isEqualTo("0");
         }
 
         @Test
         @DisplayName("two at eight and above")
-        void twoAtTheTop() {
+        void readsTwoAtTheTop() {
             assertThat(extraFlagsAtLevel("8")).isEqualTo("2");
             assertThat(extraFlagsAtLevel("9")).isEqualTo("2");
         }
 
         @Test
         @DisplayName("and two when nobody asked, because that is the slowest")
-        void twoWhenNobodyAsked() {
+        void readsTwoWhenNobodyAsks() {
             assertThat(answerTo("""
                     to integer! pick (compress "test test test" 'gzip) 9"""))
                     .isEqualTo("2");
@@ -87,7 +87,7 @@ class GzipFromTheSourceTest {
 
         @Test
         @DisplayName("the tenth byte is FF, the operating system nobody named")
-        void theOperatingSystemIsUnknown() {
+        void isFollowedByAnUnknownOperatingSystem() {
             assertThat(answerTo("""
                     to integer! pick (compress "test test test" 'gzip) 10"""))
                     .isEqualTo("255");
@@ -123,7 +123,7 @@ class GzipFromTheSourceTest {
 
         @Test
         @DisplayName("what went in comes out, at every level")
-        void everyLevelRoundTrips() {
+        void roundTripsAtEveryLevel() {
             assertThat(answerTo("""
                     text: {Lorem ipsum dolor sit amet, consectetur adipisici elit,
                     sed eiusmod tempor incidunt ut labore et dolore magna aliqua.}
@@ -138,7 +138,7 @@ class GzipFromTheSourceTest {
 
         @Test
         @DisplayName("a real 3.22.5 member at level zero reads here")
-        void aRealMemberReadsHere() {
+        void readsARealMember() {
             assertThat(answerTo("""
                     to string! decompress
                         #{1F8B08000000000004FF010E00F1FF74657374207465737420

@@ -485,7 +485,7 @@ power (2.2.2) (2-Jan-2020)                    | !expect-arg
 power (2.2.2) (3x3)                           | !expect-arg
 power (2.2.2) (3.3.3)                         | !expect-arg
 
-=== the same pairs written as operators ===
+=== the same pairs text as operators ===
 (2) + (3)                                     | 5  #(integer!)
 (2) + (3.0)                                   | 5.0  #(decimal!)
 (2) + (300%)                                  | 5.0  #(decimal!)

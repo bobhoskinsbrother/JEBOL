@@ -35,7 +35,7 @@ public final class Molder {
      * missing refinement.
      */
     public static String moldFlat(Value value) {
-        return flattened(() -> mold(value));
+        return flatten(() -> mold(value));
     }
 
     /**
@@ -47,14 +47,14 @@ public final class Molder {
      * conditionals picking one function did -- silently threw away whichever
      * refinement lost.
      */
-    public static String flattened(Supplier<String> written) {
-        return writingOnOneLine(written);
+    public static String flatten(Supplier<String> written) {
+        return writeOnOneLine(written);
     }
 
     private static final ThreadLocal<Boolean> WRITING_ON_ONE_LINE =
             ThreadLocal.withInitial(() -> false);
 
-    private static String writingOnOneLine(Supplier<String> written) {
+    private static String writeOnOneLine(Supplier<String> written) {
         boolean was = WRITING_ON_ONE_LINE.get();
         WRITING_ON_ONE_LINE.set(true);
         try {
@@ -84,7 +84,7 @@ public final class Molder {
         }
     }
 
-    private static int asManyPixelsAsTheLimitCouldUse(int pixels, int alreadyWritten) {
+    private static int countThePixelsTheLimitAllows(int pixels, int alreadyWritten) {
         int limit = AS_MUCH_AS_WAS_ASKED_FOR.get();
         return limit == NO_LIMIT
                 ? pixels
@@ -114,9 +114,9 @@ public final class Molder {
      * that is not a series, molds as it always does.
      */
     public static String moldAll(Value value) {
-        return writingEverythingOut(() -> {
+        return writeEverythingOut(() -> {
             if (value instanceof VectorValue vector) {
-                return writtenAsAVector(vector, 1, true, vector.index());
+                return writeAsAVector(vector, 1, true, vector.index());
             }
             if (value instanceof ImageValue picture) {
                 return render(picture, true);
@@ -128,7 +128,7 @@ public final class Molder {
                         + standsWithinNeverPastTheEndForABlockOrAPath(series) + ")";
             }
             if (value instanceof TagValue tag && tag.storageLength() == 0) {
-                return "#(tag! " + moldedText("") + ")";
+                return "#(tag! " + moldTheText("") + ")";
             }
             return render(value, true);
         });
@@ -137,7 +137,7 @@ public final class Molder {
     static final ThreadLocal<Boolean> WRITING_EVERYTHING_OUT =
             ThreadLocal.withInitial(() -> false);
 
-    private static String writingEverythingOut(Supplier<String> written) {
+    private static String writeEverythingOut(Supplier<String> written) {
         boolean was = WRITING_EVERYTHING_OUT.get();
         WRITING_EVERYTHING_OUT.set(true);
         try {
@@ -149,7 +149,7 @@ public final class Molder {
 
     private static String constructBodyOf(RebolSeries series) {
         return switch (series) {
-            case AnyStringValue text -> moldedText(text.head().text());
+            case AnyStringValue text -> moldTheText(text.head().text());
             case AnyBlockValue block -> "[" + block.head().remaining().stream()
                     .map(Molder::mold).collect(Collectors.joining(" ")) + "]";
             default -> mold(series.head());
@@ -182,10 +182,10 @@ public final class Molder {
                     new IdentityHashMap<>()));
 
     private static String render(Value value, boolean forReading) {
-        Object nesting = nestingIdentityOf(value);
+        Object nesting = findTheNestingIdentityOf(value);
         if (nesting != null) {
             if (!ALREADY_INSIDE.get().add(nesting)) {
-                return alreadyInsideItself(value);
+                return markAsAlreadyInsideItself(value);
             }
             try {
                 return renderOne(value, forReading);
@@ -196,7 +196,7 @@ public final class Molder {
         return renderOne(value, forReading);
     }
 
-    private static String alreadyInsideItself(Value value) {
+    private static String markAsAlreadyInsideItself(Value value) {
         return switch (value) {
             case MapValue ignored -> "#[...]";
             case ObjectValue ignored -> "make object! [...]";
@@ -205,7 +205,7 @@ public final class Molder {
         };
     }
 
-    private static Object nestingIdentityOf(Value value) {
+    private static Object findTheNestingIdentityOf(Value value) {
         return switch (value) {
             case AnyBlockValue block -> block.storage();
             case MapValue map -> map;
@@ -233,13 +233,13 @@ public final class Molder {
             case TupleValue tuple -> tuple.toString();
             case TimeValue time -> time.toString();
             case DateValue date -> WRITING_EVERYTHING_OUT.get()
-                    ? date.isoForm()
+                    ? date.writeInIsoForm()
                     : date.toString();
             case AnyStringValue string -> forReading ? string.mold() : string.form();
             case BinaryValue binary -> renderBinary(binary, forReading);
             case ImageValue image -> renderImage(image, forReading);
             case GobValue gob -> renderGob(gob, forReading);
-            case VectorValue vector -> writtenAsAVector(
+            case VectorValue vector -> writeAsAVector(
                     vector, vector.index(), forReading, 1);
             case AnyBlockValue block -> renderBlock(block, forReading);
             case AnyWordValue word -> forReading ? word.mold() : word.form();
@@ -247,17 +247,17 @@ public final class Molder {
                     ? "#(" + datatype.literalSpelling() + ")"
                     : datatype.literalSpelling();
             case TypesetValue typeset -> !forReading
-                    ? namesInTheTypeset(typeset)
+                    ? listTheNamesInTheTypeset(typeset)
                     : WRITING_EVERYTHING_OUT.get()
-                            ? "#(typeset! [" + namesInTheTypeset(typeset) + "])"
-                            : "make typeset! [" + namesInTheTypeset(typeset) + "]";
+                            ? "#(typeset! [" + listTheNamesInTheTypeset(typeset) + "])"
+                            : "make typeset! [" + listTheNamesInTheTypeset(typeset) + "]";
             case NativeValue built -> renderNative(built);
             case DefinedFunctionValue function -> renderFunction(function, forReading);
             case OperatorValue operator -> renderOperator(operator);
             case MapValue map -> renderMap(map, forReading);
             case BitsetValue bitset -> "#(bitset! "
                     + (bitset.isComplemented() ? "not " : "")
-                    + moldedBytes(bitset.octets()) + ")";
+                    + moldTheBytes(bitset.octets()) + ")";
             case ObjectValue object -> renderObject(object, ObjectValue.TYPE, forReading);
             case PortValue port -> renderObject(
                     new ObjectValue(port.context()), PortValue.TYPE, forReading);
@@ -275,7 +275,7 @@ public final class Molder {
                 ? render(struct.spec().declaration(), true)
                 : Integer.toUnsignedString(struct.spec().declaration().hashCode());
         return "#(struct! " + layout + " "
-                + render(BlockValue.block(struct.body()), forReading) + ")";
+                + render(BlockValue.of(struct.readTheBody()), forReading) + ")";
     }
 
     private static final int SIGNIFICANT_DIGITS = 15;
@@ -393,12 +393,12 @@ public final class Molder {
     }
 
     private static String renderMoney(MoneyValue money) {
-        return money.asDeci().written(money.currency().orElse("$"));
+        return money.asDeci().write(money.currency().orElse("$"));
     }
 
     private static String renderMap(MapValue map, boolean forReading) {
         if (!forReading) {
-            return formedPairsOf(map);
+            return formThePairsOf(map);
         }
         boolean asAConstruct = WRITING_EVERYTHING_OUT.get();
         String opens = asAConstruct ? "#(map! [" : "#[";
@@ -407,12 +407,12 @@ public final class Molder {
             return opens + shuts;
         }
         boolean onSeparateLines = !WRITING_ON_ONE_LINE.get();
-        List<Value> flat = map.flattened();
-        String pairs = oneLevelIn(() -> {
+        List<Value> flat = map.flatten();
+        String pairs = stepOneLevelIn(() -> {
             StringBuilder written = new StringBuilder();
             for (int at = 0; at < flat.size(); at += 2) {
                 if (onSeparateLines) {
-                    written.append(aLineIndentedAsDeepAsWeAre());
+                    written.append(indentALineAsDeepAsWeAre());
                 } else if (at > 0) {
                     written.append(' ');
                 }
@@ -423,11 +423,11 @@ public final class Molder {
             return written.toString();
         });
         return opens + pairs
-                + (onSeparateLines ? aLineIndentedAsDeepAsWeAre() : "") + shuts;
+                + (onSeparateLines ? indentALineAsDeepAsWeAre() : "") + shuts;
     }
 
-    private static String formedPairsOf(MapValue map) {
-        List<Value> flat = map.flattened();
+    private static String formThePairsOf(MapValue map) {
+        List<Value> flat = map.flatten();
         StringBuilder written = new StringBuilder();
         for (int at = 0; at < flat.size(); at += 2) {
             if (at > 0) {
@@ -447,13 +447,13 @@ public final class Molder {
                 case '\n', '"' -> escaped.appendCodePoint(codepoint);
                 case '{', '}' -> escaped.append(
                         bracesAreUnbalanced ? "^" + (char) codepoint : (char) codepoint);
-                default -> escaped.append(escapedCodepoint(codepoint));
+                default -> escaped.append(escapeTheCodepoint(codepoint));
             }
         });
         return escaped.toString();
     }
 
-    private static boolean balancedBraces(String text) {
+    private static boolean hasBalancedBraces(String text) {
         int open = 0;
         for (int at = 0; at < text.length(); at++) {
             if (text.charAt(at) == '{') {
@@ -467,7 +467,7 @@ public final class Molder {
 
     private static final int LONGEST_QUOTED = 50;
 
-    static String moldedText(String text) {
+    static String moldTheText(String text) {
         String deciding = asFarAsTheLimitLooks(text);
         long newlines = deciding.chars().filter(each -> each == '\n').count();
         boolean quoted = deciding.indexOf('"') < 0
@@ -475,7 +475,7 @@ public final class Molder {
                 && deciding.codePointCount(0, deciding.length()) <= LONGEST_QUOTED;
         return quoted
                 ? "\"" + escape(text) + "\""
-                : "{" + escapeInBraces(text, !balancedBraces(text)) + "}";
+                : "{" + escapeInBraces(text, !hasBalancedBraces(text)) + "}";
     }
 
     private static String asFarAsTheLimitLooks(String text) {
@@ -492,11 +492,11 @@ public final class Molder {
     private static String escape(String text) {
         StringBuilder escaped = new StringBuilder(text.length());
         text.codePoints().forEach(
-                codepoint -> escaped.append(escapedCodepoint(codepoint)));
+                codepoint -> escaped.append(escapeTheCodepoint(codepoint)));
         return escaped.toString();
     }
 
-    private static String escapedCodepoint(int codepoint) {
+    private static String escapeTheCodepoint(int codepoint) {
         if (codepoint == 0x1E || (codepoint >= 0x7F && codepoint <= 0x9F)) {
             return "^(" + "%02X".formatted(codepoint) + ")";
         }
@@ -511,7 +511,7 @@ public final class Molder {
         };
     }
 
-    private static String hexOf(byte[] octets) {
+    private static String writeTheHexOf(byte[] octets) {
         StringBuilder hex = new StringBuilder();
         for (byte octet : octets) {
             hex.append("%02X".formatted(octet & 0xFF));
@@ -526,8 +526,8 @@ public final class Molder {
         boolean asAConstruct = WRITING_EVERYTHING_OUT.get();
         ImageValue shown = asAConstruct ? image.head() : image;
         String opens = asAConstruct ? "#(image! " : "make image! [";
-        String shuts = asAConstruct ? positionOf(image) + ")" : "]";
-        int pixels = asManyPixelsAsTheLimitCouldUse(
+        String shuts = asAConstruct ? moldThePositionOf(image) + ")" : "]";
+        int pixels = countThePixelsTheLimitAllows(
                 shown.lengthFromHere(), opens.length() + size.length() + " #{".length());
         if (pixels == 0) {
             return opens + size + " #{}" + shuts;
@@ -541,7 +541,7 @@ public final class Molder {
                 colours.append("\n");
                 alphas.append("\n");
             }
-            int[] channels = shown.pixelAt(pixel);
+            int[] channels = shown.readThePixelAt(pixel);
             colours.append("%02X%02X%02X".formatted(channels[0], channels[1], channels[2]));
             alphas.append("%02X".formatted(channels[3]));
         }
@@ -551,7 +551,7 @@ public final class Molder {
                 + closing + shuts;
     }
 
-    private static String positionOf(RebolSeries series) {
+    private static String moldThePositionOf(RebolSeries series) {
         return series.index() > 1 ? " " + series.index() : "";
     }
 
@@ -560,10 +560,10 @@ public final class Molder {
         for (int offset = 0; offset < octets.length; offset++) {
             octets[offset] = (byte) binary.storage().at(binary.index() + offset);
         }
-        return forReading ? moldedBytes(octets) : hexOf(octets);
+        return forReading ? moldTheBytes(octets) : writeTheHexOf(octets);
     }
 
-    private static int asManyBytesAsTheLimitCouldUse(int bytes) {
+    private static int countTheBytesTheLimitAllows(int bytes) {
         int limit = AS_MUCH_AS_WAS_ASKED_FOR.get();
         return limit == NO_LIMIT ? bytes : Math.min(bytes, Math.max(0, limit));
     }
@@ -572,7 +572,7 @@ public final class Molder {
             ThreadLocal.withInitial(() -> 16);
 
     /** Molds binaries in the base the system object currently names. */
-    public static String writingBinariesInBase(int base, Supplier<String> written) {
+    public static String writeBinariesInBase(int base, Supplier<String> written) {
         int was = BINARY_BASE.get();
         BINARY_BASE.set(base);
         try {
@@ -582,15 +582,15 @@ public final class Molder {
         }
     }
 
-    private static String moldedBytes(byte[] whole) {
+    private static String moldTheBytes(byte[] whole) {
         byte[] octets = Arrays.copyOf(whole,
-                asManyBytesAsTheLimitCouldUse(whole.length));
+                countTheBytesTheLimitAllows(whole.length));
         boolean mayBreakLines = !WRITING_ON_ONE_LINE.get();
         return switch (BINARY_BASE.get()) {
-            case 2 -> "2#{" + base2DigitsDroppingTheLastAtExactlyEightBytes(
+            case 2 -> "2#{" + writeBase2Digits(
                     octets, mayBreakLines) + "}";
-            case 64 -> "64#{" + base64Digits(octets, mayBreakLines) + "}";
-            default -> "#{" + base16Digits(octets, mayBreakLines) + "}";
+            case 64 -> "64#{" + writeBase64Digits(octets, mayBreakLines) + "}";
+            default -> "#{" + writeBase16Digits(octets, mayBreakLines) + "}";
         };
     }
 
@@ -602,7 +602,7 @@ public final class Molder {
 
     private static final int BYTES_TO_A_BASE_SIXTY_FOUR_LINE_BREAK = 64;
 
-    private static String brokenIntoRuns(String digits, int digitsToARun) {
+    private static String breakIntoRuns(String digits, int digitsToARun) {
         StringBuilder written = new StringBuilder("\n");
         for (int at = 0; at < digits.length(); at += digitsToARun) {
             int stops = Math.min(at + digitsToARun, digits.length());
@@ -614,14 +614,14 @@ public final class Molder {
         return written.toString();
     }
 
-    private static String base16Digits(byte[] octets, boolean mayBreakLines) {
-        String digits = hexOf(octets);
+    private static String writeBase16Digits(byte[] octets, boolean mayBreakLines) {
+        String digits = writeTheHexOf(octets);
         return mayBreakLines && octets.length > BYTES_TO_A_HEX_LINE
-                ? brokenIntoRuns(digits, BYTES_TO_A_HEX_LINE * 2)
+                ? breakIntoRuns(digits, BYTES_TO_A_HEX_LINE * 2)
                 : digits;
     }
 
-    private static String base2DigitsDroppingTheLastAtExactlyEightBytes(
+    private static String writeBase2Digits(
             byte[] octets, boolean mayBreakLines) {
         StringBuilder digits = new StringBuilder();
         for (byte octet : octets) {
@@ -633,14 +633,14 @@ public final class Molder {
             digits.setLength(digits.length() - 1);
         }
         return mayBreakLines && octets.length > BYTES_TO_A_BINARY_LINE
-                ? brokenIntoRuns(digits.toString(), BYTES_TO_A_BINARY_LINE * 8)
+                ? breakIntoRuns(digits.toString(), BYTES_TO_A_BINARY_LINE * 8)
                 : digits.toString();
     }
 
     private static final String BASE_SIXTY_FOUR_ALPHABET =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-    private static String base64Digits(byte[] octets, boolean mayBreakLines) {
+    private static String writeBase64Digits(byte[] octets, boolean mayBreakLines) {
         boolean brokenIntoLines =
                 mayBreakLines && octets.length > BYTES_TO_A_BASE_SIXTY_FOUR_LINE_BREAK;
         int wholeGroups = octets.length / 3;
@@ -679,11 +679,11 @@ public final class Molder {
 
     private static final String ONE_INDENT = "    ";
 
-    private static String aLineIndentedAsDeepAsWeAre() {
+    private static String indentALineAsDeepAsWeAre() {
         return "\n" + ONE_INDENT.repeat(LINED_DEPTH.get());
     }
 
-    private static String oneLevelIn(Supplier<String> written) {
+    private static String stepOneLevelIn(Supplier<String> written) {
         LINED_DEPTH.set(LINED_DEPTH.get() + 1);
         try {
             return written.get();
@@ -694,11 +694,11 @@ public final class Molder {
 
     private static final int NUMBERS_TO_A_LINE = 10;
 
-    private static String writtenAsAVector(VectorValue vector, int from,
-            boolean forReading, int positionToName) {
+    private static String writeAsAVector(VectorValue vector, int from,
+                                         boolean forReading, int positionToName) {
         List<String> numbers = new ArrayList<>();
         for (int at = from; at <= vector.storageLength(); at++) {
-            numbers.add(render(vector.itemAt(at), forReading));
+            numbers.add(render(vector.readTheItemAt(at), forReading));
         }
         if (!forReading) {
             return String.join(" ", numbers);
@@ -778,7 +778,7 @@ public final class Molder {
             return items;
         }
         return block instanceof AnyPathValue path
-                ? joinPath(path, path.markedBefore(forReading), path.markedAfter(forReading))
+                ? joinPath(path, path.markBefore(forReading), path.markAfter(forReading))
                 : "[" + items + "]";
     }
 
@@ -787,8 +787,8 @@ public final class Molder {
         if (segments.isEmpty() && !WRITING_EVERYTHING_OUT.get()) {
             return "";
         }
-        if (wouldNotReadBackAsAPath(path, segments)) {
-            return writingEverythingOut(() -> "#("
+        if (cannotReadBackAsAPath(path, segments)) {
+            return writeEverythingOut(() -> "#("
                     + path.datatype().literalSpelling() + " ["
                     + segments.stream().map(Molder::mold).collect(Collectors.joining(" "))
                     + "])");
@@ -798,7 +798,7 @@ public final class Molder {
                 .collect(Collectors.joining("/")) + suffix;
     }
 
-    private static boolean wouldNotReadBackAsAPath(AnyBlockValue path, List<Value> segments) {
+    private static boolean cannotReadBackAsAPath(AnyBlockValue path, List<Value> segments) {
         return segments.isEmpty()
                 || path.storageLength() <= 1
                 || !(segments.getFirst() instanceof WordValue);
@@ -806,13 +806,13 @@ public final class Molder {
 
     private static String renderEvent(EventValue event, boolean forReading) {
         boolean onSeparateLines = !WRITING_ON_ONE_LINE.get();
-        List<Value> spec = event.moldingSpec();
-        String fields = oneLevelIn(() -> {
+        List<Value> spec = event.moldTheSpec();
+        String fields = stepOneLevelIn(() -> {
             StringBuilder written = new StringBuilder();
             for (int at = 0; at < spec.size(); at++) {
                 boolean opensAField = spec.get(at) instanceof SetWordValue;
                 if (onSeparateLines && opensAField) {
-                    written.append(aLineIndentedAsDeepAsWeAre());
+                    written.append(indentALineAsDeepAsWeAre());
                 } else if (at > 0) {
                     written.append(' ');
                 }
@@ -822,34 +822,34 @@ public final class Molder {
             }
             return written.toString();
         });
-        return openedFor(EventValue.TYPE) + "[" + fields
-                + (onSeparateLines ? aLineIndentedAsDeepAsWeAre() : "")
+        return openFor(EventValue.TYPE) + "[" + fields
+                + (onSeparateLines ? indentALineAsDeepAsWeAre() : "")
                 + "]" + closedAfterATypeName();
     }
 
     private static String renderNative(NativeValue built) {
         return built.ownSpec()
-                .map(spec -> openedFor(built.datatype()) + "[" + mold(spec.head()) + "]" + closedAfterATypeName())
+                .map(spec -> openFor(built.datatype()) + "[" + mold(spec.head()) + "]" + closedAfterATypeName())
                 .orElseGet(() -> "#[native! " + built.nativeName() + "]");
     }
 
     private static String renderOperator(OperatorValue operator) {
         return operator.underlying() instanceof NativeValue built && built.ownSpec().isPresent()
-                ? openedFor(OperatorValue.TYPE) + "[" + mold(built.ownSpec().orElseThrow().head()) + "]"
+                ? openFor(OperatorValue.TYPE) + "[" + mold(built.ownSpec().orElseThrow().head()) + "]"
                         + closedAfterATypeName()
                 : "#[op! " + operator.operatorName() + "]";
     }
 
     private static String renderFunction(DefinedFunctionValue function, boolean forReading) {
-        return openedFor(function.datatype()) + "["
+        return openFor(function.datatype()) + "["
                 + mold(function.spec().head())
                 + mold(function.body().head())
                 + "]" + closedAfterATypeName();
     }
 
     private static String renderGob(GobValue gob, boolean forReading) {
-        StringBuilder built = new StringBuilder(openedFor(GobValue.TYPE)).append('[');
-        List<Value> spec = gob.storage().moldingSpec();
+        StringBuilder built = new StringBuilder(openFor(GobValue.TYPE)).append('[');
+        List<Value> spec = gob.storage().moldTheSpec();
         for (int at = 0; at < spec.size(); at++) {
             if (at > 0) {
                 built.append(' ');
@@ -874,24 +874,24 @@ public final class Molder {
 
         Set<Context> enclosing = BEING_RENDERED.get();
         if (!enclosing.add(object.context())) {
-            return openedFor(naming) + "[...]";
+            return openFor(naming) + "[...]";
         }
         try {
             return forReading
-                    ? openedFor(naming) + "["
-                            + moldedFields(fieldsOutsideSelf(object).collect(
+                    ? openFor(naming) + "["
+                            + moldTheFields(listTheFieldsOutsideSelf(object).collect(
                                     Collectors.toMap(ContextSlot::spelling,
                                             ContextSlot::value,
                                             (older, newer) -> newer,
                                             LinkedHashMap::new)))
                             + "]" + closedAfterATypeName()
-                    : formedFields(object);
+                    : formTheFields(object);
         } finally {
             enclosing.remove(object.context());
         }
     }
 
-    private static String openedFor(Datatype datatype) {
+    private static String openFor(Datatype datatype) {
         return (WRITING_EVERYTHING_OUT.get() ? "#(" : "make ")
                 + datatype.literalSpelling() + " ";
     }
@@ -902,30 +902,30 @@ public final class Molder {
 
     private static String renderError(ErrorValue error, boolean forReading) {
         if (!forReading) {
-            return error.formedAsRebolFormsIt();
+            return error.formAsRebolDoes();
         }
         Map<String, Value> fields = new LinkedHashMap<>();
         for (String name : ErrorValue.FIELDS) {
-            fields.put(name, error.field(name).orElseGet(NoneValue::none));
+            fields.put(name, error.readTheField(name).orElseGet(NoneValue::none));
         }
-        return openedFor(ErrorValue.TYPE) + "[" + moldedFields(fields) + "]"
+        return openFor(ErrorValue.TYPE) + "[" + moldTheFields(fields) + "]"
                 + closedAfterATypeName();
     }
 
-    private static String namesInTheTypeset(TypesetValue typeset) {
+    private static String listTheNamesInTheTypeset(TypesetValue typeset) {
         return typeset.members().stream()
                 .sorted()
                 .map(Datatype::literalSpelling)
                 .collect(Collectors.joining(" "));
     }
 
-    private static String moldedFields(Map<String, Value> fields) {
+    private static String moldTheFields(Map<String, Value> fields) {
         boolean onSeparateLines = !WRITING_ON_ONE_LINE.get();
-        String written = oneLevelIn(() -> {
+        String written = stepOneLevelIn(() -> {
             StringBuilder out = new StringBuilder();
             for (Map.Entry<String, Value> field : fields.entrySet()) {
                 if (onSeparateLines) {
-                    out.append(aLineIndentedAsDeepAsWeAre());
+                    out.append(indentALineAsDeepAsWeAre());
                 } else if (!out.isEmpty()) {
                     out.append(' ');
                 }
@@ -934,16 +934,16 @@ public final class Molder {
             }
             return out.toString();
         });
-        return written + (onSeparateLines ? aLineIndentedAsDeepAsWeAre() : "");
+        return written + (onSeparateLines ? indentALineAsDeepAsWeAre() : "");
     }
 
-    private static String formedFields(ObjectValue object) {
-        return fieldsOutsideSelf(object)
+    private static String formTheFields(ObjectValue object) {
+        return listTheFieldsOutsideSelf(object)
                 .map(slot -> slot.spelling() + ": " + renderField(slot.value(), true))
                 .collect(Collectors.joining("\n"));
     }
 
-    private static Stream<ContextSlot> fieldsOutsideSelf(
+    private static Stream<ContextSlot> listTheFieldsOutsideSelf(
             ObjectValue object) {
         return object.context().slots().stream();
     }

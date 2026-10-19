@@ -63,7 +63,7 @@ class DatatypeTest {
     private static final Set<Datatype> EXPECTED_ANY_OBJECT = Set.of(
             ObjectValue.TYPE, ModuleValue.TYPE, ErrorValue.TYPE, TaskValue.TYPE, PortValue.TYPE);
 
-    static Stream<Datatype> everyDatatype() {
+    static Stream<Datatype> listEveryDatatype() {
         return Catalogue.DATATYPES.entries().stream();
     }
 
@@ -73,8 +73,8 @@ class DatatypeTest {
 
         @Test
         @DisplayName("lists every datatype once, in the order of types.reb, java-object! last")
-        void inTypesRebOrder() {
-            assertThat(everyDatatype().map(Datatype::spelling)).containsExactlyElementsOf(TYPES_REB_ORDER);
+        void followsTypesRebOrder() {
+            assertThat(listEveryDatatype().map(Datatype::spelling)).containsExactlyElementsOf(TYPES_REB_ORDER);
         }
 
         @Test
@@ -89,7 +89,7 @@ class DatatypeTest {
 
         @Test
         @DisplayName("numbers the entries as Rebol's C does, end! at nought")
-        void numberTheCGivesIt() {
+        void usesTheNumberTheCGives() {
             assertThat(EndValue.TYPE.numberTheCGivesIt()).isZero();
             assertThat(IntegerValue.TYPE.numberTheCGivesIt()).isEqualTo(4);
         }
@@ -97,29 +97,29 @@ class DatatypeTest {
         @Test
         @DisplayName("finds an entry by its name, with or without the mark, in any case")
         void findsByName() {
-            assertThat(Catalogue.DATATYPES.named("integer!")).contains(IntegerValue.TYPE);
-            assertThat(Catalogue.DATATYPES.named("set-word")).contains(SetWordValue.TYPE);
-            assertThat(Catalogue.DATATYPES.named("STRING!")).contains(StringValue.TYPE);
+            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("integer!")).contains(IntegerValue.TYPE);
+            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("set-word")).contains(SetWordValue.TYPE);
+            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("STRING!")).contains(StringValue.TYPE);
         }
 
         @Test
         @DisplayName("finds nothing for a name no datatype has, nor for an empty one")
         void findsNothingForAnUnknownName() {
-            assertThat(Catalogue.DATATYPES.named("integers!")).isEmpty();
-            assertThat(Catalogue.DATATYPES.named("number!")).isEmpty();
-            assertThat(Catalogue.DATATYPES.named("")).isEmpty();
-            assertThat(Catalogue.DATATYPES.named("!")).isEmpty();
+            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("integers!")).isEmpty();
+            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("number!")).isEmpty();
+            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("")).isEmpty();
+            assertThat(Catalogue.DATATYPES.findTheDatatypeNamed("!")).isEmpty();
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
         @DisplayName("every entry is itself a value whose datatype is datatype!")
-        void everyEntryIsADatatypeValue(Datatype datatype) {
+        void holdsADatatypeValueInEveryEntry(Datatype datatype) {
             assertThat(datatype.datatype()).isSameAs(Datatype.TYPE);
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
         @DisplayName("orders the entries by their place")
         void ordersByPlace(Datatype datatype) {
             assertThat(datatype.compareTo(EndValue.TYPE)).isEqualTo(datatype == EndValue.TYPE ? 0 : 1);
@@ -133,39 +133,39 @@ class DatatypeTest {
     class TypesetMembership {
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
-        void anyStringMatchesTheTable(Datatype datatype) {
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
+        void matchesTheTableForAnyString(Datatype datatype) {
             assertThat(datatype.belongsTo(TypesetValue.ANY_STRING))
                     .as("%s in any-string!", datatype)
                     .isEqualTo(EXPECTED_ANY_STRING.contains(datatype));
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
-        void anyBlockMatchesTheTable(Datatype datatype) {
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
+        void matchesTheTableForAnyBlock(Datatype datatype) {
             assertThat(datatype.belongsTo(TypesetValue.ANY_BLOCK))
                     .as("%s in any-block!", datatype)
                     .isEqualTo(EXPECTED_ANY_BLOCK.contains(datatype));
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
-        void anyPathMatchesTheTable(Datatype datatype) {
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
+        void matchesTheTableForAnyPath(Datatype datatype) {
             assertThat(datatype.belongsTo(TypesetValue.ANY_PATH))
                     .as("%s in any-path!", datatype)
                     .isEqualTo(EXPECTED_ANY_PATH.contains(datatype));
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
-        void anyWordMatchesTheTable(Datatype datatype) {
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
+        void matchesTheTableForAnyWord(Datatype datatype) {
             assertThat(datatype.belongsTo(TypesetValue.ANY_WORD))
                     .as("%s in any-word!", datatype)
                     .isEqualTo(EXPECTED_ANY_WORD.contains(datatype));
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
         void seriesMatchesTheTable(Datatype datatype) {
             assertThat(datatype.belongsTo(TypesetValue.SERIES))
                     .as("%s in series!", datatype)
@@ -173,40 +173,40 @@ class DatatypeTest {
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
-        void numberMatchesTheTable(Datatype datatype) {
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
+        void matchesTheTableForNumber(Datatype datatype) {
             assertThat(datatype.belongsTo(TypesetValue.NUMBER))
                     .as("%s in number!", datatype)
                     .isEqualTo(EXPECTED_NUMBER.contains(datatype));
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
-        void scalarMatchesTheTable(Datatype datatype) {
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
+        void matchesTheTableForScalar(Datatype datatype) {
             assertThat(datatype.belongsTo(TypesetValue.SCALAR))
                     .as("%s in scalar!", datatype)
                     .isEqualTo(EXPECTED_SCALAR.contains(datatype));
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
-        void anyFunctionMatchesTheTable(Datatype datatype) {
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
+        void matchesTheTableForAnyFunction(Datatype datatype) {
             assertThat(datatype.belongsTo(TypesetValue.ANY_FUNCTION))
                     .as("%s in any-function!", datatype)
                     .isEqualTo(EXPECTED_ANY_FUNCTION.contains(datatype));
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
-        void anyObjectMatchesTheTable(Datatype datatype) {
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
+        void matchesTheTableForAnyObject(Datatype datatype) {
             assertThat(datatype.belongsTo(TypesetValue.ANY_OBJECT))
                     .as("%s in any-object!", datatype)
                     .isEqualTo(EXPECTED_ANY_OBJECT.contains(datatype));
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
-        void anyTypeIsEverythingButEnd(Datatype datatype) {
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
+        void coversEverythingButEndInAnyType(Datatype datatype) {
             assertThat(datatype.belongsTo(TypesetValue.ANY_TYPE))
                     .as("%s in any-type!", datatype)
                     .isEqualTo(datatype != EndValue.TYPE);
@@ -226,7 +226,7 @@ class DatatypeTest {
     class TypesetRelationships {
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
         @DisplayName("series! is any-string!, any-block!, binary!, image! and vector!")
         void seriesIsTheUnionOfItsParts(Datatype datatype) {
             boolean expected = datatype.belongsTo(TypesetValue.ANY_STRING)
@@ -238,7 +238,7 @@ class DatatypeTest {
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
         @DisplayName("every any-path! is also an any-block!")
         void pathsAreBlocks(Datatype datatype) {
             assertThat(!datatype.belongsTo(TypesetValue.ANY_PATH) || datatype.belongsTo(TypesetValue.ANY_BLOCK))
@@ -246,23 +246,23 @@ class DatatypeTest {
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
         @DisplayName("no datatype is both a word and a block")
-        void wordsAreNotBlocks(Datatype datatype) {
+        void separateWordsFromBlocks(Datatype datatype) {
             assertThat(datatype.belongsTo(TypesetValue.ANY_WORD) && datatype.belongsTo(TypesetValue.ANY_BLOCK))
                     .isFalse();
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
         @DisplayName("every number! is also a scalar!")
-        void numbersAreScalars(Datatype datatype) {
+        void placeNumbersAmongScalars(Datatype datatype) {
             assertThat(!datatype.belongsTo(TypesetValue.NUMBER) || datatype.belongsTo(TypesetValue.SCALAR))
                     .isTrue();
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
         @DisplayName("nothing is both a scalar! and a series!")
         void scalarsAreNotSeries(Datatype datatype) {
             assertThat(datatype.belongsTo(TypesetValue.SCALAR) && datatype.belongsTo(TypesetValue.SERIES))
@@ -275,20 +275,20 @@ class DatatypeTest {
     class Spelling {
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
-        void spellingIsLowercaseWithHyphensAndNoBang(Datatype datatype) {
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
+        void isLowercaseWithHyphensAndNoBang(Datatype datatype) {
             assertThat(datatype.spelling()).matches("[a-z][a-z-]*");
         }
 
         @ParameterizedTest
-        @MethodSource("org.jebol.domain.value.DatatypeTest#everyDatatype")
-        void literalSpellingAddsTheBang(Datatype datatype) {
+        @MethodSource("org.jebol.domain.value.DatatypeTest#listEveryDatatype")
+        void addsTheBangWhenLiteral(Datatype datatype) {
             assertThat(datatype.literalSpelling()).isEqualTo(datatype.spelling() + "!");
         }
 
         @Test
         @DisplayName("the hyphenated names match REBOL")
-        void hyphenatedNamesUseRebolSpelling() {
+        void followsRebolForHyphenatedNames() {
             assertThat(SetWordValue.TYPE.spelling()).isEqualTo("set-word");
             assertThat(GetPathValue.TYPE.spelling()).isEqualTo("get-path");
             assertThat(JavaObjectValue.TYPE.spelling()).isEqualTo("java-object");
@@ -297,8 +297,8 @@ class DatatypeTest {
 
         @Test
         @DisplayName("no two datatypes share a spelling")
-        void spellingsAreUnique() {
-            assertThat(everyDatatype().map(Datatype::spelling)).doesNotHaveDuplicates();
+        void isUnique() {
+            assertThat(listEveryDatatype().map(Datatype::spelling)).doesNotHaveDuplicates();
         }
     }
 }

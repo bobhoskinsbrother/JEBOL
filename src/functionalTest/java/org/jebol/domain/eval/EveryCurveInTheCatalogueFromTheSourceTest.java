@@ -15,14 +15,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class EveryCurveInTheCatalogueFromTheSourceTest {
 
-    static Stream<String> theThirteen() {
+    static Stream<String> listTheThirteen() {
         return Stream.of("secp192r1", "secp224r1", "secp256r1", "secp384r1",
                 "secp521r1", "secp192k1", "secp224k1", "secp256k1",
                 "bp256r1", "bp384r1", "bp512r1", "curve25519", "curve448");
     }
 
-    static Stream<String> theElevenThatSign() {
-        return theThirteen().filter(curve -> !curve.startsWith("curve"));
+    static Stream<String> listTheElevenThatSign() {
+        return listTheThirteen().filter(curve -> !curve.startsWith("curve"));
     }
 
     private static String answerTo(String source) {
@@ -33,7 +33,7 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
 
     @Test
     @DisplayName("the catalogue names thirteen curves, in the order Rebol names them")
-    void theCatalogueNamesThirteenCurves() {
+    void namesThirteenCurves() {
         assertThat(answerTo("""
                 system/catalog/elliptic-curves = [
                     secp192r1 secp224r1 secp256r1 secp384r1 secp521r1
@@ -48,9 +48,9 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
 
         @ParameterizedTest(name = "{0}")
         @MethodSource(
-                "org.jebol.domain.eval.EveryCurveInTheCatalogueFromTheSourceTest#theThirteen")
+                "org.jebol.domain.eval.EveryCurveInTheCatalogueFromTheSourceTest#listTheThirteen")
         @DisplayName("two sides on the same curve reach the same secret")
-        void twoSidesReachTheSameSecret(String curve) {
+        void reachesTheSameSecretOnBothSides(String curve) {
             assertThat(answerTo("""
                     alice: ecdh/init none 'CURVE
                     boban: ecdh/init none 'CURVE
@@ -66,9 +66,9 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
 
         @ParameterizedTest(name = "{0}")
         @MethodSource(
-                "org.jebol.domain.eval.EveryCurveInTheCatalogueFromTheSourceTest#theThirteen")
+                "org.jebol.domain.eval.EveryCurveInTheCatalogueFromTheSourceTest#listTheThirteen")
         @DisplayName("and a released key publishes nothing afterwards")
-        void aReleasedKeyPublishesNothing(String curve) {
+        void publishesNothingForAReleasedKey(String curve) {
             assertThat(answerTo("""
                     k: ecdh/init none 'CURVE
                     reduce [true? release k  none? ecdh/public k]"""
@@ -79,9 +79,9 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
 
         @ParameterizedTest(name = "{0}")
         @MethodSource(
-                "org.jebol.domain.eval.EveryCurveInTheCatalogueFromTheSourceTest#theThirteen")
+                "org.jebol.domain.eval.EveryCurveInTheCatalogueFromTheSourceTest#listTheThirteen")
         @DisplayName("and initialising over an existing key refills that same handle")
-        void initialisingOverAnExistingKeyRefillsThatHandle(String curve) {
+        void refillsTheHandleWhenInitialisedOverAnExistingKey(String curve) {
             assertThat(answerTo("""
                     alice: ecdh/init none 'CURVE
                     boban: ecdh/init none 'CURVE
@@ -102,9 +102,9 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
 
         @ParameterizedTest(name = "{0}")
         @MethodSource(
-                "org.jebol.domain.eval.EveryCurveInTheCatalogueFromTheSourceTest#theElevenThatSign")
+                "org.jebol.domain.eval.EveryCurveInTheCatalogueFromTheSourceTest#listTheElevenThatSign")
         @DisplayName("a signature verifies by the key and by the published point")
-        void aSignatureVerifiesBothWays(String curve) {
+        void verifiesASignatureBothWays(String curve) {
             assertThat(answerTo("""
                     k: ecdh/init none 'CURVE
                     hash: checksum "some data" 'sha256
@@ -121,9 +121,9 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
 
         @ParameterizedTest(name = "{0}")
         @MethodSource(
-                "org.jebol.domain.eval.EveryCurveInTheCatalogueFromTheSourceTest#theElevenThatSign")
+                "org.jebol.domain.eval.EveryCurveInTheCatalogueFromTheSourceTest#listTheElevenThatSign")
         @DisplayName("and a signature over other data does not")
-        void aSignatureOverOtherDataDoesNot(String curve) {
+        void rejectsASignatureOverOtherData(String curve) {
             assertThat(answerTo("""
                     k: ecdh/init none 'CURVE
                     sig: ecdsa/sign k checksum "some data" 'sha256
@@ -135,9 +135,9 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
 
         @ParameterizedTest(name = "{0}")
         @MethodSource(
-                "org.jebol.domain.eval.EveryCurveInTheCatalogueFromTheSourceTest#theElevenThatSign")
+                "org.jebol.domain.eval.EveryCurveInTheCatalogueFromTheSourceTest#listTheElevenThatSign")
         @DisplayName("and two signatures over one hash differ, because signing is random")
-        void twoSignaturesOverOneHashDiffer(String curve) {
+        void givesTwoDifferentSignaturesOverOneHash(String curve) {
             assertThat(answerTo("""
                     k: ecdh/init none 'CURVE
                     hash: checksum "some data" 'sha256
@@ -150,7 +150,7 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"curve25519", "curve448"})
         @DisplayName("the two exchange-only curves sign nothing at all")
-        void theExchangeOnlyCurvesSignNothing(String curve) {
+        void signsNothingOnTheExchangeOnlyCurves(String curve) {
             assertThat(answerTo("""
                     k: ecdh/init none 'CURVE
                     none? ecdsa/sign k checksum "some data" 'sha256"""
@@ -172,7 +172,7 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
                 "bp256r1, 65", "bp384r1, 97", "bp512r1, 129",
         })
         @DisplayName("both coordinates after a lead byte saying it is uncompressed")
-        void bothCoordinatesAfterALeadByte(String curve, int width) {
+        void carriesBothCoordinatesAfterALeadByte(String curve, int width) {
             assertThat(answerTo("""
                     k: ecdh/init none 'CURVE
                     pub: ecdh/public k
@@ -184,7 +184,7 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
         @ParameterizedTest(name = "{0}")
         @CsvSource({"curve25519, 32", "curve448, 56"})
         @DisplayName("except the exchange-only curves, which publish one coordinate")
-        void theExchangeOnlyCurvesPublishOneCoordinate(String curve, int width) {
+        void carriesOneCoordinateOnTheExchangeOnlyCurves(String curve, int width) {
             assertThat(answerTo("""
                     length? ecdh/public ecdh/init none 'CURVE"""
                     .replace("CURVE", curve)))
@@ -199,7 +199,7 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
                 "bp256r1, 32", "bp384r1, 48", "bp512r1, 64",
         })
         @DisplayName("and the secret is one coordinate wide")
-        void theSecretIsOneCoordinateWide(String curve, int width) {
+        void matchesTheSecretsWidthToOneCoordinate(String curve, int width) {
             assertThat(answerTo("""
                     k: ecdh/init none 'CURVE
                     length? ecdh/secret k ecdh/public k""".replace("CURVE", curve)))
@@ -214,7 +214,7 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
 
         @Test
         @DisplayName("a point from another curve is not agreed with")
-        void aPointFromAnotherCurveIsNotAgreedWith() {
+        void refuseAPointFromAnotherCurve() {
             assertThat(answerTo("""
                     alice: ecdh/init none 'secp192r1
                     boban: ecdh/init none 'bp256r1
@@ -224,7 +224,7 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
 
         @Test
         @DisplayName("and a point that is not on the curve at all is refused")
-        void aPointNotOnTheCurveIsRefused() {
+        void refuseAPointNotOnTheCurve() {
             assertThat(answerTo("""
                     k: ecdh/init none 'secp192r1
                     bad: copy ecdh/public k
@@ -235,7 +235,7 @@ class EveryCurveInTheCatalogueFromTheSourceTest {
 
         @Test
         @DisplayName("a curve nobody has heard of makes no key")
-        void aCurveNobodyHasHeardOfMakesNoKey() {
+        void makeNoKeyForACurveNobodyHasHeardOf() {
             assertThat(answerTo("none? ecdh/init none 'secp999r1"))
                     .isEqualTo("#(true)");
         }

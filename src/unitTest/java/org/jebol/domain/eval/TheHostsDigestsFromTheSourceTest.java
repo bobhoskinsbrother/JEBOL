@@ -13,11 +13,11 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 class TheHostsDigestsFromTheSourceTest {
 
-    private static byte[] bytesOf(String text) {
+    private static byte[] readTheBytesOf(String text) {
         return text.getBytes(StandardCharsets.UTF_8);
     }
 
-    private static DigestPort aHostWithOnly(String... methods) {
+    private static DigestPort makeAHostWithOnly(String... methods) {
         Set<String> able = Set.of(methods);
         return new DigestPort() {
 
@@ -37,7 +37,7 @@ class TheHostsDigestsFromTheSourceTest {
             }
 
             @Override
-            public byte[] keyedDigestOf(String method, byte[] octets, byte[] key) {
+            public byte[] digestWithAKey(String method, byte[] octets, byte[] key) {
                 throw new DigestPort.Refused("feature-na", method);
             }
         };
@@ -45,17 +45,17 @@ class TheHostsDigestsFromTheSourceTest {
 
     @Test
     @DisplayName("the JVM computes Rebol's whole digest catalogue")
-    void theJvmComputesTheWholeCatalogue() {
+    void computesTheWholeCatalogueOnTheJvm() {
         Encodings encodings = new Encodings();
 
-        assertThat(encodings.checksumMethods())
+        assertThat(encodings.listTheChecksumMethods())
                 .contains("md5", "sha1", "sha256", "ripemd160", "xxh3", "crc32");
     }
 
     @Test
     @DisplayName("a host with less has less, and its own Java digests always")
-    void aHostWithLessHasLess() {
-        Encodings encodings = new Encodings(aHostWithOnly("sha256"));
+    void offersLessOnAHostWithLess() {
+        Encodings encodings = new Encodings(makeAHostWithOnly("sha256"));
 
         assertThat(encodings.canDigest("sha256")).isTrue();
         assertThat(encodings.canDigest("sha1")).isFalse();
@@ -63,18 +63,18 @@ class TheHostsDigestsFromTheSourceTest {
         assertThat(encodings.canDigest("ripemd160"))
                 .as("JEBOL's own digests are Java and are here whatever the host has")
                 .isTrue();
-        assertThat(encodings.checksumMethods())
+        assertThat(encodings.listTheChecksumMethods())
                 .contains("sha256", "ripemd160", "crc32")
                 .doesNotContain("sha1", "md5", "sha3-256");
     }
 
     @Test
     @DisplayName("a digest the host has not got is refused by name")
-    void aDigestTheHostHasNotGotIsRefused() {
-        Encodings encodings = new Encodings(aHostWithOnly("sha256"));
+    void refusesADigestTheHostHasNotGot() {
+        Encodings encodings = new Encodings(makeAHostWithOnly("sha256"));
 
         Raised refused = catchThrowableOfType(Raised.class,
-                () -> encodings.digestOf(bytesOf("abc"), "sha1"));
+                () -> encodings.digestOf(readTheBytesOf("abc"), "sha1"));
 
         assertThat(refused.error().errorId()).isEqualTo("feature-na");
     }

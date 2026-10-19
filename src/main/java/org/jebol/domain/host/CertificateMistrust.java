@@ -20,7 +20,7 @@ public enum CertificateMistrust {
         this.template = template;
     }
 
-    public String messageFor(String hostName) {
+    public String explainTo(String hostName) {
         return template.formatted(hostName);
     }
 }

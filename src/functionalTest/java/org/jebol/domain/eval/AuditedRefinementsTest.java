@@ -57,20 +57,20 @@ class AuditedRefinementsTest {
 
     @Test
     @DisplayName("UPPERCASE/PART and LOWERCASE/PART change only the front")
-    void theCaseChangesTakeAPart() {
+    void changeOnlyTheFrontForCasePart() {
         assertThat(answerTo("(uppercase/part \"abcd\" 2) = \"ABcd\"")).isEqualTo("#(true)");
         assertThat(answerTo("(lowercase/part \"ABCD\" 2) = \"abCD\"")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("the count runs from the position, not from the head")
-    void theCaseChangeCountsFromWhereItIs() {
+    void countTheCasePartFromThePosition() {
         assertThat(answerTo("(uppercase/part next \"abcd\" 2) = \"BCd\"")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a part of zero changes nothing and a part past the end changes everything")
-    void theCaseChangeAtItsBoundaries() {
+    void changeNothingOrEverythingAtTheCasePartBoundaries() {
         assertThat(answerTo("(uppercase/part \"abcd\" 0) = \"abcd\"")).isEqualTo("#(true)");
         assertThat(answerTo("(uppercase/part \"abcd\" 9) = \"ABCD\"")).isEqualTo("#(true)");
     }
@@ -90,7 +90,7 @@ class AuditedRefinementsTest {
 
     @Test
     @DisplayName("TYPE?/WORD answers a word and TYPE? answers a datatype")
-    void typeOfAsAWord() {
+    void answerAWordForTypeOfWord() {
         assertThat(answerTo("(type?/word 1) = 'integer!")).isEqualTo("#(true)");
         assertThat(answerTo("word? type?/word 1")).isEqualTo("#(true)");
         assertThat(answerTo("(type? 1) = integer!"))
@@ -100,7 +100,7 @@ class AuditedRefinementsTest {
 
     @Test
     @DisplayName("IF/ONLY, EITHER/ONLY and UNLESS/ONLY hand the branch back unrun")
-    void theConditionalsCanWithhold() {
+    void handTheBranchBackUnrunForConditionalOnly() {
         assertThat(answerTo("(if/only true [1]) = [1]")).isEqualTo("#(true)");
         assertThat(answerTo("(either/only true [1] [2]) = [1]")).isEqualTo("#(true)");
         assertThat(answerTo("(either/only false [1] [2]) = [2]")).isEqualTo("#(true)");
@@ -109,7 +109,7 @@ class AuditedRefinementsTest {
 
     @Test
     @DisplayName("without /ONLY the branch is still run")
-    void theConditionalsRunTheBranchOtherwise() {
+    void runTheBranchWithoutConditionalOnly() {
         assertThat(answerTo("(if true [1]) = 1")).isEqualTo("#(true)");
         assertThat(answerTo("(either true [1] [2]) = 1")).isEqualTo("#(true)");
     }
@@ -123,7 +123,7 @@ class AuditedRefinementsTest {
 
     @Test
     @DisplayName("the set operations stop folding case when asked")
-    void theSetOperationsCanMindCase() {
+    void stopFoldingCaseInSetOperationsWhenAsked() {
         assertThat(answerTo("(union/case [\"a\"] [\"A\"]) = [\"a\" \"A\"]")).isEqualTo("#(true)");
         assertThat(answerTo("(intersect/case [\"a\" \"b\"] [\"A\" \"b\"]) = [\"b\"]"))
                 .isEqualTo("#(true)");
@@ -135,7 +135,7 @@ class AuditedRefinementsTest {
 
     @Test
     @DisplayName("the set operations fold case without the refinement")
-    void theSetOperationsFoldCaseOtherwise() {
+    void foldCaseInSetOperationsByDefault() {
         assertThat(answerTo("(union [\"a\"] [\"A\"]) = [\"a\"]")).isEqualTo("#(true)");
         assertThat(answerTo("empty? difference [\"a\"] [\"A\"]")).isEqualTo("#(true)");
     }
@@ -154,7 +154,7 @@ class AuditedRefinementsTest {
 
     @Test
     @DisplayName("CONTEXT/ONLY builds the same object")
-    void contextOnlyIsAccepted() {
+    void buildTheSameObjectForContextOnly() {
         assertThat(answerTo("(context/only [a: 1]) = context [a: 1]")).isEqualTo("#(true)");
     }
 

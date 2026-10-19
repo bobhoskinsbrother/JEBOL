@@ -34,35 +34,35 @@ public class RenameAction extends PortAction {
     @Override
     public List<Parameter> parametersAsWritten() {
         Set<Datatype> anEnd = Set.of(FileValue.TYPE, BlockValue.TYPE, PortValue.TYPE, UrlValue.TYPE);
-        return List.of(Parameter.required("from", anEnd), Parameter.required("to", anEnd));
+        return List.of(Parameter.of("from", anEnd), Parameter.of("to", anEnd));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value asked = arguments.getFirst();
-            PortValue from = ports.portMadeFor(asked, evaluator, context);
-            return evaluator.theRebolActorsAnswer(nativeName(), List.of(from, arguments.get(1)), Set.of())
-                    .orElseGet(() -> renamed(asked, from, arguments.get(1), evaluator));
+            PortValue from = ports.makeAPortFor(asked, evaluator, context);
+            return evaluator.askTheRebolActor(nativeName(), List.of(from, arguments.get(1)), Set.of())
+                    .orElseGet(() -> rename(asked, from, arguments.get(1), evaluator));
         };
     }
 
-    private Value renamed(Value asked, PortValue from, Value destination, Evaluator evaluator) {
+    private Value rename(Value asked, PortValue from, Value destination, Evaluator evaluator) {
         if (!from.isAFile()) {
-            throw ports.noActionFor(nativeName());
+            throw ports.refuseWithNoActionFor(nativeName());
         }
         if (!(destination instanceof FileValue to)) {
             throw Raised.of(EvaluationFailure.NO_RENAME, asked);
         }
         granted.require(HostService.FILES);
         if (from.schemeName().equals("dir")) {
-            ports.requireTheFilePolicy(ports.pathOf(from), evaluator, Set.of(PolicyAccess.WRITE));
+            ports.requireTheFilePolicy(ports.readThePathOf(from), evaluator, Set.of(PolicyAccess.WRITE));
         }
         try {
-            evaluator.files().rename(ports.pathOf(from), to.text());
+            evaluator.files().rename(ports.readThePathOf(from), to.text());
         } catch (FilePort.Denied refused) {
-            if (refused.isASecurityRefusal()) {
-                throw refused.raised();
+            if (refused.isRefusedByHost()) {
+                throw refused.raise();
             }
             throw Raised.of(EvaluationFailure.NO_RENAME, asked);
         }

@@ -30,24 +30,24 @@ public class CaretToOffsetNative extends TextMeasuringNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("gob", Set.of(GobValue.TYPE)),
-                Parameter.required("element", Set.of(IntegerValue.TYPE, BlockValue.TYPE)),
-                Parameter.required("position", Set.of(IntegerValue.TYPE, StringValue.TYPE)));
+                Parameter.of("gob", Set.of(GobValue.TYPE)),
+                Parameter.of("element", Set.of(IntegerValue.TYPE, BlockValue.TYPE)),
+                Parameter.of("position", Set.of(IntegerValue.TYPE, StringValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            GobText text = theTextOf((GobValue) arguments.get(0), evaluator);
-            TextLines.CaretPlace placed = text.lines().whereTheCaretIs(
-                    text.theRunAt(thePlaceInTheBlock(arguments.get(1))),
-                    theCharacterBefore(arguments.get(2)),
-                    text.layout(), text.theGobsOwnBox());
-            return inWholePixels(placed.across(), placed.top());
+            GobText text = readTheTextOf((GobValue) arguments.get(0), evaluator);
+            TextLines.CaretPlace placed = text.lines().findWhereTheCaretIs(
+                    text.findTheRunAt(findThePlaceInTheBlock(arguments.get(1))),
+                    findTheCharacterBefore(arguments.get(2)),
+                    text.layout(), text.findTheGobsOwnBox());
+            return roundToWholePixels(placed.across(), placed.top());
         };
     }
 
-    private int thePlaceInTheBlock(Value element) {
+    private int findThePlaceInTheBlock(Value element) {
         return switch (element) {
             case IntegerValue(long place) -> (int) place;
             case AnyBlockValue atTheString -> atTheString.index();
@@ -55,7 +55,7 @@ public class CaretToOffsetNative extends TextMeasuringNative {
         };
     }
 
-    private int theCharacterBefore(Value position) {
+    private int findTheCharacterBefore(Value position) {
         return switch (position) {
             case IntegerValue(long place) -> (int) place - 1;
             case AnyStringValue atTheCaret -> atTheCaret.index() - 1;

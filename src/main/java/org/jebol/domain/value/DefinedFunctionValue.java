@@ -40,40 +40,40 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
         abstract Value fromTheFunction(FunctionValue made);
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             if (!(spec instanceof AnyBlockValue parts)) {
-                throw refusing(spec);
+                throw refuse(spec);
             }
             List<Value> items = parts.remaining();
             if (items.size() < 2
                     || !(items.get(0) instanceof AnyBlockValue functionSpec)
                     || !(items.get(1) instanceof AnyBlockValue body)) {
-                throw refusing(spec);
+                throw refuse(spec);
             }
-            return fromTheFunction(maker.functionBoundFrom(functionSpec, body));
+            return fromTheFunction(maker.bindAFunction(functionSpec, body));
         }
 
         @Override
-        public Value convertedFrom(Value value, Maker maker) {
-            return madeFrom(value, maker);
+        public Value convert(Value value, Maker maker) {
+            return makeFrom(value, maker);
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
+        public Value construct(List<Value> contents, Construction construction) {
             if (contents.size() != 1
                     || !(contents.getFirst() instanceof AnyBlockValue definition)
                     || definition.remaining().size() != 2
                     || !(definition.remaining().get(0) instanceof BlockValue functionSpec)
                     || !(definition.remaining().get(1) instanceof BlockValue body)) {
-                throw refusingConstruction(contents);
+                throw refuseTheConstruction(contents);
             }
-            return construction.functionMadeFrom(functionSpec, body);
+            return construction.makeAFunction(functionSpec, body);
         }
     }
 
-    public abstract DefinedFunctionValue sameKindRunning(AnyBlockValue anotherBody, Context closedOverInstead);
+    public abstract DefinedFunctionValue makeTheSameKindRunning(AnyBlockValue anotherBody, Context closedOverInstead);
 
-    public abstract Context aFreshCallFrame();
+    public abstract Context makeAFreshCallFrame();
 
     public AnyBlockValue spec() {
         return spec;
@@ -104,12 +104,12 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
     }
 
     @Override
-    public Value reflected(AnyWordValue field) {
+    public Value reflect(AnyWordValue field) {
         return switch (field.canonical()) {
             case "spec" -> spec;
-            case "body" -> body.copied(true);
+            case "body" -> body.copy(true);
             case "words" -> spec.declaredParameters();
-            case "types" -> typesets();
+            case "types" -> listTheTypesets();
             default -> NoneValue.none();
         };
     }

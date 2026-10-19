@@ -20,13 +20,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MoldRoundTripTest {
 
     static Stream<Path> programmes() {
-        return CorpusReader.sourceProgrammes().stream();
+        return CorpusReader.listTheSourceProgrammes().stream();
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("programmes")
     @DisplayName("mold then read gives back an equal block")
-    void moldingThenReadingIsIdentity(Path programme) {
+    void readsBackWhatItMolds(Path programme) {
         AnyBlockValue original = readOrFail(CorpusReader.read(programme));
 
         String molded = Molder.moldOnly(original);
@@ -40,7 +40,7 @@ class MoldRoundTripTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("programmes")
     @DisplayName("and the round trip is stable, not merely once")
-    void moldingIsStable(Path programme) {
+    void moldsTheSameTwice(Path programme) {
         AnyBlockValue original = readOrFail(CorpusReader.read(programme));
 
         String once = Molder.moldOnly(original);
@@ -56,8 +56,8 @@ class MoldRoundTripTest {
     class IndividualForms {
 
         @Test
-        void everyLiteralFormInTheLoadingCorpus() {
-            List<CorpusEntry> loaders = CorpusReader.allEntries().stream()
+        void roundTripsEveryLiteralFormInTheLoadingCorpus() {
+            List<CorpusEntry> loaders = CorpusReader.readAllEntries().stream()
                     .filter(entry -> entry.expectedTypes().isPresent())
                     .toList();
 
@@ -80,13 +80,13 @@ class MoldRoundTripTest {
 
         @Test
         @DisplayName("an empty block is not lost")
-        void emptyBlockSurvives() {
+        void keepsAnEmptyBlock() {
             assertRoundTrips("[]");
         }
 
         @Test
         @DisplayName("nesting is preserved to the bottom")
-        void nestingSurvives() {
+        void keepsTheNesting() {
             assertRoundTrips("[a [b [c [d]]]]");
         }
 
@@ -98,13 +98,13 @@ class MoldRoundTripTest {
 
         @Test
         @DisplayName("word shapes keep their shape")
-        void wordShapesSurvive() {
+        void keepsTheWordShapes() {
             assertRoundTrips("word set-word: :get-word 'lit-word /refinement #issue");
         }
 
         @Test
         @DisplayName("paths keep their shape, including the awkward one")
-        void pathShapesSurvive() {
+        void keepsThePathShapes() {
             assertRoundTrips("a/b window/pane/:n/color: :obj/field 'quoted/path");
         }
 

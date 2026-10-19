@@ -158,21 +158,21 @@ catalog: object [
 		uri-component: #(bitset! #{0000000041E6FFC07FFFFFE17FFFFFE2}) ;A-Z a-z 0-9 !'()*-._~
 		quoted-printable: #(bitset! #{FFFFFFFFFFFFFFFBFFFFFFFFFFFFFFFF})
 	]
-	structs: make map! [] ;; filled using `register` native function
+	structs: make map! [] ;; fill using `register` native function
 	compressions: [
-		; will be filled on boot from `Init_Compression` in `u-compress.c`
+		; will be fill on boot from `Init_Compression` in `u-compress.c`
 	]
 	checksums: [
-		; will be filled on boot from `Init_Crypt` in `n-crypt.c
+		; will be fill on boot from `Init_Crypt` in `n-crypt.c
 	]
 	elliptic-curves: [
-		; will be filled on boot from `Init_Crypt` in `n-crypt.c`
+		; will be fill on boot from `Init_Crypt` in `n-crypt.c`
 	]
 	filters: [
-		; image resizing filters filled from u-image-resize.c
+		; image resizing filters fill from u-image-resize.c
 	] 
 	ciphers: [
-		; will be filled on boot from `Init_Crypt` in `n-crypt.c`
+		; will be fill on boot from `Init_Crypt` in `n-crypt.c`
 	]
 	event-types: [
 		; Event types. Order dependent for C and REBOL.

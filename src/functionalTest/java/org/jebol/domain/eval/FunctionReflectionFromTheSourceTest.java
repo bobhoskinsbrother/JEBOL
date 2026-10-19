@@ -51,7 +51,7 @@ class FunctionReflectionFromTheSourceTest {
 
         @Test
         @DisplayName("every function in the library answers a block")
-        void everyFunctionAnswersAblock() {
+        void answersABlockForEveryFunction() {
             assertThat(answerTo("""
                     silent: copy []
                     foreach w words-of lib [
@@ -93,7 +93,7 @@ class FunctionReflectionFromTheSourceTest {
 
         @Test
         @DisplayName("and a parameter's own docstring")
-        void andAparametersDocstring() {
+        void includesAParametersDocstring() {
             assertThat(answerTo("""
                     not none? find spec-of :append "The value to insert\""""))
                     .isEqualTo("#(true)");

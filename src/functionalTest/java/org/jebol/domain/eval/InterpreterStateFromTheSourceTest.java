@@ -21,14 +21,14 @@ class InterpreterStateFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
-    private static String withFilesUnder(Path directory, String source) {
+    private static String runWithFilesUnder(Path directory, String source) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -41,20 +41,20 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("answers text")
-        void itAnswersText() {
+        void answersText() {
             assertThat(answerTo("string? version")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("/DATA answers text too, which Rebol's own start-up loads into fifteen fields")
-        void theDataFormLoadsIntoFifteenFields() {
+        void loadsTheDataFormIntoFifteenFields() {
             assertThat(answerTo("string? version/data")).isEqualTo(TRUE);
             assertThat(answerTo("length? load/as version/data 'unbound")).isEqualTo("15");
         }
 
         @Test
         @DisplayName("and its third field is the same version the text names")
-        void theTwoFormsAgree() {
+        void agreesInBothForms() {
             assertThat(answerTo("find version form third load/as version/data 'unbound"))
                     .isNotEqualTo("_");
         }
@@ -72,25 +72,25 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("and it answers the value, as POKE does")
-        void itAnswersTheValue() {
+        void answersTheValue() {
             assertThat(answerTo("pokez [1 2 3] 0 9")).isEqualTo("9");
         }
 
         @Test
         @DisplayName("the last element is one less than the length")
-        void theLastIsLengthLessOne() {
+        void putsTheLastAtLengthLessOne() {
             assertThat(answerTo("b: [1 2 3] pokez b 2 9 mold b")).isEqualTo("\"[1 2 9]\"");
         }
 
         @Test
         @DisplayName("a negative index is not shifted, because it counts from the tail")
-        void aNegativeIndexIsNotShifted() {
+        void leavesANegativeIndexUnshifted() {
             assertThat(answerTo("b: [1 2 3] e: try [pokez b -1 9] error? e")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a bitset is not shifted either, because its index is a code")
-        void aBitsetIsNotShifted() {
+        void leavesABitsetUnshifted() {
             assertThat(answerTo("b: charset \"a\" pokez b 122 true b/(#\"z\")"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("b: charset \"a\" pokez b 122 true b/(#\"a\")"))
@@ -99,13 +99,13 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("past the end is refused, as POKE refuses it")
-        void pastTheEndIsRefused() {
-            assertThat(errorIdFrom("pokez [1 2 3] 3 9")).isNotEqualTo("no-error");
+        void refusesPastTheEnd() {
+            assertThat(readTheErrorIdFrom("pokez [1 2 3] 3 9")).isNotEqualTo("no-error");
         }
 
         @Test
         @DisplayName("a string and a binary count from zero too")
-        void everySeriesCountsTheSameWay() {
+        void countsEverySeriesTheSameWay() {
             assertThat(answerTo("s: \"abc\" pokez s 0 #\"z\" s")).isEqualTo("\"zbc\"");
             assertThat(answerTo("b: #{010203} pokez b 0 255 b")).isEqualTo("#{FF0203}");
         }
@@ -117,32 +117,32 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("answers the absolute path of a file that is there")
-        void itAnswersAnAbsolutePath(@TempDir Path directory) throws Exception {
+        void answersAnAbsolutePath(@TempDir Path directory) throws Exception {
             java.nio.file.Files.writeString(directory.resolve("here.txt"), "x");
-            assertThat(withFilesUnder(directory,
+            assertThat(runWithFilesUnder(directory,
                     "file? to-real-file %here.txt")).isEqualTo(TRUE);
-            assertThat(withFilesUnder(directory,
+            assertThat(runWithFilesUnder(directory,
                     "true? find to-real-file %here.txt \"here.txt\"")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and none for a file that is not")
-        void itAnswersNoneForAMissingFile(@TempDir Path directory) {
-            assertThat(withFilesUnder(directory,
+        void answersNoneForAMissingFile(@TempDir Path directory) {
+            assertThat(runWithFilesUnder(directory,
                     "none? to-real-file %nowhere.txt")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("it needs the files service, like every other host call")
-        void itNeedsTheService() {
-            assertThat(errorIdFrom("to-real-file %x")).isEqualTo("no-service");
+        void needsTheService() {
+            assertThat(readTheErrorIdFrom("to-real-file %x")).isEqualTo("no-service");
         }
 
         @Test
         @DisplayName("a string is taken as well as a file")
-        void aStringIsTakenToo(@TempDir Path directory) throws Exception {
+        void takesAStringToo(@TempDir Path directory) throws Exception {
             java.nio.file.Files.writeString(directory.resolve("here.txt"), "x");
-            assertThat(withFilesUnder(directory,
+            assertThat(runWithFilesUnder(directory,
                     "file? to-real-file \"here.txt\"")).isEqualTo(TRUE);
         }
     }
@@ -166,7 +166,7 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("/ON collects and answers a count, as the plain form does")
-        void onAnswersACount() {
+        void answersACountForOn() {
             assertThat(answerTo("integer? recycle/on")).isEqualTo(TRUE);
         }
 
@@ -178,7 +178,7 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("/EVALS counts values the evaluator walked, and only rises")
-        void theEvaluationCountOnlyRises() {
+        void onlyRaisesTheEvaluationCount() {
             assertThat(answerTo(
                     "before: stats/evals loop 20 [1 + 1] before <= stats/evals"))
                     .isEqualTo(TRUE);
@@ -186,17 +186,17 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("/TIMER answers a time")
-        void theTimerAnswersATime() {
+        void answersATimeFromTheTimer() {
             assertThat(answerTo("time? stats/timer")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("/DUMP-SERIES takes a pool number and answers none")
-        void theSeriesDumpAnswersNone() {
+        void answersNoneFromTheSeriesDump() {
             assertThat(answerTo("none? stats/dump-series 1")).isEqualTo(TRUE);
             assertThat(answerTo("none? stats/dump-series -1")).isEqualTo(TRUE);
-            assertThat(errorIdFrom("stats/dump-series")).isEqualTo("no-arg");
-            assertThat(errorIdFrom("stats/dump-series \"1\"")).isEqualTo("expect-arg");
+            assertThat(readTheErrorIdFrom("stats/dump-series")).isEqualTo("no-arg");
+            assertThat(readTheErrorIdFrom("stats/dump-series \"1\"")).isEqualTo("expect-arg");
         }
     }
 
@@ -206,7 +206,7 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("an offset naming no frame answers none, whatever was asked for")
-        void noFrameAnswersNone() {
+        void answersNoneWithoutAFrame() {
             assertThat(answerTo("none? stack/depth 99")).isEqualTo(TRUE);
             assertThat(answerTo("none? stack/size 99")).isEqualTo(TRUE);
             assertThat(answerTo("none? stack/word 99")).isEqualTo(TRUE);
@@ -223,7 +223,7 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("and it is deeper the further in the call went")
-        void itIsDeeperFurtherIn() {
+        void deepensFurtherIn() {
             assertThat(answerTo(
                     "shallow: func [] [stack/depth 0] "
                     + "deep: func [] [shallow] shallow < deep")).isEqualTo(TRUE);
@@ -231,27 +231,27 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("/SIZE answers a number of values, inside a call")
-        void sizeAnswersACount() {
+        void answersACountForSize() {
             assertThat(answerTo("f: func [] [integer? stack/size 0] f"))
                     .isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("/WORD at offset one names the function being run")
-        void wordNamesTheFunction() {
+        void namesTheFunctionForWord() {
             assertThat(answerTo("f: func [] [stack/word 1] 'f = f")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and offset zero names STACK itself, even at the top")
-        void wordAtZeroIsStackItself() {
+        void namesStackItselfForWordAtZero() {
             assertThat(answerTo("'stack = stack/word 0")).isEqualTo(TRUE);
             assertThat(answerTo("'stack = first stack 0")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and -unnamed- for a call no word made, rather than the word before it")
-        void wordIsUnnamedForANamelessCall() {
+        void namesNothingForANamelessCall() {
             assertThat(answerTo(
                     "f: func [] [stack/word 1] g: func [] [do reduce [:f]] form g"))
                     .isEqualTo("\"-unnamed-\"");
@@ -264,11 +264,11 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("what is printed reaches the file as well as the output")
-        void itCopiesRatherThanRedirects(@TempDir Path directory) throws Exception {
+        void copiesRatherThanRedirects(@TempDir Path directory) throws Exception {
             StringBuilder printed = new StringBuilder();
-            Interpreter interpreter = Interpreter.writingTo(
+            Interpreter interpreter = Interpreter.createWithOutput(
                     printed::append, Bounds.standard().grant(HostService.FILES));
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             interpreter.run("echo %log.txt print \"hello\"");
 
@@ -279,10 +279,10 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("ECHO of none stops it, and what follows is not in the file")
-        void noneStopsIt(@TempDir Path directory) throws Exception {
+        void stopsForNone(@TempDir Path directory) throws Exception {
             Interpreter interpreter = Interpreter.withBounds(
                     Bounds.standard().grant(HostService.FILES));
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             interpreter.run("echo %log.txt print \"kept\" echo none print \"dropped\"");
 
@@ -293,10 +293,10 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("echoing again replaces rather than stacking")
-        void echoingAgainReplaces(@TempDir Path directory) throws Exception {
+        void replacesWhenEchoingAgain(@TempDir Path directory) throws Exception {
             Interpreter interpreter = Interpreter.withBounds(
                     Bounds.standard().grant(HostService.FILES));
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             interpreter.run(
                     "echo %one.txt print \"first\" echo %two.txt print \"second\"");
@@ -309,8 +309,8 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("it needs the files service, but turning it off does not")
-        void theGrantIsForWritingOnly() {
-            assertThat(errorIdFrom("echo %x.txt")).isEqualTo("no-service");
+        void needsOnlyAGrantToWrite() {
+            assertThat(readTheErrorIdFrom("echo %x.txt")).isEqualTo("no-service");
             assertThat(answerTo("unset? echo none")).isEqualTo(TRUE);
         }
 
@@ -327,7 +327,7 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("a halted run reports that it halted, not that it failed")
-        void aHaltedRunSaysSo() {
+        void saysTheRunHalted() {
             Interpreter interpreter = Interpreter.create();
             assertThat(interpreter.run("1 halt 2").conclusion().toString().toLowerCase())
                     .contains("halt");
@@ -335,7 +335,7 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("and the interpreter still works after one")
-        void theInterpreterSurvives() {
+        void leavesTheInterpreterAlive() {
             Interpreter interpreter = Interpreter.create();
             interpreter.run("halt");
             assertThat(interpreter.display(interpreter.run("1 + 1"))).isEqualTo("2");
@@ -343,7 +343,7 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("nothing after the halt runs")
-        void nothingAfterItRuns() {
+        void runsNothingAfterIt() {
             Interpreter interpreter = Interpreter.create();
             interpreter.defineFreshWordsIn("n: 0 halt n: 9");
             interpreter.run("n: 0 halt n: 9");
@@ -357,7 +357,7 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("names the operating system, as a word")
-        void itNamesTheOperatingSystem() {
+        void namesTheOperatingSystem() {
             assertThat(answerTo("word? system/platform")).isEqualTo(TRUE);
             assertThat(answerTo("find [Windows macOS Linux] system/platform"))
                     .as("the three this build is run on, spelt as Rebol spells them")
@@ -366,7 +366,7 @@ class InterpreterStateFromTheSourceTest {
 
         @Test
         @DisplayName("and it agrees with what the JVM was told it is running on")
-        void itAgreesWithTheJvm() {
+        void agreesWithTheJvm() {
             String reported = System.getProperty("os.name", "");
             String expected = reported.startsWith("Windows") ? "Windows"
                     : reported.startsWith("Mac") ? "macOS"

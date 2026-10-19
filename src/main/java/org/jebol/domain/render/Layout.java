@@ -10,8 +10,8 @@ import java.util.Map;
 /**
  * Reads a VID layout block into the faces it describes.
  *
- * <p>The dialect is positional: a word names a kind of face, and everything
- * after it decorates that face until the next kind word. A string is its
+ * <p>The dialect is positional: a word names a type of face, and everything
+ * after it decorates that face until the next type word. A string is its
  * caption, a pair is its size, a tuple or a colour word is its colour. That
  * is the whole grammar, and it is why VID reads as a description rather than
  * as a sequence of instructions.
@@ -67,19 +67,19 @@ public final class Layout {
     private Layout() {
     }
 
-    /** Whether a word names a kind of face. */
+    /** Whether a word names a type of face. */
     public static boolean isFaceKind(String canonical) {
         return KINDS.containsKey(canonical);
     }
 
-    /** The HTML element a face kind becomes. */
-    public static String elementFor(String kind) {
+    /** The HTML element a face type becomes. */
+    public static String findTheElementFor(String kind) {
         return KINDS.getOrDefault(kind, "div");
     }
 
     /** The faces a layout block describes, in the order it describes them. */
-    public static List<Face> facesIn(AnyBlockValue layout) {
-        return facesIn(layout, word -> java.util.Optional.empty());
+    public static List<Face> readTheFacesIn(AnyBlockValue layout) {
+        return readTheFacesIn(layout, word -> java.util.Optional.empty());
     }
 
     /**
@@ -87,7 +87,7 @@ public final class Layout {
      * word in it still means what it names, except where it is the dialect's
      * own.
      */
-    public static List<Face> facesIn(
+    public static List<Face> readTheFacesIn(
             AnyBlockValue layout, java.util.function.Function<String, java.util.Optional<Value>> lookUp) {
 
         List<Face> faces = new ArrayList<>();
@@ -102,12 +102,12 @@ public final class Layout {
             if (current == null) {
                 continue;
             }
-            decorateByDatatypeSoNothingHasToBeNamed(current, resolved(item, lookUp));
+            decorateByDatatypeSoNothingHasToBeNamed(current, resolve(item, lookUp));
         }
         return List.copyOf(faces);
     }
 
-    private static Value resolved(
+    private static Value resolve(
             Value item,
             java.util.function.Function<String, java.util.Optional<Value>> lookUp) {
 
@@ -124,12 +124,12 @@ public final class Layout {
         switch (item) {
             case AnyStringValue text -> face.setCaption(text.text());
             case PairValue size -> {
-                face.style("width", Molder.moldHalf(size.x()) + "px");
-                face.style("height", Molder.moldHalf(size.y()) + "px");
+                face.setTheStyle("width", Molder.moldHalf(size.x()) + "px");
+                face.setTheStyle("height", Molder.moldHalf(size.y()) + "px");
             }
-            case TupleValue colour -> face.style("background-color", asRgb(colour));
-            case AnyWordValue word -> colourNamed(word.canonical())
-                    .ifPresent(rgb -> face.style("background-color", rgb));
+            case TupleValue colour -> face.setTheStyle("background-color", asRgb(colour));
+            case AnyWordValue word -> findTheColourNamed(word.canonical())
+                    .ifPresent(rgb -> face.setTheStyle("background-color", rgb));
             case IntegerValue ignored -> {
             }
             case CharacterValue character -> face.setCaption(character.toString());
@@ -142,7 +142,7 @@ public final class Layout {
         }
     }
 
-    private static java.util.Optional<String> colourNamed(String canonical) {
+    private static java.util.Optional<String> findTheColourNamed(String canonical) {
         int[] rgb = COLOURS.get(canonical.toLowerCase(Locale.ROOT));
         return rgb == null
                 ? java.util.Optional.empty()
@@ -150,7 +150,7 @@ public final class Layout {
     }
 
     private static String asRgb(TupleValue colour) {
-        return "rgb(" + colour.octetAt(1) + "," + colour.octetAt(2)
-                + "," + colour.octetAt(3) + ")";
+        return "rgb(" + colour.readTheOctetAt(1) + "," + colour.readTheOctetAt(2)
+                + "," + colour.readTheOctetAt(3) + ")";
     }
 }

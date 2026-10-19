@@ -24,11 +24,11 @@ public class ClearAction extends SeriesOrFileAction {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case NoneValue nothing -> nothing;
             case PortValue file when file.isAFile() ->
-                    theFileBehind(file, evaluator).truncatedAtThePosition();
-            case PortValue queue when queue.eventQueue().isPresent() ->
+                    findTheFileBehind(file, evaluator).truncateAtThePosition();
+            case PortValue queue when queue.findTheEventQueue().isPresent() ->
                     queue.withItsQueueEmptied();
             case Value subject when Actions.of(subject).isPresent() ->
-                    Actions.of(subject).orElseThrow().cleared();
+                    Actions.of(subject).orElseThrow().clear();
             case StructValue struct -> {
                 struct.clear();
                 yield struct;

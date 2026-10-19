@@ -12,9 +12,9 @@ public final class Lzma {
     private static final int LENGTH_TRAILER = 4;
     private static final int SHORTEST_STREAM = PROPERTIES_LENGTH + LENGTH_TRAILER;
 
-    public static byte[] compressed(byte[] octets, int level) {
-        byte[] properties = LzmaEncoder.properties(level);
-        byte[] body = LzmaEncoder.encoded(octets, level);
+    public static byte[] compress(byte[] octets, int level) {
+        byte[] properties = LzmaEncoder.writeTheProperties(level);
+        byte[] body = LzmaEncoder.encode(octets, level);
         byte[] whole =
                 new byte[properties.length + body.length + LENGTH_TRAILER];
         System.arraycopy(properties, 0, whole, 0, properties.length);
@@ -26,18 +26,18 @@ public final class Lzma {
         return whole;
     }
 
-    public static byte[] decompressed(byte[] octets, int wanted) {
+    public static byte[] decompress(byte[] octets, int wanted) {
         if (octets.length < SHORTEST_STREAM) {
             throw Raised.of(EvaluationFailure.PAST_END);
         }
         byte[] properties = new byte[PROPERTIES_LENGTH];
         System.arraycopy(octets, 0, properties, 0, PROPERTIES_LENGTH);
-        int howLong = wanted > 0 ? wanted : lengthTaggedOnTheEnd(octets);
-        return LzmaDecoder.decoded(properties, octets, PROPERTIES_LENGTH,
+        int howLong = wanted > 0 ? wanted : readTheLengthTaggedOnTheEnd(octets);
+        return LzmaDecoder.decode(properties, octets, PROPERTIES_LENGTH,
                 octets.length - PROPERTIES_LENGTH, howLong);
     }
 
-    private static int lengthTaggedOnTheEnd(byte[] octets) {
+    private static int readTheLengthTaggedOnTheEnd(byte[] octets) {
         int at = octets.length - LENGTH_TRAILER;
         int length = 0;
         for (int each = 0; each < LENGTH_TRAILER; each++) {

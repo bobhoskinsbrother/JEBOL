@@ -39,7 +39,7 @@ final class DeciSignificands {
     record Scaled(BigInteger significand, int exponent) {
     }
 
-    Shifted shiftedRight(BigInteger value, int shift, int truncationSoFar) {
+    Shifted shiftRight(BigInteger value, int shift, int truncationSoFar) {
         if (shift <= 0) {
             return new Shifted(value, truncationSoFar);
         }
@@ -56,12 +56,12 @@ final class DeciSignificands {
                 compared > 0 || truncationSoFar != EXACT ? MORE_THAN_HALF : EXACTLY_HALF);
     }
 
-    boolean theTruncationRoundsUp(int truncation, BigInteger kept) {
+    boolean roundsTheTruncationUp(int truncation, BigInteger kept) {
         return truncation == MORE_THAN_HALF || (truncation == EXACTLY_HALF && kept.testBit(0));
     }
 
-    BigInteger roundedUpWhenTheTruncationSays(Shifted shifted) {
-        return theTruncationRoundsUp(shifted.truncation(), shifted.value())
+    BigInteger roundUpWhenTheTruncationSays(Shifted shifted) {
+        return roundsTheTruncationUp(shifted.truncation(), shifted.value())
                 ? shifted.value().add(BigInteger.ONE)
                 : shifted.value();
     }
@@ -75,12 +75,12 @@ final class DeciSignificands {
         return built;
     }
 
-    int maxShiftLeft(BigInteger value) {
+    int measureTheMaxShiftLeft(BigInteger value) {
         int digits = (int) (Math.log10(asTheCDoubleOf(value, 3)) + 0.5);
         return BigInteger.TEN.pow(digits).compareTo(value) <= 0 ? 25 - digits : 26 - digits;
     }
 
-    int minShiftRight(BigInteger value) {
+    int measureTheMinShiftRight(BigInteger value) {
         if (value.compareTo(TEN_TO_THE_26) < 0) {
             return 0;
         }
@@ -94,7 +94,7 @@ final class DeciSignificands {
         return limit.compareTo(value) <= 0 ? digits - 25 : digits - 26;
     }
 
-    Scaled timesTenToThe(BigInteger significand, int exponent, int power, int truncation) {
+    Scaled multiplyByTenToThe(BigInteger significand, int exponent, int power, int truncation) {
         if (significand.signum() == 0) {
             return new Scaled(BigInteger.ZERO, 0);
         }
@@ -108,8 +108,8 @@ final class DeciSignificands {
             if (raised < BELOW_THIS_NOTHING_IS_LEFT) {
                 return new Scaled(BigInteger.ZERO, 0);
             }
-            return new Scaled(roundedUpWhenTheTruncationSays(
-                    shiftedRight(significand, THE_SMALLEST_EXPONENT - raised, truncation)),
+            return new Scaled(roundUpWhenTheTruncationSays(
+                    shiftRight(significand, THE_SMALLEST_EXPONENT - raised, truncation)),
                     THE_SMALLEST_EXPONENT);
         }
         if (raised > THE_LARGEST_EXPONENT) {
@@ -123,13 +123,13 @@ final class DeciSignificands {
         return new Scaled(significand, raised);
     }
 
-    Deci theShortestDigitsOf(double quantity) {
+    Deci findTheShortestDigitsOf(double quantity) {
         boolean signed = quantity < 0 || (quantity == 0 && 1 / quantity < 0);
         if (Double.isNaN(quantity) || Double.isInfinite(quantity) || quantity == 0) {
             return new Deci(BigInteger.ZERO, 0, signed);
         }
         BigDecimal stripped = new BigDecimal(Double.toString(Math.abs(quantity))).stripTrailingZeros();
-        Scaled scaled = timesTenToThe(stripped.unscaledValue(), 0, -stripped.scale(), EXACT);
+        Scaled scaled = multiplyByTenToThe(stripped.unscaledValue(), 0, -stripped.scale(), EXACT);
         return new Deci(scaled.significand(), scaled.exponent(), signed);
     }
 }

@@ -68,87 +68,87 @@ class TheBrowserAdaptersEndToEndTest {
         return new WebDriverWait(browser, Duration.ofSeconds(30));
     }
 
-    private List<String> theLinesSoFar() {
+    private List<String> readTheLinesSoFar() {
         return browser.findElement(By.id("out")).getDomProperty("textContent").lines().toList();
     }
 
-    private boolean theWorkerGaveUp(List<String> lines) {
+    private boolean hasTheWorkerGivenUp(List<String> lines) {
         return lines.stream().anyMatch(line ->
                 line.startsWith("failed ") || line.startsWith("worker error"));
     }
 
-    private void untilThePageSays(String whatWasHoped, Supplier<Boolean> hoped) {
+    private void waitUntilThePageSays(String whatWasHoped, Supplier<Boolean> hoped) {
         try {
-            patientBrowser().until(anything -> theWorkerGaveUp(theLinesSoFar()) || hoped.get());
+            patientBrowser().until(anything -> hasTheWorkerGivenUp(readTheLinesSoFar()) || hoped.get());
         } catch (TimeoutException late) {
             throw new AssertionError("the page never " + whatWasHoped
-                    + "; the page said: " + theLinesSoFar(), late);
+                    + "; the page said: " + readTheLinesSoFar(), late);
         }
-        List<String> lines = theLinesSoFar();
-        if (theWorkerGaveUp(lines)) {
+        List<String> lines = readTheLinesSoFar();
+        if (hasTheWorkerGivenUp(lines)) {
             throw new AssertionError("the worker gave up before " + whatWasHoped
                     + "; the page said: " + lines);
         }
     }
 
-    private void untilTheOutputContains(String line) {
-        untilThePageSays("saying " + line, () -> theLinesSoFar().contains(line));
+    private void waitUntilTheOutputContains(String line) {
+        waitUntilThePageSays("saying " + line, () -> readTheLinesSoFar().contains(line));
     }
 
     @Test
     @DisplayName("a script fetches, keeps a file, reads the page's own line, measures text, and is refused the rest")
-    void theScriptReachesTheOutside() {
-        untilTheOutputContains("kept");
+    void letsTheScriptReachTheOutside() {
+        waitUntilTheOutputContains("kept");
 
         WebElement consoleInput = browser.findElement(By.id("console"));
         consoleInput.sendKeys("typed-here" + Keys.ENTER);
 
-        untilThePageSays("the refusals",
-                () -> theLinesSoFar().contains(theSizeOfTheLabelsText()));
+        waitUntilThePageSays("the refusals",
+                () -> readTheLinesSoFar().contains(measureTheLabelsText()));
 
-        assertThat(theLinesSoFar()).containsSubsequence(
+        assertThat(readTheLinesSoFar()).containsSubsequence(
                 "hello",
                 "true",
                 "kept",
                 "typed-here",
                 "true",
                 "protocol");
-        assertThat(theLinesSoFar())
+        assertThat(readTheLinesSoFar())
                 .as("the worker's SHA-1 is the same digest the JVM takes")
-                .contains("#{" + theHexOf("abc") + "}");
-        assertThat(theLinesSoFar())
+                .contains("#{" + writeTheHexOf("abc") + "}");
+        assertThat(readTheLinesSoFar())
                 .as("and its HMAC is the same keyed digest the JVM takes")
-                .contains("#{" + theKeyedHexOf("abc") + "}");
-        assertThat(theLinesSoFar())
+                .contains("#{" + writeTheKeyedHexOf("abc") + "}");
+        assertThat(readTheLinesSoFar())
                 .as("the worker measured with the font this build carries")
-                .contains(theSizeOfTheLabelsText());
+                .contains(measureTheLabelsText());
 
         browser.navigate().refresh();
-        untilThePageSays("the file it wrote before the reload",
-                () -> theLinesSoFar().contains("again kept"));
-        assertThat(theLinesSoFar())
+        waitUntilThePageSays("the file it wrote before the reload",
+                () -> readTheLinesSoFar().contains("again kept"));
+        assertThat(readTheLinesSoFar())
                 .as("a file a script wrote is a file a reload finds")
                 .contains("again kept");
     }
 
-    private static String theSizeOfTheLabelsText() {
-        TextExtent extent = TextMeasures.ofTheCarriedFont().extentOf(
+    private static String measureTheLabelsText() {
+        TextExtent extent = TextMeasures.ofTheCarriedFont().measureTheExtentOf(
                 new TextRun("MMMM", Colour.BLACK, 12, false, false));
         return Math.round(extent.wide()) + "x" + Math.round(extent.high());
     }
 
-    private static String theHexOf(String text) {
-        return hexOf(DigestPorts.theOneForThisBuild()
+    private static String writeTheHexOf(String text) {
+        return encodeAsHex(DigestPorts.chooseTheOneForThisBuild()
                 .digestOf("sha1", text.getBytes(StandardCharsets.UTF_8)));
     }
 
-    private static String theKeyedHexOf(String text) {
-        return hexOf(DigestPorts.theOneForThisBuild().keyedDigestOf(
+    private static String writeTheKeyedHexOf(String text) {
+        return encodeAsHex(DigestPorts.chooseTheOneForThisBuild().digestWithAKey(
                 "sha1", text.getBytes(StandardCharsets.UTF_8),
                 "key".getBytes(StandardCharsets.UTF_8)));
     }
 
-    private static String hexOf(byte[] octets) {
+    private static String encodeAsHex(byte[] octets) {
         StringBuilder written = new StringBuilder();
         for (byte octet : octets) {
             written.append(String.format("%02X", octet));

@@ -31,13 +31,13 @@ public class PowerAction extends ArithmeticNative implements ActionValue {
             }
             double raised = Math.pow(
                     Comparison.asDouble(base), Comparison.asDouble(exponent));
-            return bothArePercents(base, exponent)
+            return areBothPercents(base, exponent)
                     ? PercentValue.of(raised)
                     : DecimalValue.of(raised);
         };
     }
 
-    private boolean bothArePercents(Value base, Value exponent) {
+    private boolean areBothPercents(Value base, Value exponent) {
         return base instanceof PercentValue && exponent instanceof PercentValue;
     }
 }

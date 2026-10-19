@@ -14,20 +14,20 @@ public final class TextMeasures {
     }
 
     public static TextMeasure ofTheCarriedFont() {
-        return theCarriedFont().measure();
+        return loadTheCarriedFont().measure();
     }
 
-    public static CarriedFont theCarriedFont() {
+    public static CarriedFont loadTheCarriedFont() {
         return THE_FONT_READ_ONCE;
     }
 
-    public static byte[] theCarriedFontBytes() {
+    public static byte[] readTheCarriedFontBytes() {
         return THE_FONT_BYTES.clone();
     }
 
     private static final byte[] THE_FONT_BYTES = readTheFont();
 
-    private static final CarriedFont THE_FONT_READ_ONCE = CarriedFont.over(THE_FONT_BYTES);
+    private static final CarriedFont THE_FONT_READ_ONCE = CarriedFont.readFrom(THE_FONT_BYTES);
 
     private static byte[] readTheFont() {
         try (InputStream reading = TextMeasures.class.getResourceAsStream(THE_FONT)) {

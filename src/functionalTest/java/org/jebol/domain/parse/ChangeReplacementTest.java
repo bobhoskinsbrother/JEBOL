@@ -14,13 +14,13 @@ class ChangeReplacementTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("a block replacement is spread")
-    void aBlockIsSpreadByDefault() {
+    void spreadsABlockByDefault() {
         assertThat(answerTo("parse s: [a b] [change some word! [z p]] s = [z p]"))
                 .isEqualTo("#(true)");
     }
@@ -34,7 +34,7 @@ class ChangeReplacementTest {
 
     @Test
     @DisplayName("a nested rule's match is replaced the same way")
-    void changingIntoANestedBlock() {
+    void changesIntoANestedBlock() {
         assertThat(answerTo("parse s: [[a b]] [change into ['a 'b] [z p]] s = [z p]"))
                 .isEqualTo("#(true)");
     }
@@ -42,25 +42,25 @@ class ChangeReplacementTest {
     @Test
     @DisplayName("ONLY before the rule is refused")
     void onlyBelongsBeforeTheReplacement() {
-        assertThat(errorIdOf("parse s: [a b] [change only ['a 'b] [z p]]"))
+        assertThat(readTheErrorIdOf("parse s: [a b] [change only ['a 'b] [z p]]"))
                 .isEqualTo("parse-rule");
     }
 
     @Test
     @DisplayName("a paren replacement is evaluated")
-    void aParenIsEvaluated() {
+    void evaluatesAParen() {
         assertThat(answerTo("parse s: [a] [change 'a (1 + 1)] s = [2]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a single value replacement is unaffected")
-    void oneValueGoesInAsItself() {
+    void putsInOneValueAsItself() {
         assertThat(answerTo("parse s: [a b] [change 'a 'z 'b] s = [z b]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("an empty block replacement takes the match out")
-    void theDegenerateReplacementRemoves() {
+    void removesWithAnEmptyReplacement() {
         assertThat(answerTo("parse s: [a b] [change 'a [] 'b] s = [b]")).isEqualTo("#(true)");
     }
 }

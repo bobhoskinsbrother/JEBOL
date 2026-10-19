@@ -12,17 +12,17 @@ public final class WindowsOnOneSurface {
     private Optional<GobValue> pressedIn = Optional.empty();
     private Optional<GobValue> keyboardWith = Optional.empty();
 
-    public List<ScreenEvent> addressed(ScreenEventKind kind, ScreenEventDetail detail,
-            List<GobValue> showingFromBottomToTop) {
+    public List<ScreenEvent> address(ScreenEventType kind, ScreenEventDetail detail,
+                                     List<GobValue> showingFromBottomToTop) {
         forgetWindowsNoLongerShowing(showingFromBottomToTop);
         List<GobValue> heardBy = switch (kind) {
-            case DOWN -> aPressIsHeardBy(detail, showingFromBottomToTop);
-            case MOVE, UP -> aPointerIsHeardBy(kind, detail, showingFromBottomToTop);
-            case KEY, KEY_UP, CONTROL, CONTROL_UP -> aKeyIsHeardBy(showingFromBottomToTop);
+            case DOWN -> findWhoHearsAPress(detail, showingFromBottomToTop);
+            case MOVE, UP -> findWhoHearsThePointer(kind, detail, showingFromBottomToTop);
+            case KEY, KEY_UP, CONTROL, CONTROL_UP -> findWhoHearsAKey(showingFromBottomToTop);
             case CLOSE -> showingFromBottomToTop;
             case RESIZE, OFFSET -> List.of();
         };
-        return eventsFor(heardBy, kind, detail);
+        return makeTheEvents(heardBy, kind, detail);
     }
 
     private void forgetWindowsNoLongerShowing(List<GobValue> showing) {
@@ -34,8 +34,8 @@ public final class WindowsOnOneSurface {
         return showing.stream().anyMatch(window::sharesStorageWith);
     }
 
-    private List<GobValue> aPressIsHeardBy(ScreenEventDetail detail, List<GobValue> showing) {
-        Optional<GobValue> hit = theTopmostWindowUnder(detail, showing);
+    private List<GobValue> findWhoHearsAPress(ScreenEventDetail detail, List<GobValue> showing) {
+        Optional<GobValue> hit = findTheTopmostWindowUnder(detail, showing);
         if (hit.isPresent()) {
             pressedIn = hit;
             keyboardWith = hit;
@@ -43,24 +43,24 @@ public final class WindowsOnOneSurface {
         return hit.stream().toList();
     }
 
-    private List<GobValue> aPointerIsHeardBy(ScreenEventKind kind, ScreenEventDetail detail,
-            List<GobValue> showing) {
-        Optional<GobValue> heardBy = pressedIn.or(() -> theTopmostWindowUnder(detail, showing));
-        if (kind == ScreenEventKind.UP) {
+    private List<GobValue> findWhoHearsThePointer(ScreenEventType kind, ScreenEventDetail detail,
+                                                  List<GobValue> showing) {
+        Optional<GobValue> heardBy = pressedIn.or(() -> findTheTopmostWindowUnder(detail, showing));
+        if (kind == ScreenEventType.UP) {
             pressedIn = Optional.empty();
         }
         return heardBy.stream().toList();
     }
 
-    private List<GobValue> aKeyIsHeardBy(List<GobValue> showing) {
-        return keyboardWith.or(() -> theTopmostWindow(showing)).stream().toList();
+    private List<GobValue> findWhoHearsAKey(List<GobValue> showing) {
+        return keyboardWith.or(() -> findTheTopmostWindow(showing)).stream().toList();
     }
 
-    private Optional<GobValue> theTopmostWindow(List<GobValue> showing) {
+    private Optional<GobValue> findTheTopmostWindow(List<GobValue> showing) {
         return showing.isEmpty() ? Optional.empty() : Optional.of(showing.getLast());
     }
 
-    private Optional<GobValue> theTopmostWindowUnder(ScreenEventDetail detail, List<GobValue> showing) {
+    private Optional<GobValue> findTheTopmostWindowUnder(ScreenEventDetail detail, List<GobValue> showing) {
         if (!(detail instanceof ScreenEventDetail.At(int across, int down))) {
             return Optional.empty();
         }
@@ -79,15 +79,15 @@ public final class WindowsOnOneSurface {
                 && down >= place.y() && down < place.y() + size.y();
     }
 
-    private List<ScreenEvent> eventsFor(List<GobValue> heardBy, ScreenEventKind kind, ScreenEventDetail detail) {
+    private List<ScreenEvent> makeTheEvents(List<GobValue> heardBy, ScreenEventType kind, ScreenEventDetail detail) {
         List<ScreenEvent> addressed = new ArrayList<>();
         for (GobValue window : heardBy) {
-            addressed.add(new ScreenEvent(kind, window, countedFromTheWindow(detail, window)));
+            addressed.add(new ScreenEvent(kind, window, countFromTheWindow(detail, window)));
         }
         return addressed;
     }
 
-    private ScreenEventDetail countedFromTheWindow(ScreenEventDetail detail, GobValue window) {
+    private ScreenEventDetail countFromTheWindow(ScreenEventDetail detail, GobValue window) {
         if (!(detail instanceof ScreenEventDetail.At(int across, int down))) {
             return detail;
         }

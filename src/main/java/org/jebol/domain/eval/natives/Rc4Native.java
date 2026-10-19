@@ -22,9 +22,9 @@ public class Rc4Native extends CipherNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.belongingTo("key", "crypt-key", Set.of(BinaryValue.TYPE)),
-                Parameter.belongingTo("stream", "ctx", Set.of(HandleValue.TYPE)),
-                Parameter.belongingTo("stream", "data", Set.of(BinaryValue.TYPE)));
+        return List.of(Parameter.belongTo("key", "crypt-key", Set.of(BinaryValue.TYPE)),
+                Parameter.belongTo("stream", "ctx", Set.of(HandleValue.TYPE)),
+                Parameter.belongTo("stream", "data", Set.of(BinaryValue.TYPE)));
     }
 
     @Override
@@ -36,15 +36,15 @@ public class Rc4Native extends CipherNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             if (refinements.contains("stream")) {
-                return encipheredThroughTheStreamInPlace(
-                        (HandleValue) argumentOf("stream", 0, arguments, refinements)
+                return encipherThroughTheStreamInPlace(
+                        (HandleValue) readTheArgumentOf("stream", 0, arguments, refinements)
                                 .orElseThrow(),
-                        (BinaryValue) argumentOf("stream", 1, arguments, refinements)
+                        (BinaryValue) readTheArgumentOf("stream", 1, arguments, refinements)
                                 .orElseThrow());
             }
             if (refinements.contains("key")) {
-                return aHandleHolding(RC4_HANDLE_TYPE,
-                        StreamCipher.keyedWithAnEmptyKeyAcceptedAsAny(
+                return wrapInAHandle(RC4_HANDLE_TYPE,
+                        StreamCipher.keyWith(
                                 ((BinaryValue) arguments.getFirst()).octetsFromHere()),
                         evaluator);
             }
@@ -52,13 +52,13 @@ public class Rc4Native extends CipherNative {
         };
     }
 
-    private Value encipheredThroughTheStreamInPlace(HandleValue held, BinaryValue data) {
-        StreamCipher cipher = keyHeldBy(held, RC4_HANDLE_TYPE, StreamCipher.class)
+    private Value encipherThroughTheStreamInPlace(HandleValue held, BinaryValue data) {
+        StreamCipher cipher = readTheKeyHeldBy(held, RC4_HANDLE_TYPE, StreamCipher.class)
                 .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_HANDLE, held.typeName()));
         data.requireChangeable();
         for (int at = data.index(); at <= data.storageLength(); at++) {
             data.storage().set(at, data.storage().at(at)
-                    ^ cipher.nextKeystreamByteAdvancingThePermutation());
+                    ^ cipher.readTheNextKeystreamByte());
         }
         return data;
     }

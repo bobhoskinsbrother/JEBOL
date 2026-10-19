@@ -10,7 +10,7 @@ public interface DigestPort {
 
     byte[] digestOf(String method, byte[] octets);
 
-    byte[] keyedDigestOf(String method, byte[] octets, byte[] key);
+    byte[] digestWithAKey(String method, byte[] octets, byte[] key);
 
     interface RunningDigest {
 

@@ -15,7 +15,7 @@ class BinaryModifyFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -25,14 +25,14 @@ class BinaryModifyFromTheSourceTest {
 
         @Test
         @DisplayName("the bytes go in as they are")
-        void bytesAreCopied() {
+        void putsTheBytesInAsTheyAre() {
             assertThat(answerTo("#{0102} = append #{01} #{02}")).isEqualTo("#(true)");
             assertThat(answerTo("#{0201} = head insert #{01} #{02}")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("APPEND ignores the position and INSERT does not")
-        void thePositionMatters() {
+        void ignoresThePositionOnlyForAppend() {
             assertThat(answerTo("#{0102} = append next #{01} #{02}"))
                     .as("APPEND always writes at the end")
                     .isEqualTo("#(true)");
@@ -51,7 +51,7 @@ class BinaryModifyFromTheSourceTest {
 
         @Test
         @DisplayName("a binary appended to itself doubles rather than looping")
-        void appendingToItself() {
+        void doublesWhenAppendedToItself() {
             assertThat(answerTo("b: #{FF} #{FFFF} = append b b")).isEqualTo("#(true)");
         }
     }
@@ -62,14 +62,14 @@ class BinaryModifyFromTheSourceTest {
 
         @Test
         @DisplayName("an ASCII character is one byte")
-        void theOnByteCase() {
+        void putsAnAsciiCharacterInAsOneByte() {
             assertThat(answerTo("#{0001} = append #{00} \"^(01)\"")).isEqualTo("#(true)");
             assertThat(answerTo("#{0100} = head insert #{00} \"^(01)\"")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a character above ASCII is its UTF-8 bytes")
-        void aWideCharacterIsSeveralBytes() {
+        void putsAWideCharacterInAsItsUtf8Bytes() {
             assertThat(answerTo("#{00E28690} = append #{00} \"^(2190)\""))
                     .isEqualTo("#(true)");
             assertThat(answerTo("#{E2869000} = head insert #{00} \"^(2190)\""))
@@ -78,7 +78,7 @@ class BinaryModifyFromTheSourceTest {
 
         @Test
         @DisplayName("a file goes in as UTF-8 too, without its percent sign")
-        void aFileIsText() {
+        void putsAFileInAsUtf8WithoutItsPercentSign() {
             assertThat(answerTo("#{616263} = append #{} %abc")).isEqualTo("#(true)");
             assertThat(answerTo("#{C3A162} = append #{} %áb"))
                     .as("the accented letter is two bytes")
@@ -88,7 +88,7 @@ class BinaryModifyFromTheSourceTest {
 
         @Test
         @DisplayName("a character value goes the same way as a string of one")
-        void aCharacterIsEncodedToo() {
+        void encodesACharacterValueLikeAStringOfOne() {
             assertThat(answerTo("#{0001} = append #{00} #\"^(01)\"")).isEqualTo("#(true)");
             assertThat(answerTo("#{00E28690} = append #{00} #\"^(2190)\""))
                     .isEqualTo("#(true)");
@@ -98,7 +98,7 @@ class BinaryModifyFromTheSourceTest {
 
         @Test
         @DisplayName("/part on a character changes nothing, however large")
-        void aCharacterHasNoParts() {
+        void ignoresPartOnACharacter() {
             assertThat(answerTo("#{0001} = append/part #{00} #\"^(01)\" 10"))
                     .isEqualTo("#(true)");
             assertThat(answerTo("#{00E28690} = append/part #{00} #\"^(2190)\" 10"))
@@ -119,7 +119,7 @@ class BinaryModifyFromTheSourceTest {
 
         @Test
         @DisplayName("an empty string adds nothing")
-        void theDegenerateSource() {
+        void addsNothingForAnEmptyString() {
             assertThat(answerTo("#{00} = append #{00} \"\"")).isEqualTo("#(true)");
             assertThat(answerTo("#{00} = append/part #{00} \"ab\" 0")).isEqualTo("#(true)");
         }
@@ -131,7 +131,7 @@ class BinaryModifyFromTheSourceTest {
 
         @Test
         @DisplayName("each item is converted and the results run together")
-        void aBlockSpreads() {
+        void convertsEachItemAndRunsThemTogether() {
             assertThat(answerTo("#{00010361} = append #{} [#{00} #{01} 3 #\"a\"]"))
                     .isEqualTo("#(true)");
             assertThat(answerTo("#{00010361} = head insert #{} [#{00} #{01} 3 #\"a\"]"))
@@ -140,17 +140,17 @@ class BinaryModifyFromTheSourceTest {
 
         @Test
         @DisplayName("an integer in a block is one byte and must fit in one")
-        void anIntegerIsAnOctet() {
+        void putsAnIntegerInAsOneByte() {
             assertThat(answerTo("#{00} = append #{} [0]"))
                     .as("nought is the floor")
                     .isEqualTo("#(true)");
             assertThat(answerTo("#{FF} = append #{} [255]"))
                     .as("and 255 is the ceiling")
                     .isEqualTo("#(true)");
-            assertThat(errorIdOf("append #{} [300]")).isNotEqualTo("no-error");
-            assertThat(errorIdOf("append #{} [256]")).isNotEqualTo("no-error");
-            assertThat(errorIdOf("append #{} [-1]")).isNotEqualTo("no-error");
-            assertThat(errorIdOf("insert #{} [300]")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdOf("append #{} [300]")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdOf("append #{} [256]")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdOf("append #{} [-1]")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdOf("insert #{} [300]")).isNotEqualTo("no-error");
         }
 
         @Test
@@ -162,16 +162,16 @@ class BinaryModifyFromTheSourceTest {
 
         @Test
         @DisplayName("an empty block adds nothing")
-        void theDegenerateBlock() {
+        void addsNothingForAnEmptyBlock() {
             assertThat(answerTo("#{00} = append #{00} []")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("anything else in the block is refused")
-        void aWrongTypeIsRefused() {
-            assertThat(errorIdOf("append #{} [none]")).isNotEqualTo("no-error");
-            assertThat(errorIdOf("append #{} [1.5]")).isNotEqualTo("no-error");
-            assertThat(errorIdOf("append #{} [[1]]")).isNotEqualTo("no-error");
+        void refusesAnythingElse() {
+            assertThat(readTheErrorIdOf("append #{} [none]")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdOf("append #{} [1.5]")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdOf("append #{} [[1]]")).isNotEqualTo("no-error");
         }
     }
 
@@ -181,13 +181,13 @@ class BinaryModifyFromTheSourceTest {
 
         @Test
         @DisplayName("a bare integer is one byte")
-        void anIntegerIsOneByte() {
+        void putsABareIntegerInAsOneByte() {
             assertThat(answerTo("#{0003} = append #{00} 3")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a tuple gives the octets it keeps")
-        void aTupleIsItsOctets() {
+        void putsATupleInAsItsOctets() {
             assertThat(answerTo("#{010203} = append #{} 1.2.3")).isEqualTo("#(true)");
         }
     }

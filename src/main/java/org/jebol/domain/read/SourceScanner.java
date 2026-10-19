@@ -169,20 +169,20 @@ final class SourceScanner {
         return index < 0 || index >= in.length ? 0 : in[index] & 0xFF;
     }
 
-    private boolean notNewline(int octet) {
+    private boolean isNotANewline(int octet) {
         return octet != 0 && octet != CR && octet != LF;
     }
 
-    private int flag(int special) {
+    private int shiftToAFlag(int special) {
         return 1 << special;
     }
 
     private boolean hasFlag(int flags, int special) {
-        return (flags & flag(special)) != 0;
+        return (flags & shiftToAFlag(special)) != 0;
     }
 
-    private boolean onlyFlag(int flags, int special) {
-        return flags == flag(special);
+    private boolean hasOnlyTheFlag(int flags, int special) {
+        return flags == shiftToAFlag(special);
     }
 
     private int skipToChar(int from, int until, int wanted) {
@@ -201,7 +201,7 @@ final class SourceScanner {
         }
         begin = cp;
         while (true) {
-            switch (lex.classOf(at(cp))) {
+            switch (lex.classify(at(cp))) {
                 case CLASS_DELIMIT -> {
                     if (cp == begin) {
                         cp++;
@@ -211,12 +211,12 @@ final class SourceScanner {
                 }
                 case CLASS_SPECIAL -> {
                     if (cp != begin) {
-                        flags |= flag(lex.valueOf(at(cp)));
+                        flags |= shiftToAFlag(lex.valueOf(at(cp)));
                     }
                     cp++;
                 }
                 case CLASS_WORD -> {
-                    flags |= flag(SPECIAL_WORD);
+                    flags |= shiftToAFlag(SPECIAL_WORD);
                     while (lex.isAtLeastWord(at(cp))) {
                         cp++;
                     }
@@ -240,7 +240,7 @@ final class SourceScanner {
         }
         begin = cp;
         while (remaining > 0) {
-            switch (lex.classOf(at(cp))) {
+            switch (lex.classify(at(cp))) {
                 case CLASS_DELIMIT -> {
                     if (cp == begin) {
                         cp++;
@@ -250,13 +250,13 @@ final class SourceScanner {
                 }
                 case CLASS_SPECIAL -> {
                     if (cp != begin) {
-                        flags |= flag(lex.valueOf(at(cp)));
+                        flags |= shiftToAFlag(lex.valueOf(at(cp)));
                     }
                     cp++;
                     remaining--;
                 }
                 case CLASS_WORD -> {
-                    flags |= flag(SPECIAL_WORD);
+                    flags |= shiftToAFlag(SPECIAL_WORD);
                     while (lex.isAtLeastWord(at(cp)) && remaining > 0) {
                         cp++;
                         remaining--;
@@ -276,19 +276,19 @@ final class SourceScanner {
     private int scanToken() {
         int flags = prescan();
         int cp = begin;
-        return switch (lex.classOf(at(cp))) {
-            case CLASS_DELIMIT -> delimiterToken(cp);
-            case CLASS_SPECIAL -> specialToken(cp, flags);
-            case CLASS_WORD -> onlyFlag(flags, SPECIAL_WORD) ? TOKEN_WORD : wordToken(cp, flags, TOKEN_WORD);
-            default -> numberToken(cp, flags);
+        return switch (lex.classify(at(cp))) {
+            case CLASS_DELIMIT -> scanADelimiter(cp);
+            case CLASS_SPECIAL -> scanASpecial(cp, flags);
+            case CLASS_WORD -> hasOnlyTheFlag(flags, SPECIAL_WORD) ? TOKEN_WORD : scanAWord(cp, flags, TOKEN_WORD);
+            default -> scanANumber(cp, flags);
         };
     }
 
-    private int delimiterToken(int from) {
+    private int scanADelimiter(int from) {
         int cp = from;
         switch (lex.valueOf(at(cp))) {
             case DELIMIT_SPACE, DELIMIT_SEMICOLON -> {
-                while (notNewline(at(cp))) {
+                while (isNotANewline(at(cp))) {
                     cp++;
                 }
                 if (at(cp) == 0) {
@@ -324,13 +324,13 @@ final class SourceScanner {
                 return TOKEN_PAREN_END;
             }
             case DELIMIT_QUOTE, DELIMIT_LEFT_BRACE -> {
-                return stringToken(quoted(cp));
+                return stringToken(scanAQuotedString(cp));
             }
             case DELIMIT_RIGHT_BRACE -> {
                 return -TOKEN_STRING;
             }
             case DELIMIT_SLASH -> {
-                return slashToken(cp);
+                return scanASlash(cp);
             }
             case DELIMIT_END_FILE -> {
                 end--;
@@ -354,14 +354,14 @@ final class SourceScanner {
             return TOKEN_STRING;
         }
         int cp = begin + 1;
-        while (notNewline(at(cp))) {
+        while (isNotANewline(at(cp))) {
             cp++;
         }
         end = cp;
         return -TOKEN_STRING;
     }
 
-    private int slashToken(int from) {
+    private int scanASlash(int from) {
         int cp = from;
         while (at(cp) == '/') {
             cp++;
@@ -381,16 +381,16 @@ final class SourceScanner {
             begin = cp;
             int flags = prescan();
             begin--;
-            if (onlyFlag(flags, SPECIAL_WORD)) {
+            if (hasOnlyTheFlag(flags, SPECIAL_WORD)) {
                 return TOKEN_REFINE;
             }
             if (at(end - 1) == ':') {
                 return -TOKEN_REFINE;
             }
-            return wordToken(cp, flags, TOKEN_REFINE);
+            return scanAWord(cp, flags, TOKEN_REFINE);
         }
         if (following == '<' || following == '>') {
-            return arrowWordToken(cp, TOKEN_REFINE);
+            return scanAnArrowWord(cp, TOKEN_REFINE);
         }
         if (following == ':' && lex.isDelimit(at(cp + 1))) {
             end = cp + 1;
@@ -400,40 +400,40 @@ final class SourceScanner {
         return TOKEN_WORD;
     }
 
-    private int specialToken(int cp, int flags) {
+    private int scanASpecial(int cp, int flags) {
         if (hasFlag(flags, SPECIAL_AT) && at(cp) != '<' && at(cp) != '%') {
             if (at(cp) == '\'' || at(cp) == ':') {
                 return -TOKEN_WORD;
             }
             return TOKEN_EMAIL;
         }
-        return specialKindToken(cp, flags);
+        return scanASpecialKind(cp, flags);
     }
 
-    private int specialKindToken(int from, int flags) {
+    private int scanASpecialKind(int from, int flags) {
         int cp = from;
         switch (lex.valueOf(at(cp))) {
             case SPECIAL_AT -> {
                 return TOKEN_REF;
             }
             case SPECIAL_PERCENT -> {
-                return percentToken(cp);
+                return scanAPercent(cp);
             }
             case SPECIAL_COLON -> {
-                return colonToken(cp, flags);
+                return scanAColon(cp, flags);
             }
             case SPECIAL_TICK -> {
                 return tickToken(cp, flags);
             }
             case SPECIAL_COMMA, SPECIAL_PERIOD -> {
-                int marked = flags | flag(lex.valueOf(at(cp)));
+                int marked = flags | shiftToAFlag(lex.valueOf(at(cp)));
                 if (lex.isNumber(at(cp + 1))) {
-                    return numberToken(cp, marked);
+                    return scanANumber(cp, marked);
                 }
                 if (lex.valueOf(at(cp)) != SPECIAL_PERIOD) {
                     return -TOKEN_WORD;
                 }
-                return wordToken(cp, marked, TOKEN_WORD);
+                return scanAWord(cp, marked, TOKEN_WORD);
             }
             case SPECIAL_GREATER -> {
                 if (lex.isDelimit(at(cp + 1))) {
@@ -450,13 +450,13 @@ final class SourceScanner {
                 return -TOKEN_WORD;
             }
             case SPECIAL_LESSER -> {
-                return lesserToken(cp);
+                return scanALesser(cp);
             }
             case SPECIAL_PLUS, SPECIAL_MINUS -> {
                 return signToken(cp, flags);
             }
             case SPECIAL_POUND -> {
-                return poundToken(cp);
+                return scanAPound(cp);
             }
             case SPECIAL_UNDERSCORE -> {
                 if (lex.isDelimit(at(cp + 1))) {
@@ -465,7 +465,7 @@ final class SourceScanner {
                 if (at(cp + 1) == ':') {
                     return -TOKEN_SET;
                 }
-                return wordToken(cp, flags, TOKEN_WORD);
+                return scanAWord(cp, flags, TOKEN_WORD);
             }
             case SPECIAL_DOLLAR -> {
                 if (hasFlag(flags, SPECIAL_AT)) {
@@ -479,7 +479,7 @@ final class SourceScanner {
         }
     }
 
-    private int percentToken(int from) {
+    private int scanAPercent(int from) {
         int cp = from;
         int n = 1;
         while (at(cp + n) == '%') {
@@ -488,7 +488,7 @@ final class SourceScanner {
         if (at(cp + n) == '{') {
             while (at(cp) != 0) {
                 if (at(cp + n) == '{') {
-                    int closed = rawString(cp + n + 1, n);
+                    int closed = scanARawString(cp + n + 1, n);
                     if (closed == NOT_FOUND) {
                         return -TOKEN_STRING;
                     }
@@ -509,7 +509,7 @@ final class SourceScanner {
             cp = end;
         }
         if (at(cp) == '"') {
-            int closed = quoted(cp);
+            int closed = scanAQuotedString(cp);
             if (closed == NOT_FOUND) {
                 return -TOKEN_FILE;
             }
@@ -526,12 +526,12 @@ final class SourceScanner {
         return TOKEN_FILE;
     }
 
-    private int colonToken(int from, int flags) {
+    private int scanAColon(int from, int flags) {
         int cp = from;
         if (lex.isNumber(at(cp + 1))) {
             return TOKEN_TIME;
         }
-        if (onlyFlag(flags, SPECIAL_WORD)) {
+        if (hasOnlyTheFlag(flags, SPECIAL_WORD)) {
             return TOKEN_GET;
         }
         if (at(cp + 1) == '_' && lex.isDelimit(at(cp + 2))) {
@@ -541,7 +541,7 @@ final class SourceScanner {
             return -TOKEN_WORD;
         }
         if (at(cp + 1) == '<' || at(cp + 1) == '>') {
-            return arrowWordToken(cp + 1, TOKEN_GET);
+            return scanAnArrowWord(cp + 1, TOKEN_GET);
         }
         if (at(cp + 1) == '%') {
             do {
@@ -559,7 +559,7 @@ final class SourceScanner {
             }
             cp = begin;
         }
-        return wordToken(cp + 1, flags, TOKEN_GET);
+        return scanAWord(cp + 1, flags, TOKEN_GET);
     }
 
     private int tickToken(int from, int flags) {
@@ -570,12 +570,12 @@ final class SourceScanner {
         if (at(cp + 1) == '_' && lex.isDelimit(at(cp + 2))) {
             return -TOKEN_LIT;
         }
-        if (onlyFlag(flags, SPECIAL_WORD)) {
+        if (hasOnlyTheFlag(flags, SPECIAL_WORD)) {
             return TOKEN_LIT;
         }
         cp++;
         if (at(cp) == '<' || at(cp) == '>') {
-            return arrowWordToken(cp, TOKEN_LIT);
+            return scanAnArrowWord(cp, TOKEN_LIT);
         }
         if (!lex.isWord(at(cp + 1))) {
             if ((at(cp) == '-' || at(cp) == '+') && lex.isNumber(at(cp + 1))) {
@@ -606,10 +606,10 @@ final class SourceScanner {
             end = cp;
             return -TOKEN_LIT;
         }
-        return wordToken(cp, flags, TOKEN_LIT);
+        return scanAWord(cp, flags, TOKEN_LIT);
     }
 
-    private int lesserToken(int cp) {
+    private int scanALesser(int cp) {
         int following = at(cp + 1);
         if (lex.isAnySpace(following) || following == ']' || following == ')' || following == 0) {
             return TOKEN_WORD;
@@ -650,7 +650,7 @@ final class SourceScanner {
             }
             cp = begin;
             if (at(cp + 1) == ':') {
-                return wordToken(cp, flags, TOKEN_WORD);
+                return scanAWord(cp, flags, TOKEN_WORD);
             }
         }
         if (hasFlag(flags, SPECIAL_LESSER)) {
@@ -661,7 +661,7 @@ final class SourceScanner {
         }
         cp++;
         if (lex.isAtLeastNumber(at(cp))) {
-            return numberToken(cp, flags);
+            return scanANumber(cp, flags);
         }
         if (lex.isSpecial(at(cp))) {
             if (at(cp) == '#') {
@@ -669,17 +669,17 @@ final class SourceScanner {
                 return TOKEN_WORD;
             }
             if (lex.valueOf(at(cp)) >= SPECIAL_PERIOD) {
-                return specialKindToken(cp, flags);
+                return scanASpecialKind(cp, flags);
             }
             if (at(cp) == '+' || at(cp) == '-' || at(cp) == '>') {
-                return wordToken(cp, flags, TOKEN_WORD);
+                return scanAWord(cp, flags, TOKEN_WORD);
             }
             return -TOKEN_WORD;
         }
-        return wordToken(cp, flags, TOKEN_WORD);
+        return scanAWord(cp, flags, TOKEN_WORD);
     }
 
-    private int poundToken(int from) {
+    private int scanAPound(int from) {
         int cp = from + 1;
         if (at(cp) == '(') {
             end = ++cp;
@@ -688,7 +688,7 @@ final class SourceScanner {
         if (at(cp) == '"') {
             cp++;
             int[] position = {cp};
-            int codepoint = scannedChar(position);
+            int codepoint = scanACharacter(position);
             cp = position[0];
             if (codepoint >= 0 && at(cp) == '"') {
                 end = cp + 1;
@@ -698,14 +698,14 @@ final class SourceScanner {
                 return TOKEN_CHAR;
             }
             cp = begin + 1;
-            while (notNewline(at(cp))) {
+            while (isNotANewline(at(cp))) {
                 cp++;
             }
             end = cp;
             return -TOKEN_CHAR;
         }
         if (at(cp) == '{') {
-            return binaryToken(cp);
+            return scanABinary(cp);
         }
         if (at(cp) == '[') {
             end = ++cp;
@@ -717,21 +717,21 @@ final class SourceScanner {
         return -TOKEN_INTEGER;
     }
 
-    private int binaryToken(int brace) {
-        int closed = quotedBinary(brace);
+    private int scanABinary(int brace) {
+        int closed = scanAQuotedBinary(brace);
         if (closed != NOT_FOUND) {
             end = closed;
             return TOKEN_BINARY;
         }
         int cp = begin + 1;
-        while (notNewline(at(cp))) {
+        while (isNotANewline(at(cp))) {
             cp++;
         }
         end = cp;
         return -TOKEN_BINARY;
     }
 
-    private int numberToken(int from, int knownFlags) {
+    private int scanANumber(int from, int knownFlags) {
         int cp = from;
         int flags = knownFlags;
         if (hasFlag(flags, SPECIAL_LESSER)) {
@@ -745,7 +745,7 @@ final class SourceScanner {
             return TOKEN_EMAIL;
         }
         if (hasFlag(flags, SPECIAL_POUND)) {
-            return poundNumberToken(cp);
+            return scanAPoundNumber(cp);
         }
         if (hasFlag(flags, SPECIAL_COLON)) {
             return hasFlag(flags, SPECIAL_WORD) ? TOKEN_DATE : TOKEN_TIME;
@@ -790,7 +790,7 @@ final class SourceScanner {
         return -TOKEN_INTEGER;
     }
 
-    private int poundNumberToken(int from) {
+    private int scanAPoundNumber(int from) {
         int cp = from;
         if (cp == begin) {
             int base = 0;
@@ -799,7 +799,7 @@ final class SourceScanner {
                     || (first == '1' && at(cp + 1) == '6' && at(cp + 2) == '#')) {
                 cp += 3;
                 if (at(cp) == '{') {
-                    return binaryToken(cp);
+                    return scanABinary(cp);
                 }
                 if (first == '1') {
                     base = 16;
@@ -808,7 +808,7 @@ final class SourceScanner {
                 cp += 2;
                 if (first == '2') {
                     if (at(cp) == '{') {
-                        return binaryToken(cp);
+                        return scanABinary(cp);
                     }
                     base = 2;
                 } else if (first == '0') {
@@ -838,15 +838,15 @@ final class SourceScanner {
         return -TOKEN_INTEGER;
     }
 
-    private int wordToken(int from, int flags, int type) {
+    private int scanAWord(int from, int flags, int type) {
         int cp = from;
         if (hasFlag(flags, SPECIAL_COLON)) {
             if (type != TOKEN_WORD) {
                 return type;
             }
             cp = skipToChar(cp, end, ':');
-            if (at(cp + 1) != '/' && lex.entry(at(cp + 1)) < SPECIAL) {
-                if ((flags & ~flag(SPECIAL_COLON) & WORD_FLAGS) != 0) {
+            if (at(cp + 1) != '/' && lex.lookUpTheEntry(at(cp + 1)) < SPECIAL) {
+                if ((flags & ~shiftToAFlag(SPECIAL_COLON) & WORD_FLAGS) != 0) {
                     return -TOKEN_WORD;
                 }
                 return TOKEN_SET;
@@ -891,7 +891,7 @@ final class SourceScanner {
         return type;
     }
 
-    private int arrowWordToken(int cp, int type) {
+    private int scanAnArrowWord(int cp, int type) {
         int np = at(cp) == '<' ? skipLeftArrow(cp) : skipRightArrow(cp);
         if (np == NOT_FOUND) {
             return -type;
@@ -993,11 +993,11 @@ final class SourceScanner {
         return n < most && lex.isDelimit(at(cp)) ? cp : NOT_FOUND;
     }
 
-    private int scannedChar(int[] position) {
+    private int scanACharacter(int[] position) {
         int cp = position[0];
         int first = at(cp);
         if (first >= 0x80) {
-            return utf8Codepoint(position);
+            return decodeAUtf8Codepoint(position);
         }
         cp++;
         if (first != '^') {
@@ -1015,7 +1015,7 @@ final class SourceScanner {
             case '!' -> codepoint = 0x1E;
             case '(' -> {
                 position[0] = cp;
-                return parenthesisedEscape(position);
+                return scanAParenthesisedEscape(position);
             }
             default -> {
                 int upper = Character.toUpperCase(escaped);
@@ -1032,12 +1032,12 @@ final class SourceScanner {
         return codepoint;
     }
 
-    private int parenthesisedEscape(int[] position) {
+    private int scanAParenthesisedEscape(int[] position) {
         int start = position[0];
         int cp = start;
         long accumulated = 0;
         int lexical;
-        while ((lexical = lex.entry(at(cp))) > WORD) {
+        while ((lexical = lex.lookUpTheEntry(at(cp))) > WORD) {
             int digit = lexical & VALUE_MASK;
             if (digit == 0 && lexical < NUMBER) {
                 break;
@@ -1053,7 +1053,7 @@ final class SourceScanner {
             return accumulated > Integer.MAX_VALUE ? INVALID_CHAR : (int) accumulated;
         }
         for (int named = 0; named < ESCAPE_NAMES.length; named++) {
-            int matched = matchedBytes(start, ESCAPE_NAMES[named]);
+            int matched = matchTheBytes(start, ESCAPE_NAMES[named]);
             if (matched != NOT_FOUND && at(matched) == ')') {
                 position[0] = matched + 1;
                 return ESCAPE_CODES[named];
@@ -1062,7 +1062,7 @@ final class SourceScanner {
         return INVALID_CHAR;
     }
 
-    private int matchedBytes(int from, String lowerCase) {
+    private int matchTheBytes(int from, String lowerCase) {
         for (int offset = 0; offset < lowerCase.length(); offset++) {
             if (Character.toLowerCase(at(from + offset)) != lowerCase.charAt(offset)) {
                 return NOT_FOUND;
@@ -1071,7 +1071,7 @@ final class SourceScanner {
         return from + lowerCase.length();
     }
 
-    private int utf8Codepoint(int[] position) {
+    private int decodeAUtf8Codepoint(int[] position) {
         int cp = position[0];
         int first = at(cp);
         int size;
@@ -1105,7 +1105,7 @@ final class SourceScanner {
         scanBuffer.write(encoded, 0, encoded.length);
     }
 
-    private int quoted(int from) {
+    private int scanAQuotedString(int from) {
         int src = from;
         int nest = 0;
         int lines = 0;
@@ -1136,7 +1136,7 @@ final class SourceScanner {
             if (octet == '^') {
                 scanBuffer.write(in, start, length);
                 int[] position = {src};
-                int codepoint = scannedChar(position);
+                int codepoint = scanACharacter(position);
                 src = position[0];
                 if (isInvalidChar(codepoint)) {
                     return NOT_FOUND;
@@ -1161,7 +1161,7 @@ final class SourceScanner {
         return src + 1;
     }
 
-    private int quotedBinary(int from) {
+    private int scanAQuotedBinary(int from) {
         int src = from;
         int lines = 0;
         scanBuffer.reset();
@@ -1177,7 +1177,7 @@ final class SourceScanner {
                 }
                 case '^' -> {
                     int[] position = {src};
-                    chr = scannedChar(position);
+                    chr = scanACharacter(position);
                     if (isInvalidChar(chr)) {
                         return NOT_FOUND;
                     }
@@ -1189,7 +1189,7 @@ final class SourceScanner {
                         chr = at(++src);
                         if (chr == '^') {
                             int[] position = {src};
-                            chr = scannedChar(position);
+                            chr = scanACharacter(position);
                             if (isInvalidChar(chr)) {
                                 return NOT_FOUND;
                             }
@@ -1229,7 +1229,7 @@ final class SourceScanner {
         return src + 1;
     }
 
-    private int rawString(int from, int percents) {
+    private int scanARawString(int from, int percents) {
         int src = from;
         int lines = 0;
         scanBuffer.reset();
@@ -1269,7 +1269,7 @@ final class SourceScanner {
             cp++;
         }
         int lineStart = cp;
-        while (notNewline(at(cp))) {
+        while (isNotANewline(at(cp))) {
             cp++;
         }
         String near = "(line " + lineCount + ") " + textOf(lineStart, cp - lineStart);
@@ -1278,7 +1278,7 @@ final class SourceScanner {
                 Optional.of(near)).relaxable();
     }
 
-    private ScanFailure invalid(int token, int from, int to) {
+    private ScanFailure refuseAsInvalid(int token, int from, int to) {
         return scanError(SyntaxFailure.INVALID_LEXEME, token, textOf(from, to - from));
     }
 
@@ -1363,21 +1363,21 @@ final class SourceScanner {
         while ((token = scanToken()) != TOKEN_EOF) {
             int startedAt = begin;
             try {
-                if (took(token, block) == AfterAToken.END_THE_BLOCK) {
+                if (takeTheToken(token, block) == AfterAToken.END_THE_BLOCK) {
                     return block.scanned();
                 }
             } catch (ScanFailure failure) {
-                block.emit(relaxedOrThrown(failure), startedAt);
+                block.emit(relaxOrThrow(failure), startedAt);
                 return block.scanned();
             }
         }
         if (modeChar == ']' || modeChar == ')') {
-            block.emit(relaxedOrThrown(missing(TOKEN_EOF, modeChar, block.startLine, block.startHead)), begin);
+            block.emit(relaxOrThrow(reportMissing(TOKEN_EOF, modeChar, block.startLine, block.startHead)), begin);
         }
         return block.scanned();
     }
 
-    private Value relaxedOrThrown(ScanFailure failure) {
+    private Value relaxOrThrow(ScanFailure failure) {
         if (!relaxed || !failure.isRelaxable()) {
             throw failure;
         }
@@ -1385,14 +1385,14 @@ final class SourceScanner {
         return failure.asAFailure().error().orElseThrow();
     }
 
-    private AfterAToken took(int scannedToken, BlockInProgress block) {
+    private AfterAToken takeTheToken(int scannedToken, BlockInProgress block) {
         int token = scannedToken;
         int modeChar = block.modeChar;
         int bp = begin;
         int ep = end;
         if (token < 0) {
             begin = end;
-            throw invalid(-token, bp, ep);
+            throw refuseAsInvalid(-token, bp, ep);
         }
         if (modeChar == '/' && at(bp) == '/') {
             block.emitted.add(NoneValue.none());
@@ -1402,7 +1402,7 @@ final class SourceScanner {
         Value value;
         boolean startsAPath = (token == TOKEN_WORD || token == TOKEN_LIT || token == TOKEN_GET) && at(ep) == '/';
         if ((token == TOKEN_PATH || startsAPath) && modeChar != '/') {
-            value = pathOf(token, scanBlock('/').values(), bp);
+            value = buildThePath(token, scanBlock('/').values(), bp);
         } else {
             begin = end;
             switch (token) {
@@ -1418,11 +1418,11 @@ final class SourceScanner {
                         throw scanError(SyntaxFailure.MISSING_CLOSE, token, String.valueOf((char) opened));
                     }
                     if (modeChar != closing) {
-                        throw missing(token, modeChar, block.startLine, block.startHead);
+                        throw reportMissing(token, modeChar, block.startLine, block.startHead);
                     }
                     return AfterAToken.END_THE_BLOCK;
                 }
-                default -> value = valueOfToken(token, bp, ep, ep - bp, modeChar);
+                default -> value = makeTheValueOfAToken(token, bp, ep, ep - bp, modeChar);
             }
         }
         block.emit(value, bp);
@@ -1438,19 +1438,19 @@ final class SourceScanner {
             after++;
             begin = after;
             if (at(after) != '(' && lex.isDelimit(at(after))) {
-                throw invalid(TOKEN_PATH, bp, after);
+                throw refuseAsInvalid(TOKEN_PATH, bp, after);
             }
         }
         return only || block.justOnce ? AfterAToken.END_THE_BLOCK : AfterAToken.CARRY_ON;
     }
 
-    private ScanFailure missing(int token, int modeChar, int startLine, int startHead) {
+    private ScanFailure reportMissing(int token, int modeChar, int startLine, int startHead) {
         lineCount = startLine;
         headLine = startHead;
         return scanError(SyntaxFailure.MISSING_CLOSE, token, String.valueOf((char) modeChar));
     }
 
-    private Value pathOf(int token, List<Value> segments, int bp) {
+    private Value buildThePath(int token, List<Value> segments, int bp) {
         List<Value> parts = new ArrayList<>(segments);
         AnyPathValue.AnyPathDatatype kind;
         if (token == TOKEN_LIT) {
@@ -1458,7 +1458,7 @@ final class SourceScanner {
             parts.set(0, asPlainWord(parts.getFirst()));
         } else if (parts.getFirst() instanceof GetWordValue first) {
             if (at(end) == ':') {
-                throw invalid(TOKEN_PATH, bp, end);
+                throw refuseAsInvalid(TOKEN_PATH, bp, end);
             }
             kind = GetPathValue.TYPE;
             parts.set(0, asPlainWord(first));
@@ -1468,24 +1468,24 @@ final class SourceScanner {
         } else {
             kind = PathValue.TYPE;
         }
-        return kind.holding(parts);
+        return kind.wrap(parts);
     }
 
     private Value asPlainWord(Value segment) {
         return segment instanceof AnyWordValue word ? WordValue.of(word.spelling()) : segment;
     }
 
-    private Value dateAfterAnInteger(int bp, int to) {
+    private Value scanADateAfterAnInteger(int bp, int to) {
         int ep = to;
         while (at(ep) == '/' || lex.isAtLeastSpecial(at(ep))) {
             ep++;
         }
         begin = ep;
         segmentEnd = ep;
-        return dateEndingAt(TOKEN_DATE, bp, ep - bp, ep);
+        return scanADateEndingAt(TOKEN_DATE, bp, ep - bp, ep);
     }
 
-    private Value dateToken(int bp, int to, int length, int modeChar) {
+    private Value scanADateToken(int bp, int to, int length, int modeChar) {
         int ep = to;
         int len = length;
         while (at(ep) == '/' && modeChar != '/') {
@@ -1500,30 +1500,30 @@ final class SourceScanner {
             begin = ep;
         }
         segmentEnd = ep;
-        return dateEndingAt(TOKEN_DATE, bp, len, ep);
+        return scanADateEndingAt(TOKEN_DATE, bp, len, ep);
     }
 
-    private Value dateEndingAt(int token, int bp, int length, int ep) {
-        return scanned.date(bp, length)
+    private Value scanADateEndingAt(int token, int bp, int length, int ep) {
+        return scanned.scanADate(bp, length)
                 .filter(_ -> scanned.scannedTo() == ep)
-                .orElseThrow(() -> invalid(token, bp, ep));
+                .orElseThrow(() -> refuseAsInvalid(token, bp, ep));
     }
 
-    private Value valueOfToken(int token, int bp, int ep, int len, int modeChar) {
+    private Value makeTheValueOfAToken(int token, int bp, int ep, int len, int modeChar) {
         segmentEnd = ep;
         switch (token) {
             case TOKEN_NONE -> {
                 return NoneValue.none();
             }
             case TOKEN_LIT, TOKEN_GET, TOKEN_SET, TOKEN_WORD -> {
-                return wordValue(token, bp, ep, len, modeChar);
+                return makeAWord(token, bp, ep, len, modeChar);
             }
             case TOKEN_REFINE -> {
                 return RefinementValue.of(textOf(bp + 1, len - 1));
             }
             case TOKEN_ISSUE -> {
                 if (!isAnIssue(bp + 1, len - 1)) {
-                    throw invalid(token, bp, ep);
+                    throw refuseAsInvalid(token, bp, ep);
                 }
                 return IssueValue.of(textOf(bp + 1, len - 1));
             }
@@ -1535,21 +1535,21 @@ final class SourceScanner {
                     return inner.values().getLast();
                 }
                 AnyBlockValue block = token == TOKEN_BLOCK
-                        ? BlockValue.block(inner.values())
+                        ? BlockValue.of(inner.values())
                         : ParenValue.of(inner.values());
                 return withItsLineStarts(block, inner.lineStarts());
             }
             case TOKEN_INTEGER -> {
                 if (at(ep) != '/' || modeChar == '/') {
-                    return scanned.integer(bp, len).orElseThrow(() -> invalid(TOKEN_INTEGER, bp, ep));
+                    return scanned.scanAnInteger(bp, len).orElseThrow(() -> refuseAsInvalid(TOKEN_INTEGER, bp, ep));
                 }
-                return dateAfterAnInteger(bp, ep);
+                return scanADateAfterAnInteger(bp, ep);
             }
             case TOKEN_DECIMAL, TOKEN_PERCENT -> {
                 if (at(ep) == '/') {
-                    throw invalid(token, bp, ep);
+                    throw refuseAsInvalid(token, bp, ep);
                 }
-                Value read = scanned.decimal(bp, len).orElseThrow(() -> invalid(token, bp, ep));
+                Value read = scanned.scanADecimal(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
                 if (at(bp + len - 1) == '%') {
                     return PercentValue.of(((AnyDecimalValue) read).quantity() / 100.0);
                 }
@@ -1557,45 +1557,45 @@ final class SourceScanner {
             }
             case TOKEN_MONEY -> {
                 if (at(ep) == '/') {
-                    throw invalid(token, bp, ep + 1);
+                    throw refuseAsInvalid(token, bp, ep + 1);
                 }
-                return scanned.money(bp, len).orElseThrow(() -> invalid(token, bp, ep));
+                return scanned.scanMoney(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
             }
             case TOKEN_TIME -> {
                 if (at(bp + len - 1) == ':' && modeChar == '/') {
-                    Value number = scanned.integer(bp, len - 1).orElseThrow(() -> invalid(token, bp, ep));
+                    Value number = scanned.scanAnInteger(bp, len - 1).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
                     end--;
                     return number;
                 }
-                return scanned.scannedTimeOrNot(bp)
+                return scanned.scanATime(bp)
                         .filter(_ -> scanned.scannedTo() == ep)
                         .<Value>map(read -> read)
-                        .orElseThrow(() -> invalid(token, bp, ep));
+                        .orElseThrow(() -> refuseAsInvalid(token, bp, ep));
             }
             case TOKEN_DATE -> {
-                return dateToken(bp, ep, len, modeChar);
+                return scanADateToken(bp, ep, len, modeChar);
             }
             case TOKEN_CHAR -> {
                 int[] position = {bp + 2};
-                return CharacterValue.of(scannedChar(position));
+                return CharacterValue.of(scanACharacter(position));
             }
             case TOKEN_STRING -> {
                 return StringValue.of(scannedText());
             }
             case TOKEN_BINARY -> {
-                return decodedBinary(scanned.binaryBase(bp, len)).orElseThrow(() -> invalid(token, bp, ep));
+                return decodeABinary(scanned.readTheBinaryBase(bp, len)).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
             }
             case TOKEN_PAIR -> {
-                return scanned.pair(bp, len).orElseThrow(() -> invalid(token, bp, ep));
+                return scanned.scanAPair(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
             }
             case TOKEN_TUPLE -> {
-                return scanned.tuple(bp, len).orElseThrow(() -> invalid(token, bp, ep));
+                return scanned.scanATuple(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
             }
             case TOKEN_FILE -> {
-                return file(bp, len).orElseThrow(() -> invalid(token, bp, ep));
+                return scanAFile(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
             }
             case TOKEN_EMAIL -> {
-                return email(bp, len).orElseThrow(() -> invalid(token, bp, ep));
+                return scanAnEmail(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
             }
             case TOKEN_REF -> {
                 return RefValue.of(textOf(bp + 1, len - 1));
@@ -1607,19 +1607,19 @@ final class SourceScanner {
                 return TagValue.of(textOf(bp + 1, len - 2));
             }
             case TOKEN_CONSTRUCT -> {
-                return constructed();
+                return construct();
             }
             case TOKEN_MAP -> {
                 ScannedBlock inner = scanBlock(']');
                 segmentEnd = end;
                 if (inner.values().size() % 2 != 0) {
                     throw new ScanFailure(SyntaxFailure.INVALID_ARG,
-                            List.of(BlockValue.block(inner.values())), Optional.empty());
+                            List.of(BlockValue.of(inner.values())), Optional.empty());
                 }
                 return MapValue.of(inner.values());
             }
             case TOKEN_INTEGER_SPEC -> {
-                return scanned.specInteger(bp, len);
+                return scanned.scanASpecInteger(bp, len);
             }
             default -> {
                 return NoneValue.none();
@@ -1627,14 +1627,14 @@ final class SourceScanner {
         }
     }
 
-    private Value wordValue(int token, int from, int to, int length, int modeChar) {
+    private Value makeAWord(int token, int from, int to, int length, int modeChar) {
         int bp = from;
         int len = length;
         int kind = token;
         if (kind == TOKEN_LIT || kind == TOKEN_GET) {
             if (at(to - 1) == ':') {
                 if (len == 1 || modeChar != '/') {
-                    throw invalid(kind, bp, to);
+                    throw refuseAsInvalid(kind, bp, to);
                 }
                 len--;
                 end--;
@@ -1649,7 +1649,7 @@ final class SourceScanner {
             }
         }
         if (len == 0) {
-            throw invalid(kind, bp - 1, to);
+            throw refuseAsInvalid(kind, bp - 1, to);
         }
         segmentEnd = to;
         String spelling = textOf(bp, len);
@@ -1668,7 +1668,7 @@ final class SourceScanner {
         int bp = from;
         for (int remaining = length; remaining > 0; remaining--) {
             int octet = at(bp);
-            switch (lex.classOf(octet)) {
+            switch (lex.classify(octet)) {
                 case CLASS_DELIMIT -> {
                     return false;
                 }
@@ -1688,7 +1688,7 @@ final class SourceScanner {
         return true;
     }
 
-    private Value constructed() {
+    private Value construct() {
         boolean wasOnly = only;
         only = false;
         ScannedBlock spec;
@@ -1700,34 +1700,34 @@ final class SourceScanner {
         if (relaxed && !spec.values().isEmpty() && spec.values().getFirst() instanceof ErrorValue error) {
             return error;
         }
-        Optional<Value> built = constructions.built(spec.values());
+        Optional<Value> built = constructions.build(spec.values());
         if (built.isPresent()) {
             return built.get();
         }
         ScanFailure malformed = new ScanFailure(SyntaxFailure.MALCONSTRUCT,
-                List.of(BlockValue.block(spec.values())), Optional.empty());
+                List.of(BlockValue.of(spec.values())), Optional.empty());
         if (!relaxed) {
             throw malformed;
         }
         return malformed.asAFailure().error().orElseThrow();
     }
 
-    private Optional<Value> decodedBinary(int base) {
+    private Optional<Value> decodeABinary(int base) {
         byte[] digits = scanBuffer.toByteArray();
         return switch (base) {
-            case 16 -> hexadecimalOctets(digits);
-            case 2 -> bitOctets(digits);
-            case 64 -> base64Octets(digits);
+            case 16 -> decodeHexadecimal(digits);
+            case 2 -> decodeBits(digits);
+            case 64 -> decodeBase64(digits);
             default -> Optional.empty();
         };
     }
 
-    private Optional<Value> hexadecimalOctets(byte[] digits) {
+    private Optional<Value> decodeHexadecimal(byte[] digits) {
         OctetBuffer octets = new OctetBuffer();
         int count = digits.length % 2 == 1 ? 1 : 0;
         int accumulated = 0;
         for (byte each : digits) {
-            int lexical = lex.entry(each);
+            int lexical = lex.lookUpTheEntry(each);
             if (lexical > WORD) {
                 int value = lexical & VALUE_MASK;
                 if (value == 0 && lexical < NUMBER) {
@@ -1747,7 +1747,7 @@ final class SourceScanner {
         return Optional.of(BinaryValue.ofBytes(octets.toByteArray()));
     }
 
-    private Optional<Value> bitOctets(byte[] digits) {
+    private Optional<Value> decodeBits(byte[] digits) {
         OctetBuffer octets = new OctetBuffer();
         int count = digits.length & 7;
         if (count != 0) {
@@ -1755,7 +1755,7 @@ final class SourceScanner {
         }
         int accumulated = 0;
         for (byte each : digits) {
-            int lexical = lex.entry(each);
+            int lexical = lex.lookUpTheEntry(each);
             if (lexical >= NUMBER) {
                 if (each == '0') {
                     accumulated *= 2;
@@ -1779,9 +1779,9 @@ final class SourceScanner {
         return Optional.of(BinaryValue.ofBytes(octets.toByteArray()));
     }
 
-    private Optional<Value> base64Octets(byte[] digits) {
-        Optional<Value> standard = base64Octets(digits, false);
-        return standard.isPresent() || !holdsAUrlSafeDigit(digits) ? standard : base64Octets(digits, true);
+    private Optional<Value> decodeBase64(byte[] digits) {
+        Optional<Value> standard = decodeBase64(digits, false);
+        return standard.isPresent() || !holdsAUrlSafeDigit(digits) ? standard : decodeBase64(digits, true);
     }
 
     private boolean holdsAUrlSafeDigit(byte[] digits) {
@@ -1793,7 +1793,7 @@ final class SourceScanner {
         return false;
     }
 
-    private int base64Digit(int octet, boolean urlSafe) {
+    private int decodeABase64Digit(int octet, boolean urlSafe) {
         if (octet >= 'A' && octet <= 'Z') {
             return octet - 'A';
         }
@@ -1822,7 +1822,7 @@ final class SourceScanner {
 
     private static final int BASE64_ERROR = 0x80;
 
-    private Optional<Value> base64Octets(byte[] digits, boolean urlSafe) {
+    private Optional<Value> decodeBase64(byte[] digits, boolean urlSafe) {
         OctetBuffer octets = new OctetBuffer();
         int accumulated = 0;
         int flip = 0;
@@ -1836,7 +1836,7 @@ final class SourceScanner {
                 }
                 return Optional.empty();
             }
-            int digit = base64Digit(octet, urlSafe);
+            int digit = decodeABase64Digit(octet, urlSafe);
             if (digit < BASE64_SPACE) {
                 if (octet != '=') {
                     accumulated = (accumulated << 6) + digit;
@@ -1892,7 +1892,7 @@ final class SourceScanner {
         return Optional.of(BinaryValue.ofBytes(octets.toByteArray()));
     }
 
-    private Optional<Value> file(int from, int length) {
+    private Optional<Value> scanAFile(int from, int length) {
         int cp = from;
         int len = length;
         int terminator = 0;
@@ -1907,11 +1907,11 @@ final class SourceScanner {
             terminator = '"';
             refused = REFUSED_IN_A_QUOTED_FILE;
         }
-        return item(cp, cp + len, terminator, refused)
+        return scanAnItem(cp, cp + len, terminator, refused)
                 .map(FileValue::of);
     }
 
-    private Optional<String> item(int from, int until, int terminator, String refused) {
+    private Optional<String> scanAnItem(int from, int until, int terminator, String refused) {
         OctetBuffer written = new OctetBuffer();
         int src = from;
         while (src < until && at(src) != terminator) {
@@ -1940,7 +1940,7 @@ final class SourceScanner {
                         return Optional.empty();
                     }
                     int[] position = {src};
-                    chr = scannedChar(position);
+                    chr = scanACharacter(position);
                     if (terminator == 0 && (chr == ' ' || chr == '\t')) {
                         break;
                     }
@@ -1955,7 +1955,7 @@ final class SourceScanner {
                 written.write(encoded, 0, encoded.length);
             } else {
                 int[] position = {src};
-                int codepoint = utf8Codepoint(position);
+                int codepoint = decodeAUtf8Codepoint(position);
                 src = position[0];
                 byte[] encoded = new String(Character.toChars(Math.max(codepoint, 0)))
                         .getBytes(StandardCharsets.UTF_8);
@@ -1965,7 +1965,7 @@ final class SourceScanner {
         return Optional.of(written.toString(StandardCharsets.UTF_8));
     }
 
-    private Optional<Value> email(int from, int length) {
+    private Optional<Value> scanAnEmail(int from, int length) {
         OctetBuffer written = new OctetBuffer();
         boolean seenAnAtSign = false;
         int cp = from;

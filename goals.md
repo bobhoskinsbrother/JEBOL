@@ -63,7 +63,7 @@ comes before improving on it: a place where JEBOL answers something a real
 
 ### 5. Android, with the interpreter running on Android's own Java
 
-1. **Check JEBOL's Java against Android's.** JEBOL is written for Java 25.
+1. **Check JEBOL's Java against Android's.** JEBOL is text for Java 25.
    Find the language features and library calls Android's compiler and
    runtime do not have, and replace them or choose the oldest Android version
    that does.
@@ -128,7 +128,7 @@ open question in `spec/natives.allium`.
   `REB_BLOCK` whatever was asked for, and a paren here. A decision rather than
   a fix.
 - **79 other answers differed at the sweep of 2026-10-08**, mostly wording:
-  an error's `arg1` written as a sentence where R3 writes `_`; R3 molding `10%`
+  an error's `arg1` text as a sentence where R3 writes `_`; R3 molding `10%`
   as `10.000000000000001%`; `hash!` under MOLD/ALL; a pair, tuple or date given
   `"a b"` refusing as `bad-make-arg` where R3 says `invalid-chars`. Two are R3
   oddities (`to url! []` naming `email!`, `make percent!` errors naming
@@ -180,7 +180,7 @@ interpreters -- reads as missing.
 - **The old markup path** -- 522 lines.
 - **`effect`**, the one DRAW command not painted; it is a dialect of its own
   and belongs with the codecs.
-- **The stroked-curve comparison** between the two adapters. The surface of
+- **The stroke-curve comparison** between the two adapters. The surface of
   decision 35 makes the walk one and leaves only the toolkit's coverage
   arithmetic, which the spec's tolerance already bounds.
 
@@ -193,7 +193,7 @@ interpreters -- reads as missing.
   `TheFateOfATasksBodyIsTheHostsToDecide` in `spec/natives.allium`.
 - **Fourteen compiled modules are left out of `system/modules`** -- sqlite,
   zstd, webp and the rest -- because importing them fetches native code. Each
-  can come back as an extension written in Java, one at a time, when one is
+  can come back as an extension text in Java, one at a time, when one is
   wanted. The `serial` scheme is the same: an extension can provide it now.
 - **`access-os` answers `not-here` for `uid`, `euid`, `gid` and `egid`.** The
   JVM has no portable way to ask.
@@ -215,7 +215,7 @@ Nothing is fetched today: every module this build needs is bundled. Before an
 address points outward again:
 
 1. `system/modules` carries an expected digest beside each remote address.
-2. The bytes are verified before they are written to disk and before anything
+2. The bytes are verified before they are text to disk and before anything
    is evaluated. `download-extension` currently reads and writes with no check.
 3. A mismatch fails the import.
 4. No digest recorded means the address is not usable.
@@ -231,7 +231,7 @@ differently. `trace/back`, `trace/function` and `stack` with its refinements are
 unchecked.
 
 **Then stepping and breakpoints**, which R3 does not have. Three things to
-decide first: what drives it (the Debug Adapter Protocol, written here since
+decide first: what drives it (the Debug Adapter Protocol, text here since
 the jar takes no dependencies); what a paused script does to the deadline and
 grants it runs under; and whether a script may debug itself.
 
@@ -310,7 +310,7 @@ still reads slow after the paint work:
   here and fails there. The vendored `prot-tls.reb` carries four edits for
   it. Decision 43 and finding 222 say what and why.
 - **A file is judged by where it really leads, where R3 judges the path as
-  written, on purpose.** A symbolic link in a script's own folder pointing out
+  text, on purpose.** A symbolic link in a script's own folder pointing out
   of it reads in a real 3.22.5 and is a security violation here, naming where
   it leads; a link leaving a host's `--root` is refused even with every policy
   at allow. Links that stay inside are followed. `AFileIsJudgedByWhereItReallyLeads`

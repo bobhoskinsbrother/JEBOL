@@ -20,6 +20,6 @@ public abstract class BitwiseAction extends ArithmeticNative implements ActionVa
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                arguments.get(0).bitwise(arguments.get(1), operation());
+                arguments.get(0).combineBitwise(arguments.get(1), operation());
     }
 }

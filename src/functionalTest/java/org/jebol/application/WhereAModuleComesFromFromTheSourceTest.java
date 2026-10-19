@@ -11,17 +11,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class WhereAModuleComesFromFromTheSourceTest {
 
-    private static Interpreter withAFilesystemAt(Path root) {
+    private static Interpreter makeAnInterpreterWithAFilesystemAt(Path root) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         return interpreter;
     }
 
     private static String answerTo(Path root, String source) {
-        Interpreter interpreter = withAFilesystemAt(root);
+        Interpreter interpreter = makeAnInterpreterWithAFilesystemAt(root);
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -34,14 +34,14 @@ class WhereAModuleComesFromFromTheSourceTest {
 
     @Test
     @DisplayName("the modules directory sits beside the data, and is made")
-    void theModulesDirectorySitsBesideTheData(@TempDir Path root) {
-        Interpreter interpreter = withAFilesystemAt(root);
+    void putsTheModulesDirectoryBesideTheData(@TempDir Path root) {
+        Interpreter interpreter = makeAnInterpreterWithAFilesystemAt(root);
         String makingIt = """
                 system/options/data: %/data/
                 make-dir/deep system/options/data""";
         interpreter.defineFreshWordsIn(makingIt);
         interpreter.run(makingIt);
-        interpreter.followTheApplicationDataDirectory();
+        interpreter.followApplicationDataDirectory();
 
         assertThat(interpreter.display(interpreter.run("""
                 reduce [
@@ -52,7 +52,7 @@ class WhereAModuleComesFromFromTheSourceTest {
 
     @Test
     @DisplayName("and with no filesystem, or no data directory, there is none")
-    void withNoFilesystemOrNoDataDirectoryThereIsNone(@TempDir Path root) {
+    void hasNoneWithoutAFilesystemOrADataDirectory(@TempDir Path root) {
         assertThat(answerWithNoFilesystem("none? system/options/modules"))
                 .isEqualTo("#(true)");
         assertThat(answerTo(root, "none? system/options/modules"))
@@ -61,14 +61,14 @@ class WhereAModuleComesFromFromTheSourceTest {
 
     @Test
     @DisplayName("and it follows the data directory when a host moves that")
-    void itFollowsTheDataDirectory(@TempDir Path root) {
-        Interpreter interpreter = withAFilesystemAt(root);
+    void followsTheDataDirectory(@TempDir Path root) {
+        Interpreter interpreter = makeAnInterpreterWithAFilesystemAt(root);
         String moving = """
                 system/options/data: %/elsewhere/
                 make-dir/deep system/options/data""";
         interpreter.defineFreshWordsIn(moving);
         interpreter.run(moving);
-        interpreter.followTheApplicationDataDirectory();
+        interpreter.followApplicationDataDirectory();
 
         assertThat(interpreter.display(interpreter.run(
                 "system/options/modules"))).isEqualTo("%/elsewhere/modules/");
@@ -76,7 +76,7 @@ class WhereAModuleComesFromFromTheSourceTest {
 
     @Test
     @DisplayName("the module table starts as the modules this build bundles")
-    void theModuleTableStartsAsWhatIsBundled(@TempDir Path root) {
+    void startsTheModuleTableWithWhatIsBundled(@TempDir Path root) {
         assertThat(answerTo(root, "select system/modules 'thru-cache"))
                 .isEqualTo("bundled://thru-cache.reb");
         assertThat(answerTo(root, "select system/modules 'httpd"))
@@ -85,7 +85,7 @@ class WhereAModuleComesFromFromTheSourceTest {
 
     @Test
     @DisplayName("but nothing this build cannot serve is offered")
-    void nothingThisBuildCannotServeIsOffered(@TempDir Path root) {
+    void offersNothingThisBuildCannotServe(@TempDir Path root) {
         assertThat(answerTo(root, "select system/modules 'sqlite")).isEqualTo("_");
         assertThat(answerTo(root, "select system/modules 'blend2d")).isEqualTo("_");
         assertThat(answerTo(root, "error? try [import 'brotli]")).isEqualTo("#(true)");
@@ -96,7 +96,7 @@ class WhereAModuleComesFromFromTheSourceTest {
 
     @Test
     @DisplayName("a name that is not on it answers none, and so does WINDOW")
-    void aNameThatIsNotOnItAnswersNone(@TempDir Path root) {
+    void answersNoneForANameNotOnIt(@TempDir Path root) {
         assertThat(answerTo(root, "select system/modules 'no-such-module-at-all"))
                 .isEqualTo("_");
         assertThat(answerTo(root, "select system/modules 'window")).isEqualTo("_");
@@ -104,7 +104,7 @@ class WhereAModuleComesFromFromTheSourceTest {
 
     @Test
     @DisplayName("and a module this build loaded is a module there, not an address")
-    void aModuleThisBuildLoadedIsAModuleThere(@TempDir Path root) {
+    void listsAModuleThisBuildLoaded(@TempDir Path root) {
         assertThat(answerTo(root, "type? select system/modules 'json"))
                 .isEqualTo("#(module!)");
     }

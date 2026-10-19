@@ -15,7 +15,7 @@ public final class FunctionValue extends DefinedFunctionValue {
     public FunctionValue(
             AnyBlockValue spec, AnyBlockValue body, List<Parameter> parameters,
             List<String> localNames, Context closedOver) {
-        super(spec, body, parameters, localNames, closedOver, Context.theWordsAFunctionDeclares());
+        super(spec, body, parameters, localNames, closedOver, Context.collectTheWordsAFunctionDeclares());
     }
 
     @Override
@@ -24,13 +24,13 @@ public final class FunctionValue extends DefinedFunctionValue {
     }
 
     @Override
-    public FunctionValue sameKindRunning(AnyBlockValue anotherBody, Context closedOverInstead) {
+    public FunctionValue makeTheSameKindRunning(AnyBlockValue anotherBody, Context closedOverInstead) {
         return new FunctionValue(spec(), anotherBody, parameters(), localNames(), closedOverInstead);
     }
 
     @Override
-    public Context aFreshCallFrame() {
-        Context frame = Context.childOf(closedOver());
+    public Context makeAFreshCallFrame() {
+        Context frame = Context.makeChildOf(closedOver());
         frame.markAsCallFrameOf(this);
         return frame;
     }

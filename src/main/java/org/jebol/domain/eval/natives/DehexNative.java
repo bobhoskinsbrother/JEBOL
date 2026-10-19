@@ -24,8 +24,8 @@ public class DehexNative extends PercentEncodingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("value", anyStringOr(BinaryValue.TYPE)),
-                Parameter.belongingTo("escape", "char", Set.of(CharacterValue.TYPE)));
+                Parameter.of("value", acceptAnyStringOr(BinaryValue.TYPE)),
+                Parameter.belongTo("escape", "char", Set.of(CharacterValue.TYPE)));
     }
 
     @Override
@@ -37,7 +37,7 @@ public class DehexNative extends PercentEncodingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value value = arguments.getFirst();
-            return asTheSameKindAs(value, encodings.percentDecoded(
+            return asTheSameKindAs(value, encodings.percentDecode(
                     textOf(value),
                     escapeCharacterIn(arguments, refinements),
                     refinements.contains("uri")));

@@ -24,7 +24,7 @@ class SmallDivergencesFromTheSourceTest {
                 : molded.replace("\"", "");
     }
 
-    private static String whatHappensTo(String source) {
+    private static String describeWhatHappensTo(String source) {
         return answerTo("either error? e: try [" + source + "] [e/id] ['worked]");
     }
 
@@ -36,7 +36,7 @@ class SmallDivergencesFromTheSourceTest {
         @ValueSource(ints = {0, -1, -2})
         @DisplayName("a width of nothing or less is out of range")
         void awidthOfNothing(int width) {
-            assertThat(whatHappensTo("new-line/skip [1 2] true " + width))
+            assertThat(describeWhatHappensTo("new-line/skip [1 2] true " + width))
                     .as("clamping it to one quietly marked every item instead, "
                             + "which is what /ALL means and not what was asked")
                     .isEqualTo("out-of-range");
@@ -45,7 +45,7 @@ class SmallDivergencesFromTheSourceTest {
         @Test
         @DisplayName("and one or more is a width")
         void awidthOfOneOrMore() {
-            assertThat(whatHappensTo("new-line/skip [1 2 3 4] true 2")).isEqualTo("worked");
+            assertThat(describeWhatHappensTo("new-line/skip [1 2 3 4] true 2")).isEqualTo("worked");
         }
     }
 
@@ -56,22 +56,22 @@ class SmallDivergencesFromTheSourceTest {
         @Test
         @DisplayName("a /SKIP width below one is out of range rather than clamped")
         void arecordWidthBelowOne() {
-            assertThat(whatHappensTo("union/skip [2 1] [2 1] -2"))
+            assertThat(describeWhatHappensTo("union/skip [2 1] [2 1] -2"))
                     .as("clamped to one, the call ran over single items and looked "
                             + "as though the caller had meant that")
                     .isEqualTo("out-of-range");
-            assertThat(whatHappensTo("union/skip [2 1] [2 1] 0")).isEqualTo("out-of-range");
-            assertThat(whatHappensTo("union/skip [2 1 2 1] [2 1] 2")).isEqualTo("worked");
+            assertThat(describeWhatHappensTo("union/skip [2 1] [2 1] 0")).isEqualTo("out-of-range");
+            assertThat(describeWhatHappensTo("union/skip [2 1 2 1] [2 1] 2")).isEqualTo("worked");
         }
 
         @Test
         @DisplayName("and a /PART length past what a whole number holds is too")
         void alengthPastTheRange() {
-            assertThat(whatHappensTo("copy/part tail [1] -2147483649"))
+            assertThat(describeWhatHappensTo("copy/part tail [1] -2147483649"))
                     .as("the C counts in a 32-bit integer, so a number outside that "
                             + "is not a length it could ever mean")
                     .isEqualTo("out-of-range");
-            assertThat(whatHappensTo("copy/part tail [1] -1")).isEqualTo("worked");
+            assertThat(describeWhatHappensTo("copy/part tail [1] -1")).isEqualTo("worked");
         }
     }
 
@@ -82,7 +82,7 @@ class SmallDivergencesFromTheSourceTest {
         @Test
         @DisplayName("is an invalid argument, not the wrong datatype")
         void anemptyNameList() {
-            assertThat(whatHappensTo("foreach [] [] []"))
+            assertThat(describeWhatHappensTo("foreach [] [] []"))
                     .as("the block is the right datatype and the wrong value, and "
                             + "the two errors send a reader to different places")
                     .isEqualTo("invalid-arg");
@@ -97,7 +97,7 @@ class SmallDivergencesFromTheSourceTest {
         @ValueSource(strings = {"'a/b/c", "first [(1 2 3)]", "make hash! [1 2 3]"})
         @DisplayName("is refused, the way the C's own arm refuses it")
         void refused(String written) {
-            assertThat(whatHappensTo("random " + written))
+            assertThat(describeWhatHappensTo("random " + written))
                     .as("`if (!IS_BLOCK(value)) Trap_Action(VAL_TYPE(value), "
                             + "action);` is the second line of REBTYPE(Block)'s "
                             + "RANDOM, so reaching the arm is not the same as "
@@ -138,7 +138,7 @@ class SmallDivergencesFromTheSourceTest {
         @Test
         @DisplayName("ENLINE of a block is declared and not written")
         void enliningAblock() {
-            assertThat(whatHappensTo("enline [{a}]"))
+            assertThat(describeWhatHappensTo("enline [{a}]"))
                     .as("a block is in the declared spec, so refusing it as the "
                             + "wrong datatype would be a lie about the spec")
                     .isEqualTo("not-done");

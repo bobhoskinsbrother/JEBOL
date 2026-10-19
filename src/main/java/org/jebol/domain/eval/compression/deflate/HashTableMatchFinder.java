@@ -28,7 +28,7 @@ final class HashTableMatchFinder extends MatchFinder {
         return offset;
     }
 
-    int longestMatch(byte[] input, int next, int maxLength, int niceLength) {
+    int findTheLongestMatch(byte[] input, int next, int maxLength, int niceLength) {
         int bestLength = 0;
         int bestMatch = next;
         int position = next - base;
@@ -37,7 +37,7 @@ final class HashTableMatchFinder extends MatchFinder {
             base += DeflateTables.WINDOW_SIZE;
             position = 0;
         }
-        int cutoff = cutoffFor(position);
+        int cutoff = findTheCutoffFor(position);
         int bucket = nextHash * BUCKET_SIZE;
         nextHash = hash(load32(input, next + 1), HASH_ORDER);
         int sequence = load32(input, next);

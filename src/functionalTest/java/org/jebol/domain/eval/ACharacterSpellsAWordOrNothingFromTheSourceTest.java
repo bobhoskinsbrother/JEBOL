@@ -22,7 +22,7 @@ class ACharacterSpellsAWordOrNothingFromTheSourceTest {
 
     @Test
     @DisplayName("the characters that spell a word alone are letters and the scanner's own punctuation")
-    void theCharactersThatSpellAWordAloneAreLettersAndPunctuation() {
+    void spellsAWordAloneOnlyAsALetterOrPunctuation() {
         assertThat(answerTo("""
                 accepted: copy {}
                 repeat n 127 [
@@ -36,7 +36,7 @@ class ACharacterSpellsAWordOrNothingFromTheSourceTest {
 
     @Test
     @DisplayName("and every character that spells none is refused as a syntax bad-char naming itself")
-    void everyCharacterThatSpellsNoneIsRefusedAsBadChar() {
+    void refusesEveryCharacterThatSpellsNoneAsBadChar() {
         assertThat(answerTo("""
                 answered-otherwise: copy []
                 repeat n 127 [
@@ -53,7 +53,7 @@ class ACharacterSpellsAWordOrNothingFromTheSourceTest {
 
     @Test
     @DisplayName("the three the reader spends on something else are refused, not read as words")
-    void theThreeTheReaderSpendsOnSomethingElseAreRefused() {
+    void refusesTheThreeTheReaderSpendsOnSomethingElse() {
         assertThat(failureOf("""
                 to word! #"'"
                 """)).isEqualTo("""
@@ -70,7 +70,7 @@ class ACharacterSpellsAWordOrNothingFromTheSourceTest {
 
     @Test
     @DisplayName("a blank character is not stepped over the way a blank string is")
-    void aBlankCharacterIsNotSteppedOverTheWayABlankStringIs() {
+    void isNotSteppedOverWhenBlankTheWayABlankStringIs() {
         assertThat(failureOf("""
                 to word! #" "
                 """)).isEqualTo("""
@@ -86,7 +86,7 @@ class ACharacterSpellsAWordOrNothingFromTheSourceTest {
 
     @Test
     @DisplayName("a character becoming an issue is scanned as a word, so a digit is refused")
-    void aCharacterBecomingAnIssueIsScannedAsAWord() {
+    void isScannedAsAWordWhenBecomingAnIssue() {
         assertThat(failureOf("""
                 to issue! #"5"
                 """)).isEqualTo("""
@@ -101,7 +101,7 @@ class ACharacterSpellsAWordOrNothingFromTheSourceTest {
 
     @Test
     @DisplayName("every word datatype goes through the same door, MAKE as well as TO")
-    void everyWordDatatypeGoesThroughTheSameDoor() {
+    void goesThroughTheSameDoorForEveryWordDatatype() {
         assertThat(answerTo("""
                 reduce [
                     to set-word! #"a"  to lit-word! #"a"
@@ -123,7 +123,7 @@ class ACharacterSpellsAWordOrNothingFromTheSourceTest {
 
     @Test
     @DisplayName("a character above ASCII is a word, because the scanner reads bytes not letters")
-    void aCharacterAboveAsciiIsAWord() {
+    void spellsAWordAboveAscii() {
         assertThat(answerTo("""
                 reduce [
                     word? to word! to char! 233

@@ -21,7 +21,7 @@ class ParseReturnFromTheSourceTest {
 
         @Test
         @DisplayName("the span the next rule matched is the answer")
-        void theSpanIsTheAnswer() {
+        void answersTheSpan() {
             assertThat(answerTo("""
                     reduce [
                         parse "abc" [return 2 skip]
@@ -34,7 +34,7 @@ class ParseReturnFromTheSourceTest {
 
         @Test
         @DisplayName("counted in characters, not in the bytes they take")
-        void countedInCharacters() {
+        void countsInCharacters() {
             assertThat(answerTo("""
                     reduce [
                         parse "ábč" [return 2 skip]
@@ -45,7 +45,7 @@ class ParseReturnFromTheSourceTest {
 
         @Test
         @DisplayName("nothing after it runs, even the rest of the rule")
-        void nothingAfterItRuns() {
+        void runsNothingAfterIt() {
             assertThat(answerTo("""
                     reduce [
                         parse "abc" ["a" return "b" "c"]
@@ -56,14 +56,14 @@ class ParseReturnFromTheSourceTest {
 
         @Test
         @DisplayName("and it climbs out of the block it is written in")
-        void itClimbsOutOfItsBlock() {
+        void climbsOutOfItsBlock() {
             assertThat(answerTo("""
                     parse "abc" [some [return "b" | skip]]""")).isEqualTo("\"b\"");
         }
 
         @Test
         @DisplayName("a paren answers whatever it evaluates to")
-        void aParenAnswersItsValue() {
+        void answersTheValueOfAParen() {
             assertThat(answerTo("""
                     reduce [
                         parse "abc" [return (1 + 1)]
@@ -74,7 +74,7 @@ class ParseReturnFromTheSourceTest {
 
         @Test
         @DisplayName("a rule that matches nothing answers the empty span")
-        void aRuleThatMatchesNothing() {
+        void answersTheEmptySpanForARuleThatMatchesNothing() {
             assertThat(answerTo("""
                     reduce [
                         parse "abc" [return none]
@@ -85,7 +85,7 @@ class ParseReturnFromTheSourceTest {
 
         @Test
         @DisplayName("and a rule that fails leaves PARSE to answer false as usual")
-        void aRuleThatFails() {
+        void answersFalseForARuleThatFails() {
             assertThat(answerTo("""
                     parse "abc" [return "x"]""")).isEqualTo("#(false)");
         }
@@ -97,7 +97,7 @@ class ParseReturnFromTheSourceTest {
 
         @Test
         @DisplayName("the answer is a block of what was matched")
-        void theAnswerIsABlock() {
+        void answersABlockOfWhatWasMatched() {
             assertThat(answerTo("""
                     reduce [
                         parse [1 2 3] [return 2 skip]
@@ -107,7 +107,7 @@ class ParseReturnFromTheSourceTest {
 
         @Test
         @DisplayName("a paren and a failing rule behave as they do over a string")
-        void aParenAndAFailingRule() {
+        void treatsAParenAndAFailingRuleAsOverAString() {
             assertThat(answerTo("""
                     reduce [parse [1 2 3] [return (9)] parse [1 2 3] [return 'x]]"""))
                     .isEqualTo("[9 #(false)]");

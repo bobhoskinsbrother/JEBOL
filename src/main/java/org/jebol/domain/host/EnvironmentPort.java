@@ -27,7 +27,7 @@ public interface EnvironmentPort {
     String valueOf(String name);
 
     /** Every name this interpreter reports, and what each one holds. */
-    Map<String, String> all();
+    Map<String, String> readAll();
 
     /**
      * Lays a value over a name, or takes the name away when given null.
@@ -35,7 +35,7 @@ public interface EnvironmentPort {
      * <p>Over rather than into: the host's own names stay where they are and a
      * script that puts back what it found restores what was there.
      */
-    void nameHolds(String name, String value);
+    void assign(String name, String value);
 
     /** A port that answers nothing, which is what a script gets by default. */
     static EnvironmentPort none() {
@@ -46,12 +46,12 @@ public interface EnvironmentPort {
             }
 
             @Override
-            public Map<String, String> all() {
+            public Map<String, String> readAll() {
                 throw refuse();
             }
 
             @Override
-            public void nameHolds(String name, String value) {
+            public void assign(String name, String value) {
                 throw refuse();
             }
 

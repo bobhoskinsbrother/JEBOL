@@ -40,7 +40,7 @@ class MakeAndToAnswerAsR3DoesTest {
 
     @TestFactory
     @DisplayName("make and to answer every datatype and specification as r3 does")
-    Stream<DynamicTest> everyMakeAndTo() throws Exception {
+    Stream<DynamicTest> coverEveryMakeAndTo() throws Exception {
         List<String[]> answers = r3Answers();
         assertThat(answers).hasSize(EXPECTED_CASES);
         return answers.stream().map(row -> DynamicTest.dynamicTest(row[0],

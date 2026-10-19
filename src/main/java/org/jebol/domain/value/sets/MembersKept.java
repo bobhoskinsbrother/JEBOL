@@ -9,17 +9,17 @@ import java.util.function.BiPredicate;
 public record MembersKept(SetOperation how, int stride, BiPredicate<Value, Value> same) {
 
     public List<Value> from(List<Value> ourMembers, List<Value> theirMembers) {
-        List<List<Value>> ours = inRecords(ourMembers);
-        List<List<Value>> theirs = inRecords(theirMembers);
+        List<List<Value>> ours = groupIntoRecords(ourMembers);
+        List<List<Value>> theirs = groupIntoRecords(theirMembers);
         List<List<Value>> kept = new ArrayList<>();
         for (List<Value> candidate : ours) {
-            if (how.theFirstSetKeeps(holds(theirs, candidate)) && isNew(kept, candidate)) {
+            if (how.keepsFromTheFirstSet(holds(theirs, candidate)) && isNew(kept, candidate)) {
                 kept.add(candidate);
             }
         }
-        if (how.theSecondSetContributes()) {
+        if (how.takesFromTheSecondSet()) {
             for (List<Value> candidate : theirs) {
-                if (how.theSecondSetKeeps(holds(ours, candidate))
+                if (how.keepsFromTheSecondSet(holds(ours, candidate))
                         && isNew(kept, candidate)) {
                     kept.add(candidate);
                 }
@@ -28,7 +28,7 @@ public record MembersKept(SetOperation how, int stride, BiPredicate<Value, Value
         return kept.stream().flatMap(List::stream).toList();
     }
 
-    private List<List<Value>> inRecords(List<Value> items) {
+    private List<List<Value>> groupIntoRecords(List<Value> items) {
         List<List<Value>> records = new ArrayList<>();
         for (int at = 0; at < items.size(); at += stride) {
             records.add(items.subList(at, Math.min(at + stride, items.size())));
@@ -41,10 +41,10 @@ public record MembersKept(SetOperation how, int stride, BiPredicate<Value, Value
     }
 
     private boolean holds(List<List<Value>> records, List<Value> candidate) {
-        return records.stream().anyMatch(each -> sameRecord(each, candidate));
+        return records.stream().anyMatch(each -> isTheSameRecord(each, candidate));
     }
 
-    private boolean sameRecord(List<Value> ours, List<Value> theirs) {
+    private boolean isTheSameRecord(List<Value> ours, List<Value> theirs) {
         if (ours.isEmpty() || theirs.isEmpty()) {
             return ours.isEmpty() && theirs.isEmpty();
         }

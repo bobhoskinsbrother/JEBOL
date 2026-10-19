@@ -23,11 +23,11 @@ public class RsaInitNative extends CipherNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("n", A_BINARY),
-                Parameter.required("e", A_BINARY),
-                Parameter.belongingTo("private", "d", A_BINARY),
-                Parameter.belongingTo("private", "p", A_BINARY),
-                Parameter.belongingTo("private", "q", A_BINARY));
+        return List.of(Parameter.of("n", A_BINARY),
+                Parameter.of("e", A_BINARY),
+                Parameter.belongTo("private", "d", A_BINARY),
+                Parameter.belongTo("private", "p", A_BINARY),
+                Parameter.belongTo("private", "q", A_BINARY));
     }
 
     @Override
@@ -38,19 +38,19 @@ public class RsaInitNative extends CipherNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            byte[] modulus = octetsAt(arguments, 0);
-            byte[] publicExponent = octetsAt(arguments, 1);
+            byte[] modulus = readTheOctetsAt(arguments, 0);
+            byte[] publicExponent = readTheOctetsAt(arguments, 1);
             Optional<RsaKey> built = refinements.contains("private")
-                    ? RsaKey.privateKeyFrom(modulus, publicExponent,
-                            octetsAt(arguments, 2), octetsAt(arguments, 3),
-                            octetsAt(arguments, 4))
-                    : RsaKey.publicKeyFrom(modulus, publicExponent);
-            return built.map(key -> aHandleHolding(RSA_HANDLE_TYPE, key, evaluator))
+                    ? RsaKey.makeAPrivateKeyFrom(modulus, publicExponent,
+                            readTheOctetsAt(arguments, 2), readTheOctetsAt(arguments, 3),
+                            readTheOctetsAt(arguments, 4))
+                    : RsaKey.makeAPublicKeyFrom(modulus, publicExponent);
+            return built.map(key -> wrapInAHandle(RSA_HANDLE_TYPE, key, evaluator))
                     .orElseGet(NoneValue::none);
         };
     }
 
-    private byte[] octetsAt(List<Value> arguments, int at) {
+    private byte[] readTheOctetsAt(List<Value> arguments, int at) {
         return ((BinaryValue) arguments.get(at)).octetsFromHere();
     }
 }

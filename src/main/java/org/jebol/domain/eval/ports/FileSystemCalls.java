@@ -7,11 +7,11 @@ import java.util.function.Supplier;
 
 public final class FileSystemCalls {
 
-    public Value answeredOrRaised(Supplier<Value> operation) {
+    public Value answerOrRaise(Supplier<Value> operation) {
         try {
             return operation.get();
         } catch (FilePort.Denied denied) {
-            throw denied.raised();
+            throw denied.raise();
         }
     }
 }

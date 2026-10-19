@@ -15,7 +15,7 @@ public class RecycleNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.belongingTo("ballast", "size", Set.of(IntegerValue.TYPE)));
+        return List.of(Parameter.belongTo("ballast", "size", Set.of(IntegerValue.TYPE)));
     }
 
     @Override

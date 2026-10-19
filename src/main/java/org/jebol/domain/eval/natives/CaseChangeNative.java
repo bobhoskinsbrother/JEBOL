@@ -8,13 +8,13 @@ import java.util.Set;
 
 public abstract class CaseChangeNative extends DefaultNative {
 
-    abstract int changed(int codepoint);
+    abstract int change(int codepoint);
 
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("string", TypesetValue.ANY_STRING.membersAnd(CharacterValue.TYPE)),
-                Parameter.belongingTo("part", "length",
+                Parameter.of("string", TypesetValue.ANY_STRING.membersAnd(CharacterValue.TYPE)),
+                Parameter.belongTo("part", "length",
                         TypesetValue.NUMBER.membersAnd(TypesetValue.ANY_STRING.members().toArray(Datatype[]::new))));
     }
 
@@ -26,31 +26,31 @@ public abstract class CaseChangeNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
-            case CharacterValue letter -> CharacterValue.of(changed(letter.codepoint()));
+            case CharacterValue letter -> CharacterValue.of(change(letter.codepoint()));
             case AnyStringValue text when refinements.contains("part") -> partChanged(text,
-                    argumentOf("part", 0, arguments, refinements).orElseThrow());
-            case AnyStringValue text -> text.rewrittenFromHere(this::changedText);
+                    readTheArgumentOf("part", 0, arguments, refinements).orElseThrow());
+            case AnyStringValue text -> text.rewriteFromHere(this::changeTheText);
             case Value anythingElse -> refuseTheDatatype(anythingElse);
         };
     }
 
-    private String changedText(String text) {
+    private String changeTheText(String text) {
         StringBuilder changed = new StringBuilder();
-        text.codePoints().map(this::changed).forEach(changed::appendCodePoint);
+        text.codePoints().map(this::change).forEach(changed::appendCodePoint);
         return changed.toString();
     }
 
     private Value partChanged(AnyStringValue text, Value limit) {
-        long wanted = howManyAskedOf(text, limit);
-        AnyStringValue changingFrom = (AnyStringValue) text.reachingBackIfNegative(wanted);
+        long wanted = countHowManyAskedOf(text, limit);
+        AnyStringValue changingFrom = (AnyStringValue) text.reachBackIfNegative(wanted);
         int changing = wanted < 0
                 ? text.index() - changingFrom.index()
                 : (int) Math.min(wanted, text.lengthFromHere());
-        changingFrom.frontRewritten(changing, this::changedText);
+        changingFrom.rewriteTheFront(changing, this::changeTheText);
         return text;
     }
 
-    private long howManyAskedOf(AnyStringValue text, Value limit) {
+    private long countHowManyAskedOf(AnyStringValue text, Value limit) {
         return switch (limit) {
             case IntegerValue whole -> whole.magnitude();
             case DecimalValue fraction ->

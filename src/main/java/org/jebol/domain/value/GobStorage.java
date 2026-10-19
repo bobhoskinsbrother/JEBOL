@@ -61,7 +61,7 @@ public final class GobStorage {
         }
 
         /** The flag a word names, or nothing. {@code Set_Gob_Flag} ignores the rest. */
-        public static Flag named(String word) {
+        public static Flag findTheFlagNamed(String word) {
             for (Flag flag : values()) {
                 if (flag.spelling().equals(word)) {
                     return flag;
@@ -90,7 +90,7 @@ public final class GobStorage {
         return offset;
     }
 
-    public void offset(PairValue where) {
+    public void setTheOffset(PairValue where) {
         this.offset = where;
     }
 
@@ -107,7 +107,7 @@ public final class GobStorage {
         return alpha;
     }
 
-    public void alpha(long given) {
+    public void setTheAlpha(long given) {
         this.alpha = (int) Math.max(0, Math.min(OPAQUE, given));
     }
 
@@ -115,8 +115,8 @@ public final class GobStorage {
         return contentKind;
     }
 
-    /** The content, or none when the kind asked for is not the kind it has. */
-    public Value contentIfKind(Content wanted) {
+    /** The content, or none when the type asked for is not the type it has. */
+    public Value readTheContentIfKind(Content wanted) {
         return contentKind == wanted ? content : NoneValue.none();
     }
 
@@ -126,7 +126,7 @@ public final class GobStorage {
      * <p>One slot and one tag: {@code CLR_GOB_OPAQUE(gob); SET_GOB_TYPE(gob,
      * ...); GOB_CONTENT(gob) = ...} on every one of the five field names.
      */
-    public void content(Content kind, Value given) {
+    public void setTheContent(Content kind, Value given) {
         this.contentKind = kind;
         this.content = given;
     }
@@ -140,7 +140,7 @@ public final class GobStorage {
         return dataKind == Held.NONE ? NoneValue.none() : data;
     }
 
-    public void data(Held kind, Value given) {
+    public void setTheData(Held kind, Value given) {
         this.dataKind = kind;
         this.data = given;
     }
@@ -176,12 +176,12 @@ public final class GobStorage {
         return owner;
     }
 
-    public void owner(GobStorage given) {
+    public void setTheOwner(GobStorage given) {
         this.owner = given;
     }
 
     /** The flags that are set, in the order {@code Flags_To_Block} lists them. */
-    public List<Flag> raisedFlags() {
+    public List<Flag> listTheRaisedFlags() {
         List<Flag> raised = new ArrayList<>();
         for (Flag flag : Flag.values()) {
             if (flags.contains(flag)) {
@@ -209,7 +209,7 @@ public final class GobStorage {
         return List.copyOf(pane);
     }
 
-    public Value childAt(int oneBasedIndex) {
+    public Value readTheChildAt(int oneBasedIndex) {
         return pane.get(oneBasedIndex - 1);
     }
 
@@ -250,7 +250,7 @@ public final class GobStorage {
     }
 
     /** Where a child sits in the pane, or zero when it is not in it. */
-    public int positionOf(GobStorage child) {
+    public int findThePositionOf(GobStorage child) {
         for (int at = 1; at <= pane.size(); at++) {
             if (pane.get(at - 1) instanceof GobValue held && held.storage() == child) {
                 return at;
@@ -270,7 +270,7 @@ public final class GobStorage {
      * read back as the gob it molded. That is {@code SET_INTEGER(val, 255 -
      * GOB_ALPHA(gob))} in the C rather than a slip here.
      */
-    public List<Value> moldingSpec() {
+    public List<Value> moldTheSpec() {
         List<Value> spec = new ArrayList<>();
         spec.add(SetWordValue.of("offset"));
         spec.add(offset);
@@ -280,7 +280,7 @@ public final class GobStorage {
             spec.add(SetWordValue.of("alpha"));
             spec.add(IntegerValue.of(OPAQUE - alpha));
         }
-        String contentField = moldedContentName();
+        String contentField = moldTheContentName();
         if (!contentField.isEmpty()) {
             spec.add(SetWordValue.of(contentField));
             spec.add(content);
@@ -288,7 +288,7 @@ public final class GobStorage {
         return spec;
     }
 
-    private String moldedContentName() {
+    private String moldTheContentName() {
         return switch (contentKind) {
             case COLOUR -> "color";
             case IMAGE -> "image";

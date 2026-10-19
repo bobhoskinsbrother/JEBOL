@@ -24,8 +24,8 @@ public class RoundAction extends DefaultNative implements ActionValue {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value"),
-                Parameter.belongingTo("to", "multiple", Set.of()));
+        return List.of(Parameter.of("value"),
+                Parameter.belongTo("to", "multiple", Set.of()));
     }
 
     @Override
@@ -37,27 +37,27 @@ public class RoundAction extends DefaultNative implements ActionValue {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value subject = arguments.getFirst();
-            Optional<Value> scale = argumentOf("to", 0, arguments, refinements);
+            Optional<Value> scale = readTheArgumentOf("to", 0, arguments, refinements);
             if (subject instanceof TimeValue time) {
-                return roundedTime(time, scale);
+                return roundTheTime(time, scale);
             }
             if (subject instanceof PairValue(double x, double y)) {
-                return PairValue.of(roundedHalfAway(x), roundedHalfAway(y));
+                return PairValue.of(roundHalfAway(x), roundHalfAway(y));
             }
             if (subject instanceof MoneyValue || scale.filter(MoneyValue.class::isInstance).isPresent()) {
-                return roundedAsMoneyRounds(subject, scale, refinements);
+                return roundAsMoneyRounds(subject, scale, refinements);
             }
             double value = Comparison.asDouble(subject);
             if (scale.isEmpty()) {
-                return roundedKeepingTheDatatype(subject, roundedBy(value, refinements));
+                return roundKeepingTheDatatype(subject, roundBy(value, refinements));
             }
-            return roundedToAMultiple(subject, value, scale.get());
+            return roundToAMultiple(subject, value, scale.get());
         };
     }
 
-    private Value roundedAsMoneyRounds(Value subject, Optional<Value> scale, Set<String> refinements) {
-        Deci step = scale.map(this::aStepMoneyRoundsTo).orElse(Deci.ONE);
-        Deci rounded = roundedBy(MONEY.asDeci(subject), step, refinements);
+    private Value roundAsMoneyRounds(Value subject, Optional<Value> scale, Set<String> refinements) {
+        Deci step = scale.map(this::readAStepMoneyRoundsTo).orElse(Deci.ONE);
+        Deci rounded = roundBy(MONEY.asDeci(subject), step, refinements);
         if (subject instanceof MoneyValue && scale.isPresent()) {
             return switch (scale.get()) {
                 case PercentValue ignored -> PercentValue.of(rounded.toDouble());
@@ -69,7 +69,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
         return new MoneyValue(rounded);
     }
 
-    private Deci aStepMoneyRoundsTo(Value given) {
+    private Deci readAStepMoneyRoundsTo(Value given) {
         if (!(given instanceof MoneyValue || given instanceof IntegerValue || given instanceof AnyDecimalValue)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, given);
         }
@@ -80,42 +80,42 @@ public class RoundAction extends DefaultNative implements ActionValue {
         return step.absolute();
     }
 
-    private Deci roundedBy(Deci number, Deci step, Set<String> refinements) {
+    private Deci roundBy(Deci number, Deci step, Set<String> refinements) {
         if (refinements.contains("even")) {
-            return number.halfEvenTo(step);
+            return number.roundHalfEvenTo(step);
         }
         if (refinements.contains("down")) {
-            return number.truncatedTo(step);
+            return number.truncateTo(step);
         }
         if (refinements.contains("half-down")) {
-            return number.halfTruncatedTo(step);
+            return number.roundHalfTowardZeroTo(step);
         }
         if (refinements.contains("floor")) {
-            return number.flooredTo(step);
+            return number.floorTo(step);
         }
         if (refinements.contains("ceiling")) {
-            return number.ceiledTo(step);
+            return number.ceilTo(step);
         }
         if (refinements.contains("half-ceiling")) {
-            return number.halfCeiledTo(step);
+            return number.roundHalfTowardCeilingTo(step);
         }
-        return number.halfAwayTo(step);
+        return number.roundHalfAwayTo(step);
     }
 
     private static final MoneyCoercion MONEY = new MoneyCoercion();
 
-    private Value roundedToAMultiple(Value subject, double value, Value step) {
+    private Value roundToAMultiple(Value subject, double value, Value step) {
         double multiple = Comparison.asDouble(step);
         if (multiple == 0) {
             if (step.datatype() == IntegerValue.TYPE && subject.datatype() == IntegerValue.TYPE) {
                 throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
             }
-            return roundedToTheScalesDatatype(step, value);
+            return roundToTheScalesDatatype(step, value);
         }
-        return roundedToTheScalesDatatype(step, roundedHalfAway(value / multiple) * multiple);
+        return roundToTheScalesDatatype(step, roundHalfAway(value / multiple) * multiple);
     }
 
-    private Value roundedTime(TimeValue time, Optional<Value> scale) {
+    private Value roundTheTime(TimeValue time, Optional<Value> scale) {
         if (scale.isEmpty()) {
             return TimeValue.ofNanoseconds(Math.round(
                     (double) time.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND)
@@ -136,18 +136,18 @@ public class RoundAction extends DefaultNative implements ActionValue {
                 : DecimalValue.of(rounded);
     }
 
-    private Value roundedKeepingTheDatatype(Value subject, double rounded) {
+    private Value roundKeepingTheDatatype(Value subject, double rounded) {
         return switch (subject) {
-            case MoneyValue amount -> amount.amounting(BigDecimal.valueOf(rounded));
+            case MoneyValue amount -> amount.amountTo(BigDecimal.valueOf(rounded));
             case PercentValue ignored -> PercentValue.of(rounded);
             case IntegerValue ignored -> IntegerValue.of((long) rounded);
             default -> DecimalValue.of(rounded);
         };
     }
 
-    private Value roundedToTheScalesDatatype(Value scale, double rounded) {
+    private Value roundToTheScalesDatatype(Value scale, double rounded) {
         return switch (scale) {
-            case MoneyValue amount -> amount.amounting(BigDecimal.valueOf(rounded));
+            case MoneyValue amount -> amount.amountTo(BigDecimal.valueOf(rounded));
             case IntegerValue ignored -> IntegerValue.of((long) rounded);
             case PercentValue ignored -> PercentValue.of(toFifteenDigits(rounded));
             default -> DecimalValue.of(toFifteenDigits(rounded));
@@ -159,7 +159,7 @@ public class RoundAction extends DefaultNative implements ActionValue {
                 .doubleValue();
     }
 
-    private double roundedBy(double value, Set<String> refinements) {
+    private double roundBy(double value, Set<String> refinements) {
         if (refinements.contains("down")) {
             return value < 0 ? Math.ceil(value) : Math.floor(value);
         }
@@ -179,10 +179,10 @@ public class RoundAction extends DefaultNative implements ActionValue {
         if (refinements.contains("half-ceiling") && fraction == HALFWAY) {
             return Math.ceil(value);
         }
-        return roundedHalfAway(value);
+        return roundHalfAway(value);
     }
 
-    private double roundedHalfAway(double value) {
+    private double roundHalfAway(double value) {
         return BigDecimal.valueOf(value).setScale(0, RoundingMode.HALF_UP).doubleValue();
     }
 }

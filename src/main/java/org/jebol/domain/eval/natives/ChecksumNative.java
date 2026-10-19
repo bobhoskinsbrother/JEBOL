@@ -37,10 +37,10 @@ public class ChecksumNative extends EncodingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("data", Set.of(BinaryValue.TYPE, StringValue.TYPE, FileValue.TYPE)),
-                Parameter.required("method", Set.of(WordValue.TYPE)),
-                Parameter.belongingTo("with", "spec", anyStringOr(BinaryValue.TYPE, IntegerValue.TYPE)),
-                Parameter.belongingTo("part", "length", aPartLimit()));
+                Parameter.of("data", Set.of(BinaryValue.TYPE, StringValue.TYPE, FileValue.TYPE)),
+                Parameter.of("method", Set.of(WordValue.TYPE)),
+                Parameter.belongTo("with", "spec", acceptAnyStringOr(BinaryValue.TYPE, IntegerValue.TYPE)),
+                Parameter.belongTo("part", "length", listThePartLimitTypes()));
     }
 
     @Override
@@ -54,44 +54,44 @@ public class ChecksumNative extends EncodingNative {
             Value data = arguments.getFirst();
             AnyWordValue method = (AnyWordValue) arguments.get(1);
             if (data instanceof FileValue) {
-                return theContentsOfThatFileSummed(data, method, evaluator, refinements);
+                return sumTheContentsOfThatFile(data, method, evaluator, refinements);
             }
-            return summed(data, octetsWithinAnyPart(data, arguments, refinements), method,
+            return sum(data, readTheOctetsWithinAnyPart(data, arguments, refinements), method,
                     arguments, refinements);
         };
     }
 
-    private Value summed(Value data, byte[] octets, AnyWordValue method,
-            List<Value> arguments, Set<String> refinements) {
+    private Value sum(Value data, byte[] octets, AnyWordValue method,
+                      List<Value> arguments, Set<String> refinements) {
 
         String asked = method.canonical();
-        Optional<Value> spec = argumentOf("with", 0, arguments, refinements);
+        Optional<Value> spec = readTheArgumentOf("with", 0, arguments, refinements);
         if (encodings.canDigest(asked)) {
             return BinaryValue.ofBytes(spec
-                    .map(key -> keyedDigestOf(octets, asked, key))
+                    .map(key -> digestWithAKey(octets, asked, key))
                     .orElseGet(() -> encodings.digestOf(octets, asked)));
         }
         if (Encodings.CYCLIC.contains(asked)) {
             if (spec.isPresent()) {
                 throw Raised.of(EvaluationFailure.BAD_REFINES);
             }
-            return IntegerValue.of(encodings.cyclicOf(octets, asked));
+            return IntegerValue.of(encodings.computeTheCyclicCheck(octets, asked));
         }
         if (HASH_INTO_A_TABLE.equals(asked)) {
-            return IntegerValue.of(hashedIntoATable(data,
+            return IntegerValue.of(hashIntoATable(data,
                     spec.orElseThrow(() -> Raised.of(EvaluationFailure.MISSING_ARG))));
         }
         throw Raised.of(EvaluationFailure.INVALID_ARG, method);
     }
 
-    private byte[] keyedDigestOf(byte[] octets, String method, Value key) {
+    private byte[] digestWithAKey(byte[] octets, String method, Value key) {
         if (key instanceof IntegerValue) {
             throw Raised.of(EvaluationFailure.BAD_REFINE, key);
         }
-        return encodings.keyedDigestOf(octets, method, key.asOctets());
+        return encodings.digestWithAKey(octets, method, key.asOctets());
     }
 
-    private long hashedIntoATable(Value value, Value size) {
+    private long hashIntoATable(Value value, Value size) {
         if (!(size instanceof IntegerValue(long magnitude))) {
             throw Raised.of(EvaluationFailure.BAD_REFINE, size);
         }
@@ -102,11 +102,11 @@ public class ChecksumNative extends EncodingNative {
 
     private int hashOf(Value value) {
         return value instanceof BinaryValue bytes
-                ? encodings.murmurOf(bytes.octetsFromHere())
-                : encodings.caseFoldedHashOf(value.asOctets()) ^ value.datatype().numberTheCGivesIt();
+                ? encodings.hashWithMurmur(bytes.octetsFromHere())
+                : encodings.hashCaseFolded(value.asOctets()) ^ value.datatype().numberTheCGivesIt();
     }
 
-    private Value theContentsOfThatFileSummed(
+    private Value sumTheContentsOfThatFile(
             Value file, AnyWordValue method, Evaluator evaluator, Set<String> refinements) {
 
         if (!encodings.canDigest(method.canonical())) {
@@ -119,7 +119,7 @@ public class ChecksumNative extends EncodingNative {
         if (!library.knows(FILE_CHECKSUM)) {
             throw Raised.of(EvaluationFailure.FEATURE_NA);
         }
-        return evaluator.applyFunction(library.slotFor(FILE_CHECKSUM).value(),
+        return evaluator.applyFunction(library.findSlotFor(FILE_CHECKSUM).value(),
                 List.of(file, WordValue.of(method.canonical())));
     }
 }

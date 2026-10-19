@@ -33,7 +33,7 @@ final class Seek extends DeclaredKeyword {
             walk.moveTo(walk.inputLength());
             return 2;
         }
-        Value looked = walk.whatTheWordHolds(wanted);
+        Value looked = walk.readWhatTheWordHolds(wanted);
         while (walk.position() <= walk.inputLength()) {
             int before = walk.position();
             if (walk.matchValue(looked)) {
@@ -60,10 +60,10 @@ final class Seek extends DeclaredKeyword {
             return moveToThePlaceItNames(walk, where);
         }
         refuseWhatIsNeitherAPlaceNorSomethingToLookFor(wanted);
-        Value looked = walk.whatTheWordHolds(wanted);
+        Value looked = walk.readWhatTheWordHolds(wanted);
         return looked instanceof AnyBlockValue || looked instanceof BitsetValue
-                ? theFirstPlaceTheRuleMatches(walk, looked)
-                : theFirstPlaceTheTextAppears(walk, looked);
+                ? findTheFirstPlaceTheRuleMatches(walk, looked)
+                : findTheFirstPlaceTheTextAppears(walk, looked);
     }
 
     private static boolean namesTheTail(Value wanted) {
@@ -93,7 +93,7 @@ final class Seek extends DeclaredKeyword {
         }
     }
 
-    private int theFirstPlaceTheRuleMatches(ParseWalk walk, Value looked) {
+    private int findTheFirstPlaceTheRuleMatches(ParseWalk walk, Value looked) {
         for (int from = walk.position(); from <= walk.inputLength(); from++) {
             walk.moveTo(from);
             if (walk.matchValue(looked)) {
@@ -106,9 +106,9 @@ final class Seek extends DeclaredKeyword {
         return ParseWalk.NO_MATCH;
     }
 
-    private int theFirstPlaceTheTextAppears(ParseWalk walk, Value looked) {
-        int[] needle = walk.theTextOf(looked).codePoints().toArray();
-        int found = walk.firstMatchFrom(needle, walk.position());
+    private int findTheFirstPlaceTheTextAppears(ParseWalk walk, Value looked) {
+        int[] needle = walk.readTheTextOf(looked).codePoints().toArray();
+        int found = walk.findTheFirstMatchFrom(needle, walk.position());
         if (found < 0) {
             return ParseWalk.NO_MATCH;
         }

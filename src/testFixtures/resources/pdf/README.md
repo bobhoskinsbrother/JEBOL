@@ -12,7 +12,7 @@ What it pins is two things nothing smaller reaches. Its objects are numbered
 with gaps in them -- 1, 4, 5, 7, 8, 9, 11 and up -- so the encoder writes its
 cross-reference table as several runs of consecutive numbers rather than one,
 which is the walk that never finished while SORT put pairs in the order of
-their written form. And its document information dictionary lives inside a
+their text form. And its document information dictionary lives inside a
 compressed object stream and carries a PDF date, `(D:20210913102842+02'00')`,
 whose offset the codec turns into a zone with `to time!` on a string that
 still has its sign on the front.

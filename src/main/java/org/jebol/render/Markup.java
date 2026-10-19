@@ -20,12 +20,12 @@ public final class Markup {
         ScriptOutcome outcome = interpreter.run(source);
 
         if (!outcome.succeeded() || !(outcome.value() instanceof AnyBlockValue block)) {
-            return anEmptyPageRatherThanAnInventedOne();
+            return writeAnEmptyPage();
         }
-        return Html.render(Layout.facesIn(block.asBlock()));
+        return Html.render(Layout.readTheFacesIn(block.asBlock()));
     }
 
-    private static String anEmptyPageRatherThanAnInventedOne() {
+    private static String writeAnEmptyPage() {
         return Html.render(List.of());
     }
 }

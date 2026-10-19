@@ -16,14 +16,14 @@ class RawStringFromTheSourceTest {
 
     @Test
     @DisplayName("an empty one is an empty string, whatever the run length")
-    void theEmptyRawString() {
+    void readsTheEmptyRawString() {
         assertThat(answerTo("\"\" == transcode/one \"%{}%\"")).isEqualTo("#(true)");
         assertThat(answerTo("\"\" == transcode/one \"%%{}%%\"")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a caret is a caret, not an escape")
-    void aCaretIsACaret() {
+    void readsACaretAsACaret() {
         assertThat(answerTo("2 = length? transcode/one \"%{a^^b}%\""))
                 .isEqualTo("#(false)");
         assertThat(answerTo("3 = length? transcode/one \"%{a^^b}%\""))
@@ -32,14 +32,14 @@ class RawStringFromTheSourceTest {
 
     @Test
     @DisplayName("an unmatched brace is content")
-    void anUnmatchedBraceIsContent() {
+    void readsAnUnmatchedBraceAsContent() {
         assertThat(answerTo("\"}\" == transcode/one \"%{}}%\"")).isEqualTo("#(true)");
         assertThat(answerTo("\"{\" == transcode/one \"%{{}%\"")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("and a longer run can hold a shorter one whole")
-    void aLongerRunHoldsAShorterOne() {
+    void holdsAShorterRunInsideALongerOne() {
         assertThat(answerTo("\" %{^^}% \" == transcode/one \"%%{ %{^^}% }%%\""))
                 .isEqualTo("#(true)");
     }
@@ -55,14 +55,14 @@ class RawStringFromTheSourceTest {
 
     @Test
     @DisplayName("a closing run longer than the opening one is refused")
-    void aLongerClosingRunIsRefused() {
+    void refusesALongerClosingRun() {
         assertThat(answerTo(
                 "e: try [transcode/one \"%{a}%%\"] error? e")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("and a percent sign still reads as a file and as a word")
-    void thePercentSignStillDoesItsOtherJobs() {
+    void leavesThePercentSignItsOtherJobs() {
         assertThat(answerTo("%a = first [%a]")).isEqualTo("#(true)");
         assertThat(answerTo("file? first [%/tmp/x]")).isEqualTo("#(true)");
         assertThat(answerTo("-7 %% 3")).isEqualTo("2");

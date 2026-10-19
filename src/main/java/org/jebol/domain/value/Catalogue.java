@@ -95,11 +95,11 @@ public final class Catalogue {
         return entries;
     }
 
-    public int positionOf(Datatype datatype) {
+    public int findThePositionOf(Datatype datatype) {
         return entries.indexOf(datatype) + 1;
     }
 
-    public Optional<Datatype> named(String spelling) {
+    public Optional<Datatype> findTheDatatypeNamed(String spelling) {
         String wanted = withoutTheMark(spelling);
         return entries.stream()
                 .filter(datatype -> datatype.spelling().equalsIgnoreCase(wanted))
@@ -110,7 +110,7 @@ public final class Catalogue {
         return standardTypesets;
     }
 
-    public Optional<TypesetValue> typesetNamed(String spelling) {
+    public Optional<TypesetValue> findTheTypesetNamed(String spelling) {
         String wanted = withoutTheMark(spelling);
         return standardTypesets().stream()
                 .filter(typeset -> typeset.spelling().filter(wanted::equalsIgnoreCase).isPresent())
@@ -123,7 +123,7 @@ public final class Catalogue {
                 : spelling;
     }
 
-    public Set<Datatype> where(Predicate<Datatype> test) {
+    public Set<Datatype> selectWhere(Predicate<Datatype> test) {
         Set<Datatype> kept = new LinkedHashSet<>();
         entries.stream().filter(test).forEach(kept::add);
         return kept;

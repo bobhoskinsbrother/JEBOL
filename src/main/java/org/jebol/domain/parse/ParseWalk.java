@@ -46,7 +46,7 @@ public interface ParseWalk {
 
     int mindCaseFromHereOn(boolean minding);
 
-    ParseWalk walkingOver(RebolSeries nested);
+    ParseWalk walkOver(RebolSeries nested);
 
     boolean matchesTheWholeOf(AnyBlockValue rule);
 
@@ -54,31 +54,31 @@ public interface ParseWalk {
 
     Value evaluateParen(AnyBlockValue paren);
 
-    Value whatTheWordHolds(Value wanted);
+    Value readWhatTheWordHolds(Value wanted);
 
-    Value theValueToInsert(Value written);
+    Value chooseTheValueToInsert(Value written);
 
     Value replacementFor(Value replacement);
 
-    AnyWordValue theWordToWriteInto(List<Value> rules, int at);
+    AnyWordValue findTheWordToWriteInto(List<Value> rules, int at);
 
     void assign(AnyWordValue word, Value value);
 
-    Integer sameStorageOffset(Value item);
+    Integer findTheSameStorageOffset(Value item);
 
     Value sliceBetween(int from, int to);
 
     Value textSliceBetween(int from, int to);
 
-    Value firstItemBetween(int from, int to);
+    Value readTheFirstItemBetween(int from, int to);
 
-    Value firstCharacterMatchedFrom(int before);
+    Value readTheFirstCharacterMatchedFrom(int before);
 
-    Optional<Value> whatMatchedBetween(int from, int to);
+    Optional<Value> readWhatMatchedBetween(int from, int to);
 
-    int firstMatchFrom(int[] needle, int from);
+    int findTheFirstMatchFrom(int[] needle, int from);
 
-    String theTextOf(Value value);
+    String readTheTextOf(Value value);
 
     void removeBetween(int from, int howMany);
 
@@ -86,7 +86,7 @@ public interface ParseWalk {
 
     int putValueIntoTheTextAt(int where, Value added);
 
-    boolean noCollectionIsOpen();
+    boolean hasNoCollectionOpen();
 
     void startCollecting();
 

@@ -13,13 +13,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * The operator's own screen, through the JDK's desktop and Swing.
- *
- * <p>Every dialog answers empty when the operator declines, which is an answer
- * rather than a refusal, and refuses with {@code no-service} where the machine
- * has no screen at all.
- */
+import static java.awt.Desktop.Action.*;
+
+
 public final class DesktopWindows implements WindowPort {
 
     public static DesktopWindows onThisMachine() {
@@ -28,21 +24,24 @@ public final class DesktopWindows implements WindowPort {
 
     @Override
     public void browse(String target) {
-        requireADisplayBeforeSwingIsTouchedAtAll();
-        if (!Desktop.isDesktopSupported()
-                || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+        checkIsNotHeadless();
+        if (!Desktop.isDesktopSupported() || isDesktopBrowseNotSupported()) {
             throw new Denied("no-service", "this machine has no browser to open");
         }
         try {
-            URI where = target.startsWith("/") || target.startsWith("./")
+            URI uri = target.startsWith("/") || target.startsWith("./")
                     ? new File(target).toURI()
                     : new URI(target);
-            Desktop.getDesktop().browse(where);
+            Desktop.getDesktop().browse(uri);
         } catch (URISyntaxException malformed) {
             throw new Denied("invalid-arg", target + " is not something a browser can open");
         } catch (IOException refused) {
             throw new Denied("cannot-open", "the browser would not open " + target);
         }
+    }
+
+    private static boolean isDesktopBrowseNotSupported() {
+        return !Desktop.getDesktop().isSupported(BROWSE);
     }
 
     @Override
@@ -51,29 +50,26 @@ public final class DesktopWindows implements WindowPort {
             Optional<String> suggestedName, Optional<String> title,
             List<String> filterPairs) {
 
-        requireADisplayBeforeSwingIsTouchedAtAll();
+        checkIsNotHeadless();
         JFileChooser chooser = new JFileChooser();
         chooser.setMultiSelectionEnabled(allowingMany);
         title.ifPresent(chooser::setDialogTitle);
         suggestedName.ifPresent(name -> chooser.setSelectedFile(new File(name)));
-        eachFilterOf(filterPairs, chooser);
+        addEachFilter(filterPairs, chooser);
 
-        int chose = forSaving
-                ? chooser.showSaveDialog(null)
-                : chooser.showOpenDialog(null);
+        int chose = forSaving ? chooser.showSaveDialog(null) : chooser.showOpenDialog(null);
         if (chose != JFileChooser.APPROVE_OPTION) {
             return List.of();
         }
         if (!allowingMany) {
             return List.of(chooser.getSelectedFile().getPath());
         }
-        List<String> chosen = new ArrayList<>();
-        Arrays.stream(chooser.getSelectedFiles())
-                .forEach(one -> chosen.add(one.getPath()));
-        return chosen;
+        List<String> chosenFilesPaths = new ArrayList<>();
+        Arrays.stream(chooser.getSelectedFiles()).forEach(file -> chosenFilesPaths.add(file.getPath()));
+        return chosenFilesPaths;
     }
 
-    private static void eachFilterOf(List<String> filterPairs, JFileChooser chooser) {
+    private static void addEachFilter(List<String> filterPairs, JFileChooser chooser) {
         for (int at = 0; at + 1 < filterPairs.size(); at += 2) {
             String name = filterPairs.get(at);
             String pattern = filterPairs.get(at + 1);
@@ -86,15 +82,12 @@ public final class DesktopWindows implements WindowPort {
     }
 
     @Override
-    public Optional<String> chooseDirectory(
-            Optional<String> startingAt, Optional<String> title) {
-
-        requireADisplayBeforeSwingIsTouchedAtAll();
+    public Optional<String> chooseDirectory(Optional<String> startingAt, Optional<String> title) {
+        checkIsNotHeadless();
         JFileChooser chooser = new JFileChooser();
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         title.ifPresent(chooser::setDialogTitle);
         startingAt.ifPresent(where -> chooser.setCurrentDirectory(new File(where)));
-
         if (chooser.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) {
             return Optional.empty();
         }
@@ -104,7 +97,7 @@ public final class DesktopWindows implements WindowPort {
 
     @Override
     public Optional<int[]> chooseColour(Optional<int[]> suggested) {
-        requireADisplayBeforeSwingIsTouchedAtAll();
+        checkIsNotHeadless();
         Color start = suggested
                 .filter(octets -> octets.length >= 3)
                 .map(octets -> new Color(octets[0], octets[1], octets[2]))
@@ -118,21 +111,21 @@ public final class DesktopWindows implements WindowPort {
 
     @Override
     public Optional<String> askForPassword() {
-        requireADisplayBeforeSwingIsTouchedAtAll();
-        JPasswordField typing = new JPasswordField();
+        checkIsNotHeadless();
+        JPasswordField passwordField = new JPasswordField();
         int chose = JOptionPane.showConfirmDialog(
-                null, typing, "Password",
+                null, passwordField, "Password",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (chose != JOptionPane.OK_OPTION) {
             return Optional.empty();
         }
-        char[] typed = typing.getPassword();
+        char[] typed = passwordField.getPassword();
         String secret = new String(typed);
         Arrays.fill(typed, '\0');
         return Optional.of(secret);
     }
 
-    private static void requireADisplayBeforeSwingIsTouchedAtAll() {
+    private void checkIsNotHeadless() {
         if (GraphicsEnvironment.isHeadless()) {
             throw new Denied("no-service", "this machine has no screen to put a window on");
         }

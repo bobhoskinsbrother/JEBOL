@@ -16,13 +16,13 @@ class BodyOfAndMakeFunctionFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String erroredOn(String source) {
+    private static String readTheErrorFrom(String source) {
         return answerTo("error? try [" + source + "]");
     }
 
     @Test
     @DisplayName("BODY-OF answers the body")
-    void bodyOfAnswersTheBody() {
+    void answersTheBodyForBodyOf() {
         assertThat(answerTo("""
                 f: func [a [integer!]] [probe a]
                 [probe a] = body-of :f""")).isEqualTo("#(true)");
@@ -30,7 +30,7 @@ class BodyOfAndMakeFunctionFromTheSourceTest {
 
     @Test
     @DisplayName("clearing part of BODY-OF does not reach into the function")
-    void clearingBodyOfDoesNotReachTheFunction() {
+    void leavesTheFunctionAloneWhenBodyOfIsCleared() {
         assertThat(answerTo("""
                 f: func [a] [append {xx} s]
                 clear second body-of :f
@@ -40,9 +40,9 @@ class BodyOfAndMakeFunctionFromTheSourceTest {
     @Test
     @DisplayName("MAKE from a native prototype with a body block is refused")
     void makeFromANativeWithABodyIsRefused() {
-        assertThat(erroredOn("make :read [[][]]")).isEqualTo("#(true)");
-        assertThat(erroredOn("make action! [[][]]")).isEqualTo("#(true)");
-        assertThat(erroredOn("make native! [[][]]")).isEqualTo("#(true)");
+        assertThat(readTheErrorFrom("make :read [[][]]")).isEqualTo("#(true)");
+        assertThat(readTheErrorFrom("make action! [[][]]")).isEqualTo("#(true)");
+        assertThat(readTheErrorFrom("make native! [[][]]")).isEqualTo("#(true)");
     }
 
     @ParameterizedTest(name = "make := {0} is refused as cannot-use naming it and op!")
@@ -91,7 +91,7 @@ class BodyOfAndMakeFunctionFromTheSourceTest {
 
     @Test
     @DisplayName("deriving a wider interface from a native with one spec block still works")
-    void derivingWithOneSpecBlockStillWorks() {
+    void stillDerivesWithOneSpecBlock() {
         assertThat(answerTo("""
                 wider: make :tail? [[series [series! none!]]]
                 any-function? :wider""")).isEqualTo("#(true)");

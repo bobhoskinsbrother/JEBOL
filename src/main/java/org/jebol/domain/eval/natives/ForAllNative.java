@@ -18,7 +18,7 @@ public class ForAllNative extends SteppingThroughNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.softQuoted("word"), Parameter.required("body", A_BLOCK));
+        return List.of(Parameter.quoteSoftly("word"), Parameter.of("body", A_BLOCK));
     }
 
     @Override

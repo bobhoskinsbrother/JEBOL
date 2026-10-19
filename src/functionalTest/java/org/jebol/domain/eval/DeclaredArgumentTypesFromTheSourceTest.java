@@ -120,7 +120,7 @@ class DeclaredArgumentTypesFromTheSourceTest {
 
     @Test
     @DisplayName("TAIL? takes the five datatypes that act like a series as well")
-    void tailTakesTheFiveThatActLikeASeries() {
+    void letTailTakeTheFiveThatActLikeASeries() {
         assertThat(answerTo("""
                 tail? charset "ab\"""")).isEqualTo("#(false)");
         assertThat(answerTo("tail? series!")).isEqualTo("#(false)");

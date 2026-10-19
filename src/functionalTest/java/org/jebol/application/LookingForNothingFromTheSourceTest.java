@@ -53,67 +53,67 @@ class LookingForNothingFromTheSourceTest {
 
         @Test
         @DisplayName("but /ONLY looks for the empty block as one value, and finds it where it is")
-        void onlyFindsTheEmptyBlock() {
+        void findsTheEmptyBlockWithOnly() {
             assertThat(answerTo("find/only [a []] []")).isEqualTo("[[]]");
         }
 
         @Test
         @DisplayName("and /ONLY finds no empty block where there is none")
-        void onlyFindsNoneWhereThereIsNone() {
+        void findsNoEmptyBlockWithOnlyWhereThereIsNone() {
             assertThat(answerTo("find/only [a b] []")).isEqualTo("_");
         }
 
         @Test
         @DisplayName("/ONLY on a string still finds no empty string")
-        void onlyOnAString() {
+        void stillFindsNoEmptyStringWithOnly() {
             assertThat(answerTo("find/only {abc} {}")).isEqualTo("_");
         }
 
         @Test
         @DisplayName("an empty paren in a block is a run unless /ONLY makes it a value")
-        void anEmptyParen() {
+        void treatsAnEmptyParenAsARunUnlessOnly() {
             assertThat(answerTo("reduce [find [a ()] quote () find/only [a ()] quote ()]"))
                     .isEqualTo("[_ [()]]");
         }
     }
 
     @Nested
-    @DisplayName("in a block, any kind of block is a run of values unless /ONLY")
+    @DisplayName("in a block, any type of block is a run of values unless /ONLY")
     class ABlockLikeRun {
 
         @Test
         @DisplayName("a paren is matched as its values")
-        void aParenIsARun() {
+        void matchesAParenAsItsValues() {
             assertThat(answerTo("find [a b c] quote (b c)")).isEqualTo("[b c]");
         }
 
         @Test
         @DisplayName("so a paren held as a value is not found by its values")
-        void aHeldParenIsNotFound() {
+        void missesAHeldParenByItsValues() {
             assertThat(answerTo("find [a (b c)] quote (b c)")).isEqualTo("_");
         }
 
         @Test
         @DisplayName("but /ONLY finds the paren held as a value")
-        void onlyFindsTheHeldParen() {
+        void findsTheHeldParenWithOnly() {
             assertThat(answerTo("find/only [a (b c)] quote (b c)")).isEqualTo("[(b c)]");
         }
 
         @Test
         @DisplayName("a path is matched as its values")
-        void aPathIsARun() {
+        void matchesAPathAsItsValues() {
             assertThat(answerTo("find [a b c] first [b/c]")).isEqualTo("[b c]");
         }
 
         @Test
         @DisplayName("/TAIL answers after the whole run")
-        void tailAfterTheRun() {
+        void answersAfterTheRunWithTail() {
             assertThat(answerTo("find/tail [a b c] quote (a b)")).isEqualTo("[c]");
         }
 
         @Test
         @DisplayName("/LAST finds the last run")
-        void lastRun() {
+        void findsTheLastRunWithLast() {
             assertThat(answerTo("index? find/last [a b a b] quote (a b)")).isEqualTo("3");
         }
 
@@ -130,14 +130,14 @@ class LookingForNothingFromTheSourceTest {
 
         @Test
         @DisplayName("an empty string inside a block")
-        void anEmptyStringInABlock() {
+        void findsAnEmptyStringInABlock() {
             assertThat(answerTo("find [a {}] {}")).isEqualTo("""
                     [""]""");
         }
 
         @Test
         @DisplayName("an empty binary inside a block")
-        void anEmptyBinaryInABlock() {
+        void findsAnEmptyBinaryInABlock() {
             assertThat(answerTo("find [a #{}] #{}")).isEqualTo("[#{}]");
         }
 
@@ -154,26 +154,26 @@ class LookingForNothingFromTheSourceTest {
 
         @Test
         @DisplayName("one character")
-        void oneCharacter() {
+        void findsOneCharacter() {
             assertThat(answerTo("reduce [find {abc} {a}]")).isEqualTo("""
                     ["abc"]""");
         }
 
         @Test
         @DisplayName("one value in a block")
-        void oneValue() {
+        void findsOneValue() {
             assertThat(answerTo("find [a b] [a]")).isEqualTo("[a b]");
         }
 
         @Test
         @DisplayName("one wildcard character")
-        void oneWildcard() {
+        void findsOneWildcard() {
             assertThat(answerTo("index? find/match/any {Keyboard} {?}")).isEqualTo("1");
         }
 
         @Test
         @DisplayName("and one character in an empty string is not found")
-        void oneCharacterInNothing() {
+        void findsNoCharacterInNothing() {
             assertThat(answerTo("find {} {a}")).isEqualTo("_");
         }
     }
@@ -184,7 +184,7 @@ class LookingForNothingFromTheSourceTest {
 
         @Test
         @DisplayName("a date's parts")
-        void aDatesParts() {
+        void putsADatesPartsOnLines() {
             assertThat(answerTo("""
                     q: query 1-Jan-2020 [year month]
                     reduce [new-line? q new-line? next q new-line? skip q 2 new-line? skip q 3]"""))
@@ -193,7 +193,7 @@ class LookingForNothingFromTheSourceTest {
 
         @Test
         @DisplayName("a get-word answers its value with no label and no line of its own")
-        void aGetWordHasNoLine() {
+        void givesAGetWordNoLine() {
             assertThat(answerTo("""
                     q: query 1-Jan-2020 [year :month]
                     reduce [new-line? q new-line? next q new-line? skip q 2]"""))

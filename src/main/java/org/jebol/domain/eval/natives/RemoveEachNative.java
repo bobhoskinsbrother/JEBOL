@@ -38,10 +38,10 @@ public class RemoveEachNative extends LoopingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.softQuoted("word"),
-                Parameter.required("series", Set.of(BlockValue.TYPE, BinaryValue.TYPE,
+        return List.of(Parameter.quoteSoftly("word"),
+                Parameter.of("series", Set.of(BlockValue.TYPE, BinaryValue.TYPE,
                         StringValue.TYPE, MapValue.TYPE, VectorValue.TYPE)),
-                Parameter.required("body", A_BLOCK));
+                Parameter.of("body", A_BLOCK));
     }
 
     @Override
@@ -53,17 +53,17 @@ public class RemoveEachNative extends LoopingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.get(1)) {
             case MapValue map ->
-                    removedEachPairFrom(map, arguments, refinements, evaluator, context);
+                    removeEachPairFrom(map, arguments, refinements, evaluator, context);
             case AnyBlockValue block ->
-                    removedEachFromABlock(block, arguments, refinements, evaluator, context);
-            case RebolSeries other -> removedEachFromDecidingForwardsThenRewriting(
+                    removeEachFromABlock(block, arguments, refinements, evaluator, context);
+            case RebolSeries other -> removeEachByDecidingForwardsThenRewriting(
                     other, arguments, refinements, evaluator, context);
             default -> refuseTheDatatype(arguments.get(1));
         };
     }
 
-    private Value removedEachFromABlock(AnyBlockValue series, List<Value> arguments,
-                                        Set<String> refinements, Evaluator evaluator, Context within) {
+    private Value removeEachFromABlock(AnyBlockValue series, List<Value> arguments,
+                                       Set<String> refinements, Evaluator evaluator, Context within) {
 
         Context locals = Context.loopFrameOf(within);
         List<AnyWordValue> names = loopNamesIn(arguments.get(0));
@@ -110,7 +110,7 @@ public class RemoveEachNative extends LoopingNative {
         }
     }
 
-    private Value removedEachFromDecidingForwardsThenRewriting(
+    private Value removeEachByDecidingForwardsThenRewriting(
             RebolSeries series, List<Value> arguments, Set<String> refinements,
             Evaluator evaluator, Context within) {
 
@@ -122,7 +122,7 @@ public class RemoveEachNative extends LoopingNative {
         List<Value> kept = new ArrayList<>();
         int taken = 0;
         for (int at = series.index(); at <= series.storageLength(); at++) {
-            Value item = itemAt(series, at);
+            Value item = readTheItemAt(series, at);
             locals.register(word.spelling(), item);
             if (evaluator.evaluateOrRaise(body, locals).isTruthy()) {
                 taken++;
@@ -139,10 +139,10 @@ public class RemoveEachNative extends LoopingNative {
         return refinements.contains("count") ? IntegerValue.of(taken) : series;
     }
 
-    private Value itemAt(RebolSeries series, int at) {
+    private Value readTheItemAt(RebolSeries series, int at) {
         return switch (series) {
             case BinaryValue bytes -> IntegerValue.of(bytes.storage().at(at));
-            case VectorValue numbers -> numbers.itemAt(at);
+            case VectorValue numbers -> numbers.readTheItemAt(at);
             default -> CharacterValue.of(((AnyStringValue) series).storage().at(at));
         };
     }
@@ -159,16 +159,16 @@ public class RemoveEachNative extends LoopingNative {
         }
     }
 
-    private Value removedEachPairFrom(MapValue map, List<Value> arguments,
-            Set<String> refinements, Evaluator evaluator, Context within) {
+    private Value removeEachPairFrom(MapValue map, List<Value> arguments,
+                                     Set<String> refinements, Evaluator evaluator, Context within) {
 
         map.requireChangeable();
         List<AnyWordValue> names = loopNamesIn(arguments.getFirst());
-        MapActions.refuseMoreNamesThanAPairHas(map, namesThatTakeAValue(names));
+        MapActions.refuseMoreNamesThanAPairHas(map, keepTheNamesThatTakeAValue(names));
         Context locals = Context.loopFrameOf(within);
         names.forEach(name -> locals.register(name.spelling()));
         AnyBlockValue body = Binder.bind((AnyBlockValue) arguments.get(2), locals);
-        List<Value> pairs = map.items();
+        List<Value> pairs = map.listTheItems();
         List<Value> takeOut = new ArrayList<>();
         for (int at = 0; at < pairs.size(); at += 2) {
             setLoopNamesFillingWithNonePastTheEnd(locals, names, pairs, at, map);

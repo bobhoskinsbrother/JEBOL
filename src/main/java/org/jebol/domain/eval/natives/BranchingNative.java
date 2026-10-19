@@ -12,7 +12,7 @@ public abstract class BranchingNative extends DefaultNative {
         return Set.of("only");
     }
 
-    protected Value branchTaken(
+    protected Value takeTheBranch(
             Value branch, Evaluator evaluator, Context context, Set<String> refinements) {
 
         return branch instanceof BlockValue block

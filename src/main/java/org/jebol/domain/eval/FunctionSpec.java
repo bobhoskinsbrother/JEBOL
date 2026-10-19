@@ -11,7 +11,7 @@ final class FunctionSpec {
     private FunctionSpec() {
     }
 
-    static List<Parameter> parametersIn(AnyBlockValue spec) {
+    static List<Parameter> readTheParametersIn(AnyBlockValue spec) {
         List<Parameter> parameters = new ArrayList<>();
         String currentRefinement = null;
         List<Value> items = spec.remaining();
@@ -32,12 +32,12 @@ final class FunctionSpec {
             if (!(item instanceof AnyWordValue word)
                     || word instanceof IssueValue
                     || word instanceof SetWordValue && !isTheOneSetWordASpecMayHold(word, items, index)) {
-                throw refusingTheWholeSpecRatherThanThePartThatWasWrong(spec);
+                throw refuseTheWholeSpec(spec);
             }
             refuseADuplicateNamingItAsItWasWritten(word, alreadyNamed);
             if (word instanceof RefinementValue) {
                 currentRefinement = word.canonical();
-                parameters.add(Parameter.refinement(word.spelling()));
+                parameters.add(Parameter.ofARefinement(word.spelling()));
                 continue;
             }
             if (LOCALS_REFINEMENT.equals(currentRefinement)) {
@@ -49,7 +49,7 @@ final class FunctionSpec {
             parameters.add(new Parameter(
                     word.spelling(),
                     word.kindOfParameterItDeclares(),
-                    acceptedTypesAfter(items, index),
+                    readTheAcceptedTypesAfter(items, index),
                     Optional.ofNullable(currentRefinement)));
         }
         return List.copyOf(parameters);
@@ -59,7 +59,7 @@ final class FunctionSpec {
         return item instanceof IntegerValue;
     }
 
-    static List<String> localNamesIn(AnyBlockValue spec) {
+    static List<String> readTheLocalNamesIn(AnyBlockValue spec) {
         List<String> locals = new ArrayList<>();
         boolean collecting = false;
 
@@ -87,7 +87,7 @@ final class FunctionSpec {
     private static void refuseADuplicateNamingItAsItWasWritten(
             AnyWordValue word, Set<String> alreadyNamed) {
         if (!alreadyNamed.add(word.canonical())) {
-            throw new Raised(org.jebol.domain.value.ErrorValue.about(
+            throw new Raised(org.jebol.domain.value.ErrorValue.of(
                     org.jebol.domain.value.ErrorCategory.SCRIPT,
                     EvaluationFailure.DUP_VARS.errorId(),
                     EvaluationFailure.DUP_VARS.description(),
@@ -95,16 +95,16 @@ final class FunctionSpec {
         }
     }
 
-    private static Raised refusingTheWholeSpecRatherThanThePartThatWasWrong(
+    private static Raised refuseTheWholeSpec(
             AnyBlockValue spec) {
-        return new Raised(org.jebol.domain.value.ErrorValue.about(
+        return new Raised(org.jebol.domain.value.ErrorValue.of(
                 org.jebol.domain.value.ErrorCategory.SCRIPT,
                 EvaluationFailure.BAD_FUNC_DEF.errorId(),
                 EvaluationFailure.BAD_FUNC_DEF.description(),
                 spec.head()));
     }
 
-    private static Set<Datatype> acceptedTypesAfter(List<Value> items, int index) {
+    private static Set<Datatype> readTheAcceptedTypesAfter(List<Value> items, int index) {
         if (index + 1 >= items.size() || !(items.get(index + 1) instanceof AnyBlockValue types)) {
             return Set.of();
         }
@@ -130,11 +130,11 @@ final class FunctionSpec {
         if (!(declared instanceof AnyWordValue word) || !word.spelling().endsWith("!")) {
             return declared;
         }
-        Optional<Datatype> named = Catalogue.DATATYPES.named(word.spelling());
+        Optional<Datatype> named = Catalogue.DATATYPES.findTheDatatypeNamed(word.spelling());
         if (named.isPresent()) {
             return named.get();
         }
-        return Catalogue.DATATYPES.typesetNamed(word.spelling())
+        return Catalogue.DATATYPES.findTheTypesetNamed(word.spelling())
                 .<Value>map(typeset -> typeset)
                 .orElseThrow(() -> Raised.of(EvaluationFailure.CANNOT_USE,
                         word.spelling() + " names no datatype"));

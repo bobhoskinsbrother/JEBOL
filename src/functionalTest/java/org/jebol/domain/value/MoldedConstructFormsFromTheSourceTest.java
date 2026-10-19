@@ -21,7 +21,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("an object names itself under /ALL and MAKEs itself without")
-        void anObjectNamesItself() {
+        void namesAnObject() {
             assertThat(answerTo("""
                     mold/flat/all make object! [a: 1]"""))
                     .isEqualTo("\"#(object! [a: 1])\"");
@@ -32,7 +32,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("a map changes its brackets as well as gaining a name")
-        void aMapChangesItsBrackets() {
+        void changesAMapsBrackets() {
             assertThat(answerTo("""
                     reduce [mold/flat/all make map! [a 1] mold/flat make map! [a 1]]"""))
                     .isEqualTo("[\"#(map! [a: 1])\" \"#[a: 1]\"]");
@@ -40,7 +40,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("and an empty map keeps both halves of them")
-        void anEmptyMapKeepsBothHalves() {
+        void keepsBothHalvesOfAnEmptyMap() {
             assertThat(answerTo("""
                     reduce [mold/all make map! [] mold make map! []]"""))
                     .isEqualTo("[\"#(map! [])\" \"#[]\"]");
@@ -48,7 +48,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("a gob writes the same spec either way round")
-        void aGobWritesItsSpec() {
+        void writesAGobsSpec() {
             assertThat(answerTo("""
                     reduce [mold/all make gob! [] mold make gob! []]"""))
                     .isEqualTo("[\"#(gob! [offset: 0x0 size: 100x100])\""
@@ -57,7 +57,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("an event puts each field on a line, and one before the bracket")
-        void anEventPutsEachFieldOnALine() {
+        void putsEachFieldOfAnEventOnALine() {
             assertThat(answerTo("""
                     mold/all make event! []""")).isEqualTo("""
                     "#(event! [^/])\"""");
@@ -68,14 +68,14 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("and the construct form of an event reads back as one")
-        void anEventReadsBack() {
+        void readsBackAnEvent() {
             assertThat(answerTo("""
                     event? load mold/all make event! []""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a function writes the spec and body that would make it again")
-        void aFunctionWritesItsSpecAndBody() {
+        void writesAFunctionsSpecAndBody() {
             assertThat(answerTo("""
                     reduce [
                         mold/flat func [a][print a]
@@ -89,7 +89,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("and a closure says closure, because the reader has two words")
-        void aClosureSaysClosure() {
+        void namesAClosure() {
             assertThat(answerTo("""
                     mold/flat closure [a][print a]"""))
                     .isEqualTo("\"make closure! [[a /local][print a]]\"");
@@ -119,7 +119,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("under /ALL the words lose their quotes, as in any object")
-        void underAllTheWordsLoseTheirQuotes() {
+        void loseTheQuotesOnTheirWordsUnderAll() {
             assertThat(answerTo("""
                     mold/all/flat make error! [type: 'Math id: 'overflow]"""))
                     .isEqualTo("{#(error! [code: 401 type: Math id: overflow"
@@ -151,7 +151,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("under /ALL each of the four names itself")
-        void underAllEachNamesItself() {
+        void nameThemselvesUnderAll() {
             assertThat(answerTo("""
                     reduce [
                         mold/all make path! []
@@ -165,7 +165,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("and that is the writing LOAD reads back")
-        void thatIsTheWritingLoadReadsBack() {
+        void readBackThroughLoad() {
             assertThat(answerTo("""
                     equal? make path! [] load mold/all make path! []"""))
                     .isEqualTo("#(true)");
@@ -173,7 +173,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("a path emptied after being walked to its tail molds the same")
-        void aPathEmptiedAfterBeingWalked() {
+        void includeAPathEmptiedAfterBeingWalked() {
             assertThat(answerTo("""
                     a: 'a/b/c
                     b: tail a
@@ -205,7 +205,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("an infinite percent drops its sign, having no digits to be one of")
-        void anInfinitePercentDropsItsSign() {
+        void dropTheSignOfAnInfinitePercent() {
             assertThat(answerTo("""
                     reduce [
                         mold to percent! 1.#INF
@@ -218,7 +218,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("while a percent made of digits keeps it")
-        void aPercentOfDigitsKeepsIt() {
+        void keepItForAPercentOfDigits() {
             assertThat(answerTo("""
                     reduce [mold 50% mold -25% mold 0%]"""))
                     .isEqualTo("[\"50%\" \"-25%\" \"0%\"]");
@@ -231,7 +231,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("the construct writes the whole picture and then where it stands")
-        void theConstructWritesTheWholePicture() {
+        void writeTheWholePicture() {
             assertThat(answerTo("""
                     mold/all/flat next make image! 8x1""")).isEqualTo("""
                     {#(image! 8x1 #{FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF} 2)}""");
@@ -239,7 +239,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("and leaves the position out when there is nothing to say")
-        void andLeavesThePositionOut() {
+        void leaveThePositionOut() {
             assertThat(answerTo("""
                     mold/all/flat make image! 2x1""")).isEqualTo("""
                     "#(image! 2x1 #{FFFFFFFFFFFF})\"""");
@@ -260,7 +260,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("letters and digits and the punctuation a word may hold")
-        void lettersAndDigitsAndWordPunctuation() {
+        void stayBareWithLettersDigitsAndWordPunctuation() {
             assertThat(answerTo("""
                     reduce [
                         mold @name
@@ -274,7 +274,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("a second at-sign makes it an email, so the construct is written")
-        void aSecondAtSignForcesTheConstruct() {
+        void takeTheConstructForASecondAtSign() {
             assertThat(answerTo("""
                     reduce [mold to ref! "a@" mold to ref! "a@b"]"""))
                     .isEqualTo("""
@@ -283,7 +283,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("and so does a space, a control character or a delimiter")
-        void spacesAndDelimitersForceIt() {
+        void takeTheConstructForSpacesAndDelimiters() {
             assertThat(answerTo("""
                     reduce [
                         mold to ref! "a b"
@@ -298,7 +298,7 @@ class MoldedConstructFormsFromTheSourceTest {
 
         @Test
         @DisplayName("a colon and a comma are neither, so they stay bare")
-        void aColonAndACommaStayBare() {
+        void stayBareWithAColonAndAComma() {
             assertThat(answerTo("""
                     reduce [mold to ref! "a:b" mold to ref! "a,b"]"""))
                     .isEqualTo("[\"@a:b\" \"@a,b\"]");

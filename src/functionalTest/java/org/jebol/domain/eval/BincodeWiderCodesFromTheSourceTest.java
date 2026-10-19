@@ -24,7 +24,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("and the BE forms write the same numbers the other way round")
-    void bigEndianFloatsReverseThem() {
+    void reversesTheBigEndianFloats() {
         assertThat(answerTo("""
                 e: binary/write #{} [f16be 0.5 f32be 0.5 f64be 0.5]
                 e/buffer""")).isEqualTo("#{38003F0000003FE0000000000000}");
@@ -32,7 +32,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("every float code reads back what it wrote")
-    void everyFloatCodeRoundTrips() {
+    void roundTripsEveryFloatCode() {
         assertThat(answerTo("""
                 collect [
                     foreach code [
@@ -51,7 +51,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("SB, UB and a run across bytes, then ALIGN back to a byte")
-    void theBitCodesReadAcrossBytes() {
+    void readsBitCodesAcrossBytes() {
         assertThat(answerTo("""
                 binary/read 2#{01011011 10110011 11111111}
                     [SB 3 SB 3 UB 2 SB 4 ALIGN UI8]""")).isEqualTo("[2 -2 3 -5 255]");
@@ -59,21 +59,21 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("a signed run takes its sign from the top of the run, not the byte")
-    void aSignedRunIsAsWideAsItSays() {
+    void signsARunFromItsOwnTopBit() {
         assertThat(answerTo("""
                 binary/read 2#{1110 0110} [SB 4 SB 4]""")).isEqualTo("[-2 6]");
     }
 
     @Test
     @DisplayName("FB is the same bits over sixty-five thousand five hundred and thirty-six")
-    void fixedPointDividesByTheUnit() {
+    void dividesFixedPointByTheUnit() {
         assertThat(answerTo("""
                 binary/read #{500000} [FB 19]""")).isEqualTo("[2.5]");
     }
 
     @Test
     @DisplayName("BIT answers one bit, and NOT-BIT the other way about")
-    void bitAnswersOneBit() {
+    void answersOneBitForBit() {
         assertThat(answerTo("""
                 binary/read 2#{11110000} [BIT NOT-BIT BIT NOT-BIT]"""))
                 .isEqualTo("[#(true) #(false) #(true) #(false)]");
@@ -81,7 +81,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("the bit position survives between calls, so reads carry on mid-byte")
-    void theBitPositionSurvivesBetweenCalls() {
+    void keepsTheBitPositionBetweenCalls() {
         assertThat(answerTo("""
                 bs: binary #{438E9438}
                 reduce [
@@ -94,7 +94,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("/WITH gives a lone code its count, and answers one value not a block")
-    void withGivesALoneCodeItsCount() {
+    void givesALoneCodeItsCountWithWith() {
         assertThat(answerTo("""
                 binary/read/with 2#{1110 0000} 'UB 4""")).isEqualTo("14");
     }
@@ -108,7 +108,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("MSDOS-DATETIME is the clock and then the date, sixteen bits each")
-    void msdosDateTimeReadsBothHalves() {
+    void readsBothHalvesOfAnMsdosDateTime() {
         assertThat(answerTo("""
                 binary/read #{BC96844C} 'MSDOS-DATETIME"""))
                 .isEqualTo("4-Apr-2018/18:53:56");
@@ -116,7 +116,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("and the two halves can be read apart")
-    void theTwoHalvesReadApart() {
+    void readsTheTwoHalvesApart() {
         assertThat(answerTo("""
                 binary/read #{BC96844C} [MSDOS-TIME MSDOS-DATE]"""))
                 .isEqualTo("[18:53:56 4-Apr-2018]");
@@ -124,7 +124,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("the seconds only count in twos, so an odd one is lost")
-    void theSecondsHaveTwoSecondResolution() {
+    void losesAnOddSecond() {
         assertThat(answerTo("""
                 b: binary 64
                 binary/write b [msdos-time 21:23:55]
@@ -133,7 +133,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("a date with no clock writes a clock of nothing")
-    void aDateWithNoClockWritesZero() {
+    void writesAClockOfNothingForADateWithNoClock() {
         assertThat(answerTo("""
                 c: binary 64
                 binary/write c [msdos-time 14-Mar-2019]
@@ -152,7 +152,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("and a write after it lands where the write cursor now points")
-    void aWriteAfterCropLandsRight() {
+    void landsAWriteAfterCropAtTheWriteCursor() {
         assertThat(answerTo("""
                 cr: binary #{010203}
                 binary/read cr [UI8 CROP]
@@ -172,7 +172,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("and the two orders are the same moment written both ways")
-    void theTwoOrdersAgree() {
+    void writesTheSameMomentBothWays() {
         assertThat(answerTo("""
                 d: binary 4
                 binary/write d [UNIXTIME-NOW UNIXTIME-NOW-LE]
@@ -182,7 +182,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("a bare number reads that many bytes")
-    void aBareNumberReadsThatManyBytes() {
+    void readsThatManyBytesForABareNumber() {
         assertThat(answerTo("""
                 b: binary #{01020304}
                 reduce [binary/read b 2 binary/read b 2]"""))
@@ -191,7 +191,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("and reading more than there is left is out of range")
-    void readingMoreThanThereIsRaises() {
+    void raisesReadingMoreThanThereIs() {
         assertThat(answerTo("""
                 b: binary #{01020304}
                 binary/read b 2
@@ -201,7 +201,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("a binary in a read dialect is a test, and only a match advances")
-    void aBinaryInAReadDialectIsATest() {
+    void testsABinaryInAReadDialect() {
         assertThat(answerTo("""
                 m: binary #{0badCafe}
                 binary/read m [ATz 0 #{0bad} #{F00D} #{Cafe}]"""))
@@ -210,7 +210,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("TUPLE3 and TUPLE4 read a colour straight out")
-    void tupleCodesReadAColour() {
+    void readsAColourWithTupleCodes() {
         assertThat(answerTo("""
                 binary/read #{01020304050607} [TUPLE3 TUPLE4]"""))
                 .isEqualTo("[1.2.3 4.5.6.7]");
@@ -218,7 +218,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("FIXED8 and FIXED16 put the point where the format does")
-    void fixedCodesPlaceThePoint() {
+    void placesThePointWithFixedCodes() {
         assertThat(answerTo("""
                 binary/read #{800700800700} [FIXED8 FIXED16]""")).isEqualTo("[7.5 7.5]");
     }
@@ -233,7 +233,7 @@ class BincodeWiderCodesFromTheSourceTest {
 
     @Test
     @DisplayName("the BITSET codes read a run of flags as a set")
-    void bitsetCodesReadFlags() {
+    void readsFlagsWithBitsetCodes() {
         assertThat(answerTo("""
                 binary/read #{81800180000001} [BITSET8 BITSET16 BITSET32]"""))
                 .isEqualTo("[#(bitset! #{81}) #(bitset! #{8001})"

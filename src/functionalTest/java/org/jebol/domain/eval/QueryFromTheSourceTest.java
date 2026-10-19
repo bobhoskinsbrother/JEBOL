@@ -23,7 +23,7 @@ class QueryFromTheSourceTest {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         return interpreter;
     }
 

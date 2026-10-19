@@ -45,38 +45,38 @@ public class FindAction extends SeriesSearchAction {
                         object.declaresAFieldFindCanReachBy(wanted)
                                 ? LogicValue.of(true)
                                 : NoneValue.none();
-                case MapValue map -> map.storedKeyLike(wanted, refinements.contains("case"));
+                case MapValue map -> map.findTheStoredKeyLike(wanted, refinements.contains("case"));
                 case BitsetValue bitset -> LogicValue.of(new BitsetActions(bitset).holds(
                         wanted, refinements.contains("any"), !refinements.contains("case")));
                 case TypesetValue typeset -> LogicValue.of(
                         wanted instanceof Datatype represents
                                 && typeset.holds(represents));
-                case GobValue searched -> theChildFound(searched, wanted);
-                case ImageValue picture -> picture.thePixelFound(wanted,
+                case GobValue searched -> findTheChild(searched, wanted);
+                case ImageValue picture -> picture.findThePixel(wanted,
                         refinements.contains("match"), refinements.contains("only"),
                         refinements.contains("tail"));
                 case VectorValue numbers -> refuseTheDatatype(numbers);
                 case RebolSeries series ->
-                        theMatchFound(series, wanted, arguments, refinements);
+                        findTheMatch(series, wanted, arguments, refinements);
                 case Value anythingElse -> refuseTheDatatype(anythingElse);
             };
         };
     }
 
-    private Value theChildFound(GobValue searched, Value wanted) {
+    private Value findTheChild(GobValue searched, Value wanted) {
         if (!(wanted instanceof GobValue child)) {
             return NoneValue.none();
         }
-        int at = searched.storage().positionOf(child.storage());
+        int at = searched.storage().findThePositionOf(child.storage());
         return at == 0 ? NoneValue.none() : searched.atIndex(at);
     }
 
-    private Value theMatchFound(RebolSeries series, Value wanted, List<Value> arguments,
-            Set<String> refinements) {
+    private Value findTheMatch(RebolSeries series, Value wanted, List<Value> arguments,
+                               Set<String> refinements) {
         SeriesSearch search = new SeriesSearch(series, wanted, refinements,
-                argumentOf("part", 0, arguments, refinements),
-                argumentOf("skip", 0, arguments, refinements),
-                argumentOf("with", 0, arguments, refinements));
+                readTheArgumentOf("part", 0, arguments, refinements),
+                readTheArgumentOf("skip", 0, arguments, refinements),
+                readTheArgumentOf("with", 0, arguments, refinements));
         series.refuseANeedleItCannotHold(wanted, nativeName());
         if (search.stridesForwardByLessThanOne()) {
             if (series instanceof AnyBlockValue) {
@@ -86,12 +86,12 @@ public class FindAction extends SeriesSearchAction {
             }
             return NoneValue.none();
         }
-        int found = search.position();
+        int found = search.findThePosition();
         if (found < 0 || (refinements.contains("match") && found != series.index())) {
             return NoneValue.none();
         }
         return series.atIndex(refinements.contains("tail")
-                ? found + search.lengthMatchedAt(found)
+                ? found + search.measureTheLengthMatchedAt(found)
                 : found);
     }
 }

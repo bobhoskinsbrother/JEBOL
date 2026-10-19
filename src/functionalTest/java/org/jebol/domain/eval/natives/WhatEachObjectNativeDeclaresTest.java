@@ -39,69 +39,69 @@ class WhatEachObjectNativeDeclaresTest {
     Stream<Arguments> whatEachDeclares() {
         return Stream.of(
                 Arguments.of(new MakeAction(), "make",
-                        List.of(Parameter.required("prototype", TypesetValue.ANY_TYPE.members()),
-                                Parameter.required("body", TypesetValue.ANY_TYPE.members())),
+                        List.of(Parameter.of("prototype", TypesetValue.ANY_TYPE.members()),
+                                Parameter.of("body", TypesetValue.ANY_TYPE.members())),
                         NOTHING),
                 Arguments.of(new ConstructNative(), "construct",
-                        List.of(Parameter.required("body",
+                        List.of(Parameter.of("body",
                                         Set.of(BlockValue.TYPE, StringValue.TYPE, BinaryValue.TYPE)),
-                                Parameter.belongingTo("with", "object", Set.of(ObjectValue.TYPE))),
+                                Parameter.belongTo("with", "object", Set.of(ObjectValue.TYPE))),
                         Set.of("only", "with")),
                 Arguments.of(new ContextOfWordNative(), "context?",
-                        List.of(Parameter.required("word", TypesetValue.ANY_WORD.members())),
+                        List.of(Parameter.of("word", TypesetValue.ANY_WORD.members())),
                         NOTHING),
                 Arguments.of(new ResolveNative(), "resolve",
-                        List.of(Parameter.required("target", TypesetValue.ANY_OBJECT.members()),
-                                Parameter.required("source", TypesetValue.ANY_OBJECT.members()),
-                                Parameter.belongingTo("only", "from",
+                        List.of(Parameter.of("target", TypesetValue.ANY_OBJECT.members()),
+                                Parameter.of("source", TypesetValue.ANY_OBJECT.members()),
+                                Parameter.belongTo("only", "from",
                                         Set.of(BlockValue.TYPE, IntegerValue.TYPE))),
                         Set.of("only", "all", "extend")),
                 Arguments.of(new InNative(), "in",
-                        List.of(Parameter.required("object",
+                        List.of(Parameter.of("object",
                                         TypesetValue.ANY_OBJECT.membersAnd(BlockValue.TYPE)),
-                                Parameter.required("word", TypesetValue.ANY_WORD.membersAnd(
+                                Parameter.of("word", TypesetValue.ANY_WORD.membersAnd(
                                         BlockValue.TYPE, ParenValue.TYPE))),
                         NOTHING),
                 Arguments.of(new ApplyNative(), "apply",
-                        List.of(Parameter.required("func"), Parameter.required("block", A_BLOCK)),
+                        List.of(Parameter.of("func"), Parameter.of("block", A_BLOCK)),
                         Set.of("only")),
                 Arguments.of(new AssertNative(), "assert",
-                        List.of(Parameter.required("conditions", A_BLOCK)), Set.of("type")),
+                        List.of(Parameter.of("conditions", A_BLOCK)), Set.of("type")),
                 Arguments.of(new HashNative(), "hash",
-                        List.of(Parameter.required("value")), NOTHING),
+                        List.of(Parameter.of("value")), NOTHING),
                 Arguments.of(new CollectWordsNative(), "collect-words",
-                        List.of(Parameter.required("block", A_BLOCK),
-                                Parameter.belongingTo("ignore", "words",
+                        List.of(Parameter.of("block", A_BLOCK),
+                                Parameter.belongTo("ignore", "words",
                                         TypesetValue.ANY_OBJECT.membersAnd(
                                                 BlockValue.TYPE, NoneValue.TYPE)),
-                                Parameter.belongingTo("as", "type", Set.of(Datatype.TYPE))),
+                                Parameter.belongTo("as", "type", Set.of(Datatype.TYPE))),
                         Set.of("deep", "set", "ignore", "as")),
                 Arguments.of(new NewLineNative(), "new-line",
-                        List.of(Parameter.required("position",
+                        List.of(Parameter.of("position",
                                         Set.of(BlockValue.TYPE, ParenValue.TYPE)),
-                                Parameter.required("value"),
-                                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE))),
+                                Parameter.of("value"),
+                                Parameter.belongTo("skip", "size", Set.of(IntegerValue.TYPE))),
                         Set.of("all", "skip")),
                 Arguments.of(new IsNewLineNative(), "new-line?",
-                        List.of(Parameter.required("position",
+                        List.of(Parameter.of("position",
                                 Set.of(BlockValue.TYPE, ParenValue.TYPE))),
                         NOTHING),
                 Arguments.of(new ObjectNative(), "object",
-                        List.of(Parameter.required("spec", A_BLOCK)), Set.of("only")),
+                        List.of(Parameter.of("spec", A_BLOCK)), Set.of("only")),
                 Arguments.of(new WithNative(), "with",
-                        List.of(Parameter.required("context", Set.of(ObjectValue.TYPE)),
-                                Parameter.required("body", A_BLOCK)),
+                        List.of(Parameter.of("context", Set.of(ObjectValue.TYPE)),
+                                Parameter.of("body", A_BLOCK)),
                         NOTHING),
                 Arguments.of(new IsSelflessNative(), "selfless?",
-                        List.of(Parameter.required("context")), NOTHING),
+                        List.of(Parameter.of("context")), NOTHING),
                 Arguments.of(new IsProtectedNative(), "protected?",
-                        List.of(Parameter.required("value")), NOTHING),
+                        List.of(Parameter.of("value")), NOTHING),
                 Arguments.of(new UnbindNative(), "unbind",
-                        List.of(Parameter.required("word",
+                        List.of(Parameter.of("word",
                                 TypesetValue.ANY_WORD.membersAnd(BlockValue.TYPE))),
                         Set.of("deep")),
                 Arguments.of(new BindNative(), "bind",
-                        List.of(Parameter.required("word"), Parameter.required("target")),
+                        List.of(Parameter.of("word"), Parameter.of("target")),
                         Set.of("copy", "only", "new", "set")));
     }
 
@@ -132,7 +132,7 @@ class WhatEachObjectNativeDeclaresTest {
             Context fields = holding("a", IntegerValue.of(1));
 
             assertThat(answerOf(new ContextOfWordNative(), NOTHING,
-                    WordValue.of("a").boundTo(fields)))
+                    WordValue.of("a").bindTo(fields)))
                     .isEqualTo(new ObjectValue(fields));
         }
 
@@ -160,7 +160,7 @@ class WhatEachObjectNativeDeclaresTest {
         @DisplayName("protected? is false of a fresh block and of a number")
         void protectedIsFalseOfTheUnprotected() {
             assertThat(answerOf(new IsProtectedNative(), NOTHING,
-                    BlockValue.block(List.of(IntegerValue.of(1)))))
+                    BlockValue.of(List.of(IntegerValue.of(1)))))
                     .isEqualTo(LogicValue.of(false));
             assertThat(answerOf(new IsProtectedNative(), NOTHING, IntegerValue.of(1)))
                     .isEqualTo(LogicValue.of(false));
@@ -169,7 +169,7 @@ class WhatEachObjectNativeDeclaresTest {
         @Test
         @DisplayName("new-line marks a line break that new-line? then sees, and clears it again")
         void newLineAndItsQuestion() {
-            AnyBlockValue block = BlockValue.block(List.of(IntegerValue.of(1), IntegerValue.of(2)));
+            AnyBlockValue block = BlockValue.of(List.of(IntegerValue.of(1), IntegerValue.of(2)));
 
             answerOf(new NewLineNative(), NOTHING, block, LogicValue.of(true));
             assertThat(answerOf(new IsNewLineNative(), NOTHING, block))
@@ -184,7 +184,7 @@ class WhatEachObjectNativeDeclaresTest {
         @DisplayName("unbind hands back the same word with no binding")
         void unbindAWord() {
             Value unbound = answerOf(new UnbindNative(), NOTHING,
-                    WordValue.of("a").boundTo(holding("a", IntegerValue.of(1))));
+                    WordValue.of("a").bindTo(holding("a", IntegerValue.of(1))));
 
             assertThat(((AnyWordValue) unbound).isBound()).isFalse();
         }
@@ -205,9 +205,9 @@ class WhatEachObjectNativeDeclaresTest {
         @Test
         @DisplayName("collect-words/set/deep lists the set-words, once each")
         void collectWords() {
-            AnyBlockValue body = BlockValue.block(List.of(
+            AnyBlockValue body = BlockValue.of(List.of(
                     SetWordValue.of("a"), WordValue.of("b"),
-                    BlockValue.block(List.of(SetWordValue.of("A"), SetWordValue.of("c")))));
+                    BlockValue.of(List.of(SetWordValue.of("A"), SetWordValue.of("c")))));
 
             Value collected = answerOf(new CollectWordsNative(), Set.of("deep", "set"), body);
 
@@ -218,10 +218,10 @@ class WhatEachObjectNativeDeclaresTest {
         @Test
         @DisplayName("collect-words/ignore leaves out the words it is told to")
         void collectWordsIgnoring() {
-            AnyBlockValue body = BlockValue.block(List.of(WordValue.of("a"), WordValue.of("b")));
+            AnyBlockValue body = BlockValue.of(List.of(WordValue.of("a"), WordValue.of("b")));
 
             Value collected = answerOf(new CollectWordsNative(), Set.of("ignore"), body,
-                    BlockValue.block(List.of(WordValue.of("a"))));
+                    BlockValue.of(List.of(WordValue.of("a"))));
 
             assertThat(((AnyBlockValue) collected).remaining()).containsExactly(WordValue.of("b"));
         }

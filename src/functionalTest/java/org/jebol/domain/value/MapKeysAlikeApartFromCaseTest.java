@@ -18,7 +18,7 @@ class MapKeysAlikeApartFromCaseTest {
 
     @Test
     @DisplayName("of two keys that differ only by case, a lookup that ignores case finds the one stored first")
-    void theFirstStoredWins() {
+    void findTheFirstStored() {
         assertThat(answerTo("""
                 m: make map! [{k} 1 {K} 2]
                 select m {K}""")).isEqualTo("1");
@@ -26,7 +26,7 @@ class MapKeysAlikeApartFromCaseTest {
 
     @Test
     @DisplayName("removing the first leaves the second for a lookup that ignores case")
-    void removingTheFirstLeavesTheSecond() {
+    void leaveTheSecondWhenTheFirstIsRemoved() {
         assertThat(answerTo("""
                 m: make map! [{k} 1 {K} 2]
                 remove/key m {k}
@@ -35,7 +35,7 @@ class MapKeysAlikeApartFromCaseTest {
 
     @Test
     @DisplayName("removing the second keeps the first for a lookup that ignores case")
-    void removingTheSecondKeepsTheFirst() {
+    void keepTheFirstWhenTheSecondIsRemoved() {
         assertThat(answerTo("""
                 m: make map! [{k} 1 {K} 2]
                 remove/key m {K}
@@ -44,7 +44,7 @@ class MapKeysAlikeApartFromCaseTest {
 
     @Test
     @DisplayName("removing both leaves nothing a lookup that ignores case can find")
-    void removingBothLeavesNothing() {
+    void leaveNothingWhenBothAreRemoved() {
         assertThat(answerTo("""
                 m: make map! [{k} 1 {K} 2]
                 remove/key m {k}
@@ -54,7 +54,7 @@ class MapKeysAlikeApartFromCaseTest {
 
     @Test
     @DisplayName("a write that ignores case after a removal adds the key again as it was written")
-    void writingAfterARemovalAddsTheKeyAgain() {
+    void comeBackWhenWrittenAfterARemoval() {
         assertThat(answerTo("""
                 m: make map! [{k} 1]
                 remove/key m {k}
@@ -64,7 +64,7 @@ class MapKeysAlikeApartFromCaseTest {
 
     @Test
     @DisplayName("a cleared map finds nothing, and takes new keys afterwards")
-    void aClearedMapFindsNothing() {
+    void vanishFromAClearedMap() {
         assertThat(answerTo("""
                 m: make map! [{k} 1]
                 clear m
@@ -75,7 +75,7 @@ class MapKeysAlikeApartFromCaseTest {
 
     @Test
     @DisplayName("a copy finds its keys whatever their case, and a key added to it is not in the original")
-    void aCopyKeepsItsOwnKeys() {
+    void stayWithACopy() {
         assertThat(answerTo("""
                 m: make map! [{k} 1]
                 c: copy m
@@ -85,7 +85,7 @@ class MapKeysAlikeApartFromCaseTest {
 
     @Test
     @DisplayName("a character key is found in the other case")
-    void aCharacterKeyIsFound() {
+    void includeACharacterKey() {
         assertThat(answerTo("""
                 m: make map! []
                 m/(#"a"): 1
@@ -95,7 +95,7 @@ class MapKeysAlikeApartFromCaseTest {
 
     @Test
     @DisplayName("a key outside ASCII is found in the other case")
-    void aKeyOutsideAsciiIsFound() {
+    void includeAKeyOutsideAscii() {
         assertThat(answerTo("""
                 m: make map! []
                 m/({été}): 1
@@ -104,7 +104,7 @@ class MapKeysAlikeApartFromCaseTest {
 
     @Test
     @DisplayName("a string, a file, a tag and a word spelled alike are four different keys")
-    void keysOfDifferentDatatypesStayApart() {
+    void stayApartAcrossDatatypes() {
         assertThat(answerTo("""
                 m: make map! []
                 m/({k}): 1
@@ -116,7 +116,7 @@ class MapKeysAlikeApartFromCaseTest {
 
     @Test
     @DisplayName("a key that is not text, a word or a character is found as itself")
-    void otherKeysAreFoundAsThemselves() {
+    void leaveOtherKeysFoundAsThemselves() {
         assertThat(answerTo("""
                 m: make map! []
                 m/(42): {answer}
@@ -126,7 +126,7 @@ class MapKeysAlikeApartFromCaseTest {
 
     @Test
     @DisplayName("filling a map by writes that ignore case takes time in proportion to its size, not its square")
-    void fillingAMapIsLinear() {
+    void fillAMapInLinearTime() {
         assertThat(answerTo("""
                 m: make map! []
                 count: 0

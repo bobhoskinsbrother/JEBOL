@@ -26,7 +26,7 @@ public final class DrawDialect {
      * What a draw block paints on a gob of this size. Nothing is not the same
      * as empty: a block of gradients and images reads whole and paints none.
      */
-    public List<PaintInstruction> instructionsFor(
+    public List<PaintInstruction> readTheInstructionsFor(
             AnyBlockValue drawBlock, ObjectValue dialect,
             Placement where, double wide, double high) {
 
@@ -76,7 +76,7 @@ public final class DrawDialect {
 
         private void readEveryCommandOfOneAtATime(AnyBlockValue block) {
             AnyBlockValue left = block;
-            AnyBlockValue answer = BlockValue.block();
+            AnyBlockValue answer = BlockValue.of();
             while (Delect.read(dialect, left, answer, false, null, Context.unbound())
                     instanceof AnyBlockValue standing) {
                 List<Value> read = answer.remaining();
@@ -90,62 +90,62 @@ public final class DrawDialect {
                     return;
                 }
                 left = standing;
-                answer = BlockValue.block();
+                answer = BlockValue.of();
             }
         }
 
         private void obey(String command, List<Value> arguments) {
             switch (command) {
-                case "pen" -> state = state.withStroke(read.colourIn(arguments));
-                case "fill-pen" -> state = state.withFill(read.colourIn(arguments))
+                case "pen" -> state = state.withStroke(read.findTheColourIn(arguments));
+                case "fill-pen" -> state = state.withFill(read.findTheColourIn(arguments))
                         .withFillGradient(Optional.empty());
                 case "line-width" -> state =
-                        state.withLineWidth(read.numberAt(arguments, 0).orElse(1.0));
-                case "line-cap" -> read.wordAt(arguments, 0).flatMap(LineCap::named)
+                        state.withLineWidth(read.readTheNumberAt(arguments, 0).orElse(1.0));
+                case "line-cap" -> read.readTheWordAt(arguments, 0).flatMap(LineCap::findTheCapNamed)
                         .ifPresent(cap -> state = state.withLineCap(cap));
-                case "line-join" -> read.wordAt(arguments, 0).flatMap(LineJoin::named)
+                case "line-join" -> read.readTheWordAt(arguments, 0).flatMap(LineJoin::findTheJoinNamed)
                         .ifPresent(join -> state = state.withLineJoin(join));
-                case "fill-rule" -> read.wordAt(arguments, 0).flatMap(FillRule::named)
+                case "fill-rule" -> read.readTheWordAt(arguments, 0).flatMap(FillRule::findTheRuleNamed)
                         .ifPresent(rule -> state = state.withFillRule(rule));
                 case "anti-alias" -> state = state.withAntiAliasing(
                         arguments.getFirst() instanceof LogicValue(boolean truth) && truth);
                 case "line-pattern" -> {
-                    state = state.withDashes(read.everyNumberIn(arguments));
-                    gapColour = read.colourAt(arguments, THE_DASH_COLOUR);
+                    state = state.withDashes(read.collectEveryNumberIn(arguments));
+                    gapColour = read.readTheColourAt(arguments, THE_DASH_COLOUR);
                 }
                 case "arrow" -> {
-                    state = state.withArrowEnds(read.pairAt(arguments, 1)
+                    state = state.withArrowEnds(read.readThePairAt(arguments, 1)
                             .map(ArrowEnds::fromFlags).orElse(ArrowEnds.NEITHER));
-                    arrowColour = read.colourIn(arguments);
+                    arrowColour = read.findTheColourIn(arguments);
                 }
                 case "grad-pen" -> state =
-                        state.withFillGradient(aGradientFrom(arguments));
-                case "gamma" -> gamma = read.numberAt(arguments, 0).orElse(1.0);
-                case "image-filter" -> resampling = read.wordAt(arguments, 0)
-                        .flatMap(Resampling::named).orElse(Resampling.BILINEAR);
-                case "box" -> paint(aBox(arguments));
-                case "circle" -> paint(aCircle(arguments));
-                case "ellipse" -> paint(anEllipse(arguments));
-                case "line" -> paint(aRunOfPoints(arguments, false));
-                case "polygon" -> paint(aRunOfPoints(arguments, true));
-                case "curve" -> paint(aCurve(arguments));
-                case "arc" -> paint(anArc(arguments));
+                        state.withFillGradient(readAGradientFrom(arguments));
+                case "gamma" -> gamma = read.readTheNumberAt(arguments, 0).orElse(1.0);
+                case "image-filter" -> resampling = read.readTheWordAt(arguments, 0)
+                        .flatMap(Resampling::findTheResamplingNamed).orElse(Resampling.BILINEAR);
+                case "box" -> paint(drawABox(arguments));
+                case "circle" -> paint(drawACircle(arguments));
+                case "ellipse" -> paint(drawAnEllipse(arguments));
+                case "line" -> paint(drawARunOfPoints(arguments, false));
+                case "polygon" -> paint(drawARunOfPoints(arguments, true));
+                case "curve" -> paint(drawACurve(arguments));
+                case "arc" -> paint(drawAnArc(arguments));
                 case "triangle" -> paintTheTriangle(arguments);
-                case "spline" -> paint(aSplineThroughEveryPoint(arguments));
-                case "shape" -> paint(aHandWrittenPath(arguments));
+                case "spline" -> paint(drawASplineThroughEveryPoint(arguments));
+                case "shape" -> paint(drawAHandWrittenPath(arguments));
                 case "image" -> showTheImage(arguments);
                 case "text" -> writeTheText(arguments);
-                case "clip" -> clippedTo(arguments);
-                case "transform" -> transformedAboutACentre(arguments);
-                case "invert-matrix" -> transform = transform.inverted();
-                case "translate" -> movedBy(arguments);
-                case "scale" -> scaledBy(arguments);
-                case "rotate" -> read.numberAt(arguments, 0).ifPresent(degrees ->
-                        transform = transform.combinedWith(Transform.turnedBy(degrees)));
-                case "skew" -> skewedBy(arguments);
-                case "matrix" -> matrixFrom(arguments);
+                case "clip" -> clipTo(arguments);
+                case "transform" -> transformAboutACentre(arguments);
+                case "invert-matrix" -> transform = transform.invert();
+                case "translate" -> moveBy(arguments);
+                case "scale" -> scaleBy(arguments);
+                case "rotate" -> read.readTheNumberAt(arguments, 0).ifPresent(degrees ->
+                        transform = transform.combineWith(Transform.turnBy(degrees)));
+                case "skew" -> skewBy(arguments);
+                case "matrix" -> applyTheMatrixFrom(arguments);
                 case "reset-matrix" -> transform = Transform.NONE;
-                case "push" -> drawnWithEverythingPutBackAfterwards(arguments);
+                case "push" -> drawAndPutEverythingBack(arguments);
                 default -> {
                 }
             }
@@ -157,78 +157,78 @@ public final class DrawDialect {
             }
             paintTheGapsBetweenTheDashes(path);
             paintAGradientNoToolkitHas(path);
-            painted.add(new PaintInstruction.Drawn(whereTheClipStandsNow(),
-                    path, theTransformOnTheSurface(), theStateARendererGets()));
+            painted.add(new PaintInstruction.Drawn(findWhereTheClipStandsNow(),
+                    path, findTheTransformOnTheSurface(), makeTheStateARendererGets()));
             paintAnyArrowheads(path);
         }
 
-        private Transform theTransformOnTheSurface() {
-            return Transform.movedBy(where.across(), where.down()).combinedWith(transform);
+        private Transform findTheTransformOnTheSurface() {
+            return Transform.moveBy(where.across(), where.down()).combineWith(transform);
         }
 
-        private PaintState theStateARendererGets() {
+        private PaintState makeTheStateARendererGets() {
             PaintState carried = state.fillGradient()
-                    .filter(gradient -> !gradient.shape().aToolkitCanDrawIt())
+                    .filter(gradient -> !gradient.shape().canBeDrawnByAToolkit())
                     .isPresent()
                     ? state.withFillGradient(Optional.empty())
                             .withFill(Optional.empty())
                     : state;
-            return underTheGamma(carried);
+            return correctForTheGamma(carried);
         }
 
-        private PaintState underTheGamma(PaintState carried) {
+        private PaintState correctForTheGamma(PaintState carried) {
             if (gamma == 1) {
                 return carried;
             }
             return carried
                     .withStroke(carried.strokeColour()
-                            .map(colour -> colour.underGamma(gamma)))
+                            .map(colour -> colour.correctForGamma(gamma)))
                     .withFill(carried.fillColour()
-                            .map(colour -> colour.underGamma(gamma)))
-                    .withFillGradient(carried.fillGradient().map(this::underTheGamma));
+                            .map(colour -> colour.correctForGamma(gamma)))
+                    .withFillGradient(carried.fillGradient().map(this::correctForTheGamma));
         }
 
-        private Gradient underTheGamma(Gradient gradient) {
+        private Gradient correctForTheGamma(Gradient gradient) {
             return new Gradient(gradient.shape(),
                     gradient.acrossOffset(), gradient.downOffset(),
                     gradient.from(), gradient.to(), gradient.angle(),
                     gradient.colours().stream()
-                            .map(colour -> colour.underGamma(gamma)).toList(),
+                            .map(colour -> colour.correctForGamma(gamma)).toList(),
                     gradient.stops());
         }
 
         private void paintAGradientNoToolkitHas(List<PathStep> path) {
             Optional<Gradient> awkward = state.fillGradient()
-                    .filter(gradient -> !gradient.shape().aToolkitCanDrawIt());
+                    .filter(gradient -> !gradient.shape().canBeDrawnByAToolkit());
             if (awkward.isEmpty()) {
                 return;
             }
             PaintState wasStanding = state;
             for (WedgesAndRings.Piece piece
-                    : WedgesAndRings.of(awkward.orElseThrow(), theAreaCovered(path))) {
+                    : WedgesAndRings.of(awkward.orElseThrow(), measureTheAreaCovered(path))) {
                 state = wasStanding
                         .withStroke(Optional.empty())
                         .withFillGradient(Optional.empty())
                         .withFill(Optional.of(piece.colour()));
                 painted.add(new PaintInstruction.Drawn(
-                        clippedToTheShapeItFills(path), piece.path(), theTransformOnTheSurface(), state));
+                        clipToTheShapeItFills(path), piece.path(), findTheTransformOnTheSurface(), state));
             }
             state = wasStanding;
         }
 
-        private Placement clippedToTheShapeItFills(List<PathStep> path) {
-            ClipRectangle area = theAreaCovered(path);
+        private Placement clipToTheShapeItFills(List<PathStep> path) {
+            ClipRectangle area = measureTheAreaCovered(path);
             return new Placement(where.across(), where.down(),
                     where.wide(), where.high(), clip.overlapWith(area),
-                    where.opacity()).insideTheShape(path);
+                    where.opacity()).fitInsideTheShape(path);
         }
 
-        private ClipRectangle theAreaCovered(List<PathStep> path) {
+        private ClipRectangle measureTheAreaCovered(List<PathStep> path) {
             double left = Double.MAX_VALUE;
             double top = Double.MAX_VALUE;
             double right = -Double.MAX_VALUE;
             double bottom = -Double.MAX_VALUE;
-            for (double[] corner : cornersOf(path)) {
+            for (double[] corner : findTheCornersOf(path)) {
                 left = Math.min(left, corner[0]);
                 top = Math.min(top, corner[1]);
                 right = Math.max(right, corner[0]);
@@ -244,7 +244,7 @@ public final class DrawDialect {
                     (int) Math.ceil(bottom - top) + 1);
         }
 
-        private List<double[]> cornersOf(List<PathStep> path) {
+        private List<double[]> findTheCornersOf(List<PathStep> path) {
             List<double[]> corners = new ArrayList<>();
             for (PathStep step : path) {
                 switch (step) {
@@ -284,30 +284,30 @@ public final class DrawDialect {
                     || state.strokeColour().isEmpty()) {
                 return;
             }
-            List<PathStep> gaps = Dashes.theGapsIn(path, state.dashes());
+            List<PathStep> gaps = Dashes.findTheGapsIn(path, state.dashes());
             if (gaps.isEmpty()) {
                 return;
             }
-            painted.add(new PaintInstruction.Drawn(whereTheClipStandsNow(), gaps,
-                    theTransformOnTheSurface(), state.withDashes(List.of())
+            painted.add(new PaintInstruction.Drawn(findWhereTheClipStandsNow(), gaps,
+                    findTheTransformOnTheSurface(), state.withDashes(List.of())
                             .withFill(Optional.empty())
                             .withFillGradient(Optional.empty())
                             .withStroke(gapColour)));
         }
 
         private void paintAnyArrowheads(List<PathStep> path) {
-            if (!state.arrowEnds().anyAtAll()) {
+            if (!state.arrowEnds().hasAnyAtAll()) {
                 return;
             }
             List<PathStep> heads =
-                    Arrowheads.onlyTheHeadsOf(path, state.arrowEnds(), state.lineWidth());
+                    Arrowheads.drawOnlyTheHeadsOf(path, state.arrowEnds(), state.lineWidth());
             if (heads.isEmpty()) {
                 return;
             }
             Optional<Colour> filled =
                     arrowColour.isPresent() ? arrowColour : state.strokeColour();
-            painted.add(new PaintInstruction.Drawn(whereTheClipStandsNow(), heads,
-                    theTransformOnTheSurface(), state.withDashes(List.of())
+            painted.add(new PaintInstruction.Drawn(findWhereTheClipStandsNow(), heads,
+                    findTheTransformOnTheSurface(), state.withDashes(List.of())
                             .withStroke(Optional.empty())
                             .withFillGradient(Optional.empty())
                             .withFill(filled)));
@@ -321,27 +321,27 @@ public final class DrawDialect {
         private static final int THE_GRADIENT_ANGLE = 6;
         private static final int THE_GRADIENT_COLOURS = 9;
 
-        private Optional<Gradient> aGradientFrom(List<Value> arguments) {
-            Optional<GradientShape> shape = read.wordAt(arguments, THE_GRADIENT_TYPE)
-                    .map(GradientShape::named)
+        private Optional<Gradient> readAGradientFrom(List<Value> arguments) {
+            Optional<GradientShape> shape = read.readTheWordAt(arguments, THE_GRADIENT_TYPE)
+                    .map(GradientShape::findTheShapeNamed)
                     .orElse(Optional.of(GradientShape.LINEAR));
-            List<Colour> colours = everyColourIn(arguments, THE_GRADIENT_COLOURS);
+            List<Colour> colours = collectEveryColourIn(arguments, THE_GRADIENT_COLOURS);
             if (shape.isEmpty() || colours.size() < 2) {
                 return Optional.empty();
             }
-            PairValue offset = read.pairAt(arguments, THE_GRADIENT_OFFSET)
+            PairValue offset = read.readThePairAt(arguments, THE_GRADIENT_OFFSET)
                     .orElse(PairValue.of(0, 0));
-            double angle = read.numberAt(arguments, THE_GRADIENT_ANGLE).orElse(0.0);
+            double angle = read.readTheNumberAt(arguments, THE_GRADIENT_ANGLE).orElse(0.0);
             return Optional.of(new Gradient(
                     shape.orElseThrow(),
                     offset.x(), offset.y(),
-                    read.numberAt(arguments, THE_GRADIENT_RANGE_FROM).orElse(0.0),
-                    read.numberAt(arguments, THE_GRADIENT_RANGE_TO).orElse(Math.max(wide, high)),
+                    read.readTheNumberAt(arguments, THE_GRADIENT_RANGE_FROM).orElse(0.0),
+                    read.readTheNumberAt(arguments, THE_GRADIENT_RANGE_TO).orElse(Math.max(wide, high)),
                     shape.orElseThrow() == GradientShape.DIAGONAL ? angle + 45 : angle,
                     colours, stopsFor(colours.size(), shape.orElseThrow())));
         }
 
-        private List<Colour> everyColourIn(List<Value> arguments, int slot) {
+        private List<Colour> collectEveryColourIn(List<Value> arguments, int slot) {
             if (slot >= arguments.size()
                     || !(arguments.get(slot) instanceof AnyBlockValue given)) {
                 return List.of();
@@ -364,7 +364,7 @@ public final class DrawDialect {
             return List.copyOf(stops);
         }
 
-        private Placement whereTheClipStandsNow() {
+        private Placement findWhereTheClipStandsNow() {
             return clip == where.clip()
                     ? where
                     : new Placement(where.across(), where.down(),
@@ -378,10 +378,10 @@ public final class DrawDialect {
                     || !(arguments.getFirst() instanceof ImageValue given)) {
                 return;
             }
-            ImageValue pixels = read.colourAt(arguments, THE_IMAGE_KEY_COLOUR)
+            ImageValue pixels = read.readTheColourAt(arguments, THE_IMAGE_KEY_COLOUR)
                     .map(key -> PicturesWorkedOutHere.withThatColourSeeThrough(given, key))
                     .orElse(given);
-            List<PairValue> corners = read.everyPairIn(arguments);
+            List<PairValue> corners = read.collectEveryPairIn(arguments);
             if (corners.size() >= 3) {
                 showTheImagePulledOntoItsCorners(pixels, corners);
                 return;
@@ -415,7 +415,7 @@ public final class DrawDialect {
             if (boxWide <= 0 || boxHigh <= 0) {
                 return;
             }
-            addThePicture(PicturesWorkedOutHere.pulledOntoFourCorners(
+            addThePicture(PicturesWorkedOutHere.pullOntoFourCorners(
                             pixels, four, boxWide, boxHigh,
                             (int) Math.round(left), (int) Math.round(top)),
                     left, top, boxWide, boxHigh);
@@ -428,7 +428,7 @@ public final class DrawDialect {
             int wideOnTheSurface = (int) Math.round(sizeAcross);
             int highOnTheSurface = (int) Math.round(sizeDown);
             ImageValue atThatSize =
-                    resampling.resized(pixels, wideOnTheSurface, highOnTheSurface);
+                    resampling.resize(pixels, wideOnTheSurface, highOnTheSurface);
             painted.add(new PaintInstruction.Picture(
                     new Placement(
                             where.across() + (int) Math.round(at),
@@ -447,9 +447,9 @@ public final class DrawDialect {
                     || state.strokeColour().isEmpty()) {
                 return;
             }
-            PairValue at = read.pairAt(arguments, THE_TEXT_OFFSET)
+            PairValue at = read.readThePairAt(arguments, THE_TEXT_OFFSET)
                     .orElse(PairValue.of(0, 0));
-            PairValue size = read.pairAt(arguments, THE_TEXT_OFFSET + 1)
+            PairValue size = read.readThePairAt(arguments, THE_TEXT_OFFSET + 1)
                     .orElse(PairValue.of(wide - at.x(), high - at.y()));
             RichText.Line line = new RichText(state.strokeColour().orElseThrow()).lineIn(written);
             if (line.runs().isEmpty()) {
@@ -464,17 +464,17 @@ public final class DrawDialect {
                     line.runs(), line.layout(), line.caret()));
         }
 
-        private void clippedTo(List<Value> arguments) {
-            Optional<PairValue> origin = read.pairAt(arguments, 0);
-            Optional<PairValue> corner = read.pairAt(arguments, 1);
+        private void clipTo(List<Value> arguments) {
+            Optional<PairValue> origin = read.readThePairAt(arguments, 0);
+            Optional<PairValue> corner = read.readThePairAt(arguments, 1);
             if (origin.isEmpty() || corner.isEmpty()) {
                 clip = where.clip();
                 return;
             }
-            clip = where.clip().overlapWith(theBoxBetween(origin.get(), corner.get()));
+            clip = where.clip().overlapWith(makeTheBoxBetween(origin.get(), corner.get()));
         }
 
-        private ClipRectangle theBoxBetween(PairValue origin, PairValue corner) {
+        private ClipRectangle makeTheBoxBetween(PairValue origin, PairValue corner) {
             int left = (int) Math.round(Math.min(origin.x(), corner.x()));
             int top = (int) Math.round(Math.min(origin.y(), corner.y()));
             int right = (int) Math.round(Math.max(origin.x(), corner.x()));
@@ -484,37 +484,37 @@ public final class DrawDialect {
                     right - left, bottom - top);
         }
 
-        private void transformedAboutACentre(List<Value> arguments) {
-            double angle = read.numberAt(arguments, 0).orElse(0.0);
-            PairValue centre = read.pairAt(arguments, 1).orElse(PairValue.of(0, 0));
-            double acrossScale = read.numberAt(arguments, 2).orElse(1.0);
-            double downScale = read.numberAt(arguments, 3).orElse(acrossScale);
-            PairValue move = read.pairAt(arguments, 4).orElse(PairValue.of(0, 0));
+        private void transformAboutACentre(List<Value> arguments) {
+            double angle = read.readTheNumberAt(arguments, 0).orElse(0.0);
+            PairValue centre = read.readThePairAt(arguments, 1).orElse(PairValue.of(0, 0));
+            double acrossScale = read.readTheNumberAt(arguments, 2).orElse(1.0);
+            double downScale = read.readTheNumberAt(arguments, 3).orElse(acrossScale);
+            PairValue move = read.readThePairAt(arguments, 4).orElse(PairValue.of(0, 0));
             transform = transform
-                    .combinedWith(Transform.movedBy(move.x(), move.y()))
-                    .combinedWith(Transform.movedBy(centre.x(), centre.y()))
-                    .combinedWith(Transform.turnedBy(angle))
-                    .combinedWith(Transform.scaledBy(acrossScale, downScale))
-                    .combinedWith(Transform.movedBy(-centre.x(), -centre.y()));
+                    .combineWith(Transform.moveBy(move.x(), move.y()))
+                    .combineWith(Transform.moveBy(centre.x(), centre.y()))
+                    .combineWith(Transform.turnBy(angle))
+                    .combineWith(Transform.scaleBy(acrossScale, downScale))
+                    .combineWith(Transform.moveBy(-centre.x(), -centre.y()));
         }
 
-        private void movedBy(List<Value> arguments) {
-            read.pairAt(arguments, 0).ifPresent(to -> transform = transform.combinedWith(
-                    Transform.movedBy(to.x(), to.y())));
+        private void moveBy(List<Value> arguments) {
+            read.readThePairAt(arguments, 0).ifPresent(to -> transform = transform.combineWith(
+                    Transform.moveBy(to.x(), to.y())));
         }
 
-        private void scaledBy(List<Value> arguments) {
-            double across = read.numberAt(arguments, 0).orElse(1.0);
-            double down = read.numberAt(arguments, 1).orElse(across);
-            transform = transform.combinedWith(Transform.scaledBy(across, down));
+        private void scaleBy(List<Value> arguments) {
+            double across = read.readTheNumberAt(arguments, 0).orElse(1.0);
+            double down = read.readTheNumberAt(arguments, 1).orElse(across);
+            transform = transform.combineWith(Transform.scaleBy(across, down));
         }
 
-        private void skewedBy(List<Value> arguments) {
-            double across = read.numberAt(arguments, 0).orElse(0.0);
-            transform = transform.combinedWith(Transform.skewedBy(across, 0));
+        private void skewBy(List<Value> arguments) {
+            double across = read.readTheNumberAt(arguments, 0).orElse(0.0);
+            transform = transform.combineWith(Transform.skewBy(across, 0));
         }
 
-        private void matrixFrom(List<Value> arguments) {
+        private void applyTheMatrixFrom(List<Value> arguments) {
             if (arguments.isEmpty()
                     || !(arguments.getFirst() instanceof AnyBlockValue six)) {
                 return;
@@ -523,13 +523,13 @@ public final class DrawDialect {
             if (numbers.size() < 6) {
                 return;
             }
-            transform = transform.combinedWith(new Transform(
+            transform = transform.combineWith(new Transform(
                     read.asNumber(numbers.get(0)), read.asNumber(numbers.get(1)),
                     read.asNumber(numbers.get(2)), read.asNumber(numbers.get(3)),
                     read.asNumber(numbers.get(4)), read.asNumber(numbers.get(5))));
         }
 
-        private void drawnWithEverythingPutBackAfterwards(List<Value> arguments) {
+        private void drawAndPutEverythingBack(List<Value> arguments) {
             if (arguments.isEmpty()
                     || !(arguments.getFirst() instanceof AnyBlockValue inside)) {
                 return;
@@ -551,17 +551,17 @@ public final class DrawDialect {
             arrowColour = arrowBefore;
         }
 
-        private List<PathStep> aBox(List<Value> arguments) {
-            PairValue corner = read.pairAt(arguments, 0).orElse(PairValue.of(0, 0));
-            PairValue end = read.pairAt(arguments, 1).orElse(PairValue.of(wide, high));
+        private List<PathStep> drawABox(List<Value> arguments) {
+            PairValue corner = read.readThePairAt(arguments, 0).orElse(PairValue.of(0, 0));
+            PairValue end = read.readThePairAt(arguments, 1).orElse(PairValue.of(wide, high));
             double left = Math.min(corner.x(), end.x());
             double top = Math.min(corner.y(), end.y());
             double right = Math.max(corner.x(), end.x());
             double bottom = Math.max(corner.y(), end.y());
-            double radius = Math.min(read.numberAt(arguments, 2).orElse(0.0),
+            double radius = Math.min(read.readTheNumberAt(arguments, 2).orElse(0.0),
                     Math.min(right - left, bottom - top) / 2);
             return radius > 0
-                    ? aBoxWithRoundedCorners(left, top, right, bottom, radius)
+                    ? drawABoxWithRoundedCorners(left, top, right, bottom, radius)
                     : List.of(
                             new PathStep.MoveTo(left, top),
                             new PathStep.LineTo(right, top),
@@ -570,7 +570,7 @@ public final class DrawDialect {
                             new PathStep.Close());
         }
 
-        private List<PathStep> aBoxWithRoundedCorners(
+        private List<PathStep> drawABoxWithRoundedCorners(
                 double left, double top, double right, double bottom, double radius) {
 
             double pull = radius * HOW_FAR_A_CUBIC_PULLS_TO_MAKE_A_QUARTER_CIRCLE;
@@ -589,26 +589,26 @@ public final class DrawDialect {
                     new PathStep.Close());
         }
 
-        private List<PathStep> aCircle(List<Value> arguments) {
-            PairValue centre = read.pairAt(arguments, 0)
+        private List<PathStep> drawACircle(List<Value> arguments) {
+            PairValue centre = read.readThePairAt(arguments, 0)
                     .orElse(PairValue.of(wide / 2, high / 2));
-            double across = read.numberAt(arguments, 1)
+            double across = read.readTheNumberAt(arguments, 1)
                     .orElse(Math.min(centre.x(), centre.y()));
-            double down = read.numberAt(arguments, 2).orElse(across);
+            double down = read.readTheNumberAt(arguments, 2).orElse(across);
             return List.of(new PathStep.EllipseAt(
                     centre.x(), centre.y(), across, down));
         }
 
-        private List<PathStep> anEllipse(List<Value> arguments) {
-            PairValue corner = read.pairAt(arguments, 0).orElse(PairValue.of(0, 0));
-            PairValue across = read.pairAt(arguments, 1).orElse(PairValue.of(wide, high));
+        private List<PathStep> drawAnEllipse(List<Value> arguments) {
+            PairValue corner = read.readThePairAt(arguments, 0).orElse(PairValue.of(0, 0));
+            PairValue across = read.readThePairAt(arguments, 1).orElse(PairValue.of(wide, high));
             return List.of(new PathStep.EllipseAt(
                     corner.x() + across.x() / 2, corner.y() + across.y() / 2,
                     across.x() / 2, across.y() / 2));
         }
 
-        private List<PathStep> aRunOfPoints(List<Value> arguments, boolean closes) {
-            List<PairValue> points = read.everyPairIn(arguments);
+        private List<PathStep> drawARunOfPoints(List<Value> arguments, boolean closes) {
+            List<PairValue> points = read.collectEveryPairIn(arguments);
             if (points.size() < 2) {
                 return List.of();
             }
@@ -622,8 +622,8 @@ public final class DrawDialect {
             return List.copyOf(path);
         }
 
-        private List<PathStep> aCurve(List<Value> arguments) {
-            List<PairValue> points = read.everyPairIn(arguments);
+        private List<PathStep> drawACurve(List<Value> arguments) {
+            List<PairValue> points = read.collectEveryPairIn(arguments);
             if (points.size() == 3) {
                 return List.of(
                         new PathStep.MoveTo(points.get(0).x(), points.get(0).y()),
@@ -642,12 +642,12 @@ public final class DrawDialect {
             return List.of();
         }
 
-        private List<PathStep> anArc(List<Value> arguments) {
-            PairValue centre = read.pairAt(arguments, 0).orElse(PairValue.of(0, 0));
-            PairValue radius = read.pairAt(arguments, 1).orElse(PairValue.of(wide, high));
-            double begins = read.numberAt(arguments, 2).orElse(0.0);
-            double turns = read.numberAt(arguments, 3).orElse(90.0);
-            boolean closes = read.wordAt(arguments, 4).filter("closed"::equals).isPresent();
+        private List<PathStep> drawAnArc(List<Value> arguments) {
+            PairValue centre = read.readThePairAt(arguments, 0).orElse(PairValue.of(0, 0));
+            PairValue radius = read.readThePairAt(arguments, 1).orElse(PairValue.of(wide, high));
+            double begins = read.readTheNumberAt(arguments, 2).orElse(0.0);
+            double turns = read.readTheNumberAt(arguments, 3).orElse(90.0);
+            boolean closes = read.readTheWordAt(arguments, 4).filter("closed"::equals).isPresent();
             return List.of(new PathStep.ArcTo(centre.x(), centre.y(),
                     radius.x(), radius.y(), begins, turns, closes));
         }
@@ -655,18 +655,18 @@ public final class DrawDialect {
         private static final int THE_FIRST_TRIANGLE_COLOUR = 3;
 
         private void paintTheTriangle(List<Value> arguments) {
-            List<Colour> corners = theThreeCornerColours(arguments);
+            List<Colour> corners = readTheThreeCornerColours(arguments);
             if (corners.size() < 3) {
-                paint(aTriangle(arguments));
+                paint(drawATriangle(arguments));
                 return;
             }
-            PairValue first = read.pairAt(arguments, 0).orElse(PairValue.of(0, 0));
-            PairValue second = read.pairAt(arguments, 1).orElse(PairValue.of(wide, high));
-            PairValue third = read.pairAt(arguments, 2)
+            PairValue first = read.readThePairAt(arguments, 0).orElse(PairValue.of(0, 0));
+            PairValue second = read.readThePairAt(arguments, 1).orElse(PairValue.of(wide, high));
+            PairValue third = read.readThePairAt(arguments, 2)
                     .orElse(PairValue.of(first.x(), second.y()));
             PaintState wasStanding = state;
-            List<PathStep> outline = aTriangle(arguments);
-            for (GouraudMesh.Piece piece : GouraudMesh.shading(
+            List<PathStep> outline = drawATriangle(arguments);
+            for (GouraudMesh.Piece piece : GouraudMesh.shade(
                     new GouraudMesh.Corner(first.x(), first.y(), corners.get(0)),
                     new GouraudMesh.Corner(second.x(), second.y(), corners.get(1)),
                     new GouraudMesh.Corner(third.x(), third.y(), corners.get(2)))) {
@@ -675,16 +675,16 @@ public final class DrawDialect {
                         .withFillGradient(Optional.empty())
                         .withFill(Optional.of(piece.colour()));
                 painted.add(new PaintInstruction.Drawn(
-                        whereTheClipStandsNow().insideTheShape(outline),
-                        piece.path(), theTransformOnTheSurface(), theStateARendererGets()));
+                        findWhereTheClipStandsNow().fitInsideTheShape(outline),
+                        piece.path(), findTheTransformOnTheSurface(), makeTheStateARendererGets()));
             }
             state = wasStanding.withFill(Optional.empty())
                     .withFillGradient(Optional.empty());
-            paint(aTriangle(arguments));
+            paint(drawATriangle(arguments));
             state = wasStanding;
         }
 
-        private List<Colour> theThreeCornerColours(List<Value> arguments) {
+        private List<Colour> readTheThreeCornerColours(List<Value> arguments) {
             List<Colour> corners = new ArrayList<>();
             for (int slot = THE_FIRST_TRIANGLE_COLOUR;
                     slot < THE_FIRST_TRIANGLE_COLOUR + 3; slot++) {
@@ -696,10 +696,10 @@ public final class DrawDialect {
             return corners;
         }
 
-        private List<PathStep> aTriangle(List<Value> arguments) {
-            PairValue first = read.pairAt(arguments, 0).orElse(PairValue.of(0, 0));
-            PairValue second = read.pairAt(arguments, 1).orElse(PairValue.of(wide, high));
-            PairValue third = read.pairAt(arguments, 2)
+        private List<PathStep> drawATriangle(List<Value> arguments) {
+            PairValue first = read.readThePairAt(arguments, 0).orElse(PairValue.of(0, 0));
+            PairValue second = read.readThePairAt(arguments, 1).orElse(PairValue.of(wide, high));
+            PairValue third = read.readThePairAt(arguments, 2)
                     .orElse(PairValue.of(first.x(), second.y()));
             return List.of(
                     new PathStep.MoveTo(first.x(), first.y()),
@@ -708,30 +708,30 @@ public final class DrawDialect {
                     new PathStep.Close());
         }
 
-        private List<PathStep> aSplineThroughEveryPoint(List<Value> arguments) {
-            List<PairValue> knots = read.everyPairIn(arguments);
+        private List<PathStep> drawASplineThroughEveryPoint(List<Value> arguments) {
+            List<PairValue> knots = read.collectEveryPairIn(arguments);
             if (knots.size() < 2) {
                 return List.of();
             }
-            boolean closes = read.wordAt(arguments, 1).filter("closed"::equals).isPresent();
-            return oneCubicPerSpanThrough(knots, closes);
+            boolean closes = read.readTheWordAt(arguments, 1).filter("closed"::equals).isPresent();
+            return fitOneCubicPerSpanThrough(knots, closes);
         }
 
-        private List<PathStep> aHandWrittenPath(List<Value> arguments) {
+        private List<PathStep> drawAHandWrittenPath(List<Value> arguments) {
             return arguments.isEmpty() || !(arguments.getFirst() instanceof AnyBlockValue steps)
                     ? List.of()
-                    : shapes.pathFrom(steps);
+                    : shapes.readThePathFrom(steps);
         }
 
-        private List<PathStep> oneCubicPerSpanThrough(List<PairValue> knots, boolean closes) {
+        private List<PathStep> fitOneCubicPerSpanThrough(List<PairValue> knots, boolean closes) {
             List<PathStep> path = new ArrayList<>();
             path.add(new PathStep.MoveTo(knots.getFirst().x(), knots.getFirst().y()));
             int spans = closes ? knots.size() : knots.size() - 1;
             for (int span = 0; span < spans; span++) {
-                PairValue before = knotAt(knots, span - 1, closes);
-                PairValue from = knotAt(knots, span, closes);
-                PairValue to = knotAt(knots, span + 1, closes);
-                PairValue after = knotAt(knots, span + 2, closes);
+                PairValue before = readTheKnotAt(knots, span - 1, closes);
+                PairValue from = readTheKnotAt(knots, span, closes);
+                PairValue to = readTheKnotAt(knots, span + 1, closes);
+                PairValue after = readTheKnotAt(knots, span + 2, closes);
                 path.add(new PathStep.CubicTo(
                         from.x() + (to.x() - before.x()) / THE_CATMULL_ROM_SIXTH,
                         from.y() + (to.y() - before.y()) / THE_CATMULL_ROM_SIXTH,
@@ -745,7 +745,7 @@ public final class DrawDialect {
             return List.copyOf(path);
         }
 
-        private PairValue knotAt(List<PairValue> knots, int at, boolean closes) {
+        private PairValue readTheKnotAt(List<PairValue> knots, int at, boolean closes) {
             if (closes) {
                 return knots.get(Math.floorMod(at, knots.size()));
             }

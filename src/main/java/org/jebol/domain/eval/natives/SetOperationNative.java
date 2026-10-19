@@ -18,9 +18,9 @@ public abstract class SetOperationNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("first", A_SET),
-                Parameter.required("second", A_SET),
-                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)));
+        return List.of(Parameter.of("first", A_SET),
+                Parameter.of("second", A_SET),
+                Parameter.belongTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -32,9 +32,9 @@ public abstract class SetOperationNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> Combining.sets(
                 arguments.getFirst(), arguments.get(1),
-                SetOperation.named(nativeName()).orElseThrow(),
+                SetOperation.findTheOperationNamed(nativeName()).orElseThrow(),
                 refinements.contains("case"),
-                recordWidthOf(argumentOf("skip", 0, arguments, refinements)));
+                recordWidthOf(readTheArgumentOf("skip", 0, arguments, refinements)));
     }
 
     private int recordWidthOf(Optional<Value> width) {

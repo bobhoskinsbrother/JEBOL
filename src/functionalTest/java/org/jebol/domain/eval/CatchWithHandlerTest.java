@@ -24,21 +24,21 @@ class CatchWithHandlerTest {
 
     @Test
     @DisplayName("a RETURN inside the handler answers rather than escaping")
-    void theHandlerMayReturnEarly() {
+    void letsTheHandlerReturnEarly() {
         assertThat(answerTo(HANDLER + "catch/with [a: 1 throw 3 a: 2] :on-catch"))
                 .isEqualTo("30");
     }
 
     @Test
     @DisplayName("the block after the throw is not run")
-    void theThrowStopsTheBlock() {
+    void stopsTheBlockAtTheThrow() {
         assertThat(answerTo(HANDLER + "a: 0 catch/with [a: 1 throw 3 a: 2] :on-catch a"))
                 .isEqualTo("1");
     }
 
     @Test
     @DisplayName("the handler is given the name the throw carried")
-    void theHandlerSeesTheName() {
+    void showsTheHandlerTheName() {
         assertThat(answerTo(
                 HANDLER + "\"b3\" = catch/all/with [a: 1 throw/name 3 'foo a: 2] :on-catch"))
                 .isEqualTo("#(true)");
@@ -46,7 +46,7 @@ class CatchWithHandlerTest {
 
     @Test
     @DisplayName("an unnamed throw gives the handler none, not nothing")
-    void anUnnamedThrowStillNamesSomething() {
+    void stillNamesSomethingForAnUnnamedThrow() {
         assertThat(answerTo(
                 "seen: none h: func [value [any-type!] name] [seen: :name 1] "
                         + "catch/with [throw 3] :h none? seen"))
@@ -55,25 +55,25 @@ class CatchWithHandlerTest {
 
     @Test
     @DisplayName("the handler does not run when nothing was thrown")
-    void theHandlerIsNotAFinally() {
+    void runsTheHandlerOnlyOnAThrow() {
         assertThat(answerTo(HANDLER + "catch/with [1 + 1] :on-catch")).isEqualTo("2");
     }
 
     @Test
     @DisplayName("a block handler still works")
-    void aBlockHandlerIsUnaffected() {
+    void leavesABlockHandlerUnaffected() {
         assertThat(answerTo("catch/with [throw 3] [99]")).isEqualTo("99");
     }
 
     @Test
     @DisplayName("a plain CATCH is unaffected")
-    void theOrdinaryCatchStillWorks() {
+    void stillCatchesOrdinarily() {
         assertThat(answerTo("catch [throw 3]")).isEqualTo("3");
     }
 
     @Test
     @DisplayName("a function applied with too few arguments gets unset, not a missing word")
-    void theMissingArgumentsAreUnset() {
+    void leavesTheMissingArgumentsUnset() {
         assertThat(answerTo(
                 "h: func [value [any-type!] name] [unset? :name] catch/with [throw 3] :h"))
                 .isEqualTo("#(false)");

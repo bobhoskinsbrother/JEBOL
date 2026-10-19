@@ -10,7 +10,7 @@ public final class ScreenEventQueue {
 
     private final Deque<ScreenEvent> queued = new ArrayDeque<>();
 
-    public void add(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
+    public void add(ScreenEventType kind, GobValue window, ScreenEventDetail detail) {
         queued.add(new ScreenEvent(kind, window, detail));
     }
 

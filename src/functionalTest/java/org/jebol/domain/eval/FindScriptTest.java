@@ -16,14 +16,14 @@ class FindScriptTest {
 
     @Test
     @DisplayName("a header at the start is found")
-    void aHeaderAtTheStart() {
+    void findsAHeaderAtTheStart() {
         assertThat(answerTo("(find-script to binary! \"rebol [] 1\") = to binary! \"rebol [] 1\""))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("spaces and lines before it are permitted")
-    void spacesBeforeAreAllowed() {
+    void allowsSpacesBefore() {
         assertThat(answerTo("true? find-script to binary! \"   rebol [] 1\""))
                 .isEqualTo("#(true)");
         assertThat(answerTo("true? find-script to binary! \"^/rebol [] 1\""))
@@ -32,41 +32,41 @@ class FindScriptTest {
 
     @Test
     @DisplayName("a byte order mark counts as a space")
-    void theMarkIsNotPartOfTheText() {
+    void leavesTheMarkOutOfTheText() {
         assertThat(answerTo("true? find-script to binary! \"^(FEFF)rebol [] 1\""))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("other text on the same line means there is no header")
-    void theHeaderMustBeginALine() {
+    void needsTheHeaderToBeginALine() {
         assertThat(answerTo("none? find-script to binary! \"xx rebol [] 1\""))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("the case of the word does not matter")
-    void anyCaseIsAHeader() {
+    void acceptsAHeaderInAnyCase() {
         assertThat(answerTo("true? find-script to binary! \"REBOL [] 1\"")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a bracket must follow, after any number of spaces")
-    void aBracketMustFollow() {
+    void needsABracketToFollow() {
         assertThat(answerTo("none? find-script to binary! \"rebol 1\"")).isEqualTo("#(true)");
         assertThat(answerTo("true? find-script to binary! \"rebol  [] 1\"")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("text with no header, and no text at all, both give none")
-    void theDegenerateSources() {
+    void handlesTheDegenerateSources() {
         assertThat(answerTo("none? find-script to binary! \"1 + 1\"")).isEqualTo("#(true)");
         assertThat(answerTo("none? find-script to binary! \"\"")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("SCRIPT? takes a string as readily as a binary")
-    void scriptTakesEither() {
+    void takesEitherForScript() {
         assertThat(answerTo("true? script? \"rebol [] 1\"")).isEqualTo("#(true)");
         assertThat(answerTo("none? script? \"1 + 1\"")).isEqualTo("#(true)");
     }

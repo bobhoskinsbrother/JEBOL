@@ -27,14 +27,14 @@ public final class WebHttp implements HttpPort {
                 (int) request.timeout().orElse(Duration.ofMillis(
                         WHEN_THE_SPEC_NAMES_NO_TIMEOUT)).toMillis())
                 .await();
-        String refused = refusedOf(answer);
+        String refused = readTheRefusalOf(answer);
         if (!NOTHING_WAS_REFUSED.equals(refused)) {
             throw new Refused("no-connect", refused, request.url());
         }
         return new Answer(
                 statusOf(answer),
-                linesOf(namesOf(answer)),
-                linesOf(valuesOf(answer)),
+                linesOf(readTheNamesOf(answer)),
+                linesOf(readTheValuesOf(answer)),
                 asBytes(answer));
     }
 
@@ -47,9 +47,9 @@ public final class WebHttp implements HttpPort {
     }
 
     private static byte[] asBytes(JSObject answer) {
-        byte[] bytes = new byte[octetsOf(answer)];
+        byte[] bytes = new byte[countTheOctetsOf(answer)];
         for (int at = 0; at < bytes.length; at++) {
-            bytes[at] = octetAt(answer, at);
+            bytes[at] = readTheOctetAt(answer, at);
         }
         return bytes;
     }
@@ -62,19 +62,19 @@ public final class WebHttp implements HttpPort {
     private static native int statusOf(JSObject answer);
 
     @JSBody(params = "answer", script = "return answer.refused;")
-    private static native String refusedOf(JSObject answer);
+    private static native String readTheRefusalOf(JSObject answer);
 
     @JSBody(params = "answer", script = "return answer.names;")
-    private static native String namesOf(JSObject answer);
+    private static native String readTheNamesOf(JSObject answer);
 
     @JSBody(params = "answer", script = "return answer.values;")
-    private static native String valuesOf(JSObject answer);
+    private static native String readTheValuesOf(JSObject answer);
 
     @JSBody(params = "answer", script = "return answer.body.length;")
-    private static native int octetsOf(JSObject answer);
+    private static native int countTheOctetsOf(JSObject answer);
 
     @JSBody(params = {"answer", "at"}, script = "return answer.body[at];")
-    private static native byte octetAt(JSObject answer, int at);
+    private static native byte readTheOctetAt(JSObject answer, int at);
 
     @JSBody(params = {"url", "method", "names", "values", "content", "followsRedirects", "milliseconds"},
             script = """

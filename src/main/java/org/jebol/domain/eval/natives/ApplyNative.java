@@ -23,8 +23,8 @@ public class ApplyNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("func"),
-                Parameter.required("block", Set.of(BlockValue.TYPE)));
+        return List.of(Parameter.of("func"),
+                Parameter.of("block", Set.of(BlockValue.TYPE)));
     }
 
     @Override
@@ -46,9 +46,9 @@ public class ApplyNative extends DefaultNative {
             }
             if (callee instanceof NativeValue builtIn
                     && !builtIn.refinementsDeclaredApart().isEmpty()) {
-                return appliedWithRefinements(builtIn, supplied, evaluator);
+                return applyWithRefinements(builtIn, supplied, evaluator);
             }
-            return evaluator.applyFunction(callee, exactlyAsManyAsItTakes(callee, supplied));
+            return evaluator.applyFunction(callee, takeExactlyAsManyAsItTakes(callee, supplied));
         };
     }
 
@@ -56,8 +56,8 @@ public class ApplyNative extends DefaultNative {
         return callee instanceof NativeValue builtIn && builtIn.nativeName().equals("do");
     }
 
-    private List<Value> exactlyAsManyAsItTakes(Value callee, List<Value> supplied) {
-        int wanted = (int) arityOf(callee);
+    private List<Value> takeExactlyAsManyAsItTakes(Value callee, List<Value> supplied) {
+        int wanted = (int) countTheArityOf(callee);
         List<Value> exactly = new ArrayList<>(
                 supplied.subList(0, Math.min(wanted, supplied.size())));
         while (exactly.size() < wanted) {
@@ -66,19 +66,19 @@ public class ApplyNative extends DefaultNative {
         return exactly;
     }
 
-    private long arityOf(Value callee) {
+    private long countTheArityOf(Value callee) {
         return switch (callee) {
             case NativeValue built -> built.parameters().stream()
                     .filter(Parameter::consumesAnArgument)
                     .filter(parameter -> parameter.owningRefinement().isEmpty())
                     .count();
             case DefinedFunctionValue function -> function.parameters().size();
-            case OperatorValue operator -> arityOf(operator.underlying());
+            case OperatorValue operator -> countTheArityOf(operator.underlying());
             default -> 0;
         };
     }
 
-    private Value appliedWithRefinements(
+    private Value applyWithRefinements(
             NativeValue builtIn, List<Value> supplied, Evaluator evaluator) {
 
         Set<String> asked = new LinkedHashSet<>();
@@ -86,7 +86,7 @@ public class ApplyNative extends DefaultNative {
         Map<String, List<Value>> belongingTo = new LinkedHashMap<>();
         Optional<String> reading = Optional.empty();
         int at = 0;
-        for (Value word : theWordsItTakes(builtIn, evaluator)) {
+        for (Value word : listTheWordsItTakes(builtIn, evaluator)) {
             Value next = at < supplied.size() ? supplied.get(at) : NoneValue.none();
             at++;
             if (word instanceof RefinementValue marker) {
@@ -101,21 +101,21 @@ public class ApplyNative extends DefaultNative {
                 belongingTo.get(reading.get()).add(next);
             }
         }
-        NativeValue refined = builtIn.askedFor(asked);
+        NativeValue refined = builtIn.askFor(asked);
         return evaluator.applyFunction(refined,
-                argumentsInDeclaredOrder(refined, asked, beforeAnyRefinement, belongingTo));
+                listTheArgumentsInDeclaredOrder(refined, asked, beforeAnyRefinement, belongingTo));
     }
 
-    private List<Value> theWordsItTakes(NativeValue builtIn, Evaluator evaluator) {
-        Value reflect = evaluator.systemContext().valueAt("reflect");
+    private List<Value> listTheWordsItTakes(NativeValue builtIn, Evaluator evaluator) {
+        Value reflect = evaluator.systemContext().readValueAt("reflect");
         return evaluator.applyFunction(reflect, List.of(builtIn, WordValue.of("words")))
                 instanceof AnyBlockValue words
                 ? words.remaining()
                 : List.of();
     }
 
-    private List<Value> argumentsInDeclaredOrder(NativeValue refined, Set<String> asked,
-            List<Value> beforeAnyRefinement, Map<String, List<Value>> belongingTo) {
+    private List<Value> listTheArgumentsInDeclaredOrder(NativeValue refined, Set<String> asked,
+                                                        List<Value> beforeAnyRefinement, Map<String, List<Value>> belongingTo) {
 
         Deque<Value> plain = new ArrayDeque<>(beforeAnyRefinement);
         Map<String, Deque<Value>> refinementArguments = new LinkedHashMap<>();

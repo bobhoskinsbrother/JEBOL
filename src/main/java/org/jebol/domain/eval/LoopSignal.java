@@ -20,7 +20,7 @@ public final class LoopSignal extends RuntimeException {
         return BREAK;
     }
 
-    public static LoopSignal breakingWith(Value answer) {
+    public static LoopSignal breakWith(Value answer) {
         return new LoopSignal(answer);
     }
 

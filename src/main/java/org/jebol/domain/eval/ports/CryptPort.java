@@ -239,8 +239,8 @@ public final class CryptPort {
         working.algorithm = algorithm;
         working.decrypting = decrypting;
         working.key = key;
-        working.vector = noWiderThanAVector(vector);
-        port.setField("state", HandleValue.context(HANDLE_TYPE,
+        working.vector = trimToAVector(vector);
+        port.setField("state", HandleValue.wrapAContext(HANDLE_TYPE,
                 System.identityHashCode(port.context()),
                 JavaObjectValue.of(working)));
     }
@@ -249,8 +249,8 @@ public final class CryptPort {
         port.setField("state", NoneValue.none());
     }
 
-    private Working inProgress(PortValue port) {
-        if (port.fieldValue("state") instanceof HandleValue held
+    private Working findTheWorkInProgress(PortValue port) {
+        if (port.readTheFieldValue("state") instanceof HandleValue held
                 && HANDLE_TYPE.equals(held.typeName())
                 && held.payload() instanceof JavaObjectValue wrapped
                 && wrapped.held().orElse(null) instanceof Working working) {
@@ -260,7 +260,7 @@ public final class CryptPort {
     }
 
     public boolean isWorking(PortValue port) {
-        return inProgress(port) != null;
+        return findTheWorkInProgress(port) != null;
     }
 
     public void refuseWhenClosed(PortValue port) {
@@ -268,23 +268,23 @@ public final class CryptPort {
             return;
         }
         throw Raised.of(EvaluationFailure.NOT_OPEN,
-                port.fieldValue("spec") instanceof ObjectValue spec
-                        ? spec.fieldValue("ref")
+                port.readTheFieldValue("spec") instanceof ObjectValue spec
+                        ? spec.readTheFieldValue("ref")
                         : NoneValue.none());
     }
 
     public Value modify(PortValue port, String field, Value given) {
-        Working working = inProgress(port);
+        Working working = findTheWorkInProgress(port);
         if (working == null) {
             return LogicValue.of(false);
         }
         boolean accepted = switch (field) {
-            case "algorithm" -> anAlgorithmWasSet(working, given);
-            case "direction" -> aDirectionWasSet(working, given);
-            case "key" -> aRunOfOctetsOrTextWasSet(given, octets -> working.key = octets);
-            case "iv", "init-vector" -> aVectorOfOctetsOnlyWasSet(working, given);
-            case "tag-length" -> aCountWasSet(given, count -> working.tagOctets = count);
-            case "aad-length" -> aCountWasSet(given,
+            case "algorithm" -> setAnAlgorithm(working, given);
+            case "direction" -> setADirection(working, given);
+            case "key" -> setARunOfOctetsOrText(given, octets -> working.key = octets);
+            case "iv", "init-vector" -> setAVectorOfOctetsOnly(working, given);
+            case "tag-length" -> setACount(given, count -> working.tagOctets = count);
+            case "aad-length" -> setACount(given,
                     count -> working.toAuthenticateOctets = count);
             default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
                     WordValue.of(field));
@@ -301,7 +301,7 @@ public final class CryptPort {
     private static final Set<String> TOLD_WITHOUT_STARTING_AGAIN =
             Set.of("tag-length", "aad-length");
 
-    private boolean anAlgorithmWasSet(Working working, Value given) {
+    private boolean setAnAlgorithm(Working working, Value given) {
         if (!(given instanceof AnyWordValue asked) || !serves(asked.canonical())) {
             return false;
         }
@@ -309,7 +309,7 @@ public final class CryptPort {
         return true;
     }
 
-    private boolean aDirectionWasSet(Working working, Value given) {
+    private boolean setADirection(Working working, Value given) {
         if (!(given instanceof AnyWordValue asked)) {
             return false;
         }
@@ -324,7 +324,7 @@ public final class CryptPort {
         return false;
     }
 
-    private boolean aRunOfOctetsOrTextWasSet(
+    private boolean setARunOfOctetsOrText(
             Value given, java.util.function.Consumer<byte[]> into) {
 
         if (given instanceof NoneValue) {
@@ -342,19 +342,19 @@ public final class CryptPort {
         return false;
     }
 
-    private boolean aVectorOfOctetsOnlyWasSet(Working working, Value given) {
+    private boolean setAVectorOfOctetsOnly(Working working, Value given) {
         if (given instanceof NoneValue) {
             working.vector = new byte[0];
             return true;
         }
         if (given instanceof BinaryValue octets) {
-            working.vector = noWiderThanAVector(octets.octetsFromHere());
+            working.vector = trimToAVector(octets.octetsFromHere());
             return true;
         }
         return false;
     }
 
-    private boolean aCountWasSet(
+    private boolean setACount(
             Value given, java.util.function.IntConsumer into) {
 
         if (!(given instanceof IntegerValue(long magnitude))) {
@@ -365,7 +365,7 @@ public final class CryptPort {
     }
 
     public void write(PortValue port, byte[] octets) {
-        Working working = inProgress(port);
+        Working working = findTheWorkInProgress(port);
         if (working == null) {
             return;
         }
@@ -384,28 +384,28 @@ public final class CryptPort {
             return;
         }
         byte[] waiting = joined.of(working.heldBack, octets);
-        int wholePart = howMuchOfItCanBeTransformed(working.works(), waiting.length);
+        int wholePart = measureHowMuchCanBeTransformed(working.works(), waiting.length);
         if (wholePart > 0) {
             addToWhatIsReady(working,
-                    transformed(working, Arrays.copyOf(waiting, wholePart)));
+                    transform(working, Arrays.copyOf(waiting, wholePart)));
         }
         working.heldBack = Arrays.copyOfRange(waiting, wholePart, waiting.length);
     }
 
-    private int howMuchOfItCanBeTransformed(Cipherworks works, int gathered) {
+    private int measureHowMuchCanBeTransformed(Cipherworks works, int gathered) {
         int block = works.blockOctets();
         if (block == 0 || works.mode() == Mode.STREAM) {
-            return allOfItOrNoneWhileItIsShortOfABlock(gathered, block);
+            return takeAllOrNoneWhileShortOfABlock(gathered, block);
         }
         return gathered - gathered % block;
     }
 
-    private int allOfItOrNoneWhileItIsShortOfABlock(int gathered, int block) {
+    private int takeAllOrNoneWhileShortOfABlock(int gathered, int block) {
         return gathered < block ? 0 : gathered;
     }
 
     public void update(PortValue port) {
-        Working working = inProgress(port);
+        Working working = findTheWorkInProgress(port);
         if (working == null || working.wouldNotRun) {
             return;
         }
@@ -415,7 +415,7 @@ public final class CryptPort {
                 finishGalois(working);
             }
             if (working.works().mode() == Mode.CHACHA_WITH_POLY1305) {
-                addToWhatIsReady(working, theChaChaAnswer(working).tag());
+                addToWhatIsReady(working, sealWithChaCha(working).tag());
             }
             return;
         }
@@ -423,20 +423,20 @@ public final class CryptPort {
             return;
         }
         addToWhatIsReady(working,
-                transformed(working, paddedWithNoughtsToAWholeBlock(working)));
+                transform(working, padWithNoughtsToAWholeBlock(working)));
         working.heldBack = new byte[0];
     }
 
-    private byte[] paddedWithNoughtsToAWholeBlock(Working working) {
+    private byte[] padWithNoughtsToAWholeBlock(Working working) {
         return Arrays.copyOf(working.heldBack, working.works().blockOctets());
     }
 
     public Value read(PortValue port) {
-        Working working = inProgress(port);
+        Working working = findTheWorkInProgress(port);
         if (working == null || working.wouldNotRun || !working.somethingIsReady) {
             return NoneValue.none();
         }
-        Value answered = binaryOf(working.ready);
+        Value answered = wrapInABinary(working.ready);
         working.ready = new byte[0];
         working.somethingIsReady = false;
         if (working.works() != null
@@ -472,33 +472,33 @@ public final class CryptPort {
             return;
         }
         if (works.family() == Family.CAMELLIA || works.family() == Family.ARIA) {
-            working.chaining = fittedTo(working.vector, Camellia.BLOCK);
+            working.chaining = fitTo(working.vector, Camellia.BLOCK);
             return;
         }
-        working.running = cipherFor(working, works.mode() == Mode.CHAINED
+        working.running = makeACipherFor(working, works.mode() == Mode.CHAINED
                 || works.mode() == Mode.STREAM);
     }
 
-    private OneBlock theBlockCipherBehind(
+    private OneBlock makeTheBlockCipherBehind(
             Working working, boolean undoing) {
 
         Cipherworks works = working.works();
-        byte[] key = fittedTo(working.key, works.keyOctets());
+        byte[] key = fitTo(working.key, works.keyOctets());
         if (works.family() == Family.CAMELLIA) {
-            return Camellia.under(key, undoing);
+            return Camellia.keyWith(key, undoing);
         }
         if (works.family() == Family.ARIA) {
-            return Aria.under(key, undoing);
+            return Aria.keyWith(key, undoing);
         }
         try {
-            return OneBlock.jvmAes(key);
+            return OneBlock.useTheJvmAes(key);
         } catch (GeneralSecurityException | UnsupportedOperationException refused) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC,
                     WordValue.of(working.algorithm));
         }
     }
 
-    private Cipher cipherFor(Working working, boolean needsAVector) {
+    private Cipher makeACipherFor(Working working, boolean needsAVector) {
         Cipherworks works = working.works();
         try {
             Cipher cipher = Cipher.getInstance(works.transformation());
@@ -506,15 +506,15 @@ public final class CryptPort {
                     ? Cipher.DECRYPT_MODE
                     : Cipher.ENCRYPT_MODE;
             SecretKeySpec key = new SecretKeySpec(
-                    fittedTo(working.key, works.keyOctets()), works.keyAlgorithm());
+                    fitTo(working.key, works.keyOctets()), works.keyAlgorithm());
             if (works.mode() == Mode.STREAM) {
-                byte[] whole = fittedTo(working.vector, WIDEST_VECTOR);
+                byte[] whole = fitTo(working.vector, WIDEST_VECTOR);
                 cipher.init(direction, key, new javax.crypto.spec.ChaCha20ParameterSpec(
                         Arrays.copyOf(whole, CHACHA20_COUNTER_AT),
-                        counterMostSignificantFirstAfterTheNonce(whole)));
+                        readTheCounterMostSignificantFirstAfterTheNonce(whole)));
             } else if (needsAVector) {
                 cipher.init(direction, key, new IvParameterSpec(
-                        fittedTo(working.vector, works.blockOctets())));
+                        fitTo(working.vector, works.blockOctets())));
             } else {
                 cipher.init(direction, key);
             }
@@ -525,7 +525,7 @@ public final class CryptPort {
         }
     }
 
-    private int counterMostSignificantFirstAfterTheNonce(byte[] vector) {
+    private int readTheCounterMostSignificantFirstAfterTheNonce(byte[] vector) {
         int counter = 0;
         for (int at = CHACHA20_COUNTER_AT; at < WIDEST_VECTOR; at++) {
             counter = counter << 8 | vector[at] & 0xFF;
@@ -533,24 +533,24 @@ public final class CryptPort {
         return counter;
     }
 
-    private byte[] transformed(Working working, byte[] octets) {
+    private byte[] transform(Working working, byte[] octets) {
         if (working.works().family() == Family.CAMELLIA
                 || working.works().family() == Family.ARIA) {
-            return throughAWrittenOutCipher(working, octets);
+            return runThroughAWrittenOutCipher(working, octets);
         }
         byte[] answered = working.running.update(octets);
         return answered == null ? new byte[0] : answered;
     }
 
-    private byte[] throughAWrittenOutCipher(
+    private byte[] runThroughAWrittenOutCipher(
             Working working, byte[] octets) {
-        OneBlock cipher = theBlockCipherBehind(working, working.decrypting);
+        OneBlock cipher = makeTheBlockCipherBehind(working, working.decrypting);
         if (working.works().mode() == Mode.CODEBOOK) {
-            return BlockModes.codebook(cipher, octets);
+            return BlockModes.runTheCodebook(cipher, octets);
         }
         return working.decrypting
-                ? BlockModes.chainingBackwards(cipher, working.chaining, octets)
-                : BlockModes.chainingForwards(cipher, working.chaining, octets);
+                ? BlockModes.chainBackwards(cipher, working.chaining, octets)
+                : BlockModes.chainForwards(cipher, working.chaining, octets);
     }
 
     private void gatherToAuthenticate(Working working, byte[] octets) {
@@ -560,7 +560,7 @@ public final class CryptPort {
         }
         byte[] rest = octets;
         if (working.toAuthenticateOctets > 0 && !working.headerTaken) {
-            if (thisWriteIsTooShortToHoldTheHeaderAndIsDiscardedWhole(
+            if (isTooShortToHoldTheHeader(
                     working, octets)) {
                 return;
             }
@@ -572,13 +572,13 @@ public final class CryptPort {
         }
         working.gatheredForGalois = joined.of(working.gatheredForGalois, rest);
         if (working.works().mode() == Mode.COUNTER_WITH_CBC_MAC) {
-            throughCounterWithCbcMac(working);
+            runThroughCounterWithCbcMac(working);
             return;
         }
-        addToWhatIsReady(working, theOctetsNotHandedOutYet(working));
+        addToWhatIsReady(working, takeTheOctetsNotHandedOutYet(working));
     }
 
-    private boolean thisWriteIsTooShortToHoldTheHeaderAndIsDiscardedWhole(
+    private boolean isTooShortToHoldTheHeader(
             Working working, byte[] octets) {
         return octets.length < working.toAuthenticateOctets;
     }
@@ -586,23 +586,23 @@ public final class CryptPort {
     private void gatherForChaCha(Working working, byte[] octets) {
         if (working.theNextWriteIsAHeader) {
             working.authenticated = octets;
-            working.chaining = ChaChaWithPoly1305.nonceFrom(
-                    fittedTo(working.vector, ChaChaWithPoly1305.NONCE), octets);
+            working.chaining = ChaChaWithPoly1305.makeTheNonceFrom(
+                    fitTo(working.vector, ChaChaWithPoly1305.NONCE), octets);
             working.theNextWriteIsAHeader = false;
             return;
         }
         working.gatheredForGalois = joined.of(working.gatheredForGalois, octets);
-        addToWhatIsReady(working, theOctetsNotHandedOutYet(working));
+        addToWhatIsReady(working, takeTheOctetsNotHandedOutYet(working));
     }
 
-    private void throughCounterWithCbcMac(Working working) {
+    private void runThroughCounterWithCbcMac(Working working) {
         OneBlock cipher =
-                theBlockCipherBehind(working, COUNTING_IS_ITS_OWN_INVERSE);
+                makeTheBlockCipherBehind(working, COUNTING_IS_ITS_OWN_INVERSE);
         CounterWithCbcMac.Sealed answer = working.decrypting
-                ? counterWithCbcMac.deciphered(cipher, working.vector,
+                ? counterWithCbcMac.decipher(cipher, working.vector,
                         working.tagOctets, working.authenticated,
                         working.gatheredForGalois)
-                : counterWithCbcMac.enciphered(cipher, working.vector,
+                : counterWithCbcMac.encipher(cipher, working.vector,
                         working.tagOctets, working.authenticated,
                         working.gatheredForGalois);
         if (!answer.worked()) {
@@ -618,41 +618,41 @@ public final class CryptPort {
         if (working.tagOctets == NO_TAG_AT_ALL) {
             return;
         }
-        if (!aTagOfThatLengthCanBeIssued(working.tagOctets)) {
+        if (!canIssueATagOfThatLength(working.tagOctets)) {
             working.wouldNotRun = true;
             return;
         }
         addToWhatIsReady(working,
-                Arrays.copyOf(theWholeTag(working), working.tagOctets));
+                Arrays.copyOf(readTheWholeTag(working), working.tagOctets));
     }
 
     private static final int SHORTEST_TAG = 4;
 
     private static final int NO_TAG_AT_ALL = 0;
 
-    private boolean aTagOfThatLengthCanBeIssued(int wanted) {
+    private boolean canIssueATagOfThatLength(int wanted) {
         return wanted >= SHORTEST_TAG && wanted <= CounterWithGalois.WHOLE_TAG;
     }
 
-    private byte[] theOctetsNotHandedOutYet(Working working) {
-        byte[] whole = theCipherTextWithoutTheTag(working);
+    private byte[] takeTheOctetsNotHandedOutYet(Working working) {
+        byte[] whole = takeTheCipherTextWithoutTheTag(working);
         byte[] fresh = Arrays.copyOfRange(whole,
                 Math.min(working.handedOut, whole.length), whole.length);
         working.handedOut = whole.length;
         return fresh;
     }
 
-    private byte[] theCipherTextWithoutTheTag(Working working) {
+    private byte[] takeTheCipherTextWithoutTheTag(Working working) {
         if (working.works().mode() == Mode.CHACHA_WITH_POLY1305) {
-            return theChaChaAnswer(working).octets();
+            return sealWithChaCha(working).octets();
         }
-        return theGaloisAnswer(working).octets();
+        return sealWithGalois(working).octets();
     }
 
-    private ChaChaWithPoly1305.Sealed theChaChaAnswer(Working working) {
+    private ChaChaWithPoly1305.Sealed sealWithChaCha(Working working) {
         try {
-            return ChaChaWithPoly1305.through(
-                    fittedTo(working.key, working.works().keyOctets()),
+            return ChaChaWithPoly1305.seal(
+                    fitTo(working.key, working.works().keyOctets()),
                     working.chaining, working.authenticated,
                     working.gatheredForGalois, working.decrypting);
         } catch (UnsupportedOperationException unavailable) {
@@ -660,29 +660,29 @@ public final class CryptPort {
         }
     }
 
-    private byte[] theWholeTag(Working working) {
-        return theGaloisAnswer(working).tag();
+    private byte[] readTheWholeTag(Working working) {
+        return sealWithGalois(working).tag();
     }
 
-    private CounterWithGalois.Sealed theGaloisAnswer(Working working) {
-        return CounterWithGalois.through(
-                theBlockCipherBehind(working, COUNTING_IS_ITS_OWN_INVERSE),
+    private CounterWithGalois.Sealed sealWithGalois(Working working) {
+        return CounterWithGalois.seal(
+                makeTheBlockCipherBehind(working, COUNTING_IS_ITS_OWN_INVERSE),
                 working.vector,
                 working.authenticated, working.gatheredForGalois,
                 working.decrypting);
     }
 
-    private byte[] fittedTo(byte[] given, int wanted) {
+    private byte[] fitTo(byte[] given, int wanted) {
         return Arrays.copyOf(given, wanted);
     }
 
-    private byte[] noWiderThanAVector(byte[] given) {
+    private byte[] trimToAVector(byte[] given) {
         return given.length <= WIDEST_VECTOR
                 ? given.clone()
                 : Arrays.copyOf(given, WIDEST_VECTOR);
     }
 
-    private Value binaryOf(byte[] octets) {
+    private Value wrapInABinary(byte[] octets) {
         int[] widened = new int[octets.length];
         for (int at = 0; at < octets.length; at++) {
             widened[at] = octets[at] & 0xFF;

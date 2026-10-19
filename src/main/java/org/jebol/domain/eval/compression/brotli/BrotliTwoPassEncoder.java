@@ -74,7 +74,7 @@ final class BrotliTwoPassEncoder {
             while (left > 0) {
                 int blockSize = Math.min(left, BLOCK_SIZE);
                 createCommands(at, from, blockSize, at + size);
-                if (worthCompressing(from, blockSize)) {
+                if (isWorthCompressing(from, blockSize)) {
                     writer.writeMetaBlockHeader(blockSize, false);
                     writer.write(13, 0);
                     storeCommands();
@@ -152,7 +152,7 @@ final class BrotliTwoPassEncoder {
         }
 
         private int matchLength(int one, int other, int limit) {
-            return matchingBytes.counted(input, one, other, limit);
+            return matchingBytes.count(input, one, other, limit);
         }
 
         private void createCommands(int baseAt, int from, int blockSize, int fragmentEnd) {
@@ -300,13 +300,13 @@ final class BrotliTwoPassEncoder {
                 commands[commandCount++] = insertLength;
             } else if (insertLength < 130) {
                 int tail = insertLength - 2;
-                int width = BrotliCodes.log2Floor(tail) - 1;
+                int width = BrotliCodes.floorTheLog2(tail) - 1;
                 int prefix = tail >> width;
                 int code = (width << 1) + prefix + 2;
                 commands[commandCount++] = code | ((tail - (prefix << width)) << 8);
             } else if (insertLength < 2114) {
                 int tail = insertLength - 66;
-                int width = BrotliCodes.log2Floor(tail);
+                int width = BrotliCodes.floorTheLog2(tail);
                 commands[commandCount++] =
                         (width + 10) | ((tail - (1 << width)) << 8);
             } else if (insertLength < 6210) {
@@ -323,13 +323,13 @@ final class BrotliTwoPassEncoder {
                 commands[commandCount++] = copyLength + 38;
             } else if (copyLength < 134) {
                 int tail = copyLength - 6;
-                int width = BrotliCodes.log2Floor(tail) - 1;
+                int width = BrotliCodes.floorTheLog2(tail) - 1;
                 int prefix = tail >> width;
                 int code = (width << 1) + prefix + 44;
                 commands[commandCount++] = code | ((tail - (prefix << width)) << 8);
             } else if (copyLength < 2118) {
                 int tail = copyLength - 70;
-                int width = BrotliCodes.log2Floor(tail);
+                int width = BrotliCodes.floorTheLog2(tail);
                 commands[commandCount++] =
                         (width + 52) | ((tail - (1 << width)) << 8);
             } else {
@@ -342,7 +342,7 @@ final class BrotliTwoPassEncoder {
                 commands[commandCount++] = copyLength + 20;
             } else if (copyLength < 72) {
                 int tail = copyLength - 8;
-                int width = BrotliCodes.log2Floor(tail) - 1;
+                int width = BrotliCodes.floorTheLog2(tail) - 1;
                 int prefix = tail >> width;
                 int code = (width << 1) + prefix + 28;
                 commands[commandCount++] = code | ((tail - (prefix << width)) << 8);
@@ -352,7 +352,7 @@ final class BrotliTwoPassEncoder {
                 commands[commandCount++] = 64;
             } else if (copyLength < 2120) {
                 int tail = copyLength - 72;
-                int width = BrotliCodes.log2Floor(tail);
+                int width = BrotliCodes.floorTheLog2(tail);
                 commands[commandCount++] =
                         (width + 52) | ((tail - (1 << width)) << 8);
                 commands[commandCount++] = 64;
@@ -364,15 +364,15 @@ final class BrotliTwoPassEncoder {
 
         private void emitDistance(int distance) {
             int shifted = distance + 3;
-            int width = BrotliCodes.log2Floor(shifted) - 1;
+            int width = BrotliCodes.floorTheLog2(shifted) - 1;
             int prefix = (shifted >> width) & 1;
             int offset = (2 + prefix) << width;
             int code = 2 * (width - 1) + prefix + 80;
             commands[commandCount++] = code | ((shifted - offset) << 8);
         }
 
-        private boolean worthCompressing(int at, int size) {
-            if (theMatchesCoveredEnoughToPayOutright(size)) {
+        private boolean isWorthCompressing(int at, int size) {
+            if (doTheMatchesPayOutright(size)) {
                 return true;
             }
             double mostTheSampledBytesMayCost = (double) size * 8
@@ -383,11 +383,11 @@ final class BrotliTwoPassEncoder {
                     each += ONE_BYTE_IN_THIS_MANY_IS_SAMPLED) {
                 literalHistogram[input[at + each] & 0xFF]++;
             }
-            return BrotliCodes.bitsEntropyFlooredAtOneBitPerLiteral(literalHistogram, 256)
+            return BrotliCodes.measureTheBitsEntropy(literalHistogram, 256)
                     < mostTheSampledBytesMayCost;
         }
 
-        private boolean theMatchesCoveredEnoughToPayOutright(int size) {
+        private boolean doTheMatchesPayOutright(int size) {
             return (double) literalCount
                     < LITERALS_PER_BYTE_BELOW_WHICH_MATCHES_PAID * (double) size;
         }

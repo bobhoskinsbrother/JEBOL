@@ -18,7 +18,7 @@ public class FractionNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("number", Set.of(DecimalValue.TYPE)));
+        return List.of(Parameter.of("number", Set.of(DecimalValue.TYPE)));
     }
 
     @Override

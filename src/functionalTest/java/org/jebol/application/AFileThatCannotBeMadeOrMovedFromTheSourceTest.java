@@ -13,10 +13,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AFileThatCannotBeMadeOrMovedFromTheSourceTest {
 
-    private static Interpreter reaching(Path directory) {
+    private static Interpreter makeAnInterpreterReaching(Path directory) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         return interpreter;
     }
 
@@ -33,17 +33,17 @@ class AFileThatCannotBeMadeOrMovedFromTheSourceTest {
 
     @Test
     @DisplayName("OPEN/NEW/READ is a file to be made that nobody may write to")
-    void openingANewFileNobodyMayWriteToIsRefused(@TempDir Path directory) {
-        assertThat(failureOf(reaching(directory), "open/new/read %fresh.txt"))
+    void refusesOpeningANewFileNobodyMayWriteTo(@TempDir Path directory) {
+        assertThat(failureOf(makeAnInterpreterReaching(directory), "open/new/read %fresh.txt"))
                 .isEqualTo("[Access bad-file-mode %fresh.txt]");
         assertThat(Files.exists(directory.resolve("fresh.txt"))).isFalse();
     }
 
     @Test
     @DisplayName("and it is refused for a file that is already there, before the path is looked at")
-    void theRefusalDoesNotDependOnTheFileBeingThere(@TempDir Path directory) throws IOException {
+    void refusesWhetherOrNotTheFileIsThere(@TempDir Path directory) throws IOException {
         Files.writeString(directory.resolve("already.txt"), "kept");
-        Interpreter interpreter = reaching(directory);
+        Interpreter interpreter = makeAnInterpreterReaching(directory);
 
         assertThat(failureOf(interpreter, "open/new/read %already.txt"))
                 .isEqualTo("[Access bad-file-mode %already.txt]");
@@ -52,8 +52,8 @@ class AFileThatCannotBeMadeOrMovedFromTheSourceTest {
 
     @Test
     @DisplayName("OPEN/NEW alone names neither way round, so writing is the default and it works")
-    void openingANewFileWithoutNamingAWayRoundWorks(@TempDir Path directory) {
-        Interpreter interpreter = reaching(directory);
+    void opensANewFileWithoutNamingAWayRound(@TempDir Path directory) {
+        Interpreter interpreter = makeAnInterpreterReaching(directory);
 
         assertThat(failureOf(interpreter, "close open/new %fresh.txt")).isEqualTo("[ok]");
         assertThat(failureOf(interpreter, "close open/new/write %second.txt")).isEqualTo("[ok]");
@@ -63,23 +63,23 @@ class AFileThatCannotBeMadeOrMovedFromTheSourceTest {
 
     @Test
     @DisplayName("a read that does not ask for a new file is the missing-file failure instead")
-    void readingAFileThatIsNotThereIsStillCannotOpen(@TempDir Path directory) {
-        assertThat(failureOf(reaching(directory), "open/read %missing.txt"))
+    void stillSaysCannotOpenOnReadingAMissingFile(@TempDir Path directory) {
+        assertThat(failureOf(makeAnInterpreterReaching(directory), "open/read %missing.txt"))
                 .isEqualTo("[Access cannot-open %missing.txt]");
     }
 
     @Test
     @DisplayName("a rename that could not be done names what it was to move")
-    void aRenameThatCouldNotBeDoneNamesWhatItWasToMove(@TempDir Path directory) {
-        assertThat(failureOf(reaching(directory), "rename %missing.txt %other.txt"))
+    void namesWhatAFailedRenameWasToMove(@TempDir Path directory) {
+        assertThat(failureOf(makeAnInterpreterReaching(directory), "rename %missing.txt %other.txt"))
                 .isEqualTo("[Access no-rename %missing.txt]");
     }
 
     @Test
     @DisplayName("and a rename that could be done moves the file and answers the port of the old name")
-    void aRenameThatCouldBeDoneMovesTheFile(@TempDir Path directory) throws IOException {
+    void movesTheFileOnAPossibleRename(@TempDir Path directory) throws IOException {
         Files.writeString(directory.resolve("before.txt"), "carried");
-        Interpreter interpreter = reaching(directory);
+        Interpreter interpreter = makeAnInterpreterReaching(directory);
 
         assertThat(answerTo(interpreter, """
                 moved: rename %before.txt %after.txt
@@ -91,11 +91,11 @@ class AFileThatCannotBeMadeOrMovedFromTheSourceTest {
 
     @Test
     @DisplayName("a rename into a directory that is not there is the same failure")
-    void aRenameIntoADirectoryThatIsNotThereIsTheSameFailure(@TempDir Path directory)
+    void failsTheSameWayRenamingIntoAMissingDirectory(@TempDir Path directory)
             throws IOException {
         Files.writeString(directory.resolve("before.txt"), "carried");
 
-        assertThat(failureOf(reaching(directory), "rename %before.txt %nowhere/after.txt"))
+        assertThat(failureOf(makeAnInterpreterReaching(directory), "rename %before.txt %nowhere/after.txt"))
                 .isEqualTo("[Access no-rename %before.txt]");
         assertThat(Files.exists(directory.resolve("before.txt"))).isTrue();
     }

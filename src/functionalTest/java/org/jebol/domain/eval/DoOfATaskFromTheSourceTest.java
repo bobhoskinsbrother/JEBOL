@@ -1,6 +1,6 @@
 package org.jebol.domain.eval;
 
-import org.jebol.adapter.host.TasksOnThreads;
+import org.jebol.adapter.host.ThreadTasks;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
@@ -22,13 +22,13 @@ class DoOfATaskFromTheSourceTest {
 
     private static final Duration A_WHILE = Duration.ofSeconds(10);
 
-    private static Interpreter writingTo(StringBuffer written) {
-        Interpreter interpreter = Interpreter.writingTo(written::append);
-        interpreter.useTasks(new TasksOnThreads(Bounds.standard().withoutAWallClockLimit()));
+    private static Interpreter makeAnInterpreterWritingTo(StringBuffer written) {
+        Interpreter interpreter = Interpreter.createWithOutput(written::append);
+        interpreter.useTasks(new ThreadTasks(Bounds.standard().withoutATimeLimit()));
         return interpreter;
     }
 
-    private static void untilOutputSays(StringBuffer written, String mark) {
+    private static void waitUntilOutputSays(StringBuffer written, String mark) {
         long givenUpAt = System.nanoTime() + A_WHILE.toNanos();
         while (!written.toString().contains(mark)) {
             if (System.nanoTime() > givenUpAt) {
@@ -40,9 +40,9 @@ class DoOfATaskFromTheSourceTest {
 
     @Test
     @DisplayName("with no way given to run a body, DO of a task answers the task and starts nothing")
-    void withoutAHostTheBodyStartsNothing() {
+    void startsNothingWithoutAHost() {
         StringBuilder written = new StringBuilder();
-        Interpreter interpreter = Interpreter.writingTo(written::append);
+        Interpreter interpreter = Interpreter.createWithOutput(written::append);
 
         String answer = interpreter.display(interpreter.run(
                 "task? do make task! [print \"" + THE_BODY_SPEAKS + "\"]"));
@@ -54,40 +54,40 @@ class DoOfATaskFromTheSourceTest {
     @Test
     @Timeout(20)
     @DisplayName("with the port, the body runs in its own interpreter on a thread of its own")
-    void withThePortTheBodyRuns() {
+    void runsTheBodyWithThePort() {
         StringBuffer written = new StringBuffer();
-        Interpreter interpreter = writingTo(written);
+        Interpreter interpreter = makeAnInterpreterWritingTo(written);
 
         String answer = interpreter.display(interpreter.run(
                 "task? do make task! [print \"" + THE_BODY_SPEAKS + "\"]"));
 
         assertThat(answer).as("the parent answers before the body has produced anything")
                 .isEqualTo("#(true)");
-        untilOutputSays(written, THE_BODY_SPEAKS);
+        waitUntilOutputSays(written, THE_BODY_SPEAKS);
     }
 
     @Test
     @Timeout(20)
     @DisplayName("a body that raises stops there, and the statement after it never runs")
-    void aRaisingBodyStopsWhereItRaises() {
+    void stopsWhereTheBodyRaises() {
         StringBuffer written = new StringBuffer();
-        Interpreter interpreter = writingTo(written);
+        Interpreter interpreter = makeAnInterpreterWritingTo(written);
 
         String answer = interpreter.display(interpreter.run(
                 "task? do make task! [print \"" + THE_BODY_REACHED + "\" 1 / 0 print \""
                         + NOTHING_AFTER_A_RAISE + "\"]"));
 
         assertThat(answer).isEqualTo("#(true)");
-        untilOutputSays(written, THE_BODY_REACHED);
+        waitUntilOutputSays(written, THE_BODY_REACHED);
         assertThat(written.toString()).doesNotContain(NOTHING_AFTER_A_RAISE);
     }
 
     @Test
     @Timeout(20)
     @DisplayName("the body sees none of the parent's words")
-    void theBodySeesNoneOfTheParentsWords() {
+    void hidesTheParentsWordsFromTheBody() {
         StringBuffer written = new StringBuffer();
-        Interpreter interpreter = writingTo(written);
+        Interpreter interpreter = makeAnInterpreterWritingTo(written);
 
         String answer = interpreter.display(interpreter.run("""
                 inherited: "%s"
@@ -95,25 +95,25 @@ class DoOfATaskFromTheSourceTest {
                 """.formatted(THE_BODY_SEES_NOTHING)));
 
         assertThat(answer).isEqualTo("#(true)");
-        untilOutputSays(written, "reached");
+        waitUntilOutputSays(written, "reached");
         assertThat(written.toString()).doesNotContain(THE_BODY_SEES_NOTHING);
     }
 
     @Test
     @Timeout(20)
     @DisplayName("two interpreters run whole scripts on two threads at once")
-    void twoInterpretersRunOnTwoThreads() throws Exception {
+    void runsTwoInterpretersOnTwoThreads() throws Exception {
         String script = "total: 0 repeat i 10000 [total: total + i] total";
-        String firstAnswer = onItsOwnThread(script);
-        String secondAnswer = onItsOwnThread(script);
+        String firstAnswer = runOnItsOwnThread(script);
+        String secondAnswer = runOnItsOwnThread(script);
 
         assertThat(firstAnswer).isEqualTo("50005000");
         assertThat(secondAnswer).isEqualTo("50005000");
     }
 
-    private String onItsOwnThread(String script) throws Exception {
+    private String runOnItsOwnThread(String script) throws Exception {
         StringBuffer written = new StringBuffer();
-        Interpreter interpreter = writingTo(written);
+        Interpreter interpreter = makeAnInterpreterWritingTo(written);
         return CompletableFuture.supplyAsync(
                 () -> interpreter.display(interpreter.run(script))).get(
                 A_WHILE.toSeconds(), TimeUnit.SECONDS);

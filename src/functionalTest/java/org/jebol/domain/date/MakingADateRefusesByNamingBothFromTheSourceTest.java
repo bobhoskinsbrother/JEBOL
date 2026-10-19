@@ -17,7 +17,7 @@ class MakingADateRefusesByNamingBothFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String refusalOf(String source) {
+    private static String readTheRefusalOf(String source) {
         return answerTo("e: try [" + source + "] "
                 + "reduce [e/id mold e/arg1 mold e/arg2]");
     }
@@ -28,22 +28,22 @@ class MakingADateRefusesByNamingBothFromTheSourceTest {
 
         @Test
         @DisplayName("the datatype asked for, then the block that failed")
-        void bothAreNamed() {
-            assertThat(refusalOf("make date! [1 2]"))
+        void nameBoth() {
+            assertThat(readTheRefusalOf("make date! [1 2]"))
                     .isEqualTo("[bad-make-arg \"#(date!)\" \"[1 2]\"]");
         }
 
         @Test
         @DisplayName("an empty block is named as the empty block it was")
-        void anEmptyBlockIsNamed() {
-            assertThat(refusalOf("make date! []"))
+        void nameAnEmptyBlock() {
+            assertThat(readTheRefusalOf("make date! []"))
                     .isEqualTo("[bad-make-arg \"#(date!)\" \"[]\"]");
         }
 
         @Test
         @DisplayName("a day nobody has still names the block, not the day")
-        void aDayThatDoesNotExistNamesTheBlock() {
-            assertThat(refusalOf("make date! [99 13 99]"))
+        void nameTheBlockForADayThatDoesNotExist() {
+            assertThat(readTheRefusalOf("make date! [99 13 99]"))
                     .isEqualTo("[bad-make-arg \"#(date!)\" \"[99 13 99]\"]");
         }
 
@@ -53,7 +53,7 @@ class MakingADateRefusesByNamingBothFromTheSourceTest {
             "[1-Jan-2000 1 2]", "[2000 1 1 12]", "[2000 1 1 12:00 1:00 9]"})
         @DisplayName("arg1 is the datatype for every shape that fails")
         void arg1IsAlwaysTheDatatype(String block) {
-            assertThat(refusalOf("make date! " + block))
+            assertThat(readTheRefusalOf("make date! " + block))
                     .startsWith("[bad-make-arg \"#(date!)\"");
         }
 
@@ -73,7 +73,7 @@ class MakingADateRefusesByNamingBothFromTheSourceTest {
 
         @Test
         @DisplayName("the id alone cannot tell these two refusals apart")
-        void theIdAloneIsNotEnough() {
+        void needsMoreThanTheId() {
             assertThat(answerTo("e: try [make date! [1 2]] f: try [make time! [1 2 3 4]] "
                     + "reduce [e/id = f/id  e/arg1 = f/arg1]"))
                     .isEqualTo("[#(true) #(false)]");

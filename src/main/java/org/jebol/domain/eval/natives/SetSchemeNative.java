@@ -32,7 +32,7 @@ public class SetSchemeNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("scheme", Set.of(ObjectValue.TYPE)));
+        return List.of(Parameter.of("scheme", Set.of(ObjectValue.TYPE)));
     }
 
     @Override
@@ -45,12 +45,12 @@ public class SetSchemeNative extends DefaultNative {
                 return NoneValue.none();
             }
             fields.get(WHERE_THE_STANDARD_SCHEME_KEEPS_ITS_ACTOR)
-                    .setBeneathAnyProtection(theNativeActorFor(named));
+                    .setBeneathAnyProtection(makeTheNativeActorFor(named));
             return LogicValue.of(true);
         };
     }
 
-    private Value theNativeActorFor(AnyWordValue named) {
+    private Value makeTheNativeActorFor(AnyWordValue named) {
         if (named.canonical().equals("midi")) {
             return new MidiSchemeActor(granted);
         }

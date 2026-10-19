@@ -51,14 +51,14 @@ class CollectIntoTest {
 
     @Test
     @DisplayName("a plain COLLECT is unaffected")
-    void aPlainCollectStillAnswersItsBlock() {
+    void stillAnswersTheBlockOfAPlainCollect() {
         assertThat(answerTo("(parse \"1\" [collect [keep skip]]) = [#\"1\"]"))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("the rule after the target really runs")
-    void theWalkResumesInTheRightPlace() {
+    void resumesTheWalkInTheRightPlace() {
         assertThat(answerTo(
                 "e: [] parse \"12\" [collect into e [some [keep skip]]] e = [#\"1\" #\"2\"]"))
                 .isEqualTo("#(true)");

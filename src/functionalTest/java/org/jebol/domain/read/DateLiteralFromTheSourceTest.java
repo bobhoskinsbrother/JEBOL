@@ -18,7 +18,7 @@ class DateLiteralFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String reading(String literal) {
+    private static String readAndMold(String literal) {
         String shown = answerTo(
                 "either error? e: try [load {" + literal + "}] [e/id] [mold e]");
         return shown.length() >= 2 && shown.charAt(0) == '"'
@@ -34,20 +34,20 @@ class DateLiteralFromTheSourceTest {
         @ParameterizedTest(name = "{0} is a day")
         @ValueSource(strings = {"1-Jan-2000", "01-Jan-2000"})
         @DisplayName("one or two digits is a day")
-        void oneOrTwoDigitsIsADay(String literal) {
-            assertThat(reading(literal)).isEqualTo("1-Jan-2000");
+        void readsOneOrTwoDigitsAsADay(String literal) {
+            assertThat(readAndMold(literal)).isEqualTo("1-Jan-2000");
         }
 
         @Test
         @DisplayName("four digits is a year, so the date reads the other way round")
-        void fourDigitsIsAYear() {
-            assertThat(reading("2000-Jan-01")).isEqualTo("1-Jan-2000");
+        void readsFourDigitsAsAYear() {
+            assertThat(readAndMold("2000-Jan-01")).isEqualTo("1-Jan-2000");
         }
 
         @Test
         @DisplayName("three digits is neither, and is refused rather than thrown")
-        void threeDigitsIsNeither() {
-            assertThat(reading("100-Jan-2000"))
+        void refusesThreeDigits() {
+            assertThat(readAndMold("100-Jan-2000"))
                     .as("a day of 100, which used to leave the interpreter as a "
                             + "Java IllegalArgumentException")
                     .isEqualTo("invalid");
@@ -56,8 +56,8 @@ class DateLiteralFromTheSourceTest {
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"2000-01-01", "2000/01/01", "1/1/2000", "1-1-2000"})
         @DisplayName("either order, either separator, same date")
-        void eitherOrderEitherSeparator(String literal) {
-            assertThat(reading(literal)).isEqualTo("1-Jan-2000");
+        void readsTheSameDateInEitherOrderWithEitherSeparator(String literal) {
+            assertThat(readAndMold(literal)).isEqualTo("1-Jan-2000");
         }
     }
 
@@ -73,8 +73,8 @@ class DateLiteralFromTheSourceTest {
             "1-Jan-0003,  1-Jan-0003",
         })
         @DisplayName("two digits or fewer is shorthand, three or more is the year itself")
-        void theDigitCountDecides(String literal, String expected) {
-            assertThat(reading(literal)).isEqualTo(expected);
+        void readsTwoDigitsAsShorthandAndThreeAsTheYear(String literal, String expected) {
+            assertThat(readAndMold(literal)).isEqualTo(expected);
         }
 
         @Test
@@ -82,10 +82,10 @@ class DateLiteralFromTheSourceTest {
         void theshorthandStaysInsideFiftyYears() {
             int thisYear = java.time.Year.now().getValue();
             int lastForward = 50 + thisYear - thisYear / 100 * 100;
-            assertThat(reading("1-Jan-%02d".formatted(lastForward)))
+            assertThat(readAndMold("1-Jan-%02d".formatted(lastForward)))
                     .as("the last shorthand year that still counts forward")
                     .isEqualTo("1-Jan-%d".formatted(thisYear / 100 * 100 + lastForward));
-            assertThat(reading("1-Jan-%02d".formatted(lastForward + 1)))
+            assertThat(readAndMold("1-Jan-%02d".formatted(lastForward + 1)))
                     .as("one past it, which falls back a century")
                     .isEqualTo("1-Jan-%d".formatted(thisYear / 100 * 100 + lastForward - 99));
         }
@@ -99,27 +99,27 @@ class DateLiteralFromTheSourceTest {
         @ValueSource(strings = {"1-Jan-2000", "31-Jan-2000", "30-Apr-2000", "28-Feb-2001"})
         @DisplayName("a day the month has")
         void adayTheMonthHas(String literal) {
-            assertThat(reading(literal)).isNotEqualTo("invalid");
+            assertThat(readAndMold(literal)).isNotEqualTo("invalid");
         }
 
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"0-Jan-2000", "32-Jan-2000", "31-Apr-2000", "30-Feb-2000"})
         @DisplayName("and a day it has not")
         void adayItHasNot(String literal) {
-            assertThat(reading(literal)).isEqualTo("invalid");
+            assertThat(readAndMold(literal)).isEqualTo("invalid");
         }
 
         @Test
         @DisplayName("the twenty-ninth of February in a leap year")
         void thetwentyNinthInALeapYear() {
-            assertThat(reading("29-Feb-2000")).isEqualTo("29-Feb-2000");
+            assertThat(readAndMold("29-Feb-2000")).isEqualTo("29-Feb-2000");
         }
 
         @ParameterizedTest(name = "29-Feb-{0}")
         @ValueSource(strings = {"2001", "1900", "2100"})
         @DisplayName("and in a year that is not one, century rule included")
         void andinAYearThatIsNot(String year) {
-            assertThat(reading("29-Feb-" + year))
+            assertThat(readAndMold("29-Feb-" + year))
                     .as("1900 and 2100 are divisible by four and are not leap years")
                     .isEqualTo("invalid");
         }
@@ -132,28 +132,28 @@ class DateLiteralFromTheSourceTest {
         @ParameterizedTest(name = "month {0}")
         @ValueSource(strings = {"1-1-2000", "1-12-2000"})
         @DisplayName("one and twelve are months")
-        void oneAndTwelveAreMonths(String literal) {
-            assertThat(reading(literal)).isNotEqualTo("invalid");
+        void acceptsOneAndTwelve(String literal) {
+            assertThat(readAndMold(literal)).isNotEqualTo("invalid");
         }
 
         @ParameterizedTest(name = "month {0}")
         @ValueSource(strings = {"1-0-2000", "1-13-2000"})
         @DisplayName("nought and thirteen are not")
         void noughtAndThirteenAreNot(String literal) {
-            assertThat(reading(literal)).isEqualTo("invalid");
+            assertThat(readAndMold(literal)).isEqualTo("invalid");
         }
 
         @Test
         @DisplayName("a name is matched whatever its case")
         void anameIsMatchedWhateverItsCase() {
-            assertThat(reading("1-JAN-2000")).isEqualTo("1-Jan-2000");
-            assertThat(reading("1-january-2000")).isEqualTo("1-Jan-2000");
+            assertThat(readAndMold("1-JAN-2000")).isEqualTo("1-Jan-2000");
+            assertThat(readAndMold("1-january-2000")).isEqualTo("1-Jan-2000");
         }
 
         @Test
         @DisplayName("and a name that is not a month is not a date")
         void anameThatIsNotAMonth() {
-            assertThat(reading("1-Wibble-2000")).isNotEqualTo("1-Jan-2000");
+            assertThat(readAndMold("1-Wibble-2000")).isNotEqualTo("1-Jan-2000");
         }
     }
 
@@ -166,8 +166,8 @@ class DateLiteralFromTheSourceTest {
             "1-Jan-0000", "1-Feb-0003", "29-Feb-2000", "31-Dec-9999", "1-Jan-2000",
         })
         @DisplayName("which is what the four-digit year is for")
-        void whichIsWhatTheFourDigitYearIsFor(String literal) {
-            assertThat(reading(literal))
+        void needsTheFourDigitYear(String literal) {
+            assertThat(readAndMold(literal))
                     .as("molded as %s, a short year has to keep its padding or it "
                             + "reads back as the shorthand form and means 2003", literal)
                     .isEqualTo(literal);

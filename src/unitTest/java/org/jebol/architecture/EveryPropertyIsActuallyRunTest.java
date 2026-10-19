@@ -37,7 +37,7 @@ class EveryPropertyIsActuallyRunTest {
 
     @Test
     @DisplayName("the classes of all three suites are handed over, unit, functional and end to end")
-    void everySuiteIsHandedOver() {
+    void handsOverEverySuite() {
         assertThat(everySuitesClasses)
                 .as("jebol.testClassesDirs=%s", System.getProperty("jebol.testClassesDirs"))
                 .anyMatch(directory -> directory.endsWith(Path.of("java", "unitTest")))
@@ -68,7 +68,7 @@ class EveryPropertyIsActuallyRunTest {
 
     @Test
     @DisplayName("and there are jqwik checks for the rule below to find")
-    void thereAreJqwikChecksToFind() {
+    void findsJqwikChecks() {
         assertThat(tests.stream()
                 .map(EveryPropertyIsActuallyRunTest::jqwikChecksDeclaredIn)
                 .flatMap(List::stream)
@@ -79,7 +79,7 @@ class EveryPropertyIsActuallyRunTest {
 
     @Test
     @DisplayName("and there are Jupiter containers for it to recognise")
-    void thereAreJupiterContainersToRecognise() {
+    void recognisesJupiterContainers() {
         assertThat(tests.stream()
                 .filter(EveryPropertyIsActuallyRunTest::isAJupiterContainer)
                 .map(JavaClass::getName)
@@ -90,7 +90,7 @@ class EveryPropertyIsActuallyRunTest {
 
     @Test
     @DisplayName("no jqwik check sits inside a Jupiter container, where nothing runs it")
-    void noJqwikCheckSitsInsideAJupiterContainer() {
+    void keepsJqwikChecksOutOfJupiterContainers() {
         List<String> unreachable = tests.stream()
                 .filter(EveryPropertyIsActuallyRunTest::isAJupiterContainer)
                 .map(EveryPropertyIsActuallyRunTest::jqwikChecksDeclaredIn)

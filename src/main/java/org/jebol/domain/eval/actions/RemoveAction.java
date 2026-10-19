@@ -22,11 +22,11 @@ public class RemoveAction extends DefaultNative implements ActionValue {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        Set<Datatype> range = new HashSet<>(aPartLimit());
+        Set<Datatype> range = new HashSet<>(listThePartLimitTypes());
         range.add(CharacterValue.TYPE);
-        return List.of(Parameter.required("series"),
-                Parameter.belongingTo("part", "count", Set.copyOf(range)),
-                Parameter.belongingTo("key", "which", Set.of()));
+        return List.of(Parameter.of("series"),
+                Parameter.belongTo("part", "count", Set.copyOf(range)),
+                Parameter.belongTo("key", "which", Set.of()));
     }
 
     @Override
@@ -40,15 +40,15 @@ public class RemoveAction extends DefaultNative implements ActionValue {
             if (arguments.getFirst() instanceof NoneValue nothing) {
                 return nothing;
             }
-            return evaluator.theRebolActorsAnswer(nativeName(), arguments, refinements)
-                    .orElseGet(() -> removedFrom(arguments.getFirst(), arguments, refinements));
+            return evaluator.askTheRebolActor(nativeName(), arguments, refinements)
+                    .orElseGet(() -> removeFrom(arguments.getFirst(), arguments, refinements));
         };
     }
 
-    private Value removedFrom(Value subject, List<Value> arguments, Set<String> refinements) {
-        Optional<Value> key = argumentOf("key", 0, arguments, refinements);
+    private Value removeFrom(Value subject, List<Value> arguments, Set<String> refinements) {
+        Optional<Value> key = readTheArgumentOf("key", 0, arguments, refinements);
         return switch (subject) {
-            case PortValue queue when queue.eventQueue().isPresent() ->
+            case PortValue queue when queue.findTheEventQueue().isPresent() ->
                     throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
                             SetWordValue.of(nativeName()));
             case MapValue map -> {
@@ -57,32 +57,32 @@ public class RemoveAction extends DefaultNative implements ActionValue {
             }
             case BitsetValue members -> {
                 members.requireChangeable();
-                yield new BitsetActions(members).removed(refinements,
-                        refinement -> argumentOf(refinement, 0, arguments, refinements)
+                yield new BitsetActions(members).remove(refinements,
+                        refinement -> readTheArgumentOf(refinement, 0, arguments, refinements)
                                 .orElseGet(NoneValue::none));
             }
-            case RebolSeries series -> removedFromTheSeries(series, key,
-                    argumentOf("part", 0, arguments, refinements));
+            case RebolSeries series -> removeFromTheSeries(series, key,
+                    readTheArgumentOf("part", 0, arguments, refinements));
             case Value anythingElse -> refuseTheArgument(anythingElse, "series");
         };
     }
 
-    private Value removedFromTheSeries(
+    private Value removeFromTheSeries(
             RebolSeries series, Optional<Value> key, Optional<Value> part) {
         if (key.isPresent() && series instanceof AnyBlockValue pairs) {
             pairs.removeTheFirstPairWhoseKey(
-                    item -> Comparison.identicallyEqual(item, key.get()));
+                    item -> Comparison.areIdenticallyEqual(item, key.get()));
             return series;
         }
         if (key.isPresent()) {
             throw Raised.of(EvaluationFailure.FEATURE_NA,
                     "/key removes from a map or a bitset, not a series");
         }
-        long howMany = part.map(count -> howManyCounted(series, count)).orElse(ONE_ITEM);
-        return Actions.of(series).orElseThrow().removed(howMany);
+        long howMany = part.map(count -> countHowMany(series, count)).orElse(ONE_ITEM);
+        return Actions.of(series).orElseThrow().remove(howMany);
     }
 
-    private long howManyCounted(RebolSeries series, Value count) {
+    private long countHowMany(RebolSeries series, Value count) {
         return switch (count) {
             case IntegerValue whole
                     when whole.magnitude() > Integer.MAX_VALUE || whole.magnitude() < Integer.MIN_VALUE ->

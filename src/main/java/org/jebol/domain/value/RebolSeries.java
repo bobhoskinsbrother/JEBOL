@@ -13,20 +13,20 @@ public sealed interface RebolSeries extends Value
 
     boolean sharesStorageWith(RebolSeries other);
 
-    Value itemAt(int positionFromTheHead);
+    Value readTheItemAt(int positionFromTheHead);
 
-    RebolSeries reversedFront(int howMany);
+    RebolSeries reverseTheFront(int howMany);
 
-    Value frontCopied(int howMany, boolean deeply, Set<Datatype> kinds);
+    Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds);
 
     default RebolSeries reversedFromHere() {
-        return reversedFront(lengthFromHere());
+        return reverseTheFront(lengthFromHere());
     }
 
     default RebolSeries swapFirstItemWith(RebolSeries there) {
         if (!atTail() && !there.atTail()) {
-            Value mine = itemAt(index());
-            putItemAt(index(), there.itemAt(there.index()));
+            Value mine = readTheItemAt(index());
+            putItemAt(index(), there.readTheItemAt(there.index()));
             there.putItemAt(there.index(), mine);
         }
         return this;
@@ -36,12 +36,12 @@ public sealed interface RebolSeries extends Value
         throw Raised.cannotUseTheAction(this, "swap");
     }
 
-    default RebolSeries clampedToTail() {
+    default RebolSeries clampToTail() {
         int tail = storageLength() + 1;
         return index() > tail ? atIndex(tail) : this;
     }
 
-    default RebolSeries reachingBackIfNegative(long wanted) {
+    default RebolSeries reachBackIfNegative(long wanted) {
         if (wanted >= 0) {
             return this;
         }
@@ -50,7 +50,7 @@ public sealed interface RebolSeries extends Value
     }
 
     @Override
-    default Value picked(int oneBasedPosition) {
+    default Value pick(int oneBasedPosition) {
         if (oneBasedPosition == 0) {
             return NoneValue.none();
         }
@@ -59,7 +59,7 @@ public sealed interface RebolSeries extends Value
         if (at < 1 || at > storageLength()) {
             return NoneValue.none();
         }
-        return itemAt(at);
+        return readTheItemAt(at);
     }
 
     default int lengthFromHere() {
@@ -83,11 +83,11 @@ public sealed interface RebolSeries extends Value
         return atIndex((int) Math.max(1, Math.min(wanted, storageLength() + 1L)));
     }
 
-    default RebolSeries skipped(long steps) {
+    default RebolSeries skip(long steps) {
         return atClamped(index() + steps);
     }
 
-    default long positionNamedBy(Value given, boolean countingFromOne) {
+    default long findThePositionNamedBy(Value given, boolean countingFromOne) {
         return switch (given) {
             case PairValue ignored -> throw Raised.of(EvaluationFailure.INVALID_ARG, given);
             case IntegerValue number -> number.magnitude();
@@ -108,7 +108,7 @@ public sealed interface RebolSeries extends Value
     default void refuseANeedleItCannotHold(Value needle, String nativeName) {
     }
 
-    default RebolSeries earlierOf(RebolSeries other) {
+    default RebolSeries pickTheEarlierOf(RebolSeries other) {
         return other.index() < index() ? other : this;
     }
 

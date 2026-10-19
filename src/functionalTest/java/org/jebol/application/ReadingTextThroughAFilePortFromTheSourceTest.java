@@ -15,7 +15,7 @@ class ReadingTextThroughAFilePortFromTheSourceTest {
     private static Path root;
 
     @BeforeEach
-    void freshRoot(@TempDir Path made) {
+    void makeAFreshRoot(@TempDir Path made) {
         root = made;
     }
 
@@ -24,7 +24,7 @@ class ReadingTextThroughAFilePortFromTheSourceTest {
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -45,7 +45,7 @@ class ReadingTextThroughAFilePortFromTheSourceTest {
 
     @Test
     @DisplayName("so it compares equal to the string a script wrote")
-    void itComparesEqualToWhatWasWritten() {
+    void comparesEqualToWhatWasWritten() {
         assertThat(answerTo("""
                 write %f "Hello World!"
                 p: open %f
@@ -56,7 +56,7 @@ class ReadingTextThroughAFilePortFromTheSourceTest {
 
     @Test
     @DisplayName("and the line endings are standardised on the way")
-    void theLineEndingsAreStandardised() {
+    void standardisesTheLineEndings() {
         assertThat(answerTo(MIXED_ENDINGS + """
                 p: open %f
                 answer: read/string p
@@ -77,7 +77,7 @@ class ReadingTextThroughAFilePortFromTheSourceTest {
 
     @Test
     @DisplayName("and a plain read still answers the bytes as they are stored")
-    void aPlainReadStillAnswersBytes() {
+    void stillAnswersBytesForAPlainRead() {
         assertThat(answerTo(MIXED_ENDINGS + """
                 p: open %f
                 answer: read p
@@ -88,7 +88,7 @@ class ReadingTextThroughAFilePortFromTheSourceTest {
 
     @Test
     @DisplayName("and it combines with /seek and /part, which cut the bytes first")
-    void itCombinesWithSeekAndPart() {
+    void combinesWithSeekAndPart() {
         assertThat(answerTo(MIXED_ENDINGS + """
                 p: open %f
                 answer: read/seek/string/part p 0 3

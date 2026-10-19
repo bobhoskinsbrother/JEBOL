@@ -10,14 +10,14 @@ class ThruCacheModuleLoadsTest {
 
     private static String answerTo(String source) {
         Interpreter interpreter = SuiteHost.installOn(
-                Interpreter.withBounds(SuiteHost.grantingEverything()));
+                Interpreter.withBounds(SuiteHost.grantEverything()));
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
     @Test
     @DisplayName("the application data directory has a modules directory beside it")
-    void theModulesDirectoryIsSettled() {
+    void settlesTheModulesDirectory() {
         assertThat(answerTo("type? system/options/modules")).isEqualTo("#(file!)");
     }
 

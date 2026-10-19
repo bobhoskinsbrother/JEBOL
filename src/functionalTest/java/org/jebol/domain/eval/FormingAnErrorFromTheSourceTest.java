@@ -16,7 +16,7 @@ class FormingAnErrorFromTheSourceTest {
 
     @Test
     @DisplayName("the words come from the catalogue and not from the implementation")
-    void theWordsComeFromTheCatalogue() {
+    void takesTheWordsFromTheCatalogue() {
         assertThat(answerTo("""
                 {^/** Math error: attempt to divide by zero^/}
                     = form make error! [type: 'Math id: 'zero-divide]"""))
@@ -25,7 +25,7 @@ class FormingAnErrorFromTheSourceTest {
 
     @Test
     @DisplayName("a field the entry names is molded, and the prose around it is formed")
-    void aFieldTheEntryNamesIsMoldedAndTheProseFormed() {
+    void moldsTheNamedFieldAndFormsTheProse() {
         assertThat(answerTo("""
                 {^/** Script error: foo does not allow #(integer!) for its bar argument^/}
                     = form make error! [
@@ -36,7 +36,7 @@ class FormingAnErrorFromTheSourceTest {
 
     @Test
     @DisplayName("so a string argument keeps its quotes, as a molded string does")
-    void aStringArgumentKeepsItsQuotes() {
+    void keepsAStringArgumentsQuotes() {
         assertThat(answerTo("""
                 {^/** User error: "plain text"^/} = form make error! {plain text}"""))
                 .isEqualTo("#(true)");
@@ -44,7 +44,7 @@ class FormingAnErrorFromTheSourceTest {
 
     @Test
     @DisplayName("and changing an argument changes the message")
-    void changingAnArgumentChangesTheMessage() {
+    void changesTheMessageWithTheArgument() {
         assertThat(answerTo("""
                 raised: make error! [type: 'Script id: 'no-value arg1: 'x]
                 before: form raised
@@ -57,7 +57,7 @@ class FormingAnErrorFromTheSourceTest {
 
     @Test
     @DisplayName("a WHERE line and a NEAR line follow when the error carries them")
-    void aWhereLineAndANearLineFollowWhenTheErrorCarriesThem() {
+    void addsWhereAndNearLinesWhenTheErrorCarriesThem() {
         assertThat(answerTo("""
                 parse (form try [1 / 0]) [
                     {^/** Math error: attempt to divide by zero^/}
@@ -68,7 +68,7 @@ class FormingAnErrorFromTheSourceTest {
 
     @Test
     @DisplayName("and the chain records the natives a failure came up through")
-    void theChainRecordsTheNativesAFailureCameUpThrough() {
+    void recordsTheNativesAFailureComesUpThrough() {
         assertThat(answerTo("""
                 raised: try [1 / 0]
                 raised/where""")).isEqualTo("[/ try]");

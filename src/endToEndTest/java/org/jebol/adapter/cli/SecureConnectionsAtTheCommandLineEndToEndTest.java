@@ -27,7 +27,7 @@ class SecureConnectionsAtTheCommandLineEndToEndTest {
     void refusesServerTheJdkDoesNotTrust(@TempDir Path directory) throws Exception {
         Identity genuineButUnknown = new Identity(
                 fixtures.chain("localhost-rsa", "test-intermediate"),
-                fixtures.key("localhost-rsa-key", "RSA"));
+                fixtures.readTheKey("localhost-rsa-key", "RSA"));
         try (LocalTlsServer server = new LocalTlsServer(genuineButUnknown, "TLSv1.3")) {
             Path script = directory.resolve("reading.r3");
             Files.writeString(script, """
@@ -38,7 +38,7 @@ class SecureConnectionsAtTheCommandLineEndToEndTest {
             ByteArrayOutputStream printed = new ByteArrayOutputStream();
             ByteArrayOutputStream reported = new ByteArrayOutputStream();
 
-            int status = Repl.runTheCommandLine(new String[] {script.toString()},
+            int status = Repl.runCommandLine(new String[] {script.toString()},
                     new PrintStream(printed, true, StandardCharsets.UTF_8),
                     new PrintStream(reported, true, StandardCharsets.UTF_8),
                     directory.toString());

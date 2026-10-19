@@ -10,16 +10,16 @@ public final class PairActions {
         this.left = left;
     }
 
-    public Value combinedWith(Value right, ArithmeticOperation operation) {
+    public Value combineWith(Value right, ArithmeticOperation operation) {
         refuseWhatIsNotAPairOrAPlainNumber(left);
         refuseWhatIsNotAPairOrAPlainNumber(right);
         if (operation.needsANonZeroDivisor()) {
-            operation.requireANonZeroDivisor(firstHalfOf(right));
-            operation.requireANonZeroDivisor(secondHalfOf(right));
+            operation.requireANonZeroDivisor(readTheFirstHalfOf(right));
+            operation.requireANonZeroDivisor(readTheSecondHalfOf(right));
         }
         return PairValue.of(
-                halfCombined(firstHalfOf(left), firstHalfOf(right), operation),
-                halfCombined(secondHalfOf(left), secondHalfOf(right), operation));
+                combineAHalf(readTheFirstHalfOf(left), readTheFirstHalfOf(right), operation),
+                combineAHalf(readTheSecondHalfOf(left), readTheSecondHalfOf(right), operation));
     }
 
     private static void refuseWhatIsNotAPairOrAPlainNumber(Value side) {
@@ -32,17 +32,17 @@ public final class PairActions {
                 side.datatype().literalSpelling() + " does not go with pair arithmetic");
     }
 
-    private static double halfCombined(
+    private static double combineAHalf(
             double ours, double theirs, ArithmeticOperation operation) {
         return ((AnyDecimalValue) operation.onFractions(ours, theirs))
                 .quantity();
     }
 
-    public static double firstHalfOf(Value value) {
+    public static double readTheFirstHalfOf(Value value) {
         return value instanceof PairValue pair ? pair.x() : Comparison.asDouble(value);
     }
 
-    public static double secondHalfOf(Value value) {
+    public static double readTheSecondHalfOf(Value value) {
         return value instanceof PairValue pair ? pair.y() : Comparison.asDouble(value);
     }
 }

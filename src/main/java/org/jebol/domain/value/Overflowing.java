@@ -7,7 +7,7 @@ public final class Overflowing {
     private Overflowing() {
     }
 
-    public static Value reported(Supplier<Value> counting) {
+    public static Value report(Supplier<Value> counting) {
         try {
             return counting.get();
         } catch (ArithmeticException overflowed) {
@@ -27,7 +27,7 @@ public final class Overflowing {
         }
     }
 
-    public static double roundedHalfAwayFromZero(double amount) {
+    public static double roundHalfAwayFromZero(double amount) {
         return amount < 0 ? -Math.round(-amount) : Math.round(amount);
     }
 }

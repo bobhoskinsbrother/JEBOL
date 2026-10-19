@@ -22,7 +22,7 @@ class ConstructionSyntaxFromTheSourceTest {
         return wrapped ? shown.substring(1, shown.length() - 1) : shown;
     }
 
-    private static String reading(String literal) {
+    private static String readAndMold(String literal) {
         return answerTo("either error? e: try [load {" + literal + "}] [e/id] [mold e]");
     }
 
@@ -44,13 +44,13 @@ class ConstructionSyntaxFromTheSourceTest {
         })
         @DisplayName("the fourteen that were refused")
         void thefourteenThatWereRefused(String literal, String expected) {
-            assertThat(reading(literal.strip())).contains(expected.strip());
+            assertThat(readAndMold(literal.strip())).contains(expected.strip());
         }
 
         @Test
         @DisplayName("a time construct reads one loose value where MAKE reads a block")
         void atimeConstructReadsOneLooseValue() {
-            assertThat(reading("#(time! 1 2 3)"))
+            assertThat(readAndMold("#(time! 1 2 3)"))
                     .as("Make_Time takes a bare integer as seconds and only reads "
                             + "hours, minutes and seconds from a block")
                     .isEqualTo("0:00:01");
@@ -60,7 +60,7 @@ class ConstructionSyntaxFromTheSourceTest {
         @Test
         @DisplayName("a datatype word on its own is still the datatype")
         void adatatypeWordOnItsOwn() {
-            assertThat(reading("#(string!)")).isEqualTo("#(string!)");
+            assertThat(readAndMold("#(string!)")).isEqualTo("#(string!)");
         }
 
         @ParameterizedTest(name = "{0}")
@@ -69,13 +69,13 @@ class ConstructionSyntaxFromTheSourceTest {
         })
         @DisplayName("and a datatype with no maker is still refused, as Rebol refuses it")
         void adatatypeWithNoMaker(String literal) {
-            assertThat(reading(literal)).isEqualTo("malconstruct");
+            assertThat(readAndMold(literal)).isEqualTo("malconstruct");
         }
 
         @Test
         @DisplayName("a spec the maker rejects is a malconstruct, not an escaping exception")
         void aspecTheMakerRejects() {
-            assertThat(reading("#(date! 1 13 2000)")).isEqualTo("malconstruct");
+            assertThat(readAndMold("#(date! 1 13 2000)")).isEqualTo("malconstruct");
         }
     }
 
@@ -122,8 +122,8 @@ class ConstructionSyntaxFromTheSourceTest {
             "0.5%,    0.5%",
         })
         @DisplayName("which is what percent-test.r3 line 18 asks for")
-        void whichIsWhatItAsksFor(String literal, String expected) {
-            assertThat(reading(literal)).isEqualTo(expected);
+        void answersWhatPercentTestAsksFor(String literal, String expected) {
+            assertThat(readAndMold(literal)).isEqualTo(expected);
         }
     }
 
@@ -140,14 +140,14 @@ class ConstructionSyntaxFromTheSourceTest {
         })
         @DisplayName("two hex digits after the second percent make it an escape")
         void twohexDigitsMakeItAnEscape(String literal, String expected) {
-            assertThat(reading(literal)).isEqualTo(expected);
+            assertThat(readAndMold(literal)).isEqualTo(expected);
         }
 
         @ParameterizedTest(name = "{0} is refused")
         @ValueSource(strings = {"%%3", "%%zz", "%%/x"})
         @DisplayName("and anything else after two percents is not a file")
-        void anythingElseIsNotAFile(String literal) {
-            assertThat(reading(literal))
+        void readsAnythingElseAfterTwoPercentsAsNoFile(String literal) {
+            assertThat(readAndMold(literal))
                     .as("%%/x was being read as the modulo operator, which Rebol "
                             + "refuses outright")
                     .isEqualTo("invalid");
@@ -170,13 +170,13 @@ class ConstructionSyntaxFromTheSourceTest {
         })
         @DisplayName("a paren segment holds any value, tags included")
         void aparenSegmentHoldsAnyValue(String literal) {
-            assertThat(reading(literal)).isEqualTo(literal);
+            assertThat(readAndMold(literal)).isEqualTo(literal);
         }
 
         @Test
         @DisplayName("a character literal is one segment and not two values")
         void acharacterLiteralIsOneSegment() {
-            assertThat(reading("b/#\"a\""))
+            assertThat(readAndMold("b/#\"a\""))
                     .as("read as the path b/# and a separate string, which no count "
                             + "of assertions could ever have caught")
                     .isEqualTo("b/#\"a\"");
@@ -185,7 +185,7 @@ class ConstructionSyntaxFromTheSourceTest {
         @Test
         @DisplayName("an issue in a path still reads")
         void anissueInAPathStillReads() {
-            assertThat(reading("b/#foo")).isEqualTo("b/#foo");
+            assertThat(readAndMold("b/#foo")).isEqualTo("b/#foo");
         }
     }
 }

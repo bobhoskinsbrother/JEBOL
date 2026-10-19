@@ -13,17 +13,17 @@ public final class CommandValue extends DefaultNative {
     public static final Datatype TYPE = new AnyFunctionDatatype("command") {
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             return spec instanceof AnyBlockValue definition && opensWithASpec(definition)
                     ? maker.makeCommandFrom(definition)
-                    : super.madeFrom(spec, maker);
+                    : super.makeFrom(spec, maker);
         }
 
         @Override
-        public Value convertedFrom(Value value, Maker maker) {
+        public Value convert(Value value, Maker maker) {
             return value instanceof AnyBlockValue definition && opensWithASpec(definition)
                     ? maker.makeCommandFrom(definition)
-                    : super.convertedFrom(value, maker);
+                    : super.convert(value, maker);
         }
 
         private boolean opensWithASpec(AnyBlockValue definition) {
@@ -48,7 +48,7 @@ public final class CommandValue extends DefaultNative {
         this.declared = List.copyOf(declared);
         this.extension = extension;
         this.index = index;
-        declaredBy(spec, declared);
+        declare(spec, declared);
     }
 
     @Override
@@ -80,19 +80,19 @@ public final class CommandValue extends DefaultNative {
             if (declared.size() > THE_MOST_WORDS_A_COMMAND_CARRIES) {
                 throw Raised.of(EvaluationFailure.BAD_COMMAND);
             }
-            return theDispatcher()
+            return findTheDispatcher()
                     .orElseThrow(() -> Raised.of(EvaluationFailure.BAD_EXTENSION, (Value) extension))
                     .dispatch(index, arguments, refinements, evaluator, context);
         };
     }
 
-    public Optional<ExtensionDispatcher> theDispatcher() {
+    public Optional<ExtensionDispatcher> findTheDispatcher() {
         List<ContextSlot> fields = extension.context().slots();
         if (fields.isEmpty()) {
             return Optional.empty();
         }
         return fields.getFirst().value() instanceof HandleValue handle
-                ? new DispatcherHandle(handle).dispatcher()
+                ? new DispatcherHandle(handle).findTheDispatcher()
                 : Optional.empty();
     }
 }

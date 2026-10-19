@@ -16,25 +16,25 @@ class ConditionalTruthTest {
     class FalseValues {
 
         @Test
-        void noneIsFalse() {
+        void includeNone() {
             assertThat(NoneValue.none().isTruthy()).isFalse();
         }
 
         @Test
         void logicFalseIsFalse() {
-            assertThat(LogicValue.no().isTruthy()).isFalse();
+            assertThat(LogicValue.answerNo().isTruthy()).isFalse();
         }
 
         @Test
         @DisplayName("and nothing else is")
-        void nothingElseIsFalse() {
+        void includeNothingElse() {
             List<Value> everythingElse = List.of(
                     LogicValue.yes(),
                     IntegerValue.of(0),
                     IntegerValue.of(-1),
                     DecimalValue.of(0.0),
                     StringValue.of(""),
-                    BlockValue.block(),
+                    BlockValue.of(),
                     CharacterValue.of(0),
                     MoneyValue.of(BigDecimal.ZERO),
                     PairValue.of(0, 0),
@@ -43,7 +43,7 @@ class ConditionalTruthTest {
                     WordValue.of("anything"),
                     BinaryValue.of(),
                     IntegerValue.TYPE,
-                    ErrorValue.script("some-error", "a message"));
+                    ErrorValue.makeAScriptError("some-error", "a message"));
 
             assertThat(everythingElse)
                     .allSatisfy(value -> assertThat(value.isTruthy())
@@ -69,31 +69,31 @@ class ConditionalTruthTest {
         }
 
         @Test
-        void emptyStringIsTrue() {
+        void coversAnEmptyString() {
             assertThat(StringValue.of("").isTruthy()).isTrue();
         }
 
         @Test
-        void emptyBlockIsTrue() {
-            assertThat(BlockValue.block().isTruthy()).isTrue();
+        void coversAnEmptyBlock() {
+            assertThat(BlockValue.of().isTruthy()).isTrue();
         }
 
         @Test
         @DisplayName("a block holding false is true, because the block is the value")
-        void blockHoldingFalseIsTrue() {
-            assertThat(BlockValue.block(LogicValue.no()).isTruthy()).isTrue();
+        void coversABlockHoldingFalse() {
+            assertThat(BlockValue.of(LogicValue.answerNo()).isTruthy()).isTrue();
         }
 
         @Test
         @DisplayName("an error value is true; raising it is a separate matter")
-        void errorValueIsTrue() {
-            assertThat(ErrorValue.script("no-value", "x has no value").isTruthy()).isTrue();
+        void coversAnErrorValue() {
+            assertThat(ErrorValue.makeAScriptError("no-value", "x has no value").isTruthy()).isTrue();
         }
 
         @Test
         @DisplayName("a held Java null is true, and is not none")
-        void heldHostNullIsTrue() {
-            JavaObjectValue hostNull = JavaObjectValue.hostNull("java.lang.String");
+        void coversAHeldHostNull() {
+            JavaObjectValue hostNull = JavaObjectValue.holdHostNull("java.lang.String");
             assertThat(hostNull.isTruthy()).isTrue();
             assertThat(hostNull.datatype()).isNotEqualTo(NoneValue.TYPE);
         }
@@ -105,26 +105,26 @@ class ConditionalTruthTest {
 
         @Test
         @DisplayName("an unset is true, as IS_FALSE in the C says")
-        void unsetIsTrue() {
+        void readsUnsetAsTrue() {
             assertThat(UnsetValue.unset().isTruthy()).isTrue();
         }
 
         @Test
         @DisplayName("only none and a false logic are false")
-        void onlyTwoValuesAreFalse() {
+        void findsOnlyTwoFalseValues() {
             assertThat(NoneValue.none().isTruthy()).isFalse();
-            assertThat(LogicValue.no().isTruthy()).isFalse();
+            assertThat(LogicValue.answerNo().isTruthy()).isFalse();
             assertThat(LogicValue.yes().isTruthy()).isTrue();
             assertThat(IntegerValue.of(0).isTruthy())
                     .as("zero is true, unlike in most languages")
                     .isTrue();
             assertThat(StringValue.of("").isTruthy()).isTrue();
-            assertThat(BlockValue.block().isTruthy()).isTrue();
+            assertThat(BlockValue.of().isTruthy()).isTrue();
         }
 
         @Test
         @DisplayName("unset is not none, and the difference is the point")
-        void unsetIsDistinctFromNone() {
+        void keepsUnsetApartFromNone() {
             assertThat(UnsetValue.unset().datatype()).isEqualTo(UnsetValue.TYPE);
             assertThat(NoneValue.none().datatype()).isEqualTo(NoneValue.TYPE);
             assertThat((Value) UnsetValue.unset()).isNotEqualTo(NoneValue.none());
@@ -136,20 +136,20 @@ class ConditionalTruthTest {
     class Singletons {
 
         @Test
-        void allNoneValuesAreEqual() {
+        void makeEveryNoneEqual() {
             assertThat(NoneValue.none()).isEqualTo(new NoneValue());
         }
 
         @Test
-        void allUnsetValuesAreEqual() {
+        void makeEveryUnsetEqual() {
             assertThat(UnsetValue.unset()).isEqualTo(new UnsetValue());
         }
 
         @Test
         void logicValuesAreEqualByTruth() {
             assertThat(LogicValue.of(true)).isEqualTo(LogicValue.yes());
-            assertThat(LogicValue.of(false)).isEqualTo(LogicValue.no());
-            assertThat(LogicValue.yes()).isNotEqualTo(LogicValue.no());
+            assertThat(LogicValue.of(false)).isEqualTo(LogicValue.answerNo());
+            assertThat(LogicValue.yes()).isNotEqualTo(LogicValue.answerNo());
         }
     }
 }

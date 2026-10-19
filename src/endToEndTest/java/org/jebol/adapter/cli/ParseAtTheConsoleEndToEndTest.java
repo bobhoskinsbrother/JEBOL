@@ -14,10 +14,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ParseAtTheConsoleEndToEndTest {
 
-    private String whatTheConsolePrints(String typed) {
+    private String readWhatTheConsolePrints(String typed) {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
-        Interpreter interpreter = Interpreter.writingTo(new StreamOutput(output));
+        Interpreter interpreter = Interpreter.createWithOutput(new StreamOutput(output));
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
         return captured.toString(StandardCharsets.UTF_8);
     }
@@ -25,7 +25,7 @@ class ParseAtTheConsoleEndToEndTest {
     @Test
     @DisplayName("a match, a case-minded miss, and each refusal print as a real 3.22.5 console printed them")
     void printsWhatRebolPrinted() {
-        assertThat(whatTheConsolePrints("""
+        assertThat(readWhatTheConsolePrints("""
                 parse "abc" ["abc"]
                 parse/case "ABC" ["abc"]
                 parse/All "a" []

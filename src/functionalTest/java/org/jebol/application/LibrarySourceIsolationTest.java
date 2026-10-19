@@ -25,16 +25,16 @@ class LibrarySourceIsolationTest {
                 c: #{0102}
                 d: [[["deep" #{0304}]]]""";
 
-        private static AnyBlockValue readingOf(String name) {
-            TranscodeResult read = LibrarySource.reading(name, SOURCE);
+        private static AnyBlockValue takeAReadingOf(String name) {
+            TranscodeResult read = LibrarySource.read(name, SOURCE);
             return read.values().orElseThrow();
         }
 
         @Test
         @DisplayName("appending to a block does not reach the next reading")
-        void appendingToABlock() {
+        void keepsAnAppendFromTheNextReading() {
             for (int reading = 0; reading < 3; reading++) {
-                AnyBlockValue held = (AnyBlockValue) readingOf("/probe/blocks.reb")
+                AnyBlockValue held = (AnyBlockValue) takeAReadingOf("/probe/blocks.reb")
                         .remaining().get(1);
                 assertThat(held.storage().length())
                         .as("reading %d is the file, whatever the last one did", reading)
@@ -48,9 +48,9 @@ class LibrarySourceIsolationTest {
 
         @Test
         @DisplayName("nor does appending to a block inside that block")
-        void appendingToANestedBlock() {
+        void keepsANestedAppendFromTheNextReading() {
             for (int reading = 0; reading < 3; reading++) {
-                AnyBlockValue outer = (AnyBlockValue) readingOf("/probe/nested.reb")
+                AnyBlockValue outer = (AnyBlockValue) takeAReadingOf("/probe/nested.reb")
                         .remaining().get(1);
                 AnyBlockValue inner = (AnyBlockValue) outer.remaining().get(2);
                 assertThat(inner.storage().length()).isEqualTo(2);
@@ -61,9 +61,9 @@ class LibrarySourceIsolationTest {
 
         @Test
         @DisplayName("nor does changing a string")
-        void changingAString() {
+        void keepsAChangedStringFromTheNextReading() {
             for (int reading = 0; reading < 3; reading++) {
-                AnyStringValue text = (AnyStringValue) readingOf("/probe/strings.reb")
+                AnyStringValue text = (AnyStringValue) takeAReadingOf("/probe/strings.reb")
                         .remaining().get(3);
                 assertThat(text.text()).isEqualTo("text");
                 text.storage().append('!');
@@ -73,16 +73,16 @@ class LibrarySourceIsolationTest {
 
         @Test
         @DisplayName("and every series in the reading is a different object")
-        void nothingIsShared() {
-            readingOf("/probe/identity.reb");
-            AnyBlockValue first = readingOf("/probe/identity.reb");
-            AnyBlockValue second = readingOf("/probe/identity.reb");
-            assertThat(sharedStorageBetween(first, second))
+        void sharesNothing() {
+            takeAReadingOf("/probe/identity.reb");
+            AnyBlockValue first = takeAReadingOf("/probe/identity.reb");
+            AnyBlockValue second = takeAReadingOf("/probe/identity.reb");
+            assertThat(listTheStorageSharedBetween(first, second))
                     .as("series shared between two readings of the same file")
                     .isEmpty();
         }
 
-        private static java.util.List<String> sharedStorageBetween(
+        private static java.util.List<String> listTheStorageSharedBetween(
                 Value left, Value right) {
 
             java.util.List<String> shared = new java.util.ArrayList<>();
@@ -91,7 +91,7 @@ class LibrarySourceIsolationTest {
                     shared.add("block");
                 }
                 for (int at = 0; at < one.remaining().size(); at++) {
-                    shared.addAll(sharedStorageBetween(
+                    shared.addAll(listTheStorageSharedBetween(
                             one.remaining().get(at), other.remaining().get(at)));
                 }
             }
@@ -113,7 +113,7 @@ class LibrarySourceIsolationTest {
 
         @Test
         @DisplayName("a library list one script appends to is the same length in the next")
-        void appendingToALibraryList() {
+        void keepsALibraryListTheSameLengthInTheNext() {
             Interpreter first = Interpreter.create();
             String was = answerTo(first, "length? system/catalog/file-types");
             answerTo(first, "append system/catalog/file-types [%.zzz zzz]");
@@ -125,7 +125,7 @@ class LibrarySourceIsolationTest {
 
         @Test
         @DisplayName("a library string one script changes is unchanged in the next")
-        void changingALibraryString() {
+        void keepsALibraryStringUnchangedInTheNext() {
             Interpreter first = Interpreter.create();
             answerTo(first, "append system/locale/months/1 \"!\"");
             assertThat(answerTo(first, "system/locale/months/1"))
@@ -136,7 +136,7 @@ class LibrarySourceIsolationTest {
 
         @Test
         @DisplayName("and a library function's body is the body the file says")
-        void aLibraryFunctionsBody() {
+        void keepsALibraryFunctionsBodyAsTheFileSays() {
             Interpreter first = Interpreter.create();
             String was = answerTo(first, "length? body-of :join");
             answerTo(first, "b: body-of :join  append b [1 2 3]");
@@ -146,7 +146,7 @@ class LibrarySourceIsolationTest {
 
         @Test
         @DisplayName("booting many times leaves the library the size it started")
-        void bootingManyTimes() {
+        void keepsTheLibrarySizeAcrossManyBoots() {
             String was = answerTo(Interpreter.create(),
                     "length? system/catalog/file-types");
             for (int at = 0; at < 5; at++) {

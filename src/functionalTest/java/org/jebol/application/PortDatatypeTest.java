@@ -29,7 +29,7 @@ class PortDatatypeTest {
         }
     }
 
-    private static Interpreter withAConsole(String... lines) {
+    private static Interpreter makeAnInterpreterWithAConsole(String... lines) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.CONSOLE));
         interpreter.useConsole(new Lines(lines));
@@ -41,7 +41,7 @@ class PortDatatypeTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(Interpreter interpreter, String source) {
+    private static String readTheErrorIdFrom(Interpreter interpreter, String source) {
         return answerFrom(interpreter,
                 "e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
@@ -56,46 +56,46 @@ class PortDatatypeTest {
         @Test
         @DisplayName("OPEN on a console spec answers a port")
         void openAnswersAPort() {
-            assertThat(answerFrom(withAConsole(), "port? open [scheme: 'console]"))
+            assertThat(answerFrom(makeAnInterpreterWithAConsole(), "port? open [scheme: 'console]"))
                     .isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a port that was opened is open, and a closed one is not")
         void openAndClosed() {
-            assertThat(answerFrom(withAConsole(), "open? open [scheme: 'console]"))
+            assertThat(answerFrom(makeAnInterpreterWithAConsole(), "open? open [scheme: 'console]"))
                     .isEqualTo(TRUE);
-            assertThat(answerFrom(withAConsole(),
+            assertThat(answerFrom(makeAnInterpreterWithAConsole(),
                     "p: open [scheme: 'console] close p open? p")).isEqualTo(FALSE);
         }
 
         @Test
         @DisplayName("CLOSE answers the port, so a caller keeps hold of it")
         void closeAnswersThePort() {
-            assertThat(answerFrom(withAConsole(),
+            assertThat(answerFrom(makeAnInterpreterWithAConsole(),
                     "p: open [scheme: 'console] port? close p")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a port molds as an object, which is what types.reb says it is")
-        void aPortMoldsAsAnObject() {
-            assertThat(answerFrom(withAConsole(),
+        void moldsAPortAsAnObject() {
+            assertThat(answerFrom(makeAnInterpreterWithAConsole(),
                     "find mold open [scheme: 'console] \"scheme\"")).isNotEqualTo("_");
         }
 
         @Test
         @DisplayName("/ALLOW takes a block of attributes that nothing reads")
-        void theAllowBlockIsDeclaredAndUnread() {
-            assertThat(answerFrom(withAConsole(),
+        void declaresTheAllowBlockAndLeavesItUnread() {
+            assertThat(answerFrom(makeAnInterpreterWithAConsole(),
                     "open? open/allow [scheme: 'console] [read]")).isEqualTo(TRUE);
-            assertThat(errorIdFrom(withAConsole(),
+            assertThat(readTheErrorIdFrom(makeAnInterpreterWithAConsole(),
                     "open/allow [scheme: 'console] 'read")).isEqualTo("expect-arg");
         }
 
         @Test
         @DisplayName("the port carries the scheme it was opened from")
-        void thePortKnowsItsScheme() {
-            assertThat(answerFrom(withAConsole(),
+        void knowsThePortsScheme() {
+            assertThat(answerFrom(makeAnInterpreterWithAConsole(),
                     "p: open [scheme: 'console] 'console = p/scheme/name")).isEqualTo(TRUE);
         }
     }
@@ -106,23 +106,23 @@ class PortDatatypeTest {
 
         @Test
         @DisplayName("the console scheme is registered, through Rebol's own MAKE-SCHEME")
-        void theConsoleSchemeIsRegistered() {
-            assertThat(answerFrom(withAConsole(),
+        void includeTheConsoleScheme() {
+            assertThat(answerFrom(makeAnInterpreterWithAConsole(),
                     "find mold words-of system/schemes \"console\"")).isNotEqualTo("_");
         }
 
         @Test
         @DisplayName("a scheme nothing can serve is refused rather than opened")
-        void anUnservedSchemeIsRefused() {
-            assertThat(errorIdFrom(withAConsole(), "open [scheme: 'carrier-pigeon]"))
+        void refuseAnUnservedScheme() {
+            assertThat(readTheErrorIdFrom(makeAnInterpreterWithAConsole(), "open [scheme: 'carrier-pigeon]"))
                     .isNotEqualTo("no-error");
         }
 
         @Test
         @DisplayName("a console port opens without the grant, carrying nothing")
-        void withoutTheGrantOpeningIsAllowed() {
+        void allowOpeningWithoutTheGrant() {
             Interpreter walled = Interpreter.create();
-            assertThat(errorIdFrom(walled, "open [scheme: 'console]"))
+            assertThat(readTheErrorIdFrom(walled, "open [scheme: 'console]"))
                     .isEqualTo("no-error");
             assertThat(answerFrom(walled, "query system/ports/output 'window-cols"))
                     .isEqualTo("80");
@@ -130,14 +130,14 @@ class PortDatatypeTest {
 
         @Test
         @DisplayName("but reading and writing through it are still refused")
-        void withoutTheGrantReadingAndWritingAreRefused() {
+        void refuseReadingAndWritingWithoutTheGrant() {
             Interpreter walled = Interpreter.create();
-            assertThat(errorIdFrom(walled, "read system/ports/output"))
+            assertThat(readTheErrorIdFrom(walled, "read system/ports/output"))
                     .isEqualTo("no-service");
-            assertThat(errorIdFrom(walled, """
+            assertThat(readTheErrorIdFrom(walled, """
                     write system/ports/output {x}"""))
                     .isEqualTo("no-service");
-            assertThat(errorIdFrom(walled, "input")).isEqualTo("no-service");
+            assertThat(readTheErrorIdFrom(walled, "input")).isEqualTo("no-service");
         }
     }
 
@@ -148,35 +148,35 @@ class PortDatatypeTest {
         @Test
         @DisplayName("READ on a port answers a line")
         void readAnswersALine() {
-            assertThat(answerFrom(withAConsole("hello"),
+            assertThat(answerFrom(makeAnInterpreterWithAConsole("hello"),
                     "p: open [scheme: 'console] read p")).isEqualTo("\"hello\"");
         }
 
         @Test
         @DisplayName("nothing more to read answers none, not an empty string")
-        void nothingMoreAnswersNone() {
-            assertThat(answerFrom(withAConsole(),
+        void answersNoneWhenNothingIsLeft() {
+            assertThat(answerFrom(makeAnInterpreterWithAConsole(),
                     "p: open [scheme: 'console] none? read p")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("READ still reads a file, because the verb dispatches on the datatype")
         void readStillTakesAFile() {
-            assertThat(errorIdFrom(withAConsole(), "read %nowhere.txt"))
+            assertThat(readTheErrorIdFrom(makeAnInterpreterWithAConsole(), "read %nowhere.txt"))
                     .isEqualTo("no-service");
         }
 
         @Test
         @DisplayName("MODIFY sets a mode and answers the value it was given")
         void modifySetsAMode() {
-            assertThat(answerFrom(withAConsole(),
+            assertThat(answerFrom(makeAnInterpreterWithAConsole(),
                     "p: open [scheme: 'console] modify p 'line true")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("MODIFY refuses a mode a console has not got")
         void modifyRefusesAnUnknownMode() {
-            assertThat(errorIdFrom(withAConsole(),
+            assertThat(readTheErrorIdFrom(makeAnInterpreterWithAConsole(),
                     "p: open [scheme: 'console] modify p 'colour true"))
                     .isEqualTo("bad-file-mode");
         }
@@ -184,7 +184,7 @@ class PortDatatypeTest {
         @Test
         @DisplayName("and refuses a value that is not a logic")
         void modifyRefusesANonLogic() {
-            assertThat(errorIdFrom(withAConsole(),
+            assertThat(readTheErrorIdFrom(makeAnInterpreterWithAConsole(),
                     "p: open [scheme: 'console] modify p 'line 9"))
                     .isEqualTo("invalid-value-for");
         }
@@ -196,36 +196,36 @@ class PortDatatypeTest {
 
         @Test
         @DisplayName("INPUT is Rebol's, and it reads through the port")
-        void inputIsRebols() {
-            assertThat(answerFrom(withAConsole("typed"), "input")).isEqualTo("\"typed\"");
+        void leavesInputToRebol() {
+            assertThat(answerFrom(makeAnInterpreterWithAConsole("typed"), "input")).isEqualTo("\"typed\"");
         }
 
         @Test
         @DisplayName("INPUT keeps the port in system/ports/input, so the next call reuses it")
-        void inputKeepsThePort() {
-            assertThat(answerFrom(withAConsole("one", "two"),
+        void keepsThePortForInput() {
+            assertThat(answerFrom(makeAnInterpreterWithAConsole("one", "two"),
                     "input port? system/ports/input")).isEqualTo(TRUE);
-            assertThat(answerFrom(withAConsole("one", "two"),
+            assertThat(answerFrom(makeAnInterpreterWithAConsole("one", "two"),
                     "mold reduce [input input]")).isEqualTo("{[\"one\" \"two\"]}");
         }
 
         @Test
         @DisplayName("nothing more to read answers none")
-        void inputAnswersNoneAtTheEnd() {
-            assertThat(answerFrom(withAConsole(), "none? input")).isEqualTo(TRUE);
+        void answersNoneForInputAtTheEnd() {
+            assertThat(answerFrom(makeAnInterpreterWithAConsole(), "none? input")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("ASK writes the question and then reads")
         void askIsRebols() {
-            assertThat(answerFrom(withAConsole("yes"), "ask \"go? \"")).isEqualTo("\"yes\"");
+            assertThat(answerFrom(makeAnInterpreterWithAConsole("yes"), "ask \"go? \"")).isEqualTo("\"yes\"");
         }
 
         @Test
         @DisplayName("without the console grant both are refused")
-        void bothNeedTheGrant() {
-            assertThat(errorIdFrom(Interpreter.create(), "input")).isEqualTo("no-service");
-            assertThat(errorIdFrom(Interpreter.create(), "ask \"q\"")).isEqualTo("no-service");
+        void needsTheGrantForBoth() {
+            assertThat(readTheErrorIdFrom(Interpreter.create(), "input")).isEqualTo("no-service");
+            assertThat(readTheErrorIdFrom(Interpreter.create(), "ask \"q\"")).isEqualTo("no-service");
         }
     }
 }

@@ -22,8 +22,8 @@ class SyntaxErrorArgumentsFromTheSourceTest {
     class TheMoneyGroup {
 
         @Test
-        @DisplayName("names money as the kind and the whole token as the text")
-        void anOperatorRunIntoMoney() {
+        @DisplayName("names money as the type and the whole token as the text")
+        void namesMoneyAndTheWholeToken() {
             assertThat(answerTo("""
                     e: try [load {$1*$2}] all [e/id = 'invalid e/arg2 = "$1*$2"]"""))
                     .isEqualTo(TRUE);
@@ -36,8 +36,8 @@ class SyntaxErrorArgumentsFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and the kind is money whatever the amount was")
-        void theKindIsMoney() {
+        @DisplayName("and the type is money whatever the amount was")
+        void namesMoneyWhateverTheAmount() {
             assertThat(answerTo("""
                     e: try [load {$1*$2}] e/arg1""")).isEqualTo("\"money\"");
             assertThat(answerTo("""
@@ -46,7 +46,7 @@ class SyntaxErrorArgumentsFromTheSourceTest {
 
         @Test
         @DisplayName("and a money literal that is a number is still money")
-        void whatSurvives() {
+        void leavesANumericMoneyLiteralAsMoney() {
             assertThat(answerTo("""
                     money? load {$1}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -63,8 +63,8 @@ class SyntaxErrorArgumentsFromTheSourceTest {
     class TheThreeFields {
 
         @Test
-        @DisplayName("ARG1 is the kind, ARG2 the token, NEAR the line")
-        void eachFieldItsOwn() {
+        @DisplayName("ARG1 is the type, ARG2 the token, NEAR the line")
+        void holdTheKindTheTokenAndTheLine() {
             assertThat(answerTo("""
                     e: try [load {$1*$2}] e/arg1""")).isEqualTo("\"money\"");
             assertThat(answerTo("""
@@ -75,7 +75,7 @@ class SyntaxErrorArgumentsFromTheSourceTest {
 
         @Test
         @DisplayName("and NEAR carries the whole line, not the token")
-        void nearIsTheLine() {
+        void carryTheWholeLineInNear() {
             assertThat(answerTo("""
                     e: try [load {1 $1*$2}] e/near"""))
                     .isEqualTo("\"(line 1) 1 $1*$2\"");
@@ -85,7 +85,7 @@ class SyntaxErrorArgumentsFromTheSourceTest {
 
         @Test
         @DisplayName("and the line number counts newlines before it")
-        void theLineNumber() {
+        void countNewlinesForTheLineNumber() {
             assertThat(answerTo("""
                     e: try [load {1^/$1*$2}] e/near"""))
                     .isEqualTo("\"(line 2) $1*$2\"");

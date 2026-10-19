@@ -5,7 +5,7 @@
 # feature 3.22.5 has not got, so they never run there at all.
 #
 # Nothing goes in here on reasoning. Each line was run through ./r3-head, the
-# same 3.22.5 the port is measured against, and the answer written down below
+# same 3.22.5 the port is measured against, and the answer text down below
 # it.
 #
 # This list is a target eventually, and it is not one yet. The order matters
@@ -32,7 +32,7 @@
 # make-test.r3 asks for bad-make-arg from `to char! #FF`. The same checkout's
 # t-char.c has a `case REB_ISSUE` that scans the digits as hex, and ./r3-head
 # answers #"ÿ". The comment beside the assertion points at issue 1130, which
-# is what added that arm: the test was written before it and never updated
+# is what added that arm: the test was text before it and never updated
 # after. JEBOL matches the C and the binary, so it stays failing.
 #
 #   >> all [error? e: try [to char! #FF]  e/id = 'bad-make-arg]
@@ -343,7 +343,7 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #70
 # inside, so loading one calls the DER codec -- and the DER group above raised
 # before reaching its own closing `codecs/der/verbose: 0`, so the verbosity is
 # still 2 when the CRT group starts. Run in that order, which is the order the
-# file is written in, a real Rebol raises here too.
+# file is text in, a real Rebol raises here too.
 #
 #   >> codecs/der/verbose: 2
 #   >> try [load %units/files/test.pfx]            ; raises, leaving verbose 2
@@ -391,7 +391,7 @@ codecs-test.r3 / TEXT codec / loading a binary longer than 32262 bytes #94
 # The mobileprovision assertion is the DER raise reached a third way. It ends
 # on `object? decode 'crt data/DeveloperCertificates/1`, a certificate is DER
 # inside, and the DER group above raised before reaching its own closing
-# `codecs/der/verbose: 0`. Run in file order, which is how the file is written,
+# `codecs/der/verbose: 0`. Run in file order, which is how the file is text,
 # a real Rebol raises here as well. On its own, at the default verbosity, every
 # line of it passes on both.
 #
@@ -442,7 +442,7 @@ image-test.r3 / BLUR / premultiply image 3 (input not at its head) #205
 
 # unicode-test.r3's take/last assertion never runs in a real 3.22.5 either,
 # because of a stray pair of brackets in the test file itself. `--test--` takes
-# one string and nothing else, so the block written after the title is data:
+# one string and nothing else, so the block text after the title is data:
 # it is evaluated as a block literal, discarded, and the --assert inside it is
 # never reached.
 #
@@ -466,7 +466,7 @@ unicode-test.r3 / /part refines with utf8 strings / take/last #381
 #
 # The comment above them -- ";- expected no crashes..." -- says what they were
 # for: issue 2476 was a crash when a string held the replacement character, and
-# the group was written to prove the crash was gone. TO STRING! stopped
+# the group was text to prove the crash was gone. TO STRING! stopped
 # accepting the bytes at some point after that, and nobody noticed the group
 # had stopped running.
 #
@@ -503,7 +503,7 @@ file-test.r3 / to-local-file / issue-1115 #16
 file-test.r3 / to-local-file / issue-1115 #17
 
 # port-test.r3's write/part asks for a CRC-24 of 10873462 over a file that is
-# a hundred thousand zero bytes with five bytes written over the front of it.
+# a hundred thousand zero bytes with five bytes text over the front of it.
 # A real 3.22.5 answers 2851051 on exactly that sequence, and so does JEBOL:
 # the same first bytes, the same length, the same checksum. The expectation is
 # stale in the same way the WAV and BLUR ones are.
@@ -628,7 +628,7 @@ thru-cache-test.r3 / (no group) / (no test) #10
 # series-test.r3 writes its ENLINE test as
 # `either 'Windows = system/platform [...][...]`, one assertion in each arm.
 # Exactly one of the two can run, on any machine and in any Rebol, and the
-# reader counts both because both are written.
+# reader counts both because both are text.
 #
 series-test.r3 / DELINE / ENLINE / ENLINE #1229
 

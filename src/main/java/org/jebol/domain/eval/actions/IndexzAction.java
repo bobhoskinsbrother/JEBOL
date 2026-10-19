@@ -29,7 +29,7 @@ public class IndexzAction extends SeriesOrFileAction {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series", somewhereToStand()));
+        return List.of(Parameter.of("series", somewhereToStand()));
     }
 
     @Override
@@ -41,9 +41,9 @@ public class IndexzAction extends SeriesOrFileAction {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case ImageValue picture when refinements.contains("xy") ->
-                    picture.whereItStands(COUNTING_FROM_NOUGHT);
+                    picture.findWhereItStands(COUNTING_FROM_NOUGHT);
             case PortValue port when port.isAFile() ->
-                    IntegerValue.of(theFileBehind(port, evaluator).position());
+                    IntegerValue.of(findTheFileBehind(port, evaluator).position());
             case RebolSeries series -> IntegerValue.of(series.index() - THE_HEAD_IS_ONE);
             case Value anythingElse -> refuseTheDatatype(anythingElse);
         };

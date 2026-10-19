@@ -24,7 +24,7 @@ public record ScriptOutcome(Conclusion conclusion, Value value, Duration elapsed
     }
 
     public boolean succeeded() {
-        return conclusion == Conclusion.PRODUCED_A_VALUE;
+        return conclusion == Conclusion.PRODUCED_VALUE;
     }
 
     /** The value as a person would see it, or the error's message. */

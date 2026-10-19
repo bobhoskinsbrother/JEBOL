@@ -31,15 +31,15 @@ final class BrotliHistogramCost {
             }
         }
         if (howManyAreUsed <= 4) {
-            return theShortForm(counts, whichAreUsed, howManyAreUsed,
+            return priceTheShortForm(counts, whichAreUsed, howManyAreUsed,
                     histogram.total());
         }
-        return theEntropyPlusAGuessAtDeclaringTheCode(
+        return priceTheEntropyAndTheCode(
                 counts, alphabetSize, histogram.total());
     }
 
-    private static double theShortForm(int[] counts, int[] whichAreUsed,
-            int howManyAreUsed, long total) {
+    private static double priceTheShortForm(int[] counts, int[] whichAreUsed,
+                                            int howManyAreUsed, long total) {
 
         if (howManyAreUsed == 1) {
             return ONE_SYMBOL;
@@ -72,15 +72,15 @@ final class BrotliHistogramCost {
         return FOUR_SYMBOLS + 3 * twoSmallest + 2L * (four[0] + four[1]) - largest;
     }
 
-    private static double theEntropyPlusAGuessAtDeclaringTheCode(int[] counts, int alphabetSize, long total) {
+    private static double priceTheEntropyAndTheCode(int[] counts, int alphabetSize, long total) {
         double bits = 0.0;
         int deepest = 1;
         int[] howManyAtEachDepth = new int[CODE_LENGTH_CODES];
-        double logOfTotal = BrotliCodes.fastLog2(total);
+        double logOfTotal = BrotliCodes.computeLog2Quickly(total);
         int symbol = 0;
         while (symbol < alphabetSize) {
             if (counts[symbol] > 0) {
-                double surprise = logOfTotal - BrotliCodes.fastLog2(counts[symbol]);
+                double surprise = logOfTotal - BrotliCodes.computeLog2Quickly(counts[symbol]);
                 int depth = (int) (surprise + 0.5);
                 bits += counts[symbol] * surprise;
                 if (depth > DEEPEST_A_SYMBOL_MAY_SIT) {
@@ -114,7 +114,7 @@ final class BrotliHistogramCost {
             }
         }
         bits += 18 + 2 * deepest;
-        bits += BrotliCodes.bitsEntropyFlooredAtOneBitPerLiteral(howManyAtEachDepth, CODE_LENGTH_CODES);
+        bits += BrotliCodes.measureTheBitsEntropy(howManyAtEachDepth, CODE_LENGTH_CODES);
         return bits;
     }
 }

@@ -18,7 +18,7 @@ class VectorFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String theTextOf(String source) {
+    private static String readTheTextOf(String source) {
         String molded = answerTo(source);
         boolean inBraces = molded.startsWith("{") && molded.endsWith("}");
         return inBraces
@@ -27,10 +27,10 @@ class VectorFromTheSourceTest {
     }
 
     private static String moldOf(String source) {
-        return theTextOf("mold " + source);
+        return readTheTextOf("mold " + source);
     }
 
-    private static String whatHappensTo(String source) {
+    private static String describeWhatHappensTo(String source) {
         return answerTo("either error? e: try [" + source + "] [e/id] ['accepted]");
     }
 
@@ -66,7 +66,7 @@ class VectorFromTheSourceTest {
                 "double!,   float64!",
         })
         @DisplayName("every alias makes a vector that molds under its settled name")
-        void everyAliasIsAccepted(String written, String settled) {
+        void acceptEveryAlias(String written, String settled) {
             assertThat(moldOf("make vector! [" + written + "]"))
                     .isEqualTo("#(" + settled + " [])");
         }
@@ -74,8 +74,8 @@ class VectorFromTheSourceTest {
         @ParameterizedTest
         @ValueSource(strings = {"half!", "f8!", "f16!", "float8!", "float16!"})
         @DisplayName("but the two widths of float the C names and does not implement are refused")
-        void theUnimplementedFloatWidthsAreRefused(String written) {
-            assertThat(whatHappensTo("make vector! [" + written + "]"))
+        void refuseTheUnimplementedFloatWidths(String written) {
+            assertThat(describeWhatHappensTo("make vector! [" + written + "]"))
                     .as("sys-value.h declares VTSF08 and VTSF16 and marks both "
                             + "\"not used\", and Get_Vector_Spec_From_Symbol has no "
                             + "case for either")
@@ -89,7 +89,7 @@ class VectorFromTheSourceTest {
 
         @Test
         @DisplayName("from a count, which is a signed 32-bit vector of zeros")
-        void fromACount() {
+        void worksFromACount() {
             assertThat(moldOf("make vector! 0")).isEqualTo("#(int32! [])");
             assertThat(moldOf("make vector! 3")).isEqualTo("#(int32! [0 0 0])");
         }
@@ -103,18 +103,18 @@ class VectorFromTheSourceTest {
         @Test
         @DisplayName("but a negative count is out of range")
         void anegativeCountIsRefused() {
-            assertThat(whatHappensTo("make vector! -1")).isEqualTo("out-of-range");
+            assertThat(describeWhatHappensTo("make vector! -1")).isEqualTo("out-of-range");
         }
 
         @Test
         @DisplayName("from an empty block, which is the same as from zero")
-        void fromAnEmptyBlock() {
+        void worksFromAnEmptyBlock() {
             assertThat(moldOf("make vector! []")).isEqualTo("#(int32! [])");
         }
 
         @Test
-        @DisplayName("from bare numbers, which choose the widest of their kind")
-        void fromBareNumbers() {
+        @DisplayName("from bare numbers, which choose the widest of their type")
+        void worksFromBareNumbers() {
             assertThat(moldOf("make vector! [1 2 3]")).isEqualTo("#(int64! [1 2 3])");
             assertThat(moldOf("make vector! [1.0 2]"))
                     .as("one decimal among them makes the whole vector decimal")
@@ -123,7 +123,7 @@ class VectorFromTheSourceTest {
 
         @Test
         @DisplayName("from a name and a count")
-        void fromANameAndACount() {
+        void worksFromANameAndACount() {
             assertThat(moldOf("make vector! [i8! 3]")).isEqualTo("#(int8! [0 0 0])");
             assertThat(moldOf("make vector! [f32! 3]"))
                     .isEqualTo("#(float32! [0.0 0.0 0.0])");
@@ -131,7 +131,7 @@ class VectorFromTheSourceTest {
 
         @Test
         @DisplayName("from a name and a block of values")
-        void fromANameAndABlock() {
+        void worksFromANameAndABlock() {
             assertThat(moldOf("make vector! [u8! [1 2]]")).isEqualTo("#(uint8! [1 2])");
             assertThat(moldOf("make vector! [f32! [1 2]]"))
                     .as("a whole number in a decimal vector becomes a decimal")
@@ -140,14 +140,14 @@ class VectorFromTheSourceTest {
 
         @Test
         @DisplayName("from a name, a block and a starting position")
-        void fromANameABlockAndAnIndex() {
+        void worksFromANameABlockAndAnIndex() {
             assertThat(moldOf("make vector! [i8! [1 2] 2]")).isEqualTo("#(int8! [2])");
             assertThat(answerTo("index? make vector! [i8! [1 2] 2]")).isEqualTo("2");
         }
 
         @Test
-        @DisplayName("from the older spelling, which names the kind and the width apart")
-        void fromTheOlderSpelling() {
+        @DisplayName("from the older spelling, which names the type and the width apart")
+        void acceptsTheOlderSpelling() {
             assertThat(moldOf("make vector! [integer! 8 [1 2 3]]"))
                     .isEqualTo("#(int8! [1 2 3])");
             assertThat(moldOf("make vector! [signed integer! 32 2]"))
@@ -160,8 +160,8 @@ class VectorFromTheSourceTest {
 
         @Test
         @DisplayName("and an unsigned decimal is refused, because there is no such thing")
-        void anUnsignedDecimalIsRefused() {
-            assertThat(whatHappensTo("make vector! [unsigned decimal! 32]"))
+        void refusesAnUnsignedDecimal() {
+            assertThat(describeWhatHappensTo("make vector! [unsigned decimal! 32]"))
                     .isEqualTo("bad-make-arg");
         }
 
@@ -170,7 +170,7 @@ class VectorFromTheSourceTest {
                 "decimal! 8", "decimal! 16", "integer! 0", "string! 32"})
         @DisplayName("a width the C does not allow is refused")
         void abadWidthIsRefused(String written) {
-            assertThat(whatHappensTo("make vector! [" + written + "]"))
+            assertThat(describeWhatHappensTo("make vector! [" + written + "]"))
                     .as("the C allows 32 and 64 for both kinds and 8 and 16 for "
                             + "integers only")
                     .isEqualTo("bad-make-arg");
@@ -194,14 +194,14 @@ class VectorFromTheSourceTest {
 
         @Test
         @DisplayName("from binary, which is read as the vector's own width")
-        void fromBinary() {
+        void worksFromBinary() {
             assertThat(moldOf("make vector! [integer! 16 #{010002000300}]"))
                     .isEqualTo("#(int16! [1 2 3])");
         }
 
         @Test
         @DisplayName("from characters, which are their code points")
-        void fromCharacters() {
+        void worksFromCharacters() {
             assertThat(answerTo("""
                     v: make vector! [integer! 8 [#"^(00)" #"a"]]
                     reduce [v/1 v/2]""")).isEqualTo("[0 97]");
@@ -209,7 +209,7 @@ class VectorFromTheSourceTest {
 
         @Test
         @DisplayName("and the size, the data and the index may all come from get-words")
-        void fromGetWords() {
+        void worksFromGetWords() {
             assertThat(moldOf("data: [1 2 3 4] make vector! [uint8! :data]"))
                     .isEqualTo("#(uint8! [1 2 3 4])");
             assertThat(moldOf("data: [1 2 3 4] size: 2 make vector! [uint8! :size :data]"))
@@ -290,7 +290,7 @@ class VectorFromTheSourceTest {
                 "'#(u16! [65536])', '#(uint16! [0])'",
         })
         @DisplayName("at every boundary and one step past it")
-        void atTheBoundaries(String written, String expected) {
+        void happensAtEveryBoundary(String written, String expected) {
             assertThat(moldOf(written)).isEqualTo(expected);
         }
 
@@ -330,36 +330,36 @@ class VectorFromTheSourceTest {
 
         @Test
         @DisplayName("a vector molds as the construction syntax that would rebuild it")
-        void moldingIsConstruction() {
+        void writesConstructionSyntax() {
             assertThat(moldOf("#(i8! [1 2])")).isEqualTo("#(int8! [1 2])");
             assertThat(moldOf("#(f64! [1 2])")).isEqualTo("#(float64! [1.0 2.0])");
         }
 
         @Test
         @DisplayName("and forming gives the numbers alone")
-        void formingIsTheNumbersAlone() {
-            assertThat(theTextOf("form #(i8! [1 2 3])")).isEqualTo("1 2 3");
+        void formsTheNumbersAlone() {
+            assertThat(readTheTextOf("form #(i8! [1 2 3])")).isEqualTo("1 2 3");
         }
 
         @Test
         @DisplayName("molding from a position shows only what is left")
-        void moldingFromAPosition() {
+        void showsOnlyWhatIsLeft() {
             assertThat(moldOf("skip #(i32! [10 20 30]) 2")).isEqualTo("#(int32! [30])");
         }
 
         @Test
         @DisplayName("but MOLD/ALL shows the whole series and says where the position is")
         void moldAllShowsTheWholeSeries() {
-            assertThat(theTextOf("mold/all skip #(i32! [10 20 30]) 2"))
+            assertThat(readTheTextOf("mold/all skip #(i32! [10 20 30]) 2"))
                     .isEqualTo("#(int32! [10 20 30] 3)");
-            assertThat(theTextOf("mold/all #(i32! [10 20 30])"))
+            assertThat(readTheTextOf("mold/all #(i32! [10 20 30])"))
                     .as("and says nothing when the position is the head")
                     .isEqualTo("#(int32! [10 20 30])");
         }
 
         @Test
         @DisplayName("more than ten numbers are broken across lines, ten to a line")
-        void alongVectorIsBrokenAcrossLines() {
+        void breaksALongVectorAcrossLines() {
             assertThat(moldOf("make vector! [i8! 11]"))
                     .isEqualTo("""
                             #(int8! [
@@ -371,13 +371,13 @@ class VectorFromTheSourceTest {
         @Test
         @DisplayName("and MOLD/FLAT keeps it on one line however long it is")
         void moldFlatStaysOnOneLine() {
-            assertThat(theTextOf("mold/flat make vector! [i8! 12]"))
+            assertThat(readTheTextOf("mold/flat make vector! [i8! 12]"))
                     .isEqualTo("#(int8! [0 0 0 0 0 0 0 0 0 0 0 0])");
         }
 
         @Test
         @DisplayName("what molds can be loaded back, and is the same vector")
-        void moldingRoundTrips() {
+        void roundTrips() {
             assertThat(answerTo("v: #(u16! [1 2]) v = load mold/all v")).isEqualTo("#(true)");
             assertThat(answerTo(
                     "2 = index? load mold/all next make vector! [integer! 32 4 [1 2 3 4]]"))
@@ -401,7 +401,7 @@ class VectorFromTheSourceTest {
 
         @Test
         @DisplayName("FIRST, LAST and a numbered path all read an element")
-        void readingAnElement() {
+        void readsAnElement() {
             assertThat(answerTo("v: #(i8! [1 2 3]) first v")).isEqualTo("1");
             assertThat(answerTo("v: #(i8! [1 2 3]) last v")).isEqualTo("3");
             assertThat(answerTo("v: #(i8! [1 2 3]) v/3")).isEqualTo("3");
@@ -409,7 +409,7 @@ class VectorFromTheSourceTest {
 
         @Test
         @DisplayName("LENGTH? and INDEX? count from the position, not the head")
-        void lengthAndIndex() {
+        void countsFromThePosition() {
             assertThat(answerTo("length? #(i8! [1 2 3])")).isEqualTo("3");
             assertThat(answerTo("length? next #(i8! [1 2 3])")).isEqualTo("2");
             assertThat(answerTo("index? next #(i8! [1 2 3])")).isEqualTo("2");
@@ -428,9 +428,9 @@ class VectorFromTheSourceTest {
         @DisplayName("PICK answers none outside the vector rather than failing")
         void pickOutsideAnswersNone() {
             assertThat(answerTo("v: #(u32! [1 2 3]) pick v 1")).isEqualTo("1");
-            assertThat(theTextOf("v: #(u32! [1 2 3]) mold pick v 0")).isEqualTo("_");
-            assertThat(theTextOf("v: #(u32! [1 2 3]) mold pick v -1")).isEqualTo("_");
-            assertThat(theTextOf("v: #(u32! [1 2 3]) mold pick v 10")).isEqualTo("_");
+            assertThat(readTheTextOf("v: #(u32! [1 2 3]) mold pick v 0")).isEqualTo("_");
+            assertThat(readTheTextOf("v: #(u32! [1 2 3]) mold pick v -1")).isEqualTo("_");
+            assertThat(readTheTextOf("v: #(u32! [1 2 3]) mold pick v 10")).isEqualTo("_");
         }
 
         @Test
@@ -455,7 +455,7 @@ class VectorFromTheSourceTest {
 
         @Test
         @DisplayName("POKE and a numbered set-path both write an element")
-        void writingAnElement() {
+        void writesAnElement() {
             assertThat(answerTo("v: #(u32! [1 2 3]) poke v 1 10 v/1")).isEqualTo("10");
             assertThat(answerTo("v: #(u32! [1 2 3]) v/1: 9 v/1")).isEqualTo("9");
         }
@@ -470,8 +470,8 @@ class VectorFromTheSourceTest {
         @Test
         @DisplayName("but POKE outside the vector is out of range, where PICK was none")
         void pokeOutsideIsAnError() {
-            assertThat(whatHappensTo("poke #(u32! [1 2 3]) 10 1")).isEqualTo("out-of-range");
-            assertThat(whatHappensTo("poke #(u32! [1 2 3]) 0 1"))
+            assertThat(describeWhatHappensTo("poke #(u32! [1 2 3]) 10 1")).isEqualTo("out-of-range");
+            assertThat(describeWhatHappensTo("poke #(u32! [1 2 3]) 0 1"))
                     .as("PD_Vector answers PE_NONE for a zero selector when reading "
                             + "and PE_BAD_RANGE when writing, which is the one place "
                             + "the two directions differ")
@@ -481,13 +481,13 @@ class VectorFromTheSourceTest {
         @Test
         @DisplayName("a value that is not a number is refused")
         void anonNumberIsRefused() {
-            assertThat(whatHappensTo("poke #(i8! [1 2]) 1 {x}")).isEqualTo("invalid-arg");
+            assertThat(describeWhatHappensTo("poke #(i8! [1 2]) 1 {x}")).isEqualTo("invalid-arg");
         }
 
         @Test
         @DisplayName("and protected storage refuses the write")
-        void protectedStorageRefuses() {
-            assertThat(whatHappensTo("poke protect #(i8! [1 2]) 1 9")).isEqualTo("protected");
+        void isRefusedByProtectedStorage() {
+            assertThat(describeWhatHappensTo("poke protect #(i8! [1 2]) 1 9")).isEqualTo("protected");
         }
 
         @Test

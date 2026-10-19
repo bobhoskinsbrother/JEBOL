@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SourceProgrammeLoadingTest {
 
     static Stream<Path> programmes() {
-        return CorpusReader.sourceProgrammes().stream();
+        return CorpusReader.listTheSourceProgrammes().stream();
     }
 
     @ParameterizedTest(name = "{0}")
@@ -53,10 +53,10 @@ class SourceProgrammeLoadingTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("programmes")
     @DisplayName("every word comes back unbound")
-    void everyWordIsUnbound(Path programme) {
+    void leavesEveryWordUnbound(Path programme) {
         TranscodeResult result = Transcoder.transcode(CorpusReader.read(programme));
 
-        assertThat(boundWordsIn(result.values().orElseThrow()))
+        assertThat(listTheBoundWordsIn(result.values().orElseThrow()))
                 .as("%s: transcode must not bind anything", programme.getFileName())
                 .isEmpty();
     }
@@ -64,7 +64,7 @@ class SourceProgrammeLoadingTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("programmes")
     @DisplayName("every series sits at its head")
-    void everySeriesIsAtItsHead(Path programme) {
+    void leavesEverySeriesAtItsHead(Path programme) {
         TranscodeResult result = Transcoder.transcode(CorpusReader.read(programme));
 
         assertThat(seriesAwayFromHead(result.values().orElseThrow()))
@@ -75,7 +75,7 @@ class SourceProgrammeLoadingTest {
 
     @Test
     @DisplayName("between them they cover the forms that matter")
-    void theProgrammesCoverTheAwkwardForms() {
+    void coversTheAwkwardForms() {
         List<Value> everything = programmes()
                 .map(CorpusReader::read)
                 .map(Transcoder::transcode)
@@ -107,11 +107,11 @@ class SourceProgrammeLoadingTest {
                 .toList();
     }
 
-    private static List<String> boundWordsIn(Value value) {
+    private static List<String> listTheBoundWordsIn(Value value) {
         return switch (value) {
             case AnyWordValue word -> word.isBound() ? List.of(word.spelling()) : List.of();
             case AnyBlockValue block -> block.remaining().stream()
-                    .flatMap(item -> boundWordsIn(item).stream())
+                    .flatMap(item -> listTheBoundWordsIn(item).stream())
                     .toList();
             default -> List.of();
         };

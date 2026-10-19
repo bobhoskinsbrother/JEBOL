@@ -4,26 +4,26 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
-final class FieldsOfAPostedEvent {
+final class EventFields {
 
-    private static final char A_QUOTE = '"';
+    private static final char SINGLE_QUOTE_CHAR = '"';
 
-    private static final String A_QUOTE_AS_TEXT = String.valueOf(A_QUOTE);
+    private static final String SINGLE_QUOTE_STRING = String.valueOf(SINGLE_QUOTE_CHAR);
 
     private final Map<String, String> asPosted;
 
-    FieldsOfAPostedEvent(String posted) {
-        this.asPosted = Map.copyOf(theFieldsOf(posted.trim()));
+    EventFields(String posted) {
+        this.asPosted = Map.copyOf(readTheFields(posted.trim()));
     }
 
-    private static Map<String, String> theFieldsOf(String body) {
+    private static Map<String, String> readTheFields(String body) {
         Map<String, String> fields = new LinkedHashMap<>();
         if (!body.startsWith("{") || !body.endsWith("}")) {
             return fields;
         }
         int at = 1;
         while (at < body.length()) {
-            at = skippingWhitespaceIn(body, at);
+            at = skipWhitespaceIn(body, at);
             char here = body.charAt(at);
             if (here == '}' ) {
                 break;
@@ -32,20 +32,20 @@ final class FieldsOfAPostedEvent {
                 at++;
                 continue;
             }
-            if (here != A_QUOTE) {
+            if (here != SINGLE_QUOTE_CHAR) {
                 break;
             }
-            int nameEnds = theEndOfTheStringAt(body, at);
+            int nameEnds = findEndOfString(body, at);
             if (nameEnds < 0) {
                 break;
             }
-            String name = unescaped(body, at + 1, nameEnds);
-            at = skippingWhitespaceIn(body, nameEnds + 1);
+            String name = unescape(body, at + 1, nameEnds);
+            at = skipWhitespaceIn(body, nameEnds + 1);
             if (at >= body.length() || body.charAt(at) != ':') {
                 break;
             }
-            at = skippingWhitespaceIn(body, at + 1);
-            int valueEnds = theEndOfTheValueAt(body, at);
+            at = skipWhitespaceIn(body, at + 1);
+            int valueEnds = findEndOfValue(body, at);
             if (valueEnds < 0) {
                 break;
             }
@@ -55,38 +55,38 @@ final class FieldsOfAPostedEvent {
         return fields;
     }
 
-    private static int skippingWhitespaceIn(String body, int at) {
+    private static int skipWhitespaceIn(String body, int at) {
         while (at < body.length() && Character.isWhitespace(body.charAt(at))) {
             at++;
         }
         return at;
     }
 
-    private static int theEndOfTheStringAt(String body, int at) {
+    private static int findEndOfString(String body, int at) {
         for (int here = at + 1; here < body.length(); here++) {
             char seen = body.charAt(here);
             if (seen == '\\') {
                 here++;
                 continue;
             }
-            if (seen == A_QUOTE) {
+            if (seen == SINGLE_QUOTE_CHAR) {
                 return here;
             }
         }
         return -1;
     }
 
-    private static int theEndOfTheValueAt(String body, int at) {
+    private static int findEndOfValue(String body, int at) {
         if (at >= body.length()) {
             return -1;
         }
         char here = body.charAt(at);
-        if (here == A_QUOTE) {
-            int closed = theEndOfTheStringAt(body, at);
+        if (here == SINGLE_QUOTE_CHAR) {
+            int closed = findEndOfString(body, at);
             return closed < 0 ? -1 : closed + 1;
         }
         if (here == '{' || here == '[') {
-            return theEndOfTheGroupAt(body, at, here);
+            return findEndOfGroup(body, at, here);
         }
         int end = at;
         while (end < body.length() && body.charAt(end) != ','
@@ -96,13 +96,13 @@ final class FieldsOfAPostedEvent {
         return end;
     }
 
-    private static int theEndOfTheGroupAt(String body, int at, char opened) {
+    private static int findEndOfGroup(String body, int at, char opened) {
         char closed = opened == '{' ? '}' : ']';
         int depth = 0;
         for (int here = at; here < body.length(); here++) {
             char seen = body.charAt(here);
-            if (seen == A_QUOTE) {
-                here = theEndOfTheStringAt(body, here);
+            if (seen == SINGLE_QUOTE_CHAR) {
+                here = findEndOfString(body, here);
                 if (here < 0) {
                     return -1;
                 }
@@ -117,7 +117,7 @@ final class FieldsOfAPostedEvent {
         return -1;
     }
 
-    private static String unescaped(String body, int from, int to) {
+    private static String unescape(String body, int from, int to) {
         StringBuilder read = new StringBuilder();
         for (int at = from; at < to; at++) {
             char here = body.charAt(at);
@@ -151,11 +151,11 @@ final class FieldsOfAPostedEvent {
 
     Optional<String> text(String field) {
         return Optional.ofNullable(asPosted.get(field))
-                .filter(FieldsOfAPostedEvent::isQuoted)
-                .map(posted -> unescaped(posted, 1, posted.length() - 1));
+                .filter(EventFields::isQuoted)
+                .map(posted -> unescape(posted, 1, posted.length() - 1));
     }
 
-    Optional<Integer> wholeNumber(String field) {
+    Optional<Integer> readWholeNumber(String field) {
         String posted = asPosted.get(field);
         if (posted == null || isQuoted(posted)) {
             return Optional.empty();
@@ -168,7 +168,7 @@ final class FieldsOfAPostedEvent {
     }
 
     private static boolean isQuoted(String posted) {
-        return posted.length() >= 2 && posted.startsWith(A_QUOTE_AS_TEXT)
-                && posted.endsWith(A_QUOTE_AS_TEXT);
+        return posted.length() >= 2 && posted.startsWith(SINGLE_QUOTE_STRING)
+                && posted.endsWith(SINGLE_QUOTE_STRING);
     }
 }

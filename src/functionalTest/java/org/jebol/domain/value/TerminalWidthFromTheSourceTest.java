@@ -21,7 +21,7 @@ class TerminalWidthFromTheSourceTest {
 
         @Test
         @DisplayName("a zero-width space is not counted, and walking past it shows so")
-        void aZeroWidthSpace() {
+        void includeAZeroWidthSpace() {
             assertThat(answerTo("""
                     s: "a​b"
                     t: next s
@@ -32,7 +32,7 @@ class TerminalWidthFromTheSourceTest {
 
         @Test
         @DisplayName("and a string with nothing left in it is no columns wide")
-        void nothingLeftIsNoColumns() {
+        void includeAStringWithNothingLeft() {
             assertThat(answerTo("""
                     s: tail "a​b"
                     s/width""")).isEqualTo("0");
@@ -40,7 +40,7 @@ class TerminalWidthFromTheSourceTest {
 
         @Test
         @DisplayName("a combining mark takes none either")
-        void aCombiningMarkTakesNone() {
+        void includeACombiningMark() {
             assertThat(answerTo("""
                     s: "é"
                     reduce [length? s s/width]""")).isEqualTo("[2 1]");
@@ -53,7 +53,7 @@ class TerminalWidthFromTheSourceTest {
 
         @Test
         @DisplayName("a CJK character, and a symbol that belongs to no CJK script")
-        void aCjkCharacterAndASymbol() {
+        void includeACjkCharacterAndASymbol() {
             assertThat(answerTo("""
                     s: "a⚡中"
                     t: next s
@@ -64,7 +64,7 @@ class TerminalWidthFromTheSourceTest {
 
         @Test
         @DisplayName("an emoji outside the basic plane takes two as well")
-        void anEmojiTakesTwo() {
+        void includeAnEmoji() {
             assertThat(answerTo("""
                     s: "🙂"
                     reduce [length? s s/width s/size]""")).isEqualTo("[1 2 4]");
@@ -77,7 +77,7 @@ class TerminalWidthFromTheSourceTest {
 
         @Test
         @DisplayName("characters, bytes and columns for one awkward string")
-        void charactersBytesAndColumns() {
+        void differForOneAwkwardString() {
             assertThat(answerTo("""
                     s: "a​b"
                     reduce [length? s s/size s/width]""")).isEqualTo("[3 5 2]");
@@ -85,7 +85,7 @@ class TerminalWidthFromTheSourceTest {
 
         @Test
         @DisplayName("and all three agree while the text is plain")
-        void theyAgreeOnPlainText() {
+        void agreeOnPlainText() {
             assertThat(answerTo("""
                     s: "abc"
                     reduce [length? s s/size s/width]""")).isEqualTo("[3 3 3]");
@@ -98,7 +98,7 @@ class TerminalWidthFromTheSourceTest {
 
         @Test
         @DisplayName("a printable ASCII character is one column without a lookup")
-        void asciiIsOneColumn() {
+        void givesAsciiOneColumn() {
             assertThat(TerminalWidth.of('a')).isEqualTo(1);
             assertThat(TerminalWidth.of(' ')).isEqualTo(1);
             assertThat(TerminalWidth.of('~')).isEqualTo(1);
@@ -114,7 +114,7 @@ class TerminalWidthFromTheSourceTest {
 
         @Test
         @DisplayName("the boundaries of a wide range are wide and just outside it is not")
-        void theBoundariesOfARange() {
+        void widensOnlyInsideARange() {
             assertThat(TerminalWidth.of(0x1100)).isEqualTo(2);
             assertThat(TerminalWidth.of(0x115F)).isEqualTo(2);
             assertThat(TerminalWidth.of(0x10FF)).isEqualTo(1);
@@ -123,7 +123,7 @@ class TerminalWidthFromTheSourceTest {
 
         @Test
         @DisplayName("and a run of characters is the sum of them")
-        void aRunIsTheSum() {
+        void sumsARun() {
             assertThat(TerminalWidth.of(new int[] {'a', 0x200B, 'b'})).isEqualTo(2);
             assertThat(TerminalWidth.of(new int[] {})).isZero();
         }

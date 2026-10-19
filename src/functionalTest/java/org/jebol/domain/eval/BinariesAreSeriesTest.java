@@ -14,7 +14,7 @@ class BinariesAreSeriesTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -48,35 +48,35 @@ class BinariesAreSeriesTest {
 
     @Test
     @DisplayName("each of them refuses a protected binary")
-    void eachRefusesAProtectedBinary() {
-        assertThat(errorIdOf("b: protect #{cafe} append b #{0bad}")).isEqualTo("protected");
-        assertThat(errorIdOf("b: protect #{cafe} insert b #{0bad}")).isEqualTo("protected");
-        assertThat(errorIdOf("b: protect #{cafe} swap b #{0bad}")).isEqualTo("protected");
+    void refuseAProtectedBinaryEveryWay() {
+        assertThat(readTheErrorIdOf("b: protect #{cafe} append b #{0bad}")).isEqualTo("protected");
+        assertThat(readTheErrorIdOf("b: protect #{cafe} insert b #{0bad}")).isEqualTo("protected");
+        assertThat(readTheErrorIdOf("b: protect #{cafe} swap b #{0bad}")).isEqualTo("protected");
     }
 
     @Test
     @DisplayName("REMOVE-EACH refuses even when it would remove nothing")
-    void theGuardDoesNotDependOnTheData() {
-        assertThat(errorIdOf("b: protect #{cafe} remove-each a b [a < 3]"))
+    void guardWhateverTheDataHolds() {
+        assertThat(readTheErrorIdOf("b: protect #{cafe} remove-each a b [a < 3]"))
                 .isEqualTo("protected");
     }
 
     @Test
     @DisplayName("the three container routes into a protected object all say protected")
-    void everyContainerRouteSaysProtected() {
+    void sayProtectedOnEveryContainerRoute() {
         String guarded = "o: make object! [a: 1] ignore: protect/deep o ";
-        assertThat(errorIdOf(guarded + "append o [b: 2]")).isEqualTo("protected");
-        assertThat(errorIdOf(guarded + "put o 'a 2")).isEqualTo("protected");
-        assertThat(errorIdOf(guarded + "resolve o make object! [a: 99]"))
+        assertThat(readTheErrorIdOf(guarded + "append o [b: 2]")).isEqualTo("protected");
+        assertThat(readTheErrorIdOf(guarded + "put o 'a 2")).isEqualTo("protected");
+        assertThat(readTheErrorIdOf(guarded + "resolve o make object! [a: 99]"))
                 .isEqualTo("protected");
     }
 
     @Test
     @DisplayName("PUT on a protected object is protected, not locked-word")
     void putNamesTheRoute() {
-        assertThat(errorIdOf("o: make object! [a: 1] protect o put o 'a 2"))
+        assertThat(readTheErrorIdOf("o: make object! [a: 1] protect o put o 'a 2"))
                 .isEqualTo("protected");
-        assertThat(errorIdOf("o: make object! [a: 1] protect o o/a: 2"))
+        assertThat(readTheErrorIdOf("o: make object! [a: 1] protect o o/a: 2"))
                 .as("an assignment through a name is the other route")
                 .isEqualTo("locked-word");
     }

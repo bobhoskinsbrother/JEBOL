@@ -32,7 +32,7 @@ public final class Delect {
             throw new ProtectedFromChange();
         }
         Run run = new Run(dialect, input, output, evaluator, where);
-        if (run.nothingIsLeft()) {
+        if (run.hasNothingLeft()) {
             return NoneValue.none();
         }
         if (!readsWholeBlock) {
@@ -41,7 +41,7 @@ public final class Delect {
             return input.atIndex(run.reachedIndex());
         }
         run.emptyTheOutput();
-        while (!run.nothingIsLeft() && run.readOneCommand()) {
+        while (!run.hasNothingLeft() && run.readOneCommand()) {
             continue;
         }
         return input.atIndex(run.reachedIndex());
@@ -82,7 +82,7 @@ public final class Delect {
                 || types.contains(DecimalValue.TYPE) && value instanceof IntegerValue;
     }
 
-    private static Value convertedFor(java.util.Set<Datatype> types, Value value) {
+    private static Value convertFor(java.util.Set<Datatype> types, Value value) {
         if (types.contains(value.datatype())) {
             return value;
         }
@@ -120,7 +120,7 @@ public final class Delect {
             this.at = input.index();
         }
 
-        boolean nothingIsLeft() {
+        boolean hasNothingLeft() {
             return at > input.storage().length();
         }
 
@@ -139,17 +139,17 @@ public final class Delect {
             boolean asALitWord = next instanceof LitWordValue;
             int command = next instanceof AnyWordValue word
                             && (word instanceof WordValue || asALitWord)
-                    ? indexOfCommand(word)
+                    ? findTheIndexOfCommand(word)
                     : 0;
 
             if (command <= 1) {
                 return readTheDialectsFirstFieldWhateverItIsNamed();
             }
             at++;
-            return readNamedCommand(command, asALitWord, howManyArgumentsFollow());
+            return readNamedCommand(command, asALitWord, countTheArgumentsThatFollow());
         }
 
-        private int howManyArgumentsFollow() {
+        private int countTheArgumentsThatFollow() {
             int ahead = at;
             while (ahead <= input.storage().length()) {
                 Value item = input.storage().at(ahead);
@@ -164,7 +164,7 @@ public final class Delect {
         }
 
         private boolean startsTheNextCommandRatherThanBeingAKeyword(AnyWordValue word) {
-            return indexOfCommand(word) > 1;
+            return findTheIndexOfCommand(word) > 1;
         }
 
         private boolean readTheDialectsFirstFieldWhateverItIsNamed() {
@@ -184,7 +184,7 @@ public final class Delect {
             if (!(field.value() instanceof AnyBlockValue declared)) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, input);
             }
-            List<Slot> slots = slotsDeclaredBy(declared, where);
+            List<Slot> slots = listTheSlotsDeclaredBy(declared, where);
             output.storage().append(asALitWord
                     ? LitWordValue.of(field.spelling())
                     : WordValue.of(field.spelling()));
@@ -192,7 +192,7 @@ public final class Delect {
             Placing placing = new Placing(slots);
             boolean readEverything = true;
             for (int taken = 0; taken < howMany; taken++) {
-                Optional<Value> argument = theArgumentAt(at);
+                Optional<Value> argument = readTheArgumentAt(at);
                 if (argument.isEmpty()) {
                     readEverything = false;
                     break;
@@ -209,7 +209,7 @@ public final class Delect {
             }
             placing.writeInto(output.storage());
             if (readEverything) {
-                padTo(whicheverIsLonger(placing.countOfPlainSlots(), howMany) + 1);
+                padTo(pickTheLonger(placing.countOfPlainSlots(), howMany) + 1);
             }
             return readEverything;
         }
@@ -220,47 +220,47 @@ public final class Delect {
             }
         }
 
-        private static int whicheverIsLonger(int slotsDeclared, int argumentsWritten) {
+        private static int pickTheLonger(int slotsDeclared, int argumentsWritten) {
             return Math.max(slotsDeclared, argumentsWritten);
         }
 
-        private Optional<Value> theArgumentAt(int position) {
+        private Optional<Value> readTheArgumentAt(int position) {
             if (position > input.storage().length()) {
                 return Optional.empty();
             }
             Value written = input.storage().at(position);
             return switch (written) {
                 case WordValue word ->
-                        aWordTheDialectKnowsIsLeftAlone(word)
+                        isAWordTheDialectLeavesAlone(word)
                                 ? Optional.of(word)
-                                : whateverTheWordHoldsByItsOwnBindingFirst(word);
+                                : readWhatTheWordHolds(word);
                 case LitWordValue quoted -> Optional.of(WordValue.of(quoted.spelling()));
-                case ParenValue paren -> evaluated(paren);
-                case PathValue path -> evaluated(path);
+                case ParenValue paren -> evaluate(paren);
+                case PathValue path -> evaluate(path);
                 default -> Optional.of(written);
             };
         }
 
-        private boolean aWordTheDialectKnowsIsLeftAlone(AnyWordValue word) {
-            return indexOfCommand(word) != 0;
+        private boolean isAWordTheDialectLeavesAlone(AnyWordValue word) {
+            return findTheIndexOfCommand(word) != 0;
         }
 
-        private Optional<Value> whateverTheWordHoldsByItsOwnBindingFirst(AnyWordValue word) {
+        private Optional<Value> readWhatTheWordHolds(AnyWordValue word) {
             if (!word.binding().isUnbound() && word.binding().holds(word.canonical())) {
-                return Optional.of(word.binding().slotFor(word.canonical()).value());
+                return Optional.of(word.binding().findSlotFor(word.canonical()).value());
             }
             return where.holds(word.canonical())
-                    ? Optional.of(where.slotFor(word.canonical()).value())
+                    ? Optional.of(where.findSlotFor(word.canonical()).value())
                     : Optional.empty();
         }
 
-        private Optional<Value> evaluated(AnyBlockValue block) {
+        private Optional<Value> evaluate(AnyBlockValue block) {
             if (thereIsNoEvaluatorBecauseAGobIsBeingFlattened()) {
                 return Optional.empty();
             }
             try {
                 return Optional.of(evaluator.evaluateOrRaise(
-                        Binder.bind(BlockValue.block(List.of(block)), where), where));
+                        Binder.bind(BlockValue.of(List.of(block)), where), where));
             } catch (Raised unreachable) {
                 return Optional.empty();
             }
@@ -270,23 +270,23 @@ public final class Delect {
             return evaluator == null;
         }
 
-        private int indexOfCommand(AnyWordValue word) {
+        private int findTheIndexOfCommand(AnyWordValue word) {
             for (int position = 0; position < fields.size(); position++) {
                 if (fields.get(position).canonical().equals(word.canonical())) {
                     return fields.get(position).value() instanceof NoneValue
-                            ? negativeForAKeywordThatTakesNothing(position)
+                            ? negateForAKeywordThatTakesNothing(position)
                             : position + 1;
                 }
             }
             return 0;
         }
 
-        private static int negativeForAKeywordThatTakesNothing(int position) {
+        private static int negateForAKeywordThatTakesNothing(int position) {
             return -(position + 1);
         }
     }
 
-    private static List<Slot> slotsDeclaredBy(AnyBlockValue declared, Context where) {
+    private static List<Slot> listTheSlotsDeclaredBy(AnyBlockValue declared, Context where) {
         List<Slot> slots = new ArrayList<>();
         List<Value> written = declared.remaining();
         for (int at = 0; at < written.size(); at++) {
@@ -297,15 +297,15 @@ public final class Delect {
                 at++;
                 item = written.get(at);
             }
-            slotFor(item, repeats, where).ifPresent(slots::add);
+            makeASlotFor(item, repeats, where).ifPresent(slots::add);
         }
         return List.copyOf(slots);
     }
 
-    private static Optional<Slot> slotFor(
+    private static Optional<Slot> makeASlotFor(
             Value written, boolean repeats, Context where) {
 
-        Optional<java.util.Set<Datatype>> types = typesNamedBy(written, where);
+        Optional<java.util.Set<Datatype>> types = findTheTypesNamedBy(written, where);
         if (types.isPresent()) {
             return Optional.of(repeats
                     ? new Slot.Repeating(types.get())
@@ -316,7 +316,7 @@ public final class Delect {
                 : Optional.empty();
     }
 
-    private static Optional<java.util.Set<Datatype>> typesNamedBy(
+    private static Optional<java.util.Set<Datatype>> findTheTypesNamedBy(
             Value written, Context where) {
 
         if (written instanceof Datatype represents) {
@@ -328,22 +328,22 @@ public final class Delect {
         if (!(written instanceof AnyWordValue word)) {
             return Optional.empty();
         }
-        Optional<Datatype> one = Catalogue.DATATYPES.named(word.spelling());
+        Optional<Datatype> one = Catalogue.DATATYPES.findTheDatatypeNamed(word.spelling());
         if (one.isPresent()) {
             return Optional.of(java.util.Set.of(one.get()));
         }
-        return whateverTheWordNames(word, where);
+        return findWhatTheWordNames(word, where);
     }
 
-    private static Optional<java.util.Set<Datatype>> whateverTheWordNames(
+    private static Optional<java.util.Set<Datatype>> findWhatTheWordNames(
             AnyWordValue word, Context where) {
 
         if (where.holds(word.canonical())
-                && where.slotFor(word.canonical()).value()
+                && where.findSlotFor(word.canonical()).value()
                         instanceof TypesetValue family) {
             return Optional.of(family.members());
         }
-        return Catalogue.DATATYPES.typesetNamed(word.spelling()).map(TypesetValue::members);
+        return Catalogue.DATATYPES.findTheTypesetNamed(word.spelling()).map(TypesetValue::members);
     }
 
     private static final class Placing {
@@ -363,17 +363,17 @@ public final class Delect {
                 if (isFull(which) || !slot.accepts(argument)) {
                     continue;
                 }
-                placed.get(which).add(valueFor(slot, argument));
+                placed.get(which).add(placeTheValueFor(slot, argument));
                 advancePast(which, slot);
                 return true;
             }
             return false;
         }
 
-        private static Value valueFor(Slot slot, Value argument) {
+        private static Value placeTheValueFor(Slot slot, Value argument) {
             return switch (slot) {
-                case Slot.Plain plain -> convertedFor(plain.types(), argument);
-                case Slot.Repeating repeating -> convertedFor(repeating.types(), argument);
+                case Slot.Plain plain -> convertFor(plain.types(), argument);
+                case Slot.Repeating repeating -> convertFor(repeating.types(), argument);
                 case Slot.Named ignored -> argument;
             };
         }

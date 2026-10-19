@@ -24,13 +24,13 @@ public final class BinaryActions extends SeriesActions {
     }
 
     @Override
-    public Value poked(Value position, Value written) {
-        int at = pokedStoragePosition(position);
-        bytes.storage().set(at, octetPokedFrom(written));
+    public Value poke(Value position, Value written) {
+        int at = findThePokedStoragePosition(position);
+        bytes.storage().set(at, readTheOctetPokedFrom(written));
         return written;
     }
 
-    private int octetPokedFrom(Value written) {
+    private int readTheOctetPokedFrom(Value written) {
         return switch (written) {
             case IntegerValue number -> asAnOctet(number.magnitude());
             case CharacterValue(int codepoint) when codepoint > 0xFF ->
@@ -66,12 +66,12 @@ public final class BinaryActions extends SeriesActions {
     }
 
     @Override
-    public Value cleared() {
-        return clearedOneAtATime();
+    public Value clear() {
+        return clearOneAtATime();
     }
 
     @Override
-    public Value complemented() {
+    public Value complement() {
         byte[] flipped = bytes.octetsFromHere();
         for (int at = 0; at < flipped.length; at++) {
             flipped[at] = (byte) ~flipped[at];
@@ -81,7 +81,7 @@ public final class BinaryActions extends SeriesActions {
 
     @Override
     public Value append(Asked asked) {
-        for (int octet : octetsContributedBy(asked)) {
+        for (int octet : collectTheOctetsContributedBy(asked)) {
             bytes.storage().append(octet);
         }
         return bytes.head();
@@ -89,16 +89,16 @@ public final class BinaryActions extends SeriesActions {
 
     @Override
     public Value insert(Asked asked) {
-        BinaryValue held = (BinaryValue) bytes.clampedToTail();
-        int[] octets = octetsContributedBy(asked);
+        BinaryValue held = (BinaryValue) bytes.clampToTail();
+        int[] octets = collectTheOctetsContributedBy(asked);
         for (int at = octets.length; at > 0; at--) {
             held.storage().insertAt(held.index(), octets[at - 1]);
         }
         return held.atIndex(held.index() + octets.length);
     }
 
-    private static int[] octetsContributedBy(Asked asked) {
-        return SeriesContents.octetsContributedBy(
-                asked.duplicated(), asked.howManyOctetsWanted());
+    private static int[] collectTheOctetsContributedBy(Asked asked) {
+        return SeriesContents.collectTheOctetsContributedBy(
+                asked.duplicated(), asked.countTheOctetsWanted());
     }
 }

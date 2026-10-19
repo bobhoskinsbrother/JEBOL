@@ -39,18 +39,18 @@ public class CheckCertificatesNative extends HostNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("chain", Set.of(BlockValue.TYPE)),
-                Parameter.required("host", Set.of(StringValue.TYPE, TupleValue.TYPE)));
+                Parameter.of("chain", Set.of(BlockValue.TYPE)),
+                Parameter.of("host", Set.of(StringValue.TYPE, TupleValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.CERTIFICATES);
-            List<byte[]> chain = certificates((AnyBlockValue) arguments.get(0));
-            String host = hostName(arguments.get(1));
+            List<byte[]> chain = readTheCertificates((AnyBlockValue) arguments.get(0));
+            String host = readTheHostName(arguments.get(1));
             if (chain.isEmpty()) {
-                throw mistrusted(CertificateMistrust.NO_CERTIFICATE, host);
+                throw refuseAsMistrusted(CertificateMistrust.NO_CERTIFICATE, host);
             }
             requireTrust(evaluator.certificateAuthority(), chain, host);
             return NoneValue.none();
@@ -59,33 +59,33 @@ public class CheckCertificatesNative extends HostNative {
 
     private void requireTrust(CertificateAuthority authority, List<byte[]> chain, String host) {
         switch (authority.judge(chain)) {
-            case ChainVerdict.Mistrusted(CertificateMistrust mistrust) -> throw mistrusted(mistrust, host);
+            case ChainVerdict.Mistrusted(CertificateMistrust mistrust) -> throw refuseAsMistrusted(mistrust, host);
             case ChainVerdict.Trusted trusted when !trusted.names().cover(host) ->
-                    throw mistrusted(CertificateMistrust.WRONG_HOST, host);
+                    throw refuseAsMistrusted(CertificateMistrust.WRONG_HOST, host);
             case ChainVerdict.Trusted ignored -> {
             }
         }
     }
 
-    private List<byte[]> certificates(AnyBlockValue chain) {
-        return chain.remaining().stream().map(this::bytes).toList();
+    private List<byte[]> readTheCertificates(AnyBlockValue chain) {
+        return chain.remaining().stream().map(this::readTheBytes).toList();
     }
 
-    private byte[] bytes(Value certificate) {
+    private byte[] readTheBytes(Value certificate) {
         if (!(certificate instanceof BinaryValue binary)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, certificate);
         }
-        return binary.bytesFromHere();
+        return binary.readTheBytesFromHere();
     }
 
-    private String hostName(Value host) {
+    private String readTheHostName(Value host) {
         return host instanceof TupleValue address
                 ? Arrays.stream(address.segments()).mapToObj(String::valueOf).collect(Collectors.joining("."))
                 : ((AnyStringValue) host).text();
     }
 
-    private Raised mistrusted(CertificateMistrust mistrust, String host) {
-        String message = mistrust.messageFor(host);
-        return new Raised(ErrorValue.about(ErrorCategory.ACCESS, "protocol", message, StringValue.of(message)));
+    private Raised refuseAsMistrusted(CertificateMistrust mistrust, String host) {
+        String message = mistrust.explainTo(host);
+        return new Raised(ErrorValue.of(ErrorCategory.ACCESS, "protocol", message, StringValue.of(message)));
     }
 }

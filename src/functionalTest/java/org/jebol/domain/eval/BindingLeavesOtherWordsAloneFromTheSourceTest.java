@@ -42,45 +42,45 @@ class BindingLeavesOtherWordsAloneFromTheSourceTest {
 
     @Test
     @DisplayName("the module's own word is what it sees before any binding")
-    void theModulesOwnWordIsWhatItSeesBeforeAnyBinding() {
+    void seesTheModulesOwnWordBeforeAnyBinding() {
         assertThat(answerTo("sheltered/plain")).isEqualTo(THE_MODULES_OWN);
     }
 
     @Test
     @DisplayName("and a word the target does not hold keeps that binding through BIND")
-    void aWordTheTargetDoesNotHoldKeepsThatBindingThroughBind() {
+    void keepsTheBindingOfAWordTheTargetLacksThroughBind() {
         assertThat(answerTo("sheltered/through-bind small")).isEqualTo(THE_MODULES_OWN);
     }
 
     @Test
     @DisplayName("and through WITH, which binds the same way before it evaluates")
-    void aWordTheTargetDoesNotHoldKeepsThatBindingThroughWith() {
+    void keepsTheBindingOfAWordTheTargetLacksThroughWith() {
         assertThat(answerTo("sheltered/through-with small")).isEqualTo(THE_MODULES_OWN);
     }
 
     @Test
     @DisplayName("nested blocks are treated the same, because the walk is deep")
-    void nestedBlocksAreTreatedTheSame() {
+    void treatsNestedBlocksTheSame() {
         assertThat(answerTo("sheltered/nested-with small")).isEqualTo(THE_MODULES_OWN);
     }
 
     @Test
     @DisplayName("a word the target does hold moves to it")
-    void aWordTheTargetHoldsMovesToIt() {
+    void movesAWordTheTargetHoldsToIt() {
         assertThat(answerTo("sheltered/the-targets-own small")).isEqualTo("""
                 "the object's own\"""");
     }
 
     @Test
     @DisplayName("and both kinds of word work side by side in one block")
-    void bothKindsOfWordWorkSideBySide() {
+    void handlesBothKindsOfWordSideBySide() {
         assertThat(answerTo("sheltered/both small")).isEqualTo("""
                 ["the object's own" "the module's own"]""");
     }
 
     @Test
     @DisplayName("a word nothing bound stays unbound, however reachable the name is")
-    void aWordNothingBoundStaysUnbound() {
+    void leavesAWordNothingBoundUnbound() {
         assertThat(answerTo("""
                 greeting: "hello"
                 e: try [do bind load "greeting" small] e/id"""))
@@ -92,7 +92,7 @@ class BindingLeavesOtherWordsAloneFromTheSourceTest {
 
     @Test
     @DisplayName("WITH evaluates where the caller stands, not inside the target")
-    void withEvaluatesWhereTheCallerStands() {
+    void evaluatesWithWhereTheCallerStands() {
         assertThat(answerTo("""
                 with small [fresh-word: 99]
                 reduce [fresh-word  true? find words-of small 'fresh-word]"""))

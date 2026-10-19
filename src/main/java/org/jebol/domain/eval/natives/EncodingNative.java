@@ -20,12 +20,12 @@ public abstract class EncodingNative extends DefaultNative {
         this.encodings = encodings;
     }
 
-    protected Set<Datatype> anyStringOr(Datatype... alsoAccepted) {
+    protected Set<Datatype> acceptAnyStringOr(Datatype... alsoAccepted) {
         return TypesetValue.ANY_STRING.membersAnd(alsoAccepted);
     }
 
-    protected Set<Datatype> aCountOrPosition() {
-        Set<Datatype> accepted = new LinkedHashSet<>(aPartLimit());
+    protected Set<Datatype> acceptACountOrPosition() {
+        Set<Datatype> accepted = new LinkedHashSet<>(listThePartLimitTypes());
         accepted.remove(PairValue.TYPE);
         return accepted;
     }
@@ -38,13 +38,13 @@ public abstract class EncodingNative extends DefaultNative {
         };
     }
 
-    protected Optional<Long> howManyWanted(Value source, List<Value> arguments, Set<String> refinements) {
-        return argumentOf("part", 0, arguments, refinements)
+    protected Optional<Long> countHowManyWanted(Value source, List<Value> arguments, Set<String> refinements) {
+        return readTheArgumentOf("part", 0, arguments, refinements)
                 .filter(count -> !(count instanceof NoneValue))
-                .map(count -> unitsCountedBy(source, count));
+                .map(count -> countTheUnitsBy(source, count));
     }
 
-    private long unitsCountedBy(Value source, Value count) {
+    private long countTheUnitsBy(Value source, Value count) {
         return switch (count) {
             case IntegerValue whole when whole.magnitude() > Integer.MAX_VALUE
                     || whole.magnitude() < Integer.MIN_VALUE ->
@@ -52,12 +52,12 @@ public abstract class EncodingNative extends DefaultNative {
             case IntegerValue whole -> whole.magnitude();
             case DecimalValue fraction ->
                     (long) Comparison.asDouble(fraction);
-            case RebolSeries upTo -> distanceFrom(source, upTo);
+            case RebolSeries upTo -> measureTheDistanceFrom(source, upTo);
             default -> throw Raised.of(EvaluationFailure.INVALID_PART, count);
         };
     }
 
-    private long distanceFrom(Value source, RebolSeries upTo) {
+    private long measureTheDistanceFrom(Value source, RebolSeries upTo) {
         if (!(source instanceof RebolSeries from)
                 || from.datatype() != upTo.datatype()
                 || !from.sharesStorageWith(upTo)) {
@@ -66,16 +66,16 @@ public abstract class EncodingNative extends DefaultNative {
         return upTo.index() - from.index();
     }
 
-    protected byte[] octetsWithinAnyPart(Value source, List<Value> arguments, Set<String> refinements) {
+    protected byte[] readTheOctetsWithinAnyPart(Value source, List<Value> arguments, Set<String> refinements) {
         byte[] octets = source.asOctets();
-        return howManyWanted(source, arguments, refinements)
+        return countHowManyWanted(source, arguments, refinements)
                 .map(count -> count < 0
-                        ? theOctetsBehind(source, octets, -count)
+                        ? readTheOctetsBehind(source, octets, -count)
                         : Arrays.copyOf(octets, (int) Math.min(count, octets.length)))
                 .orElse(octets);
     }
 
-    private byte[] theOctetsBehind(Value source, byte[] octets, long count) {
+    private byte[] readTheOctetsBehind(Value source, byte[] octets, long count) {
         if (!(source instanceof RebolSeries positioned)) {
             return new byte[0];
         }
@@ -84,21 +84,21 @@ public abstract class EncodingNative extends DefaultNative {
         return Arrays.copyOf(fromThere, fromThere.length - octets.length);
     }
 
-    protected byte[] theUnitsAskedFor(Value value, List<Value> arguments, Set<String> refinements) {
-        Optional<Long> asked = howManyWanted(value, arguments, refinements);
+    protected byte[] readTheUnitsAskedFor(Value value, List<Value> arguments, Set<String> refinements) {
+        Optional<Long> asked = countHowManyWanted(value, arguments, refinements);
         if (asked.isPresent() && asked.get() < 0) {
-            return theUnitsBehind(value, -asked.get());
+            return readTheUnitsBehind(value, -asked.get());
         }
         int howMany = asked.map(Long::intValue).orElse(SeriesContents.EVERY_ONE);
-        return asBytes(SeriesContents.octetsContributedBy(value, howMany));
+        return asBytes(SeriesContents.collectTheOctetsContributedBy(value, howMany));
     }
 
-    private byte[] theUnitsBehind(Value value, long count) {
+    private byte[] readTheUnitsBehind(Value value, long count) {
         if (!(value instanceof RebolSeries positioned)) {
             return new byte[0];
         }
         int reachedBack = (int) Math.min(count, positioned.index() - 1);
-        return asBytes(SeriesContents.octetsContributedBy(
+        return asBytes(SeriesContents.collectTheOctetsContributedBy(
                 positioned.atIndex(positioned.index() - reachedBack), reachedBack));
     }
 
@@ -112,15 +112,15 @@ public abstract class EncodingNative extends DefaultNative {
 
     protected String textWithinAnyPart(Value value, List<Value> arguments, Set<String> refinements) {
         String text = textOf(value);
-        Optional<Long> asked = howManyWanted(value, arguments, refinements);
+        Optional<Long> asked = countHowManyWanted(value, arguments, refinements);
         if (asked.isPresent() && asked.get() < 0) {
-            return theTextBehind(value, -asked.get());
+            return readTheTextBehind(value, -asked.get());
         }
         return asked.map(count -> text.substring(0, (int) Math.min(count, text.length())))
                 .orElse(text);
     }
 
-    private String theTextBehind(Value value, long count) {
+    private String readTheTextBehind(Value value, long count) {
         if (!(value instanceof RebolSeries positioned)) {
             return "";
         }

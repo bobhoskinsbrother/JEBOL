@@ -16,7 +16,7 @@ class AjoinKeepsTheFirstDatatypeTest {
 
     @Test
     @DisplayName("a file first gives a file")
-    void aFileGivesAFile() {
+    void givesAFileForAFile() {
         assertThat(answerTo("mold ajoin [%a \"b\" 3]")).isEqualTo("\"%ab3\"");
     }
 
@@ -29,13 +29,13 @@ class AjoinKeepsTheFirstDatatypeTest {
 
     @Test
     @DisplayName("a tag gives a string, brackets and all")
-    void aTagGivesAString() {
+    void givesAStringForATag() {
         assertThat(answerTo("(ajoin [<a> \"b\" 3]) = \"<a>b3\"")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a word, a character or a number first gives a string")
-    void everythingElseGivesAString() {
+    void givesAStringForEverythingElse() {
         assertThat(answerTo("mold type? ajoin ['a 'b 3]")).isEqualTo("\"#(string!)\"");
         assertThat(answerTo("mold type? ajoin [#\"a\" %b]")).isEqualTo("\"#(string!)\"");
         assertThat(answerTo("mold type? ajoin [3 %b]")).isEqualTo("\"#(string!)\"");
@@ -43,14 +43,14 @@ class AjoinKeepsTheFirstDatatypeTest {
 
     @Test
     @DisplayName("the first value decides even when it contributes nothing")
-    void aLeadingNoneStillDecides() {
+    void stillLetsALeadingNoneDecide() {
         assertThat(answerTo("mold type? ajoin [none %a 3]")).isEqualTo("\"#(string!)\"");
         assertThat(answerTo("mold ajoin [%a none 3]")).isEqualTo("\"%a3\"");
     }
 
     @Test
     @DisplayName("an empty block gives an empty string")
-    void anEmptyBlockIsTheDegenerateCase() {
+    void handlesAnEmptyBlock() {
         assertThat(answerTo("(ajoin []) = \"\"")).isEqualTo("#(true)");
     }
 }

@@ -22,14 +22,14 @@ class ALoopTestThatAnswersNothingFromTheSourceTest {
 
     @Test
     @DisplayName("UNTIL tests its body, so an empty body has no truth to test")
-    void untilTestsItsBodySoAnEmptyBodyHasNoTruth() {
+    void hasNoTruthFromAnEmptyUntilBody() {
         assertThat(failureOf("until []")).isEqualTo("[Script no-return]");
         assertThat(failureOf("until [()]")).isEqualTo("[Script no-return]");
     }
 
     @Test
     @DisplayName("and a body that answers anything at all goes round on it")
-    void aBodyThatAnswersAnythingGoesRoundOnIt() {
+    void goesRoundOnABodyThatAnswersAnything() {
         assertThat(failureOf("until [true]")).isEqualTo("[ok]");
         assertThat(failureOf("until [0]")).isEqualTo("[ok]");
         assertThat(failureOf("""
@@ -39,7 +39,7 @@ class ALoopTestThatAnswersNothingFromTheSourceTest {
 
     @Test
     @DisplayName("WHILE tests its condition, and only its condition")
-    void whileTestsItsConditionAndOnlyItsCondition() {
+    void testsOnlyTheConditionOfWhile() {
         assertThat(failureOf("while [()] []")).isEqualTo("[Script no-return]");
         assertThat(failureOf("while [false] [()]")).isEqualTo("[ok]");
         assertThat(failureOf("while [] []")).isEqualTo("[Script no-return]");
@@ -47,7 +47,7 @@ class ALoopTestThatAnswersNothingFromTheSourceTest {
 
     @Test
     @DisplayName("a loop that counts rather than tests is not asking for a truth")
-    void aLoopThatCountsIsNotAskingForATruth() {
+    void asksNoTruthOfALoopThatCounts() {
         assertThat(failureOf("loop 1 []")).isEqualTo("[ok]");
         assertThat(failureOf("repeat step 1 []")).isEqualTo("[ok]");
         assertThat(failureOf("foreach item [1] []")).isEqualTo("[ok]");
@@ -56,7 +56,7 @@ class ALoopTestThatAnswersNothingFromTheSourceTest {
 
     @Test
     @DisplayName("and the refusal is what stops UNTIL looping for ever on nothing")
-    void theRefusalIsWhatStopsUntilLoopingForEver() {
+    void stopsUntilLoopingForEverByBeingRefused() {
         assertThat(answerTo("""
                 set/any 'e try [until [()]]
                 either all [value? 'e  error? :e] [e/id] ['ran-away]"""))

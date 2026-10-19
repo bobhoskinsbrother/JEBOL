@@ -9,12 +9,12 @@ package org.jebol.domain.render;
 public record ClipRectangle(int across, int down, int wide, int high) {
 
     /** The whole of a surface of this size, which is what a root starts with. */
-    public static ClipRectangle wholeSurface(int wide, int high) {
+    public static ClipRectangle coverTheWholeSurface(int wide, int high) {
         return new ClipRectangle(0, 0, wide, high);
     }
 
     /** Nothing at all, which is what an overlap with no area comes to. */
-    public static ClipRectangle nothing() {
+    public static ClipRectangle coverNothing() {
         return new ClipRectangle(0, 0, 0, 0);
     }
 
@@ -29,7 +29,7 @@ public record ClipRectangle(int across, int down, int wide, int high) {
         int right = Math.min(across + wide, other.across + other.wide);
         int bottom = Math.min(down + high, other.down + other.high);
         if (right <= left || bottom <= top) {
-            return nothing();
+            return coverNothing();
         }
         return new ClipRectangle(left, top, right - left, bottom - top);
     }

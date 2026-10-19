@@ -10,21 +10,21 @@ public final class UrlValue extends AnyStringValue {
     public static final AnyStringDatatype TYPE = new AnyStringDatatype("url") {
 
         @Override
-        public AnyStringValue holding(StringStorage storage, int index) {
+        public AnyStringValue wrap(StringStorage storage, int index) {
             return new UrlValue(storage, index);
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return from instanceof AnyBlockValue parts
-                    ? urlBuiltFrom(parts)
-                    : super.built(asking, from, maker);
+                    ? buildAUrlFrom(parts)
+                    : super.build(asking, from, maker);
         }
 
-        private Value urlBuiltFrom(AnyBlockValue parts) {
+        private Value buildAUrlFrom(AnyBlockValue parts) {
             List<Value> written = parts.remaining();
             if (written.isEmpty()) {
-                throw refusing(parts);
+                throw refuse(parts);
             }
             String scheme = Molder.form(written.getFirst());
             String rest = written.subList(1, written.size()).stream()
@@ -48,13 +48,13 @@ public final class UrlValue extends AnyStringValue {
     }
 
     @Override
-    UrlValue sameKindOver(StringStorage storage, int index) {
+    UrlValue makeTheSameKindOver(StringStorage storage, int index) {
         return new UrlValue(storage, index);
     }
 
     @Override
     public String mold() {
-        return moldedUnlessItWouldNotReadBackWhenMarkedBy(ENDS_THE_SCHEME);
+        return moldUnlessItFailsToReadBack(ENDS_THE_SCHEME);
     }
 
     @Override

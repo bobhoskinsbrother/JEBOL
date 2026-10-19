@@ -306,7 +306,7 @@ class MapAndObjectAccessFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and a word of another kind spelled the same finds nothing either")
+        @DisplayName("and a word of another type spelled the same finds nothing either")
         void aWordOfAnotherKindFindsNothing() {
             assertThat(answerTo("none? find make object! [a: 1] first [a:]"))
                     .isEqualTo(TRUE);

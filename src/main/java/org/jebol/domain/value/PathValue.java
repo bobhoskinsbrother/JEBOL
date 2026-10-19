@@ -7,7 +7,7 @@ public final class PathValue extends AnyPathValue {
     public static final AnyPathDatatype TYPE = new AnyPathDatatype("path") {
 
         @Override
-        public AnyPathValue holding(BlockStorage storage, int index) {
+        public AnyPathValue wrap(BlockStorage storage, int index) {
             return new PathValue(storage, index);
         }
     };
@@ -26,7 +26,7 @@ public final class PathValue extends AnyPathValue {
     }
 
     @Override
-    PathValue sameKindOver(BlockStorage storage, int index) {
+    PathValue makeTheSameKindOver(BlockStorage storage, int index) {
         return new PathValue(storage, index);
     }
 

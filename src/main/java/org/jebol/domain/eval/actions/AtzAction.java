@@ -31,8 +31,8 @@ public class AtzAction extends SeriesOrFileAction {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series"),
-                Parameter.required("position", Set.of(IntegerValue.TYPE, PairValue.TYPE)));
+        return List.of(Parameter.of("series"),
+                Parameter.of("position", Set.of(IntegerValue.TYPE, PairValue.TYPE)));
     }
 
     @Override
@@ -40,16 +40,16 @@ public class AtzAction extends SeriesOrFileAction {
         return (arguments, evaluator, context, refinements) -> {
             Value position = arguments.get(1);
             return switch (arguments.getFirst()) {
-                case PortValue port when port.isAFile() -> theFileBehind(port, evaluator)
-                        .movedTo((long) Arithmetic.asMagnitude(position));
-                case RebolSeries series -> series.atClamped(whereItStands(series, position));
+                case PortValue port when port.isAFile() -> findTheFileBehind(port, evaluator)
+                        .moveTo((long) Arithmetic.asMagnitude(position));
+                case RebolSeries series -> series.atClamped(findWhereItStands(series, position));
                 case Value anythingElse -> refuseTheArgument(anythingElse, "series");
             };
         };
     }
 
-    private long whereItStands(RebolSeries series, Value position) {
+    private long findWhereItStands(RebolSeries series, Value position) {
         boolean aLogicCountsAsAtDoes = position instanceof LogicValue;
-        return series.positionNamedBy(position, aLogicCountsAsAtDoes || COUNTING_FROM_NOUGHT) + THE_HEAD_IS_ONE;
+        return series.findThePositionNamedBy(position, aLogicCountsAsAtDoes || COUNTING_FROM_NOUGHT) + THE_HEAD_IS_ONE;
     }
 }

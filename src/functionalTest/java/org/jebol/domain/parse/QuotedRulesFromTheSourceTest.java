@@ -16,13 +16,13 @@ class QuotedRulesFromTheSourceTest {
 
     @Test
     @DisplayName("a lit-word in a rule matches a plain word")
-    void aLitWordMatchesAWord() {
+    void matchesAWordWithALitWord() {
         assertThat(answerTo("parse [a] ['a]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a lit-word folds case unless the parse minds it")
-    void aLitWordFollowsTheParseCase() {
+    void matchesALitWordByTheParseCase() {
         assertThat(answerTo("parse [a] ['A]")).isEqualTo("#(true)");
         assertThat(answerTo("parse/case [a] ['A]")).isEqualTo("#(false)");
         assertThat(answerTo("parse/case [a] ['a]")).isEqualTo("#(true)");
@@ -30,20 +30,20 @@ class QuotedRulesFromTheSourceTest {
 
     @Test
     @DisplayName("a lit-path in a rule matches a path")
-    void aLitPathMatchesAPath() {
+    void matchesAPathWithALitPath() {
         assertThat(answerTo("parse [p/a] ['p/a]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a path is compared item by item, and each item folds case")
-    void aPathComparesPiecewise() {
+    void comparesAPathPiecewise() {
         assertThat(answerTo("parse [p/a] ['p/A]")).isEqualTo("#(true)");
         assertThat(answerTo("parse/case [p/a] ['p/A]")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("a path of a different length does not match")
-    void theLengthsMustAgree() {
+    void requiresTheLengthsToAgree() {
         assertThat(answerTo("parse [p/a] ['p/a/b]")).isEqualTo("#(false)");
     }
 
@@ -69,7 +69,7 @@ class QuotedRulesFromTheSourceTest {
 
     @Test
     @DisplayName("QUOTE with nothing after it is refused")
-    void theDegenerateQuote() {
+    void matchesAnEmptyQuote() {
         assertThat(answerTo(
                 "e: try [parse [a] [quote]] either error? e [e/id] ['no-error]"))
                 .isEqualTo("parse-end");
@@ -77,7 +77,7 @@ class QuotedRulesFromTheSourceTest {
 
     @Test
     @DisplayName("QUOTE spans two rule items and the rule carries on")
-    void theRuleContinuesAfterQuote() {
+    void continuesTheRuleAfterQuote() {
         assertThat(answerTo("parse [a b] [quote a 'b]")).isEqualTo("#(true)");
     }
 }

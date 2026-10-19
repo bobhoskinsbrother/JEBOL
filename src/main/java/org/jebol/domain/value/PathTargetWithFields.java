@@ -5,25 +5,25 @@ public interface PathTargetWithFields extends PathTarget {
     Context context();
 
     @Override
-    default Value steppedIntoBy(Value selector) {
-        return fieldNamedBy(selector).value();
+    default Value stepIntoBy(Value selector) {
+        return findTheFieldNamedBy(selector).value();
     }
 
     @Override
     default Slot placeSteppedIntoBy(Value selector) {
-        return fieldNamedBy(selector);
+        return findTheFieldNamedBy(selector);
     }
 
     @Override
     default void writeThrough(Slot place, Value selector, Value written) {
-        ContextSlot field = fieldNamedBy(selector);
+        ContextSlot field = findTheFieldNamedBy(selector);
         if (field.isProtected()) {
             throw Raised.of(EvaluationFailure.LOCKED_WORD, (Value) WordValue.of(field.spelling()));
         }
         field.setValue(written);
     }
 
-    private ContextSlot fieldNamedBy(Value selector) {
+    private ContextSlot findTheFieldNamedBy(Value selector) {
         if (!(selector instanceof AnyWordValue asked)) {
             throw Raised.of(EvaluationFailure.INVALID_PATH,
                     "a field is named by a word, not "

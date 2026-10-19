@@ -25,7 +25,7 @@ class AGobsPositionWrapsFromTheSourceTest {
 
     @Test
     @DisplayName("stepping back past the head wraps rather than stopping there")
-    void steppingBackPastTheHeadWraps() {
+    void wrapsSteppingBackPastTheHead() {
         assertThat(answerTo("""
                 collect [
                     foreach step [-3 -2 -1 0 1 2 3 4 5] [
@@ -36,7 +36,7 @@ class AGobsPositionWrapsFromTheSourceTest {
 
     @Test
     @DisplayName("and inserting at a wrapped position reaches the tail, not the head")
-    void insertingAtAWrappedPositionReachesTheTail() {
+    void reachesTheTailInsertingAtAWrappedPosition() {
         assertThat(answerTo("""
                 collect [
                     foreach step [-2 -1 0 1 2 3] [
@@ -54,7 +54,7 @@ class AGobsPositionWrapsFromTheSourceTest {
 
     @Test
     @DisplayName("which is what makes MOVE with a negative offset work at all")
-    void whichIsWhatMakesMoveWithANegativeOffsetWork() {
+    void letsMoveWorkWithANegativeOffset() {
         assertThat(answerTo("""
                 holder: three-children
                 sizes: does [collect [foreach child holder/pane [keep child/size]]]

@@ -18,7 +18,7 @@ final class HuffmanCodeBuilder {
             return;
         }
         buildTree(codewords, usedSymbols);
-        int[] lengthCounts = lengthCounts(codewords, usedSymbols - 2, longestCodeword);
+        int[] lengthCounts = countTheLengths(codewords, usedSymbols - 2, longestCodeword);
         generateCodewords(codewords, lengths, lengthsFrom, lengthCounts, longestCodeword, symbolCount);
     }
 
@@ -117,7 +117,7 @@ final class HuffmanCodeBuilder {
         } while (++created < lastIndex);
     }
 
-    private int[] lengthCounts(int[] nodes, int root, int longestCodeword) {
+    private int[] countTheLengths(int[] nodes, int root, int longestCodeword) {
         int[] lengthCounts = new int[LONGEST_CODEWORD_IN_ANY_CODE + 1];
         lengthCounts[1] = 2;
         nodes[root] &= SYMBOL_MASK;

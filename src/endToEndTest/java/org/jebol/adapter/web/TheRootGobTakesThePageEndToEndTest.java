@@ -44,13 +44,13 @@ class TheRootGobTakesThePageEndToEndTest {
 
     private final class ThePage {
 
-        private BufferedImage whatTheCanvasShows() throws IOException {
+        private BufferedImage captureWhatTheCanvasShows() throws IOException {
             return ImageIO.read(new ByteArrayInputStream(
                     browser.findElement(By.id("screen")).getScreenshotAs(OutputType.BYTES)));
         }
 
-        private Color colourAt(int across, int down) throws IOException {
-            return new Color(whatTheCanvasShows().getRGB(across, down));
+        private Color readTheColourAt(int across, int down) throws IOException {
+            return new Color(captureWhatTheCanvasShows().getRGB(across, down));
         }
 
         private int wide() {
@@ -87,7 +87,7 @@ class TheRootGobTakesThePageEndToEndTest {
     @BeforeEach
     void openAPage() throws IOException {
         serving = WebScreenServer.on(0);
-        screen = BrowserScreen.seenBy(serving);
+        screen = BrowserScreen.showTo(serving);
         serving.reportTo(screen);
 
         ChromeOptions asked = new ChromeOptions();
@@ -100,7 +100,7 @@ class TheRootGobTakesThePageEndToEndTest {
         browser.get(serving.address());
 
         new WebDriverWait(browser, Duration.ofSeconds(20))
-                .until(anything -> screen.hasADisplay());
+                .until(anything -> screen.hasDisplay());
     }
 
     @AfterEach
@@ -111,7 +111,7 @@ class TheRootGobTakesThePageEndToEndTest {
         serving.close();
     }
 
-    private Interpreter aScriptOnThisPage(String source) {
+    private Interpreter makeAScriptOnThisPage(String source) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useScreen(screen);
@@ -122,33 +122,33 @@ class TheRootGobTakesThePageEndToEndTest {
 
     @Test
     @DisplayName("the root gob is the page's size, so a centred window lands in the middle of the page")
-    void aCentredWindowLandsInTheMiddle() throws IOException {
-        Interpreter interpreter = aScriptOnThisPage("system/view/screen-gob/color: 0.0.0\n" + A_CENTRED_WINDOW);
+    void landsACentredWindowInTheMiddle() throws IOException {
+        Interpreter interpreter = makeAScriptOnThisPage("system/view/screen-gob/color: 0.0.0\n" + A_CENTRED_WINDOW);
 
         assertThat(interpreter.display(interpreter.run("system/view/screen-gob/size")))
                 .as("the size the browser itself reports for the page")
                 .isEqualTo(thePage.sizeAsRebolWritesIt());
-        assertThat(thePage.whatTheCanvasShows().getWidth()).isEqualTo(thePage.wide());
-        assertThat(thePage.whatTheCanvasShows().getHeight()).isEqualTo(thePage.high());
+        assertThat(thePage.captureWhatTheCanvasShows().getWidth()).isEqualTo(thePage.wide());
+        assertThat(thePage.captureWhatTheCanvasShows().getHeight()).isEqualTo(thePage.high());
 
-        assertThat(thePage.colourAt(thePage.wide() / 2, thePage.high() / 2))
+        assertThat(thePage.readTheColourAt(thePage.wide() / 2, thePage.high() / 2))
                 .as("the middle of the page").isEqualTo(THE_WINDOW);
-        assertThat(thePage.colourAt(thePage.windowLeft() + JUST, thePage.windowTop() + JUST))
+        assertThat(thePage.readTheColourAt(thePage.windowLeft() + JUST, thePage.windowTop() + JUST))
                 .as("just inside the window's top left").isEqualTo(THE_WINDOW);
-        assertThat(thePage.colourAt(thePage.windowRight() - JUST, thePage.windowBottom() - JUST))
+        assertThat(thePage.readTheColourAt(thePage.windowRight() - JUST, thePage.windowBottom() - JUST))
                 .as("just inside its bottom right").isEqualTo(THE_WINDOW);
-        assertThat(thePage.colourAt(thePage.windowLeft() - JUST, thePage.windowTop() - JUST))
+        assertThat(thePage.readTheColourAt(thePage.windowLeft() - JUST, thePage.windowTop() - JUST))
                 .as("just outside its top left").isEqualTo(THE_SCREEN);
-        assertThat(thePage.colourAt(thePage.windowRight() + JUST, thePage.windowBottom() + JUST))
+        assertThat(thePage.readTheColourAt(thePage.windowRight() + JUST, thePage.windowBottom() + JUST))
                 .as("just outside its bottom right").isEqualTo(THE_SCREEN);
-        assertThat(thePage.colourAt(JUST, JUST))
+        assertThat(thePage.readTheColourAt(JUST, JUST))
                 .as("the page's corner, which is the root gob").isEqualTo(THE_SCREEN);
     }
 
     @Test
     @DisplayName("a script cannot take the page over afterwards, because init-top-window is spent")
-    void aScriptCannotTakeThePageOver() throws IOException {
-        Interpreter interpreter = aScriptOnThisPage("""
+    void keepsThePageFromAScript() throws IOException {
+        Interpreter interpreter = makeAScriptOnThisPage("""
                 system/view/screen-gob/color: 0.0.0
                 spent: init-top-window make gob! [size: 42x42]
                 """ + A_CENTRED_WINDOW);
@@ -156,7 +156,7 @@ class TheRootGobTakesThePageEndToEndTest {
         assertThat(interpreter.display(interpreter.run("spent"))).isEqualTo("done");
         assertThat(interpreter.display(interpreter.run("system/view/screen-gob/size")))
                 .isEqualTo(thePage.sizeAsRebolWritesIt());
-        assertThat(thePage.colourAt(thePage.wide() / 2, thePage.high() / 2))
+        assertThat(thePage.readTheColourAt(thePage.wide() / 2, thePage.high() / 2))
                 .as("still centred on the page, not on a forty-two pixel root")
                 .isEqualTo(THE_WINDOW);
     }

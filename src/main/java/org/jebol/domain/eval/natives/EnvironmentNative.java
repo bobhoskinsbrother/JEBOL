@@ -17,11 +17,11 @@ public abstract class EnvironmentNative extends HostNative {
         super(granted);
     }
 
-    protected Set<Datatype> aVariablesName() {
+    protected Set<Datatype> acceptAVariablesName() {
         return Set.of(StringValue.TYPE, WordValue.TYPE, LitWordValue.TYPE);
     }
 
-    protected String theVariableNamedBy(Value asked) {
+    protected String readTheVariableNamedBy(Value asked) {
         return asked instanceof AnyWordValue word ? word.spelling() : ((AnyStringValue) asked).text();
     }
 }

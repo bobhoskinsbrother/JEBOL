@@ -15,7 +15,7 @@ public class UnbindNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("word", TypesetValue.ANY_WORD.membersAnd(BlockValue.TYPE)));
+        return List.of(Parameter.of("word", TypesetValue.ANY_WORD.membersAnd(BlockValue.TYPE)));
     }
 
     @Override
@@ -26,12 +26,12 @@ public class UnbindNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                unbound(arguments.getFirst(), refinements.contains("deep"));
+                unbind(arguments.getFirst(), refinements.contains("deep"));
     }
 
-    private Value unbound(Value value, boolean deeply) {
+    private Value unbind(Value value, boolean deeply) {
         if (value instanceof AnyWordValue word) {
-            return word.boundTo(Context.unbound());
+            return word.bindTo(Context.unbound());
         }
         if (value instanceof AnyBlockValue block) {
             loosenInPlace(block, deeply);
@@ -43,7 +43,7 @@ public class UnbindNative extends DefaultNative {
         for (int at = block.index(); at <= block.storageLength(); at++) {
             Value item = block.storage().at(at);
             if (item instanceof AnyWordValue word) {
-                block.storage().rebindAt(at, word.boundTo(Context.unbound()));
+                block.storage().rebindAt(at, word.bindTo(Context.unbound()));
             } else if (deeply && item instanceof AnyBlockValue nested) {
                 loosenInPlace(nested, true);
             }

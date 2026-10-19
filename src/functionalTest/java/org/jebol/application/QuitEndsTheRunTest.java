@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class QuitEndsTheRunTest {
 
-    private static ScriptOutcome quitting(String source) {
+    private static ScriptOutcome runAQuit(String source) {
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn(source);
         return interpreter.run(source);
@@ -15,8 +15,8 @@ class QuitEndsTheRunTest {
 
     @Test
     @DisplayName("QUIT on its own ends the run and carries nothing")
-    void aBareQuitCarriesNothing() {
-        ScriptOutcome outcome = quitting("quit");
+    void carriesNothingForABareQuit() {
+        ScriptOutcome outcome = runAQuit("quit");
 
         assertThat(outcome.conclusion()).isEqualTo(Conclusion.QUIT_EARLY);
         assertThat(outcome.value().datatype().literalSpelling())
@@ -27,7 +27,7 @@ class QuitEndsTheRunTest {
     @Test
     @DisplayName("QUIT/RETURN carries the value it was given")
     void quitReturnCarriesItsValue() {
-        ScriptOutcome outcome = quitting("quit/return 42");
+        ScriptOutcome outcome = runAQuit("quit/return 42");
 
         assertThat(outcome.conclusion()).isEqualTo(Conclusion.QUIT_EARLY);
         assertThat(Interpreter.create().display(outcome)).isEqualTo("42");
@@ -36,19 +36,19 @@ class QuitEndsTheRunTest {
     @Test
     @DisplayName("QUIT/RETURN carries values that look like nothing")
     void quitReturnCarriesDegenerateValues() {
-        assertThat(Interpreter.create().display(quitting("quit/return 0"))).isEqualTo("0");
-        assertThat(Interpreter.create().display(quitting("quit/return \"\"")))
+        assertThat(Interpreter.create().display(runAQuit("quit/return 0"))).isEqualTo("0");
+        assertThat(Interpreter.create().display(runAQuit("quit/return \"\"")))
                 .isEqualTo("\"\"");
-        assertThat(Interpreter.create().display(quitting("quit/return []")))
+        assertThat(Interpreter.create().display(runAQuit("quit/return []")))
                 .isEqualTo("[]");
-        assertThat(Interpreter.create().display(quitting("quit/return false")))
+        assertThat(Interpreter.create().display(runAQuit("quit/return false")))
                 .isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("QUIT/RETURN none is still a quit, and carries unset as a bare QUIT does")
     void quitReturnNoneIsStillAQuit() {
-        ScriptOutcome outcome = quitting("quit/return none");
+        ScriptOutcome outcome = runAQuit("quit/return none");
 
         assertThat(outcome.conclusion()).isEqualTo(Conclusion.QUIT_EARLY);
         assertThat(outcome.value().datatype().literalSpelling()).isEqualTo("unset!");
@@ -57,7 +57,7 @@ class QuitEndsTheRunTest {
     @Test
     @DisplayName("QUIT inside a function ends the whole run, not the function")
     void quitFromInsideAFunctionEndsEverything() {
-        ScriptOutcome outcome = quitting(
+        ScriptOutcome outcome = runAQuit(
                 "f: func [] [quit/return 1] f 99");
 
         assertThat(outcome.conclusion()).isEqualTo(Conclusion.QUIT_EARLY);
@@ -69,7 +69,7 @@ class QuitEndsTheRunTest {
     @Test
     @DisplayName("QUIT inside a loop ends the whole run")
     void quitFromInsideALoopEndsEverything() {
-        ScriptOutcome outcome = quitting("repeat n 10 [if n = 3 [quit/return n]] 99");
+        ScriptOutcome outcome = runAQuit("repeat n 10 [if n = 3 [quit/return n]] 99");
 
         assertThat(Interpreter.create().display(outcome)).isEqualTo("3");
     }
@@ -77,7 +77,7 @@ class QuitEndsTheRunTest {
     @Test
     @DisplayName("TRY does not catch a QUIT, because a QUIT is not a failure")
     void tryDoesNotCatchAQuit() {
-        ScriptOutcome outcome = quitting("try [quit/return 5] 99");
+        ScriptOutcome outcome = runAQuit("try [quit/return 5] 99");
 
         assertThat(outcome.conclusion())
                 .as("TRY catches errors; stopping on purpose is not one")
@@ -88,7 +88,7 @@ class QuitEndsTheRunTest {
     @Test
     @DisplayName("CATCH does not catch a QUIT either")
     void catchDoesNotCatchAQuit() {
-        ScriptOutcome outcome = quitting("catch [quit/return 5] 99");
+        ScriptOutcome outcome = runAQuit("catch [quit/return 5] 99");
 
         assertThat(outcome.conclusion()).isEqualTo(Conclusion.QUIT_EARLY);
         assertThat(Interpreter.create().display(outcome)).isEqualTo("5");
@@ -97,14 +97,14 @@ class QuitEndsTheRunTest {
     @Test
     @DisplayName("QUIT/NOW is accepted and behaves the same")
     void quitNowIsAccepted() {
-        ScriptOutcome outcome = quitting("quit/now");
+        ScriptOutcome outcome = runAQuit("quit/now");
 
         assertThat(outcome.conclusion()).isEqualTo(Conclusion.QUIT_EARLY);
     }
 
     @Test
     @DisplayName("the interpreter still works after a script quits")
-    void theHostSurvivesAQuit() {
+    void letsTheHostSurviveAQuit() {
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn("kept: 7 quit/return 1");
         interpreter.run("kept: 7 quit/return 1");

@@ -25,23 +25,23 @@ public final class Poly1305 {
     private static final BigInteger A_WHOLE_TAG = BigInteger.TWO.pow(128);
 
     /** The tag over a message, under a key that must be used once. */
-    public static byte[] tagOf(byte[] key, byte[] message) {
-        BigInteger thePointThePolynomialIsEvaluatedAt = theClampedPoint(key);
+    public static byte[] computeTheTagOf(byte[] key, byte[] message) {
+        BigInteger thePointThePolynomialIsEvaluatedAt = clampThePoint(key);
         BigInteger addedAtTheEndSoTheAnswerCannotBeWorkedBackwards =
-                littleEndian(key, CHUNK, CHUNK);
+                readLittleEndian(key, CHUNK, CHUNK);
         BigInteger running = BigInteger.ZERO;
         for (int at = 0; at < message.length; at += CHUNK) {
             int howMany = Math.min(CHUNK, message.length - at);
-            running = running.add(theChunkAt(message, at, howMany));
+            running = running.add(readTheChunkAt(message, at, howMany));
             running = running.multiply(thePointThePolynomialIsEvaluatedAt)
                     .mod(THE_PRIME_THE_ARITHMETIC_IS_DONE_MODULO);
         }
-        return sixteenLittleEndianOctets(
+        return writeSixteenLittleEndianOctets(
                 running.add(addedAtTheEndSoTheAnswerCannotBeWorkedBackwards)
                         .mod(A_WHOLE_TAG));
     }
 
-    private static BigInteger theClampedPoint(byte[] key) {
+    private static BigInteger clampThePoint(byte[] key) {
         byte[] clamped = Arrays.copyOf(key, CHUNK);
         for (int at : new int[] {3, 7, 11, 15}) {
             clamped[at] &= 15;
@@ -49,19 +49,19 @@ public final class Poly1305 {
         for (int at : new int[] {4, 8, 12}) {
             clamped[at] &= (byte) 252;
         }
-        return littleEndian(clamped, 0, CHUNK);
+        return readLittleEndian(clamped, 0, CHUNK);
     }
 
-    private static BigInteger theChunkAt(byte[] message, int at, int howMany) {
-        return littleEndian(message, at, howMany)
-                .add(aOneJustAboveTheBytesThatAreReallyThere(howMany));
+    private static BigInteger readTheChunkAt(byte[] message, int at, int howMany) {
+        return readLittleEndian(message, at, howMany)
+                .add(placeAOneAboveTheBytes(howMany));
     }
 
-    private static BigInteger aOneJustAboveTheBytesThatAreReallyThere(int howMany) {
+    private static BigInteger placeAOneAboveTheBytes(int howMany) {
         return BigInteger.ONE.shiftLeft(howMany * Byte.SIZE);
     }
 
-    private static BigInteger littleEndian(byte[] octets, int at, int howMany) {
+    private static BigInteger readLittleEndian(byte[] octets, int at, int howMany) {
         BigInteger number = BigInteger.ZERO;
         for (int step = howMany - 1; step >= 0; step--) {
             number = number.shiftLeft(Byte.SIZE)
@@ -70,7 +70,7 @@ public final class Poly1305 {
         return number;
     }
 
-    private static byte[] sixteenLittleEndianOctets(BigInteger number) {
+    private static byte[] writeSixteenLittleEndianOctets(BigInteger number) {
         byte[] octets = new byte[CHUNK];
         BigInteger left = number;
         for (int at = 0; at < CHUNK; at++) {

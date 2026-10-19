@@ -12,7 +12,7 @@ final class Year implements WritableDateField {
     }
 
     @Override
-    public DateValue writtenOn(DateValue date, Assigned given) {
+    public DateValue writeOn(DateValue date, Assigned given) {
         return date.onTheDay(given.asWholeNumber(), date.month(), date.day());
     }
 }

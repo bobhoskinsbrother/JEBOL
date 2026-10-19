@@ -57,14 +57,14 @@ public final class ValueHash {
     }
 
     public long of(Value value) {
-        return Integer.toUnsignedLong(hashed(value));
+        return Integer.toUnsignedLong(hash(value));
     }
 
-    private int hashed(Value value) {
+    private int hash(Value value) {
         return switch (value) {
-            case AnyWordValue word -> symbols.canonOf(word.spelling());
-            case AnyStringValue text -> ofText(text) ^ typeNumberOf(text);
-            case BinaryValue bytes -> murmur(bytes.octetsFromHere());
+            case AnyWordValue word -> symbols.findTheCanonOf(word.spelling());
+            case AnyStringValue text -> ofText(text) ^ numberTheTypeOf(text);
+            case BinaryValue bytes -> hashWithMurmur(bytes.octetsFromHere());
             case AnyBlockValue block -> ofBlock(block);
             case LogicValue logic -> LOGIC_BASE + (logic.truth() ? 1 : 0);
             case IntegerValue whole -> ofSixtyFourBits(whole.magnitude());
@@ -77,12 +77,12 @@ public final class ValueHash {
             case TupleValue tuple -> ofTuple(tuple.segments());
             case PairValue pair -> Float.floatToRawIntBits((float) pair.x())
                     ^ Float.floatToRawIntBits((float) pair.y());
-            case Datatype datatype -> crcOfAWord(datatype.literalSpelling());
-            default -> finalMix(typeNumberOf(value));
+            case Datatype datatype -> computeTheCrcOfAWord(datatype.literalSpelling());
+            default -> mixFinally(numberTheTypeOf(value));
         };
     }
 
-    private int typeNumberOf(Value value) {
+    private int numberTheTypeOf(Value value) {
         return value.datatype().numberTheCGivesIt();
     }
 
@@ -90,27 +90,27 @@ public final class ValueHash {
         byte[] heldAsUtf8 = text.text().getBytes(StandardCharsets.UTF_8);
         int hash = 0;
         for (byte each : heldAsUtf8) {
-            hash = blockMix(hash, UnicodeCases.TABLES.lower(each & 0xFF));
+            hash = mixABlock(hash, UnicodeCases.TABLES.toLower(each & 0xFF));
         }
-        return finalMix(hash ^ heldAsUtf8.length);
+        return mixFinally(hash ^ heldAsUtf8.length);
     }
 
     private int ofBlock(AnyBlockValue block) {
-        int hash = blockMix(0, typeNumberOf(block));
+        int hash = mixABlock(0, numberTheTypeOf(block));
         int length = 0;
         for (Value item : block.remaining()) {
-            hash = blockMix(hash, hashed(item));
+            hash = mixABlock(hash, hash(item));
             length++;
         }
-        return finalMix(hash ^ length);
+        return mixFinally(hash ^ length);
     }
 
     private int ofSixtyFourBits(long bits) {
-        return finalMix((int) (bits >>> Integer.SIZE) ^ (int) bits);
+        return mixFinally((int) (bits >>> Integer.SIZE) ^ (int) bits);
     }
 
     private int ofCharacter(int codepoint) {
-        long lowered = Integer.toUnsignedLong(UnicodeCases.TABLES.lower(codepoint));
+        long lowered = Integer.toUnsignedLong(UnicodeCases.TABLES.toLower(codepoint));
         return (int) ((lowered * CHARACTER_MULTIPLIER) >> CHARACTER_SHIFT);
     }
 
@@ -146,20 +146,20 @@ public final class ValueHash {
             for (int at = 0; at < segments.length; at++) {
                 bytes[at] = (byte) segments[at];
             }
-            return murmur(bytes);
+            return hashWithMurmur(bytes);
         }
         int word = 0;
         for (int at = 0; at < segments.length; at++) {
             word |= (segments[at] & 0xFF) << (Byte.SIZE * at);
         }
-        return finalMix(word);
+        return mixFinally(word);
     }
 
-    private int murmur(byte[] bytes) {
+    private int hashWithMurmur(byte[] bytes) {
         int hash = 0;
         int whole = bytes.length / TUPLE_BYTES_IN_A_WORD * TUPLE_BYTES_IN_A_WORD;
         for (int at = 0; at < whole; at += TUPLE_BYTES_IN_A_WORD) {
-            hash = blockMix(hash, (bytes[at] & 0xFF) | (bytes[at + 1] & 0xFF) << 8
+            hash = mixABlock(hash, (bytes[at] & 0xFF) | (bytes[at + 1] & 0xFF) << 8
                     | (bytes[at + 2] & 0xFF) << 16 | (bytes[at + 3] & 0xFF) << 24);
         }
         int tail = 0;
@@ -172,15 +172,15 @@ public final class ValueHash {
             tail *= MURMUR_C2;
             hash ^= tail;
         }
-        return finalMix(hash ^ bytes.length);
+        return mixFinally(hash ^ bytes.length);
     }
 
-    private int blockMix(int hash, int key) {
+    private int mixABlock(int hash, int key) {
         int mixed = Integer.rotateLeft(key * MURMUR_C1, 15) * MURMUR_C2;
         return Integer.rotateLeft(hash ^ mixed, 13) * 5 + 0xe6546b64;
     }
 
-    private int finalMix(int hash) {
+    private int mixFinally(int hash) {
         int mixed = hash ^ (hash >>> 16);
         mixed *= 0x85ebca6b;
         mixed ^= mixed >>> 13;
@@ -188,18 +188,18 @@ public final class ValueHash {
         return mixed ^ (mixed >>> 16);
     }
 
-    private int crcOfAWord(String spelling) {
+    private int computeTheCrcOfAWord(String spelling) {
         byte[] bytes = spelling.getBytes(StandardCharsets.UTF_8);
-        int hash = bytes.length + (UnicodeCases.TABLES.lower(bytes[0] & 0xFF) & 0xFF);
+        int hash = bytes.length + (UnicodeCases.TABLES.toLower(bytes[0] & 0xFF) & 0xFF);
         for (int character : spelling.codePoints().toArray()) {
-            int lowered = UnicodeCases.TABLES.lower(character) & 0xFF;
+            int lowered = UnicodeCases.TABLES.toLower(character) & 0xFF;
             int entry = ((hash >>> CRC_INITIAL_SHIFT) ^ lowered) & 0xFF;
-            hash = ((hash << Byte.SIZE) & CRC_MASK) ^ crcTableEntry(entry);
+            hash = ((hash << Byte.SIZE) & CRC_MASK) ^ computeACrcTableEntry(entry);
         }
         return hash;
     }
 
-    private int crcTableEntry(int byteValue) {
+    private int computeACrcTableEntry(int byteValue) {
         int accumulated = 0;
         int data = byteValue << CRC_INITIAL_SHIFT;
         for (int bit = 0; bit < Byte.SIZE; bit++) {

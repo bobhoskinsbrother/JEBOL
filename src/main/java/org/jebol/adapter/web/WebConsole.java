@@ -10,21 +10,21 @@ public final class WebConsole implements ConsolePort {
 
     private static final long A_SLICE = 20;
 
-    private final Runnable takeWhatThePagePosted;
+    private final Runnable runnable;
     private final Deque<String> typed = new ArrayDeque<>();
 
-    public WebConsole(Runnable takeWhatThePagePosted) {
-        this.takeWhatThePagePosted = takeWhatThePagePosted;
+    public WebConsole(Runnable runnable) {
+        this.runnable = runnable;
     }
 
-    public void aLineWasTyped(String text) {
+    public void takeATypedLine(String text) {
         typed.add(text);
     }
 
     @Override
     public String readLine() {
         while (typed.isEmpty()) {
-            takeWhatThePagePosted.run();
+            runnable.run();
             letASlicePass();
         }
         return typed.poll();

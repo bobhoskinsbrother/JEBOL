@@ -10,7 +10,7 @@ public class LowercaseNative extends CaseChangeNative {
     }
 
     @Override
-    int changed(int codepoint) {
-        return UnicodeCases.TABLES.lower(codepoint);
+    int change(int codepoint) {
+        return UnicodeCases.TABLES.toLower(codepoint);
     }
 }

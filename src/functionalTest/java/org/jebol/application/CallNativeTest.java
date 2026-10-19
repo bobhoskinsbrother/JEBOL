@@ -16,21 +16,21 @@ class CallNativeTest {
 
     private static final class Recorded implements ProcessPort {
 
-        private ProgramToStart asked;
+        private Program asked;
         private byte[] childPrints = new byte[0];
         private byte[] childComplains = new byte[0];
         private Optional<String> refusal = Optional.empty();
 
         @Override
-        public ProgramResult run(ProgramToStart program) {
+        public ProgramResult run(Program program) {
             this.asked = program;
             if (refusal.isPresent()) {
                 return new ProgramResult(0,
-                        program.waitedFor() ? Optional.of(0) : Optional.empty(),
+                        program.isWaitedFor() ? Optional.of(0) : Optional.empty(),
                         Optional.empty(), Optional.empty(), refusal);
             }
             return new ProgramResult(4242,
-                    program.waitedFor() ? Optional.of(3) : Optional.empty(),
+                    program.isWaitedFor() ? Optional.of(3) : Optional.empty(),
                     program.standardOutput() == ProgramOutput.CAPTURED
                             ? Optional.of(childPrints) : Optional.empty(),
                     program.standardError() == ProgramOutput.CAPTURED
@@ -39,7 +39,7 @@ class CallNativeTest {
         }
     }
 
-    private static Interpreter reaching(boolean granted, Recorded port) {
+    private static Interpreter makeAnInterpreterReaching(boolean granted, Recorded port) {
         Bounds bounds = granted
                 ? Bounds.standard().grant(HostService.PROCESSES)
                 : Bounds.standard();
@@ -53,7 +53,7 @@ class CallNativeTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(Interpreter interpreter, String source) {
+    private static String readTheErrorIdOf(Interpreter interpreter, String source) {
         return answerTo(interpreter,
                 "e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
@@ -64,30 +64,30 @@ class CallNativeTest {
 
         @Test
         @DisplayName("a block is the program and its arguments, already separated")
-        void aBlockIsTakenAsItStands() {
+        void takesABlockAsItStands() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     call [{ls} {-l}]""");
             assertThat(port.asked.command()).containsExactly("ls", "-l");
         }
 
         @Test
         @DisplayName("a block does not go through a shell")
-        void aBlockNeedsNoShell() {
+        void runsABlockWithoutAShell() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     call [{ls}]""");
-            assertThat(port.asked.readByTheShell()).isFalse();
+            assertThat(port.asked.isReadByShell()).isFalse();
         }
 
         @Test
         @DisplayName("a string is one word, and the shell stays opt-in")
-        void aStringIsOneWordWithoutTheShell() {
+        void takesAStringAsOneWordWithoutTheShell() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     call {ls -l}""");
             assertThat(port.asked.command()).containsExactly("ls -l");
-            assertThat(port.asked.readByTheShell())
+            assertThat(port.asked.isReadByShell())
                     .as("the C sets the flag from /shell alone; an implicit shell"
                             + " hands every joined command string to metacharacters")
                     .isFalse();
@@ -95,28 +95,28 @@ class CallNativeTest {
 
         @Test
         @DisplayName("a file is the program itself, and needs no shell")
-        void aFileIsTheProgramItself() {
+        void runsAFileAsTheProgramItself() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     call %/bin/ls""");
             assertThat(port.asked.command()).containsExactly("/bin/ls");
-            assertThat(port.asked.readByTheShell()).isFalse();
+            assertThat(port.asked.isReadByShell()).isFalse();
         }
 
         @Test
         @DisplayName("/SHELL makes a block go through the shell too")
-        void theShellCanBeAskedFor() {
+        void usesTheShellWhenAskedFor() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     call/shell [{ls}]""");
-            assertThat(port.asked.readByTheShell()).isTrue();
+            assertThat(port.asked.isReadByShell()).isTrue();
         }
 
         @Test
-        @DisplayName("each kind of block item becomes text its own way")
-        void eachBlockItemBecomesText() {
+        @DisplayName("each type of block item becomes text its own way")
+        void turnsEachBlockItemIntoText() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     prog: {resolved} call [:prog %f.txt {plain} bare]""");
             assertThat(port.asked.command())
                     .containsExactly("resolved", "f.txt", "plain", "bare");
@@ -124,15 +124,15 @@ class CallNativeTest {
 
         @Test
         @DisplayName("an empty block raises too-short")
-        void anEmptyBlockRaisesTooShort() {
-            assertThat(errorIdOf(reaching(true, new Recorded()), """
+        void raisesTooShortForAnEmptyBlock() {
+            assertThat(readTheErrorIdOf(makeAnInterpreterReaching(true, new Recorded()), """
                     call []""")).isEqualTo("too-short");
         }
 
         @Test
         @DisplayName("a number in the block raises invalid-arg")
-        void aNumberInTheBlockRaises() {
-            assertThat(errorIdOf(reaching(true, new Recorded()), """
+        void raisesForANumberInTheBlock() {
+            assertThat(readTheErrorIdOf(makeAnInterpreterReaching(true, new Recorded()), """
                     call [1]""")).isEqualTo("invalid-arg");
         }
     }
@@ -143,59 +143,59 @@ class CallNativeTest {
 
         @Test
         @DisplayName("a string pipes its UTF-8 bytes, and implies waiting")
-        void aStringPipesItsBytes() {
+        void pipesAStringsBytes() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     call/input [{x}] {héllo}""");
             assertThat(port.asked.standardInput()).isEqualTo(
                     ProcessPort.ProgramInput.SUPPLIED_BYTES);
             assertThat(port.asked.inputBytes().orElseThrow())
                     .isEqualTo("héllo".getBytes(StandardCharsets.UTF_8));
-            assertThat(port.asked.waitedFor()).isTrue();
+            assertThat(port.asked.isWaitedFor()).isTrue();
         }
 
         @Test
         @DisplayName("a binary pipes its bytes exactly, and implies waiting")
-        void aBinaryPipesItsBytes() {
+        void pipesABinarysBytes() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     call/input [{x}] #{00FF}""");
             assertThat(port.asked.inputBytes().orElseThrow())
                     .containsExactly(0x00, (byte) 0xFF);
-            assertThat(port.asked.waitedFor()).isTrue();
+            assertThat(port.asked.isWaitedFor()).isTrue();
         }
 
         @Test
         @DisplayName("none closes the input, and does not imply waiting")
-        void noneClosesTheInput() {
+        void closesTheInputForNone() {
             Recorded port = new Recorded();
-            String answer = answerTo(reaching(true, port), """
+            String answer = answerTo(makeAnInterpreterReaching(true, port), """
                     call/input [{x}] none""");
             assertThat(port.asked.standardInput()).isEqualTo(
                     ProcessPort.ProgramInput.NOTHING_AT_ALL);
-            assertThat(port.asked.waitedFor()).isFalse();
+            assertThat(port.asked.isWaitedFor()).isFalse();
             assertThat(answer).isEqualTo("4242");
         }
 
         @Test
         @DisplayName("a file names what feeds the input, and does not imply waiting")
-        void aFileFeedsTheInput() {
+        void feedsTheInputFromAFile() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     call/input [{x}] %in.txt""");
             assertThat(port.asked.standardInput()).isEqualTo(
-                    ProcessPort.ProgramInput.A_FILES_CONTENTS);
+                    ProcessPort.ProgramInput.FILE_CONTENTS);
             assertThat(port.asked.inputFile().orElseThrow()).isEqualTo("in.txt");
-            assertThat(port.asked.waitedFor()).isFalse();
+            assertThat(port.asked.isWaitedFor()).isFalse();
         }
 
         @Test
         @DisplayName("a redirect file resolves where READ would resolve it")
-        void aRedirectFileResolvesUnderTheFilePort(
+        void resolvesARedirectFileUnderTheFilePort(
                 @TempDir java.nio.file.Path directory) {
             Recorded port = new Recorded();
-            Interpreter interpreter = reaching(true, port);
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            Interpreter interpreter = makeAnInterpreterReaching(true, port);
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
             answerTo(interpreter, """
                     call/input/output [{x}] %in.txt %out.txt""");
             assertThat(port.asked.inputFile().orElseThrow())
@@ -214,7 +214,7 @@ class CallNativeTest {
                     .grant(HostService.PROCESSES)
                     .grant(HostService.WORKING_DIRECTORY));
             interpreter.useProcesses(port);
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             answerTo(interpreter, """
                     call [{ls}]""");
@@ -229,18 +229,18 @@ class CallNativeTest {
 
         @Test
         @DisplayName("and a script given no filesystem is standing nowhere, so nor is the child")
-        void withoutAfilesystemThereIsNoDirectory() {
+        void hasNoDirectoryWithoutAFilesystem() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     call [{ls}]""");
             assertThat(port.asked.workingDirectory()).isEmpty();
         }
 
         @Test
         @DisplayName("an unnamed input is the host's own")
-        void anUnnamedInputIsTheHostsOwn() {
+        void usesTheHostsOwnForAnUnnamedInput() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     call [{x}]""");
             assertThat(port.asked.standardInput()).isEqualTo(
                     ProcessPort.ProgramInput.THE_HOSTS_OWN);
@@ -248,8 +248,8 @@ class CallNativeTest {
 
         @Test
         @DisplayName("a number is refused as an input")
-        void aNumberIsRefusedAsAnInput() {
-            assertThat(errorIdOf(reaching(true, new Recorded()), """
+        void refusesANumberAsAnInput() {
+            assertThat(readTheErrorIdOf(makeAnInterpreterReaching(true, new Recorded()), """
                     call/input [{x}] 5""")).isEqualTo("expect-arg");
         }
     }
@@ -260,67 +260,67 @@ class CallNativeTest {
 
         @Test
         @DisplayName("a string buffer captures by appending, and implies waiting")
-        void aStringBufferCapturesByAppending() {
+        void capturesIntoAStringBufferByAppending() {
             Recorded port = new Recorded();
             port.childPrints = "printed".getBytes(StandardCharsets.UTF_8);
-            Interpreter interpreter = reaching(true, port);
+            Interpreter interpreter = makeAnInterpreterReaching(true, port);
             String answer = answerTo(interpreter, """
                     buf: copy {old} call/output [{x}] buf buf""");
             assertThat(answer).isEqualTo("\"oldprinted\"");
-            assertThat(port.asked.waitedFor()).isTrue();
+            assertThat(port.asked.isWaitedFor()).isTrue();
             assertThat(port.asked.standardOutput()).isEqualTo(
                     ProcessPort.ProgramOutput.CAPTURED);
         }
 
         @Test
         @DisplayName("captured text crosses back as UTF-8")
-        void capturedTextCrossesBackAsUtf8() {
+        void bringsCapturedTextBackAsUtf8() {
             Recorded port = new Recorded();
             port.childPrints = "é".getBytes(StandardCharsets.UTF_8);
-            assertThat(answerTo(reaching(true, port), """
+            assertThat(answerTo(makeAnInterpreterReaching(true, port), """
                     buf: copy {} call/output [{x}] buf buf = {é}"""))
                     .isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("a binary buffer captures the bytes exactly")
-        void aBinaryBufferCapturesTheBytes() {
+        void capturesTheBytesIntoABinaryBuffer() {
             Recorded port = new Recorded();
             port.childPrints = new byte[] {0x01, (byte) 0xFF};
-            assertThat(answerTo(reaching(true, port), """
+            assertThat(answerTo(makeAnInterpreterReaching(true, port), """
                     buf: copy #{} call/output [{x}] buf buf"""))
                     .isEqualTo("#{01FF}");
         }
 
         @Test
         @DisplayName("output and error capture into two buffers at once")
-        void outputAndErrorCaptureTogether() {
+        void capturesOutputAndErrorTogether() {
             Recorded port = new Recorded();
             port.childPrints = "out".getBytes(StandardCharsets.UTF_8);
             port.childComplains = "err".getBytes(StandardCharsets.UTF_8);
-            assertThat(answerTo(reaching(true, port), """
+            assertThat(answerTo(makeAnInterpreterReaching(true, port), """
                     o: copy {} e: copy {} call/output/error [{x}] o e reduce [o e]"""))
                     .isEqualTo("[\"out\" \"err\"]");
         }
 
         @Test
         @DisplayName("a file routes the output without waiting")
-        void aFileRoutesTheOutputWithoutWaiting() {
+        void routesTheOutputToAFileWithoutWaiting() {
             Recorded port = new Recorded();
-            String answer = answerTo(reaching(true, port), """
+            String answer = answerTo(makeAnInterpreterReaching(true, port), """
                     call/output [{x}] %out.txt""");
             assertThat(port.asked.standardOutput()).isEqualTo(
                     ProcessPort.ProgramOutput.INTO_A_FILE);
             assertThat(port.asked.outputFile().orElseThrow()).isEqualTo("out.txt");
-            assertThat(port.asked.waitedFor()).isFalse();
+            assertThat(port.asked.isWaitedFor()).isFalse();
             assertThat(answer).isEqualTo("4242");
         }
 
         @Test
         @DisplayName("none discards the stream")
-        void noneDiscardsTheStream() {
+        void discardsTheStreamForNone() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     call/error [{x}] none""");
             assertThat(port.asked.standardError()).isEqualTo(
                     ProcessPort.ProgramOutput.DISCARDED);
@@ -328,9 +328,9 @@ class CallNativeTest {
 
         @Test
         @DisplayName("unnamed streams are the host's own")
-        void unnamedStreamsAreTheHostsOwn() {
+        void usesTheHostsOwnForUnnamedStreams() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     call [{x}]""");
             assertThat(port.asked.standardOutput()).isEqualTo(
                     ProcessPort.ProgramOutput.THE_HOSTS_OWN);
@@ -340,9 +340,9 @@ class CallNativeTest {
 
         @Test
         @DisplayName("/CONSOLE attaches the child to the host's console")
-        void consoleAttachesTheChild() {
+        void attachesTheChildToTheConsole() {
             Recorded port = new Recorded();
-            answerTo(reaching(true, port), """
+            answerTo(makeAnInterpreterReaching(true, port), """
                     call/console [{x}]""");
             assertThat(port.asked.attachedToTheHostsConsole()).isTrue();
         }
@@ -354,22 +354,22 @@ class CallNativeTest {
 
         @Test
         @DisplayName("without /WAIT the answer is the number of the new process")
-        void notWaitingAnswersTheNumber() {
-            assertThat(answerTo(reaching(true, new Recorded()), """
+        void answersTheNumberWhenNotWaiting() {
+            assertThat(answerTo(makeAnInterpreterReaching(true, new Recorded()), """
                     call [{ls}]""")).isEqualTo("4242");
         }
 
         @Test
         @DisplayName("/WAIT answers the exit code")
-        void waitingAnswersTheCode() {
-            assertThat(answerTo(reaching(true, new Recorded()), """
+        void answersTheCodeWhenWaiting() {
+            assertThat(answerTo(makeAnInterpreterReaching(true, new Recorded()), """
                     call/wait [{ls}]""")).isEqualTo("3");
         }
 
         @Test
         @DisplayName("/INFO without waiting answers an object holding the number alone")
         void infoWithoutWaitingHoldsTheNumberAlone() {
-            Interpreter interpreter = reaching(true, new Recorded());
+            Interpreter interpreter = makeAnInterpreterReaching(true, new Recorded());
             assertThat(answerTo(interpreter, """
                     o: call/info [{x}] mold words-of o"""))
                     .isEqualTo("\"[id]\"");
@@ -379,7 +379,7 @@ class CallNativeTest {
         @Test
         @DisplayName("/INFO with /WAIT adds the exit code")
         void infoWithWaitingAddsTheExitCode() {
-            Interpreter interpreter = reaching(true, new Recorded());
+            Interpreter interpreter = makeAnInterpreterReaching(true, new Recorded());
             assertThat(answerTo(interpreter, """
                     o: call/info/wait [{x}] reduce [o/id o/exit-code]"""))
                     .isEqualTo("[4242 3]");
@@ -390,47 +390,47 @@ class CallNativeTest {
         void infoCarriesTheRefusal() {
             Recorded port = new Recorded();
             port.refusal = Optional.of("no such program");
-            assertThat(answerTo(reaching(true, port), """
+            assertThat(answerTo(makeAnInterpreterReaching(true, port), """
                     o: call/info [{x}] o/error"""))
                     .isEqualTo("\"no such program\"");
         }
 
         @Test
         @DisplayName("without /INFO a refusal to start raises call-fail")
-        void withoutInfoARefusalRaises() {
+        void raisesARefusalWithoutInfo() {
             Recorded port = new Recorded();
             port.refusal = Optional.of("no such program");
-            assertThat(errorIdOf(reaching(true, port), """
+            assertThat(readTheErrorIdOf(makeAnInterpreterReaching(true, port), """
                     call [{x}]""")).isEqualTo("call-fail");
         }
 
         @Test
         @DisplayName("a port that waited yet answers no exit code is an error, not a throw")
-        void aBrokenPortIsAnErrorNotAThrow() {
+        void raisesAnErrorNotAThrowForABrokenPort() {
             ProcessPort broken = program -> new ProcessPort.ProgramResult(
                     1, Optional.empty(), Optional.empty(), Optional.empty(),
                     Optional.empty());
             Interpreter interpreter = Interpreter.withBounds(
                     Bounds.standard().grant(HostService.PROCESSES));
             interpreter.useProcesses(broken);
-            assertThat(errorIdOf(interpreter, """
+            assertThat(readTheErrorIdOf(interpreter, """
                     call/wait [{x}]""")).isEqualTo("call-fail");
         }
     }
 
     @Test
     @DisplayName("without the grant CALL is refused")
-    void theGrantIsNeeded() {
-        assertThat(errorIdOf(reaching(false, new Recorded()), """
+    void needsTheGrant() {
+        assertThat(readTheErrorIdOf(makeAnInterpreterReaching(false, new Recorded()), """
                 call [{ls}]""")).isEqualTo("no-service");
     }
 
     @Test
     @DisplayName("with the grant and no port, CALL still fails")
-    void aPortIsAlsoNeeded() {
+    void needsAPortToo() {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.PROCESSES));
-        assertThat(errorIdOf(interpreter, """
+        assertThat(readTheErrorIdOf(interpreter, """
                 call [{ls}]""")).isEqualTo("no-port");
     }
 }

@@ -18,21 +18,21 @@ public final class ObjectActions implements Actions {
     }
 
     @Override
-    public int length() {
+    public int measureTheLength() {
         return object.context().fieldCount();
     }
 
     @Override
     public Value append(Asked asked) {
-        return gainingFields(asked, "append");
+        return gainFields(asked, "append");
     }
 
     @Override
     public Value insert(Asked asked) {
-        return gainingFields(asked, "insert");
+        return gainFields(asked, "insert");
     }
 
-    private Value gainingFields(Asked asked, String nativeName) {
+    private Value gainFields(Asked asked, String nativeName) {
         if (object.context().isClosedToNewNames()) {
             throw Raised.of(EvaluationFailure.PROTECTED);
         }
@@ -43,7 +43,7 @@ public final class ObjectActions implements Actions {
             return object;
         }
         List<Value> pairs = asked.duplicated() instanceof AnyBlockValue added
-                ? asked.theWantedItemsOf(added)
+                ? asked.pickTheWantedItemsOf(added)
                 : List.of(asked.given());
         for (int at1 = 0; at1 + 1 < pairs.size(); at1 += 2) {
             object.context().refuseAFieldSpeltLikeItsOwnSelf(pairs.get(at1));

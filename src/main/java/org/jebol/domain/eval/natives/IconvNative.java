@@ -35,12 +35,12 @@ public class IconvNative extends EncodingNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("data", Set.of(BinaryValue.TYPE)),
-                Parameter.required("codepage", aCodepage()),
-                Parameter.belongingTo("to", "target", aCodepage()));
+                Parameter.of("data", Set.of(BinaryValue.TYPE)),
+                Parameter.of("codepage", acceptACodepage()),
+                Parameter.belongTo("to", "target", acceptACodepage()));
     }
 
-    private Set<Datatype> aCodepage() {
+    private Set<Datatype> acceptACodepage() {
         return Set.of(WordValue.TYPE, IntegerValue.TYPE, TagValue.TYPE, StringValue.TYPE);
     }
 
@@ -53,9 +53,9 @@ public class IconvNative extends EncodingNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             byte[] octets = ((BinaryValue) arguments.getFirst()).octetsFromHere();
-            String text = encodings.textDecodedAs(octets, characterSetFor(arguments.get(1)));
-            return argumentOf("to", 0, arguments, refinements)
-                    .map(this::characterSetFor)
+            String text = encodings.textDecodedAs(octets, findTheCharacterSetFor(arguments.get(1)));
+            return readTheArgumentOf("to", 0, arguments, refinements)
+                    .map(this::findTheCharacterSetFor)
                     .<Value>map(into -> StandardCharsets.UTF_8.equals(into)
                             ? StringValue.of(text)
                             : BinaryValue.ofBytes(text.getBytes(into)))
@@ -63,13 +63,13 @@ public class IconvNative extends EncodingNative {
         };
     }
 
-    private Charset characterSetFor(Value asked) {
+    private Charset findTheCharacterSetFor(Value asked) {
         String spelling = switch (asked) {
             case AnyWordValue word -> word.canonical();
             case AnyStringValue text -> text.text();
             default -> Molder.form(asked);
         };
-        return encodings.charsetNamed(spelling)
+        return encodings.findTheCharsetNamed(spelling)
                 .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG, asked));
     }
 }

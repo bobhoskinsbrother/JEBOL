@@ -16,7 +16,7 @@ class BincodeLengthPrefixFromTheSourceTest {
 
     @Test
     @DisplayName("a first byte up to 128 is the length, and costs one byte")
-    void aShortLength() {
+    void costsOneByteForAShortLength() {
         assertThat(answerTo("""
                 b: binary #{05AABBCCDDEE}
                 binary/read b [LENGTH INDEX]""")).isEqualTo("[5 2]");
@@ -24,7 +24,7 @@ class BincodeLengthPrefixFromTheSourceTest {
 
     @Test
     @DisplayName("including 128 itself, which is the boundary the C draws")
-    void theBoundaryIsInclusive() {
+    void includes128InTheShortForm() {
         assertThat(answerTo("""
                 b: binary #{80AABB}
                 binary/read b [LENGTH INDEX]""")).isEqualTo("[128 2]");
@@ -35,7 +35,7 @@ class BincodeLengthPrefixFromTheSourceTest {
 
     @Test
     @DisplayName("above it the low seven bits count the bytes that carry the number")
-    void aLongLength() {
+    void countsTheLengthBytesInTheLowSevenBits() {
         assertThat(answerTo("""
                 b: binary #{82091802010330}
                 binary/read b [LENGTH INDEX]""")).isEqualTo("[2328 4]");
@@ -46,7 +46,7 @@ class BincodeLengthPrefixFromTheSourceTest {
 
     @Test
     @DisplayName("and the bytes are most significant first")
-    void mostSignificantFirst() {
+    void putsTheMostSignificantByteFirst() {
         assertThat(answerTo("""
                 b: binary #{820100}
                 binary/read b [LENGTH]""")).isEqualTo("[256]");
@@ -54,7 +54,7 @@ class BincodeLengthPrefixFromTheSourceTest {
 
     @Test
     @DisplayName("LENGTH? is the other question and moves nothing")
-    void lengthQuestionMovesNothing() {
+    void movesNothingForLengthQuestion() {
         assertThat(answerTo("""
                 b: binary #{05AABBCCDDEE}
                 binary/read b [LENGTH? INDEX LENGTH? INDEX]"""))
@@ -63,7 +63,7 @@ class BincodeLengthPrefixFromTheSourceTest {
 
     @Test
     @DisplayName("a length running past the end is out of range")
-    void aLengthPastTheEnd() {
+    void refusesALengthPastTheEnd() {
         assertThat(answerTo("""
                 b: binary #{8409}
                 e: try [binary/read b [LENGTH]]
@@ -72,7 +72,7 @@ class BincodeLengthPrefixFromTheSourceTest {
 
     @Test
     @DisplayName("the bit codes leave the cursor where LENGTH expects it")
-    void afterTheBitCodes() {
+    void startsWhereTheBitCodesLeaveTheCursor() {
         assertThat(answerTo("""
                 b: binary #{308209180201}
                 binary/read b [UB 2 BIT UB 5 LENGTH INDEX]"""))
@@ -81,7 +81,7 @@ class BincodeLengthPrefixFromTheSourceTest {
 
     @Test
     @DisplayName("and a certificate reads back with its fields where they belong")
-    void aCertificateReadsBack() {
+    void readsACertificateBack() {
         assertThat(answerTo("""
                 der: binary #{3009020103300406010502}
                 binary/read der [UB 2 BIT UB 5 LENGTH UB 2 BIT UB 5 LENGTH BYTES 1]"""))

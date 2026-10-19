@@ -27,23 +27,23 @@ public record TextLayout(
         return shadowAcross != 0 || shadowDown != 0;
     }
 
-    public LinePlacement whereTheLineGoes(Placement box, double lineWide, double ascent, double descent) {
+    public LinePlacement placeTheLine(Placement box, double lineWide, double ascent, double descent) {
         return new LinePlacement(
-                whereALineStarts(box, lineWide),
-                whereTheStackStarts(box, ascent + descent) + ascent);
+                findWhereALineStarts(box, lineWide),
+                findWhereTheStackStarts(box, ascent + descent) + ascent);
     }
 
-    public double whereALineStarts(Placement box, double lineWide) {
+    public double findWhereALineStarts(Placement box, double lineWide) {
         double roomAcross = box.wide() - originAcross - marginAcross;
-        return box.across() + originAcross + theShareOfTheSpareRoomBefore(roomAcross - lineWide);
+        return box.across() + originAcross + shareTheSpareRoomBefore(roomAcross - lineWide);
     }
 
-    public double whereTheStackStarts(Placement box, double stackHigh) {
+    public double findWhereTheStackStarts(Placement box, double stackHigh) {
         double roomDown = box.high() - originDown - marginDown;
-        return box.down() + originDown + theSpaceAboveTheLine(roomDown, stackHigh);
+        return box.down() + originDown + measureTheSpaceAboveTheLine(roomDown, stackHigh);
     }
 
-    private double theShareOfTheSpareRoomBefore(double spareRoom) {
+    private double shareTheSpareRoomBefore(double spareRoom) {
         return switch (align) {
             case LEFT -> 0;
             case CENTRE -> spareRoom / 2;
@@ -51,7 +51,7 @@ public record TextLayout(
         };
     }
 
-    private double theSpaceAboveTheLine(double roomDown, double lineHigh) {
+    private double measureTheSpaceAboveTheLine(double roomDown, double lineHigh) {
         double spareRoom = roomDown - lineHigh;
         return switch (valign) {
             case TOP -> 0;
@@ -60,7 +60,7 @@ public record TextLayout(
         };
     }
 
-    public double roomForEachLine(Placement box) {
+    public double measureTheRoomForEachLine(Placement box) {
         return wraps ? box.wide() - originAcross - marginAcross : Double.POSITIVE_INFINITY;
     }
 
@@ -72,7 +72,7 @@ public record TextLayout(
         return new TextLayout(originAcross, originDown, across, down, align, valign, shadowAcross, shadowDown, wraps);
     }
 
-    public TextLayout aligned(TextAlignment across, TextVerticalAlignment down) {
+    public TextLayout align(TextAlignment across, TextVerticalAlignment down) {
         return new TextLayout(originAcross, originDown, marginAcross, marginDown, across, down, shadowAcross, shadowDown,
                 wraps);
     }
@@ -81,7 +81,7 @@ public record TextLayout(
         return new TextLayout(originAcross, originDown, marginAcross, marginDown, align, valign, across, down, wraps);
     }
 
-    public TextLayout wrapping(boolean breaksALongLine) {
+    public TextLayout wrap(boolean breaksALongLine) {
         return new TextLayout(originAcross, originDown, marginAcross, marginDown, align, valign, shadowAcross,
                 shadowDown, breaksALongLine);
     }

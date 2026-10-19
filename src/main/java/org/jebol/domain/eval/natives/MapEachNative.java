@@ -22,9 +22,9 @@ public class MapEachNative extends LoopingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.softQuoted("word"),
-                Parameter.required("series", A_BLOCK),
-                Parameter.required("body", A_BLOCK));
+        return List.of(Parameter.quoteSoftly("word"),
+                Parameter.of("series", A_BLOCK),
+                Parameter.of("body", A_BLOCK));
     }
 
     @Override
@@ -34,7 +34,7 @@ public class MapEachNative extends LoopingNative {
             List<AnyWordValue> names = loopNamesIn(arguments.get(0));
             names.forEach(name -> locals.register(name.spelling()));
             AnyBlockValue bound = Binder.bind((AnyBlockValue) arguments.get(2), locals);
-            List<Value> items = arguments.get(1).items();
+            List<Value> items = arguments.get(1).listTheItems();
             List<Value> gathered = new ArrayList<>();
             int at = 0;
             while (at < items.size()) {
@@ -45,7 +45,7 @@ public class MapEachNative extends LoopingNative {
                     gathered.add(made);
                 }
             }
-            return BlockValue.block(gathered);
+            return BlockValue.of(gathered);
         };
     }
 }

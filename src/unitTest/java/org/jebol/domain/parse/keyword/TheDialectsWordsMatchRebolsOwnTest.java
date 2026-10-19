@@ -20,11 +20,11 @@ class TheDialectsWordsMatchRebolsOwnTest {
 
     private static final String THE_LAST_WORD_THE_FILE_LISTS = "end";
 
-    private static List<String> theParseWordsRebolLists() {
+    private static List<String> listTheParseWordsRebolLists() {
         List<String> listed = new ArrayList<>();
         boolean reached = false;
-        for (String line : theVendoredWordsFile().split("\n")) {
-            String word = withoutItsComment(line).trim();
+        for (String line : readTheVendoredWordsFile().split("\n")) {
+            String word = stripItsComment(line).trim();
             if (word.isEmpty()) {
                 continue;
             }
@@ -40,12 +40,12 @@ class TheDialectsWordsMatchRebolsOwnTest {
         return listed;
     }
 
-    private static String withoutItsComment(String line) {
+    private static String stripItsComment(String line) {
         int remark = line.indexOf(';');
         return remark < 0 ? line : line.substring(0, remark);
     }
 
-    private static String theVendoredWordsFile() {
+    private static String readTheVendoredWordsFile() {
         try (InputStream open = TheDialectsWordsMatchRebolsOwnTest.class
                 .getResourceAsStream("/rebol-boot/words.reb")) {
             return new String(open.readAllBytes(), StandardCharsets.UTF_8);
@@ -56,8 +56,8 @@ class TheDialectsWordsMatchRebolsOwnTest {
 
     @Test
     @DisplayName("the file's own list runs from the bar to END, thirty-four words")
-    void theFilesOwnList() {
-        List<String> listed = theParseWordsRebolLists();
+    void matchTheFilesOwnList() {
+        List<String> listed = listTheParseWordsRebolLists();
         assertThat(listed).hasSize(34);
         assertThat(listed.getFirst()).isEqualTo(THE_FIRST_WORD_THE_FILE_LISTS);
         assertThat(listed.getLast()).isEqualTo(THE_LAST_WORD_THE_FILE_LISTS);
@@ -66,29 +66,29 @@ class TheDialectsWordsMatchRebolsOwnTest {
 
     @Test
     @DisplayName("every keyword the table carries is one Rebol lists under parse")
-    void noKeywordIsInvented() {
-        assertThat(theParseWordsRebolLists())
+    void inventNoKeyword() {
+        assertThat(listTheParseWordsRebolLists())
                 .containsAll(ParseKeyword.BY_SPELLING.keySet());
     }
 
     @Test
     @DisplayName("four of Rebol's words are not keywords here, and only one is a gap")
-    void theFourTheTableHasNotGot() {
-        Set<String> missing = new LinkedHashSet<>(theParseWordsRebolLists());
+    void includeTheFourTheTableHasNotGot() {
+        Set<String> missing = new LinkedHashSet<>(listTheParseWordsRebolLists());
         missing.removeAll(ParseKeyword.BY_SPELLING.keySet());
         assertThat(missing).containsExactly("|", "??", "do", "only");
     }
 
     @Test
     @DisplayName("the bar marks an alternative rather than standing as a keyword")
-    void theBarIsNotAKeyword() {
-        assertThat(ParseKeyword.named("|")).isEmpty();
+    void leaveTheBarOut() {
+        assertThat(ParseKeyword.findTheKeywordNamed("|")).isEmpty();
     }
 
     @Test
     @DisplayName("DO and ONLY are words Rebol reserves and its parse never acts on")
     void doAndOnlyAreReservedAndUnused() {
-        assertThat(ParseKeyword.named("do")).isEmpty();
-        assertThat(ParseKeyword.named("only")).isEmpty();
+        assertThat(ParseKeyword.findTheKeywordNamed("do")).isEmpty();
+        assertThat(ParseKeyword.findTheKeywordNamed("only")).isEmpty();
     }
 }

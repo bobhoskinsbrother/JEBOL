@@ -12,12 +12,12 @@ final class OctetBuffer {
     private int count;
 
     void write(int octet) {
-        roomFor(1);
+        makeRoomFor(1);
         octets[count++] = (byte) octet;
     }
 
     void write(byte[] from, int start, int length) {
-        roomFor(length);
+        makeRoomFor(length);
         System.arraycopy(from, start, octets, count, length);
         count += length;
     }
@@ -34,7 +34,7 @@ final class OctetBuffer {
         return new String(octets, 0, count, charset);
     }
 
-    private void roomFor(int more) {
+    private void makeRoomFor(int more) {
         if (count + more > octets.length) {
             octets = Arrays.copyOf(octets, Math.max(octets.length * 2, count + more));
         }

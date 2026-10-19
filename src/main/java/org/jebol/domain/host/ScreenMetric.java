@@ -49,7 +49,7 @@ public enum ScreenMetric {
     }
 
     /** The metric a word names, or empty for a word no host serves. */
-    public static Optional<ScreenMetric> named(String canonical) {
+    public static Optional<ScreenMetric> findTheMetricNamed(String canonical) {
         for (ScreenMetric metric : values()) {
             if (metric.spelling.equals(canonical)) {
                 return Optional.of(metric);

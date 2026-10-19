@@ -15,7 +15,7 @@ a non-unique or absent match and changes nothing.
 Batch by making several `Edit` calls, not by writing a program that edits.
 
 Scripts are still right for what they are for: `scripts/c-parity.py` and
-`scripts/c-surface.py` are the project's own measures and are run, not written
+`scripts/c-surface.py` are the project's own measures and are run, not text
 inline.
 
 ## Searching this codebase: use the IntelliJ MCP, not grep
@@ -126,7 +126,7 @@ alone into a program that reads a file and writes its compressed form to stdout.
 Then any input can be diffed against the truth in a second. On the Brotli
 encoder that harness found two defects within minutes of existing, and one of
 them -- a hash table cleared at every block instead of once -- was invisible in
-every test written before it, because it needed more than one block of input to
+every test text before it, because it needed more than one block of input to
 show. Building it first also means the port can be bisected: shrink the input
 until the smallest failing case is one line.
 
@@ -140,7 +140,7 @@ had concluded the opposite twice.
 was reported as checked against a hundred and thirty two real streams at all
 twelve levels, and could not read a fifty kilobyte one. All hundred and thirty
 two were short. A number sounds like evidence and is not; what is evidence is a
-written list of the boundaries -- nothing, one, two, three bytes, one under and
+text list of the boundaries -- nothing, one, two, three bytes, one under and
 one over each block size, either side of the megabyte where the code changes --
 with the test that covers each one beside it, or the word `(none)`.
 

@@ -16,7 +16,7 @@ class BlockMarksTest {
 
     @Test
     @DisplayName("a mark consumes nothing and lets the rule carry on")
-    void aMarkIsTransparent() {
+    void passesThroughAMark() {
         assertThat(answerTo("parse [1 2 3] [skip mark: to end]")).isEqualTo("#(true)");
         assertThat(answerTo("parse [1 2 3] [skip to end]"))
                 .as("the same rule without the mark")
@@ -25,27 +25,27 @@ class BlockMarksTest {
 
     @Test
     @DisplayName("a mark records where the parse had reached")
-    void aMarkHoldsThePosition() {
+    void holdsThePositionInAMark() {
         assertThat(answerTo("parse [1 2 3] [skip mark: to end] mark = [2 3]"))
                 .isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a mark at the head and at the tail are both places")
-    void theDegeneratePositions() {
+    void marksTheDegeneratePositions() {
         assertThat(answerTo("parse [1 2] [mark: to end] mark = [1 2]")).isEqualTo("#(true)");
         assertThat(answerTo("parse [1 2] [2 skip mark:] empty? mark")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a get-word goes back to what a mark recorded")
-    void aGetWordSeeksBack() {
+    void seeksBackWithAGetWord() {
         assertThat(answerTo("parse [1 2 3] [mark: skip :mark 3 skip]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a get-word naming no place is refused rather than passed over")
-    void anUnsetMarkIsRefused() {
+    void refusesAnUnsetMark() {
         assertThat(answerTo("""
                 e: try [parse [1 2] [:nowhere 2 skip]]
                 reduce [e/id e/arg1]""")).isEqualTo("[parse-series :nowhere]");
@@ -53,7 +53,7 @@ class BlockMarksTest {
 
     @Test
     @DisplayName("a rule after a mark still changes the series")
-    void aChangeAfterAMarkStillWorks() {
+    void stillChangesAfterAMark() {
         assertThat(answerTo(
                 "parse b: [1 2 3 4 5] [skip mark: change [2 skip] ('x) to end] b = [1 x 4 5]"))
                 .isEqualTo("#(true)");

@@ -9,11 +9,11 @@ import org.jebol.domain.value.Value;
 
 public abstract class PickingNative extends DefaultNative {
 
-    protected Value pickedBy(Value subject, Value selector) {
+    protected Value pickBy(Value subject, Value selector) {
         return switch (subject) {
-            case BitsetValue members -> new BitsetActions(members).heldForAPath(selector);
+            case BitsetValue members -> new BitsetActions(members).pickForAPath(selector);
             case DateValue date -> DatePart.readFrom(date, selector);
-            case Value anythingElse -> anythingElse.pickedBy(selector);
+            case Value anythingElse -> anythingElse.pickBy(selector);
         };
     }
 }

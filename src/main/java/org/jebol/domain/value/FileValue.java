@@ -5,7 +5,7 @@ public final class FileValue extends AnyStringValue {
     public static final AnyStringDatatype TYPE = new AnyStringDatatype("file") {
 
         @Override
-        public AnyStringValue holding(StringStorage storage, int index) {
+        public AnyStringValue wrap(StringStorage storage, int index) {
             return new FileValue(storage, index);
         }
     };
@@ -26,7 +26,7 @@ public final class FileValue extends AnyStringValue {
     }
 
     @Override
-    FileValue sameKindOver(StringStorage storage, int index) {
+    FileValue makeTheSameKindOver(StringStorage storage, int index) {
         return new FileValue(storage, index);
     }
 

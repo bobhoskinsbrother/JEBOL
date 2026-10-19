@@ -21,16 +21,16 @@ record SeriesSlot(RebolSeries series, int at, Value held) implements Slot {
                     value instanceof CharacterValue(int codepoint)
                             ? codepoint
                             : Molder.form(value).codePointAt(0));
-            case BinaryValue bytes -> bytes.storage().set(at, octetFrom(value));
+            case BinaryValue bytes -> bytes.storage().set(at, readTheOctetFrom(value));
             case ImageValue image -> ImagePath.write(image, at, value);
             case GobValue gob ->
                     GobPath.pokeWhichInsertsRatherThanReplaces(gob, at, value);
             case VectorValue vector -> vector.storage().set(at,
-                    VectorPath.storedFormOf(vector.kind(), value));
+                    VectorPath.encodeForStorage(vector.kind(), value));
         }
     }
 
-    private static int octetFrom(Value value) {
+    private static int readTheOctetFrom(Value value) {
         if (!(value instanceof IntegerValue(long wanted))) {
             return 0;
         }

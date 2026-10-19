@@ -48,9 +48,9 @@ public record LibraryFileHeader(
             }
             Value given = items.get(at + 1);
             switch (field.canonical()) {
-                case "type" -> declaredType = plainTextOf(given);
-                case "name" -> moduleName = plainTextOf(given);
-                case "exports" -> exported = wordsIn(given);
+                case "type" -> declaredType = readThePlainText(given);
+                case "name" -> moduleName = readThePlainText(given);
+                case "exports" -> exported = listTheWordsIn(given);
                 default -> { }
             }
         }
@@ -58,11 +58,11 @@ public record LibraryFileHeader(
     }
 
     /** Whether this file asks for a context of its own. */
-    public boolean declaresAModule() {
+    public boolean declaresModule() {
         return MODULE.equals(declaredType);
     }
 
-    private static String plainTextOf(Value given) {
+    private static String readThePlainText(Value given) {
         return switch (given) {
             case AnyWordValue word -> word.canonical();
             case AnyStringValue text -> text.text().toLowerCase(Locale.ROOT);
@@ -70,7 +70,7 @@ public record LibraryFileHeader(
         };
     }
 
-    private static List<String> wordsIn(Value given) {
+    private static List<String> listTheWordsIn(Value given) {
         if (!(given instanceof AnyBlockValue listed)) {
             return List.of();
         }

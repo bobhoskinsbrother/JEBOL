@@ -20,7 +20,7 @@ import java.util.function.ToLongFunction;
 public record BinaryValue(BinaryStorage storage, int index) implements RebolSeries {
 
     @Override
-    public Value randomised(RandomDraw draw) {
+    public Value randomise(RandomDraw draw) {
         List<Integer> octets = new ArrayList<>();
         for (int at = index; at <= storageLength(); at++) {
             octets.add(storage.at(at));
@@ -33,12 +33,12 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public Value pickedAtRandom(RandomDraw draw) {
+    public Value pickAtRandom(RandomDraw draw) {
         byte[] octets = octetsFromHere();
         if (octets.length == 0) {
             return NoneValue.none();
         }
-        return IntegerValue.of(octets[new CharacterBoundary().drawnIn(octets, draw)] & 0xFF);
+        return IntegerValue.of(octets[new CharacterBoundary().drawIn(octets, draw)] & 0xFF);
     }
 
     @Override
@@ -52,7 +52,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public Value copied(boolean deeply, Set<Datatype> kinds) {
+    public Value copy(boolean deeply, Set<Datatype> kinds) {
         return copyOfTheFirst(lengthFromHere());
     }
 
@@ -62,17 +62,17 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public Value itemAt(int positionFromTheHead) {
+    public Value readTheItemAt(int positionFromTheHead) {
         return IntegerValue.of(storage.at(positionFromTheHead));
     }
 
     @Override
-    public Value frontCopied(int howMany, boolean deeply, Set<Datatype> kinds) {
+    public Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds) {
         return copyOfTheFirst(howMany);
     }
 
     @Override
-    public RebolSeries reversedFront(int howMany) {
+    public RebolSeries reverseTheFront(int howMany) {
         int[] front = new int[howMany];
         for (int at = 0; at < howMany; at++) {
             front[at] = storage.at(index + howMany - 1 - at);
@@ -109,7 +109,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public List<Value> items() {
+    public List<Value> listTheItems() {
         List<Value> read = new ArrayList<>(lengthFromHere());
         for (int at = 0; at < lengthFromHere(); at++) {
             read.add(IntegerValue.of(storage.at(index + at)));
@@ -118,18 +118,18 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public Value bitwise(Value right, BitwiseOperation operation) {
-        return octetsCycledAgainstTheLonger(someOctetsFrom(right), operation);
+    public Value combineBitwise(Value right, BitwiseOperation operation) {
+        return cycleAgainstTheLonger(takeSomeOctetsFrom(right), operation);
     }
 
-    private BinaryValue someOctetsFrom(Value right) {
+    private BinaryValue takeSomeOctetsFrom(Value right) {
         if (right instanceof BinaryValue octets) {
             return octets;
         }
         throw Raised.of(EvaluationFailure.INVALID_ARG, right);
     }
 
-    private Value octetsCycledAgainstTheLonger(
+    private Value cycleAgainstTheLonger(
             BinaryValue right, BitwiseOperation operation) {
 
         BinaryValue longer = lengthFromHere() >= right.lengthFromHere() ? this : right;
@@ -172,11 +172,11 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     public byte[] octetsFromHere() {
-        return octetsUpTo(storageLength() + 1);
+        return copyTheOctetsUpTo(storageLength() + 1);
     }
 
     @Override
-    public Value trimmed(Trimming trimming) {
+    public Value trim(Trimming trimming) {
         trimming.refuseWhatOnlyTextServes();
         List<Integer> kept = new ArrayList<>();
         for (int at = 0; at < lengthFromHere(); at++) {
@@ -201,7 +201,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return this;
     }
 
-    public byte[] bytesFromHere() {
+    public byte[] readTheBytesFromHere() {
         int howMany = lengthFromHere();
         byte[] bytes = new byte[howMany];
         for (int at = 0; at < howMany; at++) {
@@ -218,7 +218,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return new BinaryValue(copied, 1);
     }
 
-    public int byteOrderMark() {
+    public int findTheByteOrderMark() {
         if (startsWith(0xEF, 0xBB, 0xBF)) {
             return 8;
         }
@@ -239,18 +239,18 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
             return false;
         }
         for (int at = 0; at < expected.length; at++) {
-            if (octetAt(index + at) != expected[at]) {
+            if (readTheOctetAt(index + at) != expected[at]) {
                 return false;
             }
         }
         return true;
     }
 
-    public Optional<BinaryValue> theFirstMalformedUtf8() {
+    public Optional<BinaryValue> findTheFirstMalformedUtf8() {
         int end = storageLength() + 1;
         int at = index;
         while (at < end) {
-            int width = utf8SequenceWidth(octetAt(at));
+            int width = measureTheUtf8Sequence(readTheOctetAt(at));
             if (width > 0 && at + width <= end && continuesCorrectly(at, width)) {
                 at += width;
                 continue;
@@ -265,11 +265,11 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return Optional.empty();
     }
 
-    private int octetAt(int position) {
+    private int readTheOctetAt(int position) {
         return storage.at(position) & 0xFF;
     }
 
-    private int utf8SequenceWidth(int lead) {
+    private int measureTheUtf8Sequence(int lead) {
         if (lead < 0x80) {
             return 1;
         }
@@ -283,17 +283,17 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     private boolean continuesCorrectly(int at, int width) {
-        int lead = octetAt(at);
+        int lead = readTheOctetAt(at);
         if (width == 1) {
             return true;
         }
         for (int step = 1; step < width; step++) {
-            int following = octetAt(at + step);
+            int following = readTheOctetAt(at + step);
             if (following < 0x80 || following > 0xBF) {
                 return false;
             }
         }
-        int second = octetAt(at + 1);
+        int second = readTheOctetAt(at + 1);
         if (lead == 0xE0 && second < 0xA0) {
             return false;
         }
@@ -307,27 +307,27 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     private boolean isSurrogateHalfAt(int at, int end) {
-        if (at + 3 > end || octetAt(at) != 0xED) {
+        if (at + 3 > end || readTheOctetAt(at) != 0xED) {
             return false;
         }
-        int second = octetAt(at + 1);
-        int third = octetAt(at + 2);
+        int second = readTheOctetAt(at + 1);
+        int third = readTheOctetAt(at + 2);
         return second >= 0xA0 && second <= 0xBF && third >= 0x80 && third <= 0xBF;
     }
 
     private boolean isLowSurrogateAt(int at) {
-        return octetAt(at + 1) >= 0xB0;
+        return readTheOctetAt(at + 1) >= 0xB0;
     }
 
     public String asStrictText() {
-        return strictlyUtf8(octetsFromHere());
+        return decodeStrictlyAsUtf8(octetsFromHere());
     }
 
     public String asStrictTextUpTo(int endIndex) {
-        return strictlyUtf8(octetsUpTo(endIndex));
+        return decodeStrictlyAsUtf8(copyTheOctetsUpTo(endIndex));
     }
 
-    private byte[] octetsUpTo(int endIndex) {
+    private byte[] copyTheOctetsUpTo(int endIndex) {
         byte[] octets = new byte[Math.max(0, endIndex - index)];
         for (int at = 0; at < octets.length; at++) {
             octets[at] = (byte) storage.at(index + at);
@@ -335,7 +335,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return octets;
     }
 
-    private static String strictlyUtf8(byte[] octets) {
+    private static String decodeStrictlyAsUtf8(byte[] octets) {
         try {
             return StandardCharsets.UTF_8.newDecoder()
                     .onMalformedInput(CodingErrorAction.REPORT)
@@ -350,13 +350,13 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
 
     @Override
     public Optional<Value> asDecimal(AnyDecimalValue.AnyDecimalDatatype wanted, Conversion asking) {
-        return Optional.of(inHundredths(
-                wanted, Double.longBitsToDouble(bitsOfTheLastEightOctets())));
+        return Optional.of(countInHundredths(
+                wanted, Double.longBitsToDouble(readTheBitsOfTheLastEightOctets())));
     }
 
-    public String decodedAsText() {
+    public String decodeAsText() {
         byte[] bytes = octetsFromHere();
-        int marked = byteOrderMark();
+        int marked = findTheByteOrderMark();
         if (marked != 0) {
             return textBehindTheMark(bytes, marked);
         }
@@ -380,22 +380,22 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         int written = 0;
         int at = 0;
         while (at < bytes.length) {
-            int high = surrogateAt(bytes, at, 0xA0);
-            int low = high < 0 ? -1 : surrogateAt(bytes, at + 3, 0xB0);
+            int high = readTheSurrogateAt(bytes, at, 0xA0);
+            int low = high < 0 ? -1 : readTheSurrogateAt(bytes, at + 3, 0xB0);
             if (low < 0) {
                 joined[written] = bytes[at];
                 written++;
                 at++;
                 continue;
             }
-            written = fourBytesOf(joined, written,
+            written = writeFourBytesOf(joined, written,
                     0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00));
             at += 6;
         }
         return Arrays.copyOf(joined, written);
     }
 
-    private int surrogateAt(byte[] bytes, int at, int leadingHalf) {
+    private int readTheSurrogateAt(byte[] bytes, int at, int leadingHalf) {
         if (at + 2 >= bytes.length || (bytes[at] & 0xFF) != 0xED) {
             return -1;
         }
@@ -408,7 +408,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         return 0xD000 | (second & 0x3F) << 6 | third & 0x3F;
     }
 
-    private int fourBytesOf(byte[] joined, int written, int codepoint) {
+    private int writeFourBytesOf(byte[] joined, int written, int codepoint) {
         joined[written] = (byte) (0xF0 | codepoint >> 18);
         joined[written + 1] = (byte) (0x80 | codepoint >> 12 & 0x3F);
         joined[written + 2] = (byte) (0x80 | codepoint >> 6 & 0x3F);
@@ -457,7 +457,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
                 case BinaryValue already -> already;
                 case AnyStringValue text ->
@@ -467,28 +467,28 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
                 case DecimalValue fractional -> BinaryValue.ofBytes(ByteBuffer.allocate(Long.BYTES)
                         .putLong(Double.doubleToRawLongBits(fractional.quantity())).array());
                 case MoneyValue amount -> BinaryValue.ofBytes(amount.toBytes());
-                case BlockValue block -> bytesOfEach(block);
-                case VectorValue vector -> BinaryValue.ofBytes(vector.octetsFromHere());
+                case BlockValue block -> collectTheBytesOfEach(block);
+                case VectorValue vector -> BinaryValue.ofBytes(vector.readTheOctetsFromHere());
                 case StructValue struct -> BinaryValue.ofBytes(struct.octets());
-                case TupleValue segments -> BinaryValue.ofBytes(octetsOf(segments));
+                case TupleValue segments -> BinaryValue.ofBytes(readTheOctetsOf(segments));
                 case BitsetValue members -> BinaryValue.ofBytes(new BitsetActions(members).asOctets());
-                case ImageValue picture -> BinaryValue.ofBytes(picture.everyPixel());
+                case ImageValue picture -> BinaryValue.ofBytes(picture.copyEveryPixel());
                 case CharacterValue letter -> BinaryValue.ofBytes(
                         new String(Character.toChars(letter.codepoint())).getBytes(StandardCharsets.UTF_8));
                 default -> throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(from));
             };
         }
 
-        private Value bytesOfEach(AnyBlockValue block) {
+        private Value collectTheBytesOfEach(AnyBlockValue block) {
             List<Value> items = block.remaining();
             int[] octets = new int[items.size()];
             for (int at = 0; at < items.size(); at++) {
-                octets[at] = anOctetIn(items.get(at));
+                octets[at] = readAnOctetIn(items.get(at));
             }
             return BinaryValue.of(octets);
         }
 
-        private int anOctetIn(Value item) {
+        private int readAnOctetIn(Value item) {
             if (!(item instanceof IntegerValue(long magnitude))) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, item);
             }
@@ -498,16 +498,16 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
             return (int) magnitude;
         }
 
-        private byte[] octetsOf(TupleValue segments) {
+        private byte[] readTheOctetsOf(TupleValue segments) {
             byte[] octets = new byte[segments.segmentCount()];
             for (int at = 0; at < octets.length; at++) {
-                octets[at] = (byte) segments.octetAt(at + 1);
+                octets[at] = (byte) segments.readTheOctetAt(at + 1);
             }
             return octets;
         }
     }
 
-    public long bitsOfTheLastEightOctets() {
+    public long readTheBitsOfTheLastEightOctets() {
         int howMany = lengthFromHere();
         long bits = 0;
         for (int at = Math.max(0, howMany - Long.BYTES); at < howMany; at++) {

@@ -16,7 +16,7 @@ class CollectWordsIsCaseInsensitiveFromTheSourceTest {
 
     @Test
     @DisplayName("two spellings of a set-word are collected once")
-    void twoSpellingsAreCollectedOnce() {
+    void collectsTwoSpellingsOnce() {
         assertThat(answerTo("mold collect-words/set [a: 1 A: 2 b: 3]"))
                 .isEqualTo("\"[a b]\"");
     }
@@ -36,7 +36,7 @@ class CollectWordsIsCaseInsensitiveFromTheSourceTest {
 
     @Test
     @DisplayName("so FUNCTION gives one local, not two")
-    void functionGivesOneLocal() {
+    void givesFunctionOneLocal() {
         assertThat(answerTo("mold words-of function [x][Foo: 1 foo: 2 bar: 3]"))
                 .isEqualTo("\"[x /local Foo bar]\"");
     }

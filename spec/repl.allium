@@ -508,7 +508,7 @@ rule AScriptOnTheWebScreenWaitsForABrowser {
 rule AScriptOnTheCommandLineHasNoTimeLimit {
     when: run: ScriptRun.created
 
-    ensures: run.wall_clock_limit = none
+    ensures: run.time_limit = none
 }
 
 -- A run its bounds stopped -- out of time, or cancelled by its host -- is

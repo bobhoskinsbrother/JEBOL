@@ -33,9 +33,9 @@ public class GuiMetricNative extends ScreenNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("keyword", Set.of(WordValue.TYPE)),
-                Parameter.belongingTo("set", "val", TypesetValue.ANY_TYPE.members()),
-                Parameter.belongingTo("display", "idx", Set.of(IntegerValue.TYPE)));
+                Parameter.of("keyword", Set.of(WordValue.TYPE)),
+                Parameter.belongTo("set", "val", TypesetValue.ANY_TYPE.members()),
+                Parameter.belongTo("display", "idx", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -47,23 +47,23 @@ public class GuiMetricNative extends ScreenNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
-            ScreenMetric metric = metricNamedBy(arguments.getFirst());
+            ScreenMetric metric = readTheMetricNamedBy(arguments.getFirst());
             int display = displayAskedFor(arguments, refinements);
-            return measurementOf(evaluator.screen(), metric, display);
+            return measure(evaluator.screen(), metric, display);
         };
     }
 
-    private ScreenMetric metricNamedBy(Value asked) {
+    private ScreenMetric readTheMetricNamedBy(Value asked) {
         if (!(asked instanceof WordValue word)) {
             throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     "gui-metric takes a word, not " + asked.datatype().literalSpelling());
         }
-        return ScreenMetric.named(word.canonical()).orElseThrow(() ->
+        return ScreenMetric.findTheMetricNamed(word.canonical()).orElseThrow(() ->
                 Raised.of(EvaluationFailure.INVALID_ARG, "no host serves the metric " + word.canonical()));
     }
 
     private int displayAskedFor(List<Value> arguments, Set<String> refinements) {
-        return argumentOf("display", 0, arguments, refinements)
+        return readTheArgumentOf("display", 0, arguments, refinements)
                 .map(this::displayNumberedBy)
                 .orElse(THE_FIRST_DISPLAY);
     }
@@ -76,11 +76,11 @@ public class GuiMetricNative extends ScreenNative {
         return (int) magnitude;
     }
 
-    private Value measurementOf(ScreenPort screen, ScreenMetric metric, int display) {
+    private Value measure(ScreenPort screen, ScreenMetric metric, int display) {
         if (metric.isACount()) {
             return IntegerValue.of(screen.displayCount());
         }
-        if (!screen.hasADisplay()) {
+        if (!screen.hasDisplay()) {
             return PairValue.of(0, 0);
         }
         if (!servesDisplay(screen, display)) {

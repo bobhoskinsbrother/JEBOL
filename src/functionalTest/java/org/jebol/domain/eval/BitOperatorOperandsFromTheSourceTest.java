@@ -57,7 +57,7 @@ class BitOperatorOperandsFromTheSourceTest {
                 : answered;
     }
 
-    private static void refusedBy(String left, String right, String failure) {
+    private static void assertEveryOperatorRefuses(String left, String right, String failure) {
         for (String operator : THE_THREE_OPERATORS) {
             assertThat(outcomeOf(operator, left, right))
                     .as("%s (%s) (%s)", operator, left, right)
@@ -65,7 +65,7 @@ class BitOperatorOperandsFromTheSourceTest {
         }
     }
 
-    private static void acceptedBy(String left, String right) {
+    private static void assertEveryOperatorAccepts(String left, String right) {
         for (String operator : THE_THREE_OPERATORS) {
             assertThat(outcomeOf(operator, left, right))
                     .as("%s (%s) (%s)", operator, left, right)
@@ -77,7 +77,7 @@ class BitOperatorOperandsFromTheSourceTest {
     @DisplayName("the ten datatypes in the declaration are the outer gate")
     class TheArgumentCheckClosesFirst {
 
-        static Stream<String> datatypesOutsideTheTen() {
+        static Stream<String> listDatatypesOutsideTheTen() {
             return Stream.of("1.5", "50%", "$5", "0:00:01", "1-Jan-2020",
                     "\"ab\"", "%a", "<t>", "#i", "[1 2]", "[]", "\"\"",
                     "'a", "quote a:", "none", "make object! []",
@@ -85,29 +85,29 @@ class BitOperatorOperandsFromTheSourceTest {
         }
 
         @ParameterizedTest(name = "and~ 12 ({0})")
-        @MethodSource("datatypesOutsideTheTen")
+        @MethodSource("listDatatypesOutsideTheTen")
         @DisplayName("on the right it is expect-arg, from the argument check")
-        void onTheRightItIsRefusedAtTheDoor(String outsider) {
-            refusedBy(A_WHOLE_NUMBER, outsider, "expect-arg");
+        void refusesOneOnTheRight(String outsider) {
+            assertEveryOperatorRefuses(A_WHOLE_NUMBER, outsider, "expect-arg");
         }
 
         @ParameterizedTest(name = "and~ ({0}) 10")
-        @MethodSource("datatypesOutsideTheTen")
+        @MethodSource("listDatatypesOutsideTheTen")
         @DisplayName("and on the left it is expect-arg too")
-        void onTheLeftItIsRefusedAtTheDoor(String outsider) {
-            refusedBy(outsider, ANOTHER_WHOLE_NUMBER, "expect-arg");
+        void refusesOneOnTheLeft(String outsider) {
+            assertEveryOperatorRefuses(outsider, ANOTHER_WHOLE_NUMBER, "expect-arg");
         }
 
         @Test
         @DisplayName("both sides outside is still the one failure")
-        void bothSidesOutside() {
-            refusedBy("1.5", "2.5", "expect-arg");
+        void failsOnceWithBothSidesOutside() {
+            assertEveryOperatorRefuses("1.5", "2.5", "expect-arg");
         }
 
         @Test
         @DisplayName("the gate closes before the left operand's own code runs")
-        void theGateClosesBeforeTheLeftOperandsOwnCode() {
-            refusedBy(A_DATATYPE, "1.5", "expect-arg");
+        void closesBeforeTheLeftOperandsOwnCode() {
+            assertEveryOperatorRefuses(A_DATATYPE, "1.5", "expect-arg");
         }
     }
 
@@ -115,28 +115,28 @@ class BitOperatorOperandsFromTheSourceTest {
     @DisplayName("a whole number takes a whole number or a character")
     class AWholeNumberOnTheLeft {
 
-        static Stream<String> everythingElseOfTheTen() {
+        static Stream<String> listEverythingElseOfTheTen() {
             return Stream.of(A_TRUTH, A_POINT, A_TUPLE, SOME_OCTETS,
                     A_BITSET, A_TYPESET, A_DATATYPE, A_VECTOR);
         }
 
         @Test
         @DisplayName("a whole number and a character are both taken")
-        void theTwoItTakes() {
-            acceptedBy(A_WHOLE_NUMBER, ANOTHER_WHOLE_NUMBER);
-            acceptedBy(A_WHOLE_NUMBER, ANOTHER_CHARACTER);
+        void takesAWholeNumberAndACharacter() {
+            assertEveryOperatorAccepts(A_WHOLE_NUMBER, ANOTHER_WHOLE_NUMBER);
+            assertEveryOperatorAccepts(A_WHOLE_NUMBER, ANOTHER_CHARACTER);
         }
 
         @ParameterizedTest(name = "12 and {0}")
-        @MethodSource("everythingElseOfTheTen")
+        @MethodSource("listEverythingElseOfTheTen")
         @DisplayName("everything else of the ten is not-related")
-        void everythingElseIsNotRelated(String right) {
-            refusedBy(A_WHOLE_NUMBER, right, "not-related");
+        void findsEverythingElseNotRelated(String right) {
+            assertEveryOperatorRefuses(A_WHOLE_NUMBER, right, "not-related");
         }
 
         @Test
         @DisplayName("a point on the right is refused, not cast to a point")
-        void aPointOnTheRightIsRefusedRatherThanCrashing() {
+        void refusesAPointOnTheRightRatherThanCasting() {
             assertThat(outcomeOf("and~", A_WHOLE_NUMBER, ANOTHER_POINT))
                     .isEqualTo("!not-related");
         }
@@ -146,23 +146,23 @@ class BitOperatorOperandsFromTheSourceTest {
     @DisplayName("a character takes a character or a whole number")
     class ACharacterOnTheLeft {
 
-        static Stream<String> everythingElseOfTheTen() {
+        static Stream<String> listEverythingElseOfTheTen() {
             return Stream.of(A_TRUTH, A_POINT, A_TUPLE, SOME_OCTETS,
                     A_BITSET, A_TYPESET, A_DATATYPE, A_VECTOR);
         }
 
         @Test
         @DisplayName("a character and a whole number are both taken")
-        void theTwoItTakes() {
-            acceptedBy(A_CHARACTER, ANOTHER_CHARACTER);
-            acceptedBy(A_CHARACTER, ANOTHER_WHOLE_NUMBER);
+        void takesACharacterAndAWholeNumber() {
+            assertEveryOperatorAccepts(A_CHARACTER, ANOTHER_CHARACTER);
+            assertEveryOperatorAccepts(A_CHARACTER, ANOTHER_WHOLE_NUMBER);
         }
 
         @ParameterizedTest(name = "a character and {0}")
-        @MethodSource("everythingElseOfTheTen")
+        @MethodSource("listEverythingElseOfTheTen")
         @DisplayName("everything else of the ten is not-related")
-        void everythingElseIsNotRelated(String right) {
-            refusedBy(A_CHARACTER, right, "not-related");
+        void findsEverythingElseNotRelated(String right) {
+            assertEveryOperatorRefuses(A_CHARACTER, right, "not-related");
         }
     }
 
@@ -170,7 +170,7 @@ class BitOperatorOperandsFromTheSourceTest {
     @DisplayName("a truth takes a truth, and refuses the rest with expect-val")
     class ATruthOnTheLeft {
 
-        static Stream<String> everythingElseOfTheTen() {
+        static Stream<String> listEverythingElseOfTheTen() {
             return Stream.of(ANOTHER_WHOLE_NUMBER, ANOTHER_POINT, ANOTHER_TUPLE,
                     ANOTHER_CHARACTER, OTHER_OCTETS, ANOTHER_BITSET,
                     ANOTHER_TYPESET, A_DATATYPE, ANOTHER_VECTOR);
@@ -178,15 +178,15 @@ class BitOperatorOperandsFromTheSourceTest {
 
         @Test
         @DisplayName("a truth is taken")
-        void theOneItTakes() {
-            acceptedBy(A_TRUTH, ANOTHER_TRUTH);
+        void takesATruth() {
+            assertEveryOperatorAccepts(A_TRUTH, ANOTHER_TRUTH);
         }
 
         @ParameterizedTest(name = "true and {0}")
-        @MethodSource("everythingElseOfTheTen")
-        @DisplayName("everything else of the ten is expect-val, which no other kind raises")
-        void everythingElseIsExpectVal(String right) {
-            refusedBy(A_TRUTH, right, "expect-val");
+        @MethodSource("listEverythingElseOfTheTen")
+        @DisplayName("everything else of the ten is expect-val, which no other type raises")
+        void raisesExpectValForEverythingElse(String right) {
+            assertEveryOperatorRefuses(A_TRUTH, right, "expect-val");
         }
     }
 
@@ -194,23 +194,23 @@ class BitOperatorOperandsFromTheSourceTest {
     @DisplayName("a point takes a point or a whole number")
     class APointOnTheLeft {
 
-        static Stream<String> everythingElseOfTheTen() {
+        static Stream<String> listEverythingElseOfTheTen() {
             return Stream.of(A_TRUTH, ANOTHER_TUPLE, ANOTHER_CHARACTER, OTHER_OCTETS,
                     ANOTHER_BITSET, ANOTHER_TYPESET, A_DATATYPE, ANOTHER_VECTOR);
         }
 
         @Test
         @DisplayName("a point and a whole number are both taken")
-        void theTwoItTakes() {
-            acceptedBy(A_POINT, ANOTHER_POINT);
-            acceptedBy(A_POINT, ANOTHER_WHOLE_NUMBER);
+        void takesAPointAndAWholeNumber() {
+            assertEveryOperatorAccepts(A_POINT, ANOTHER_POINT);
+            assertEveryOperatorAccepts(A_POINT, ANOTHER_WHOLE_NUMBER);
         }
 
         @ParameterizedTest(name = "12x10 and {0}")
-        @MethodSource("everythingElseOfTheTen")
+        @MethodSource("listEverythingElseOfTheTen")
         @DisplayName("everything else of the ten is not-related, a character included")
-        void everythingElseIsNotRelated(String right) {
-            refusedBy(A_POINT, right, "not-related");
+        void findsEverythingElseNotRelated(String right) {
+            assertEveryOperatorRefuses(A_POINT, right, "not-related");
         }
     }
 
@@ -218,23 +218,23 @@ class BitOperatorOperandsFromTheSourceTest {
     @DisplayName("a tuple takes a tuple or a whole number")
     class ATupleOnTheLeft {
 
-        static Stream<String> everythingElseOfTheTen() {
+        static Stream<String> listEverythingElseOfTheTen() {
             return Stream.of(A_TRUTH, ANOTHER_POINT, ANOTHER_CHARACTER, OTHER_OCTETS,
                     ANOTHER_BITSET, ANOTHER_TYPESET, A_DATATYPE, ANOTHER_VECTOR);
         }
 
         @Test
         @DisplayName("a tuple and a whole number are both taken")
-        void theTwoItTakes() {
-            acceptedBy(A_TUPLE, ANOTHER_TUPLE);
-            acceptedBy(A_TUPLE, ANOTHER_WHOLE_NUMBER);
+        void takesATupleAndAWholeNumber() {
+            assertEveryOperatorAccepts(A_TUPLE, ANOTHER_TUPLE);
+            assertEveryOperatorAccepts(A_TUPLE, ANOTHER_WHOLE_NUMBER);
         }
 
         @ParameterizedTest(name = "12.10.6 and {0}")
-        @MethodSource("everythingElseOfTheTen")
+        @MethodSource("listEverythingElseOfTheTen")
         @DisplayName("everything else of the ten is not-related")
-        void everythingElseIsNotRelated(String right) {
-            refusedBy(A_TUPLE, right, "not-related");
+        void findsEverythingElseNotRelated(String right) {
+            assertEveryOperatorRefuses(A_TUPLE, right, "not-related");
         }
     }
 
@@ -242,7 +242,7 @@ class BitOperatorOperandsFromTheSourceTest {
     @DisplayName("a binary takes a binary, and refuses the rest with invalid-arg")
     class ABinaryOnTheLeft {
 
-        static Stream<String> everythingElseOfTheTen() {
+        static Stream<String> listEverythingElseOfTheTen() {
             return Stream.of(ANOTHER_WHOLE_NUMBER, A_TRUTH, ANOTHER_POINT,
                     ANOTHER_TUPLE, ANOTHER_CHARACTER, ANOTHER_BITSET,
                     ANOTHER_TYPESET, A_DATATYPE, ANOTHER_VECTOR);
@@ -250,15 +250,15 @@ class BitOperatorOperandsFromTheSourceTest {
 
         @Test
         @DisplayName("a binary is taken")
-        void theOneItTakes() {
-            acceptedBy(SOME_OCTETS, OTHER_OCTETS);
+        void takesABinary() {
+            assertEveryOperatorAccepts(SOME_OCTETS, OTHER_OCTETS);
         }
 
         @ParameterizedTest(name = "a binary and {0}")
-        @MethodSource("everythingElseOfTheTen")
+        @MethodSource("listEverythingElseOfTheTen")
         @DisplayName("everything else of the ten is invalid-arg, a whole number included")
-        void everythingElseIsInvalidArg(String right) {
-            refusedBy(SOME_OCTETS, right, "invalid-arg");
+        void raisesInvalidArgForEverythingElse(String right) {
+            assertEveryOperatorRefuses(SOME_OCTETS, right, "invalid-arg");
         }
     }
 
@@ -266,7 +266,7 @@ class BitOperatorOperandsFromTheSourceTest {
     @DisplayName("a bitset takes a bitset or a binary")
     class ABitsetOnTheLeft {
 
-        static Stream<String> everythingElseOfTheTen() {
+        static Stream<String> listEverythingElseOfTheTen() {
             return Stream.of(ANOTHER_WHOLE_NUMBER, A_TRUTH, ANOTHER_POINT,
                     ANOTHER_TUPLE, ANOTHER_CHARACTER, ANOTHER_TYPESET,
                     A_DATATYPE, ANOTHER_VECTOR);
@@ -274,16 +274,16 @@ class BitOperatorOperandsFromTheSourceTest {
 
         @Test
         @DisplayName("a bitset and a binary are both taken")
-        void theTwoItTakes() {
-            acceptedBy(A_BITSET, ANOTHER_BITSET);
-            acceptedBy(A_BITSET, OTHER_OCTETS);
+        void takesABitsetAndABinary() {
+            assertEveryOperatorAccepts(A_BITSET, ANOTHER_BITSET);
+            assertEveryOperatorAccepts(A_BITSET, OTHER_OCTETS);
         }
 
         @ParameterizedTest(name = "a bitset and {0}")
-        @MethodSource("everythingElseOfTheTen")
+        @MethodSource("listEverythingElseOfTheTen")
         @DisplayName("everything else of the ten is not-related")
-        void everythingElseIsNotRelated(String right) {
-            refusedBy(A_BITSET, right, "not-related");
+        void findsEverythingElseNotRelated(String right) {
+            assertEveryOperatorRefuses(A_BITSET, right, "not-related");
         }
     }
 
@@ -291,7 +291,7 @@ class BitOperatorOperandsFromTheSourceTest {
     @DisplayName("a typeset takes a typeset or a datatype")
     class ATypesetOnTheLeft {
 
-        static Stream<String> everythingElseOfTheTen() {
+        static Stream<String> listEverythingElseOfTheTen() {
             return Stream.of(ANOTHER_WHOLE_NUMBER, A_TRUTH, ANOTHER_POINT,
                     ANOTHER_TUPLE, ANOTHER_CHARACTER, OTHER_OCTETS,
                     ANOTHER_BITSET, ANOTHER_VECTOR);
@@ -299,16 +299,16 @@ class BitOperatorOperandsFromTheSourceTest {
 
         @Test
         @DisplayName("a typeset and a datatype are both taken")
-        void theTwoItTakes() {
-            acceptedBy(A_TYPESET, ANOTHER_TYPESET);
-            acceptedBy(A_TYPESET, A_DATATYPE);
+        void takesATypesetAndADatatype() {
+            assertEveryOperatorAccepts(A_TYPESET, ANOTHER_TYPESET);
+            assertEveryOperatorAccepts(A_TYPESET, A_DATATYPE);
         }
 
         @ParameterizedTest(name = "a typeset and {0}")
-        @MethodSource("everythingElseOfTheTen")
+        @MethodSource("listEverythingElseOfTheTen")
         @DisplayName("everything else of the ten is invalid-arg")
-        void everythingElseIsInvalidArg(String right) {
-            refusedBy(A_TYPESET, right, "invalid-arg");
+        void raisesInvalidArgForEverythingElse(String right) {
+            assertEveryOperatorRefuses(A_TYPESET, right, "invalid-arg");
         }
     }
 
@@ -316,17 +316,17 @@ class BitOperatorOperandsFromTheSourceTest {
     @DisplayName("a datatype has no bit operations at all")
     class ADatatypeOnTheLeft {
 
-        static Stream<String> allTenOfThem() {
+        static Stream<String> listAllTenOfThem() {
             return Stream.of(ANOTHER_WHOLE_NUMBER, A_TRUTH, ANOTHER_POINT,
                     ANOTHER_TUPLE, ANOTHER_CHARACTER, OTHER_OCTETS,
                     ANOTHER_BITSET, ANOTHER_TYPESET, A_DATATYPE, ANOTHER_VECTOR);
         }
 
         @ParameterizedTest(name = "integer! and {0}")
-        @MethodSource("allTenOfThem")
+        @MethodSource("listAllTenOfThem")
         @DisplayName("every one of the ten is cannot-use, another datatype included")
-        void everyOneOfTheTenIsCannotUse(String right) {
-            refusedBy(A_DATATYPE, right, "cannot-use");
+        void raisesCannotUseForEveryOneOfTheTen(String right) {
+            assertEveryOperatorRefuses(A_DATATYPE, right, "cannot-use");
         }
     }
 
@@ -334,7 +334,7 @@ class BitOperatorOperandsFromTheSourceTest {
     @DisplayName("a vector takes a vector or a whole number")
     class AVectorOnTheLeft {
 
-        static Stream<String> everythingElseOfTheTen() {
+        static Stream<String> listEverythingElseOfTheTen() {
             return Stream.of(A_TRUTH, ANOTHER_POINT, ANOTHER_TUPLE,
                     ANOTHER_CHARACTER, OTHER_OCTETS, ANOTHER_BITSET,
                     ANOTHER_TYPESET, A_DATATYPE);
@@ -342,16 +342,16 @@ class BitOperatorOperandsFromTheSourceTest {
 
         @Test
         @DisplayName("a vector and a whole number are both taken")
-        void theTwoItTakes() {
-            acceptedBy(A_VECTOR, ANOTHER_VECTOR);
-            acceptedBy(A_VECTOR, ANOTHER_WHOLE_NUMBER);
+        void takesAVectorAndAWholeNumber() {
+            assertEveryOperatorAccepts(A_VECTOR, ANOTHER_VECTOR);
+            assertEveryOperatorAccepts(A_VECTOR, ANOTHER_WHOLE_NUMBER);
         }
 
         @ParameterizedTest(name = "a vector and {0}")
-        @MethodSource("everythingElseOfTheTen")
+        @MethodSource("listEverythingElseOfTheTen")
         @DisplayName("everything else of the ten is cannot-use")
-        void everythingElseIsCannotUse(String right) {
-            refusedBy(A_VECTOR, right, "cannot-use");
+        void raisesCannotUseForEverythingElse(String right) {
+            assertEveryOperatorRefuses(A_VECTOR, right, "cannot-use");
         }
     }
 
@@ -359,7 +359,7 @@ class BitOperatorOperandsFromTheSourceTest {
     @DisplayName("the answer's datatype is the left operand's")
     class TheLeftOperandDecidesTheAnswersDatatype {
 
-        private static String theDatatypeAnsweredFor(String left, String right) {
+        private static String readTheDatatypeAnsweredFor(String left, String right) {
             String asked = "mold type? and~ (" + left + ") (" + right + ")";
             Interpreter interpreter = Interpreter.create();
             interpreter.defineFreshWordsIn(asked);
@@ -367,7 +367,7 @@ class BitOperatorOperandsFromTheSourceTest {
             return shown.replace("\"", "");
         }
 
-        static Stream<Arguments> everyPairThatWorks() {
+        static Stream<Arguments> listEveryPairThatWorks() {
             return Stream.of(
                     Arguments.of(
                             A_WHOLE_NUMBER, ANOTHER_WHOLE_NUMBER, "#(integer!)"),
@@ -404,19 +404,19 @@ class BitOperatorOperandsFromTheSourceTest {
         }
 
         @ParameterizedTest(name = "({0}) and ({1}) answers {2}")
-        @MethodSource("everyPairThatWorks")
+        @MethodSource("listEveryPairThatWorks")
         @DisplayName("every pair that works answers the left operand's datatype")
-        void everyPairThatWorksAnswersTheLeftsDatatype(
+        void answersTheLeftsDatatypeForEveryPairThatWorks(
                 String left, String right, String datatype) {
-            assertThat(theDatatypeAnsweredFor(left, right)).isEqualTo(datatype);
+            assertThat(readTheDatatypeAnsweredFor(left, right)).isEqualTo(datatype);
         }
 
         @Test
         @DisplayName("the same two values either way round answer two datatypes")
-        void theSameTwoValuesGiveTwoDatatypes() {
-            assertThat(theDatatypeAnsweredFor(A_WHOLE_NUMBER, ANOTHER_CHARACTER))
+        void givesTwoDatatypesForTheSameTwoValuesEitherWayRound() {
+            assertThat(readTheDatatypeAnsweredFor(A_WHOLE_NUMBER, ANOTHER_CHARACTER))
                     .isEqualTo("#(integer!)");
-            assertThat(theDatatypeAnsweredFor(A_CHARACTER, ANOTHER_WHOLE_NUMBER))
+            assertThat(readTheDatatypeAnsweredFor(A_CHARACTER, ANOTHER_WHOLE_NUMBER))
                     .isEqualTo("#(char!)");
         }
     }
@@ -425,7 +425,7 @@ class BitOperatorOperandsFromTheSourceTest {
     @DisplayName("neither operand is changed by the operation")
     class NeitherOperandIsChanged {
 
-        private static String afterCombining(String left, String right, String read) {
+        private static String combineThenRead(String left, String right, String read) {
             String asked = "left: (" + left + ") right: (" + right + ") "
                     + "and~ left right mold " + read;
             Interpreter interpreter = Interpreter.create();
@@ -435,55 +435,55 @@ class BitOperatorOperandsFromTheSourceTest {
 
         @Test
         @DisplayName("a bitset on either side keeps its bits")
-        void aBitsetKeepsItsBits() {
-            assertThat(afterCombining(A_BITSET, ANOTHER_BITSET, "left"))
+        void keepsABitsetsBits() {
+            assertThat(combineThenRead(A_BITSET, ANOTHER_BITSET, "left"))
                     .isEqualTo(moldOf(A_BITSET));
-            assertThat(afterCombining(A_BITSET, ANOTHER_BITSET, "right"))
+            assertThat(combineThenRead(A_BITSET, ANOTHER_BITSET, "right"))
                     .isEqualTo(moldOf(ANOTHER_BITSET));
         }
 
         @Test
         @DisplayName("a typeset on either side keeps its datatypes")
-        void aTypesetKeepsItsDatatypes() {
-            assertThat(afterCombining(A_TYPESET, ANOTHER_TYPESET, "left"))
+        void keepsATypesetsDatatypes() {
+            assertThat(combineThenRead(A_TYPESET, ANOTHER_TYPESET, "left"))
                     .isEqualTo(moldOf(A_TYPESET));
-            assertThat(afterCombining(A_TYPESET, ANOTHER_TYPESET, "right"))
+            assertThat(combineThenRead(A_TYPESET, ANOTHER_TYPESET, "right"))
                     .isEqualTo(moldOf(ANOTHER_TYPESET));
         }
 
         @Test
         @DisplayName("a vector on either side keeps its numbers")
-        void aVectorKeepsItsNumbers() {
-            assertThat(afterCombining(A_VECTOR, ANOTHER_VECTOR, "left"))
+        void keepsAVectorsNumbers() {
+            assertThat(combineThenRead(A_VECTOR, ANOTHER_VECTOR, "left"))
                     .isEqualTo(moldOf(A_VECTOR));
-            assertThat(afterCombining(A_VECTOR, ANOTHER_VECTOR, "right"))
+            assertThat(combineThenRead(A_VECTOR, ANOTHER_VECTOR, "right"))
                     .isEqualTo(moldOf(ANOTHER_VECTOR));
         }
 
         @Test
         @DisplayName("a binary on either side keeps its bytes")
-        void aBinaryKeepsItsBytes() {
-            assertThat(afterCombining(SOME_OCTETS, OTHER_OCTETS, "left"))
+        void keepsABinarysBytes() {
+            assertThat(combineThenRead(SOME_OCTETS, OTHER_OCTETS, "left"))
                     .isEqualTo(moldOf(SOME_OCTETS));
-            assertThat(afterCombining(SOME_OCTETS, OTHER_OCTETS, "right"))
+            assertThat(combineThenRead(SOME_OCTETS, OTHER_OCTETS, "right"))
                     .isEqualTo(moldOf(OTHER_OCTETS));
         }
 
         @Test
         @DisplayName("a tuple on either side keeps its octets")
-        void aTupleKeepsItsOctets() {
-            assertThat(afterCombining(A_TUPLE, ANOTHER_TUPLE, "left"))
+        void keepsATuplesOctets() {
+            assertThat(combineThenRead(A_TUPLE, ANOTHER_TUPLE, "left"))
                     .isEqualTo(moldOf(A_TUPLE));
-            assertThat(afterCombining(A_TUPLE, ANOTHER_TUPLE, "right"))
+            assertThat(combineThenRead(A_TUPLE, ANOTHER_TUPLE, "right"))
                     .isEqualTo(moldOf(ANOTHER_TUPLE));
         }
 
         @Test
         @DisplayName("a point on either side keeps its halves")
-        void aPointKeepsItsHalves() {
-            assertThat(afterCombining(A_POINT, ANOTHER_POINT, "left"))
+        void keepsAPointsHalves() {
+            assertThat(combineThenRead(A_POINT, ANOTHER_POINT, "left"))
                     .isEqualTo(moldOf(A_POINT));
-            assertThat(afterCombining(A_POINT, ANOTHER_POINT, "right"))
+            assertThat(combineThenRead(A_POINT, ANOTHER_POINT, "right"))
                     .isEqualTo(moldOf(ANOTHER_POINT));
         }
 
@@ -500,8 +500,8 @@ class BitOperatorOperandsFromTheSourceTest {
     class DegenerateOperandsAreOrdinaryOperands {
 
         @ParameterizedTest(name = "{0} is {1}")
-        @MethodSource("theDegenerateOnes")
-        void theAnswerIsTheOrdinaryOne(String source, String expected) {
+        @MethodSource("listTheDegenerateOnes")
+        void answerAsOrdinaryOperandsDo(String source, String expected) {
             Interpreter interpreter = Interpreter.create();
             interpreter.defineFreshWordsIn(source);
             assertThat(interpreter.display(interpreter.run(source)))
@@ -509,7 +509,7 @@ class BitOperatorOperandsFromTheSourceTest {
                     .isEqualTo(expected);
         }
 
-        static Stream<Arguments> theDegenerateOnes() {
+        static Stream<Arguments> listTheDegenerateOnes() {
             return Stream.of(
                     Arguments.of(
                             "and~ #{} #{0F10}", "#{0000}"),
@@ -556,7 +556,7 @@ class BitOperatorOperandsFromTheSourceTest {
         @ValueSource(strings = {
                 "and~ 12 10", "12 and 10", "12 & 10"})
         @DisplayName("the three spellings of AND agree on whole numbers")
-        void theThreeSpellingsOfAndAgree(String source) {
+        void agreeAcrossTheThreeSpellingsOfAnd(String source) {
             assertThat(answerTo(source)).isEqualTo("8");
         }
 
@@ -564,14 +564,14 @@ class BitOperatorOperandsFromTheSourceTest {
         @ValueSource(strings = {
                 "or~ 12 10", "12 or 10", "12 | 10"})
         @DisplayName("the three spellings of OR agree on whole numbers")
-        void theThreeSpellingsOfOrAgree(String source) {
+        void agreeAcrossTheThreeSpellingsOfOr(String source) {
             assertThat(answerTo(source)).isEqualTo("14");
         }
 
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"xor~ 12 10", "12 xor 10"})
         @DisplayName("the two spellings of XOR agree on whole numbers")
-        void theTwoSpellingsOfXorAgree(String source) {
+        void agreeAcrossTheTwoSpellingsOfXor(String source) {
             assertThat(answerTo(source)).isEqualTo("6");
         }
 
@@ -579,7 +579,7 @@ class BitOperatorOperandsFromTheSourceTest {
         @ValueSource(strings = {
                 "and~ 12x10 10x12", "12x10 and 10x12", "12x10 & 10x12"})
         @DisplayName("and they agree on a datatype that is not a whole number")
-        void theSpellingsAgreeOnAPointToo(String source) {
+        void agreeOnAPointToo(String source) {
             assertThat(answerTo(source)).isEqualTo("8x8");
         }
 
@@ -589,7 +589,7 @@ class BitOperatorOperandsFromTheSourceTest {
                 "e: try [12 and 10x12] e/id",
                 "e: try [12 & 10x12] e/id"})
         @DisplayName("and they agree on the refusal, rather than one of them crashing")
-        void theSpellingsAgreeOnTheRefusal(String source) {
+        void agreeOnTheRefusal(String source) {
             assertThat(answerTo(source)).isEqualTo("not-related");
         }
     }

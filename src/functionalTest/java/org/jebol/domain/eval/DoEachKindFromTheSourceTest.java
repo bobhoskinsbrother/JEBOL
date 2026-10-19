@@ -15,7 +15,7 @@ class DoEachKindFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -27,27 +27,27 @@ class DoEachKindFromTheSourceTest {
 
         @Test
         @DisplayName("runs what the word holds")
-        void itRunsWhatTheWordHolds() {
+        void runsWhatItHolds() {
             assertThat(answerTo("a: 23 do 'a")).isEqualTo("23");
             assertThat(answerTo("logic? do 'true")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and calls it when the word holds a function")
-        void itCallsAFunction() {
+        void callsAFunction() {
             assertThat(answerTo("a: does [\"OK\"] do 'a")).isEqualTo("\"OK\"");
             assertThat(answerTo("f: func [x] [x * 2] do 'f 5")).isEqualTo("10");
         }
 
         @Test
         @DisplayName("a word holding a block answers the block rather than running it")
-        void aBlockIsNotRun() {
+        void leavesABlockUnrun() {
             assertThat(answerTo("b: [print \"x\"] block? do 'b")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and IN names a word in an object, which DO then runs")
-        void inThenDo() {
+        void runsWhatInFinds() {
             assertThat(answerTo(
                     "o: make object! [a: does [\"OK\"] b: 23] "
                     + "reduce [do in o 'a do in o 'b]")).isEqualTo("[\"OK\" 23]");
@@ -60,7 +60,7 @@ class DoEachKindFromTheSourceTest {
 
         @Test
         @DisplayName("runs what the path reads")
-        void itRunsWhatThePathReads() {
+        void runsWhatItReads() {
             assertThat(answerTo(
                     "o: make object! [a: does [\"OK\"] b: 23] "
                     + "reduce [do 'o/a do 'o/b]")).isEqualTo("[\"OK\" 23]");
@@ -68,14 +68,14 @@ class DoEachKindFromTheSourceTest {
 
         @Test
         @DisplayName("and a field the object has not got refuses")
-        void anAbsentFieldRefuses() {
-            assertThat(errorIdFrom("o: make object! [a: 1] do 'o/x"))
+        void refusesAnAbsentField() {
+            assertThat(readTheErrorIdFrom("o: make object! [a: 1] do 'o/x"))
                     .isEqualTo("invalid-path");
         }
 
         @Test
         @DisplayName("a path into a block reads the item, and does not run it")
-        void aPathIntoABlock() {
+        void reachesIntoABlock() {
             assertThat(answerTo("b: [[\"OK\"]] (do first [b/1]) = [\"OK\"]"))
                     .isEqualTo(TRUE);
         }
@@ -87,7 +87,7 @@ class DoEachKindFromTheSourceTest {
 
         @Test
         @DisplayName("answers the plain name, having spent its quote")
-        void itSpendsTheQuote() {
+        void spendsTheQuote() {
             assertThat(answerTo("b: ['a 'a/1] reduce [type? do first b type? do second b]"))
                     .isEqualTo("[#(word!) #(path!)]");
         }
@@ -99,9 +99,9 @@ class DoEachKindFromTheSourceTest {
 
         @Test
         @DisplayName("is refused, because there is nothing to assign")
-        void itIsRefused() {
-            assertThat(errorIdFrom("do quote a:")).isEqualTo("invalid-arg");
-            assertThat(errorIdFrom("do quote a/1:")).isEqualTo("invalid-arg");
+        void isRefused() {
+            assertThat(readTheErrorIdFrom("do quote a:")).isEqualTo("invalid-arg");
+            assertThat(readTheErrorIdFrom("do quote a/1:")).isEqualTo("invalid-arg");
         }
     }
 
@@ -111,7 +111,7 @@ class DoEachKindFromTheSourceTest {
 
         @Test
         @DisplayName("a block evaluates")
-        void aBlockEvaluates() {
+        void evaluateABlock() {
             assertThat(answerTo("do [1 + 2]")).isEqualTo("3");
             assertThat(answerTo("a: [[1 + 2]] b: [a a/1] (do first b) = [[1 + 2]]"))
                     .isEqualTo(TRUE);
@@ -121,7 +121,7 @@ class DoEachKindFromTheSourceTest {
 
         @Test
         @DisplayName("and a value that is not code answers itself")
-        void aPlainValueAnswersItself() {
+        void answerAPlainValueAsItself() {
             assertThat(answerTo("do 5")).isEqualTo("5");
             assertThat(answerTo("do \"1 + 2\"")).isEqualTo("3");
         }
@@ -133,7 +133,7 @@ class DoEachKindFromTheSourceTest {
 
         @Test
         @DisplayName("is the word that names it, exclamation mark and all")
-        void itIsTheSpelling() {
+        void givesTheSpelling() {
             assertThat(answerTo("'logic! = to word! logic!")).isEqualTo(TRUE);
             assertThat(answerTo("'percent! = to word! percent!")).isEqualTo(TRUE);
             assertThat(answerTo("'money! = to word! money!")).isEqualTo(TRUE);
@@ -141,7 +141,7 @@ class DoEachKindFromTheSourceTest {
 
         @Test
         @DisplayName("and the trip back gives the datatype again")
-        void theTripBack() {
+        void comesBackFromTheWord() {
             assertThat(answerTo("logic! = to datatype! to word! logic!"))
                     .isEqualTo(TRUE);
         }

@@ -34,7 +34,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
     @BeforeEach
     void openAPage() throws IOException {
         serving = WebScreenServer.on(0);
-        screen = BrowserScreen.seenBy(serving);
+        screen = BrowserScreen.showTo(serving);
         serving.reportTo(screen);
         ChromeOptions asked = new ChromeOptions();
         asked.addArguments("--headless=new",
@@ -44,16 +44,16 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
                 "--no-sandbox");
         browser = new ChromeDriver(asked);
         browser.get(serving.address());
-        new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> screen.hasADisplay());
+        new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> screen.hasDisplay());
 
-        Bounds everything = Bounds.standard().withWallClockLimit(Duration.ofSeconds(100));
+        Bounds everything = Bounds.standard().withTimeLimit(Duration.ofSeconds(100));
         for (HostService service : HostService.values()) {
             everything = everything.grant(service);
         }
         interpreter = Interpreter.withBounds(everything);
         interpreter.useScreen(screen);
         interpreter.useEnvironment(new ProcessEnvironment());
-        interpreter.useFileSystem(FileSystemPort.rootedAt(Path.of("src/testFixtures/resources").toAbsolutePath()));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(Path.of("src/testFixtures/resources").toAbsolutePath()));
     }
 
     @AfterEach
@@ -69,25 +69,25 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private WebElement theCanvas() {
+    private WebElement findTheCanvas() {
         return browser.findElement(By.id("screen"));
     }
 
-    private Actions theOperatorAt(int pageAcross, int pageDown) {
-        WebElement canvas = theCanvas();
+    private Actions placeTheOperatorAt(int pageAcross, int pageDown) {
+        WebElement canvas = findTheCanvas();
         return new Actions(browser).moveToElement(canvas,
                 pageAcross - canvas.getRect().getWidth() / 2,
                 pageDown - canvas.getRect().getHeight() / 2);
     }
 
-    private void untilTheScriptHasHeard(String question) {
+    private void waitUntilTheScriptHasHeard(String question) {
         new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> {
             answerTo("wait [system/ports/event 0.05]");
             return "#(true)".equals(answerTo(question));
         });
     }
 
-    private void aWindowRecordingWhatItHears() {
+    private void openAWindowRecordingWhatItHears() {
         answerTo("""
                 view/no-wait make gob! [size: 300x200 color: 200.200.200]
                 system/view/screen-gob/1/offset: 20x30
@@ -108,60 +108,60 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
 
     @Test
     @DisplayName("a real click in the browser reaches the handler with where it was, counted from the window")
-    void aClickCarriesWhereItWas() {
-        aWindowRecordingWhatItHears();
+    void carriesWhereAClickWas() {
+        openAWindowRecordingWhatItHears();
 
-        theOperatorAt(20 + 40, 30 + 50).click().perform();
+        placeTheOperatorAt(20 + 40, 30 + 50).click().perform();
 
-        untilTheScriptHasHeard("""
+        waitUntilTheScriptHasHeard("""
                 not none? find/only heard [down 40x50]""");
     }
 
     @Test
     @DisplayName("moving the mouse over the page is heard as moves, each with where the pointer is")
-    void aMoveIsHeard() {
-        aWindowRecordingWhatItHears();
+    void hearsAMove() {
+        openAWindowRecordingWhatItHears();
 
-        theOperatorAt(20 + 70, 30 + 60).perform();
+        placeTheOperatorAt(20 + 70, 30 + 60).perform();
 
-        untilTheScriptHasHeard("""
+        waitUntilTheScriptHasHeard("""
                 not none? find/only heard [move 70x60]""");
     }
 
     @Test
     @DisplayName("a typed letter is heard as a key with that character")
-    void aTypedLetterIsHeard() {
-        aWindowRecordingWhatItHears();
+    void hearsATypedLetter() {
+        openAWindowRecordingWhatItHears();
 
         new Actions(browser).sendKeys("a").perform();
 
-        untilTheScriptHasHeard("""
+        waitUntilTheScriptHasHeard("""
                 not none? find/only heard [key #"a"]""");
     }
 
     @Test
     @DisplayName("a typed comma is heard as a key too, though the page's message is split on commas")
-    void aTypedCommaIsHeard() {
-        aWindowRecordingWhatItHears();
+    void hearsATypedComma() {
+        openAWindowRecordingWhatItHears();
 
         new Actions(browser).sendKeys(",").perform();
 
-        untilTheScriptHasHeard("""
+        waitUntilTheScriptHasHeard("""
                 not none? find/only heard [key #","]""");
     }
 
     @Test
     @DisplayName("an arrow key is heard as a control event naming it")
-    void anArrowKeyIsHeard() {
-        aWindowRecordingWhatItHears();
+    void hearsAnArrowKey() {
+        openAWindowRecordingWhatItHears();
 
         new Actions(browser).sendKeys(Keys.ARROW_LEFT).perform();
 
-        untilTheScriptHasHeard("""
+        waitUntilTheScriptHasHeard("""
                 not none? find/only heard [control left]""");
     }
 
-    private void twoWindowsRecordingWhichOneHears() {
+    private void openTwoWindowsRecordingWhichOneHears() {
         answerTo("""
                 left: view/no-wait make gob! [size: 200x200 color: 200.0.0]
                 left/offset: 20x30
@@ -187,43 +187,43 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
 
     @Test
     @DisplayName("with two windows on the page, a real click on the second reaches the second and not the first")
-    void aClickReachesTheWindowItLandedOn() {
-        twoWindowsRecordingWhichOneHears();
+    void sendsAClickToTheWindowItLandedOn() {
+        openTwoWindowsRecordingWhichOneHears();
 
-        theOperatorAt(400 + 10, 30 + 20).click().perform();
-        theOperatorAt(20 + 30, 30 + 40).click().perform();
+        placeTheOperatorAt(400 + 10, 30 + 20).click().perform();
+        placeTheOperatorAt(20 + 30, 30 + 40).click().perform();
 
-        untilTheScriptHasHeard("""
+        waitUntilTheScriptHasHeard("""
                 [[down right 10x20] [down left 30x40]] = heard""");
     }
 
     @Test
     @DisplayName("a real click on the bare page between two windows reaches neither")
-    void aClickOnTheBarePageReachesNothing() {
-        twoWindowsRecordingWhichOneHears();
+    void sendsAClickOnTheBarePageNowhere() {
+        openTwoWindowsRecordingWhichOneHears();
 
-        theOperatorAt(300, 100).click().perform();
-        theOperatorAt(20 + 5, 30 + 5).click().perform();
+        placeTheOperatorAt(300, 100).click().perform();
+        placeTheOperatorAt(20 + 5, 30 + 5).click().perform();
 
-        untilTheScriptHasHeard("""
+        waitUntilTheScriptHasHeard("""
                 [[down left 5x5]] = heard""");
     }
 
     @Test
     @DisplayName("typing after a click on the first window reaches the first, though the second opened last")
-    void typingFollowsTheClick() {
-        twoWindowsRecordingWhichOneHears();
+    void sendsTypingWhereTheClickWent() {
+        openTwoWindowsRecordingWhichOneHears();
 
-        theOperatorAt(20 + 5, 30 + 5).click().perform();
+        placeTheOperatorAt(20 + 5, 30 + 5).click().perform();
         new Actions(browser).sendKeys("a").perform();
 
-        untilTheScriptHasHeard("""
+        waitUntilTheScriptHasHeard("""
                 [[down left 5x5] [key left #"a"]] = heard""");
     }
 
     @Test
     @DisplayName("the sliders example's slider is dragged by a real mouse in a browser, and its value changes")
-    void theSlidersAreDraggedInABrowser() {
+    void dragsTheSlidersInABrowser() {
         String opened = answerTo("""
                 change-dir %examples/r3-gui/
                 do %gui-322.r
@@ -247,7 +247,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
         int across = Integer.parseInt(middle[0]);
         int down = Integer.parseInt(middle[1]);
 
-        theOperatorAt(across, down).clickAndHold().moveByOffset(80, 0).release().perform();
+        placeTheOperatorAt(across, down).clickAndHold().moveByOffset(80, 0).release().perform();
 
         new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> {
             answerTo("wait [gui-event-port 0.05]");
@@ -256,7 +256,7 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
         assertThat(answerTo("(get-face the-slider) > before")).isEqualTo("#(true)");
     }
 
-    private void theSurveyIsOpen() {
+    private void openTheSurvey() {
         answerTo("""
                 change-dir %examples/r3-gui/
                 do %gui-322.r
@@ -285,12 +285,12 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
                 chosen?: func [style index] [true? get-face the-face style index]""");
     }
 
-    private void theOperatorClicks(String style, int index) {
+    private void clickAsTheOperator(String style, int index) {
         String[] middle = answerTo("the-middle-of '%s %d".formatted(style, index)).split("x");
-        theOperatorAt(Integer.parseInt(middle[0]), Integer.parseInt(middle[1])).click().perform();
+        placeTheOperatorAt(Integer.parseInt(middle[0]), Integer.parseInt(middle[1])).click().perform();
     }
 
-    private void untilTheGuiHasHeard(String question) {
+    private void waitUntilTheGuiHasHeard(String question) {
         try {
             new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> {
                 answerTo("wait [gui-event-port 0.05]");
@@ -303,37 +303,37 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
 
     @Test
     @DisplayName("in a browser, the survey takes a name typed into its field and a chosen radio, and Reset clears both")
-    void theSurveyIsFilledInAndResetInABrowser() {
-        theSurveyIsOpen();
+    void fillsInAndResetsTheSurveyInABrowser() {
+        openTheSurvey();
 
-        theOperatorClicks("field", 1);
-        untilTheGuiHasHeard("""
+        clickAsTheOperator("field", 1);
+        waitUntilTheGuiHasHeard("""
                 same? guie/focal-face the-face 'field 1""");
         new Actions(browser).sendKeys("Ben").perform();
-        untilTheGuiHasHeard("""
+        waitUntilTheGuiHasHeard("""
                 {Ben} = get-face the-face 'field 1""");
 
-        theOperatorClicks("radio", 2);
-        untilTheGuiHasHeard("chosen? 'radio 2");
+        clickAsTheOperator("radio", 2);
+        waitUntilTheGuiHasHeard("chosen? 'radio 2");
         assertThat(answerTo("reduce [chosen? 'radio 1  chosen? 'radio 3]")).isEqualTo("[#(false) #(false)]");
 
-        theOperatorClicks("button", 2);
-        untilTheGuiHasHeard("""
+        clickAsTheOperator("button", 2);
+        waitUntilTheGuiHasHeard("""
                 all [empty? get-face the-face 'field 1  not chosen? 'radio 2]""");
     }
 
     @Test
     @DisplayName("a sentence typed into the comment area arrives whole and in order, however fast it is typed")
-    void aSentenceTypedIntoTheCommentAreaArrivesWhole() {
-        theSurveyIsOpen();
+    void deliversASentenceTypedIntoTheCommentAreaWhole() {
+        openTheSurvey();
 
-        theOperatorClicks("area", 1);
-        untilTheGuiHasHeard("""
+        clickAsTheOperator("area", 1);
+        waitUntilTheGuiHasHeard("""
                 not none? guie/focal-face""");
         new Actions(browser).sendKeys(
                 "the quick brown fox jumps over the lazy dog and keeps on running for a very long time indeed")
                 .perform();
-        untilTheGuiHasHeard("""
+        waitUntilTheGuiHasHeard("""
                 not empty? get-face the-face 'area 1""");
         assertThat(answerTo("""
                 get-face the-face 'area 1"""))

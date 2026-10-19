@@ -11,35 +11,35 @@ public final class DateArithmetic {
         this.moment = moment;
     }
 
-    public Value combinedWith(Value right, ArithmeticOperation operation) {
+    public Value combineWith(Value right, ArithmeticOperation operation) {
         if (right instanceof DateValue to) {
-            return daysSince(to, operation);
+            return countTheDaysSince(to, operation);
         }
-        return movedBy(right, operation);
+        return moveBy(right, operation);
     }
 
-    public Value takenBy(Value left, ArithmeticOperation operation) {
+    public Value takeFrom(Value left, ArithmeticOperation operation) {
         if (operation.subtractsOneFromTheOther()) {
             throw Raised.of(EvaluationFailure.NOT_RELATED,
                     WordValue.of(operation.spelling() + ":"),
                     left.datatype());
         }
-        return movedBy(left, operation);
+        return moveBy(left, operation);
     }
 
-    private Value daysSince(DateValue to, ArithmeticOperation operation) {
+    private Value countTheDaysSince(DateValue to, ArithmeticOperation operation) {
         if (!operation.subtractsOneFromTheOther()) {
             throw Raised.cannotUse(moment, "date arithmetic");
         }
         return IntegerValue.of(moment.dayNumber() - to.dayNumber());
     }
 
-    private Value movedBy(Value span, ArithmeticOperation operation) {
+    private Value moveBy(Value span, ArithmeticOperation operation) {
         refuseASpanADateCannotMoveBy(span, operation);
         int sign = operation.signWhenMoving();
         return span instanceof IntegerValue
-                ? movedByDays(sign * (long) quantityOf(span))
-                : movedByTheClock(sign * clockShiftOf(span));
+                ? moveByDays(sign * (long) readTheQuantityOf(span))
+                : moveByTheClock(sign * measureTheClockShiftOf(span));
     }
 
     private void refuseASpanADateCannotMoveBy(Value span, ArithmeticOperation operation) {
@@ -54,13 +54,13 @@ public final class DateArithmetic {
         }
     }
 
-    private DateValue movedByDays(long days) {
+    private DateValue moveByDays(long days) {
         LocalDate shifted = LocalDate.ofEpochDay(moment.dayNumber() + days);
         return new DateValue(shifted.getYear(), shifted.getMonthValue(),
                 shifted.getDayOfMonth(), moment.timeOfDay(), moment.zoneMinutes());
     }
 
-    private DateValue movedByTheClock(long nanoseconds) {
+    private DateValue moveByTheClock(long nanoseconds) {
         long shifted = moment.timeOfDay().map(TimeValue::nanoseconds).orElse(0L)
                 + nanoseconds;
         LocalDate day = LocalDate.ofEpochDay(moment.dayNumber()
@@ -71,7 +71,7 @@ public final class DateArithmetic {
                 moment.zoneMinutes());
     }
 
-    private static double quantityOf(Value span) {
+    private static double readTheQuantityOf(Value span) {
         return switch (span) {
             case IntegerValue(long magnitude) -> magnitude;
             case AnyDecimalValue fraction -> fraction.quantity();
@@ -79,10 +79,10 @@ public final class DateArithmetic {
         };
     }
 
-    private static long clockShiftOf(Value span) {
+    private static long measureTheClockShiftOf(Value span) {
         return span instanceof TimeValue(long nanoseconds)
                 ? nanoseconds
-                : (long) (quantityOf(span) * TimeValue.NANOSECONDS_PER_DAY);
+                : (long) (readTheQuantityOf(span) * TimeValue.NANOSECONDS_PER_DAY);
     }
 
 }

@@ -14,35 +14,35 @@ class GetWordAsRuleTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("a get-word as COPY's rule is refused")
     void copyCannotCaptureAMark() {
-        assertThat(errorIdOf(
+        assertThat(readTheErrorIdOf(
                 "data: \"aaabbb\" pos: head data parse data [some \"a\" copy var :pos]"))
                 .isEqualTo("parse-rule");
     }
 
     @Test
     @DisplayName("a get-word naming nothing yet is refused the same way")
-    void anUnsetMarkIsRefusedToo() {
-        assertThat(errorIdOf("parse \"abcd\" [x: \"ab\" copy y :s thru \"abcd\"]"))
+    void refusesAnUnsetMarkToo() {
+        assertThat(readTheErrorIdOf("parse \"abcd\" [x: \"ab\" copy y :s thru \"abcd\"]"))
                 .isEqualTo("parse-rule");
     }
 
     @Test
     @DisplayName("a get-word as SET's rule is refused")
     void setCannotCaptureAMarkEither() {
-        assertThat(errorIdOf("data: \"ab\" pos: head data parse data [\"a\" set v :pos]"))
+        assertThat(readTheErrorIdOf("data: \"ab\" pos: head data parse data [\"a\" set v :pos]"))
                 .isEqualTo("parse-rule");
     }
 
     @Test
     @DisplayName("a get-word on its own still seeks back to the mark")
-    void seekingBackIsUnaffected() {
+    void stillSeeksBack() {
         assertThat(answerTo("parse \"abc\" [x: \"a\" :x \"abc\"]")).isEqualTo("#(true)");
     }
 

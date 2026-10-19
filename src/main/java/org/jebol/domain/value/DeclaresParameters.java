@@ -12,7 +12,7 @@ public sealed interface DeclaresParameters extends AnyFunctionValue
 
     Set<String> refinementsDeclaredApart();
 
-    default AnyBlockValue typesets() {
+    default AnyBlockValue listTheTypesets() {
         List<Value> types = new ArrayList<>();
         Set<String> woven = new LinkedHashSet<>();
         for (Parameter parameter : parameters()) {
@@ -21,13 +21,13 @@ public sealed interface DeclaresParameters extends AnyFunctionValue
                     types.add(TypesetValue.of(Parameter.A_REFINEMENTS_SLOT));
                 }
             });
-            types.add(parameter.typeset());
+            types.add(parameter.makeTheTypeset());
         }
         for (String leftover : refinementsDeclaredApart()) {
             if (!woven.contains(leftover)) {
                 types.add(TypesetValue.of(Parameter.A_REFINEMENTS_SLOT));
             }
         }
-        return BlockValue.block(types);
+        return BlockValue.of(types);
     }
 }

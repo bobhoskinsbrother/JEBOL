@@ -29,16 +29,16 @@ public class ForNative extends LoopingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.softQuoted("counter"),
-                Parameter.required("start"),
-                Parameter.required("end"),
-                Parameter.required("step"),
-                Parameter.required("body", A_BLOCK));
+        return List.of(Parameter.quoteSoftly("counter"),
+                Parameter.of("start"),
+                Parameter.of("end"),
+                Parameter.of("step"),
+                Parameter.of("body", A_BLOCK));
     }
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> steppedLoop(
+        return (arguments, evaluator, context, refinements) -> loopInSteps(
                 evaluator,
                 context,
                 (AnyWordValue) arguments.get(0),
@@ -48,8 +48,8 @@ public class ForNative extends LoopingNative {
                 (AnyBlockValue) arguments.get(4));
     }
 
-    private Value steppedLoop(Evaluator evaluator, Context within, AnyWordValue counter,
-            Value start, Value end, Value step, AnyBlockValue body) {
+    private Value loopInSteps(Evaluator evaluator, Context within, AnyWordValue counter,
+                              Value start, Value end, Value step, AnyBlockValue body) {
 
         if (Comparison.asDouble(step) == 0.0) {
             throw Raised.of(EvaluationFailure.CANNOT_USE,
@@ -63,34 +63,34 @@ public class ForNative extends LoopingNative {
         AnyBlockValue bound = Binder.bind(body, locals);
 
         if (start instanceof RebolSeries series) {
-            return steppedOverSeries(evaluator, locals, counter, series, end, step, bound);
+            return stepOverSeries(evaluator, locals, counter, series, end, step, bound);
         }
         if (start instanceof IntegerValue(long from)
                 && end instanceof IntegerValue(long to)
                 && step instanceof IntegerValue(long stepBy)) {
-            return steppedOverWholeNumbers(evaluator, locals, counter, from, to, stepBy, bound);
+            return stepOverWholeNumbers(evaluator, locals, counter, from, to, stepBy, bound);
         }
-        return steppedOverRealNumbers(evaluator, locals, counter,
+        return stepOverRealNumbers(evaluator, locals, counter,
                 Comparison.asDouble(start), Comparison.asDouble(end),
                 Comparison.asDouble(step), bound);
     }
 
-    private Value steppedOverWholeNumbers(Evaluator evaluator, Context locals,
-                                          AnyWordValue counter, long from, long to, long stepBy, AnyBlockValue body) {
+    private Value stepOverWholeNumbers(Evaluator evaluator, Context locals,
+                                       AnyWordValue counter, long from, long to, long stepBy, AnyBlockValue body) {
 
         return answerOfTheLoop(() -> {
             Value last = NoneValue.none();
             long at = from;
             while (stepBy > 0 ? at <= to : at >= to) {
                 locals.register(counter.spelling(), IntegerValue.of(at));
-                last = oneRoundCatchingContinue(evaluator, body, locals);
-                at = steppedOrOverflowed(at, stepBy);
+                last = runOneRoundCatchingContinue(evaluator, body, locals);
+                at = stepOrOverflow(at, stepBy);
             }
             return last;
         });
     }
 
-    private long steppedOrOverflowed(long at, long stepBy) {
+    private long stepOrOverflow(long at, long stepBy) {
         try {
             return Math.addExact(at, stepBy);
         } catch (ArithmeticException overflowed) {
@@ -99,21 +99,21 @@ public class ForNative extends LoopingNative {
         }
     }
 
-    private Value steppedOverRealNumbers(Evaluator evaluator, Context locals,
-                                         AnyWordValue counter, double from, double to, double stepBy, AnyBlockValue body) {
+    private Value stepOverRealNumbers(Evaluator evaluator, Context locals,
+                                      AnyWordValue counter, double from, double to, double stepBy, AnyBlockValue body) {
 
         return answerOfTheLoop(() -> {
             Value last = NoneValue.none();
             for (double at = from; stepBy > 0 ? at <= to : at >= to; at += stepBy) {
                 locals.register(counter.spelling(), DecimalValue.of(at));
-                last = oneRoundCatchingContinue(evaluator, body, locals);
+                last = runOneRoundCatchingContinue(evaluator, body, locals);
             }
             return last;
         });
     }
 
-    private Value steppedOverSeries(Evaluator evaluator, Context locals, AnyWordValue counter,
-            RebolSeries series, Value end, Value step, AnyBlockValue body) {
+    private Value stepOverSeries(Evaluator evaluator, Context locals, AnyWordValue counter,
+                                 RebolSeries series, Value end, Value step, AnyBlockValue body) {
 
         int tail = series.storageLength() + 1;
         int endIndex = Math.max(0, Math.min(endIndexOf(end), tail));
@@ -123,8 +123,8 @@ public class ForNative extends LoopingNative {
             int at = series.index();
             while (stepBy > 0 ? at <= endIndex : at >= endIndex) {
                 locals.register(counter.spelling(), series.atIndex(at));
-                last = oneRoundCatchingContinue(evaluator, body, locals);
-                int landedAt = locals.slotFor(counter.canonical()).value()
+                last = runOneRoundCatchingContinue(evaluator, body, locals);
+                int landedAt = locals.findSlotFor(counter.canonical()).value()
                         instanceof RebolSeries moved ? moved.index() : at;
                 at = (int) (landedAt + stepBy);
             }

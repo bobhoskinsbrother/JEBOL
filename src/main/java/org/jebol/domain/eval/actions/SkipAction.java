@@ -25,8 +25,8 @@ public class SkipAction extends SeriesOrFileAction {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series"),
-                Parameter.required("offset", anOffset()));
+        return List.of(Parameter.of("series"),
+                Parameter.of("offset", listTheOffsetTypes()));
     }
 
     @Override
@@ -34,10 +34,10 @@ public class SkipAction extends SeriesOrFileAction {
         return (arguments, evaluator, context, refinements) -> {
             Value offset = arguments.get(1);
             return switch (arguments.getFirst()) {
-                case PortValue port when port.isAFile() -> theFileBehind(port, evaluator)
-                        .movedBy((long) Arithmetic.asMagnitude(offset));
-                case RebolSeries series -> series.skipped(
-                        series.positionNamedBy(offset, COUNTING_FROM_NOUGHT));
+                case PortValue port when port.isAFile() -> findTheFileBehind(port, evaluator)
+                        .moveBy((long) Arithmetic.asMagnitude(offset));
+                case RebolSeries series -> series.skip(
+                        series.findThePositionNamedBy(offset, COUNTING_FROM_NOUGHT));
                 case Value anythingElse -> refuseTheDatatype(anythingElse);
             };
         };

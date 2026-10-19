@@ -39,7 +39,7 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
         }
     }
 
-    private BufferedImage painted(String source) {
+    private BufferedImage paint(String source) {
         interpreter.defineFreshWordsIn(source);
         GobValue gob = (GobValue) interpreter.run(source).value();
         ObjectValue dialect = (ObjectValue) interpreter.run("system/dialects/draw").value();
@@ -56,23 +56,23 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
         return surface;
     }
 
-    private BufferedImage aLabel(String richText) {
-        return painted("""
+    private BufferedImage paintALabel(String richText) {
+        return paint("""
                 labelled: make gob! [size: 200x40]
                 labelled/text: compose [%s]
                 labelled""".formatted(richText));
     }
 
-    private Color colourAt(BufferedImage surface, int across, int down) {
+    private Color readTheColourAt(BufferedImage surface, int across, int down) {
         return new Color(surface.getRGB(across, down), true);
     }
 
     private boolean isInk(BufferedImage surface, int across, int down) {
-        Color seen = colourAt(surface, across, down);
+        Color seen = readTheColourAt(surface, across, down);
         return seen.getRed() + seen.getGreen() + seen.getBlue() < 3 * 128;
     }
 
-    private Ink theInkOf(BufferedImage surface) {
+    private Ink findTheInkOf(BufferedImage surface) {
         int left = WIDE;
         int top = HIGH;
         int right = -1;
@@ -87,7 +87,7 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
                 }
             }
         }
-        assertThat(right).as("some ink was written at all").isGreaterThanOrEqualTo(0);
+        assertThat(right).as("some ink was text at all").isGreaterThanOrEqualTo(0);
         return new Ink(left, top, right, bottom);
     }
 
@@ -97,8 +97,8 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
 
         @Test
         @DisplayName("a centred para puts the label's ink in the middle of the gob, both ways")
-        void aCentredLabelIsInTheMiddle() {
-            Ink ink = theInkOf(aLabel("""
+        void centresALabelInTheMiddle() {
+            Ink ink = findTheInkOf(paintALabel("""
                     para (make object! [origin: 0x0 margin: 0x0 align: 'center valign: 'middle])
                     "MMMM"
                     """));
@@ -109,8 +109,8 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
 
         @Test
         @DisplayName("a centred line of two runs is centred as a whole")
-        void twoRunsAreCentredTogether() {
-            Ink ink = theInkOf(aLabel("""
+        void centresTwoRunsTogether() {
+            Ink ink = findTheInkOf(paintALabel("""
                     para (make object! [origin: 0x0 margin: 0x0 align: 'center valign: 'middle])
                     "MMMM" bold "MMMM"
                     """));
@@ -120,8 +120,8 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
 
         @Test
         @DisplayName("a right-aligned para ends the ink at the margin")
-        void aRightAlignedLabelEndsAtTheMargin() {
-            Ink ink = theInkOf(aLabel("""
+        void endsARightAlignedLabelAtTheMargin() {
+            Ink ink = findTheInkOf(paintALabel("""
                     para (make object! [margin: 10x0 align: 'right])
                     "MMMM"
                     """));
@@ -131,8 +131,8 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
 
         @Test
         @DisplayName("the radio's origin of 18 starts the ink clear of the circle")
-        void theRadiosOriginStartsTheInkAt18() {
-            Ink ink = theInkOf(aLabel("""
+        void startsTheRadiosInkAt18() {
+            Ink ink = findTheInkOf(paintALabel("""
                     para (make object! [origin: 18x0 valign: 'middle])
                     "Delta 10%"
                     """));
@@ -142,8 +142,8 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
 
         @Test
         @DisplayName("a plain string starts at the standard origin, 2 across, near the top")
-        void aPlainStringStartsAtTheStandardOrigin() {
-            Ink ink = theInkOf(painted("""
+        void startsAPlainStringAtTheStandardOrigin() {
+            Ink ink = findTheInkOf(paint("""
                     make gob! [size: 200x40 text: "MMMM"]"""));
 
             assertThat(ink.left()).isBetween(2, 4);
@@ -152,8 +152,8 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
 
         @Test
         @DisplayName("a bottom-aligned para puts the ink down at the margin")
-        void aBottomAlignedLabelSitsLow() {
-            Ink ink = theInkOf(aLabel("""
+        void setsABottomAlignedLabelLow() {
+            Ink ink = findTheInkOf(paintALabel("""
                     para (make object! [valign: 'bottom])
                     "MMMM"
                     """));
@@ -169,8 +169,8 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
 
         @Test
         @DisplayName("a newline puts the second line below the first, not after it")
-        void aNewlineStartsALineBelow() {
-            Ink ink = theInkOf(aLabel("""
+        void startALineBelowAtANewline() {
+            Ink ink = findTheInkOf(paintALabel("""
                     para (make object! [origin: 0x0 margin: 0x0 align: 'left valign: 'top])
                     "MM^/MM"
                     """));
@@ -181,26 +181,26 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
 
         @Test
         @DisplayName("a set caret is drawn as a line where the text after it starts")
-        void aSetCaretIsDrawn() {
-            BufferedImage surface = painted("""
-                    written: copy {MMMM}
+        void drawASetCaret() {
+            BufferedImage surface = paint("""
+                    text: copy {MMMM}
                     labelled: make gob! [size: 200x40]
                     labelled/text: reduce [
                         'para make object! [origin: 0x0 margin: 0x0 align: 'left valign: 'top]
                         'caret make object! [caret: none start: none end: none]
-                        written
+                        text
                     ]
                     caret: select labelled/text 'caret
-                    caret/caret: reduce [at labelled/text 4 written]
+                    caret/caret: reduce [at labelled/text 4 text]
                     labelled""");
 
-            assertThat(theInkOf(surface).left()).as("the caret before the first M").isBetween(0, 1);
+            assertThat(findTheInkOf(surface).left()).as("the caret before the first M").isBetween(0, 1);
         }
 
         @Test
         @DisplayName("and an unset caret draws nothing where the text starts")
-        void anUnsetCaretIsNotDrawn() {
-            BufferedImage surface = painted("""
+        void leaveAnUnsetCaretUndrawn() {
+            BufferedImage surface = paint("""
                     labelled: make gob! [size: 200x40]
                     labelled/text: reduce [
                         'para make object! [origin: 10x0 margin: 0x0 align: 'left valign: 'top]
@@ -209,7 +209,7 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
                     ]
                     labelled""");
 
-            assertThat(theInkOf(surface).left()).isGreaterThanOrEqualTo(10);
+            assertThat(findTheInkOf(surface).left()).isGreaterThanOrEqualTo(10);
         }
     }
 
@@ -219,21 +219,21 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
 
         @Test
         @DisplayName("a white label with a 2x2 shadow writes black below and to the right of it")
-        void aShadowIsWrittenInBlack() {
-            BufferedImage surface = aLabel("""
+        void writesInBlack() {
+            BufferedImage surface = paintALabel("""
                     font (make object! [color: 255.255.255 size: 20 style: 'bold shadow: 2x2])
                     para (make object! [origin: 0x0 margin: 0x0 align: 'center valign: 'middle])
                     "MMMM"
                     """);
 
-            Ink ink = theInkOf(surface);
+            Ink ink = findTheInkOf(surface);
             assertThat(ink.right() - ink.left()).as("the shadow is the only ink on white").isGreaterThan(20);
         }
 
         @Test
         @DisplayName("a white label with no shadow writes no ink on white")
-        void noShadowNoInk() {
-            BufferedImage surface = aLabel("""
+        void leavesNoInkWhenAbsent() {
+            BufferedImage surface = paintALabel("""
                     font (make object! [color: 255.255.255 size: 20 style: 'bold])
                     "MMMM"
                     """);
@@ -254,8 +254,8 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
 
         @Test
         @DisplayName("half-transparent black over white is mid grey")
-        void halfBlackIsGrey() {
-            Color seen = colourAt(painted("""
+        void turnsHalfBlackGrey() {
+            Color seen = readTheColourAt(paint("""
                     make gob! [size: 200x40 draw: [pen off fill-pen 0.0.0.128 box 0x0 200x40]]"""), 100, 20);
 
             assertThat(seen.getRed()).isCloseTo(127, within(2));
@@ -265,8 +265,8 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
 
         @Test
         @DisplayName("a fourth number of 0 paints nothing")
-        void noOpacityPaintsNothing() {
-            assertThat(colourAt(painted("""
+        void paintsNothingAtZero() {
+            assertThat(readTheColourAt(paint("""
                     make gob! [size: 200x40 draw: [pen off fill-pen 0.0.0.0 box 0x0 200x40]]"""), 100, 20))
                     .isEqualTo(WHITE);
         }
@@ -274,7 +274,7 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
         @Test
         @DisplayName("a fourth number of 255 is solid")
         void fullOpacityIsSolid() {
-            assertThat(colourAt(painted("""
+            assertThat(readTheColourAt(paint("""
                     make gob! [size: 200x40 draw: [pen off fill-pen 0.0.0.255 box 0x0 200x40]]"""), 100, 20))
                     .isEqualTo(new Color(0, 0, 0));
         }
@@ -286,22 +286,22 @@ class TheDesktopPaintsWhatTheSpecSaysOfTextColourAndCornersFromTheSourceTest {
 
         @Test
         @DisplayName("a radius of 10 leaves the very corner unpainted and fills the middle")
-        void aRadiusLeavesTheCornerEmpty() {
-            BufferedImage surface = painted("""
+        void stayEmptyWithARadius() {
+            BufferedImage surface = paint("""
                     make gob! [size: 200x40 draw: [pen off fill-pen 255.0.0 box 0x0 39x39 10]]""");
 
-            assertThat(colourAt(surface, 1, 1)).isEqualTo(WHITE);
-            assertThat(colourAt(surface, 38, 1)).isEqualTo(WHITE);
-            assertThat(colourAt(surface, 1, 38)).isEqualTo(WHITE);
-            assertThat(colourAt(surface, 38, 38)).isEqualTo(WHITE);
-            assertThat(colourAt(surface, 20, 20)).isEqualTo(new Color(255, 0, 0));
-            assertThat(colourAt(surface, 20, 1)).isEqualTo(new Color(255, 0, 0));
+            assertThat(readTheColourAt(surface, 1, 1)).isEqualTo(WHITE);
+            assertThat(readTheColourAt(surface, 38, 1)).isEqualTo(WHITE);
+            assertThat(readTheColourAt(surface, 1, 38)).isEqualTo(WHITE);
+            assertThat(readTheColourAt(surface, 38, 38)).isEqualTo(WHITE);
+            assertThat(readTheColourAt(surface, 20, 20)).isEqualTo(new Color(255, 0, 0));
+            assertThat(readTheColourAt(surface, 20, 1)).isEqualTo(new Color(255, 0, 0));
         }
 
         @Test
         @DisplayName("and no radius fills right into the corner")
-        void noRadiusFillsTheCorner() {
-            assertThat(colourAt(painted("""
+        void fillWithoutARadius() {
+            assertThat(readTheColourAt(paint("""
                     make gob! [size: 200x40 draw: [pen off fill-pen 255.0.0 box 0x0 39x39]]"""), 1, 1))
                     .isEqualTo(new Color(255, 0, 0));
         }

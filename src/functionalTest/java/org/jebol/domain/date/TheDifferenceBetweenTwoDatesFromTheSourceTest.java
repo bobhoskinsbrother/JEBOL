@@ -26,7 +26,7 @@ class TheDifferenceBetweenTwoDatesFromTheSourceTest {
             "9-Oct-2026                 | 8-Oct-2026                 | 24:00",
     })
     @DisplayName("difference counts the time of day and its fraction, as a real 3.22.5 does")
-    void theDifferenceCountsTheTimeOfDay(String later, String earlier, String answer) {
+    void countsTheTimeOfDay(String later, String earlier, String answer) {
         assertThat(answerTo("difference %s %s".formatted(later, earlier))).isEqualTo(answer);
     }
 }

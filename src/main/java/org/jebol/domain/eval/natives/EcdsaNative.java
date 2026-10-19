@@ -24,10 +24,10 @@ public class EcdsaNative extends CipherNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("key", Set.of(HandleValue.TYPE, BinaryValue.TYPE)),
-                Parameter.required("hash", Set.of(BinaryValue.TYPE)),
-                Parameter.belongingTo("verify", "signature", Set.of(BinaryValue.TYPE)),
-                Parameter.belongingTo("curve", "type", Set.of(WordValue.TYPE)));
+        return List.of(Parameter.of("key", Set.of(HandleValue.TYPE, BinaryValue.TYPE)),
+                Parameter.of("hash", Set.of(BinaryValue.TYPE)),
+                Parameter.belongTo("verify", "signature", Set.of(BinaryValue.TYPE)),
+                Parameter.belongTo("curve", "type", Set.of(WordValue.TYPE)));
     }
 
     @Override
@@ -41,14 +41,14 @@ public class EcdsaNative extends CipherNative {
             byte[] hash = ((BinaryValue) arguments.get(1)).octetsFromHere();
             if (refinements.contains("curve")
                     && arguments.getFirst() instanceof BinaryValue published) {
-                return trueOrNone(EllipticCurveKey.aPublishedPointVerifies(
+                return trueOrNone(EllipticCurveKey.verifiesWithAPublishedPoint(
                         published.octetsFromHere(),
-                        ((AnyWordValue) argumentOf("curve", 0, arguments, refinements)
+                        ((AnyWordValue) readTheArgumentOf("curve", 0, arguments, refinements)
                                 .orElseThrow()).canonical(),
                         hash,
                         ((BinaryValue) arguments.get(2)).octetsFromHere()));
             }
-            Optional<EllipticCurveKey> key = keyHeldBy(
+            Optional<EllipticCurveKey> key = readTheKeyHeldBy(
                     arguments.getFirst(), ECDH_HANDLE_TYPE, EllipticCurveKey.class)
                     .filter(held -> !held.released());
             if (key.isEmpty()) {
@@ -57,7 +57,7 @@ public class EcdsaNative extends CipherNative {
             return refinements.contains("verify")
                     ? trueOrNone(key.get().verifies(hash,
                             ((BinaryValue) arguments.get(2)).octetsFromHere()))
-                    : signatureOver(key.get(), hash);
+                    : signOver(key.get(), hash);
         };
     }
 
@@ -65,8 +65,8 @@ public class EcdsaNative extends CipherNative {
         return holds ? LogicValue.yes() : NoneValue.none();
     }
 
-    private Value signatureOver(EllipticCurveKey key, byte[] hash) {
-        return key.signed(hash)
+    private Value signOver(EllipticCurveKey key, byte[] hash) {
+        return key.sign(hash)
                 .<Value>map(BinaryValue::ofBytes)
                 .orElseGet(NoneValue::none);
     }

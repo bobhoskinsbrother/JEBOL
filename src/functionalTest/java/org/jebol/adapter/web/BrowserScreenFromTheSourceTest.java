@@ -6,11 +6,11 @@ import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
 import org.jebol.application.TextMeasures;
 import org.jebol.domain.host.ScreenEventDetail;
-import org.jebol.domain.host.ScreenEventKind;
+import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.render.PaintList;
-import org.jebol.domain.render.SurfaceCall;
+import org.jebol.domain.render.DrawingCommand;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 import org.junit.jupiter.api.DisplayName;
@@ -34,7 +34,7 @@ class BrowserScreenFromTheSourceTest {
 
     private static final class SomebodyLooking implements BrowserScreen.Viewer {
 
-        private final List<List<SurfaceCall>> painted = new ArrayList<>();
+        private final List<List<DrawingCommand>> painted = new ArrayList<>();
         private boolean looking = true;
 
         @Override
@@ -43,7 +43,7 @@ class BrowserScreenFromTheSourceTest {
         }
 
         @Override
-        public void paint(List<SurfaceCall> painting) {
+        public void paint(List<DrawingCommand> painting) {
             painted.add(painting);
         }
 
@@ -51,13 +51,13 @@ class BrowserScreenFromTheSourceTest {
             looking = false;
         }
 
-        static SomebodyLooking whoNeverArrived() {
+        static SomebodyLooking makeOneWhoNeverArrived() {
             SomebodyLooking nobody = new SomebodyLooking();
             nobody.looking = false;
             return nobody;
         }
 
-        List<SurfaceCall> lastPainted() {
+        List<DrawingCommand> readTheLastPainted() {
             return painted.getLast();
         }
 
@@ -66,23 +66,23 @@ class BrowserScreenFromTheSourceTest {
         }
     }
 
-    private static Interpreter withABrowser(BrowserScreen screen) {
-        return withABrowser(screen, 800, 600);
+    private static Interpreter makeAnInterpreterWithABrowser(BrowserScreen screen) {
+        return makeAnInterpreterWithABrowser(screen, 800, 600);
     }
 
-    private static Interpreter withABrowser(
+    private static Interpreter makeAnInterpreterWithABrowser(
             BrowserScreen screen, int wide, int high) {
 
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
                         .grant(HostService.WINDOWS)
-                        .withWallClockLimit(Duration.ofSeconds(10)));
+                        .withTimeLimit(Duration.ofSeconds(10)));
         interpreter.useScreen(screen);
-        screen.theBrowserMeasures(wide, high);
+        screen.measure(wide, high);
         return interpreter;
     }
 
-    private static Interpreter withASilentBrowser(BrowserScreen screen) {
+    private static Interpreter makeAnInterpreterWithASilentBrowser(BrowserScreen screen) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useScreen(screen);
@@ -90,7 +90,7 @@ class BrowserScreenFromTheSourceTest {
     }
 
     private static String sessionOn(BrowserScreen screen, String script) {
-        Interpreter interpreter = withABrowser(screen);
+        Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
         interpreter.defineFreshWordsIn(script);
         return interpreter.display(interpreter.run(script));
     }
@@ -102,16 +102,16 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("showing a gob sends a paint list, not markup")
         @Timeout(20)
-        void showingSendsAPaintList() {
+        void sendsAPaintListOnShowing() {
             SomebodyLooking viewer = new SomebodyLooking();
 
-            sessionOn(BrowserScreen.seenBy(viewer), """
+            sessionOn(BrowserScreen.showTo(viewer), """
                     view/no-wait make gob! [size: 320x200 color: 30.34.44]""");
 
             assertThat(viewer.timesPainted()).isPositive();
-            assertThat(viewer.lastPainted())
+            assertThat(viewer.readTheLastPainted())
                     .isNotEmpty()
-                    .allMatch(each -> each instanceof SurfaceCall);
+                    .allMatch(each -> each instanceof DrawingCommand);
         }
 
         @Test
@@ -119,7 +119,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void thelistIsTheSameOneADesktopGets() {
             SomebodyLooking viewer = new SomebodyLooking();
-            Interpreter interpreter = withABrowser(BrowserScreen.seenBy(viewer));
+            Interpreter interpreter = makeAnInterpreterWithABrowser(BrowserScreen.showTo(viewer));
             String describing = """
                     parent: make gob! [size: 200x100 color: 10.20.30]
                     append parent make gob! [offset: 5x5 size: 40x40 color: 200.0.0]
@@ -128,7 +128,7 @@ class BrowserScreenFromTheSourceTest {
             interpreter.defineFreshWordsIn(describing);
             GobValue window = (GobValue) interpreter.run(describing).value();
 
-            assertThat(viewer.lastPainted())
+            assertThat(viewer.readTheLastPainted())
                     .isEqualTo(PaintList.ofAWindow(window, null)
                             .calls(TextMeasures.ofTheCarriedFont()));
         }
@@ -136,9 +136,9 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("two windows shown between two looks are one picture, holding both")
         @Timeout(20)
-        void twoWindowsAreOnePicture() {
+        void paintsTwoWindowsAsOnePicture() {
             SomebodyLooking viewer = new SomebodyLooking();
-            Interpreter interpreter = withABrowser(BrowserScreen.seenBy(viewer));
+            Interpreter interpreter = makeAnInterpreterWithABrowser(BrowserScreen.showTo(viewer));
             String opening = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     view/no-wait make gob! [size: 100x100 color: 2.2.2]""";
@@ -149,17 +149,17 @@ class BrowserScreenFromTheSourceTest {
             assertThat(viewer.timesPainted())
                     .as("a page is told the tree as it stands, not once per show")
                     .isEqualTo(1);
-            assertThat(viewer.lastPainted())
-                    .isEqualTo(PaintList.ofTheScreen(root, 800, 600, null)
+            assertThat(viewer.readTheLastPainted())
+                    .isEqualTo(PaintList.ofScreen(root, 800, 600, null)
                             .calls(TextMeasures.ofTheCarriedFont()));
         }
 
         @Test
         @DisplayName("and closing one between two looks is one picture, with what went gone")
         @Timeout(20)
-        void closingIsOnePicture() {
+        void paintsClosingAsOnePicture() {
             SomebodyLooking viewer = new SomebodyLooking();
-            Interpreter interpreter = withABrowser(BrowserScreen.seenBy(viewer));
+            Interpreter interpreter = makeAnInterpreterWithABrowser(BrowserScreen.showTo(viewer));
             String opening = """
                     keep: view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     closing: view/no-wait make gob! [size: 50x50 color: 2.2.2]
@@ -169,19 +169,19 @@ class BrowserScreenFromTheSourceTest {
             GobValue root = (GobValue) interpreter.run("system/view/screen-gob").value();
 
             assertThat(viewer.timesPainted()).isEqualTo(1);
-            assertThat(viewer.lastPainted())
+            assertThat(viewer.readTheLastPainted())
                     .as("the picture the page last gets is the tree as it now stands")
-                    .isEqualTo(PaintList.ofTheScreen(root, 800, 600, null)
+                    .isEqualTo(PaintList.ofScreen(root, 800, 600, null)
                             .calls(TextMeasures.ofTheCarriedFont()));
         }
 
         @Test
         @DisplayName("faces shown while one event is handled are one picture, not three")
         @Timeout(20)
-        void threeShowsInOneEventAreOnePicture() {
+        void paintsThreeShowsInOneEventAsOnePicture() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = BrowserScreen.seenBy(viewer);
-            Interpreter interpreter = withABrowser(screen);
+            BrowserScreen screen = BrowserScreen.showTo(viewer);
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     w: view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     w/offset: 0x0
@@ -203,7 +203,7 @@ class BrowserScreenFromTheSourceTest {
             interpreter.run(setUp);
             int paintedBefore = viewer.timesPainted();
 
-            screen.theBrowserReports(ScreenEventKind.DOWN, new ScreenEventDetail.At(5, 5));
+            screen.report(ScreenEventType.DOWN, new ScreenEventDetail.At(5, 5));
             interpreter.run("wait [system/ports/event 0]");
 
             assertThat(interpreter.display(interpreter.run("times-shown"))).isEqualTo("1");
@@ -217,48 +217,48 @@ class BrowserScreenFromTheSourceTest {
     @DisplayName("what the browser says about itself")
     class TheMeasurements {
 
-        private String whatAPageOf1280By800Says(String asking) {
-            Interpreter interpreter = withABrowser(
-                    BrowserScreen.seenBy(new SomebodyLooking()), 1280, 800);
+        private String describeAPageOf1280By800(String asking) {
+            Interpreter interpreter = makeAnInterpreterWithABrowser(
+                    BrowserScreen.showTo(new SomebodyLooking()), 1280, 800);
             return interpreter.display(interpreter.run(asking));
         }
 
         @Test
         @DisplayName("its viewport is the screen a script measures")
-        void theViewportIsTheScreen() {
-            assertThat(whatAPageOf1280By800Says("gui-metric 'screen-size"))
+        void takeTheViewportAsTheScreen() {
+            assertThat(describeAPageOf1280By800("gui-metric 'screen-size"))
                     .isEqualTo("1280x800");
         }
 
         @Test
         @DisplayName("and there is one of it")
-        void thereIsOneDisplay() {
-            assertThat(whatAPageOf1280By800Says("gui-metric 'screens")).isEqualTo("1");
+        void countOneDisplay() {
+            assertThat(describeAPageOf1280By800("gui-metric 'screens")).isEqualTo("1");
         }
 
         @Test
         @DisplayName("a page has no title bar and no window frame")
         void apageHasNoFurniture() {
-            assertThat(whatAPageOf1280By800Says("gui-metric 'title-size"))
+            assertThat(describeAPageOf1280By800("gui-metric 'title-size"))
                     .isEqualTo("0x0");
-            assertThat(whatAPageOf1280By800Says("gui-metric 'border-size"))
+            assertThat(describeAPageOf1280By800("gui-metric 'border-size"))
                     .isEqualTo("0x0");
         }
 
         @Test
         @DisplayName("and its usable area is the whole of it, which a window's never is")
-        void theWholePageIsUsable() {
-            assertThat(whatAPageOf1280By800Says("gui-metric 'work-size"))
+        void useTheWholePage() {
+            assertThat(describeAPageOf1280By800("gui-metric 'work-size"))
                     .isEqualTo("1280x800");
-            assertThat(whatAPageOf1280By800Says("gui-metric 'work-origin"))
+            assertThat(describeAPageOf1280By800("gui-metric 'work-origin"))
                     .isEqualTo("0x0");
         }
 
         @Test
         @DisplayName("the screen gob is sized to the page, so a centred window centres")
         void thescreenGobFollowsTheViewport() {
-            Interpreter interpreter = withABrowser(
-                    BrowserScreen.seenBy(new SomebodyLooking()), 1280, 800);
+            Interpreter interpreter = makeAnInterpreterWithABrowser(
+                    BrowserScreen.showTo(new SomebodyLooking()), 1280, 800);
 
             assertThat(interpreter.display(interpreter.run(
                     "system/view/screen-gob/size"))).isEqualTo("1280x800");
@@ -267,10 +267,10 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("and it follows the page being resized, not only the first measure")
         void thescreenGobFollowsAResize() {
-            BrowserScreen screen = BrowserScreen.seenBy(new SomebodyLooking());
-            Interpreter interpreter = withABrowser(screen, 1280, 800);
+            BrowserScreen screen = BrowserScreen.showTo(new SomebodyLooking());
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen, 1280, 800);
 
-            screen.theBrowserMeasures(640, 480);
+            screen.measure(640, 480);
 
             assertThat(interpreter.display(interpreter.run(
                     "system/view/screen-gob/size")))
@@ -281,8 +281,8 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("a browser that never said how big it is gets zeros")
         void abrowserThatNeverSaidGetsZeros() {
-            Interpreter interpreter = withASilentBrowser(
-                    BrowserScreen.seenBy(new SomebodyLooking()));
+            Interpreter interpreter = makeAnInterpreterWithASilentBrowser(
+                    BrowserScreen.showTo(new SomebodyLooking()));
 
             assertThat(interpreter.display(interpreter.run("gui-metric 'screen-size")))
                     .isEqualTo("0x0");
@@ -291,13 +291,13 @@ class BrowserScreenFromTheSourceTest {
 
     @Nested
     @DisplayName("a measurement the page posted is taken by the interpreter, not applied where it arrives")
-    class TheTakingOfAMeasurement {
+    class TheTakingOfAScreenMeasurement {
 
         @Test
         @DisplayName("nothing changes until the interpreter looks, and a look takes what was posted")
-        void nothingChangesUntilTheInterpreterLooks() {
-            BrowserScreen screen = BrowserScreen.seenBy(new SomebodyLooking());
-            Interpreter interpreter = withABrowser(screen, 640, 480);
+        void changesNothingUntilTheInterpreterLooks() {
+            BrowserScreen screen = BrowserScreen.showTo(new SomebodyLooking());
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen, 640, 480);
 
             assertThat(screen.measure(ScreenMetric.SCREEN_SIZE, 0))
                     .as("the measurement is queued, and the interpreter has not looked yet")
@@ -311,10 +311,10 @@ class BrowserScreenFromTheSourceTest {
 
         @Test
         @DisplayName("the last measurement posted before a take is the one taken")
-        void theLastMeasurementPostedWins() {
-            BrowserScreen screen = BrowserScreen.seenBy(new SomebodyLooking());
-            Interpreter interpreter = withABrowser(screen, 640, 480);
-            screen.theBrowserMeasures(100, 50);
+        void keepsTheLastMeasurementPosted() {
+            BrowserScreen screen = BrowserScreen.showTo(new SomebodyLooking());
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen, 640, 480);
+            screen.measure(100, 50);
 
             assertThat(interpreter.run("1").succeeded()).isTrue();
 
@@ -324,12 +324,12 @@ class BrowserScreenFromTheSourceTest {
 
         @Test
         @DisplayName("a posting that cannot be a size is dropped, and the taken viewport stands")
-        void aPostingThatCannotBeASizeIsDropped() {
-            BrowserScreen screen = BrowserScreen.seenBy(new SomebodyLooking());
-            Interpreter interpreter = withABrowser(screen, 640, 480);
+        void dropsAPostingThatCannotBeASize() {
+            BrowserScreen screen = BrowserScreen.showTo(new SomebodyLooking());
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen, 640, 480);
             interpreter.run("1");
 
-            screen.theBrowserMeasures(-1, 480);
+            screen.measure(-1, 480);
 
             assertThat(interpreter.run("1").succeeded()).isTrue();
             assertThat(screen.measure(ScreenMetric.SCREEN_SIZE, 0))
@@ -339,24 +339,24 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @Timeout(value = 20, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
         @DisplayName("a resize arriving while the script waits is taken at the next take, inside the wait")
-        void aResizeWhileWaitingIsTaken() throws Exception {
-            BrowserScreen screen = BrowserScreen.seenBy(new SomebodyLooking());
+        void takesAResizeWhileWaiting() throws Exception {
+            BrowserScreen screen = BrowserScreen.showTo(new SomebodyLooking());
             Interpreter interpreter = Interpreter.withBounds(
                     Bounds.standard().grant(HostService.WINDOWS));
             interpreter.useScreen(screen);
-            screen.theBrowserMeasures(800, 600);
+            screen.measure(800, 600);
             interpreter.run("view/no-wait make gob! [size: 100x100 color: 1.1.1]");
 
             AScriptOnItsOwnThread waiting = new AScriptOnItsOwnThread(interpreter, "do-events");
-            screen.theBrowserMeasures(640, 480);
+            screen.measure(640, 480);
 
-            untilTheViewportIs(screen, 640, 480);
+            waitUntilTheViewportIs(screen, 640, 480);
             interpreter.cancel();
             assertThat(waiting.outcomeWithin(Duration.ofSeconds(5)).conclusion())
                     .isEqualTo(Conclusion.CANCELLED);
         }
 
-        private void untilTheViewportIs(BrowserScreen screen, int wide, int high) {
+        private void waitUntilTheViewportIs(BrowserScreen screen, int wide, int high) {
             long givenUpAt = System.nanoTime() + Duration.ofSeconds(10).toNanos();
             while (!screen.measure(ScreenMetric.SCREEN_SIZE, 0).equals(PairValue.of(wide, high))) {
                 if (System.nanoTime() > givenUpAt) {
@@ -374,16 +374,16 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("the screen says it has no display")
         void ithasNoDisplay() {
-            assertThat(BrowserScreen.seenBy(SomebodyLooking.whoNeverArrived())
-                    .hasADisplay()).isFalse();
+            assertThat(BrowserScreen.showTo(SomebodyLooking.makeOneWhoNeverArrived())
+                    .hasDisplay()).isFalse();
         }
 
         @Test
         @DisplayName("showing refuses, and says the screen is not present")
         @Timeout(20)
-        void showingRefuses() {
+        void refusesToShow() {
             assertThat(sessionOn(
-                    BrowserScreen.seenBy(SomebodyLooking.whoNeverArrived()), """
+                    BrowserScreen.showTo(SomebodyLooking.makeOneWhoNeverArrived()), """
                     e: try [view/no-wait make gob! [size: 100x100]]
                     either error? e [form e/arg1] ["no error at all"]"""))
                     .as("a host serving a page nobody has opened is a machine "
@@ -396,7 +396,7 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void thelibraryStillLoaded() {
             assertThat(sessionOn(
-                    BrowserScreen.seenBy(SomebodyLooking.whoNeverArrived()),
+                    BrowserScreen.showTo(SomebodyLooking.makeOneWhoNeverArrived()),
                     "gob? system/view/screen-gob")).isEqualTo(TRUE);
         }
 
@@ -405,8 +405,8 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void abrowserThatLeavesTakesTheScreen() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = BrowserScreen.seenBy(viewer);
-            Interpreter interpreter = withABrowser(screen);
+            BrowserScreen screen = BrowserScreen.showTo(viewer);
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String script = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]""";
             interpreter.defineFreshWordsIn(script);
@@ -428,8 +428,8 @@ class BrowserScreenFromTheSourceTest {
         @Timeout(20)
         void aneventJoinsTheSameQueue() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = BrowserScreen.seenBy(viewer);
-            Interpreter interpreter = withABrowser(screen);
+            BrowserScreen screen = BrowserScreen.showTo(viewer);
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     w: view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     seen: copy []
@@ -441,8 +441,8 @@ class BrowserScreenFromTheSourceTest {
             interpreter.defineFreshWordsIn(setUp);
             interpreter.run(setUp);
 
-            screen.theBrowserReports(ScreenEventKind.DOWN, new ScreenEventDetail.At(5, 5));
-            screen.theBrowserReports(ScreenEventKind.CLOSE, new ScreenEventDetail.NothingMore());
+            screen.report(ScreenEventType.DOWN, new ScreenEventDetail.At(5, 5));
+            screen.report(ScreenEventType.CLOSE, new ScreenEventDetail.NothingMore());
             interpreter.run("do-events");
 
             assertThat(interpreter.display(interpreter.run("mold seen")))
@@ -454,16 +454,16 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("and a close from the browser ends a waiting script")
         @Timeout(20)
-        void aCloseEndsAWaitingScript() {
+        void endAWaitingScriptOnClose() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = BrowserScreen.seenBy(viewer);
-            Interpreter interpreter = withABrowser(screen);
+            BrowserScreen screen = BrowserScreen.showTo(viewer);
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String opening = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]""";
             interpreter.defineFreshWordsIn(opening);
             interpreter.run(opening);
 
-            screen.theBrowserReports(ScreenEventKind.CLOSE, new ScreenEventDetail.NothingMore());
+            screen.report(ScreenEventType.CLOSE, new ScreenEventDetail.NothingMore());
             interpreter.run("do-events");
 
             assertThat(interpreter.display(interpreter.run(
@@ -476,10 +476,10 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("a handler reads where a click was, counted from its window's top left as on a desktop")
         @Timeout(20)
-        void aHandlerReadsWhereTheClickWas() {
+        void tellAHandlerWhereTheClickWas() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = BrowserScreen.seenBy(viewer);
-            Interpreter interpreter = withABrowser(screen);
+            BrowserScreen screen = BrowserScreen.showTo(viewer);
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     system/view/screen-gob/1/offset: 30x40
@@ -492,8 +492,8 @@ class BrowserScreenFromTheSourceTest {
             interpreter.defineFreshWordsIn(setUp);
             interpreter.run(setUp);
 
-            screen.theBrowserReports(ScreenEventKind.DOWN, new ScreenEventDetail.At(35, 47));
-            screen.theBrowserReports(ScreenEventKind.CLOSE, new ScreenEventDetail.NothingMore());
+            screen.report(ScreenEventType.DOWN, new ScreenEventDetail.At(35, 47));
+            screen.report(ScreenEventType.CLOSE, new ScreenEventDetail.NothingMore());
             interpreter.run("do-events");
 
             assertThat(interpreter.display(interpreter.run("first seen"))).isEqualTo("5x7");
@@ -502,10 +502,10 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("with two windows open, a click reaches only the window it landed on")
         @Timeout(20)
-        void aClickReachesOnlyTheWindowItLandedOn() {
+        void reachOnlyTheWindowAClickLandedOn() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = BrowserScreen.seenBy(viewer);
-            Interpreter interpreter = withABrowser(screen);
+            BrowserScreen screen = BrowserScreen.showTo(viewer);
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     left: view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     left/offset: 0x0
@@ -526,10 +526,10 @@ class BrowserScreenFromTheSourceTest {
             interpreter.defineFreshWordsIn(setUp);
             interpreter.run(setUp);
 
-            screen.theBrowserReports(ScreenEventKind.DOWN, new ScreenEventDetail.At(250, 50));
-            screen.theBrowserReports(ScreenEventKind.UP, new ScreenEventDetail.At(250, 50));
-            screen.theBrowserReports(ScreenEventKind.DOWN, new ScreenEventDetail.At(50, 50));
-            screen.theBrowserReports(ScreenEventKind.DOWN, new ScreenEventDetail.At(150, 50));
+            screen.report(ScreenEventType.DOWN, new ScreenEventDetail.At(250, 50));
+            screen.report(ScreenEventType.UP, new ScreenEventDetail.At(250, 50));
+            screen.report(ScreenEventType.DOWN, new ScreenEventDetail.At(50, 50));
+            screen.report(ScreenEventType.DOWN, new ScreenEventDetail.At(150, 50));
             interpreter.run("wait [system/ports/event 0]");
 
             assertThat(interpreter.display(interpreter.run("seen")))
@@ -539,10 +539,10 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("a click is judged against where the windows stand when the script takes it, not when the page posted it")
         @Timeout(20)
-        void aClickIsJudgedWhenTaken() {
+        void judgeAClickWhenTaken() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = BrowserScreen.seenBy(viewer);
-            Interpreter interpreter = withABrowser(screen);
+            BrowserScreen screen = BrowserScreen.showTo(viewer);
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     w: view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     w/offset: 0x0
@@ -555,7 +555,7 @@ class BrowserScreenFromTheSourceTest {
             interpreter.defineFreshWordsIn(setUp);
             interpreter.run(setUp);
 
-            screen.theBrowserReports(ScreenEventKind.DOWN, new ScreenEventDetail.At(450, 450));
+            screen.report(ScreenEventType.DOWN, new ScreenEventDetail.At(450, 450));
             interpreter.run("w/offset: 400x400");
             interpreter.run("wait [system/ports/event 0]");
 
@@ -565,10 +565,10 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("a gob put in the screen's pane but never shown has no window, so a click on it reaches nothing")
         @Timeout(20)
-        void aGobNeverShownTakesNoClick() {
+        void giveNoClickToAGobNeverShown() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = BrowserScreen.seenBy(viewer);
-            Interpreter interpreter = withABrowser(screen);
+            BrowserScreen screen = BrowserScreen.showTo(viewer);
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     append system/view/screen-gob make gob! [offset: 0x0 size: 100x100]
                     seen: copy []
@@ -580,7 +580,7 @@ class BrowserScreenFromTheSourceTest {
             interpreter.defineFreshWordsIn(setUp);
             interpreter.run(setUp);
 
-            screen.theBrowserReports(ScreenEventKind.DOWN, new ScreenEventDetail.At(50, 50));
+            screen.report(ScreenEventType.DOWN, new ScreenEventDetail.At(50, 50));
             interpreter.run("wait [system/ports/event 0]");
 
             assertThat(interpreter.display(interpreter.run("seen"))).isEqualTo("[]");
@@ -589,10 +589,10 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @DisplayName("closing the page closes every window on it, each window hearing its own close")
         @Timeout(value = 20, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
-        void closingThePageClosesEveryWindow() {
+        void closeEveryWindowWhenThePageCloses() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = BrowserScreen.seenBy(viewer);
-            Interpreter interpreter = withABrowser(screen);
+            BrowserScreen screen = BrowserScreen.showTo(viewer);
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     first-window: view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     second-window: view/no-wait make gob! [size: 100x100 color: 2.2.2]
@@ -616,7 +616,7 @@ class BrowserScreenFromTheSourceTest {
             interpreter.defineFreshWordsIn(setUp);
             interpreter.run(setUp);
 
-            screen.theBrowserReports(ScreenEventKind.CLOSE, new ScreenEventDetail.NothingMore());
+            screen.report(ScreenEventType.CLOSE, new ScreenEventDetail.NothingMore());
             interpreter.run("do-events");
 
             assertThat(interpreter.display(interpreter.run("seen"))).isEqualTo("[close first close second]");
@@ -626,10 +626,10 @@ class BrowserScreenFromTheSourceTest {
         @Test
         @Timeout(20)
         @DisplayName("a resize or an offset posted from the page names no window and reaches nothing")
-        void aResizeOrAnOffsetPostedReachesNothing() {
+        void deliverNoPostedResizeOrOffset() {
             SomebodyLooking viewer = new SomebodyLooking();
-            BrowserScreen screen = BrowserScreen.seenBy(viewer);
-            Interpreter interpreter = withABrowser(screen);
+            BrowserScreen screen = BrowserScreen.showTo(viewer);
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
             String setUp = """
                     w: view/no-wait make gob! [size: 100x100 color: 1.1.1]
                     seen: copy []
@@ -641,8 +641,8 @@ class BrowserScreenFromTheSourceTest {
             interpreter.defineFreshWordsIn(setUp);
             interpreter.run(setUp);
 
-            screen.theBrowserReports(ScreenEventKind.RESIZE, new ScreenEventDetail.NothingMore());
-            screen.theBrowserReports(ScreenEventKind.OFFSET, new ScreenEventDetail.NothingMore());
+            screen.report(ScreenEventType.RESIZE, new ScreenEventDetail.NothingMore());
+            screen.report(ScreenEventType.OFFSET, new ScreenEventDetail.NothingMore());
             interpreter.run("wait [system/ports/event 0]");
 
             assertThat(interpreter.display(interpreter.run("mold seen"))).isEqualTo("\"[]\"");
@@ -653,12 +653,12 @@ class BrowserScreenFromTheSourceTest {
     @DisplayName("a wait on a window nobody closes")
     class AWaitNobodyEnds {
 
-        private final BrowserScreen screen = BrowserScreen.seenBy(new SomebodyLooking());
+        private final BrowserScreen screen = BrowserScreen.showTo(new SomebodyLooking());
 
-        private Interpreter withAWindowOpenUnder(Bounds bounds) {
+        private Interpreter openAWindowUnder(Bounds bounds) {
             Interpreter interpreter = Interpreter.withBounds(bounds.grant(HostService.WINDOWS));
             interpreter.useScreen(screen);
-            screen.theBrowserMeasures(800, 600);
+            screen.measure(800, 600);
             String opening = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]""";
             interpreter.defineFreshWordsIn(opening);
@@ -671,8 +671,8 @@ class BrowserScreenFromTheSourceTest {
         @DisplayName("is ended by the run's deadline, and the run says it timed out")
         @Timeout(value = 20, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
         void isEndedByTheDeadline(String waiting) {
-            Interpreter interpreter = withAWindowOpenUnder(
-                    Bounds.standard().withWallClockLimit(Duration.ofMillis(300)));
+            Interpreter interpreter = openAWindowUnder(
+                    Bounds.standard().withTimeLimit(Duration.ofMillis(300)));
 
             ScriptOutcome outcome = interpreter.run(waiting);
 
@@ -685,10 +685,10 @@ class BrowserScreenFromTheSourceTest {
         @DisplayName("is ended by the host cancelling the run, and the run says it was cancelled")
         @Timeout(value = 20, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
         void isEndedByTheHostCancelling() throws Exception {
-            Interpreter interpreter = withAWindowOpenUnder(Bounds.standard());
+            Interpreter interpreter = openAWindowUnder(Bounds.standard());
             AScriptOnItsOwnThread waiting = new AScriptOnItsOwnThread(interpreter, "do-events");
 
-            waiting.untilItIsParkedInsideTheWait();
+            waiting.waitUntilItIsParkedInsideTheWait();
             interpreter.cancel();
 
             assertThat(waiting.outcomeWithin(Duration.ofSeconds(5)).conclusion()).isEqualTo(Conclusion.CANCELLED);
@@ -698,14 +698,14 @@ class BrowserScreenFromTheSourceTest {
         @DisplayName("is ended when the thread running it is interrupted, rather than spinning")
         @Timeout(value = 20, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
         void isEndedByAnInterrupt() throws Exception {
-            Interpreter interpreter = withAWindowOpenUnder(Bounds.standard());
+            Interpreter interpreter = openAWindowUnder(Bounds.standard());
             AScriptOnItsOwnThread waiting = new AScriptOnItsOwnThread(interpreter, "do-events");
 
-            waiting.untilItIsParkedInsideTheWait();
+            waiting.waitUntilItIsParkedInsideTheWait();
             waiting.interrupt();
 
             assertThat(waiting.outcomeWithin(Duration.ofSeconds(5)).conclusion())
-                    .isEqualTo(Conclusion.PRODUCED_A_VALUE);
+                    .isEqualTo(Conclusion.PRODUCED_VALUE);
         }
     }
 
@@ -718,7 +718,7 @@ class BrowserScreenFromTheSourceTest {
             running = Thread.ofPlatform().start(() -> outcome.complete(interpreter.run(source)));
         }
 
-        void untilItIsParkedInsideTheWait() {
+        void waitUntilItIsParkedInsideTheWait() {
             while (running.getState() != Thread.State.TIMED_WAITING) {
                 assertThat(outcome).as("the script ended before it was ever inside the wait").isNotDone();
                 Thread.onSpinWait();

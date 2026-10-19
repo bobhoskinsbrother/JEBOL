@@ -29,7 +29,7 @@ class AWaitsTimeIsPassedByTheHostTest {
         }
     }
 
-    private static Interpreter withThePause(ARecordedPause pause) {
+    private static Interpreter makeAnInterpreterWithThePause(ARecordedPause pause) {
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard());
         interpreter.usePause(pause);
         return interpreter;
@@ -37,9 +37,9 @@ class AWaitsTimeIsPassedByTheHostTest {
 
     @Test
     @DisplayName("a wait asks the host for its whole time, a slice at a time")
-    void theWholeTimeIsAskedForASliceAtATime() {
+    void asksForTheWholeTimeASliceAtATime() {
         ARecordedPause pause = new ARecordedPause(true);
-        Interpreter interpreter = withThePause(pause);
+        Interpreter interpreter = makeAnInterpreterWithThePause(pause);
 
         String answer = interpreter.display(interpreter.run("wait 0.25"));
 
@@ -49,9 +49,9 @@ class AWaitsTimeIsPassedByTheHostTest {
 
     @Test
     @DisplayName("a slice is never longer than fifty milliseconds")
-    void noSliceIsLongerThanFiftyMilliseconds() {
+    void keepsEverySliceWithinFiftyMilliseconds() {
         ARecordedPause pause = new ARecordedPause(true);
-        Interpreter interpreter = withThePause(pause);
+        Interpreter interpreter = makeAnInterpreterWithThePause(pause);
 
         interpreter.run("wait 0.07");
 
@@ -60,9 +60,9 @@ class AWaitsTimeIsPassedByTheHostTest {
 
     @Test
     @DisplayName("a host that will not let the time pass ends the wait there")
-    void aPauseThatDoesNotHappenEndsTheWait() {
+    void endsTheWaitWhenAPauseDoesNotHappen() {
         ARecordedPause pause = new ARecordedPause(false);
-        Interpreter interpreter = withThePause(pause);
+        Interpreter interpreter = makeAnInterpreterWithThePause(pause);
 
         String answer = interpreter.display(interpreter.run("wait 1"));
 
@@ -73,7 +73,7 @@ class AWaitsTimeIsPassedByTheHostTest {
     @Test
     @Timeout(20)
     @DisplayName("an interpreter given no pause still lets the time pass on its own thread")
-    void theBuiltInPauseLetsTheTimePass() {
+    void letsTheTimePassWithTheBuiltInPause() {
         Interpreter interpreter = Interpreter.create();
 
         long started = System.nanoTime();

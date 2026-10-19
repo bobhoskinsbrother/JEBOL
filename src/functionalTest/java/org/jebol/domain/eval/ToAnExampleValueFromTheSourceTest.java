@@ -41,7 +41,7 @@ class ToAnExampleValueFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and a word keeps the kind of word the example was")
+        @DisplayName("and a word keeps the type of word the example was")
         void theWordTypes() {
             assertThat(answerTo("""
                     reduce [to 'a "b" to first [a:] "b" to first [:a] "b"]"""))

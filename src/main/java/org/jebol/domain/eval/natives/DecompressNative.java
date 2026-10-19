@@ -55,10 +55,10 @@ public class DecompressNative extends CompressionNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("data", Set.of(BinaryValue.TYPE)),
-                Parameter.required("method", Set.of(WordValue.TYPE)),
-                Parameter.belongingTo("part", "length", aCountOrPosition()),
-                Parameter.belongingTo("size", "bytes", Set.of(IntegerValue.TYPE)));
+                Parameter.of("data", Set.of(BinaryValue.TYPE)),
+                Parameter.of("method", Set.of(WordValue.TYPE)),
+                Parameter.belongTo("part", "length", acceptACountOrPosition()),
+                Parameter.belongTo("size", "bytes", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -69,21 +69,21 @@ public class DecompressNative extends CompressionNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            String method = aKnownCompression(arguments.get(1));
+            String method = readAKnownCompression(arguments.get(1));
             Value data = arguments.getFirst();
-            int wanted = argumentOf("size", 0, arguments, refinements)
-                    .map(this::aSizeAboveNothing)
+            int wanted = readTheArgumentOf("size", 0, arguments, refinements)
+                    .map(this::readASizeAboveNothing)
                     .orElse(AS_MUCH_AS_IT_HOLDS);
-            byte[] compressed = octetsWithinAnyPart(data, arguments, refinements);
+            byte[] compressed = readTheOctetsWithinAnyPart(data, arguments, refinements);
             if ("crush".equals(method) && compressed.length < CRUSH_LENGTH_FIELD) {
                 throw Raised.of(EvaluationFailure.BAD_PRESS, arguments.get(1));
             }
             return BinaryValue.ofBytes(ofTheSizeAsked(
-                    decompressedOrRefused(compressed, method, wanted), method, wanted));
+                    decompressOrRefuse(compressed, method, wanted), method, wanted));
         };
     }
 
-    private int aSizeAboveNothing(Value asked) {
+    private int readASizeAboveNothing(Value asked) {
         long size = ((IntegerValue) asked).magnitude();
         if (size < 1 || size > Integer.MAX_VALUE) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, asked);
@@ -91,9 +91,9 @@ public class DecompressNative extends CompressionNative {
         return (int) size;
     }
 
-    private byte[] decompressedOrRefused(byte[] compressed, String method, int wanted) {
+    private byte[] decompressOrRefuse(byte[] compressed, String method, int wanted) {
         try {
-            return encodings.decompressed(compressed, method, wanted);
+            return encodings.decompress(compressed, method, wanted);
         } catch (IllegalArgumentException unreadable) {
             throw Raised.of(EvaluationFailure.BAD_PRESS,
                     IntegerValue.of(WHAT_EACH_METHOD_REPORTS_OF_DATA_IT_CANNOT_READ.get(method)));

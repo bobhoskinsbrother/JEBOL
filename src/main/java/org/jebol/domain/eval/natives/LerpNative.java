@@ -23,11 +23,11 @@ public class LerpNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
                 arguments.get(0).partWayTo(arguments.get(1),
-                        heldInsideTheJourney(
+                        holdInsideTheJourney(
                                 Comparison.asDouble(arguments.get(2))));
     }
 
-    private double heldInsideTheJourney(double asked) {
+    private double holdInsideTheJourney(double asked) {
         return Math.max(0, Math.min(1, asked));
     }
 }

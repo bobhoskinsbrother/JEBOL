@@ -23,8 +23,8 @@ final class BrotliMetaBlock {
     private static final int[] SPACE_THEN_ANYTHING_ELSE_THEN_A_CONTINUATION_BYTE =
             {0, 0, 1, 2};
 
-    private static final int[] TWO_CONTEXTS = contextMapOf(0, 0, 1, 1);
-    private static final int[] THREE_CONTEXTS = contextMapOf(1, 1, 2, 2);
+    private static final int[] TWO_CONTEXTS = makeTheContextMapOf(0, 0, 1, 1);
+    private static final int[] THREE_CONTEXTS = makeTheContextMapOf(1, 1, 2, 2);
 
     private static final int INPUT_LARGE_ENOUGH_FOR_THIRTEEN_CONTEXTS = 1 << 20;
     private static final int THIRTEEN_CONTEXTS_COUNT = 13;
@@ -51,8 +51,8 @@ final class BrotliMetaBlock {
     private BrotliMetaBlock() {
     }
 
-    private static int[] contextMapOf(int first, int second, int third,
-            int fourth) {
+    private static int[] makeTheContextMapOf(int first, int second, int third,
+                                             int fourth) {
 
         int[] map = new int[1 << LITERAL_CONTEXT_BITS];
         map[0] = first;
@@ -62,15 +62,15 @@ final class BrotliMetaBlock {
         return map;
     }
 
-    static int[] contextMapFor(byte[] data, int mask, int from, int length,
-            int quality, int howMuchInputThereIs) {
+    static int[] chooseTheContextMapFor(byte[] data, int mask, int from, int length,
+                                        int quality, int howMuchInputThereIs) {
 
         if (quality < QUALITY_THAT_FIRST_MODELS_CONTEXT
                 || length < SHORTEST_INPUT_WORTH_CONTEXT_MODELLING) {
             return null;
         }
         if (howMuchInputThereIs >= INPUT_LARGE_ENOUGH_FOR_THIRTEEN_CONTEXTS
-                && thirteenContextsAreWorthIt(data, mask, from, length)) {
+                && areThirteenContextsWorthIt(data, mask, from, length)) {
             return THIRTEEN_CONTEXTS;
         }
         int[] pairs = new int[9];
@@ -88,8 +88,8 @@ final class BrotliMetaBlock {
         return chooseContextMap(quality, pairs);
     }
 
-    private static boolean thirteenContextsAreWorthIt(byte[] data, int mask,
-            int from, int length) {
+    private static boolean areThirteenContextsWorthIt(byte[] data, int mask,
+                                                      int from, int length) {
 
         int[] regardless = new int[32];
         int[] byContext = new int[THIRTEEN_CONTEXTS_COUNT << 5];
@@ -114,10 +114,10 @@ final class BrotliMetaBlock {
         if (total == 0) {
             return false;
         }
-        double withNoContext = estimatedEntropy(regardless, 0, 32);
+        double withNoContext = estimateTheEntropy(regardless, 0, 32);
         double withContexts = 0;
         for (int context = 0; context < THIRTEEN_CONTEXTS_COUNT; context++) {
-            withContexts += estimatedEntropy(byContext, context << 5, 32);
+            withContexts += estimateTheEntropy(byContext, context << 5, 32);
         }
         double perSymbol = 1.0 / (double) total;
         withNoContext *= perSymbol;
@@ -133,12 +133,12 @@ final class BrotliMetaBlock {
             alone[which % 3] += pairs[which];
             byWhatCameBefore[which % 6] += pairs[which];
         }
-        double withNoContext = estimatedEntropy(alone, 0, 3);
-        double withTwoContexts = estimatedEntropy(byWhatCameBefore, 0, 3)
-                + estimatedEntropy(byWhatCameBefore, 3, 3);
+        double withNoContext = estimateTheEntropy(alone, 0, 3);
+        double withTwoContexts = estimateTheEntropy(byWhatCameBefore, 0, 3)
+                + estimateTheEntropy(byWhatCameBefore, 3, 3);
         double withThreeContexts = 0;
         for (int which = 0; which < 3; which++) {
-            withThreeContexts += estimatedEntropy(pairs, 3 * which, 3);
+            withThreeContexts += estimateTheEntropy(pairs, 3 * which, 3);
         }
 
         long total = alone[0] + alone[1] + alone[2];
@@ -161,25 +161,25 @@ final class BrotliMetaBlock {
         return THREE_CONTEXTS;
     }
 
-    private static double estimatedEntropy(int[] population, int at, int size) {
+    private static double estimateTheEntropy(int[] population, int at, int size) {
         long total = 0;
         double answer = 0;
         for (int each = 0; each < size; each++) {
             int count = population[at + each];
             total += count;
-            answer += (double) count * BrotliCodes.fastLog2(count);
+            answer += (double) count * BrotliCodes.computeLog2Quickly(count);
         }
-        return (double) total * BrotliCodes.fastLog2(total) - answer;
+        return (double) total * BrotliCodes.computeLog2Quickly(total) - answer;
     }
 
-    static BrotliMetaBlockSplit builtGreedily(byte[] ringBuffer, int mask,
+    static BrotliMetaBlockSplit buildGreedily(byte[] ringBuffer, int mask,
                                               int from, int previousByte, int theByteBeforeThat,
                                               int[] contextMap, BrotliCommand commands, BrotliDistances distances) {
 
         BrotliMetaBlockSplit built = new BrotliMetaBlockSplit();
         int howManyContexts = contextMap == null
                 ? 1
-                : highestIn(contextMap) + 1;
+                : findTheHighestIn(contextMap) + 1;
         int howManyLiterals = 0;
         for (int which = 0; which < commands.count(); which++) {
             howManyLiterals += commands.insertLengthAt(which);
@@ -207,7 +207,7 @@ final class BrotliMetaBlock {
         int previous = previousByte;
         int beforeThat = theByteBeforeThat;
         for (int which = 0; which < commands.count(); which++) {
-            commandSymbols.add(commands.commandPrefixAt(which));
+            commandSymbols.add(commands.readTheCommandPrefixAt(which));
             for (int left = commands.insertLengthAt(which); left != 0; left--) {
                 int literal = ringBuffer[at & mask] & 0xFF;
                 if (howManyContexts == 1) {
@@ -226,8 +226,8 @@ final class BrotliMetaBlock {
             if (copyLength != 0) {
                 beforeThat = ringBuffer[(at - 2) & mask] & 0xFF;
                 previous = ringBuffer[(at - 1) & mask] & 0xFF;
-                if (commands.commandPrefixAt(which) >= 128) {
-                    distanceSymbols.add(commands.distancePrefixAt(which) & 0x3FF);
+                if (commands.readTheCommandPrefixAt(which) >= 128) {
+                    distanceSymbols.add(commands.readTheDistancePrefixAt(which) & 0x3FF);
                 }
             }
         }
@@ -235,28 +235,28 @@ final class BrotliMetaBlock {
         if (howManyContexts == 1) {
             plainLiterals.finishBlock(true);
             built.literalHistograms = plainLiterals.histograms();
-            built.howManyLiteralHistograms = plainLiterals.howManyHistogramsAreUsed();
+            built.howManyLiteralHistograms = plainLiterals.countTheHistogramsUsed();
         } else {
             literalsByContext.finishBlock(true);
             built.literalHistograms = literalsByContext.histograms();
             built.howManyLiteralHistograms =
-                    literalsByContext.howManyHistogramsAreUsed();
+                    literalsByContext.countTheHistogramsUsed();
             built.literalContextMap = spreadOverBlockTypes(contextMap,
-                    howManyContexts, built.literals.howManyTypes());
+                    howManyContexts, built.literals.countTheTypes());
         }
         commandSymbols.finishBlock(true);
         built.commandHistograms = commandSymbols.histograms();
-        built.howManyCommandHistograms = commandSymbols.howManyHistogramsAreUsed();
+        built.howManyCommandHistograms = commandSymbols.countTheHistogramsUsed();
         distanceSymbols.finishBlock(true);
         built.distanceHistograms = distanceSymbols.histograms();
         built.howManyDistanceHistograms =
-                distanceSymbols.howManyHistogramsAreUsed();
+                distanceSymbols.countTheHistogramsUsed();
 
         optimiseHistogramsForRuns(built, distances.alphabetSize());
         return built;
     }
 
-    private static int highestIn(int[] map) {
+    private static int findTheHighestIn(int[] map) {
         int highest = 0;
         for (int each : map) {
             highest = Math.max(highest, each);

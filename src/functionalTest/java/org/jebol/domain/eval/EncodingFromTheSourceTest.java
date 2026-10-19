@@ -15,7 +15,7 @@ class EncodingFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -27,13 +27,13 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("a character the target will not carry becomes a percent escape")
-        void aSpaceBecomesAnEscape() {
+        void escapesASpace() {
             assertThat(answerTo("enhex \"a b\"")).isEqualTo("\"a%20b\"");
         }
 
         @Test
         @DisplayName("and one it will carry is left alone")
-        void aLetterIsLeftAlone() {
+        void leavesALetterAlone() {
             assertThat(answerTo("enhex \"abc\"")).isEqualTo("\"abc\"");
         }
 
@@ -45,21 +45,21 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("a percent sign that is not an escape stands for itself")
-        void aLonePercentStandsForItself() {
+        void leavesALonePercentAsItself() {
             assertThat(answerTo("dehex \"100%\"")).isEqualTo("\"100%\"");
             assertThat(answerTo("dehex \"a%zz\"")).isEqualTo("\"a%zz\"");
         }
 
         @Test
         @DisplayName("the two are inverses over every byte")
-        void theyAreInverses() {
+        void isUndoneByDecoding() {
             assertThat(answerTo(
                     "s: \"a b/c?d=e&f%g\" (dehex enhex s) = s")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a file and a url keep the characters a path needs")
-        void aUrlKeepsItsPunctuation() {
+        void keepsAUrlsPunctuation() {
             assertThat(answerTo("enhex http://a.com/b")).isEqualTo("http://a.com/b");
         }
 
@@ -80,7 +80,7 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("/URI spells a space as a plus, or an underscore after =")
-        void theUriFormSpellsASpaceSpecially() {
+        void spellsASpaceSpeciallyInTheUriForm() {
             assertThat(answerTo("enhex/uri \"a b\"")).isEqualTo("\"a+b\"");
             assertThat(answerTo("enhex/uri/escape \"a b\" #\"=\"")).isEqualTo("\"a_b\"");
             assertThat(answerTo("dehex/uri \"a+b\"")).isEqualTo("\"a b\"");
@@ -88,14 +88,14 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("a binary is encoded byte by byte, and answers a binary")
-        void aBinaryIsEncodedByteByByte() {
+        void encodesABinaryByteByByte() {
             assertThat(answerTo("enhex #{4142}")).isEqualTo("#{4142}");
             assertThat(answerTo("enhex #{00FF}")).isEqualTo("#{253030254646}");
         }
 
         @Test
         @DisplayName("a character above ASCII becomes its UTF-8 bytes, one escape each")
-        void aWideCharacterBecomesItsBytes() {
+        void encodesAWideCharacterAsItsBytes() {
             assertThat(answerTo("enhex \"é\"")).isEqualTo("\"%C3%A9\"");
         }
     }
@@ -106,35 +106,35 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("base 16 is hexadecimal")
-        void base16() {
+        void encodeBase16() {
             assertThat(answerTo("enbase/flat #{DECAFBAD} 16")).isEqualTo("\"DECAFBAD\"");
             assertThat(answerTo("debase \"DECAFBAD\" 16")).isEqualTo("#{DECAFBAD}");
         }
 
         @Test
         @DisplayName("base 2 is bits")
-        void base2() {
+        void encodeBase2() {
             assertThat(answerTo("enbase/flat #{01} 2")).isEqualTo("\"00000001\"");
             assertThat(answerTo("debase \"00000001\" 2")).isEqualTo("#{01}");
         }
 
         @Test
         @DisplayName("base 64 is what a URL and an email carry")
-        void base64() {
+        void encodeBase64() {
             assertThat(answerTo("enbase/flat #{414243} 64")).isEqualTo("\"QUJD\"");
             assertThat(answerTo("debase \"QUJD\" 64")).isEqualTo("#{414243}");
         }
 
         @Test
         @DisplayName("base 64 pads to a multiple of four")
-        void base64Pads() {
+        void padBase64() {
             assertThat(answerTo("enbase/flat #{41} 64")).isEqualTo("\"QQ==\"");
             assertThat(answerTo("debase \"QQ==\" 64")).isEqualTo("#{41}");
         }
 
         @Test
         @DisplayName("/URL is base 64 with the filename-safe alphabet")
-        void base64Url() {
+        void encodeBase64Url() {
             assertThat(answerTo("find enbase/flat/url #{FBFF} 64 \"_\"")).isNotEqualTo("_");
             assertThat(answerTo("debase/url enbase/flat/url #{FBFF} 64 64"))
                     .isEqualTo("#{FBFF}");
@@ -142,13 +142,13 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("a string is encoded as its UTF-8 bytes")
-        void aStringIsItsBytes() {
+        void encodeAStringAsItsBytes() {
             assertThat(answerTo("enbase/flat \"ABC\" 64")).isEqualTo("\"QUJD\"");
         }
 
         @Test
         @DisplayName("the two are inverses over every base")
-        void theyAreInverses() {
+        void areUndoneByDecoding() {
             for (String base : new String[] {"2", "16", "64"}) {
                 assertThat(answerTo(
                         "b: #{00FF10DECAFBAD} b = debase enbase/flat b " + base
@@ -160,11 +160,11 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("a base that is not one of the five is refused")
-        void anUnknownBaseIsRefused() {
-            assertThat(errorIdFrom("enbase #{00} 8")).isNotEqualTo("no-error");
-            assertThat(errorIdFrom("debase \"00\" 8")).isNotEqualTo("no-error");
-            assertThat(errorIdFrom("enbase #{00} 0")).isNotEqualTo("no-error");
-            assertThat(errorIdFrom("enbase #{00} -16")).isNotEqualTo("no-error");
+        void refuseAnUnknownBase() {
+            assertThat(readTheErrorIdFrom("enbase #{00} 8")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdFrom("debase \"00\" 8")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdFrom("enbase #{00} 0")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdFrom("enbase #{00} -16")).isNotEqualTo("no-error");
         }
     }
 
@@ -174,7 +174,7 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("the methods the host offers are in the catalogue")
-        void theCatalogueNamesThem() {
+        void areNamedInTheCatalogue() {
             assertThat(answerTo("true? find system/catalog/checksums 'md5"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("true? find system/catalog/checksums 'sha256"))
@@ -190,7 +190,7 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("SHA1 and SHA256 likewise")
-        void theShaFamily() {
+        void coverTheShaFamily() {
             assertThat(answerTo("enbase/flat checksum \"abc\" 'sha1 16"))
                     .isEqualTo("\"A9993E364706816ABA3E25717850C26C9CD0D89D\"");
             assertThat(answerTo("enbase/flat checksum \"abc\" 'sha256 16"))
@@ -200,14 +200,14 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("a string is hashed as its UTF-8 bytes, so text and binary agree")
-        void aStringIsHashedAsBytes() {
+        void hashAStringAsBytes() {
             assertThat(answerTo(
                     "(checksum \"abc\" 'md5) = checksum #{616263} 'md5")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("the answer is a binary of the method's own length")
-        void theLengthFollowsTheMethod() {
+        void varyInLengthByMethod() {
             assertThat(answerTo("length? checksum \"a\" 'md5")).isEqualTo("16");
             assertThat(answerTo("length? checksum \"a\" 'sha1")).isEqualTo("20");
             assertThat(answerTo("length? checksum \"a\" 'sha256")).isEqualTo("32");
@@ -216,20 +216,20 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("CRC32 and ADLER32 answer a number, not a digest")
-        void theCyclicChecksums() {
+        void coverTheCyclicChecksums() {
             assertThat(answerTo("integer? checksum \"a\" 'crc32")).isEqualTo(TRUE);
             assertThat(answerTo("integer? checksum \"a\" 'adler32")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a method the host has not got is refused")
-        void anUnknownMethodIsRefused() {
-            assertThat(errorIdFrom("checksum \"a\" 'invented")).isNotEqualTo("no-error");
+        void refuseAnUnknownMethod() {
+            assertThat(readTheErrorIdFrom("checksum \"a\" 'invented")).isNotEqualTo("no-error");
         }
 
         @Test
         @DisplayName("/WITH a key makes it an HMAC, which differs from the plain digest")
-        void withAKeyIsAnHmac() {
+        void becomeAnHmacWithAKey() {
             assertThat(answerTo(
                     "(checksum/with \"a\" 'sha256 \"k\") <> checksum \"a\" 'sha256"))
                     .isEqualTo(TRUE);
@@ -252,7 +252,7 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("the methods the host offers are in the catalogue")
-        void theCatalogueNamesThem() {
+        void isNamedInTheCatalogue() {
             assertThat(answerTo("true? find system/catalog/compressions 'zlib"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("true? find system/catalog/compressions 'gzip"))
@@ -261,7 +261,7 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("the two are inverses, which is the whole of what a caller needs")
-        void theyAreInverses() {
+        void isUndoneByDecompressing() {
             for (String method : new String[] {"'zlib", "'gzip", "'deflate"}) {
                 assertThat(answerTo(
                         "b: to binary! \"the same text repeated, the same text repeated\" "
@@ -273,7 +273,7 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("compressing repetitive data makes it smaller")
-        void itCompresses() {
+        void shrinksItsInput() {
             assertThat(answerTo(
                     "b: to binary! \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\" "
                     + "(length? compress b 'zlib) < length? b")).isEqualTo(TRUE);
@@ -281,7 +281,7 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("a string is compressed as its UTF-8 bytes")
-        void aStringIsItsBytes() {
+        void takesAStringAsItsBytes() {
             assertThat(answerTo(
                     "(compress \"abc\" 'zlib) = compress #{616263} 'zlib"))
                     .isEqualTo(TRUE);
@@ -289,15 +289,15 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("a method the host has not got is refused")
-        void anUnknownMethodIsRefused() {
-            assertThat(errorIdFrom("compress \"a\" 'invented")).isNotEqualTo("no-error");
-            assertThat(errorIdFrom("decompress #{00} 'invented")).isNotEqualTo("no-error");
+        void refusesAnUnknownMethod() {
+            assertThat(readTheErrorIdFrom("compress \"a\" 'invented")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdFrom("decompress #{00} 'invented")).isNotEqualTo("no-error");
         }
 
         @Test
         @DisplayName("data that was never compressed is refused rather than guessed at")
         void rubbishIsRefused() {
-            assertThat(errorIdFrom("decompress #{DEADBEEF} 'zlib"))
+            assertThat(readTheErrorIdFrom("decompress #{DEADBEEF} 'zlib"))
                     .isNotEqualTo("no-error");
         }
     }
@@ -308,14 +308,14 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("two bytes at a time by default")
-        void twoAtATime() {
+        void swapsTwoAtATime() {
             assertThat(answerTo("swap-endian #{0102}")).isEqualTo("#{0201}");
             assertThat(answerTo("swap-endian #{01020304}")).isEqualTo("#{02010403}");
         }
 
         @Test
         @DisplayName("/WIDTH takes four or eight")
-        void widthChangesTheGroup() {
+        void changesTheGroupByWidth() {
             assertThat(answerTo("swap-endian/width #{01020304} 4")).isEqualTo("#{04030201}");
             assertThat(answerTo("swap-endian/width #{0102030405060708} 8"))
                     .isEqualTo("#{0807060504030201}");
@@ -323,20 +323,20 @@ class EncodingFromTheSourceTest {
 
         @Test
         @DisplayName("a width that is not 2, 4 or 8 is refused")
-        void anOddWidthIsRefused() {
-            assertThat(errorIdFrom("swap-endian/width #{010203} 3"))
+        void refusesAnOddWidth() {
+            assertThat(readTheErrorIdFrom("swap-endian/width #{010203} 3"))
                     .isNotEqualTo("no-error");
         }
 
         @Test
         @DisplayName("it changes the binary it was given, and answers it")
-        void itChangesInPlace() {
+        void changesInPlace() {
             assertThat(answerTo("b: #{0102} swap-endian b b")).isEqualTo("#{0201}");
         }
 
         @Test
         @DisplayName("a tail that does not fill a group is left as it is")
-        void aShortTailIsLeftAlone() {
+        void leavesAShortTailAlone() {
             assertThat(answerTo("swap-endian/width #{010203} 4")).isEqualTo("#{010203}");
         }
     }

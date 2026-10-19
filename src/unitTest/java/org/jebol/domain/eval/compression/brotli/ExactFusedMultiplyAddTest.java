@@ -24,7 +24,7 @@ class ExactFusedMultiplyAddTest {
 
     @Test
     @DisplayName("agrees where rounding a product twice would go wrong")
-    void roundingCases() {
+    void roundsEveryCase() {
         double[][] cases = {
                 {0x1.0000_0000_0000_1p0, 0x1.0000_0000_0000_1p0, -1.0},
                 {0x1.ffff_ffff_ffff_fp0, 0x1.0000_0000_0000_1p0, -0x1.ffff_ffff_ffff_fp0},

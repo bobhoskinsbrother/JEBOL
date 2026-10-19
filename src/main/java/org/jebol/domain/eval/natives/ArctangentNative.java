@@ -8,7 +8,7 @@ public class ArctangentNative extends InverseTrigonometryNative {
     }
 
     @Override
-    protected double radiansFor(double ratio) {
+    protected double measureTheRadiansFor(double ratio) {
         return Math.atan(ratio);
     }
 }

@@ -41,7 +41,7 @@ public final class SeriesSorting {
         this.unstably = unstably;
     }
 
-    public VectorValue sortedFront(VectorValue vector, int howMany) {
+    public VectorValue sortTheFront(VectorValue vector, int howMany) {
         int sorting = Math.max(0, howMany);
         long[] front = new long[sorting];
         for (int at = 0; at < sorting; at++) {
@@ -55,9 +55,9 @@ public final class SeriesSorting {
         return vector;
     }
 
-    public Value sorted(RebolSeries series, int stride, int howMany) {
+    public Value sort(RebolSeries series, int stride, int howMany) {
         int step = Math.max(1, stride);
-        List<Value> items = series.items().subList(0, Math.min(howMany, series.items().size()));
+        List<Value> items = series.listTheItems().subList(0, Math.min(howMany, series.listTheItems().size()));
         List<List<Value>> records = new ArrayList<>();
         Map<List<Value>, Integer> whereEachRecordBegan = new IdentityHashMap<>();
         for (int at = 0; at + step <= items.size(); at += step) {
@@ -124,13 +124,13 @@ public final class SeriesSorting {
         }
         return wholeRecord
                 ? askComparatorTheOtherWayRound(asked,
-                        lentRecordOf(series, left), lentRecordOf(series, right))
+                        lendTheRecordOf(series, left), lendTheRecordOf(series, right))
                 : askComparatorTheOtherWayRound(asked,
-                        lentElementOf(series, left.getFirst()),
-                        lentElementOf(series, right.getFirst()));
+                        lendTheElementOf(series, left.getFirst()),
+                        lendTheElementOf(series, right.getFirst()));
     }
 
-    private Value lentRecordOf(RebolSeries series, List<Value> record) {
+    private Value lendTheRecordOf(RebolSeries series, List<Value> record) {
         if (series instanceof BinaryValue) {
             int[] octets = new int[record.size()];
             for (int at = 0; at < record.size(); at++) {
@@ -145,12 +145,12 @@ public final class SeriesSorting {
             }
             return StringValue.of(characters.toString());
         }
-        AnyBlockValue lent = BlockValue.block(record);
+        AnyBlockValue lent = BlockValue.of(record);
         lent.storage().protectFromChange(true);
         return lent;
     }
 
-    private Value lentElementOf(RebolSeries series, Value element) {
+    private Value lendTheElementOf(RebolSeries series, Value element) {
         return series instanceof BinaryValue && element instanceof IntegerValue(long magnitude)
                 ? CharacterValue.of((int) magnitude)
                 : element;

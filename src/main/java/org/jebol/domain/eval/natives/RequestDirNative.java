@@ -26,8 +26,8 @@ public class RequestDirNative extends WindowNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.belongingTo("title", "text", Set.of(StringValue.TYPE)),
-                Parameter.belongingTo("dir", "name", Set.of(FileValue.TYPE)));
+                Parameter.belongTo("title", "text", Set.of(StringValue.TYPE)),
+                Parameter.belongTo("dir", "name", Set.of(FileValue.TYPE)));
     }
 
     @Override
@@ -39,7 +39,7 @@ public class RequestDirNative extends WindowNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
-            return throughTheWindows(() -> evaluator.windows().chooseDirectory(
+            return runThroughTheWindows(() -> evaluator.windows().chooseDirectory(
                             textGivenFor("dir", arguments, refinements),
                             textGivenFor("title", arguments, refinements))
                     .<Value>map(FileValue::of)

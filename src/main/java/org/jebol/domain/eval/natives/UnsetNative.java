@@ -15,7 +15,7 @@ public class UnsetNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("word",
+        return List.of(Parameter.of("word",
                 Set.of(WordValue.TYPE, BlockValue.TYPE, NoneValue.TYPE)));
     }
 
@@ -39,6 +39,6 @@ public class UnsetNative extends DefaultNative {
         names.stream()
                 .filter(AnyWordValue.class::isInstance)
                 .map(AnyWordValue.class::cast)
-                .forEach(word -> word.boundSlot().setValue(UnsetValue.unset()));
+                .forEach(word -> word.findTheBoundSlot().setValue(UnsetValue.unset()));
     }
 }

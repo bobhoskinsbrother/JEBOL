@@ -29,21 +29,21 @@ import java.util.stream.Collectors;
 
 final class ExtensionInstallation {
 
-    private static final String MAKING_THE_MODULE_AS_LOAD_BOOT_EXTS_DOES =
+    private static final String LOAD_BOOT_EXTENSIONS_REBOL_STRING =
             "make module! sys/load-ext-module load-extension/dispatch the-source :the-dispatcher";
 
     private final Evaluator evaluator;
 
     private final SealedLibrary library;
 
-    private final Map<String, Class<?>> handleKindsKnown = new HashMap<>();
+    private final Map<String, Class<?>> knownTypes = new HashMap<>();
 
     ExtensionInstallation(Evaluator evaluator, SealedLibrary library) {
         this.evaluator = evaluator;
         this.library = library;
     }
 
-    ExtensionReport installed(Extension extension) {
+    ExtensionReport installAndReport(Extension extension) {
         try {
             install(extension);
             return new ExtensionReport(extension.name(), Optional.empty());
@@ -53,31 +53,31 @@ final class ExtensionInstallation {
     }
 
     private void install(Extension extension) {
-        refuseWhatDoesNotRead(extension);
-        refuseNamesTheLibraryHolds(extension);
-        refuseHandleKindsKnownOtherwise(extension);
+        refuseIfUnreadable(extension);
+        refuseRegisteredLibraryExtension(extension);
+        refuseKnownHandleTypes(extension);
         start(extension);
-        ModuleValue module = theModuleMadeOf(extension);
-        extension.handleKinds().forEach(kind -> handleKindsKnown.put(kind.name(), kind.holds()));
-        listInTheSystemsModules(extension.name(), module);
+        ModuleValue module = makeModule(extension);
+        extension.handleTypes().forEach(type -> knownTypes.put(type.name(), type.holds()));
+        registerSystemModules(extension.name(), module);
         extension.commands().forEach(command ->
-                library.register(command.name(), module.context().slotFor(Context.canonicalise(command.name())).value()));
+                library.register(command.name(), module.context().findSlotFor(Context.canonicalise(command.name())).value()));
     }
 
-    private void refuseWhatDoesNotRead(Extension extension) {
-        boolean versionIsATuple = readsAsExactlyOne(extension.version()).filter(TupleValue.class::isInstance).isPresent();
-        boolean everySpecReads = extension.commands().stream()
-                .allMatch(command -> readsAsExactlyOne("[" + command.spec() + "]").isPresent());
-        Set<String> distinct = extension.commands().stream()
+    private void refuseIfUnreadable(Extension extension) {
+        boolean isTuple = readFirstValue(extension.version()).filter(TupleValue.class::isInstance).isPresent();
+        boolean isEverySpecPresent = extension.commands().stream()
+                .allMatch(command -> readFirstValue("[" + command.spec() + "]").isPresent());
+        Set<String> distinctCommandNames = extension.commands().stream()
                 .map(command -> Context.canonicalise(command.name()))
                 .collect(Collectors.toSet());
-        if (extension.name().isBlank() || !versionIsATuple || !everySpecReads
-                || distinct.size() != extension.commands().size()) {
-            throw theExtensionIsBad(extension);
+        if (extension.name().isBlank() || !isTuple || !isEverySpecPresent ||
+                distinctCommandNames.size() != extension.commands().size()) {
+            throw refuseBadExtension(extension);
         }
     }
 
-    private Optional<Value> readsAsExactlyOne(String source) {
+    private Optional<Value> readFirstValue(String source) {
         TranscodeResult read = evaluator.read(source);
         return read.values()
                 .map(AnyBlockValue::remaining)
@@ -85,11 +85,11 @@ final class ExtensionInstallation {
                 .map(List::getFirst);
     }
 
-    private Raised theExtensionIsBad(Extension extension) {
+    private Raised refuseBadExtension(Extension extension) {
         return Raised.of(EvaluationFailure.BAD_EXTENSION, WordValue.of(extension.name().isBlank() ? "extension" : extension.name()));
     }
 
-    private void refuseNamesTheLibraryHolds(Extension extension) {
+    private void refuseRegisteredLibraryExtension(Extension extension) {
         extension.commands().stream()
                 .map(ExtensionCommand::name)
                 .filter(library::holds)
@@ -99,10 +99,10 @@ final class ExtensionInstallation {
                 });
     }
 
-    private void refuseHandleKindsKnownOtherwise(Extension extension) {
+    private void refuseKnownHandleTypes(Extension extension) {
         Set<String> declaredHere = new HashSet<>();
-        for (HandleKind kind : extension.handleKinds()) {
-            Class<?> known = handleKindsKnown.get(kind.name());
+        for (HandleType kind : extension.handleTypes()) {
+            Class<?> known = knownTypes.get(kind.name());
             if (known != null && !known.equals(kind.holds()) || !declaredHere.add(kind.name())) {
                 throw Raised.of(EvaluationFailure.HANDLE_EXISTS, WordValue.of(kind.name()));
             }
@@ -117,24 +117,27 @@ final class ExtensionInstallation {
         }
     }
 
-    private ModuleValue theModuleMadeOf(Extension extension) {
-        Context working = Context.childOf(evaluator.systemContext());
-        working.register("the-source", BinaryValue.ofBytes(theSourceOf(extension).getBytes(StandardCharsets.UTF_8)));
-        working.register("the-dispatcher", HandleValue.function(DispatcherHandle.THE_KIND_A_DISPATCHER_IS,
-                evaluator.theNextExtensionsNumber(), JavaObjectValue.of(new CommandsOfAnExtension(extension))));
-        TranscodeResult read = evaluator.read(MAKING_THE_MODULE_AS_LOAD_BOOT_EXTS_DOES);
+    private ModuleValue makeModule(Extension extension) {
+        Context context = Context.makeChildOf(evaluator.systemContext());
+        context.register("the-source", BinaryValue.ofBytes(writeRebolSourceFor(extension).getBytes(StandardCharsets.UTF_8)));
+        context.register("the-dispatcher", HandleValue.wrapAFunction(DispatcherHandle.THE_KIND_A_DISPATCHER_IS,
+                evaluator.numberTheNextExtension(), JavaObjectValue.of(new ExtensionCommands(extension))));
+        TranscodeResult read = evaluator.read(LOAD_BOOT_EXTENSIONS_REBOL_STRING);
         try {
-            if (evaluator.evaluateOrRaise(Binder.bindAndDefine(read.values().orElseThrow(), working), working)
-                    instanceof ModuleValue made) {
+            if (evaluateOrRaise(read, context) instanceof ModuleValue made) {
                 return made;
             }
-        } catch (Raised notAModule) {
-            throw theExtensionIsBad(extension);
+        } catch (Raised ignored) {
+            throw refuseBadExtension(extension);
         }
-        throw theExtensionIsBad(extension);
+        throw refuseBadExtension(extension);
     }
 
-    private String theSourceOf(Extension extension) {
+    private Value evaluateOrRaise(TranscodeResult read, Context context) {
+        return evaluator.evaluateOrRaise(Binder.bindAndDefine(read.values().orElseThrow(), context), context);
+    }
+
+    private String writeRebolSourceFor(Extension extension) {
         StringBuilder source = new StringBuilder("REBOL [name: ").append(extension.name())
                 .append(" version: ").append(extension.version())
                 .append(" type: module exports: [")
@@ -145,8 +148,8 @@ final class ExtensionInstallation {
         return source.append(extension.script()).append('\n').toString();
     }
 
-    private void listInTheSystemsModules(String name, ModuleValue module) {
-        if (evaluator.systemContext().valueAt("system", "modules") instanceof ObjectValue(Context modules)) {
+    private void registerSystemModules(String name, ModuleValue module) {
+        if (evaluator.systemContext().readValueAt("system", "modules") instanceof ObjectValue(Context modules)) {
             modules.register(name, module);
         }
     }

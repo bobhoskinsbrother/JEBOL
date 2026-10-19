@@ -43,38 +43,38 @@ public record OperatorValue(String operatorName, AnyFunctionValue underlying) im
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
-            throw refusingConstruction(contents);
+        public Value construct(List<Value> contents, Construction construction) {
+            throw refuseTheConstruction(contents);
         }
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             Value offered = spec instanceof AnyBlockValue parts
-                    ? aFunctionMadeFrom(parts, maker)
+                    ? makeAFunctionFrom(parts, maker)
                     : spec;
             if (!(offered instanceof AnyFunctionValue dispatching)
-                    || howManyArgumentsBeforeAnyRefinement(dispatching)
+                    || countTheArgumentsBeforeAnyRefinement(dispatching)
                             != THE_ARGUMENTS_AN_OPERATOR_TAKES) {
-                throw refusing(spec);
+                throw refuse(spec);
             }
             return new OperatorValue(AN_OPERATOR_NOBODY_HAS_NAMED, dispatching);
         }
 
-        private Value aFunctionMadeFrom(AnyBlockValue parts, Maker maker) {
+        private Value makeAFunctionFrom(AnyBlockValue parts, Maker maker) {
             List<Value> items = parts.remaining();
             if (items.size() < 2
                     || !(items.get(0) instanceof AnyBlockValue functionSpec)
                     || !(items.get(1) instanceof AnyBlockValue body)) {
-                throw refusing(parts);
+                throw refuse(parts);
             }
-            return maker.functionBoundFrom(functionSpec, body);
+            return maker.bindAFunction(functionSpec, body);
         }
 
-        private int howManyArgumentsBeforeAnyRefinement(AnyFunctionValue dispatching) {
+        private int countTheArgumentsBeforeAnyRefinement(AnyFunctionValue dispatching) {
             List<Parameter> declared = switch (dispatching) {
                 case DeclaresParameters function -> function.parameters();
                 case OperatorValue operator ->
-                        List.of(Parameter.required("a"), Parameter.required("b"));
+                        List.of(Parameter.of("a"), Parameter.of("b"));
             };
             int counted = 0;
             for (Parameter parameter : declared) {

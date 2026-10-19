@@ -58,10 +58,10 @@ public final class ImageStorage extends ProtectableStorage {
      * -- and the same memset gives every alpha byte 0xFF, so a fresh image molds
      * without an alpha binary.
      */
-    public static ImageStorage of(int wide, int high) {
-        byte[] pixels = new byte[wide * high * BYTES_A_PIXEL];
+    public static ImageStorage of(int width, int height) {
+        byte[] pixels = new byte[width * height * BYTES_A_PIXEL];
         java.util.Arrays.fill(pixels, FRESH_MEANING_WHITE_AND_OPAQUE);
-        return new ImageStorage(pixels, wide, high, wide * high);
+        return new ImageStorage(pixels, width, height, width * height);
     }
 
     /** The same pixels in a buffer of their own, for COPY and MAKE of an image. */
@@ -160,7 +160,7 @@ public final class ImageStorage extends ProtectableStorage {
      * <p>Channel 1 is red and channel 4 is alpha, which is the order the C's
      * {@code img/1/2: 100} case writes in: {@code case 2: bp[C_G] = ...}.
      */
-    public int channelAt(int pixel, int channel) {
+    public int readTheChannelAt(int pixel, int channel) {
         return pixels[(pixel - 1) * BYTES_A_PIXEL + channel - 1] & 0xFF;
     }
 
@@ -170,7 +170,7 @@ public final class ImageStorage extends ProtectableStorage {
     }
 
     /** A pixel as red, green, blue, alpha. */
-    public int[] pixelAt(int pixel) {
+    public int[] readThePixelAt(int pixel) {
         int at = (pixel - 1) * BYTES_A_PIXEL;
         return new int[] {
                 pixels[at] & 0xFF, pixels[at + 1] & 0xFF,
@@ -201,7 +201,7 @@ public final class ImageStorage extends ProtectableStorage {
      */
     public boolean hasAlpha() {
         for (int pixel = 1; pixel <= length(); pixel++) {
-            if (channelAt(pixel, 4) != 0xFF) {
+            if (readTheChannelAt(pixel, 4) != 0xFF) {
                 return true;
             }
         }

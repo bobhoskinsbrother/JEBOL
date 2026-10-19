@@ -16,19 +16,19 @@ class DecimalBitPatternTest {
 
     @Test
     @DisplayName("the bits of an ordinary decimal read back as that decimal")
-    void anOrdinaryPatternRoundTrips() {
+    void roundTripsAnOrdinaryPattern() {
         assertThat(answerTo("mold to decimal! #{3FD3333333333333}")).isEqualTo("\"0.3\"");
     }
 
     @Test
     @DisplayName("a decimal converts to the bits it is made of")
-    void aDecimalGivesItsBits() {
+    void givesADecimalsBits() {
         assertThat(answerTo("mold to binary! 0.3")).isEqualTo("\"#{3FD3333333333333}\"");
     }
 
     @Test
     @DisplayName("the trip survives in both directions")
-    void theTripRoundTrips() {
+    void roundTripsBothWays() {
         assertThat(answerTo("mold to decimal! to binary! 0.3")).isEqualTo("\"0.3\"");
     }
 
@@ -40,13 +40,13 @@ class DecimalBitPatternTest {
 
     @Test
     @DisplayName("negative zero keeps its sign")
-    void negativeZeroKeepsItsSign() {
+    void keepsTheSignOfNegativeZero() {
         assertThat(answerTo("mold to decimal! #{8000000000000000}")).isEqualTo("\"-0.0\"");
     }
 
     @Test
     @DisplayName("the two zeroes are the same number, differently signed")
-    void theTwoZeroesDiffer() {
+    void tellsTheTwoZeroesApart() {
         assertThat(answerTo("z: to decimal! #{8000000000000000} 0.0 = z"))
                 .isEqualTo("#(true)");
         assertThat(answerTo("z: to decimal! #{8000000000000000} 0.0 == z"))
@@ -58,7 +58,7 @@ class DecimalBitPatternTest {
 
     @Test
     @DisplayName("two NaNs answer the other way round from the two zeroes")
-    void theNaNsAnswerTheOppositeWay() {
+    void answersTheOppositeWayForTheNaNs() {
         assertThat(answerTo("1.#NaN = 1.#NaN")).isEqualTo("#(true)");
         assertThat(answerTo("1.#NaN == 1.#NaN")).isEqualTo("#(false)");
         assertThat(answerTo("same? 1.#NaN 1.#NaN")).isEqualTo("#(true)");
@@ -66,27 +66,27 @@ class DecimalBitPatternTest {
 
     @Test
     @DisplayName("the infinity patterns give the infinities")
-    void theInfinitiesReadBack() {
+    void readsBackTheInfinities() {
         assertThat(answerTo("mold to decimal! #{7FF0000000000000}")).isEqualTo("\"1.#INF\"");
         assertThat(answerTo("mold to decimal! #{FFF0000000000000}")).isEqualTo("\"-1.#INF\"");
     }
 
     @Test
     @DisplayName("a NaN pattern gives a NaN")
-    void aNaNPatternReadsBack() {
+    void readsBackANaNPattern() {
         assertThat(answerTo("mold to decimal! #{7FFFFFFFFFFFFFFF}")).isEqualTo("\"1.#NaN\"");
     }
 
     @Test
     @DisplayName("a short binary is read right-aligned")
-    void aShortBinaryIsRightAligned() {
+    void rightAlignsAShortBinary() {
         assertThat(answerTo("mold to decimal! #{01}"))
                 .isEqualTo("\"4.94065645841247e-324\"");
     }
 
     @Test
     @DisplayName("an empty binary is zero")
-    void anEmptyBinaryIsTheDegenerateCase() {
+    void handlesAnEmptyBinary() {
         assertThat(answerTo("mold to decimal! #{}")).isEqualTo("\"0.0\"");
     }
 }

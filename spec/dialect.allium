@@ -14,7 +14,7 @@
 -- works. A command declares the *types* of its arguments rather than their
 -- order, and DELECT puts whatever it finds into whichever slot accepts it. So
 -- {@code box 10x10 3.0 20x20} and {@code box 10x10 20x20 3.0} produce the same
--- answer, and a slot nobody filled comes back as none. That is what lets a
+-- answer, and a slot nobody fill comes back as none. That is what lets a
 -- dialect read like a description instead of like a call.
 --
 -- Authorities: {@code src/core/u-dialect.c} is the whole implementation, 560
@@ -106,7 +106,7 @@ entity DelectRun {
 -- Not until its slots are full, which is the difference that makes a dialect
 -- readable. `box 10x10 20x20 circle 5x5 3` needs no punctuation between the
 -- two commands because the reader stops at CIRCLE, and BOX's third slot is
--- simply never filled.
+-- simply never fill.
 --
 -- Only a command ends a command. A keyword does not, which is what lets
 -- `spline 1x1 2x2 closed` finish with an option word.
@@ -130,7 +130,7 @@ rule AnArgumentGoesToTheFirstSlotThatAcceptsIt {
             argument_sits_in(the_first_unfilled_slot_accepting(argument))
 }
 
--- A slot nobody filled is none, and the command's answer is always as long as
+-- A slot nobody fill is none, and the command's answer is always as long as
 -- its declaration.
 --
 -- Padded rather than truncated, because a reader of the answer counts along

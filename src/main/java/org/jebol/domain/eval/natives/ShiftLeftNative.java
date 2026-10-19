@@ -8,7 +8,7 @@ public class ShiftLeftNative extends ShiftingNative {
     }
 
     @Override
-    protected long movedBy(long bits, long places) {
+    protected long moveBy(long bits, long places) {
         return bits << places;
     }
 }

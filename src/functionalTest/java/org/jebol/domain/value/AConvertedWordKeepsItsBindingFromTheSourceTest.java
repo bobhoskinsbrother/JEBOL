@@ -18,7 +18,7 @@ class AConvertedWordKeepsItsBindingFromTheSourceTest {
 
     @Test
     @DisplayName("to set-word! of a word bound to an object sets that object's field")
-    void aSetWordMadeFromABoundWordSetsTheField() {
+    void setsTheFieldThroughASetWordMadeFromABoundWord() {
         assertThat(answerTo("""
                 o: object [x: 1]
                 w: to set-word! in o 'x
@@ -28,8 +28,8 @@ class AConvertedWordKeepsItsBindingFromTheSourceTest {
 
     @ParameterizedTest(name = "to {0} of a word bound to an object still reads the field")
     @ValueSource(strings = {"word!", "get-word!", "lit-word!", "refinement!", "issue!"})
-    @DisplayName("TO from a bound word to another kind of word keeps the binding")
-    void toKeepsTheBinding(String kind) {
+    @DisplayName("TO from a bound word to another type of word keeps the binding")
+    void keepsTheBindingThroughTo(String kind) {
         assertThat(answerTo("""
                 o: object [x: 1]
                 get to %s in o 'x""".formatted(kind))).isEqualTo("1");
@@ -45,7 +45,7 @@ class AConvertedWordKeepsItsBindingFromTheSourceTest {
 
     @Test
     @DisplayName("a word read from text is bound to nothing")
-    void aWordFromTextIsUnbound() {
+    void leavesAWordFromTextUnbound() {
         assertThat(answerTo("""
                 x: 99
                 e: try [get to word! "x"]
@@ -53,7 +53,7 @@ class AConvertedWordKeepsItsBindingFromTheSourceTest {
     }
 
     @Test
-    @DisplayName("a converted word keeps its spelling and changes only its kind")
+    @DisplayName("a converted word keeps its spelling and changes only its type")
     void onlyTheKindChanges() {
         assertThat(answerTo("""
                 o: object [Abc: 1]

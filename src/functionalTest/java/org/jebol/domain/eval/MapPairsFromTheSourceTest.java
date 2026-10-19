@@ -209,7 +209,7 @@ class MapPairsFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and hands out any other kind of key as it is stored")
+        @DisplayName("and hands out any other type of key as it is stored")
         void anotherKindOfKeyComesBackAsItIs() {
             assertThat(answerTo(
                     "c: copy [] foreach k make map! [a 1 \"k\" 2 3 4] "

@@ -37,15 +37,15 @@ public class ReadKeyNative extends HostNative {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.CONSOLE);
             int code = evaluator.console().readKey();
-            noModifierKeyIsHeld(evaluator);
+            refuseAnyModifierKeyHeld(evaluator);
             return code < NO_KEY_CAME
                     ? NoneValue.none()
                     : CharacterValue.of(code);
         };
     }
 
-    private void noModifierKeyIsHeld(Evaluator evaluator) {
-        if (evaluator.systemContext().valueAt("system", "state") instanceof ObjectValue state) {
+    private void refuseAnyModifierKeyHeld(Evaluator evaluator) {
+        if (evaluator.systemContext().readValueAt("system", "state") instanceof ObjectValue state) {
             THE_MODIFIER_KEYS.forEach(key -> state.context().register(key, LogicValue.of(false)));
         }
     }

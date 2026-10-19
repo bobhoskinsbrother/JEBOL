@@ -15,7 +15,7 @@ class MapFormAndProtectionFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("failure: try [" + source + "] failure/id");
     }
 
@@ -25,35 +25,35 @@ class MapFormAndProtectionFromTheSourceTest {
 
         @Test
         @DisplayName("an empty map forms as nothing at all")
-        void anEmptyMapFormsAsNothing() {
+        void formsAnEmptyMapAsNothing() {
             assertThat(answerTo("""
                     form make map! []""")).isEqualTo("\"\"");
         }
 
         @Test
         @DisplayName("one pair is that pair, with no brackets round it")
-        void onePairHasNoBrackets() {
+        void leavesOnePairWithoutBrackets() {
             assertThat(answerTo("""
                     form make map! [a 1]""")).isEqualTo("\"a: 1\"");
         }
 
         @Test
         @DisplayName("and each pair after it goes on a line of its own")
-        void eachPairOnItsOwnLine() {
+        void putsEachPairOnItsOwnLine() {
             assertThat(answerTo("""
                     (form make map! [a 1 b 2]) = {a: 1^/b: 2}""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("with no line break after the last one")
-        void noLineBreakAtTheEnd() {
+        void addsNoLineBreakAtTheEnd() {
             assertThat(answerTo("""
                     last form make map! [a 1 b 2]""")).isEqualTo("#\"2\"");
         }
 
         @Test
         @DisplayName("a key that is not a word keeps its own punctuation")
-        void aKeyThatIsNotAWord() {
+        void formsAKeyThatIsNotAWord() {
             assertThat(answerTo("""
                     (form make map! [a 1 "b" 2 <c> 3 9 4 #"d" 5])
                         = {a: 1^/"b" 2^/<c> 3^/9 4^/#"d" 5}""")).isEqualTo("#(true)");
@@ -61,7 +61,7 @@ class MapFormAndProtectionFromTheSourceTest {
 
         @Test
         @DisplayName("which is molding, so a text key keeps quotes FORM would drop")
-        void aTextKeyKeepsItsQuotes() {
+        void keepsTheQuotesOfATextKey() {
             assertThat(answerTo("""
                     reduce [form make map! ["b" 2] form "b"]"""))
                     .as("the map's key keeps its quotes; forming the same string "
@@ -72,7 +72,7 @@ class MapFormAndProtectionFromTheSourceTest {
 
         @Test
         @DisplayName("and molding is unchanged: brackets, and a line each under indent")
-        void moldingIsUnchanged() {
+        void leavesMoldingAlone() {
             assertThat(answerTo("""
                     reduce [
                         mold/flat make map! [a 1 b 2]
@@ -89,7 +89,7 @@ class MapFormAndProtectionFromTheSourceTest {
 
         @Test
         @DisplayName("PROTECTED? says so afterwards, and says no before")
-        void protectedSaysSo() {
+        void answersTrueForProtected() {
             assertThat(answerTo("""
                     m: make map! [a 1]
                     before: protected? m
@@ -99,8 +99,8 @@ class MapFormAndProtectionFromTheSourceTest {
 
         @Test
         @DisplayName("a new key cannot be put into one")
-        void aNewKeyCannotBePut() {
-            assertThat(errorIdFrom("""
+        void refusesANewKey() {
+            assertThat(readTheErrorIdFrom("""
                     m: make map! [a 1]
                     protect m
                     put m 'b "foo\"""")).isEqualTo("protected");
@@ -108,8 +108,8 @@ class MapFormAndProtectionFromTheSourceTest {
 
         @Test
         @DisplayName("nor can a key it already has be written over")
-        void anExistingKeyCannotBeWritten() {
-            assertThat(errorIdFrom("""
+        void refusesWritingAnExistingKey() {
+            assertThat(readTheErrorIdFrom("""
                     m: make map! [a 1]
                     protect m
                     put m 'a "baz\"""")).isEqualTo("protected");
@@ -118,11 +118,11 @@ class MapFormAndProtectionFromTheSourceTest {
         @Test
         @DisplayName("nor emptied, nor a key taken out")
         void norEmptiedNorRemoved() {
-            assertThat(errorIdFrom("""
+            assertThat(readTheErrorIdFrom("""
                     m: make map! [a 1]
                     protect m
                     clear m""")).isEqualTo("protected");
-            assertThat(errorIdFrom("""
+            assertThat(readTheErrorIdFrom("""
                     m: make map! [a 1]
                     protect m
                     remove/key m 'a""")).isEqualTo("protected");
@@ -141,7 +141,7 @@ class MapFormAndProtectionFromTheSourceTest {
 
         @Test
         @DisplayName("reading one is never refused")
-        void readingIsNeverRefused() {
+        void neverRefusesReading() {
             assertThat(answerTo("""
                     m: make map! [a 1]
                     protect m

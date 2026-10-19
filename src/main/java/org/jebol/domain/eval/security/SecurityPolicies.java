@@ -33,36 +33,36 @@ public final class SecurityPolicies {
         this.fileNamesFoldCase = fileNamesFoldCase;
     }
 
-    public PolicyLevel levelFor(PolicyClass kind, PolicyAccess access, Optional<Value> subject) {
-        int written = theTupleFor(kind, subject).octetAt(access.ordinal() + 1);
+    public PolicyLevel findTheLevelFor(PolicyClass kind, PolicyAccess access, Optional<Value> subject) {
+        int written = findTheTupleFor(kind, subject).readTheOctetAt(access.ordinal() + 1);
         PolicyLevel[] levels = PolicyLevel.values();
         return written < levels.length ? levels[written] : PolicyLevel.ALLOW;
     }
 
-    private TupleValue theTupleFor(PolicyClass kind, Optional<Value> subject) {
-        Value held = theFieldFor(kind);
+    private TupleValue findTheTupleFor(PolicyClass kind, Optional<Value> subject) {
+        Value held = findTheFieldFor(kind);
         if (held instanceof TupleValue tuple) {
             return tuple;
         }
         if (!(held instanceof AnyBlockValue entries)) {
-            throw malformed(held);
+            throw refuseAsMalformed(held);
         }
-        return theTupleAmong(entries.remaining(), kind, subject);
+        return findTheTupleAmong(entries.remaining(), kind, subject);
     }
 
-    private Value theFieldFor(PolicyClass kind) {
+    private Value findTheFieldFor(PolicyClass kind) {
         if (policies instanceof ObjectValue(Context fields) && fields.hasItsOwnSlotFor(kind.word())) {
             return fields.ownSlotFor(kind.word()).value();
         }
-        throw malformed(WordValue.of(kind.word()));
+        throw refuseAsMalformed(WordValue.of(kind.word()));
     }
 
-    private TupleValue theTupleAmong(List<Value> entries, PolicyClass kind, Optional<Value> subject) {
+    private TupleValue findTheTupleAmong(List<Value> entries, PolicyClass kind, Optional<Value> subject) {
         Optional<TupleValue> theDefault = Optional.empty();
         for (int at = 0; at < entries.size(); at += 2) {
             Value key = entries.get(at);
             if (at + 1 >= entries.size() || !(entries.get(at + 1) instanceof TupleValue flags)) {
-                throw malformed(key);
+                throw refuseAsMalformed(key);
             }
             if (key instanceof WordValue) {
                 theDefault = Optional.of(flags);
@@ -71,7 +71,7 @@ public final class SecurityPolicies {
                     return flags;
                 }
             } else {
-                throw malformed(key);
+                throw refuseAsMalformed(key);
             }
         }
         return theDefault.orElseThrow(() -> Raised.of(EvaluationFailure.SECURITY,
@@ -84,26 +84,26 @@ public final class SecurityPolicies {
 
     private boolean covers(Value name, Value subject) {
         boolean foldCase = !(name instanceof FileValue) || fileNamesFoldCase;
-        int[] named = theTextOf(name).codePoints().toArray();
-        int[] asked = theTextOf(subject).codePoints().toArray();
+        int[] named = readTheTextOf(name).codePoints().toArray();
+        int[] asked = readTheTextOf(subject).codePoints().toArray();
         if (named.length > asked.length) {
             return false;
         }
         for (int at = 0; at < named.length; at++) {
-            if (!theSameCharacter(named[at], asked[at], foldCase)) {
+            if (!isTheSameCharacter(named[at], asked[at], foldCase)) {
                 return false;
             }
         }
         return true;
     }
 
-    private boolean theSameCharacter(int named, int asked, boolean foldCase) {
+    private boolean isTheSameCharacter(int named, int asked, boolean foldCase) {
         return foldCase
                 ? Character.toLowerCase(named) == Character.toLowerCase(asked)
                 : named == asked;
     }
 
-    private String theTextOf(Value value) {
+    private String readTheTextOf(Value value) {
         return switch (value) {
             case AnyStringValue text -> text.text();
             case BinaryValue bytes -> new String(bytes.octetsFromHere(), StandardCharsets.UTF_8);
@@ -112,7 +112,7 @@ public final class SecurityPolicies {
         };
     }
 
-    private Raised malformed(Value naming) {
+    private Raised refuseAsMalformed(Value naming) {
         return Raised.of(EvaluationFailure.SECURITY_ERROR, naming);
     }
 }

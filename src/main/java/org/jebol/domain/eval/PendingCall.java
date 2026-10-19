@@ -33,14 +33,14 @@ final class PendingCall {
         this.infix = infix;
         this.refinements = List.copyOf(refinements);
         this.mentioned = List.copyOf(mentioned);
-        this.parameters = parametersOf(callee);
+        this.parameters = readTheParametersOf(callee);
         this.arguments.addAll(supplied);
     }
 
     private int startedAt = -1;
     private String calledThrough;
 
-    void startedAt(int position, String name) {
+    void startAt(int position, String name) {
         this.startedAt = position;
         this.calledThrough = name;
     }
@@ -55,7 +55,7 @@ final class PendingCall {
         entered = true;
     }
 
-    Optional<String> nameInTheBacktrace() {
+    Optional<String> findTheNameInTheBacktrace() {
         if (!entered) {
             return Optional.empty();
         }
@@ -67,12 +67,12 @@ final class PendingCall {
                 : Optional.empty();
     }
 
-    Optional<Parameter> theParameterBeingFilled() {
-        return Optional.ofNullable(consumingAt(arguments.size()));
+    Optional<Parameter> findTheParameterBeingFilled() {
+        return Optional.ofNullable(consumeAt(arguments.size()));
     }
 
-    Value theArgumentStillWanted() {
-        Parameter wanted = consumingAt(arguments.size());
+    Value describeTheArgumentStillWanted() {
+        Parameter wanted = consumeAt(arguments.size());
         return wanted != null ? wanted.asWrittenInTheSpec() : NoneValue.none();
     }
 
@@ -84,13 +84,13 @@ final class PendingCall {
 
     private List<Parameter> consuming;
 
-    private Parameter consumingAt(int index) {
-        List<Parameter> sequence = consumingSequence();
+    private Parameter consumeAt(int index) {
+        List<Parameter> sequence = listTheConsumingSequence();
         return index < sequence.size() ? sequence.get(index) : null;
     }
 
     boolean wantsUnevaluated(Value upcoming) {
-        Parameter taking = consumingAt(arguments.size());
+        Parameter taking = consumeAt(arguments.size());
         if (taking == null) {
             return false;
         }
@@ -102,7 +102,7 @@ final class PendingCall {
     }
 
     boolean takesTheNextValueAsWritten() {
-        Parameter taking = consumingAt(arguments.size());
+        Parameter taking = consumeAt(arguments.size());
         return taking != null
                 && switch (taking.kind()) {
                     case HARD_QUOTED, SOFT_QUOTED -> true;
@@ -117,7 +117,7 @@ final class PendingCall {
     }
 
     static PendingCall prefix(Value callee, List<String> refinements, List<String> mentioned) {
-        return new PendingCall(callee, null, argumentsTheCallTakes(callee, mentioned),
+        return new PendingCall(callee, null, countTheArgumentsTheCallTakes(callee, mentioned),
                 List.of(), false, refinements, mentioned);
     }
 
@@ -125,18 +125,18 @@ final class PendingCall {
         return refinements;
     }
 
-    static PendingCall infix(OperatorValue operator, Value leftOperand) {
+    static PendingCall makeAnInfix(OperatorValue operator, Value leftOperand) {
         return new PendingCall(
                 operator, null, 2, List.of(leftOperand), true, List.of(), List.of());
     }
 
-    static PendingCall assignment(ContextSlot slot) {
+    static PendingCall makeAnAssignment(ContextSlot slot) {
         return new PendingCall(null, slot, 1, List.of(), false, List.of(), List.of());
     }
 
     private java.util.function.Consumer<Value> destination;
 
-    static PendingCall assignmentInto(java.util.function.Consumer<Value> destination) {
+    static PendingCall makeAnAssignmentInto(java.util.function.Consumer<Value> destination) {
         PendingCall call = new PendingCall(
                 null, null, 1, List.of(), false, List.of(), List.of());
         call.destination = destination;
@@ -151,12 +151,12 @@ final class PendingCall {
         return infix;
     }
 
-    private static int argumentsTheCallTakes(Value callee, List<String> mentioned) {
+    private static int countTheArgumentsTheCallTakes(Value callee, List<String> mentioned) {
         return switch (callee) {
             case DefinedFunctionValue function ->
-                    argumentsWrittenGrantedOrNotFor(function.parameters(), mentioned);
+                    countTheArgumentsWritten(function.parameters(), mentioned);
             case NativeValue built ->
-                    argumentsWrittenGrantedOrNotFor(built.parameters(), mentioned);
+                    countTheArgumentsWritten(built.parameters(), mentioned);
             case OperatorValue operator -> operator.arity();
             default -> throw Raised.of(
                     EvaluationFailure.CANNOT_USE,
@@ -164,16 +164,16 @@ final class PendingCall {
         };
     }
 
-    private static List<Parameter> parametersOf(Value callee) {
+    private static List<Parameter> readTheParametersOf(Value callee) {
         return switch (callee) {
             case DefinedFunctionValue function -> function.parameters();
             case NativeValue built -> built.parameters();
-            case OperatorValue operator -> parametersOf(operator.underlying());
+            case OperatorValue operator -> readTheParametersOf(operator.underlying());
             case null, default -> List.of();
         };
     }
 
-    private static int argumentsWrittenGrantedOrNotFor(
+    private static int countTheArgumentsWritten(
             List<Parameter> parameters, List<String> mentioned) {
         int counted = 0;
         for (Parameter parameter : parameters) {
@@ -208,19 +208,19 @@ final class PendingCall {
         return slot;
     }
 
-    Value theOnlyArgument() {
+    Value takeTheOnlyArgument() {
         return arguments.get(0);
     }
 
-    List<Value> argumentsInDeclaredOrder() {
+    List<Value> listTheArgumentsInDeclaredOrder() {
         if (arguments.size() != consumingCount()
                 || (mentioned.size() < 2
                         && mentioned.size() == refinements.size())) {
             return List.copyOf(arguments);
         }
         List<Value> lined = new ArrayList<>(arguments.size());
-        List<Parameter> sequence = consumingSequence();
-        for (Parameter wanted : consumingInDeclaredOrder()) {
+        List<Parameter> sequence = listTheConsumingSequence();
+        for (Parameter wanted : listWhatIsConsumedInDeclaredOrder()) {
             boolean granted = wanted.owningRefinement()
                     .map(refinements::contains).orElse(true);
             int at = sequence.indexOf(wanted);
@@ -232,10 +232,10 @@ final class PendingCall {
     }
 
     private int consumingCount() {
-        return consumingSequence().size();
+        return listTheConsumingSequence().size();
     }
 
-    private List<Parameter> consumingInDeclaredOrder() {
+    private List<Parameter> listWhatIsConsumedInDeclaredOrder() {
         List<Parameter> declared = new ArrayList<>(parameters.size());
         for (Parameter parameter : parameters) {
             if (parameter.consumesAnArgument()) {
@@ -245,7 +245,7 @@ final class PendingCall {
         return declared;
     }
 
-    private List<Parameter> consumingSequence() {
+    private List<Parameter> listTheConsumingSequence() {
         if (consuming == null) {
             List<Parameter> sequence = new ArrayList<>(parameters.size());
             for (Parameter parameter : parameters) {

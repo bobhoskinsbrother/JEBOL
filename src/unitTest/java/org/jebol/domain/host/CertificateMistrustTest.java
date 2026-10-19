@@ -22,7 +22,7 @@ class CertificateMistrustTest {
     })
     @DisplayName("each reason is said in words with the host it was about")
     void messages(CertificateMistrust mistrust, String expected) {
-        assertThat(mistrust.messageFor("example.test")).isEqualTo(expected);
+        assertThat(mistrust.explainTo("example.test")).isEqualTo(expected);
     }
 
     @ParameterizedTest
@@ -30,7 +30,7 @@ class CertificateMistrustTest {
     @DisplayName("no two reasons read alike")
     void distinctMessages(CertificateMistrust mistrust) {
         assertThat(Arrays.stream(CertificateMistrust.values())
-                .filter(other -> other.messageFor("h").equals(mistrust.messageFor("h"))))
+                .filter(other -> other.explainTo("h").equals(mistrust.explainTo("h"))))
                 .containsExactly(mistrust);
     }
 }

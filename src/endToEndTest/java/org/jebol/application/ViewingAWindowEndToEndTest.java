@@ -14,17 +14,17 @@ class ViewingAWindowEndToEndTest {
 
     private static final String TRUE = "#(true)";
 
-    private static Interpreter withAScreen(RecordingScreen screen) {
+    private static Interpreter makeAnInterpreterWithAScreen(RecordingScreen screen) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
                         .grant(HostService.WINDOWS)
-                        .withWallClockLimit(Duration.ofSeconds(10)));
+                        .withTimeLimit(Duration.ofSeconds(10)));
         interpreter.useScreen(screen);
         return interpreter;
     }
 
     private static String sessionOn(RecordingScreen screen, String script) {
-        Interpreter interpreter = withAScreen(screen);
+        Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
         interpreter.defineFreshWordsIn(script);
         return interpreter.display(interpreter.run(script));
     }
@@ -36,9 +36,9 @@ class ViewingAWindowEndToEndTest {
         @Test
         @DisplayName("opens one, and carries on when the operator closes it")
         @Timeout(20)
-        void theWholeJourney() {
-            RecordingScreen screen = RecordingScreen.measuring(1440, 900)
-                    .whereTheOperatorClosesWhateverOpens();
+        void opensAndCarriesOnWhenClosed() {
+            RecordingScreen screen = RecordingScreen.measure(1440, 900)
+                    .closeWhateverOpens();
 
             assertThat(sessionOn(screen, """
                     view make gob! [
@@ -51,7 +51,7 @@ class ViewingAWindowEndToEndTest {
                             + "makes a script ending in it a program")
                     .isEqualTo(TRUE);
 
-            assertThat(screen.whatOpened())
+            assertThat(screen.listWhatOpened())
                     .as("and a window really did appear on the way")
                     .hasSize(1);
         }
@@ -59,21 +59,21 @@ class ViewingAWindowEndToEndTest {
         @Test
         @DisplayName("and a script that asks not to wait carries on at once")
         @Timeout(20)
-        void notWaitingReturnsImmediately() {
-            RecordingScreen screen = RecordingScreen.measuring(1440, 900);
+        void carriesOnAtOnceWithoutWaiting() {
+            RecordingScreen screen = RecordingScreen.measure(1440, 900);
 
             assertThat(sessionOn(screen, """
                     view/no-wait make gob! [size: 320x200 text: "Quick"]
                     finished: true""")).isEqualTo(TRUE);
 
-            assertThat(screen.whatOpened()).hasSize(1);
+            assertThat(screen.listWhatOpened()).hasSize(1);
         }
 
         @Test
         @DisplayName("the window it shows is a window on the screen gob")
         @Timeout(20)
-        void theWindowHangsUnderTheScreen() {
-            assertThat(sessionOn(RecordingScreen.measuring(1440, 900), """
+        void hangsTheWindowUnderTheScreen() {
+            assertThat(sessionOn(RecordingScreen.measure(1440, 900), """
                     view/no-wait make gob! [size: 320x200]
                     1 = length? system/view/screen-gob""")).isEqualTo(TRUE);
         }
@@ -82,7 +82,7 @@ class ViewingAWindowEndToEndTest {
         @DisplayName("and closing it by hand takes it off again")
         @Timeout(20)
         void unviewTakesItOff() {
-            assertThat(sessionOn(RecordingScreen.measuring(1440, 900), """
+            assertThat(sessionOn(RecordingScreen.measure(1440, 900), """
                     w: view/no-wait make gob! [size: 320x200]
                     unview w
                     tail? system/view/screen-gob""")).isEqualTo(TRUE);
@@ -96,7 +96,7 @@ class ViewingAWindowEndToEndTest {
         @Test
         @DisplayName("a machine with no display refuses, and says the screen is missing")
         @Timeout(20)
-        void noDisplayRefuses() {
+        void refuseWithNoDisplay() {
             assertThat(sessionOn(RecordingScreen.absent(), """
                     e: try [view/no-wait make gob! [size: 320x200]]
                     error? e"""))
@@ -108,7 +108,7 @@ class ViewingAWindowEndToEndTest {
         @DisplayName("a layout block fails, because there is no VID to lay it out")
         @Timeout(20)
         void alayoutBlockFails() {
-            assertThat(sessionOn(RecordingScreen.measuring(1440, 900), """
+            assertThat(sessionOn(RecordingScreen.measure(1440, 900), """
                     e: try [view/no-wait [button "Press"]]
                     error? e""")).isEqualTo(TRUE);
         }
@@ -116,15 +116,15 @@ class ViewingAWindowEndToEndTest {
         @Test
         @DisplayName("and nothing here pretends to be VID")
         @Timeout(20)
-        void nothingPretendsToBeVid() {
-            assertThat(sessionOn(RecordingScreen.measuring(1440, 900), """
+        void pretendNothingIsVid() {
+            assertThat(sessionOn(RecordingScreen.measure(1440, 900), """
                     value? 'layout""")).isEqualTo("#(false)");
         }
 
         @Test
         @DisplayName("a script that was not granted the screen refuses")
         @Timeout(20)
-        void withoutTheGrantItRefuses() {
+        void refuseWithoutTheGrant() {
             Interpreter walled = Interpreter.create();
             String script = """
                     error? try [view/no-wait make gob! [size: 320x200]]""";
@@ -136,15 +136,15 @@ class ViewingAWindowEndToEndTest {
         @Test
         @DisplayName("and the two refusals are told apart, because they need different fixes")
         @Timeout(20)
-        void theTwoRefusalsAreDifferent() {
-            assertThat(whatViewingSays(Interpreter.create()))
+        void tellTheTwoRefusalsApart() {
+            assertThat(readWhatViewingSays(Interpreter.create()))
                     .contains("not granted");
-            assertThat(whatViewingSays(withAScreen(RecordingScreen.absent())))
+            assertThat(readWhatViewingSays(makeAnInterpreterWithAScreen(RecordingScreen.absent())))
                     .as("one can be fixed by granting and the other cannot")
                     .contains("not present");
         }
 
-        private String whatViewingSays(Interpreter interpreter) {
+        private String readWhatViewingSays(Interpreter interpreter) {
             String script = """
                     e: try [view/no-wait make gob! [size: 320x200]]
                     either error? e [form e/arg1] ["no error at all"]""";
@@ -160,22 +160,22 @@ class ViewingAWindowEndToEndTest {
         @Test
         @DisplayName("both appear, and the screen holds both")
         @Timeout(20)
-        void bothAppear() {
-            RecordingScreen screen = RecordingScreen.measuring(1440, 900);
+        void showsBoth() {
+            RecordingScreen screen = RecordingScreen.measure(1440, 900);
 
             assertThat(sessionOn(screen, """
                     view/no-wait make gob! [size: 200x100 text: "One"]
                     view/no-wait make gob! [size: 200x100 text: "Two"]
                     2 = length? system/view/screen-gob""")).isEqualTo(TRUE);
 
-            assertThat(screen.whatOpened()).hasSize(2);
+            assertThat(screen.listWhatOpened()).hasSize(2);
         }
 
         @Test
         @DisplayName("and closing one leaves the other standing")
         @Timeout(20)
-        void closingOneLeavesTheOther() {
-            assertThat(sessionOn(RecordingScreen.measuring(1440, 900), """
+        void leavesTheOtherWhenOneCloses() {
+            assertThat(sessionOn(RecordingScreen.measure(1440, 900), """
                     first-window:  view/no-wait make gob! [size: 200x100]
                     second-window: view/no-wait make gob! [size: 200x100]
                     unview first-window

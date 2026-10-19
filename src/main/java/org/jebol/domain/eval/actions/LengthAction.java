@@ -33,19 +33,19 @@ public class LengthAction extends SeriesOrFileAction {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .theRebolActorsAnswer(nativeName(), arguments, Set.of())
-                .orElseGet(() -> lengthOf(arguments.getFirst(), evaluator));
+                .askTheRebolActor(nativeName(), arguments, Set.of())
+                .orElseGet(() -> measureTheLengthOf(arguments.getFirst(), evaluator));
     }
 
-    private Value lengthOf(Value subject, Evaluator evaluator) {
+    private Value measureTheLengthOf(Value subject, Evaluator evaluator) {
         return switch (subject) {
             case NoneValue nothing -> nothing;
-            case PortValue port -> lengthOfThePort(port, evaluator);
+            case PortValue port -> measureTheLengthOfThePort(port, evaluator);
             case TupleValue tuple -> IntegerValue.of(tuple.shownCount());
             case AnyWordValue word -> IntegerValue.of(
                     word.spelling().codePointCount(0, word.spelling().length()));
             case Value kind when Actions.of(kind).isPresent() ->
-                    IntegerValue.of(Actions.of(kind).orElseThrow().length());
+                    IntegerValue.of(Actions.of(kind).orElseThrow().measureTheLength());
             case RebolSeries series -> IntegerValue.of(series.lengthFromHere());
             case ModuleValue module -> IntegerValue.of(module.context().fieldCount());
             case StructValue struct -> IntegerValue.of(struct.size());
@@ -53,17 +53,17 @@ public class LengthAction extends SeriesOrFileAction {
         };
     }
 
-    private Value lengthOfThePort(PortValue port, Evaluator evaluator) {
-        if (port.eventQueue().isPresent()) {
-            return IntegerValue.of(port.eventQueue().orElseThrow().lengthFromHere());
+    private Value measureTheLengthOfThePort(PortValue port, Evaluator evaluator) {
+        if (port.findTheEventQueue().isPresent()) {
+            return IntegerValue.of(port.findTheEventQueue().orElseThrow().lengthFromHere());
         }
         return switch (port.schemeName()) {
             case "clipboard" -> throw Raised.of(EvaluationFailure.NO_PORT_ACTION,
                     SetWordValue.of(nativeName()));
-            case "udp" -> IntegerValue.of(port.fieldValue("data") instanceof RebolSeries held
+            case "udp" -> IntegerValue.of(port.readTheFieldValue("data") instanceof RebolSeries held
                     ? held.lengthFromHere()
                     : 0);
-            case "file", "dir" -> theFileBehind(port, evaluator).lengthLeft();
+            case "file", "dir" -> findTheFileBehind(port, evaluator).measureTheLengthLeft();
             default -> IntegerValue.of(port.context().fieldCount());
         };
     }

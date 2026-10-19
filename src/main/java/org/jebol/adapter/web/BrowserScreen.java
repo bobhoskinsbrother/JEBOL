@@ -6,11 +6,11 @@ import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.host.WindowsOnOneSurface;
 import org.jebol.domain.render.TextMeasure;
-import org.jebol.domain.host.ScreenEventKind;
+import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.render.PaintList;
-import org.jebol.domain.render.SurfaceCall;
+import org.jebol.domain.render.DrawingCommand;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 
@@ -20,88 +20,48 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-/**
- * A browser as a third screen, implementing the same port a desktop window
- * does. Nothing here mentions HTTP: this hands over a paint list and takes
- * events back, and how that travels belongs to {@link BrowserScreen.Viewer}.
- *
- * <p>Specified in {@code spec/screen.allium}.
- */
 public final class BrowserScreen extends GobScreen {
 
-    /** Whoever is looking at the page, and however the picture reaches them. */
-    public interface Viewer {
-
-        /** Whether a browser is attached right now. */
-        boolean isConnected();
-
-        /** Here is the picture. Paint it. */
-        void paint(List<SurfaceCall> painting);
-
-        /**
-         * Hands over whatever the page has posted since last asked, by
-         * reporting each item back through the screen. A transport that is
-         * posted to from outside takes nothing here; one that holds what it
-         * was sent -- a worker reading a queue the page fills -- pulls its
-         * own side now, so the pull happens on the interpreter's thread.
-         */
-        default void takeWhatThePagePosted() {
-        }
-    }
-
     private final Viewer viewer;
-    private final List<GobValue> showing = new ArrayList<>();
+    private final List<GobValue> gobValues = new ArrayList<>();
     private final WindowsOnOneSurface surface = new WindowsOnOneSurface();
-    private final Queue<Posted> postedByThePage = new ConcurrentLinkedQueue<>();
-    private final Queue<Measured> measuredByThePage = new ConcurrentLinkedQueue<>();
-
-    private record Posted(ScreenEventKind kind, ScreenEventDetail detail) {
-    }
-
-    private record Measured(int wide, int high) {
-    }
-
+    private final Queue<ScreenPost> posts = new ConcurrentLinkedQueue<>();
+    private final Queue<ScreenMeasurement> measurements = new ConcurrentLinkedQueue<>();
     private PairValue viewport = PairValue.of(0, 0);
-
-    private boolean aPictureIsOwed;
+    private boolean isPictureRequired;
 
     private BrowserScreen(Viewer viewer) {
         this.viewer = viewer;
     }
 
-    public static BrowserScreen seenBy(Viewer viewer) {
+    public static BrowserScreen showTo(Viewer viewer) {
         return new BrowserScreen(viewer);
     }
 
     @Override
-    public boolean hasADisplay() {
+    public boolean hasDisplay() {
         return viewer.isConnected();
     }
 
     @Override
     public int displayCount() {
-        return hasADisplay() ? 1 : 0;
+        return hasDisplay() ? 1 : 0;
     }
 
-    /** What the browser last measured, as the interpreter took it. */
     public PairValue viewport() {
         return viewport;
     }
 
-    /**
-     * The page said how big its viewport is. Queued rather than applied: the
-     * caller may be on any thread, and the interpreter takes it on its own.
-     */
-    public void theBrowserMeasures(int wide, int high) {
-        if (wide < 0 || high < 0) {
+    public void measure(int width, int height) {
+        if (width < 0 || height < 0) {
             return;
         }
-        measuredByThePage.add(new Measured(wide, high));
+        measurements.add(new ScreenMeasurement(width, height));
     }
 
     @Override
     public PairValue measure(ScreenMetric metric, int display) {
-        if (!hasADisplay()) {
+        if (!hasDisplay()) {
             return PairValue.of(0, 0);
         }
         return switch (metric) {
@@ -115,10 +75,10 @@ public final class BrowserScreen extends GobScreen {
     }
 
     @Override
-    public void takeTheRootGob(GobValue given) {
-        super.takeTheRootGob(given);
+    public void acceptRootGob(GobValue gobValue) {
+        super.acceptRootGob(gobValue);
         if (!viewport.equals(PairValue.of(0, 0))) {
-            given.storage().size(viewport);
+            gobValue.storage().size(viewport);
         }
     }
 
@@ -126,101 +86,117 @@ public final class BrowserScreen extends GobScreen {
     public void show(GobValue gob) {
         super.show(gob);
         if (root != null) {
-            aPictureIsOwed = true;
+            isPictureRequired = true;
         }
     }
 
     @Override
-    public void offerWhatWasShown() {
-        if (!aPictureIsOwed || root == null) {
+    public void offerShown() {
+        if (!isPictureRequired || root == null) {
             return;
         }
-        aPictureIsOwed = false;
-        viewer.paint(theWholePagePaintedAfreshRatherThanPatched());
+        isPictureRequired = false;
+        viewer.paint(paintPage());
     }
 
-    private List<SurfaceCall> theWholePagePaintedAfreshRatherThanPatched() {
-        return PaintList.ofTheScreen(root,
-                (int) Math.round(viewport.x()), (int) Math.round(viewport.y()),
-                drawDialect).calls(textMeasure());
-    }
 
     @Override
     public TextMeasure textMeasure() {
-        return hasADisplay() ? TextMeasures.ofTheCarriedFont() : ScreenPort.none().textMeasure();
+        return hasDisplay() ? TextMeasures.ofTheCarriedFont() : ScreenPort.none().textMeasure();
+    }
+
+    public void report(ScreenEventType kind, ScreenEventDetail detail) {
+        posts.add(new ScreenPost(kind, detail));
     }
 
     @Override
-    protected Denied nothingToShowOn() {
-        return new Denied("no-service", "no browser is attached to this screen");
+    public void acceptPendingReports() {
+        viewer.takeWhatThePagePosts();
+        acceptMeasurements();
     }
 
     @Override
-    protected List<GobValue> gobsWithWindows() {
-        return List.copyOf(showing);
-    }
-
-    @Override
-    protected void openTheWindowFor(GobValue gob) {
-        showing.add(gob);
-    }
-
-    @Override
-    protected void repaintTheWindowFor(GobValue gob) {
-    }
-
-    @Override
-    protected void closeTheWindowFor(GobValue gob) {
-        showing.removeIf(gob::sharesStorageWith);
-    }
-
-    public void theBrowserReports(ScreenEventKind kind, ScreenEventDetail detail) {
-        postedByThePage.add(new Posted(kind, detail));
-    }
-
-    @Override
-    public void takePendingReports() {
-        viewer.takeWhatThePagePosted();
-        takeEveryMeasurement();
-    }
-
-    @Override
-    public Optional<ScreenEvent> takeTheNextEvent() {
-        takePendingReports();
-        addressEverythingThePagePosted();
-        Optional<ScreenEvent> next = super.takeTheNextEvent();
+    public Optional<ScreenEvent> acceptNextEvent() {
+        acceptPendingReports();
+        addressAllEvents();
+        Optional<ScreenEvent> next = super.acceptNextEvent();
         if (next.isEmpty()) {
-            offerWhatWasShown();
+            offerShown();
         }
         return next;
     }
 
-    private void takeEveryMeasurement() {
-        for (Measured next = measuredByThePage.poll(); next != null; next = measuredByThePage.poll()) {
-            takenByTheInterpreter(next.wide(), next.high());
+    @Override
+    protected Denied refuseWithNoService() {
+        return new Denied("no-service", "no browser is attached to this screen");
+    }
+
+    @Override
+    protected List<GobValue> gobWithWindow() {
+        return List.copyOf(gobValues);
+    }
+
+    @Override
+    protected void openWindowFor(GobValue gob) {
+        gobValues.add(gob);
+    }
+
+    @Override
+    protected void repaintWindowFor(GobValue gob) {
+    }
+
+    @Override
+    protected void closeWindowFor(GobValue gob) {
+        gobValues.removeIf(gob::sharesStorageWith);
+    }
+
+    private List<DrawingCommand> paintPage() {
+        return PaintList.ofScreen(root,
+                (int) Math.round(viewport.x()), (int) Math.round(viewport.y()),
+                drawDialect).calls(textMeasure());
+    }
+
+    private void acceptMeasurements() {
+        for (ScreenMeasurement next = measurements.poll(); next != null; next = measurements.poll()) {
+            dispatchToInterpreter(next.width(), next.height());
         }
     }
 
-    private void addressEverythingThePagePosted() {
-        for (Posted next = postedByThePage.poll(); next != null; next = postedByThePage.poll()) {
-            for (ScreenEvent addressed : surface.addressed(
-                    next.kind(), next.detail(), windowsShowingFromBottomToTop())) {
-                queued.add(addressed.kind(), addressed.window(), addressed.detail());
+    private void addressAllEvents() {
+        for (ScreenPost next = posts.poll(); next != null; next = posts.poll()) {
+            List<ScreenEvent> events = surface.address(next.type(), next.detail(), listWindowsFromBottomToTop());
+            for (ScreenEvent event : events) {
+                queued.add(event.type(), event.window(), event.detail());
             }
         }
     }
 
-    private void takenByTheInterpreter(int wide, int high) {
+    private void dispatchToInterpreter(int wide, int high) {
         this.viewport = PairValue.of(wide, high);
         if (root != null) {
             root.storage().size(viewport);
         }
     }
 
-    private List<GobValue> windowsShowingFromBottomToTop() {
+    private List<GobValue> listWindowsFromBottomToTop() {
         if (root == null) {
             return List.of();
         }
-        return childrenOfTheRoot().stream().filter(this::hasAWindow).toList();
+        return listTheChildrenOfTheRoot().stream().filter(this::hasAWindow).toList();
     }
+
+
+    public interface Viewer {
+        boolean isConnected();
+        void paint(List<DrawingCommand> painting);
+        default void takeWhatThePagePosts() {
+        }
+    }
+
+    private record ScreenPost(ScreenEventType type, ScreenEventDetail detail) {
+    }
+
+    private record ScreenMeasurement(int width, int height) {
+    }
+
 }

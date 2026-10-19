@@ -15,7 +15,7 @@ public class IsValueNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("word", Set.of(WordValue.TYPE)));
+        return List.of(Parameter.of("word", Set.of(WordValue.TYPE)));
     }
 
     @Override
@@ -27,6 +27,6 @@ public class IsValueNative extends DefaultNative {
     private boolean holdsAValue(AnyWordValue word) {
         return word.isBound()
                 && word.binding().knows(word.canonical())
-                && !word.binding().slotFor(word.canonical()).holdsUnset();
+                && !word.binding().findSlotFor(word.canonical()).holdsUnset();
     }
 }

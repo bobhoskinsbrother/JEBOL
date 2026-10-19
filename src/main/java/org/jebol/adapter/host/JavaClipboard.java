@@ -15,7 +15,7 @@ public final class JavaClipboard implements ClipboardPort {
 
     @Override
     public String read() {
-        Clipboard clipboard = theSystemClipboard();
+        Clipboard clipboard = systemClipboard();
         try {
             if (!clipboard.isDataFlavorAvailable(DataFlavor.stringFlavor)) {
                 return NOTHING_A_SCRIPT_CAN_READ;
@@ -31,25 +31,25 @@ public final class JavaClipboard implements ClipboardPort {
     @Override
     public void write(String text) {
         try {
-            theSystemClipboard().setContents(new StringSelection(text), null);
+            systemClipboard().setContents(new StringSelection(text), null);
         } catch (IllegalStateException busy) {
             throw new Unreachable(
                     "the clipboard could not be written: " + busy.getMessage());
         }
     }
 
-    private static Clipboard theSystemClipboard() {
+    private Clipboard systemClipboard() {
         try {
             return Toolkit.getDefaultToolkit().getSystemClipboard();
-        } catch (RuntimeException | Error noWindowingSystem) {
+        } catch (RuntimeException | Error error) {
             throw new Unreachable("this machine has no clipboard to reach: "
-                    + becauseOf(noWindowingSystem));
+                    + messageFrom(error));
         }
     }
 
-    private static String becauseOf(Throwable refusal) {
-        return refusal.getMessage() == null
-                ? refusal.getClass().getSimpleName()
-                : refusal.getMessage();
+    private String messageFrom(Throwable noWindowingSystem) {
+        return noWindowingSystem.getMessage() == null
+                ? noWindowingSystem.getClass().getSimpleName()
+                : noWindowingSystem.getMessage();
     }
 }

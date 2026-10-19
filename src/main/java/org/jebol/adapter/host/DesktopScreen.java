@@ -1,7 +1,7 @@
 package org.jebol.adapter.host;
 
 import org.jebol.domain.host.ScreenEventDetail;
-import org.jebol.domain.host.ScreenEventKind;
+import org.jebol.domain.host.ScreenEventType;
 import org.jebol.application.TextMeasures;
 import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ScreenPort;
@@ -19,21 +19,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.List;
 
-/**
- * The operator's own screen, through Swing and Java2D.
- *
- * <p>Refuses SHOW when there is no display, and no more than SHOW: measurements
- * answer zero and taking the root gob is accepted, because the view system comes
- * up while the library is still loading and a build server has no screen.
- *
- * <p>Decision 4 in {@code docs/decisions.md} governs the threading here.
- */
 public final class DesktopScreen extends GobScreen {
 
-    private static final String THE_PROPERTY_MACOS_NAMES_THE_APPLICATION_BY = "apple.awt.application.name";
+    private static final String MACOS_APP_NAME_PROPERTY = "apple.awt.application.name";
     private static final List<Integer> ICON_SIZES = List.of(16, 32, 64, 128, 256, 512);
 
-    private final JebolsIcon icon = new JebolsIcon();
+    private final JebolIcon icon = new JebolIcon();
     private final boolean present;
     private final Map<GobValue, JFrame> windows = new IdentityHashMap<>();
 
@@ -42,12 +33,12 @@ public final class DesktopScreen extends GobScreen {
     }
 
     public static DesktopScreen onThisMachine() {
-        System.setProperty(THE_PROPERTY_MACOS_NAMES_THE_APPLICATION_BY, JebolsIcon.THE_APPLICATIONS_NAME);
+        System.setProperty(MACOS_APP_NAME_PROPERTY, JebolIcon.APPLICATION_NAME);
         return new DesktopScreen(!GraphicsEnvironment.isHeadless());
     }
 
-    private void showJebolsIconOn(JFrame frame) {
-        List<Image> everySize = ICON_SIZES.stream().<Image>map(icon::drawnAt).toList();
+    private void showJebolIcon(JFrame frame) {
+        List<Image> everySize = ICON_SIZES.stream().<Image>map(icon::drawAt).toList();
         frame.setIconImages(everySize);
         if (Taskbar.isTaskbarSupported()
                 && Taskbar.getTaskbar().isSupported(Taskbar.Feature.ICON_IMAGE)) {
@@ -56,7 +47,7 @@ public final class DesktopScreen extends GobScreen {
     }
 
     @Override
-    public boolean hasADisplay() {
+    public boolean hasDisplay() {
         return present;
     }
 
@@ -75,44 +66,44 @@ public final class DesktopScreen extends GobScreen {
             return PairValue.of(0, 0);
         }
         try {
-            return measurementOf(metric, display);
+            return measureTheMetric(metric, display);
         } catch (HeadlessException noScreen) {
             return PairValue.of(0, 0);
         }
     }
 
-    private PairValue measurementOf(ScreenMetric metric, int display) {
-        Rectangle whole = boundsOfDisplay(display);
+    private PairValue measureTheMetric(ScreenMetric metric, int display) {
+        Rectangle whole = displayDimensions(display);
         Rectangle usable = workAreaOfDisplay(display);
         Insets furniture = furnitureOfAResizableWindow();
         return switch (metric) {
             case SCREEN_SIZE -> PairValue.of(whole.width, whole.height);
             case SCREEN_ORIGIN -> PairValue.of(whole.x, whole.y);
-            case SCREEN_DPI -> dotsPerInch();
+            case SCREEN_DPI -> measureTheDotsPerInch();
             case WORK_ORIGIN -> PairValue.of(usable.x, usable.y);
             case WORK_SIZE -> PairValue.of(usable.width, usable.height);
             case TITLE_SIZE -> PairValue.of(0, furniture.top);
             case BORDER_SIZE -> PairValue.of(furniture.left, furniture.bottom);
             case BORDER_FIXED -> PairValue.of(
-                    furnitureOfAFixedWindow().left, furnitureOfAFixedWindow().bottom);
-            case WINDOW_MIN_SIZE -> smallestWindowSwingWillLayOut();
+                    measureTheFurnitureOfAFixedWindow().left, measureTheFurnitureOfAFixedWindow().bottom);
+            case WINDOW_MIN_SIZE -> measureTheSmallestWindowSwingLaysOut();
             case LOG_SIZE, PHYS_SIZE -> PairValue.of(1, 1);
             case SCREENS -> PairValue.of(displayCount(), displayCount());
         };
     }
 
-    private GraphicsDevice deviceAt(int display) {
+    private GraphicsDevice findTheDeviceAt(int display) {
         GraphicsDevice[] all = GraphicsEnvironment
                 .getLocalGraphicsEnvironment().getScreenDevices();
         return all[Math.min(Math.max(0, display), all.length - 1)];
     }
 
-    private Rectangle boundsOfDisplay(int display) {
-        return deviceAt(display).getDefaultConfiguration().getBounds();
+    private Rectangle displayDimensions(int display) {
+        return findTheDeviceAt(display).getDefaultConfiguration().getBounds();
     }
 
     private Rectangle workAreaOfDisplay(int display) {
-        GraphicsConfiguration where = deviceAt(display).getDefaultConfiguration();
+        GraphicsConfiguration where = findTheDeviceAt(display).getDefaultConfiguration();
         Rectangle whole = where.getBounds();
         Insets taken = Toolkit.getDefaultToolkit().getScreenInsets(where);
         return new Rectangle(
@@ -121,20 +112,20 @@ public final class DesktopScreen extends GobScreen {
                 whole.height - taken.top - taken.bottom);
     }
 
-    private PairValue dotsPerInch() {
+    private PairValue measureTheDotsPerInch() {
         int resolution = Toolkit.getDefaultToolkit().getScreenResolution();
         return PairValue.of(resolution, resolution);
     }
 
     private Insets furnitureOfAResizableWindow() {
-        return furnitureOfAWindowTheJdkWillNotStateSoItIsMeasured(true);
+        return measureTheFurnitureOfAWindow(true);
     }
 
-    private Insets furnitureOfAFixedWindow() {
-        return furnitureOfAWindowTheJdkWillNotStateSoItIsMeasured(false);
+    private Insets measureTheFurnitureOfAFixedWindow() {
+        return measureTheFurnitureOfAWindow(false);
     }
 
-    private Insets furnitureOfAWindowTheJdkWillNotStateSoItIsMeasured(
+    private Insets measureTheFurnitureOfAWindow(
             boolean resizable) {
         JFrame measured = new JFrame();
         try {
@@ -146,7 +137,7 @@ public final class DesktopScreen extends GobScreen {
         }
     }
 
-    private PairValue smallestWindowSwingWillLayOut() {
+    private PairValue measureTheSmallestWindowSwingLaysOut() {
         JFrame measured = new JFrame();
         try {
             measured.pack();
@@ -166,66 +157,66 @@ public final class DesktopScreen extends GobScreen {
     }
 
     @Override
-    protected Denied nothingToShowOn() {
+    protected Denied refuseWithNoService() {
         return new Denied("no-service", "this machine has no display to put a window on");
     }
 
     @Override
-    protected List<GobValue> gobsWithWindows() {
+    protected List<GobValue> gobWithWindow() {
         return List.copyOf(windows.keySet());
     }
 
     @Override
-    protected void openTheWindowFor(GobValue gob) {
-        onTheToolkitThreadAndWaitedFor(() -> windows.put(gob, aWindowShowing(gob)));
+    protected void openWindowFor(GobValue gob) {
+        onTheToolkitThreadAndWaitedFor(() -> windows.put(gob, showAWindow(gob)));
     }
 
     @Override
-    protected void repaintTheWindowFor(GobValue gob) {
-        windowFor(gob).ifPresent(standing -> onTheToolkitThreadAndWaitedFor(standing::repaint));
+    protected void repaintWindowFor(GobValue gob) {
+        findTheWindowFor(gob).ifPresent(standing -> onTheToolkitThreadAndWaitedFor(standing::repaint));
     }
 
     @Override
-    protected void closeTheWindowFor(GobValue gob) {
-        windowFor(gob).ifPresent(standing -> {
+    protected void closeWindowFor(GobValue gob) {
+        findTheWindowFor(gob).ifPresent(standing -> {
             windows.entrySet().removeIf(each -> each.getValue() == standing);
             onTheToolkitThreadAndWaitedFor(standing::dispose);
         });
     }
 
-    private Optional<JFrame> windowFor(GobValue gob) {
+    private Optional<JFrame> findTheWindowFor(GobValue gob) {
         return windows.entrySet().stream()
                 .filter(each -> each.getKey().sharesStorageWith(gob))
                 .map(Map.Entry::getValue)
                 .findFirst();
     }
 
-    private JFrame aWindowShowing(GobValue gob) {
-        JFrame frame = new JFrame(titleOf(gob));
-        showJebolsIconOn(frame);
+    private JFrame showAWindow(GobValue gob) {
+        JFrame frame = new JFrame(readTheTitleOf(gob));
+        showJebolIcon(frame);
         frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-        frame.setContentPane(aSurfacePainting(gob));
+        frame.setContentPane(paintASurface(gob));
         frame.pack();
         frame.setLocationRelativeTo(null);
-        everyListenerOnlyQueuesAndReturns(frame, gob);
+        attachListenersThatOnlyQueue(frame, gob);
         frame.setVisible(true);
         return frame;
     }
 
-    private static String titleOf(GobValue gob) {
-        Value text = gob.storage().contentIfKind(
+    private static String readTheTitleOf(GobValue gob) {
+        Value text = gob.storage().readTheContentIfKind(
                 org.jebol.domain.value.GobStorage.Content.STRING);
         return text instanceof AnyStringValue title && !title.text().isEmpty()
                 ? title.text()
                 : "REBOL: untitled";
     }
 
-    private JPanel aSurfacePainting(GobValue gob) {
+    private JPanel paintASurface(GobValue gob) {
         org.jebol.domain.value.ObjectValue reading = drawDialect;
-        return aSurfacePainting(gob, reading);
+        return paintASurface(gob, reading);
     }
 
-    private JPanel aSurfacePainting(
+    private JPanel paintASurface(
             GobValue gob, org.jebol.domain.value.ObjectValue drawDialect) {
         DesktopScreen onThisScreen = this;
         JPanel surface = new JPanel() {
@@ -245,12 +236,12 @@ public final class DesktopScreen extends GobScreen {
         return surface;
     }
 
-    private void everyListenerOnlyQueuesAndReturns(JFrame frame, GobValue gob) {
+    private void attachListenersThatOnlyQueue(JFrame frame, GobValue gob) {
         frame.addWindowListener(new WindowAdapter() {
 
             @Override
             public void windowClosing(WindowEvent shutting) {
-                posted(ScreenEventKind.CLOSE, gob);
+                post(ScreenEventType.CLOSE, gob);
             }
         });
         frame.addComponentListener(new ComponentAdapter() {
@@ -258,13 +249,13 @@ public final class DesktopScreen extends GobScreen {
             @Override
             public void componentResized(ComponentEvent changed) {
                 Dimension drawable = frame.getContentPane().getSize();
-                posted(ScreenEventKind.RESIZE, gob,
+                post(ScreenEventType.RESIZE, gob,
                         new ScreenEventDetail.At(drawable.width, drawable.height));
             }
 
             @Override
             public void componentMoved(ComponentEvent changed) {
-                posted(ScreenEventKind.OFFSET, gob,
+                post(ScreenEventType.OFFSET, gob,
                         new ScreenEventDetail.At(frame.getX(), frame.getY()));
             }
         });
@@ -276,24 +267,24 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void keyPressed(KeyEvent down) {
-                queueTheKey(down, ScreenEventKind.KEY, ScreenEventKind.CONTROL, gob);
+                queueTheKey(down, ScreenEventType.KEY, ScreenEventType.CONTROL, gob);
             }
 
             @Override
             public void keyReleased(KeyEvent up) {
-                queueTheKey(up, ScreenEventKind.KEY_UP, ScreenEventKind.CONTROL_UP, gob);
+                queueTheKey(up, ScreenEventType.KEY_UP, ScreenEventType.CONTROL_UP, gob);
             }
         });
         frame.getContentPane().addMouseListener(new MouseListener() {
 
             @Override
             public void mousePressed(MouseEvent down) {
-                posted(ScreenEventKind.DOWN, gob, whereThePointerIs(down));
+                post(ScreenEventType.DOWN, gob, locateThePointer(down));
             }
 
             @Override
             public void mouseReleased(MouseEvent up) {
-                posted(ScreenEventKind.UP, gob, whereThePointerIs(up));
+                post(ScreenEventType.UP, gob, locateThePointer(up));
             }
 
             @Override
@@ -312,30 +303,30 @@ public final class DesktopScreen extends GobScreen {
 
             @Override
             public void mouseMoved(MouseEvent moved) {
-                posted(ScreenEventKind.MOVE, gob, whereThePointerIs(moved));
+                post(ScreenEventType.MOVE, gob, locateThePointer(moved));
             }
 
             @Override
             public void mouseDragged(MouseEvent dragged) {
-                posted(ScreenEventKind.MOVE, gob, whereThePointerIs(dragged));
+                post(ScreenEventType.MOVE, gob, locateThePointer(dragged));
             }
         });
     }
 
-    private ScreenEventDetail whereThePointerIs(MouseEvent pointer) {
+    private ScreenEventDetail locateThePointer(MouseEvent pointer) {
         return new ScreenEventDetail.At(pointer.getX(), pointer.getY());
     }
 
-    private void queueTheKey(KeyEvent pressed, ScreenEventKind typing, ScreenEventKind naming,
-            GobValue window) {
+    private void queueTheKey(KeyEvent pressed, ScreenEventType typing, ScreenEventType naming,
+                             GobValue window) {
 
         Optional<String> named = Optional.ofNullable(KEYS_THAT_TYPE_NOTHING.get(pressed.getKeyCode()));
         if (named.isPresent()) {
-            posted(naming, window, new ScreenEventDetail.NamedKey(named.get()));
+            post(naming, window, new ScreenEventDetail.NamedKey(named.get()));
             return;
         }
         if (pressed.getKeyChar() != KeyEvent.CHAR_UNDEFINED) {
-            posted(typing, window, new ScreenEventDetail.Typed(pressed.getKeyChar()));
+            post(typing, window, new ScreenEventDetail.Typed(pressed.getKeyChar()));
         }
     }
 

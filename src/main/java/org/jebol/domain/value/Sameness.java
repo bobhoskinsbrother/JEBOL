@@ -10,19 +10,19 @@ public record Sameness(long stepsAllowed, boolean theyWereBroughtTogetherFirst) 
         return new Sameness(STEPS_ALLOWED_INSIDE_A_SERIES, false);
     }
 
-    public static Sameness insideASeriesAllowing(long stepsAllowed) {
+    public static Sameness allowStepsInsideASeries(long stepsAllowed) {
         return new Sameness(stepsAllowed, false);
     }
 
-    public static Sameness afterBeingBroughtTogether() {
+    public static Sameness bringTogether() {
         return new Sameness(STEPS_ALLOWED_BETWEEN_DECIMALS, true);
     }
 
-    public static Sameness afterBeingBroughtTogetherExactly() {
+    public static Sameness bringTogetherExactly() {
         return new Sameness(0, true);
     }
 
     public boolean holdsBetween(Value one, Value other) {
-        return one.equalTo(other, this);
+        return one.isEqualTo(other, this);
     }
 }

@@ -6,39 +6,31 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * The environment of the Java process this interpreter runs in, with whatever
- * the script has laid over it.
- */
 public final class ProcessEnvironment implements EnvironmentPort {
 
-    private static final String TAKEN_AWAY = null;
-
-    private final Map<String, String> whatTheScriptLaidOverTheProcess =
+    private final Map<String, String> keyValues =
             new LinkedHashMap<>();
 
     @Override
     public String valueOf(String name) {
-        return whatTheScriptLaidOverTheProcess.containsKey(name)
-                ? whatTheScriptLaidOverTheProcess.get(name)
-                : System.getenv(name);
+        return keyValues.containsKey(name) ? keyValues.get(name) : System.getenv(name);
     }
 
     @Override
-    public Map<String, String> all() {
-        Map<String, String> everything = new HashMap<>(System.getenv());
-        whatTheScriptLaidOverTheProcess.forEach((name, held) -> {
-            if (held == TAKEN_AWAY) {
-                everything.remove(name);
+    public Map<String, String> readAll() {
+        Map<String, String> environmentVariables = new HashMap<>(System.getenv());
+        keyValues.forEach((name, held) -> {
+            if (held == null) {
+                environmentVariables.remove(name);
             } else {
-                everything.put(name, held);
+                environmentVariables.put(name, held);
             }
         });
-        return Map.copyOf(everything);
+        return Map.copyOf(environmentVariables);
     }
 
     @Override
-    public void nameHolds(String name, String value) {
-        whatTheScriptLaidOverTheProcess.put(name, value);
+    public void assign(String name, String value) {
+        keyValues.put(name, value);
     }
 }

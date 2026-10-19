@@ -41,7 +41,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("a block is spanned the same way")
-        void aBlockIsSpanned() {
+        void spansABlock() {
             assertThat(answerTo("""
                     b: [1 2 3 4]
                     parse b [skip mark: 2 skip remove mark to end]
@@ -50,7 +50,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("a mark ahead of the position names the same run")
-        void aMarkAheadNamesTheSameRun() {
+        void spansTheSameRunFromAMarkAhead() {
             assertThat(answerTo("""
                     s: "abcd"
                     parse s [(ahead-of-here: skip s 3) skip remove ahead-of-here to end]
@@ -59,7 +59,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("a mark at the head takes out the whole input")
-        void aMarkAtTheHeadSpansEverything() {
+        void spansEverythingFromAMarkAtTheHead() {
             assertThat(answerTo("""
                     s: "abcd"
                     parse s [mark: to end remove mark]
@@ -68,14 +68,14 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("a parse command word is never a mark, so REMOVE SKIP still removes one item")
-        void aCommandWordIsNeverAMark() {
+        void neverTakesACommandWordAsAMark() {
             assertThat(answerTo("""
                     b: [1 2] parse b [remove skip to end] b = [2]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and a word holding some other series is read as an ordinary rule")
-        void aForeignPositionIsReadAsARule() {
+        void readsAForeignPositionAsARule() {
             assertThat(answerTo("""
                     somewhere-else: "b"
                     s: "abc"
@@ -90,7 +90,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("one character kept plainly is a char")
-        void plainKeepOfOneCharacter() {
+        void keepAPlainCharacterAsAChar() {
             assertThat(answerTo("""
                     (parse "abc" [collect [keep skip to end]]) = [#"a"]"""))
                     .isEqualTo("#(true)");
@@ -106,7 +106,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("and the word the copy was named by holds the last slice")
-        void theCopyWordHoldsTheLastSlice() {
+        void leaveTheLastSliceInTheCopyWord() {
             assertThat(answerTo("""
                     all [
                         ["a" "b"] = parse "ab" [collect some [keep copy taken skip]]
@@ -155,7 +155,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("exactly as a plain KEEP of the same paren does")
-        void plainKeepOfTheSameParen() {
+        void keepAPlainParenWholeToo() {
             assertThat(answerTo("""
                     [[1]] = parse [] [collect keep ([1])]""")).isEqualTo("#(true)");
         }
@@ -174,7 +174,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("a collect that keeps nothing sets the word to an empty block")
-        void anEmptyCollectionIsAnEmptyBlock() {
+        void holdsAnEmptyBlockWhenNothingIsKept() {
             assertThat(answerTo("""
                     a: none
                     all [#(true) = parse [] [collect set a []] a = []]"""))
@@ -183,7 +183,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("a kept value reaches the word")
-        void theKeptValueReachesTheWord() {
+        void holdsTheKeptValue() {
             assertThat(answerTo("""
                     a: none
                     all [#(true) = parse [1] [collect set a [keep skip]] a = [1]]"""))
@@ -192,7 +192,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("and it reaches the word even when the parse goes on to fail")
-        void theWordIsSetBeforeTheParseFails() {
+        void holdsTheKeptValueEvenWhenTheParseFails() {
             assertThat(answerTo("""
                     a: none
                     all [#(false) = parse [1 2] [collect set a [keep skip]] a = [1]]"""))
@@ -201,7 +201,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("an inner named collect keeps nothing for the outer one")
-        void anInnerNamedCollectKeepsNothingOutside() {
+        void keepsNothingOutsideAnInnerNamedCollect() {
             assertThat(answerTo("""
                     a: none
                     all [[] = parse [1] [collect [collect set a keep skip]] a = [1]]"""))
@@ -210,7 +210,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("two nested names take the inner collection and the empty outer one")
-        void twoNamesTakeTheirOwnCollections() {
+        void givesTwoNestedNamesTheirOwnCollections() {
             assertThat(answerTo("""
                     a: none b: none
                     all [
@@ -222,7 +222,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("the same name twice keeps the inner collection")
-        void thesameNameTwiceKeepsTheInner() {
+        void keepsTheInnerCollectionForTheSameNameTwice() {
             assertThat(answerTo("""
                     a: none
                     all [
@@ -233,7 +233,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("and a SET that is not COLLECT's own sets the matched value instead")
-        void aPlainSetIsNotCollectsOwn() {
+        void holdsTheMatchedValueForASetThatIsNotCollectsOwn() {
             assertThat(answerTo("""
                     a: none
                     all [[[1]] = parse [1] [collect [collect [set a keep skip]]] a = 1]"""))
@@ -280,7 +280,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("a word holding nothing is refused with parse-rule")
-        void anUnsetWordIsRefused() {
+        void refusesAnUnsetWord() {
             assertThat(answerTo("""
                     set/any 'unassigned-word ()
                     e: try [parse [1] [unassigned-word]] e/id = 'parse-rule"""))
@@ -289,7 +289,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("a word nobody ever assigned is refused the same way")
-        void aWordNeverAssignedIsRefused() {
+        void refusesAWordNeverAssigned() {
             assertThat(answerTo("""
                     e: try [parse [1] [never-assigned-at-all]] e/id = 'parse-rule"""))
                     .isEqualTo("#(true)");
@@ -297,7 +297,7 @@ class ParseSpansAndCollectFromTheSourceTest {
 
         @Test
         @DisplayName("a function is refused as well, the dialect having no place for one")
-        void aFunctionIsRefused() {
+        void refusesAFunction() {
             assertThat(answerTo("""
                     e: try [parse [1] reduce [:add]] e/id = 'parse-rule"""))
                     .isEqualTo("#(true)");

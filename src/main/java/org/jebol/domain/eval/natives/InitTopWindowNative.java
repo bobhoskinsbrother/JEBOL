@@ -23,7 +23,7 @@ public class InitTopWindowNative extends ScreenNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("gob", Set.of(GobValue.TYPE)));
+        return List.of(Parameter.of("gob", Set.of(GobValue.TYPE)));
     }
 
     @Override
@@ -33,7 +33,7 @@ public class InitTopWindowNative extends ScreenNative {
             if (!(arguments.getFirst() instanceof GobValue root)) {
                 return refuseTheArgument(arguments.getFirst(), "gob");
             }
-            evaluator.screen().takeAsTheRoot(root);
+            evaluator.screen().takeAsRoot(root);
             return UnsetValue.unset();
         };
     }

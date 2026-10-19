@@ -13,10 +13,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class WriteRefinementsFromTheSourceTest {
 
-    private static Interpreter writingUnder(Path directory) {
+    private static Interpreter makeAnInterpreterWritingUnder(Path directory) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         return interpreter;
     }
 
@@ -25,7 +25,7 @@ class WriteRefinementsFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(Interpreter interpreter, String source) {
+    private static String readTheErrorIdOf(Interpreter interpreter, String source) {
         String wrapped = "e: try [" + source + "] either error? e [e/id] ['no-error]";
         interpreter.defineFreshWordsIn(wrapped);
         return interpreter.display(interpreter.run(wrapped));
@@ -35,7 +35,7 @@ class WriteRefinementsFromTheSourceTest {
         return Files.readString(directory.resolve(name));
     }
 
-    private static byte[] bytesIn(Path directory, String name) throws Exception {
+    private static byte[] readTheBytesIn(Path directory, String name) throws Exception {
         return Files.readAllBytes(directory.resolve(name));
     }
 
@@ -45,8 +45,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a plain write replaces the file, and what was there is gone")
-        void aPlainWriteReplacesTheFile(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void replacesTheFileOnAPlainWrite(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt {a longer earlier content}""");
             answerTo(interpreter, """
@@ -56,8 +56,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("seeking overwrites in place and leaves the tail")
-        void seekingLeavesTheTailBeyondTheData(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void leavesTheTailBeyondTheDataOnSeeking(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt {abcd}""");
             answerTo(interpreter, """
@@ -67,9 +67,9 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a seek in the middle overwrites only what the data covers")
-        void seekingInTheMiddleOverwritesOnlyThatMuch(@TempDir Path directory)
+        void overwritesOnlyThatMuchSeekingInTheMiddle(@TempDir Path directory)
                 throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt {abcd}""");
             answerTo(interpreter, """
@@ -79,8 +79,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a seek at the size writes at the end")
-        void seekingTheSizeAppends(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void appendsOnSeekingTheSize(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt {ab}""");
             answerTo(interpreter, """
@@ -90,9 +90,9 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a seek past the end is clipped to the size, leaving no hole")
-        void seekingPastTheEndIsClippedToTheSize(@TempDir Path directory)
+        void clipsASeekPastTheEndToTheSize(@TempDir Path directory)
                 throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt {ab}""");
             answerTo(interpreter, """
@@ -102,8 +102,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("seeking into a missing file creates it")
-        void seekingIntoAMissingFileCreatesIt(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void createsAMissingFileOnSeeking(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/seek %new.txt {x} 0""");
             assertThat(textIn(directory, "new.txt")).isEqualTo("x");
@@ -111,8 +111,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a decimal seek position is a number and is accepted")
-        void aDecimalSeekIsAccepted(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void acceptsADecimalSeek(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt {abcd}""");
             answerTo(interpreter, """
@@ -122,16 +122,16 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a negative seek raises out-of-range")
-        void aNegativeSeekRaisesOutOfRange(@TempDir Path directory) {
-            Interpreter interpreter = writingUnder(directory);
-            assertThat(errorIdOf(interpreter, """
+        void raisesOutOfRangeForANegativeSeek(@TempDir Path directory) {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
+            assertThat(readTheErrorIdOf(interpreter, """
                     write/seek %a.txt {x} -1""")).isEqualTo("out-of-range");
         }
 
         @Test
         @DisplayName("appending adds at the end and keeps what was there")
-        void appendingAddsAtTheEnd(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void addsAtTheEndOnAppending(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt {ab}""");
             answerTo(interpreter, """
@@ -141,8 +141,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("appending to a missing file creates it")
-        void appendingToAMissingFileCreatesIt(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void createsAMissingFileOnAppending(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/append %new.txt {x}""");
             assertThat(textIn(directory, "new.txt")).isEqualTo("x");
@@ -150,8 +150,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("when /seek and /append are both given, the seek position wins")
-        void theSeekPositionBeatsAnAppend(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void letsTheSeekPositionBeatAnAppend(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt {abcd}""");
             answerTo(interpreter, """
@@ -166,8 +166,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a bound inside the data clips it")
-        void theBoundClipsText(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void clipsText(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/part %a.txt {abc} 2""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("ab");
@@ -175,8 +175,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a bound equal to the length writes it all")
-        void aBoundEqualToTheLengthWritesItAll(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void writesItAllAtTheLength(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/part %a.txt {abc} 3""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("abc");
@@ -184,8 +184,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a bound larger than the data writes the whole data")
-        void aBoundLargerThanTheDataWritesItAll(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void writesItAllWhenLargerThanTheData(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/part %a.txt {abc} 4""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("abc");
@@ -193,9 +193,9 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a bound of zero writes nothing and still makes the file")
-        void aBoundOfZeroWritesNothingAndStillMakesTheFile(@TempDir Path directory)
+        void writesNothingAtZeroButStillMakesTheFile(@TempDir Path directory)
                 throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt {earlier}""");
             answerTo(interpreter, """
@@ -205,24 +205,24 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a negative bound raises out-of-range")
-        void aNegativeBoundRaisesOutOfRange(@TempDir Path directory) {
-            Interpreter interpreter = writingUnder(directory);
-            assertThat(errorIdOf(interpreter, """
+        void raisesOutOfRangeWhenNegative(@TempDir Path directory) {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
+            assertThat(readTheErrorIdOf(interpreter, """
                     write/part %a.txt {abc} -1""")).isEqualTo("out-of-range");
         }
 
         @Test
         @DisplayName("a negative bound is refused even where the bound would not apply")
-        void aNegativeBoundIsRefusedEvenForAChar(@TempDir Path directory) {
-            Interpreter interpreter = writingUnder(directory);
-            assertThat(errorIdOf(interpreter, """
+        void refusesANegativeEvenForAChar(@TempDir Path directory) {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
+            assertThat(readTheErrorIdOf(interpreter, """
                     write/part %a.txt #"a" -1""")).isEqualTo("out-of-range");
         }
 
         @Test
         @DisplayName("a decimal bound is a number and is accepted")
-        void aDecimalBoundIsAccepted(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void acceptsADecimal(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/part %a.txt {abc} 2.0""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("ab");
@@ -230,19 +230,19 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("the bound counts bytes of a binary")
-        void theBoundClipsBytesOfABinary(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void clipsTheBytesOfABinary(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/part %a.bin #{010203} 2""");
-            assertThat(bytesIn(directory, "a.bin"))
+            assertThat(readTheBytesIn(directory, "a.bin"))
                     .containsExactly(0x01, 0x02);
         }
 
         @Test
         @DisplayName("the bound counts from the series position")
-        void theBoundCountsFromTheSeriesPosition(@TempDir Path directory)
+        void countsFromTheSeriesPosition(@TempDir Path directory)
                 throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/part %a.txt next {abc} 1""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("b");
@@ -250,8 +250,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("the bound applies to the molded text of any other value")
-        void theBoundClipsTheMoldedText(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void clipsTheMoldedText(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/part %a.txt [1 2] 3""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("[1 ");
@@ -259,9 +259,9 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a char is written whole whatever the bound")
-        void aCharIsWrittenWholeWhateverTheBound(@TempDir Path directory)
+        void writesACharWholeWhateverTheBound(@TempDir Path directory)
                 throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/part %a.txt #"a" 0""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("a");
@@ -269,8 +269,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a block with /lines ignores the bound")
-        void aBlockWithLinesIgnoresTheBound(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void isIgnoredForABlockWithLines(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/lines/part %a.txt [{a} {b}] 1""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("a\nb\n");
@@ -278,14 +278,14 @@ class WriteRefinementsFromTheSourceTest {
     }
 
     @Nested
-    @DisplayName("what each kind of data becomes in the file")
+    @DisplayName("what each type of data becomes in the file")
     class WhatTheDataBecomes {
 
         @Test
         @DisplayName("writing starts from the series position")
-        void writingStartsFromTheSeriesPosition(@TempDir Path directory)
+        void startsFromTheSeriesPosition(@TempDir Path directory)
                 throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt next {ab}""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("b");
@@ -293,35 +293,35 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a binary is written from its position too")
-        void aBinaryIsWrittenFromItsPosition(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void writesABinaryFromItsPosition(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.bin next #{0102}""");
-            assertThat(bytesIn(directory, "a.bin")).containsExactly(0x02);
+            assertThat(readTheBytesIn(directory, "a.bin")).containsExactly(0x02);
         }
 
         @Test
         @DisplayName("text crosses the boundary as UTF-8")
         void textCrossesAsUtf8(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt {á}""");
-            assertThat(bytesIn(directory, "a.txt")).containsExactly(0xC3, 0xA1);
+            assertThat(readTheBytesIn(directory, "a.txt")).containsExactly(0xC3, 0xA1);
         }
 
         @Test
         @DisplayName("a char writes its UTF-8 bytes")
-        void aCharWritesItsUtf8Bytes(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void writesACharsUtf8Bytes(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt #"á\"""");
-            assertThat(bytesIn(directory, "a.txt")).containsExactly(0xC3, 0xA1);
+            assertThat(readTheBytesIn(directory, "a.txt")).containsExactly(0xC3, 0xA1);
         }
 
         @Test
         @DisplayName("a block without /lines is molded, brackets and all")
-        void aBlockWithoutLinesIsMolded(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void moldsABlockWithoutLines(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt [1 2]""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("[1 2]");
@@ -329,8 +329,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("any other value is molded and the text written")
-        void anyOtherValueIsMoldedAndWritten(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void moldsAndWritesAnyOtherValue(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt 12""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("12");
@@ -338,8 +338,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a file as data is molded too: only string! passes as text")
-        void aFileAsDataIsMolded(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void moldsAFileAsData(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write %a.txt %b.txt""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("%b.txt");
@@ -347,9 +347,9 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a molded value with /lines gains the line feed too")
-        void aMoldedValueWithLinesGainsTheLineFeed(@TempDir Path directory)
+        void addsALineFeedToAMoldedValueWithLines(@TempDir Path directory)
                 throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/lines %a.txt 12""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("12\n");
@@ -357,9 +357,9 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a block with /lines writes each value formed with a break")
-        void aBlockWithLinesWritesEachValueAndABreak(@TempDir Path directory)
+        void writesEachValueAndABreakForABlockWithLines(@TempDir Path directory)
                 throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/lines %a.txt [{a} {b}]""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("a\nb\n");
@@ -367,8 +367,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("the values of a /lines block are formed, not molded")
-        void theValuesOfALinesBlockAreFormed(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void formsTheValuesOfALinesBlock(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/lines %a.txt [1 2]""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("1\n2\n");
@@ -376,9 +376,9 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("an empty block with /lines writes nothing")
-        void anEmptyBlockWithLinesWritesNothing(@TempDir Path directory)
+        void writesNothingForAnEmptyBlockWithLines(@TempDir Path directory)
                 throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/lines %a.txt []""");
             assertThat(textIn(directory, "a.txt")).isEmpty();
@@ -386,17 +386,17 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a binary with /lines gains the line feed byte too")
-        void aBinaryWithLinesGainsTheLineFeed(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void addsALineFeedToABinaryWithLines(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/lines %a.bin #{41}""");
-            assertThat(bytesIn(directory, "a.bin")).containsExactly(0x41, 0x0A);
+            assertThat(readTheBytesIn(directory, "a.bin")).containsExactly(0x41, 0x0A);
         }
 
         @Test
         @DisplayName("a string with /lines gains one line feed")
-        void aStringWithLinesGainsOneLineFeed(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void addsOneLineFeedToAStringWithLines(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/lines %a.txt {a^/}""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("a\n\n");
@@ -404,9 +404,9 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("an empty string with /lines writes the line feed alone")
-        void anEmptyStringWithLinesWritesOneLineFeed(@TempDir Path directory)
+        void writesOneLineFeedForAnEmptyStringWithLines(@TempDir Path directory)
                 throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/lines %a.txt {}""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("\n");
@@ -419,8 +419,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("the answer is the destination, so calls chain")
-        void theAnswerIsTheDestination(@TempDir Path directory) {
-            Interpreter interpreter = writingUnder(directory);
+        void answerTheDestination(@TempDir Path directory) {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             assertThat(answerTo(interpreter, """
                     write %a.txt {x}""")).isEqualTo("%a.txt");
             assertThat(answerTo(interpreter, """
@@ -429,19 +429,19 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("/binary changes nothing for a file destination")
-        void binaryChangesNothing(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void changeNothingForBinary(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/binary %a.txt {a^/}""");
             answerTo(interpreter, """
                     write %b.txt {a^/}""");
-            assertThat(bytesIn(directory, "a.txt")).isEqualTo(bytesIn(directory, "b.txt"));
+            assertThat(readTheBytesIn(directory, "a.txt")).isEqualTo(readTheBytesIn(directory, "b.txt"));
         }
 
         @Test
         @DisplayName("/allow is accepted and its modes never reach the write")
         void allowChangesNothing(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/allow %a.txt {x} [owner-read owner-write]""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("x");
@@ -449,8 +449,8 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("/all is accepted and changes nothing")
-        void allChangesNothing(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = writingUnder(directory);
+        void changeNothingForAll(@TempDir Path directory) throws Exception {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
             answerTo(interpreter, """
                     write/all %a.txt {x}""");
             assertThat(textIn(directory, "a.txt")).isEqualTo("x");
@@ -463,47 +463,47 @@ class WriteRefinementsFromTheSourceTest {
 
         @Test
         @DisplayName("a bound that is not a number is refused")
-        void aBoundOfTheWrongTypeIsRefused(@TempDir Path directory) {
-            Interpreter interpreter = writingUnder(directory);
-            assertThat(errorIdOf(interpreter, """
+        void refuseABoundOfTheWrongType(@TempDir Path directory) {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
+            assertThat(readTheErrorIdOf(interpreter, """
                     write/part %a.txt {abc} {2}""")).isEqualTo("expect-arg");
         }
 
         @Test
         @DisplayName("a seek position that is not a number is refused")
-        void aSeekOfTheWrongTypeIsRefused(@TempDir Path directory) {
-            Interpreter interpreter = writingUnder(directory);
-            assertThat(errorIdOf(interpreter, """
+        void refuseASeekOfTheWrongType(@TempDir Path directory) {
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
+            assertThat(readTheErrorIdOf(interpreter, """
                     write/seek %a.txt {x} {0}""")).isEqualTo("expect-arg");
         }
 
         @Test
         @DisplayName("access modes that are not a block are refused")
         void allowNeedsABlock(@TempDir Path directory) {
-            Interpreter interpreter = writingUnder(directory);
-            assertThat(errorIdOf(interpreter, """
+            Interpreter interpreter = makeAnInterpreterWritingUnder(directory);
+            assertThat(readTheErrorIdOf(interpreter, """
                     write/allow %a.txt {x} 5""")).isEqualTo("expect-arg");
         }
     }
 
     @Test
     @DisplayName("a read-only port refuses the seeking and appending forms too")
-    void aReadOnlyPortRefusesEveryForm(@TempDir Path directory) {
+    void refusesEveryFormOnAReadOnlyPort(@TempDir Path directory) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory).readOnly());
-        assertThat(errorIdOf(interpreter, """
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory).readOnlyFileSystem());
+        assertThat(readTheErrorIdOf(interpreter, """
                 write/append %a.txt {x}""")).isEqualTo("read-only");
-        assertThat(errorIdOf(interpreter, """
+        assertThat(readTheErrorIdOf(interpreter, """
                 write/seek %a.txt {x} 0""")).isEqualTo("read-only");
     }
 
     @Test
-    @DisplayName("a refinement write still needs the files grant")
-    void refinementsStillNeedTheGrant(@TempDir Path directory) {
+    @DisplayName("a refinement write still needs the filePort grant")
+    void stillNeedsTheGrantWithRefinements(@TempDir Path directory) {
         Interpreter interpreter = Interpreter.withBounds(Bounds.standard());
-        interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
-        assertThat(errorIdOf(interpreter, """
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+        assertThat(readTheErrorIdOf(interpreter, """
                 write/append %a.txt {x}""")).isEqualTo("no-service");
     }
 }

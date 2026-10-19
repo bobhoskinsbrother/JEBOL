@@ -18,7 +18,7 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
 
     private static final double CLOSE_ENOUGH = 0.0001;
 
-    private static List<PaintInstruction> drawingOf(String drawBlock) {
+    private static List<PaintInstruction> drawTheDrawingOf(String drawBlock) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         String source = "make gob! [size: 100x100 draw: [" + drawBlock + "]]";
@@ -30,7 +30,7 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
     }
 
     private static PaintInstruction.Drawn onlyDrawing(String drawBlock) {
-        List<PaintInstruction> painted = drawingOf(drawBlock);
+        List<PaintInstruction> painted = drawTheDrawingOf(drawBlock);
         assertThat(painted).hasSize(1);
         return (PaintInstruction.Drawn) painted.getFirst();
     }
@@ -77,14 +77,14 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
 
         @Test
         @DisplayName("with nothing asked for, it changes nothing")
-        void withNothingAskedForItChangesNothing() {
+        void changesNothingWhenNothingIsAskedFor() {
             assertThat(onlyDrawing("transform 0 0x0 1 1 0x0 box 10x10 20x20")
                     .transform().isNone()).isTrue();
         }
 
         @Test
         @DisplayName("and it multiplies with what was already standing")
-        void itMultipliesWithWhatWasStanding() {
+        void multipliesWithWhatIsStanding() {
             Transform both = onlyDrawing(
                     "translate 5x5 transform 0 0x0 2 2 0x0 box 0x0 10x10").transform();
 
@@ -161,7 +161,7 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
         @DisplayName("and leaves what came before it alone")
         void leavesWhatCameBeforeAlone() {
             List<PaintInstruction> painted =
-                    drawingOf("box 0x0 100x100 clip 10x10 40x40 box 0x0 100x100");
+                    drawTheDrawingOf("box 0x0 100x100 clip 10x10 40x40 box 0x0 100x100");
 
             assertThat(painted).hasSize(2);
             assertThat(painted.get(0).where().clip().wide()).isEqualTo(100);
@@ -180,9 +180,9 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
 
         @Test
         @DisplayName("and with no corners it opens back up to the whole gob")
-        void withNoCornersItOpensBackUp() {
+        void opensBackUpWithNoCorners() {
             List<PaintInstruction> painted =
-                    drawingOf("clip 10x10 40x40 box 0x0 100x100 clip box 0x0 100x100");
+                    drawTheDrawingOf("clip 10x10 40x40 box 0x0 100x100 clip box 0x0 100x100");
 
             assertThat(painted).hasSize(2);
             assertThat(painted.get(0).where().clip().wide()).isEqualTo(30);
@@ -192,7 +192,7 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
         @Test
         @DisplayName("PUSH puts the clip back with everything else")
         void pushPutsTheClipBack() {
-            List<PaintInstruction> painted = drawingOf(
+            List<PaintInstruction> painted = drawTheDrawingOf(
                     "push [clip 10x10 40x40 box 0x0 100x100] box 0x0 100x100");
 
             assertThat(painted).hasSize(2);
@@ -219,7 +219,7 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
 
         @Test
         @DisplayName("and each missing corner has its own default")
-        void eachMissingCornerHasItsOwnDefault() {
+        void defaultEachMissingCornerSeparately() {
             List<PathStep> path = onlyDrawing("triangle").path();
 
             assertThat(path.get(0)).isEqualTo(new PathStep.MoveTo(0, 0));
@@ -229,9 +229,9 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
 
         @Test
         @DisplayName("its three colours are shaded across it, worked out here")
-        void itsThreeColoursAreShadedAcrossIt() {
+        void shadeTheirThreeColoursAcross() {
             List<PaintInstruction> painted =
-                    drawingOf("triangle 10x10 90x10 50x90 255.0.0 0.255.0 0.0.255 1");
+                    drawTheDrawingOf("triangle 10x10 90x10 50x90 255.0.0 0.255.0 0.0.255 1");
 
             assertThat(painted)
                     .as("a mesh of flat pieces, which both renderers draw the same")
@@ -243,9 +243,9 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
 
         @Test
         @DisplayName("and each piece is the blend of the corners where it sits")
-        void eachPieceIsTheBlendWhereItSits() {
+        void blendEachPieceWhereItSits() {
             List<PaintInstruction> painted =
-                    drawingOf("pen off triangle 10x10 90x10 50x90 255.0.0 0.255.0 0.0.255 1");
+                    drawTheDrawingOf("pen off triangle 10x10 90x10 50x90 255.0.0 0.255.0 0.0.255 1");
 
             List<Colour> filled = painted.stream()
                     .map(PaintInstruction.Drawn.class::cast)
@@ -265,7 +265,7 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
 
         @Test
         @DisplayName("with no colours it is the plain outline it always was")
-        void withNoColoursItIsThePlainOutline() {
+        void drawThePlainOutlineWithNoColours() {
             assertThat(onlyDrawing("triangle 10x10 90x10 50x90").path()).hasSize(4);
         }
     }
@@ -293,7 +293,7 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
 
         @Test
         @DisplayName("and a closed one joins the end back to the start")
-        void aclosedOneJoinsTheEndToTheStart() {
+        void joinTheEndToTheStartWhenClosed() {
             List<PathStep> path =
                     onlyDrawing("spline 20 closed 10x10 50x80 90x10").path();
 
@@ -303,7 +303,7 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
 
         @Test
         @DisplayName("two points is a curve as much as twenty are")
-        void twoPointsIsACurve() {
+        void makeACurveFromTwoPoints() {
             List<PathStep> path = onlyDrawing("spline 20 10x10 90x90").path();
 
             assertThat(path).hasSize(2);
@@ -313,8 +313,8 @@ class TransformClipAndTheOtherShapesFromTheSourceTest {
         @Test
         @DisplayName("and fewer than two points paints nothing at all")
         void fewerThanTwoPointsPaintsNothing() {
-            assertThat(drawingOf("spline 20 10x10")).isEmpty();
-            assertThat(drawingOf("spline 20")).isEmpty();
+            assertThat(drawTheDrawingOf("spline 20 10x10")).isEmpty();
+            assertThat(drawTheDrawingOf("spline 20")).isEmpty();
         }
     }
 }

@@ -718,7 +718,7 @@ sys/make-scheme [
 								]
 							]
 							true [
-								; for now just remove the content which is written
+								; for now just remove the content which is text
 								; no need to chunk data manually, these are handled internaly
 								; just make sure you don't use any other `write` before receiving `wrote`
 								write port out/content

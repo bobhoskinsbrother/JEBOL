@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class CorpusIntegrityTest {
 
-    private static final List<CorpusEntry> ENTRIES = CorpusReader.allEntries();
+    private static final List<CorpusEntry> ENTRIES = CorpusReader.readAllEntries();
 
     @Test
     @DisplayName("the corpus files were found and parsed")
@@ -20,7 +20,7 @@ class CorpusIntegrityTest {
 
     @Test
     @DisplayName("every entry asserts something")
-    void everyEntryAssertsSomething() {
+    void assertsSomethingInEveryEntry() {
         assertThat(ENTRIES)
                 .allSatisfy(entry -> assertThat(entry.assertsSomething())
                         .as("%s asserts nothing: it has no result, prints, error or types",
@@ -36,7 +36,7 @@ class CorpusIntegrityTest {
 
     @Test
     @DisplayName("every entry records where it came from")
-    void everyEntryHasAnOrigin() {
+    void givesEveryEntryAnOrigin() {
         assertThat(ENTRIES)
                 .allSatisfy(entry -> assertThat(entry.origin())
                         .as("%s has no origin", entry.id())
@@ -60,8 +60,8 @@ class CorpusIntegrityTest {
 
     @Test
     @DisplayName("the fourteen source programmes are present")
-    void sourceProgrammesArePresent() {
-        List<Path> sources = CorpusReader.sourceProgrammes();
+    void holdsTheSourceProgrammes() {
+        List<Path> sources = CorpusReader.listTheSourceProgrammes();
 
         assertThat(sources).hasSize(14);
         assertThat(sources)
@@ -72,7 +72,7 @@ class CorpusIntegrityTest {
 
     @Test
     @DisplayName("almost every entry runs against what exists today")
-    void nearlyEveryEntryIsRunnable() {
+    void runsNearlyEveryEntry() {
         List<CorpusEntry> blocked =
                 ENTRIES.stream().filter(entry -> !entry.isRunnableNow()).toList();
 

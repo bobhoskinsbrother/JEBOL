@@ -41,14 +41,14 @@ public sealed interface Value permits
     Datatype datatype();
 
     default Value make(Value spec, Maker maker) {
-        return datatype().madeFrom(spec, maker);
+        return datatype().makeFrom(spec, maker);
     }
 
     default Optional<Context> fieldsAsAContext() {
         return Optional.empty();
     }
 
-    default List<Value> items() {
+    default List<Value> listTheItems() {
         throw Raised.of(EvaluationFailure.CANNOT_USE,
                 "cannot walk " + datatype().literalSpelling() + " value");
     }
@@ -60,19 +60,19 @@ public sealed interface Value permits
         return Molder.form(this).getBytes(StandardCharsets.UTF_8);
     }
 
-    default Value copied(boolean deeply) {
-        return copied(deeply, Copying.WHAT_A_DEEP_COPY_COPIES);
+    default Value copy(boolean deeply) {
+        return copy(deeply, Copying.WHAT_A_DEEP_COPY_COPIES);
     }
 
-    default Value copied(boolean deeply, Set<Datatype> kinds) {
+    default Value copy(boolean deeply, Set<Datatype> kinds) {
         return this;
     }
 
-    default Value copiedAsAMember(boolean deeply, Set<Datatype> kinds) {
+    default Value copyAsAMember(boolean deeply, Set<Datatype> kinds) {
         if (!kinds.contains(datatype())) {
             return this;
         }
-        return copied(deeply, deeply ? kinds : Copying.NOTHING_INSIDE);
+        return copy(deeply, deeply ? kinds : Copying.NOTHING_INSIDE);
     }
 
     default long asPosition() {
@@ -88,27 +88,27 @@ public sealed interface Value permits
         throw Raised.cannotUseTheAction(this, "tail?");
     }
 
-    default String writtenInHex(HexWidth width) {
+    default String writeInHex(HexWidth width) {
         throw Raised.cannotUse(this, "to-hex");
     }
 
-    default Value trimmed(Trimming trimming) {
+    default Value trim(Trimming trimming) {
         throw Raised.of(EvaluationFailure.CANNOT_USE,
                 SetWordValue.of("trim"), datatype());
     }
 
-    default Value picked(int oneBasedPosition) {
+    default Value pick(int oneBasedPosition) {
         throw Raised.cannotUseTheAction(this, "pick");
     }
 
-    default Value pickedBy(Value selector) {
+    default Value pickBy(Value selector) {
         if (selector instanceof IntegerValue(long magnitude)) {
-            return picked((int) magnitude);
+            return pick((int) magnitude);
         }
         throw Raised.cannotUseTheAction(this, "pick");
     }
 
-    default Value reflected(AnyWordValue field) {
+    default Value reflect(AnyWordValue field) {
         return NoneValue.none();
     }
 
@@ -116,7 +116,7 @@ public sealed interface Value permits
         return fieldsAsAContext().isPresent();
     }
 
-    default Value fieldValue(String field) {
+    default Value readTheFieldValue(String field) {
         return fieldsAsAContext()
                 .filter(fields -> fields.holds(field))
                 .map(fields -> fields.ownSlotFor(field).value())
@@ -148,20 +148,20 @@ public sealed interface Value permits
         }
     }
 
-    default Value bitwise(Value right, BitwiseOperation operation) {
+    default Value combineBitwise(Value right, BitwiseOperation operation) {
         throw Raised.of(EvaluationFailure.EXPECT_ARG, this);
     }
 
-    default Value arithmetic(Value right, ArithmeticOperation operation) {
+    default Value calculate(Value right, ArithmeticOperation operation) {
         throw Raised.cannotUseTheAction(this, operation.spelling());
     }
 
-    default Value absolute() {
+    default Value makeAbsolute() {
         throw Raised.cannotUseTheAction(this, "absolute");
     }
 
     default Value negated() {
-        return IntegerValue.of(0).arithmetic(this, new Subtract());
+        return IntegerValue.of(0).calculate(this, new Subtract());
     }
 
     default long asCountOfRepetitions() {
@@ -169,23 +169,23 @@ public sealed interface Value permits
                 Molder.mold(this) + " is not a count of repetitions");
     }
 
-    default AnyBlockValue repeatedInABlock(Value times) {
-        return BlockValue.block(List.of(this)).repeatedInABlock(times);
+    default AnyBlockValue repeatInABlock(Value times) {
+        return BlockValue.of(List.of(this)).repeatInABlock(times);
     }
 
-    default Value randomised(RandomDraw draw) {
+    default Value randomise(RandomDraw draw) {
         throw Raised.cannotUseTheAction(this, "random");
     }
 
-    default Value pickedAtRandom(RandomDraw draw) {
-        return randomised(draw);
+    default Value pickAtRandom(RandomDraw draw) {
+        return randomise(draw);
     }
 
     default long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
         throw Raised.cannotUseTheAction(this, "random");
     }
 
-    default Value heldBetween(Value lowest, Value highest) {
+    default Value holdBetween(Value lowest, Value highest) {
         return this;
     }
 
@@ -196,32 +196,32 @@ public sealed interface Value permits
         if (!Numbers.isANumber(destination)) {
             throw Raised.of(EvaluationFailure.TYPE_MISMATCH, Molder.mold(destination));
         }
-        double from = Numbers.quantityOf(this);
+        double from = Numbers.measureTheQuantityOf(this);
         return DecimalValue.of(
-                from + (Numbers.quantityOf(destination) - from) * fraction);
+                from + (Numbers.measureTheQuantityOf(destination) - from) * fraction);
     }
 
 
     default Value refuseTheArithmetic(Value right) {
-        throw Raised.notRelated(this, right);
+        throw Raised.ofUnrelated(this, right);
     }
 
     default Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
         throw Raised.cannotUse(this, "a set operation");
     }
 
-    default Optional<Value[]> broughtTogetherWith(Value other) {
+    default Optional<Value[]> bringTogetherWith(Value other) {
         return Optional.empty();
     }
 
-    default boolean equalTo(Value other, Sameness how) {
-        if (Numbers.theyMayBeCompared(this, other, how)) {
+    default boolean isEqualTo(Value other, Sameness how) {
+        if (Numbers.canBeCompared(this, other, how)) {
             return Numbers.areEqual(this, other, how);
         }
         return datatype() == other.datatype() && equals(other);
     }
 
-    default Optional<Value[]> both(Value mine, Value theirs) {
+    default Optional<Value[]> pairUp(Value mine, Value theirs) {
         return Optional.of(new Value[] {mine, theirs});
     }
 
@@ -246,18 +246,18 @@ public sealed interface Value permits
     }
 
     default Value asItStands(AnyDecimalValue.AnyDecimalDatatype wanted, double quantity) {
-        return wanted.holding(quantity);
+        return wanted.wrap(quantity);
     }
 
-    default Value inHundredths(AnyDecimalValue.AnyDecimalDatatype wanted, double quantity) {
-        return wanted.holdingHundredths(quantity);
+    default Value countInHundredths(AnyDecimalValue.AnyDecimalDatatype wanted, double quantity) {
+        return wanted.wrapHundredths(quantity);
     }
 
     default boolean isAQuantityOfNothing() {
         return false;
     }
 
-    default Datatype theDatatypeItStandsFor() {
+    default Datatype findTheDatatypeItStandsFor() {
         return datatype();
     }
 }

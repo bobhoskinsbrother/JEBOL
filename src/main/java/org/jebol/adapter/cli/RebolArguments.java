@@ -10,6 +10,20 @@ import java.util.Set;
 
 final class RebolArguments {
 
+    private static final Map<Character, Option> PLUS_CHARACTERS = Map.of(
+            's', new Option(EnumSet.of(Flag.SECURE_MAX), false));
+
+    private static final Option UNKNOWN = new Option(EnumSet.of(Flag.HELP), false);
+
+    private static final Option IGNORED = new Option(EnumSet.noneOf(Flag.class), false);
+
+    private static final String STOPS_THE_OPTIONS = "--";
+
+    private final Set<Flag> flags = EnumSet.noneOf(Flag.class);
+    private final Map<Flag, String> values = new EnumMap<>(Flag.class);
+    private Optional<String> script = Optional.empty();
+    private final List<String> remaining = new ArrayList<>();
+
     enum Flag {
         SCRIPT("script"), ARGS("args"), DO("do"), IMPORT("import"), VERSION("version"),
         DEBUG("debug"), SECURE("secure"), HELP("help"), VERS("vers"), QUIET("quiet"),
@@ -61,19 +75,6 @@ final class RebolArguments {
             Map.entry('v', new Option(EnumSet.of(Flag.VERS), false)),
             Map.entry('w', new Option(EnumSet.of(Flag.NO_WINDOW), false)));
 
-    private static final Map<Character, Option> PLUS_CHARACTERS = Map.of(
-            's', new Option(EnumSet.of(Flag.SECURE_MAX), false));
-
-    private static final Option UNKNOWN = new Option(EnumSet.of(Flag.HELP), false);
-
-    private static final Option IGNORED = new Option(EnumSet.noneOf(Flag.class), false);
-
-    private static final String STOPS_THE_OPTIONS = "--";
-
-    private final Set<Flag> flags = EnumSet.noneOf(Flag.class);
-    private final Map<Flag, String> values = new EnumMap<>(Flag.class);
-    private Optional<String> script = Optional.empty();
-    private final List<String> remaining = new ArrayList<>();
 
     RebolArguments(List<String> arguments) {
         int at = 0;
@@ -83,12 +84,12 @@ final class RebolArguments {
                 break;
             }
             if (argument.startsWith("--")) {
-                at = took(OPTION_WORDS.getOrDefault(argument.substring(2),
-                        startsALine(argument.substring(2)) ? IGNORED : UNKNOWN), arguments, at);
+                at = take(OPTION_WORDS.getOrDefault(argument.substring(2),
+                        startsLine(argument.substring(2)) ? IGNORED : UNKNOWN), arguments, at);
             } else if (argument.startsWith("-")) {
-                at = tookEachCharacter(argument, OPTION_CHARACTERS, arguments, at);
+                at = takeEachCharacter(argument, OPTION_CHARACTERS, arguments, at);
             } else if (argument.startsWith("+")) {
-                at = tookEachCharacter(argument, PLUS_CHARACTERS, arguments, at);
+                at = takeEachCharacter(argument, PLUS_CHARACTERS, arguments, at);
             } else {
                 if (script.isPresent()) {
                     at--;
@@ -104,24 +105,24 @@ final class RebolArguments {
         }
     }
 
-    private boolean startsALine(String word) {
+    private boolean startsLine(String word) {
         return word.startsWith("\r") || word.startsWith("\n");
     }
 
-    private int tookEachCharacter(String argument, Map<Character, Option> options,
-            List<String> arguments, int at) {
+    private int takeEachCharacter(String argument, Map<Character, Option> options,
+                                  List<String> arguments, int at) {
 
         int reached = at;
         for (char each : argument.substring(1).toCharArray()) {
             Option option = each == '\r' || each == '\n'
                     ? IGNORED
                     : options.getOrDefault(each, UNKNOWN);
-            reached = took(option, arguments, reached);
+            reached = take(option, arguments, reached);
         }
         return reached;
     }
 
-    private int took(Option option, List<String> arguments, int at) {
+    private int take(Option option, List<String> arguments, int at) {
         if (!option.takesAValue()) {
             flags.addAll(option.flags());
             return at;
@@ -132,7 +133,7 @@ final class RebolArguments {
         }
         String value = arguments.get(at + 1);
         flags.addAll(option.flags());
-        if (secondCharacterIsADash(value)) {
+        if (isTheSecondCharacterADash(value)) {
             return at;
         }
         option.flags().forEach(flag -> values.put(flag, value));
@@ -142,7 +143,7 @@ final class RebolArguments {
         return at + 1;
     }
 
-    private boolean secondCharacterIsADash(String value) {
+    private boolean isTheSecondCharacterADash(String value) {
         return value.length() > 1 && value.charAt(1) == '-';
     }
 
@@ -162,12 +163,12 @@ final class RebolArguments {
         return script;
     }
 
-    void theScriptIs(String path) {
+    void nameTheScript(String path) {
         script = Optional.of(path);
         values.put(Flag.SCRIPT, path);
     }
 
-    List<String> argumentsForTheScript() {
+    List<String> listTheArgumentsForTheScript() {
         List<String> handedOn = new ArrayList<>();
         valueOf(Flag.ARGS).ifPresent(handedOn::add);
         handedOn.addAll(remaining);

@@ -8,102 +8,102 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class LibraryFileHeaderRecognitionTest {
 
-    private static LibraryFile fileFrom(String source) {
+    private static LibraryFile readAFileFrom(String source) {
         return LibraryFile.readFrom(
                 Transcoder.transcode(source).values().orElseThrow());
     }
 
-    private static String moldedBodyOf(String source) {
-        AnyBlockValue body = fileFrom(source).body();
+    private static String moldTheBodyOf(String source) {
+        AnyBlockValue body = readAFileFrom(source).body();
         return body.remaining().toString();
     }
 
     @Test
     @DisplayName("The word REBOL followed by a block is a header, and the body starts after it")
-    void aHeaderIsTheWordRebolThenABlock() {
-        LibraryFile file = fileFrom("""
+    void recognisesTheWordRebolThenABlock() {
+        LibraryFile file = readAFileFrom("""
                 REBOL [Title: "x"] a: 1""");
         assertThat(file.body().remaining()).hasSize(2);
-        assertThat(moldedBodyOf("""
+        assertThat(moldTheBodyOf("""
                 REBOL [Title: "x"] a: 1""")).contains("a:");
     }
 
     @Test
     @DisplayName("An empty file has no header and an empty body")
-    void anEmptyFileHasNoHeader() {
-        LibraryFile file = fileFrom("");
+    void findsNoHeaderInAnEmptyFile() {
+        LibraryFile file = readAFileFrom("");
         assertThat(file.body().remaining()).isEmpty();
         assertThat(file.header()).isEqualTo(LibraryFileHeader.none());
     }
 
     @Test
     @DisplayName("A file of one value has no header and keeps that value")
-    void aSingleValueFileHasNoHeader() {
-        LibraryFile file = fileFrom("a");
+    void findsNoHeaderInASingleValue() {
+        LibraryFile file = readAFileFrom("a");
         assertThat(file.body().remaining()).hasSize(1);
         assertThat(file.header()).isEqualTo(LibraryFileHeader.none());
     }
 
     @Test
     @DisplayName("Two values that are not a header are both body")
-    void twoValuesThatAreNotAHeaderAreBothBody() {
-        LibraryFile file = fileFrom("a: 1");
+    void treatsTwoValuesThatAreNotAHeaderAsBody() {
+        LibraryFile file = readAFileFrom("a: 1");
         assertThat(file.body().remaining()).hasSize(2);
         assertThat(file.header()).isEqualTo(LibraryFileHeader.none());
     }
 
     @Test
     @DisplayName("Three values that are not a header are all body")
-    void threeValuesThatAreNotAHeaderAreAllBody() {
-        LibraryFile file = fileFrom("a: 1 b");
+    void treatsThreeValuesThatAreNotAHeaderAsBody() {
+        LibraryFile file = readAFileFrom("a: 1 b");
         assertThat(file.body().remaining()).hasSize(3);
     }
 
     @Test
     @DisplayName("The word REBOL without a block after it is not a header")
-    void theWordRebolWithoutABlockIsNotAHeader() {
-        LibraryFile file = fileFrom("REBOL 1");
+    void rejectsTheWordRebolWithoutABlock() {
+        LibraryFile file = readAFileFrom("REBOL 1");
         assertThat(file.body().remaining()).hasSize(2);
         assertThat(file.header()).isEqualTo(LibraryFileHeader.none());
     }
 
     @Test
     @DisplayName("The word REBOL followed by a string is not a header")
-    void theWordRebolFollowedByAStringIsNotAHeader() {
-        LibraryFile file = fileFrom("""
+    void rejectsTheWordRebolFollowedByAString() {
+        LibraryFile file = readAFileFrom("""
                 REBOL "not a block\"""");
         assertThat(file.body().remaining()).hasSize(2);
     }
 
     @Test
     @DisplayName("A block without the word REBOL before it is not a header")
-    void aBlockWithoutRebolBeforeItIsNotAHeader() {
-        LibraryFile file = fileFrom("other [Title: 1] a");
+    void rejectsABlockWithoutRebolBeforeIt() {
+        LibraryFile file = readAFileFrom("other [Title: 1] a");
         assertThat(file.body().remaining()).hasSize(3);
         assertThat(file.header()).isEqualTo(LibraryFileHeader.none());
     }
 
     @Test
     @DisplayName("The word REBOL is recognised whatever its case")
-    void theWordRebolIsRecognisedWhateverItsCase() {
-        assertThat(fileFrom("rebol [] a").body().remaining()).hasSize(1);
-        assertThat(fileFrom("Rebol [] a").body().remaining()).hasSize(1);
-        assertThat(fileFrom("REBOL [] a").body().remaining()).hasSize(1);
+    void recognisesTheWordRebolWhateverItsCase() {
+        assertThat(readAFileFrom("rebol [] a").body().remaining()).hasSize(1);
+        assertThat(readAFileFrom("Rebol [] a").body().remaining()).hasSize(1);
+        assertThat(readAFileFrom("REBOL [] a").body().remaining()).hasSize(1);
     }
 
     @Test
     @DisplayName("An empty header block is still a header")
-    void anEmptyHeaderBlockIsStillAHeader() {
-        LibraryFile file = fileFrom("REBOL [] a b");
+    void acceptsAnEmptyHeaderBlock() {
+        LibraryFile file = readAFileFrom("REBOL [] a b");
         assertThat(file.body().remaining()).hasSize(2);
     }
 
     @Test
     @DisplayName("The header's Type and Exports fields are read through the same path")
-    void theHeaderFieldsAreStillRead() {
-        LibraryFile file = fileFrom("""
+    void readsTheHeaderFields() {
+        LibraryFile file = readAFileFrom("""
                 REBOL [Type: module Name: thing Exports: [one two]] a: 1""");
-        assertThat(file.header().declaresAModule()).isTrue();
+        assertThat(file.header().declaresModule()).isTrue();
         assertThat(file.header().moduleName()).isEqualTo("thing");
         assertThat(file.header().exportedNames()).containsExactly("one", "two");
     }

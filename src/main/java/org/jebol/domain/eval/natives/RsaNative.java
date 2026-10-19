@@ -31,10 +31,10 @@ public class RsaNative extends CipherNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("rsa-key", Set.of(HandleValue.TYPE)),
-                Parameter.required("data", TypesetValue.ANY_STRING.membersAnd(BinaryValue.TYPE)),
-                Parameter.belongingTo("verify", "signature", Set.of(BinaryValue.TYPE)),
-                Parameter.belongingTo("hash", "algorithm", Set.of(WordValue.TYPE, NoneValue.TYPE)));
+        return List.of(Parameter.of("rsa-key", Set.of(HandleValue.TYPE)),
+                Parameter.of("data", TypesetValue.ANY_STRING.membersAnd(BinaryValue.TYPE)),
+                Parameter.belongTo("verify", "signature", Set.of(BinaryValue.TYPE)),
+                Parameter.belongTo("hash", "algorithm", Set.of(WordValue.TYPE, NoneValue.TYPE)));
     }
 
     @Override
@@ -47,7 +47,7 @@ public class RsaNative extends CipherNative {
         return (arguments, evaluator, context, refinements) -> {
             List<String> asked = WHAT_RSA_DOES.stream().filter(refinements::contains).toList();
             refuseAnythingButOneThing(asked, refinements);
-            RsaKey key = keyHeldBy(arguments.getFirst(), RSA_HANDLE_TYPE, RsaKey.class)
+            RsaKey key = readTheKeyHeldBy(arguments.getFirst(), RSA_HANDLE_TYPE, RsaKey.class)
                     .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_HANDLE,
                             arguments.getFirst() instanceof HandleValue other
                                     ? other.typeName() : "rsa-key"));
@@ -58,7 +58,7 @@ public class RsaNative extends CipherNative {
             if (!key.canDecryptAndSign() && (action.equals("decrypt") || action.equals("sign"))) {
                 return NoneValue.none();
             }
-            return done(action, key, arguments, refinements);
+            return perform(action, key, arguments, refinements);
         };
     }
 
@@ -70,20 +70,20 @@ public class RsaNative extends CipherNative {
         }
     }
 
-    private Value done(String action, RsaKey key, List<Value> arguments,
-            Set<String> refinements) {
+    private Value perform(String action, RsaKey key, List<Value> arguments,
+                          Set<String> refinements) {
 
         byte[] data = arguments.get(1).asOctets();
         try {
             return switch (action) {
                 case "encrypt" -> BinaryValue.ofBytes(
-                        key.enciphered(data, refinements.contains("oaep")));
+                        key.encipher(data, refinements.contains("oaep")));
                 case "decrypt" -> BinaryValue.ofBytes(
-                        key.deciphered(data, refinements.contains("oaep")));
-                case "sign" -> BinaryValue.ofBytes(key.signed(data,
+                        key.decipher(data, refinements.contains("oaep")));
+                case "sign" -> BinaryValue.ofBytes(key.sign(data,
                         digestNamedIn(arguments, refinements), refinements.contains("pss")));
                 default -> LogicValue.of(key.verifies(data,
-                        signatureGivenTo(arguments, refinements),
+                        readTheSignatureGivenTo(arguments, refinements),
                         digestNamedIn(arguments, refinements),
                         refinements.contains("pss")));
             };
@@ -93,14 +93,14 @@ public class RsaNative extends CipherNative {
     }
 
     private String digestNamedIn(List<Value> arguments, Set<String> refinements) {
-        return argumentOf("hash", 0, arguments, refinements)
+        return readTheArgumentOf("hash", 0, arguments, refinements)
                 .filter(AnyWordValue.class::isInstance)
                 .map(digest -> ((AnyWordValue) digest).canonical())
                 .orElse(THE_DIGEST_WHEN_NONE_IS_NAMED);
     }
 
-    private byte[] signatureGivenTo(List<Value> arguments, Set<String> refinements) {
-        return argumentOf("verify", 0, arguments, refinements)
+    private byte[] readTheSignatureGivenTo(List<Value> arguments, Set<String> refinements) {
+        return readTheArgumentOf("verify", 0, arguments, refinements)
                 .filter(BinaryValue.class::isInstance)
                 .map(signature -> ((BinaryValue) signature).octetsFromHere())
                 .orElseGet(() -> new byte[0]);

@@ -27,15 +27,15 @@ public class GetNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case PathValue path ->
-                    evaluator.evaluateOrRaise(BlockValue.block(List.of(path)), context);
+                    evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
             case ObjectValue object -> object.context().valuesExcludingSelf();
-            case AnyWordValue word -> heldBy(word, refinements.contains("any"));
+            case AnyWordValue word -> readWhatIsHeldBy(word, refinements.contains("any"));
             case Value anythingElse -> anythingElse;
         };
     }
 
-    private Value heldBy(AnyWordValue word, boolean unsetIsAnAnswer) {
-        Value held = word.boundSlot().value();
+    private Value readWhatIsHeldBy(AnyWordValue word, boolean unsetIsAnAnswer) {
+        Value held = word.findTheBoundSlot().value();
         if (held instanceof UnsetValue && !unsetIsAnAnswer) {
             throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling() + " has no value");
         }

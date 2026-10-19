@@ -10,30 +10,30 @@ public record PairValue(double x, double y) implements Value, PathTarget {
     private static final int BITS_IN_A_HALF = 32;
 
     @Override
-    public Value randomised(RandomDraw draw) {
-        return PairValue.of(halfRandomised(x, draw), halfRandomised(y, draw));
+    public Value randomise(RandomDraw draw) {
+        return PairValue.of(randomiseAHalf(x, draw), randomiseAHalf(y, draw));
     }
 
-    private double halfRandomised(double half, RandomDraw draw) {
+    private double randomiseAHalf(double half, RandomDraw draw) {
         long bound = (long) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, half));
         return bound == 0 ? 0 : draw.upTo(bound);
     }
 
     @Override
     public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
-        return (bitsOfTheHalf(y) << BITS_IN_A_HALF) | bitsOfTheHalf(x);
+        return (readTheBitsOfTheHalf(y) << BITS_IN_A_HALF) | readTheBitsOfTheHalf(x);
     }
 
-    private long bitsOfTheHalf(double half) {
+    private long readTheBitsOfTheHalf(double half) {
         return Integer.toUnsignedLong(Float.floatToRawIntBits((float) half));
     }
 
-    public boolean bothHalves(DoublePredicate asked) {
+    public boolean holdsForBothHalves(DoublePredicate asked) {
         return asked.test(x) && asked.test(y);
     }
 
     @Override
-    public Value absolute() {
+    public Value makeAbsolute() {
         return PairValue.of(Math.abs(x), Math.abs(y));
     }
 
@@ -43,7 +43,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
     }
 
     @Override
-    public Value heldBetween(Value lowest, Value highest) {
+    public Value holdBetween(Value lowest, Value highest) {
         PairValue floor = (PairValue) lowest;
         PairValue ceiling = (PairValue) highest;
         return PairValue.of(
@@ -61,7 +61,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
                 y + (reachedY - y) * fraction);
     }
 
-    public Value apartFrom(PairValue other, boolean alongTheStreets) {
+    public Value measureTheDistanceFrom(PairValue other, boolean alongTheStreets) {
         double across = x - other.x;
         double down = y - other.y;
         return DecimalValue.of(alongTheStreets
@@ -69,45 +69,45 @@ public record PairValue(double x, double y) implements Value, PathTarget {
                 : Math.hypot(across, down));
     }
 
-    public Value angleFromTheOrigin(boolean inRadians) {
+    public Value measureTheAngleFromTheOrigin(boolean inRadians) {
         double angle = Math.atan2(y, x);
         return DecimalValue.of(inRadians ? angle : Math.toDegrees(angle));
     }
 
 
     @Override
-    public Value arithmetic(Value right, ArithmeticOperation operation) {
-        return new PairActions(this).combinedWith(right, operation);
+    public Value calculate(Value right, ArithmeticOperation operation) {
+        return new PairActions(this).combineWith(right, operation);
     }
 
 
     @Override
-    public boolean equalTo(Value other, Sameness how) {
+    public boolean isEqualTo(Value other, Sameness how) {
         return other instanceof PairValue(double theirX, double theirY)
                 && x == theirX && y == theirY;
     }
 
     @Override
-    public Value bitwise(Value right, BitwiseOperation operation) {
-        PairValue theirs = aPointFrom(right);
+    public Value combineBitwise(Value right, BitwiseOperation operation) {
+        PairValue theirs = makeAPointFrom(right);
         return PairValue.of(
-                bitsOf(x, theirs.x, operation),
-                bitsOf(y, theirs.y, operation));
+                combineTheBitsOf(x, theirs.x, operation),
+                combineTheBitsOf(y, theirs.y, operation));
     }
 
-    private PairValue aPointFrom(Value right) {
+    private PairValue makeAPointFrom(Value right) {
         return switch (right) {
             case PairValue point -> point;
             case IntegerValue(long magnitude) -> PairValue.of(magnitude, magnitude);
-            default -> throw Raised.notRelated(this, right);
+            default -> throw Raised.ofUnrelated(this, right);
         };
     }
 
-    private long bitsOf(double ours, double theirs, BitwiseOperation operation) {
-        return operation.onWholeElements(roundedHalfUp(ours), roundedHalfUp(theirs));
+    private long combineTheBitsOf(double ours, double theirs, BitwiseOperation operation) {
+        return operation.onWholeElements(roundHalfUp(ours), roundHalfUp(theirs));
     }
 
-    private long roundedHalfUp(double half) {
+    private long roundHalfUp(double half) {
         return (long) Math.floor(half + 0.5);
     }
 
@@ -117,11 +117,11 @@ public record PairValue(double x, double y) implements Value, PathTarget {
     private static final String AREA = "area";
 
     public PairValue {
-        x = narrowedToSinglePrecisionGoingInfiniteRatherThanRefusing(x);
-        y = narrowedToSinglePrecisionGoingInfiniteRatherThanRefusing(y);
+        x = narrowToSinglePrecision(x);
+        y = narrowToSinglePrecision(y);
     }
 
-    private static double narrowedToSinglePrecisionGoingInfiniteRatherThanRefusing(
+    private static double narrowToSinglePrecision(
             double half) {
         return (float) half;
     }
@@ -142,48 +142,48 @@ public record PairValue(double x, double y) implements Value, PathTarget {
     public static final Datatype TYPE = new ScalarDatatype("pair") {
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
-            return built(Conversion.MAKE, spec, maker);
+        public Value makeFrom(Value spec, Maker maker) {
+            return build(Conversion.MAKE, spec, maker);
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
                 case PairValue pair -> pair;
                 case IntegerValue whole -> PairValue.square(whole.magnitude());
                 case DecimalValue quantity -> PairValue.square(quantity.quantity());
                 case AnyStringValue text -> readPair(text, maker);
-                case BlockValue block -> pairOf(block);
-                default -> throw refusing(from);
+                case BlockValue block -> makeAPairOf(block);
+                default -> throw refuse(from);
             };
         }
 
-        private Value pairOf(BlockValue block) {
+        private Value makeAPairOf(BlockValue block) {
             List<Value> halves = block.remaining();
             if (halves.size() != 2) {
-                throw refusing(block);
+                throw refuse(block);
             }
-            return PairValue.of(aHalfIn(halves.get(0), block), aHalfIn(halves.get(1), block));
+            return PairValue.of(readAHalfIn(halves.get(0), block), readAHalfIn(halves.get(1), block));
         }
 
-        private double aHalfIn(Value half, BlockValue block) {
+        private double readAHalfIn(Value half, BlockValue block) {
             return switch (half) {
                 case IntegerValue(long magnitude) -> magnitude;
                 case AnyDecimalValue number -> number.quantity();
-                default -> throw refusing(block);
+                default -> throw refuse(block);
             };
         }
 
         private Value readPair(AnyStringValue text, Maker maker) {
-            List<Value> read = maker.valuesReadFrom(text.text()).orElse(List.of());
+            List<Value> read = maker.readTheValuesFrom(text.text()).orElse(List.of());
             if (read.size() != 1 || !(read.getFirst() instanceof PairValue pair)) {
-                throw refusing(StringValue.of(text.text()));
+                throw refuse(StringValue.of(text.text()));
             }
             return pair;
         }
     };
 
-    public Optional<Value> half(String name) {
+    public Optional<Value> readTheHalf(String name) {
         return switch (name) {
             case FIRST_HALF -> Optional.of(DecimalValue.of(x));
             case SECOND_HALF -> Optional.of(DecimalValue.of(y));
@@ -199,10 +199,10 @@ public record PairValue(double x, double y) implements Value, PathTarget {
     }
 
     @Override
-    public Value steppedIntoBy(Value selector) {
+    public Value stepIntoBy(Value selector) {
         Optional<Value> half = switch (selector) {
-            case IntegerValue position -> halfAt((int) position.magnitude());
-            case AnyWordValue name -> half(name.canonical());
+            case IntegerValue position -> readTheHalfAt((int) position.magnitude());
+            case AnyWordValue name -> readTheHalf(name.canonical());
             default -> Optional.empty();
         };
         return half.orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_PATH,
@@ -215,7 +215,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
     }
 
     public PairValue withHalfWritten(Value selector, Value written) {
-        int half = theHalfNamedBy(selector);
+        int half = findTheHalfNamedBy(selector);
         double replacement = switch (written) {
             case IntegerValue whole -> whole.magnitude();
             case AnyDecimalValue quantity -> quantity.quantity();
@@ -224,7 +224,7 @@ public record PairValue(double x, double y) implements Value, PathTarget {
         return withHalfAt(half, replacement);
     }
 
-    private int theHalfNamedBy(Value selector) {
+    private int findTheHalfNamedBy(Value selector) {
         return switch (selector) {
             case AnyWordValue name when name.canonical().equals(FIRST_HALF) -> 1;
             case AnyWordValue name when name.canonical().equals(SECOND_HALF) -> 2;
@@ -237,11 +237,11 @@ public record PairValue(double x, double y) implements Value, PathTarget {
     }
 
     @Override
-    public Value picked(int oneBasedPosition) {
-        return halfAt(oneBasedPosition).orElseGet(NoneValue::none);
+    public Value pick(int oneBasedPosition) {
+        return readTheHalfAt(oneBasedPosition).orElseGet(NoneValue::none);
     }
 
-    public Optional<Value> halfAt(int position) {
+    public Optional<Value> readTheHalfAt(int position) {
         return switch (position) {
             case 1 -> Optional.of(DecimalValue.of(x));
             case 2 -> Optional.of(DecimalValue.of(y));

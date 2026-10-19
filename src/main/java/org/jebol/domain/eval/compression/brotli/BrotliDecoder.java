@@ -43,10 +43,10 @@ final class BrotliDecoder {
             {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10, 24};
     private static final int[] CELL_POSITION = {0, 1, 0, 1, 8, 9, 2, 16, 10, 17, 18};
 
-    private static final int[] INSERT_LENGTH_OFFSET = lengthOffsets(0, INSERT_LENGTH_EXTRA_BITS);
-    private static final int[] COPY_LENGTH_OFFSET = lengthOffsets(2, COPY_LENGTH_EXTRA_BITS);
+    private static final int[] INSERT_LENGTH_OFFSET = computeTheLengthOffsets(0, INSERT_LENGTH_EXTRA_BITS);
+    private static final int[] COPY_LENGTH_OFFSET = computeTheLengthOffsets(2, COPY_LENGTH_EXTRA_BITS);
 
-    private static int[] lengthOffsets(int first, int[] extraBits) {
+    private static int[] computeTheLengthOffsets(int first, int[] extraBits) {
         int[] offsets = new int[extraBits.length];
         offsets[0] = first;
         for (int each = 0; each + 1 < offsets.length; each++) {
@@ -64,9 +64,9 @@ final class BrotliDecoder {
             int copyOffset) {
     }
 
-    private static final Command[] COMMANDS = commandTable();
+    private static final Command[] COMMANDS = makeTheCommandTable();
 
-    private static Command[] commandTable() {
+    private static Command[] makeTheCommandTable() {
         Command[] table = new Command[COMMAND_SYMBOLS];
         for (int symbol = 0; symbol < COMMAND_SYMBOLS; symbol++) {
             int cell = symbol >> 6;
@@ -85,7 +85,7 @@ final class BrotliDecoder {
         return table;
     }
 
-    static byte[] decodedStoppingOnceTheAnswerPassesTheLimit(
+    static byte[] decodeUpToTheLimit(
             byte[] input, int limit) {
         return new Stream(input, limit).run();
     }
@@ -143,7 +143,7 @@ final class BrotliDecoder {
             windowBits = more != 0 ? 8 + more : 17;
         }
 
-        private void room(int howMany) {
+        private void makeRoom(int howMany) {
             if (outAt + howMany <= out.length) {
                 return;
             }
@@ -173,7 +173,7 @@ final class BrotliDecoder {
             remaining++;
             if (!isLast && bits.take(1) != 0) {
                 bits.jumpToByteBoundary();
-                room(remaining);
+                makeRoom(remaining);
                 for (int each = 0; each < remaining; each++) {
                     out[outAt++] = (byte) bits.takeByte();
                 }
@@ -272,7 +272,7 @@ final class BrotliDecoder {
                             BrotliContext.of(contextMode, previous, beforeThat);
                     Huffman code =
                             literalCodes[literalMap.at(literalContextBase + context)];
-                    room(1);
+                    makeRoom(1);
                     out[outAt++] = (byte) code.read(bits);
                 }
                 remaining -= insertLength;
@@ -296,7 +296,7 @@ final class BrotliDecoder {
                     int symbol = code.read(bits);
                     howFarTheRecentDistanceCursorWasRolledBack = 0;
                     if (symbol < DISTANCE_SHORT_CODES) {
-                        distance = distanceFromTheRecentOnes(symbol);
+                        distance = readTheDistanceFromTheRecentOnes(symbol);
                     } else {
                         distance = distanceOffset[symbol]
                                 + (bits.take(distanceExtraBits[symbol]) << postfixBits);
@@ -314,7 +314,7 @@ final class BrotliDecoder {
                 } else {
                     recentDistances[recentDistanceAt & 3] = distance;
                     recentDistanceAt++;
-                    room(copyLength);
+                    makeRoom(copyLength);
                     int fromHere = outAt - distance;
                     for (int each = 0; each < copyLength; each++) {
                         out[outAt++] = out[fromHere + each];
@@ -326,7 +326,7 @@ final class BrotliDecoder {
 
         private int howFarTheRecentDistanceCursorWasRolledBack;
 
-        private int distanceFromTheRecentOnes(int code) {
+        private int readTheDistanceFromTheRecentOnes(int code) {
             if (code <= 3) {
                 int distance = recentDistances[(recentDistanceAt - (code - 3)) & 3];
                 howFarTheRecentDistanceCursorWasRolledBack = 1 >> code;
@@ -352,7 +352,7 @@ final class BrotliDecoder {
                 throw new IllegalArgumentException(
                         "Brotli distance reaches past the start of the answer");
             }
-            int shift = BrotliDictionary.sizeBitsFor(wordLength);
+            int shift = BrotliDictionary.readTheSizeBitsFor(wordLength);
             if (shift == 0) {
                 throw new IllegalArgumentException(
                         "Brotli asks for a dictionary word of a length there are none of");
@@ -364,8 +364,8 @@ final class BrotliDecoder {
                         "Brotli names a transform that is not there");
             }
             recentDistanceAt += howFarTheRecentDistanceCursorWasRolledBack;
-            int wordAt = BrotliDictionary.offsetFor(wordLength) + wordIndex * wordLength;
-            room(LONGEST_TRANSFORMED_WORD);
+            int wordAt = BrotliDictionary.findTheOffsetFor(wordLength) + wordIndex * wordLength;
+            makeRoom(LONGEST_TRANSFORMED_WORD);
             int written = BrotliDictionary.writeTransformedWord(
                     out, outAt, wordAt, wordLength, transform);
             if (written == 0 && distance <= 120) {
@@ -527,12 +527,12 @@ final class BrotliDecoder {
         private Huffman readHuffmanCode(int alphabetSize) {
             int kind = bits.take(2);
             if (kind == 1) {
-                return simpleCode(alphabetSize);
+                return readASimpleCode(alphabetSize);
             }
-            return complexCode(alphabetSize, kind);
+            return readAComplexCode(alphabetSize, kind);
         }
 
-        private Huffman simpleCode(int alphabetSize) {
+        private Huffman readASimpleCode(int alphabetSize) {
             int maxBits = 32 - Integer.numberOfLeadingZeros(alphabetSize - 1);
             int howMany = bits.take(2) + 1;
             int[] symbols = new int[4];
@@ -583,7 +583,7 @@ final class BrotliDecoder {
             return Huffman.ofLengths(lengths);
         }
 
-        private static int theOnlyOneNamed(int[] codeLengthLengths) {
+        private static int findTheOnlyOneNamed(int[] codeLengthLengths) {
             for (int each = 0; each < codeLengthLengths.length; each++) {
                 if (codeLengthLengths[each] != 0) {
                     return each;
@@ -593,7 +593,7 @@ final class BrotliDecoder {
                     "Brotli code-length code names nothing at all");
         }
 
-        private Huffman complexCode(int alphabetSize, int skip) {
+        private Huffman readAComplexCode(int alphabetSize, int skip) {
             int[] codeLengthLengths = new int[CODE_LENGTH_CODES];
             int space = 32;
             int symbolsUsed = 0;
@@ -616,7 +616,7 @@ final class BrotliDecoder {
                         "Brotli code-length code is not a prefix code");
             }
             Huffman lengthCode = symbolsUsed == 1
-                    ? Huffman.ofOneSymbol(theOnlyOneNamed(codeLengthLengths))
+                    ? Huffman.ofOneSymbol(findTheOnlyOneNamed(codeLengthLengths))
                     : Huffman.ofLengths(codeLengthLengths);
 
             int[] lengths = new int[alphabetSize];

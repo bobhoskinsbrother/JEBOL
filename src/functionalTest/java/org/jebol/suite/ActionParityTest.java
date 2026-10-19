@@ -119,8 +119,8 @@ class ActionParityTest {
 
     @Test
     @DisplayName("every action the C implements for a datatype does something here")
-    void everyArmIsThere() {
-        Map<String, Set<String>> wanted = whatTheCImplements();
+    void findsEveryArm() {
+        Map<String, Set<String>> wanted = listWhatTheCImplements();
         TreeMap<String, List<String>> gaps = new TreeMap<>();
         int probed = 0;
 
@@ -171,7 +171,7 @@ class ActionParityTest {
 
     private static final long KNOWN_GAPS = 0;
 
-    private static Map<String, Set<String>> whatTheCImplements() {
+    private static Map<String, Set<String>> listWhatTheCImplements() {
         Map<String, String> typeclassOf = new LinkedHashMap<>();
         Map<String, Set<String>> armsOf = new LinkedHashMap<>();
         Map<String, Set<String>> declaredFor = new LinkedHashMap<>();
@@ -193,7 +193,7 @@ class ActionParityTest {
             }
             if (line.startsWith("ACTION ")) {
                 String[] parts = line.substring("ACTION ".length()).split("\\|");
-                declaredFor.put(parts[0].trim(), firstArgumentsTypes(parts[1]));
+                declaredFor.put(parts[0].trim(), listTheFirstArgumentsTypes(parts[1]));
             }
         }
         declaredFor.replaceAll((action, declared) -> {
@@ -224,7 +224,7 @@ class ActionParityTest {
         return wanted;
     }
 
-    private static Set<String> firstArgumentsTypes(String shape) {
+    private static Set<String> listTheFirstArgumentsTypes(String shape) {
         int opens = shape.indexOf('<');
         int firstRefinement = shape.indexOf('/');
         if (opens < 0 || (firstRefinement >= 0 && firstRefinement < opens)) {

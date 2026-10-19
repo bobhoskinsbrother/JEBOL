@@ -25,7 +25,7 @@ class PortsTest {
 
         @Test
         @DisplayName("reading a file is refused when no port was supplied")
-        void readingIsRefusedByDefault() {
+        void refusesReading() {
             ScriptOutcome outcome = grantedFiles().run("read %somewhere.txt");
 
             assertThat(outcome.conclusion()).isEqualTo(Conclusion.RAISED);
@@ -34,7 +34,7 @@ class PortsTest {
 
         @Test
         @DisplayName("writing is refused too")
-        void writingIsRefusedByDefault() {
+        void refusesWriting() {
             ScriptOutcome outcome =
                     grantedFiles().run("write %somewhere.txt \"contents\"");
 
@@ -44,7 +44,7 @@ class PortsTest {
 
         @Test
         @DisplayName("and the refusal is a catchable error, not a crash")
-        void refusalIsAnOrdinaryError() {
+        void raisesAnOrdinaryError() {
             Interpreter interpreter = grantedFiles();
 
             assertThat(interpreter.run("error? try [read %somewhere.txt]").display())
@@ -57,21 +57,21 @@ class PortsTest {
     class ThroughAPort {
 
         @Test
-        void aScriptCanReadAFile(@TempDir Path directory) throws IOException {
+        void readsAFile(@TempDir Path directory) throws IOException {
             Path file = directory.resolve("greeting.txt");
             Files.writeString(file, "hello from disk", StandardCharsets.UTF_8);
 
             Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             assertThat(interpreter.run("read/string %greeting.txt").display())
                     .isEqualTo("\"hello from disk\"");
         }
 
         @Test
-        void aScriptCanWriteAFile(@TempDir Path directory) throws IOException {
+        void writesAFile(@TempDir Path directory) throws IOException {
             Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             interpreter.run("write %written.txt \"from the script\"");
 
@@ -81,9 +81,9 @@ class PortsTest {
 
         @Test
         @DisplayName("reading something that is not there is an error, not empty text")
-        void readingSomethingAbsentIsAnError(@TempDir Path directory) {
+        void raisesForReadingSomethingAbsent(@TempDir Path directory) {
             Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             ScriptOutcome outcome = interpreter.run("read %missing.txt");
 
@@ -93,10 +93,10 @@ class PortsTest {
 
         @Test
         @DisplayName("a script can tell whether a file is there")
-        void aScriptCanAskWhetherAFileExists(@TempDir Path directory) throws IOException {
+        void asksWhetherAFileExists(@TempDir Path directory) throws IOException {
             Files.writeString(directory.resolve("here.txt"), "yes");
             Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             assertThat(interpreter.run("exists? %here.txt").display()).isEqualTo("file");
             assertThat(interpreter.run("exists? %not-here.txt").display()).isEqualTo("_");
@@ -109,10 +109,10 @@ class PortsTest {
 
         @Test
         @DisplayName("a script climbing out reaches inside the root instead")
-        void escapingTheRootIsRefused(@TempDir Path directory) throws IOException {
+        void refusesEscapingTheRoot(@TempDir Path directory) throws IOException {
             Files.writeString(directory.resolve("inside.txt"), "fine");
             Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             ScriptOutcome outcome = interpreter.run("read %../../../etc/passwd");
 
@@ -124,9 +124,9 @@ class PortsTest {
 
         @Test
         @DisplayName("and a climbing write lands under the root, not above it")
-        void aClimbingWriteLandsUnderTheRoot(@TempDir Path directory) {
+        void landsAClimbingWriteUnderTheRoot(@TempDir Path directory) {
             Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             interpreter.run("write %../../../climbed.txt \"inside\"");
 
@@ -140,12 +140,12 @@ class PortsTest {
 
         @Test
         @DisplayName("an absolute path names the port's own root, not the machine's")
-        void absolutePathsCountFromTheGivenRoot(@TempDir Path directory)
+        void countsAbsolutePathsFromTheGivenRoot(@TempDir Path directory)
                 throws IOException {
 
             Files.writeString(directory.resolve("inside.txt"), "fine");
             Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             assertThat(interpreter.display(interpreter.run("""
                     to string! read %/inside.txt""")))
@@ -155,9 +155,9 @@ class PortsTest {
 
         @Test
         @DisplayName("so a machine path reaches nothing rather than reaching out")
-        void aMachinePathReachesNothing(@TempDir Path directory) {
+        void reachesNothingByAMachinePath(@TempDir Path directory) {
             Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             ScriptOutcome outcome = interpreter.run("read %/etc/passwd");
 
@@ -169,9 +169,9 @@ class PortsTest {
 
         @Test
         @DisplayName("and dots in an absolute path clamp at the root the same way")
-        void dotsInAnAbsolutePathCannotClimbOut(@TempDir Path directory) {
+        void keepsDotsInAnAbsolutePathFromClimbingOut(@TempDir Path directory) {
             Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory));
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             ScriptOutcome outcome = interpreter.run("read %/../../../etc/passwd");
 
@@ -181,10 +181,10 @@ class PortsTest {
 
         @Test
         @DisplayName("a read-only port refuses writes")
-        void aReadOnlyPortRefusesWrites(@TempDir Path directory) throws IOException {
+        void refusesWritesToAReadOnlyPort(@TempDir Path directory) throws IOException {
             Files.writeString(directory.resolve("readable.txt"), "contents");
             Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory).readOnly());
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory).readOnlyFileSystem());
 
             assertThat(interpreter.run("read %readable.txt").succeeded()).isTrue();
 
@@ -195,15 +195,113 @@ class PortsTest {
 
         @Test
         @DisplayName("and the file is untouched after a refused write")
-        void aRefusedWriteChangesNothing(@TempDir Path directory) throws IOException {
+        void changesNothingForARefusedWrite(@TempDir Path directory) throws IOException {
             Path file = directory.resolve("readable.txt");
             Files.writeString(file, "original");
             Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootedAt(directory).readOnly());
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory).readOnlyFileSystem());
 
             interpreter.run("write %readable.txt \"changed\"");
 
             assertThat(Files.readString(file)).isEqualTo("original");
+        }
+
+        @Test
+        @DisplayName("a read-only port refuses deleting a file with read-only, and the file stays")
+        void refusesDeletingOnReadOnlyPort(@TempDir Path directory) throws IOException {
+            Path file = directory.resolve("kept.txt");
+            Files.writeString(file, "original");
+
+            ScriptOutcome outcome = readOnlyOver(directory).run("""
+                    delete %kept.txt""");
+
+            assertThat(outcome.errorId()).contains("read-only");
+            assertThat(Files.readString(file)).isEqualTo("original");
+        }
+
+        @Test
+        @DisplayName("a read-only port refuses deleting a directory with read-only, and the directory stays")
+        void refusesDeletingDirectoryOnReadOnlyPort(@TempDir Path directory) throws IOException {
+            Files.createDirectory(directory.resolve("kept"));
+
+            ScriptOutcome outcome = readOnlyOver(directory).run("""
+                    delete %kept/""");
+
+            assertThat(outcome.errorId()).contains("read-only");
+            assertThat(directory.resolve("kept")).isDirectory();
+        }
+
+        @Test
+        @DisplayName("a read-only refusal names no path, so the script learns nothing about the root")
+        void namesNoPathWhenRefusingOnReadOnlyPort(@TempDir Path directory) throws IOException {
+            Files.writeString(directory.resolve("kept.txt"), "original");
+
+            ScriptOutcome outcome = readOnlyOver(directory).run("""
+                    refusal: try [delete %kept.txt]
+                    reduce [refusal/id refusal/arg1]""");
+
+            assertThat(outcome.display()).isEqualTo("[read-only _]");
+        }
+
+        @Test
+        @DisplayName("a read-only port refuses deleting what is not there with read-only, not false")
+        void refusesDeletingMissingFileOnReadOnlyPort(@TempDir Path directory) {
+            ScriptOutcome outcome = readOnlyOver(directory).run("""
+                    delete %missing.txt""");
+
+            assertThat(outcome.errorId()).contains("read-only");
+        }
+
+        @Test
+        @DisplayName("a read-only port refuses renaming with read-only, and both names stay as they were")
+        void refusesRenamingOnReadOnlyPort(@TempDir Path directory) throws IOException {
+            Path file = directory.resolve("before.txt");
+            Files.writeString(file, "original");
+
+            ScriptOutcome outcome = readOnlyOver(directory).run("""
+                    rename %before.txt %after.txt""");
+
+            assertThat(outcome.errorId()).contains("read-only");
+            assertThat(file).hasContent("original");
+            assertThat(directory.resolve("after.txt")).doesNotExist();
+        }
+
+        @Test
+        @DisplayName("a read-only port refuses making a directory with read-only, and none appears")
+        void refusesMakingDirectoryOnReadOnlyPort(@TempDir Path directory) {
+            ScriptOutcome outcome = readOnlyOver(directory).run("""
+                    make-dir %fresh/""");
+
+            assertThat(outcome.errorId()).contains("read-only");
+            assertThat(directory.resolve("fresh")).doesNotExist();
+        }
+
+        @Test
+        @DisplayName("a read-only port fails make-dir/deep as Rebol's own make-dir reports it, and no parent appears")
+        void failsMakingDirectoryDeepOnReadOnlyPort(@TempDir Path directory) {
+            ScriptOutcome outcome = readOnlyOver(directory).run("""
+                    refusal: try [make-dir/deep %outer/inner/]
+                    reduce [refusal/id refusal/arg1]""");
+
+            assertThat(outcome.display()).isEqualTo("[cannot-open %outer/]");
+            assertThat(directory.resolve("outer")).doesNotExist();
+        }
+
+        @Test
+        @DisplayName("a read-only port lets make-dir answer a directory already there, since nothing changes")
+        void answersMakingExistingDirectoryOnReadOnlyPort(@TempDir Path directory) throws IOException {
+            Files.createDirectory(directory.resolve("already"));
+
+            ScriptOutcome outcome = readOnlyOver(directory).run("""
+                    make-dir %already/""");
+
+            assertThat(outcome.succeeded()).isTrue();
+        }
+
+        private Interpreter readOnlyOver(Path directory) {
+            Interpreter interpreter = grantedFiles();
+            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory).readOnlyFileSystem());
+            return interpreter;
         }
     }
 }

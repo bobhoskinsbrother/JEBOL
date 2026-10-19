@@ -5,7 +5,7 @@ public final class RefValue extends AnyStringValue {
     public static final AnyStringDatatype TYPE = new AnyStringDatatype("ref") {
 
         @Override
-        public AnyStringValue holding(StringStorage storage, int index) {
+        public AnyStringValue wrap(StringStorage storage, int index) {
             return new RefValue(storage, index);
         }
     };
@@ -28,18 +28,18 @@ public final class RefValue extends AnyStringValue {
     }
 
     @Override
-    RefValue sameKindOver(StringStorage storage, int index) {
+    RefValue makeTheSameKindOver(StringStorage storage, int index) {
         return new RefValue(storage, index);
     }
 
     @Override
     public String mold() {
-        return !Molder.WRITING_EVERYTHING_OUT.get() && theLexerWouldReadItBack()
+        return !Molder.WRITING_EVERYTHING_OUT.get() && canBeReadBack()
                 ? "@" + text()
                 : constructed();
     }
 
-    private boolean theLexerWouldReadItBack() {
+    private boolean canBeReadBack() {
         return text().codePoints().noneMatch(codepoint ->
                 codepoint == OPENS_AN_EMAIL_INSTEAD
                         || !Character.isLetterOrDigit(codepoint)

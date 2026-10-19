@@ -27,7 +27,7 @@ class SuiteSelectionTest {
         return Files.exists(REBOL_TESTS.resolve("run-tests.r3"));
     }
 
-    private static Set<String> whatRebolRuns() {
+    private static Set<String> listWhatRebolRuns() {
         try {
             String runner = Files.readString(
                     REBOL_TESTS.resolve("run-tests.r3"), StandardCharsets.UTF_8);
@@ -47,7 +47,7 @@ class SuiteSelectionTest {
         }
     }
 
-    private static Set<String> vendoredHere() {
+    private static Set<String> listWhatIsVendoredHere() {
         try (Stream<Path> files = Files.list(VENDORED)) {
             return files.map(path -> path.getFileName().toString())
                     .filter(name -> name.endsWith(".r3"))
@@ -78,9 +78,9 @@ class SuiteSelectionTest {
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("every file Rebol runs is either vendored here or written down as left out")
-    void everyFileIsAccountedFor() {
-        Set<String> unaccounted = new TreeSet<>(whatRebolRuns());
-        unaccounted.removeAll(vendoredHere());
+    void accountsForEveryFile() {
+        Set<String> unaccounted = new TreeSet<>(listWhatRebolRuns());
+        unaccounted.removeAll(listWhatIsVendoredHere());
         unaccounted.removeAll(deliberatelyLeftOut());
 
         assertThat(unaccounted)
@@ -95,9 +95,9 @@ class SuiteSelectionTest {
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("nothing is written down as left out and vendored at the same time")
-    void nothingIsBothLeftOutAndVendored() {
+    void neverBothLeavesOutAndVendors() {
         Set<String> both = new TreeSet<>(deliberatelyLeftOut());
-        both.retainAll(vendoredHere());
+        both.retainAll(listWhatIsVendoredHere());
 
         assertThat(both)
                 .as("these are vendored and also listed as not vendored, so one of "
@@ -108,9 +108,9 @@ class SuiteSelectionTest {
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("nothing is left out that Rebol does not run either")
-    void nothingIsLeftOutThatIsNotThere() {
+    void leavesOutNothingThatIsNotThere() {
         Set<String> phantom = new TreeSet<>(deliberatelyLeftOut());
-        phantom.removeAll(whatRebolRuns());
+        phantom.removeAll(listWhatRebolRuns());
 
         List<String> upstreamHasNoRunnerEntry = List.of(
                 "extension-test.r3", "port-http-test.r3", "_known-issues_.r3");
@@ -125,10 +125,10 @@ class SuiteSelectionTest {
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("every vendored file is the upstream file, byte for byte")
-    void everyVendoredFileIsUnchanged() {
-        List<String> altered = vendoredHere().stream()
+    void keepsEveryVendoredFileUnchanged() {
+        List<String> altered = listWhatIsVendoredHere().stream()
                 .filter(name -> Files.exists(REBOL_TESTS.resolve("units").resolve(name)))
-                .filter(name -> !sameBytes(VENDORED.resolve(name),
+                .filter(name -> !haveTheSameBytes(VENDORED.resolve(name),
                         REBOL_TESTS.resolve("units").resolve(name)))
                 .toList();
 
@@ -143,7 +143,7 @@ class SuiteSelectionTest {
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("and every bundled module is Rebol's own module")
-    void everyBundledModuleIsUnchanged() {
+    void keepsEveryBundledModuleUnchanged() {
         Path upstream = Path.of("rebol3-source", "src", "modules");
         List<String> altered;
         try (Stream<Path> here = Files.list(VENDORED_MODULES)) {
@@ -151,7 +151,7 @@ class SuiteSelectionTest {
                     .filter(one -> Files.exists(upstream.resolve(one.getFileName())))
                     .filter(one -> !REPAIRED_BECAUSE_UPSTREAM_CANNOT_LOAD_IT
                             .contains(one.getFileName().toString()))
-                    .filter(one -> !sameBytes(one, upstream.resolve(one.getFileName())))
+                    .filter(one -> !haveTheSameBytes(one, upstream.resolve(one.getFileName())))
                     .map(one -> one.getFileName().toString())
                     .toList();
         } catch (IOException unreadable) {
@@ -171,7 +171,7 @@ class SuiteSelectionTest {
     private static final Set<String> REPAIRED_BECAUSE_UPSTREAM_CANNOT_LOAD_IT =
             Set.of("unicode-utils.reb");
 
-    private static boolean sameBytes(Path here, Path upstream) {
+    private static boolean haveTheSameBytes(Path here, Path upstream) {
         try {
             return Files.mismatch(here, upstream) == -1;
         } catch (IOException unreadable) {
@@ -189,7 +189,7 @@ class SuiteSelectionTest {
 
     @Test
     @DisplayName("no test has lost the assertions written under it")
-    void noTestHasLostItsAssertions() {
+    void losesNoTestsAssertions() {
         List<String> hollow = RebolSuiteTest.filesInSuite().stream()
                 .flatMap(file -> testsAssertingNothingIn(file).stream())
                 .filter(named -> !EMPTY_UPSTREAM_TOO.contains(named))

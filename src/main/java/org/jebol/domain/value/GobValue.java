@@ -17,7 +17,7 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
         return Integer.toUnsignedLong(index);
     }
 
-    public int positionWithinThePane() {
+    public int findThePositionWithinThePane() {
         long counted = Integer.toUnsignedLong(index - 1) + 1;
         return (int) Math.min(Math.max(counted, 1), storage.length() + 1L);
     }
@@ -40,7 +40,7 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
         }
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             return switch (spec) {
                 case GobValue cloned -> new GobValue(cloned.storage().copyWithoutPane(), 1);
                 case PairValue size -> {
@@ -53,12 +53,12 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
                     fillFromTheSpec(made, fields.remaining(), maker);
                     yield made;
                 }
-                default -> throw refusing(spec);
+                default -> throw refuse(spec);
             };
         }
 
         @Override
-        public Value convertedFrom(Value value, Maker maker) {
+        public Value convert(Value value, Maker maker) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, this);
         }
 
@@ -72,8 +72,8 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
                 if (given instanceof UnsetValue || given instanceof SetWordValue) {
                     throw Raised.of(EvaluationFailure.NEED_VALUE, field);
                 }
-                Value written = maker.simpleValueOf(given);
-                if (!GobPath.accepted(gob.storage(), field.canonical(), written)) {
+                Value written = maker.readASimpleValue(given);
+                if (!GobPath.accepts(gob.storage(), field.canonical(), written)) {
                     throw Raised.of(EvaluationFailure.BAD_FIELD_SET, field, written.datatype());
                 }
             }
@@ -81,22 +81,22 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
     }
 
     @Override
-    public RebolSeries skipped(long steps) {
+    public RebolSeries skip(long steps) {
         return atIndex((int) (index + steps));
     }
 
     @Override
-    public Value itemAt(int positionFromTheHead) {
-        return storage.childAt(positionFromTheHead);
+    public Value readTheItemAt(int positionFromTheHead) {
+        return storage.readTheChildAt(positionFromTheHead);
     }
 
     @Override
-    public Value frontCopied(int howMany, boolean deeply, Set<Datatype> kinds) {
+    public Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds) {
         throw Raised.cannotUseTheAction(this, "copy");
     }
 
     @Override
-    public RebolSeries reversedFront(int howMany) {
+    public RebolSeries reverseTheFront(int howMany) {
         throw Raised.cannotUse(this, "reverse/part");
     }
 
@@ -107,20 +107,20 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
     }
 
     @Override
-    public Value picked(int oneBasedPosition) {
-        return childCounted(oneBasedPosition);
+    public Value pick(int oneBasedPosition) {
+        return countToAChild(oneBasedPosition);
     }
 
     @Override
-    public Value pickedBy(Value selector) {
-        return childCounted(selector.asPosition());
+    public Value pickBy(Value selector) {
+        return countToAChild(selector.asPosition());
     }
 
-    public Value childCounted(long count) {
+    public Value countToAChild(long count) {
         long at = index - 1 + count;
         return at < 1 || at > storage.length()
                 ? NoneValue.none()
-                : storage.childAt((int) at);
+                : storage.readTheChildAt((int) at);
     }
 
     @Override
@@ -129,7 +129,7 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
     }
 
     @Override
-    public List<Value> items() {
+    public List<Value> listTheItems() {
         return storage.pane().subList(
                 Math.min(index - 1, storage.length()), storage.length());
     }

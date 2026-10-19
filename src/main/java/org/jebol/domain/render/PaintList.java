@@ -38,14 +38,14 @@ public record PaintList(List<PaintInstruction> instructions) {
 
     /** The same, reading any draw block it meets against a dialect. */
     public static PaintList of(GobValue root, ObjectValue drawDialect) {
-        int wide = whole(root.storage().size().x());
-        int high = whole(root.storage().size().y());
-        return within(root, ClipRectangle.wholeSurface(wide, high), 0, drawDialect);
+        int wide = roundToWhole(root.storage().size().x());
+        int high = roundToWhole(root.storage().size().y());
+        return within(root, ClipRectangle.coverTheWholeSurface(wide, high), 0, drawDialect);
     }
 
     /** The same, clipped to a surface of a stated size. */
     public static PaintList onASurface(GobValue root, int wide, int high) {
-        return within(root, ClipRectangle.wholeSurface(wide, high), 0, null);
+        return within(root, ClipRectangle.coverTheWholeSurface(wide, high), 0, null);
     }
 
     /**
@@ -56,30 +56,30 @@ public record PaintList(List<PaintInstruction> instructions) {
      * sits: content on an ordinary gob, and the title bar's words on a window
      * or on the screen gob itself.
      */
-    public static PaintList ofTheScreen(
+    public static PaintList ofScreen(
             GobValue root, int wide, int high, ObjectValue drawDialect) {
 
-        return within(root, ClipRectangle.wholeSurface(wide, high),
+        return within(root, ClipRectangle.coverTheWholeSurface(wide, high),
                 DEPTHS_WHOSE_TEXT_IS_A_TITLE, drawDialect);
     }
 
     /** One window and its contents, with its own title left out. */
     public static PaintList ofAWindow(GobValue window, ObjectValue drawDialect) {
-        int wide = whole(window.storage().size().x());
-        int high = whole(window.storage().size().y());
-        return within(window, ClipRectangle.wholeSurface(wide, high), 1, drawDialect);
+        int wide = roundToWhole(window.storage().size().x());
+        int high = roundToWhole(window.storage().size().y());
+        return within(window, ClipRectangle.coverTheWholeSurface(wide, high), 1, drawDialect);
     }
 
     private static final int DEPTHS_WHOSE_TEXT_IS_A_TITLE = 2;
 
-    public List<SurfaceCall> calls(TextMeasure measure) {
-        List<SurfaceCall> calls = new ArrayList<>();
+    public List<DrawingCommand> calls(TextMeasure measure) {
+        List<DrawingCommand> calls = new ArrayList<>();
         for (PaintInstruction instruction : instructions) {
             switch (instruction) {
                 case PaintInstruction.Fill filled -> calls.add(asARectangleCall(filled));
                 case PaintInstruction.Writing written -> calls.add(
-                        new SurfaceCall.Written(written.where(), PlacedText.of(written, measure)));
-                case PaintInstruction.Picture shown -> calls.add(new SurfaceCall.Pictured(
+                        new DrawingCommand.Text(written.where(), PlacedText.of(written, measure)));
+                case PaintInstruction.Picture shown -> calls.add(new DrawingCommand.Picture(
                         shown.where(), shown.pixels(), shown.wide(), shown.high(), shown.transform()));
                 case PaintInstruction.Drawn drawing -> addWhatIsDrawn(calls, drawing);
             }
@@ -91,13 +91,13 @@ public record PaintList(List<PaintInstruction> instructions) {
         calls(measure).forEach(surface::execute);
     }
 
-    private static SurfaceCall asARectangleCall(PaintInstruction.Fill filled) {
+    private static DrawingCommand asARectangleCall(PaintInstruction.Fill filled) {
         Placement where = filled.where();
         double left = where.across();
         double top = where.down();
         double right = left + where.wide();
         double bottom = top + where.high();
-        return new SurfaceCall.Filled(where,
+        return new DrawingCommand.Fill(where,
                 List.of(
                         new PathStep.MoveTo(left, top),
                         new PathStep.LineTo(right, top),
@@ -109,21 +109,21 @@ public record PaintList(List<PaintInstruction> instructions) {
     }
 
     private static void addWhatIsDrawn(
-            List<SurfaceCall> calls, PaintInstruction.Drawn drawing) {
+            List<DrawingCommand> calls, PaintInstruction.Drawn drawing) {
 
         PaintState painted = drawing.painted();
         if (painted.fillGradient().isPresent()) {
-            calls.add(new SurfaceCall.Filled(drawing.where(), drawing.path(),
+            calls.add(new DrawingCommand.Fill(drawing.where(), drawing.path(),
                     painted.fillRule(), painted.fillGradient(), Colour.BLACK,
-                    drawing.transform(), painted.antiAliased()));
+                    drawing.transform(), painted.isAntiAlias()));
         } else if (painted.fillColour().isPresent()) {
-            calls.add(new SurfaceCall.Filled(drawing.where(), drawing.path(),
+            calls.add(new DrawingCommand.Fill(drawing.where(), drawing.path(),
                     painted.fillRule(), Optional.empty(),
                     painted.fillColour().orElseThrow(), drawing.transform(),
-                    painted.antiAliased()));
+                    painted.isAntiAlias()));
         }
         if (painted.strokeColour().isPresent()) {
-            calls.add(new SurfaceCall.Stroked(
+            calls.add(new DrawingCommand.Stroke(
                     drawing.where(), drawing.path(), painted, drawing.transform()));
         }
     }
@@ -143,8 +143,8 @@ public record PaintList(List<PaintInstruction> instructions) {
             int across, int down, ClipRectangle within, int inheritedOpacity,
             int titledDepths, ObjectValue drawDialect) {
 
-        int wide = whole(gob.size().x());
-        int high = whole(gob.size().y());
+        int wide = roundToWhole(gob.size().x());
+        int high = roundToWhole(gob.size().y());
         if (wide <= 0 || high <= 0) {
             return;
         }
@@ -153,66 +153,66 @@ public record PaintList(List<PaintInstruction> instructions) {
         if (own.isEmpty()) {
             return;
         }
-        int opacity = multipliedOpacity(inheritedOpacity, gob.alpha());
+        int opacity = multiplyTheOpacity(inheritedOpacity, gob.alpha());
         Placement where = new Placement(across, down, wide, high, own, opacity);
 
         if (gob.contentKind() == GobStorage.Content.DRAW) {
             gathered.addAll(
-                    whatItsDrawBlockPaints(gob, where, wide, high, drawDialect));
+                    paintItsDrawBlock(gob, where, wide, high, drawDialect));
         } else if (gob.contentKind() == GobStorage.Content.TEXT
-                && gob.contentIfKind(GobStorage.Content.TEXT) instanceof AnyBlockValue richText) {
+                && gob.readTheContentIfKind(GobStorage.Content.TEXT) instanceof AnyBlockValue richText) {
             if (titledDepths <= 0) {
-                gathered.addAll(writtenAsRichText(richText, where));
+                gathered.addAll(writeAsRichText(richText, where));
             }
-        } else if (titledDepths <= 0 || !itsTextIsATitle(gob)) {
-            instructionFor(gob, where).ifPresent(gathered::add);
+        } else if (titledDepths <= 0 || !hasATitleForItsText(gob)) {
+            makeTheInstructionFor(gob, where).ifPresent(gathered::add);
         }
 
         for (Value child : gob.pane()) {
             if (child instanceof GobValue held) {
                 gatherParentBeforeChildrenWhichIsWhatInFrontMeans(gathered,held.storage(),
-                        across + whole(held.storage().offset().x()),
-                        down + whole(held.storage().offset().y()),
+                        across + roundToWhole(held.storage().offset().x()),
+                        down + roundToWhole(held.storage().offset().y()),
                         own, opacity, titledDepths - 1, drawDialect);
             }
         }
     }
 
-    private static boolean itsTextIsATitle(GobStorage gob) {
+    private static boolean hasATitleForItsText(GobStorage gob) {
         return gob.contentKind() == GobStorage.Content.STRING
                 || gob.contentKind() == GobStorage.Content.TEXT;
     }
 
-    private static List<PaintInstruction> whatItsDrawBlockPaints(
+    private static List<PaintInstruction> paintItsDrawBlock(
             GobStorage gob, Placement where, int wide, int high,
             ObjectValue drawDialect) {
 
         if (drawDialect == null
-                || !(gob.contentIfKind(GobStorage.Content.DRAW)
+                || !(gob.readTheContentIfKind(GobStorage.Content.DRAW)
                         instanceof AnyBlockValue block)) {
             return List.of();
         }
-        return new DrawDialect().instructionsFor(block, drawDialect, where, wide, high);
+        return new DrawDialect().readTheInstructionsFor(block, drawDialect, where, wide, high);
     }
 
-    private static int multipliedOpacity(int inherited, int own) {
+    private static int multiplyTheOpacity(int inherited, int own) {
         return Math.round(inherited * Math.clamp(own, 0, Placement.OPAQUE)
                 / (float) Placement.OPAQUE);
     }
 
-    private static Optional<PaintInstruction> instructionFor(
+    private static Optional<PaintInstruction> makeTheInstructionFor(
             GobStorage gob, Placement where) {
 
         return switch (gob.contentKind()) {
-            case COLOUR -> filledWith(gob.contentIfKind(GobStorage.Content.COLOUR), where);
-            case STRING -> written(gob.contentIfKind(GobStorage.Content.STRING), where);
-            case TEXT -> written(gob.contentIfKind(GobStorage.Content.TEXT), where);
-            case IMAGE -> pictured(gob.contentIfKind(GobStorage.Content.IMAGE), where);
+            case COLOUR -> fillWith(gob.readTheContentIfKind(GobStorage.Content.COLOUR), where);
+            case STRING -> write(gob.readTheContentIfKind(GobStorage.Content.STRING), where);
+            case TEXT -> write(gob.readTheContentIfKind(GobStorage.Content.TEXT), where);
+            case IMAGE -> picture(gob.readTheContentIfKind(GobStorage.Content.IMAGE), where);
             case NONE, DRAW, EFFECT, WIDGET -> Optional.empty();
         };
     }
 
-    private static Optional<PaintInstruction> filledWith(
+    private static Optional<PaintInstruction> fillWith(
             Value colour, Placement where) {
 
         if (!(colour instanceof TupleValue parts)) {
@@ -220,12 +220,12 @@ public record PaintList(List<PaintInstruction> instructions) {
         }
         Placement showing = new Placement(
                 where.across(), where.down(), where.wide(), where.high(), where.clip(),
-                multipliedOpacity(where.opacity(), Colour.opacityOfTuple(parts)));
+                multiplyTheOpacity(where.opacity(), Colour.readTheOpacityOfTuple(parts)));
         return Optional.of(
                 new PaintInstruction.Fill(showing, Colour.ofTuple(parts).solid()));
     }
 
-    private static Optional<PaintInstruction> written(
+    private static Optional<PaintInstruction> write(
             Value held, Placement where) {
 
         String text = held instanceof AnyStringValue said
@@ -235,17 +235,17 @@ public record PaintList(List<PaintInstruction> instructions) {
             return Optional.empty();
         }
         return Optional.of(
-                PaintInstruction.Writing.plain(where, text, Colour.BLACK));
+                PaintInstruction.Writing.writePlainly(where, text, Colour.BLACK));
     }
 
-    private static List<PaintInstruction> writtenAsRichText(AnyBlockValue richText, Placement where) {
+    private static List<PaintInstruction> writeAsRichText(AnyBlockValue richText, Placement where) {
         RichText.Line line = new RichText(Colour.BLACK).lineIn(richText);
         return line.runs().isEmpty()
                 ? List.of()
                 : List.of(new PaintInstruction.Writing(where, line.runs(), line.layout(), line.caret()));
     }
 
-    private static Optional<PaintInstruction> pictured(
+    private static Optional<PaintInstruction> picture(
             Value held, Placement where) {
 
         return held instanceof ImageValue pixels
@@ -253,7 +253,7 @@ public record PaintList(List<PaintInstruction> instructions) {
                 : Optional.empty();
     }
 
-    private static int whole(double measurement) {
+    private static int roundToWhole(double measurement) {
         return (int) Math.round(measurement);
     }
 }

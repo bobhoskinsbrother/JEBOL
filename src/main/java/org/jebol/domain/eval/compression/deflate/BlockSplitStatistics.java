@@ -59,30 +59,30 @@ final class BlockSplitStatistics {
         newObservationCount = 0;
     }
 
-    boolean readyToCheck(int blockBegin, int next, int end) {
+    boolean isReadyToCheck(int blockBegin, int next, int end) {
         return newObservationCount >= OBSERVATIONS_PER_BLOCK_CHECK
                 && next - blockBegin >= DeflateTables.MIN_BLOCK_LENGTH
                 && end - next >= DeflateTables.MIN_BLOCK_LENGTH;
     }
 
     boolean shouldEndBlock(int blockBegin, int next, int end) {
-        return readyToCheck(blockBegin, next, end) && endsTheBlock(next - blockBegin);
+        return isReadyToCheck(blockBegin, next, end) && endsTheBlock(next - blockBegin);
     }
 
     boolean endsTheBlock(int blockLength) {
         if (observationCount > 0) {
             long totalDelta = 0;
             for (int type = 0; type < OBSERVATION_TYPES; type++) {
-                long expected = unsigned((long) observations[type] * newObservationCount);
-                long actual = unsigned((long) newObservations[type] * observationCount);
-                totalDelta = unsigned(totalDelta + Math.abs(actual - expected));
+                long expected = readUnsigned((long) observations[type] * newObservationCount);
+                long actual = readUnsigned((long) newObservations[type] * observationCount);
+                totalDelta = readUnsigned(totalDelta + Math.abs(actual - expected));
             }
-            long items = unsigned((long) observationCount + newObservationCount);
-            long cutoff = unsigned(unsigned((long) newObservationCount * 200) / 512 * observationCount);
+            long items = readUnsigned((long) observationCount + newObservationCount);
+            long cutoff = readUnsigned(readUnsigned((long) newObservationCount * 200) / 512 * observationCount);
             if (blockLength < SHORT_BLOCK && items < FEW_ITEMS) {
-                cutoff = unsigned(cutoff + cutoff * (FEW_ITEMS - items) / FEW_ITEMS);
+                cutoff = readUnsigned(cutoff + cutoff * (FEW_ITEMS - items) / FEW_ITEMS);
             }
-            if (unsigned(totalDelta + unsigned((long) (blockLength / LENGTH_PENALTY_STEP) * observationCount))
+            if (readUnsigned(totalDelta + readUnsigned((long) (blockLength / LENGTH_PENALTY_STEP) * observationCount))
                     >= cutoff) {
                 return true;
             }
@@ -91,7 +91,7 @@ final class BlockSplitStatistics {
         return false;
     }
 
-    private long unsigned(long value) {
+    private long readUnsigned(long value) {
         return value & UNSIGNED_32;
     }
 }

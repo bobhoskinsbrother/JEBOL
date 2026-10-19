@@ -11,18 +11,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AContextWalksItsOwnFieldsTest {
 
-    private static String errorIdOf(Throwable thrown) {
+    private static String readTheErrorIdOf(Throwable thrown) {
         return ((Raised) thrown).error().errorId();
     }
 
-    private static Context holding(String name, Value value) {
+    private static Context makeAContextHolding(String name, Value value) {
         Context context = Context.root();
         context.register(name, value);
         return context;
     }
 
-    private static ObjectValue anObjectHolding(String name, Value value) {
-        return new ObjectValue(holding(name, value));
+    private static ObjectValue makeAnObjectHolding(String name, Value value) {
+        return new ObjectValue(makeAContextHolding(name, value));
     }
 
     @Nested
@@ -31,72 +31,72 @@ class AContextWalksItsOwnFieldsTest {
 
         @Test
         @DisplayName("one name is the value the context gives it")
-        void oneName() {
-            assertThat(holding("a", IntegerValue.of(1)).valueAt("a"))
+        void findsOneName() {
+            assertThat(makeAContextHolding("a", IntegerValue.of(1)).readValueAt("a"))
                     .isEqualTo(IntegerValue.of(1));
         }
 
         @Test
         @DisplayName("the first name may be held by an enclosing context")
-        void theFirstNameMayBeHeldAbove() {
-            Context beneath = Context.childOf(holding("a", IntegerValue.of(1)));
+        void findsTheFirstNameHeldAbove() {
+            Context beneath = Context.makeChildOf(makeAContextHolding("a", IntegerValue.of(1)));
 
-            assertThat(beneath.valueAt("a")).isEqualTo(IntegerValue.of(1));
+            assertThat(beneath.readValueAt("a")).isEqualTo(IntegerValue.of(1));
         }
 
         @Test
         @DisplayName("each later name is a field of the object the one before reached")
         void laterNamesAreFields() {
-            Context context = holding("system",
-                    anObjectHolding("version", TupleValue.of(3, 22, 5)));
+            Context context = makeAContextHolding("system",
+                    makeAnObjectHolding("version", TupleValue.of(3, 22, 5)));
 
-            assertThat(context.valueAt("system", "version"))
+            assertThat(context.readValueAt("system", "version"))
                     .isEqualTo(TupleValue.of(3, 22, 5));
         }
 
         @Test
         @DisplayName("a first name nobody holds is none")
-        void anUnknownFirstName() {
-            assertThat(holding("a", IntegerValue.of(1)).valueAt("b"))
+        void answersAnUnknownFirstName() {
+            assertThat(makeAContextHolding("a", IntegerValue.of(1)).readValueAt("b"))
                     .isEqualTo(NoneValue.none());
         }
 
         @Test
         @DisplayName("a later name the object lacks is none")
-        void aMissingField() {
-            Context context = holding("system",
-                    anObjectHolding("version", TupleValue.of(3, 22, 5)));
+        void answersAMissingField() {
+            Context context = makeAContextHolding("system",
+                    makeAnObjectHolding("version", TupleValue.of(3, 22, 5)));
 
-            assertThat(context.valueAt("system", "script")).isEqualTo(NoneValue.none());
+            assertThat(context.readValueAt("system", "script")).isEqualTo(NoneValue.none());
         }
 
         @Test
         @DisplayName("stepping through something that is not an object is none")
-        void steppingThroughANonObject() {
-            Context context = holding("system", IntegerValue.of(1));
+        void answersSteppingThroughANonObject() {
+            Context context = makeAContextHolding("system", IntegerValue.of(1));
 
-            assertThat(context.valueAt("system", "version")).isEqualTo(NoneValue.none());
+            assertThat(context.readValueAt("system", "version")).isEqualTo(NoneValue.none());
         }
 
         @Test
         @DisplayName("a hidden field is not found, as field selection would not find it")
-        void aHiddenFieldIsNone() {
-            Context inside = holding("version", TupleValue.of(3, 22, 5));
-            inside.slotFor("version").hide(true);
-            Context context = holding("system", new ObjectValue(inside));
+        void readsAHiddenFieldAsNone() {
+            Context inside = makeAContextHolding("version", TupleValue.of(3, 22, 5));
+            inside.findSlotFor("version").hide(true);
+            Context context = makeAContextHolding("system", new ObjectValue(inside));
 
-            assertThat(context.valueAt("system", "version")).isEqualTo(NoneValue.none());
+            assertThat(context.readValueAt("system", "version")).isEqualTo(NoneValue.none());
         }
 
         @Test
         @DisplayName("a later name does not leak out to what encloses the object")
-        void aFieldDoesNotLeakOutward() {
-            Context enclosing = holding("leak", IntegerValue.of(1));
-            Context inside = Context.childOf(enclosing);
+        void keepsAFieldFromLeakingOutward() {
+            Context enclosing = makeAContextHolding("leak", IntegerValue.of(1));
+            Context inside = Context.makeChildOf(enclosing);
             inside.register("version", TupleValue.of(3, 22, 5));
-            Context context = holding("system", new ObjectValue(inside));
+            Context context = makeAContextHolding("system", new ObjectValue(inside));
 
-            assertThat(context.valueAt("system", "leak")).isEqualTo(NoneValue.none());
+            assertThat(context.readValueAt("system", "leak")).isEqualTo(NoneValue.none());
         }
     }
 
@@ -104,72 +104,72 @@ class AContextWalksItsOwnFieldsTest {
     @DisplayName("systemFunctionNamed finds a function in system/contexts/sys")
     class SystemFunctionNamed {
 
-        private static Context aSystemWhoseSysIs(Value sys) {
-            return holding("system", anObjectHolding("contexts",
-                    anObjectHolding("sys", sys)));
+        private static Context makeASystemWhoseSysIs(Value sys) {
+            return makeAContextHolding("system", makeAnObjectHolding("contexts",
+                    makeAnObjectHolding("sys", sys)));
         }
 
-        private static Context aSystemWhoseSysHolds(String name, Value value) {
-            return aSystemWhoseSysIs(anObjectHolding(name, value));
+        private static Context makeASystemWhoseSysHolds(String name, Value value) {
+            return makeASystemWhoseSysIs(makeAnObjectHolding(name, value));
         }
 
         @Test
         @DisplayName("a native held there is the answer")
-        void aNative() {
+        void findsANative() {
             NativeValue held = new DoNative();
 
-            assertThat(aSystemWhoseSysHolds("do*", held).systemFunctionNamed("do*"))
+            assertThat(makeASystemWhoseSysHolds("do*", held).findTheSystemFunctionNamed("do*"))
                     .isEqualTo(held);
         }
 
         @Test
         @DisplayName("an operator held there is the answer too")
-        void anOperator() {
+        void findsAnOperator() {
             OperatorValue held = new OperatorValue("+", new AddAction());
 
-            assertThat(aSystemWhoseSysHolds("do*", held).systemFunctionNamed("do*"))
+            assertThat(makeASystemWhoseSysHolds("do*", held).findTheSystemFunctionNamed("do*"))
                     .isEqualTo(held);
         }
 
         @Test
         @DisplayName("with no system at all the name is not-defined")
-        void noSystem() {
-            assertThatThrownBy(() -> Context.root().systemFunctionNamed("do*"))
+        void answersWithNoSystem() {
+            assertThatThrownBy(() -> Context.root().findTheSystemFunctionNamed("do*"))
                     .isInstanceOf(Raised.class)
-                    .extracting(AContextWalksItsOwnFieldsTest::errorIdOf)
+                    .extracting(AContextWalksItsOwnFieldsTest::readTheErrorIdOf)
                     .isEqualTo("not-defined");
         }
 
         @Test
         @DisplayName("a sys context without the name is bad-sys-func")
         void sysLacksTheName() {
-            Context context = aSystemWhoseSysHolds("other", IntegerValue.of(1));
+            Context context = makeASystemWhoseSysHolds("other", IntegerValue.of(1));
 
-            assertThatThrownBy(() -> context.systemFunctionNamed("do*"))
+            assertThatThrownBy(() -> context.findTheSystemFunctionNamed("do*"))
                     .isInstanceOf(Raised.class)
-                    .extracting(AContextWalksItsOwnFieldsTest::errorIdOf)
+                    .extracting(AContextWalksItsOwnFieldsTest::readTheErrorIdOf)
                     .isEqualTo("bad-sys-func");
         }
 
         @Test
         @DisplayName("a name in sys that holds something other than a function is bad-sys-func")
         void sysHoldsSomethingElse() {
-            Context context = aSystemWhoseSysHolds("do*", IntegerValue.of(1));
+            Context context = makeASystemWhoseSysHolds("do*", IntegerValue.of(1));
 
-            assertThatThrownBy(() -> context.systemFunctionNamed("do*"))
+            assertThatThrownBy(() -> context.findTheSystemFunctionNamed("do*"))
                     .isInstanceOf(Raised.class)
-                    .extracting(AContextWalksItsOwnFieldsTest::errorIdOf)
+                    .extracting(AContextWalksItsOwnFieldsTest::readTheErrorIdOf)
                     .isEqualTo("bad-sys-func");
         }
 
         @Test
         @DisplayName("a sys that is not an object is not-defined")
         void sysIsNotAnObject() {
-            Context context = aSystemWhoseSysIs(IntegerValue.of(1));
+            Context context = makeASystemWhoseSysIs(IntegerValue.of(1));
 
-            assertThatThrownBy(() -> context.systemFunctionNamed("do*"))
+            assertThatThrownBy(() -> context.findTheSystemFunctionNamed("do*"))
                     .isInstanceOf(Raised.class)
-                    .extracting(AContextWalksItsOwnFieldsTest::errorIdOf)
+                    .extracting(AContextWalksItsOwnFieldsTest::readTheErrorIdOf)
                     .isEqualTo("not-defined");
         }
     }

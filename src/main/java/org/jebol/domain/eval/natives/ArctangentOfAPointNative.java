@@ -17,7 +17,7 @@ public class ArctangentOfAPointNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("point", Set.of(PairValue.TYPE)));
+        return List.of(Parameter.of("point", Set.of(PairValue.TYPE)));
     }
 
     @Override
@@ -29,6 +29,6 @@ public class ArctangentOfAPointNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
                 ((PairValue) arguments.getFirst())
-                        .angleFromTheOrigin(refinements.contains("radians"));
+                        .measureTheAngleFromTheOrigin(refinements.contains("radians"));
     }
 }

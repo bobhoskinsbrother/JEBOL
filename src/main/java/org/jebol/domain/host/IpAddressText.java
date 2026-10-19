@@ -16,18 +16,18 @@ record IpAddressText(String written) {
     private static final int MAX_OCTET = 255;
     private static final String ZERO_RUN = "::";
 
-    Optional<String> canonicalHex() {
+    Optional<String> writeTheCanonicalHex() {
         if (written.contains(":")) {
-            return ipv6Hex(unbracketed(written));
+            return writeIpv6AsHex(unbracket(written));
         }
-        return ipv4Hex(written);
+        return writeIpv4AsHex(written);
     }
 
-    private String unbracketed(String text) {
+    private String unbracket(String text) {
         return text.startsWith("[") && text.endsWith("]") ? text.substring(1, text.length() - 1) : text;
     }
 
-    private Optional<String> ipv4Hex(String text) {
+    private Optional<String> writeIpv4AsHex(String text) {
         String[] octets = text.split("\\.", -1);
         if (octets.length != IPV4_OCTETS || !Arrays.stream(octets).allMatch(this::isOctet)) {
             return Optional.empty();
@@ -43,20 +43,20 @@ record IpAddressText(String written) {
         return OCTET.matcher(text).matches() && Integer.parseInt(text) <= MAX_OCTET;
     }
 
-    private Optional<String> ipv6Hex(String text) {
+    private Optional<String> writeIpv6AsHex(String text) {
         int zeroRun = text.indexOf(ZERO_RUN);
         if (zeroRun != text.lastIndexOf(ZERO_RUN)) {
             return Optional.empty();
         }
         Optional<List<String>> hextets = zeroRun < 0
-                ? hextets(text).filter(found -> found.size() == IPV6_HEXTETS)
+                ? splitIntoHextets(text).filter(found -> found.size() == IPV6_HEXTETS)
                 : expandZeroRun(text.substring(0, zeroRun), text.substring(zeroRun + ZERO_RUN.length()));
-        return hextets.map(this::hex);
+        return hextets.map(this::joinAsHex);
     }
 
     private Optional<List<String>> expandZeroRun(String before, String after) {
-        Optional<List<String>> leading = before.isEmpty() ? Optional.of(List.of()) : hextets(before);
-        Optional<List<String>> trailing = after.isEmpty() ? Optional.of(List.of()) : hextets(after);
+        Optional<List<String>> leading = before.isEmpty() ? Optional.of(List.of()) : splitIntoHextets(before);
+        Optional<List<String>> trailing = after.isEmpty() ? Optional.of(List.of()) : splitIntoHextets(after);
         if (leading.isEmpty() || trailing.isEmpty()) {
             return Optional.empty();
         }
@@ -70,14 +70,14 @@ record IpAddressText(String written) {
         return Optional.of(expanded);
     }
 
-    private Optional<List<String>> hextets(String text) {
+    private Optional<List<String>> splitIntoHextets(String text) {
         List<String> hextets = List.of(text.split(":", -1));
         return hextets.stream().allMatch(hextet -> HEXTET.matcher(hextet).matches())
                 ? Optional.of(hextets)
                 : Optional.empty();
     }
 
-    private String hex(List<String> hextets) {
+    private String joinAsHex(List<String> hextets) {
         StringBuilder hex = new StringBuilder();
         for (String hextet : hextets) {
             hex.append("%04x".formatted(Integer.parseInt(hextet, 16)));

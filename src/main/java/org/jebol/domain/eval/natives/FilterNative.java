@@ -23,10 +23,10 @@ public class FilterNative extends PngFilterNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("data", Set.of(BinaryValue.TYPE)),
-                Parameter.required("width", aWidth()),
-                Parameter.required("type", aFilterType()),
-                Parameter.belongingTo("skip", "bpp", Set.of(IntegerValue.TYPE)));
+                Parameter.of("data", Set.of(BinaryValue.TYPE)),
+                Parameter.of("width", acceptAWidth()),
+                Parameter.of("type", acceptAFilterType()),
+                Parameter.belongTo("skip", "bpp", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -38,11 +38,11 @@ public class FilterNative extends PngFilterNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             byte[] data = ((BinaryValue) arguments.getFirst()).octetsFromHere();
-            int width = theWidthIn(arguments.get(1));
-            int filter = theFilterNamedBy(arguments.get(2));
+            int width = readTheWidthIn(arguments.get(1));
+            int filter = readTheFilterNamedBy(arguments.get(2));
             requireTheLinesFit(width, data.length, arguments, refinements);
-            return BinaryValue.ofBytes(encodings.pngFiltered(
-                    data, width, filter, bytesPerPixelIn(arguments, refinements)));
+            return BinaryValue.ofBytes(encodings.pngFilter(
+                    data, width, filter, readTheBytesPerPixelIn(arguments, refinements)));
         };
     }
 }

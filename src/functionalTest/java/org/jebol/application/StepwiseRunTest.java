@@ -35,7 +35,7 @@ class StepwiseRunTest {
 
     @Test
     @DisplayName("an empty source is a step that did nothing")
-    void anEmptySourceStepsNowhere() {
+    void stepsNowhereForAnEmptySource() {
         Interpreter interpreter = Interpreter.create();
         Interpreter.Step step = interpreter.runNext("");
 
@@ -45,7 +45,7 @@ class StepwiseRunTest {
 
     @Test
     @DisplayName("the words a step sets are still set for the next one")
-    void wordsCarryFromStepToStep() {
+    void carriesWordsFromStepToStep() {
         Interpreter interpreter = Interpreter.create();
         Interpreter.Step first = interpreter.runNext("counter: 7  counter");
 
@@ -54,7 +54,7 @@ class StepwiseRunTest {
 
     @Test
     @DisplayName("a failure in the first expression is a conclusion, not a throwable")
-    void aFailureIsAnOutcome() {
+    void treatsAFailureAsAnOutcome() {
         Interpreter interpreter = Interpreter.create();
         Interpreter.Step step = interpreter.runNext("1 / 0  99");
 
@@ -64,7 +64,7 @@ class StepwiseRunTest {
 
     @Test
     @DisplayName("what follows a failed expression is still handed back")
-    void whatFollowsAFailureIsStillReturned() {
+    void stillReturnsWhatFollowsAFailure() {
         Interpreter interpreter = Interpreter.create();
 
         assertThat(interpreter.runNext("1 / 0  99").rest()).contains("99");

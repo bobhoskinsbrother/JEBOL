@@ -14,21 +14,21 @@ class WordCharactersTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String idOf(String source) {
+    private static String readTheIdOf(String source) {
         return answerTo("e: try [load " + source + "] "
                 + "either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("a word may not mix letters with an angle bracket")
-    void aMixedLexemeIsRefused() {
-        assertThat(idOf("{a<b}")).isEqualTo("invalid");
-        assertThat(idOf("{a>b}")).isEqualTo("invalid");
+    void refuseAMixedLexeme() {
+        assertThat(readTheIdOf("{a<b}")).isEqualTo("invalid");
+        assertThat(readTheIdOf("{a>b}")).isEqualTo("invalid");
     }
 
     @Test
     @DisplayName("a run of only symbols is a word, whatever it contains")
-    void anAllSymbolRunIsAWord() {
+    void makeAWordFromAnAllSymbolRun() {
         assertThat(answerTo("mold load {<}")).isEqualTo("\"<\"");
         assertThat(answerTo("mold load {<=}")).isEqualTo("\"<=\"");
         assertThat(answerTo("mold load {-->}")).isEqualTo("\"-->\"");
@@ -36,13 +36,13 @@ class WordCharactersTest {
 
     @Test
     @DisplayName("a complete tag is still a tag")
-    void aTagIsUnaffected() {
+    void leaveATagAlone() {
         assertThat(answerTo("mold load {<a>}")).isEqualTo("\"<a>\"");
     }
 
     @Test
     @DisplayName("a number followed by a symbol run splits in two")
-    void aNumberSplitsFromWhatFollows() {
+    void splitANumberFromWhatFollows() {
         assertThat(answerTo("mold load {1<}")).isEqualTo("\"[1 <]\"");
         assertThat(answerTo("mold load {1.2<}")).isEqualTo("\"[1.2 <]\"");
         assertThat(answerTo("mold load {19-Jan-2010<}"))
@@ -51,14 +51,14 @@ class WordCharactersTest {
 
     @Test
     @DisplayName("what follows has to be a symbol run of its own")
-    void aNumberDoesNotSplitFromAMixedRun() {
-        assertThat(idOf("{1<2}")).isEqualTo("invalid");
+    void keepANumberWithAMixedRun() {
+        assertThat(readTheIdOf("{1<2}")).isEqualTo("invalid");
     }
 
     @Test
     @DisplayName("a word prefix never splits, which is the whole difference")
-    void aWordPrefixNeverSplits() {
-        assertThat(idOf("{a<}")).isEqualTo("invalid");
+    void neverSplitAWordPrefix() {
+        assertThat(readTheIdOf("{a<}")).isEqualTo("invalid");
         assertThat(answerTo("mold load {1<}")).isEqualTo("\"[1 <]\"");
     }
 
@@ -72,20 +72,20 @@ class WordCharactersTest {
 
     @Test
     @DisplayName("a tag may follow a number as readily as a word can")
-    void aTagFollowsANumber() {
+    void readATagAfterANumber() {
         assertThat(answerTo("(load {1.0<a>}) = [1.0 <a>]")).isEqualTo("#(true)");
         assertThat(answerTo("(load {1.#INF<a>}) = [1.#INF <a>]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("the angle bracket wins over an earlier illegal character")
-    void theBracketEndsTheValue() {
+    void endTheValueAtTheBracket() {
         assertThat(answerTo("(load {1.#INF<}) = [1.#INF <]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a lexeme starting with a bracket is a word only if it is all symbols")
-    void aBracketLedLexemeNeedsSymbolsThroughout() {
-        assertThat(idOf("{1<2}")).isEqualTo("invalid");
+    void requireSymbolsThroughoutABracketLedLexeme() {
+        assertThat(readTheIdOf("{1<2}")).isEqualTo("invalid");
     }
 }

@@ -2,32 +2,32 @@ package org.jebol.domain.value;
 
 public sealed interface RebolNumber extends Value permits IntegerValue, AnyDecimalValue {
 
-    Value combinedWithANumber(Value right, ArithmeticOperation operation);
+    Value combineWithANumber(Value right, ArithmeticOperation operation);
 
     boolean mayLoseATime(ArithmeticOperation operation);
 
     boolean mayMeetADate();
 
     @Override
-    default Value arithmetic(Value right, ArithmeticOperation operation) {
+    default Value calculate(Value right, ArithmeticOperation operation) {
         return switch (right) {
-            case IntegerValue ignored -> combinedWithANumber(right, operation);
-            case AnyDecimalValue ignored -> combinedWithANumber(right, operation);
-            case CharacterValue ignored -> combinedWithANumber(right, operation);
+            case IntegerValue ignored -> combineWithANumber(right, operation);
+            case AnyDecimalValue ignored -> combineWithANumber(right, operation);
+            case CharacterValue ignored -> combineWithANumber(right, operation);
             case MoneyValue amount -> asMoneyInTheCurrencyOf(amount).orElseThrow()
-                    .arithmetic(amount, operation);
+                    .calculate(amount, operation);
             case TimeValue span
                     when operation.isCommutative() || mayLoseATime(operation) ->
-                    new TimeActions(span).takenBy(this, operation);
+                    new TimeActions(span).combineFromTheLeft(this, operation);
             case DateValue moment
                     when operation.isCommutative() && mayMeetADate() ->
-                    new DateArithmetic(moment).takenBy(this, operation);
+                    new DateArithmetic(moment).takeFrom(this, operation);
             case PairValue point when operation.isCommutative() ->
-                    point.arithmetic(this, operation);
+                    point.calculate(this, operation);
             case TupleValue octets when operation.isCommutative() ->
-                    octets.arithmetic(this, operation);
+                    octets.calculate(this, operation);
             case VectorValue vector when operation.isCommutative() ->
-                    VectorMath.done(this, vector, operation);
+                    VectorMath.calculate(this, vector, operation);
             default -> refuseTheArithmetic(right);
         };
     }

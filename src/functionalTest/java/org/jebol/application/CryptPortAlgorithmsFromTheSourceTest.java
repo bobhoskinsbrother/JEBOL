@@ -21,8 +21,8 @@ class CryptPortAlgorithmsFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String through(String algorithm, String key,
-            String vector, String data) {
+    private static String runThrough(String algorithm, String key,
+                                     String vector, String data) {
 
         return answerTo("""
                 p: open make port! [scheme: 'crypt algorithm: '%s]
@@ -35,7 +35,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("the catalogue names what this build serves, and every one opens")
-    void theCatalogueNamesWhatThisBuildServes() {
+    void namesWhatThisBuildServesInTheCatalogue() {
         assertThat(answerTo("mold/flat system/catalog/ciphers")).isEqualTo("""
                 {[aes-128-ecb aes-192-ecb aes-256-ecb aes-128-cbc aes-192-cbc \
                 aes-256-cbc aes-128-ccm aes-192-ccm aes-256-ccm \
@@ -63,13 +63,13 @@ class CryptPortAlgorithmsFromTheSourceTest {
     @Test
     @DisplayName("AES in electronic codebook, at all three key widths")
     void aesInElectronicCodebook() {
-        assertThat(through("AES-128-ECB", AES_128_KEY, "none", NIST_BLOCK))
+        assertThat(runThrough("AES-128-ECB", AES_128_KEY, "none", NIST_BLOCK))
                 .isEqualTo("\"3AD77BB40D7A3660A89ECAF32466EF97\"");
-        assertThat(through("AES-192-ECB",
+        assertThat(runThrough("AES-192-ECB",
                 "#{000102030405060708090A0B0C0D0E0F1011121314151617}",
                 "none", COUNTING_BLOCK))
                 .isEqualTo("\"DDA97CA4864CDFE06EAF70A0EC0D7191\"");
-        assertThat(through("AES-256-ECB",
+        assertThat(runThrough("AES-256-ECB",
                 "#{000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F}",
                 "none", COUNTING_BLOCK))
                 .isEqualTo("\"8EA2B7CA516745BFEAFC49904B496089\"");
@@ -78,13 +78,13 @@ class CryptPortAlgorithmsFromTheSourceTest {
     @Test
     @DisplayName("AES in cipher block chaining, at all three key widths")
     void aesInCipherBlockChaining() {
-        assertThat(through("AES-128-CBC", AES_128_KEY, VECTOR, NIST_BLOCK))
+        assertThat(runThrough("AES-128-CBC", AES_128_KEY, VECTOR, NIST_BLOCK))
                 .isEqualTo("\"7649ABAC8119B246CEE98E9B12E9197D\"");
-        assertThat(through("AES-192-CBC",
+        assertThat(runThrough("AES-192-CBC",
                 "#{8E73B0F7DA0E6452C810F32B809079E562F8EAD2522C6B7B}",
                 VECTOR, NIST_BLOCK))
                 .isEqualTo("\"4F021DB243BC633D7178183A9FA071E8\"");
-        assertThat(through("AES-256-CBC",
+        assertThat(runThrough("AES-256-CBC",
                 "#{603DEB1015CA71BE2B73AEF0857D77811F352C073B6108D72D9810A30914DFF4}",
                 VECTOR, NIST_BLOCK))
                 .isEqualTo("\"F58C4C04D6E5F1BA779EABFB5F7BFBD6\"");
@@ -92,7 +92,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("every cipher in the catalogue decrypts what it encrypted")
-    void everyCipherDecryptsWhatItEncrypted() {
+    void decryptsWhatEveryCipherEncrypted() {
         assertThat(answerTo("""
                 key: #{000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F}
                 vec: #{0F0E0D0C0B0A09080706050403020100}
@@ -116,7 +116,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("and the cipher text between is what a real 3.22.5 writes")
-    void theCipherTextBetweenIsWhatARealRebolWrites() {
+    void writesTheCipherTextARealRebolWrites() {
         assertThat(answerTo("""
                 key: #{000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F}
                 vec: #{0F0E0D0C0B0A09080706050403020100}
@@ -155,7 +155,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("and decrypting gives the plain text back")
-    void decryptingGivesThePlainTextBack() {
+    void givesThePlainTextBackOnDecrypting() {
         assertThat(answerTo("""
                 p: open make port! [
                     scheme: 'crypt algorithm: 'AES-128-ECB direction: 'decrypt
@@ -167,42 +167,42 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("a key shorter than the cipher wants is padded with noughts")
-    void aKeyShorterThanTheCipherWantsIsPaddedWithNoughts() {
-        assertThat(through("AES-128-ECB", "none", "none", NIST_BLOCK))
+    void padsAShortKeyWithNoughts() {
+        assertThat(runThrough("AES-128-ECB", "none", "none", NIST_BLOCK))
                 .isEqualTo("\"CF2EA38A123BE20765EB8C5C56CAF224\"");
-        assertThat(through("AES-128-ECB", "#{2B}", "none", NIST_BLOCK))
+        assertThat(runThrough("AES-128-ECB", "#{2B}", "none", NIST_BLOCK))
                 .isEqualTo("\"5FA1E453FAFD7C3CB3BE49F22A67BFD4\"");
-        assertThat(through("AES-128-ECB", "#{2B7E151628AED2A6ABF7158809CF4F}",
+        assertThat(runThrough("AES-128-ECB", "#{2B7E151628AED2A6ABF7158809CF4F}",
                 "none", NIST_BLOCK))
                 .isEqualTo("\"83CFB16C86A639C75795F4B4D58A2620\"");
     }
 
     @Test
     @DisplayName("and a key longer than it wants is truncated")
-    void aKeyLongerThanTheCipherWantsIsTruncated() {
-        String exactly = through("AES-128-ECB", AES_128_KEY, "none", NIST_BLOCK);
+    void truncatesALongKey() {
+        String exactly = runThrough("AES-128-ECB", AES_128_KEY, "none", NIST_BLOCK);
         assertThat(exactly).isEqualTo("\"3AD77BB40D7A3660A89ECAF32466EF97\"");
-        assertThat(through("AES-128-ECB",
+        assertThat(runThrough("AES-128-ECB",
                 "#{2B7E151628AED2A6ABF7158809CF4F3CFF}", "none", NIST_BLOCK))
                 .isEqualTo(exactly);
-        assertThat(through("AES-128-ECB",
+        assertThat(runThrough("AES-128-ECB",
                 "#{2B7E151628AED2A6ABF7158809CF4F3CFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF}",
                 "none", NIST_BLOCK)).isEqualTo(exactly);
     }
 
     @Test
     @DisplayName("no vector is a vector of noughts, so the first block matches codebook")
-    void noVectorIsAVectorOfNoughts() {
-        assertThat(through("AES-128-CBC", AES_128_KEY, "none", NIST_BLOCK))
-                .isEqualTo(through("AES-128-ECB", AES_128_KEY, "none", NIST_BLOCK));
+    void takesNoVectorAsAVectorOfNoughts() {
+        assertThat(runThrough("AES-128-CBC", AES_128_KEY, "none", NIST_BLOCK))
+                .isEqualTo(runThrough("AES-128-ECB", AES_128_KEY, "none", NIST_BLOCK));
     }
 
     @Test
     @DisplayName("a short vector is padded and a long one truncated")
-    void aShortVectorIsPaddedAndALongOneTruncated() {
-        assertThat(through("AES-128-CBC", AES_128_KEY, "#{0001}", NIST_BLOCK))
+    void padsAShortVectorAndTruncatesALongOne() {
+        assertThat(runThrough("AES-128-CBC", AES_128_KEY, "#{0001}", NIST_BLOCK))
                 .isEqualTo("\"EA1DBA6D8E336C34D4D584FB032B4021\"");
-        assertThat(through("AES-128-CBC", AES_128_KEY,
+        assertThat(runThrough("AES-128-CBC", AES_128_KEY,
                 "#{000102030405060708090A0B0C0D0E0FFF}", NIST_BLOCK))
                 .isEqualTo("\"7649ABAC8119B246CEE98E9B12E9197D\"");
     }
@@ -213,10 +213,10 @@ class CryptPortAlgorithmsFromTheSourceTest {
         String key =
                 "#{000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F}";
         String nonceAndCounter = "#{000000090000004A0000000000000001}";
-        assertThat(through("chacha20", key, nonceAndCounter,
+        assertThat(runThrough("chacha20", key, nonceAndCounter,
                 "#{00000000000000000000000000000000}"))
                 .isEqualTo("\"10F1E7E4D13B5915500FDD1FA32071C4\"");
-        assertThat(through("chacha20", key, "none",
+        assertThat(runThrough("chacha20", key, "none",
                 "#{00000000000000000000000000000000}"))
                 .isEqualTo("\"39FD2B7DD9C5196A8DBD0377B8DC4A49\"");
     }
@@ -239,13 +239,13 @@ class CryptPortAlgorithmsFromTheSourceTest {
         String single = "#{0123456789ABCDEF}";
         String triple = "#{0123456789ABCDEF23456789ABCDEF01456789ABCDEF0123}";
         String now = "#{4E6F772069732074}";
-        assertThat(through("des_ecb", single, "none", now))
+        assertThat(runThrough("des_ecb", single, "none", now))
                 .isEqualTo("\"3FA40E8A984D4815\"");
-        assertThat(through("des3_ecb", triple, "none", now))
+        assertThat(runThrough("des3_ecb", triple, "none", now))
                 .isEqualTo("\"314F8327FA7A09A8\"");
-        assertThat(through("des_cbc", single, "#{1234567890ABCDEF}", now))
+        assertThat(runThrough("des_cbc", single, "#{1234567890ABCDEF}", now))
                 .isEqualTo("\"E5C7CDDE872BF27C\"");
-        assertThat(through("des3_cbc", triple, "#{1234567890ABCDEF}", now))
+        assertThat(runThrough("des3_cbc", triple, "#{1234567890ABCDEF}", now))
                 .isEqualTo("\"F3C0FF026C023089\"");
     }
 
@@ -277,7 +277,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("a tag shorter than the JVM will issue is still answered")
-    void aTagShorterThanTheJvmWillIssueIsStillAnswered() {
+    void stillAnswersATagShorterThanTheJvmWillIssue() {
         assertThat(gcmRun("encrypt", "#{239C15492D6DEEC979E79236BACA4635}",
                 "#{916B8B5417578FA83D2E9E9B8E2E7F6B}", 4, "#{}", COUNTING_BLOCK))
                 .isEqualTo("""
@@ -297,7 +297,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("decrypting answers the tag rather than checking it")
-    void decryptingAnswersTheTagRatherThanCheckingIt() {
+    void answersTheTagRatherThanCheckingItOnDecrypting() {
         assertThat(gcmRun("decrypt", "#{C939CC13397C1D37DE6AE0E1CB7DB1F7}",
                 "#{B3D8CC017CBB89B39E0F67E2}", 16,
                 "#{24825602BD12A984E0092D3E448EDA5F}",
@@ -308,7 +308,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("taking without reading first answers the cipher text and the tag")
-    void takingWithoutReadingFirstAnswersBoth() {
+    void answersBothOnTakingWithoutReadingFirst() {
         assertThat(gcmWritten(16, "#{0011223344556677}", "take p"))
                 .isEqualTo("\"2275F76D886B5A143FB42E0F80037654306F3C0DB04288D4\"");
         assertThat(gcmWritten(0, "#{0011223344556677}", "take p"))
@@ -317,7 +317,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("a second write answers only the bytes the second write added")
-    void aSecondWriteAnswersOnlyItsOwnBytes() {
+    void answersOnlyASecondWritesOwnBytes() {
         assertThat(answerTo("""
                 p: open make port! [scheme: 'crypt algorithm: 'AES-128-GCM]
                 modify p 'key #{000102030405060708090A0B0C0D0E0F}
@@ -333,27 +333,27 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("and the two halves together are what one write answers")
-    void theTwoHalvesTogetherAreWhatOneWriteAnswers() {
+    void answersTheSameInTwoHalvesAsInOneWrite() {
         assertThat(gcmWritten(16, "#{00112233445566778899AABBCCDDEEFF}", "read p"))
                 .isEqualTo("\"2275F76D886B5A14EDBE6C03CDD01C8B\"");
     }
 
     @Test
     @DisplayName("an authenticated cipher with no vector answers nothing at all")
-    void anAuthenticatedCipherWithNoVectorAnswersNothing() {
+    void answersNothingForAnAuthenticatedCipherWithNoVector() {
         assertThat(answerTo("""
                 p: open make port! [scheme: 'crypt algorithm: 'AES-128-GCM]
                 modify p 'key #{000102030405060708090A0B0C0D0E0F}
                 write p %s
                 read p""".formatted(COUNTING_BLOCK))).isEqualTo("_");
-        assertThat(through("AES-128-ECB",
+        assertThat(runThrough("AES-128-ECB",
                 "#{000102030405060708090A0B0C0D0E0F}", "none", COUNTING_BLOCK))
                 .isEqualTo("\"69C4E0D86A7B0430D8CDB78070B4C55A\"");
     }
 
     @Test
     @DisplayName("a tag length outside four to sixteen leaves nothing to take")
-    void aTagLengthOutsideFourToSixteenLeavesNothing() {
+    void leavesNothingForATagLengthOutsideFourToSixteen() {
         assertThat(gcmTagOf(4)).isEqualTo("#{AF70D249}");
         for (int refused : new int[] {1, 3, 17, -1}) {
             assertThat(gcmTagOf(refused)).as("tag length " + refused).isEqualTo("_");
@@ -362,7 +362,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("asking for no tag leaves nothing to take, not an empty binary")
-    void askingForNoTagLeavesNothing() {
+    void leavesNothingWhenAskedForNoTag() {
         assertThat(gcmTagOf(0)).isEqualTo("_");
     }
 
@@ -379,7 +379,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("a tag length between writes keeps both, a vector keeps only the second")
-    void aTagLengthDoesNotStartTheCipherAgainButAVectorDoes() {
+    void restartsTheCipherForAVectorButNotATagLength() {
         assertThat(gcmAcross("modify p 'tag-length 16")).isEqualTo("32");
         assertThat(gcmAcross("modify p 'iv  #{0F0E0D0C0B0A090807060504}"))
                 .isEqualTo("16");
@@ -399,7 +399,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("the bytes to authenticate come off one write, not several")
-    void theBytesToAuthenticateComeOffOneWrite() {
+    void takesTheBytesToAuthenticateOffOneWrite() {
         assertThat(answerTo("""
                 p: open make port! [scheme: 'crypt algorithm: 'AES-128-GCM]
                 modify p 'key #{000102030405060708090A0B0C0D0E0F}
@@ -426,7 +426,7 @@ class CryptPortAlgorithmsFromTheSourceTest {
 
     @Test
     @DisplayName("a cipher that would not start answers nothing to update and take too")
-    void aCipherThatWouldNotStartAnswersNothingToUpdateAndTake() {
+    void answersNothingToUpdateAndTakeForACipherThatWouldNotStart() {
         for (String asked : new String[] {"read p", "read update p", "take p"}) {
             assertThat(answerTo("""
                     p: open make port! [scheme: 'crypt algorithm: 'AES-128-GCM]

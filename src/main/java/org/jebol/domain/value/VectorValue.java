@@ -9,7 +9,7 @@ import java.util.function.UnaryOperator;
 public record VectorValue(VectorStorage storage, int index) implements RebolSeries {
 
     @Override
-    public Value randomised(RandomDraw draw) {
+    public Value randomise(RandomDraw draw) {
         for (int remaining = lengthFromHere(); remaining > 1; remaining--) {
             int chosen = index + draw.below(remaining);
             int last = index + remaining - 1;
@@ -21,7 +21,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public Value pickedAtRandom(RandomDraw draw) {
+    public Value pickAtRandom(RandomDraw draw) {
         throw Raised.of(EvaluationFailure.BAD_REFINES);
     }
 
@@ -40,8 +40,8 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
         }
     }
 
-    public static VectorValue holding(VectorKind kind, long... stored) {
-        return new VectorValue(VectorStorage.holding(kind, stored), 1);
+    public static VectorValue hold(VectorKind kind, long... stored) {
+        return new VectorValue(VectorStorage.hold(kind, stored), 1);
     }
 
     @Override
@@ -50,12 +50,12 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public List<Value> items() {
-        return remaining();
+    public List<Value> listTheItems() {
+        return listTheRemaining();
     }
 
     @Override
-    public Value copied(boolean deeply, Set<Datatype> kinds) {
+    public Value copy(boolean deeply, Set<Datatype> kinds) {
         return copyOfTheFirst(lengthFromHere());
     }
 
@@ -68,15 +68,15 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public Value arithmetic(Value right, ArithmeticOperation operation) {
-        return VectorMath.done(this, right, operation);
+    public Value calculate(Value right, ArithmeticOperation operation) {
+        return VectorMath.calculate(this, right, operation);
     }
 
 
     @Override
-    public Value bitwise(Value right, BitwiseOperation operation) {
+    public Value combineBitwise(Value right, BitwiseOperation operation) {
         refuseWhatItCannotTake(right);
-        return VectorMath.done(this, right, operation);
+        return VectorMath.calculate(this, right, operation);
     }
 
     private void refuseWhatItCannotTake(Value right) {
@@ -86,7 +86,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public boolean equalTo(Value other, Sameness how) {
+    public boolean isEqualTo(Value other, Sameness how) {
         if (!(other instanceof VectorValue theirs)) {
             return false;
         }
@@ -102,17 +102,17 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public Value itemAt(int oneBasedIndex) {
+    public Value readTheItemAt(int oneBasedIndex) {
         return kind().read(storage.at(oneBasedIndex));
     }
 
     @Override
-    public Value frontCopied(int howMany, boolean deeply, Set<Datatype> kinds) {
+    public Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds) {
         return copyOfTheFirst(howMany);
     }
 
     @Override
-    public RebolSeries reversedFront(int howMany) {
+    public RebolSeries reverseTheFront(int howMany) {
         for (int at = 0; at < howMany / 2; at++) {
             int near = index + at;
             int far = index + howMany - 1 - at;
@@ -123,20 +123,20 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
         return this;
     }
 
-    public List<Value> remaining() {
+    public List<Value> listTheRemaining() {
         List<Value> found = new ArrayList<>();
         for (int at = index; at <= storage.length(); at++) {
-            found.add(itemAt(at));
+            found.add(readTheItemAt(at));
         }
         return found;
     }
 
-    public byte[] octetsFromHere() {
+    public byte[] readTheOctetsFromHere() {
         VectorKind kind = kind();
         byte[] octets = new byte[lengthFromHere() * kind.bytes()];
         int written = 0;
         for (int at = index; at <= storage.length(); at++) {
-            byte[] one = kind.octetsOf(storage.at(at));
+            byte[] one = kind.writeTheOctetsOf(storage.at(at));
             System.arraycopy(one, 0, octets, written, one.length);
             written += one.length;
         }
@@ -159,16 +159,16 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
         }
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             return switch (spec) {
                 case IntegerValue(long magnitude) -> ofSize(spec, magnitude);
                 case DecimalValue number -> ofSize(spec, (long) number.quantity());
                 case BinaryValue bytes -> VectorSpec.ofOctets(bytes);
                 case VectorValue already -> already.copyOfTheFirst(already.lengthFromHere());
-                case AnyBlockValue block -> VectorSpec.readMakeSpec(block.remaining(), maker::simpleValueOf)
+                case AnyBlockValue block -> VectorSpec.readMakeSpec(block.remaining(), maker::readASimpleValue)
                         .<Value>map(made -> made)
-                        .orElseThrow(() -> refusing(spec));
-                default -> throw refusing(spec);
+                        .orElseThrow(() -> refuse(spec));
+                default -> throw refuse(spec);
             };
         }
 
@@ -177,19 +177,19 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
             if (howMany < 0) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(spec));
             }
-            return whatTheHostHadRoomFor(() -> VectorSpec.ofSize((int) howMany));
+            return allocateWithinTheHost(() -> VectorSpec.ofSize((int) howMany));
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
                 case VectorValue already -> already;
                 case BinaryValue octets -> VectorSpec.ofOctets(octets);
                 case AnyBlockValue block -> VectorSpec.readMakeSpec(
                                 block.remaining(), UnaryOperator.identity())
                         .<Value>map(made -> made)
-                        .orElseThrow(() -> refusing(from));
-                default -> throw refusing(from);
+                        .orElseThrow(() -> refuse(from));
+                default -> throw refuse(from);
             };
         }
     }

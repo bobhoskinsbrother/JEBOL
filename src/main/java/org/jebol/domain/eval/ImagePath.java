@@ -9,17 +9,17 @@ final class ImagePath {
 
     static Value read(ImageValue image, Value selector) {
         if (selector instanceof AnyWordValue field) {
-            return aboutTheImage(image, field);
+            return describeTheImage(image, field);
         }
-        int pixel = pixelNamedBy(image, selector);
+        int pixel = findThePixelNamedBy(image, selector);
         if (pixel < 1 || pixel > image.lengthFromHere()) {
             return NoneValue.none();
         }
-        int[] channels = image.pixelAt(pixel);
-        return alwaysFourParts(channels);
+        int[] channels = image.readThePixelAt(pixel);
+        return makeFourParts(channels);
     }
 
-    private static TupleValue alwaysFourParts(int[] channels) {
+    private static TupleValue makeFourParts(int[] channels) {
         return TupleValue.of(channels[0], channels[1], channels[2], channels[3]);
     }
 
@@ -36,7 +36,7 @@ final class ImagePath {
             storage.setAlphaAt(pixelFromHead, partOr(parts, 3, OPAQUE_WHERE_NO_FOURTH_PART));
             return;
         }
-        int alpha = alphaFrom(written);
+        int alpha = readTheAlphaFrom(written);
         storage.setAlphaAt(pixelFromHead, alpha);
     }
 
@@ -45,7 +45,7 @@ final class ImagePath {
             writeTheWholePicture(image, field, written);
             return;
         }
-        int pixel = pixelNamedBy(image, selector);
+        int pixel = findThePixelNamedBy(image, selector);
         if (pixel < 1 || pixel > image.lengthFromHere()) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     "pixel " + pixel + " is outside the image");
@@ -79,10 +79,10 @@ final class ImagePath {
                     "an image is sized by a pair with a width");
         }
         int across = (int) asked.x();
-        image.storage().reshape(across, howManyWholeRowsThePixelsMake(image, asked, across));
+        image.storage().reshape(across, countTheWholeRowsThePixelsMake(image, asked, across));
     }
 
-    private static int howManyWholeRowsThePixelsMake(
+    private static int countTheWholeRowsThePixelsMake(
             ImageValue image, PairValue asked, int across) {
         return Math.min((int) asked.y(), image.storage().length() / across);
     }
@@ -90,13 +90,13 @@ final class ImagePath {
     private static void fillEveryPixel(
             ImageValue image, Value written, int... order) {
 
-        if (aPicturesWorthOfBytes(written) instanceof int[] laid) {
+        if (readAPicturesWorthOfBytes(written) instanceof int[] laid) {
             layOver(image, laid, order);
             return;
         }
         int[] parts = written instanceof TupleValue colour
                 ? colour.segments()
-                : greyParts(byteOrRefuse(written), order.length);
+                : makeGreyParts(readAByteOrRefuse(written), order.length);
         for (int pixel = image.index(); pixel <= image.storageLength(); pixel++) {
             image.storage().setColourAt(pixel,
                     partOr(parts, 0, 0), partOr(parts, 1, 0), partOr(parts, 2, 0));
@@ -106,19 +106,19 @@ final class ImagePath {
         }
     }
 
-    private static int stoppingAtWhicheverRunsOutFirst(int given, int pixelsLeft) {
+    private static int stopAtWhicheverRunsOutFirst(int given, int pixelsLeft) {
         return Math.min(given, pixelsLeft);
     }
 
-    private static int[] greyParts(int grey, int channels) {
+    private static int[] makeGreyParts(int grey, int channels) {
         return channels > 3
                 ? new int[] {grey, grey, grey, grey}
                 : new int[] {grey, grey, grey};
     }
 
     private static void fillTheSameByteEverywhere(ImageValue image, Value written) {
-        if (aPicturesWorthOfBytes(written) instanceof int[] greys) {
-            int pixels = stoppingAtWhicheverRunsOutFirst(
+        if (readAPicturesWorthOfBytes(written) instanceof int[] greys) {
+            int pixels = stopAtWhicheverRunsOutFirst(
                     greys.length, image.lengthFromHere());
             for (int step = 0; step < pixels; step++) {
                 image.storage().setColourAt(image.index() + step,
@@ -126,7 +126,7 @@ final class ImagePath {
             }
             return;
         }
-        int grey = byteOrRefuse(written);
+        int grey = readAByteOrRefuse(written);
         for (int pixel = image.index(); pixel <= image.storageLength(); pixel++) {
             image.storage().setColourAt(pixel, grey, grey, grey);
             image.storage().setAlphaAt(pixel, grey);
@@ -134,38 +134,38 @@ final class ImagePath {
     }
 
     private static void fillTheOpacity(ImageValue image, Value written) {
-        if (aPicturesWorthOfBytes(written) instanceof int[] laid) {
-            int pixels = stoppingAtWhicheverRunsOutFirst(
+        if (readAPicturesWorthOfBytes(written) instanceof int[] laid) {
+            int pixels = stopAtWhicheverRunsOutFirst(
                     laid.length, image.lengthFromHere());
             for (int step = 0; step < pixels; step++) {
                 image.storage().setAlphaAt(image.index() + step,
-                        opacityOfTheAlpha(laid[step]));
+                        convertTheAlphaToOpacity(laid[step]));
             }
             return;
         }
-        int octet = byteOrRefuse(written);
+        int octet = readAByteOrRefuse(written);
         for (int pixel = image.index(); pixel <= image.storageLength(); pixel++) {
-            image.storage().setAlphaAt(pixel, opacityOfTheAlpha(octet));
+            image.storage().setAlphaAt(pixel, convertTheAlphaToOpacity(octet));
         }
     }
 
     private static void fillOneChannel(ImageValue image, Value written, int channel) {
-        if (aPicturesWorthOfBytes(written) instanceof int[] laid) {
-            int pixels = stoppingAtWhicheverRunsOutFirst(
+        if (readAPicturesWorthOfBytes(written) instanceof int[] laid) {
+            int pixels = stopAtWhicheverRunsOutFirst(
                     laid.length, image.lengthFromHere());
             for (int step = 0; step < pixels; step++) {
                 image.storage().setChannelAt(image.index() + step, channel, laid[step]);
             }
             return;
         }
-        int octet = byteOrRefuse(written);
+        int octet = readAByteOrRefuse(written);
         for (int pixel = image.index(); pixel <= image.storageLength(); pixel++) {
             image.storage().setChannelAt(pixel, channel, octet);
         }
     }
 
     private static void layOver(ImageValue image, int[] laid, int[] order) {
-        int pixels = stoppingAtWhicheverRunsOutFirst(
+        int pixels = stopAtWhicheverRunsOutFirst(
                 laid.length / order.length, image.lengthFromHere());
         for (int step = 0; step < pixels; step++) {
             for (int which = 0; which < order.length; which++) {
@@ -175,7 +175,7 @@ final class ImagePath {
         }
     }
 
-    private static int[] aPicturesWorthOfBytes(Value written) {
+    private static int[] readAPicturesWorthOfBytes(Value written) {
         if (written instanceof BinaryValue binary) {
             int[] octets = new int[binary.lengthFromHere()];
             for (int at = 0; at < octets.length; at++) {
@@ -184,7 +184,7 @@ final class ImagePath {
             return octets;
         }
         if (written instanceof VectorValue vector && vector.kind().bytes() == 1) {
-            java.util.List<Value> numbers = vector.remaining();
+            java.util.List<Value> numbers = vector.listTheRemaining();
             int[] octets = new int[numbers.size()];
             for (int at = 0; at < octets.length; at++) {
                 octets[at] = numbers.get(at) instanceof IntegerValue(long magnitude)
@@ -196,7 +196,7 @@ final class ImagePath {
         return null;
     }
 
-    private static int byteOrRefuse(Value written) {
+    private static int readAByteOrRefuse(Value written) {
         if (!(written instanceof IntegerValue(long magnitude))) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     "a whole picture is filled from a tuple or a number");
@@ -219,7 +219,7 @@ final class ImagePath {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     "one byte of a pixel holds 0 to 255");
         }
-        int pixel = pixelNamedBy(image, pixelSegment);
+        int pixel = findThePixelNamedBy(image, pixelSegment);
         if (pixel < 1 || pixel > image.lengthFromHere()) {
             throw Raised.of(EvaluationFailure.BAD_PATH_SET,
                     "pixel " + pixel + " is outside the image");
@@ -228,7 +228,7 @@ final class ImagePath {
                 (int) magnitude);
     }
 
-    private static int pixelNamedBy(ImageValue image, Value selector) {
+    private static int findThePixelNamedBy(ImageValue image, Value selector) {
         return switch (selector) {
             case PairValue coordinate -> ((int) coordinate.y() - 1) * image.storage().wide()
                     + ((int) coordinate.x() - 1) + 1;
@@ -243,7 +243,7 @@ final class ImagePath {
         return at < parts.length ? parts[at] : otherwise;
     }
 
-    private static int alphaFrom(Value written) {
+    private static int readTheAlphaFrom(Value written) {
         long octet = switch (written) {
             case IntegerValue number -> number.magnitude();
             case CharacterValue letter -> letter.codepoint();
@@ -257,30 +257,30 @@ final class ImagePath {
         return (int) octet;
     }
 
-    private static Value aboutTheImage(ImageValue image, AnyWordValue field) {
+    private static Value describeTheImage(ImageValue image, AnyWordValue field) {
         return switch (field.canonical()) {
             case "size" -> image.size();
             case "width" -> IntegerValue.of(image.storage().wide());
             case "height" -> IntegerValue.of(image.storage().high());
-            case "rgb" -> channels(image, 0, 1, 2);
-            case "bgr" -> channels(image, 2, 1, 0);
-            case "rgba", "rgbo" -> channels(image, 0, 1, 2, 3);
-            case "bgra", "bgro" -> channels(image, 2, 1, 0, 3);
-            case "argb", "orgb" -> channels(image, 3, 0, 1, 2);
-            case "abgr", "obgr" -> channels(image, 3, 2, 1, 0);
-            case "alpha" -> channels(image, 3);
-            case "opacity" -> opacitiesOf(image);
-            case "red" -> channels(image, 0);
-            case "green" -> channels(image, 1);
-            case "blue" -> channels(image, 2);
-            case "color" -> averageColourOf(image);
-            case "luminosity" -> oneBytePerPixel(image, ImagePath::luminosityOf);
-            case "gray" -> oneBytePerPixel(image, ImagePath::greyOf);
+            case "rgb" -> readTheChannels(image, 0, 1, 2);
+            case "bgr" -> readTheChannels(image, 2, 1, 0);
+            case "rgba", "rgbo" -> readTheChannels(image, 0, 1, 2, 3);
+            case "bgra", "bgro" -> readTheChannels(image, 2, 1, 0, 3);
+            case "argb", "orgb" -> readTheChannels(image, 3, 0, 1, 2);
+            case "abgr", "obgr" -> readTheChannels(image, 3, 2, 1, 0);
+            case "alpha" -> readTheChannels(image, 3);
+            case "opacity" -> readTheOpacitiesOf(image);
+            case "red" -> readTheChannels(image, 0);
+            case "green" -> readTheChannels(image, 1);
+            case "blue" -> readTheChannels(image, 2);
+            case "color" -> averageTheColourOf(image);
+            case "luminosity" -> squeezeToOneBytePerPixel(image, ImagePath::measureTheLuminosityOf);
+            case "gray" -> squeezeToOneBytePerPixel(image, ImagePath::measureTheGreyOf);
             default -> throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());
         };
     }
 
-    private static Value averageColourOf(ImageValue image) {
+    private static Value averageTheColourOf(ImageValue image) {
         int pixels = image.lengthFromHere();
         if (pixels == 0) {
             return TRANSPARENT_BLACK;
@@ -290,7 +290,7 @@ final class ImagePath {
         long blue = 0;
         long alpha = 0;
         for (int pixel = 1; pixel <= pixels; pixel++) {
-            int[] channels = image.pixelAt(pixel);
+            int[] channels = image.readThePixelAt(pixel);
             red += channels[0];
             green += channels[1];
             blue += channels[2];
@@ -304,34 +304,34 @@ final class ImagePath {
 
     private static final TupleValue TRANSPARENT_BLACK = TupleValue.of(0, 0, 0, 0);
 
-    private static BinaryValue opacitiesOf(ImageValue image) {
+    private static BinaryValue readTheOpacitiesOf(ImageValue image) {
         int pixels = image.lengthFromHere();
         int[] octets = new int[pixels];
         for (int pixel = 1; pixel <= pixels; pixel++) {
-            octets[pixel - 1] = opacityOfTheAlpha(image.pixelAt(pixel)[3]);
+            octets[pixel - 1] = convertTheAlphaToOpacity(image.readThePixelAt(pixel)[3]);
         }
         return new BinaryValue(BinaryStorage.of(octets), 1);
     }
 
-    private static int opacityOfTheAlpha(int alpha) {
+    private static int convertTheAlphaToOpacity(int alpha) {
         return 255 - alpha;
     }
 
-    private static int luminosityOf(int red, int green, int blue) {
+    private static int measureTheLuminosityOf(int red, int green, int blue) {
         return (int) (0.2126 * red + 0.7152 * green + 0.0722 * blue);
     }
 
-    private static int greyOf(int red, int green, int blue) {
+    private static int measureTheGreyOf(int red, int green, int blue) {
         return (red + green + blue) / 3;
     }
 
-    private static BinaryValue oneBytePerPixel(
+    private static BinaryValue squeezeToOneBytePerPixel(
             ImageValue image, ThreeChannelsToOne squeeze) {
 
         int pixels = image.lengthFromHere();
         int[] octets = new int[pixels];
         for (int pixel = 1; pixel <= pixels; pixel++) {
-            int[] channels = image.pixelAt(pixel);
+            int[] channels = image.readThePixelAt(pixel);
             octets[pixel - 1] = squeeze.of(channels[0], channels[1], channels[2]);
         }
         return new BinaryValue(BinaryStorage.of(octets), 1);
@@ -342,12 +342,12 @@ final class ImagePath {
         int of(int red, int green, int blue);
     }
 
-    private static BinaryValue channels(ImageValue image, int... order) {
+    private static BinaryValue readTheChannels(ImageValue image, int... order) {
         int pixels = image.lengthFromHere();
         int[] octets = new int[pixels * order.length];
         int written = 0;
         for (int pixel = 1; pixel <= pixels; pixel++) {
-            int[] channels = image.pixelAt(pixel);
+            int[] channels = image.readThePixelAt(pixel);
             for (int which : order) {
                 octets[written++] = channels[which];
             }

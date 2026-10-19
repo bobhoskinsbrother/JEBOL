@@ -21,16 +21,16 @@ public class ToRebolFileNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("path", Set.of(FileValue.TYPE, StringValue.TYPE)));
+        return List.of(Parameter.of("path", Set.of(FileValue.TYPE, StringValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> FileValue.of(
-                oneSlashPerRunOfSeparators(((AnyStringValue) arguments.getFirst()).text()));
+                writeOneSlashPerRunOfSeparators(((AnyStringValue) arguments.getFirst()).text()));
     }
 
-    private String oneSlashPerRunOfSeparators(String path) {
+    private String writeOneSlashPerRunOfSeparators(String path) {
         StringBuilder built = new StringBuilder(path.length());
         boolean afterASeparator = false;
         for (int at = 0; at < path.length(); at++) {

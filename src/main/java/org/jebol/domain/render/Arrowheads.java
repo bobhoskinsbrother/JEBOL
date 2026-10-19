@@ -12,7 +12,7 @@ final class Arrowheads {
     private Arrowheads() {
     }
 
-    static List<PathStep> onlyTheHeadsOf(
+    static List<PathStep> drawOnlyTheHeadsOf(
             List<PathStep> path, ArrowEnds ends, double lineWidth) {
 
         if (closesOnItself(path) || path.size() < 2) {
@@ -21,12 +21,12 @@ final class Arrowheads {
         List<PathStep> heads = new ArrayList<>();
         double length = LINE_WIDTHS_LONG * lineWidth;
         if (ends.atTheEnd()) {
-            heads.addAll(aHeadAt(
+            heads.addAll(drawAHeadAt(
                     pointOf(path.get(path.size() - 1)),
                     pointOf(path.get(path.size() - 2)), length));
         }
         if (ends.atTheStart()) {
-            heads.addAll(aHeadAt(
+            heads.addAll(drawAHeadAt(
                     pointOf(path.getFirst()), pointOf(path.get(1)), length));
         }
         return List.copyOf(heads);
@@ -51,7 +51,7 @@ final class Arrowheads {
         };
     }
 
-    private static List<PathStep> aHeadAt(Point tip, Point cameFrom, double length) {
+    private static List<PathStep> drawAHeadAt(Point tip, Point cameFrom, double length) {
         double acrossWay = tip.across() - cameFrom.across();
         double downWay = tip.down() - cameFrom.down();
         double howFar = Math.hypot(acrossWay, downWay);

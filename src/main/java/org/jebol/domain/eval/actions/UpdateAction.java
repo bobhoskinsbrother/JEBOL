@@ -17,7 +17,7 @@ public class UpdateAction extends ActorFirstPortAction {
     }
 
     @Override
-    Value answeredHere(PortValue port) {
-        return ports.updated(port);
+    Value answerHere(PortValue port) {
+        return ports.update(port);
     }
 }

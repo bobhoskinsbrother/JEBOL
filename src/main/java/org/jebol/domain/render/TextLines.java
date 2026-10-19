@@ -50,7 +50,7 @@ public final class TextLines {
         this.runs = List.copyOf(runs);
         this.measure = measure;
         this.roomForEachLine = roomForEachLine;
-        this.lines = List.copyOf(theLinesOf(this.runs));
+        this.lines = List.copyOf(breakIntoLines(this.runs));
     }
 
     public List<Line> lines() {
@@ -65,8 +65,8 @@ public final class TextLines {
         return lines.stream().mapToDouble(Line::high).sum();
     }
 
-    public double topOfLine(int index, TextLayout layout, Placement box) {
-        double top = layout.whereTheStackStarts(box, tallness());
+    public double findTheTopOfLine(int index, TextLayout layout, Placement box) {
+        double top = layout.findWhereTheStackStarts(box, tallness());
         for (int above = 0; above < index; above++) {
             top += lines.get(above).high();
         }
@@ -74,21 +74,21 @@ public final class TextLines {
     }
 
     public double startOfLine(int index, TextLayout layout, Placement box) {
-        return layout.whereALineStarts(box, lines.get(index).wide());
+        return layout.findWhereALineStarts(box, lines.get(index).wide());
     }
 
-    public CaretPlace whereTheCaretIs(int run, int character, TextLayout layout, Placement box) {
+    public CaretPlace findWhereTheCaretIs(int run, int character, TextLayout layout, Placement box) {
         if (lines.isEmpty()) {
-            return new CaretPlace(layout.whereALineStarts(box, 0), layout.whereTheStackStarts(box, 0), 0);
+            return new CaretPlace(layout.findWhereALineStarts(box, 0), layout.findWhereTheStackStarts(box, 0), 0);
         }
-        RunAndCharacter caret = heldWithinTheText(run, character);
+        RunAndCharacter caret = holdWithinTheText(run, character);
         for (int index = lines.size() - 1; index >= 0; index--) {
             double across = startOfLine(index, layout, box);
             for (Piece piece : lines.get(index).pieces()) {
                 if (piece.holds(caret)) {
                     return new CaretPlace(
-                            across + widthOf(piece, caret.character() - piece.from()),
-                            topOfLine(index, layout, box),
+                            across + measureTheWidthOf(piece, caret.character() - piece.from()),
+                            findTheTopOfLine(index, layout, box),
                             lines.get(index).high());
                 }
                 across += piece.wide();
@@ -96,20 +96,20 @@ public final class TextLines {
         }
         int last = lines.size() - 1;
         return new CaretPlace(startOfLine(last, layout, box) + lines.get(last).wide(),
-                topOfLine(last, layout, box), lines.get(last).high());
+                findTheTopOfLine(last, layout, box), lines.get(last).high());
     }
 
-    public RunAndCharacter caretNearest(double across, double down, TextLayout layout, Placement box) {
+    public RunAndCharacter findTheCaretNearest(double across, double down, TextLayout layout, Placement box) {
         if (lines.isEmpty()) {
             return RunAndCharacter.NOWHERE;
         }
-        int index = theLineLevelWith(down, layout, box);
+        int index = findTheLineLevelWith(down, layout, box);
         RunAndCharacter nearest = RunAndCharacter.NOWHERE;
         double nearestDistance = Double.MAX_VALUE;
         double along = startOfLine(index, layout, box);
         for (Piece piece : lines.get(index).pieces()) {
             for (int within = 0; within <= piece.length(); within++) {
-                double distance = Math.abs(across - (along + widthOf(piece, within)));
+                double distance = Math.abs(across - (along + measureTheWidthOf(piece, within)));
                 if (distance <= nearestDistance) {
                     nearestDistance = distance;
                     nearest = new RunAndCharacter(piece.run(), piece.from() + within);
@@ -120,16 +120,16 @@ public final class TextLines {
         return nearest;
     }
 
-    private int theLineLevelWith(double down, TextLayout layout, Placement box) {
+    private int findTheLineLevelWith(double down, TextLayout layout, Placement box) {
         for (int index = 0; index < lines.size(); index++) {
-            if (down < topOfLine(index, layout, box) + lines.get(index).high()) {
+            if (down < findTheTopOfLine(index, layout, box) + lines.get(index).high()) {
                 return index;
             }
         }
         return lines.size() - 1;
     }
 
-    private RunAndCharacter heldWithinTheText(int run, int character) {
+    private RunAndCharacter holdWithinTheText(int run, int character) {
         if (run < 0 || run >= runs.size()) {
             return new RunAndCharacter(runs.size(), 0);
         }
@@ -137,7 +137,7 @@ public final class TextLines {
         return new RunAndCharacter(run, Math.clamp(character, 0, length));
     }
 
-    private double widthOf(Piece piece, int characters) {
+    private double measureTheWidthOf(Piece piece, int characters) {
         if (characters <= 0) {
             return 0;
         }
@@ -145,7 +145,7 @@ public final class TextLines {
             return piece.wide();
         }
         int end = piece.text().offsetByCodePoints(0, characters);
-        return measure.extentOf(withText(piece.font(), piece.text().substring(0, end))).wide();
+        return measure.measureTheExtentOf(withText(piece.font(), piece.text().substring(0, end))).wide();
     }
 
     private TextRun withText(TextRun font, String text) {
@@ -165,43 +165,43 @@ public final class TextLines {
         }
     }
 
-    private List<Line> theLinesOf(List<TextRun> written) {
+    private List<Line> breakIntoLines(List<TextRun> written) {
         List<Line> laid = new ArrayList<>();
-        for (List<Piece> betweenNewlines : theLinesBetweenNewlines(written)) {
-            laid.addAll(brokenToFitTheRoom(betweenNewlines));
+        for (List<Piece> betweenNewlines : splitAtNewlines(written)) {
+            laid.addAll(breakToFitTheRoom(betweenNewlines));
         }
         return laid;
     }
 
-    private List<Line> brokenToFitTheRoom(List<Piece> betweenNewlines) {
-        List<Letter> letters = theLettersOf(betweenNewlines);
+    private List<Line> breakToFitTheRoom(List<Piece> betweenNewlines) {
+        List<Letter> letters = splitIntoLetters(betweenNewlines);
         if (roomForEachLine == Double.POSITIVE_INFINITY || letters.isEmpty()) {
-            return List.of(aLineOf(betweenNewlines));
+            return List.of(makeALineOf(betweenNewlines));
         }
         List<Line> broken = new ArrayList<>();
         int lineStart = 0;
         int at = 0;
         while (at < letters.size()) {
-            int wordEnd = theEndOfTheWordFrom(letters, at);
+            int wordEnd = findTheEndOfTheWordFrom(letters, at);
             if (fits(letters.subList(lineStart, wordEnd))) {
-                at = theEndOfTheSpacesFrom(letters, wordEnd);
+                at = findTheEndOfTheSpacesFrom(letters, wordEnd);
             } else if (at > lineStart) {
-                broken.add(aLineOfTheLetters(letters.subList(lineStart, at)));
+                broken.add(makeALineOfTheLetters(letters.subList(lineStart, at)));
                 lineStart = at;
             } else {
-                int fitting = theMostOfTheWordThatFits(letters, at, wordEnd);
-                broken.add(aLineOfTheLetters(letters.subList(at, fitting)));
+                int fitting = fitTheMostOfTheWord(letters, at, wordEnd);
+                broken.add(makeALineOfTheLetters(letters.subList(at, fitting)));
                 lineStart = fitting;
                 at = fitting;
             }
         }
         if (lineStart < letters.size() || broken.isEmpty()) {
-            broken.add(aLineOfTheLetters(letters.subList(lineStart, letters.size())));
+            broken.add(makeALineOfTheLetters(letters.subList(lineStart, letters.size())));
         }
         return broken;
     }
 
-    private List<Letter> theLettersOf(List<Piece> pieces) {
+    private List<Letter> splitIntoLetters(List<Piece> pieces) {
         List<Letter> letters = new ArrayList<>();
         for (Piece piece : pieces) {
             if (piece.text().isEmpty()) {
@@ -215,7 +215,7 @@ public final class TextLines {
         return letters;
     }
 
-    private int theEndOfTheWordFrom(List<Letter> letters, int from) {
+    private int findTheEndOfTheWordFrom(List<Letter> letters, int from) {
         int end = from;
         while (end < letters.size() && !letters.get(end).isASpace()) {
             end++;
@@ -223,7 +223,7 @@ public final class TextLines {
         return end;
     }
 
-    private int theEndOfTheSpacesFrom(List<Letter> letters, int from) {
+    private int findTheEndOfTheSpacesFrom(List<Letter> letters, int from) {
         int end = from;
         while (end < letters.size() && letters.get(end).isASpace()) {
             end++;
@@ -231,7 +231,7 @@ public final class TextLines {
         return end;
     }
 
-    private int theMostOfTheWordThatFits(List<Letter> letters, int from, int wordEnd) {
+    private int fitTheMostOfTheWord(List<Letter> letters, int from, int wordEnd) {
         int end = from + 1;
         while (end < wordEnd && fits(letters.subList(from, end + 1))) {
             end++;
@@ -240,22 +240,22 @@ public final class TextLines {
     }
 
     private boolean fits(List<Letter> letters) {
-        return widthOfThePieces(thePiecesOf(letters)) <= roomForEachLine;
+        return measureTheWidthOfThePieces(gatherIntoPieces(letters)) <= roomForEachLine;
     }
 
-    private Line aLineOfTheLetters(List<Letter> letters) {
+    private Line makeALineOfTheLetters(List<Letter> letters) {
         int printed = letters.size();
         while (printed > 0 && letters.get(printed - 1).isASpace()) {
             printed--;
         }
-        return aLineOf(thePiecesOf(letters), widthOfThePieces(thePiecesOf(letters.subList(0, printed))));
+        return makeALineOf(gatherIntoPieces(letters), measureTheWidthOfThePieces(gatherIntoPieces(letters.subList(0, printed))));
     }
 
-    private double widthOfThePieces(List<Piece> pieces) {
+    private double measureTheWidthOfThePieces(List<Piece> pieces) {
         return pieces.stream().mapToDouble(Piece::wide).sum();
     }
 
-    private List<Piece> thePiecesOf(List<Letter> letters) {
+    private List<Piece> gatherIntoPieces(List<Letter> letters) {
         List<Piece> pieces = new ArrayList<>();
         int start = 0;
         while (start < letters.size()) {
@@ -264,23 +264,23 @@ public final class TextLines {
                     && !letters.get(start).standsForAnEmptyPiece() && !letters.get(end).standsForAnEmptyPiece()) {
                 end++;
             }
-            pieces.add(aPieceOfTheLetters(letters.subList(start, end)));
+            pieces.add(makeAPieceOfTheLetters(letters.subList(start, end)));
             start = end;
         }
         return pieces;
     }
 
-    private Piece aPieceOfTheLetters(List<Letter> letters) {
+    private Piece makeAPieceOfTheLetters(List<Letter> letters) {
         Letter first = letters.getFirst();
         int[] characters = letters.stream()
                 .mapToInt(Letter::codePoint)
                 .filter(codePoint -> codePoint != Letter.STANDS_FOR_AN_EMPTY_PIECE)
                 .toArray();
-        return aPiece(first.run(), first.character(), new String(characters, 0, characters.length),
+        return makeAPiece(first.run(), first.character(), new String(characters, 0, characters.length),
                 runs.get(first.run()));
     }
 
-    private List<List<Piece>> theLinesBetweenNewlines(List<TextRun> written) {
+    private List<List<Piece>> splitAtNewlines(List<TextRun> written) {
         List<List<Piece>> laid = new ArrayList<>();
         List<Piece> current = new ArrayList<>();
         for (int run = 0; run < written.size(); run++) {
@@ -290,7 +290,7 @@ public final class TextLines {
             for (int at = 0; at <= characters.length; at++) {
                 boolean endsTheRun = at == characters.length;
                 if (endsTheRun || characters[at] == A_NEWLINE) {
-                    current.add(aPiece(run, from, new String(characters, from, at - from), font));
+                    current.add(makeAPiece(run, from, new String(characters, from, at - from), font));
                     if (!endsTheRun) {
                         laid.add(current);
                         current = new ArrayList<>();
@@ -305,19 +305,19 @@ public final class TextLines {
         return laid;
     }
 
-    private Piece aPiece(int run, int from, String text, TextRun font) {
-        return new Piece(run, from, text, font, measure.extentOf(withText(font, text)).wide());
+    private Piece makeAPiece(int run, int from, String text, TextRun font) {
+        return new Piece(run, from, text, font, measure.measureTheExtentOf(withText(font, text)).wide());
     }
 
-    private Line aLineOf(List<Piece> pieces) {
-        return aLineOf(pieces, widthOfThePieces(pieces));
+    private Line makeALineOf(List<Piece> pieces) {
+        return makeALineOf(pieces, measureTheWidthOfThePieces(pieces));
     }
 
-    private Line aLineOf(List<Piece> pieces, double wide) {
+    private Line makeALineOf(List<Piece> pieces, double wide) {
         double ascent = 0;
         double descent = 0;
         for (Piece piece : pieces) {
-            TextExtent extent = measure.extentOf(withText(piece.font(), piece.text()));
+            TextExtent extent = measure.measureTheExtentOf(withText(piece.font(), piece.text()));
             ascent = Math.max(ascent, extent.ascent());
             descent = Math.max(descent, extent.descent());
         }

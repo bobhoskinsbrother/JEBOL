@@ -33,10 +33,10 @@ class ConsoleAsRebolPrintsItEndToEndTest {
         }
     }
 
-    private String whatTheConsolePrints(String typed) {
+    private String readWhatTheConsolePrints(String typed) {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
-        Interpreter interpreter = Interpreter.writingTo(new StreamOutput(output));
+        Interpreter interpreter = Interpreter.createWithOutput(new StreamOutput(output));
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
         return captured.toString(StandardCharsets.UTF_8);
     }
@@ -48,7 +48,7 @@ class ConsoleAsRebolPrintsItEndToEndTest {
         @Test
         @DisplayName("results, errors raised and errors held, unprinted types, a cut string and a halt")
         void printsWhatRebolPrinted() throws IOException {
-            assertThat(whatTheConsolePrints(readFromTheClasspath(WHAT_WAS_TYPED)))
+            assertThat(readWhatTheConsolePrints(readFromTheClasspath(WHAT_WAS_TYPED)))
                     .isEqualTo(readFromTheClasspath(WHAT_A_REAL_3_22_5_PRINTED));
         }
     }
@@ -59,8 +59,8 @@ class ConsoleAsRebolPrintsItEndToEndTest {
 
         @Test
         @DisplayName("a molded result of 499 and 500 characters is whole, and one of 501 is cut with an ellipsis")
-        void aResultIsCutPastFiveHundred() {
-            assertThat(whatTheConsolePrints("""
+        void cutAResultPastFiveHundred() {
+            assertThat(readWhatTheConsolePrints("""
                     append/dup copy "" "x" 497
                     append/dup copy "" "x" 498
                     append/dup copy "" "x" 499
@@ -73,8 +73,8 @@ class ConsoleAsRebolPrintsItEndToEndTest {
 
         @Test
         @DisplayName("an error formed to 640 characters is whole, and to 641 or 642 is cut with an ellipsis")
-        void anErrorIsCutPastSixHundredAndForty() {
-            assertThat(whatTheConsolePrints("""
+        void cutAnErrorPastSixHundredAndForty() {
+            assertThat(readWhatTheConsolePrints("""
                     make error! append/dup copy "" "x" 621
                     make error! append/dup copy "" "x" 622
                     make error! append/dup copy "" "x" 623
@@ -91,9 +91,9 @@ class ConsoleAsRebolPrintsItEndToEndTest {
     class Continuation {
 
         @Test
-        @DisplayName("each kind of opening, and the ones a string, a comment or a character hide")
+        @DisplayName("each type of opening, and the ones a string, a comment or a character hide")
         void waitsAsRebolsHostWaits() {
-            assertThat(whatTheConsolePrints("""
+            assertThat(readWhatTheConsolePrints("""
                     (1 +
                     2)
                     {abc
@@ -135,8 +135,8 @@ class ConsoleAsRebolPrintsItEndToEndTest {
 
         @Test
         @DisplayName("input that ends while something is open is dropped, and the prompt comes back once more")
-        void anOpenBlockAtTheEndIsDropped() {
-            assertThat(whatTheConsolePrints("""
+        void dropsAnOpenBlockAtTheEnd() {
+            assertThat(readWhatTheConsolePrints("""
                     [1
                     """)).isEqualTo(">>  [ >> ");
         }
@@ -152,10 +152,10 @@ class ConsoleAsRebolPrintsItEndToEndTest {
         private record Ran(int exitStatus, String printed, String reported) {
         }
 
-        private Ran running(String... arguments) {
+        private Ran run(String... arguments) {
             ByteArrayOutputStream printed = new ByteArrayOutputStream();
             ByteArrayOutputStream reported = new ByteArrayOutputStream();
-            int status = Repl.runTheCommandLine(arguments,
+            int status = Repl.runCommandLine(arguments,
                     new PrintStream(printed, true, StandardCharsets.UTF_8),
                     new PrintStream(reported, true, StandardCharsets.UTF_8),
                     directory.toString());
@@ -163,10 +163,10 @@ class ConsoleAsRebolPrintsItEndToEndTest {
                     reported.toString(StandardCharsets.UTF_8));
         }
 
-        private Ran runningAScriptSaying(String line) throws IOException {
+        private Ran runAScriptSaying(String line) throws IOException {
             Path script = directory.resolve("s.r3");
             Files.writeString(script, "REBOL []\nprint 1\n" + line + "\nprint 2\n");
-            return running(script.toString());
+            return run(script.toString());
         }
 
         @ParameterizedTest(name = "a script that runs {0} leaves with {1}")
@@ -180,7 +180,7 @@ class ConsoleAsRebolPrintsItEndToEndTest {
                 quit           | 0
                 """)
         void endsQuietlyWithTheStatusRebolGives(String line, int status) throws IOException {
-            Ran ran = runningAScriptSaying(line);
+            Ran ran = runAScriptSaying(line);
 
             assertThat(ran.printed()).isEqualTo("1\n");
             assertThat(ran.reported()).isEmpty();
@@ -189,8 +189,8 @@ class ConsoleAsRebolPrintsItEndToEndTest {
 
         @Test
         @DisplayName("a script that finishes prints all of itself and leaves with nought")
-        void aFinishedScript() throws IOException {
-            Ran ran = runningAScriptSaying("x: 1");
+        void finishesAScript() throws IOException {
+            Ran ran = runAScriptSaying("x: 1");
 
             assertThat(ran.printed()).isEqualTo("1\n2\n");
             assertThat(ran.reported()).isEmpty();
@@ -199,8 +199,8 @@ class ConsoleAsRebolPrintsItEndToEndTest {
 
         @Test
         @DisplayName("a script that fails reports the formed error on the error stream and leaves with one")
-        void aFailingScript() throws IOException {
-            Ran ran = runningAScriptSaying("1 / 0");
+        void failsAScript() throws IOException {
+            Ran ran = runAScriptSaying("1 / 0");
 
             assertThat(ran.printed()).isEqualTo("1\n");
             assertThat(ran.reported()).isEqualTo("""
@@ -215,8 +215,8 @@ class ConsoleAsRebolPrintsItEndToEndTest {
 
         @Test
         @DisplayName("a script that is not there is reported by the name it was given")
-        void aMissingScript() {
-            Ran ran = running("nope.r3");
+        void reportsAMissingScript() {
+            Ran ran = run("nope.r3");
 
             assertThat(ran.printed()).isEmpty();
             assertThat(ran.reported()).isEqualTo("""
@@ -234,7 +234,7 @@ class ConsoleAsRebolPrintsItEndToEndTest {
                 quit/return none | 0
                 """)
         void doEndsQuietlyWithTheStatusRebolGives(String line, int status) {
-            Ran ran = running("--do", "print 1 " + line + " print 2");
+            Ran ran = run("--do", "print 1 " + line + " print 2");
 
             assertThat(ran.printed()).isEqualTo("1\n");
             assertThat(ran.reported()).isEmpty();
@@ -243,8 +243,8 @@ class ConsoleAsRebolPrintsItEndToEndTest {
 
         @Test
         @DisplayName("--do that fails reports the formed error and leaves with one")
-        void aFailingDo() {
-            Ran ran = running("--do", "print 1 1 / 0 print 2");
+        void failsADo() {
+            Ran ran = run("--do", "print 1 1 / 0 print 2");
 
             assertThat(ran.printed()).isEqualTo("1\n");
             assertThat(ran.reported()).isEqualTo("""
@@ -259,8 +259,8 @@ class ConsoleAsRebolPrintsItEndToEndTest {
 
         @Test
         @DisplayName("--do that finishes leaves with nought")
-        void aFinishedDo() {
-            Ran ran = running("--do", "print 1 x: 1 print 2");
+        void finishesADo() {
+            Ran ran = run("--do", "print 1 x: 1 print 2");
 
             assertThat(ran.printed()).isEqualTo("1\n2\n");
             assertThat(ran.exitStatus()).isZero();
@@ -268,14 +268,14 @@ class ConsoleAsRebolPrintsItEndToEndTest {
 
         @Test
         @DisplayName("--do that throws past every catch never reaches its quit, so the console opens")
-        void aThrowingDoOpensTheConsole() {
-            Ran ran = running("--do", "print 1 throw 9 print 2");
+        void opensTheConsoleAfterAThrowingDo() {
+            Ran ran = run("--do", "print 1 throw 9 print 2");
 
             assertThat(ran.printed())
                     .startsWith("1\n")
                     .endsWith(">> ");
             assertThat(ran.reported()).isEmpty();
-            assertThat(ran.exitStatus()).isEqualTo(Repl.KEEP_THE_PROCESS);
+            assertThat(ran.exitStatus()).isEqualTo(Repl.KEEP_PROCESS);
         }
     }
 }

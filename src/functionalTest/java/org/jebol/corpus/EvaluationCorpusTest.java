@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class EvaluationCorpusTest {
 
     static Stream<CorpusEntry> runnableEntries() {
-        return CorpusReader.allEntries().stream()
+        return CorpusReader.readAllEntries().stream()
                 .filter(CorpusEntry::isRunnableNow)
                 .filter(CorpusEntry::assertsSomething)
                 .filter(entry -> entry.expectedTypes().isEmpty());
@@ -24,14 +24,14 @@ class EvaluationCorpusTest {
     void producesThePublishedResult(CorpusEntry entry) {
         CorpusRunner.Result result = CorpusRunner.run(entry);
 
-        assertThat(result.mismatch(entry))
+        assertThat(result.describeTheMismatch(entry))
                 .as("%s -- %s%n  code: %s", entry.id(), entry.origin(), entry.code())
                 .isEmpty();
     }
 
     @Test
     @DisplayName("the runnable set is not empty, so this test is doing something")
-    void thereAreRunnableEntries() {
+    void findsRunnableEntries() {
         assertThat(runnableEntries().toList()).isNotEmpty();
     }
 }

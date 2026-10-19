@@ -5,7 +5,7 @@ public final class RefinementValue extends AnyWordValue {
     public static final AnyWordDatatype TYPE = new AnyWordDatatype("refinement") {
 
         @Override
-        public AnyWordValue spelt(String spelling, Context binding) {
+        public AnyWordValue spell(String spelling, Context binding) {
             return new RefinementValue(spelling, binding);
         }
     };
@@ -24,7 +24,7 @@ public final class RefinementValue extends AnyWordValue {
     }
 
     @Override
-    public RefinementValue boundTo(Context context) {
+    public RefinementValue bindTo(Context context) {
         return new RefinementValue(spelling(), context);
     }
 

@@ -1,7 +1,7 @@
 package org.jebol.domain.host;
 
 /**
- * What a window reported beside the kind of event: where it happened, or which
+ * What a window reported beside the type of event: where it happened, or which
  * key it was.
  *
  * <p>Specified in {@code spec/screen.allium}.
@@ -20,7 +20,7 @@ public sealed interface ScreenEventDetail {
     record NamedKey(String name) implements ScreenEventDetail {
     }
 
-    /** Nothing beside the kind: a close, or a key nothing names. */
+    /** Nothing beside the type: a close, or a key nothing names. */
     record NothingMore() implements ScreenEventDetail {
     }
 }

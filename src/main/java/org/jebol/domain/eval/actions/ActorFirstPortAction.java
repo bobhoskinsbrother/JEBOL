@@ -16,17 +16,17 @@ public abstract class ActorFirstPortAction extends PortAction {
         super(granted, ports);
     }
 
-    abstract Value answeredHere(PortValue port);
+    abstract Value answerHere(PortValue port);
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("port", Set.of(PortValue.TYPE)));
+        return List.of(Parameter.of("port", Set.of(PortValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .theRebolActorsAnswer(nativeName(), arguments, Set.of())
-                .orElseGet(() -> answeredHere((PortValue) arguments.getFirst()));
+                .askTheRebolActor(nativeName(), arguments, Set.of())
+                .orElseGet(() -> answerHere((PortValue) arguments.getFirst()));
     }
 }

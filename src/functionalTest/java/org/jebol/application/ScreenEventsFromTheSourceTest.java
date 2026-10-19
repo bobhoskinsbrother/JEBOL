@@ -1,6 +1,6 @@
 package org.jebol.application;
 
-import org.jebol.domain.host.ScreenEventKind;
+import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,23 +15,23 @@ class ScreenEventsFromTheSourceTest {
 
     private static final String TRUE = "#(true)";
 
-    private static Interpreter withAScreen(RecordingScreen screen) {
+    private static Interpreter makeAnInterpreterWithAScreen(RecordingScreen screen) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard()
                         .grant(HostService.WINDOWS)
-                        .withWallClockLimit(Duration.ofSeconds(10)));
+                        .withTimeLimit(Duration.ofSeconds(10)));
         interpreter.useScreen(screen);
         return interpreter;
     }
 
     private static String answerFrom(RecordingScreen screen, String source) {
-        Interpreter interpreter = withAScreen(screen);
+        Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
-    private static RecordingScreen aScreen() {
-        return RecordingScreen.measuring(1024, 768);
+    private static RecordingScreen makeAScreen() {
+        return RecordingScreen.measure(1024, 768);
     }
 
     @Nested
@@ -40,8 +40,8 @@ class ScreenEventsFromTheSourceTest {
 
         @Test
         @DisplayName("system/ports/event is a real port, not none")
-        void theEventPortExists() {
-            assertThat(answerFrom(aScreen(), "port? system/ports/event"))
+        void exists() {
+            assertThat(answerFrom(makeAScreen(), "port? system/ports/event"))
                     .as("init-view-system reads system/ports/event/extra on its "
                             + "ninth line, and none has no extra")
                     .isEqualTo(TRUE);
@@ -49,15 +49,15 @@ class ScreenEventsFromTheSourceTest {
 
         @Test
         @DisplayName("and it is the event scheme, which is what sys-ports.reb opens")
-        void itIsTheEventScheme() {
-            assertThat(answerFrom(aScreen(),
+        void isTheEventScheme() {
+            assertThat(answerFrom(makeAScreen(),
                     "'event = system/ports/event/spec/scheme")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("the scheme is registered, so make-scheme found an actor for it")
-        void theSchemeIsRegistered() {
-            assertThat(answerFrom(aScreen(),
+        void isRegistered() {
+            assertThat(answerFrom(makeAScreen(),
                     "true? in system/schemes 'event")).isEqualTo(TRUE);
         }
     }
@@ -79,13 +79,13 @@ class ScreenEventsFromTheSourceTest {
         @Test
         @DisplayName("is queued and not acted on until the interpreter takes it")
         @Timeout(20)
-        void itIsQueuedRatherThanDelivered() {
-            RecordingScreen screen = aScreen();
-            Interpreter interpreter = withAScreen(screen);
+        void queuesRatherThanDelivers() {
+            RecordingScreen screen = makeAScreen();
+            Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
             interpreter.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
             interpreter.run(A_WINDOW_AND_A_WATCHER);
 
-            screen.theOperatorDoes(ScreenEventKind.KEY, screen.whatOpened().getFirst());
+            screen.actAsTheOperator(ScreenEventType.KEY, screen.listWhatOpened().getFirst());
 
             assertThat(interpreter.display(interpreter.run("empty? seen")))
                     .as("queueing runs no handler; only the interpreter's own thread does")
@@ -95,14 +95,14 @@ class ScreenEventsFromTheSourceTest {
         @Test
         @DisplayName("and waiting is where it becomes a handler call")
         @Timeout(20)
-        void waitingDeliversIt() {
-            RecordingScreen screen = aScreen();
-            Interpreter interpreter = withAScreen(screen);
+        void deliversOnWaiting() {
+            RecordingScreen screen = makeAScreen();
+            Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
             interpreter.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
             interpreter.run(A_WINDOW_AND_A_WATCHER);
 
-            screen.theOperatorDoes(ScreenEventKind.KEY, screen.whatOpened().getFirst());
-            screen.theOperatorDoes(ScreenEventKind.CLOSE, screen.whatOpened().getFirst());
+            screen.actAsTheOperator(ScreenEventType.KEY, screen.listWhatOpened().getFirst());
+            screen.actAsTheOperator(ScreenEventType.CLOSE, screen.listWhatOpened().getFirst());
             interpreter.run("do-events");
 
             assertThat(interpreter.display(interpreter.run("mold seen")))
@@ -113,17 +113,17 @@ class ScreenEventsFromTheSourceTest {
         @Test
         @DisplayName("and they arrive in the order the screen reported them")
         @Timeout(20)
-        void theyArriveInOrder() {
-            RecordingScreen screen = aScreen();
-            Interpreter interpreter = withAScreen(screen);
+        void keepsTheOrder() {
+            RecordingScreen screen = makeAScreen();
+            Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
             interpreter.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
             interpreter.run(A_WINDOW_AND_A_WATCHER);
 
-            var window = screen.whatOpened().getFirst();
-            screen.theOperatorDoes(ScreenEventKind.DOWN, window);
-            screen.theOperatorDoes(ScreenEventKind.MOVE, window);
-            screen.theOperatorDoes(ScreenEventKind.UP, window);
-            screen.theOperatorDoes(ScreenEventKind.CLOSE, window);
+            var window = screen.listWhatOpened().getFirst();
+            screen.actAsTheOperator(ScreenEventType.DOWN, window);
+            screen.actAsTheOperator(ScreenEventType.MOVE, window);
+            screen.actAsTheOperator(ScreenEventType.UP, window);
+            screen.actAsTheOperator(ScreenEventType.CLOSE, window);
             interpreter.run("do-events");
 
             assertThat(interpreter.display(interpreter.run("mold seen")))
@@ -135,30 +135,30 @@ class ScreenEventsFromTheSourceTest {
     @DisplayName("waiting on the event port among other things, with a time")
     class AmongOthers {
 
-        private final RecordingScreen screen = aScreen();
+        private final RecordingScreen screen = makeAScreen();
 
-        private final Interpreter interpreter = withAScreen(screen);
+        private final Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
 
-        private String afterRunning(String source) {
+        private String runAndReport(String source) {
             interpreter.defineFreshWordsIn(source);
             return interpreter.display(interpreter.run(source));
         }
 
-        private void theOperatorDownMovesAndLetsGo() {
-            var window = screen.whatOpened().getFirst();
-            screen.theOperatorDoes(ScreenEventKind.DOWN, window);
-            screen.theOperatorDoes(ScreenEventKind.MOVE, window);
-            screen.theOperatorDoes(ScreenEventKind.UP, window);
+        private void deliversADownAMoveAndALetGo() {
+            var window = screen.listWhatOpened().getFirst();
+            screen.actAsTheOperator(ScreenEventType.DOWN, window);
+            screen.actAsTheOperator(ScreenEventType.MOVE, window);
+            screen.actAsTheOperator(ScreenEventType.UP, window);
         }
 
         @Test
         @DisplayName("hands everything already queued to the handlers, in order, with no time to spare")
         @Timeout(20)
-        void aWaitOfNoTimeDeliversWhatIsQueued() {
-            afterRunning(A_WINDOW_AND_A_WATCHER);
-            theOperatorDownMovesAndLetsGo();
+        void deliversWhatIsQueuedOnAWaitOfNoTime() {
+            runAndReport(A_WINDOW_AND_A_WATCHER);
+            deliversADownAMoveAndALetGo();
 
-            assertThat(afterRunning("""
+            assertThat(runAndReport("""
                     wait [system/ports/event 0]
                     seen""")).isEqualTo("[down move up]");
         }
@@ -166,11 +166,11 @@ class ScreenEventsFromTheSourceTest {
         @Test
         @DisplayName("and leaves the window open, since only closing it ends a program")
         @Timeout(20)
-        void theWindowStaysOpen() {
-            afterRunning(A_WINDOW_AND_A_WATCHER);
-            theOperatorDownMovesAndLetsGo();
+        void keepsTheWindowOpen() {
+            runAndReport(A_WINDOW_AND_A_WATCHER);
+            deliversADownAMoveAndALetGo();
 
-            assertThat(afterRunning("""
+            assertThat(runAndReport("""
                     wait [system/ports/event 0]
                     length? system/view/screen-gob""")).isEqualTo("1");
         }
@@ -178,11 +178,11 @@ class ScreenEventsFromTheSourceTest {
         @Test
         @DisplayName("delivers each event once, so a second wait finds nothing new")
         @Timeout(20)
-        void eachEventIsDeliveredOnce() {
-            afterRunning(A_WINDOW_AND_A_WATCHER);
-            theOperatorDownMovesAndLetsGo();
+        void deliversEachEventOnce() {
+            runAndReport(A_WINDOW_AND_A_WATCHER);
+            deliversADownAMoveAndALetGo();
 
-            assertThat(afterRunning("""
+            assertThat(runAndReport("""
                     wait [system/ports/event 0]
                     wait [system/ports/event 0]
                     seen""")).isEqualTo("[down move up]");
@@ -191,10 +191,10 @@ class ScreenEventsFromTheSourceTest {
         @Test
         @DisplayName("with nothing queued, answers none once the time is up")
         @Timeout(20)
-        void nothingQueuedAnswersNone() {
-            afterRunning(A_WINDOW_AND_A_WATCHER);
+        void answersNoneWhenNothingIsQueued() {
+            runAndReport(A_WINDOW_AND_A_WATCHER);
 
-            assertThat(afterRunning("""
+            assertThat(runAndReport("""
                     answer: wait [system/ports/event 0.3]
                     reduce [answer empty? seen]""")).isEqualTo("[_ #(true)]");
         }
@@ -202,11 +202,11 @@ class ScreenEventsFromTheSourceTest {
         @Test
         @DisplayName("waits out the time it was given, and no longer, when nothing comes")
         @Timeout(20)
-        void itWaitsOutItsTime() {
-            afterRunning(A_WINDOW_AND_A_WATCHER);
+        void waitsOutItsTime() {
+            runAndReport(A_WINDOW_AND_A_WATCHER);
             long startedAt = System.nanoTime();
 
-            afterRunning("wait [system/ports/event 0.3]");
+            runAndReport("wait [system/ports/event 0.3]");
 
             assertThat(Duration.ofNanos(System.nanoTime() - startedAt))
                     .isBetween(Duration.ofMillis(300), Duration.ofSeconds(3));
@@ -215,16 +215,16 @@ class ScreenEventsFromTheSourceTest {
         @Test
         @DisplayName("reaches a port the script opened on the event scheme itself, as the 2010 GUI does")
         @Timeout(20)
-        void aPortTheScriptOpenedIsReached() {
-            afterRunning("""
+        void reachesAPortTheScriptOpened() {
+            runAndReport("""
                     view/no-wait make gob! [size: 100x100]
                     seen: copy []
                     own-port: open [scheme: 'event]
                     own-port/awake: func [event] [append seen event/type false]
                     """);
-            theOperatorDownMovesAndLetsGo();
+            deliversADownAMoveAndALetGo();
 
-            assertThat(afterRunning("""
+            assertThat(runAndReport("""
                     wait [own-port 0]
                     seen""")).isEqualTo("[down move up]");
         }
@@ -232,16 +232,16 @@ class ScreenEventsFromTheSourceTest {
         @Test
         @DisplayName("answers the port when a handler wakes it, and stops handing out events there")
         @Timeout(20)
-        void aWokenPortIsTheAnswer() {
-            afterRunning("""
+        void answersTheWokenPort() {
+            runAndReport("""
                     view/no-wait make gob! [size: 100x100]
                     seen: copy []
                     own-port: open [scheme: 'event]
                     own-port/awake: func [event] [append seen event/type event/type = 'move]
                     """);
-            theOperatorDownMovesAndLetsGo();
+            deliversADownAMoveAndALetGo();
 
-            assertThat(afterRunning("""
+            assertThat(runAndReport("""
                     answer: wait [own-port 5]
                     reduce [same? answer own-port seen]""")).isEqualTo("[#(true) [down move]]");
         }
@@ -249,16 +249,16 @@ class ScreenEventsFromTheSourceTest {
         @Test
         @DisplayName("and what came after the waking event stays queued for the next wait")
         @Timeout(20)
-        void whatCameAfterStaysQueued() {
-            afterRunning("""
+        void keepsWhatCameAfterQueued() {
+            runAndReport("""
                     view/no-wait make gob! [size: 100x100]
                     seen: copy []
                     own-port: open [scheme: 'event]
                     own-port/awake: func [event] [append seen event/type event/type = 'move]
                     """);
-            theOperatorDownMovesAndLetsGo();
+            deliversADownAMoveAndALetGo();
 
-            assertThat(afterRunning("""
+            assertThat(runAndReport("""
                     wait [own-port 5]
                     wait [own-port 0]
                     seen""")).isEqualTo("[down move up]");
@@ -272,9 +272,9 @@ class ScreenEventsFromTheSourceTest {
         @Test
         @DisplayName("as soon as the screen has no windows left")
         @Timeout(20)
-        void itEndsWithAnEmptyScreen() {
+        void endsWithAnEmptyScreen() {
             assertThat(answerFrom(
-                    aScreen().whereTheOperatorClosesWhateverOpens(), """
+                    makeAScreen().closeWhateverOpens(), """
                     view/no-wait make gob! [size: 100x100]
                     do-events
                     tail? system/view/screen-gob"""))
@@ -285,8 +285,8 @@ class ScreenEventsFromTheSourceTest {
         @Test
         @DisplayName("and a screen that never had a window does not wait at all")
         @Timeout(20)
-        void anEmptyScreenNeverWaits() {
-            assertThat(answerFrom(aScreen(), """
+        void neverWaitsOnAnEmptyScreen() {
+            assertThat(answerFrom(makeAScreen(), """
                     do-events
                     true"""))
                     .as("nothing to wait for is not a reason to wait")
@@ -301,19 +301,19 @@ class ScreenEventsFromTheSourceTest {
         @Test
         @DisplayName("all eight arrive with the spelling the catalogue gives them")
         @Timeout(60)
-        void everyKindArrivesUnderItsOwnName() {
-            for (ScreenEventKind kind : ScreenEventKind.values()) {
-                RecordingScreen screen = aScreen();
-                Interpreter interpreter = withAScreen(screen);
+        void arriveUnderTheirOwnNames() {
+            for (ScreenEventType kind : ScreenEventType.values()) {
+                RecordingScreen screen = makeAScreen();
+                Interpreter interpreter = makeAnInterpreterWithAScreen(screen);
                 interpreter.defineFreshWordsIn(A_WINDOW_AND_A_WATCHER);
                 interpreter.run(A_WINDOW_AND_A_WATCHER);
 
-                var window = screen.whatOpened().getFirst();
-                screen.theOperatorDoes(kind, window);
-                screen.theOperatorDoes(ScreenEventKind.CLOSE, window);
+                var window = screen.listWhatOpened().getFirst();
+                screen.actAsTheOperator(kind, window);
+                screen.actAsTheOperator(ScreenEventType.CLOSE, window);
                 interpreter.run("do-events");
 
-                String expected = kind == ScreenEventKind.CLOSE
+                String expected = kind == ScreenEventType.CLOSE
                         ? "\"[close]\""
                         : "\"[" + kind.spelling() + " close]\"";
                 assertThat(interpreter.display(interpreter.run("mold seen")))

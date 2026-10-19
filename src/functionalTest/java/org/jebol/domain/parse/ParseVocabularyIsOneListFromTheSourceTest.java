@@ -72,14 +72,14 @@ class ParseVocabularyIsOneListFromTheSourceTest {
 
     @Test
     @DisplayName("A bare NOT answers false over a block rather than raising")
-    void aBareNotIsFalseOverABlock() {
+    void answersFalseForABareNotOverABlock() {
         assertThat(answerTo("""
                 parse [a] [not]""")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("A bare NOT answers false over a string rather than raising")
-    void aBareNotIsFalseOverAString() {
+    void answersFalseForABareNotOverAString() {
         assertThat(answerTo("""
                 parse "a" [not]""")).isEqualTo("#(false)");
     }
@@ -100,7 +100,7 @@ class ParseVocabularyIsOneListFromTheSourceTest {
 
     @Test
     @DisplayName("Without THEN the alternative is tried over a block")
-    void withoutThenTheAlternativeIsTriedOverABlock() {
+    void triesTheAlternativeWithoutThenOverABlock() {
         assertThat(answerTo("""
                 parse [a] ['a 'x | 'a]""")).isEqualTo("#(true)");
     }
@@ -114,7 +114,7 @@ class ParseVocabularyIsOneListFromTheSourceTest {
 
     @Test
     @DisplayName("Without THEN the alternative is tried over a string")
-    void withoutThenTheAlternativeIsTriedOverAString() {
+    void triesTheAlternativeWithoutThenOverAString() {
         assertThat(answerTo("""
                 parse "a" [#"a" #"x" | #"a"]""")).isEqualTo("#(true)");
     }
@@ -142,7 +142,7 @@ class ParseVocabularyIsOneListFromTheSourceTest {
 
     @Test
     @DisplayName("A bare THEN answers false rather than raising")
-    void aBareThenIsFalse() {
+    void answersFalseForABareThen() {
         assertThat(answerTo("""
                 parse [a] [then]""")).isEqualTo("#(false)");
     }
@@ -170,21 +170,21 @@ class ParseVocabularyIsOneListFromTheSourceTest {
 
     @Test
     @DisplayName("A BREAK that leaves input over is still a failed parse")
-    void breakThatLeavesInputOverIsAFailure() {
+    void failsWhenABreakLeavesInputOver() {
         assertThat(answerTo("""
                 parse [a a] [some ['a break]]""")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("A bare BREAK matches empty block input")
-    void aBareBreakMatchesEmptyBlockInput() {
+    void matchesEmptyBlockInputWithABareBreak() {
         assertThat(answerTo("""
                 parse [] [break]""")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("A bare BREAK matches empty string input")
-    void aBareBreakMatchesEmptyStringInput() {
+    void matchesEmptyStringInputWithABareBreak() {
         assertThat(answerTo("""
                 parse "" [break]""")).isEqualTo("#(true)");
     }
@@ -212,7 +212,7 @@ class ParseVocabularyIsOneListFromTheSourceTest {
 
     @Test
     @DisplayName("A bare REJECT answers false rather than raising")
-    void aBareRejectIsFalse() {
+    void answersFalseForABareReject() {
         assertThat(answerTo("""
                 parse [a] [reject]""")).isEqualTo("#(false)");
     }
@@ -233,14 +233,14 @@ class ParseVocabularyIsOneListFromTheSourceTest {
 
     @Test
     @DisplayName("INTO over a string answers false rather than raising")
-    void intoOverAStringAnswersFalseRatherThanRaising() {
+    void answersFalseRatherThanRaisingForIntoOverAString() {
         assertThat(answerTo("""
                 parse "a" [into [#"a"]]""")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("INTO still descends into a nested block over a block")
-    void intoStillWorksOverABlock() {
+    void stillStepsIntoOverABlock() {
         assertThat(answerTo("""
                 parse [[a]] [into ['a]]""")).isEqualTo("#(true)");
     }
@@ -254,7 +254,7 @@ class ParseVocabularyIsOneListFromTheSourceTest {
 
     @Test
     @DisplayName("A bare keyword answers what R3 answers, over a block and over a string")
-    void aBareKeywordAnswersWhatTheReferenceAnswers() {
+    void answersWhatTheReferenceAnswersForABareKeyword() {
         assertThat(answerTo("""
                 wrong: copy []
                 expected: [
@@ -286,7 +286,7 @@ class ParseVocabularyIsOneListFromTheSourceTest {
 
     @Test
     @DisplayName("A bare count raises parse-end where a bare keyword does not")
-    void aBareCountStillRaisesParseEnd() {
+    void stillRaisesParseEndForABareCount() {
         assertThat(answerTo("""
                 e: try [parse [a] [1]] e/id = 'parse-end""")).isEqualTo("#(true)");
         assertThat(answerTo("""
@@ -306,7 +306,7 @@ class ParseVocabularyIsOneListFromTheSourceTest {
 
     @Test
     @DisplayName("No keyword of the dialect raises parse-rule in either engine")
-    void noKeywordRaisesParseRuleInEitherEngine() {
+    void raisesParseRuleForNoKeywordInEitherEngine() {
         assertThat(answerTo("""
                 gaps: copy []
                 check: func [label input rules] [

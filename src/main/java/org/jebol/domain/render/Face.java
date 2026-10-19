@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * One thing on a page, gathered from a layout dialect: a kind, a caption, and
+ * One thing on a page, gathered from a layout dialect: a type, a caption, and
  * whatever styling the dialect attached to it. Deliberately not a REBOL value.
  */
 public final class Face {
@@ -32,7 +32,7 @@ public final class Face {
         this.caption = text;
     }
 
-    void style(String property, String value) {
+    void setTheStyle(String property, String value) {
         styles.put(property, value);
     }
 
@@ -55,7 +55,7 @@ public final class Face {
     }
 
     /** The styles as a CSS declaration list, or empty if there are none. */
-    public Optional<String> styleAttribute() {
+    public Optional<String> writeTheStyleAttribute() {
         if (styles.isEmpty()) {
             return Optional.empty();
         }

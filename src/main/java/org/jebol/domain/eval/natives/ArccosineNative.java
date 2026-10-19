@@ -8,7 +8,7 @@ public class ArccosineNative extends InverseTrigonometryNative {
     }
 
     @Override
-    protected double radiansFor(double ratio) {
+    protected double measureTheRadiansFor(double ratio) {
         return Math.acos(ratio);
     }
 }

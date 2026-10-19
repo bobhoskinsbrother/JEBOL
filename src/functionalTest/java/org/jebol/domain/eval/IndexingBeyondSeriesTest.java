@@ -16,41 +16,41 @@ class IndexingBeyondSeriesTest {
 
     @Test
     @DisplayName("a pair answers its halves by number")
-    void aPairAnswersItsHalves() {
+    void answersAPairsHalves() {
         assertThat(answerTo("p: 1x2 mold reduce [p/1 p/2]")).isEqualTo("\"[1.0 2.0]\"");
     }
 
     @Test
     @DisplayName("a decimal index into a pair truncates")
-    void aDecimalPairIndexTruncates() {
+    void truncatesADecimalPairIndex() {
         assertThat(answerTo("p: 1x2 mold reduce [p/1.0 p/1.6 p/2.0 p/2.6]"))
                 .isEqualTo("\"[1.0 1.0 2.0 2.0]\"");
     }
 
     @Test
     @DisplayName("a tuple answers its parts by number")
-    void aTupleAnswersItsParts() {
+    void answersATuplesParts() {
         assertThat(answerTo("t: 1.2.3 mold reduce [t/1 t/2 t/3]"))
                 .isEqualTo("\"[1 2 3]\"");
     }
 
     @Test
     @DisplayName("a decimal index into a tuple truncates")
-    void aDecimalTupleIndexTruncates() {
+    void truncatesADecimalTupleIndex() {
         assertThat(answerTo("t: 1.2.3 mold reduce [t/1.6 t/2.6]"))
                 .isEqualTo("\"[1 2]\"");
     }
 
     @Test
     @DisplayName("INTEGER-DIVIDE throws away a decimal's fraction")
-    void integerDivideTakesDecimals() {
+    void takesDecimalsInIntegerDivide() {
         assertThat(answerTo("mold reduce [integer-divide 23.5 10 integer-divide 23 10.5]"))
                 .isEqualTo("\"[2 2]\"");
     }
 
     @Test
     @DisplayName("INTEGER-DIVIDE on two whole numbers is unchanged")
-    void integerDivideOnWholeNumbersIsUnaffected() {
+    void leavesIntegerDivideOnWholeNumbersUnaffected() {
         assertThat(answerTo("integer-divide 23 10")).isEqualTo("2");
     }
 

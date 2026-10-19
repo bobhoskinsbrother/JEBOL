@@ -1,6 +1,6 @@
 package org.jebol.application;
 
-import org.jebol.adapter.host.JavaImages;
+import org.jebol.adapter.host.JavaImage;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,15 +17,15 @@ class BlurringARealPictureFromTheSourceTest {
     private static String answerTo(String source) {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(VENDORED));
-        interpreter.useImages(new JavaImages());
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(VENDORED));
+        interpreter.useImages(new JavaImage());
         interpreter.defineFreshWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
     @Test
     @DisplayName("the picture arrives as the bytes REBOL reads from it")
-    void thePictureArrivesAsTheBytesRebolReads() {
+    void readsThePictureAsTheBytesRebolReads() {
         assertThat(answerTo("""
                 flower: load %flower.png
                 reduce [mold flower/size  checksum to binary! flower 'crc32]"""))
@@ -34,7 +34,7 @@ class BlurringARealPictureFromTheSourceTest {
 
     @Test
     @DisplayName("a radius of nothing leaves every byte where it was")
-    void aRadiusOfNothingLeavesEveryByteWhereItWas() {
+    void leavesEveryByteWhereItWasAtARadiusOfNothing() {
         assertThat(answerTo("""
                 flower: load %flower.png
                 blur flower 0
@@ -43,7 +43,7 @@ class BlurringARealPictureFromTheSourceTest {
 
     @Test
     @DisplayName("and blurring it, and blurring the blur, to the byte")
-    void blurringItAndBlurringTheBlur() {
+    void blursItAndBlursTheBlur() {
         assertThat(answerTo("""
                 flower: load %flower.png
                 once: blur flower 5
@@ -55,7 +55,7 @@ class BlurringARealPictureFromTheSourceTest {
 
     @Test
     @DisplayName("and the widest radius the picture allows")
-    void theWidestRadiusThePictureAllows() {
+    void blursAtTheWidestRadiusThePictureAllows() {
         assertThat(answerTo("""
                 flower: load %flower.png
                 blur flower 100000

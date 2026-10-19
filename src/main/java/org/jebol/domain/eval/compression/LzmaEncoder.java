@@ -54,10 +54,10 @@ final class LzmaEncoder {
             {9, 9, 9, 9, 9, 9, 9, 11, 11, 11, 11, 11};
 
     private static final int[] PROBABILITY_PRICES =
-            pricesInSixteenthsOfABitPerRoundedProbability();
-    private static final byte[] SLOT_OF_A_SMALL_DISTANCE = slotTable();
+            priceEveryRoundedProbability();
+    private static final byte[] SLOT_OF_A_SMALL_DISTANCE = makeTheSlotTable();
 
-    private static int[] pricesInSixteenthsOfABitPerRoundedProbability() {
+    private static int[] priceEveryRoundedProbability() {
         int[] prices = new int[BIT_MODEL_TOTAL >> MOVE_REDUCING_BITS];
         for (int each = 0; each < prices.length; each++) {
             int weight = (each << MOVE_REDUCING_BITS)
@@ -77,7 +77,7 @@ final class LzmaEncoder {
         return prices;
     }
 
-    private static byte[] slotTable() {
+    private static byte[] makeTheSlotTable() {
         byte[] table = new byte[1 << LOG_BITS];
         table[0] = 0;
         table[1] = 1;
@@ -91,33 +91,33 @@ final class LzmaEncoder {
         return table;
     }
 
-    private static int slotOf(int distance) {
+    private static int findTheSlotOf(int distance) {
         if (Integer.compareUnsigned(distance, FULL_DISTANCES) < 0) {
             return SLOT_OF_A_SMALL_DISTANCE[distance & (FULL_DISTANCES - 1)];
         }
-        return slotOfALargeDistance(distance);
+        return findTheSlotOfALargeDistance(distance);
     }
 
-    private static int slotOfALargeDistance(int distance) {
+    private static int findTheSlotOfALargeDistance(int distance) {
         int shift = Integer.compareUnsigned(distance, 1 << (LOG_BITS + 6)) < 0
                 ? 6
                 : 6 + LOG_BITS - 1;
         return SLOT_OF_A_SMALL_DISTANCE[distance >>> shift] + shift * 2;
     }
 
-    static byte[] properties(int level) {
-        Settings settings = Settings.forLevel(level);
+    static byte[] writeTheProperties(int level) {
+        Settings settings = Settings.chooseForLevel(level);
         byte[] written = new byte[5];
         written[0] = (byte) ((settings.positionBits * 5 + settings.literalPositionBits) * 9
                 + settings.literalContextBits);
-        int size = roundedDictionarySize(settings.dictionarySize);
+        int size = roundTheDictionarySize(settings.dictionarySize);
         for (int each = 0; each < 4; each++) {
             written[1 + each] = (byte) (size >>> (8 * each));
         }
         return written;
     }
 
-    private static int roundedDictionarySize(int dictionarySize) {
+    private static int roundTheDictionarySize(int dictionarySize) {
         if (Integer.compareUnsigned(dictionarySize, 1 << 22) >= 0) {
             int mask = (1 << 20) - 1;
             return Integer.compareUnsigned(dictionarySize, 0xFFFFFFFF - mask) < 0
@@ -145,7 +145,7 @@ final class LzmaEncoder {
             boolean pricing,
             int cutValue) {
 
-        static Settings forLevel(int asked) {
+        static Settings chooseForLevel(int asked) {
             int level = asked == NOBODY_ASKED
                     ? 5
                     : (Integer.compareUnsigned(asked, 9) > 0 ? 9 : asked);
@@ -215,18 +215,18 @@ final class LzmaEncoder {
 
     private LzmaEncoder(byte[] source, int level) {
         this.source = source;
-        this.settings = Settings.forLevel(level);
+        this.settings = Settings.chooseForLevel(level);
         this.positionMask = (1 << settings.positionBits) - 1;
         this.literalPositionMask = (0x100 << settings.literalPositionBits)
                 - (0x100 >>> settings.literalContextBits);
-        this.distanceTableSize = distanceTableSizeFor(settings.dictionarySize);
+        this.distanceTableSize = sizeTheDistanceTableFor(settings.dictionarySize);
         this.literalProbabilities = new short[0x300
                 << (settings.literalContextBits + settings.literalPositionBits)];
         this.finder = new LzmaMatchFinder(source, settings.dictionarySize,
                 MATCH_LEN_MAX, settings.binaryTree, settings.cutValue);
     }
 
-    private static int distanceTableSizeFor(int dictionarySize) {
+    private static int sizeTheDistanceTableFor(int dictionarySize) {
         int power = END_POSITION_MODEL_INDEX / 2;
         while (power < 32
                 && Integer.compareUnsigned(dictionarySize, 1 << power) > 0) {
@@ -235,7 +235,7 @@ final class LzmaEncoder {
         return power * 2;
     }
 
-    static byte[] encoded(byte[] source, int level) {
+    static byte[] encode(byte[] source, int level) {
         LzmaEncoder encoder = new LzmaEncoder(source, level);
         encoder.start();
         encoder.run();
@@ -285,7 +285,7 @@ final class LzmaEncoder {
 
         if (finder.availableBytes() != 0) {
             while (true) {
-                int length = nextStep(at);
+                int length = takeTheNextStep(at);
                 int distance = chosenDistance;
                 int positionState = at & positionMask;
                 if (distance == MARK_LITERAL) {
@@ -314,12 +314,12 @@ final class LzmaEncoder {
         writer.flush();
     }
 
-    private int nextStep(int at) {
+    private int takeTheNextStep(int at) {
         if (!settings.pricing) {
-            return greedyStep();
+            return stepGreedily();
         }
         if (choiceEnd == choiceCursor) {
-            return pricedStep(at);
+            return stepByPrice(at);
         }
         int length = choiceLength[choiceCursor];
         chosenDistance = choiceDistance[choiceCursor];
@@ -330,7 +330,7 @@ final class LzmaEncoder {
     private void writeLiteral(int at, int positionState) {
         writer.encodeBit(isMatch, state * POSITION_STATES_MAX + positionState, 0);
         int data = finder.currentPosition() - additionalOffset;
-        int probabilitiesAt = literalProbabilitiesAt(at, source[data - 1] & 0xFF);
+        int probabilitiesAt = findTheLiteralProbabilitiesAt(at, source[data - 1] & 0xFF);
         int wasState = state;
         state = AFTER_A_LITERAL[state];
         if (wasState < 7) {
@@ -401,9 +401,9 @@ final class LzmaEncoder {
         repeats[1] = repeats[0];
         repeats[0] = distance + 1;
         matchPriceCount++;
-        int slot = slotOf(distance);
+        int slot = findTheSlotOf(distance);
         writer.encodeSlot(slotEncoder,
-                lengthToPositionState(length) << POSITION_SLOT_BITS, slot);
+                mapLengthToPositionState(length) << POSITION_SLOT_BITS, slot);
         if (distance < START_POSITION_MODEL_INDEX) {
             return;
         }
@@ -418,18 +418,18 @@ final class LzmaEncoder {
         alignPriceCount++;
     }
 
-    private int literalProbabilitiesAt(int at, int previousByte) {
+    private int findTheLiteralProbabilitiesAt(int at, int previousByte) {
         return 3 * ((((at << 8) + previousByte) & literalPositionMask)
                 << settings.literalContextBits);
     }
 
-    private static int lengthToPositionState(int length) {
+    private static int mapLengthToPositionState(int length) {
         return length < LENGTH_TO_POSITION_STATES + 1
                 ? length - 2
                 : LENGTH_TO_POSITION_STATES - 1;
     }
 
-    private static int lengthToPositionStateFromSpan(int span) {
+    private static int mapSpanToPositionState(int span) {
         return Math.min(span, LENGTH_TO_POSITION_STATES - 1);
     }
 
@@ -459,7 +459,7 @@ final class LzmaEncoder {
         finder.skip(howMany);
     }
 
-    private int greedyStep() {
+    private int stepGreedily() {
         int mainLength;
         int pairs;
         if (additionalOffset == 0) {
@@ -511,7 +511,7 @@ final class LzmaEncoder {
                     break;
                 }
                 int shorter = matches[pairs - 3];
-                if (!worthTheExtraDistance(shorter, mainDistance)) {
+                if (!isWorthTheExtraDistance(shorter, mainDistance)) {
                     break;
                 }
                 pairs -= 2;
@@ -539,10 +539,10 @@ final class LzmaEncoder {
             int newDistance = matches[numPairs - 1];
             if ((longestMatchLen >= mainLength && newDistance < mainDistance)
                     || (longestMatchLen == mainLength + 1
-                            && !worthTheExtraDistance(mainDistance, newDistance))
+                            && !isWorthTheExtraDistance(mainDistance, newDistance))
                     || longestMatchLen > mainLength + 1
                     || (longestMatchLen + 1 >= mainLength && mainLength >= 3
-                            && worthTheExtraDistance(newDistance, mainDistance))) {
+                            && isWorthTheExtraDistance(newDistance, mainDistance))) {
                 return 1;
             }
         }
@@ -570,36 +570,36 @@ final class LzmaEncoder {
         return mainLength;
     }
 
-    private static boolean worthTheExtraDistance(int nearer, int further) {
+    private static boolean isWorthTheExtraDistance(int nearer, int further) {
         return (further >>> 7) > nearer;
     }
 
-    private static int priceOfABitIn(short[] models, int at, int bit) {
+    private static int priceABitIn(short[] models, int at, int bit) {
         return PROBABILITY_PRICES[
                 (models[at] ^ (-bit & (BIT_MODEL_TOTAL - 1))) >>> MOVE_REDUCING_BITS];
     }
 
-    private static int priceOfAZeroIn(short[] models, int at) {
+    private static int priceAZeroIn(short[] models, int at) {
         return PROBABILITY_PRICES[models[at] >>> MOVE_REDUCING_BITS];
     }
 
-    private static int priceOfAOneIn(short[] models, int at) {
+    private static int priceAOneIn(short[] models, int at) {
         return PROBABILITY_PRICES[
                 (models[at] ^ (BIT_MODEL_TOTAL - 1)) >>> MOVE_REDUCING_BITS];
     }
 
-    private int priceOfALiteral(int probabilitiesAt, int symbol) {
+    private int priceALiteral(int probabilitiesAt, int symbol) {
         int price = 0;
         int running = symbol | 0x100;
         do {
             int bit = running & 1;
             running >>= 1;
-            price += priceOfABitIn(literalProbabilities, probabilitiesAt + running, bit);
+            price += priceABitIn(literalProbabilities, probabilitiesAt + running, bit);
         } while (running >= 2);
         return price;
     }
 
-    private int priceOfAMatchedLiteral(
+    private int priceAMatchedLiteral(
             int probabilitiesAt, int symbol, int matchByte) {
 
         int price = 0;
@@ -608,7 +608,7 @@ final class LzmaEncoder {
         int matched = matchByte;
         do {
             matched <<= 1;
-            price += priceOfABitIn(literalProbabilities,
+            price += priceABitIn(literalProbabilities,
                     probabilitiesAt + offsets + (matched & offsets) + (running >> 8),
                     (running >> 7) & 1);
             running <<= 1;
@@ -617,32 +617,32 @@ final class LzmaEncoder {
         return price;
     }
 
-    private int priceOfAShortRepeat(int forState, int positionState) {
-        return priceOfAZeroIn(isRepeatG0, forState)
-                + priceOfAZeroIn(isRepeat0Long,
+    private int priceAShortRepeat(int forState, int positionState) {
+        return priceAZeroIn(isRepeatG0, forState)
+                + priceAZeroIn(isRepeat0Long,
                         forState * POSITION_STATES_MAX + positionState);
     }
 
-    private int priceOfRepeatZero(int forState, int positionState) {
-        return priceOfAOneIn(isMatch, forState * POSITION_STATES_MAX + positionState)
-                + priceOfAOneIn(isRepeat0Long,
+    private int priceRepeatZero(int forState, int positionState) {
+        return priceAOneIn(isMatch, forState * POSITION_STATES_MAX + positionState)
+                + priceAOneIn(isRepeat0Long,
                         forState * POSITION_STATES_MAX + positionState)
-                + priceOfAOneIn(isRepeat, forState)
-                + priceOfAZeroIn(isRepeatG0, forState);
+                + priceAOneIn(isRepeat, forState)
+                + priceAZeroIn(isRepeatG0, forState);
     }
 
-    private int priceOfNamingARepeat(int which, int forState, int positionState) {
+    private int priceNamingARepeat(int which, int forState, int positionState) {
         if (which == 0) {
-            return priceOfAZeroIn(isRepeatG0, forState)
-                    + priceOfAOneIn(isRepeat0Long,
+            return priceAZeroIn(isRepeatG0, forState)
+                    + priceAOneIn(isRepeat0Long,
                             forState * POSITION_STATES_MAX + positionState);
         }
-        int price = priceOfAOneIn(isRepeatG0, forState);
+        int price = priceAOneIn(isRepeatG0, forState);
         if (which == 1) {
-            return price + priceOfAZeroIn(isRepeatG1, forState);
+            return price + priceAZeroIn(isRepeatG1, forState);
         }
-        return price + priceOfAOneIn(isRepeatG1, forState)
-                + priceOfABitIn(isRepeatG2, forState, which - 2);
+        return price + priceAOneIn(isRepeatG1, forState)
+                + priceABitIn(isRepeatG2, forState, which - 2);
     }
 
     private void fillAlignPrices() {
@@ -654,11 +654,11 @@ final class LzmaEncoder {
             for (int step = 0; step < 3; step++) {
                 int bit = symbol & 1;
                 symbol >>= 1;
-                price += priceOfABitIn(positionAlign, at, bit);
+                price += priceABitIn(positionAlign, at, bit);
                 at = (at << 1) + bit;
             }
-            alignPrices[each] = price + priceOfAZeroIn(positionAlign, at);
-            alignPrices[each + 8] = price + priceOfAOneIn(positionAlign, at);
+            alignPrices[each] = price + priceAZeroIn(positionAlign, at);
+            alignPrices[each + 8] = price + priceAOneIn(positionAlign, at);
         }
     }
 
@@ -677,7 +677,7 @@ final class LzmaEncoder {
             do {
                 int bit = symbol & 1;
                 symbol >>= 1;
-                price += priceOfABitIn(positionEncoders, base + at, bit);
+                price += priceABitIn(positionEncoders, base + at, bit);
                 at = (at << 1) + bit;
             } while (--remaining != 0);
             footerPrices[distance] = price;
@@ -692,13 +692,13 @@ final class LzmaEncoder {
                 for (int step = 0; step < 5; step++) {
                     int bit = symbol & 1;
                     symbol >>= 1;
-                    price += priceOfABitIn(slotEncoder, slotBase + symbol, bit);
+                    price += priceABitIn(slotEncoder, slotBase + symbol, bit);
                 }
                 int model = slotBase + (slot >> 1) + (1 << (POSITION_SLOT_BITS - 1));
                 slotPrices[priceBase + slot] =
-                        price + priceOfAZeroIn(slotEncoder, model);
+                        price + priceAZeroIn(slotEncoder, model);
                 slotPrices[priceBase + slot + 1] =
-                        price + priceOfAOneIn(slotEncoder, model);
+                        price + priceAOneIn(slotEncoder, model);
             }
             for (int slot = END_POSITION_MODEL_INDEX; slot < distanceTableSize; slot++) {
                 slotPrices[priceBase + slot] +=
@@ -763,7 +763,7 @@ final class LzmaEncoder {
         }
     }
 
-    private int pricedStep(int startPosition) {
+    private int stepByPrice(int startPosition) {
         int position = startPosition;
         int last;
         choiceCursor = 0;
@@ -832,19 +832,19 @@ final class LzmaEncoder {
         choiceState[0] = state;
         int positionState = position & positionMask;
         int matchModel = state * POSITION_STATES_MAX + positionState;
-        int probabilitiesAt = literalProbabilitiesAt(position, source[data - 1] & 0xFF);
-        choicePrice[1] = priceOfAZeroIn(isMatch, matchModel)
+        int probabilitiesAt = findTheLiteralProbabilitiesAt(position, source[data - 1] & 0xFF);
+        choicePrice[1] = priceAZeroIn(isMatch, matchModel)
                 + (state < 7
-                        ? priceOfALiteral(probabilitiesAt, currentByte)
-                        : priceOfAMatchedLiteral(probabilitiesAt, currentByte, matchByte));
+                        ? priceALiteral(probabilitiesAt, currentByte)
+                        : priceAMatchedLiteral(probabilitiesAt, currentByte, matchByte));
         makeLiteral(1);
 
-        int matchPrice = priceOfAOneIn(isMatch, matchModel);
-        int repeatMatchPrice = matchPrice + priceOfAOneIn(isRepeat, state);
+        int matchPrice = priceAOneIn(isMatch, matchModel);
+        int repeatMatchPrice = matchPrice + priceAOneIn(isRepeat, state);
 
         if (matchByte == currentByte) {
             int shortRepeatPrice =
-                    repeatMatchPrice + priceOfAShortRepeat(state, positionState);
+                    repeatMatchPrice + priceAShortRepeat(state, positionState);
             if (shortRepeatPrice < choicePrice[1]) {
                 choicePrice[1] = shortRepeatPrice;
                 makeShortRepeat(1);
@@ -868,7 +868,7 @@ final class LzmaEncoder {
                 continue;
             }
             int price = repeatMatchPrice
-                    + priceOfNamingARepeat(which, state, positionState);
+                    + priceNamingARepeat(which, state, positionState);
             for (int length = repeatLength; length >= 2; length--) {
                 int total = price
                         + repeatLengthPrices.prices[positionState][length - 2];
@@ -884,7 +884,7 @@ final class LzmaEncoder {
         int startLength = repeatLengths[0] >= 2 ? repeatLengths[0] + 1 : 2;
         if (startLength <= mainLength) {
             int offset = 0;
-            int normalMatchPrice = matchPrice + priceOfAZeroIn(isRepeat, state);
+            int normalMatchPrice = matchPrice + priceAZeroIn(isRepeat, state);
             while (startLength > matches[offset]) {
                 offset += 2;
             }
@@ -892,14 +892,14 @@ final class LzmaEncoder {
                 int distance = matches[offset + 1];
                 int price = normalMatchPrice
                         + matchLengthPrices.prices[positionState][length - MATCH_LEN_MIN];
-                int span = lengthToPositionState(length);
+                int span = mapLengthToPositionState(length);
                 if (Integer.compareUnsigned(distance, FULL_DISTANCES) < 0) {
                     price += distancePrices[span * FULL_DISTANCES
                             + (distance & (FULL_DISTANCES - 1))];
                 } else {
                     price += alignPrices[distance & ALIGN_MASK]
                             + slotPrices[span * DISTANCE_TABLE_SIZE_MAX
-                                    + slotOfALargeDistance(distance)];
+                                    + findTheSlotOfALargeDistance(distance)];
                 }
                 if (price < choicePrice[length]) {
                     choicePrice[length] = price;
@@ -995,13 +995,13 @@ final class LzmaEncoder {
 
             int priceHere = choicePrice[at];
             int stateModel = stateHere * POSITION_STATES_MAX + positionState;
-            int literalPrice = priceHere + priceOfAZeroIn(isMatch, stateModel);
+            int literalPrice = priceHere + priceAZeroIn(isMatch, stateModel);
             boolean nextIsLiteral = false;
             probabilitiesAt =
-                    literalProbabilitiesAt(position, source[data - 1] & 0xFF);
+                    findTheLiteralProbabilitiesAt(position, source[data - 1] & 0xFF);
             literalPrice += stateHere < 7
-                    ? priceOfALiteral(probabilitiesAt, currentByte)
-                    : priceOfAMatchedLiteral(probabilitiesAt, currentByte, matchByte);
+                    ? priceALiteral(probabilitiesAt, currentByte)
+                    : priceAMatchedLiteral(probabilitiesAt, currentByte, matchByte);
             if (literalPrice < choicePrice[at + 1]) {
                 choicePrice[at + 1] = literalPrice;
                 choiceLength[at + 1] = 1;
@@ -1009,15 +1009,15 @@ final class LzmaEncoder {
                 nextIsLiteral = true;
             }
 
-            matchPrice = priceHere + priceOfAOneIn(isMatch, stateModel);
-            repeatMatchPrice = matchPrice + priceOfAOneIn(isRepeat, stateHere);
+            matchPrice = priceHere + priceAOneIn(isMatch, stateModel);
+            repeatMatchPrice = matchPrice + priceAOneIn(isRepeat, stateHere);
 
             if (matchByte == currentByte
                     && (choiceLength[at + 1] < 2
                             || (choiceDistance[at + 1] != 0
                                     && choiceExtra[at + 1] <= 1))) {
                 int shortRepeatPrice = repeatMatchPrice
-                        + priceOfAShortRepeat(stateHere, positionState);
+                        + priceAShortRepeat(stateHere, positionState);
                 if (shortRepeatPrice <= choicePrice[at + 1]) {
                     choicePrice[at + 1] = shortRepeatPrice;
                     choiceLength[at + 1] = 1;
@@ -1045,7 +1045,7 @@ final class LzmaEncoder {
                     int stateAfter = AFTER_A_LITERAL[stateHere];
                     int positionAfter = (position + 1) & positionMask;
                     int price = literalPrice
-                            + priceOfRepeatZero(stateAfter, positionAfter);
+                            + priceRepeatZero(stateAfter, positionAfter);
                     int offset = at + length;
                     while (last < offset) {
                         choicePrice[++last] = INFINITY_PRICE;
@@ -1078,7 +1078,7 @@ final class LzmaEncoder {
                     choicePrice[++last] = INFINITY_PRICE;
                 }
                 int price = repeatMatchPrice
-                        + priceOfNamingARepeat(which, stateHere, positionState);
+                        + priceNamingARepeat(which, stateHere, positionState);
                 for (int span = length; span >= 2; span--) {
                     int total = price
                             + repeatLengthPrices.prices[positionState][span - 2];
@@ -1103,16 +1103,16 @@ final class LzmaEncoder {
                     int stateAfter = AFTER_A_REPEAT[stateHere];
                     int positionAfter = (position + length) & positionMask;
                     price += repeatLengthPrices.prices[positionState][length - 2]
-                            + priceOfAZeroIn(isMatch,
+                            + priceAZeroIn(isMatch,
                                     stateAfter * POSITION_STATES_MAX + positionAfter)
-                            + priceOfAMatchedLiteral(
-                                    literalProbabilitiesAt(position + length,
+                            + priceAMatchedLiteral(
+                                    findTheLiteralProbabilitiesAt(position + length,
                                             source[data + length - 1] & 0xFF),
                                     source[data + length] & 0xFF,
                                     source[earlier + length] & 0xFF);
                     stateAfter = STATE_LITERAL_AFTER_REPEAT;
                     positionAfter = (positionAfter + 1) & positionMask;
-                    price += priceOfRepeatZero(stateAfter, positionAfter);
+                    price += priceRepeatZero(stateAfter, positionAfter);
                     int offset = at + length + beyond;
                     while (last < offset) {
                         choicePrice[++last] = INFINITY_PRICE;
@@ -1140,7 +1140,7 @@ final class LzmaEncoder {
             }
 
             if (newLength >= startLength) {
-                int normalMatchPrice = matchPrice + priceOfAZeroIn(isRepeat, stateHere);
+                int normalMatchPrice = matchPrice + priceAZeroIn(isRepeat, stateHere);
                 while (last < at + newLength) {
                     choicePrice[++last] = INFINITY_PRICE;
                 }
@@ -1149,11 +1149,11 @@ final class LzmaEncoder {
                     offset += 2;
                 }
                 int distance = matches[offset + 1];
-                int slot = slotOfALargeDistance(distance);
+                int slot = findTheSlotOfALargeDistance(distance);
                 for (int length = startLength; ; length++) {
                     int price = normalMatchPrice
                             + matchLengthPrices.prices[positionState][length - MATCH_LEN_MIN];
-                    int span = lengthToPositionStateFromSpan(length - 2);
+                    int span = mapSpanToPositionState(length - 2);
                     if (Integer.compareUnsigned(distance, FULL_DISTANCES) < 0) {
                         price += distancePrices[span * FULL_DISTANCES
                                 + (distance & (FULL_DISTANCES - 1))];
@@ -1180,16 +1180,16 @@ final class LzmaEncoder {
                         if (beyond >= 3) {
                             int stateAfter = AFTER_A_MATCH[stateHere];
                             int positionAfter = (position + length) & positionMask;
-                            price += priceOfAZeroIn(isMatch,
+                            price += priceAZeroIn(isMatch,
                                     stateAfter * POSITION_STATES_MAX + positionAfter);
-                            price += priceOfAMatchedLiteral(
-                                    literalProbabilitiesAt(position + length,
+                            price += priceAMatchedLiteral(
+                                    findTheLiteralProbabilitiesAt(position + length,
                                             source[data + length - 1] & 0xFF),
                                     source[data + length] & 0xFF,
                                     source[earlier + length] & 0xFF);
                             stateAfter = STATE_LITERAL_AFTER_MATCH;
                             positionAfter = (positionAfter + 1) & positionMask;
-                            price += priceOfRepeatZero(stateAfter, positionAfter);
+                            price += priceRepeatZero(stateAfter, positionAfter);
                             int target = at + length + beyond;
                             while (last < target) {
                                 choicePrice[++last] = INFINITY_PRICE;
@@ -1209,7 +1209,7 @@ final class LzmaEncoder {
                             break;
                         }
                         distance = matches[offset + 1];
-                        slot = slotOfALargeDistance(distance);
+                        slot = findTheSlotOfALargeDistance(distance);
                     }
                 }
             }
@@ -1269,27 +1269,27 @@ final class LzmaEncoder {
         void updateTable(LengthModel model, int positionState) {
             int[] row = prices[positionState];
             int base = positionState << (1 + LENGTH_LOW_BITS);
-            setEightPrices(model.low, base, priceOfAZeroIn(model.low, 0), row, 0);
-            int afterTheFirstOne = priceOfAOneIn(model.low, 0);
+            setEightPrices(model.low, base, priceAZeroIn(model.low, 0), row, 0);
+            int afterTheFirstOne = priceAOneIn(model.low, 0);
             setEightPrices(model.low, base + LENGTH_LOW_SYMBOLS,
-                    afterTheFirstOne + priceOfAZeroIn(model.low, LENGTH_LOW_SYMBOLS),
+                    afterTheFirstOne + priceAZeroIn(model.low, LENGTH_LOW_SYMBOLS),
                     row, LENGTH_LOW_SYMBOLS);
             int afterBothOnes = afterTheFirstOne
-                    + priceOfAOneIn(model.low, LENGTH_LOW_SYMBOLS);
+                    + priceAOneIn(model.low, LENGTH_LOW_SYMBOLS);
             counters[positionState] = tableSize;
             for (int symbol = LENGTH_LOW_SYMBOLS * 2; symbol < tableSize; symbol++) {
-                row[symbol] = afterBothOnes + priceOfAShortTree(model.high,
+                row[symbol] = afterBothOnes + priceAShortTree(model.high,
                         symbol - LENGTH_LOW_SYMBOLS * 2);
             }
         }
 
-        private static int priceOfAShortTree(short[] models, int symbol) {
+        private static int priceAShortTree(short[] models, int symbol) {
             int price = 0;
             int running = symbol | 0x100;
             do {
                 int bit = running & 1;
                 running >>= 1;
-                price += priceOfABitIn(models, running, bit);
+                price += priceABitIn(models, running, bit);
             } while (running >= 2);
             return price;
         }
@@ -1299,11 +1299,11 @@ final class LzmaEncoder {
 
             for (int each = 0; each < 8; each += 2) {
                 int price = startPrice
-                        + priceOfABitIn(models, base + 1, each >> 2)
-                        + priceOfABitIn(models, base + 2 + (each >> 2), (each >> 1) & 1);
+                        + priceABitIn(models, base + 1, each >> 2)
+                        + priceABitIn(models, base + 2 + (each >> 2), (each >> 1) & 1);
                 int model = base + 4 + (each >> 1);
-                row[at + each] = price + priceOfAZeroIn(models, model);
-                row[at + each + 1] = price + priceOfAOneIn(models, model);
+                row[at + each] = price + priceAZeroIn(models, model);
+                row[at + each + 1] = price + priceAOneIn(models, model);
             }
         }
     }

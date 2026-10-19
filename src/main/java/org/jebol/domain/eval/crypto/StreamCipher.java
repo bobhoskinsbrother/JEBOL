@@ -11,7 +11,7 @@ public final class StreamCipher {
     private StreamCipher() {
     }
 
-    public static StreamCipher keyedWithAnEmptyKeyAcceptedAsAny(byte[] key) {
+    public static StreamCipher keyWith(byte[] key) {
         StreamCipher cipher = new StreamCipher();
         for (int at = 0; at < PERMUTATION_SIZE; at++) {
             cipher.permutation[at] = at;
@@ -28,7 +28,7 @@ public final class StreamCipher {
         return cipher;
     }
 
-    public int nextKeystreamByteAdvancingThePermutation() {
+    public int readTheNextKeystreamByte() {
         takenSoFar = (takenSoFar + 1) % PERMUTATION_SIZE;
         swappedSoFar = (swappedSoFar + permutation[takenSoFar]) % PERMUTATION_SIZE;
         swap(takenSoFar, swappedSoFar);

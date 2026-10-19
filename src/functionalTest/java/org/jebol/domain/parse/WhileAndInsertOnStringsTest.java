@@ -31,7 +31,7 @@ class WhileAndInsertOnStringsTest {
 
     @Test
     @DisplayName("WHILE is ANY under another name")
-    void whileIsAny() {
+    void treatsWhileAsAny() {
         assertThat(answerTo("parse v: copy \"yxxyyx\" [any [remove #\"y\" | #\"x\"]] v"))
                 .isEqualTo("\"xxx\"");
     }
@@ -53,14 +53,14 @@ class WhileAndInsertOnStringsTest {
 
     @Test
     @DisplayName("the same rule in a block still works")
-    void theBlockHalfIsUnaffected() {
+    void leavesTheBlockHalfAlone() {
         assertThat(answerTo("parse b: [1] [remove skip insert 9] mold b"))
                 .isEqualTo("\"[9]\"");
     }
 
     @Test
     @DisplayName("WHILE works on a block as well as a string")
-    void whileWorksOnBothSides() {
+    void runsWhileOnBothSides() {
         assertThat(answerTo("parse [1 1] [while [integer!]]")).isEqualTo("#(true)");
         assertThat(answerTo("parse \"aa\" [while [\"a\"]]")).isEqualTo("#(true)");
     }
@@ -74,7 +74,7 @@ class WhileAndInsertOnStringsTest {
 
     @Test
     @DisplayName("a false guard stops the rule on either side")
-    void aFalseGuardStopsBoth() {
+    void stopsBothOnAFalseGuard() {
         assertThat(answerTo("parse [1] [if (false) integer!]")).isEqualTo("#(false)");
         assertThat(answerTo("parse \"a\" [if (false) \"a\"]")).isEqualTo("#(false)");
     }

@@ -7,7 +7,7 @@ import java.util.function.ToLongFunction;
 public record TimeValue(long nanoseconds) implements Value {
 
     @Override
-    public Value randomised(RandomDraw draw) {
+    public Value randomise(RandomDraw draw) {
         return TimeValue.ofNanoseconds(draw.upTo(nanoseconds));
     }
 
@@ -17,25 +17,25 @@ public record TimeValue(long nanoseconds) implements Value {
     }
 
     @Override
-    public Value absolute() {
+    public Value makeAbsolute() {
         return TimeValue.ofNanoseconds(Math.abs(nanoseconds));
     }
 
 
     @Override
-    public Value arithmetic(Value right, ArithmeticOperation operation) {
+    public Value calculate(Value right, ArithmeticOperation operation) {
         return right instanceof DateValue moment
                 && operation.isCommutative() && !operation.multiplies()
-                ? new DateArithmetic(moment).takenBy(this, operation)
-                : new TimeActions(this).combinedWith(right, operation);
+                ? new DateArithmetic(moment).takeFrom(this, operation)
+                : new TimeActions(this).combineWith(right, operation);
     }
 
 
     @Override
-    public Value pickedBy(Value selector) {
+    public Value pickBy(Value selector) {
         long seconds = Math.abs(nanoseconds) / NANOSECONDS_PER_SECOND;
         long fraction = Math.abs(nanoseconds) % NANOSECONDS_PER_SECOND;
-        return switch (thePartNamedBy(selector)) {
+        return switch (findThePartNamedBy(selector)) {
             case "hour" -> IntegerValue.of(seconds / 3600);
             case "minute" -> IntegerValue.of(seconds / 60 % 60);
             case "second" -> fraction == 0
@@ -45,7 +45,7 @@ public record TimeValue(long nanoseconds) implements Value {
         };
     }
 
-    private String thePartNamedBy(Value selector) {
+    private String findThePartNamedBy(Value selector) {
         return switch (selector) {
             case AnyWordValue asked -> asked.canonical();
             case IntegerValue whole when whole.magnitude() == 1 -> "hour";
@@ -144,7 +144,7 @@ public record TimeValue(long nanoseconds) implements Value {
 
     @Override
     public Optional<Value> asDecimal(AnyDecimalValue.AnyDecimalDatatype wanted, Conversion asking) {
-        return Optional.of(inHundredths(
+        return Optional.of(countInHundredths(
                 wanted, (double) nanoseconds / NANOSECONDS_PER_SECOND));
     }
 
@@ -168,41 +168,41 @@ public record TimeValue(long nanoseconds) implements Value {
         }
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             return spec instanceof AnyBlockValue parts
-                    ? timeFromParts(parts.remaining())
-                    : super.madeFrom(spec, maker);
+                    ? makeATimeFromParts(parts.remaining())
+                    : super.makeFrom(spec, maker);
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
-            return construction.madeOf(this, contents.getFirst());
+        public Value construct(List<Value> contents, Construction construction) {
+            return construction.make(this, contents.getFirst());
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
                 case TimeValue already -> already;
-                case StringValue written -> theTimeScannedFrom(written);
-                case BlockValue parts -> aTimeOfHoursMinutesAndSeconds(parts);
-                case ParenValue parts -> aTimeOfHoursMinutesAndSeconds(parts);
-                case IntegerValue number -> aDurationOfSeconds(number, number.magnitude());
-                case DecimalValue number -> aDurationOfSeconds(number, number.quantity());
-                default -> throw refusing(from);
+                case StringValue written -> scanTheTimeFrom(written);
+                case BlockValue parts -> makeATimeOfHoursMinutesAndSeconds(parts);
+                case ParenValue parts -> makeATimeOfHoursMinutesAndSeconds(parts);
+                case IntegerValue number -> makeADurationOfSeconds(number, number.magnitude());
+                case DecimalValue number -> makeADurationOfSeconds(number, number.quantity());
+                default -> throw refuse(from);
             };
         }
 
-        private Value timeFromParts(List<Value> parts) {
+        private Value makeATimeFromParts(List<Value> parts) {
             if (parts.isEmpty() || parts.size() > 3
                     || !(parts.get(0) instanceof IntegerValue(long hours))) {
-                throw refusing(BlockValue.block(parts));
+                throw refuse(BlockValue.of(parts));
             }
             boolean negative = hours < 0;
             long seconds = Math.abs(hours) * SECONDS_AN_HOUR;
             long fraction = 0;
             if (parts.size() > 1) {
                 if (!(parts.get(1) instanceof IntegerValue(long minutes)) || minutes < 0) {
-                    throw refusing(BlockValue.block(parts));
+                    throw refuse(BlockValue.of(parts));
                 }
                 seconds += minutes * 60;
             }
@@ -215,67 +215,67 @@ public record TimeValue(long nanoseconds) implements Value {
                         fraction = Math.round(
                                 (part.quantity() - (long) part.quantity()) * NANOSECONDS_PER_SECOND);
                     }
-                    default -> throw refusing(BlockValue.block(parts));
+                    default -> throw refuse(BlockValue.of(parts));
                 }
             }
             long total = seconds * NANOSECONDS_PER_SECOND + fraction;
             return ofNanoseconds(negative ? -total : total);
         }
 
-        private Value aDurationOfSeconds(Value value, double seconds) {
+        private Value makeADurationOfSeconds(Value value, double seconds) {
             if (seconds < -MOST_SECONDS_A_DURATION_HOLDS || seconds > MOST_SECONDS_A_DURATION_HOLDS) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, value);
             }
-            return ofNanoseconds(TimeActions.wholeNanosecondsOf(value));
+            return ofNanoseconds(TimeActions.countTheWholeNanosecondsOf(value));
         }
 
-        private Value aTimeOfHoursMinutesAndSeconds(AnyBlockValue parts) {
+        private Value makeATimeOfHoursMinutesAndSeconds(AnyBlockValue parts) {
             List<Value> given = parts.remaining();
             if (given.isEmpty() || given.size() > 3
                     || !(given.getFirst() instanceof IntegerValue(long hours))) {
-                throw refusing(parts);
+                throw refuse(parts);
             }
             boolean negated = hours < 0;
-            long seconds = whatFitsInThirtyTwoBits(Math.abs(hours), parts) * SECONDS_AN_HOUR;
+            long seconds = fitInThirtyTwoBits(Math.abs(hours), parts) * SECONDS_AN_HOUR;
             double fraction = 0.0;
             for (int at = 1; at < given.size(); at++) {
                 if (seconds > MOST_SECONDS_A_TIME_HOLDS) {
-                    throw refusing(parts);
+                    throw refuse(parts);
                 }
                 Value part = given.get(at);
                 if (at == 2 && part instanceof DecimalValue fractional) {
                     fraction = fractional.quantity();
                     if (seconds + (long) fraction + 1 > MOST_SECONDS_A_TIME_HOLDS) {
-                        throw refusing(parts);
+                        throw refuse(parts);
                     }
                     break;
                 }
                 if (!(part instanceof IntegerValue(long magnitude)) || magnitude < 0) {
-                    throw refusing(parts);
+                    throw refuse(parts);
                 }
-                seconds += whatFitsInThirtyTwoBits(magnitude, parts) * (at == 1 ? 60L : 1L);
+                seconds += fitInThirtyTwoBits(magnitude, parts) * (at == 1 ? 60L : 1L);
             }
             if (seconds > MOST_SECONDS_A_TIME_HOLDS) {
-                throw refusing(parts);
+                throw refuse(parts);
             }
             long nanoseconds = seconds * NANOSECONDS_PER_SECOND
                     + Math.round(fraction * NANOSECONDS_PER_SECOND);
             return ofNanoseconds(negated ? -nanoseconds : nanoseconds);
         }
 
-        private long whatFitsInThirtyTwoBits(long magnitude, Value about) {
+        private long fitInThirtyTwoBits(long magnitude, Value about) {
             if (magnitude > Integer.MAX_VALUE) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, about);
             }
             return magnitude;
         }
 
-        private Value theTimeScannedFrom(StringValue given) {
-            ScanningATime scanning = new ScanningATime(new WrittenText(given.text()).theOneTimeIn());
+        private Value scanTheTimeFrom(StringValue given) {
+            ScanningATime scanning = new ScanningATime(new WrittenText(given.text()).findTheOneTime());
             if (!scanning.readsATime()) {
-                throw refusing(given);
+                throw refuse(given);
             }
-            return ofNanoseconds(scanning.nanoseconds());
+            return ofNanoseconds(scanning.readTheNanoseconds());
         }
     }
 
@@ -286,10 +286,10 @@ public record TimeValue(long nanoseconds) implements Value {
         if (seconds() == 0 && subsecondNanoseconds() == 0) {
             return written;
         }
-        return written + ":" + String.format("%02d", seconds()) + writtenFraction();
+        return written + ":" + String.format("%02d", seconds()) + writeTheFraction();
     }
 
-    private String writtenFraction() {
+    private String writeTheFraction() {
         long fraction = subsecondNanoseconds();
         if (fraction == 0) {
             return "";

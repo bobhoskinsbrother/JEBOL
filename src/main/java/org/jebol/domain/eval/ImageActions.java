@@ -20,7 +20,7 @@ public final class ImageActions extends SeriesActions {
     }
 
     @Override
-    public Value poked(Value position, Value written) {
+    public Value poke(Value position, Value written) {
         ImagePath.write(picture, (int) position.asPosition(), written);
         return written;
     }
@@ -31,11 +31,11 @@ public final class ImageActions extends SeriesActions {
     }
 
     @Override
-    public Value complemented() {
+    public Value complement() {
         ImageStorage flipped = ImageStorage.of(
                 picture.storage().wide(), picture.storage().high());
         for (int pixel = 1; pixel <= picture.storage().length(); pixel++) {
-            int[] channels = picture.storage().pixelAt(pixel);
+            int[] channels = picture.storage().readThePixelAt(pixel);
             flipped.setColourAt(pixel,
                     ~channels[0] & 0xFF, ~channels[1] & 0xFF, ~channels[2] & 0xFF);
             flipped.setAlphaAt(pixel, ~channels[3] & 0xFF);
@@ -56,12 +56,12 @@ public final class ImageActions extends SeriesActions {
     @Override
     public Value append(Asked asked) {
         asked.refuseRefinementsThisDatatypeDoesNotServe("append");
-        return picture.appended(asked.given(), asked.howManyTimes());
+        return picture.append(asked.given(), asked.howManyTimes());
     }
 
     @Override
     public Value insert(Asked asked) {
         asked.refuseRefinementsThisDatatypeDoesNotServe("insert");
-        return picture.inserted(asked.given(), asked.howManyTimes());
+        return picture.insert(asked.given(), asked.howManyTimes());
     }
 }

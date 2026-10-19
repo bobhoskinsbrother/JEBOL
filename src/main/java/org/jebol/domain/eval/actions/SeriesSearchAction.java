@@ -14,10 +14,10 @@ public abstract class SeriesSearchAction extends DefaultNative implements Action
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series"),
-                Parameter.required("value", TypesetValue.ANY_TYPE.members()),
-                Parameter.belongingTo("part", "range", aPartLimit()),
-                Parameter.belongingTo("with", "wild", Set.of(StringValue.TYPE)),
-                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)));
+        return List.of(Parameter.of("series"),
+                Parameter.of("value", TypesetValue.ANY_TYPE.members()),
+                Parameter.belongTo("part", "range", listThePartLimitTypes()),
+                Parameter.belongTo("with", "wild", Set.of(StringValue.TYPE)),
+                Parameter.belongTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }
 }

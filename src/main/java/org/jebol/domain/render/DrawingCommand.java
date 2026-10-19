@@ -5,35 +5,35 @@ import org.jebol.domain.value.ImageValue;
 import java.util.List;
 import java.util.Optional;
 
-public sealed interface SurfaceCall {
+public sealed interface DrawingCommand {
 
     Placement where();
 
-    record Filled(
+    record Fill(
             Placement where, List<PathStep> path, FillRule rule,
             Optional<Gradient> gradient, Colour colour, Transform transform,
             boolean antiAliased)
-            implements SurfaceCall {
+            implements DrawingCommand {
 
-        public Filled {
+        public Fill {
             path = List.copyOf(path);
         }
     }
 
-    record Stroked(
+    record Stroke(
             Placement where, List<PathStep> path, PaintState painted, Transform transform)
-            implements SurfaceCall {
+            implements DrawingCommand {
 
-        public Stroked {
+        public Stroke {
             path = List.copyOf(path);
         }
     }
 
-    record Pictured(
+    record Picture(
             Placement where, ImageValue image, double wide, double high, Transform transform)
-            implements SurfaceCall {
+            implements DrawingCommand {
     }
 
-    record Written(Placement where, PlacedText text) implements SurfaceCall {
+    record Text(Placement where, PlacedText text) implements DrawingCommand {
     }
 }

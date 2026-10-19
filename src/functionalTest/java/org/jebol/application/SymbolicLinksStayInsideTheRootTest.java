@@ -28,7 +28,7 @@ class SymbolicLinksStayInsideTheRootTest {
     private Interpreter interpreter;
 
     @BeforeEach
-    void aRootWithSomethingBesideIt() throws IOException {
+    void makeARootWithSomethingBesideIt() throws IOException {
         root = Files.createDirectories(machine.resolve("root"));
         outside = Files.createDirectories(machine.resolve("outside"));
         Files.writeString(root.resolve("inside.txt"), "inside");
@@ -36,7 +36,7 @@ class SymbolicLinksStayInsideTheRootTest {
         interpreter = Interpreter.withBounds(Bounds.standard()
                 .grant(HostService.FILES)
                 .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(root));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
     }
 
     private String answerTo(String source) {
@@ -44,7 +44,7 @@ class SymbolicLinksStayInsideTheRootTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private String refusalOf(String source) {
+    private String readTheRefusalOf(String source) {
         return answerTo("""
                 e: try [%s]
                 either error? e [reduce [e/id e/arg1]] ['no-error]""".formatted(source));
@@ -60,7 +60,7 @@ class SymbolicLinksStayInsideTheRootTest {
 
         @Test
         @DisplayName("a relative link to a file beside it reads that file")
-        void aRelativeLink() throws IOException {
+        void followsARelativeLink() throws IOException {
             link("again.txt", Path.of("inside.txt"));
 
             assertThat(answerTo("to string! read %again.txt")).isEqualTo("\"inside\"");
@@ -68,7 +68,7 @@ class SymbolicLinksStayInsideTheRootTest {
 
         @Test
         @DisplayName("an absolute link to a file inside reads that file")
-        void anAbsoluteLink() throws IOException {
+        void followsAnAbsoluteLink() throws IOException {
             link("again.txt", root.resolve("inside.txt").toAbsolutePath());
 
             assertThat(answerTo("to string! read %again.txt")).isEqualTo("\"inside\"");
@@ -76,7 +76,7 @@ class SymbolicLinksStayInsideTheRootTest {
 
         @Test
         @DisplayName("a linked folder inside lists and writes like any other")
-        void aLinkedFolder() throws IOException {
+        void usesALinkedFolder() throws IOException {
             Files.createDirectories(root.resolve("real"));
             link("alias", root.resolve("real"));
 
@@ -88,7 +88,7 @@ class SymbolicLinksStayInsideTheRootTest {
 
         @Test
         @DisplayName("a dangling link inside makes its target inside when written through")
-        void aDanglingLinkInside() throws IOException {
+        void makesTheTargetOfADanglingLinkInside() throws IOException {
             link("later.txt", Path.of("target.txt"));
 
             answerTo("write %later.txt {now}");
@@ -114,77 +114,77 @@ class SymbolicLinksStayInsideTheRootTest {
 
         @Test
         @DisplayName("reading through it")
-        void reading() throws IOException {
+        void refusesReading() throws IOException {
             link("door.txt", outside.resolve("secret.txt"));
 
-            assertThat(refusalOf("read %door.txt")).isEqualTo("[security %door.txt]");
+            assertThat(readTheRefusalOf("read %door.txt")).isEqualTo("[security %door.txt]");
         }
 
         @Test
         @DisplayName("writing through it changes nothing outside")
-        void writing() throws IOException {
+        void refusesWriting() throws IOException {
             link("door.txt", outside.resolve("secret.txt"));
 
-            assertThat(refusalOf("write %door.txt {changed}")).isEqualTo("[security %door.txt]");
+            assertThat(readTheRefusalOf("write %door.txt {changed}")).isEqualTo("[security %door.txt]");
             assertThat(outside.resolve("secret.txt")).hasContent("secret");
         }
 
         @Test
         @DisplayName("a relative link climbing out with dots")
-        void climbingWithDots() throws IOException {
+        void refusesClimbingWithDots() throws IOException {
             link("door.txt", Path.of("..", "outside", "secret.txt"));
 
-            assertThat(refusalOf("read %door.txt")).isEqualTo("[security %door.txt]");
+            assertThat(readTheRefusalOf("read %door.txt")).isEqualTo("[security %door.txt]");
         }
 
         @Test
         @DisplayName("a file inside a folder linked from outside")
-        void throughALinkedFolder() throws IOException {
+        void refusesAFileThroughALinkedFolder() throws IOException {
             link("elsewhere", outside);
 
-            assertThat(refusalOf("read %elsewhere/secret.txt")).isEqualTo("[security %elsewhere/secret.txt]");
+            assertThat(readTheRefusalOf("read %elsewhere/secret.txt")).isEqualTo("[security %elsewhere/secret.txt]");
         }
 
         @Test
         @DisplayName("listing a folder linked from outside")
-        void listingIt() throws IOException {
+        void refusesListingIt() throws IOException {
             link("elsewhere", outside);
 
-            assertThat(refusalOf("read %elsewhere/")).isEqualTo("[security %elsewhere/]");
+            assertThat(readTheRefusalOf("read %elsewhere/")).isEqualTo("[security %elsewhere/]");
         }
 
         @Test
         @DisplayName("making a folder through a link leading out")
-        void makingAFolder() throws IOException {
+        void refusesMakingAFolder() throws IOException {
             link("elsewhere", outside);
 
-            assertThat(refusalOf("make-dir %elsewhere/made/")).isEqualTo("[security %elsewhere/made/]");
+            assertThat(readTheRefusalOf("make-dir %elsewhere/made/")).isEqualTo("[security %elsewhere/made/]");
             assertThat(outside.resolve("made")).doesNotExist();
         }
 
         @Test
         @DisplayName("deleting a file through a link leading out")
-        void deletingThroughIt() throws IOException {
+        void refusesDeletingThroughIt() throws IOException {
             link("elsewhere", outside);
 
-            assertThat(refusalOf("delete %elsewhere/secret.txt")).isEqualTo("[security %elsewhere/secret.txt]");
+            assertThat(readTheRefusalOf("delete %elsewhere/secret.txt")).isEqualTo("[security %elsewhere/secret.txt]");
             assertThat(outside.resolve("secret.txt")).exists();
         }
 
         @Test
         @DisplayName("changing directory into it")
-        void changingDirectory() throws IOException {
+        void refusesChangingDirectory() throws IOException {
             link("elsewhere", outside);
 
-            assertThat(refusalOf("change-dir %elsewhere/")).isEqualTo("[security %elsewhere/]");
+            assertThat(readTheRefusalOf("change-dir %elsewhere/")).isEqualTo("[security %elsewhere/]");
         }
 
         @Test
         @DisplayName("a dangling link pointing out is refused, and nothing is made outside")
-        void aDanglingLinkOut() throws IOException {
+        void refusesADanglingLinkOut() throws IOException {
             link("door.txt", outside.resolve("new.txt"));
 
-            assertThat(refusalOf("write %door.txt {x}")).isEqualTo("[security %door.txt]");
+            assertThat(readTheRefusalOf("write %door.txt {x}")).isEqualTo("[security %door.txt]");
             assertThat(outside.resolve("new.txt")).doesNotExist();
         }
 
@@ -196,21 +196,21 @@ class SymbolicLinksStayInsideTheRootTest {
                 link("chain-" + at, Path.of("chain-" + (at + 1)));
             }
 
-            assertThat(refusalOf("read %chain-1")).isEqualTo("[security %chain-1]");
+            assertThat(readTheRefusalOf("read %chain-1")).isEqualTo("[security %chain-1]");
         }
 
         @Test
         @DisplayName("two links pointing at each other are refused rather than followed for ever")
-        void aLoop() throws IOException {
+        void refusesALoop() throws IOException {
             link("ping", Path.of("pong"));
             link("pong", Path.of("ping"));
 
-            assertThat(refusalOf("read %ping")).isEqualTo("[security %ping]");
+            assertThat(readTheRefusalOf("read %ping")).isEqualTo("[security %ping]");
         }
 
         @Test
         @DisplayName("asking about it answers none, as for anything the script cannot see")
-        void askingAboutIt() throws IOException {
+        void answersNoneOnAskingAboutIt() throws IOException {
             link("door.txt", outside.resolve("secret.txt"));
 
             assertThat(answerTo("to-real-file %door.txt")).isEqualTo("_");
@@ -224,7 +224,7 @@ class SymbolicLinksStayInsideTheRootTest {
 
         @Test
         @DisplayName("deleting a link leading out removes the link and leaves the target")
-        void deletingTheLink() throws IOException {
+        void deletesTheLink() throws IOException {
             link("door.txt", outside.resolve("secret.txt"));
 
             answerTo("delete %door.txt");
@@ -236,7 +236,7 @@ class SymbolicLinksStayInsideTheRootTest {
 
         @Test
         @DisplayName("renaming a link leading out renames the link and leaves the target")
-        void renamingTheLink() throws IOException {
+        void renamesTheLink() throws IOException {
             link("door.txt", outside.resolve("secret.txt"));
 
             answerTo("rename %door.txt %gate.txt");
@@ -247,20 +247,20 @@ class SymbolicLinksStayInsideTheRootTest {
     }
 
     @Test
-    @DisplayName("a root that is itself reached through a link still holds its files")
-    void aRootReachedThroughALink() throws IOException {
+    @DisplayName("a root that is itself reached through a link still holds its filePort")
+    void keepsTheFilesOfARootReachedThroughALink() throws IOException {
         Path aliasOfTheRoot = machine.resolve("alias-of-root");
         Files.createSymbolicLink(aliasOfTheRoot, root);
-        interpreter.useFileSystem(FileSystemPort.rootedAt(aliasOfTheRoot));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(aliasOfTheRoot));
 
         assertThat(answerTo("to string! read %inside.txt")).isEqualTo("\"inside\"");
     }
 
     @Test
     @DisplayName("a script on the whole machine follows any link, as there is no outside to reach")
-    void theWholeMachine() throws IOException {
+    void followsAnyLinkOnTheWholeMachine() throws IOException {
         link("door.txt", outside.resolve("secret.txt"));
-        interpreter.useFileSystem(FileSystemPort.rootedAt(Path.of("/")));
+        interpreter.useFileSystem(FileSystemPort.rootFileSystem(Path.of("/")));
         String door = root.resolve("door.txt").toAbsolutePath().toString();
 
         assertThat(answerTo("to string! read %" + door)).isEqualTo("\"secret\"");

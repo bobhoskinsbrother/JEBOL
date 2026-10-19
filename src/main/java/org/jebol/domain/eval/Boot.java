@@ -2,6 +2,7 @@ package org.jebol.domain.eval;
 
 import org.jebol.domain.eval.ports.Ports;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.MachinePort;
 import org.jebol.domain.value.Construction;
 import org.jebol.domain.value.Context;
 import org.jebol.domain.value.Maker;
@@ -11,7 +12,7 @@ import java.util.Set;
 
 public final class Boot {
 
-    private String operatingSystemName = "JVM";
+    private final MachinePort machine;
     private final BootDeclarations bootDeclarations = new BootDeclarations();
     private final MapValue registeredStructLayouts = MapValue.empty();
     private final MakingWithoutEvaluating withoutEvaluating = new MakingWithoutEvaluating(registeredStructLayouts);
@@ -20,29 +21,23 @@ public final class Boot {
     private final Ports ports = new Ports(grantedServices);
     private final LocalFileSeparator localFileSeparator = new LocalFileSeparator();
 
-    private Boot() {
+    private Boot(MachinePort machine) {
+        this.machine = machine;
+        localFileSeparator.use(machine.fileSeparator());
     }
 
-    public static Boot standard() {
-        return new Boot();
+    public static Boot makeStandard(MachinePort machine) {
+        return new Boot(machine);
     }
 
-    public static Boot standard(Set<HostService> granted) {
-        Boot boot = standard();
+    public static Boot makeStandard(MachinePort machine, Set<HostService> granted) {
+        Boot boot = makeStandard(machine);
         boot.grantOnly(granted);
         return boot;
     }
 
     public void useOperatorTable(String source) {
         bootDeclarations.useOperatorTable(source);
-    }
-
-    public void useFileSeparator(char separator) {
-        localFileSeparator.use(separator);
-    }
-
-    public void useOperatingSystemNamed(String operatingSystem) {
-        this.operatingSystemName = operatingSystem;
     }
 
     public void useErrorCatalogue(String source) {
@@ -65,8 +60,8 @@ public final class Boot {
         grantedServices.grantOnly(granted);
     }
 
-    public void lackOnly(Set<HostService> lacking) {
-        grantedServices.lackOnly(lacking);
+    public void markOnlyUnavailable(Set<HostService> unavailable) {
+        grantedServices.markOnlyUnavailable(unavailable);
     }
 
     public void useHostName(String name) {
@@ -75,14 +70,14 @@ public final class Boot {
 
     public SystemObject start() {
         LibContext lib = new LibContext(bootDeclarations, grantedServices, ports, encodings, localFileSeparator);
-        return new SystemObject(lib, bootDeclarations, ports, encodings, registeredStructLayouts, operatingSystemName);
+        return new SystemObject(lib, bootDeclarations, ports, encodings, registeredStructLayouts, machine);
     }
 
     public Construction construction() {
         return withoutEvaluating;
     }
 
-    public Maker makerFor(Evaluator evaluator, Context where) {
+    public Maker makeMakerFor(Evaluator evaluator, Context where) {
         return new InterpreterMaker(evaluator, where, withoutEvaluating);
     }
 }

@@ -26,8 +26,8 @@ class CryptPortCamelliaFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String through(String algorithm, String key,
-            String vector, String data) {
+    private static String runThrough(String algorithm, String key,
+                                     String vector, String data) {
 
         return answerTo("""
                 p: open make port! [scheme: 'crypt algorithm: '%s]
@@ -40,15 +40,15 @@ class CryptPortCamelliaFromTheSourceTest {
 
     @Test
     @DisplayName("the RFC 3713 vectors, at all three key widths")
-    void theRfc3713Vectors() {
+    void matchesTheRfc3713Vectors() {
         String block = "#{0123456789ABCDEFFEDCBA9876543210}";
-        assertThat(through("CAMELLIA-128-ECB", block, "none", block))
+        assertThat(runThrough("CAMELLIA-128-ECB", block, "none", block))
                 .isEqualTo("\"67673138549669730857065648EABE43\"");
-        assertThat(through("CAMELLIA-192-ECB",
+        assertThat(runThrough("CAMELLIA-192-ECB",
                 "#{0123456789ABCDEFFEDCBA98765432100011223344556677}",
                 "none", block))
                 .isEqualTo("\"B4993401B3E996F84EE5CEE7D79B09B9\"");
-        assertThat(through("CAMELLIA-256-ECB",
+        assertThat(runThrough("CAMELLIA-256-ECB",
                 "#{0123456789ABCDEFFEDCBA98765432100011223344556677"
                         + "8899AABBCCDDEEFF}", "none", block))
                 .isEqualTo("\"9ACC237DFF16D76C20EF7C919E3A7509\"");
@@ -56,46 +56,46 @@ class CryptPortCamelliaFromTheSourceTest {
 
     @Test
     @DisplayName("in electronic codebook, at all three key widths")
-    void inElectronicCodebook() {
-        assertThat(through("CAMELLIA-128-ECB", KEY_128, "none", NIST_BLOCK))
+    void matchesInElectronicCodebook() {
+        assertThat(runThrough("CAMELLIA-128-ECB", KEY_128, "none", NIST_BLOCK))
                 .isEqualTo("\"432FC5DCD628115B7C388D770B270C96\"");
-        assertThat(through("CAMELLIA-192-ECB", KEY_192, "none", NIST_BLOCK))
+        assertThat(runThrough("CAMELLIA-192-ECB", KEY_192, "none", NIST_BLOCK))
                 .isEqualTo("\"CCCC6C4E138B45848514D48D0D3439D3\"");
-        assertThat(through("CAMELLIA-256-ECB", KEY_256, "none", NIST_BLOCK))
+        assertThat(runThrough("CAMELLIA-256-ECB", KEY_256, "none", NIST_BLOCK))
                 .isEqualTo("\"BEFD219B112FA00098919CD101C9CCFA\"");
     }
 
     @Test
     @DisplayName("and in cipher block chaining")
-    void andInCipherBlockChaining() {
-        assertThat(through("CAMELLIA-128-CBC", KEY_128, VECTOR, NIST_BLOCK))
+    void matchesInCipherBlockChaining() {
+        assertThat(runThrough("CAMELLIA-128-CBC", KEY_128, VECTOR, NIST_BLOCK))
                 .isEqualTo("\"1607CF494B36BBF00DAEB0B503C831AB\"");
-        assertThat(through("CAMELLIA-192-CBC", KEY_192, VECTOR, NIST_BLOCK))
+        assertThat(runThrough("CAMELLIA-192-CBC", KEY_192, VECTOR, NIST_BLOCK))
                 .isEqualTo("\"2A4830AB5AC4A1A2405955FD2195CF93\"");
-        assertThat(through("CAMELLIA-256-CBC", KEY_256, VECTOR, NIST_BLOCK))
+        assertThat(runThrough("CAMELLIA-256-CBC", KEY_256, VECTOR, NIST_BLOCK))
                 .isEqualTo("\"E6CFA35FC02B134A4D2C0B6737AC3EDA\"");
     }
 
     @Test
     @DisplayName("and in both authenticated modes, which were written for AES")
-    void andInBothAuthenticatedModes() {
-        assertThat(through("CAMELLIA-128-GCM", KEY_128, VECTOR, NIST_BLOCK))
+    void matchesInBothAuthenticatedModes() {
+        assertThat(runThrough("CAMELLIA-128-GCM", KEY_128, VECTOR, NIST_BLOCK))
                 .isEqualTo("\"C53D719F66B3091BB034E12652111535\"");
-        assertThat(through("CAMELLIA-192-GCM", KEY_192, VECTOR, NIST_BLOCK))
+        assertThat(runThrough("CAMELLIA-192-GCM", KEY_192, VECTOR, NIST_BLOCK))
                 .isEqualTo("\"D6B55E49D3E612D5DEEC918812D3007E\"");
-        assertThat(through("CAMELLIA-256-GCM", KEY_256, VECTOR, NIST_BLOCK))
+        assertThat(runThrough("CAMELLIA-256-GCM", KEY_256, VECTOR, NIST_BLOCK))
                 .isEqualTo("\"34C36D4BEF20E4C83E448E7B5563084E\"");
-        assertThat(through("CAMELLIA-128-CCM", KEY_128, VECTOR, NIST_BLOCK))
+        assertThat(runThrough("CAMELLIA-128-CCM", KEY_128, VECTOR, NIST_BLOCK))
                 .isEqualTo("\"F9FD8BA4986B6451E8285F0F21453389\"");
-        assertThat(through("CAMELLIA-192-CCM", KEY_192, VECTOR, NIST_BLOCK))
+        assertThat(runThrough("CAMELLIA-192-CCM", KEY_192, VECTOR, NIST_BLOCK))
                 .isEqualTo("\"FA4C0AF0534ADADC5CC0302222723E8F\"");
-        assertThat(through("CAMELLIA-256-CCM", KEY_256, VECTOR, NIST_BLOCK))
+        assertThat(runThrough("CAMELLIA-256-CCM", KEY_256, VECTOR, NIST_BLOCK))
                 .isEqualTo("\"8B8A35D00C16D4EFF4B963B7533CDD04\"");
     }
 
     @Test
     @DisplayName("and deciphering gives the plain text back")
-    void andDecipheringGivesThePlainTextBack() {
+    void givesThePlainTextBackOnDeciphering() {
         assertThat(answerTo("""
                 p: open make port! [scheme: 'crypt algorithm: 'CAMELLIA-128-ECB]
                 modify p 'direction 'decrypt
@@ -107,7 +107,7 @@ class CryptPortCamelliaFromTheSourceTest {
 
     @Test
     @DisplayName("a thousand rounds, which a single block would not catch")
-    void aThousandRounds() {
+    void survivesAThousandRounds() {
         assertThat(answerTo("""
                 p: open make port! [scheme: 'crypt algorithm: 'CAMELLIA-128-ECB]
                 modify p 'key #{80000000000000000000000000000000}
@@ -125,7 +125,7 @@ class CryptPortCamelliaFromTheSourceTest {
 
     @Test
     @DisplayName("the catalogue names all twelve, and every one opens")
-    void theCatalogueNamesAllTwelve() {
+    void namesAllTwelveInTheCatalogue() {
         assertThat(answerTo("""
                 length? collect [
                     foreach named system/catalog/ciphers [

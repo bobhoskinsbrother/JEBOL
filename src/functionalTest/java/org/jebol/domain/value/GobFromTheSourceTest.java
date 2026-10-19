@@ -15,7 +15,7 @@ class GobFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -27,7 +27,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("a fresh gob is a hundred square and opaque, at no offset")
-        void theFreshGob() {
+        void startsAHundredSquareAndOpaque() {
             assertThat(answerTo("gob? make gob! []")).isEqualTo(TRUE);
             assertThat(answerTo("g: make gob! [] g/offset")).isEqualTo("0x0");
             assertThat(answerTo("g: make gob! [] g/size")).isEqualTo("100x100");
@@ -36,7 +36,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("a block of set-words fills the fields")
-        void aBlockOfFields() {
+        void fillsTheFieldsFromABlock() {
             assertThat(answerTo("g: make gob! [offset: 10x20 size: 30x40] g/offset"))
                     .isEqualTo("10x20");
             assertThat(answerTo("g: make gob! [offset: 10x20 size: 30x40] g/size"))
@@ -45,15 +45,15 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("a pair on its own is a size")
-        void aPairIsASize() {
+        void takesAPairAsASize() {
             assertThat(answerTo("g: make gob! 1x1 g/size")).isEqualTo("1x1");
             assertThat(answerTo("g: make gob! 1x1 g/offset")).isEqualTo("0x0");
         }
 
         @Test
         @DisplayName("and anything that is not a set-word is refused")
-        void aBadBlockIsRefused() {
-            assertThat(errorIdFrom("make gob! [color 127.0.127]")).isEqualTo("expect-val");
+        void refusesAnythingButASetWord() {
+            assertThat(readTheErrorIdFrom("make gob! [color 127.0.127]")).isEqualTo("expect-val");
             assertThat(answerTo(
                     "e: try [make gob! [color 127.0.127]] e/arg1 = set-word!"))
                     .isEqualTo(TRUE);
@@ -61,30 +61,30 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("and a set-word with nothing usable after it needs a value")
-        void aSetWordNeedsAValue() {
-            assertThat(errorIdFrom("make gob! [data:]")).isEqualTo("need-value");
-            assertThat(errorIdFrom("make gob! [data: size: 10x10]"))
+        void needsAValueAfterASetWord() {
+            assertThat(readTheErrorIdFrom("make gob! [data:]")).isEqualTo("need-value");
+            assertThat(readTheErrorIdFrom("make gob! [data: size: 10x10]"))
                     .isEqualTo("need-value");
         }
 
         @Test
         @DisplayName("a field it does not know is a bad field set")
-        void anUnknownFieldIsRefused() {
-            assertThat(errorIdFrom("make gob! [nonsense: 1]")).isEqualTo("bad-field-set");
-            assertThat(errorIdFrom("make gob! [offset: \"here\"]"))
+        void refusesAnUnknownField() {
+            assertThat(readTheErrorIdFrom("make gob! [nonsense: 1]")).isEqualTo("bad-field-set");
+            assertThat(readTheErrorIdFrom("make gob! [offset: \"here\"]"))
                     .isEqualTo("bad-field-set");
         }
 
         @Test
         @DisplayName("and nothing else makes a gob at all")
-        void anythingElseIsRefused() {
-            assertThat(errorIdFrom("make gob! \"10x20\"")).isEqualTo("bad-make-arg");
-            assertThat(errorIdFrom("make gob! 5")).isEqualTo("bad-make-arg");
+        void refusesAnythingElse() {
+            assertThat(readTheErrorIdFrom("make gob! \"10x20\"")).isEqualTo("bad-make-arg");
+            assertThat(readTheErrorIdFrom("make gob! 5")).isEqualTo("bad-make-arg");
         }
 
         @Test
         @DisplayName("and a gob is cloned without its pane or its parent")
-        void aGobIsCloned() {
+        void clonesAGobWithoutItsPaneOrParent() {
             assertThat(answerTo(
                     "a: make gob! [offset: 5x5] append a make gob! [] "
                     + "b: make gob! a reduce [b/offset length? b]"))
@@ -98,7 +98,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("alpha is a byte, clipped on the way in")
-        void alphaIsClipped() {
+        void clipAlpha() {
             assertThat(answerTo("g: make gob! [alpha: 128] g/alpha")).isEqualTo("128");
             assertThat(answerTo("g: make gob! [alpha: 300] g/alpha")).isEqualTo("255");
             assertThat(answerTo("g: make gob! [alpha: -1] g/alpha")).isEqualTo("0");
@@ -106,7 +106,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("the offset and size keep fractions, and one number sets both halves")
-        void theShapeIsFloating() {
+        void keepFractionsInOffsetAndSize() {
             assertThat(answerTo("g: make gob! [offset: 1.5x2.5] g/offset"))
                     .isEqualTo("1.5x2.5");
             assertThat(answerTo("g: make gob! [size: 7] g/size")).isEqualTo("7x7");
@@ -115,7 +115,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("content is one thing at a time: an image takes the place of a draw block")
-        void contentIsAUnion() {
+        void holdOneContentAtATime() {
             assertThat(answerTo(
                     "g: make gob! [draw: [1 2]] g/image: make image! 1x1 none? g/draw"))
                     .isEqualTo(TRUE);
@@ -126,7 +126,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("and a field the gob has not got answers none rather than raising")
-        void anAbsentContentFieldIsNone() {
+        void answerNoneForAnAbsentField() {
             assertThat(answerTo("g: make gob! [] none? g/image")).isEqualTo(TRUE);
             assertThat(answerTo("g: make gob! [] none? g/text")).isEqualTo(TRUE);
             assertThat(answerTo("g: make gob! [] none? g/color")).isEqualTo(TRUE);
@@ -143,14 +143,14 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("an image sets the gob's size to the image's")
-        void anImageSetsTheSize() {
+        void sizeTheGobToAnImage() {
             assertThat(answerTo("g: make gob! [] g/image: make image! 20x10 g/size"))
                     .isEqualTo("20x10");
         }
 
         @Test
         @DisplayName("a colour is kept as a pixel and read back with its alpha")
-        void aColourRoundTrips() {
+        void roundTripAColour() {
             assertThat(answerTo("g: make gob! [color: 255.128.0] g/color"))
                     .isEqualTo("255.128.0.255");
             assertThat(answerTo("g: make gob! [color: 1.2.3.4] g/color"))
@@ -159,7 +159,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("and none takes the content away again")
-        void noneEmptiesTheContent() {
+        void emptyTheContentForNone() {
             assertThat(answerTo(
                     "g: make gob! [] g/color: 255.0.0 g/color: none none? g/color"))
                     .isEqualTo(TRUE);
@@ -167,11 +167,11 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("data holds one of five kinds of thing, and refuses the rest")
-        void dataIsWhateverYouLike() {
+        void holdFiveKindsOfData() {
             assertThat(answerTo("g: make gob! [data: [1 2 3]] mold g/data"))
                     .isEqualTo("\"[1 2 3]\"");
             assertThat(answerTo("g: make gob! [data: 42] g/data")).isEqualTo("42");
-            assertThat(errorIdFrom("make gob! [data: 1x1]")).isEqualTo("bad-field-set");
+            assertThat(readTheErrorIdFrom("make gob! [data: 1x1]")).isEqualTo("bad-field-set");
         }
 
         @Test
@@ -182,15 +182,15 @@ class GobFromTheSourceTest {
             assertThat(answerTo(
                     "g: make gob! [effect: [1 2]] g/draw: [3 4] none? g/effect"))
                     .isEqualTo(TRUE);
-            assertThat(errorIdFrom("make gob! [effect: \"nope\"]"))
+            assertThat(readTheErrorIdFrom("make gob! [effect: \"nope\"]"))
                     .isEqualTo("bad-field-set");
-            assertThat(errorIdFrom("make gob! [draw: \"nope\"]"))
+            assertThat(readTheErrorIdFrom("make gob! [draw: \"nope\"]"))
                     .isEqualTo("bad-field-set");
         }
 
         @Test
         @DisplayName("data takes an object, a string and a binary too")
-        void dataTakesFiveKinds() {
+        void takeAnObjectAStringAndABinaryAsData() {
             assertThat(answerTo("g: make gob! [] g/data: make object! [a: 1] g/data/a"))
                     .isEqualTo("1");
             assertThat(answerTo("g: make gob! [data: \"hi\"] g/data"))
@@ -201,7 +201,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("data does not join the content union")
-        void dataStandsApart() {
+        void keepDataOutOfTheContentUnion() {
             assertThat(answerTo(
                     "g: make gob! [draw: [1 2] data: [3 4]] mold reduce [g/draw g/data]"))
                     .isEqualTo("\"[[1 2] [3 4]]\"");
@@ -209,7 +209,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("parent is none until the gob is in someone's pane")
-        void parentFollowsThePane() {
+        void setTheParentFromThePane() {
             assertThat(answerTo("g: make gob! [] none? g/parent")).isEqualTo(TRUE);
             assertThat(answerTo(
                     "p: make gob! [] c: make gob! [] append p c same? p c/parent"))
@@ -217,9 +217,9 @@ class GobFromTheSourceTest {
             assertThat(answerTo(
                     "p: make gob! [] append p make gob! [] c: make gob! [] "
                     + "change p c same? p c/parent")).isEqualTo(TRUE);
-            assertThat(errorIdFrom("change make gob! [] make gob! []"))
+            assertThat(readTheErrorIdFrom("change make gob! [] make gob! []"))
                     .isEqualTo("past-end");
-            assertThat(errorIdFrom("g: make gob! [] g/parent: make gob! []"))
+            assertThat(readTheErrorIdFrom("g: make gob! [] g/parent: make gob! []"))
                     .isEqualTo("bad-path-set");
         }
 
@@ -236,7 +236,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("a single flag word adds to what is there, and an unknown one is ignored")
-        void oneFlagWordAtATime() {
+        void addOneFlagWordAtATime() {
             assertThat(answerTo(
                     "g: make gob! [] g/flags: 'resize g/flags: 'popup mold g/flags"))
                     .isEqualTo("\"[resize popup]\"");
@@ -256,16 +256,16 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("owner can be written and cannot be read")
-        void ownerIsWriteOnly() {
-            assertThat(errorIdFrom("g: make gob! [] g/owner: make gob! []"))
+        void keepOwnerWriteOnly() {
+            assertThat(readTheErrorIdFrom("g: make gob! [] g/owner: make gob! []"))
                     .isEqualTo("no-error");
-            assertThat(errorIdFrom("make gob! [owner: 1]")).isEqualTo("bad-field-set");
-            assertThat(errorIdFrom("g: make gob! [] g/owner")).isEqualTo("invalid-path");
+            assertThat(readTheErrorIdFrom("make gob! [owner: 1]")).isEqualTo("bad-field-set");
+            assertThat(readTheErrorIdFrom("g: make gob! [] g/owner")).isEqualTo("invalid-path");
         }
 
         @Test
         @DisplayName("and a half of a pair field can be written through the path")
-        void oneHalfOfAPairField() {
+        void writeHalfOfAPairThroughAPath() {
             assertThat(answerTo("g: make gob! [size: 10x20] g/size/x: 5 g/size"))
                     .isEqualTo("5x20");
             assertThat(answerTo("g: make gob! [offset: 1x2] g/offset/y: 9 g/offset"))
@@ -279,7 +279,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("length counts children, and an empty gob has none")
-        void lengthCountsChildren() {
+        void countsChildrenForLength() {
             assertThat(answerTo("length? make gob! []")).isEqualTo("0");
             assertThat(answerTo(
                     "g: make gob! [] append g make gob! [] length? g")).isEqualTo("1");
@@ -287,7 +287,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("append and insert put children in, and append answers the gob")
-        void childrenGoIn() {
+        void takesChildrenThroughAppendAndInsert() {
             assertThat(answerTo(
                     "g: make gob! [] a: make gob! 1x1 b: make gob! 2x2 "
                     + "append g a append g b c: pick g 2 c/size"))
@@ -306,7 +306,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("a pane given as a block puts them all in")
-        void aPaneFromABlock() {
+        void takesAllOfABlock() {
             assertThat(answerTo(
                     "g: make gob! reduce [to set-word! 'pane "
                     + "reduce [make gob! [] make gob! []]] length? g")).isEqualTo("2");
@@ -315,7 +315,7 @@ class GobFromTheSourceTest {
                     .isEqualTo("0");
             assertThat(answerTo(
                     "g: make gob! [] g/pane: make gob! [] length? g")).isEqualTo("1");
-            assertThat(errorIdFrom("make gob! [pane: 1]")).isEqualTo("bad-field-set");
+            assertThat(readTheErrorIdFrom("make gob! [pane: 1]")).isEqualTo("bad-field-set");
         }
 
         @Test
@@ -324,8 +324,8 @@ class GobFromTheSourceTest {
             assertThat(answerTo(
                     "g: make gob! [] append g reduce [make gob! [] make gob! []] "
                     + "length? g")).isEqualTo("2");
-            assertThat(errorIdFrom("append make gob! [] 1")).isEqualTo("expect-val");
-            assertThat(errorIdFrom("insert make gob! [] \"child\""))
+            assertThat(readTheErrorIdFrom("append make gob! [] 1")).isEqualTo("expect-val");
+            assertThat(readTheErrorIdFrom("insert make gob! [] \"child\""))
                     .isEqualTo("expect-val");
         }
 
@@ -344,9 +344,9 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("and a field name is the wrong argument for PICK, not a field read")
-        void pickWillNotReadAField() {
-            assertThat(errorIdFrom("pick make gob! [] 'offset")).isEqualTo("invalid-arg");
-            assertThat(errorIdFrom("poke make gob! [] 'offset 1x1"))
+        void refusesAFieldNameToPick() {
+            assertThat(readTheErrorIdFrom("pick make gob! [] 'offset")).isEqualTo("invalid-arg");
+            assertThat(readTheErrorIdFrom("poke make gob! [] 'offset 1x1"))
                     .isEqualTo("invalid-arg");
         }
 
@@ -378,16 +378,16 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("and an arm the gob has not got is an operation it cannot do")
-        void anArmItHasNotGot() {
-            assertThat(errorIdFrom("swap make gob! [] make gob! []"))
+        void refusesAnArmItHasNotGot() {
+            assertThat(readTheErrorIdFrom("swap make gob! [] make gob! []"))
                     .isEqualTo("cannot-use");
-            assertThat(errorIdFrom("copy make gob! []")).isEqualTo("expect-arg");
-            assertThat(errorIdFrom("sort make gob! []")).isEqualTo("expect-arg");
+            assertThat(readTheErrorIdFrom("copy make gob! []")).isEqualTo("expect-arg");
+            assertThat(readTheErrorIdFrom("sort make gob! []")).isEqualTo("expect-arg");
         }
 
         @Test
         @DisplayName("REMOVE and CLEAR take children out")
-        void childrenComeOut() {
+        void givesUpChildrenToRemoveAndClear() {
             assertThat(answerTo(
                     "g: make gob! [] append g make gob! [] append g make gob! [] "
                     + "remove g length? g")).isEqualTo("1");
@@ -446,7 +446,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("and the gob navigates its own pane")
-        void itNavigatesThePane() {
+        void isNavigatedByTheGob() {
             assertThat(answerTo(
                     "g: make gob! [] loop 2 [append g make gob! []] index? g"))
                     .isEqualTo("1");
@@ -485,7 +485,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("a child knows its parent, and moving it moves the knowledge")
-        void aChildHasOneParent() {
+        void givesAChildOneParent() {
             assertThat(answerTo(
                     "one: make gob! [] two: make gob! [] c: make gob! [] "
                     + "append one c append two c same? two c/parent"))
@@ -503,7 +503,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("a gob molds as the spec block that would remake it")
-        void itMoldsAsASpec() {
+        void moldsAsASpec() {
             assertThat(answerTo("mold make gob! []"))
                     .isEqualTo("\"make gob! [offset: 0x0 size: 100x100]\"");
             assertThat(answerTo("mold/flat make gob! 2x2"))
@@ -514,7 +514,7 @@ class GobFromTheSourceTest {
 
         @Test
         @DisplayName("and the alpha it molds is the opposite of the alpha it holds")
-        void theMoldedAlphaIsInverted() {
+        void invertsTheMoldedAlpha() {
             assertThat(answerTo("mold/flat make gob! [alpha: 200]"))
                     .isEqualTo("\"make gob! [offset: 0x0 size: 100x100 alpha: 55]\"");
             assertThat(answerTo("mold/flat make gob! [alpha: 255]"))

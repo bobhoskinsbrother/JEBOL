@@ -16,9 +16,9 @@ public class CopyAction extends DefaultNative implements ActionValue {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value", whatCanBeCopied()),
-                Parameter.belongingTo("part", "limit", Set.of()),
-                Parameter.belongingTo("types", "kinds",
+        return List.of(Parameter.of("value", listWhatCanBeCopied()),
+                Parameter.belongTo("part", "limit", Set.of()),
+                Parameter.belongTo("types", "kinds",
                         Set.of(TypesetValue.TYPE, Datatype.TYPE)));
     }
 
@@ -30,11 +30,11 @@ public class CopyAction extends DefaultNative implements ActionValue {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator
-                .theRebolActorsAnswer(nativeName(), List.of(arguments.getFirst()), refinements)
-                .orElseGet(() -> copied(arguments, refinements));
+                .askTheRebolActor(nativeName(), List.of(arguments.getFirst()), refinements)
+                .orElseGet(() -> copy(arguments, refinements));
     }
 
-    private Set<Datatype> whatCanBeCopied() {
+    private Set<Datatype> listWhatCanBeCopied() {
         Set<Datatype> accepted = new LinkedHashSet<>(TypesetValue.SERIES.members());
         accepted.addAll(TypesetValue.ANY_FUNCTION.members());
         accepted.addAll(Set.of(ActionValue.TYPE, ClosureValue.TYPE, CommandValue.TYPE,
@@ -43,10 +43,10 @@ public class CopyAction extends DefaultNative implements ActionValue {
         return accepted;
     }
 
-    private Value copied(List<Value> arguments, Set<String> refinements) {
+    private Value copy(List<Value> arguments, Set<String> refinements) {
         Value original = arguments.getFirst();
         boolean deeply = refinements.contains("deep");
-        Set<Datatype> kinds = whichDatatypesToCopy(arguments, refinements);
+        Set<Datatype> kinds = chooseWhichDatatypesToCopy(arguments, refinements);
         if (original instanceof StructValue struct) {
             if (!refinements.isEmpty()) {
                 throw Raised.of(EvaluationFailure.BAD_REFINES,
@@ -55,7 +55,7 @@ public class CopyAction extends DefaultNative implements ActionValue {
             return struct.separateCopy();
         }
         if (!refinements.contains("part")) {
-            return original.copied(deeply, kinds);
+            return original.copy(deeply, kinds);
         }
         if (hasNoOrderToTakeTheFirstSoManyOf(original)) {
             throw Raised.of(EvaluationFailure.BAD_REFINES,
@@ -65,28 +65,28 @@ public class CopyAction extends DefaultNative implements ActionValue {
         if (!(original instanceof RebolSeries series)) {
             return refuseTheDatatype(original);
         }
-        Value limit = argumentOf("part", 0, arguments, refinements).orElseThrow();
+        Value limit = readTheArgumentOf("part", 0, arguments, refinements).orElseThrow();
         if (series instanceof ImageValue picture && limit instanceof PairValue(double x, double y)) {
-            return picture.rectangleCopied((int) x, (int) y);
+            return picture.copyARectangle((int) x, (int) y);
         }
-        return theFrontCopied(series, limit, deeply, kinds);
+        return copyTheFront(series, limit, deeply, kinds);
     }
 
-    private Value theFrontCopied(
+    private Value copyTheFront(
             RebolSeries series, Value limit, boolean deeply, Set<Datatype> kinds) {
         long wanted = series.countUpTo(limit);
-        RebolSeries from = limit instanceof RebolSeries upTo ? series.earlierOf(upTo) : series;
+        RebolSeries from = limit instanceof RebolSeries upTo ? series.pickTheEarlierOf(upTo) : series;
         if (wanted < 0) {
             int reaching = (int) Math.min(-wanted, from.index() - 1);
             from = from.atIndex(from.index() - reaching);
             wanted = reaching;
         }
         int taking = (int) Math.max(0, Math.min(wanted, from.lengthFromHere()));
-        return from.frontCopied(taking, deeply, kinds);
+        return from.copyTheFront(taking, deeply, kinds);
     }
 
-    private Set<Datatype> whichDatatypesToCopy(List<Value> arguments, Set<String> refinements) {
-        return argumentOf("types", 0, arguments, refinements)
+    private Set<Datatype> chooseWhichDatatypesToCopy(List<Value> arguments, Set<String> refinements) {
+        return readTheArgumentOf("types", 0, arguments, refinements)
                 .<Set<Datatype>>map(kinds -> switch (kinds) {
                     case Datatype one -> Set.of(one);
                     case TypesetValue several -> several.members();

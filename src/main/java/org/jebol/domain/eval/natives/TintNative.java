@@ -19,23 +19,23 @@ public class TintNative extends ColourNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("target", aColourOrAnImage()),
-                Parameter.required("rgb", Set.of(TupleValue.TYPE)),
-                Parameter.required("amount", TypesetValue.NUMBER.members()));
+                Parameter.of("target", acceptAColourOrAnImage()),
+                Parameter.of("rgb", Set.of(TupleValue.TYPE)),
+                Parameter.of("amount", TypesetValue.NUMBER.members()));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            int[] mixture = threeParts((TupleValue) arguments.get(1));
+            int[] mixture = readThreeParts((TupleValue) arguments.get(1));
             double amount = Comparison.asDouble(arguments.get(2));
-            return overEveryColour(arguments.getFirst(),
-                    colour -> recolouredTuple(colour, parts -> tinted(parts, mixture, amount)),
-                    parts -> tinted(parts, mixture, amount));
+            return recolourEveryColour(arguments.getFirst(),
+                    colour -> recolourTheTuple(colour, parts -> tint(parts, mixture, amount)),
+                    parts -> tint(parts, mixture, amount));
         };
     }
 
-    private int[] tinted(int[] target, int[] mixture, double amount) {
+    private int[] tint(int[] target, int[] mixture, double amount) {
         double towards = Math.clamp(amount, 0.0, 1.0);
         double away = 1.0 - towards;
         int[] mixed = new int[3];

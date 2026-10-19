@@ -23,8 +23,8 @@ public class DhNative extends CipherNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("dh-key", Set.of(HandleValue.TYPE)),
-                Parameter.belongingTo("secret", "public-key", Set.of(BinaryValue.TYPE)));
+        return List.of(Parameter.of("dh-key", Set.of(HandleValue.TYPE)),
+                Parameter.belongTo("secret", "public-key", Set.of(BinaryValue.TYPE)));
     }
 
     @Override
@@ -39,7 +39,7 @@ public class DhNative extends CipherNative {
                 throw Raised.of(EvaluationFailure.BAD_REFINES,
                         "dh publishes or agrees, not both");
             }
-            Optional<DiffieHellmanKey> key = keyHeldBy(
+            Optional<DiffieHellmanKey> key = readTheKeyHeldBy(
                     arguments.getFirst(), DHM_HANDLE_TYPE, DiffieHellmanKey.class)
                     .filter(held -> !held.released());
             if (key.isEmpty()) {
@@ -49,15 +49,15 @@ public class DhNative extends CipherNative {
                 return BinaryValue.ofBytes(key.get().publishedPaddedToTheWidthOfThePrime());
             }
             if (refinements.contains("secret")) {
-                return secretAgreedBetween(key.get(),
+                return agreeASecretBetween(key.get(),
                         ((BinaryValue) arguments.get(1)).octetsFromHere());
             }
             return NoneValue.none();
         };
     }
 
-    private Value secretAgreedBetween(DiffieHellmanKey key, byte[] peersValue) {
-        return key.agreedWith(peersValue)
+    private Value agreeASecretBetween(DiffieHellmanKey key, byte[] peersValue) {
+        return key.agreeWith(peersValue)
                 .<Value>map(BinaryValue::ofBytes)
                 .orElseGet(NoneValue::none);
     }

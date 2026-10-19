@@ -40,21 +40,21 @@ public record Colour(int red, int green, int blue, int opacity) {
      * for gamma is asking for the picture to lighten or darken by that curve,
      * and that is what it gets.
      */
-    public Colour underGamma(double gamma) {
+    public Colour correctForGamma(double gamma) {
         return gamma <= 0 || gamma == 1
                 ? this
-                : new Colour(curved(red, gamma), curved(green, gamma),
-                        curved(blue, gamma), opacity);
+                : new Colour(curve(red, gamma), curve(green, gamma),
+                        curve(blue, gamma), opacity);
     }
 
-    private static int curved(int channel, double gamma) {
+    private static int curve(int channel, double gamma) {
         double shareOfFull = channel / 255.0;
         return Math.clamp(
                 (int) Math.round(Math.pow(shareOfFull, 1 / gamma) * 255), 0, 255);
     }
 
     public static Colour ofTuple(TupleValue parts) {
-        return new Colour(parts.octetAt(1), parts.octetAt(2), parts.octetAt(3), opacityOfTuple(parts));
+        return new Colour(parts.readTheOctetAt(1), parts.readTheOctetAt(2), parts.readTheOctetAt(3), readTheOpacityOfTuple(parts));
     }
 
     public Colour solid() {
@@ -69,8 +69,8 @@ public record Colour(int red, int green, int blue, int opacity) {
      * How opaque a colour tuple says it is, out of 255: its fourth octet, and
      * a tuple written with three is opaque.
      */
-    public static int opacityOfTuple(TupleValue parts) {
-        return parts.segments().length >= 4 ? parts.octetAt(4) : WIDEST_OCTET;
+    public static int readTheOpacityOfTuple(TupleValue parts) {
+        return parts.segments().length >= 4 ? parts.readTheOctetAt(4) : WIDEST_OCTET;
     }
 
     /** As {@code #rrggbb}, which is what a browser wants. */

@@ -4,7 +4,7 @@ import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.HostService;
-import org.jebol.domain.render.SurfaceCall;
+import org.jebol.domain.render.DrawingCommand;
 import org.teavm.jso.JSBody;
 import org.teavm.jso.JSExport;
 import org.teavm.jso.core.JSPromise;
@@ -23,38 +23,38 @@ public class TheInterpreterInAWorker {
 
     public static void main(String[] args) {
         ThePageOnTheOtherSide thePage = new ThePageOnTheOtherSide();
-        screen = BrowserScreen.seenBy(thePage);
-        console = new WebConsole(thePage::takeWhatThePagePosted);
-        interpreter = Interpreter.writingTo(
-                TheInterpreterInAWorker::asTheScriptPrints, aWorkerRunsWhereTheScreenIs());
+        screen = BrowserScreen.showTo(thePage);
+        console = new WebConsole(thePage::takeWhatThePagePosts);
+        interpreter = Interpreter.createWithOutput(
+                TheInterpreterInAWorker::asTheScriptPrints, boundAWorkerToTheScreen());
         interpreter.useScreen(screen);
         interpreter.useConsole(console);
-        files = new WebFiles(TheBrowsersStore.forThePage());
+        files = new WebFiles(BrowserStore.openForThePage());
         interpreter.useFileSystem(files);
         interpreter.useHttp(new WebHttp());
         say("booted", "");
         while (true) {
-            String source = aScriptThePageHandsOver().await();
+            String source = awaitAScriptFromThePage().await();
             say("finished", interpreter.display(interpreter.run(source)));
         }
     }
 
-    private static JSPromise<String> aScriptThePageHandsOver() {
+    private static JSPromise<String> awaitAScriptFromThePage() {
         return new JSPromise<>((handedOver, refused) -> theNextScriptToSend = handedOver);
     }
 
-    private static Bounds aWorkerRunsWhereTheScreenIs() {
+    private static Bounds boundAWorkerToTheScreen() {
         return Bounds.standard()
-                .withoutAWallClockLimit()
+                .withoutATimeLimit()
                 .grant(HostService.CONSOLE)
                 .grant(HostService.FILES)
                 .grant(HostService.WINDOWS)
                 .grant(HostService.WEB)
                 .grant(HostService.WORKING_DIRECTORY)
-                .lacking(HostService.NETWORK)
-                .lacking(HostService.PROCESSES)
-                .lacking(HostService.ENVIRONMENT)
-                .lacking(HostService.CERTIFICATES)
+                .markUnavailable(HostService.NETWORK)
+                .markUnavailable(HostService.PROCESSES)
+                .markUnavailable(HostService.ENVIRONMENT)
+                .markUnavailable(HostService.CERTIFICATES)
                 .calls("a browser");
     }
 
@@ -74,11 +74,11 @@ public class TheInterpreterInAWorker {
     }
 
     private static void say(String kind, String text) {
-        sendToThePage("{" + field("kind", kind) + "," + field("text", text) + "}");
+        sendToThePage("{" + field("type", kind) + "," + field("text", text) + "}");
     }
 
     private static String field(String name, String value) {
-        return SurfaceCallsAsJson.asAString(name) + ":" + SurfaceCallsAsJson.asAString(value);
+        return JsonConverter.asString(name) + ":" + JsonConverter.asString(value);
     }
 
     private static final class ThePageOnTheOtherSide implements BrowserScreen.Viewer {
@@ -91,34 +91,34 @@ public class TheInterpreterInAWorker {
         }
 
         @Override
-        public void paint(List<SurfaceCall> painting) {
+        public void paint(List<DrawingCommand> painting) {
             sendToThePage("{"
-                    + field("kind", "paint") + ","
-                    + SurfaceCallsAsJson.asAString("picture") + ":"
-                    + SurfaceCallsAsJson.written(painting,
+                    + field("type", "paint") + ","
+                    + JsonConverter.asString("picture") + ":"
+                    + JsonConverter.write(painting,
                             (int) Math.round(screen.viewport().x()),
                             (int) Math.round(screen.viewport().y()))
                     + "}");
         }
 
         @Override
-        public void takeWhatThePagePosted() {
+        public void takeWhatThePagePosts() {
             for (String posted = takeWhatThePageSent(); posted != null; posted = takeWhatThePageSent()) {
                 thePageHasSpoken = true;
-                WhatThePageSaid said = new WhatThePageSaid(posted);
-                if (said.isAMeasurement()) {
-                    if (said.isAWholeMeasurement()) {
-                        screen.theBrowserMeasures(said.wide(), said.high());
+                PageEvent said = new PageEvent(posted);
+                if (said.isMeasurement()) {
+                    if (said.isWholeMeasurement()) {
+                        screen.measure(said.width(), said.height());
                     }
-                } else if (said.isALine()) {
-                    console.aLineWasTyped(said.theLine());
-                } else if (said.isAFile()) {
-                    said.theFileName().ifPresent(name -> said.theFileText().ifPresent(text ->
+                } else if (said.isLine()) {
+                    console.takeATypedLine(said.readLine());
+                } else if (said.isFile()) {
+                    said.readFileName().ifPresent(name -> said.readFileText().ifPresent(text ->
                             putAFileThePageHandedOver(name, text)));
                 } else {
-                    said.asAnEvent().ifPresent(kind ->
-                            said.carrying(kind).ifPresent(detail ->
-                                    screen.theBrowserReports(kind, detail)));
+                    said.asEvent().ifPresent(kind ->
+                            said.readDetails(kind).ifPresent(detail ->
+                                    screen.report(kind, detail)));
                 }
             }
         }

@@ -24,7 +24,7 @@ class ContinueTest {
 
     @Test
     @DisplayName("REPEAT and FOREACH skip the round they were in")
-    void theCountingLoopsSkipOne() {
+    void skipsOneRoundOfACountingLoop() {
         assertThat(answerTo(
                 "r: copy [] repeat i 3 [if i = 2 [continue] append r i] r = [1 3]"))
                 .isEqualTo("#(true)");
@@ -35,7 +35,7 @@ class ContinueTest {
 
     @Test
     @DisplayName("WHILE re-tests its condition")
-    void theConditionIsAskedAgain() {
+    void asksTheConditionAgain() {
         assertThat(answerTo(
                 "n: 0 r: copy [] while [n < 3] [n: n + 1 continue append r n] "
                         + "all [empty? r n = 3]"))
@@ -52,7 +52,7 @@ class ContinueTest {
 
     @Test
     @DisplayName("a CONTINUE several blocks deep still reaches the loop")
-    void itReachesUpThroughBlocks() {
+    void reachesUpThroughBlocks() {
         assertThat(answerTo(
                 "r: copy [] repeat i 3 [if true [if i = 2 [continue]] append r i] r = [1 3]"))
                 .isEqualTo("#(true)");
@@ -60,13 +60,13 @@ class ContinueTest {
 
     @Test
     @DisplayName("a loop whose last round continued answers none")
-    void theCutShortRoundAnswersNothing() {
+    void answersNothingForTheCutShortRound() {
         assertThat(answerTo("none? loop 2 [continue 5]")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("a loop with no CONTINUE in it is unaffected")
-    void theOrdinaryLoopStillWorks() {
+    void stillLetsTheOrdinaryLoopRun() {
         assertThat(answerTo("r: copy [] repeat i 3 [append r i] r = [1 2 3]"))
                 .isEqualTo("#(true)");
         assertThat(answerTo("(loop 3 [5]) = 5")).isEqualTo("#(true)");

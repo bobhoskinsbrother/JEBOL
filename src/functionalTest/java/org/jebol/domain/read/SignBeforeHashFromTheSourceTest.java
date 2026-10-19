@@ -23,7 +23,7 @@ class SignBeforeHashFromTheSourceTest {
 
         @Test
         @DisplayName("from a character, either sign")
-        void aCharacter() {
+        void partsTheSignFromACharacter() {
             assertThat(answerTo("""
                     [- #"a"] = load {-#"a"}""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -32,21 +32,21 @@ class SignBeforeHashFromTheSourceTest {
 
         @Test
         @DisplayName("from a binary")
-        void aBinary() {
+        void partsTheSignFromABinary() {
             assertThat(answerTo("""
                     [- #{00}] = load {-#{00}}""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("from a construction form")
-        void aConstructionForm() {
+        void partsTheSignFromAConstructionForm() {
             assertThat(answerTo("""
                     [- #(none)] = load {-#(none)}""")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and from an issue")
-        void anIssue() {
+        void partsTheSignFromAnIssue() {
             assertThat(answerTo("""
                     [- #hhh] = load {-#hhh}""")).isEqualTo(TRUE);
         }
@@ -58,7 +58,7 @@ class SignBeforeHashFromTheSourceTest {
 
         @Test
         @DisplayName("a character range written without spaces means what the spaced one means")
-        void aCharsetRange() {
+        void meansWhatTheSpacedRangeMeans() {
             assertThat(answerTo("""
                     (charset [#"a"-#"z"]) = (charset [#"a" - #"z"])"""))
                     .isEqualTo(TRUE);
@@ -68,7 +68,7 @@ class SignBeforeHashFromTheSourceTest {
 
         @Test
         @DisplayName("and the range really holds the characters between its ends")
-        void theRangeWorks() {
+        void holdsTheCharactersBetweenItsEnds() {
             assertThat(answerTo("""
                     find charset [#"a"-#"z"] #"m\"""")).isEqualTo(TRUE);
             assertThat(answerTo("""
@@ -84,7 +84,7 @@ class SignBeforeHashFromTheSourceTest {
 
         @Test
         @DisplayName("a signed number is one value")
-        void aSignedNumber() {
+        void keepsASignedNumberOneValue() {
             assertThat(answerTo("""
                     -1""")).isEqualTo("-1");
             assertThat(answerTo("""
@@ -95,7 +95,7 @@ class SignBeforeHashFromTheSourceTest {
 
         @Test
         @DisplayName("and a sign with a space after it is the word, as it always was")
-        void aSignAlone() {
+        void keepsASignAloneAWord() {
             assertThat(answerTo("""
                     [- #"a"] = load {- #"a"}""")).isEqualTo(TRUE);
             assertThat(answerTo("""

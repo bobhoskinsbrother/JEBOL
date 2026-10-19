@@ -19,7 +19,7 @@ public class EitherNative extends BranchingNative {
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> branchTaken(
+        return (arguments, evaluator, context, refinements) -> takeTheBranch(
                 arguments.get(0).isTruthy() ? arguments.get(1) : arguments.get(2),
                 evaluator, context, refinements);
     }

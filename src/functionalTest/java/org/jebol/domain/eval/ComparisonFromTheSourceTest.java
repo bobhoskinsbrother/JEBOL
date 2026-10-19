@@ -15,7 +15,7 @@ class ComparisonFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -30,7 +30,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("each native passes its own strictness, and half of them negate")
-        void theTenNativesAskSixQuestions() {
+        void mapTenNativesOntoSixQuestions() {
             assertThat(answerTo("equal? 1 1.0")).isEqualTo(TRUE);
             assertThat(answerTo("1 = 1.0")).isEqualTo(TRUE);
             assertThat(answerTo("not-equal? 1 1.0")).isEqualTo(FALSE);
@@ -54,7 +54,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("LESSER? is the greater-or-equal question negated, not a question of its own")
-        void lesserIsGreaterOrEqualNegated() {
+        void treatLesserAsGreaterOrEqualNegated() {
             assertThat(answerTo("lesser? 1 2")).isEqualTo(TRUE);
             assertThat(answerTo("lesser? 1 1")).isEqualTo(FALSE);
             assertThat(answerTo("lesser-or-equal? 1 1")).isEqualTo(TRUE);
@@ -70,7 +70,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("== and SAME? answer false for two datatypes rather than coercing")
-        void strictEqualityRefusesTwoDatatypes() {
+        void failsStrictEqualityForTwoDatatypes() {
             assertThat(answerTo("97 == 97.0")).isEqualTo(FALSE);
             assertThat(answerTo("97 == 9700%")).isEqualTo(FALSE);
             assertThat(answerTo("97 == #\"a\"")).isEqualTo(FALSE);
@@ -98,7 +98,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("an integer meets a decimal, a percent and a money")
-        void integerMeetsEveryNumber() {
+        void letsIntegerMeetEveryNumber() {
             assertThat(answerTo("97 = 97.0")).isEqualTo(TRUE);
             assertThat(answerTo("97 = 9700%")).isEqualTo(TRUE);
             assertThat(answerTo("1 = $1")).isEqualTo(TRUE);
@@ -110,7 +110,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("an integer meets a character, comparing against its code point")
-        void integerMeetsACharacter() {
+        void letsIntegerMeetACharacter() {
             assertThat(answerTo("97 = #\"a\"")).isEqualTo(TRUE);
             assertThat(answerTo("97 < #\"b\"")).isEqualTo(TRUE);
             assertThat(answerTo("98 > #\"a\"")).isEqualTo(TRUE);
@@ -120,7 +120,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("an integer meets a time, both becoming seconds")
-        void integerMeetsATime() {
+        void letsIntegerMeetATime() {
             assertThat(answerTo("97 = 0:01:37")).isEqualTo(TRUE);
             assertThat(answerTo("97 < 0:01:38")).isEqualTo(TRUE);
             assertThat(answerTo("98 > 0:01:37")).isEqualTo(TRUE);
@@ -128,7 +128,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("an integer meets nothing else, so the case label ends there")
-        void integerRefusesEverythingElse() {
+        void keepsIntegerFromEverythingElse() {
             assertThat(answerTo("90 = \"a\"")).isEqualTo(FALSE);
             assertThat(answerTo("90 = 1x1")).isEqualTo(FALSE);
             assertThat(answerTo("90 = 'a")).isEqualTo(FALSE);
@@ -137,7 +137,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("a decimal meets an integer, a money and a percent")
-        void decimalMeetsEveryNumber() {
+        void letsDecimalMeetEveryNumber() {
             assertThat(answerTo("97.0 = 97")).isEqualTo(TRUE);
             assertThat(answerTo("97.0 = 9700%")).isEqualTo(TRUE);
             assertThat(answerTo("1.0 = $1")).isEqualTo(TRUE);
@@ -148,7 +148,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("a decimal meets a time, the time becoming seconds")
-        void decimalMeetsATime() {
+        void letsDecimalMeetATime() {
             assertThat(answerTo("97.0 = 0:01:37")).isEqualTo(TRUE);
             assertThat(answerTo("97.0 < 0:01:38")).isEqualTo(TRUE);
             assertThat(answerTo("98.0 > 0:01:37")).isEqualTo(TRUE);
@@ -156,7 +156,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("a percent shares the decimal's case label, so it meets the same set")
-        void percentTakesTheDecimalCaseLabel() {
+        void givesPercentTheDecimalCaseLabel() {
             assertThat(answerTo("9700% = 97")).isEqualTo(TRUE);
             assertThat(answerTo("9700% = 97.0")).isEqualTo(TRUE);
             assertThat(answerTo("100% = $1")).isEqualTo(TRUE);
@@ -166,14 +166,14 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("a decimal does not meet a character, because the label omits it")
-        void decimalRefusesACharacter() {
+        void keepsDecimalFromACharacter() {
             assertThat(answerTo("97.0 = #\"a\"")).isEqualTo(FALSE);
-            assertThat(errorIdOf("97.0 < #\"a\"")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("97.0 < #\"a\"")).isEqualTo(INVALID_COMPARE);
         }
 
         @Test
         @DisplayName("a money meets an integer, a decimal and a percent")
-        void moneyMeetsTheOtherNumbers() {
+        void letsMoneyMeetTheOtherNumbers() {
             assertThat(answerTo("$1 = 1")).isEqualTo(TRUE);
             assertThat(answerTo("$1 = 1.0")).isEqualTo(TRUE);
             assertThat(answerTo("$1 = 100%")).isEqualTo(TRUE);
@@ -183,16 +183,16 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("a money does not meet a time, in either direction")
-        void moneyRefusesATime() {
+        void keepsMoneyFromATime() {
             assertThat(answerTo("equal? 0:0:1 $1")).isEqualTo(FALSE);
             assertThat(answerTo("equal? $1 0:0:1")).isEqualTo(FALSE);
-            assertThat(errorIdOf("$1 < 0:0:2")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("0:0:1 < $2")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("$1 < 0:0:2")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("0:0:1 < $2")).isEqualTo(INVALID_COMPARE);
         }
 
         @Test
         @DisplayName("any word meets any other word")
-        void wordsMeetEachOther() {
+        void letsWordsMeetEachOther() {
             assertThat(answerTo("equal? [a] [a:]")).isEqualTo(TRUE);
             assertThat(answerTo("equal? [a] [:a]")).isEqualTo(TRUE);
             assertThat(answerTo("equal? [a] ['a]")).isEqualTo(TRUE);
@@ -212,7 +212,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("a character meets an integer and no other number")
-        void characterMeetsAnIntegerOnly() {
+        void letsCharacterMeetOnlyAnInteger() {
             assertThat(answerTo("#\"a\" = 97")).isEqualTo(TRUE);
             assertThat(answerTo("#\"a\" = 97.0")).isEqualTo(FALSE);
             assertThat(answerTo("#\"a\" = $97")).isEqualTo(FALSE);
@@ -225,7 +225,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("a time meets the three non-money numbers")
-        void timeMeetsTheNonMoneyNumbers() {
+        void letsTimeMeetTheNonMoneyNumbers() {
             assertThat(answerTo("0:0:1 = 1")).isEqualTo(TRUE);
             assertThat(answerTo("0:0:1 = 1.0")).isEqualTo(TRUE);
             assertThat(answerTo("0:0:1 = 100%")).isEqualTo(TRUE);
@@ -241,8 +241,8 @@ class ComparisonFromTheSourceTest {
             assertThat(answerTo("equiv? 1x1 1")).isEqualTo(FALSE);
             assertThat(answerTo("[1] = 1")).isEqualTo(FALSE);
             assertThat(answerTo("\"a\" = #\"a\"")).isEqualTo(FALSE);
-            assertThat(errorIdOf("1x1 = 1")).isEqualTo(NO_ERROR);
-            assertThat(errorIdOf("\"a\" <> #\"a\"")).isEqualTo(NO_ERROR);
+            assertThat(readTheErrorIdOf("1x1 = 1")).isEqualTo(NO_ERROR);
+            assertThat(readTheErrorIdOf("\"a\" <> #\"a\"")).isEqualTo(NO_ERROR);
         }
     }
 
@@ -252,46 +252,46 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("ordering two datatypes that do not coerce raises invalid-compare")
-        void orderingUncoercibleTypesRaises() {
-            assertThat(errorIdOf("#\"a\" < 98.0")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("#\"a\" < $98")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("#\"a\" < 98%")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("#\"a\" < \"a\"")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("#\"a\" < 1x1")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("90 < \"a\"")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("90 < 1x1")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("90.0 < \"a\"")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("90.0 < 1x1")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("0:0:0 < \"a\"")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("0:0:0 < 1x1")).isEqualTo(INVALID_COMPARE);
+        void raisesOrderingUncoercibleTypes() {
+            assertThat(readTheErrorIdOf("#\"a\" < 98.0")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("#\"a\" < $98")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("#\"a\" < 98%")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("#\"a\" < \"a\"")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("#\"a\" < 1x1")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("90 < \"a\"")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("90 < 1x1")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("90.0 < \"a\"")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("90.0 < 1x1")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("0:0:0 < \"a\"")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("0:0:0 < 1x1")).isEqualTo(INVALID_COMPARE);
         }
 
         @Test
         @DisplayName("all four ordering natives raise, because all four ask the same two questions")
-        void everyOrderingSpellingRaises() {
-            assertThat(errorIdOf("90 < 1x1")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("90 <= 1x1")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("90 > 1x1")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("90 >= 1x1")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("lesser? 90 1x1")).isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("greater? 90 1x1")).isEqualTo(INVALID_COMPARE);
+        void raisesForEveryOrderingSpelling() {
+            assertThat(readTheErrorIdOf("90 < 1x1")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("90 <= 1x1")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("90 > 1x1")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("90 >= 1x1")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("lesser? 90 1x1")).isEqualTo(INVALID_COMPARE);
+            assertThat(readTheErrorIdOf("greater? 90 1x1")).isEqualTo(INVALID_COMPARE);
         }
 
         @Test
         @DisplayName("the same pairings under the four sameness natives answer instead")
-        void everyPairingUnderEqualAnswers() {
-            assertThat(errorIdOf("90 = 1x1")).isEqualTo(NO_ERROR);
-            assertThat(errorIdOf("equiv? 90 1x1")).isEqualTo(NO_ERROR);
-            assertThat(errorIdOf("90 == 1x1")).isEqualTo(NO_ERROR);
-            assertThat(errorIdOf("same? 90 1x1")).isEqualTo(NO_ERROR);
+        void answersEveryPairingUnderEqual() {
+            assertThat(readTheErrorIdOf("90 = 1x1")).isEqualTo(NO_ERROR);
+            assertThat(readTheErrorIdOf("equiv? 90 1x1")).isEqualTo(NO_ERROR);
+            assertThat(readTheErrorIdOf("90 == 1x1")).isEqualTo(NO_ERROR);
+            assertThat(readTheErrorIdOf("same? 90 1x1")).isEqualTo(NO_ERROR);
         }
 
         @Test
         @DisplayName("ordering two objects raises, because CT_Object refuses below mode nought")
-        void orderingTwoObjectsRaises() {
-            assertThat(errorIdOf("(construct [c: 1]) < construct [c: 2]"))
+        void raisesOrderingTwoObjects() {
+            assertThat(readTheErrorIdOf("(construct [c: 1]) < construct [c: 2]"))
                     .isEqualTo(INVALID_COMPARE);
-            assertThat(errorIdOf("(construct [c: 1]) > construct [c: 2]"))
+            assertThat(readTheErrorIdOf("(construct [c: 1]) > construct [c: 2]"))
                     .isEqualTo(INVALID_COMPARE);
         }
     }
@@ -327,7 +327,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("EQUAL? allows twenty-one steps of the representation and no more")
-        void theAllowanceIsTwentyOneSteps() {
+        void allowTwentyOneSteps() {
             assertThat(answerTo("1.0 = 1.0")).isEqualTo(TRUE);
             assertThat(answerTo("1.0 = 1.0000000000000002")).isEqualTo(TRUE);
             assertThat(answerTo("1.0 = 1.0000000000000044")).isEqualTo(TRUE);
@@ -337,7 +337,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("the assertion Rebol's own comment cites beside the twenty-one")
-        void theCitedAssertionHolds() {
+        void holdTheCitedAssertion() {
             assertThat(answerTo("100% %% 3% = 1%")).isEqualTo(TRUE);
         }
 
@@ -351,7 +351,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("== and SAME? compare the bits")
-        void strictEqualityComparesTheBits() {
+        void compareTheBitsForStrictEquality() {
             assertThat(answerTo("0.5 == 0.5")).isEqualTo(TRUE);
             assertThat(answerTo("0.5 == 0.5000000000000001")).isEqualTo(FALSE);
             assertThat(answerTo("same? 0.3 (0.1 + 0.1 + 0.1)")).isEqualTo(FALSE);
@@ -360,7 +360,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("the four sameness strictnesses give four different answers about NaN")
-        void notANumberUnderEachStrictness() {
+        void handleNotANumberUnderEachStrictness() {
             assertThat(answerTo("1.#NaN = 1.#NaN")).isEqualTo(TRUE);
             assertThat(answerTo("equiv? 1.#NaN 1.#NaN")).isEqualTo(FALSE);
             assertThat(answerTo("1.#NaN == 1.#NaN")).isEqualTo(FALSE);
@@ -384,7 +384,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("case folds below mode two and counts at or above it")
-        void charactersFoldCaseForSamenessOnly() {
+        void foldCaseForSamenessOnly() {
             assertThat(answerTo("#\"a\" = #\"A\"")).isEqualTo(TRUE);
             assertThat(answerTo("equiv? #\"a\" #\"A\"")).isEqualTo(TRUE);
             assertThat(answerTo("#\"a\" == #\"A\"")).isEqualTo(FALSE);
@@ -394,7 +394,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("ordering reads the code point and folds nothing")
-        void charactersOrderByCodePoint() {
+        void orderByCodePoint() {
             assertThat(answerTo("#\"a\" < #\"b\"")).isEqualTo(TRUE);
             assertThat(answerTo("#\"b\" > #\"a\"")).isEqualTo(TRUE);
             assertThat(answerTo("#\"a\" < #\"B\"")).isEqualTo(FALSE);
@@ -402,7 +402,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("a character against an integer takes the character's path, folding both")
-        void aCharacterAgainstAnIntegerFoldsBoth() {
+        void foldBothAgainstAnInteger() {
             assertThat(answerTo("#\"a\" = 97")).isEqualTo(TRUE);
             assertThat(answerTo("#\"a\" > 96")).isEqualTo(TRUE);
             assertThat(answerTo("#\"a\" < 98")).isEqualTo(TRUE);
@@ -417,7 +417,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("two objects holding the same number are equal across its datatypes")
-        void objectFieldsCompareAsNumbers() {
+        void compareTheirFieldsAsNumbers() {
             assertThat(answerTo("equal? construct [c: 1] construct [c: 1]")).isEqualTo(TRUE);
             assertThat(answerTo("equal? construct [c: 1] construct [c: 1.0]")).isEqualTo(TRUE);
             assertThat(answerTo("equal? construct [c: 1] construct [c: $1]")).isEqualTo(TRUE);
@@ -449,7 +449,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("SAME? asks whether the two are one object, not whether they match")
-        void sameAsksAboutOneObject() {
+        void askSameAboutOneObject() {
             assertThat(answerTo("same? construct [c: 1] construct [c: 1]")).isEqualTo(FALSE);
             assertThat(answerTo("o: construct [c: 1] same? o o")).isEqualTo(TRUE);
         }
@@ -461,7 +461,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("a number in a block coerces across its datatypes")
-        void numbersInABlockCoerce() {
+        void coercesNumbers() {
             assertThat(answerTo("equal? [1] [1.0]")).isEqualTo(TRUE);
             assertThat(answerTo("equal? [1] [100%]")).isEqualTo(TRUE);
             assertThat(answerTo("equal? [1] [$1]")).isEqualTo(TRUE);
@@ -486,7 +486,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("the series functions ask Cmp_Value, so they mind the string datatype")
-        void theSeriesFunctionsGetTheStricterAnswer() {
+        void givesTheSeriesFunctionsTheStricterAnswer() {
             assertThat(answerTo("2 == first select [%a [1] \"a\" [2]] \"a\"")).isEqualTo(TRUE);
             assertThat(answerTo("2 == switch \"a\" [%a [1] \"a\" [2]]")).isEqualTo(TRUE);
             assertThat(answerTo("2 == first first find/tail [%a [1] \"a\" [2]] \"a\""))
@@ -496,7 +496,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("and stops coercing when asked to mind the case")
-        void strictComparisonInABlockMindsTheDatatype() {
+        void mindsTheDatatypeForStrictComparison() {
             assertThat(answerTo("strict-equal? [1] [1.0]")).isEqualTo(FALSE);
             assertThat(answerTo("strict-equal? [1] [$1]")).isEqualTo(FALSE);
             assertThat(answerTo("strict-equal? [1] [1]")).isEqualTo(TRUE);
@@ -516,7 +516,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("EQUAL? allows ten steps inside a block, not the twenty-one")
-        void equalIsTighterInsideABlock() {
+        void tightensForEqual() {
             assertThat(answerTo("[" + ONE + "] = [" + ONE + "]")).isEqualTo(TRUE);
             assertThat(answerTo("[" + ONE + "] = [" + ONE_NINE_STEPS_ON + "]"))
                     .isEqualTo(TRUE);
@@ -530,7 +530,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("and == allows ten steps inside one, not the none it allows outside")
-        void strictEqualIsLooserInsideABlock() {
+        void loosensForStrictEqual() {
             assertThat(answerTo("[" + ONE + "] == [" + ONE_TEN_STEPS_ON + "]"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("[" + ONE + "] == [" + ONE_ELEVEN_STEPS_ON + "]"))
@@ -544,7 +544,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("while the same three comparisons outside a block are unchanged")
-        void theTopLevelAllowancesStand() {
+        void leavesTheTopLevelAllowancesStanding() {
             assertThat(answerTo(ONE + " = " + ONE_TWENTY_ONE_STEPS_ON)).isEqualTo(TRUE);
             assertThat(answerTo(ONE + " = 1.0000000000000049")).isEqualTo(FALSE);
             assertThat(answerTo(ONE + " == 1.0000000000000002")).isEqualTo(FALSE);
@@ -553,7 +553,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("the ten steps follow the size of the number, sign and all")
-        void theStepsFollowTheNumber() {
+        void followsTheNumberInSteps() {
             assertThat(answerTo("[-1.0] = [-1.0000000000000022]")).isEqualTo(TRUE);
             assertThat(answerTo("[-1.0] = [-1.0000000000000024]")).isEqualTo(FALSE);
             assertThat(answerTo("[-1.0] == [-1.0000000000000022]")).isEqualTo(TRUE);
@@ -567,14 +567,14 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("the two zeroes are one number inside a block and two outside")
-        void theTwoZeroes() {
+        void treatsTheTwoZeroesAlike() {
             assertThat(answerTo("[0.0] == [-0.0]")).isEqualTo(TRUE);
             assertThat(answerTo("0.0 == -0.0")).isEqualTo(FALSE);
         }
 
         @Test
         @DisplayName("a paren, an object field and a map value all reach it")
-        void everyContainerReachesTheSameComparison() {
+        void reachesTheSameComparisonFromEveryContainer() {
             assertThat(answerTo("[[1.0]] == [[" + ONE_TEN_STEPS_ON + "]]")).isEqualTo(TRUE);
             assertThat(answerTo("[[1.0]] == [[" + ONE_ELEVEN_STEPS_ON + "]]"))
                     .isEqualTo(FALSE);
@@ -602,7 +602,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("FIND, SELECT, UNIQUE and SWITCH get the ten steps, not the twenty-one")
-        void theSeriesFunctionsGetTheSameAllowance() {
+        void givesTheSeriesFunctionsTheSameAllowance() {
             assertThat(answerTo("none? find [" + ONE_TEN_STEPS_ON + "] 1.0"))
                     .isEqualTo(FALSE);
             assertThat(answerTo("none? find [" + ONE_ELEVEN_STEPS_ON + "] 1.0"))
@@ -630,7 +630,7 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("two NaNs inside a block are equal however strictly they are asked about")
-        void twoNotANumbersNestedAreAlwaysEqual() {
+        void findsTwoNestedNotANumbersEqual() {
             assertThat(answerTo("[1.#NaN] = [1.#NaN]")).isEqualTo(TRUE);
             assertThat(answerTo("equiv? [1.#NaN] [1.#NaN]")).isEqualTo(TRUE);
             assertThat(answerTo("[1.#NaN] == [1.#NaN]")).isEqualTo(TRUE);
@@ -642,14 +642,14 @@ class ComparisonFromTheSourceTest {
 
         @Test
         @DisplayName("ordering a block orders its items by the same allowance")
-        void orderingInsideABlockUsesTheSameAllowance() {
+        void appliesToOrderingToo() {
             assertThat(answerTo("[" + ONE_TEN_STEPS_ON + "] > [1.0]")).isEqualTo(FALSE);
             assertThat(answerTo("[" + ONE_ELEVEN_STEPS_ON + "] > [1.0]")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and the datatype still counts, ten steps or no")
-        void theDatatypeStillCounts() {
+        void stillCountsTheDatatype() {
             assertThat(answerTo("[1] = [1.0]")).isEqualTo(TRUE);
             assertThat(answerTo("[1] == [1.0]")).isEqualTo(FALSE);
             assertThat(answerTo("[100%] == [" + ONE_TEN_STEPS_ON + "]")).isEqualTo(FALSE);

@@ -60,8 +60,8 @@ final class BrotliCodes {
                 }
                 run.reverseFrom(start);
             }
-            ZERO_RUN_WIDTH[reps] = run.totalWidth();
-            ZERO_RUN_BITS[reps] = run.packed();
+            ZERO_RUN_WIDTH[reps] = run.measureTheTotalWidth();
+            ZERO_RUN_BITS[reps] = run.pack();
         }
         for (int reps = 0; reps < COMMAND_SYMBOLS; reps++) {
             Run run = new Run();
@@ -75,8 +75,8 @@ final class BrotliCodes {
                 remaining--;
             }
             run.reverseFrom(0);
-            OTHER_RUN_WIDTH[reps] = run.totalWidth();
-            OTHER_RUN_BITS[reps] = run.packed();
+            OTHER_RUN_WIDTH[reps] = run.measureTheTotalWidth();
+            OTHER_RUN_BITS[reps] = run.pack();
         }
     }
 
@@ -108,7 +108,7 @@ final class BrotliCodes {
             }
         }
 
-        int totalWidth() {
+        int measureTheTotalWidth() {
             int total = 0;
             for (int each = 0; each < count; each++) {
                 total += FIXED_CODE_LENGTH_DEPTH[symbols[each]] + extraWidth[each];
@@ -116,7 +116,7 @@ final class BrotliCodes {
             return total;
         }
 
-        long packed() {
+        long pack() {
             long value = 0;
             int at = 0;
             for (int each = 0; each < count; each++) {
@@ -197,28 +197,28 @@ final class BrotliCodes {
             7.977280139923096, 7.9829936027526855, 7.98868465423584, 7.994353294372559,
     };
 
-    static double fastLog2(long value) {
+    static double computeLog2Quickly(long value) {
         if (value < LOG_2_AS_THE_CS_FLOAT_LITERALS_WIDEN.length) {
             return LOG_2_AS_THE_CS_FLOAT_LITERALS_WIDEN[(int) value];
         }
         return BrotliLog2.of(value);
     }
 
-    static double bitsEntropyFlooredAtOneBitPerLiteral(int[] population, int size) {
+    static double measureTheBitsEntropy(int[] population, int size) {
         long sum = 0;
         double answer = 0;
         for (int each = 0; each < size; each++) {
             long count = population[each] & 0xFFFFFFFFL;
             sum += count;
-            answer -= (double) count * fastLog2(count);
+            answer -= (double) count * computeLog2Quickly(count);
         }
         if (sum != 0) {
-            answer += (double) sum * fastLog2(sum);
+            answer += (double) sum * computeLog2Quickly(sum);
         }
         return answer < (double) sum ? (double) sum : answer;
     }
 
-    static int log2Floor(int value) {
+    static int floorTheLog2(int value) {
         return 31 - Integer.numberOfLeadingZeros(value);
     }
 
@@ -239,7 +239,7 @@ final class BrotliCodes {
         if (length == 0) {
             return;
         }
-        if (!worthSmoothing(counts, length)) {
+        if (!isWorthSmoothing(counts, length)) {
             return;
         }
         boolean[] alreadyARun =
@@ -247,7 +247,7 @@ final class BrotliCodes {
         flattenTheRestIntoRuns(counts, length, alreadyARun);
     }
 
-    private static boolean worthSmoothing(int[] counts, int length) {
+    private static boolean isWorthSmoothing(int[] counts, int length) {
         int used = 0;
         int smallest = 1 << 30;
         for (int each = 0; each < length; each++) {
@@ -366,12 +366,12 @@ final class BrotliCodes {
     for (int each = 0; each < length; each++) {
         int width = depth[depthAt + each];
         if (width != 0) {
-            bits[bitsAt + each] = reversedBits(width, nextCode[width]++);
+            bits[bitsAt + each] = reverseTheBits(width, nextCode[width]++);
         }
     }
     }
 
-    private static int reversedBits(int howManyBits, int value) {
+    private static int reverseTheBits(int howManyBits, int value) {
     int reversed = 0;
     for (int each = 0; each < howManyBits; each++) {
         reversed = (reversed << 1) | ((value >> each) & 1);

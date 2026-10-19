@@ -20,10 +20,10 @@ public final class BlockModes {
      * text give two identical blocks of cipher text, so the shape of the
      * message shows through.
      */
-    public static byte[] codebook(OneBlock cipher, byte[] octets) {
+    public static byte[] runTheCodebook(OneBlock cipher, byte[] octets) {
         byte[] answer = new byte[octets.length];
         for (int at = 0; at + BLOCK <= octets.length; at += BLOCK) {
-            byte[] transformed = cipher.enciphered(blockAt(octets, at));
+            byte[] transformed = cipher.encipher(readTheBlockAt(octets, at));
             System.arraycopy(transformed, 0, answer, at, BLOCK);
         }
         return answer;
@@ -35,7 +35,7 @@ public final class BlockModes {
      * vector is left holding the last block out, so a second call carries on
      * from the first.
      */
-    public static byte[] chainingForwards(
+    public static byte[] chainForwards(
             OneBlock cipher, byte[] vector, byte[] octets) {
 
         byte[] answer = new byte[octets.length];
@@ -44,7 +44,7 @@ public final class BlockModes {
             for (int within = 0; within < BLOCK; within++) {
                 combined[within] = (byte) (octets[at + within] ^ vector[within]);
             }
-            byte[] transformed = cipher.enciphered(combined);
+            byte[] transformed = cipher.encipher(combined);
             System.arraycopy(transformed, 0, answer, at, BLOCK);
             System.arraycopy(transformed, 0, vector, 0, BLOCK);
         }
@@ -56,13 +56,13 @@ public final class BlockModes {
      * the cipher text that came before it. The order is the other way round
      * from enciphering.
      */
-    public static byte[] chainingBackwards(
+    public static byte[] chainBackwards(
             OneBlock cipher, byte[] vector, byte[] octets) {
 
         byte[] answer = new byte[octets.length];
         for (int at = 0; at + BLOCK <= octets.length; at += BLOCK) {
-            byte[] keptBeforeTheVectorIsOverwritten = blockAt(octets, at);
-            byte[] undone = cipher.enciphered(keptBeforeTheVectorIsOverwritten);
+            byte[] keptBeforeTheVectorIsOverwritten = readTheBlockAt(octets, at);
+            byte[] undone = cipher.encipher(keptBeforeTheVectorIsOverwritten);
             for (int within = 0; within < BLOCK; within++) {
                 answer[at + within] = (byte) (undone[within] ^ vector[within]);
             }
@@ -71,7 +71,7 @@ public final class BlockModes {
         return answer;
     }
 
-    private static byte[] blockAt(byte[] octets, int at) {
+    private static byte[] readTheBlockAt(byte[] octets, int at) {
         byte[] block = new byte[BLOCK];
         System.arraycopy(octets, at, block, 0, BLOCK);
         return block;

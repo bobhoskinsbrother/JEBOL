@@ -48,19 +48,19 @@ class SeekToARuleTest {
 
     @Test
     @DisplayName("what is left over still has to be consumed")
-    void theRestOfTheInputStillCounts() {
+    void stillCountsTheRestOfTheInput() {
         assertThat(answerTo("parse \"abc\" [thru [\"b\" | \"q\"]]")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("a rule that matches nothing anywhere fails")
-    void aRuleThatNeverMatchesFails() {
+    void failsForARuleThatNeverMatches() {
         assertThat(answerTo(SETS + "parse \"abc\" [thru [x | y]]")).isEqualTo("#(false)");
     }
 
     @Test
     @DisplayName("THRU with a plain value is unaffected")
-    void aPlainValueStillWorks() {
+    void stillSeeksAPlainValue() {
         assertThat(answerTo("parse \"abc\" [thru \"b\" \"c\"]")).isEqualTo("#(true)");
     }
 }

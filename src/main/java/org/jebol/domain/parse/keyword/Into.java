@@ -17,12 +17,12 @@ final class Into extends DeclaredKeyword {
 
     @Override
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
-        if (!(walk.whatTheWordHolds(rules.get(at + 1)) instanceof AnyBlockValue innerRule)) {
+        if (!(walk.readWhatTheWordHolds(rules.get(at + 1)) instanceof AnyBlockValue innerRule)) {
             throw Raised.of(EvaluationFailure.PARSE_RULE,
                     "into needs a block of rules to apply");
         }
         if (walk.atEnd() || !(walk.current() instanceof RebolSeries nested)
-                || !walk.walkingOver(nested).matchesTheWholeOf(innerRule)) {
+                || !walk.walkOver(nested).matchesTheWholeOf(innerRule)) {
             return ParseWalk.NO_MATCH;
         }
         walk.moveTo(walk.position() + 1);

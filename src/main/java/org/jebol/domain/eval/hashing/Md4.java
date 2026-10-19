@@ -36,7 +36,7 @@ public final class Md4 extends Md4FamilyDigest {
         for (int round = 0; round < 3; round++) {
             for (int step = 0; step < 16; step++) {
                 int turned = Integer.rotateLeft(first
-                        + mixedByChoiceThenMajorityThenExclusiveOr(
+                        + mixByChoiceThenMajorityThenExclusiveOr(
                                 round, second, third, fourth)
                         + block[WORD_ORDER[round][step]]
                         + ROUND_CONSTANTS[round],
@@ -53,7 +53,7 @@ public final class Md4 extends Md4FamilyDigest {
         words[3] += fourth;
     }
 
-    private int mixedByChoiceThenMajorityThenExclusiveOr(
+    private int mixByChoiceThenMajorityThenExclusiveOr(
             int round, int second, int third, int fourth) {
         return switch (round) {
             case 0 -> second & third | ~second & fourth;

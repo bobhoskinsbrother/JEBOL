@@ -15,7 +15,7 @@ class PairFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -28,14 +28,14 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("a large whole number loses its low digits")
-        void aLargeWholeNumberIsRounded() {
+        void roundALargeWholeNumber() {
             assertThat(answerTo("mold 2147483647x2147483647"))
                     .isEqualTo("\"2.147484e9x2.147484e9\"");
         }
 
         @Test
         @DisplayName("two whole numbers a step apart land on one pair half once halved")
-        void twoNeighboursBecomeOneHalf() {
+        void mergeTwoNeighbours() {
             assertThat(answerTo("equal? 2147483647x2147483647 / 2 1073741823x1073741823"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("mold 1073741823x1073741823"))
@@ -44,7 +44,7 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("a half above the float range becomes infinite rather than large")
-        void aHalfOverflowsToInfinity() {
+        void overflowToInfinity() {
             assertThat(answerTo("mold 3.4e38x1")).isEqualTo("\"3.4e38x1\"");
             assertThat(answerTo("mold 3.5e38x1")).isEqualTo("\"1.#INFx1\"");
             assertThat(answerTo("mold as-pair 1e300 -1e300")).isEqualTo("\"1.#INFx-1.#INF\"");
@@ -52,7 +52,7 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("an infinite half is a value the pair keeps, not a failure")
-        void anInfiniteHalfIsKept() {
+        void keepAnInfiniteHalf() {
             assertThat(answerTo("pair? as-pair 1e300 -1e300")).isEqualTo(TRUE);
             assertThat(answerTo("p: as-pair 1e300 -1e300 decimal? p/1")).isEqualTo(TRUE);
             assertThat(answerTo("p: as-pair 1e300 -1e300 p/1 = 1.#INF")).isEqualTo(TRUE);
@@ -61,14 +61,14 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("taking a half out shows the single precision rounding")
-        void aHalfReadsBackAtDoublePrecision() {
+        void showTheRoundingWhenTakenOut() {
             assertThat(answerTo("mold first 0.1x0.2")).isEqualTo("\"0.100000001490116\"");
             assertThat(answerTo("mold 0.1x0.2")).isEqualTo("\"0.1x0.2\"");
         }
 
         @Test
         @DisplayName("a whole half molds with no decimal point, and a negative zero keeps its sign")
-        void moldingTrimsTheDecimalPoint() {
+        void moldWithNoDecimalPointWhenWhole() {
             assertThat(answerTo("mold 1x1")).isEqualTo("\"1x1\"");
             assertThat(answerTo("mold 1.5x3")).isEqualTo("\"1.5x3\"");
             assertThat(answerTo("mold -32767x-32767 % -32767")).isEqualTo("\"-0x-0\"");
@@ -82,7 +82,7 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("a pair, an integer, a decimal and a percent are the four accepted right sides")
-        void theRightSideIsAPairOrAPlainNumber() {
+        void acceptsFourKindsOnTheRight() {
             assertThat(answerTo("mold 1x2 + 1x2")).isEqualTo("\"2x4\"");
             assertThat(answerTo("mold 1x2 + 1")).isEqualTo("\"2x3\"");
             assertThat(answerTo("mold 1x2 + 1.5")).isEqualTo("\"2.5x3.5\"");
@@ -91,16 +91,16 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("anything else is Trap_Math_Args")
-        void anotherDatatypeIsRefused() {
-            assertThat(errorIdOf("1x2 + \"a\"")).isNotEqualTo("no-error");
-            assertThat(errorIdOf("1x2 + 0:0:1")).isNotEqualTo("no-error");
-            assertThat(errorIdOf("1x2 + $1")).isNotEqualTo("no-error");
-            assertThat(errorIdOf("1x2 * 'a")).isNotEqualTo("no-error");
+        void refusesAnotherDatatype() {
+            assertThat(readTheErrorIdOf("1x2 + \"a\"")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdOf("1x2 + 0:0:1")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdOf("1x2 + $1")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdOf("1x2 * 'a")).isNotEqualTo("no-error");
         }
 
         @Test
         @DisplayName("each half is added, subtracted and multiplied on its own")
-        void eachHalfIsWorkedSeparately() {
+        void worksEachHalfSeparately() {
             assertThat(answerTo("mold 4x4 - 1x2")).isEqualTo("\"3x2\"");
             assertThat(answerTo("mold 2x3 * 2")).isEqualTo("\"4x6\"");
             assertThat(answerTo("mold negate 4x4")).isEqualTo("\"-4x-4\"");
@@ -110,24 +110,24 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("divide and remainder guard both halves of the divisor")
-        void aZeroHalfRaises() {
+        void raisesOnAZeroHalfOfTheDivisor() {
             assertThat(answerTo("mold 8x8 / 2")).isEqualTo("\"4x4\"");
-            assertThat(errorIdOf("1x1 / 0")).isEqualTo("zero-divide");
-            assertThat(errorIdOf("1x1 / 1x0")).isEqualTo("zero-divide");
-            assertThat(errorIdOf("1x1 / 0x1")).isEqualTo("zero-divide");
-            assertThat(errorIdOf("1x1 % 1x0")).isEqualTo("zero-divide");
+            assertThat(readTheErrorIdOf("1x1 / 0")).isEqualTo("zero-divide");
+            assertThat(readTheErrorIdOf("1x1 / 1x0")).isEqualTo("zero-divide");
+            assertThat(readTheErrorIdOf("1x1 / 0x1")).isEqualTo("zero-divide");
+            assertThat(readTheErrorIdOf("1x1 % 1x0")).isEqualTo("zero-divide");
         }
 
         @Test
         @DisplayName("remainder is fmod on each half")
-        void remainderIsFmod() {
+        void takesFmodForRemainder() {
             assertThat(answerTo("mold 7x7 % 3")).isEqualTo("\"1x1\"");
             assertThat(answerTo("mold -32767x-32767 % -32767")).isEqualTo("\"-0x-0\"");
         }
 
         @Test
         @DisplayName("dividing by the most negative whole number still works")
-        void theMostNegativeDivisor() {
+        void stillDividesByTheMostNegativeWholeNumber() {
             assertThat(answerTo("equal? -2147483648x-2147483648 / -2147483648 1x1"))
                     .isEqualTo(TRUE);
         }
@@ -139,7 +139,7 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("a whole number on the right applies to both halves")
-        void aPlainNumberSpreadsAcrossBothHalves() {
+        void applyAPlainNumberToBothHalves() {
             assertThat(answerTo("equal? 0x0 (1x1 and 0)")).isEqualTo(TRUE);
             assertThat(answerTo("equal? 1x1 (1x1 and 1)")).isEqualTo(TRUE);
             assertThat(answerTo("equal? 1x1 (1x1 or 0)")).isEqualTo(TRUE);
@@ -150,7 +150,7 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("two pairs are combined half by half")
-        void twoPairsAreCombinedHalfByHalf() {
+        void combineTwoPairsHalfByHalf() {
             assertThat(answerTo("equal? 1x0 (1x1 and 1x0)")).isEqualTo(TRUE);
             assertThat(answerTo("equal? 16x0 (16x16 and 16x4)")).isEqualTo(TRUE);
             assertThat(answerTo("equal? 7x4 (7x7 and 7x4)")).isEqualTo(TRUE);
@@ -162,7 +162,7 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("a fractional half is rounded to the nearest, not truncated")
-        void aFractionalHalfIsRounded() {
+        void roundAFractionalHalf() {
             assertThat(answerTo("equal? 1x1 (1.2x1 or 1)")).isEqualTo(TRUE);
             assertThat(answerTo("equal? 16x20 (16x15.6 or 16x4)")).isEqualTo(TRUE);
             assertThat(answerTo("equal? 0x20 (16x15.9 xor 16x4)")).isEqualTo(TRUE);
@@ -175,7 +175,7 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("odd needs both halves odd, and even needs both even")
-        void bothHalvesHaveToAgree() {
+        void needsBothHalvesToAgree() {
             assertThat(answerTo("odd? 1x1")).isEqualTo(TRUE);
             assertThat(answerTo("odd? 0x0")).isEqualTo(FALSE);
             assertThat(answerTo("odd? 0x1")).isEqualTo(FALSE);
@@ -190,7 +190,7 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("a fractional half is rounded before the question is asked")
-        void aFractionalHalfIsRoundedFirst() {
+        void roundsAFractionalHalfFirst() {
             assertThat(answerTo("odd? 1.1x2.9")).isEqualTo(TRUE);
             assertThat(answerTo("odd? 1.1x2.2")).isEqualTo(FALSE);
             assertThat(answerTo("even? 1.9x2.1")).isEqualTo(TRUE);
@@ -204,7 +204,7 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("a half answers to its name and to its position")
-        void twoSpellingsForEachHalf() {
+        void nameEachHalfTwoWays() {
             assertThat(answerTo("p: 1x2 mold p/x")).isEqualTo("\"1.0\"");
             assertThat(answerTo("p: 1x2 mold p/y")).isEqualTo("\"2.0\"");
             assertThat(answerTo("p: 1x2 mold p/1")).isEqualTo("\"1.0\"");
@@ -213,15 +213,15 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("a position outside one and two is refused")
-        void aPositionOutsideTheTwoHalvesIsRefused() {
-            assertThat(errorIdOf("p: 1x2 p/0")).isEqualTo("invalid-path");
-            assertThat(errorIdOf("p: 1x2 p/3")).isEqualTo("invalid-path");
-            assertThat(errorIdOf("p: 1x2 p/z")).isEqualTo("invalid-path");
+        void refuseAPositionOutsideTheTwoHalves() {
+            assertThat(readTheErrorIdOf("p: 1x2 p/0")).isEqualTo("invalid-path");
+            assertThat(readTheErrorIdOf("p: 1x2 p/3")).isEqualTo("invalid-path");
+            assertThat(readTheErrorIdOf("p: 1x2 p/z")).isEqualTo("invalid-path");
         }
 
         @Test
         @DisplayName("writing a half changes the pair the word holds")
-        void writingAHalfChangesThePair() {
+        void changeThePairWhenAHalfIsWritten() {
             assertThat(answerTo("p: 1x1 p/x: 0 mold p")).isEqualTo("\"0x1\"");
             assertThat(answerTo("p: 1x1 p/y: 0 mold p")).isEqualTo("\"1x0\"");
             assertThat(answerTo("p: 1x1 p/1: 5 mold p")).isEqualTo("\"5x1\"");
@@ -234,14 +234,14 @@ class PairFromTheSourceTest {
         @DisplayName("a decimal may be written into a half and nothing else may")
         void onlyANumberMayBeWritten() {
             assertThat(answerTo("p: 1x1 p/x: 1.5 mold p")).isEqualTo("\"1.5x1\"");
-            assertThat(errorIdOf("p: 1x1 p/x: \"a\"")).isEqualTo("bad-path-set");
-            assertThat(errorIdOf("p: 1x1 p/x: none")).isEqualTo("bad-path-set");
-            assertThat(errorIdOf("p: 1x1 p/x: 1x1")).isEqualTo("bad-path-set");
+            assertThat(readTheErrorIdOf("p: 1x1 p/x: \"a\"")).isEqualTo("bad-path-set");
+            assertThat(readTheErrorIdOf("p: 1x1 p/x: none")).isEqualTo("bad-path-set");
+            assertThat(readTheErrorIdOf("p: 1x1 p/x: 1x1")).isEqualTo("bad-path-set");
         }
 
         @Test
         @DisplayName("p/area is the size of the rectangle, and never negative")
-        void theAreaDropsTheSign() {
+        void readTheAreaWithoutItsSign() {
             assertThat(answerTo("p: 10x20 p/area = 200.0")).isEqualTo(TRUE);
             assertThat(answerTo("p: -10x20 p/area = 200.0")).isEqualTo(TRUE);
             assertThat(answerTo("p: 1.5x3 p/area = 4.5")).isEqualTo(TRUE);
@@ -251,8 +251,8 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("p/area cannot be written, because there is nothing to write to")
-        void theAreaIsReadOnly() {
-            assertThat(errorIdOf("p: 10x20 p/area: 100")).isEqualTo("bad-path-set");
+        void refuseWritingTheArea() {
+            assertThat(readTheErrorIdOf("p: 10x20 p/area: 100")).isEqualTo("bad-path-set");
         }
     }
 
@@ -262,35 +262,35 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("a number gives both halves that number")
-        void aNumberFillsBothHalves() {
+        void fillsBothHalvesFromANumber() {
             assertThat(answerTo("mold to pair! 5")).isEqualTo("\"5x5\"");
             assertThat(answerTo("mold to pair! 1.5")).isEqualTo("\"1.5x1.5\"");
         }
 
         @Test
         @DisplayName("a block of two numbers gives the two halves")
-        void aBlockOfTwoNumbers() {
+        void takesABlockOfTwoNumbers() {
             assertThat(answerTo("mold to pair! [1 2]")).isEqualTo("\"1x2\"");
             assertThat(answerTo("mold to pair! [1.5 2]")).isEqualTo("\"1.5x2\"");
         }
 
         @Test
         @DisplayName("a block holding anything but two numbers is refused")
-        void aBlockOfSomethingElseIsRefused() {
-            assertThat(errorIdOf("to-pair [,4]")).isNotEqualTo("no-error");
-            assertThat(errorIdOf("to pair! [\"a\" \"b\"]")).isNotEqualTo("no-error");
+        void refusesABlockOfSomethingElse() {
+            assertThat(readTheErrorIdOf("to-pair [,4]")).isNotEqualTo("no-error");
+            assertThat(readTheErrorIdOf("to pair! [\"a\" \"b\"]")).isNotEqualTo("no-error");
         }
 
         @Test
         @DisplayName("a string is scanned as a pair literal")
-        void aStringIsScanned() {
+        void scansAString() {
             assertThat(answerTo("mold to pair! \"1x2\"")).isEqualTo("\"1x2\"");
             assertThat(answerTo("mold to pair! \"-3x4\"")).isEqualTo("\"-3x4\"");
         }
 
         @Test
         @DisplayName("a pair makes itself")
-        void aPairMakesItself() {
+        void makesAPairFromAPair() {
             assertThat(answerTo("mold to pair! 1x2")).isEqualTo("\"1x2\"");
         }
     }
@@ -326,7 +326,7 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("NEGATIVE? and POSITIVE? need both halves to agree")
-        void bothHalvesDecideTheSign() {
+        void askBothHalvesForTheSign() {
             assertThat(answerTo("negative? -1x-1")).isEqualTo(TRUE);
             assertThat(answerTo("negative? -1x1")).isEqualTo(FALSE);
             assertThat(answerTo("negative? -1x0")).isEqualTo(FALSE);
@@ -351,7 +351,7 @@ class PairFromTheSourceTest {
 
         @Test
         @DisplayName("the first half settles it, and the second only breaks a tie")
-        void theFirstHalfDecides() {
+        void settlesOnTheFirstHalf() {
             assertThat(answerTo("1x1 < 2x2")).isEqualTo(TRUE);
             assertThat(answerTo("0x0 < 1x-1")).isEqualTo(TRUE);
             assertThat(answerTo("-1x1 < 0x0")).isEqualTo(TRUE);

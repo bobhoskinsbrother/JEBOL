@@ -33,11 +33,11 @@ final class BrotliBinaryTreeHasher {
                 nowhereWhichReadsAsNegativeSoEveryCompareMustAllowForIt);
     }
 
-    static int howManyBytesItLooksAhead() {
+    static int countTheBytesItLooksAhead() {
         return LONGEST_COMPARED;
     }
 
-    private int slotFor(byte[] data, int at) {
+    private int hashTheSlotFor(byte[] data, int at) {
         int fourBytes = (data[at] & 0xFF)
                 | ((data[at + 1] & 0xFF) << 8)
                 | ((data[at + 2] & 0xFF) << 16)
@@ -45,11 +45,11 @@ final class BrotliBinaryTreeHasher {
         return (fourBytes * MIXING_MULTIPLIER) >>> (32 - BUCKET_BITS);
     }
 
-    private int leftChildOf(int position) {
+    private int findTheLeftChildOf(int position) {
         return 2 * (position & windowMask);
     }
 
-    private int rightChildOf(int position) {
+    private int findTheRightChildOf(int position) {
         return 2 * (position & windowMask) + 1;
     }
 
@@ -60,10 +60,10 @@ final class BrotliBinaryTreeHasher {
         int here = at & mask;
         int mostToCompare = Math.min(maxLength, LONGEST_COMPARED);
         boolean shouldReRoot = maxLength >= LONGEST_COMPARED;
-        int slot = slotFor(data, here);
+        int slot = hashTheSlotFor(data, here);
         int previousAt = buckets[slot];
-        int nodeLeft = leftChildOf(at);
-        int nodeRight = rightChildOf(at);
+        int nodeLeft = findTheLeftChildOf(at);
+        int nodeRight = findTheRightChildOf(at);
         int bestLeft = 0;
         int bestRight = 0;
         int written = writtenSoFar;
@@ -84,7 +84,7 @@ final class BrotliBinaryTreeHasher {
                 break;
             }
             int alreadyAgreed = Math.min(bestLeft, bestRight);
-            int length = alreadyAgreed + matchingBytes.counted(data,
+            int length = alreadyAgreed + matchingBytes.count(data,
                     previous + alreadyAgreed, here + alreadyAgreed,
                     maxLength - alreadyAgreed);
             if (into != null && length > bestLengthSoFar[0]) {
@@ -93,8 +93,8 @@ final class BrotliBinaryTreeHasher {
             }
             if (length >= mostToCompare) {
                 if (shouldReRoot) {
-                    forest[nodeLeft] = forest[leftChildOf(previousAt)];
-                    forest[nodeRight] = forest[rightChildOf(previousAt)];
+                    forest[nodeLeft] = forest[findTheLeftChildOf(previousAt)];
+                    forest[nodeRight] = forest[findTheRightChildOf(previousAt)];
                 }
                 break;
             }
@@ -103,14 +103,14 @@ final class BrotliBinaryTreeHasher {
                 if (shouldReRoot) {
                     forest[nodeLeft] = previousAt;
                 }
-                nodeLeft = rightChildOf(previousAt);
+                nodeLeft = findTheRightChildOf(previousAt);
                 previousAt = forest[nodeLeft];
             } else {
                 bestRight = length;
                 if (shouldReRoot) {
                     forest[nodeRight] = previousAt;
                 }
-                nodeRight = leftChildOf(previousAt);
+                nodeRight = findTheLeftChildOf(previousAt);
                 previousAt = forest[nodeRight];
             }
         }
@@ -135,7 +135,7 @@ final class BrotliBinaryTreeHasher {
             if (data[here] != data[previous] || data[here + 1] != data[previous + 1]) {
                 continue;
             }
-            int length = matchingBytes.counted(data, previous, here, maxLength);
+            int length = matchingBytes.count(data, previous, here, maxLength);
             if (length > bestLength[0]) {
                 bestLength[0] = length;
                 into.addCopy(written++, backward, length);
@@ -146,13 +146,13 @@ final class BrotliBinaryTreeHasher {
                     data, at, mask, maxLength, maxBackward, bestLength,
                     into, written);
         }
-        return written + dictionaryMatches(data, here, maxLength, bestLength[0],
+        return written + findDictionaryMatches(data, here, maxLength, bestLength[0],
                 dictionaryDistance, furthestDistanceAllowed, into, written);
     }
 
-    private static int dictionaryMatches(byte[] data, int here, int maxLength,
-            int bestSoFar, int dictionaryDistance, int furthestDistanceAllowed,
-            BrotliMatches into, int writtenSoFar) {
+    private static int findDictionaryMatches(byte[] data, int here, int maxLength,
+                                             int bestSoFar, int dictionaryDistance, int furthestDistanceAllowed,
+                                             BrotliMatches into, int writtenSoFar) {
 
         int[] found = new int[BrotliDictionaryMatches.LONGEST_MATCH + 1];
         Arrays.fill(found, BrotliDictionaryMatches.NOTHING_FOUND_WHICH_IS_SEVEN_FS_NOT_EIGHT);

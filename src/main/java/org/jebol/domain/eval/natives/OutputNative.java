@@ -19,14 +19,14 @@ public abstract class OutputNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            write(evaluator.output(), forOutput(arguments.getFirst(), evaluator));
+            write(evaluator.findTheOutput(), writeForOutput(arguments.getFirst(), evaluator));
             return UnsetValue.unset();
         };
     }
 
-    private String forOutput(Value value, Evaluator evaluator) {
+    private String writeForOutput(Value value, Evaluator evaluator) {
         return Molder.form(value instanceof BlockValue block
-                ? BlockValue.block(evaluator.evaluateEachOrRaise(block, evaluator.systemContext()))
+                ? BlockValue.of(evaluator.evaluateEachOrRaise(block, evaluator.systemContext()))
                 : value);
     }
 }

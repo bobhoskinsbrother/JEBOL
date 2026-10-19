@@ -11,9 +11,9 @@ final class LzmaMatchFinder {
     private static final int CRC_POLYNOMIAL = 0xEDB88320;
     private static final int MAX_HISTORY_SIZE = 7 << 29;
 
-    private static final int[] CRC = crcTable();
+    private static final int[] CRC = makeTheCrcTable();
 
-    private static int[] crcTable() {
+    private static int[] makeTheCrcTable() {
         int[] table = new int[256];
         for (int each = 0; each < 256; each++) {
             int running = each;
@@ -142,7 +142,7 @@ final class LzmaMatchFinder {
             twoByteDistance = threeByteDistance;
         }
         if (written != 0) {
-            longest = howFarTheyAgree(twoByteDistance, longest);
+            longest = measureHowFarTheyAgree(twoByteDistance, longest);
             distances[written - 2] = longest;
             if (longest == lenLimit) {
                 if (binaryTree) {
@@ -164,7 +164,7 @@ final class LzmaMatchFinder {
         return total;
     }
 
-    private int howFarTheyAgree(int distance, int from) {
+    private int measureHowFarTheyAgree(int distance, int from) {
         int len = from;
         while (len != lenLimit && source[here + len - distance] == source[here + len]) {
             len++;
@@ -197,7 +197,7 @@ final class LzmaMatchFinder {
         }
     }
 
-    private int childOf(int distance) {
+    private int findTheChildOf(int distance) {
         return cyclicBufferPosition - distance
                 + (distance > cyclicBufferPosition ? cyclicBufferSize : 0);
     }
@@ -216,7 +216,7 @@ final class LzmaMatchFinder {
                 return at;
             }
             int earlier = here - distance;
-            candidate = son[childOf(distance)];
+            candidate = son[findTheChildOf(distance)];
             if (source[earlier + longest] == source[here + longest]
                     && source[earlier] == source[here]) {
                 int len = 0;
@@ -255,7 +255,7 @@ final class LzmaMatchFinder {
                 son[lesserSide] = EMPTY_HASH_VALUE;
                 return at;
             }
-            int pair = childOf(distance) << 1;
+            int pair = findTheChildOf(distance) << 1;
             int earlier = here - distance;
             int len = Math.min(agreedLesser, agreedGreater);
             if (source[earlier + len] == source[here + len]) {
@@ -306,7 +306,7 @@ final class LzmaMatchFinder {
                 son[lesserSide] = EMPTY_HASH_VALUE;
                 return;
             }
-            int pair = childOf(distance) << 1;
+            int pair = findTheChildOf(distance) << 1;
             int earlier = here - distance;
             int len = Math.min(agreedLesser, agreedGreater);
             if (source[earlier + len] == source[here + len]) {

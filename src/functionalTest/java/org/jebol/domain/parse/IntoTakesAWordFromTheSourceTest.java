@@ -15,7 +15,7 @@ class IntoTakesAWordFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String whatHappensTo(String source) {
+    private static String describeWhatHappensTo(String source) {
         return answerTo("either error? e: try [" + source + "] [e/id] ['worked]");
     }
 
@@ -60,7 +60,7 @@ class IntoTakesAWordFromTheSourceTest {
         @Test
         @DisplayName("a word holding something that is not a block is a bad rule")
         void awordHoldingSomethingElse() {
-            assertThat(whatHappensTo("""
+            assertThat(describeWhatHappensTo("""
                     inner: 3
                     parse [[a]] [into inner]"""))
                     .isEqualTo("parse-rule");
@@ -69,7 +69,7 @@ class IntoTakesAWordFromTheSourceTest {
         @Test
         @DisplayName("and so is a literal that is not a block")
         void aliteralThatIsNotABlock() {
-            assertThat(whatHappensTo("parse [[a]] [into 3]")).isEqualTo("parse-rule");
+            assertThat(describeWhatHappensTo("parse [[a]] [into 3]")).isEqualTo("parse-rule");
         }
     }
 
@@ -79,14 +79,14 @@ class IntoTakesAWordFromTheSourceTest {
 
         @Test
         @DisplayName("a string at this position")
-        void astring() {
+        void stepsIntoAString() {
             assertThat(answerTo("""
                     parse ["ab"] [into ["ab"]]""")).isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("and the inner rule has to reach that string's tail")
-        void theInnerRuleReachesTheTail() {
+        void reachesTheTailWithTheInnerRule() {
             assertThat(answerTo("""
                     parse ["ab"] [into ["a"]]""")).isEqualTo("#(false)");
         }
@@ -105,7 +105,7 @@ class IntoTakesAWordFromTheSourceTest {
 
         @Test
         @DisplayName("nothing at all at the tail")
-        void nothingAtTheTail() {
+        void stepsIntoNothingAtTheTail() {
             assertThat(answerTo("parse [] [into [word!]]")).isEqualTo("#(false)");
         }
 
@@ -122,7 +122,7 @@ class IntoTakesAWordFromTheSourceTest {
 
         @Test
         @DisplayName("because the nested block is parsed by the same rule")
-        void thenestedBlockIsParsedByTheSameRule() {
+        void parsesTheNestedBlockByTheSameRule() {
             assertThat(textOf("combine/with [a [b c]] {--}")).isEqualTo("a--b--c");
         }
 

@@ -27,19 +27,19 @@ class WhichValuesConvertToACommonDatatypeTest {
             A_WHOLE_NUMBER, A_DECIMAL, A_PERCENT, SOME_MONEY, A_CHARACTER, A_TIME);
 
     private static boolean shareADatatype(Value one, Value other) {
-        return one.broughtTogetherWith(other).isPresent()
-                || other.broughtTogetherWith(one).isPresent();
+        return one.bringTogetherWith(other).isPresent()
+                || other.bringTogetherWith(one).isPresent();
     }
 
-    private static List<Datatype> theDatatypeTheyBothConvertTo(Value one, Value other) {
-        Value[] pair = one.broughtTogetherWith(other).orElseGet(() -> {
-            Value[] backwards = other.broughtTogetherWith(one).orElseThrow();
+    private static List<Datatype> findTheDatatypeTheyBothConvertTo(Value one, Value other) {
+        Value[] pair = one.bringTogetherWith(other).orElseGet(() -> {
+            Value[] backwards = other.bringTogetherWith(one).orElseThrow();
             return new Value[] {backwards[1], backwards[0]};
         });
         return List.of(pair[0].datatype(), pair[1].datatype());
     }
 
-    static Stream<Arguments> everyPairing() {
+    static Stream<Arguments> listEveryPairing() {
         return THE_SIX.stream().flatMap(one ->
                 THE_SIX.stream().map(other -> Arguments.of(one, other)));
     }
@@ -50,9 +50,9 @@ class WhichValuesConvertToACommonDatatypeTest {
 
         @ParameterizedTest(name = "{0} and {1}")
         @MethodSource(
-                "org.jebol.domain.value.WhichValuesConvertToACommonDatatypeTest#everyPairing")
+                "org.jebol.domain.value.WhichValuesConvertToACommonDatatypeTest#listEveryPairing")
         @DisplayName("two values either convert to a common datatype both ways or neither")
-        void bothWaysOrNeither(Value one, Value other) {
+        void convertsBothWaysOrNeither(Value one, Value other) {
             assertThat(shareADatatype(one, other))
                     .as("%s with %s", one.datatype(), other.datatype())
                     .isEqualTo(shareADatatype(other, one));
@@ -60,15 +60,15 @@ class WhichValuesConvertToACommonDatatypeTest {
 
         @ParameterizedTest(name = "{0} and {1}")
         @MethodSource(
-                "org.jebol.domain.value.WhichValuesConvertToACommonDatatypeTest#everyPairing")
+                "org.jebol.domain.value.WhichValuesConvertToACommonDatatypeTest#listEveryPairing")
         @DisplayName("and they land on the same datatype whichever side is asked first")
-        void theSameDatatypeEitherWayRound(Value one, Value other) {
+        void givesTheSameDatatypeEitherWayRound(Value one, Value other) {
             if (!shareADatatype(one, other)) {
                 return;
             }
-            assertThat(theDatatypeTheyBothConvertTo(one, other))
+            assertThat(findTheDatatypeTheyBothConvertTo(one, other))
                     .as("%s with %s", one.datatype(), other.datatype())
-                    .isEqualTo(theDatatypeTheyBothConvertTo(other, one).reversed());
+                    .isEqualTo(findTheDatatypeTheyBothConvertTo(other, one).reversed());
         }
     }
 
@@ -78,7 +78,7 @@ class WhichValuesConvertToACommonDatatypeTest {
 
         @Test
         @DisplayName("a character converts to meet a whole number and nothing else")
-        void aCharacterOnlyMeetsAWholeNumber() {
+        void pairACharacterOnlyWithAWholeNumber() {
             assertThat(shareADatatype(A_CHARACTER, A_WHOLE_NUMBER)).isTrue();
             assertThat(shareADatatype(A_CHARACTER, A_DECIMAL)).isFalse();
             assertThat(shareADatatype(A_CHARACTER, A_PERCENT)).isFalse();
@@ -88,7 +88,7 @@ class WhichValuesConvertToACommonDatatypeTest {
 
         @Test
         @DisplayName("money and a time share nothing, though both meet the plain numbers")
-        void moneyAndATimeShareNothing() {
+        void keepMoneyAndATimeApart() {
             assertThat(shareADatatype(SOME_MONEY, A_TIME)).isFalse();
             assertThat(shareADatatype(SOME_MONEY, A_WHOLE_NUMBER)).isTrue();
             assertThat(shareADatatype(SOME_MONEY, A_DECIMAL)).isTrue();
@@ -98,15 +98,15 @@ class WhichValuesConvertToACommonDatatypeTest {
 
         @Test
         @DisplayName("a whole number beside money becomes money, not the other way about")
-        void theNarrowerSideWidens() {
-            assertThat(theDatatypeTheyBothConvertTo(A_WHOLE_NUMBER, SOME_MONEY))
+        void widenTheNarrowerSide() {
+            assertThat(findTheDatatypeTheyBothConvertTo(A_WHOLE_NUMBER, SOME_MONEY))
                     .containsExactly(MoneyValue.TYPE, MoneyValue.TYPE);
         }
 
         @Test
         @DisplayName("a time beside a whole number becomes decimal seconds")
-        void aTimeWidensToSeconds() {
-            Value[] pair = A_WHOLE_NUMBER.broughtTogetherWith(A_TIME).orElseThrow();
+        void widenATimeToSeconds() {
+            Value[] pair = A_WHOLE_NUMBER.bringTogetherWith(A_TIME).orElseThrow();
             assertThat(pair[0].datatype()).isEqualTo(DecimalValue.TYPE);
             assertThat(pair[1].datatype()).isEqualTo(DecimalValue.TYPE);
             assertThat(((AnyDecimalValue) pair[1]).quantity()).isEqualTo(1.0);
@@ -119,21 +119,21 @@ class WhichValuesConvertToACommonDatatypeTest {
 
         @Test
         @DisplayName("a character has a whole number but no decimal, which is what keeps it apart")
-        void aCharacterHasNoDecimal() {
+        void refusesACharacterAsADecimal() {
             assertThat(A_CHARACTER.asWholeNumber()).isPresent();
             assertThat(A_CHARACTER.asDecimalNumber()).isEmpty();
         }
 
         @Test
         @DisplayName("a time has a decimal but no money, which is what keeps it apart")
-        void aTimeHasNoMoney() {
+        void refusesATimeAsMoney() {
             assertThat(A_TIME.asDecimalNumber()).isPresent();
             assertThat(A_TIME.asMoneyInTheCurrencyOf((MoneyValue) SOME_MONEY)).isEmpty();
         }
 
         @Test
         @DisplayName("a datatype that is not a number converts to nothing at all")
-        void somethingThatIsNotANumber() {
+        void refusesSomethingThatIsNotANumber() {
             Value text = StringValue.of("ab");
             assertThat(text.asWholeNumber()).isEmpty();
             assertThat(text.asDecimalNumber()).isEmpty();

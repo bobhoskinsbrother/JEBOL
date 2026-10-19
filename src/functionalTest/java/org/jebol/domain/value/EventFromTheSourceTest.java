@@ -15,7 +15,7 @@ class EventFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -29,7 +29,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("a type word is found in system/catalog/event-types and kept as its index")
-        void aTypeWordIsAnIndex() {
+        void keepsATypeWordAsItsIndex() {
             assertThat(answerTo("event? make event! [type: 'connect]")).isEqualTo(TRUE);
             assertThat(answerTo("e: make event! [type: 'connect] e/type"))
                     .isEqualTo("connect");
@@ -39,7 +39,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("and the catalogue is what a script can read to find out which words those are")
-        void theCatalogueIsReadable() {
+        void letsAScriptReadTheCatalogue() {
             assertThat(answerTo("block? system/catalog/event-types")).isEqualTo(TRUE);
             assertThat(answerTo("first system/catalog/event-types")).isEqualTo("ignore");
             assertThat(answerTo("length? system/catalog/event-types")).isEqualTo("47");
@@ -47,22 +47,22 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("a word the catalogue has not got is the wrong argument")
-        void anUnknownTypeIsRefused() {
-            assertThat(errorIdFrom("make event! [type: 'nonsense]"))
+        void refusesAnUnknownType() {
+            assertThat(readTheErrorIdFrom("make event! [type: 'nonsense]"))
                     .isEqualTo("invalid-arg");
         }
 
         @Test
         @DisplayName("and something that is not a word at all is a bad field set")
-        void aNonWordTypeIsRefused() {
-            assertThat(errorIdFrom("make event! [type: 1]")).isEqualTo("bad-field-set");
-            assertThat(errorIdFrom("make event! [type: \"connect\"]"))
+        void refusesANonWordType() {
+            assertThat(readTheErrorIdFrom("make event! [type: 1]")).isEqualTo("bad-field-set");
+            assertThat(readTheErrorIdFrom("make event! [type: \"connect\"]"))
                     .isEqualTo("bad-field-set");
         }
 
         @Test
         @DisplayName("and both a word and a lit-word are accepted, which is why the spec can hold either")
-        void aWordOrALitWordIsAccepted() {
+        void acceptsAWordOrALitWord() {
             assertThat(answerTo("e: make event! [type: 'connect] e/type"))
                     .isEqualTo("connect");
             assertThat(answerTo("t: 'connect e: make event! [type: t] e/type"))
@@ -71,7 +71,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("and a spec block may name its values rather than spell them out")
-        void theSpecResolvesWordsAndPaths() {
+        void resolvesWordsAndPathsInTheSpec() {
             assertThat(answerTo("where: 3x4 e: make event! [offset: where] e/offset"))
                     .isEqualTo("3x4");
             assertThat(answerTo(
@@ -84,7 +84,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("the type nothing set reads as none, and so does the first word in the list")
-        void typeZeroIsNone() {
+        void readsAsNoneWhenUnset() {
             assertThat(answerTo("e: make event! [] none? e/type")).isEqualTo(TRUE);
             assertThat(answerTo("e: make event! [type: 'ignore] none? e/type"))
                     .isEqualTo(TRUE);
@@ -97,7 +97,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("an offset is two signed shorts packed into the one data field")
-        void anOffsetIsPacked() {
+        void packsAnOffset() {
             assertThat(answerTo("e: make event! [offset: 1x2] e/offset"))
                     .isEqualTo("1x2");
             assertThat(answerTo("e: make event! [offset: -5x-7] e/offset"))
@@ -106,28 +106,28 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("a half that will not fit in a short is refused, not truncated")
-        void theOffsetLimits() {
-            assertThat(errorIdFrom("make event! [offset: 32768x0]"))
+        void refusesAnOffsetHalfPastAShort() {
+            assertThat(readTheErrorIdFrom("make event! [offset: 32768x0]"))
                     .isEqualTo("out-of-range");
-            assertThat(errorIdFrom("make event! [offset: 65536x1]"))
+            assertThat(readTheErrorIdFrom("make event! [offset: 65536x1]"))
                     .isEqualTo("out-of-range");
             assertThat(answerTo("e: make event! [offset: 32767x-32767] e/offset"))
                     .isEqualTo("32767x-32767");
-            assertThat(errorIdFrom("make event! [offset: -32769x0]"))
+            assertThat(readTheErrorIdFrom("make event! [offset: -32769x0]"))
                     .isEqualTo("out-of-range");
         }
 
         @Test
         @DisplayName("and an offset that is not a pair is a bad field set")
-        void anOffsetMustBeAPair() {
-            assertThat(errorIdFrom("make event! [offset: 5]")).isEqualTo("bad-field-set");
-            assertThat(errorIdFrom("make event! [offset: none]"))
+        void requiresAnOffsetToBeAPair() {
+            assertThat(readTheErrorIdFrom("make event! [offset: 5]")).isEqualTo("bad-field-set");
+            assertThat(readTheErrorIdFrom("make event! [offset: none]"))
                     .isEqualTo("bad-field-set");
         }
 
         @Test
         @DisplayName("a key is a character, and setting one takes the offset away")
-        void aKeyClearsTheOffset() {
+        void clearsTheOffsetForAKey() {
             assertThat(answerTo("e: make event! [type: 'key key: #\"A\"] e/key"))
                     .isEqualTo("#\"A\"");
             assertThat(answerTo(
@@ -140,7 +140,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("and an offset takes the code away, the same way round")
-        void anOffsetClearsTheCode() {
+        void clearsTheCodeForAnOffset() {
             assertThat(answerTo(
                     "e: make event! [type: 'custom code: 5 offset: 1x2] none? e/code"))
                     .isEqualTo(TRUE);
@@ -151,7 +151,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("a key with no type makes the event a key event")
-        void aKeyImpliesTheType() {
+        void makesAKeyEventFromAKey() {
             assertThat(answerTo("e: make event! [key: #\"B\"] e/type"))
                     .isEqualTo("key");
             assertThat(answerTo("e: make event! [key: #\"B\"] e/key"))
@@ -174,7 +174,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("a key given as a word is looked up in the key catalogue")
-        void aWordKeyIsAnIndex() {
+        void looksUpAWordKeyInTheCatalogue() {
             assertThat(answerTo("e: make event! [type: 'custom key: 'page-up] e/code"))
                     .isEqualTo("65536");
             assertThat(answerTo("e: make event! [type: 'custom key: 'end] e/code"))
@@ -185,7 +185,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("a control event reads its key back out of that catalogue, from a plain number")
-        void aControlEventNamesItsKey() {
+        void readsAControlEventsKeyFromTheCatalogue() {
             assertThat(answerTo("e: make event! [type: 'control code: 5] e/key"))
                     .isEqualTo("left");
             assertThat(answerTo("e: make event! [type: 'control-up code: 4] e/key"))
@@ -194,7 +194,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("but a control key set by name cannot be read back, because the two halves disagree")
-        void theControlKeyRoundTripIsBroken() {
+        void cannotReadBackAControlKeySetByName() {
             assertThat(answerTo("e: make event! [type: 'control key: 'left] none? e/key"))
                     .isEqualTo(TRUE);
             assertThat(answerTo("e: make event! [type: 'control key: 'left] e/code"))
@@ -203,34 +203,34 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("a word the key catalogue has not got is refused")
-        void anUnknownKeyIsRefused() {
-            assertThat(errorIdFrom("make event! [key: 'nonsense]"))
+        void refusesAnUnknownKey() {
+            assertThat(readTheErrorIdFrom("make event! [key: 'nonsense]"))
                     .isEqualTo("bad-field-set");
         }
 
         @Test
         @DisplayName("a key nothing set reads as none, and a key that is neither char nor word is refused")
-        void aKeyAtItsEdges() {
+        void readsAnUnsetKeyAsNone() {
             assertThat(answerTo("e: make event! [] none? e/key")).isEqualTo(TRUE);
-            assertThat(errorIdFrom("make event! [key: 1]")).isEqualTo("bad-field-set");
-            assertThat(errorIdFrom("make event! [key: \"A\"]"))
+            assertThat(readTheErrorIdFrom("make event! [key: 1]")).isEqualTo("bad-field-set");
+            assertThat(readTheErrorIdFrom("make event! [key: \"A\"]"))
                     .isEqualTo("bad-field-set");
         }
 
         @Test
         @DisplayName("a code is an integer, and nothing else")
-        void aCodeIsAnInteger() {
+        void takesOnlyAnIntegerCode() {
             assertThat(answerTo("e: make event! [type: 'custom code: 1] e/code"))
                     .isEqualTo("1");
             assertThat(answerTo("e: make event! [type: 'custom code: 1] e/type"))
                     .isEqualTo("custom");
-            assertThat(errorIdFrom("make event! [code: \"1\"]"))
+            assertThat(readTheErrorIdFrom("make event! [code: \"1\"]"))
                     .isEqualTo("bad-field-set");
         }
 
         @Test
         @DisplayName("and a code nothing set reads as none")
-        void noCodeIsNone() {
+        void readsAnUnsetCodeAsNone() {
             assertThat(answerTo("e: make event! [] none? e/code")).isEqualTo(TRUE);
             assertThat(answerTo("e: make event! [type: 'custom code: 0] e/code"))
                     .isEqualTo("0");
@@ -244,7 +244,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("a port goes in the slot and the model says it is there")
-        void aPortIsHeld() {
+        void holdsAPort() {
             assertThat(answerTo(A_PORT + "e: make event! [port: p] same? p e/port"))
                     .isEqualTo(TRUE);
             assertThat(answerTo(A_PORT + "e: make event! [port: p] port? e/port"))
@@ -253,7 +253,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("an object goes in the same slot under a different model")
-        void anObjectIsHeld() {
+        void holdsAnObject() {
             assertThat(answerTo(
                     "o: make object! [a: 1] e: make event! [port: o] object? e/port"))
                     .isEqualTo(TRUE);
@@ -264,12 +264,12 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("and none means the event belongs to the GUI, whose port is the host's")
-        void noneMeansTheGui() {
+        void belongsToTheGuiWhenNone() {
             assertThat(answerTo("port? system/ports/event")).isEqualTo(TRUE);
             assertThat(answerTo(
                     "e: make event! [port: none] same? e/port system/ports/event"))
                     .isEqualTo(TRUE);
-            assertThat(errorIdFrom("make event! [port: 1]"))
+            assertThat(readTheErrorIdFrom("make event! [port: 1]"))
                     .isEqualTo("bad-field-set");
         }
 
@@ -285,7 +285,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("a gob goes in the slot, and window is the same field under another name")
-        void aGobIsHeld() {
+        void holdsAGob() {
             assertThat(answerTo(
                     "g: make gob! [] e: make event! [gob: g] same? g e/gob"))
                     .isEqualTo(TRUE);
@@ -295,12 +295,12 @@ class EventFromTheSourceTest {
             assertThat(answerTo(
                     "g: make gob! [] e: make event! [window: g] same? g e/gob"))
                     .isEqualTo(TRUE);
-            assertThat(errorIdFrom("make event! [gob: 1]")).isEqualTo("bad-field-set");
+            assertThat(readTheErrorIdFrom("make event! [gob: 1]")).isEqualTo("bad-field-set");
         }
 
         @Test
         @DisplayName("and a gob and a port cannot both be there, because there is one slot")
-        void theSlotHoldsOneThing() {
+        void holdsOneThingAtATime() {
             assertThat(answerTo(A_PORT + "g: make gob! [] "
                     + "e: make event! [gob: g port: p] none? e/gob")).isEqualTo(TRUE);
             assertThat(answerTo(A_PORT + "g: make gob! [] "
@@ -309,7 +309,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("a gob nothing set reads as none")
-        void noGobIsNone() {
+        void readsAnUnsetGobAsNone() {
             assertThat(answerTo("e: make event! [] none? e/gob")).isEqualTo(TRUE);
             assertThat(answerTo(A_PORT + "e: make event! [port: p] none? e/gob"))
                     .isEqualTo(TRUE);
@@ -317,7 +317,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("and data is the dropped file, which only a drop-file event has")
-        void dataIsForDroppedFiles() {
+        void holdsADroppedFileAsData() {
             assertThat(answerTo("e: make event! [] none? e/data")).isEqualTo(TRUE);
             assertThat(answerTo(
                     "e: make event! [type: 'drop-file] none? e/data")).isEqualTo(TRUE);
@@ -332,7 +332,7 @@ class EventFromTheSourceTest {
         @DisplayName("three of them read back as a block, and the rest are the C's bookkeeping")
         void flagsReadAsWords() {
             assertThat(answerTo("e: make event! [] none? e/flags")).isEqualTo(TRUE);
-            assertThat(errorIdFrom("make event! [flags: [double]]"))
+            assertThat(readTheErrorIdFrom("make event! [flags: [double]]"))
                     .isEqualTo("bad-field-set");
         }
     }
@@ -343,26 +343,26 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("a block of set-words fills the fields, and an empty one makes an empty event")
-        void aBlockOfFields() {
+        void fillsTheFieldsFromABlock() {
             assertThat(answerTo("event? make event! []")).isEqualTo(TRUE);
             assertThat(answerTo("event? make event! [type: 'connect]")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a field name it does not know is a bad field set")
-        void anUnknownFieldIsRefused() {
-            assertThat(errorIdFrom("make event! [nonsense: 1]"))
+        void refusesAnUnknownField() {
+            assertThat(readTheErrorIdFrom("make event! [nonsense: 1]"))
                     .isEqualTo("bad-field-set");
         }
 
         @Test
         @DisplayName("a set-word with nothing after it is read as none, not refused")
-        void aTrailingSetWordIsNone() {
+        void readsATrailingSetWordAsNone() {
             assertThat(answerTo("event? make event! [port:]")).isEqualTo(TRUE);
             assertThat(answerTo(
                     "e: make event! [port:] same? system/ports/event e/port"))
                     .isEqualTo(TRUE);
-            assertThat(errorIdFrom("make event! [type:]")).isEqualTo("bad-field-set");
+            assertThat(readTheErrorIdFrom("make event! [type:]")).isEqualTo("bad-field-set");
         }
 
         @Test
@@ -386,43 +386,43 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("and anything else is the wrong argument")
-        void anythingElseIsRefused() {
-            assertThat(errorIdFrom("make event! 1")).isEqualTo("expect-val");
-            assertThat(errorIdFrom("make event! \"connect\"")).isEqualTo("expect-val");
+        void refusesAnythingElse() {
+            assertThat(readTheErrorIdFrom("make event! 1")).isEqualTo("expect-val");
+            assertThat(readTheErrorIdFrom("make event! \"connect\"")).isEqualTo("expect-val");
         }
 
         @Test
         @DisplayName("an event has two arms and everything else is an operation it cannot do")
-        void twoArmsAndNoMore() {
-            assertThat(errorIdFrom("length? make event! []")).isEqualTo("expect-arg");
-            assertThat(errorIdFrom("append make event! [] 1")).isEqualTo("expect-arg");
-            assertThat(errorIdFrom("copy make event! []")).isEqualTo("expect-arg");
+        void hasTwoArmsAndNoMore() {
+            assertThat(readTheErrorIdFrom("length? make event! []")).isEqualTo("expect-arg");
+            assertThat(readTheErrorIdFrom("append make event! [] 1")).isEqualTo("expect-arg");
+            assertThat(readTheErrorIdFrom("copy make event! []")).isEqualTo("expect-arg");
         }
 
         @Test
         @DisplayName("reading a field it has not got is an invalid path")
-        void readingAnUnknownFieldRaises() {
-            assertThat(errorIdFrom("e: make event! [] e/nonsense"))
+        void raisesOnReadingAnUnknownField() {
+            assertThat(readTheErrorIdFrom("e: make event! [] e/nonsense"))
                     .isEqualTo("invalid-path");
-            assertThat(errorIdFrom("e: make event! [] e/1")).isEqualTo("invalid-path");
+            assertThat(readTheErrorIdFrom("e: make event! [] e/1")).isEqualTo("invalid-path");
         }
 
         @Test
         @DisplayName("TO does exactly what MAKE does, sharing the one arm")
-        void toIsMake() {
+        void treatsToAsMake() {
             assertThat(answerTo("e: to event! [type: 'connect] e/type"))
                     .isEqualTo("connect");
-            assertThat(errorIdFrom("to event! 1")).isEqualTo("expect-val");
+            assertThat(readTheErrorIdFrom("to event! 1")).isEqualTo("expect-val");
         }
 
         @Test
         @DisplayName("and a field can be written through a path")
-        void aFieldIsWrittenThroughAPath() {
+        void writesAFieldThroughAPath() {
             assertThat(answerTo("e: make event! [] e/type: 'connect e/type"))
                     .isEqualTo("connect");
             assertThat(answerTo("e: make event! [] e/offset: 3x4 e/offset"))
                     .isEqualTo("3x4");
-            assertThat(errorIdFrom("e: make event! [] e/nonsense: 1"))
+            assertThat(readTheErrorIdFrom("e: make event! [] e/nonsense: 1"))
                     .isEqualTo("bad-path-set");
         }
     }
@@ -433,7 +433,7 @@ class EventFromTheSourceTest {
 
         @Test
         @DisplayName("an event molds as the fields that answer something")
-        void itMoldsItsSetFields() {
+        void moldsTheFieldsThatAnswerSomething() {
             assertThat(answerTo("mold/flat make event! []")).isEqualTo("\"make event! []\"");
             assertThat(answerTo("mold/flat make event! [offset: 1x2]"))
                     .isEqualTo("\"make event! [offset: 1x2]\"");

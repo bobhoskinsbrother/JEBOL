@@ -21,23 +21,23 @@ public class DoCodecNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("handle", Set.of(HandleValue.TYPE)),
-                Parameter.required("action", Set.of(WordValue.TYPE)),
-                Parameter.required("data", Set.of(BinaryValue.TYPE, ImageValue.TYPE, StringValue.TYPE)));
+                Parameter.of("handle", Set.of(HandleValue.TYPE)),
+                Parameter.of("action", Set.of(WordValue.TYPE)),
+                Parameter.of("data", Set.of(BinaryValue.TYPE, ImageValue.TYPE, StringValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
-        return (arguments, evaluator, context, refinements) -> ranCodec(
+        return (arguments, evaluator, context, refinements) -> runTheCodec(
                 (HandleValue) arguments.get(0), (AnyWordValue) arguments.get(1), arguments.get(2));
     }
 
-    private Value ranCodec(HandleValue handle, AnyWordValue action, Value data) {
+    private Value runTheCodec(HandleValue handle, AnyWordValue action, Value data) {
         if (!handle.typeName().equals(A_CODEC)) {
             throw Raised.of(EvaluationFailure.INVALID_HANDLE,
                     "a codec was wanted, not a " + handle.typeName() + " handle");
         }
-        Codecs.Action asked = theActionAskedBy(action);
+        Codecs.Action asked = readTheActionAskedBy(action);
         refuseDataTheActionCannotTake(asked, data);
         Codecs.Answer answered = codecs.run(((AnyWordValue) handle.payload()).canonical(), asked, data);
         if (answered.error() != 0 && answered.kind() != Codecs.Answer.Kind.CHECK) {
@@ -47,7 +47,7 @@ public class DoCodecNative extends DefaultNative {
         return answered.value();
     }
 
-    private Codecs.Action theActionAskedBy(AnyWordValue action) {
+    private Codecs.Action readTheActionAskedBy(AnyWordValue action) {
         return switch (action.canonical()) {
             case "identify" -> Codecs.Action.IDENTIFY;
             case "decode" -> Codecs.Action.DECODE;

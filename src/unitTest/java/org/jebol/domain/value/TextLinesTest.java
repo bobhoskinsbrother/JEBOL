@@ -12,11 +12,11 @@ class TextLinesTest {
 
     @Test
     @DisplayName("agrees with String.lines on every text of six characters or fewer")
-    void everyShortText() {
+    void splitsEveryShortText() {
         for (int length = 0; length <= 6; length++) {
             int howMany = (int) Math.pow(3, length);
             for (int written = 0; written < howMany; written++) {
-                String text = fromThreeCharacters(written, length);
+                String text = makeFromThreeCharacters(written, length);
                 assertThat(TextLines.of(text))
                         .as("the lines of %s", text)
                         .isEqualTo(text.lines().toList());
@@ -24,7 +24,7 @@ class TextLinesTest {
         }
     }
 
-    private static String fromThreeCharacters(int written, int length) {
+    private static String makeFromThreeCharacters(int written, int length) {
         StringBuilder text = new StringBuilder();
         for (int digit = 0; digit < length; digit++) {
             text.append("a\n\r".charAt(written % 3));
@@ -35,7 +35,7 @@ class TextLinesTest {
 
     @Test
     @DisplayName("does not split on the separators String.lines ignores")
-    void otherSeparators() {
+    void splitsOnOtherSeparators() {
         for (String text : List.of(
                 "a\u0085b", "a\u2028b", "a\u2029b", "a\n\u0085\nb", "\u0085", "a\u000Bb")) {
             assertThat(TextLines.of(text)).isEqualTo(text.lines().toList());

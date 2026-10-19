@@ -16,7 +16,7 @@ class RemainingNativesAsARealRebolAnswersThemEndToEndTest {
 
     @TestFactory
     @DisplayName("each now, also, comment, to-value, trace, extension, access-os and random row prints what a real 3.22.5 printed")
-    Stream<DynamicTest> eachRowPrintsWhatRebolPrinted() throws IOException {
-        return new RecordedRebolScript("remaining-natives", directory).eachRowPrintsWhatRebolPrinted();
+    Stream<DynamicTest> printsWhatRebolPrintedOnEachRow() throws IOException {
+        return new RecordedRebolScript("remaining-natives", directory).replayEachRow();
     }
 }

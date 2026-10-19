@@ -19,8 +19,8 @@ public class ArctangentOfTwoSidesNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("y", Set.of(DecimalValue.TYPE)),
-                Parameter.required("x", Set.of(DecimalValue.TYPE)));
+                Parameter.of("y", Set.of(DecimalValue.TYPE)),
+                Parameter.of("x", Set.of(DecimalValue.TYPE)));
     }
 
     @Override

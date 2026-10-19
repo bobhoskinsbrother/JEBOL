@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.adapter.host.JavaProcess;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,8 +12,9 @@ class EndingAProcessThatIsNotThereFromTheSourceTest {
     private static final String A_NUMBER_NO_PROCESS_IS_RUNNING_UNDER = "2147483646";
 
     private static Interpreter granted() {
-        return Interpreter.withBounds(
-                Bounds.standard().grant(HostService.PROCESSES));
+        Interpreter interpreter = Interpreter.withBounds(Bounds.standard().grant(HostService.PROCESSES));
+        interpreter.useProcesses(new JavaProcess());
+        return interpreter;
     }
 
     private static String answerTo(Interpreter interpreter, String source) {
@@ -21,21 +23,25 @@ class EndingAProcessThatIsNotThereFromTheSourceTest {
     }
 
     private static String failureOf(String source) {
-        return answerTo(granted(), "e: try [" + source + """
+        return failureOf(granted(), source);
+    }
+
+    private static String failureOf(Interpreter interpreter, String source) {
+        return answerTo(interpreter, "e: try [" + source + """
                 ]
                 either error? e [reduce [e/type e/id e/arg1]] [reduce ['ok]]""");
     }
 
     @Test
     @DisplayName("a number no process is running under names itself, not a permission")
-    void aNumberNoProcessIsRunningUnderNamesItself() {
+    void namesANumberNoProcessIsRunningUnder() {
         assertThat(failureOf("access-os/set 'pid " + A_NUMBER_NO_PROCESS_IS_RUNNING_UNDER))
                 .isEqualTo("[Access process-not-found " + A_NUMBER_NO_PROCESS_IS_RUNNING_UNDER + "]");
     }
 
     @Test
     @DisplayName("and a signal named beside the number answers the same way")
-    void aSignalNamedBesideTheNumberAnswersTheSameWay() {
+    void answersTheSameWayWithASignalNamed() {
         assertThat(failureOf(
                 "access-os/set 'pid [" + A_NUMBER_NO_PROCESS_IS_RUNNING_UNDER + " 9]"))
                 .isEqualTo("[Access process-not-found " + A_NUMBER_NO_PROCESS_IS_RUNNING_UNDER + "]");
@@ -43,7 +49,7 @@ class EndingAProcessThatIsNotThereFromTheSourceTest {
 
     @Test
     @DisplayName("reading the pid rather than setting one answers this process")
-    void readingThePidAnswersThisProcess() {
+    void answersThisProcessForThePid() {
         assertThat(answerTo(granted(), """
                 pid: access-os 'pid
                 all [integer? pid  pid > 0]""")).isEqualTo("#(true)");
@@ -51,21 +57,23 @@ class EndingAProcessThatIsNotThereFromTheSourceTest {
 
     @Test
     @DisplayName("a field this machine does not answer is not-here, which is a different thing again")
-    void aFieldThisMachineDoesNotAnswerIsNotHere() {
-        assertThat(failureOf("""
+    void saysNotHereForAFieldThisMachineDoesNotAnswer() {
+        Interpreter withoutProcessPort = Interpreter.withBounds(Bounds.standard().grant(HostService.PROCESSES));
+
+        assertThat(failureOf(withoutProcessPort, """
                 access-os 'uid""")).startsWith("[Internal not-here");
     }
 
     @Test
     @DisplayName("and a field the operating system has no name for at all is a bad argument")
-    void aFieldTheOperatingSystemHasNoNameForIsABadArgument() {
+    void refusesAFieldTheOperatingSystemHasNoNameFor() {
         assertThat(failureOf("""
                 access-os 'nosuchfield""")).startsWith("[Script invalid-arg");
     }
 
     @Test
     @DisplayName("without the processes service nothing is signalled at all")
-    void withoutTheProcessesServiceNothingIsSignalled() {
+    void signalsNothingWithoutTheProcessesService() {
         assertThat(answerTo(Interpreter.create(), """
                 e: try [access-os/set 'pid 2147483646]
                 either error? e [e/id] ['ok]""")).isEqualTo("no-service");

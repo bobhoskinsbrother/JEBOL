@@ -28,7 +28,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("nothing is a header, five bytes of flush and a zero length")
-        void nothingAtLevelZero() {
+        void compressNothingAtLevelZero() {
             assertThat(answerTo("""
                     compress/level "" 'lzma 0"""))
                     .isEqualTo("#{5D00400000000000000000000000}");
@@ -36,7 +36,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("something with a pattern in it, at the lowest level")
-        void somethingWithAPattern() {
+        void compressSomethingWithAPattern() {
             assertThat(answerTo("""
                     compress/level "test test test" 'lzma 0"""))
                     .isEqualTo("#{5D00400000003A194ACE1CFB1CD99000000E000000}");
@@ -44,7 +44,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("and the same bytes at the level nobody asked for, bar the header")
-        void theSameBytesAtTheDefaultLevel() {
+        void matchAtTheDefaultLevel() {
             assertThat(answerTo("""
                     compress "test test test" 'lzma"""))
                     .isEqualTo("#{5D00000001003A194ACE1CFB1CD99000000E000000}");
@@ -52,7 +52,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("the last four bytes are the uncompressed length, little endian")
-        void theLastFourBytesAreTheLength() {
+        void endWithTheLengthInFourBytes() {
             assertThat(answerTo("""
                     packed: compress "test test test" 'lzma
                     skip packed (length? packed) - 4""")).isEqualTo("#{0E000000}");
@@ -60,7 +60,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("the first byte packs the three context widths, and is always 5D")
-        void theFirstByteIsTheContextWidths() {
+        void startWithTheContextWidths() {
             assertThat(answerTo("""
                     to integer! first compress "x" 'lzma""")).isEqualTo("93");
         }
@@ -70,7 +70,7 @@ class LzmaFromTheSourceTest {
     @DisplayName("what the level decides")
     class WhatTheLevelDecides {
 
-        private static String headerAtLevel(String level) {
+        private static String readTheHeaderAtLevel(String level) {
             return answerTo(
                     "copy/part (compress/level {test test test} 'lzma "
                             + level + ") 5");
@@ -78,28 +78,28 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("the dictionary doubles twice per level up to five")
-        void theDictionaryGrowsWithTheLevel() {
-            assertThat(headerAtLevel("0")).isEqualTo("#{5D00400000}");
-            assertThat(headerAtLevel("1")).isEqualTo("#{5D00000100}");
-            assertThat(headerAtLevel("2")).isEqualTo("#{5D00000400}");
-            assertThat(headerAtLevel("3")).isEqualTo("#{5D00001000}");
-            assertThat(headerAtLevel("4")).isEqualTo("#{5D00004000}");
-            assertThat(headerAtLevel("5")).isEqualTo("#{5D00000001}");
+        void growsTheDictionaryWithTheLevel() {
+            assertThat(readTheHeaderAtLevel("0")).isEqualTo("#{5D00400000}");
+            assertThat(readTheHeaderAtLevel("1")).isEqualTo("#{5D00000100}");
+            assertThat(readTheHeaderAtLevel("2")).isEqualTo("#{5D00000400}");
+            assertThat(readTheHeaderAtLevel("3")).isEqualTo("#{5D00001000}");
+            assertThat(readTheHeaderAtLevel("4")).isEqualTo("#{5D00004000}");
+            assertThat(readTheHeaderAtLevel("5")).isEqualTo("#{5D00000001}");
         }
 
         @Test
         @DisplayName("and then stands still for six and seven, and again for eight and nine")
-        void theDictionaryStopsDoubling() {
-            assertThat(headerAtLevel("6")).isEqualTo("#{5D00000002}");
-            assertThat(headerAtLevel("7")).isEqualTo("#{5D00000002}");
-            assertThat(headerAtLevel("8")).isEqualTo("#{5D00000004}");
-            assertThat(headerAtLevel("9")).isEqualTo("#{5D00000004}");
+        void stopsDoublingTheDictionary() {
+            assertThat(readTheHeaderAtLevel("6")).isEqualTo("#{5D00000002}");
+            assertThat(readTheHeaderAtLevel("7")).isEqualTo("#{5D00000002}");
+            assertThat(readTheHeaderAtLevel("8")).isEqualTo("#{5D00000004}");
+            assertThat(readTheHeaderAtLevel("9")).isEqualTo("#{5D00000004}");
         }
 
         @Test
         @DisplayName("minus one is the level nobody asked for, which is five")
-        void minusOneIsTheDefault() {
-            assertThat(headerAtLevel("-1")).isEqualTo("#{5D00000001}");
+        void treatsMinusOneAsTheDefault() {
+            assertThat(readTheHeaderAtLevel("-1")).isEqualTo("#{5D00000001}");
             assertThat(answerTo("""
                     (compress/level {test test test} 'lzma -1)
                         = compress {test test test} 'lzma""")).isEqualTo("#(true)");
@@ -107,14 +107,14 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("every other negative is the slowest level, and so is anything above nine")
-        void everyOtherNegativeIsTheSlowest() {
-            assertThat(headerAtLevel("-5")).isEqualTo("#{5D00000004}");
-            assertThat(headerAtLevel("99")).isEqualTo("#{5D00000004}");
+        void treatsEveryOtherNegativeAsTheSlowest() {
+            assertThat(readTheHeaderAtLevel("-5")).isEqualTo("#{5D00000004}");
+            assertThat(readTheHeaderAtLevel("99")).isEqualTo("#{5D00000004}");
         }
 
         @Test
         @DisplayName("the body changes where the parse changes and not where the dictionary does")
-        void theBodyChangesWhereTheParseDoes() {
+        void changesTheBodyWhereTheParseChanges() {
             assertThat(answerTo(LOREM + """
                     collect [
                         repeat level 10 [
@@ -134,7 +134,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("what went in comes out, at every level")
-        void everyLevelRoundTrips() {
+        void roundTripsAtEveryLevel() {
             assertThat(answerTo(LOREM + """
                     collect [
                         repeat level 10 [
@@ -147,14 +147,14 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("and nothing comes back as nothing")
-        void nothingComesBackAsNothing() {
+        void bringsNothingBackAsNothing() {
             assertThat(answerTo("""
                     decompress compress "" 'lzma 'lzma""")).isEqualTo("#{}");
         }
 
         @Test
         @DisplayName("/SIZE stops early, which is how the front is read on its own")
-        void sizeStopsEarly() {
+        void stopsEarlyForSize() {
             assertThat(answerTo("""
                     packed: compress "test test test" 'lzma
                     decompress/size packed 'lzma 4""")).isEqualTo("#{74657374}");
@@ -172,7 +172,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("a stream that ends on a two-byte repeat keeps its last two bytes")
-        void aStreamEndingOnATwoByteRepeat() {
+        void readsAStreamEndingOnATwoByteRepeat() {
             assertThat(answerTo(LOREM + """
                     front: copy/part text 205
                     front = to string! decompress compress front 'lzma 'lzma"""))
@@ -181,7 +181,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("every prefix of a paragraph round trips, at every level")
-        void everyPrefixRoundTrips() {
+        void roundTripsEveryPrefix() {
             assertThat(answerTo(LOREM + """
                     bad: copy []
                     repeat n length? text [
@@ -198,7 +198,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("a real 3.22.5 stream reads here")
-        void aRealStreamReadsHere() {
+        void readsARealStream() {
             assertThat(answerTo("""
                     to string! decompress
                         #{5D00000001003A194ACE1CFB1CD99000000E000000} 'lzma"""))
@@ -207,7 +207,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("and one this build wrote is the same bytes a real one wrote")
-        void andOursIsTheSameBytes() {
+        void writesTheSameBytesAsTheRealStream() {
             assertThat(answerTo("""
                     (compress "test test test" 'lzma)
                         = #{5D00000001003A194ACE1CFB1CD99000000E000000}"""))
@@ -238,7 +238,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("a first byte that is not zero is not a stream")
-        void aStreamOpensWithZero() {
+        void refuseAStreamThatOpensWithZero() {
             assertThat(answerTo("""
                     failure: try [decompress #{5D004000000100000000000004000000} 'lzma]
                     failure/id""")).isEqualTo("bad-press");
@@ -246,7 +246,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("and a property byte above 224 names no context widths at all")
-        void aPropertyByteOutOfRange() {
+        void refuseAPropertyByteOutOfRange() {
             assertThat(answerTo("""
                     failure: try [decompress #{FF00400000000000000000000000} 'lzma]
                     failure/id""")).isEqualTo("bad-press");
@@ -259,7 +259,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("the catalogue lists it, and COMPRESS answers to it")
-        void theCatalogueListsIt() {
+        void appearsInTheCatalogue() {
             assertThat(answerTo("""
                     reduce [
                         true? find system/catalog/compressions 'lzma
@@ -269,7 +269,7 @@ class LzmaFromTheSourceTest {
 
         @Test
         @DisplayName("and the two this build still has not got say feature-na")
-        void theOthersStillSayFeatureNa() {
+        void leavesTheOthersSayingFeatureNa() {
             assertThat(answerTo("""
                     collect [
                         foreach method [lz4 lzav][

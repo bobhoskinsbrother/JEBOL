@@ -42,7 +42,7 @@ public interface HttpPort {
             body = body.clone();
         }
 
-        public Optional<String> headerNamed(String name) {
+        public Optional<String> readTheHeaderNamed(String name) {
             for (int at = 0; at < headerNames.size(); at++) {
                 if (headerNames.get(at).equalsIgnoreCase(name)) {
                     return Optional.of(headerValues.get(at));

@@ -19,10 +19,10 @@ public class ChangeAction extends DefaultNative implements ActionValue {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series"),
-                Parameter.required("value", TypesetValue.ANY_TYPE.members()),
-                Parameter.belongingTo("part", "range", aPartLimit()),
-                Parameter.belongingTo("dup", "count", aDuplicateCount()));
+        return List.of(Parameter.of("series"),
+                Parameter.of("value", TypesetValue.ANY_TYPE.members()),
+                Parameter.belongTo("part", "range", listThePartLimitTypes()),
+                Parameter.belongTo("dup", "count", listTheDuplicateCountTypes()));
     }
 
     @Override
@@ -34,8 +34,8 @@ public class ChangeAction extends DefaultNative implements ActionValue {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> new SeriesChange(
                 arguments.get(1), refinements,
-                argumentOf("part", 0, arguments, refinements),
-                argumentOf("dup", 0, arguments, refinements))
-                .changed(arguments.getFirst());
+                readTheArgumentOf("part", 0, arguments, refinements),
+                readTheArgumentOf("dup", 0, arguments, refinements))
+                .change(arguments.getFirst());
     }
 }

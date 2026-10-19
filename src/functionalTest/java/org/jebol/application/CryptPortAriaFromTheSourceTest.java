@@ -25,7 +25,7 @@ class CryptPortAriaFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String through(String algorithm, String key, String vector) {
+    private static String runThrough(String algorithm, String key, String vector) {
         return answerTo("""
                 p: open make port! [scheme: 'crypt algorithm: '%s]
                 modify p 'key %s
@@ -37,46 +37,46 @@ class CryptPortAriaFromTheSourceTest {
 
     @Test
     @DisplayName("the RFC 5794 vectors, at all three key widths")
-    void theRfc5794Vectors() {
-        assertThat(through("ARIA-128-ECB", KEY_128, "none"))
+    void matchesTheRfc5794Vectors() {
+        assertThat(runThrough("ARIA-128-ECB", KEY_128, "none"))
                 .isEqualTo("\"D718FBD6AB644C739DA95F3BE6451778\"");
-        assertThat(through("ARIA-192-ECB", KEY_192, "none"))
+        assertThat(runThrough("ARIA-192-ECB", KEY_192, "none"))
                 .isEqualTo("\"26449C1805DBE7AA25A468CE263A9E79\"");
-        assertThat(through("ARIA-256-ECB", KEY_256, "none"))
+        assertThat(runThrough("ARIA-256-ECB", KEY_256, "none"))
                 .isEqualTo("\"F92BD7C79FB72E2F2B8F80C1972D24FC\"");
     }
 
     @Test
     @DisplayName("and in cipher block chaining")
-    void andInCipherBlockChaining() {
-        assertThat(through("ARIA-128-CBC", KEY_128, VECTOR))
+    void matchesInCipherBlockChaining() {
+        assertThat(runThrough("ARIA-128-CBC", KEY_128, VECTOR))
                 .isEqualTo("\"37C7A1F5259E100637798850FDC1FC48\"");
-        assertThat(through("ARIA-192-CBC", KEY_192, VECTOR))
+        assertThat(runThrough("ARIA-192-CBC", KEY_192, VECTOR))
                 .isEqualTo("\"B74ACEFA7CF905A529A77C435A1B5265\"");
-        assertThat(through("ARIA-256-CBC", KEY_256, VECTOR))
+        assertThat(runThrough("ARIA-256-CBC", KEY_256, VECTOR))
                 .isEqualTo("\"08186E7986B43C2C7B93C7C95373C4D8\"");
     }
 
     @Test
     @DisplayName("and in both authenticated modes, which were written for AES")
-    void andInBothAuthenticatedModes() {
-        assertThat(through("ARIA-128-GCM", KEY_128, VECTOR))
+    void matchesInBothAuthenticatedModes() {
+        assertThat(runThrough("ARIA-128-GCM", KEY_128, VECTOR))
                 .isEqualTo("\"E5D97133CC5D00C9E57AA2077216DA68\"");
-        assertThat(through("ARIA-192-GCM", KEY_192, VECTOR))
+        assertThat(runThrough("ARIA-192-GCM", KEY_192, VECTOR))
                 .isEqualTo("\"4216F540BACF769FA5FC1A0088344036\"");
-        assertThat(through("ARIA-256-GCM", KEY_256, VECTOR))
+        assertThat(runThrough("ARIA-256-GCM", KEY_256, VECTOR))
                 .isEqualTo("\"A9794352EED7066498C2FBC586DDC599\"");
-        assertThat(through("ARIA-128-CCM", KEY_128, VECTOR))
+        assertThat(runThrough("ARIA-128-CCM", KEY_128, VECTOR))
                 .isEqualTo("\"21BDE9CE856E54CE34B549B77FF11970\"");
-        assertThat(through("ARIA-192-CCM", KEY_192, VECTOR))
+        assertThat(runThrough("ARIA-192-CCM", KEY_192, VECTOR))
                 .isEqualTo("\"9FF474538275002D71CC26029037C8BC\"");
-        assertThat(through("ARIA-256-CCM", KEY_256, VECTOR))
+        assertThat(runThrough("ARIA-256-CCM", KEY_256, VECTOR))
                 .isEqualTo("\"678E68153CDBD27339342A52C32C0422\"");
     }
 
     @Test
     @DisplayName("and deciphering gives the plain text back")
-    void andDecipheringGivesThePlainTextBack() {
+    void givesThePlainTextBackOnDeciphering() {
         assertThat(answerTo("""
                 p: open make port! [scheme: 'crypt algorithm: 'ARIA-128-ECB]
                 modify p 'direction 'decrypt
@@ -88,7 +88,7 @@ class CryptPortAriaFromTheSourceTest {
 
     @Test
     @DisplayName("a thousand rounds, which a single block would not catch")
-    void aThousandRounds() {
+    void survivesAThousandRounds() {
         assertThat(answerTo("""
                 p: open make port! [scheme: 'crypt algorithm: 'ARIA-128-ECB]
                 modify p 'key #{80000000000000000000000000000000}
@@ -106,7 +106,7 @@ class CryptPortAriaFromTheSourceTest {
 
     @Test
     @DisplayName("the catalogue names all twelve, and it is now complete")
-    void theCatalogueNamesAllTwelve() {
+    void namesAllTwelveInTheCatalogue() {
         assertThat(answerTo("""
                 length? collect [
                     foreach named system/catalog/ciphers [

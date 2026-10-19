@@ -12,7 +12,7 @@ public final class GrantedServices {
 
     private Set<HostService> granted = Set.of();
 
-    private Set<HostService> lacking = Set.of();
+    private Set<HostService> unavailable = Set.of();
 
     private String hostName = "this host";
 
@@ -20,8 +20,8 @@ public final class GrantedServices {
         this.granted = Set.copyOf(services);
     }
 
-    public void lackOnly(Set<HostService> services) {
-        this.lacking = Set.copyOf(services);
+    public void markOnlyUnavailable(Set<HostService> services) {
+        this.unavailable = Set.copyOf(services);
     }
 
     public void useHostName(String name) {
@@ -36,19 +36,19 @@ public final class GrantedServices {
         if (allow(service)) {
             return;
         }
-        throw Raised.of(EvaluationFailure.NO_SERVICE, whyNot(service));
+        throw Raised.of(EvaluationFailure.NO_SERVICE, explainWhyNot(service));
     }
 
-    private String whyNot(HostService service) {
+    private String explainWhyNot(HostService service) {
         String serviceName = service.name().toLowerCase(Locale.ROOT);
-        if (lacking.contains(service)) {
+        if (unavailable.contains(service)) {
             return hostName + " does not allow " + serviceName
-                    + ", which is " + inWords(ServiceRefusal.NOT_PRESENT);
+                    + ", which is " + putIntoWords(ServiceRefusal.NOT_PRESENT);
         }
-        return serviceName + " is " + inWords(ServiceRefusal.NOT_GRANTED);
+        return serviceName + " is " + putIntoWords(ServiceRefusal.NOT_GRANTED);
     }
 
-    private static String inWords(ServiceRefusal reason) {
+    private static String putIntoWords(ServiceRefusal reason) {
         return reason.name().toLowerCase(Locale.ROOT).replace('_', ' ');
     }
 }

@@ -24,9 +24,9 @@ public class DifferenceNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("first", TAKES_A_DIFFERENCE),
-                Parameter.required("second", TAKES_A_DIFFERENCE),
-                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)));
+                Parameter.of("first", TAKES_A_DIFFERENCE),
+                Parameter.of("second", TAKES_A_DIFFERENCE),
+                Parameter.belongTo("skip", "size", Set.of(IntegerValue.TYPE)));
     }
 
     @Override
@@ -40,13 +40,13 @@ public class DifferenceNative extends DefaultNative {
             Value first = arguments.getFirst();
             Value second = arguments.get(1);
             if (first instanceof DateValue from && second instanceof DateValue to) {
-                return from.spanTo(to);
+                return from.measureTheSpanTo(to);
             }
             int stride = hasNoRecords(first)
                     ? EVERY_MEMBER_ON_ITS_OWN
                     : recordWidth(arguments, refinements);
             return Combining.sets(first, second,
-                    SetOperation.named(nativeName()).orElseThrow(),
+                    SetOperation.findTheOperationNamed(nativeName()).orElseThrow(),
                     refinements.contains("case"), stride);
         };
     }
@@ -58,7 +58,7 @@ public class DifferenceNative extends DefaultNative {
     }
 
     private int recordWidth(List<Value> arguments, Set<String> refinements) {
-        return argumentOf("skip", 0, arguments, refinements)
+        return readTheArgumentOf("skip", 0, arguments, refinements)
                 .filter(IntegerValue.class::isInstance)
                 .map(size -> (int) Math.max(EVERY_MEMBER_ON_ITS_OWN,
                         ((IntegerValue) size).magnitude()))

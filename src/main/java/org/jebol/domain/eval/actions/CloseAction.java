@@ -17,7 +17,7 @@ public class CloseAction extends ActorFirstPortAction {
     }
 
     @Override
-    Value answeredHere(PortValue port) {
-        return ports.closed(port);
+    Value answerHere(PortValue port) {
+        return ports.close(port);
     }
 }

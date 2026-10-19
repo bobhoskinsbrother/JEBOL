@@ -8,20 +8,20 @@ import java.util.stream.Stream;
 public record ObjectValue(Context context) implements Value, PathTargetWithFields {
 
     @Override
-    public boolean equalTo(Value other, Sameness how) {
+    public boolean isEqualTo(Value other, Sameness how) {
         return other instanceof ObjectValue theirs
-                && everyFieldAgrees(theirs, (ours, yours) ->
-                        ours.equalTo(yours, Sameness.insideASeries()));
+                && agreesInEveryField(theirs, (ours, yours) ->
+                        ours.isEqualTo(yours, Sameness.insideASeries()));
     }
 
-    public boolean everyFieldAgrees(
+    public boolean agreesInEveryField(
             ObjectValue other, java.util.function.BiPredicate<Value, Value> agree) {
 
         if (other.context == context) {
             return true;
         }
-        java.util.Map<String, Value> ours = context.fieldsExcludingSelf();
-        java.util.Map<String, Value> theirs = other.context.fieldsExcludingSelf();
+        java.util.Map<String, Value> ours = context.listTheFieldsExceptSelf();
+        java.util.Map<String, Value> theirs = other.context.listTheFieldsExceptSelf();
         if (!ours.keySet().equals(theirs.keySet())
                 || context.fieldCount() != other.context.fieldCount()) {
             return false;
@@ -40,20 +40,20 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
     @Override
     public boolean equals(Object other) {
         return other instanceof ObjectValue theirs
-                && everyFieldAgrees(theirs, Object::equals);
+                && agreesInEveryField(theirs, Object::equals);
     }
 
     @Override
     public int hashCode() {
-        return context.fieldsExcludingSelf().keySet().hashCode();
+        return context.listTheFieldsExceptSelf().keySet().hashCode();
     }
 
     @Override
     public Value make(Value spec, Maker maker) {
         return switch (spec) {
             case BlockValue body -> maker.makeObjectFrom(this, body);
-            case NoneValue nothing -> maker.makeObjectFrom(this, BlockValue.block(List.of()));
-            case ObjectValue other -> maker.objectMergedFrom(this, other);
+            case NoneValue nothing -> maker.makeObjectFrom(this, BlockValue.of(List.of()));
+            case ObjectValue other -> maker.mergeAnObject(this, other);
             default -> throw Raised.of(EvaluationFailure.BAD_MAKE_ARG, TYPE, this);
         };
     }
@@ -64,35 +64,35 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
     }
 
     @Override
-    public Value trimmed(Trimming trimming) {
+    public Value trim(Trimming trimming) {
         trimming.refuseEveryRefinementOnFields();
         return new ObjectValue(context.withoutTheFieldsHoldingNothing());
     }
 
     @Override
-    public List<Value> items() {
-        return context.boundWordsAndValues();
+    public List<Value> listTheItems() {
+        return context.listTheBoundWordsAndValues();
     }
 
     @Override
-    public Value copied(boolean deeply, Set<Datatype> kinds) {
+    public Value copy(boolean deeply, Set<Datatype> kinds) {
         Context fields = Context.root();
         ObjectValue duplicate = new ObjectValue(fields);
         fields.pointItsOwnSelfAt(duplicate);
         context.slots()
                 .forEach(slot -> fields.register(slot.spelling(),
-                        slot.value().copiedAsAMember(deeply, kinds)));
+                        slot.value().copyAsAMember(deeply, kinds)));
         return duplicate;
     }
 
     @Override
-    public Value reflected(AnyWordValue field) {
+    public Value reflect(AnyWordValue field) {
         return switch (field.canonical()) {
             case "body" -> context.setWordsAndValuesOnLines();
-            case "words" -> BlockValue.block(fieldsOtherThanSelf()
-                    .<Value>map(slot -> WordValue.of(slot.spelling()).boundTo(context))
+            case "words" -> BlockValue.of(fieldsOtherThanSelf()
+                    .<Value>map(slot -> WordValue.of(slot.spelling()).bindTo(context))
                     .toList());
-            case "values" -> BlockValue.block(fieldsOtherThanSelf()
+            case "values" -> BlockValue.of(fieldsOtherThanSelf()
                     .map(ContextSlot::value)
                     .toList());
             default -> NoneValue.none();
@@ -115,7 +115,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
     }
 
     private boolean hidesTheDeclaredField(AnyWordValue word) {
-        return context.everySlot().stream().anyMatch(
+        return context.listEverySlot().stream().anyMatch(
                 slot -> slot.isHidden() && slot.canonical().equals(word.canonical()));
     }
 
@@ -133,18 +133,18 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
         }
 
         @Override
-        public Value madeFrom(Value spec, Maker maker) {
+        public Value makeFrom(Value spec, Maker maker) {
             return switch (spec) {
-                case AnyBlockValue body -> maker.objectEvaluatedFrom(body);
-                case IntegerValue(long magnitude) -> anEmptyObjectWithRoomFor(spec, magnitude, maker);
-                case DecimalValue number -> anEmptyObjectWithRoomFor(spec, number.quantity(), maker);
-                case MapValue map -> anObjectOfTheWordKeysIn(map, maker);
-                default -> throw refusing(spec);
+                case AnyBlockValue body -> maker.evaluateAnObject(body);
+                case IntegerValue(long magnitude) -> makeAnEmptyObjectWithRoomFor(spec, magnitude, maker);
+                case DecimalValue number -> makeAnEmptyObjectWithRoomFor(spec, number.quantity(), maker);
+                case MapValue map -> makeAnObjectOfTheWordKeysIn(map, maker);
+                default -> throw refuse(spec);
             };
         }
 
-        private Value anObjectOfTheWordKeysIn(MapValue map, Maker maker) {
-            ObjectValue made = maker.objectEvaluatedFrom(BlockValue.block());
+        private Value makeAnObjectOfTheWordKeysIn(MapValue map, Maker maker) {
+            ObjectValue made = maker.evaluateAnObject(BlockValue.of());
             List<Value> keys = map.keys();
             List<Value> values = map.values();
             for (int at = 0; at < keys.size(); at++) {
@@ -155,39 +155,39 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
             return made;
         }
 
-        private Value anEmptyObjectWithRoomFor(Value spec, double asked, Maker maker) {
+        private Value makeAnEmptyObjectWithRoomFor(Value spec, double asked, Maker maker) {
             if (asked < 0) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, spec);
             }
-            return maker.objectEvaluatedFrom(BlockValue.block());
+            return maker.evaluateAnObject(BlockValue.of());
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             if (!(from instanceof ErrorValue raised)) {
-                throw refusing(from);
+                throw refuse(from);
             }
-            if (raised.field("code").orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
+            if (raised.readTheField("code").orElseGet(NoneValue::none) instanceof IntegerValue(long magnitude)
                     && magnitude < ErrorCatalogue.LOWEST_CODE_AN_ENTRY_HAS) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, from);
             }
-            Context fields = Context.childOf(Context.root());
+            Context fields = Context.makeChildOf(Context.root());
             for (String field : ErrorValue.FIELDS) {
-                fields.register(field, raised.field(field).orElseGet(NoneValue::none));
+                fields.register(field, raised.readTheField(field).orElseGet(NoneValue::none));
             }
             return new ObjectValue(fields);
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
+        public Value construct(List<Value> contents, Construction construction) {
             if (contents.size() != 1 || !(contents.getFirst() instanceof AnyBlockValue fields)) {
-                throw refusingConstruction(contents);
+                throw refuseTheConstruction(contents);
             }
             Context built = Context.root();
             List<Value> items = fields.remaining();
             for (int at = 0; at < items.size(); at++) {
                 if (!(items.get(at) instanceof SetWordValue name)) {
-                    throw refusingConstruction(contents);
+                    throw refuseTheConstruction(contents);
                 }
                 at++;
                 built.register(name.spelling(), at < items.size() ? items.get(at) : NoneValue.none());

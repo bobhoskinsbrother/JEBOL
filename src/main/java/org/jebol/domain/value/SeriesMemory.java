@@ -55,7 +55,7 @@ public final class SeriesMemory {
         }
 
         /** Says the buffer has grown or shrunk, and by how much. */
-        public void nowHolds(long grownTo) {
+        public void growTo(long grownTo) {
             HELD.addAndGet(grownTo - bytes);
             bytes = grownTo;
         }
@@ -84,7 +84,7 @@ public final class SeriesMemory {
     }
 
     /** The bytes every live series buffer is holding between them. */
-    public static long bytesHeld() {
+    public static long countTheBytesHeld() {
         giveBackWhatTheCollectorTook();
         return HELD.get();
     }
@@ -111,9 +111,9 @@ public final class SeriesMemory {
      * otherwise wait for something that is never going to happen.
      */
     public static long collectNow() {
-        long before = bytesHeld();
+        long before = countTheBytesHeld();
         long giveUpAt = System.nanoTime() + SECONDS_TO_WAIT_FOR_A_COLLECTION * 1_000_000_000L;
-        while (System.nanoTime() < giveUpAt && !aCollectionHasFinished()) {
+        while (System.nanoTime() < giveUpAt && !hasFinishedACollection()) {
             giveBackWhatTheCollectorTook();
         }
         giveBackWhatTheCollectorTook();
@@ -122,7 +122,7 @@ public final class SeriesMemory {
 
     private static final long SECONDS_TO_WAIT_FOR_A_COLLECTION = 2;
 
-    private static boolean aCollectionHasFinished() {
+    private static boolean hasFinishedACollection() {
         ReferenceQueue<Object> proof = new ReferenceQueue<>();
         PhantomReference<Object> unreachable =
                 new PhantomReference<>(new Object(), proof);

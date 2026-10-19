@@ -5,7 +5,7 @@ public final class TagValue extends AnyStringValue {
     public static final AnyStringDatatype TYPE = new AnyStringDatatype("tag") {
 
         @Override
-        public AnyStringValue holding(StringStorage storage, int index) {
+        public AnyStringValue wrap(StringStorage storage, int index) {
             return new TagValue(storage, index);
         }
     };
@@ -24,7 +24,7 @@ public final class TagValue extends AnyStringValue {
     }
 
     @Override
-    TagValue sameKindOver(StringStorage storage, int index) {
+    TagValue makeTheSameKindOver(StringStorage storage, int index) {
         return new TagValue(storage, index);
     }
 

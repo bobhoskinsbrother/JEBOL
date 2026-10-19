@@ -31,11 +31,11 @@ public interface Actions {
         throw Raised.cannotUseTheAction(asked.subject(), "insert");
     }
 
-    default Value cleared() {
+    default Value clear() {
         throw Raised.cannotUseTheAction(subject(), "clear");
     }
 
-    default int length() {
+    default int measureTheLength() {
         throw Raised.cannotUseTheAction(subject(), "length?");
     }
 
@@ -43,23 +43,23 @@ public interface Actions {
         throw Raised.cannotUseTheAction(subject(), "remove");
     }
 
-    default Value removed(long howMany) {
+    default Value remove(long howMany) {
         throw Raised.cannotUseTheAction(subject(), "remove");
     }
 
-    default Value takenOne() {
+    default Value takeOne() {
         throw Raised.cannotUseTheAction(subject(), "take");
     }
 
-    default Value takenSeveral(long wanted) {
+    default Value takeSeveral(long wanted) {
         throw Raised.cannotUseTheAction(subject(), "take");
     }
 
-    default Value poked(Value position, Value written) {
+    default Value poke(Value position, Value written) {
         throw Raised.cannotUseTheAction(subject(), "poke");
     }
 
-    default Value complemented() {
+    default Value complement() {
         throw Raised.of(EvaluationFailure.EXPECT_ARG,
                 "complement wanted a logic or integer, not a "
                         + subject().datatype().literalSpelling());

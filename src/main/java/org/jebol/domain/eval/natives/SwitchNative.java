@@ -18,9 +18,9 @@ public class SwitchNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value"),
-                Parameter.required("choices", Set.of(BlockValue.TYPE)),
-                Parameter.belongingTo("default", "fallback", Set.of(BlockValue.TYPE)));
+        return List.of(Parameter.of("value"),
+                Parameter.of("choices", Set.of(BlockValue.TYPE)),
+                Parameter.belongTo("default", "fallback", Set.of(BlockValue.TYPE)));
     }
 
     @Override
@@ -42,7 +42,7 @@ public class SwitchNative extends DefaultNative {
                         || !matches(choices.get(at), wanted, caseSensitive)) {
                     continue;
                 }
-                int branchAt = theNextBlockFrom(choices, at);
+                int branchAt = findTheNextBlockFrom(choices, at);
                 if (branchAt >= choices.size()) {
                     break;
                 }
@@ -57,7 +57,7 @@ public class SwitchNative extends DefaultNative {
             if (matchedSomething) {
                 return lastBranchTaken;
             }
-            return theFallbackAskedFor(arguments, refinements) instanceof AnyBlockValue fallback
+            return readTheFallbackAskedFor(arguments, refinements) instanceof AnyBlockValue fallback
                     ? evaluator.evaluateOrRaise(fallback, context)
                     : NoneValue.none();
         };
@@ -66,10 +66,10 @@ public class SwitchNative extends DefaultNative {
     private boolean matches(Value choice, Value wanted, boolean caseSensitive) {
         return caseSensitive
                 ? choice.equals(wanted)
-                : Comparison.looselyEqual(choice, wanted);
+                : Comparison.areLooselyEqual(choice, wanted);
     }
 
-    private int theNextBlockFrom(List<Value> choices, int from) {
+    private int findTheNextBlockFrom(List<Value> choices, int from) {
         int at = from;
         while (at < choices.size() && !isExactlyABlock(choices.get(at))) {
             at++;
@@ -81,7 +81,7 @@ public class SwitchNative extends DefaultNative {
         return value instanceof BlockValue;
     }
 
-    private Value theFallbackAskedFor(List<Value> arguments, Set<String> refinements) {
+    private Value readTheFallbackAskedFor(List<Value> arguments, Set<String> refinements) {
         return refinements.contains("default") && arguments.size() > WHERE_THE_FALLBACK_ARRIVES
                 ? arguments.get(WHERE_THE_FALLBACK_ARRIVES)
                 : NoneValue.none();

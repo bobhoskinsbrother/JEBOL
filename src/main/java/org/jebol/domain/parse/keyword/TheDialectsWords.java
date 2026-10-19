@@ -8,7 +8,7 @@ final class TheDialectsWords {
     private TheDialectsWords() {
     }
 
-    static Map<String, ParseKeyword> bySpelling() {
+    static Map<String, ParseKeyword> indexBySpelling() {
         Map<String, ParseKeyword> words = new LinkedHashMap<>();
         for (ParseKeyword keyword : new ParseKeyword[]{
                 new Repeat("any", 0),

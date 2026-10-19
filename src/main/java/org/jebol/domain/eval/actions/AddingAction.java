@@ -24,11 +24,11 @@ public abstract class AddingAction extends SeriesOrFileAction {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series", TypesetValue.SERIES.membersAnd(
+        return List.of(Parameter.of("series", TypesetValue.SERIES.membersAnd(
                         PortValue.TYPE, MapValue.TYPE, GobValue.TYPE, ObjectValue.TYPE, BitsetValue.TYPE)),
-                Parameter.required("value", TypesetValue.ANY_TYPE.members()),
-                Parameter.belongingTo("part", "range", aPartLimit()),
-                Parameter.belongingTo("dup", "count", aDuplicateCount()));
+                Parameter.of("value", TypesetValue.ANY_TYPE.members()),
+                Parameter.belongTo("part", "range", listThePartLimitTypes()),
+                Parameter.belongTo("dup", "count", listTheDuplicateCountTypes()));
     }
 
     @Override
@@ -36,11 +36,11 @@ public abstract class AddingAction extends SeriesOrFileAction {
         return Set.of("part", "only", "dup");
     }
 
-    protected Asked askedOf(Value subject, List<Value> arguments, Set<String> refinements,
-            Evaluator evaluator, Context context) {
-        return Asked.reading(subject, arguments.get(1), refinements,
-                argumentOf("dup", 0, arguments, refinements),
-                argumentOf("part", 0, arguments, refinements),
+    protected Asked readWhatIsAskedOf(Value subject, List<Value> arguments, Set<String> refinements,
+                                      Evaluator evaluator, Context context) {
+        return Asked.read(subject, arguments.get(1), refinements,
+                readTheArgumentOf("dup", 0, arguments, refinements),
+                readTheArgumentOf("part", 0, arguments, refinements),
                 evaluator, context);
     }
 }

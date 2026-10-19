@@ -39,7 +39,7 @@ class CaseBranchesAreEvaluatedFromTheSourceTest {
 
         @Test
         @DisplayName("and NONE answers none rather than the word none")
-        void noneAnswersNone() {
+        void answersNoneForNone() {
             assertThat(moldOf("case [true none]")).isEqualTo("_");
         }
 
@@ -108,13 +108,13 @@ class CaseBranchesAreEvaluatedFromTheSourceTest {
 
         @Test
         @DisplayName("nothing matching answers none")
-        void nothingMatches() {
+        void answerNoneWhenNothingMatches() {
             assertThat(moldOf("case [false 1 false 2]")).isEqualTo("_");
         }
 
         @Test
         @DisplayName("/ALL keeps going and answers the last branch it took")
-        void allKeepsGoing() {
+        void keepGoingForAll() {
             assertThat(answerTo("case/all [true 1 true 2]")).isEqualTo("2");
             assertThat(answerTo("n: 0 case/all [true n: n + 1 true n: n + 1] n"))
                     .isEqualTo("2");

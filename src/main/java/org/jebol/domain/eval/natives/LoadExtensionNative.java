@@ -37,8 +37,8 @@ public class LoadExtensionNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("name", Set.of(FileValue.TYPE, BinaryValue.TYPE)),
-                Parameter.belongingTo("dispatch", "function", Set.of(HandleValue.TYPE)));
+                Parameter.of("name", Set.of(FileValue.TYPE, BinaryValue.TYPE)),
+                Parameter.belongTo("dispatch", "function", Set.of(HandleValue.TYPE)));
     }
 
     @Override
@@ -50,24 +50,24 @@ public class LoadExtensionNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value name = arguments.getFirst();
-            Optional<Value> dispatcher = argumentOf("dispatch", 0, arguments, refinements);
+            Optional<Value> dispatcher = readTheArgumentOf("dispatch", 0, arguments, refinements);
             if (dispatcher.isEmpty()) {
-                throw refusingNativeCode(name, evaluator);
+                throw refuseNativeCode(name, evaluator);
             }
-            return anExtensionHolding(aFreshExtensionHandleFor((HandleValue) dispatcher.get(), evaluator),
-                    theSourceIn(name), evaluator);
+            return makeAnExtensionHolding(makeAFreshExtensionHandleFor((HandleValue) dispatcher.get(), evaluator),
+                    readTheSourceIn(name), evaluator);
         };
     }
 
-    private HandleValue aFreshExtensionHandleFor(HandleValue given, Evaluator evaluator) {
-        Value carried = new DispatcherHandle(given).dispatcher()
+    private HandleValue makeAFreshExtensionHandleFor(HandleValue given, Evaluator evaluator) {
+        Value carried = new DispatcherHandle(given).findTheDispatcher()
                 .<Value>map(JavaObjectValue::of)
                 .orElseGet(NoneValue::none);
-        return HandleValue.function(DispatcherHandle.THE_KIND_A_DISPATCHER_IS,
-                evaluator.theNextExtensionsNumber(), carried);
+        return HandleValue.wrapAFunction(DispatcherHandle.THE_KIND_A_DISPATCHER_IS,
+                evaluator.numberTheNextExtension(), carried);
     }
 
-    private Raised refusingNativeCode(Value name, Evaluator evaluator) {
+    private Raised refuseNativeCode(Value name, Evaluator evaluator) {
         if (!(name instanceof FileValue library)) {
             return Raised.of(EvaluationFailure.INVALID_ARG, name);
         }
@@ -75,15 +75,15 @@ public class LoadExtensionNative extends DefaultNative {
         return Raised.of(EvaluationFailure.NO_EXTENSION, library, StringValue.of(WHY_NATIVE_CODE_CANNOT_BE_LOADED));
     }
 
-    private BinaryValue theSourceIn(Value name) {
+    private BinaryValue readTheSourceIn(Value name) {
         return name instanceof BinaryValue source
                 ? source
                 : BinaryValue.ofBytes(((AnyStringValue) name).text().getBytes(StandardCharsets.UTF_8));
     }
 
-    private ObjectValue anExtensionHolding(HandleValue handle, BinaryValue source, Evaluator evaluator) {
+    private ObjectValue makeAnExtensionHolding(HandleValue handle, BinaryValue source, Evaluator evaluator) {
         Context fields = Context.root();
-        if (evaluator.systemContext().valueAt("system", "standard", "extension") instanceof ObjectValue(Context standard)) {
+        if (evaluator.systemContext().readValueAt("system", "standard", "extension") instanceof ObjectValue(Context standard)) {
             standard.slots().forEach(slot -> fields.register(slot.spelling(), NoneValue.none()));
         }
         fields.register("lib-base", handle);

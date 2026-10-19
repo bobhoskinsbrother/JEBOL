@@ -15,7 +15,7 @@ public final class ShowFailures {
             }
             for (SuiteFile.Assertion assertion : file.assertions()) {
                 System.out.println("=== " + assertion);
-                System.out.println("    " + RebolSuiteTest.verdictFor(assertion).reason());
+                System.out.println("    " + RebolSuiteTest.judge(assertion).reason());
                 System.out.println("    "
                         + assertion.source().strip().lines().findFirst().orElse(""));
             }

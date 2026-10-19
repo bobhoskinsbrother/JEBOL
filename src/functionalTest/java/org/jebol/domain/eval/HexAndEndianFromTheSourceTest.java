@@ -17,7 +17,7 @@ class HexAndEndianFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String theTextOf(String source) {
+    private static String readTheTextOf(String source) {
         String molded = answerTo(source);
         return molded.startsWith("{") && molded.endsWith("}")
                 ? molded.substring(1, molded.length() - 1)
@@ -31,7 +31,7 @@ class HexAndEndianFromTheSourceTest {
         @Test
         @DisplayName("a url keeps the punctuation a url is made of and escapes the rest")
         void aurlKeepsItsOwnPunctuation() {
-            assertThat(theTextOf("form enhex as url! {\"#$%&+,/:;=?@[]\\}"))
+            assertThat(readTheTextOf("form enhex as url! {\"#$%&+,/:;=?@[]\\}"))
                     .as("Rebol's uri bitset is A-Z a-z 0-9 and !#$&'()*+,-./:;=?@_~, "
                             + "which has no brackets in it and no percent sign")
                     .isEqualTo("%22#$%25&+,/:;=?@%5B%5D%5C");
@@ -39,19 +39,19 @@ class HexAndEndianFromTheSourceTest {
 
         @Test
         @DisplayName("and anything else keeps the narrower component set")
-        void astringKeepsTheComponentSet() {
-            assertThat(theTextOf("enhex {!'()*_.-~}"))
+        void keepsTheComponentSetForAString() {
+            assertThat(readTheTextOf("enhex {!'()*_.-~}"))
                     .as("uri-component is A-Z a-z 0-9 and !'()*-._~, so none of "
                             + "these is touched")
                     .isEqualTo("!'()*_.-~");
-            assertThat(theTextOf("enhex {a b}")).isEqualTo("a%20b");
+            assertThat(readTheTextOf("enhex {a b}")).isEqualTo("a%20b");
         }
 
         @Test
         @DisplayName("/ESCAPE changes the character the escapes are written with")
         void escapeChangesTheMarker() {
-            assertThat(theTextOf("enhex/escape {(#)} first {#}")).isEqualTo("(#23)");
-            assertThat(theTextOf("enhex/escape {(š)} first {#}"))
+            assertThat(readTheTextOf("enhex/escape {(#)} first {#}")).isEqualTo("(#23)");
+            assertThat(readTheTextOf("enhex/escape {(š)} first {#}"))
                     .as("and a character outside ASCII is escaped one UTF-8 octet "
                             + "at a time")
                     .isEqualTo("(#C5#A1)");
@@ -59,14 +59,14 @@ class HexAndEndianFromTheSourceTest {
 
         @Test
         @DisplayName("/URI writes a space as a plus, or an underscore under an equals")
-        void uriWritesTheSpaceSpecially() {
-            assertThat(theTextOf("enhex/uri {a b}")).isEqualTo("a+b");
-            assertThat(theTextOf("enhex/uri/escape {a b_} first {=}"))
+        void writesTheSpaceSpeciallyForUri() {
+            assertThat(readTheTextOf("enhex/uri {a b}")).isEqualTo("a+b");
+            assertThat(readTheTextOf("enhex/uri/escape {a b_} first {=}"))
                     .as("with the space standing for an underscore, an underscore "
                             + "that was already there has to be escaped or the two "
                             + "could not be told apart")
                     .isEqualTo("a_b=5F");
-            assertThat(theTextOf("enhex/escape/uri {a á_} first {=}"))
+            assertThat(readTheTextOf("enhex/escape/uri {a á_} first {=}"))
                     .isEqualTo("a_=C3=A1=5F");
         }
     }
@@ -91,7 +91,7 @@ class HexAndEndianFromTheSourceTest {
 
         @Test
         @DisplayName("and /WIDTH says how big a group is")
-        void widthSaysHowBigAGroupIs() {
+        void sizesTheGroupByWidth() {
             assertThat(answerTo("swap-endian/width/part #{1122334455667788} 4 4"))
                     .isEqualTo("#{4433221155667788}");
             assertThat(answerTo("swap-endian/width #{1122334455667788} 8"))
@@ -100,7 +100,7 @@ class HexAndEndianFromTheSourceTest {
 
         @Test
         @DisplayName("with no /PART it reaches the whole binary")
-        void withoutPart() {
+        void swapsEverythingWithoutPart() {
             assertThat(answerTo("swap-endian #{00FF00FF1122}"))
                     .isEqualTo("#{FF00FF002211}");
         }
@@ -123,7 +123,7 @@ class HexAndEndianFromTheSourceTest {
 
         @Test
         @DisplayName("but a map is, and a date is for DIFFERENCE alone")
-        void whatTheyDoTake() {
+        void takeWhatTheyTake() {
             assertThat(answerTo("error? try [difference 1-Jan-2000 2-Jan-2000]"))
                     .isEqualTo("#(false)");
             assertThat(answerTo(

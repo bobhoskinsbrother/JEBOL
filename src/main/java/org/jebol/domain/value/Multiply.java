@@ -11,7 +11,7 @@ public final class Multiply implements ArithmeticOperation {
 
     @Override
     public Value onWholeNumbers(long left, long right) {
-        return Overflowing.reported(() -> IntegerValue.of(Math.multiplyExact(left, right)));
+        return Overflowing.report(() -> IntegerValue.of(Math.multiplyExact(left, right)));
     }
 
     @Override

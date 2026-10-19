@@ -76,13 +76,13 @@ final class BrotliRingBuffer {
     }
 
     void clearWhatTheHashesWouldReadPastTheEnd() {
-        if (theFirstLapIsOverAndTheTailHoldsRealData()) {
+        if (hasFinishedTheFirstLap()) {
             return;
         }
         Arrays.fill(data, at, at + SLACK_FOR_HASHING_PAST_THE_END, (byte) 0);
     }
 
-    private boolean theFirstLapIsOverAndTheTailHoldsRealData() {
+    private boolean hasFinishedTheFirstLap() {
         return at > mask;
     }
 }

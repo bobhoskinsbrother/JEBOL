@@ -15,7 +15,7 @@ class DebasePaddingFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("failure: try [" + source + "] failure/id");
     }
 
@@ -25,7 +25,7 @@ class DebasePaddingFromTheSourceTest {
 
         @Test
         @DisplayName("an odd number of digits gains one at the front")
-        void anOddNumberGainsOne() {
+        void padsAnOddNumberByOne() {
             assertThat(answerTo("""
                     reduce [debase "1" 16 debase "123" 16 debase "10400" 16]"""))
                     .isEqualTo("[#{01} #{0123} #{010400}]");
@@ -33,15 +33,15 @@ class DebasePaddingFromTheSourceTest {
 
         @Test
         @DisplayName("an even number is read as it stands, and nothing is nothing")
-        void anEvenNumberIsReadAsItStands() {
+        void readsAnEvenNumberAsItStands() {
             assertThat(answerTo("""
                     reduce [debase "1234" 16 debase "" 16]""")).isEqualTo("[#{1234} #{}]");
         }
 
         @Test
         @DisplayName("a space is stepped over but still counted in the length")
-        void aSpaceIsSteppedOverButCounted() {
-            assertThat(errorIdFrom("""
+        void stepsOverASpaceButCountsIt() {
+            assertThat(readTheErrorIdFrom("""
                     debase "12 34" 16""")).isEqualTo("invalid-data");
             assertThat(answerTo("""
                     debase "12  34" 16""")).isEqualTo("#{1234}");
@@ -49,8 +49,8 @@ class DebasePaddingFromTheSourceTest {
 
         @Test
         @DisplayName("and so is a line break")
-        void andSoIsALineBreak() {
-            assertThat(errorIdFrom("""
+        void stepsOverALineBreakButCountsIt() {
+            assertThat(readTheErrorIdFrom("""
                     debase "12^/34" 16""")).isEqualTo("invalid-data");
             assertThat(answerTo("""
                     debase "12^/^/34" 16""")).isEqualTo("#{1234}");
@@ -58,10 +58,10 @@ class DebasePaddingFromTheSourceTest {
 
         @Test
         @DisplayName("anything that is not a digit or a space stops it")
-        void anythingElseStopsIt() {
-            assertThat(errorIdFrom("""
+        void stopsAtAnythingElse() {
+            assertThat(readTheErrorIdFrom("""
                     debase "zz" 16""")).isEqualTo("invalid-data");
-            assertThat(errorIdFrom("""
+            assertThat(readTheErrorIdFrom("""
                     debase "12,34" 16""")).isEqualTo("invalid-data");
         }
     }
@@ -80,7 +80,7 @@ class DebasePaddingFromTheSourceTest {
 
         @Test
         @DisplayName("exactly eight is one byte and nine is two")
-        void exactlyEightAndNine() {
+        void readsExactlyEightAndNine() {
             assertThat(answerTo("""
                     reduce [debase "00000001" 2 debase "000000010" 2]"""))
                     .isEqualTo("[#{01} #{0002}]");
@@ -88,8 +88,8 @@ class DebasePaddingFromTheSourceTest {
 
         @Test
         @DisplayName("and a digit that is not a bit stops it")
-        void aDigitThatIsNotABit() {
-            assertThat(errorIdFrom("""
+        void refusesADigitThatIsNotABit() {
+            assertThat(readTheErrorIdFrom("""
                     debase "012" 2""")).isEqualTo("invalid-data");
         }
     }
@@ -100,27 +100,27 @@ class DebasePaddingFromTheSourceTest {
 
         @Test
         @DisplayName("four digits are three bytes")
-        void fourDigitsAreThreeBytes() {
+        void readsFourDigitsAsThreeBytes() {
             assertThat(answerTo("""
                     debase "YWJj" 64""")).isEqualTo("#{616263}");
         }
 
         @Test
         @DisplayName("one, two or three on their own are refused")
-        void aPartialGroupIsRefused() {
-            assertThat(errorIdFrom("""
+        void refusesAPartialGroup() {
+            assertThat(readTheErrorIdFrom("""
                     debase "Y" 64""")).isEqualTo("invalid-data");
-            assertThat(errorIdFrom("""
+            assertThat(readTheErrorIdFrom("""
                     debase "YW" 64""")).isEqualTo("invalid-data");
-            assertThat(errorIdFrom("""
+            assertThat(readTheErrorIdFrom("""
                     debase "YWJ" 64""")).isEqualTo("invalid-data");
-            assertThat(errorIdFrom("""
+            assertThat(readTheErrorIdFrom("""
                     debase "abc" 64""")).isEqualTo("invalid-data");
         }
 
         @Test
         @DisplayName("the equals signs are how a short last group is written down")
-        void theEqualsSignsAreThePadding() {
+        void takesTheEqualsSignsAsPadding() {
             assertThat(answerTo("""
                     reduce [debase "YWI=" 64 debase "YQ==" 64]"""))
                     .isEqualTo("[#{6162} #{61}]");
@@ -128,14 +128,14 @@ class DebasePaddingFromTheSourceTest {
 
         @Test
         @DisplayName("but one equals after two digits is not, the second being looked for")
-        void oneEqualsAfterTwoDigits() {
-            assertThat(errorIdFrom("""
+        void acceptsOneEqualsAfterTwoDigits() {
+            assertThat(readTheErrorIdFrom("""
                     debase "YQ=" 64""")).isEqualTo("invalid-data");
         }
 
         @Test
         @DisplayName("the URL-safe alphabet is allowed to end short")
-        void urlSafeMayEndShort() {
+        void letsUrlSafeEndShort() {
             assertThat(answerTo("""
                     reduce [debase/url "YWJj" 64 debase/url "YWI" 64 debase/url "YQ" 64]"""))
                     .isEqualTo("[#{616263} #{6162} #{61}]");
@@ -143,12 +143,12 @@ class DebasePaddingFromTheSourceTest {
     }
 
     @Nested
-    @DisplayName("what a string of any kind hands over")
+    @DisplayName("what a string of any type hands over")
     class TheSeriesContents {
 
         @Test
         @DisplayName("a tag gives its letters, not the brackets it is written in")
-        void aTagGivesItsLetters() {
+        void readsATagsLetters() {
             assertThat(answerTo("""
                     reduce [debase <1234> 16 enbase <ab> 16]"""))
                     .isEqualTo("[#{1234} \"6162\"]");
@@ -156,7 +156,7 @@ class DebasePaddingFromTheSourceTest {
 
         @Test
         @DisplayName("and a file gives its name without the percent sign")
-        void aFileGivesItsName() {
+        void readsAFilesName() {
             assertThat(answerTo("""
                     reduce [debase %1234 16 enbase %ab 16]"""))
                     .isEqualTo("[#{1234} \"6162\"]");
@@ -164,7 +164,7 @@ class DebasePaddingFromTheSourceTest {
 
         @Test
         @DisplayName("a binary is its own bytes read as the letters they spell")
-        void aBinaryIsItsOwnBytes() {
+        void readsABinarysOwnBytes() {
             assertThat(answerTo("""
                     debase #{31323334} 16""")).isEqualTo("#{1234}");
         }

@@ -28,7 +28,7 @@ record OpeningAFile(Set<String> refinements) {
         return !refinements.contains("read") && !refinements.contains("write");
     }
 
-    Set<PolicyAccess> theAccessesItAsksFor() {
+    Set<PolicyAccess> listTheAccessesItAsksFor() {
         Set<PolicyAccess> asked = EnumSet.noneOf(PolicyAccess.class);
         if (mayRead()) {
             asked.add(PolicyAccess.READ);

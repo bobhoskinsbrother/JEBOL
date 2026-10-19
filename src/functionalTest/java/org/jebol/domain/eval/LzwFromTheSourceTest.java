@@ -21,14 +21,14 @@ class LzwFromTheSourceTest {
 
         @Test
         @DisplayName("nothing is three bytes: a width, an end code and the flush")
-        void nothingIsThreeBytes() {
+        void compressNothingToThreeBytes() {
             assertThat(answerTo("""
                     compress/level "" 'lzw 0""")).isEqualTo("#{00FF01}");
         }
 
         @Test
         @DisplayName("something with a pattern in it, at the narrowest width")
-        void somethingWithAPattern() {
+        void compressSomethingWithAPattern() {
             assertThat(answerTo("""
                     compress/level "test test test" 'lzw 0"""))
                     .isEqualTo("#{007465737420FDFAFBE347F71F}");
@@ -36,7 +36,7 @@ class LzwFromTheSourceTest {
 
         @Test
         @DisplayName("the first byte is the widest symbol less nine")
-        void theFirstByteIsTheWidth() {
+        void startWithTheWidth() {
             assertThat(answerTo("""
                     collect [
                         foreach level [0 1 4 7 8 9][
@@ -47,7 +47,7 @@ class LzwFromTheSourceTest {
 
         @Test
         @DisplayName("and the default is the widest, which is what no level means")
-        void theDefaultIsTheWidest() {
+        void defaultToTheWidest() {
             assertThat(answerTo("""
                     compress "test" 'lzw""")).isEqualTo("#{0774657374FF01}");
         }
@@ -59,7 +59,7 @@ class LzwFromTheSourceTest {
 
         @Test
         @DisplayName("what went in comes out, at every level there is")
-        void whatWentInComesOut() {
+        void bringsOutWhatGoesIn() {
             assertThat(answerTo("""
                     text: {Lorem ipsum dolor sit amet, consectetur adipisici elit,
                     sed eiusmod tempor incidunt ut labore et dolore magna aliqua.}
@@ -84,7 +84,7 @@ class LzwFromTheSourceTest {
 
         @Test
         @DisplayName("and something with no pattern, which makes it start over")
-        void somethingWithNoPattern() {
+        void readsSomethingWithNoPattern() {
             assertThat(answerTo("""
                     noise: copy #{}
                     repeat n 300 [append noise (n * 7919 % 251)]
@@ -93,7 +93,7 @@ class LzwFromTheSourceTest {
 
         @Test
         @DisplayName("/SIZE stops early, which is how the front is read on its own")
-        void sizeStopsEarly() {
+        void stopsEarlyForSize() {
             assertThat(answerTo("""
                     packed: compress "test test test" 'lzw
                     decompress/size packed 'lzw 4""")).isEqualTo("#{74657374}");
@@ -110,7 +110,7 @@ class LzwFromTheSourceTest {
 
         @Test
         @DisplayName("and bytes that do not open with a width are refused")
-        void bytesWithNoWidth() {
+        void refusesBytesWithNoWidth() {
             assertThat(answerTo("""
                     failure: try [decompress #{FF} 'lzw]
                     failure/id""")).isEqualTo("bad-press");
@@ -126,7 +126,7 @@ class LzwFromTheSourceTest {
 
         @Test
         @DisplayName("the catalogue lists it, and COMPRESS answers to it")
-        void theCatalogueListsIt() {
+        void appearsInTheCatalogue() {
             assertThat(answerTo("""
                     reduce [
                         true? find system/catalog/compressions 'lzw
@@ -136,7 +136,7 @@ class LzwFromTheSourceTest {
 
         @Test
         @DisplayName("and the two this build has not got still say so")
-        void theOthersStillSayFeatureNa() {
+        void leavesTheOthersSayingFeatureNa() {
             assertThat(answerTo("""
                     collect [
                         foreach method [lz4 lzav][

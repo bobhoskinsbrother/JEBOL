@@ -22,26 +22,26 @@ class ClosTest {
 
     @Test
     @DisplayName("the names of a call outlive the call")
-    void theFrameOutlivesTheCall() {
+    void keepsTheFrameAfterTheCall() {
         assertThat(answerTo("f: clos [x] [does [x]] g: f 1 g")).isEqualTo("1");
     }
 
     @Test
     @DisplayName("two calls keep two separate frames")
-    void eachCallHasItsOwn() {
+    void givesEachCallItsOwnFrame() {
         assertThat(answerTo(
                 "f: clos [x] [does [x]] a: f 1 b: f 2 (a) + (b)")).isEqualTo("3");
     }
 
     @Test
     @DisplayName("a closure with no arguments works")
-    void theDegenerateSpec() {
+    void acceptsTheDegenerateSpec() {
         assertThat(answerTo("f: clos [] [5] f")).isEqualTo("5");
     }
 
     @Test
     @DisplayName("the spec and the body are copied")
-    void neitherIsShared() {
+    void sharesNeither() {
         assertThat(answerTo("b: [1] f: clos [] b append b 2 f")).isEqualTo("1");
     }
 }

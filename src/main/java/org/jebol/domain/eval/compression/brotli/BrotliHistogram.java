@@ -52,7 +52,7 @@ final class BrotliHistogram {
         costKeptSoClusteringNeedNotReAsk = other.costKeptSoClusteringNeedNotReAsk;
     }
 
-    static BrotliHistogram[] freshRow(int howMany, int alphabetSize) {
+    static BrotliHistogram[] makeAFreshRow(int howMany, int alphabetSize) {
         BrotliHistogram[] row = new BrotliHistogram[howMany];
         for (int which = 0; which < howMany; which++) {
             row[which] = new BrotliHistogram(alphabetSize);

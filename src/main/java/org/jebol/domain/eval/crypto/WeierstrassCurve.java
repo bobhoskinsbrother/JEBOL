@@ -54,11 +54,11 @@ final class WeierstrassCurve {
         return left.equals(right);
     }
 
-    boolean itsGeneratorIsOnItAndHasTheStatedOrder() {
+    boolean hasAValidGenerator() {
         return holds(generator) && multiply(generator, order).isInfinity();
     }
 
-    Point doubled(Point point) {
+    Point doublePoint(Point point) {
         if (point.isInfinity() || point.y().signum() == 0) {
             return Point.INFINITY;
         }
@@ -69,7 +69,7 @@ final class WeierstrassCurve {
         return fromSlope(slope, point.x(), point.x(), point.y());
     }
 
-    Point added(Point left, Point right) {
+    Point addPoints(Point left, Point right) {
         if (left.isInfinity()) {
             return right;
         }
@@ -77,7 +77,7 @@ final class WeierstrassCurve {
             return left;
         }
         if (left.x().equals(right.x())) {
-            return left.y().equals(right.y()) ? doubled(left) : Point.INFINITY;
+            return left.y().equals(right.y()) ? doublePoint(left) : Point.INFINITY;
         }
         BigInteger slope = right.y().subtract(left.y())
                 .multiply(right.x().subtract(left.x()).modInverse(prime))
@@ -95,19 +95,19 @@ final class WeierstrassCurve {
     Point multiply(Point point, BigInteger by) {
         Point running = Point.INFINITY;
         for (int bit = by.bitLength() - 1; bit >= 0; bit--) {
-            running = doubled(running);
+            running = doublePoint(running);
             if (by.testBit(bit)) {
-                running = added(running, point);
+                running = addPoints(running, point);
             }
         }
         return running;
     }
 
-    Point timesTheGenerator(BigInteger by) {
+    Point multiplyTheGenerator(BigInteger by) {
         return multiply(generator, by);
     }
 
-    BigInteger aPrivateNumber(SecureRandom randomly) {
+    BigInteger drawAPrivateNumber(SecureRandom randomly) {
         BigInteger chosen;
         do {
             chosen = new BigInteger(order.bitLength(), randomly);
@@ -115,13 +115,13 @@ final class WeierstrassCurve {
         return chosen;
     }
 
-    BigInteger[] signatureOver(
+    BigInteger[] signOver(
             BigInteger privateNumber, byte[] hash, SecureRandom randomly) {
 
-        BigInteger digest = theLeftmostBitsOf(hash);
+        BigInteger digest = takeTheLeftmostBitsOf(hash);
         while (true) {
-            BigInteger chosen = aPrivateNumber(randomly);
-            Point marker = timesTheGenerator(chosen);
+            BigInteger chosen = drawAPrivateNumber(randomly);
+            Point marker = multiplyTheGenerator(chosen);
             BigInteger first = marker.x().mod(order);
             if (first.signum() == 0) {
                 continue;
@@ -135,22 +135,22 @@ final class WeierstrassCurve {
         }
     }
 
-    boolean signatureHolds(
+    boolean verifiesTheSignature(
             Point publicPoint, byte[] hash, BigInteger first, BigInteger second) {
 
         if (first.signum() <= 0 || second.signum() <= 0
                 || first.compareTo(order) >= 0 || second.compareTo(order) >= 0) {
             return false;
         }
-        BigInteger digest = theLeftmostBitsOf(hash);
+        BigInteger digest = takeTheLeftmostBitsOf(hash);
         BigInteger inverse = second.modInverse(order);
-        Point marker = added(
-                timesTheGenerator(digest.multiply(inverse).mod(order)),
+        Point marker = addPoints(
+                multiplyTheGenerator(digest.multiply(inverse).mod(order)),
                 multiply(publicPoint, first.multiply(inverse).mod(order)));
         return !marker.isInfinity() && marker.x().mod(order).equals(first);
     }
 
-    private BigInteger theLeftmostBitsOf(byte[] hash) {
+    private BigInteger takeTheLeftmostBitsOf(byte[] hash) {
         BigInteger whole = new BigInteger(1, hash);
         int beyondTheOrder = hash.length * 8 - order.bitLength();
         return beyondTheOrder > 0 ? whole.shiftRight(beyondTheOrder) : whole;
@@ -168,7 +168,7 @@ final class WeierstrassCurve {
         return holds(read) ? Optional.of(read) : Optional.empty();
     }
 
-    byte[] coordinateOnTheWire(BigInteger coordinate) {
+    byte[] writeTheCoordinateOnTheWire(BigInteger coordinate) {
         byte[] written = new byte[coordinateWidth];
         byte[] raw = coordinate.toByteArray();
         int taking = Math.min(raw.length, coordinateWidth);
@@ -178,13 +178,13 @@ final class WeierstrassCurve {
     }
 
     private static final Map<String, WeierstrassCurve> THE_ONES_THE_JDK_DROPPED =
-            theOnesTheJdkDropped();
+            listTheOnesTheJdkDropped();
 
-    static Optional<WeierstrassCurve> named(String curve) {
+    static Optional<WeierstrassCurve> findTheCurveNamed(String curve) {
         return Optional.ofNullable(THE_ONES_THE_JDK_DROPPED.get(curve));
     }
 
-    private static Map<String, WeierstrassCurve> theOnesTheJdkDropped() {
+    private static Map<String, WeierstrassCurve> listTheOnesTheJdkDropped() {
         Map<String, WeierstrassCurve> carried = new LinkedHashMap<>();
         carried.put("secp192r1", new WeierstrassCurve(
                 "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFF",

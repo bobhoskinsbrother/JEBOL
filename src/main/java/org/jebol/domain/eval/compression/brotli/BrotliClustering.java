@@ -31,11 +31,11 @@ final class BrotliClustering {
         }
     }
 
-    private static double whatTheMapSaves(int firstSize, int secondSize) {
+    private static double measureWhatTheMapSaves(int firstSize, int secondSize) {
         int together = firstSize + secondSize;
-        return firstSize * BrotliCodes.fastLog2(firstSize)
-                + secondSize * BrotliCodes.fastLog2(secondSize)
-                - together * BrotliCodes.fastLog2(together);
+        return firstSize * BrotliCodes.computeLog2Quickly(firstSize)
+                + secondSize * BrotliCodes.computeLog2Quickly(secondSize)
+                - together * BrotliCodes.computeLog2Quickly(together);
     }
 
     static final class Queue {
@@ -68,7 +68,7 @@ final class BrotliClustering {
             candidate.second = second;
             candidate.costOfTheMerged = 0;
             candidate.whatMergingSaves =
-                    0.5 * whatTheMapSaves(clusterSize[first], clusterSize[second])
+                    0.5 * measureWhatTheMapSaves(clusterSize[first], clusterSize[second])
                             - costOf(histograms[first])
                             - costOf(histograms[second]);
 
@@ -274,7 +274,7 @@ final class BrotliClustering {
                 nextName++;
             }
         }
-        BrotliHistogram[] shuffled = BrotliHistogram.freshRow(nextName, alphabetSize);
+        BrotliHistogram[] shuffled = BrotliHistogram.makeAFreshRow(nextName, alphabetSize);
         nextName = 0;
         for (int each = 0; each < howMany; each++) {
             if (newName[whichOneEachUses[each]] == nextName) {

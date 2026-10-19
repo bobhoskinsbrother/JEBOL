@@ -10,7 +10,7 @@ package org.jebol.domain.host;
  *
  * <p>Specified in {@code spec/screen.allium}.
  */
-public enum ScreenEventKind {
+public enum ScreenEventType {
 
     CLOSE("close"),
     RESIZE("resize"),
@@ -25,7 +25,7 @@ public enum ScreenEventKind {
 
     private final String spelling;
 
-    ScreenEventKind(String spelling) {
+    ScreenEventType(String spelling) {
         this.spelling = spelling;
     }
 

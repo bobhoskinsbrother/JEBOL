@@ -23,14 +23,14 @@ class FindAndSelectSkipFromTheSourceTest {
 
     @Test
     @DisplayName("SELECT/skip/last steps by one and reads the element after the key")
-    void lastStepsByOne() {
+    void stepsByOneForLast() {
         assertThat(answerTo("""
                 'c = select/skip/last [a b a c] 'a 2""")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("FIND/skip with a negative forward width misses on a string")
-    void negativeForwardSkipMissesOnAString() {
+    void missesOnAStringWithANegativeForwardSkip() {
         assertThat(answerTo("""
                 none? find/skip "acdcde" "cd" -3""")).isEqualTo("#(true)");
     }
@@ -52,7 +52,7 @@ class FindAndSelectSkipFromTheSourceTest {
 
     @Test
     @DisplayName("SELECT/skip matches a block key as a run inside a record")
-    void blockKeyMatchesARun() {
+    void matchesARunForABlockKey() {
         assertThat(answerTo("""
                 'y = select/skip [a a a b b y] [b b] 3""")).isEqualTo("#(true)");
     }

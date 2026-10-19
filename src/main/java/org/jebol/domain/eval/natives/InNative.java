@@ -17,8 +17,8 @@ public class InNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("object", TypesetValue.ANY_OBJECT.membersAnd(BlockValue.TYPE)),
-                Parameter.required("word",
+                Parameter.of("object", TypesetValue.ANY_OBJECT.membersAnd(BlockValue.TYPE)),
+                Parameter.of("word",
                         TypesetValue.ANY_WORD.membersAnd(BlockValue.TYPE, ParenValue.TYPE)));
     }
 
@@ -27,38 +27,38 @@ public class InNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> {
             if (arguments.getFirst() instanceof AnyBlockValue searched
                     && !(searched instanceof PathValue)) {
-                return firstHolderIn(searched, arguments.get(1), evaluator, context);
+                return findTheFirstHolderIn(searched, arguments.get(1), evaluator, context);
             }
-            Context frame = contextOf(arguments.getFirst());
+            Context frame = findTheContextOf(arguments.getFirst());
             if (arguments.get(1) instanceof AnyBlockValue body) {
                 return Binder.bindInPlace(body, frame);
             }
             AnyWordValue word = (AnyWordValue) arguments.get(1);
-            return frame.holds(word.canonical()) ? word.boundTo(frame) : NoneValue.none();
+            return frame.holds(word.canonical()) ? word.bindTo(frame) : NoneValue.none();
         };
     }
 
-    private Context contextOf(Value value) {
+    private Context findTheContextOf(Value value) {
         return switch (value) {
             case ObjectValue object -> object.context();
             case PortValue port -> port.context();
             case ModuleValue module -> module.context();
-            case ErrorValue raised -> theFieldsAnErrorHolds(raised);
+            case ErrorValue raised -> readTheFieldsAnErrorHolds(raised);
             default -> throw Raised.of(EvaluationFailure.EXPECT_ARG,
                     "in wanted an object, an error, a port or a block, not "
                             + value.datatype().literalSpelling());
         };
     }
 
-    private Context theFieldsAnErrorHolds(ErrorValue raised) {
+    private Context readTheFieldsAnErrorHolds(ErrorValue raised) {
         Context fields = Context.root();
         for (String name : ErrorValue.FIELDS) {
-            raised.field(name).ifPresent(value -> fields.register(name, value));
+            raised.readTheField(name).ifPresent(value -> fields.register(name, value));
         }
         return fields;
     }
 
-    private Value firstHolderIn(
+    private Value findTheFirstHolderIn(
             AnyBlockValue searched, Value wanted, Evaluator evaluator, Context context) {
 
         if (!(wanted instanceof AnyWordValue word)) {
@@ -66,11 +66,11 @@ public class InNative extends DefaultNative {
         }
         for (Value item : searched.remaining()) {
             Value resolved = item instanceof AnyWordValue bound && bound.isBound()
-                    ? evaluator.evaluateOrRaise(BlockValue.block(List.of(bound)), context)
+                    ? evaluator.evaluateOrRaise(BlockValue.of(List.of(bound)), context)
                     : item;
             if (resolved instanceof ObjectValue(Context holder)
                     && holder.holds(word.canonical())) {
-                return word.boundTo(holder);
+                return word.bindTo(holder);
             }
         }
         return NoneValue.none();

@@ -16,7 +16,7 @@ class AColonBeforeASlashSettlesAUrlFromTheSourceTest {
 
     @Test
     @DisplayName("the characters a word may not hold are ordinary inside a url")
-    void theCharactersAWordMayNotHoldAreOrdinaryInsideAUrl() {
+    void readsTheCharactersAWordMayNotHoldAsOrdinaryInsideAUrl() {
         assertThat(answerTo("""
                 collect [
                     foreach one ["a:/x<y" "a:/x>y" "a:/x,y" "a:/x%y" "a:/x$y"] [
@@ -27,31 +27,31 @@ class AColonBeforeASlashSettlesAUrlFromTheSourceTest {
 
     @Test
     @DisplayName("and every one of the first 256 characters survives the round trip")
-    void everyOneOfTheFirstTwoHundredAndFiftySixSurvivesTheRoundTrip() {
+    void roundTripsEveryOneOfTheFirstTwoHundredAndFiftySix() {
         assertThat(answerTo("""
                 collect [
                     for i 0 255 1 [
-                        written: append copy a:/ to char! i
-                        unless (try [load mold written]) == written [keep i]
+                        text: append copy a:/ to char! i
+                        unless (try [load mold text]) == text [keep i]
                     ]
                 ]""")).isEqualTo("[]");
     }
 
     @Test
     @DisplayName("a file does too")
-    void aFileDoesToo() {
+    void roundTripsThemInAFileToo() {
         assertThat(answerTo("""
                 collect [
                     for i 0 255 1 [
-                        written: append copy %a to char! i
-                        unless (try [load mold written]) == written [keep i]
+                        text: append copy %a to char! i
+                        unless (try [load mold text]) == text [keep i]
                     ]
                 ]""")).isEqualTo("[]");
     }
 
     @Test
     @DisplayName("but a colon with no slash after it is still a set-word")
-    void aColonWithNoSlashAfterItIsStillASetWord() {
+    void stillReadsAColonWithNoSlashAfterItAsASetWord() {
         assertThat(answerTo("""
                 reduce [type? first load "[a: 1]"  type? first load "[a:/b]"]"""))
                 .isEqualTo("[#(set-word!) #(url!)]");

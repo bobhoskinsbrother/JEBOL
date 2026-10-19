@@ -18,11 +18,11 @@ class EnbaseAndDebaseFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdFrom(String source) {
+    private static String readTheErrorIdFrom(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
-    private static String bytesOfLength(int count) {
+    private static String makeBytesOfLength(int count) {
         return "(b: copy #{} loop " + count + " [append b 255] b)";
     }
 
@@ -47,10 +47,10 @@ class EnbaseAndDebaseFromTheSourceTest {
 
         @Test
         @DisplayName("and refuses more than eight bytes, there being no such number")
-        void moreThanEightBytesIsOutOfRange() {
-            assertThat(errorIdFrom("enbase " + bytesOfLength(9) + " 36"))
+        void refusesMoreThanEightBytes() {
+            assertThat(readTheErrorIdFrom("enbase " + makeBytesOfLength(9) + " 36"))
                     .isEqualTo("out-of-range");
-            assertThat(errorIdFrom("enbase " + bytesOfLength(8) + " 36"))
+            assertThat(readTheErrorIdFrom("enbase " + makeBytesOfLength(8) + " 36"))
                     .isEqualTo("no-error");
         }
 
@@ -73,16 +73,16 @@ class EnbaseAndDebaseFromTheSourceTest {
 
         @Test
         @DisplayName("and reads thirteen digits at most, and only alphanumeric ones")
-        void thirteenDigitsAtMostAndNothingOutsideTheAlphabet() {
-            assertThat(errorIdFrom("debase \"ZZZZZZZZZZZZZZ\" 36"))
+        void readsAtMostThirteenDigitsFromTheAlphabet() {
+            assertThat(readTheErrorIdFrom("debase \"ZZZZZZZZZZZZZZ\" 36"))
                     .isEqualTo("invalid-data");
-            assertThat(errorIdFrom("debase \"!!\" 36")).isEqualTo("invalid-data");
-            assertThat(errorIdFrom("debase \"ZZZZZZZZZZZZZ\" 36")).isEqualTo("no-error");
+            assertThat(readTheErrorIdFrom("debase \"!!\" 36")).isEqualTo("invalid-data");
+            assertThat(readTheErrorIdFrom("debase \"ZZZZZZZZZZZZZ\" 36")).isEqualTo("no-error");
         }
 
         @Test
         @DisplayName("so the two are not inverses, which is the point of the shape")
-        void theTwoAreNotInverses() {
+        void failsToRoundTrip() {
             assertThat(answerTo("mold debase enbase #{01} 36 36"))
                     .isEqualTo("\"#{0000000000000001}\"");
         }
@@ -103,7 +103,7 @@ class EnbaseAndDebaseFromTheSourceTest {
                 "'\"hello world!\"', 'BOu!rD]j7BEbo80'",
         })
         @DisplayName("four bytes become five characters, and a short group one more")
-        void fourBytesBecomeFiveCharacters(String given, String expected) {
+        void writesFourBytesAsFiveCharacters(String given, String expected) {
             assertThat(answerTo("enbase " + given + " 85"))
                     .isEqualTo('"' + expected + '"');
         }
@@ -121,7 +121,7 @@ class EnbaseAndDebaseFromTheSourceTest {
                 "'#{FFFFFFFF}',           's8W-!'",
         })
         @DisplayName("and a whole zero group is the letter z, a partial one is not")
-        void aWholeZeroGroupIsTheLetterZed(String given, String expected) {
+        void writesAWholeZeroGroupAsZed(String given, String expected) {
             assertThat(answerTo("enbase " + given + " 85"))
                     .isEqualTo('"' + expected + '"');
         }
@@ -136,16 +136,16 @@ class EnbaseAndDebaseFromTheSourceTest {
 
         @Test
         @DisplayName("and what it will not read is refused rather than guessed at")
-        void whatItWillNotReadIsRefused() {
-            assertThat(errorIdFrom("debase \"abcx\" 85")).isEqualTo("invalid-data");
-            assertThat(errorIdFrom("debase \"~>\" 85")).isEqualTo("invalid-data");
-            assertThat(errorIdFrom("debase {s8W-\"} 85")).isEqualTo("invalid-data");
-            assertThat(errorIdFrom("debase \"u\" 85")).isEqualTo("invalid-data");
+        void refusesWhatItWillNotRead() {
+            assertThat(readTheErrorIdFrom("debase \"abcx\" 85")).isEqualTo("invalid-data");
+            assertThat(readTheErrorIdFrom("debase \"~>\" 85")).isEqualTo("invalid-data");
+            assertThat(readTheErrorIdFrom("debase {s8W-\"} 85")).isEqualTo("invalid-data");
+            assertThat(readTheErrorIdFrom("debase \"u\" 85")).isEqualTo("invalid-data");
         }
 
         @Test
         @DisplayName("and the round trip holds, because a short group records its length")
-        void theRoundTripHolds() {
+        void roundTrips() {
             assertThat(answerTo("""
                     every-one: true
                     foreach n [0 1 2 3 4 5 6 7 8 9 16 17] [
@@ -171,11 +171,11 @@ class EnbaseAndDebaseFromTheSourceTest {
                 "64, 48, true",
         })
         @DisplayName("a break appears only once the input is long enough, counted in bytes")
-        void aBreakAppearsOnlyOnceTheInputIsLongEnough(
+        void breaksOnlyOnceTheInputIsLongEnough(
                 int base, int count, boolean broken) {
 
             assertThat(answerTo(
-                    "true? find enbase " + bytesOfLength(count) + " " + base + " newline"))
+                    "true? find enbase " + makeBytesOfLength(count) + " " + base + " newline"))
                     .as("base %d at %d bytes", base, count)
                     .isEqualTo(broken ? "#(true)" : "#(false)");
         }
@@ -183,18 +183,18 @@ class EnbaseAndDebaseFromTheSourceTest {
         @ParameterizedTest(name = "base {0}")
         @ValueSource(ints = {2, 16, 64})
         @DisplayName("and when it does appear, the answer starts with it")
-        void theAnswerStartsWithTheBreak(int base) {
+        void startsTheAnswerWithTheBreak(int base) {
             assertThat(answerTo(
-                    "newline = first enbase " + bytesOfLength(64) + " " + base))
+                    "newline = first enbase " + makeBytesOfLength(64) + " " + base))
                     .as("base %d", base)
                     .isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("an input that divides exactly ends with one too")
-        void anInputThatDividesExactlyEndsWithOne() {
+        void endsWithABreakWhenTheInputDividesExactly() {
             assertThat(answerTo(
-                    "newline = last enbase " + bytesOfLength(32) + " 16"))
+                    "newline = last enbase " + makeBytesOfLength(32) + " 16"))
                     .isEqualTo("#(true)");
         }
 
@@ -202,16 +202,16 @@ class EnbaseAndDebaseFromTheSourceTest {
         @DisplayName("except base 2 at exactly eight bytes, which the C takes back")
         void exceptBaseTwoAtExactlyEightBytes() {
             assertThat(answerTo(
-                    "(enbase " + bytesOfLength(8) + " 2) = {" + "1".repeat(64) + "}"))
+                    "(enbase " + makeBytesOfLength(8) + " 2) = {" + "1".repeat(64) + "}"))
                     .isEqualTo("#(true)");
         }
 
         @ParameterizedTest(name = "base {0}")
         @ValueSource(ints = {2, 16, 64})
         @DisplayName("and /FLAT has none of it")
-        void flatHasNoneOfIt(int base) {
+        void breaksNothingForFlat(int base) {
             assertThat(answerTo(
-                    "true? find enbase/flat " + bytesOfLength(64) + " " + base
+                    "true? find enbase/flat " + makeBytesOfLength(64) + " " + base
                             + " newline"))
                     .as("base %d", base)
                     .isEqualTo("#(false)");
@@ -224,7 +224,7 @@ class EnbaseAndDebaseFromTheSourceTest {
 
         @Test
         @DisplayName("a position ahead bounds the span forwards")
-        void aPositionAheadBoundsForwards() {
+        void boundsForwardsToAPositionAhead() {
             assertThat(answerTo("enbase/part s: \"abcd\" 64 skip s 2"))
                     .isEqualTo("\"YWI=\"");
             assertThat(answerTo("mold debase/part s: \"YWI=XXXX\" 64 find s #\"X\""))
@@ -233,7 +233,7 @@ class EnbaseAndDebaseFromTheSourceTest {
 
         @Test
         @DisplayName("and a position behind names the run leading up to it")
-        void aPositionBehindNamesTheRunLeadingUpToIt() {
+        void takesTheRunUpToAPositionBehind() {
             assertThat(answerTo("enbase/part s: tail \"abcd\" 64 skip s -2"))
                     .isEqualTo("\"Y2Q=\"");
             assertThat(answerTo("""
@@ -243,7 +243,7 @@ class EnbaseAndDebaseFromTheSourceTest {
 
         @Test
         @DisplayName("a negative count says the same thing the shorter way")
-        void aNegativeCountSaysTheSameThing() {
+        void takesTheSameRunForANegativeCount() {
             assertThat(answerTo("enbase/part s: tail \"abcd\" 64 -2"))
                     .isEqualTo("\"Y2Q=\"");
             assertThat(answerTo("mold debase/part s: tail \"XXXYWI=\" 64 -4"))
@@ -252,7 +252,7 @@ class EnbaseAndDebaseFromTheSourceTest {
 
         @Test
         @DisplayName("and it is clamped to what is actually behind, which at the head is none")
-        void itIsClampedToWhatIsActuallyBehind() {
+        void isClampedToWhatIsActuallyBehind() {
             assertThat(answerTo("enbase/part s: \"abcd\" 64 -2")).isEqualTo("\"\"");
             assertThat(answerTo("enbase/part s: skip \"abcd\" 1 64 -9"))
                     .isEqualTo("\"YQ==\"");
@@ -265,7 +265,7 @@ class EnbaseAndDebaseFromTheSourceTest {
 
         @Test
         @DisplayName("where the plain alphabet pads, the URL one stops")
-        void theUrlVariantDoesNotPad() {
+        void leavesOffThePadding() {
             assertThat(answerTo("enbase \"a\" 64")).isEqualTo("\"YQ==\"");
             assertThat(answerTo("enbase \"aa\" 64")).isEqualTo("\"YWE=\"");
             assertThat(answerTo("enbase/url \"a\" 64")).isEqualTo("\"YQ\"");
@@ -274,14 +274,14 @@ class EnbaseAndDebaseFromTheSourceTest {
 
         @Test
         @DisplayName("and a full group needs no padding either way, so the two agree")
-        void aFullGroupAgrees() {
+        void agreesOnAFullGroup() {
             assertThat(answerTo("(enbase \"abc\" 64) = (enbase/url \"abc\" 64)"))
                     .isEqualTo("#(true)");
         }
 
         @Test
         @DisplayName("the decoder reads its own output back, padded or not")
-        void theDecoderReadsItsOwnOutputBack() {
+        void readsItsOwnOutputBack() {
             assertThat(answerTo("""
                     key: "qL8R4QIcQ_ZsRqOAbeRfcZhilN_MksRtDaErMA"
                     bin: debase/url key 64

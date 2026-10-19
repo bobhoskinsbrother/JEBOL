@@ -12,7 +12,7 @@ public abstract class CompressionNative extends EncodingNative {
         super(encodings);
     }
 
-    protected String aKnownCompression(Value method) {
+    protected String readAKnownCompression(Value method) {
         String asked = ((AnyWordValue) method).canonical();
         if (Encodings.COMPRESSIONS_ELSEWHERE.contains(asked)) {
             throw Raised.of(EvaluationFailure.FEATURE_NA, method);

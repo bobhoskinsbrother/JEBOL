@@ -29,55 +29,55 @@ public final class PolicyEnforcement {
     }
 
     public void require(PolicyClass kind, PolicyAccess access, Optional<Value> subject) {
-        Optional<Context> state = theSystemState();
+        Optional<Context> state = findTheSystemState();
         if (state.isEmpty()) {
             return;
         }
-        PolicyLevel level = new SecurityPolicies(theField(state.get(), "policies"), fileNamesFoldCase())
-                .levelFor(kind, access, subject);
+        PolicyLevel level = new SecurityPolicies(readTheField(state.get(), "policies"), fileNamesFoldCase())
+                .findTheLevelFor(kind, access, subject);
         switch (level) {
-            case ALLOW -> theAccessGoesAhead();
+            case ALLOW -> letTheAccessGoAhead();
             case ASK -> refuseUnlessConfirmed(state.get(), kind, access, subject);
-            case THROW -> throw violation(kind, subject);
+            case THROW -> throw refuseAsAViolation(kind, subject);
             case QUIT -> throw new QuitRequested(IntegerValue.of(WHAT_A_QUIT_POLICY_LEAVES_WITH));
         }
     }
 
-    private void theAccessGoesAhead() {
+    private void letTheAccessGoAhead() {
     }
 
-    private Optional<Context> theSystemState() {
+    private Optional<Context> findTheSystemState() {
         Context lib = evaluator.systemContext();
         if (!lib.knows("system")
-                || !(lib.valueAt("system", "state") instanceof ObjectValue(Context state))) {
+                || !(lib.readValueAt("system", "state") instanceof ObjectValue(Context state))) {
             return Optional.empty();
         }
         return Optional.of(state);
     }
 
-    private Value theField(Context state, String field) {
+    private Value readTheField(Context state, String field) {
         return state.hasItsOwnSlotFor(field) ? state.ownSlotFor(field).value() : NoneValue.none();
     }
 
     private boolean fileNamesFoldCase() {
-        return evaluator.systemContext().valueAt("system", "platform") instanceof AnyWordValue platform
+        return evaluator.systemContext().readValueAt("system", "platform") instanceof AnyWordValue platform
                 && platform.canonical().equals(THE_PLATFORM_WHOSE_FILE_NAMES_FOLD_CASE);
     }
 
     private void refuseUnlessConfirmed(
             Context state, PolicyClass kind, PolicyAccess access, Optional<Value> subject) {
 
-        Value confirming = theField(state, "confirm-policy");
+        Value confirming = readTheField(state, "confirm-policy");
         Value answer = evaluator.applyFunction(confirming, List.of(
                 WordValue.of(kind.word()),
                 IntegerValue.of(access.asConfirmPolicyCountsIt()),
                 subject.orElseGet(NoneValue::none)));
         if (!(answer instanceof LogicValue confirmed && confirmed.isTruthy())) {
-            throw violation(kind, subject);
+            throw refuseAsAViolation(kind, subject);
         }
     }
 
-    private Raised violation(PolicyClass kind, Optional<Value> subject) {
+    private Raised refuseAsAViolation(PolicyClass kind, Optional<Value> subject) {
         return Raised.of(EvaluationFailure.SECURITY, subject.orElseGet(() -> WordValue.of(kind.word())));
     }
 }

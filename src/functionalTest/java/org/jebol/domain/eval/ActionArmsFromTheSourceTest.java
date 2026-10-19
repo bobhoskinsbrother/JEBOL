@@ -15,7 +15,7 @@ class ActionArmsFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -46,7 +46,7 @@ class ActionArmsFromTheSourceTest {
 
         @Test
         @DisplayName("an empty binary flips to an empty binary")
-        void anEmptyBinaryStaysEmpty() {
+        void keepsAnEmptyBinaryEmpty() {
             assertThat(answerTo("""
                     complement #{}""")).isEqualTo("#{}");
         }
@@ -58,7 +58,7 @@ class ActionArmsFromTheSourceTest {
 
         @Test
         @DisplayName("a char becomes a member, and the set itself is the answer")
-        void aCharBecomesAMember() {
+        void addsACharAsAMember() {
             assertThat(answerTo("""
                     bs: charset {a} same? bs insert bs #"b\"""")).isEqualTo("#(true)");
             assertThat(answerTo("""
@@ -67,7 +67,7 @@ class ActionArmsFromTheSourceTest {
 
         @Test
         @DisplayName("a string contributes each of its characters")
-        void aStringContributesEachCharacter() {
+        void addsEachCharacterOfAString() {
             assertThat(answerTo("""
                     bs: charset {} insert bs {bc}
                     reduce [find bs #"b" find bs #"c" find bs #"d"]"""))
@@ -76,7 +76,7 @@ class ActionArmsFromTheSourceTest {
 
         @Test
         @DisplayName("a block range contributes the whole range")
-        void aBlockRangeContributesTheRange() {
+        void addsTheRangeOfABlock() {
             assertThat(answerTo("""
                     bs: charset {} insert bs [#"a" - #"c"]
                     reduce [find bs #"a" find bs #"c" find bs #"d"]"""))
@@ -85,7 +85,7 @@ class ActionArmsFromTheSourceTest {
 
         @Test
         @DisplayName("adding to a complemented set still means membership")
-        void addingToAComplementedSetStillMeansMembership() {
+        void stillMeansMembershipInAComplementedSet() {
             assertThat(answerTo("""
                     bs: complement charset {b}
                     reduce [find bs #"b" find insert bs #"b" #"b"]"""))
@@ -94,8 +94,8 @@ class ActionArmsFromTheSourceTest {
 
         @Test
         @DisplayName("something that names no bits is refused for its type")
-        void somethingThatNamesNoBitsIsRefused() {
-            assertThat(errorIdOf("""
+        void refusesSomethingThatNamesNoBits() {
+            assertThat(readTheErrorIdOf("""
                     insert charset {a} 1.5""")).isEqualTo("invalid-type");
         }
     }
@@ -106,7 +106,7 @@ class ActionArmsFromTheSourceTest {
 
         @Test
         @DisplayName("/key clears the members it names, answering the set")
-        void keyClearsWhatItNames() {
+        void clearsWhatKeyNames() {
             assertThat(answerTo("""
                     bs: charset {ab} remove/key bs #"a"
                     reduce [find bs #"a" find bs #"b"]"""))
@@ -117,7 +117,7 @@ class ActionArmsFromTheSourceTest {
 
         @Test
         @DisplayName("/key with a string clears each of its characters")
-        void keyWithAStringClearsEach() {
+        void clearsEachCharacterOfAKeyString() {
             assertThat(answerTo("""
                     bs: charset {abc} remove/key bs {ab}
                     reduce [find bs #"a" find bs #"c"]"""))
@@ -136,21 +136,21 @@ class ActionArmsFromTheSourceTest {
         @Test
         @DisplayName("/part with a range that is not one of the four kinds is refused")
         void partOfTheWrongKindIsRefused() {
-            assertThat(errorIdOf("""
+            assertThat(readTheErrorIdOf("""
                     remove/part charset {a} 5""")).isEqualTo("invalid-arg");
         }
 
         @Test
         @DisplayName("asking both ways at once is refused")
-        void bothWaysAtOnceIsRefused() {
-            assertThat(errorIdOf("""
+        void refusesBothWaysAtOnce() {
+            assertThat(readTheErrorIdOf("""
                     remove/key/part charset {ab} #"a" #"b\"""")).isEqualTo("bad-refines");
         }
 
         @Test
         @DisplayName("saying neither way raises missing-arg")
-        void neitherWayRaisesMissingArg() {
-            assertThat(errorIdOf("""
+        void raisesMissingArgForNeitherWay() {
+            assertThat(readTheErrorIdOf("""
                     remove charset {a}""")).isEqualTo("missing-arg");
         }
     }
@@ -161,7 +161,7 @@ class ActionArmsFromTheSourceTest {
 
         @Test
         @DisplayName("a bare word adds a field holding unset")
-        void aWordAddsAnUnsetField() {
+        void addsAnUnsetFieldForAWord() {
             assertThat(answerTo("""
                     o: make object! [] insert o 'f mold words-of o"""))
                     .isEqualTo("\"[f]\"");
@@ -169,7 +169,7 @@ class ActionArmsFromTheSourceTest {
 
         @Test
         @DisplayName("a block is read as word and value pairs, answering the object")
-        void aBlockIsReadAsPairs() {
+        void readsABlockAsPairs() {
             assertThat(answerTo("""
                     o: make object! [] insert o [a 1 b 2] reduce [o/a o/b]"""))
                     .isEqualTo("[1 2]");
@@ -179,7 +179,7 @@ class ActionArmsFromTheSourceTest {
 
         @Test
         @DisplayName("/dup with a count of zero does nothing at all")
-        void duplicatingZeroTimesDoesNothing() {
+        void doesNothingDuplicatingZeroTimes() {
             assertThat(answerTo("""
                     o: make object! [] insert/dup o [c 3] 0 mold words-of o"""))
                     .isEqualTo("\"[]\"");
@@ -192,8 +192,8 @@ class ActionArmsFromTheSourceTest {
 
         @Test
         @DisplayName("a key that is not a word is refused as the argument it is")
-        void aKeyThatIsNotAWordIsRefused() {
-            assertThat(errorIdOf("""
+        void refusesAKeyThatIsNotAWord() {
+            assertThat(readTheErrorIdOf("""
                     put make object! [a: 1] 1 2""")).isEqualTo("invalid-arg");
         }
     }
@@ -201,7 +201,7 @@ class ActionArmsFromTheSourceTest {
     @Test
     @DisplayName("REMOVE/KEY on an ordinary series is not a feature")
     void removeKeyOnAnOrdinarySeriesIsNotAFeature() {
-        assertThat(errorIdOf("""
+        assertThat(readTheErrorIdOf("""
                 remove/key {abcd} #"a\"""")).isEqualTo("feature-na");
     }
 }

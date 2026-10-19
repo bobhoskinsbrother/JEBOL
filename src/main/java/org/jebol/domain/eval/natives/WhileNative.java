@@ -17,8 +17,8 @@ public class WhileNative extends LoopingNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("condition", A_BLOCK),
-                Parameter.required("body", A_BLOCK));
+        return List.of(Parameter.of("condition", A_BLOCK),
+                Parameter.of("body", A_BLOCK));
     }
 
     @Override
@@ -28,9 +28,9 @@ public class WhileNative extends LoopingNative {
             AnyBlockValue body = (AnyBlockValue) arguments.get(1);
             return answerOfTheLoop(() -> {
                 Value last = NoneValue.none();
-                while (theTruthInWhatALoopTests(evaluator.evaluateOrRaise(
+                while (isTrueForALoop(evaluator.evaluateOrRaise(
                         condition, evaluator.systemContext()))) {
-                    last = oneRoundCatchingContinue(evaluator, body, evaluator.systemContext());
+                    last = runOneRoundCatchingContinue(evaluator, body, evaluator.systemContext());
                 }
                 return last;
             });

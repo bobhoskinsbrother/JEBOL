@@ -18,7 +18,7 @@ public class BreakNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.belongingTo("return", "value", TypesetValue.ANY_TYPE.members()));
+        return List.of(Parameter.belongTo("return", "value", TypesetValue.ANY_TYPE.members()));
     }
 
     @Override
@@ -30,7 +30,7 @@ public class BreakNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             throw refinements.contains("return") && !arguments.isEmpty()
-                    ? LoopSignal.breakingWith(arguments.getFirst())
+                    ? LoopSignal.breakWith(arguments.getFirst())
                     : LoopSignal.breaking();
         };
     }

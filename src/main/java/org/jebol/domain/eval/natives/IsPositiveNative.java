@@ -25,7 +25,7 @@ public class IsPositiveNative extends ArithmeticNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> LogicValue.of(
                 arguments.getFirst() instanceof PairValue pair
-                        ? pair.bothHalves(half -> half > 0)
+                        ? pair.holdsForBothHalves(half -> half > 0)
                         : Comparison.asDouble(arguments.getFirst()) > 0);
     }
 }

@@ -21,7 +21,7 @@ class ImageCodecSizeFromTheSourceTest {
 
         @Test
         @DisplayName("png, jpeg, gif, bmp and dds each carry a size? of their own")
-        void eachCarriesOne() {
+        void carryOneEach() {
             assertThat(answerTo("""
                     collect [
                         foreach name [png jpeg gif bmp dds][
@@ -32,7 +32,7 @@ class ImageCodecSizeFromTheSourceTest {
 
         @Test
         @DisplayName("and png also gained the chunk reader from the same file")
-        void pngAlsoGainedChunks() {
+        void includeChunksForPng() {
             assertThat(answerTo("""
                     true? function? select system/codecs/png 'chunks""")).isEqualTo("#(true)");
         }
@@ -44,7 +44,7 @@ class ImageCodecSizeFromTheSourceTest {
 
         @Test
         @DisplayName("PNG takes the two big-endian counts out of the IHDR chunk")
-        void pngReadsTheIhdrChunk() {
+        void readsTheIhdrChunkForPng() {
             assertThat(answerTo("""
                     reduce [
                         codecs/png/size? #{89504E470D0A1A0A0000000D4948445200000018000000180802000000}
@@ -92,7 +92,7 @@ class ImageCodecSizeFromTheSourceTest {
 
         @Test
         @DisplayName("each answers none rather than raising")
-        void eachAnswersNone() {
+        void answerNoneForEach() {
             assertThat(answerTo("""
                     collect [
                         foreach name [png jpeg gif bmp dds][
@@ -104,7 +104,7 @@ class ImageCodecSizeFromTheSourceTest {
 
         @Test
         @DisplayName("a PNG header with no chunk after it is none, not a guess")
-        void aHeaderWithNoChunk() {
+        void includeAHeaderWithNoChunk() {
             assertThat(answerTo("""
                     reduce [
                         none? codecs/png/size? #{89504E470D0A1A0A}

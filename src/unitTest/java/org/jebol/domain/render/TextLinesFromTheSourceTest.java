@@ -17,12 +17,12 @@ class TextLinesFromTheSourceTest {
             run.size() * 3 / 4,
             run.size() / 4);
 
-    private final Placement aBox = new Placement(0, 0, 200, 100, ClipRectangle.wholeSurface(400, 400), Placement.OPAQUE);
+    private final Placement aBox = new Placement(0, 0, 200, 100, ClipRectangle.coverTheWholeSurface(400, 400), Placement.OPAQUE);
 
     private final TextLayout noInset = new TextLayout(0, 0, 0, 0,
             TextAlignment.LEFT, TextVerticalAlignment.TOP, 0, 0);
 
-    private TextRun plain(String text) {
+    private TextRun makeAPlainRun(String text) {
         return new TextRun(text, Colour.BLACK, 12, false, false);
     }
 
@@ -36,8 +36,8 @@ class TextLinesFromTheSourceTest {
 
         @Test
         @DisplayName("one line is as wide as its characters and as tall as its ascent and descent")
-        void oneLine() {
-            TextLines lines = linesOf(plain("abc"));
+        void measuresOneLine() {
+            TextLines lines = linesOf(makeAPlainRun("abc"));
 
             assertThat(lines.widest()).isEqualTo(18);
             assertThat(lines.tallness()).isEqualTo(12);
@@ -45,8 +45,8 @@ class TextLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a newline starts a second line, and the widest line sets the width")
-        void twoLines() {
-            TextLines lines = linesOf(plain("abcd\nab"));
+        void measuresTwoLines() {
+            TextLines lines = linesOf(makeAPlainRun("abcd\nab"));
 
             assertThat(lines.lines()).hasSize(2);
             assertThat(lines.widest()).isEqualTo(24);
@@ -55,8 +55,8 @@ class TextLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a string with no characters is still one line, one line tall")
-        void anEmptyStringIsOneLine() {
-            TextLines lines = linesOf(plain(""));
+        void measuresAnEmptyStringAsOneLine() {
+            TextLines lines = linesOf(makeAPlainRun(""));
 
             assertThat(lines.lines()).hasSize(1);
             assertThat(lines.widest()).isZero();
@@ -65,13 +65,13 @@ class TextLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a newline at the end leaves an empty last line")
-        void aTrailingNewlineLeavesAnEmptyLine() {
-            assertThat(linesOf(plain("ab\n")).lines()).hasSize(2);
+        void measuresAnEmptyLineAfterATrailingNewline() {
+            assertThat(linesOf(makeAPlainRun("ab\n")).lines()).hasSize(2);
         }
 
         @Test
         @DisplayName("no runs at all take no room")
-        void noRunsNoRoom() {
+        void measuresNoRoomForNoRuns() {
             TextLines lines = linesOf();
 
             assertThat(lines.widest()).isZero();
@@ -80,8 +80,8 @@ class TextLinesFromTheSourceTest {
 
         @Test
         @DisplayName("two runs on one line add their widths, and the taller sets the line's height")
-        void twoRunsOnALine() {
-            TextLines lines = linesOf(plain("ab"), new TextRun("cd", Colour.BLACK, 24, false, false));
+        void measuresTwoRunsOnALine() {
+            TextLines lines = linesOf(makeAPlainRun("ab"), new TextRun("cd", Colour.BLACK, 24, false, false));
 
             assertThat(lines.widest()).isEqualTo(12 + 24);
             assertThat(lines.tallness()).isEqualTo(24);
@@ -89,8 +89,8 @@ class TextLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a newline inside a run splits that run across two lines")
-        void aRunSplitsAcrossLines() {
-            TextLines lines = linesOf(plain("ab"), plain("c\nde"));
+        void measuresARunSplitAcrossLines() {
+            TextLines lines = linesOf(makeAPlainRun("ab"), makeAPlainRun("c\nde"));
 
             assertThat(lines.lines()).hasSize(2);
             assertThat(lines.lines().get(0).wide()).isEqualTo(18);
@@ -114,10 +114,10 @@ class TextLinesFromTheSourceTest {
                 "1, 1, 18, 12",
         })
         @DisplayName("across, the text before it on its line; down, the top of its line")
-        void aCaretSitsAfterTheTextBeforeIt(int run, int character, double across, double down) {
-            TextLines lines = linesOf(plain("abcd\nab"), plain("xy"));
+        void sitsAfterTheTextBeforeIt(int run, int character, double across, double down) {
+            TextLines lines = linesOf(makeAPlainRun("abcd\nab"), makeAPlainRun("xy"));
 
-            TextLines.CaretPlace placed = lines.whereTheCaretIs(run, character, noInset, aBox);
+            TextLines.CaretPlace placed = lines.findWhereTheCaretIs(run, character, noInset, aBox);
 
             assertThat(placed.across()).isEqualTo(across);
             assertThat(placed.top()).isEqualTo(down);
@@ -126,18 +126,18 @@ class TextLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a centred line moves its caret with it")
-        void aCentredLineMovesItsCaret() {
+        void movesWithACentredLine() {
             TextLayout centred = new TextLayout(0, 0, 0, 0,
                     TextAlignment.CENTRE, TextVerticalAlignment.TOP, 0, 0);
 
-            assertThat(linesOf(plain("abcd")).whereTheCaretIs(0, 0, centred, aBox).across())
+            assertThat(linesOf(makeAPlainRun("abcd")).findWhereTheCaretIs(0, 0, centred, aBox).across())
                     .isEqualTo((200 - 24) / 2.0);
         }
 
         @Test
         @DisplayName("the para's origin moves the caret in from the gob's top left")
-        void theOriginMovesTheCaret() {
-            TextLines.CaretPlace placed = linesOf(plain("ab")).whereTheCaretIs(0, 1, TextLayout.STANDARD, aBox);
+        void movesWithTheOrigin() {
+            TextLines.CaretPlace placed = linesOf(makeAPlainRun("ab")).findWhereTheCaretIs(0, 1, TextLayout.STANDARD, aBox);
 
             assertThat(placed.across()).isEqualTo(2 + 6);
             assertThat(placed.top()).isEqualTo(2);
@@ -145,8 +145,8 @@ class TextLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a run that does not exist puts the caret at the very end")
-        void aRunPastTheEndIsTheEnd() {
-            TextLines.CaretPlace placed = linesOf(plain("ab\ncd")).whereTheCaretIs(9, 0, noInset, aBox);
+        void stopsAtTheEndForARunPastIt() {
+            TextLines.CaretPlace placed = linesOf(makeAPlainRun("ab\ncd")).findWhereTheCaretIs(9, 0, noInset, aBox);
 
             assertThat(placed.across()).isEqualTo(12);
             assertThat(placed.top()).isEqualTo(12);
@@ -157,11 +157,11 @@ class TextLinesFromTheSourceTest {
     @DisplayName("a line too wide for its room")
     class Wrapping {
 
-        private TextLines wrappedIn(double room, TextRun... runs) {
+        private TextLines wrapIn(double room, TextRun... runs) {
             return new TextLines(List.of(runs), halfASizePerCharacter, room);
         }
 
-        private List<String> theLinesWritten(TextLines lines) {
+        private List<String> listTheLinesWritten(TextLines lines) {
             return lines.lines().stream()
                     .map(line -> line.pieces().stream().map(TextLines.Piece::text).reduce("", String::concat))
                     .toList();
@@ -180,22 +180,22 @@ class TextLinesFromTheSourceTest {
                 "30; ab   cd; ab   |cd",
         })
         @DisplayName("the break comes before the word that would not fit, and a word too wide on its own is broken where it overflows")
-        void whereTheLineBreaks(double room, String text, String expected) {
-            assertThat(theLinesWritten(wrappedIn(room, plain(text.replace("\\n", "\n")))))
+        void breaksTheLine(double room, String text, String expected) {
+            assertThat(listTheLinesWritten(wrapIn(room, makeAPlainRun(text.replace("\\n", "\n")))))
                     .containsExactly(expected.split("\\|"));
         }
 
         @Test
         @DisplayName("with no limit to the room, a line never breaks but at a newline")
-        void noLimitNoBreak() {
-            assertThat(theLinesWritten(wrappedIn(Double.POSITIVE_INFINITY, plain("abc de fgh ijk"))))
+        void breaksNothingWithoutALimit() {
+            assertThat(listTheLinesWritten(wrapIn(Double.POSITIVE_INFINITY, makeAPlainRun("abc de fgh ijk"))))
                     .containsExactly("abc de fgh ijk");
         }
 
         @Test
         @DisplayName("a string with no characters is still one line when wrapping")
-        void anEmptyStringIsOneLine() {
-            TextLines lines = wrappedIn(30, plain(""));
+        void keepsAnEmptyStringAsOneLine() {
+            TextLines lines = wrapIn(30, makeAPlainRun(""));
 
             assertThat(lines.lines()).hasSize(1);
             assertThat(lines.tallness()).isEqualTo(12);
@@ -203,8 +203,8 @@ class TextLinesFromTheSourceTest {
 
         @Test
         @DisplayName("the spaces hanging off a broken line are not counted in its width")
-        void hangingSpacesTakeNoRoom() {
-            TextLines lines = wrappedIn(35, plain("abc de"));
+        void givesHangingSpacesNoRoom() {
+            TextLines lines = wrapIn(35, makeAPlainRun("abc de"));
 
             assertThat(lines.lines().get(0).wide()).isEqualTo(18);
             assertThat(lines.widest()).isEqualTo(18);
@@ -213,8 +213,8 @@ class TextLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a break between two runs keeps each run's piece on its own line")
-        void aBreakBetweenRuns() {
-            TextLines lines = wrappedIn(24, plain("ab "), plain("cd"));
+        void breaksBetweenRuns() {
+            TextLines lines = wrapIn(24, makeAPlainRun("ab "), makeAPlainRun("cd"));
 
             assertThat(lines.lines().get(0).pieces()).extracting(TextLines.Piece::run).containsExactly(0);
             assertThat(lines.lines().get(1).pieces()).extracting(TextLines.Piece::run).containsExactly(1);
@@ -222,10 +222,10 @@ class TextLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a word spread over two runs is one word, broken where it overflows")
-        void aWordOverTwoRuns() {
-            TextLines lines = wrappedIn(18, plain("ab"), plain("cd"));
+        void wrapsAWordOverTwoRuns() {
+            TextLines lines = wrapIn(18, makeAPlainRun("ab"), makeAPlainRun("cd"));
 
-            assertThat(theLinesWritten(lines)).containsExactly("abc", "d");
+            assertThat(listTheLinesWritten(lines)).containsExactly("abc", "d");
             assertThat(lines.lines().get(1).pieces().getFirst().from()).isEqualTo(1);
         }
 
@@ -236,8 +236,8 @@ class TextLinesFromTheSourceTest {
                 "5, 6,  12",
         })
         @DisplayName("a caret on a wrapped line is drawn on it, and the place where a line was broken starts the next")
-        void aCaretOnAWrappedLine(int character, double across, double down) {
-            TextLines.CaretPlace placed = wrappedIn(35, plain("abc de")).whereTheCaretIs(0, character, noInset, aBox);
+        void placesACaretOnAWrappedLine(int character, double across, double down) {
+            TextLines.CaretPlace placed = wrapIn(35, makeAPlainRun("abc de")).findWhereTheCaretIs(0, character, noInset, aBox);
 
             assertThat(placed.across()).isEqualTo(across);
             assertThat(placed.top()).isEqualTo(down);
@@ -245,8 +245,8 @@ class TextLinesFromTheSourceTest {
 
         @Test
         @DisplayName("a point on the second wrapped line finds the caret there")
-        void thePointFindsTheWrappedLine() {
-            TextLines.RunAndCharacter found = wrappedIn(35, plain("abc de")).caretNearest(7, 13, noInset, aBox);
+        void findsTheWrappedLineFromAPoint() {
+            TextLines.RunAndCharacter found = wrapIn(35, makeAPlainRun("abc de")).findTheCaretNearest(7, 13, noInset, aBox);
 
             assertThat(found.character()).isEqualTo(5);
         }
@@ -272,10 +272,10 @@ class TextLinesFromTheSourceTest {
                 "7,   500, 0, 6",
         })
         @DisplayName("the line it is level with, and the character boundary nearest it across")
-        void theNearestBoundary(double across, double down, int run, int character) {
-            TextLines lines = linesOf(plain("abcd\nab"), plain("xy"));
+        void findsTheNearestBoundary(double across, double down, int run, int character) {
+            TextLines lines = linesOf(makeAPlainRun("abcd\nab"), makeAPlainRun("xy"));
 
-            TextLines.RunAndCharacter found = lines.caretNearest(across, down, noInset, aBox);
+            TextLines.RunAndCharacter found = lines.findTheCaretNearest(across, down, noInset, aBox);
 
             assertThat(found.run()).isEqualTo(run);
             assertThat(found.character()).isEqualTo(character);
@@ -283,8 +283,8 @@ class TextLinesFromTheSourceTest {
 
         @Test
         @DisplayName("with no runs there is no caret")
-        void noRunsNoCaret() {
-            assertThat(linesOf().caretNearest(5, 5, noInset, aBox).isNowhere()).isTrue();
+        void findsNoCaretWithoutRuns() {
+            assertThat(linesOf().findTheCaretNearest(5, 5, noInset, aBox).isNowhere()).isTrue();
         }
     }
 }

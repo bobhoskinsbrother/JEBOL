@@ -24,7 +24,7 @@ class AnObjectsOwnSelfIsNoFieldFromTheSourceTest {
 
         @Test
         @DisplayName("is reached by a self word in the body it was made from")
-        void aBoundSelfReachesTheObject() {
+        void reachesTheObjectWhenBound() {
             assertThat(answerTo("""
                     o: object [a: 1 me: does [self]]
                     same? o o/me""")).isEqualTo("#(true)");
@@ -32,7 +32,7 @@ class AnObjectsOwnSelfIsNoFieldFromTheSourceTest {
 
         @Test
         @DisplayName("and by one written straight in that body")
-        void aSelfInTheBodyReachesTheObject() {
+        void reachesTheObjectFromTheBody() {
             assertThat(answerTo("""
                     o: object [a: 1 b: self]
                     same? o o/b""")).isEqualTo("#(true)");
@@ -40,7 +40,7 @@ class AnObjectsOwnSelfIsNoFieldFromTheSourceTest {
 
         @Test
         @DisplayName("is not a field a path can reach: o/self is invalid-path")
-        void aPathCannotReachIt() {
+        void cannotBeReachedByAPath() {
             assertThat(answerTo("""
                     o: object [a: 1]
                     e: try [o/self]
@@ -49,7 +49,7 @@ class AnObjectsOwnSelfIsNoFieldFromTheSourceTest {
 
         @Test
         @DisplayName("IN finds no self in it")
-        void inFindsNone() {
+        void isNotFoundByIn() {
             assertThat(answerTo("""
                     o: object [a: 1]
                     in o 'self""")).isEqualTo("_");
@@ -57,7 +57,7 @@ class AnObjectsOwnSelfIsNoFieldFromTheSourceTest {
 
         @Test
         @DisplayName("WORDS-OF, VALUES-OF and LENGTH? leave it out")
-        void theFieldListsLeaveItOut() {
+        void isLeftOutOfTheFieldLists() {
             assertThat(answerTo("""
                     o: object [a: 1 b: 2]
                     reduce [words-of o values-of o length? o]""")).isEqualTo("[[a b] [1 2] 2]");
@@ -72,14 +72,14 @@ class AnObjectsOwnSelfIsNoFieldFromTheSourceTest {
 
         @Test
         @DisplayName("an object with no fields at all is still not selfless")
-        void anEmptyObjectIsNotSelfless() {
+        void existsInAnEmptyObject() {
             assertThat(answerTo("""
                     reduce [selfless? object [] length? object []]""")).isEqualTo("[#(false) 0]");
         }
 
         @Test
         @DisplayName("a copy made with MAKE answers its own self, not the prototype's")
-        void aCopysSelfIsItsOwn() {
+        void belongsToTheCopyInACopy() {
             assertThat(answerTo("""
                     o: object [a: 1 me: does [self]]
                     p: make o [b: 2]
@@ -93,7 +93,7 @@ class AnObjectsOwnSelfIsNoFieldFromTheSourceTest {
 
         @Test
         @DisplayName("is an ordinary field, molded with the rest")
-        void itIsMolded() {
+        void isMolded() {
             assertThat(answerTo("""
                     {make object! [^/    self: 2^/    a: 1^/]} = mold make object! make map! [self 2 a 1]"""))
                     .isEqualTo("#(true)");
@@ -101,7 +101,7 @@ class AnObjectsOwnSelfIsNoFieldFromTheSourceTest {
 
         @Test
         @DisplayName("and counted, listed and valued with the rest")
-        void itIsListed() {
+        void isListed() {
             assertThat(answerTo("""
                     o: make object! make map! [self 2 a 1]
                     reduce [words-of o values-of o length? o]""")).isEqualTo("[[self a] [2 1] 2]");
@@ -116,7 +116,7 @@ class AnObjectsOwnSelfIsNoFieldFromTheSourceTest {
                 "{[^/    self: 2^/]} = mold body-of o | #(true)",
         })
         @DisplayName("and read by path, IN and GET as itself, not as the object")
-        void itIsReadAsItself(String asked, String answer) {
+        void isReadAsItself(String asked, String answer) {
             assertThat(answerTo("""
                     o: make object! make map! [self 2]
                     %s""".formatted(asked))).isEqualTo(answer);
@@ -124,7 +124,7 @@ class AnObjectsOwnSelfIsNoFieldFromTheSourceTest {
 
         @Test
         @DisplayName("and kept when MAKE copies the object")
-        void aCopyKeepsIt() {
+        void survivesACopy() {
             assertThat(answerTo("""
                     o: make object! make map! [self 2 a 1]
                     {make object! [^/    self: 2^/    a: 1^/    b: 3^/]} = mold make o [b: 3]"""))
@@ -133,7 +133,7 @@ class AnObjectsOwnSelfIsNoFieldFromTheSourceTest {
 
         @Test
         @DisplayName("a map with no self key gives an object whose path to self is invalid, as any object's is")
-        void noSelfKeyNoField() {
+        void isNoFieldWithoutASelfKey() {
             assertThat(answerTo("""
                     p: make object! make map! [a 1]
                     e: try [p/self]

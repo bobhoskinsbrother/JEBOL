@@ -91,7 +91,7 @@ enum ServiceRefusal {
 -- every bound has a default, because a host that must configure five
 -- things before running anything will configure none of them.
 value Bounds {
-    wall_clock_limit: Duration
+    time_limit: Duration
     maximum_nesting: Integer
     -- Empty by default. A host that says nothing gets a script that can
     -- compute and cannot reach out, thus a host must name each service it
@@ -110,7 +110,7 @@ value Bounds {
     -- can be changed; a service it has not got never can be, and a script
     -- reading the error needs to tell them apart before asking for the
     -- wrong one.
-    lacking_services: Set<HostService> = empty
+    unavailable_services: Set<HostService> = empty
 
     -- What this host calls itself in a refusal: "a browser", "this host".
     -- A refusal names the service and the thing that refused it, so a
@@ -182,6 +182,45 @@ value FileInformation {
     modified: Timestamp?
     accessed: Timestamp?
     created: Timestamp?
+}
+
+-- What the host says about the machine an interpreter runs on.
+--
+-- Told rather than read. An interpreter that looked these up for itself would
+-- give every host the JVM's answer, and a host is entitled to another: a
+-- browser is not the machine its worker runs on, and a test that wants to see
+-- what a script does on Windows should not need Windows to see it.
+--
+-- Every interpreter has one. A host that supplies none gets the machine the
+-- JVM is running on, which is what an embedded interpreter has always reported
+-- and is right for any host that has nothing else to say.
+value HostMachine {
+    -- The operating system, as the word Rebol's own library compares against:
+    -- Windows, macOS or Linux, or the name the system gives itself where it is
+    -- none of the three. See SystemPlatformNamesTheOperatingSystem in
+    -- spec/natives.allium for why "JVM" is never the right answer. Never
+    -- blank: a host describing a machine with no name is refused when the
+    -- interpreter is built, because a blank word sends every branch in the
+    -- borrowed library that tests it down the wrong arm.
+    operating_system: String
+
+    -- The character that separates directories in a path this machine writes.
+    file_separator: String
+
+    -- Where the operator's home is, as a path on this machine.
+    home_directory: String
+
+    -- Where the host process was started, as a path on this machine.
+    current_directory: String
+
+    -- The number this machine knows the running process by.
+    process_number: Integer
+
+    -- Whether this machine can make a launcher: a program that starts another
+    -- interpreter rooted at a given directory and told a given application
+    -- data directory. Asked for one, a machine that can answers its path, and
+    -- one that cannot answers nothing.
+    makes_launchers: Boolean
 }
 
 -- What crosses the boundary when a script starts another program.
@@ -303,6 +342,7 @@ enum WindowRequest {
 -- single thread is what makes it need no synchronisation.
 entity Interpreter {
     bounds: Bounds
+    machine: HostMachine
     user_context: values/Context
     network: NetworkPort
 
@@ -335,7 +375,7 @@ entity ScriptRun {
     result: values/Value when status = finished
     elapsed: Duration when status = finished
 
-    deadline: started_at + interpreter.bounds.wall_clock_limit
+    deadline: started_at + interpreter.bounds.time_limit
     overdue: now >= deadline
 
     -- Which host service the script asked for and did not get, and why.
@@ -370,7 +410,7 @@ entity ScriptRun {
 config {
     -- Long enough that ordinary work finishes, short enough that a runaway
     -- script does not hold a request open until something else times out.
-    default_wall_clock_limit: Duration = 5.seconds
+    default_time_limit: Duration = 5.seconds
     default_maximum_nesting: Integer = 10_000
 }
 
@@ -394,7 +434,7 @@ rule RefusedServiceRaises {
         run.status = finished
         run.conclusion = raised
         run.refused_service = service
-        run.refusal_reason = if service in run.interpreter.bounds.lacking_services:
+        run.refusal_reason = if service in run.interpreter.bounds.unavailable_services:
             not_present
         else:
             not_granted
@@ -464,6 +504,56 @@ rule StartingAProgramCrossesAsACommandAndThreeStreams {
         program.standard_input in ProgramInput
         program.standard_output in ProgramOutput
         program.standard_error in ProgramOutput
+}
+
+-- === What the host says about its machine ===================
+
+-- What a script reads about the machine is what the host said about it, and
+-- nothing the interpreter looked up for itself. The platform word, the home and
+-- current directories, the separator TO-LOCAL-FILE writes, and the process
+-- number ACCESS-OS answers all come from the one place, so a host that
+-- describes a machine gets a script that sees that machine throughout.
+rule ScriptSeesHostMachine {
+    when: interpreter: Interpreter.created
+
+    ensures: system_platform(interpreter) = interpreter.machine.operating_system
+    ensures: system_options_home(interpreter) =
+        directory_at(interpreter.machine.home_directory)
+    ensures: system_options_path(interpreter) =
+        directory_at(interpreter.machine.current_directory)
+    ensures: system_options_data(interpreter) =
+        directory_at(interpreter.machine.home_directory + "/.jebol")
+    ensures: to_local_file_separator(interpreter) =
+        interpreter.machine.file_separator
+    ensures: access_os_process_number(interpreter) =
+        interpreter.machine.process_number
+}
+
+-- `system/options/boot` is the launcher the machine makes, and only where a
+-- script may start a program at all. A script that cannot start one has no use
+-- for a way to start itself, and writing a launcher is writing a file the host
+-- never asked for.
+--
+-- A machine that cannot make one leaves boot none. A script that tests for it
+-- learns there is no second interpreter to start, which is true; a launcher
+-- that had been written for an earlier root and stayed put would start one
+-- that is not confined the way this one is.
+rule MachineMakesLauncher {
+    when: launcher_settled(interpreter, root, data_directory)
+    requires: processes in interpreter.bounds.granted_services
+
+    ensures: system_options_boot(interpreter) =
+        if interpreter.machine.makes_launchers:
+            file_at(machine_launcher(interpreter.machine, root, data_directory))
+        else: none
+}
+
+rule NoProcessesNoLauncher {
+    when: interpreter: Interpreter.created
+    requires: processes not in interpreter.bounds.granted_services
+
+    ensures: system_options_boot(interpreter) = none
+    ensures: not machine_asked_for_launcher(interpreter)
 }
 
 -- === Where the root is, from inside ========================
@@ -538,6 +628,24 @@ rule RemovingALinkRemovesTheLinkItself {
 
     ensures: the_entry_acted_on(path) =
         the_real_location_of(the_folder_holding(path)) + the_last_name_in(path)
+}
+
+-- A host may hand a script a root it can read and not change. Every change is
+-- refused the same way, with Rebol's own `read-only`, naming nothing -- writing,
+-- appending, deleting, renaming and making a directory alike. One refusal for
+-- all five keeps a script from learning which of them the host meant to allow.
+-- `make-dir` on a directory already there changes nothing and is not refused:
+-- Rebol's own `make-dir` answers it before it asks the host for anything.
+-- And `make-dir/deep` reports the refusal as `cannot-open` naming the first
+-- folder it could not make, because Rebol's own `make-dir/deep` reports every
+-- failure of the folders it makes that way.
+rule ReadOnlyRootRefusesEveryChange {
+    when: script_changes_the_entry(path, action)
+    requires: action in {write, append, delete, rename, make_directory}
+    requires: root_is_read_only()
+
+    ensures: CallFails(error: read-only)
+    ensures: root_unchanged()
 }
 
 -- And the check and the access are the same path. What is opened is the
@@ -984,6 +1092,7 @@ surface Embedding {
         HandleKind
         ExtensionReport
         FileInformation
+        HostMachine
         WindowRequest
         ProgramInput
         ProgramOutput
@@ -1181,8 +1290,8 @@ value HttpResponse {
 -- against: the browser judges every certificate itself, inside fetch, and a
 -- page is never shown one.
 --
--- So a browser's bounds lack those four and may grant any of the others.
--- Asking for a lacking one is refused not_present with the browser named,
+-- So a browser's bounds mark those four unavailable and may grant any of the
+-- others. Asking for an unavailable one is refused not_present with the browser named,
 -- which is a different answer from the same script on a machine where the
 -- operator simply did not grant it. The three are refused before anything is
 -- attempted, so a script cannot learn whether a host exists by timing a name
@@ -1190,7 +1299,7 @@ value HttpResponse {
 rule ABrowserOffersWhatItsPageCan {
     when: interpreter: Interpreter.created
 
-    ensures: interpreter.bounds.lacking_services =
+    ensures: interpreter.bounds.unavailable_services =
         {network, processes, environment, certificates}
     ensures: interpreter.bounds.host_name = "a browser"
 }

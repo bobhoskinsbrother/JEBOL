@@ -22,7 +22,7 @@ mold to bitset! [#"a" #"b"]
 --- id bitsets/a-set-from-a-block-of-code-points
 --- origin confirmed against R3 3.22.1
 --- note Numbers name characters by their code point, which is how a
---- note set of control characters is written without spelling them.
+--- note set of control characters is text without spelling them.
 --- code
 mold to bitset! [1 2 3]
 --- result

@@ -18,11 +18,11 @@ public abstract sealed class AnyPathValue extends AnyBlockValue
         }
 
         @Override
-        public abstract AnyPathValue holding(BlockStorage storage, int index);
+        public abstract AnyPathValue wrap(BlockStorage storage, int index);
 
         @Override
-        public AnyPathValue holding(List<Value> segments) {
-            return holding(new BlockStorage(segments), 1);
+        public AnyPathValue wrap(List<Value> segments) {
+            return wrap(new BlockStorage(segments), 1);
         }
     }
 
@@ -36,11 +36,11 @@ public abstract sealed class AnyPathValue extends AnyBlockValue
         return "...";
     }
 
-    String markedBefore(boolean forReading) {
+    String markBefore(boolean forReading) {
         return "";
     }
 
-    String markedAfter(boolean forReading) {
+    String markAfter(boolean forReading) {
         return "";
     }
 
@@ -59,18 +59,18 @@ public abstract sealed class AnyPathValue extends AnyBlockValue
                 || !start.isBound() || !start.binding().knows(start.canonical())) {
             return Optional.empty();
         }
-        Value reached = start.binding().slotFor(start.canonical()).value();
+        Value reached = start.binding().findSlotFor(start.canonical()).value();
         for (Value between : segments.subList(1, segments.size() - 1)) {
-            Optional<ContextSlot> field = theFieldNamed(reached, between);
+            Optional<ContextSlot> field = findTheFieldNamed(reached, between);
             if (field.isEmpty()) {
                 return Optional.empty();
             }
             reached = field.get().value();
         }
-        return theFieldNamed(reached, segments.getLast());
+        return findTheFieldNamed(reached, segments.getLast());
     }
 
-    private static Optional<ContextSlot> theFieldNamed(Value holder, Value name) {
+    private static Optional<ContextSlot> findTheFieldNamed(Value holder, Value name) {
         return holder instanceof ObjectValue(Context context)
                 && name instanceof AnyWordValue word
                 && context.holds(word.canonical())

@@ -2,7 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ScreenEventDetail;
-import org.jebol.domain.host.ScreenEventKind;
+import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.render.TextExtent;
@@ -30,7 +30,7 @@ final class RecordingScreen extends GobScreen {
         this.present = present;
     }
 
-    static RecordingScreen measuring(int across, int down) {
+    static RecordingScreen measure(int across, int down) {
         RecordingScreen screen = new RecordingScreen(true);
         screen.measurements.put(ScreenMetric.SCREEN_SIZE, PairValue.of(across, down));
         screen.measurements.put(ScreenMetric.SCREEN_ORIGIN, PairValue.of(0, 0));
@@ -55,13 +55,13 @@ final class RecordingScreen extends GobScreen {
         return this;
     }
 
-    RecordingScreen whereTheOperatorClosesWhateverOpens() {
+    RecordingScreen closeWhateverOpens() {
         this.operatorClosesWhateverOpens = true;
         return this;
     }
 
     @Override
-    public boolean hasADisplay() {
+    public boolean hasDisplay() {
         return present;
     }
 
@@ -98,72 +98,72 @@ final class RecordingScreen extends GobScreen {
     }
 
     @Override
-    protected Denied nothingToShowOn() {
+    protected Denied refuseWithNoService() {
         return new Denied("no-service", "this test screen has no display");
     }
 
     @Override
-    protected List<GobValue> gobsWithWindows() {
+    protected List<GobValue> gobWithWindow() {
         return List.copyOf(withWindows);
     }
 
     @Override
-    protected void openTheWindowFor(GobValue gob) {
+    protected void openWindowFor(GobValue gob) {
         withWindows.add(gob);
         opened.add(gob);
         if (operatorClosesWhateverOpens) {
-            posted(ScreenEventKind.CLOSE, gob);
+            post(ScreenEventType.CLOSE, gob);
         }
     }
 
     @Override
-    protected void repaintTheWindowFor(GobValue gob) {
+    protected void repaintWindowFor(GobValue gob) {
         refreshed.add(gob);
     }
 
     @Override
-    protected void closeTheWindowFor(GobValue gob) {
+    protected void closeWindowFor(GobValue gob) {
         if (withWindows.removeIf(gob::sharesStorageWith)) {
             closed.add(gob);
         }
     }
 
-    void theOperatorDoes(ScreenEventKind kind, GobValue window) {
-        posted(kind, window);
+    void actAsTheOperator(ScreenEventType kind, GobValue window) {
+        post(kind, window);
     }
 
-    void theOperatorDoes(ScreenEventKind kind, GobValue window, ScreenEventDetail detail) {
-        posted(kind, window, detail);
+    void actAsTheOperator(ScreenEventType kind, GobValue window, ScreenEventDetail detail) {
+        post(kind, window, detail);
     }
 
     GobValue rootGob() {
         return root;
     }
 
-    List<GobValue> whatWasShown() {
+    List<GobValue> listWhatWasShown() {
         return List.copyOf(shown);
     }
 
-    List<GobValue> whatOpened() {
+    List<GobValue> listWhatOpened() {
         return List.copyOf(opened);
     }
 
-    List<GobValue> whatWasRefreshed() {
+    List<GobValue> listWhatWasRefreshed() {
         return List.copyOf(refreshed);
     }
 
-    List<GobValue> whatIsStandingOpen() {
+    List<GobValue> listWhatIsStandingOpen() {
         return List.copyOf(withWindows);
     }
 
-    void reportFromAnotherThread(ScreenEventKind kind, GobValue window)
+    void reportFromAnotherThread(ScreenEventType kind, GobValue window)
             throws InterruptedException {
-        Thread toolkit = new Thread(() -> theOperatorDoes(kind, window), "toolkit");
+        Thread toolkit = new Thread(() -> actAsTheOperator(kind, window), "toolkit");
         toolkit.start();
         toolkit.join();
     }
 
-    List<GobValue> whatClosed() {
+    List<GobValue> listWhatClosed() {
         return List.copyOf(closed);
     }
 }

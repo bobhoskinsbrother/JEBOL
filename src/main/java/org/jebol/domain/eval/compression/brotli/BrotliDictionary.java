@@ -98,17 +98,17 @@ final class BrotliDictionary {
 
     private static byte[] words;
 
-    static byte[] words() {
+    static byte[] readTheWords() {
         byte[] known = words;
         if (known != null) {
             return known;
         }
-        byte[] built = inflatedWords();
+        byte[] built = inflateTheWords();
         words = built;
         return built;
     }
 
-    private static byte[] inflatedWords() {
+    private static byte[] inflateTheWords() {
         StringBuilder joined = new StringBuilder();
         for (String piece
                 : DEFLATED_WORDS_IN_PIECES_NONE_OVER_THE_CLASS_FILE_STRING_LIMIT) {
@@ -952,18 +952,18 @@ final class BrotliDictionary {
                     29oUrNZXqX3Ghr8TuigkT48Q+TXwvXvGjv0foSWBhw==""",
     };
 
-    static int sizeBitsFor(int wordLength) {
+    static int readTheSizeBitsFor(int wordLength) {
         return SIZE_BITS_BY_LENGTH[wordLength];
     }
 
-    static int offsetFor(int wordLength) {
+    static int findTheOffsetFor(int wordLength) {
         return OFFSETS_BY_LENGTH[wordLength];
     }
 
     static int writeTransformedWord(byte[] into, int at, int wordAt,
             int wordLength, int transform) {
 
-        byte[] dictionary = words();
+        byte[] dictionary = readTheWords();
         int prefix = PIECE_STARTS[A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH[transform * 3]];
         int kind = A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH[transform * 3 + 1];
         int suffix = PIECE_STARTS[A_PREFIX_PIECE_A_KIND_AND_A_SUFFIX_PIECE_EACH[transform * 3 + 2]];
@@ -983,12 +983,12 @@ final class BrotliDictionary {
             into[written++] = dictionary[from + each];
         }
         if (kind == UPPERCASE_FIRST) {
-            upperCased(into, wordStart);
+            upperCase(into, wordStart);
         } else if (kind == UPPERCASE_ALL) {
             int remaining = length;
             int upper = wordStart;
             while (remaining > 0) {
-                int step = upperCased(into, upper);
+                int step = upperCase(into, upper);
                 upper += step;
                 remaining -= step;
             }
@@ -1005,7 +1005,7 @@ final class BrotliDictionary {
         return written;
     }
 
-    private static int upperCased(byte[] bytes, int at) {
+    private static int upperCase(byte[] bytes, int at) {
         int first = bytes[at] & 0xFF;
         if (first < 0xC0) {
             if (first >= 'a' && first <= 'z') {
@@ -1025,7 +1025,7 @@ final class BrotliDictionary {
         return WORDS_LENGTH;
     }
 
-    static byte[] wordAt(int offset, int length) {
-        return Arrays.copyOfRange(words(), offset, offset + length);
+    static byte[] readTheWordAt(int offset, int length) {
+        return Arrays.copyOfRange(readTheWords(), offset, offset + length);
     }
 }

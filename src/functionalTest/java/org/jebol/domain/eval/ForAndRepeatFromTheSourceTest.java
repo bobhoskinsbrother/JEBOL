@@ -16,7 +16,7 @@ class ForAndRepeatFromTheSourceTest {
 
     @Test
     @DisplayName("FOR over whole numbers runs the body once, then overflows")
-    void wholeNumberForRunsOnceThenOverflows() {
+    void runsAWholeNumberForOnceThenOverflows() {
         assertThat(answerTo("""
                 n: 0
                 e: try [for i 9223372036854775807 9223372036854775807 1 [n: n + 1]]
@@ -25,7 +25,7 @@ class ForAndRepeatFromTheSourceTest {
 
     @Test
     @DisplayName("FOR steps whole numbers by the step, in both directions")
-    void wholeNumberForSteps() {
+    void stepsAWholeNumberFor() {
         assertThat(answerTo("""
                 out: copy [] for i 1 5 2 [append out i]
                 out = [1 3 5]""")).isEqualTo("#(true)");
@@ -33,7 +33,7 @@ class ForAndRepeatFromTheSourceTest {
 
     @Test
     @DisplayName("FOR with a decimal bound counts by decimals")
-    void decimalForCountsByDecimals() {
+    void countsByDecimalsInADecimalFor() {
         assertThat(answerTo("""
                 out: copy [] for i 1 3.5 1 [append out i]
                 out = [1.0 2.0 3.0]""")).isEqualTo("#(true)");
@@ -41,7 +41,7 @@ class ForAndRepeatFromTheSourceTest {
 
     @Test
     @DisplayName("FOR walks a series from the start to the end index")
-    void forWalksASeries() {
+    void walksASeries() {
         assertThat(answerTo("""
                 out: copy "" for x "abcde" 3 1 [append out x]
                 out = "abcdebcdecde\"""")).isEqualTo("#(true)");
@@ -49,7 +49,7 @@ class ForAndRepeatFromTheSourceTest {
 
     @Test
     @DisplayName("FOR walks a series to a series-position end")
-    void forWalksASeriesToASeriesEnd() {
+    void walksASeriesToASeriesEnd() {
         assertThat(answerTo("""
                 s: "abcde" out: copy "" for x s (at s 3) 1 [append out x]
                 out = "abcdebcdecde\"""")).isEqualTo("#(true)");

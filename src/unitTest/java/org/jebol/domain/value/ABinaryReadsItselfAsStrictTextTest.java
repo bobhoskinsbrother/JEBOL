@@ -16,7 +16,7 @@ class ABinaryReadsItselfAsStrictTextTest {
     private static final int E_ACUTE_TRAIL = 0xA9;
     private static final int NEVER_IN_UTF8 = 0xFF;
 
-    private static String errorIdOf(Throwable thrown) {
+    private static String readTheErrorIdOf(Throwable thrown) {
         return ((Raised) thrown).error().errorId();
     }
 
@@ -30,13 +30,13 @@ class ABinaryReadsItselfAsStrictTextTest {
 
         @Test
         @DisplayName("plain ASCII reads as itself")
-        void ascii() {
+        void readsAscii() {
             assertThat(abc().asStrictText()).isEqualTo("abc");
         }
 
         @Test
         @DisplayName("a two-byte character reads as one character")
-        void aTwoByteCharacter() {
+        void readsATwoByteCharacter() {
             assertThat(BinaryValue.of(E_ACUTE_LEAD, E_ACUTE_TRAIL).asStrictText())
                     .isEqualTo("é");
         }
@@ -49,31 +49,31 @@ class ABinaryReadsItselfAsStrictTextTest {
 
         @Test
         @DisplayName("at the tail it is empty text")
-        void atTheTail() {
+        void readsAtTheTail() {
             assertThat(abc().tail().asStrictText()).isEmpty();
         }
 
         @Test
         @DisplayName("an empty binary is empty text")
-        void empty() {
+        void readsAnEmptyBinary() {
             assertThat(BinaryValue.of().asStrictText()).isEmpty();
         }
 
         @Test
         @DisplayName("a byte that is never UTF-8 is invalid-chars, not a replacement character")
-        void aByteThatIsNeverUtf8() {
+        void readsAByteThatIsNeverUtf8() {
             assertThatThrownBy(() -> BinaryValue.of(LOWER_A, NEVER_IN_UTF8).asStrictText())
                     .isInstanceOf(Raised.class)
-                    .extracting(ABinaryReadsItselfAsStrictTextTest::errorIdOf)
+                    .extracting(ABinaryReadsItselfAsStrictTextTest::readTheErrorIdOf)
                     .isEqualTo("invalid-chars");
         }
 
         @Test
         @DisplayName("a character cut off half way is invalid-chars")
-        void aCharacterCutOff() {
+        void readsACharacterCutOff() {
             assertThatThrownBy(() -> BinaryValue.of(LOWER_A, E_ACUTE_LEAD).asStrictText())
                     .isInstanceOf(Raised.class)
-                    .extracting(ABinaryReadsItselfAsStrictTextTest::errorIdOf)
+                    .extracting(ABinaryReadsItselfAsStrictTextTest::readTheErrorIdOf)
                     .isEqualTo("invalid-chars");
         }
     }
@@ -90,13 +90,13 @@ class ABinaryReadsItselfAsStrictTextTest {
 
         @Test
         @DisplayName("none asked is an empty binary")
-        void noneAsked() {
+        void copiesNoneWhenNoneIsAsked() {
             assertThat(abc().copyOfTheFirst(0).lengthFromHere()).isZero();
         }
 
         @Test
         @DisplayName("everything from here asked is all of it, at the head of its own storage")
-        void everythingAsked() {
+        void copiesEverythingWhenAsked() {
             BinaryValue copied = abc().atIndex(2).copyOfTheFirst(2);
 
             assertThat(copied).isEqualTo(BinaryValue.of(LOWER_B, LOWER_C));
@@ -105,7 +105,7 @@ class ABinaryReadsItselfAsStrictTextTest {
 
         @Test
         @DisplayName("changing the copy leaves the original alone")
-        void theCopyIsIndependent() {
+        void standsApartFromTheOriginal() {
             BinaryValue original = abc();
             BinaryValue copied = original.copyOfTheFirst(3);
 
@@ -121,7 +121,7 @@ class ABinaryReadsItselfAsStrictTextTest {
 
         @Test
         @DisplayName("one short of the tail leaves the last byte out")
-        void oneShortOfTheTail() {
+        void readsToOneShortOfTheTail() {
             assertThat(abc().asStrictTextUpTo(3)).isEqualTo("ab");
         }
 
@@ -151,17 +151,17 @@ class ABinaryReadsItselfAsStrictTextTest {
 
         @Test
         @DisplayName("a bad byte beyond the end is never read")
-        void aBadByteBeyondTheEnd() {
+        void readsWithABadByteBeyondTheEnd() {
             assertThat(BinaryValue.of(LOWER_A, LOWER_B, NEVER_IN_UTF8).asStrictTextUpTo(3))
                     .isEqualTo("ab");
         }
 
         @Test
         @DisplayName("a bad byte inside the span is invalid-chars")
-        void aBadByteInside() {
+        void readsWithABadByteInside() {
             assertThatThrownBy(() -> BinaryValue.of(NEVER_IN_UTF8, LOWER_A).asStrictTextUpTo(3))
                     .isInstanceOf(Raised.class)
-                    .extracting(ABinaryReadsItselfAsStrictTextTest::errorIdOf)
+                    .extracting(ABinaryReadsItselfAsStrictTextTest::readTheErrorIdOf)
                     .isEqualTo("invalid-chars");
         }
     }

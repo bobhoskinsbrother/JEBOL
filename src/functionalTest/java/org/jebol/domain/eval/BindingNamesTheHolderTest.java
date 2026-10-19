@@ -14,16 +14,16 @@ class BindingNamesTheHolderTest {
     private static final String WORD = "counted";
 
     private static AnyWordValue bindOneWord(String spelling, Context into) {
-        var block = BlockValue.block(
+        var block = BlockValue.of(
                 java.util.List.of(WordValue.of(spelling)));
         return (AnyWordValue) Binder.bind(block, into).remaining().getFirst();
     }
 
     @Test
     @DisplayName("a word the target itself holds binds to the target")
-    void aSlotInTheTargetBindsToTheTarget() {
+    void bindsASlotInTheTargetToTheTarget() {
         Context outer = Context.root();
-        Context target = Context.childOf(outer);
+        Context target = Context.makeChildOf(outer);
         target.register(WORD, IntegerValue.of(1));
 
         assertThat(bindOneWord(WORD, target).binding())
@@ -33,10 +33,10 @@ class BindingNamesTheHolderTest {
 
     @Test
     @DisplayName("a word only the parent holds binds to the parent, not the target")
-    void aSlotOneContextUpBindsToThatContext() {
+    void bindsASlotOneContextUpToThatContext() {
         Context outer = Context.root();
         outer.register(WORD, IntegerValue.of(1));
-        Context target = Context.childOf(outer);
+        Context target = Context.makeChildOf(outer);
 
         assertThat(bindOneWord(WORD, target).binding())
                 .as("the child only reaches the slot; the parent holds it")
@@ -45,10 +45,10 @@ class BindingNamesTheHolderTest {
 
     @Test
     @DisplayName("a word several contexts up binds to whichever one holds it")
-    void aSlotSeveralContextsUpBindsToItsHolder() {
+    void bindsASlotSeveralContextsUpToItsHolder() {
         Context outermost = Context.root();
         outermost.register(WORD, IntegerValue.of(1));
-        Context target = Context.childOf(Context.childOf(Context.childOf(outermost)));
+        Context target = Context.makeChildOf(Context.makeChildOf(Context.makeChildOf(outermost)));
 
         assertThat(bindOneWord(WORD, target).binding())
                 .as("depth must not change which context is named")
@@ -57,10 +57,10 @@ class BindingNamesTheHolderTest {
 
     @Test
     @DisplayName("a word held in both places binds to the nearer one")
-    void theNearestHolderWins() {
+    void picksTheNearestHolder() {
         Context outer = Context.root();
         outer.register(WORD, IntegerValue.of(1));
-        Context target = Context.childOf(outer);
+        Context target = Context.makeChildOf(outer);
         target.register(WORD, IntegerValue.of(2));
 
         assertThat(bindOneWord(WORD, target).binding())
@@ -70,8 +70,8 @@ class BindingNamesTheHolderTest {
 
     @Test
     @DisplayName("a word nothing in the chain holds is left unbound")
-    void anUnknownWordStaysUnbound() {
-        Context target = Context.childOf(Context.root());
+    void leavesAnUnknownWordUnbound() {
+        Context target = Context.makeChildOf(Context.root());
 
         assertThat(bindOneWord(WORD, target).isBound())
                 .as("an unbound word and a word bound to unset report differently")
@@ -80,13 +80,13 @@ class BindingNamesTheHolderTest {
 
     @Test
     @DisplayName("a word inside a nested block binds to its holder too")
-    void nestedBlocksFollowTheSameRule() {
+    void followsTheSameRuleInNestedBlocks() {
         Context outer = Context.root();
         outer.register(WORD, IntegerValue.of(1));
-        Context target = Context.childOf(outer);
+        Context target = Context.makeChildOf(outer);
 
-        var nested = BlockValue.block(java.util.List.of(
-                BlockValue.block(
+        var nested = BlockValue.of(java.util.List.of(
+                BlockValue.of(
                         java.util.List.of(WordValue.of(WORD)))));
         var inner = (AnyBlockValue)
                 Binder.bind(nested, target).remaining().getFirst();
@@ -115,7 +115,7 @@ class BindingNamesTheHolderTest {
 
     @Test
     @DisplayName("BIND given one word places it where BIND given a block would")
-    void theWordBranchAgreesWithTheBlockBranch() {
+    void agreesBetweenTheWordAndBlockBranches() {
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn("outer-value: 10 holder: make object! [a: 1]");
         interpreter.run("outer-value: 10 holder: make object! [a: 1]");
@@ -136,7 +136,7 @@ class BindingNamesTheHolderTest {
 
     @Test
     @DisplayName("BIND on a word the target itself holds still names the target")
-    void theWordBranchStillNamesTheTargetWhenItIsTheHolder() {
+    void stillNamesTheTargetFromTheWordBranchWhenItHolds() {
         Interpreter interpreter = Interpreter.create();
         interpreter.defineFreshWordsIn("holder: make object! [a: 1]");
         interpreter.run("holder: make object! [a: 1]");
@@ -173,7 +173,7 @@ class BindingNamesTheHolderTest {
 
     @Test
     @DisplayName("REBOL's own reflector generator survives its USE scope")
-    void theBorrowedReflectorGeneratorWorks() {
+    void letsTheBorrowedReflectorGeneratorWork() {
         Interpreter interpreter = Interpreter.create();
 
         assertThat(interpreter.display(interpreter.run("mold words-of make object! [a: 1]")))

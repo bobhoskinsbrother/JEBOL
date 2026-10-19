@@ -39,7 +39,7 @@ final class BrotliLog2 {
         double nearby = 1.0 + sixteenth / 16.0;
 
         double[] ratio = divideCorrectedTwiceBecauseOnceRoundsSomeWrong(mantissa, 0.0, nearby, 0.0);
-        double[] logarithmOfTheRatio = naturalLogNearOne(ratio[0], ratio[1]);
+        double[] logarithmOfTheRatio = computeTheNaturalLogNearOne(ratio[0], ratio[1]);
         double[] inBitsRatio = multiply(logarithmOfTheRatio[0], logarithmOfTheRatio[1],
                 INV_LN2_HIGH, INV_LN2_LOW);
         double[] answer = add(LOG2_OF_SIXTEENTHS_HIGH[sixteenth],
@@ -48,7 +48,7 @@ final class BrotliLog2 {
         return answer[0];
     }
 
-    private static double[] naturalLogNearOne(double high, double low) {
+    private static double[] computeTheNaturalLogNearOne(double high, double low) {
         double[] above = add(high, low, -1.0, 0.0);
         double[] below = add(high, low, 1.0, 0.0);
         double[] ratio = divideCorrectedTwiceBecauseOnceRoundsSomeWrong(above[0], above[1], below[0], below[1]);

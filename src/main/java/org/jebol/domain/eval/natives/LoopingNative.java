@@ -22,7 +22,7 @@ public abstract class LoopingNative extends DefaultNative {
         }
     }
 
-    protected Value oneRoundCatchingContinue(
+    protected Value runOneRoundCatchingContinue(
             Evaluator evaluator, AnyBlockValue body, Context where) {
         try {
             return evaluator.evaluateOrRaise(body, where);
@@ -31,7 +31,7 @@ public abstract class LoopingNative extends DefaultNative {
         }
     }
 
-    protected boolean theTruthInWhatALoopTests(Value tested) {
+    protected boolean isTrueForALoop(Value tested) {
         if (tested instanceof UnsetValue) {
             throw Raised.of(EvaluationFailure.NO_RETURN);
         }
@@ -62,7 +62,7 @@ public abstract class LoopingNative extends DefaultNative {
         return List.copyOf(names);
     }
 
-    protected List<AnyWordValue> namesThatTakeAValue(List<AnyWordValue> names) {
+    protected List<AnyWordValue> keepTheNamesThatTakeAValue(List<AnyWordValue> names) {
         return names.stream()
                 .filter(name -> !(name instanceof SetWordValue))
                 .toList();
@@ -75,7 +75,7 @@ public abstract class LoopingNative extends DefaultNative {
         int reached = at;
         for (AnyWordValue name : names) {
             if (name instanceof SetWordValue) {
-                locals.register(name.spelling(), positionWithin(walked, reached));
+                locals.register(name.spelling(), markThePositionWithin(walked, reached));
                 continue;
             }
             locals.register(name.spelling(),
@@ -85,7 +85,7 @@ public abstract class LoopingNative extends DefaultNative {
         return reached == at ? at + 1 : reached;
     }
 
-    private Value positionWithin(Value walked, int reached) {
+    private Value markThePositionWithin(Value walked, int reached) {
         if (!(walked instanceof RebolSeries series)) {
             return walked;
         }

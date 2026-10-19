@@ -11,11 +11,11 @@ public final class Lzw {
 
     private static final int COUNTER_SEED = 65536;
 
-    private int codeBits(int number) {
+    private int countTheCodeBits(int number) {
         return 31 - Integer.numberOfLeadingZeros(number);
     }
 
-    int widestSymbolForTheLevelReadUnsigned(int level) {
+    int findTheWidestSymbolForTheLevel(int level) {
         long asked = Integer.toUnsignedLong(level);
         if (asked >= 1 && asked <= 7) {
             return 8 + (int) asked;
@@ -42,8 +42,8 @@ public final class Lzw {
         private int bits;
     }
 
-    public byte[] compressed(byte[] source, int level) {
-        int widest = widestSymbolForTheLevelReadUnsigned(level);
+    public byte[] compress(byte[] source, int level) {
+        int widest = findTheWidestSymbolForTheLevel(level);
         int totalCodes = 1 << widest;
         int mostEntriesAvailable = totalCodes - FIRST_STRING - 1;
         int highestCode = totalCodes - 2;
@@ -114,7 +114,7 @@ public final class Lzw {
             }
 
             if (dictionaryFull) {
-                nextString = nextUnreferencedFrom(dictionary, nextString, highestCode);
+                nextString = findTheNextUnreferencedFrom(dictionary, nextString, highestCode);
                 int holder = dictionary[nextString].backReference;
                 if (dictionary[holder].firstReference == nextString) {
                     dictionary[holder].firstReference = dictionary[nextString].nextReference;
@@ -178,7 +178,7 @@ public final class Lzw {
         }
     }
 
-    private int nextUnreferencedFrom(
+    private int findTheNextUnreferencedFrom(
             Encoding[] dictionary, int from, int highestCode) {
 
         int at = from + 1;
@@ -197,7 +197,7 @@ public final class Lzw {
             Octets into, ShifterLowBitsFirst shifter, int code, int highest,
             int outputBytes) {
 
-        int width = codeBits(highest);
+        int width = countTheCodeBits(highest);
         int extras = (2 << width) - highest - 1;
         int written = outputBytes;
         if (code < extras) {
@@ -223,7 +223,7 @@ public final class Lzw {
         private int prefix;
     }
 
-    public byte[] decompressed(byte[] source, int limit) {
+    public byte[] decompress(byte[] source, int limit) {
         if (source.length == 0 || (source[0] & 0xF8) != 0) {
             throw new IllegalArgumentException("lzw data does not open with a symbol width");
         }
@@ -250,7 +250,7 @@ public final class Lzw {
         boolean dictionaryFull = false;
 
         while (true) {
-            int width = codeBits(highestSoFar);
+            int width = countTheCodeBits(highestSoFar);
             int extras = (2 << width) - highestSoFar - 1;
             while (shifter.bits < width) {
                 if (reading >= source.length) {
@@ -327,7 +327,7 @@ public final class Lzw {
                     }
                 }
                 if (dictionaryFull) {
-                    nextString = nextUnreferencedAfter(referenced, nextString, highestCode);
+                    nextString = findTheNextUnreferencedAfter(referenced, nextString, highestCode);
                     int holder = dictionary[nextString].prefix;
                     if (dictionary[holder].extraReferences != 0) {
                         dictionary[holder].extraReferences--;
@@ -347,7 +347,7 @@ public final class Lzw {
                 : whole;
     }
 
-    private int nextUnreferencedAfter(
+    private int findTheNextUnreferencedAfter(
             boolean[] referenced, int from, int highestCode) {
 
         int at = from + 1;

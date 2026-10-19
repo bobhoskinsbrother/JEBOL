@@ -19,9 +19,9 @@ public class ReduceNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("block"),
-                Parameter.belongingTo("into", "target", TypesetValue.ANY_BLOCK.members()),
-                Parameter.belongingTo("only", "words", Set.of()));
+        return List.of(Parameter.of("block"),
+                Parameter.belongTo("into", "target", TypesetValue.ANY_BLOCK.members()),
+                Parameter.belongTo("only", "words", Set.of()));
     }
 
     @Override
@@ -33,13 +33,13 @@ public class ReduceNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             Value source = arguments.getFirst();
-            Optional<Value> target = argumentOf("into", 0, arguments, refinements);
-            Optional<AnyBlockValue> reduced = reducedFrom(source, evaluator,
-                    argumentOf("only", 0, arguments, refinements), refinements);
+            Optional<Value> target = readTheArgumentOf("into", 0, arguments, refinements);
+            Optional<AnyBlockValue> reduced = reduceFrom(source, evaluator,
+                    readTheArgumentOf("only", 0, arguments, refinements), refinements);
             if (reduced.isEmpty() && target.isEmpty()) {
                 return source;
             }
-            AnyBlockValue results = reduced.orElseGet(() -> BlockValue.block(List.of(source)));
+            AnyBlockValue results = reduced.orElseGet(() -> BlockValue.of(List.of(source)));
             if (target.isEmpty() || !(target.get() instanceof AnyBlockValue into)) {
                 return source instanceof ParenValue
                         ? ParenValue.of(results.remaining())
@@ -51,23 +51,23 @@ public class ReduceNative extends DefaultNative {
         };
     }
 
-    private Optional<AnyBlockValue> reducedFrom(Value source, Evaluator evaluator,
-                                                Optional<Value> exceptions, Set<String> refinements) {
+    private Optional<AnyBlockValue> reduceFrom(Value source, Evaluator evaluator,
+                                               Optional<Value> exceptions, Set<String> refinements) {
         if (!(source instanceof AnyBlockValue toReduce)
                 || !(toReduce instanceof BlockValue || toReduce instanceof ParenValue)) {
             return Optional.empty();
         }
         if (refinements.contains("no-set")) {
-            return Optional.of(BlockValue.block(evaluator.reducedLeavingSetWords(toReduce)));
+            return Optional.of(BlockValue.of(evaluator.reduceLeavingSetWords(toReduce)));
         }
         if (refinements.contains("only")) {
-            return Optional.of(BlockValue.block(reducedOnlyWords(toReduce, exceptions)));
+            return Optional.of(BlockValue.of(reduceOnlyWords(toReduce, exceptions)));
         }
         return Optional.of(evaluator.evaluateEachKeepingTheLineShape(
                 toReduce, evaluator.systemContext()));
     }
 
-    private List<Value> reducedOnlyWords(AnyBlockValue block, Optional<Value> exceptions) {
+    private List<Value> reduceOnlyWords(AnyBlockValue block, Optional<Value> exceptions) {
         Set<String> kept = exceptions
                 .filter(AnyBlockValue.class::isInstance)
                 .map(excepted -> ((AnyBlockValue) excepted).remaining().stream()
@@ -79,7 +79,7 @@ public class ReduceNative extends DefaultNative {
         for (Value item : block.remaining()) {
             if (item instanceof WordValue word
                     && !kept.contains(word.canonical())) {
-                Value held = word.boundSlot().value();
+                Value held = word.findTheBoundSlot().value();
                 if (held instanceof UnsetValue) {
                     throw Raised.of(EvaluationFailure.NO_VALUE, word.spelling());
                 }

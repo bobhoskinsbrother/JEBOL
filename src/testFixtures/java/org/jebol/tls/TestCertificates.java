@@ -21,7 +21,7 @@ public final class TestCertificates {
 
     private static final String FIXTURE_DIRECTORY = "/org/jebol/tls/";
 
-    public X509Certificate certificate(String name) {
+    public X509Certificate readTheCertificate(String name) {
         try (InputStream pem = open(name)) {
             return (X509Certificate) CertificateFactory.getInstance("X.509").generateCertificate(pem);
         } catch (IOException | GeneralSecurityException unreadable) {
@@ -29,38 +29,38 @@ public final class TestCertificates {
         }
     }
 
-    public byte[] der(String name) {
+    public byte[] readTheDer(String name) {
         try {
-            return certificate(name).getEncoded();
+            return readTheCertificate(name).getEncoded();
         } catch (GeneralSecurityException unreadable) {
             throw new IllegalStateException(unreadable);
         }
     }
 
-    public List<byte[]> ders(String... names) {
-        return Arrays.stream(names).map(this::der).toList();
+    public List<byte[]> readTheDers(String... names) {
+        return Arrays.stream(names).map(this::readTheDer).toList();
     }
 
     public List<X509Certificate> chain(String... names) {
-        return Arrays.stream(names).map(this::certificate).toList();
+        return Arrays.stream(names).map(this::readTheCertificate).toList();
     }
 
-    public PrivateKey key(String name, String algorithm) {
+    public PrivateKey readTheKey(String name, String algorithm) {
         try (InputStream pem = open(name)) {
-            byte[] encoded = Base64.getMimeDecoder().decode(base64Body(pem));
+            byte[] encoded = Base64.getMimeDecoder().decode(readTheBase64Body(pem));
             return KeyFactory.getInstance(algorithm).generatePrivate(new PKCS8EncodedKeySpec(encoded));
         } catch (IOException | GeneralSecurityException unreadable) {
             throw new IllegalStateException("the fixture " + name + " is not a key", unreadable);
         }
     }
 
-    public Set<TrustAnchor> trusting(String... roots) {
+    public Set<TrustAnchor> trustOnly(String... roots) {
         return Arrays.stream(roots)
-                .map(root -> new TrustAnchor(certificate(root), null))
+                .map(root -> new TrustAnchor(readTheCertificate(root), null))
                 .collect(Collectors.toSet());
     }
 
-    private String base64Body(InputStream pem) throws IOException {
+    private String readTheBase64Body(InputStream pem) throws IOException {
         return new String(pem.readAllBytes(), StandardCharsets.US_ASCII)
                 .lines()
                 .filter(line -> !line.startsWith("-----"))

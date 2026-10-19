@@ -26,7 +26,7 @@ graphics stack that JEBOL will not have for a long time. They are here
 because they must all *load*, and loading them is a real test available
 today. Between them they contain 184 pairs, 90 tuples, 771 set-words, 478
 paths, 86 lit-words, 28 refinements and 21 get-words, including a
-set-path with a get-word segment inside it, which no hand-written example
+set-path with a get-word segment inside it, which no hand-text example
 would have thought to include.
 
 Two rules apply to every file in `corpus/sources/`:
@@ -94,7 +94,7 @@ must have at least one, or it asserts nothing.
 | `parse` | needs the PARSE dialect |
 | `r2-only` | the stated result is REBOL 2 behaviour and R3 differs |
 
-`clock` and `random` entries cannot assert a fixed result as written.
+`clock` and `random` entries cannot assert a fixed result as text.
 They are kept because the shape of the example is still worth testing once
 the clock and the generator are injectable, which the specs already require.
 

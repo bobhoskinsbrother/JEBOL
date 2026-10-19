@@ -137,13 +137,13 @@ final class NearOptimalParser extends DeflateParser {
         boolean previousBlockUsedOnlyLiterals = false;
         resetStatistics();
         do {
-            int blockEnd = maxBlockEnd(blockBegin, length, SOFT_MAX_BLOCK_LENGTH);
+            int blockEnd = findTheMaxBlockEnd(blockBegin, length, SOFT_MAX_BLOCK_LENGTH);
             int previousEndBlockCheck = -1;
             boolean changeDetected = false;
             int nextObservation = next;
             int minLength = previousBlockUsedOnlyLiterals
                     ? MAX_MATCH_LENGTH + 1
-                    : minMatchLengthScanning(input, blockBegin, blockEnd - blockBegin);
+                    : chooseTheMinMatchLengthByScanning(input, blockBegin, blockEnd - blockBegin);
             while (true) {
                 int remaining = length - next;
                 if (next == nextSlide) {
@@ -195,7 +195,7 @@ final class NearOptimalParser extends DeflateParser {
                 if (next >= blockEnd || cacheAt >= MATCH_CACHE_LENGTH) {
                     break;
                 }
-                if (!splitStatistics.readyToCheck(blockBegin, next, length)) {
+                if (!splitStatistics.isReadyToCheck(blockBegin, next, length)) {
                     continue;
                 }
                 if (splitStatistics.endsTheBlock(next - blockBegin)) {
@@ -288,7 +288,7 @@ final class NearOptimalParser extends DeflateParser {
             if (onlyLiteralsCost < staticCost) {
                 chooseOnlyLiterals(input, blockBegin, blockLength);
                 setCostsFromCodeLengths(encoder.codes.lengths);
-                content = new Sequences(0).holdingOnlyLiterals(blockLength);
+                content = new Sequences(0).holdOnlyLiterals(blockLength);
                 onlyLiterals = true;
             } else {
                 setCostsFromCodeLengths(encoder.staticCodes.lengths);
@@ -409,7 +409,7 @@ final class NearOptimalParser extends DeflateParser {
             literalsUsed = 1;
         }
         int matchFrequency = 0;
-        for (int length = minMatchLengthFor(literalsUsed); length < matchLengthFrequencies.length; length++) {
+        for (int length = chooseTheMinMatchLengthFor(literalsUsed); length < matchLengthFrequencies.length; length++) {
             matchFrequency += matchLengthFrequencies[length];
             literalFrequency -= length * matchLengthFrequencies[length];
         }
@@ -428,25 +428,25 @@ final class NearOptimalParser extends DeflateParser {
         defaultLengthSymbolCost = DEFAULT_LENGTH_SYMBOL_COSTS[matchiness];
     }
 
-    private int defaultLengthCost(int length) {
+    private int priceTheLengthByDefault(int length) {
         return defaultLengthSymbolCost + EXTRA_LENGTH_BITS[LENGTH_SLOT[length]] * BIT_COST;
     }
 
-    private int defaultOffsetSlotCost(int slot) {
+    private int priceTheOffsetSlotByDefault(int slot) {
         return OFFSET_SYMBOL_COST + EXTRA_OFFSET_BITS[slot] * BIT_COST;
     }
 
     private void setDefaultCosts() {
         Arrays.fill(literalCosts, defaultLiteralCost);
         for (int length = MIN_MATCH_LENGTH; length <= MAX_MATCH_LENGTH; length++) {
-            lengthCosts[length] = defaultLengthCost(length);
+            lengthCosts[length] = priceTheLengthByDefault(length);
         }
         for (int slot = 0; slot < OFFSET_SLOT_BASE.length; slot++) {
-            offsetSlotCosts[slot] = defaultOffsetSlotCost(slot);
+            offsetSlotCosts[slot] = priceTheOffsetSlotByDefault(slot);
         }
     }
 
-    private int adjusted(int cost, int defaultCost, int changeAmount) {
+    private int adjust(int cost, int defaultCost, int changeAmount) {
         return switch (changeAmount) {
             case 0 -> (defaultCost + 3 * cost) / 4;
             case 1 -> (defaultCost + cost) / 2;
@@ -457,13 +457,13 @@ final class NearOptimalParser extends DeflateParser {
 
     private void adjustCostsBy(int changeAmount) {
         for (int literal = 0; literal < LITERAL_COUNT; literal++) {
-            literalCosts[literal] = adjusted(literalCosts[literal], defaultLiteralCost, changeAmount);
+            literalCosts[literal] = adjust(literalCosts[literal], defaultLiteralCost, changeAmount);
         }
         for (int length = MIN_MATCH_LENGTH; length <= MAX_MATCH_LENGTH; length++) {
-            lengthCosts[length] = adjusted(lengthCosts[length], defaultLengthCost(length), changeAmount);
+            lengthCosts[length] = adjust(lengthCosts[length], priceTheLengthByDefault(length), changeAmount);
         }
         for (int slot = 0; slot < OFFSET_SLOT_BASE.length; slot++) {
-            offsetSlotCosts[slot] = adjusted(offsetSlotCosts[slot], defaultOffsetSlotCost(slot), changeAmount);
+            offsetSlotCosts[slot] = adjust(offsetSlotCosts[slot], priceTheOffsetSlotByDefault(slot), changeAmount);
         }
     }
 

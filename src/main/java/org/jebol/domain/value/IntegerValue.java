@@ -10,7 +10,7 @@ import java.util.function.ToLongFunction;
 public record IntegerValue(long magnitude) implements Value, RebolNumber {
 
     @Override
-    public Value randomised(RandomDraw draw) {
+    public Value randomise(RandomDraw draw) {
         return IntegerValue.of(draw.upTo(magnitude));
     }
 
@@ -27,8 +27,8 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     private static final int ALL_SIXTEEN_HEX_DIGITS = 16;
 
     @Override
-    public String writtenInHex(HexWidth width) {
-        return width.sixteenDigitsKeptToTheRight(magnitude, ALL_SIXTEEN_HEX_DIGITS);
+    public String writeInHex(HexWidth width) {
+        return width.keepSixteenDigitsToTheRight(magnitude, ALL_SIXTEEN_HEX_DIGITS);
     }
 
     @Override
@@ -54,7 +54,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     }
 
     @Override
-    public Value absolute() {
+    public Value makeAbsolute() {
         if (magnitude == Long.MIN_VALUE) {
             throw Raised.of(EvaluationFailure.OVERFLOW,
                     "there is no positive counterpart to " + magnitude);
@@ -63,19 +63,19 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     }
 
     @Override
-    public Value heldBetween(Value lowest, Value highest) {
+    public Value holdBetween(Value lowest, Value highest) {
         return IntegerValue.of(Math.max(((IntegerValue) lowest).magnitude,
                 Math.min(((IntegerValue) highest).magnitude, magnitude)));
     }
 
     @Override
-    public Value combinedWithANumber(Value right, ArithmeticOperation operation) {
+    public Value combineWithANumber(Value right, ArithmeticOperation operation) {
         return switch (right) {
             case IntegerValue(long theirs) -> operation.onWholeNumbers(magnitude, theirs);
             case CharacterValue(int codepoint) ->
                     operation.onWholeNumbers(magnitude, codepoint);
             default -> operation.onFractions(
-                    magnitude, Numbers.quantityOfANumber(right), true);
+                    magnitude, Numbers.measureTheQuantityOfANumber(right), true);
         };
     }
 
@@ -105,33 +105,33 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
     }
 
     @Override
-    public Optional<Value[]> broughtTogetherWith(Value other) {
+    public Optional<Value[]> bringTogetherWith(Value other) {
         return switch (other) {
-            case AnyDecimalValue ignored -> theyMeetAsDecimals(other);
-            case TimeValue ignored -> theyMeetAsDecimals(other);
-            case MoneyValue theirs -> both(asMoneyInTheCurrencyOf(theirs).orElseThrow(), theirs);
+            case AnyDecimalValue ignored -> meetAsDecimals(other);
+            case TimeValue ignored -> meetAsDecimals(other);
+            case MoneyValue theirs -> pairUp(asMoneyInTheCurrencyOf(theirs).orElseThrow(), theirs);
             case CharacterValue letter ->
-                    both(this, letter.asWholeNumber().orElseThrow());
+                    pairUp(this, letter.asWholeNumber().orElseThrow());
             default -> Optional.empty();
         };
     }
 
-    private Optional<Value[]> theyMeetAsDecimals(Value other) {
-        return both(asDecimalNumber().orElseThrow(),
+    private Optional<Value[]> meetAsDecimals(Value other) {
+        return pairUp(asDecimalNumber().orElseThrow(),
                 other.asDecimalNumber().orElseThrow());
     }
 
     @Override
-    public Value bitwise(Value right, BitwiseOperation operation) {
+    public Value combineBitwise(Value right, BitwiseOperation operation) {
         return IntegerValue.of(
-                operation.onWholeElements(magnitude, aWholeNumberFrom(right)));
+                operation.onWholeElements(magnitude, readAWholeNumberFrom(right)));
     }
 
-    private long aWholeNumberFrom(Value right) {
+    private long readAWholeNumberFrom(Value right) {
         return switch (right) {
             case IntegerValue(long other) -> other;
             case CharacterValue(int codepoint) -> codepoint;
-            default -> throw Raised.notRelated(this, right);
+            default -> throw Raised.ofUnrelated(this, right);
         };
     }
 
@@ -170,34 +170,34 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
-            throw refusingConstruction(contents);
+        public Value construct(List<Value> contents, Construction construction) {
+            throw refuseTheConstruction(contents);
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return switch (from) {
                 case IntegerValue whole -> whole;
                 case LogicValue truth -> {
                     if (!asking.builds()) {
-                        throw refusing(from);
+                        throw refuse(from);
                     }
                     yield IntegerValue.of(truth.truth() ? 1 : 0);
                 }
-                case IssueValue issue -> hexNumberIn(issue);
-                case AnyStringValue text -> wholeNumberReadFrom(text);
+                case IssueValue issue -> readTheHexNumberIn(issue);
+                case AnyStringValue text -> readAWholeNumberFromText(text);
                 case CharacterValue character -> IntegerValue.of(character.codepoint());
-                case BinaryValue bytes -> IntegerValue.of(bytes.bitsOfTheLastEightOctets());
+                case BinaryValue bytes -> IntegerValue.of(bytes.readTheBitsOfTheLastEightOctets());
                 case DateValue moment -> IntegerValue.of(moment.wholeSecondsSinceTheEpoch());
-                case AnyDecimalValue number -> wholeNumberWithinRange(number.quantity());
+                case AnyDecimalValue number -> makeAWholeNumberWithinRange(number.quantity());
                 case MoneyValue amount -> IntegerValue.of(amount.asDeci().toLong());
                 case TimeValue clock ->
                         IntegerValue.of(clock.nanoseconds() / TimeValue.NANOSECONDS_PER_SECOND);
-                default -> throw refusing(from);
+                default -> throw refuse(from);
             };
         }
 
-        private Value wholeNumberWithinRange(double quantity) {
+        private Value makeAWholeNumberWithinRange(double quantity) {
             if (Double.isNaN(quantity)
                     || quantity < -TOO_LARGE_FOR_A_WHOLE_NUMBER
                     || quantity >= TOO_LARGE_FOR_A_WHOLE_NUMBER) {
@@ -207,42 +207,42 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
             return IntegerValue.of((long) quantity);
         }
 
-        private Value hexNumberIn(AnyWordValue issue) {
+        private Value readTheHexNumberIn(AnyWordValue issue) {
             String digits = issue.spelling();
             if (digits.isEmpty() || digits.length() > MOST_HEX_DIGITS
                     || digits.charAt(0) == '+' || digits.charAt(0) == '-') {
-                throw refusing(issue);
+                throw refuse(issue);
             }
             try {
                 return IntegerValue.of(new BigInteger(digits, 16).longValue());
             } catch (NumberFormatException notHexAtAll) {
-                throw refusing(issue);
+                throw refuse(issue);
             }
         }
 
-        private Value wholeNumberReadFrom(AnyStringValue text) {
+        private Value readAWholeNumberFromText(AnyStringValue text) {
             String withoutSeparators = new WrittenText(text.text())
-                    .theOneNumberIn("an integer", MOST_WHOLE_NUMBER_CHARACTERS)
+                    .findTheOneNumberIn("an integer", MOST_WHOLE_NUMBER_CHARACTERS)
                     .replace("'", "");
             try {
                 return IntegerValue.of(Long.parseLong(withoutSeparators));
             } catch (NumberFormatException notAWholeNumber) {
-                return truncatedDecimal(withoutSeparators, text);
+                return truncateADecimal(withoutSeparators, text);
             }
         }
 
-        private Value truncatedDecimal(String candidate, AnyStringValue original) {
+        private Value truncateADecimal(String candidate, AnyStringValue original) {
             if (candidate.indexOf('.') < 0) {
-                throw refusing(original);
+                throw refuse(original);
             }
             double asNumber;
             try {
                 asNumber = Double.parseDouble(candidate);
             } catch (NumberFormatException notANumberEither) {
-                throw refusing(original);
+                throw refuse(original);
             }
             if (!(Math.abs(asNumber) < TOO_LARGE_FOR_A_WHOLE_NUMBER)) {
-                throw refusing(original);
+                throw refuse(original);
             }
             return IntegerValue.of((long) asNumber);
         }

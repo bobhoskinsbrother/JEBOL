@@ -31,7 +31,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     @Override
     public abstract Datatype datatype();
 
-    abstract AnyBlockValue sameKindOver(BlockStorage storage, int index);
+    abstract AnyBlockValue makeTheSameKindOver(BlockStorage storage, int index);
 
     public abstract static class AnyBlockDatatype extends PositionedSeriesDatatype {
 
@@ -41,10 +41,10 @@ public abstract sealed class AnyBlockValue implements RebolSeries
             super(spelling);
         }
 
-        public abstract AnyBlockValue holding(BlockStorage storage, int index);
+        public abstract AnyBlockValue wrap(BlockStorage storage, int index);
 
-        public AnyBlockValue holding(List<Value> items) {
-            return holding(new BlockStorage(items), 1);
+        public AnyBlockValue wrap(List<Value> items) {
+            return wrap(new BlockStorage(items), 1);
         }
 
         boolean wrapsWhatItConverts() {
@@ -66,84 +66,84 @@ public abstract sealed class AnyBlockValue implements RebolSeries
 
         @Override
         protected Value withRoomFor(int asked) {
-            return holding(List.of());
+            return wrap(List.of());
         }
 
         @Override
         public Value as(Value value) {
             return value instanceof AnyBlockValue block
-                    ? holding(block.storage(), block.index())
+                    ? wrap(block.storage(), block.index())
                     : super.as(value);
         }
 
         @Override
-        protected Value constructedFromOne(Value only, Construction construction) {
+        protected Value constructFromOne(Value only, Construction construction) {
             if (!(only instanceof AnyBlockValue block)) {
-                throw refusingConstruction(List.of(only));
+                throw refuseTheConstruction(List.of(only));
             }
             return as(block);
         }
 
         @Override
-        protected Value constructedFromMore(List<Value> contents, Construction construction) {
-            return standingWhereItWasTold(
-                    constructedFromOne(contents.getFirst(), construction), contents.get(1));
+        protected Value constructFromMore(List<Value> contents, Construction construction) {
+            return standWhereItWasTold(
+                    constructFromOne(contents.getFirst(), construction), contents.get(1));
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
-            return whatTheHostHadRoomFor(() -> blockBuilt(asking, from, maker));
+        protected Value build(Conversion asking, Value from, Maker maker) {
+            return allocateWithinTheHost(() -> buildABlock(asking, from, maker));
         }
 
-        private Value blockBuilt(Conversion asking, Value from, Maker maker) {
+        private Value buildABlock(Conversion asking, Value from, Maker maker) {
             if (from instanceof AnyBlockValue given) {
                 BlockStorage built = new BlockStorage(given.remaining());
                 built.takeLineBreaksFrom(given.storage(), given.index());
-                return holding(built, 1);
+                return wrap(built, 1);
             }
             if (from instanceof MapValue pairs) {
-                return as(pairs.pairsOnLines());
+                return as(pairs.layThePairsOnLines());
             }
             if (from.isAnyObject()) {
                 return as(from.fieldsAsAContext().orElseThrow().setWordsAndValuesOnLines());
             }
             if (from instanceof VectorValue numbers) {
-                return holding(numbers.remaining());
+                return wrap(numbers.listTheRemaining());
             }
             if (asking.builds()) {
                 if (from instanceof IntegerValue || from instanceof DecimalValue) {
-                    return holding(List.of());
+                    return wrap(List.of());
                 }
             } else if (wrapsWhatItConverts()) {
                 return from instanceof TypesetValue kinds && listsATypesetsMembers()
-                        ? holding(Catalogue.DATATYPES.where(kinds::holds).stream()
+                        ? wrap(Catalogue.DATATYPES.selectWhere(kinds::holds).stream()
                                 .<Value>map(datatype -> datatype).toList())
-                        : holding(List.of(from));
+                        : wrap(List.of(from));
             }
             if (from instanceof StringValue text) {
-                return sourceReadStoppingAtANoughtByte(text.text(), maker);
+                return readTheSourceToANoughtByte(text.text(), maker);
             }
             if (from instanceof BinaryValue octets) {
-                return sourceReadStoppingAtANoughtByte(octets.decodedAsText(), maker);
+                return readTheSourceToANoughtByte(octets.decodeAsText(), maker);
             }
             if (from instanceof PairValue) {
-                return holding(List.of());
+                return wrap(List.of());
             }
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(from));
         }
 
-        private Value sourceReadStoppingAtANoughtByte(String source, Maker maker) {
+        private Value readTheSourceToANoughtByte(String source, Maker maker) {
             int endsAt = source.indexOf('\0');
-            return as(maker.sourceRead(endsAt < 0 ? source : source.substring(0, endsAt)));
+            return as(maker.readTheSource(endsAt < 0 ? source : source.substring(0, endsAt)));
         }
     }
 
-    public AnyBlockValue holding(BlockStorage another) {
-        return sameKindOver(another, 1);
+    public AnyBlockValue wrap(BlockStorage another) {
+        return makeTheSameKindOver(another, 1);
     }
 
-    public AnyBlockValue holding(List<Value> items) {
-        return sameKindOver(new BlockStorage(items), 1);
+    public AnyBlockValue wrap(List<Value> items) {
+        return makeTheSameKindOver(new BlockStorage(items), 1);
     }
 
     String opensWith() {
@@ -172,12 +172,12 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     @Override
-    public Value randomised(RandomDraw draw) {
+    public Value randomise(RandomDraw draw) {
         throw Raised.cannotUseTheAction(this, "random");
     }
 
     @Override
-    public Value pickedAtRandom(RandomDraw draw) {
+    public Value pickAtRandom(RandomDraw draw) {
         throw Raised.cannotUseTheAction(this, "random");
     }
 
@@ -192,43 +192,43 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     @Override
-    public List<Value> items() {
+    public List<Value> listTheItems() {
         return remaining();
     }
 
     @Override
-    public Value copied(boolean deeply, Set<Datatype> kinds) {
+    public Value copy(boolean deeply, Set<Datatype> kinds) {
         List<Value> items = remaining();
         List<Value> members = new ArrayList<>(items.size());
         for (Value item : items) {
-            members.add(item.copiedAsAMember(deeply, kinds));
+            members.add(item.copyAsAMember(deeply, kinds));
         }
         BlockStorage built = new BlockStorage(members);
         built.takeLineBreaksFrom(storage, index);
-        return sameKindOver(built, 1);
+        return makeTheSameKindOver(built, 1);
     }
 
     @Override
-    public Value itemAt(int positionFromTheHead) {
+    public Value readTheItemAt(int positionFromTheHead) {
         return storage.at(positionFromTheHead);
     }
 
     @Override
-    public Value frontCopied(int howMany, boolean deeply, Set<Datatype> kinds) {
+    public Value copyTheFront(int howMany, boolean deeply, Set<Datatype> kinds) {
         List<Value> taken = remaining().subList(0, howMany);
         List<Value> members = new ArrayList<>(taken.size());
         for (Value item : taken) {
             members.add(deeply && kinds.contains(item.datatype())
-                    ? item.copied(true, kinds)
+                    ? item.copy(true, kinds)
                     : item);
         }
         BlockStorage built = new BlockStorage(members);
         built.takeLineBreaksFrom(storage, index);
-        return sameKindOver(built, 1);
+        return makeTheSameKindOver(built, 1);
     }
 
     @Override
-    public RebolSeries reversedFront(int howMany) {
+    public RebolSeries reverseTheFront(int howMany) {
         List<Value> items = new ArrayList<>(howMany);
         List<Boolean> breaks = new ArrayList<>(howMany);
         for (int at = 0; at < howMany; at++) {
@@ -274,7 +274,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     public BlockValue declaredParameters() {
-        return BlockValue.block(remaining().stream()
+        return BlockValue.of(remaining().stream()
                 .filter(AnyBlockValue::declaresAParameter)
                 .toList());
     }
@@ -292,7 +292,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     @Override
-    public boolean equalTo(Value other, Sameness how) {
+    public boolean isEqualTo(Value other, Sameness how) {
         if (!(other instanceof AnyBlockValue theirs) || datatype() != theirs.datatype()) {
             return false;
         }
@@ -302,7 +302,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
             return false;
         }
         for (int at = 0; at < ours.size(); at++) {
-            if (!ours.get(at).equalTo(yours.get(at), Sameness.insideASeries())) {
+            if (!ours.get(at).isEqualTo(yours.get(at), Sameness.insideASeries())) {
                 return false;
             }
         }
@@ -313,11 +313,11 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     public Value asASetWith(Value other, MembersKept keeping, boolean mindingCase) {
         return switch (other) {
             case AnyStringValue ignored -> StringValue.of(AnyStringValue.textOf(
-                    keeping.from(AnyStringValue.charactersOf(this),
-                            AnyStringValue.charactersOf(other))));
+                    keeping.from(AnyStringValue.listTheCharactersOf(this),
+                            AnyStringValue.listTheCharactersOf(other))));
             case MapValue theirs -> MapValue.empty()
-                    .combinedWith(theirs, keeping.how(), mindingCase);
-            case AnyBlockValue theirs -> BlockValue.block(
+                    .combineWith(theirs, keeping.how(), mindingCase);
+            case AnyBlockValue theirs -> BlockValue.of(
                     keeping.from(remaining(), theirs.remaining()));
             default -> throw Raised.cannotUse(other, "a set operation");
         };
@@ -330,7 +330,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
 
     @Override
     public AnyBlockValue atIndex(int oneBasedIndex) {
-        return sameKindOver(storage, oneBasedIndex);
+        return makeTheSameKindOver(storage, oneBasedIndex);
     }
 
     @Override
@@ -355,7 +355,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
         return new PathValue(storage, index);
     }
 
-    public Value first() {
+    public Value pickTheFirst() {
         if (atTail()) {
             throw new IllegalStateException("nothing to read at the tail");
         }
@@ -368,7 +368,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
     }
 
     @Override
-    public Value trimmed(Trimming trimming) {
+    public Value trim(Trimming trimming) {
         trimming.refuseWhatOnlyTextServes();
         List<Value> items = new ArrayList<>(remaining());
         if (trimming.everywhere()) {
@@ -397,7 +397,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
                 .toList();
     }
 
-    public List<Value> wordsWritten(boolean deeply, boolean settersOnly) {
+    public List<Value> listTheWordsWritten(boolean deeply, boolean settersOnly) {
         List<Value> found = new ArrayList<>();
         gatherWordsInto(found, deeply, settersOnly);
         return found;

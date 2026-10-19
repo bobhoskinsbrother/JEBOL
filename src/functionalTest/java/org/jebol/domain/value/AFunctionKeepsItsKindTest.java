@@ -16,21 +16,21 @@ class AFunctionKeepsItsKindTest {
 
     @Test
     @DisplayName("a closure copied into a derived object is still a closure")
-    void aCopiedClosureIsStillAClosure() {
+    void staysAClosureWhenCopied() {
         assertThat(answerTo("""
                 o: make object! [f: closure [] [1]] p: make o [] type? get in p 'f""")).isEqualTo("#(closure!)");
     }
 
     @Test
     @DisplayName("a function copied into a derived object is still a function")
-    void aCopiedFunctionIsStillAFunction() {
+    void staysAFunctionWhenCopied() {
         assertThat(answerTo("""
                 o: make object! [f: func [] [1]] p: make o [] type? get in p 'f""")).isEqualTo("#(function!)");
     }
 
     @Test
     @DisplayName("and the copied closure still runs")
-    void theCopiedClosureRuns() {
+    void stillRunsAsACopiedClosure() {
         assertThat(answerTo("""
                 o: make object! [n: 2 f: closure [x] [x * n]] p: make o [n: 3] p/f 5""")).isEqualTo("15");
     }

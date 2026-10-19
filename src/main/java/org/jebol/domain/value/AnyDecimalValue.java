@@ -18,15 +18,15 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
     @Override
     public abstract Datatype datatype();
 
-    abstract AnyDecimalValue sameKindHolding(double another);
+    abstract AnyDecimalValue makeTheSameKindHolding(double another);
 
     public double quantity() {
         return quantity;
     }
 
     @Override
-    public Value randomised(RandomDraw draw) {
-        return sameKindHolding(draw.fraction() * quantity);
+    public Value randomise(RandomDraw draw) {
+        return makeTheSameKindHolding(draw.fraction() * quantity);
     }
 
     @Override
@@ -40,24 +40,24 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
     }
 
     @Override
-    public Value absolute() {
-        return quantity == 0.0 ? this : sameKindHolding(Math.abs(quantity));
+    public Value makeAbsolute() {
+        return quantity == 0.0 ? this : makeTheSameKindHolding(Math.abs(quantity));
     }
 
     @Override
     public Value negated() {
-        return sameKindHolding(-quantity);
+        return makeTheSameKindHolding(-quantity);
     }
 
     @Override
-    public Value heldBetween(Value lowest, Value highest) {
-        return sameKindHolding(Math.max(((AnyDecimalValue) lowest).quantity,
+    public Value holdBetween(Value lowest, Value highest) {
+        return makeTheSameKindHolding(Math.max(((AnyDecimalValue) lowest).quantity,
                 Math.min(((AnyDecimalValue) highest).quantity, quantity)));
     }
 
     @Override
-    public Value combinedWithANumber(Value right, ArithmeticOperation operation) {
-        return operation.onFractions(quantity, Numbers.quantityOfANumber(right), true);
+    public Value combineWithANumber(Value right, ArithmeticOperation operation) {
+        return operation.onFractions(quantity, Numbers.measureTheQuantityOfANumber(right), true);
     }
 
     @Override
@@ -81,11 +81,11 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
     }
 
     @Override
-    public Optional<Value[]> broughtTogetherWith(Value other) {
+    public Optional<Value[]> bringTogetherWith(Value other) {
         return switch (other) {
-            case MoneyValue theirs -> both(asMoneyInTheCurrencyOf(theirs).orElseThrow(), theirs);
-            case AnyDecimalValue ignored -> both(this, other);
-            case TimeValue theirs -> both(this, theirs.asSeconds());
+            case MoneyValue theirs -> pairUp(asMoneyInTheCurrencyOf(theirs).orElseThrow(), theirs);
+            case AnyDecimalValue ignored -> pairUp(this, other);
+            case TimeValue theirs -> pairUp(this, theirs.asSeconds());
             default -> Optional.empty();
         };
     }
@@ -113,45 +113,45 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
             super(spelling);
         }
 
-        public abstract AnyDecimalValue holding(double quantity);
+        public abstract AnyDecimalValue wrap(double quantity);
 
-        public AnyDecimalValue holdingHundredths(double quantity) {
-            return holding(quantity);
+        public AnyDecimalValue wrapHundredths(double quantity) {
+            return wrap(quantity);
         }
 
         abstract boolean isWrittenWithAPercentSign();
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
-            return from.asDecimal(this, asking).orElseGet(() -> scannedIntoADecimal(from));
+        protected Value build(Conversion asking, Value from, Maker maker) {
+            return from.asDecimal(this, asking).orElseGet(() -> scanIntoADecimal(from));
         }
 
-        private Value scannedIntoADecimal(Value from) {
-            OptionalDouble scanned = theQuantityScannedFrom(from);
+        private Value scanIntoADecimal(Value from) {
+            OptionalDouble scanned = scanTheQuantityFrom(from);
             if (scanned.isEmpty()) {
-                throw refusing(from);
+                throw refuse(from);
             }
-            return from.inHundredths(this, scanned.getAsDouble());
+            return from.countInHundredths(this, scanned.getAsDouble());
         }
 
-        private OptionalDouble theQuantityScannedFrom(Value from) {
+        private OptionalDouble scanTheQuantityFrom(Value from) {
             if (from instanceof StringValue text) {
-                return decimalScannedFrom(new WrittenText(text.text())
-                        .theOneNumberIn("a number", MOST_FRACTION_CHARACTERS));
+                return scanADecimalFrom(new WrittenText(text.text())
+                        .findTheOneNumberIn("a number", MOST_FRACTION_CHARACTERS));
             }
             if (from instanceof AnyBlockValue parts) {
-                return OptionalDouble.of(mantissaTimesTenTo(parts));
+                return OptionalDouble.of(multiplyTheMantissaByTenTo(parts));
             }
             return OptionalDouble.empty();
         }
 
-        private double mantissaTimesTenTo(AnyBlockValue parts) {
+        private double multiplyTheMantissaByTenTo(AnyBlockValue parts) {
             List<Value> both = parts.remaining();
             if (both.size() != 2) {
-                throw refusing(parts);
+                throw refuse(parts);
             }
-            double scaled = numberInTheBlock(both.get(0));
-            double exponent = numberInTheBlock(both.get(1));
+            double scaled = readTheNumberInTheBlock(both.get(0));
+            double exponent = readTheNumberInTheBlock(both.get(1));
             while (exponent >= 1) {
                 exponent--;
                 scaled *= 10.0;
@@ -163,15 +163,15 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
             return scaled;
         }
 
-        private double numberInTheBlock(Value part) {
+        private double readTheNumberInTheBlock(Value part) {
             return switch (part) {
                 case IntegerValue(long magnitude) -> magnitude;
                 case AnyDecimalValue number -> number.quantity();
-                default -> throw refusing(part);
+                default -> throw refuse(part);
             };
         }
 
-        private OptionalDouble decimalScannedFrom(String written) {
+        private OptionalDouble scanADecimalFrom(String written) {
             String body = written;
             if (body.endsWith("%")) {
                 if (!isWrittenWithAPercentSign()) {
@@ -179,23 +179,23 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
                 }
                 body = body.substring(0, body.length() - 1);
             }
-            OptionalDouble endless = endlessNumberIn(body.replace("'", ""));
+            OptionalDouble endless = readAnEndlessNumberIn(body.replace("'", ""));
             if (endless.isPresent()) {
                 return endless;
             }
-            return numberRewrittenForTheJvm(body)
+            return rewriteTheNumberForTheJvm(body)
                     .map(plain -> OptionalDouble.of(Double.parseDouble(plain)))
                     .orElseGet(OptionalDouble::empty);
         }
 
-        private Optional<String> numberRewrittenForTheJvm(String written) {
+        private Optional<String> rewriteTheNumberForTheJvm(String written) {
             String body = written.replace("'", "").replaceFirst(",", ".");
             return WRITTEN_DECIMAL.matcher(body).matches()
                     ? Optional.of(EMPTY_EXPONENT.matcher(body).replaceFirst(""))
                     : Optional.empty();
         }
 
-        private OptionalDouble endlessNumberIn(String body) {
+        private OptionalDouble readAnEndlessNumberIn(String body) {
             int hash = body.indexOf('#');
             if (hash < 0) {
                 return OptionalDouble.empty();

@@ -14,14 +14,14 @@ class HostServiceGrantTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(Bounds bounds, String source) {
+    private static String readTheErrorIdOf(Bounds bounds, String source) {
         return answerTo(bounds, "e: try [" + source + "] "
                 + "either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("the standard bounds grant nothing")
-    void nothingIsGrantedByDefault() {
+    void grantsNothingByDefault() {
         for (HostService service : HostService.values()) {
             assertThat(Bounds.standard().grants(service))
                     .as("%s must not be granted by default", service)
@@ -30,8 +30,8 @@ class HostServiceGrantTest {
     }
 
     @Test
-    @DisplayName("a grant adds one kind and leaves the others alone")
-    void oneGrantAtATime() {
+    @DisplayName("a grant adds one type and leaves the others alone")
+    void grantsOneAtATime() {
         Bounds bounds = Bounds.standard().grant(HostService.CLOCK);
         assertThat(bounds.grants(HostService.CLOCK)).isTrue();
         assertThat(bounds.grants(HostService.FILES)).isFalse();
@@ -49,7 +49,7 @@ class HostServiceGrantTest {
 
     @Test
     @DisplayName("a grant makes new bounds and does not change the old ones")
-    void theOldBoundsAreUnchanged() {
+    void leavesTheOldBoundsUnchanged() {
         Bounds first = Bounds.standard();
         first.grant(HostService.CLOCK);
         assertThat(first.grants(HostService.CLOCK))
@@ -59,41 +59,41 @@ class HostServiceGrantTest {
 
     @Test
     @DisplayName("a script that asks for an ungranted service gets an error")
-    void anUngrantedServiceRaises() {
-        assertThat(errorIdOf(Bounds.standard(), "now")).isEqualTo("no-service");
+    void raisesForAnUngrantedService() {
+        assertThat(readTheErrorIdOf(Bounds.standard(), "now")).isEqualTo("no-service");
     }
 
     @Test
     @DisplayName("the error names the service that was refused")
-    void theErrorSaysWhich() {
+    void saysWhichInTheError() {
         assertThat(answerTo(Bounds.standard(),
                 "e: try [now] true? find form e/arg1 \"clock\"")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("the same script works once the service is granted")
-    void aGrantedServiceAnswers() {
+    void answersAGrantedService() {
         assertThat(answerTo(Bounds.standard().grant(HostService.CLOCK),
                 "date? now")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("loading native code from a file is refused whatever is granted, as never portable")
-    void nativeCodeIsNeverAvailable() {
-        assertThat(errorIdOf(everythingGranted(), "load-extension %a")).isEqualTo("no-extension");
+    void neverOffersNativeCode() {
+        assertThat(readTheErrorIdOf(grantEverything(), "load-extension %a")).isEqualTo("no-extension");
     }
 
     @Test
     @DisplayName("but ACCESS-OS is not one of them, and answers the process id")
     void accessOsIsNotAnExtensionPoint() {
-        assertThat(answerTo(everythingGranted(), "integer? access-os 'pid"))
+        assertThat(answerTo(grantEverything(), "integer? access-os 'pid"))
                 .as("this test used to demand a refusal here, which recorded the "
                         + "stub rather than Rebol: ACCESS-OS loads no C of its own, "
                         + "and n-io.c answers a number for the field the JVM knows")
                 .isEqualTo("#(true)");
     }
 
-    private static Bounds everythingGranted() {
+    private static Bounds grantEverything() {
         Bounds everything = Bounds.standard();
         for (HostService service : HostService.values()) {
             everything = everything.grant(service);

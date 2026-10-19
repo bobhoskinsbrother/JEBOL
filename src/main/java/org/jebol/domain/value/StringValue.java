@@ -5,7 +5,7 @@ public final class StringValue extends AnyStringValue {
     public static final AnyStringDatatype TYPE = new AnyStringDatatype("string") {
 
         @Override
-        public AnyStringValue holding(StringStorage storage, int index) {
+        public AnyStringValue wrap(StringStorage storage, int index) {
             return new StringValue(storage, index);
         }
     };
@@ -24,12 +24,12 @@ public final class StringValue extends AnyStringValue {
     }
 
     @Override
-    StringValue sameKindOver(StringStorage storage, int index) {
+    StringValue makeTheSameKindOver(StringStorage storage, int index) {
         return new StringValue(storage, index);
     }
 
     @Override
     public String mold() {
-        return Molder.moldedText(text());
+        return Molder.moldTheText(text());
     }
 }

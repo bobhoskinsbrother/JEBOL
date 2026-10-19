@@ -26,17 +26,17 @@ public class OffsetToCaretNative extends TextMeasuringNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("gob", Set.of(GobValue.TYPE)),
-                Parameter.required("position", Set.of(PairValue.TYPE)));
+                Parameter.of("gob", Set.of(GobValue.TYPE)),
+                Parameter.of("position", Set.of(PairValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            GobText text = theTextOf((GobValue) arguments.get(0), evaluator);
+            GobText text = readTheTextOf((GobValue) arguments.get(0), evaluator);
             PairValue point = (PairValue) arguments.get(1);
-            return text.theBlockAtTheCaret(
-                            text.lines().caretNearest(point.x(), point.y(), text.layout(), text.theGobsOwnBox()))
+            return text.findTheBlockAtTheCaret(
+                            text.lines().findTheCaretNearest(point.x(), point.y(), text.layout(), text.findTheGobsOwnBox()))
                     .<Value>map(found -> found)
                     .orElseGet(NoneValue::none);
         };

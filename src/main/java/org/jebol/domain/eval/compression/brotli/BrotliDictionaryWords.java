@@ -23,12 +23,12 @@ final class BrotliDictionaryWords {
 
     private static UnpackedTogetherSoOneWritePublishesAll tables;
 
-    private static UnpackedTogetherSoOneWritePublishesAll unpacked() {
+    private static UnpackedTogetherSoOneWritePublishesAll unpack() {
         UnpackedTogetherSoOneWritePublishesAll known = tables;
         if (known != null) {
             return known;
         }
-        byte[] raw = inflated();
+        byte[] raw = inflate();
         char[] starts = new char[BUCKETS];
         for (int bucket = 0; bucket < BUCKETS; bucket++) {
             starts[bucket] = (char) ((raw[bucket * 2] & 0xFF)
@@ -53,7 +53,7 @@ final class BrotliDictionaryWords {
         return built;
     }
 
-    private static byte[] inflated() {
+    private static byte[] inflate() {
         StringBuilder joined = new StringBuilder();
         for (String piece : DEFLATED_TABLE) {
             joined.append(piece);
@@ -81,20 +81,20 @@ final class BrotliDictionaryWords {
         }
     }
 
-    static int firstWordOfBucket(int bucket) {
-        return unpacked().bucketStarts()[bucket];
+    static int findTheFirstWordOfBucket(int bucket) {
+        return unpack().bucketStarts()[bucket];
     }
 
-    static int lengthAndFlagOf(int word) {
-        return unpacked().wordLengths()[word] & 0xFF;
+    static int readTheLengthAndFlagOf(int word) {
+        return unpack().wordLengths()[word] & 0xFF;
     }
 
     static int transformOf(int word) {
-        return unpacked().wordTransforms()[word];
+        return unpack().wordTransforms()[word];
     }
 
-    static int indexOf(int word) {
-        return unpacked().wordIndexes()[word];
+    static int readTheIndexOf(int word) {
+        return unpack().wordIndexes()[word];
     }
 
     private static final String[] DEFLATED_TABLE = {

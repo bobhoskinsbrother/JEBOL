@@ -15,7 +15,7 @@ class MoneyFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
@@ -28,7 +28,7 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("an integer becomes a whole money with no decimal places")
-        void anIntegerMakesAWholeMoney() {
+        void makesWholeMoneyFromAnInteger() {
             assertThat(answerTo("mold to money! 1234")).isEqualTo("\"$1234\"");
             assertThat(answerTo("mold to money! 987")).isEqualTo("\"$987\"");
             assertThat(answerTo("m: to money! 987 mold to money! m * 12"))
@@ -39,7 +39,7 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("a decimal and a percent both go through decimal_to_deci")
-        void aDecimalAndAPercentMakeAMoney() {
+        void makesMoneyFromADecimalAndAPercent() {
             assertThat(answerTo("(to money! 1.5) = $1.5")).isEqualTo(TRUE);
             assertThat(answerTo("$0 = make money! 0%")).isEqualTo(TRUE);
             assertThat(answerTo("$1 = make money! 100%")).isEqualTo(TRUE);
@@ -48,17 +48,17 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("a money makes itself")
-        void aMoneyMakesItself() {
+        void makesMoneyFromMoney() {
             assertThat(answerTo("$1 = to money! $1")).isEqualTo(TRUE);
             assertThat(answerTo("mold to money! $1.50")).isEqualTo("\"$1.50\"");
         }
 
         @Test
         @DisplayName("a string is scanned, and a string that does not scan is refused")
-        void aStringIsScanned() {
+        void scansAString() {
             assertThat(answerTo("(to money! \"1.5\") = $1.5")).isEqualTo(TRUE);
-            assertThat(errorIdOf("to money! \"abc\"")).isEqualTo("bad-make-arg");
-            assertThat(errorIdOf("to money! \"\""))
+            assertThat(readTheErrorIdOf("to money! \"abc\"")).isEqualTo("bad-make-arg");
+            assertThat(readTheErrorIdOf("to money! \"\""))
                     .as("nothing at all is too-short and not a scan that failed. "
                             + "This asked for bad-make-arg because that is what "
                             + "JEBOL used to answer; a real Rebol tells the two "
@@ -68,24 +68,24 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("a logic makes a money through MAKE, true being one and false nothing")
-        void aLogicMakesAMoney() {
+        void makesMoneyFromALogic() {
             assertThat(answerTo("$1 = make money! true")).isEqualTo(TRUE);
             assertThat(answerTo("$0 = make money! false")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("an issue is refused, and the refusal is a decision rather than a gap")
-        void anIssueIsRefused() {
-            assertThat(errorIdOf("to money! #ff")).isEqualTo("bad-make-arg");
-            assertThat(errorIdOf("to-money #0")).isEqualTo("bad-make-arg");
+        void refusesAnIssue() {
+            assertThat(readTheErrorIdOf("to money! #ff")).isEqualTo("bad-make-arg");
+            assertThat(readTheErrorIdOf("to-money #0")).isEqualTo("bad-make-arg");
         }
 
         @Test
         @DisplayName("anything else is Trap_Make, so bad-make-arg")
-        void anythingElseIsRefused() {
-            assertThat(errorIdOf("to money! [1 2]")).isEqualTo("bad-make-arg");
-            assertThat(errorIdOf("to money! 1x1")).isEqualTo("bad-make-arg");
-            assertThat(errorIdOf("to money! 'a")).isEqualTo("bad-make-arg");
+        void refusesAnythingElse() {
+            assertThat(readTheErrorIdOf("to money! [1 2]")).isEqualTo("bad-make-arg");
+            assertThat(readTheErrorIdOf("to money! 1x1")).isEqualTo("bad-make-arg");
+            assertThat(readTheErrorIdOf("to money! 'a")).isEqualTo("bad-make-arg");
         }
     }
 
@@ -104,7 +104,7 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("a shorter binary is padded from the left, not the right")
-        void aShorterBinaryIsRightAligned() {
+        void rightAlignsAShorterBinary() {
             assertThat(answerTo("$15 = make money! #{0F}")).isEqualTo(TRUE);
             assertThat(answerTo("$15 = to money! #{0F}")).isEqualTo(TRUE);
             assertThat(answerTo("$1 = to money! #{01}")).isEqualTo(TRUE);
@@ -120,7 +120,7 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("the round trip through both conversions is exact")
-        void theRoundTripIsExact() {
+        void roundTripsExactly() {
             assertThat(answerTo("#{0029B7D2DCC80CD2E3FFFFFF} "
                     + "= to-binary to-money #{0029B7D2DCC80CD2E3FFFFFF}")).isEqualTo(TRUE);
             assertThat(answerTo("mold to-binary $15"))
@@ -129,15 +129,15 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("the significand carries across its three fields")
-        void theSignificandCarriesAcrossItsFields() {
+        void carriesTheSignificandAcrossItsFields() {
             assertThat(answerTo("(to-money #{000100000000000000000000}) "
                     + "= ($1 + to-money #{0000FFFFFFFFFFFFFFFFFFFF})")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("twelve bytes naming more than twenty-six digits are refused")
-        void aBinaryPastTheBoundIsRefused() {
-            assertThat(errorIdOf("to money! #{00FFFFFFFFFFFFFFFFFFFFFF}"))
+        void refusesABinaryPastTheBound() {
+            assertThat(readTheErrorIdOf("to money! #{00FFFFFFFFFFFFFFFFFFFFFF}"))
                     .isEqualTo("overflow");
         }
     }
@@ -148,7 +148,7 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("the answer stays a money whichever number met it")
-        void theAnswerStaysAMoney() {
+        void keepsTheAnswerMoney() {
             assertThat(answerTo("$8.00 == add $4.00 $4.00")).isEqualTo(TRUE);
             assertThat(answerTo("$0.00 == subtract $4.00 $4.00")).isEqualTo(TRUE);
             assertThat(answerTo("$16.00 == multiply $4.00 $4.00")).isEqualTo(TRUE);
@@ -160,7 +160,7 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("multiplying by a time reads the time as hours")
-        void multiplyingByATimeReadsHours() {
+        void readsHoursWhenMultiplyingByATime() {
             assertThat(answerTo("$7.5 = ($5 * 1:30:0)")).isEqualTo(TRUE);
             assertThat(answerTo("$5 = ($5 * 1:0:0)")).isEqualTo(TRUE);
             assertThat(answerTo("$10 = ($5 * 2:0:0)")).isEqualTo(TRUE);
@@ -168,24 +168,24 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("every other operation refuses a time")
-        void everyOtherOperationRefusesATime() {
-            assertThat(errorIdOf("$5 / 1:30:0")).isNotEqualTo(NO_ERROR);
-            assertThat(errorIdOf("$5 + 1:30:0")).isNotEqualTo(NO_ERROR);
-            assertThat(errorIdOf("$5 - 1:30:0")).isNotEqualTo(NO_ERROR);
-            assertThat(errorIdOf("$1 - 10:30")).isNotEqualTo(NO_ERROR);
+        void refusesATimeInEveryOtherOperation() {
+            assertThat(readTheErrorIdOf("$5 / 1:30:0")).isNotEqualTo(NO_ERROR);
+            assertThat(readTheErrorIdOf("$5 + 1:30:0")).isNotEqualTo(NO_ERROR);
+            assertThat(readTheErrorIdOf("$5 - 1:30:0")).isNotEqualTo(NO_ERROR);
+            assertThat(readTheErrorIdOf("$1 - 10:30")).isNotEqualTo(NO_ERROR);
         }
 
         @Test
         @DisplayName("a character and a tuple are refused, though both carry numbers")
-        void anythingElseIsRefused() {
-            assertThat(errorIdOf("$1 / #\"a\"")).isNotEqualTo(NO_ERROR);
-            assertThat(errorIdOf("$1 * 1.2.3.4")).isNotEqualTo(NO_ERROR);
-            assertThat(errorIdOf("$1 + \"a\"")).isNotEqualTo(NO_ERROR);
+        void refusesAnythingElse() {
+            assertThat(readTheErrorIdOf("$1 / #\"a\"")).isNotEqualTo(NO_ERROR);
+            assertThat(readTheErrorIdOf("$1 * 1.2.3.4")).isNotEqualTo(NO_ERROR);
+            assertThat(readTheErrorIdOf("$1 + \"a\"")).isNotEqualTo(NO_ERROR);
         }
 
         @Test
         @DisplayName("NEGATE and ABSOLUTE only touch the sign bit")
-        void theSignBitIsAllThatMoves() {
+        void movesOnlyTheSignBit() {
             assertThat(answerTo("mold negate $1.50")).isEqualTo("\"-$1.50\"");
             assertThat(answerTo("mold absolute -$1.50")).isEqualTo("\"$1.50\"");
             assertThat(answerTo("mold absolute $1.50")).isEqualTo("\"$1.50\"");
@@ -205,7 +205,7 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("doubling one pound five hundred and eight times is the largest money there is")
-        void theBoundIsReachable() {
+        void isReachable() {
             assertThat(answerTo(
                     "m: $1 for i 1 508 1 [m: m * 2] m = $83798799562141231872337704e127"))
                     .isEqualTo(TRUE);
@@ -213,15 +213,15 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("doubling once more raises overflow")
-        void pastTheBoundItRaises() {
+        void raisesWhenPassed() {
             assertThat(answerTo(
                     "m: $1 for i 1 508 1 [m: m * 2] e: try [m * 2] e/id")).isEqualTo("overflow");
         }
 
         @Test
         @DisplayName("making a money from a number past the bound raises")
-        void makingOnePastTheBoundRaises() {
-            assertThat(errorIdOf("to money! 2 ** 509")).isNotEqualTo(NO_ERROR);
+        void raisesWhenMakingOnePastIt() {
+            assertThat(readTheErrorIdOf("to money! 2 ** 509")).isNotEqualTo(NO_ERROR);
         }
     }
 
@@ -231,7 +231,7 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("plain ROUND keeps the money")
-        void plainRoundKeepsTheMoney() {
+        void keepsTheMoneyForPlainRound() {
             assertThat(answerTo("$1 = round $1.4999")).isEqualTo(TRUE);
             assertThat(answerTo("$2 = round $1.5")).isEqualTo(TRUE);
             assertThat(answerTo("-$2 = round -$1.5")).isEqualTo(TRUE);
@@ -241,7 +241,7 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("a money scale keeps the money")
-        void aMoneyScaleKeepsTheMoney() {
+        void keepsTheMoneyForAMoneyScale() {
             assertThat(answerTo("$1.375 = round/to $1.333 $.125")).isEqualTo(TRUE);
             assertThat(answerTo("$1.33 = round/to $1.333 $.01")).isEqualTo(TRUE);
             assertThat(answerTo("$1 = round/to $0.5 $1")).isEqualTo(TRUE);
@@ -251,7 +251,7 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("a decimal scale gives a decimal back")
-        void aDecimalScaleGivesADecimal() {
+        void givesADecimalForADecimalScale() {
             assertThat(answerTo("1.375 = round/to $1.333 .125")).isEqualTo(TRUE);
             assertThat(answerTo("1.33 = round/to $1.333 .01")).isEqualTo(TRUE);
             assertThat(answerTo("decimal? round/to $1.333 .01")).isEqualTo(TRUE);
@@ -262,7 +262,7 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("an integer scale gives an integer back")
-        void anIntegerScaleGivesAnInteger() {
+        void givesAnIntegerForAnIntegerScale() {
             assertThat(answerTo("1 = round/to $0.5 1")).isEqualTo(TRUE);
             assertThat(answerTo("0 = round/to $0.499 1")).isEqualTo(TRUE);
             assertThat(answerTo("integer? round/to $0.5 1")).isEqualTo(TRUE);
@@ -286,13 +286,13 @@ class MoneyFromTheSourceTest {
 
         @Test
         @DisplayName("a money is not strictly equal to the integer of the same amount")
-        void strictEqualityMindsTheDatatype() {
+        void mindsTheDatatypeUnderStrictEquality() {
             assertThat(answerTo("not strict-equal? $1 1")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("a money keeps its scale for printing and ignores it for comparing")
-        void theScaleIsForPrintingOnly() {
+        void ignoresTheScale() {
             assertThat(answerTo("$1.50 = $1.5")).isEqualTo(TRUE);
             assertThat(answerTo("mold $1.50")).isEqualTo("\"$1.50\"");
             assertThat(answerTo("mold $1.5")).isEqualTo("\"$1.5\"");

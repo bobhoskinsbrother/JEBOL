@@ -26,10 +26,10 @@ final class ScanningATime {
 
     boolean readsATime() {
         readAnyLeadingSign();
-        if (aSignFollowsTheSign()) {
+        if (hasASignAfterTheSign()) {
             return false;
         }
-        firstNumber = wholeNumberFromHere();
+        firstNumber = readAWholeNumberFromHere();
         if (firstNumber > MOST_HOURS_A_TIME_HOLDS || !stepOverAColon()) {
             return false;
         }
@@ -43,9 +43,9 @@ final class ScanningATime {
         return readsAnyMeridian();
     }
 
-    long nanoseconds() {
+    long readTheNanoseconds() {
         long counted = itCountsTheFirstNumberAsHours()
-                ? hoursMinutesAndSeconds()
+                ? readTheHoursMinutesAndSeconds()
                 : minutesAndSeconds();
         if (fractionInNanoseconds > 0) {
             counted += fractionInNanoseconds;
@@ -57,7 +57,7 @@ final class ScanningATime {
         return thirdNumber >= 0 || fractionInNanoseconds < 0;
     }
 
-    private long hoursMinutesAndSeconds() {
+    private long readTheHoursMinutesAndSeconds() {
         int hours = firstNumber;
         if (afternoonOrMorning != 0) {
             hours = hours == NOON ? 0 : hours;
@@ -82,7 +82,7 @@ final class ScanningATime {
         }
     }
 
-    private boolean aSignFollowsTheSign() {
+    private boolean hasASignAfterTheSign() {
         return here() == '-' || here() == '+';
     }
 
@@ -94,7 +94,7 @@ final class ScanningATime {
 
     private boolean readsTheSecondNumber() {
         int began = at;
-        secondNumber = wholeNumberFromHere();
+        secondNumber = readAWholeNumberFromHere();
         return secondNumber >= 0 && at != began;
     }
 
@@ -104,7 +104,7 @@ final class ScanningATime {
         }
         at++;
         int began = at;
-        thirdNumber = wholeNumberFromHere();
+        thirdNumber = readAWholeNumberFromHere();
         return thirdNumber >= 0 && at != began;
     }
 
@@ -113,7 +113,7 @@ final class ScanningATime {
             return;
         }
         at++;
-        fractionInNanoseconds = scaledNumberFromHere();
+        fractionInNanoseconds = readAScaledNumberFromHere();
         if (fractionInNanoseconds == 0) {
             fractionInNanoseconds = NOT_GIVEN;
         }
@@ -132,7 +132,7 @@ final class ScanningATime {
         return false;
     }
 
-    private int wholeNumberFromHere() {
+    private int readAWholeNumberFromHere() {
         int counted = 0;
         boolean below = here() == '-';
         if (below || here() == '+') {
@@ -145,7 +145,7 @@ final class ScanningATime {
         return below ? -counted : counted;
     }
 
-    private int scaledNumberFromHere() {
+    private int readAScaledNumberFromHere() {
         long counted = 0;
         int placesLeft = DIGITS_OF_A_FRACTION;
         while (placesLeft > 0 && isAnAsciiDigit(here())) {

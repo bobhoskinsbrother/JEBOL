@@ -20,15 +20,15 @@ final class ConsoleContinuation {
 
     private Reading reading = Reading.CODE;
 
-    boolean waitingForMore() {
+    boolean isWaitingForMore() {
         return level > 0;
     }
 
-    char whatIsStillOpen() {
+    char findWhatIsStillOpen() {
         return level <= DEEPEST_REMEMBERED ? openedBy[level - 1] : DEEPER_THAN_REMEMBERED;
     }
 
-    void inputTaken() {
+    void takeTheInput() {
         level = 0;
         rawStringPercents = 0;
     }
@@ -41,12 +41,12 @@ final class ConsoleContinuation {
                     if (each == ';') {
                         at = line.length();
                     } else {
-                        at = afterCode(line, at, each);
+                        at = skipCode(line, at, each);
                     }
                 }
-                case ONE_LINE_STRING -> at = afterOneLineString(line, at, each);
-                case MULTI_LINE_STRING -> at = afterMultiLineString(line, at, each);
-                case RAW_STRING -> at = afterRawString(line, at, each);
+                case ONE_LINE_STRING -> at = skipOneLineString(line, at, each);
+                case MULTI_LINE_STRING -> at = skipMultiLineString(line, at, each);
+                case RAW_STRING -> at = skipRawString(line, at, each);
             }
         }
         if (reading == Reading.ONE_LINE_STRING) {
@@ -54,7 +54,7 @@ final class ConsoleContinuation {
         }
     }
 
-    private int afterCode(String line, int at, char each) {
+    private int skipCode(String line, int at, char each) {
         switch (each) {
             case '"' -> reading = Reading.ONE_LINE_STRING;
             case '[', '(' -> open(each);
@@ -69,7 +69,7 @@ final class ConsoleContinuation {
                 reading = Reading.MULTI_LINE_STRING;
             }
             case '%' -> {
-                return afterAPercent(line, at);
+                return skipPercent(line, at);
             }
             default -> {
             }
@@ -77,12 +77,12 @@ final class ConsoleContinuation {
         return at;
     }
 
-    private int afterAPercent(String line, int at) {
-        if (charAt(line, at + 1) == '"') {
+    private int skipPercent(String line, int at) {
+        if (readCharacterAt(line, at + 1) == '"') {
             return at;
         }
-        int percents = percentsFrom(line, at);
-        if (charAt(line, at + percents) != '{') {
+        int percents = countPercents(line, at);
+        if (readCharacterAt(line, at + percents) != '{') {
             return at;
         }
         rawStringPercents = percents;
@@ -91,8 +91,8 @@ final class ConsoleContinuation {
         return at + percents;
     }
 
-    private int afterOneLineString(String line, int at, char each) {
-        if (each == '^' && charAt(line, at + 1) != END_OF_LINE) {
+    private int skipOneLineString(String line, int at, char each) {
+        if (each == '^' && readCharacterAt(line, at + 1) != END_OF_LINE) {
             return at + 1;
         }
         if (each == '"') {
@@ -101,8 +101,8 @@ final class ConsoleContinuation {
         return at;
     }
 
-    private int afterMultiLineString(String line, int at, char each) {
-        if (each == '^' && charAt(line, at + 1) != END_OF_LINE) {
+    private int skipMultiLineString(String line, int at, char each) {
+        if (each == '^' && readCharacterAt(line, at + 1) != END_OF_LINE) {
             return at + 1;
         }
         if (each == '{') {
@@ -118,11 +118,11 @@ final class ConsoleContinuation {
         return at;
     }
 
-    private int afterRawString(String line, int at, char each) {
-        if (each != '}' || charAt(line, at + 1) != '%') {
+    private int skipRawString(String line, int at, char each) {
+        if (each != '}' || readCharacterAt(line, at + 1) != '%') {
             return at;
         }
-        int closing = percentsFrom(line, at);
+        int closing = countPercents(line, at);
         if (rawStringPercents >= closing) {
             return at;
         }
@@ -132,9 +132,9 @@ final class ConsoleContinuation {
         return at + closing;
     }
 
-    private int percentsFrom(String line, int at) {
+    private int countPercents(String line, int at) {
         int counted = 1;
-        while (charAt(line, at + counted) == '%') {
+        while (readCharacterAt(line, at + counted) == '%') {
             counted++;
         }
         return counted;
@@ -147,7 +147,7 @@ final class ConsoleContinuation {
         level++;
     }
 
-    private char charAt(String line, int at) {
+    private char readCharacterAt(String line, int at) {
         return at < line.length() ? line.charAt(at) : END_OF_LINE;
     }
 }

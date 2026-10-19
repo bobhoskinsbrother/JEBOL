@@ -16,7 +16,7 @@ class FirstPlusMovesTheWordFromTheSourceTest {
 
     @Test
     @DisplayName("it answers the first item and moves the word on")
-    void itAnswersTheFirstItemAndMovesTheWordOn() {
+    void answersTheFirstItemAndMovesTheWordOn() {
         assertThat(answerTo("""
                 walking: [1 2 3]
                 reduce [first+ walking  walking]""")).isEqualTo("[1 [2 3]]");
@@ -24,7 +24,7 @@ class FirstPlusMovesTheWordFromTheSourceTest {
 
     @Test
     @DisplayName("and the series it names is left exactly as it was")
-    void theSeriesItNamesIsLeftAsItWas() {
+    void leavesTheSeriesItNamesAsItWas() {
         assertThat(answerTo("""
                 walking: [1 2 3]
                 first+ walking
@@ -33,7 +33,7 @@ class FirstPlusMovesTheWordFromTheSourceTest {
 
     @Test
     @DisplayName("so a block walked inside a function comes back to the caller whole")
-    void aBlockWalkedInsideAFunctionComesBackWhole() {
+    void bringsBackWholeABlockWalkedInsideAFunction() {
         assertThat(answerTo("""
                 theirs: [1 2 3]
                 taking: func [given] [first+ given]
@@ -42,7 +42,7 @@ class FirstPlusMovesTheWordFromTheSourceTest {
 
     @Test
     @DisplayName("a string steps one character, however many bytes that is")
-    void aStringStepsOneCharacter() {
+    void stepsAStringOneCharacter() {
         assertThat(answerTo("""
                 letters: "abc"
                 accented: {áb}
@@ -56,7 +56,7 @@ class FirstPlusMovesTheWordFromTheSourceTest {
 
     @Test
     @DisplayName("and a binary steps one byte")
-    void aBinaryStepsOneByte() {
+    void stepsABinaryOneByte() {
         assertThat(answerTo("""
                 bytes: #{010203}
                 reduce [first+ bytes  bytes]""")).isEqualTo("[1 #{0203}]");
@@ -64,7 +64,7 @@ class FirstPlusMovesTheWordFromTheSourceTest {
 
     @Test
     @DisplayName("walking with it reaches every item and stops")
-    void walkingWithItReachesEveryItemAndStops() {
+    void reachesEveryItemAndStops() {
         assertThat(answerTo("""
                 walking: [1 2 3]
                 collect [loop 5 [keep/only first+ walking]]"""))
@@ -73,7 +73,7 @@ class FirstPlusMovesTheWordFromTheSourceTest {
 
     @Test
     @DisplayName("a word standing part way along moves on from there")
-    void aWordStandingPartWayAlongMovesOnFromThere() {
+    void movesOnFromPartWayAlong() {
         assertThat(answerTo("""
                 walking: next [1 2 3]
                 reduce [first+ walking  walking  head walking]"""))
@@ -82,7 +82,7 @@ class FirstPlusMovesTheWordFromTheSourceTest {
 
     @Test
     @DisplayName("at the tail there is nothing to answer and nowhere to go")
-    void atTheTailThereIsNothingToAnswerAndNowhereToGo() {
+    void answersNothingAndStaysPutAtTheTail() {
         assertThat(answerTo("""
                 empty-one: []
                 at-the-end: tail [1 2]
@@ -94,7 +94,7 @@ class FirstPlusMovesTheWordFromTheSourceTest {
 
     @Test
     @DisplayName("a word holding something that is not a series is refused")
-    void aWordHoldingSomethingThatIsNotASeriesIsRefused() {
+    void refusesAWordHoldingSomethingThatIsNotASeries() {
         assertThat(answerTo("""
                 collect [
                     counting: 5

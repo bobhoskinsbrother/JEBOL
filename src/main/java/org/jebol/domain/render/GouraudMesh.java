@@ -18,36 +18,36 @@ final class GouraudMesh {
     record Piece(List<PathStep> path, Colour colour) {
     }
 
-    static List<Piece> shading(Corner first, Corner second, Corner third) {
+    static List<Piece> shade(Corner first, Corner second, Corner third) {
         List<Piece> pieces = new ArrayList<>();
         for (int down = 0; down < PIECES_ALONG_EACH_EDGE; down++) {
             for (int across = 0; across < PIECES_ALONG_EACH_EDGE - down; across++) {
-                pieces.add(pointingOneWay(first, second, third, across, down));
+                pieces.add(pointOneWay(first, second, third, across, down));
                 if (across < PIECES_ALONG_EACH_EDGE - down - 1) {
-                    pieces.add(pointingTheOther(first, second, third, across, down));
+                    pieces.add(pointTheOtherWay(first, second, third, across, down));
                 }
             }
         }
         return List.copyOf(pieces);
     }
 
-    private static Piece pointingOneWay(
+    private static Piece pointOneWay(
             Corner first, Corner second, Corner third, int across, int down) {
 
-        return aPieceThrough(first, second, third,
+        return cutAPieceThrough(first, second, third,
                 new double[][] {
                         {across, down}, {across + 1, down}, {across, down + 1}});
     }
 
-    private static Piece pointingTheOther(
+    private static Piece pointTheOtherWay(
             Corner first, Corner second, Corner third, int across, int down) {
 
-        return aPieceThrough(first, second, third,
+        return cutAPieceThrough(first, second, third,
                 new double[][] {
                         {across + 1, down}, {across + 1, down + 1}, {across, down + 1}});
     }
 
-    private static Piece aPieceThrough(
+    private static Piece cutAPieceThrough(
             Corner first, Corner second, Corner third, double[][] atThe) {
 
         double middleAcross = (atThe[0][0] + atThe[1][0] + atThe[2][0]) / 3;
@@ -63,7 +63,7 @@ final class GouraudMesh {
         }
         path.add(new PathStep.Close());
         return new Piece(List.copyOf(path),
-                colourAt(first, second, third, middleAcross, middleDown));
+                mixTheColourAt(first, second, third, middleAcross, middleDown));
     }
 
     private static double spreadFromTheMiddle(double corner, double middle) {
@@ -84,7 +84,7 @@ final class GouraudMesh {
                         + third.down() * towardsThird};
     }
 
-    private static Colour colourAt(
+    private static Colour mixTheColourAt(
             Corner first, Corner second, Corner third,
             double alongSecond, double alongThird) {
 
@@ -92,15 +92,15 @@ final class GouraudMesh {
         double towardsThird = alongThird / PIECES_ALONG_EACH_EDGE;
         double staying = 1 - towardsSecond - towardsThird;
         return new Colour(
-                mixed(first.colour().red(), second.colour().red(), third.colour().red(),
+                mix(first.colour().red(), second.colour().red(), third.colour().red(),
                         staying, towardsSecond, towardsThird),
-                mixed(first.colour().green(), second.colour().green(),
+                mix(first.colour().green(), second.colour().green(),
                         third.colour().green(), staying, towardsSecond, towardsThird),
-                mixed(first.colour().blue(), second.colour().blue(),
+                mix(first.colour().blue(), second.colour().blue(),
                         third.colour().blue(), staying, towardsSecond, towardsThird));
     }
 
-    private static int mixed(
+    private static int mix(
             int first, int second, int third,
             double staying, double towardsSecond, double towardsThird) {
 

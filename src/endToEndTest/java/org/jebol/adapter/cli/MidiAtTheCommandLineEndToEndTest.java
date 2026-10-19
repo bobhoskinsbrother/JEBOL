@@ -23,12 +23,12 @@ class MidiAtTheCommandLineEndToEndTest {
     private record Ran(int exitStatus, String printed, String reported) {
     }
 
-    private Ran running(String source) throws IOException {
+    private Ran run(String source) throws IOException {
         Path script = app.resolve("script.r3");
         Files.writeString(script, "Rebol []\n" + source);
         ByteArrayOutputStream printed = new ByteArrayOutputStream();
         ByteArrayOutputStream reported = new ByteArrayOutputStream();
-        int status = Repl.runTheCommandLine(new String[] {script.toString()},
+        int status = Repl.runCommandLine(new String[] {script.toString()},
                 new PrintStream(printed, true, StandardCharsets.UTF_8),
                 new PrintStream(reported, true, StandardCharsets.UTF_8),
                 app.toString());
@@ -38,8 +38,8 @@ class MidiAtTheCommandLineEndToEndTest {
 
     @Test
     @DisplayName("a script finds the midi scheme registered after serial")
-    void theSchemeIsThere() throws IOException {
-        Ran ran = running("""
+    void offersTheScheme() throws IOException {
+        Ran ran = run("""
                 print second find words-of system/schemes 'serial""");
 
         assertThat(ran.reported()).isEmpty();
@@ -49,8 +49,8 @@ class MidiAtTheCommandLineEndToEndTest {
 
     @Test
     @DisplayName("a script lists the instruments, and with none attached both lists are empty")
-    void listingTheInstruments() throws IOException {
-        Ran ran = running("""
+    void listsTheInstruments() throws IOException {
+        Ran ran = run("""
                 print mold query midi:// [devices-in devices-out]""");
 
         assertThat(ran.reported()).isEmpty();
@@ -60,8 +60,8 @@ class MidiAtTheCommandLineEndToEndTest {
 
     @Test
     @DisplayName("a script that tries an instrument and catches the refusal carries on")
-    void tryingAnInstrument() throws IOException {
-        Ran ran = running("""
+    void triesAnInstrument() throws IOException {
+        Ran ran = run("""
                 failure: try [open midi://1]
                 print [failure/id failure/arg1 failure/arg2]
                 print {carried on}""");
@@ -73,8 +73,8 @@ class MidiAtTheCommandLineEndToEndTest {
 
     @Test
     @DisplayName("a script that plays a note without opening a port stops with the refusal, and exit status 1")
-    void playingWithoutOpening() throws IOException {
-        Ran ran = running("""
+    void playsWithoutOpening() throws IOException {
+        Ran ran = run("""
                 print {start}
                 write midi://0/1 #{903C4000}
                 print {never}""");

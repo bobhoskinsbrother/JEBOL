@@ -31,9 +31,9 @@ public class RequestFileNative extends WindowNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.belongingTo("file", "name", Set.of(FileValue.TYPE)),
-                Parameter.belongingTo("title", "text", Set.of(StringValue.TYPE)),
-                Parameter.belongingTo("filter", "list", Set.of(BlockValue.TYPE)));
+                Parameter.belongTo("file", "name", Set.of(FileValue.TYPE)),
+                Parameter.belongTo("title", "text", Set.of(StringValue.TYPE)),
+                Parameter.belongTo("filter", "list", Set.of(BlockValue.TYPE)));
     }
 
     @Override
@@ -46,7 +46,7 @@ public class RequestFileNative extends WindowNative {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
             List<String> filters = filterPairsIn(arguments, refinements);
-            return throughTheWindows(() -> {
+            return runThroughTheWindows(() -> {
                 List<String> chosen = evaluator.windows().chooseFiles(
                         refinements.contains("save"),
                         refinements.contains("multi"),
@@ -54,7 +54,7 @@ public class RequestFileNative extends WindowNative {
                         textGivenFor("title", arguments, refinements),
                         filters);
                 if (refinements.contains("multi")) {
-                    return BlockValue.block(chosen.stream()
+                    return BlockValue.of(chosen.stream()
                             .<Value>map(FileValue::of)
                             .toList());
                 }
@@ -64,13 +64,13 @@ public class RequestFileNative extends WindowNative {
     }
 
     private List<String> filterPairsIn(List<Value> arguments, Set<String> refinements) {
-        return argumentOf("filter", 0, arguments, refinements)
+        return readTheArgumentOf("filter", 0, arguments, refinements)
                 .map(listed -> ((AnyBlockValue) listed).remaining())
-                .map(this::pairedUp)
+                .map(this::pairUp)
                 .orElse(List.of());
     }
 
-    private List<String> pairedUp(List<Value> items) {
+    private List<String> pairUp(List<Value> items) {
         if (items.size() % 2 != 0) {
             throw Raised.of(EvaluationFailure.INVALID_ARG,
                     "a filter list pairs a name with a pattern, and "

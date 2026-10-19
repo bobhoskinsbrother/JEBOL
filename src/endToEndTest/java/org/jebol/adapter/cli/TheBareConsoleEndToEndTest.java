@@ -19,14 +19,14 @@ class TheBareConsoleEndToEndTest {
     private record Session(int exitStatus, String printed, String reported) {
     }
 
-    private static Session aSessionIn(Path directory, String typed) {
-        return aSessionIn(directory, typed, new String[0]);
+    private static Session openASessionIn(Path directory, String typed) {
+        return openASessionIn(directory, typed, new String[0]);
     }
 
-    private static Session aSessionIn(Path directory, String typed, String... switches) {
+    private static Session openASessionIn(Path directory, String typed, String... switches) {
         ByteArrayOutputStream printed = new ByteArrayOutputStream();
         ByteArrayOutputStream reported = new ByteArrayOutputStream();
-        int status = Repl.runTheCommandLine(switches,
+        int status = Repl.runCommandLine(switches,
                 new BufferedReader(new StringReader(typed)),
                 new PrintStream(printed, true, StandardCharsets.UTF_8),
                 new PrintStream(reported, true, StandardCharsets.UTF_8),
@@ -38,7 +38,7 @@ class TheBareConsoleEndToEndTest {
     @Test
     @DisplayName("start runs, so the REBOL banner prints and the console's own does not")
     void startRunsAndTheBannerPrints(@TempDir Path directory) {
-        Session session = aSessionIn(directory, """
+        Session session = openASessionIn(directory, """
                 system/options/boot-level
                 quit
                 """);
@@ -52,13 +52,13 @@ class TheBareConsoleEndToEndTest {
                 .as("and the console's own banner is gone")
                 .doesNotContain("JEBOL -- REBOL 3 on the JVM");
         assertThat(session.reported()).isEmpty();
-        assertThat(session.exitStatus()).isEqualTo(Repl.KEEP_THE_PROCESS);
+        assertThat(session.exitStatus()).isEqualTo(Repl.KEEP_PROCESS);
     }
 
     @Test
     @DisplayName("the banner names the JEBOL port rather than Rebol's own branch")
-    void theBannerNamesTheJebolPort(@TempDir Path directory) {
-        Session session = aSessionIn(directory, """
+    void namesTheJebolPortInTheBanner(@TempDir Path directory) {
+        Session session = openASessionIn(directory, """
                 quit
                 """);
 
@@ -69,10 +69,10 @@ class TheBareConsoleEndToEndTest {
 
     @Test
     @DisplayName("every service is granted, and a file where it started asks first, which no one can answer, as in r3")
-    void everyServiceButAFileThatAsks(@TempDir Path directory) throws Exception {
+    void grantsEveryServiceButAFileThatAsks(@TempDir Path directory) throws Exception {
         Files.writeString(directory.resolve("data.txt"), "found it");
 
-        Session session = aSessionIn(directory, """
+        Session session = openASessionIn(directory, """
                 read/string %data.txt
                 not error? try [get-env "HOME"]
                 quit
@@ -86,10 +86,10 @@ class TheBareConsoleEndToEndTest {
 
     @Test
     @DisplayName("with -s the machine is in reach, as it is for a script")
-    void theMachineIsInReachWithSecurityOff(@TempDir Path directory) throws Exception {
+    void reachesTheMachineWithSecurityOff(@TempDir Path directory) throws Exception {
         Files.writeString(directory.resolve("data.txt"), "found it");
 
-        Session session = aSessionIn(directory, """
+        Session session = openASessionIn(directory, """
                 read/string %data.txt
                 not error? try [get-env "HOME"]
                 quit
@@ -102,8 +102,8 @@ class TheBareConsoleEndToEndTest {
 
     @Test
     @DisplayName("and the session reads, evaluates and reports as any console does")
-    void theSessionStillReadsEvaluatesAndReports(@TempDir Path directory) {
-        Session session = aSessionIn(directory, """
+    void stillReadsEvaluatesAndReports(@TempDir Path directory) {
+        Session session = openASessionIn(directory, """
                 1 + 2
                 divide 1 0
                 2 + 2

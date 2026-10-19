@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AssignmentSafetyTest {
 
-    private static Interpreter freshInterpreter(String... lines) {
+    private static Interpreter makeAFreshInterpreter(String... lines) {
         Interpreter interpreter = Interpreter.create();
         for (String line : lines) {
             interpreter.defineFreshWordsIn(line);
@@ -20,8 +20,8 @@ class AssignmentSafetyTest {
 
     @Test
     @DisplayName("a word keeps its old value when the assignment raises")
-    void failedAssignmentLeavesTheSlotAlone() {
-        Interpreter interpreter = freshInterpreter("total: 42");
+    void leavesTheSlotAloneWhenAnAssignmentFails() {
+        Interpreter interpreter = makeAFreshInterpreter("total: 42");
 
         interpreter.defineFreshWordsIn("total: divide 1 0");
         ScriptOutcome failed = interpreter.run("total: divide 1 0");
@@ -34,7 +34,7 @@ class AssignmentSafetyTest {
 
     @Test
     @DisplayName("and stays unset if it never held anything")
-    void failedFirstAssignmentLeavesTheSlotUnset() {
+    void leavesTheSlotUnsetWhenTheFirstAssignmentFails() {
         Interpreter interpreter = Interpreter.create();
 
         interpreter.defineFreshWordsIn("fresh: divide 1 0");
@@ -48,7 +48,7 @@ class AssignmentSafetyTest {
 
     @Test
     @DisplayName("an error partway through a block leaves earlier assignments standing")
-    void earlierAssignmentsSurvive() {
+    void keepsEarlierAssignments() {
         Interpreter interpreter = Interpreter.create();
         String source = "first-word: 1 second-word: divide 1 0 third-word: 3";
 
@@ -66,8 +66,8 @@ class AssignmentSafetyTest {
 
     @Test
     @DisplayName("a protected word refuses assignment and keeps its value")
-    void protectedWordKeepsItsValue() {
-        Interpreter interpreter = freshInterpreter("kept: \"original\"", "protect 'kept");
+    void keepsTheValueOfAProtectedWord() {
+        Interpreter interpreter = makeAFreshInterpreter("kept: \"original\"", "protect 'kept");
 
         interpreter.defineFreshWordsIn("kept: \"replacement\"");
         ScriptOutcome refused = interpreter.run("kept: \"replacement\"");

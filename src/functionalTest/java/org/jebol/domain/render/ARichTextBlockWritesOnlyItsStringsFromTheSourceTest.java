@@ -19,7 +19,7 @@ class ARichTextBlockWritesOnlyItsStringsFromTheSourceTest {
     private final Interpreter interpreter = Interpreter.withBounds(
             Bounds.standard().grant(HostService.WINDOWS));
 
-    private List<PaintInstruction.Writing> writtenFor(String gobBuiltBy) {
+    private List<PaintInstruction.Writing> writeFor(String gobBuiltBy) {
         interpreter.defineFreshWordsIn(gobBuiltBy);
         GobValue gob = (GobValue) interpreter.run(gobBuiltBy).value();
         ObjectValue dialect = (ObjectValue) interpreter.run("system/dialects/draw").value();
@@ -29,8 +29,8 @@ class ARichTextBlockWritesOnlyItsStringsFromTheSourceTest {
                 .toList();
     }
 
-    private List<PaintInstruction.Writing> writtenForTheText(String richText) {
-        return writtenFor("""
+    private List<PaintInstruction.Writing> writeForTheText(String richText) {
+        return writeFor("""
                 labelled: make gob! [size: 200x40]
                 labelled/text: compose [%s]
                 labelled""".formatted(richText));
@@ -38,8 +38,8 @@ class ARichTextBlockWritesOnlyItsStringsFromTheSourceTest {
 
     @Test
     @DisplayName("the 2010 GUI's label writes its string and none of its font's fields")
-    void theGuisLabelWritesOnlyItsString() {
-        List<PaintInstruction.Writing> written = writtenForTheText("""
+    void writesOnlyTheGuisLabelString() {
+        List<PaintInstruction.Writing> written = writeForTheText("""
                 font (make object! [name: "Arial" style: 'bold size: 16 color: 10.20.30
                     offset: 2x2 space: 0x0 shadow: _])
                 para (make object! [origin: 0x0 margin: 0x0 align: 'center valign: 'middle])
@@ -63,8 +63,8 @@ class ARichTextBlockWritesOnlyItsStringsFromTheSourceTest {
             "_              | false | false",
     })
     @DisplayName("a font's style decides the weight and the slant")
-    void aFontsStyleDecidesWeightAndSlant(String style, boolean bold, boolean italic) {
-        TextRun written = writtenForTheText(
+    void takesWeightAndSlantFromAFontsStyle(String style, boolean bold, boolean italic) {
+        TextRun written = writeForTheText(
                 "font (make object! [style: %s]) {x}".formatted(style)).getFirst().runs().getFirst();
 
         assertThat(written.bold()).isEqualTo(bold);
@@ -73,8 +73,8 @@ class ARichTextBlockWritesOnlyItsStringsFromTheSourceTest {
 
     @Test
     @DisplayName("a font that says no size or colour leaves the ordinary size and black")
-    void aFontThatSaysLittleLeavesTheDefaults() {
-        TextRun written = writtenForTheText(
+    void keepsTheDefaultsForAFontThatSaysLittle() {
+        TextRun written = writeForTheText(
                 "font (make object! [name: {Arial} size: _ color: _]) {x}").getFirst().runs().getFirst();
 
         assertThat(written.size()).isEqualTo(PaintInstruction.Writing.THE_ORDINARY_SIZE);
@@ -83,8 +83,8 @@ class ARichTextBlockWritesOnlyItsStringsFromTheSourceTest {
 
     @Test
     @DisplayName("two strings are two runs of one line")
-    void twoStringsAreTwoRuns() {
-        List<PaintInstruction.Writing> written = writtenForTheText("{one} {two}");
+    void writesTwoStringsAsTwoRuns() {
+        List<PaintInstruction.Writing> written = writeForTheText("{one} {two}");
 
         assertThat(written).hasSize(1);
         assertThat(written.getFirst().runs()).extracting(TextRun::text).containsExactly("one", "two");
@@ -92,20 +92,20 @@ class ARichTextBlockWritesOnlyItsStringsFromTheSourceTest {
 
     @Test
     @DisplayName("a block with no strings writes nothing")
-    void aBlockWithNoStringsWritesNothing() {
-        assertThat(writtenForTheText("font (make object! [size: 16]) anti-alias (true)")).isEmpty();
+    void writesNothingWithNoStrings() {
+        assertThat(writeForTheText("font (make object! [size: 16]) anti-alias (true)")).isEmpty();
     }
 
     @Test
     @DisplayName("an empty block writes nothing")
-    void anEmptyBlockWritesNothing() {
-        assertThat(writtenForTheText("")).isEmpty();
+    void writesNothingForAnEmptyBlock() {
+        assertThat(writeForTheText("")).isEmpty();
     }
 
     @Test
     @DisplayName("a plain string on a gob is still written as it stands")
-    void aPlainStringIsStillWritten() {
-        assertThat(writtenFor("make gob! [size: 200x40 text: {hello}]"))
+    void stillWritesAPlainString() {
+        assertThat(writeFor("make gob! [size: 200x40 text: {hello}]"))
                 .extracting(PaintInstruction.Writing::text)
                 .containsExactly("hello");
     }
@@ -113,7 +113,7 @@ class ARichTextBlockWritesOnlyItsStringsFromTheSourceTest {
     @Test
     @DisplayName("DRAW's text command takes a font object the same way")
     void drawsTextTakesAFontObject() {
-        List<PaintInstruction.Writing> written = writtenFor("""
+        List<PaintInstruction.Writing> written = writeFor("""
                 drawn: make gob! [size: 200x40]
                 drawn/draw: compose/deep [
                     text vectorial 0x0 200x40 [font (make object! [size: 20 style: 'italic]) para (make object! []) {y}]]

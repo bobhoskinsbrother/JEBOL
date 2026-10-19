@@ -21,8 +21,8 @@ public class TryNative extends DefaultNative {
     @Override
     public List<Parameter> parametersAsWritten() {
         return List.of(
-                Parameter.required("block", Set.of(BlockValue.TYPE, ParenValue.TYPE)),
-                Parameter.belongingTo("with", "handler", Set.of()));
+                Parameter.of("block", Set.of(BlockValue.TYPE, ParenValue.TYPE)),
+                Parameter.belongTo("with", "handler", Set.of()));
     }
 
     @Override
@@ -43,18 +43,18 @@ public class TryNative extends DefaultNative {
                 if (!refinements.contains("all")) {
                     throw escaping;
                 }
-                failure = theErrorStandingFor(escaping);
+                failure = makeTheErrorStandingFor(escaping);
             }
             evaluator.setSystemState("last-error", failure);
             return refinements.contains("with")
-                    ? handled(failure, arguments.getLast(), evaluator, context)
+                    ? handle(failure, arguments.getLast(), evaluator, context)
                     : failure;
         };
     }
 
-    private ErrorValue theErrorStandingFor(RuntimeException escaping) {
+    private ErrorValue makeTheErrorStandingFor(RuntimeException escaping) {
         return switch (escaping) {
-            case ThrownSignal thrown -> ErrorValue.about(ErrorCategory.THROW, "throw",
+            case ThrownSignal thrown -> ErrorValue.of(ErrorCategory.THROW, "throw",
                     "a throw that nothing caught",
                     thrown.value(),
                     thrown.name().<Value>map(WordValue::of).orElseGet(NoneValue::none),
@@ -63,7 +63,7 @@ public class TryNative extends DefaultNative {
                     "a break outside a loop");
             case ContinueSignal skipped -> ErrorValue.of(ErrorCategory.THROW, "continue",
                     "a continue outside a loop");
-            case ReturnSignal returned -> ErrorValue.about(ErrorCategory.THROW, "return",
+            case ReturnSignal returned -> ErrorValue.of(ErrorCategory.THROW, "return",
                     "a return outside a function",
                     returned.value() instanceof UnsetValue
                             ? NoneValue.none()
@@ -72,7 +72,7 @@ public class TryNative extends DefaultNative {
         };
     }
 
-    private Value handled(
+    private Value handle(
             Value failure, Value handler, Evaluator evaluator, Context context) {
 
         return handler instanceof AnyBlockValue block

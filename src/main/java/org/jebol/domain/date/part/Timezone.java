@@ -16,7 +16,7 @@ final class Timezone implements WritableDateField {
     }
 
     @Override
-    public DateValue writtenOn(DateValue date, Assigned given) {
+    public DateValue writeOn(DateValue date, Assigned given) {
         return date.atMidnightIfItHasNoClock()
                 .atTheSameInstantIn(given.asAZoneOffsetInMinutes());
     }

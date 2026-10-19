@@ -18,7 +18,7 @@ final class JulianDay {
 
     private static final int WIDEST_YEAR_A_DATE_HOLDS = 0x3fff;
 
-    static double countedFromNoon(DateValue date) {
+    static double countFromNoon(DateValue date) {
         long nanoseconds = date.timeOfDay().isEmpty()
                 ? NOON_GIVEN_TO_A_DATE_WITH_NO_CLOCK
                 : date.nanosecondsInUniversalTime();
@@ -59,10 +59,10 @@ final class JulianDay {
         int day = (int) (adjusted - daysBeforeThisDay - daysBeforeThisMonth + fraction);
         int month = monthNumber < 14 ? monthNumber - 1 : monthNumber - 13;
         int year = month > 2 ? estimatedYear - 4716 : estimatedYear - 4715;
-        return aDayWithTheClockAFractionNames(year, month, day, fraction);
+        return makeADayFromAFraction(year, month, day, fraction);
     }
 
-    private static DateValue aDayWithTheClockAFractionNames(
+    private static DateValue makeADayFromAFraction(
             int year, int month, int day, double fraction) {
 
         double hoursAndOver = fraction * 24;
@@ -73,7 +73,7 @@ final class JulianDay {
         long nanoseconds = (hours + 12) * TimeValue.NANOSECONDS_PER_HOUR
                 + minutes * 60 * TimeValue.NANOSECONDS_PER_SECOND
                 + seconds * TimeValue.NANOSECONDS_PER_SECOND;
-        LocalDate landedOn = aDayThatMayHaveRolledOver(year, month, day)
+        LocalDate landedOn = rollTheDayOver(year, month, day)
                 .plusDays(nanoseconds / TimeValue.NANOSECONDS_PER_DAY);
         return new DateValue(landedOn.getYear(), landedOn.getMonthValue(),
                 landedOn.getDayOfMonth(),
@@ -82,20 +82,20 @@ final class JulianDay {
                 Optional.of(0));
     }
 
-    private static LocalDate aDayThatMayHaveRolledOver(int year, int month, int day) {
+    private static LocalDate rollTheDayOver(int year, int month, int day) {
         if (year < 0 || year > WIDEST_YEAR_A_DATE_HOLDS) {
-            throw noDateReachesThatYear();
+            throw refuseAnUnreachableYear();
         }
         try {
             return LocalDate.of(year, 1, 1)
                     .plusMonths(month - 1L)
                     .plusDays(day - 1L);
         } catch (java.time.DateTimeException | ArithmeticException unreachable) {
-            throw noDateReachesThatYear();
+            throw refuseAnUnreachableYear();
         }
     }
 
-    private static Raised noDateReachesThatYear() {
+    private static Raised refuseAnUnreachableYear() {
         return Raised.of(EvaluationFailure.TYPE_LIMIT, DateValue.TYPE);
     }
 }

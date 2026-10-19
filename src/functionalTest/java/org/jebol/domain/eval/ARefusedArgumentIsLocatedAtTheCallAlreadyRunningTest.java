@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ARefusedArgumentIsLocatedAtTheCallAlreadyRunningTest {
 
-    private String nearAndWhereOfTheErrorFrom(String source) {
+    private String readNearAndWhereOfTheErrorFrom(String source) {
         return Molder.moldFlat(Interpreter.create().run(
                 source + " reduce [first e/near first e/where]").value());
     }
@@ -25,7 +25,7 @@ class ARefusedArgumentIsLocatedAtTheCallAlreadyRunningTest {
             h: does [parse "a" "a"] e: try [h]                          | [h h]
             """)
     void locatesTheRefusalAtTheCallAlreadyRunning(String source, String location) {
-        assertThat(nearAndWhereOfTheErrorFrom(source)).isEqualTo(location);
+        assertThat(readNearAndWhereOfTheErrorFrom(source)).isEqualTo(location);
     }
 
     @ParameterizedTest(name = "{0} answers {1}")
@@ -36,7 +36,7 @@ class ARefusedArgumentIsLocatedAtTheCallAlreadyRunningTest {
             repend [1] [1 + 1]                                  | [1 2]
             remold [1 + 1]                                      | "[2]"
             """)
-    void anArgumentOfASwitchedOffRefinementIsNotChecked(String source, String answer) {
+    void skipsAnArgumentOfASwitchedOffRefinement(String source, String answer) {
         assertThat(Molder.moldFlat(Interpreter.create().run(source).value())).isEqualTo(answer);
     }
 
@@ -45,7 +45,7 @@ class ARefusedArgumentIsLocatedAtTheCallAlreadyRunningTest {
             part: true e: try [append/:part [1] 2 none]         | [expect-arg append range #(none!)]
             part: true e: try [mold/:part "abc" none]           | [expect-arg mold limit #(none!)]
             """)
-    void anArgumentOfASwitchedOnRefinementIsChecked(String source, String arguments) {
+    void checksAnArgumentOfASwitchedOnRefinement(String source, String arguments) {
         assertThat(Molder.moldFlat(Interpreter.create().run(
                 source + " reduce [e/id e/arg1 e/arg2 e/arg3]").value())).isEqualTo(arguments);
     }

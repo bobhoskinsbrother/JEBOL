@@ -15,12 +15,12 @@ public class UtfNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("data", Set.of(BinaryValue.TYPE)));
+        return List.of(Parameter.of("data", Set.of(BinaryValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                IntegerValue.of(((BinaryValue) arguments.getFirst()).byteOrderMark());
+                IntegerValue.of(((BinaryValue) arguments.getFirst()).findTheByteOrderMark());
     }
 }

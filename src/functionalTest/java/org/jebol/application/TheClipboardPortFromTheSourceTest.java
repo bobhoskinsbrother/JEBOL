@@ -37,7 +37,7 @@ class TheClipboardPortFromTheSourceTest {
     }
 
     private static String answerWith(ClipboardPort clipboard, String source) {
-        Interpreter interpreter = Interpreter.writingTo(
+        Interpreter interpreter = Interpreter.createWithOutput(
                 message -> { },
                 Bounds.standard().grant(HostService.CLIPBOARD));
         interpreter.useClipboard(clipboard);
@@ -45,7 +45,7 @@ class TheClipboardPortFromTheSourceTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String withoutTheGrant(String source) {
+    private static String runWithoutTheGrant(String source) {
         Interpreter interpreter = Interpreter.create();
         interpreter.useClipboard(new ARememberedClipboard("secret"));
         interpreter.defineFreshWordsIn(source);
@@ -65,21 +65,21 @@ class TheClipboardPortFromTheSourceTest {
 
         @Test
         @DisplayName("an empty clipboard is an empty string, not none")
-        void anEmptyClipboard() {
+        void readsAnEmptyClipboard() {
             assertThat(answerWith(new ARememberedClipboard(""),
                     "read clipboard://")).isEqualTo("\"\"");
         }
 
         @Test
         @DisplayName("and reading needs no OPEN around it")
-        void readingNeedsNoOpen() {
+        void readsWithoutOpening() {
             assertThat(answerWith(new ARememberedClipboard("straight in"),
                     "read clipboard://")).isEqualTo("\"straight in\"");
         }
 
         @Test
         @DisplayName("through a port the caller opened, it reads the same")
-        void throughAnOpenedPort() {
+        void readsThroughAnOpenedPort() {
             assertThat(answerWith(new ARememberedClipboard("opened first"),
                     "read open clipboard://")).isEqualTo("\"opened first\"");
         }
@@ -111,7 +111,7 @@ class TheClipboardPortFromTheSourceTest {
 
         @Test
         @DisplayName("one line for each line the text holds")
-        void oneEntryPerLine() {
+        void givesOneEntryPerLine() {
             assertThat(answerWith(new ARememberedClipboard("first\nsecond\nthird"),
                     "read/lines clipboard://"))
                     .isEqualTo("[\"first\" \"second\" \"third\"]");
@@ -126,7 +126,7 @@ class TheClipboardPortFromTheSourceTest {
 
         @Test
         @DisplayName("and an empty clipboard has no lines")
-        void anEmptyClipboardHasNoLines() {
+        void findsNoLinesInAnEmptyClipboard() {
             assertThat(answerWith(new ARememberedClipboard(""),
                     "read/lines clipboard://")).isEqualTo("[]");
         }
@@ -138,7 +138,7 @@ class TheClipboardPortFromTheSourceTest {
 
         @Test
         @DisplayName("a string goes on and comes back")
-        void aStringRoundTrips() {
+        void roundTripsAString() {
             assertThat(answerTo("""
                     write clipboard:// "put me on"
                     read clipboard://""")).isEqualTo("\"put me on\"");
@@ -146,7 +146,7 @@ class TheClipboardPortFromTheSourceTest {
 
         @Test
         @DisplayName("an empty string is a write like any other")
-        void anEmptyStringRoundTrips() {
+        void roundTripsAnEmptyString() {
             assertThat(answerWith(new ARememberedClipboard("was here"), """
                     write clipboard:// ""
                     read clipboard://""")).isEqualTo("\"\"");
@@ -154,7 +154,7 @@ class TheClipboardPortFromTheSourceTest {
 
         @Test
         @DisplayName("a binary goes on as its bytes read as text")
-        void aBinaryRoundTrips() {
+        void roundTripsABinary() {
             assertThat(answerTo("""
                     write clipboard:// #{4142}
                     read clipboard://""")).isEqualTo("\"AB\"");
@@ -162,7 +162,7 @@ class TheClipboardPortFromTheSourceTest {
 
         @Test
         @DisplayName("and the answer is the port itself")
-        void theAnswerIsThePort() {
+        void answersThePort() {
             assertThat(answerTo("""
                     port? write clipboard:// "anything\"""")).isEqualTo("#(true)");
         }
@@ -175,7 +175,7 @@ class TheClipboardPortFromTheSourceTest {
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"5", "0", "-1", "1.5", "[a b]", "none", "true",
                 "quote word", "1-Jan-2020", "#\"c\"", "10:30"})
-        void anythingButTextAndBytesIsRefused(String written) {
+        void refusesAnythingButTextAndBytes(String written) {
             assertThat(answerTo(
                     "failure: try [write clipboard:// " + written + "] failure/id"))
                     .isEqualTo("invalid-port-arg");
@@ -188,7 +188,7 @@ class TheClipboardPortFromTheSourceTest {
 
         @Test
         @DisplayName("a read leaves what it read in the port's data")
-        void aReadLeavesItsAnswerInTheData() {
+        void leavesAReadsAnswerInTheData() {
             assertThat(answerWith(new ARememberedClipboard("left here"), """
                     p: open clipboard://
                     read p
@@ -197,7 +197,7 @@ class TheClipboardPortFromTheSourceTest {
 
         @Test
         @DisplayName("and a write leaves none there, because the write is done")
-        void aWriteLeavesNone() {
+        void leavesNoneAfterAWrite() {
             assertThat(answerTo("""
                     p: open clipboard://
                     write p "gone"
@@ -206,7 +206,7 @@ class TheClipboardPortFromTheSourceTest {
 
         @Test
         @DisplayName("opening answers an open port and closing shuts it")
-        void openingAndClosing() {
+        void opensAndCloses() {
             assertThat(answerTo("""
                     p: open clipboard://
                     was: open? p
@@ -235,15 +235,15 @@ class TheClipboardPortFromTheSourceTest {
                 "read clipboard://",
                 "write clipboard:// \"x\"",
                 "open clipboard://"})
-        void withoutTheGrantItRefuses(String written) {
-            assertThat(withoutTheGrant("failure: try [" + written + "] failure/id"))
+        void refusesWithoutIt(String written) {
+            assertThat(runWithoutTheGrant("failure: try [" + written + "] failure/id"))
                     .isEqualTo("no-service");
         }
 
         @Test
         @DisplayName("and nothing of what was on it reaches the script")
-        void nothingLeaks() {
-            assertThat(withoutTheGrant("""
+        void leaksNothing() {
+            assertThat(runWithoutTheGrant("""
                     failure: try [read clipboard://] mold failure"""))
                     .doesNotContain("secret");
         }

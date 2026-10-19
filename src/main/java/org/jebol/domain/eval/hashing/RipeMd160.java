@@ -71,7 +71,7 @@ public final class RipeMd160 extends Md4FamilyDigest {
         for (int step = 0; step < 80; step++) {
             int round = step / 16;
             int turned = Integer.rotateLeft(leftA
-                    + mixed(round, leftB, leftC, leftD)
+                    + mix(round, leftB, leftC, leftD)
                     + block[LEFT_WORD_ORDER[step]]
                     + LEFT_CONSTANTS[round], LEFT_ROTATIONS[step]) + leftE;
             leftA = leftE;
@@ -80,7 +80,7 @@ public final class RipeMd160 extends Md4FamilyDigest {
             leftC = leftB;
             leftB = turned;
             int turnedBack = Integer.rotateLeft(rightA
-                    + mixed(4 - round, rightB, rightC, rightD)
+                    + mix(4 - round, rightB, rightC, rightD)
                     + block[RIGHT_WORD_ORDER[step]]
                     + RIGHT_CONSTANTS[round], RIGHT_ROTATIONS[step]) + rightE;
             rightA = rightE;
@@ -97,7 +97,7 @@ public final class RipeMd160 extends Md4FamilyDigest {
         words[0] = carried;
     }
 
-    private int mixed(int round, int first, int second, int third) {
+    private int mix(int round, int first, int second, int third) {
         return switch (round) {
             case 0 -> first ^ second ^ third;
             case 1 -> first & second | ~first & third;

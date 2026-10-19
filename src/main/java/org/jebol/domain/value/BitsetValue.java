@@ -18,25 +18,25 @@ public final class BitsetValue implements Value {
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
-            return BitsetActions.madeFrom(from);
+        protected Value build(Conversion asking, Value from, Maker maker) {
+            return BitsetActions.makeFrom(from);
         }
 
         @Override
-        public Value constructedFrom(List<Value> contents, Construction construction) {
+        public Value construct(List<Value> contents, Construction construction) {
             if (contents.size() == 2
                     && contents.getFirst() instanceof AnyWordValue complementing
                     && complementing.canonical().equals("not")
                     && contents.get(1) instanceof BinaryValue octets) {
-                return BitsetValue.of(octets.octetsFromHere()).complemented();
+                return BitsetValue.of(octets.octetsFromHere()).complement();
             }
             if (contents.size() != 1) {
-                throw refusingConstruction(contents);
+                throw refuseTheConstruction(contents);
             }
             return switch (contents.getFirst()) {
                 case BinaryValue octets -> BitsetValue.of(octets.octetsFromHere());
                 case BitsetValue already -> already;
-                default -> throw refusingConstruction(contents);
+                default -> throw refuseTheConstruction(contents);
             };
         }
     };
@@ -68,7 +68,7 @@ public final class BitsetValue implements Value {
     }
 
     @Override
-    public Value copied(boolean deeply, java.util.Set<Datatype> kinds) {
+    public Value copy(boolean deeply, java.util.Set<Datatype> kinds) {
         return duplicate();
     }
 
@@ -80,7 +80,7 @@ public final class BitsetValue implements Value {
         return new BitsetValue(octets.clone());
     }
 
-    public BitsetValue complemented() {
+    public BitsetValue complement() {
         BitsetValue turned = new BitsetValue(octets.clone());
         turned.complemented = !complemented;
         return turned;
@@ -88,7 +88,7 @@ public final class BitsetValue implements Value {
 
     @Override
     public Value negated() {
-        return complemented();
+        return complement();
     }
 
     public void addAll(BitsetValue others) {
@@ -155,8 +155,8 @@ public final class BitsetValue implements Value {
     public boolean holdsEitherCaseOf(int code) {
         boolean held = code >= UnicodeCases.TABLE_SIZE
                 ? namesDirectly(code)
-                : namesDirectly(UnicodeCases.TABLES.lower(code))
-                        || namesDirectly(UnicodeCases.TABLES.upper(code));
+                : namesDirectly(UnicodeCases.TABLES.toLower(code))
+                        || namesDirectly(UnicodeCases.TABLES.toUpper(code));
         return complemented != held;
     }
 
@@ -200,26 +200,26 @@ public final class BitsetValue implements Value {
         for (int at = 0; at < both.length; at++) {
             int ours = at < mine.length ? mine[at] & 0xFF : 0;
             int theirsHere = at < yours.length ? yours[at] & 0xFF : 0;
-            both[at] = (byte) keeping.how().combinedBits(ours, theirsHere);
+            both[at] = (byte) keeping.how().combineTheBits(ours, theirsHere);
         }
         return BitsetValue.of(both);
     }
 
     @Override
-    public Value bitwise(Value right, BitwiseOperation operation) {
+    public Value combineBitwise(Value right, BitwiseOperation operation) {
         return BitsetValue.of(withoutTheTrailingZeros(
-                octetByOctet(someBitsFrom(right), operation)));
+                combineOctetByOctet(takeSomeBitsFrom(right), operation)));
     }
 
-    private byte[] someBitsFrom(Value right) {
+    private byte[] takeSomeBitsFrom(Value right) {
         return switch (right) {
             case BitsetValue members -> members.octets();
-            case BinaryValue given -> theBytesOf(given);
-            default -> throw Raised.notRelated(this, right);
+            case BinaryValue given -> readTheBytesOf(given);
+            default -> throw Raised.ofUnrelated(this, right);
         };
     }
 
-    private byte[] theBytesOf(BinaryValue given) {
+    private byte[] readTheBytesOf(BinaryValue given) {
         byte[] read = new byte[given.lengthFromHere()];
         for (int at = 0; at < read.length; at++) {
             read[at] = (byte) given.storage().at(given.index() + at);
@@ -227,7 +227,7 @@ public final class BitsetValue implements Value {
         return read;
     }
 
-    private byte[] octetByOctet(byte[] theirs, BitwiseOperation operation) {
+    private byte[] combineOctetByOctet(byte[] theirs, BitwiseOperation operation) {
         byte[] both = new byte[Math.max(octets.length, theirs.length)];
         for (int at = 0; at < both.length; at++) {
             long mine = at < octets.length ? octets[at] & 0xFF : 0;

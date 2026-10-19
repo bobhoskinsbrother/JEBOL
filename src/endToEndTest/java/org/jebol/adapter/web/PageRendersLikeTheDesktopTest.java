@@ -42,7 +42,7 @@ class PageRendersLikeTheDesktopTest {
     @BeforeEach
     void openAPage() throws IOException {
         serving = WebScreenServer.on(0);
-        screen = BrowserScreen.seenBy(serving);
+        screen = BrowserScreen.showTo(serving);
         serving.reportTo(screen);
 
         ChromeOptions asked = new ChromeOptions();
@@ -55,7 +55,7 @@ class PageRendersLikeTheDesktopTest {
         browser.get(serving.address());
 
         new WebDriverWait(browser, Duration.ofSeconds(20))
-                .until(anything -> screen.hasADisplay());
+                .until(anything -> screen.hasDisplay());
     }
 
     @AfterEach
@@ -81,18 +81,18 @@ class PageRendersLikeTheDesktopTest {
 
     @Test
     @DisplayName("what the browser paints is what Java2D paints, pixel for pixel")
-    void thePageMatchesTheWindow() throws Exception {
-        Interpreter interpreter = anInterpreterOnThisPage();
+    void matchesTheWindow() throws Exception {
+        Interpreter interpreter = makeAnInterpreterOnThisPage();
         interpreter.defineFreshWordsIn(A_PICTURE_WORTH_COMPARING);
         GobValue root = (GobValue) interpreter.run(A_PICTURE_WORTH_COMPARING).value();
 
-        BufferedImage fromTheBrowser = whatTheCanvasShows();
-        BufferedImage fromJava2D = whatJava2DPaints(root,
+        BufferedImage fromTheBrowser = captureWhatTheCanvasShows();
+        BufferedImage fromJava2D = paintWithJava2D(root,
                 fromTheBrowser.getWidth(), fromTheBrowser.getHeight());
 
         assertThat(fromTheBrowser.getWidth()).isEqualTo(fromJava2D.getWidth());
         assertThat(fromTheBrowser.getHeight()).isEqualTo(fromJava2D.getHeight());
-        assertThat(howManyColoursAreIn(fromTheBrowser))
+        assertThat(countTheColoursIn(fromTheBrowser))
                 .as("a blank canvas would match a blank surface and mean nothing")
                 .isGreaterThanOrEqualTo(6);
         assertTheyAgree(fromTheBrowser, fromJava2D);
@@ -142,17 +142,17 @@ class PageRendersLikeTheDesktopTest {
 
     @Test
     @DisplayName("and a gob outside its parent is clipped away in both")
-    void bothClipTheSameWay() throws Exception {
-        Interpreter interpreter = anInterpreterOnThisPage();
+    void clipsTheSameWay() throws Exception {
+        Interpreter interpreter = makeAnInterpreterOnThisPage();
         interpreter.defineFreshWordsIn(A_PICTURE_WORTH_COMPARING);
         interpreter.run(A_PICTURE_WORTH_COMPARING);
 
-        BufferedImage shown = whatTheCanvasShows();
+        BufferedImage shown = captureWhatTheCanvasShows();
 
-        assertThat(colourAt(shown, 350, 120))
+        assertThat(readTheColourAt(shown, 350, 120))
                 .as("inside the clipped child, its own dark colour")
                 .isEqualTo(new Color(20, 20, 20));
-        assertThat(colourAt(shown, 350, 200))
+        assertThat(readTheColourAt(shown, 350, 200))
                 .as("below the parent's bottom edge, the panel and not the child")
                 .isEqualTo(new Color(30, 34, 44));
     }
@@ -183,15 +183,15 @@ class PageRendersLikeTheDesktopTest {
     @Test
     @DisplayName("and a DRAW block paints the same in both, shape for shape")
     void adrawBlockMatchesToo() throws Exception {
-        Interpreter interpreter = anInterpreterOnThisPage();
+        Interpreter interpreter = makeAnInterpreterOnThisPage();
         interpreter.defineFreshWordsIn(A_DRAWING_WORTH_COMPARING);
         GobValue root = (GobValue) interpreter.run(A_DRAWING_WORTH_COMPARING).value();
 
-        BufferedImage fromTheBrowser = whatTheCanvasShows();
-        BufferedImage fromJava2D = whatJava2DPaints(root,
+        BufferedImage fromTheBrowser = captureWhatTheCanvasShows();
+        BufferedImage fromJava2D = paintWithJava2D(root,
                 fromTheBrowser.getWidth(), fromTheBrowser.getHeight());
 
-        assertThat(howManyColoursAreIn(fromTheBrowser))
+        assertThat(countTheColoursIn(fromTheBrowser))
                 .as("a blank canvas would match a blank surface and mean nothing")
                 .isGreaterThanOrEqualTo(5);
         assertTheyAgree(fromTheBrowser, fromJava2D);
@@ -215,20 +215,20 @@ class PageRendersLikeTheDesktopTest {
 
     @Test
     @DisplayName("and a see-through colour and a rounded box paint the same in both")
-    void opacityAndRoundedCornersMatch() throws Exception {
-        Interpreter interpreter = anInterpreterOnThisPage();
+    void matchesOpacityAndRoundedCorners() throws Exception {
+        Interpreter interpreter = makeAnInterpreterOnThisPage();
         interpreter.defineFreshWordsIn(SEE_THROUGH_COLOURS_AND_ROUNDED_CORNERS);
         GobValue root = (GobValue) interpreter.run(SEE_THROUGH_COLOURS_AND_ROUNDED_CORNERS).value();
 
-        BufferedImage fromTheBrowser = whatTheCanvasShows();
-        BufferedImage fromJava2D = whatJava2DPaints(root,
+        BufferedImage fromTheBrowser = captureWhatTheCanvasShows();
+        BufferedImage fromJava2D = paintWithJava2D(root,
                 fromTheBrowser.getWidth(), fromTheBrowser.getHeight());
 
-        Color halved = colourAt(fromTheBrowser, 60, 40);
+        Color halved = readTheColourAt(fromTheBrowser, 60, 40);
         assertThat(halved.getRed()).as("half-transparent black over the yellow halves its red").isCloseTo(122, within(1));
         assertThat(halved.getGreen()).as("and its green").isCloseTo(98, within(1));
         assertThat(halved.getBlue()).as("and its blue").isCloseTo(33, within(1));
-        assertThat(colourAt(fromTheBrowser, 21, 21))
+        assertThat(readTheColourAt(fromTheBrowser, 21, 21))
                 .as("inside the box's square corner but outside its rounded one")
                 .isEqualTo(new Color(244, 196, 66));
         assertTheyAgree("see-through colours and rounded corners", fromTheBrowser, fromJava2D,
@@ -250,19 +250,19 @@ class PageRendersLikeTheDesktopTest {
 
     @Test
     @DisplayName("and a centred label's ink is in the middle of its gob in the browser too")
-    void aCentredLabelIsCentredInTheBrowser() throws Exception {
-        Interpreter interpreter = anInterpreterOnThisPage();
+    void centresACentredLabel() throws Exception {
+        Interpreter interpreter = makeAnInterpreterOnThisPage();
         interpreter.defineFreshWordsIn(A_CENTRED_LABEL);
         interpreter.run(A_CENTRED_LABEL);
 
-        BufferedImage shown = whatTheCanvasShows();
+        BufferedImage shown = captureWhatTheCanvasShows();
         int left = Integer.MAX_VALUE;
         int right = -1;
         int top = Integer.MAX_VALUE;
         int bottom = -1;
         for (int down = 0; down < shown.getHeight(); down++) {
             for (int across = 0; across < shown.getWidth(); across++) {
-                Color seen = colourAt(shown, across, down);
+                Color seen = readTheColourAt(shown, across, down);
                 if (seen.getRed() + seen.getGreen() + seen.getBlue() < 3 * 128) {
                     left = Math.min(left, across);
                     right = Math.max(right, across);
@@ -294,18 +294,18 @@ class PageRendersLikeTheDesktopTest {
 
     @Test
     @DisplayName("and a label too long for its gob wraps inside it in the browser too, onto more than one line")
-    void aLongLabelWrapsInTheBrowser() throws Exception {
-        Interpreter interpreter = anInterpreterOnThisPage();
+    void wrapsALongLabel() throws Exception {
+        Interpreter interpreter = makeAnInterpreterOnThisPage();
         interpreter.defineFreshWordsIn(A_LABEL_TOO_LONG_FOR_ITS_GOB);
         interpreter.run(A_LABEL_TOO_LONG_FOR_ITS_GOB);
 
-        BufferedImage shown = whatTheCanvasShows();
+        BufferedImage shown = captureWhatTheCanvasShows();
         int right = -1;
         int top = Integer.MAX_VALUE;
         int bottom = -1;
         for (int down = 0; down < shown.getHeight(); down++) {
             for (int across = 0; across < shown.getWidth(); across++) {
-                Color seen = colourAt(shown, across, down);
+                Color seen = readTheColourAt(shown, across, down);
                 if (seen.getRed() + seen.getGreen() + seen.getBlue() < 3 * 128) {
                     right = Math.max(right, across);
                     top = Math.min(top, down);
@@ -331,16 +331,16 @@ class PageRendersLikeTheDesktopTest {
 
     @Test
     @DisplayName("and a white label's shadow is the only ink on white in the browser too")
-    void aShadowIsWrittenInTheBrowser() throws Exception {
-        Interpreter interpreter = anInterpreterOnThisPage();
+    void writesAShadow() throws Exception {
+        Interpreter interpreter = makeAnInterpreterOnThisPage();
         interpreter.defineFreshWordsIn(A_WHITE_LABEL_WITH_A_SHADOW);
         interpreter.run(A_WHITE_LABEL_WITH_A_SHADOW);
 
-        BufferedImage shown = whatTheCanvasShows();
+        BufferedImage shown = captureWhatTheCanvasShows();
         int inked = 0;
         for (int down = 0; down < 60; down++) {
             for (int across = 0; across < 200; across++) {
-                Color seen = colourAt(shown, across, down);
+                Color seen = readTheColourAt(shown, across, down);
                 if (seen.getRed() + seen.getGreen() + seen.getBlue() < 3 * 128) {
                     inked++;
                 }
@@ -350,13 +350,13 @@ class PageRendersLikeTheDesktopTest {
         assertThat(inked).isGreaterThan(50);
     }
 
-    private BufferedImage whatTheCanvasShows() throws IOException {
+    private BufferedImage captureWhatTheCanvasShows() throws IOException {
         WebElement canvas = browser.findElement(By.id("screen"));
         return ImageIO.read(new ByteArrayInputStream(
                 canvas.getScreenshotAs(OutputType.BYTES)));
     }
 
-    private BufferedImage whatJava2DPaints(GobValue root, int wide, int high) {
+    private BufferedImage paintWithJava2D(GobValue root, int wide, int high) {
         BufferedImage surface =
                 new BufferedImage(wide, high, BufferedImage.TYPE_INT_RGB);
         Graphics2D onto = surface.createGraphics();
@@ -364,7 +364,7 @@ class PageRendersLikeTheDesktopTest {
             onto.setColor(Color.WHITE);
             onto.fillRect(0, 0, wide, high);
             Java2DSurface.execute(onto,
-                    PaintList.ofTheScreen(root, wide, high, theDrawDialect),
+                    PaintList.ofScreen(root, wide, high, theDrawDialect),
                     TextMeasures.ofTheCarriedFont());
         } finally {
             onto.dispose();
@@ -374,7 +374,7 @@ class PageRendersLikeTheDesktopTest {
 
     private ObjectValue theDrawDialect;
 
-    private Interpreter anInterpreterOnThisPage() {
+    private Interpreter makeAnInterpreterOnThisPage() {
         Interpreter interpreter = Interpreter.withBounds(
                 Bounds.standard().grant(HostService.WINDOWS));
         interpreter.useScreen(screen);
@@ -383,11 +383,11 @@ class PageRendersLikeTheDesktopTest {
         return interpreter;
     }
 
-    private static Color colourAt(BufferedImage surface, int across, int down) {
+    private static Color readTheColourAt(BufferedImage surface, int across, int down) {
         return new Color(surface.getRGB(across, down));
     }
 
-    private static int howManyColoursAreIn(BufferedImage surface) {
+    private static int countTheColoursIn(BufferedImage surface) {
         Set<Integer> seen = new HashSet<>();
         for (int down = 0; down < surface.getHeight(); down++) {
             for (int across = 0; across < surface.getWidth(); across++) {
@@ -418,13 +418,13 @@ class PageRendersLikeTheDesktopTest {
         int onAnEdge = 0;
         for (int down = 0; down < one.getHeight(); down++) {
             for (int across = 0; across < one.getWidth(); across++) {
-                if (theSameColour(one, other, across, down, insideAShapeAllowance)) {
+                if (isTheSameColour(one, other, across, down, insideAShapeAllowance)) {
                     continue;
                 }
                 if (!sitsOnAnEdge(one, across, down)
                         && !sitsOnAnEdge(other, across, down)) {
                     insideAShape++;
-                } else if (!theSameColour(one, other, across, down,
+                } else if (!isTheSameColour(one, other, across, down,
                         THE_CHANNEL_ALLOWANCE)) {
                     onAnEdge++;
                 }
@@ -434,7 +434,7 @@ class PageRendersLikeTheDesktopTest {
                 one.getWidth() * one.getHeight());
     }
 
-    private static boolean theSameColour(
+    private static boolean isTheSameColour(
             BufferedImage one, BufferedImage other, int across, int down, int allowance) {
 
         int here = one.getRGB(across, down);

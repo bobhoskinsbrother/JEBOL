@@ -20,8 +20,8 @@ public final class BlockActions extends SeriesActions {
     }
 
     @Override
-    public Value poked(Value position, Value written) {
-        block.storage().set(pokedStoragePosition(position), written);
+    public Value poke(Value position, Value written) {
+        block.storage().set(findThePokedStoragePosition(position), written);
         return written;
     }
 
@@ -32,12 +32,12 @@ public final class BlockActions extends SeriesActions {
 
     @Override
     Value ofTheSameKindHolding(List<Value> items) {
-        return block.holding(items);
+        return block.wrap(items);
     }
 
     @Override
-    public Value cleared() {
-        return clearedOneAtATime();
+    public Value clear() {
+        return clearOneAtATime();
     }
 
     @Override
@@ -46,7 +46,7 @@ public final class BlockActions extends SeriesActions {
                 && splicesRatherThanGoesInWhole(added, asked)) {
             block.storage().spliceInAt(
                     block.storage().length() + 1,
-                    asked.theFirstFewOf(added.remaining()),
+                    asked.takeTheFirstFewOf(added.remaining()),
                     added.storage(), added.index());
         } else {
             block.storage().append(asked.given());
@@ -56,10 +56,10 @@ public final class BlockActions extends SeriesActions {
 
     @Override
     public Value insert(Asked asked) {
-        AnyBlockValue held = (AnyBlockValue) block.clampedToTail();
+        AnyBlockValue held = (AnyBlockValue) block.clampToTail();
         if (asked.duplicated() instanceof AnyBlockValue added
                 && splicesRatherThanGoesInWhole(added, asked)) {
-            List<Value> items = asked.theWantedItemsOf(added);
+            List<Value> items = asked.pickTheWantedItemsOf(added);
             held.storage().spliceInAt(held.index(), items,
                     added.storage(), added.index());
             return held.atIndex(held.index() + items.size());

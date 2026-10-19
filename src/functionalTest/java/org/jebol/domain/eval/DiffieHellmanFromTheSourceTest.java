@@ -38,20 +38,20 @@ class DiffieHellmanFromTheSourceTest {
 
         @Test
         @DisplayName("a generator and a prime make a context")
-        void itMakesAContext() {
+        void isMade() {
             assertThat(answerTo("handle? alice")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("named DHM, which is the group it holds rather than the exchange")
-        void itIsNamedDhm() {
+        void isNamedDhm() {
             assertThat(answerTo("alice/type = 'dhm")).isEqualTo(TRUE);
             assertThat(answerTo("true? find system/catalog/handles 'dhm")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("two contexts hold different private numbers, which is the point")
-        void eachContextIsItsOwn() {
+        void standsAloneEachTime() {
             assertThat(answerTo("(dh/public alice) = (dh/public bob)"))
                     .as("a generated key that repeated would give everyone one secret")
                     .isEqualTo("#(false)");
@@ -78,14 +78,14 @@ class DiffieHellmanFromTheSourceTest {
 
         @Test
         @DisplayName("as a binary the width of the field prime")
-        void itIsThePrimeWidth() {
+        void isThePrimeWidth() {
             assertThat(answerTo("binary? dh/public alice")).isEqualTo(TRUE);
             assertThat(answerTo("length? dh/public alice")).isEqualTo(PRIME_WIDTH);
         }
 
         @Test
         @DisplayName("and the same value every time, since it comes from one private number")
-        void itDoesNotChange() {
+        void staysTheSame() {
             assertThat(answerTo("(dh/public alice) = (dh/public alice)")).isEqualTo(TRUE);
         }
     }
@@ -96,7 +96,7 @@ class DiffieHellmanFromTheSourceTest {
 
         @Test
         @DisplayName("both sides reach the same secret from the other's public value")
-        void bothSidesAgree() {
+        void isAgreedByBothSides() {
             assertThat(answerTo("""
                     (dh/secret alice dh/public bob) = (dh/secret bob dh/public alice)"""))
                     .isEqualTo(TRUE);
@@ -104,14 +104,14 @@ class DiffieHellmanFromTheSourceTest {
 
         @Test
         @DisplayName("and it is as wide as the field prime")
-        void theSecretIsThePrimeWidth() {
+        void isThePrimeWidth() {
             assertThat(answerTo("length? dh/secret alice dh/public bob"))
                     .isEqualTo(PRIME_WIDTH);
         }
 
         @Test
         @DisplayName("a third party's value gives a different secret, which is the security")
-        void aThirdPartyDoesNotAgree() {
+        void differsForAThirdParty() {
             assertThat(answerTo("""
                     eve: dh-init g p
                     (dh/secret alice dh/public bob) = (dh/secret alice dh/public eve)"""))
@@ -120,7 +120,7 @@ class DiffieHellmanFromTheSourceTest {
 
         @Test
         @DisplayName("a public value outside the field answers none rather than a secret")
-        void anImpossiblePeerValueAnswersNone() {
+        void isNoneForAnImpossiblePeerValue() {
             assertThat(answerTo("none? dh/secret alice #{00}")).isEqualTo(TRUE);
             assertThat(answerTo("none? dh/secret alice p")).isEqualTo(TRUE);
         }
@@ -132,21 +132,21 @@ class DiffieHellmanFromTheSourceTest {
 
         @Test
         @DisplayName("naming both refinements is bad-refines")
-        void bothRefinementsAreRefused() {
+        void refuseBothRefinements() {
             assertThat(answerTo("""
                     e: try [dh/public/secret alice #{02}] e/id""")).isEqualTo("bad-refines");
         }
 
         @Test
         @DisplayName("a handle of another type answers none, which the C doubts in a comment")
-        void aHandleOfAnotherTypeAnswersNone() {
+        void answerNoneForAHandleOfAnotherType() {
             assertThat(answerTo("none? dh/public rc4/key #{01}")).isEqualTo(TRUE);
             assertThat(answerTo("none? dh/secret (rc4/key #{01}) #{02}")).isEqualTo(TRUE);
         }
 
         @Test
         @DisplayName("and naming neither answers none, where a real 3.22.1 reads free memory")
-        void noRefinementAnswersNone() {
+        void answerNoneForNoRefinement() {
             assertThat(answerTo("none? dh alice")).isEqualTo(TRUE);
         }
 

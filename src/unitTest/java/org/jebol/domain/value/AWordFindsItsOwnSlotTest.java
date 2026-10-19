@@ -8,70 +8,70 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AWordFindsItsOwnSlotTest {
 
-    private static String errorIdOf(Throwable thrown) {
+    private static String readTheErrorIdOf(Throwable thrown) {
         return ((Raised) thrown).error().errorId();
     }
 
     @Test
     @DisplayName("a word bound where it is held finds the slot holding its value")
-    void aWordBoundWhereItIsHeld() {
+    void findsTheSlotWhereItIsHeld() {
         Context context = Context.root();
         context.register("x", IntegerValue.of(1));
 
-        assertThat(WordValue.of("x").boundTo(context).boundSlot().value())
+        assertThat(WordValue.of("x").bindTo(context).findTheBoundSlot().value())
                 .isEqualTo(IntegerValue.of(1));
     }
 
     @Test
     @DisplayName("a word bound beneath where it is held finds the slot above")
-    void aWordBoundBeneathWhereItIsHeld() {
+    void findsTheSlotBeneathWhereItIsHeld() {
         Context above = Context.root();
         above.register("x", IntegerValue.of(1));
-        Context beneath = Context.childOf(above);
+        Context beneath = Context.makeChildOf(above);
 
-        assertThat(WordValue.of("x").boundTo(beneath).boundSlot().value())
+        assertThat(WordValue.of("x").bindTo(beneath).findTheBoundSlot().value())
                 .isEqualTo(IntegerValue.of(1));
     }
 
     @Test
     @DisplayName("the case a word is spelled in does not matter")
-    void spellingCaseDoesNotMatter() {
+    void ignoresTheSpellingsCase() {
         Context context = Context.root();
         context.register("Foo", IntegerValue.of(1));
 
-        assertThat(WordValue.of("FOO").boundTo(context).boundSlot().value())
+        assertThat(WordValue.of("FOO").bindTo(context).findTheBoundSlot().value())
                 .isEqualTo(IntegerValue.of(1));
     }
 
     @Test
     @DisplayName("the slot is the live one, so writing through it is seen by the context")
-    void theSlotIsTheLiveOne() {
+    void findsTheLiveSlot() {
         Context context = Context.root();
         context.register("x", IntegerValue.of(1));
 
-        WordValue.of("x").boundTo(context).boundSlot().setValue(IntegerValue.of(2));
+        WordValue.of("x").bindTo(context).findTheBoundSlot().setValue(IntegerValue.of(2));
 
-        assertThat(context.slotFor("x").value()).isEqualTo(IntegerValue.of(2));
+        assertThat(context.findSlotFor("x").value()).isEqualTo(IntegerValue.of(2));
     }
 
     @Test
     @DisplayName("an unbound word has no slot, and says so as not-defined")
-    void anUnboundWordIsRefused() {
-        assertThatThrownBy(() -> WordValue.of("x").boundSlot())
+    void refusesAnUnboundWord() {
+        assertThatThrownBy(() -> WordValue.of("x").findTheBoundSlot())
                 .isInstanceOf(Raised.class)
-                .extracting(AWordFindsItsOwnSlotTest::errorIdOf)
+                .extracting(AWordFindsItsOwnSlotTest::readTheErrorIdOf)
                 .isEqualTo("not-defined");
     }
 
     @Test
     @DisplayName("a word bound to a context that does not know it is refused the same way")
-    void aWordItsContextDoesNotKnowIsRefused() {
+    void refusesAWordItsContextDoesNotKnow() {
         Context context = Context.root();
         context.register("y", IntegerValue.of(1));
 
-        assertThatThrownBy(() -> WordValue.of("x").boundTo(context).boundSlot())
+        assertThatThrownBy(() -> WordValue.of("x").bindTo(context).findTheBoundSlot())
                 .isInstanceOf(Raised.class)
-                .extracting(AWordFindsItsOwnSlotTest::errorIdOf)
+                .extracting(AWordFindsItsOwnSlotTest::readTheErrorIdOf)
                 .isEqualTo("not-defined");
     }
 }

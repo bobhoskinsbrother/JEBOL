@@ -18,12 +18,12 @@ final class BrotliDictionaryHash {
 
     private static UnpackedTogetherSoOneWritePublishesBoth tables;
 
-    private static UnpackedTogetherSoOneWritePublishesBoth unpacked() {
+    private static UnpackedTogetherSoOneWritePublishesBoth unpack() {
         UnpackedTogetherSoOneWritePublishesBoth known = tables;
         if (known != null) {
             return known;
         }
-        byte[] raw = inflated();
+        byte[] raw = inflate();
         char[] indexes = new char[SLOTS];
         for (int slot = 0; slot < SLOTS; slot++) {
             indexes[slot] = (char) ((raw[slot * 2] & 0xFF)
@@ -37,7 +37,7 @@ final class BrotliDictionaryHash {
         return built;
     }
 
-    private static byte[] inflated() {
+    private static byte[] inflate() {
         StringBuilder joined = new StringBuilder();
         for (String piece : DEFLATED_TABLE) {
             joined.append(piece);
@@ -65,12 +65,12 @@ final class BrotliDictionaryHash {
         }
     }
 
-    static int wordLengthAt(int slot) {
-        return unpacked().wordLengths()[slot];
+    static int readTheWordLengthAt(int slot) {
+        return unpack().wordLengths()[slot];
     }
 
-    static int wordIndexAt(int slot) {
-        return unpacked().wordIndexes()[slot];
+    static int readTheWordIndexAt(int slot) {
+        return unpack().wordIndexes()[slot];
     }
 
     private static final String[] DEFLATED_TABLE = {

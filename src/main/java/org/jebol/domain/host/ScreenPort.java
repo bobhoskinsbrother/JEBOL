@@ -5,7 +5,6 @@ import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Value;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -26,7 +25,7 @@ import java.util.Optional;
  * window does not. {@link #none()} is where that split is written down and
  * {@code spec/screen.allium} is where it is argued.
  *
- * <p>{@link #offerWhatWasShown()} is not a script's request: it is the
+ * <p>{@link #offerShown()} is not a script's request: it is the
  * interpreter telling the port that it is between script steps, which is when
  * a deferred picture goes out.
  *
@@ -35,7 +34,7 @@ import java.util.Optional;
 public interface ScreenPort {
 
     /** Whether there is a display behind this port at all. */
-    boolean hasADisplay();
+    boolean hasDisplay();
 
     /**
      * A measurement of the screen, as a pair of numbers.
@@ -58,7 +57,7 @@ public interface ScreenPort {
      * to know which gob is the root before it can tell reconciling the whole
      * screen from refreshing one window.
      */
-    void takeTheRootGob(GobValue root);
+    void acceptRootGob(GobValue root);
 
     /**
      * Makes the screen's windows match the gob tree.
@@ -84,7 +83,7 @@ public interface ScreenPort {
      * cheap there and the toolkit itself coalesces the drawing, which is the
      * same shape arrived at from the other side.
      */
-    default void offerWhatWasShown() {
+    default void offerShown() {
     }
 
     /**
@@ -96,12 +95,12 @@ public interface ScreenPort {
      * behind one that wakes a port stay queued for the next wait. See
      * {@code spec/screen.allium}.
      */
-    Optional<ScreenEvent> takeTheNextEvent();
+    Optional<ScreenEvent> acceptNextEvent();
 
     /**
      * Takes everything the other side has measured but this port has not yet
      * taken: a measurement becomes the screen's own, resizing what hangs on
-     * it. Events are left for the next {@link #takeTheNextEvent}, which is
+     * it. Events are left for the next {@link #acceptNextEvent}, which is
      * what decides the moment they are judged at.
      *
      * <p>Called on the interpreter's own thread -- before a run starts, and
@@ -109,7 +108,7 @@ public interface ScreenPort {
      * report may change what a script sees. A measurement applied where it
      * arrived would write a gob another thread was reading.
      */
-    default void takePendingReports() {
+    default void acceptPendingReports() {
     }
 
     TextMeasure textMeasure();
@@ -134,10 +133,10 @@ public interface ScreenPort {
      * {@code screen/size - window/size / 2}, so a root left at nothing puts
      * every centred window in the same place.
      */
-    default void takeAsTheRoot(GobValue root) {
-        takeTheRootGob(root);
+    default void takeAsRoot(GobValue root) {
+        acceptRootGob(root);
         root.storage().detachFromParent();
-        root.storage().size(hasADisplay()
+        root.storage().size(hasDisplay()
                 ? measure(ScreenMetric.SCREEN_SIZE, 0)
                 : PairValue.of(0, 0));
     }
@@ -149,7 +148,7 @@ public interface ScreenPort {
      * gob is and for the same reason: flattening a gob tree has no way to
      * reach a system object and should not learn one. A screen never told
      * paints no draw blocks, which is a gap rather than a failure -- every
-     * other kind of gob still shows.
+     * other type of gob still shows.
      *
      * <p>Held per screen rather than anywhere shared, because a host runs many
      * interpreters at once and each has its own {@code system}.
@@ -194,7 +193,7 @@ public interface ScreenPort {
         return new ScreenPort() {
 
             @Override
-            public boolean hasADisplay() {
+            public boolean hasDisplay() {
                 return false;
             }
 
@@ -209,7 +208,7 @@ public interface ScreenPort {
             }
 
             @Override
-            public void takeTheRootGob(GobValue root) {
+            public void acceptRootGob(GobValue root) {
             }
 
             @Override
@@ -219,7 +218,7 @@ public interface ScreenPort {
             }
 
             @Override
-            public Optional<ScreenEvent> takeTheNextEvent() {
+            public Optional<ScreenEvent> acceptNextEvent() {
                 return Optional.empty();
             }
 

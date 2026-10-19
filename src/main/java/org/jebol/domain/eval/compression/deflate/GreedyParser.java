@@ -22,14 +22,14 @@ final class GreedyParser extends DeflateParser {
         int next = 0;
         do {
             int blockBegin = next;
-            int blockEnd = maxBlockEnd(next, length, SOFT_MAX_BLOCK_LENGTH);
+            int blockEnd = findTheMaxBlockEnd(next, length, SOFT_MAX_BLOCK_LENGTH);
             int sequence = 0;
             splitStatistics.reset();
             beginSequences(sequences);
-            int minLength = minMatchLengthScanning(input, next, blockEnd - next);
+            int minLength = chooseTheMinMatchLengthByScanning(input, next, blockEnd - next);
             do {
                 adjustMaxAndNiceLength(length - next);
-                int matched = finder.longestMatch(input, next, minLength - 1, maxLength, niceLength, maxSearchDepth);
+                int matched = finder.findTheLongestMatch(input, next, minLength - 1, maxLength, niceLength, maxSearchDepth);
                 int offset = finder.offset();
                 if (matched >= minLength
                         && (matched > MIN_MATCH_LENGTH || offset <= FARTHEST_WORTHWHILE_SHORTEST_MATCH)) {

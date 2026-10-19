@@ -18,18 +18,18 @@ class AScriptInAPageTagFromTheSourceTest {
 
     @Test
     @DisplayName("the page carries the script in a script tag, and it runs and prints its answers")
-    void thePageScript() throws IOException {
+    void runsThePageScript() throws IOException {
         StringBuilder written = new StringBuilder();
-        Interpreter interpreter = Interpreter.writingTo(written::append);
+        Interpreter interpreter = Interpreter.createWithOutput(written::append);
 
-        ScriptOutcome outcome = interpreter.run(theScriptOnThePage());
+        ScriptOutcome outcome = interpreter.run(readTheScriptOnThePage());
 
         assertThat(outcome.succeeded()).isTrue();
         assertThat(written.toString().lines().toList())
                 .containsExactly("3", "true", "true", "true", "true", "true", "true", "waited");
     }
 
-    private static String theScriptOnThePage() throws IOException {
+    private static String readTheScriptOnThePage() throws IOException {
         try (InputStream page = AScriptInAPageTagFromTheSourceTest.class
                 .getResourceAsStream("/web/rebol-on-a-page.html")) {
             String html = new String(page.readAllBytes(), StandardCharsets.UTF_8);

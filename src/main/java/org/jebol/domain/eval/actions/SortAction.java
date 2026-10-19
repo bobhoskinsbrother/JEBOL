@@ -19,10 +19,10 @@ public class SortAction extends DefaultNative implements ActionValue {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("series", TypesetValue.SERIES.members()),
-                Parameter.belongingTo("skip", "size", Set.of(IntegerValue.TYPE)),
-                Parameter.belongingTo("compare", "comparator", Set.of()),
-                Parameter.belongingTo("part", "count", aPartLimit()));
+        return List.of(Parameter.of("series", TypesetValue.SERIES.members()),
+                Parameter.belongTo("skip", "size", Set.of(IntegerValue.TYPE)),
+                Parameter.belongTo("compare", "comparator", Set.of()),
+                Parameter.belongTo("part", "count", listThePartLimitTypes()));
     }
 
     @Override
@@ -36,29 +36,29 @@ public class SortAction extends DefaultNative implements ActionValue {
             if (!(arguments.getFirst() instanceof RebolSeries series)) {
                 return refuseTheDatatype(arguments.getFirst());
             }
-            Optional<Value> comparator = argumentOf("compare", 0, arguments, refinements);
-            Optional<Value> partCount = argumentOf("part", 0, arguments, refinements);
+            Optional<Value> comparator = readTheArgumentOf("compare", 0, arguments, refinements);
+            Optional<Value> partCount = readTheArgumentOf("part", 0, arguments, refinements);
             SeriesSorting sorting = new SeriesSorting(evaluator, comparator,
                     refinements.contains("case"), refinements.contains("reverse"),
                     refinements.contains("all"),
                     refinements.contains("unstable") || series instanceof BinaryValue);
             if (series instanceof VectorValue vector) {
                 refuseRecordsInAVector(refinements);
-                return sorting.sortedFront(vector, howManyOf(vector, partCount));
+                return sorting.sortTheFront(vector, countHowManyOf(vector, partCount));
             }
-            int howMany = Math.max(0, howManyOf(series, partCount));
+            int howMany = Math.max(0, countHowManyOf(series, partCount));
             if (howMany <= 1) {
                 return series;
             }
-            int stride = argumentOf("skip", 0, arguments, refinements)
+            int stride = readTheArgumentOf("skip", 0, arguments, refinements)
                     .map(size -> (int) ((IntegerValue) size).magnitude())
                     .orElse(EACH_ITEM_ON_ITS_OWN);
             refuseWhatCannotBeSorted(refinements, howMany, stride, comparator);
-            return sorting.sorted(series, stride, howMany);
+            return sorting.sort(series, stride, howMany);
         };
     }
 
-    private int howManyOf(RebolSeries series, Optional<Value> partCount) {
+    private int countHowManyOf(RebolSeries series, Optional<Value> partCount) {
         return partCount.filter(IntegerValue.class::isInstance)
                 .map(count -> (int) Math.min(((IntegerValue) count).magnitude(),
                         series.lengthFromHere()))

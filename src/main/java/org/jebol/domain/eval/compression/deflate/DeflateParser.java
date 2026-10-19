@@ -61,7 +61,7 @@ abstract class DeflateParser {
     }
 
     int chooseMatch(int length, int offset, boolean gatheringStatistics, Sequences sequences, int sequence) {
-        int offsetSlot = encoder.offsetSlotOf(offset);
+        int offsetSlot = encoder.findTheOffsetSlotOf(offset);
         encoder.litlenFrequencies[FIRST_LENGTH_SYMBOL + LENGTH_SLOT[length]]++;
         encoder.offsetFrequencies[offsetSlot]++;
         if (gatheringStatistics) {
@@ -81,14 +81,14 @@ abstract class DeflateParser {
         }
     }
 
-    int maxBlockEnd(int blockBegin, int end, int softMaxLength) {
+    int findTheMaxBlockEnd(int blockBegin, int end, int softMaxLength) {
         if (end - blockBegin < softMaxLength + MIN_BLOCK_LENGTH) {
             return end;
         }
         return blockBegin + softMaxLength;
     }
 
-    int minMatchLengthFor(int literalsUsed) {
+    int chooseTheMinMatchLengthFor(int literalsUsed) {
         if (literalsUsed >= MIN_LENGTH_BY_LITERALS_USED.length) {
             return MIN_MATCH_LENGTH;
         }
@@ -105,7 +105,7 @@ abstract class DeflateParser {
         return minLength;
     }
 
-    int minMatchLengthScanning(byte[] input, int from, int length) {
+    int chooseTheMinMatchLengthByScanning(byte[] input, int from, int length) {
         if (length < SHORT_ENOUGH_FOR_ANY_MATCH) {
             return MIN_MATCH_LENGTH;
         }
@@ -118,10 +118,10 @@ abstract class DeflateParser {
         for (boolean each : used) {
             literalsUsed += each ? 1 : 0;
         }
-        return minMatchLengthFor(literalsUsed);
+        return chooseTheMinMatchLengthFor(literalsUsed);
     }
 
-    int minMatchLengthFromTheFrequencies() {
+    int chooseTheMinMatchLengthFromTheFrequencies() {
         int literalFrequency = 0;
         for (int literal = 0; literal < LITERAL_COUNT; literal++) {
             literalFrequency += encoder.litlenFrequencies[literal];
@@ -133,6 +133,6 @@ abstract class DeflateParser {
                 literalsUsed++;
             }
         }
-        return minMatchLengthFor(literalsUsed);
+        return chooseTheMinMatchLengthFor(literalsUsed);
     }
 }

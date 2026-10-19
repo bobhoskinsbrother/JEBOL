@@ -21,7 +21,7 @@ public abstract class SeriesOrFileAction extends DefaultNative implements Action
         return acceptsWhateverComesAlong("series");
     }
 
-    protected OpenFile theFileBehind(PortValue port, Evaluator evaluator) {
+    protected OpenFile findTheFileBehind(PortValue port, Evaluator evaluator) {
         return new OpenFile(port, evaluator.files(), granted);
     }
 
@@ -29,7 +29,7 @@ public abstract class SeriesOrFileAction extends DefaultNative implements Action
         return TypesetValue.SERIES.membersAnd(PortValue.TYPE, NoneValue.TYPE, GobValue.TYPE);
     }
 
-    protected Set<Datatype> anOffset() {
+    protected Set<Datatype> listTheOffsetTypes() {
         return TypesetValue.NUMBER.membersAnd(LogicValue.TYPE, PairValue.TYPE);
     }
 }

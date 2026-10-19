@@ -22,8 +22,8 @@ class DeflateCompressorFromTheSourceTest {
     private byte[] compressed(String method, int level, byte[] input) {
         DeflateCompressor compressor = new DeflateCompressor(level);
         return switch (method) {
-            case "zlib" -> compressor.zlib(input);
-            case "gzip" -> compressor.gzip(input);
+            case "zlib" -> compressor.wrapInZlib(input);
+            case "gzip" -> compressor.wrapInGzip(input);
             default -> compressor.deflate(input);
         };
     }

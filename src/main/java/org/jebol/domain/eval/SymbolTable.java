@@ -25,21 +25,21 @@ public final class SymbolTable {
 
     public void useBootSymbols(String source) {
         for (String spelling : source.strip().split(ALL_THAT_SEPARATES_THE_SYMBOLS)) {
-            canonOf(spelling);
+            findTheCanonOf(spelling);
         }
     }
 
-    public void startCountingWhatTheSessionReads() {
+    public void startCountingWhatSessionReads() {
         countingWhatTheSessionReads = true;
     }
 
-    public int canonOf(String spelling) {
+    public int findTheCanonOf(String spelling) {
         Integer known = indexBySpelling.get(spelling);
         if (known != null) {
             return canonByIndex.get(known);
         }
         int index = canonByIndex.size();
-        int canon = canonByFoldedSpelling.computeIfAbsent(folded(spelling), unseen -> index);
+        int canon = canonByFoldedSpelling.computeIfAbsent(fold(spelling), unseen -> index);
         canonByIndex.add(canon);
         indexBySpelling.put(spelling, index);
         return canon;
@@ -53,19 +53,19 @@ public final class SymbolTable {
 
     private void internEveryWordIn(Value read) {
         switch (read) {
-            case AnyWordValue word -> canonOf(word.spelling());
+            case AnyWordValue word -> findTheCanonOf(word.spelling());
             case AnyBlockValue block -> block.remaining().forEach(this::internEveryWordIn);
-            case MapValue map -> map.items().forEach(this::internEveryWordIn);
-            default -> nothingInItIsAWord();
+            case MapValue map -> map.listTheItems().forEach(this::internEveryWordIn);
+            default -> addNoWord();
         }
     }
 
-    private void nothingInItIsAWord() {
+    private void addNoWord() {
     }
 
-    private String folded(String spelling) {
+    private String fold(String spelling) {
         StringBuilder folded = new StringBuilder(spelling.length());
-        spelling.codePoints().map(UnicodeCases.TABLES::lower).forEach(folded::appendCodePoint);
+        spelling.codePoints().map(UnicodeCases.TABLES::toLower).forEach(folded::appendCodePoint);
         return folded.toString();
     }
 }

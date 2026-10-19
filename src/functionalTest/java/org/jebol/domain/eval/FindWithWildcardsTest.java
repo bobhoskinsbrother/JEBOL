@@ -16,20 +16,20 @@ class FindWithWildcardsTest {
 
     @Test
     @DisplayName("a star matches a run and the search finds where it starts")
-    void aStarFindsItsPosition() {
+    void findsTheStarsPosition() {
         assertThat(answerTo("find/any \"abcd\" \"c*\"")).isEqualTo("\"cd\"");
     }
 
     @Test
     @DisplayName("a trailing star takes the rest of the series")
-    void aTrailingStarTakesEverythingLeft() {
+    void takesEverythingLeftForATrailingStar() {
         assertThat(answerTo("find/any/tail \"abcd\" \"c*\"")).isEqualTo("\"\"");
         assertThat(answerTo("find/any/tail \"abcd\" \"a*\"")).isEqualTo("\"\"");
     }
 
     @Test
     @DisplayName("a star with something after it takes as little as it can")
-    void anInnerStarTakesTheLeast() {
+    void takesTheLeastForAnInnerStar() {
         assertThat(answerTo("find/any/tail \"abcabc\" \"*bc\"")).isEqualTo("\"abc\"");
         assertThat(answerTo("find/any/tail \"abcabc\" \"a*c\"")).isEqualTo("\"abc\"");
         assertThat(answerTo("find/any/tail \"abcdabcd\" \"b*d\"")).isEqualTo("\"abcd\"");
@@ -37,25 +37,25 @@ class FindWithWildcardsTest {
 
     @Test
     @DisplayName("a question mark matches exactly one character")
-    void aQuestionMarkMatchesOne() {
+    void matchesOneForAQuestionMark() {
         assertThat(answerTo("find/any \"abcd\" \"a?c\"")).isEqualTo("\"abcd\"");
     }
 
     @Test
     @DisplayName("a star with something after it still matches")
-    void aStarInTheMiddle() {
+    void matchesAStarInTheMiddle() {
         assertThat(answerTo("find/any \"abcd\" \"a*d\"")).isEqualTo("\"abcd\"");
     }
 
     @Test
     @DisplayName("a star on its own matches from the head")
-    void aLoneStarMatchesEverything() {
+    void matchesEverythingForALoneStar() {
         assertThat(answerTo("find/any \"abcd\" \"*\"")).isEqualTo("\"abcd\"");
     }
 
     @Test
     @DisplayName("a pattern with no wildcard behaves as an ordinary search")
-    void noWildcardIsOrdinary() {
+    void findsOrdinarilyWithoutAWildcard() {
         assertThat(answerTo("find/any \"abcd\" \"bc\"")).isEqualTo("\"bcd\"");
         assertThat(answerTo("find/tail \"abcd\" \"bc\"")).isEqualTo("\"d\"");
     }
@@ -80,14 +80,14 @@ class FindWithWildcardsTest {
 
     @Test
     @DisplayName("/reverse without wildcards is unaffected")
-    void plainReverseIsUnaffected() {
+    void leavesPlainReverseUnaffected() {
         assertThat(answerTo("find/reverse tail \"abcdabcd\" \"bc\"")).isEqualTo("\"bcd\"");
         assertThat(answerTo("mold find/reverse tail \"abcd\" \"z\"")).isEqualTo("\"_\"");
     }
 
     @Test
     @DisplayName("/same asks a run to be the same values, not equal ones")
-    void sameComparesARunStrictly() {
+    void comparesARunStrictlyForSame() {
         String blk = "blk: [1.0 3 1 3 1.0 2.0 1 2] ";
         assertThat(answerTo(blk + "index? find blk [1 2]"))
                 .as("loosely, the decimals at five match")
@@ -99,14 +99,14 @@ class FindWithWildcardsTest {
 
     @Test
     @DisplayName("/same on a single value was already strict")
-    void sameOnOneValueIsUnchanged() {
+    void leavesSameOnOneValueUnchanged() {
         assertThat(answerTo("index? find/same [1 1.0] 1.0")).isEqualTo("2");
         assertThat(answerTo("index? find/same [1.0 1] 1")).isEqualTo("2");
     }
 
     @Test
     @DisplayName("a pattern that matches nothing answers none")
-    void aMissAnswersNone() {
+    void answersNoneForAMiss() {
         assertThat(answerTo("mold find/any \"abcd\" \"z*\"")).isEqualTo("\"_\"");
     }
 }

@@ -41,29 +41,29 @@ public final class ChaChaWithPoly1305 {
      * is the same either way, because counting is its own inverse; only what
      * gets authenticated differs, and it is always the cipher text.
      */
-    public static Sealed through(byte[] key, byte[] nonce, byte[] header,
-            byte[] octets, boolean deciphering) {
+    public static Sealed seal(byte[] key, byte[] nonce, byte[] header,
+                              byte[] octets, boolean deciphering) {
 
         try {
-            byte[] authenticatorKey = keystreamFrom(
+            byte[] authenticatorKey = generateTheKeystreamFrom(
                     key, nonce, THE_AUTHENTICATORS_BLOCK, Poly1305.KEY);
-            byte[] masked = maskedWith(keystreamFrom(
+            byte[] masked = maskWith(generateTheKeystreamFrom(
                     key, nonce, WHERE_THE_MESSAGE_STARTS, octets.length), octets);
             byte[] overTheCipherText = deciphering ? octets : masked;
-            return new Sealed(masked, Poly1305.tagOf(authenticatorKey,
-                    whatGetsAuthenticated(header, overTheCipherText)));
+            return new Sealed(masked, Poly1305.computeTheTagOf(authenticatorKey,
+                    collectWhatGetsAuthenticated(header, overTheCipherText)));
         } catch (GeneralSecurityException refused) {
             return new Sealed(new byte[0], new byte[0]);
         }
     }
 
-    private static byte[] whatGetsAuthenticated(
+    private static byte[] collectWhatGetsAuthenticated(
             byte[] header, byte[] cipherText) {
 
-        byte[] joined = new byte[paddedLength(header.length)
-                + paddedLength(cipherText.length) + CHUNK];
+        byte[] joined = new byte[padTheLength(header.length)
+                + padTheLength(cipherText.length) + CHUNK];
         System.arraycopy(header, 0, joined, 0, header.length);
-        int at = paddedLength(header.length);
+        int at = padTheLength(header.length);
         System.arraycopy(cipherText, 0, joined, at, cipherText.length);
         at = joined.length - CHUNK;
         putLittleEndian(joined, at, header.length);
@@ -72,7 +72,7 @@ public final class ChaChaWithPoly1305 {
         return joined;
     }
 
-    private static int paddedLength(int octets) {
+    private static int padTheLength(int octets) {
         return octets % CHUNK == 0 ? octets : octets + CHUNK - octets % CHUNK;
     }
 
@@ -90,7 +90,7 @@ public final class ChaChaWithPoly1305 {
      * sequence number, so every record under one key gets a nonce of its own
      * without either end sending one.
      */
-    public static byte[] nonceFrom(byte[] vector, byte[] header) {
+    public static byte[] makeTheNonceFrom(byte[] vector, byte[] header) {
         byte[] nonce = Arrays.copyOf(vector, NONCE);
         int howMany = Math.min(header.length, A_SEQUENCE_NUMBER);
         for (int at = 0; at < howMany; at++) {
@@ -99,7 +99,7 @@ public final class ChaChaWithPoly1305 {
         return nonce;
     }
 
-    private static byte[] keystreamFrom(
+    private static byte[] generateTheKeystreamFrom(
             byte[] key, byte[] nonce, int countingFrom, int howMany)
             throws GeneralSecurityException {
 
@@ -112,7 +112,7 @@ public final class ChaChaWithPoly1305 {
         return counting.doFinal(new byte[howMany]);
     }
 
-    private static byte[] maskedWith(byte[] keystream, byte[] octets) {
+    private static byte[] maskWith(byte[] keystream, byte[] octets) {
         byte[] masked = new byte[octets.length];
         for (int at = 0; at < octets.length; at++) {
             masked[at] = (byte) (octets[at] ^ keystream[at]);

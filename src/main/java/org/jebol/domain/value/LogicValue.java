@@ -12,7 +12,7 @@ public record LogicValue(boolean truth) implements Value {
         }
 
         @Override
-        protected Value built(Conversion asking, Value from, Maker maker) {
+        protected Value build(Conversion asking, Value from, Maker maker) {
             return LogicValue.of(from.isTruthy()
                     && !(asking.builds() && from.isAQuantityOfNothing()));
         }
@@ -21,7 +21,7 @@ public record LogicValue(boolean truth) implements Value {
     private static final long THE_SEED_FALSE_GIVES = 1L;
 
     @Override
-    public Value randomised(RandomDraw draw) {
+    public Value randomise(RandomDraw draw) {
         return LogicValue.of((draw.next() & 1) == 1);
     }
 
@@ -31,7 +31,7 @@ public record LogicValue(boolean truth) implements Value {
     }
 
     @Override
-    public Value arithmetic(Value right, ArithmeticOperation operation) {
+    public Value calculate(Value right, ArithmeticOperation operation) {
         throw Raised.of(EvaluationFailure.EXPECT_VAL,
                 WordValue.of("logic!"),
                 WordValue.of(right.datatype().literalSpelling()));
@@ -39,11 +39,11 @@ public record LogicValue(boolean truth) implements Value {
 
 
     @Override
-    public Value bitwise(Value right, BitwiseOperation operation) {
-        return LogicValue.of(operation.onLogics(truth, aTruthFrom(right)));
+    public Value combineBitwise(Value right, BitwiseOperation operation) {
+        return LogicValue.of(operation.onLogics(truth, readATruthFrom(right)));
     }
 
-    private boolean aTruthFrom(Value right) {
+    private boolean readATruthFrom(Value right) {
         if (right instanceof LogicValue(boolean theirs)) {
             return theirs;
         }
@@ -64,7 +64,7 @@ public record LogicValue(boolean truth) implements Value {
         return TRUE;
     }
 
-    public static LogicValue no() {
+    public static LogicValue answerNo() {
         return FALSE;
     }
 

@@ -14,27 +14,27 @@ class BasedBinaryTest {
         return interpreter.display(interpreter.run(source));
     }
 
-    private static String errorIdOf(String source) {
+    private static String readTheErrorIdOf(String source) {
         return answerTo("e: try [" + source + "] either error? e [e/id] ['no-error]");
     }
 
     @Test
     @DisplayName("base 2 reads bits")
-    void bitsAreRead() {
+    void readsBits() {
         assertThat(answerTo("#{01} = 2#{00000001}")).isEqualTo("#(true)");
         assertThat(answerTo("#{02} = 2#{00000010}")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("base 16 is what a plain binary already means")
-    void hexadecimalIsTheDefault() {
+    void readsHexadecimalByDefault() {
         assertThat(answerTo("#{FF} = 16#{FF}")).isEqualTo("#(true)");
         assertThat(answerTo("#{0001} = 16#{0001}")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("base 64 decodes")
-    void base64IsRead() {
+    void readsBase64() {
         assertThat(answerTo("#{414243} = 64#{QUJD}")).isEqualTo("#(true)");
         assertThat(answerTo("#{0001} = 64#{AAE=}")).isEqualTo("#(true)");
     }
@@ -59,47 +59,47 @@ class BasedBinaryTest {
 
     @Test
     @DisplayName("a body that does not fill its last byte is padded")
-    void shortBodiesArePadded() {
+    void padsShortBodies() {
         assertThat(answerTo("#{00} = 2#{000}")).isEqualTo("#(true)");
         assertThat(answerTo("#{00} = 16#{0}")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("an empty body is an empty binary")
-    void theDegenerateBodyIsEmpty() {
+    void readsAnEmptyBody() {
         assertThat(answerTo("empty? 2#{}")).isEqualTo("#(true)");
         assertThat(answerTo("empty? 16#{}")).isEqualTo("#(true)");
     }
 
     @Test
     @DisplayName("only three bases exist")
-    void anyOtherBaseIsRefused() {
-        assertThat(errorIdOf("load \"8#{00}\"")).isEqualTo("invalid");
-        assertThat(errorIdOf("load \"10#{00}\"")).isEqualTo("invalid");
+    void refusesAnyOtherBase() {
+        assertThat(readTheErrorIdOf("load \"8#{00}\"")).isEqualTo("invalid");
+        assertThat(readTheErrorIdOf("load \"10#{00}\"")).isEqualTo("invalid");
     }
 
     @Test
     @DisplayName("a base with leading zeros is refused")
-    void theBaseMustBeWrittenPlainly() {
-        assertThat(errorIdOf("load \"0016#{FF}\"")).isEqualTo("invalid");
+    void requiresAPlainlyWrittenBase() {
+        assertThat(readTheErrorIdOf("load \"0016#{FF}\"")).isEqualTo("invalid");
     }
 
     @Test
     @DisplayName("and a signed base is refused, because a base sits at the start of the token")
-    void aSignedBaseIsRefused() {
-        assertThat(errorIdOf("load \"+2#{}\"")).isEqualTo("invalid");
-        assertThat(errorIdOf("load \"-2#{01}\"")).isEqualTo("invalid");
+    void refusesASignedBase() {
+        assertThat(readTheErrorIdOf("load \"+2#{}\"")).isEqualTo("invalid");
+        assertThat(readTheErrorIdOf("load \"-2#{01}\"")).isEqualTo("invalid");
     }
 
     @Test
     @DisplayName("base 64 refuses a body it cannot decode")
     void badBase64IsRefused() {
-        assertThat(errorIdOf("load \"64#{A}\"")).isEqualTo("invalid");
+        assertThat(readTheErrorIdOf("load \"64#{A}\"")).isEqualTo("invalid");
     }
 
     @Test
     @DisplayName("a plain binary still reads as it did")
-    void theOrdinaryFormIsUnaffected() {
+    void leavesTheOrdinaryFormAlone() {
         assertThat(answerTo("#{0001} = load \"#{0001}\"")).isEqualTo("#(true)");
         assertThat(answerTo("#{0001} = load \"#{00 01}\"")).isEqualTo("#(true)");
     }

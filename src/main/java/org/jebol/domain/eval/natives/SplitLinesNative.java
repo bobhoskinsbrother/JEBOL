@@ -20,13 +20,13 @@ public class SplitLinesNative extends DefaultNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("value", Set.of(StringValue.TYPE)));
+        return List.of(Parameter.of("value", Set.of(StringValue.TYPE)));
     }
 
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            AnyBlockValue lines = BlockValue.block(linesOf((AnyStringValue) arguments.getFirst()));
+            AnyBlockValue lines = BlockValue.of(linesOf((AnyStringValue) arguments.getFirst()));
             lines.putEachItemOnALine();
             return lines;
         };
@@ -38,11 +38,11 @@ public class SplitLinesNative extends DefaultNative {
         int start = text.index() - 1;
         int at = start;
         while (at < stopsAtTheLengthFromHereCountedFromTheHead) {
-            int letter = codePointAfter(text, at);
+            int letter = readTheCodePointAfter(text, at);
             at++;
             if (endsALine(letter)) {
                 lines.add(lineBetween(text, start, at - 1));
-                at = pastALineFeedFollowing(text, letter, at);
+                at = skipALineFeedFollowing(text, letter, at);
                 start = at;
             }
         }
@@ -56,19 +56,19 @@ public class SplitLinesNative extends DefaultNative {
         return letter == LINE_FEED || letter == CARRIAGE_RETURN;
     }
 
-    private int pastALineFeedFollowing(AnyStringValue text, int ending, int at) {
-        boolean aLineFeedFollows = at < text.storageLength() && codePointAfter(text, at) == LINE_FEED;
+    private int skipALineFeedFollowing(AnyStringValue text, int ending, int at) {
+        boolean aLineFeedFollows = at < text.storageLength() && readTheCodePointAfter(text, at) == LINE_FEED;
         return ending == CARRIAGE_RETURN && aLineFeedFollows ? at + 1 : at;
     }
 
-    private int codePointAfter(AnyStringValue text, int charactersFromTheHead) {
+    private int readTheCodePointAfter(AnyStringValue text, int charactersFromTheHead) {
         return text.storage().at(charactersFromTheHead + 1);
     }
 
     private Value lineBetween(AnyStringValue text, int from, int to) {
         StringBuilder line = new StringBuilder();
         for (int at = from; at < to; at++) {
-            line.appendCodePoint(codePointAfter(text, at));
+            line.appendCodePoint(readTheCodePointAfter(text, at));
         }
         return StringValue.of(line.toString());
     }

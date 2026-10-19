@@ -30,8 +30,8 @@ public final class SeriesContents {
     }
 
     /** Every octet, with no bound on how many are taken. */
-    public static int[] octetsContributedBy(Value value) {
-        return octetsContributedBy(value, EVERY_ONE);
+    public static int[] collectTheOctetsContributedBy(Value value) {
+        return collectTheOctetsContributedBy(value, EVERY_ONE);
     }
 
     /** {@code /PART} asking for no particular number of them. */
@@ -53,7 +53,7 @@ public final class SeriesContents {
      * contributes three bytes. A character value is not a series and ignores
      * the count entirely.
      */
-    public static int[] octetsContributedBy(Value value, int howMany) {
+    public static int[] collectTheOctetsContributedBy(Value value, int howMany) {
         List<Integer> octets = new ArrayList<>();
         gatherOctets(value, howMany, octets);
         int[] gathered = new int[octets.size()];
@@ -70,7 +70,7 @@ public final class SeriesContents {
      * <p>A block runs its items together with spaces between, the way FORM
      * does everywhere, so {@code insert [1 2]} into text puts "1 2" in.
      */
-    public static int[] charactersContributedBy(Value value) {
+    public static int[] collectTheCharactersContributedBy(Value value) {
         return Molder.form(value).codePoints().toArray();
     }
 
@@ -85,7 +85,7 @@ public final class SeriesContents {
                 }
             }
             case AnyStringValue text ->
-                    addUtf8(theFirstCountedInCodePoints(howMany, text.text()), into);
+                    addUtf8(takeTheFirstCodePoints(howMany, text.text()), into);
             case CharacterValue letter ->
                     addUtf8(new String(Character.toChars(letter.codepoint())), into);
             case IntegerValue whole -> {
@@ -97,7 +97,7 @@ public final class SeriesContents {
             }
             case TupleValue tuple -> {
                 for (int at = 1; at <= tuple.segmentCount(); at++) {
-                    into.add(tuple.octetAt(at));
+                    into.add(tuple.readTheOctetAt(at));
                 }
             }
             case AnyBlockValue several -> {
@@ -123,7 +123,7 @@ public final class SeriesContents {
         }
     }
 
-    private static String theFirstCountedInCodePoints(
+    private static String takeTheFirstCodePoints(
             int howManyCharacters, String text) {
         if (howManyCharacters < 0) {
             return text;

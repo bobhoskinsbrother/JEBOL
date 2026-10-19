@@ -22,6 +22,6 @@ public class IntegerDivideNative extends ArithmeticNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                Arithmetic.wholeQuotient(arguments.get(0), arguments.get(1));
+                Arithmetic.divideWhole(arguments.get(0), arguments.get(1));
     }
 }

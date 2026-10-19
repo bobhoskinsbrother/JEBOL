@@ -24,7 +24,7 @@ public class ShowNative extends ScreenNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return List.of(Parameter.required("gob", Set.of(GobValue.TYPE, NoneValue.TYPE, BlockValue.TYPE)));
+        return List.of(Parameter.of("gob", Set.of(GobValue.TYPE, NoneValue.TYPE, BlockValue.TYPE)));
     }
 
     @Override
@@ -32,7 +32,7 @@ public class ShowNative extends ScreenNative {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
             if (arguments.getFirst() instanceof GobValue gob) {
-                throughTheScreen(() -> evaluator.screen().show(gob));
+                runThroughTheScreen(() -> evaluator.screen().show(gob));
             }
             return arguments.getFirst();
         };

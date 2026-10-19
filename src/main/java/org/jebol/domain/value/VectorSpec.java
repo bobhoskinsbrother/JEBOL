@@ -9,7 +9,7 @@ import java.util.function.UnaryOperator;
  *
  * <p>{@code Construct_Vector} reads the short form a vector molds as,
  * {@code #(int32! [1 2 3] 3)}, and {@code Make_Vector_Spec} reads the longer
- * one MAKE takes, which still accepts the spelling Rebol used before the kind
+ * one MAKE takes, which still accepts the spelling Rebol used before the type
  * names existed: {@code [unsigned integer! 32 4 [1 2]]}.
  *
  * <p>Both answer nothing rather than raising when the spec will not do,
@@ -26,7 +26,7 @@ public final class VectorSpec {
     }
 
     /**
-     * The construction form, which names a kind and then optionally data and a
+     * The construction form, which names a type and then optionally data and a
      * position.
      *
      * <p>{@code #(vector! uint8! [1 2 3])} is allowed as well, because MOLD/ALL
@@ -42,15 +42,15 @@ public final class VectorSpec {
         if (rest.isEmpty() || !(rest.getFirst() instanceof AnyWordValue word)) {
             return Optional.empty();
         }
-        Optional<VectorKind> kind = VectorKind.named(word.spelling());
+        Optional<VectorKind> kind = VectorKind.findTheKindNamed(word.spelling());
         if (kind.isEmpty()) {
             return Optional.empty();
         }
-        return assembled(kind.get(), rest.subList(1, rest.size()), UnaryOperator.identity());
+        return assemble(kind.get(), rest.subList(1, rest.size()), UnaryOperator.identity());
     }
 
     /**
-     * The MAKE form, which may name a kind or spell one out.
+     * The MAKE form, which may name a type or spell one out.
      *
      * <p>{@code resolveGetWord} is how {@code [uint8! :size :data :index]}
      * works: MAKE looks each get-word up where the spec block was written, and
@@ -60,21 +60,21 @@ public final class VectorSpec {
             UnaryOperator<Value> resolveGetWord) {
 
         if (parts.isEmpty()) {
-            return Optional.of(emptyOf(WHEN_NOTHING_SAYS_OTHERWISE));
+            return Optional.of(makeAnEmpty(WHEN_NOTHING_SAYS_OTHERWISE));
         }
         Value leading = parts.getFirst();
         if (leading instanceof IntegerValue || leading instanceof AnyDecimalValue) {
-            return filledLeavingZerosAndIgnoringTheExtra(
+            return fillLeavingZeros(
                     leading instanceof IntegerValue
                     ? THE_WIDEST_WHOLE_NUMBER
-                    : THE_WIDEST_DECIMAL, parts.size(), BlockValue.block(parts), 1);
+                    : THE_WIDEST_DECIMAL, parts.size(), BlockValue.of(parts), 1);
         }
         if (!(leading instanceof AnyWordValue word)) {
             return Optional.empty();
         }
-        Optional<VectorKind> byName = VectorKind.named(word.spelling());
+        Optional<VectorKind> byName = VectorKind.findTheKindNamed(word.spelling());
         if (byName.isPresent()) {
-            return assembled(byName.get(), parts.subList(1, parts.size()), resolveGetWord);
+            return assemble(byName.get(), parts.subList(1, parts.size()), resolveGetWord);
         }
         return readSpelledOutSpec(parts, resolveGetWord);
     }
@@ -116,24 +116,24 @@ public final class VectorSpec {
         if (kind.isEmpty()) {
             return Optional.empty();
         }
-        return assembled(kind.get(), parts.subList(at + 1, parts.size()), resolveGetWord);
+        return assemble(kind.get(), parts.subList(at + 1, parts.size()), resolveGetWord);
     }
 
-    private static Optional<VectorValue> assembled(VectorKind kind, List<Value> parts,
-            UnaryOperator<Value> resolveGetWord) {
+    private static Optional<VectorValue> assemble(VectorKind kind, List<Value> parts,
+                                                  UnaryOperator<Value> resolveGetWord) {
 
         int at = 0;
         int howMany = 0;
         Value data = null;
         int position = 1;
 
-        Value looking = lookedUp(parts, at, resolveGetWord);
+        Value looking = lookUp(parts, at, resolveGetWord);
         if (looking instanceof IntegerValue(long magnitude1)) {
             if (magnitude1 < 0) {
                 return Optional.empty();
             }
             howMany = (int) magnitude1;
-            looking = lookedUp(parts, ++at, resolveGetWord);
+            looking = lookUp(parts, ++at, resolveGetWord);
         }
         if (looking instanceof AnyBlockValue || looking instanceof BinaryValue) {
             int offered = countOffered(kind, looking);
@@ -141,23 +141,23 @@ public final class VectorSpec {
                 howMany = offered;
             }
             data = looking;
-            looking = lookedUp(parts, ++at, resolveGetWord);
+            looking = lookUp(parts, ++at, resolveGetWord);
         }
         if (looking instanceof IntegerValue(long magnitude)) {
             position = (int) Math.max(1, magnitude);
-            looking = lookedUp(parts, ++at, resolveGetWord);
+            looking = lookUp(parts, ++at, resolveGetWord);
         } else if (looking instanceof AnyDecimalValue where) {
             position = (int) Math.max(1, (long) where.quantity());
-            looking = lookedUp(parts, ++at, resolveGetWord);
+            looking = lookUp(parts, ++at, resolveGetWord);
         }
         if (looking != null) {
             return Optional.empty();
         }
-        return filledLeavingZerosAndIgnoringTheExtra(kind, howMany, data, position);
+        return fillLeavingZeros(kind, howMany, data, position);
     }
 
-    private static Value lookedUp(List<Value> parts, int at,
-            UnaryOperator<Value> resolveGetWord) {
+    private static Value lookUp(List<Value> parts, int at,
+                                UnaryOperator<Value> resolveGetWord) {
 
         if (at >= parts.size()) {
             return null;
@@ -175,7 +175,7 @@ public final class VectorSpec {
         return ((BinaryValue) data).lengthFromHere() / kind.bytes();
     }
 
-    private static Optional<VectorValue> filledLeavingZerosAndIgnoringTheExtra(
+    private static Optional<VectorValue> fillLeavingZeros(
             VectorKind kind, int howMany, Value data,
             int position) {
 
@@ -184,7 +184,7 @@ public final class VectorSpec {
             List<Value> numbers = block.remaining();
             for (int at = 0; at < Math.min(numbers.size(), howMany); at++) {
                 try {
-                    storage.set(at + 1, kind.storedForm(numbers.get(at)));
+                    storage.set(at + 1, kind.encodeForStorage(numbers.get(at)));
                 } catch (IllegalArgumentException notANumber) {
                     return Optional.empty();
                 }
@@ -202,7 +202,7 @@ public final class VectorSpec {
         return Optional.of(new VectorValue(storage, position));
     }
 
-    private static VectorValue emptyOf(VectorKind kind) {
+    private static VectorValue makeAnEmpty(VectorKind kind) {
         return new VectorValue(new VectorStorage(kind, 0), 1);
     }
 

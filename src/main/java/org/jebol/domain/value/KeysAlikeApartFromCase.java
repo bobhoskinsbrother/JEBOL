@@ -17,17 +17,17 @@ final class KeysAlikeApartFromCase {
         stored.forEach(this::add);
     }
 
-    Value firstStoredLike(Value wanted) {
-        List<Value> alike = storedByFolding.getOrDefault(folded(wanted), List.of());
+    Value findTheFirstStoredLike(Value wanted) {
+        List<Value> alike = storedByFolding.getOrDefault(fold(wanted), List.of());
         return alike.isEmpty() ? NoneValue.none() : alike.getFirst();
     }
 
     void add(Value stored) {
-        storedByFolding.merge(folded(stored), List.of(stored), this::joined);
+        storedByFolding.merge(fold(stored), List.of(stored), this::join);
     }
 
     void remove(Value stored) {
-        Object folding = folded(stored);
+        Object folding = fold(stored);
         List<Value> remaining = storedByFolding.getOrDefault(folding, List.of()).stream()
                 .filter(alike -> !alike.equals(stored))
                 .toList();
@@ -42,20 +42,20 @@ final class KeysAlikeApartFromCase {
         storedByFolding.clear();
     }
 
-    private List<Value> joined(List<Value> earlier, List<Value> later) {
+    private List<Value> join(List<Value> earlier, List<Value> later) {
         return Stream.concat(earlier.stream(), later.stream()).toList();
     }
 
-    private Object folded(Value key) {
+    private Object fold(Value key) {
         return switch (key) {
-            case AnyStringValue text -> new Folded(text.datatype(), foldedText(text.text()));
+            case AnyStringValue text -> new Folded(text.datatype(), foldTheText(text.text()));
             case AnyWordValue word -> new Folded(word.datatype(), word.canonical());
             case CharacterValue(int codepoint) -> new Folded(key.datatype(), Character.toLowerCase(codepoint));
             default -> key;
         };
     }
 
-    private String foldedText(String text) {
+    private String foldTheText(String text) {
         StringBuilder folded = new StringBuilder(text.length());
         text.codePoints().forEach(codepoint ->
                 folded.appendCodePoint(Character.toLowerCase(Character.toUpperCase(codepoint))));

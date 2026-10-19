@@ -18,7 +18,7 @@ class HashFromTheSourceTest {
     }
 
     @Nested
-    @DisplayName("Hash_Value hashes a value by its kind, as n-hash.c does")
+    @DisplayName("Hash_Value hashes a value by its type, as n-hash.c does")
     class EachKind {
 
         @ParameterizedTest(name = "hash {0} is {1}")
