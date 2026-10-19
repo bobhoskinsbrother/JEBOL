@@ -71,12 +71,12 @@ final class ClasspathFiles implements FilePort {
 
     @Override
     public void changeDirectory(String path) {
-        throw new Denied("cannot-open", "the build's filePort have no directories to move between", path);
+        throw new Denied("cannot-open", "the build's files have no directories to move between", path);
     }
 
     @Override
     public List<String> listFileNames(String path) {
-        throw new Denied("cannot-open", "the build's filePort cannot be listed", path);
+        throw new Denied("cannot-open", "the build's files cannot be listed", path);
     }
 
     @Override
@@ -110,7 +110,7 @@ final class ClasspathFiles implements FilePort {
     }
 
     private Denied refuseChange() {
-        return new Denied(Denied.READ_ONLY, "the build's filePort may only be read");
+        return new Denied(Denied.READ_ONLY, "the build's files may only be read");
     }
 
     private byte[] readResource(String path) {

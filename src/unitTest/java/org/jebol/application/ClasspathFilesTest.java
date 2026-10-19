@@ -71,7 +71,7 @@ class ClasspathFilesTest {
     }
 
     @Test
-    @DisplayName("every change is refused as read-only, because the build's filePort are not the script's to change")
+    @DisplayName("every change is refused as read-only, because the build's files are not the script's to change")
     void refusesEveryChange() {
         List<Runnable> changes = List.of(
                 () -> files.write(ERRORS, new byte[0]),
