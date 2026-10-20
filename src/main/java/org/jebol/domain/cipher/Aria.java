@@ -1,25 +1,17 @@
 package org.jebol.domain.cipher;
 
-/**
- * ARIA, RFC 5794, written out because no JVM provider carries it.
- *
- * <p>Here because REBOL's catalogue names it, and a name in a catalogue is a
- * promise: nothing else asks for it.
- */
 public final class Aria {
 
     private Aria() {
     }
 
-    /** How many bytes go in and come out, whatever the key. */
     public static final int BLOCK = 16;
 
     private static final int WORDS = 4;
 
-    /** A cipher ready to transform blocks under one key, in one direction. */
     public static OneBlock keyWith(byte[] key, boolean deciphering) {
         int rounds = 12 + 2 * ((key.length * Byte.SIZE - 128) >> 6);
-        int[][] forwards = scheduleTheKeysForEnciphering(key);
+        int[][] forwards = scheduleCipherKeys(key);
         int[][] roundKeys = deciphering
                 ? reverseForDeciphering(forwards, rounds)
                 : forwards;
@@ -180,21 +172,21 @@ public final class Aria {
     private static byte[] transform(byte[] block, int[][] roundKeys, int rounds) {
         int[] state = new int[WORDS];
         for (int at = 0; at < WORDS; at++) {
-            state[at] = readTheWordAt(block, at * 4);
+            state[at] = readWordAt(block, at * 4);
         }
         int round = 0;
         while (true) {
-            addTheRoundKey(state, roundKeys[round++]);
+            addRoundKey(state, roundKeys[round++]);
             substitute(state, ODD_ROUND_TABLES);
             diffuseWhichIsItsOwnInverse(state);
-            addTheRoundKey(state, roundKeys[round++]);
+            addRoundKey(state, roundKeys[round++]);
             substitute(state, EVEN_ROUND_TABLES);
             if (round >= rounds) {
                 break;
             }
             diffuseWhichIsItsOwnInverse(state);
         }
-        addTheRoundKey(state, roundKeys[round]);
+        addRoundKey(state, roundKeys[round]);
         byte[] out = new byte[BLOCK];
         for (int at = 0; at < WORDS; at++) {
             putWord(out, at * 4, state[at]);
@@ -202,48 +194,48 @@ public final class Aria {
         return out;
     }
 
-    private static void addTheRoundKey(int[] state, int[] roundKey) {
+    private static void addRoundKey(int[] state, int[] roundKey) {
         for (int at = 0; at < WORDS; at++) {
             state[at] ^= roundKey[at];
         }
     }
 
-    private static int[][] scheduleTheKeysForEnciphering(byte[] key) {
+    private static int[][] scheduleCipherKeys(byte[] key) {
         int width = (key.length * Byte.SIZE - 128) >> 6;
         int[][] derived = new int[4][WORDS];
         for (int at = 0; at < WORDS; at++) {
-            derived[0][at] = readTheWordAt(key, at * 4);
+            derived[0][at] = readWordAt(key, at * 4);
         }
         for (int at = 0; at * 4 + 16 < key.length; at++) {
-            derived[1][at] = readTheWordAt(key, 16 + at * 4);
+            derived[1][at] = readWordAt(key, 16 + at * 4);
         }
 
         int which = width;
-        runTheRoundFunction(derived[1], derived[0], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
+        runRoundFunction(derived[1], derived[0], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
                 derived[1].clone(), ODD_ROUND_TABLES);
         which = which < 2 ? which + 1 : 0;
-        runTheRoundFunction(derived[2], derived[1], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
+        runRoundFunction(derived[2], derived[1], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
                 derived[0], EVEN_ROUND_TABLES);
         which = which < 2 ? which + 1 : 0;
-        runTheRoundFunction(derived[3], derived[2], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
+        runRoundFunction(derived[3], derived[2], CONSTANTS_THE_KEY_SCHEDULE_FOLDS_THE_KEY_AGAINST[which],
                 derived[1], ODD_ROUND_TABLES);
 
         int[][] roundKeys = new int[HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS][WORDS];
         for (int at = 0; at < 4; at++) {
             int[] next = derived[(at + 1) & 3];
-            rotateInTheOtherByteOrder(roundKeys[at], derived[at], next, 128 - 19);
-            rotateInTheOtherByteOrder(roundKeys[at + 4], derived[at], next, 128 - 31);
-            rotateInTheOtherByteOrder(roundKeys[at + 8], derived[at], next, 61);
-            rotateInTheOtherByteOrder(roundKeys[at + 12], derived[at], next, 31);
+            rotateByteOrder(roundKeys[at], derived[at], next, 128 - 19);
+            rotateByteOrder(roundKeys[at + 4], derived[at], next, 128 - 31);
+            rotateByteOrder(roundKeys[at + 8], derived[at], next, 61);
+            rotateByteOrder(roundKeys[at + 12], derived[at], next, 31);
         }
-        rotateInTheOtherByteOrder(roundKeys[16], derived[0], derived[1], 19);
+        rotateByteOrder(roundKeys[16], derived[0], derived[1], 19);
         return roundKeys;
     }
 
     private static final int HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS = 17;
 
-    private static void runTheRoundFunction(int[] into, int[] from,
-                                            int[] constant, int[] addedAfter, int[][] tables) {
+    private static void runRoundFunction(int[] into, int[] from,
+                                         int[] constant, int[] addedAfter, int[][] tables) {
 
         int[] working = new int[WORDS];
         for (int at = 0; at < WORDS; at++) {
@@ -256,7 +248,7 @@ public final class Aria {
         }
     }
 
-    private static void rotateInTheOtherByteOrder(
+    private static void rotateByteOrder(
             int[] into, int[] left, int[] right, int places) {
         int within = places % 32;
         int back = within != 0 ? 32 - within : 0;
@@ -290,7 +282,7 @@ public final class Aria {
         return backwards;
     }
 
-    private static int readTheWordAt(byte[] octets, int at) {
+    private static int readWordAt(byte[] octets, int at) {
         return octets[at] & 0xFF | (octets[at + 1] & 0xFF) << 8
                 | (octets[at + 2] & 0xFF) << 16 | (octets[at + 3] & 0xFF) << 24;
     }

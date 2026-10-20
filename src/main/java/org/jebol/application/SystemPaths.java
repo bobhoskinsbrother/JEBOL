@@ -14,12 +14,9 @@ final class SystemPaths {
     }
 
     Value follow(String... names) {
-        Value here = systemContext.contains(names[0])
-                ? systemContext.findSlotFor(names[0]).value()
-                : UnsetValue.unset();
+        Value here = systemContext.contains(names[0]) ? systemContext.findSlotFor(names[0]).value(): UnsetValue.unset();
         for (int at = 1; at < names.length; at++) {
-            if (!(here instanceof ObjectValue(Context context))
-                    || !context.holds(names[at])) {
+            if (!(here instanceof ObjectValue(Context context)) || !context.holds(names[at])) {
                 return UnsetValue.unset();
             }
             here = context.ownSlotFor(names[at]).value();

@@ -1,6 +1,6 @@
 package org.jebol.domain.value;
 
-import org.jebol.domain.date.DateMaking;
+import org.jebol.domain.date.DateFactory;
 import org.jebol.domain.date.part.DatePart;
 
 import java.util.List;
@@ -40,7 +40,7 @@ public record DateValue(
     @Override
     public boolean isEqualTo(Value other, Sameness how) {
         return other instanceof DateValue theirs
-                && findTheMoment().compareTo(theirs.findTheMoment()) == 0;
+                && moment().compareTo(theirs.moment()) == 0;
     }
 
     private static final String[] MONTH_NAMES = {
@@ -90,6 +90,9 @@ public record DateValue(
 
     public static final Datatype TYPE = new DateDatatype();
 
+    public static final int EARLIEST_YEAR = 0;
+    public static final int LATEST_YEAR = 0x3FFF;
+
     private static final class DateDatatype extends ScalarDatatype {
 
         private static final long MICROSECONDS_A_SECOND = 1_000_000L;
@@ -101,8 +104,8 @@ public record DateValue(
         @Override
         public Value makeFrom(Value spec, Maker maker) {
             return switch (spec) {
-                case AnyBlockValue parts -> DateMaking.fromParts(parts.remaining());
-                case DateValue already -> DateMaking.fromParts(List.of(already));
+                case AnyBlockValue parts -> DateFactory.fromParts(parts.remaining());
+                case DateValue already -> DateFactory.fromParts(List.of(already));
                 default -> super.makeFrom(spec, maker);
             };
         }
@@ -121,10 +124,10 @@ public record DateValue(
             return switch (from) {
                 case DateValue already -> already;
                 case IntegerValue seconds ->
-                        DateMaking.atTheTimestamp(seconds.magnitude() * MICROSECONDS_A_SECOND);
-                case DecimalValue seconds -> DateMaking.atTheTimestamp(
+                        DateFactory.fromWholeSeconds(seconds.magnitude());
+                case DecimalValue seconds -> DateFactory.fromTimestamp(
                         (long) (seconds.quantity() * MICROSECONDS_A_SECOND));
-                case AnyBlockValue parts -> DateMaking.fromParts(parts.remaining());
+                case AnyBlockValue parts -> DateFactory.fromParts(parts.remaining());
                 case AnyStringValue written -> readADateFrom(written, maker);
                 default -> throw refuse(from);
             };
@@ -144,7 +147,7 @@ public record DateValue(
     }
 
     public double countTheSecondsSinceTheEpoch() {
-        Moment instant = findTheMoment();
+        Moment instant = moment();
         return (double) instant.dayNumber() * SECONDS_A_DAY
                 + (double) instant.nanosecondsIntoTheDay() / NANOSECONDS_A_SECOND;
     }
@@ -158,8 +161,8 @@ public record DateValue(
     }
 
     public TimeValue measureTheSpanTo(DateValue other) {
-        Moment here = findTheMoment();
-        Moment there = other.findTheMoment();
+        Moment here = moment();
+        Moment there = other.moment();
         return TimeValue.ofNanoseconds(
                 (here.dayNumber() - there.dayNumber()) * NANOSECONDS_A_DAY
                         + here.nanosecondsIntoTheDay() - there.nanosecondsIntoTheDay());
@@ -326,7 +329,7 @@ public record DateValue(
      * {@code Cmp_Date} compares the stored times as they are. JEBOL keeps the
      * time as it was written, so the zone comes off here instead.
      */
-    public Moment findTheMoment() {
+    public Moment moment() {
         long sinceMidnight = timeOfDay.map(TimeValue::nanoseconds).orElse(0L)
                 - zoneMinutes.orElse(0) * NANOSECONDS_A_MINUTE;
         return new Moment(

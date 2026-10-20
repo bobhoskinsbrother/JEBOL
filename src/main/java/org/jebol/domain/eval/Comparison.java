@@ -189,7 +189,7 @@ public final class Comparison {
             return first.equals(second) && first.segmentCount() == second.segmentCount();
         }
         if (left instanceof DateValue first && right instanceof DateValue second) {
-            return DateOrder.isWrittenTheSameWay(first, second);
+            return DateOrder.same(first, second);
         }
         if (left instanceof ObjectValue first && right instanceof ObjectValue second) {
             return haveStrictlyEqualFields(first, second);

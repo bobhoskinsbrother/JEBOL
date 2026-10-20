@@ -8,14 +8,10 @@ public final class DateOrder {
     }
 
     public static int compare(DateValue first, DateValue second) {
-        return first.findTheMoment().compareTo(second.findTheMoment());
+        return first.moment().compareTo(second.moment());
     }
 
-    public static boolean isTheSameMoment(DateValue first, DateValue second) {
-        return compare(first, second) == 0;
-    }
-
-    public static boolean isWrittenTheSameWay(DateValue first, DateValue second) {
+    public static boolean same(DateValue first, DateValue second) {
         return first.year() == second.year()
                 && first.month() == second.month()
                 && first.day() == second.day()

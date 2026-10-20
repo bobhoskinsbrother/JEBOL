@@ -1,6 +1,6 @@
 package org.jebol.adapter.host;
 
-import org.jebol.application.TextMeasures;
+import org.jebol.application.DefaultFont;
 import org.jebol.domain.render.*;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ImageValue;
@@ -27,16 +27,16 @@ public final class Java2DSurface implements Surface {
     private static final Font DEFAULT_FONT = loadDefaultFont();
     private static final float THE_MITRE_LIMIT_BOTH_TOOLKITS_START_AT = 10;
 
-    public static void paint(Graphics2D target, GobValue gob, TextMeasure measure) {
+    public static void paint(Graphics2D target, GobValue gob, TextMeasurement measure) {
         PaintList.of(gob).executeOn(new Java2DSurface(target), measure);
     }
 
-    public static void execute(Graphics2D onto, PaintList painting, TextMeasure measure) {
+    public static void execute(Graphics2D onto, PaintList painting, TextMeasurement measure) {
         painting.executeOn(new Java2DSurface(onto), measure);
     }
 
     public static void paintTheContentsOfLeavingItsTitleToTheTitleBar(
-            Graphics2D onto, GobValue window, ObjectValue drawDialect, TextMeasure measure) {
+            Graphics2D onto, GobValue window, ObjectValue drawDialect, TextMeasurement measure) {
         PaintList.ofAWindow(window, drawDialect).executeOn(new Java2DSurface(onto), measure);
     }
 
@@ -188,7 +188,7 @@ public final class Java2DSurface implements Surface {
     private static Font loadDefaultFont() {
         try {
             return Font.createFont(Font.TRUETYPE_FONT,
-                    new ByteArrayInputStream(TextMeasures.readTheCarriedFontBytes()));
+                    new ByteArrayInputStream(DefaultFont.readFontBytes()));
         } catch (FontFormatException | IOException unreadable) {
             throw new IllegalStateException(
                     "the font this build carries would not load", unreadable);

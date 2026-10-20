@@ -1,5 +1,6 @@
 package org.jebol.domain.value;
 
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -55,20 +56,42 @@ public final class DateArithmetic {
     }
 
     private DateValue moveByDays(long days) {
-        LocalDate shifted = LocalDate.ofEpochDay(moment.dayNumber() + days);
-        return new DateValue(shifted.getYear(), shifted.getMonthValue(),
-                shifted.getDayOfMonth(), moment.timeOfDay(), moment.zoneMinutes());
+        try {
+            LocalDate shifted = LocalDate.ofEpochDay(
+                    Math.addExact(moment.dayNumber(), days));
+            requireASupportedYear(shifted);
+            return new DateValue(shifted.getYear(), shifted.getMonthValue(),
+                    shifted.getDayOfMonth(), moment.timeOfDay(), moment.zoneMinutes());
+        } catch (ArithmeticException | DateTimeException outsideTheSupportedYears) {
+            throw typeLimit();
+        }
     }
 
     private DateValue moveByTheClock(long nanoseconds) {
-        long shifted = moment.timeOfDay().map(TimeValue::nanoseconds).orElse(0L)
-                + nanoseconds;
-        LocalDate day = LocalDate.ofEpochDay(moment.dayNumber()
-                + Math.floorDiv(shifted, TimeValue.NANOSECONDS_PER_DAY));
-        return new DateValue(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
-                Optional.of(TimeValue.ofNanoseconds(
-                        Math.floorMod(shifted, TimeValue.NANOSECONDS_PER_DAY))),
-                moment.zoneMinutes());
+        try {
+            long shifted = Math.addExact(
+                    moment.timeOfDay().map(TimeValue::nanoseconds).orElse(0L), nanoseconds);
+            LocalDate day = LocalDate.ofEpochDay(Math.addExact(moment.dayNumber(),
+                    Math.floorDiv(shifted, TimeValue.NANOSECONDS_PER_DAY)));
+            requireASupportedYear(day);
+            return new DateValue(day.getYear(), day.getMonthValue(), day.getDayOfMonth(),
+                    Optional.of(TimeValue.ofNanoseconds(
+                            Math.floorMod(shifted, TimeValue.NANOSECONDS_PER_DAY))),
+                    moment.zoneMinutes());
+        } catch (ArithmeticException | DateTimeException outsideTheSupportedYears) {
+            throw typeLimit();
+        }
+    }
+
+    private static void requireASupportedYear(LocalDate day) {
+        if (day.getYear() < DateValue.EARLIEST_YEAR
+                || day.getYear() > DateValue.LATEST_YEAR) {
+            throw typeLimit();
+        }
+    }
+
+    private static Raised typeLimit() {
+        return Raised.of(EvaluationFailure.TYPE_LIMIT, DateValue.TYPE);
     }
 
     private static double readTheQuantityOf(Value span) {

@@ -14,106 +14,88 @@ final class LibrarySource {
     private LibrarySource() {
     }
 
-    private static final Map<String, AnyBlockValue> READINGS = new ConcurrentHashMap<>();
-
-    private static final Map<String, Boolean> NAMES_HOLDING_SOMETHING_UNCOPYABLE =
-            new ConcurrentHashMap<>();
+    private static final Map<String, AnyBlockValue> READ_VALUES = new ConcurrentHashMap<>();
+    private static final Map<String, Boolean> CANNOT_BE_COPIED = new ConcurrentHashMap<>();
 
     static TranscodeResult read(String name, String source) {
-        if (NAMES_HOLDING_SOMETHING_UNCOPYABLE.containsKey(name)) {
+        if (CANNOT_BE_COPIED.containsKey(name)) {
             return Transcoder.transcode(source);
         }
-        AnyBlockValue held = READINGS.get(name);
-        if (held != null) {
-            return new TranscodeResult.Success((AnyBlockValue) makeAFreshCopy(held));
+        AnyBlockValue current = READ_VALUES.get(name);
+        if (current != null) {
+            return new TranscodeResult.Success((AnyBlockValue) newCopy(current));
         }
         TranscodeResult read = Transcoder.transcode(source);
         if (read.values().isEmpty()) {
             return read;
         }
         AnyBlockValue values = read.values().orElseThrow();
-        if (!canCopyEverySeries(values)) {
-            NAMES_HOLDING_SOMETHING_UNCOPYABLE.put(name, true);
+        if (cannotCopySeries(values)) {
+            CANNOT_BE_COPIED.put(name, true);
             return read;
         }
-        READINGS.put(name, values);
-        return new TranscodeResult.Success((AnyBlockValue) makeAFreshCopy(values));
+        READ_VALUES.put(name, values);
+        return new TranscodeResult.Success((AnyBlockValue) newCopy(values));
     }
 
-    private static Value makeAFreshCopy(Value value) {
+    private static Value newCopy(Value value) {
         return switch (value) {
-            case AnyBlockValue block -> copyTheBlock(block);
+            case AnyBlockValue block -> copyBlock(block);
             case AnyStringValue text -> text.wrap(text.text());
-            case BinaryValue octets -> new BinaryValue(
-                    new BinaryStorage(octets.octetsFromHere()), 1);
-            case BitsetValue set -> copyTheBitset(set);
-            case MapValue map -> copyTheMap(map);
-            default -> shareAScalar(value);
+            case BinaryValue octets -> new BinaryValue(new BinaryStorage(octets.octetsFromHere()), 1);
+            case BitsetValue set -> copyBitset(set);
+            case MapValue map -> copyMap(map);
+            default -> scalar(value);
         };
     }
 
-    private static Value copyTheBitset(BitsetValue set) {
+    private static Value copyBitset(BitsetValue set) {
         BitsetValue copy = BitsetValue.of(set.octets());
         copy = set.isComplemented() ? copy.complement() : copy;
         copy.protectFromChange(set.isProtected());
         return copy;
     }
 
-    private static Value copyTheMap(MapValue map) {
+    private static Value copyMap(MapValue map) {
         List<Value> flattened = map.flatten();
         List<Value> members = new ArrayList<>(flattened.size());
         for (Value member : flattened) {
-            members.add(makeAFreshCopy(member));
+            members.add(newCopy(member));
         }
         MapValue copy = MapValue.of(members);
         copy.protectFromChange(map.isProtected());
         return copy;
     }
 
-    private static Value shareAScalar(Value value) {
+    private static Value scalar(Value value) {
         return value;
     }
 
-    private static AnyBlockValue copyTheBlock(AnyBlockValue block) {
+    private static AnyBlockValue copyBlock(AnyBlockValue block) {
         List<Value> items = new ArrayList<>(block.lengthFromHere());
         for (Value item : block.remaining()) {
-            items.add(makeAFreshCopy(item));
+            items.add(newCopy(item));
         }
         BlockStorage storage = new BlockStorage(items);
         storage.takeLineBreaksFrom(block.storage(), block.index());
         return block.wrap(storage);
     }
 
-    private static boolean canCopyEverySeries(Value value) {
+    private static boolean cannotCopySeries(Value value) {
         return switch (value) {
-            case AnyBlockValue block -> canCopyEveryMember(block.remaining());
-            case MapValue map -> canCopyEveryMember(map.flatten());
-            case BitsetValue set -> true;
-            case AnyStringValue text -> true;
-            case BinaryValue octets -> true;
-            case IntegerValue whole -> true;
-            case AnyDecimalValue fraction -> true;
-            case MoneyValue money -> true;
-            case CharacterValue letter -> true;
-            case LogicValue truth -> true;
-            case NoneValue nothing -> true;
-            case UnsetValue unset -> true;
-            case DateValue date -> true;
-            case TimeValue time -> true;
-            case PairValue pair -> true;
-            case TupleValue tuple -> true;
-            case AnyWordValue word -> true;
-            case Datatype datatype -> true;
-            default -> false;
+            case AnyBlockValue block -> cannotCopyMembers(block.remaining());
+            case MapValue map -> cannotCopyMembers(map.flatten());
+            case BitsetValue _, AnyStringValue _, BinaryValue _, IntegerValue _, AnyDecimalValue _, MoneyValue _,
+                 CharacterValue _, LogicValue _, NoneValue _, UnsetValue _, DateValue _, TimeValue _, PairValue _,
+                 TupleValue _, AnyWordValue _, Datatype _ -> false;
+            default -> true;
         };
     }
 
-    private static boolean canCopyEveryMember(List<Value> members) {
+    private static boolean cannotCopyMembers(List<Value> members) {
         for (Value member : members) {
-            if (!canCopyEverySeries(member)) {
-                return false;
-            }
+            if (cannotCopySeries(member)) { return true; }
         }
-        return true;
+        return false;
     }
 }

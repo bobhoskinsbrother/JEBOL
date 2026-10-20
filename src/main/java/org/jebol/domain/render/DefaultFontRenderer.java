@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class CarriedFont {
+public final class DefaultFontRenderer {
 
     private static final int SFNT_VERSION_TRUETYPE = 0x00010000;
 
@@ -15,8 +15,8 @@ public final class CarriedFont {
     private final ReadingOfCharacters characters;
     private final String family;
 
-    private CarriedFont(int unitsPerEm, int ascender, int descender,
-            int[] advances, ReadingOfCharacters characters, String family) {
+    private DefaultFontRenderer(int unitsPerEm, int ascender, int descender,
+                                int[] advances, ReadingOfCharacters characters, String family) {
         this.unitsPerEm = unitsPerEm;
         this.ascender = ascender;
         this.descender = descender;
@@ -25,7 +25,7 @@ public final class CarriedFont {
         this.family = family;
     }
 
-    public static CarriedFont readFrom(byte[] font) {
+    public static DefaultFontRenderer readFrom(byte[] font) {
         Tables tables = Tables.readFrom(font);
         int unitsPerEm = tables.readUint16("head", 18);
         int ascender = tables.readInt16("hhea", 4);
@@ -33,7 +33,7 @@ public final class CarriedFont {
         int metrics = tables.readUint16("hhea", 34);
         int glyphs = tables.readUint16("maxp", 4);
         int[] advances = advancesOf(tables, metrics, glyphs);
-        return new CarriedFont(unitsPerEm, ascender, descender, advances,
+        return new DefaultFontRenderer(unitsPerEm, ascender, descender, advances,
                 ReadingOfCharacters.readFrom(tables), readTheFamilyOf(tables));
     }
 
@@ -41,7 +41,7 @@ public final class CarriedFont {
         return family;
     }
 
-    public TextMeasure measure() {
+    public TextMeasurement measure() {
         return this::measureTheExtentOf;
     }
 

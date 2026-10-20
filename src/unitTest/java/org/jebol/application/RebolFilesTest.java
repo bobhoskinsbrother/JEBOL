@@ -69,8 +69,8 @@ class RebolFilesTest {
     @Test
     @DisplayName("a carried REBOL file reads as a library file, and a missing one does not")
     void answersWhetherItReadsAsLibraryFile() {
-        assertThat(rebolFiles.prelude().readsAsLibraryFile()).isTrue();
-        assertThat(rebolFiles.mezzDir("no-such-file.reb").readsAsLibraryFile()).isFalse();
+        assertThat(rebolFiles.prelude().isLibraryFile()).isTrue();
+        assertThat(rebolFiles.mezzDir("no-such-file.reb").isLibraryFile()).isFalse();
     }
 
     @Test

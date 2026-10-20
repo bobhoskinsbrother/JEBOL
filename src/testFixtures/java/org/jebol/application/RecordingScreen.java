@@ -6,7 +6,7 @@ import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.render.TextExtent;
-import org.jebol.domain.render.TextMeasure;
+import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 
@@ -87,9 +87,9 @@ final class RecordingScreen extends GobScreen {
     }
 
     @Override
-    public TextMeasure textMeasure() {
+    public TextMeasurement textMeasurement() {
         if (!present) {
-            return ScreenPort.none().textMeasure();
+            return ScreenPort.none().textMeasurement();
         }
         return run -> new TextExtent(
                 run.text().codePointCount(0, run.text().length()) * run.size() / 2,

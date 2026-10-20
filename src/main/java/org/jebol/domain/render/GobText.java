@@ -19,7 +19,7 @@ public final class GobText {
     private final RichText.Line line;
     private final TextLines lines;
 
-    public GobText(GobValue gob, TextMeasure measure) {
+    public GobText(GobValue gob, TextMeasurement measure) {
         this.gob = gob;
         this.line = readTheLineOf(gob);
         this.lines = new TextLines(line.runs(), measure, line.layout().measureTheRoomForEachLine(findTheGobsOwnBox()));

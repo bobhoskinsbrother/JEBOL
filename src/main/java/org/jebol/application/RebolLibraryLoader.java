@@ -172,7 +172,7 @@ final class RebolLibraryLoader {
                 continue;
             }
             RebolFile borrowed = rebolFiles.mezzDir(name);
-            if (borrowed.readsAsLibraryFile() && !borrowed.readLibraryFile().header().declaresModule()) {
+            if (borrowed.isLibraryFile() && !borrowed.readLibraryFile().header().declaresModule()) {
                 declareSetWordsOf(borrowed.readLibraryFile().body(), systemContext,
                         AssignmentMayLand.HERE_OR_IN_WHATEVER_IS_ABOVE);
             }
@@ -185,7 +185,7 @@ final class RebolLibraryLoader {
                 continue;
             }
             RebolFile borrowed = rebolFiles.mezzDir(readFileNameIn(entry));
-            if (borrowed.readsAsLibraryFile()) {
+            if (borrowed.isLibraryFile()) {
                 declareSetWordsOf(borrowed.readLibraryFile().body(), systemInternals,
                         AssignmentMayLand.HERE_ONLY_SHADOWING_WHATEVER_IS_ABOVE);
             }
@@ -275,7 +275,7 @@ final class RebolLibraryLoader {
             return;
         }
         RebolFile banner = rebolFiles.mezzBanner();
-        if (!banner.readsAsLibraryFile()) {
+        if (!banner.isLibraryFile()) {
             return;
         }
         List<Value> runFirst = new ArrayList<>(banner.readLibraryFile().body().remaining());

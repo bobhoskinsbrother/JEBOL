@@ -1,6 +1,6 @@
 package org.jebol.domain.host;
 
-import org.jebol.domain.render.TextMeasure;
+import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 import org.jebol.domain.value.Value;
@@ -111,7 +111,7 @@ public interface ScreenPort {
     default void acceptPendingReports() {
     }
 
-    TextMeasure textMeasure();
+    TextMeasurement textMeasurement();
 
     /**
      * Makes a gob the root: remembered, cut loose, and sized to the screen.
@@ -223,7 +223,7 @@ public interface ScreenPort {
             }
 
             @Override
-            public TextMeasure textMeasure() {
+            public TextMeasurement textMeasurement() {
                 return run -> {
                     throw new Denied("no-service",
                             "this interpreter was given no screen to measure text with");

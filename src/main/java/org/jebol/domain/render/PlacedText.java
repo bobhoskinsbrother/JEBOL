@@ -38,7 +38,7 @@ public record PlacedText(
 
     private static final double THE_WIDTH_OF_A_CARET = 1;
 
-    public static PlacedText of(PaintInstruction.Writing written, TextMeasure measure) {
+    public static PlacedText of(PaintInstruction.Writing written, TextMeasurement measure) {
         Placement where = written.where();
         TextLayout layout = written.layout();
         TextLines lines = new TextLines(written.runs(), measure, layout.measureTheRoomForEachLine(where));

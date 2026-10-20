@@ -38,15 +38,15 @@ public final class TextLines {
     }
 
     private final List<TextRun> runs;
-    private final TextMeasure measure;
+    private final TextMeasurement measure;
     private final double roomForEachLine;
     private final List<Line> lines;
 
-    public TextLines(List<TextRun> runs, TextMeasure measure) {
+    public TextLines(List<TextRun> runs, TextMeasurement measure) {
         this(runs, measure, Double.POSITIVE_INFINITY);
     }
 
-    public TextLines(List<TextRun> runs, TextMeasure measure, double roomForEachLine) {
+    public TextLines(List<TextRun> runs, TextMeasurement measure, double roomForEachLine) {
         this.runs = List.copyOf(runs);
         this.measure = measure;
         this.roomForEachLine = roomForEachLine;

@@ -4,7 +4,7 @@ import org.jebol.application.Bounds;
 import org.jebol.application.Conclusion;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
-import org.jebol.application.TextMeasures;
+import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.ScreenMetric;
@@ -130,7 +130,7 @@ class BrowserScreenFromTheSourceTest {
 
             assertThat(viewer.readTheLastPainted())
                     .isEqualTo(PaintList.ofAWindow(window, null)
-                            .calls(TextMeasures.ofTheCarriedFont()));
+                            .calls(DefaultFont.measurement()));
         }
 
         @Test
@@ -151,7 +151,7 @@ class BrowserScreenFromTheSourceTest {
                     .isEqualTo(1);
             assertThat(viewer.readTheLastPainted())
                     .isEqualTo(PaintList.ofScreen(root, 800, 600, null)
-                            .calls(TextMeasures.ofTheCarriedFont()));
+                            .calls(DefaultFont.measurement()));
         }
 
         @Test
@@ -172,7 +172,7 @@ class BrowserScreenFromTheSourceTest {
             assertThat(viewer.readTheLastPainted())
                     .as("the picture the page last gets is the tree as it now stands")
                     .isEqualTo(PaintList.ofScreen(root, 800, 600, null)
-                            .calls(TextMeasures.ofTheCarriedFont()));
+                            .calls(DefaultFont.measurement()));
         }
 
         @Test

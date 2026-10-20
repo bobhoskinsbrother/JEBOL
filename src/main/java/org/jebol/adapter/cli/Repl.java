@@ -244,7 +244,7 @@ public final class Repl {
             if (escapesEveryCatch(outcome) || outcome.succeeded()) {
                 return REPORT_PRODUCED_VALUE;
             }
-            errors.print(interpreter.writeWhatConsolePrints(outcome));
+            errors.print(interpreter.responseBasedOnOutcome(outcome));
             return REPORT_ERROR;
         }
 
@@ -365,7 +365,7 @@ public final class Repl {
             if (outcome.conclusion() == Conclusion.QUIT_EARLY) {
                 return;
             }
-            output.print(interpreter.writeWhatConsolePrints(outcome));
+            output.print(interpreter.responseBasedOnOutcome(outcome));
         }
     }
 

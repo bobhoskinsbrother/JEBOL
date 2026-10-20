@@ -98,14 +98,21 @@ public final class SeriesMemory {
     }
 
     /**
-     * Collects, and waits until it has happened.
+     * Collects until the count stops falling, and answers how much it took.
      *
      * <p>What RECYCLE needs and what {@code System.gc()} alone does not give:
      * the call is a request the JVM may take its time over, so a STATS read
      * straight afterwards can see the memory still held and report that
-     * nothing was freed. Waiting until a reference known to be unreachable is
-     * enqueued is the proof that a cycle finished, and the bytes are given
-     * back before this returns.
+     * nothing was freed.
+     *
+     * <p>Waiting for one cycle is not enough either. One cycle can collect the
+     * young buffers and leave the old ones where they are, so the count is
+     * still falling when the next allocation pushes the collector to finish
+     * the job. That showed up as a five million character string which made
+     * the count go down rather than up, because the collection it triggered
+     * freed more of the garbage left behind than the string added. So the
+     * count is read, a cycle is proven finished, and the reading is taken
+     * again until two in a row agree.
      *
      * <p>Bounded, because a JVM run with explicit collection disabled would
      * otherwise wait for something that is never going to happen.
@@ -113,7 +120,10 @@ public final class SeriesMemory {
     public static long collectNow() {
         long before = countTheBytesHeld();
         long giveUpAt = System.nanoTime() + SECONDS_TO_WAIT_FOR_A_COLLECTION * 1_000_000_000L;
-        while (System.nanoTime() < giveUpAt && !hasFinishedACollection()) {
+        long heldBeforeTheCycle = Long.MAX_VALUE;
+        while (System.nanoTime() < giveUpAt && heldBeforeTheCycle != HELD.get()) {
+            heldBeforeTheCycle = HELD.get();
+            hasFinishedACollection();
             giveBackWhatTheCollectorTook();
         }
         giveBackWhatTheCollectorTook();

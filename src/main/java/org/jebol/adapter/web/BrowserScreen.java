@@ -1,11 +1,11 @@
 package org.jebol.adapter.web;
 
-import org.jebol.application.TextMeasures;
+import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.host.WindowsOnOneSurface;
-import org.jebol.domain.render.TextMeasure;
+import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ScreenMetric;
@@ -101,8 +101,8 @@ public final class BrowserScreen extends GobScreen {
 
 
     @Override
-    public TextMeasure textMeasure() {
-        return hasDisplay() ? TextMeasures.ofTheCarriedFont() : ScreenPort.none().textMeasure();
+    public TextMeasurement textMeasurement() {
+        return hasDisplay() ? DefaultFont.measurement() : ScreenPort.none().textMeasurement();
     }
 
     public void report(ScreenEventType kind, ScreenEventDetail detail) {
@@ -153,7 +153,7 @@ public final class BrowserScreen extends GobScreen {
     private List<DrawingCommand> paintPage() {
         return PaintList.ofScreen(root,
                 (int) Math.round(viewport.x()), (int) Math.round(viewport.y()),
-                drawDialect).calls(textMeasure());
+                drawDialect).calls(textMeasurement());
     }
 
     private void acceptMeasurements() {

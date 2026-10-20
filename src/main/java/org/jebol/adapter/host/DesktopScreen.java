@@ -1,11 +1,11 @@
 package org.jebol.adapter.host;
 
+import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
-import org.jebol.application.TextMeasures;
 import org.jebol.domain.host.GobScreen;
 import org.jebol.domain.host.ScreenPort;
-import org.jebol.domain.render.TextMeasure;
+import org.jebol.domain.render.TextMeasurement;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
@@ -149,11 +149,11 @@ public final class DesktopScreen extends GobScreen {
     }
 
     @Override
-    public TextMeasure textMeasure() {
+    public TextMeasurement textMeasurement() {
         if (!present) {
-            return ScreenPort.none().textMeasure();
+            return ScreenPort.none().textMeasurement();
         }
-        return TextMeasures.ofTheCarriedFont();
+        return DefaultFont.measurement();
     }
 
     @Override
@@ -227,7 +227,7 @@ public final class DesktopScreen extends GobScreen {
             protected void paintComponent(Graphics onto) {
                 super.paintComponent(onto);
                 Java2DSurface.paintTheContentsOfLeavingItsTitleToTheTitleBar(
-                        (Graphics2D) onto, gob, drawDialect, onThisScreen.textMeasure());
+                        (Graphics2D) onto, gob, drawDialect, onThisScreen.textMeasurement());
             }
         };
         surface.setPreferredSize(new Dimension(

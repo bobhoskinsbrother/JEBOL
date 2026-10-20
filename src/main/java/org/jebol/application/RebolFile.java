@@ -28,7 +28,7 @@ record RebolFile(String path, FilePort filePort) {
         return LibrarySource.read(path, textSource());
     }
 
-    boolean readsAsLibraryFile() {
+    boolean isLibraryFile() {
         return exists() && readTranscoded().values().isPresent();
     }
 

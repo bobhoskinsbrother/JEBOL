@@ -57,9 +57,9 @@ final class SingleCommand implements Command {
     public Value evaluate(AnyBlockValue block) {
         try {
             return evaluator.evaluateOrRaise(block, context);
-        } catch (RuntimeException fromTheScript) {
-            escaped = Optional.of(fromTheScript);
-            throw fromTheScript;
+        } catch (RuntimeException scriptException) {
+            escaped = Optional.of(scriptException);
+            throw scriptException;
         }
     }
 
@@ -69,7 +69,7 @@ final class SingleCommand implements Command {
 
     @Override
     public HandleValue makeHandle(String type, Object held) {
-        if (findTheTypeNamed(type).isEmpty()) {
+        if (findDeclaredType(type).isEmpty()) {
             throw new IllegalArgumentException(extension.name() + " declares no handle type called " + type);
         }
         return HandleValue.wrapAContext(type, handlesMade.incrementAndGet(), JavaObjectValue.of(held));
@@ -78,7 +78,7 @@ final class SingleCommand implements Command {
     @Override
     public <T> T unwrap(Value handle, Class<T> type) {
         if (handle instanceof HandleValue ours
-                && findTheTypeNamed(ours.typeName()).isPresent()
+                && findDeclaredType(ours.typeName()).isPresent()
                 && ours.payload() instanceof JavaObjectValue carried
                 && carried.held().filter(type::isInstance).isPresent()) {
             return type.cast(carried.held().get());
@@ -86,7 +86,7 @@ final class SingleCommand implements Command {
         throw Raised.of(EvaluationFailure.INVALID_HANDLE, handle);
     }
 
-    private Optional<HandleType> findTheTypeNamed(String kind) {
+    private Optional<HandleType> findDeclaredType(String kind) {
         return extension.handleTypes().stream().filter(declared -> declared.name().equals(kind)).findFirst();
     }
 

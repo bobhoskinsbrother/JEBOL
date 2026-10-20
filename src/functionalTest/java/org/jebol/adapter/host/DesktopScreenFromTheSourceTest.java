@@ -2,7 +2,7 @@ package org.jebol.adapter.host;
 
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
-import org.jebol.application.TextMeasures;
+import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.host.HostService;
@@ -32,7 +32,7 @@ class DesktopScreenFromTheSourceTest {
                 new BufferedImage(wide, high, BufferedImage.TYPE_INT_ARGB);
         Graphics2D onto = surface.createGraphics();
         try {
-            Java2DSurface.paint(onto, gob, TextMeasures.ofTheCarriedFont());
+            Java2DSurface.paint(onto, gob, DefaultFont.measurement());
         } finally {
             onto.dispose();
         }

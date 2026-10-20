@@ -491,7 +491,7 @@ public final class CryptPort {
             return Aria.keyWith(key, undoing);
         }
         try {
-            return OneBlock.useTheJvmAes(key);
+            return OneBlock.useJvmAes(key);
         } catch (GeneralSecurityException | UnsupportedOperationException refused) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC,
                     WordValue.of(working.algorithm));
@@ -546,7 +546,7 @@ public final class CryptPort {
             Working working, byte[] octets) {
         OneBlock cipher = makeTheBlockCipherBehind(working, working.decrypting);
         if (working.works().mode() == Mode.CODEBOOK) {
-            return BlockModes.runTheCodebook(cipher, octets);
+            return BlockModes.runCodebook(cipher, octets);
         }
         return working.decrypting
                 ? BlockModes.chainBackwards(cipher, working.chaining, octets)
@@ -586,7 +586,7 @@ public final class CryptPort {
     private void gatherForChaCha(Working working, byte[] octets) {
         if (working.theNextWriteIsAHeader) {
             working.authenticated = octets;
-            working.chaining = ChaChaWithPoly1305.makeTheNonceFrom(
+            working.chaining = ChaChaWithPoly1305.makeNonce(
                     fitTo(working.vector, ChaChaWithPoly1305.NONCE), octets);
             working.theNextWriteIsAHeader = false;
             return;

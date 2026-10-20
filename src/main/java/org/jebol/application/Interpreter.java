@@ -148,7 +148,7 @@ public final class Interpreter {
         if (!bounds.grantedServices().contains(HostService.PROCESSES)) {
             return;
         }
-        pointBootAt(machine.launcherFor("/", ""));
+        registerLauncherAsBoot(machine.launcherFor("/", ""));
     }
 
     private void publishUserContext() {
@@ -312,9 +312,7 @@ public final class Interpreter {
     }
 
     private Conclusion concludeFrom(Stopped stopped) {
-        return stopped.reason().startsWith("the host")
-                ? Conclusion.CANCELLED
-                : Conclusion.TIMED_OUT;
+        return stopped.reason().startsWith("the host") ? Conclusion.CANCELLED : Conclusion.TIMED_OUT;
     }
 
     private ErrorValue reportStoppedRun(Stopped stopped) {
@@ -397,14 +395,14 @@ public final class Interpreter {
     public void useScreen(ScreenPort port) {
         evaluator.useScreen(port);
         handOverRootGobTo(port);
-        handOverDrawDialectTo(port);
+        dispatchDrawDialectTo(port);
     }
 
     public void usePause(PausePort port) {
         evaluator.usePause(port);
     }
 
-    private void handOverDrawDialectTo(ScreenPort port) {
+    private void dispatchDrawDialectTo(ScreenPort port) {
         Value declared = systemPaths.follow("system", "dialects", "draw");
         if (!(declared instanceof UnsetValue)) {
             port.useDrawDialect(declared);
@@ -427,16 +425,16 @@ public final class Interpreter {
 
     public void useFileSystem(FilePort port) {
         evaluator.useFiles(port);
-        noteRootChildInterpretersMustShare(port);
+        setSharedRootForChildInterpreters(port);
         followApplicationDataDirectory();
     }
 
     public void followApplicationDataDirectory() {
         library.placeModulesDirectory();
-        confineAnyInterpreterThisOneStarts();
+        constrainInterpreter();
     }
 
-    private void noteRootChildInterpretersMustShare(FilePort port) {
+    private void setSharedRootForChildInterpreters(FilePort port) {
         if (!bounds.grantedServices().contains(HostService.PROCESSES)) {
             return;
         }
@@ -447,7 +445,7 @@ public final class Interpreter {
         }
     }
 
-    private void confineAnyInterpreterThisOneStarts() {
+    private void constrainInterpreter() {
         if (sharedRoot.isEmpty()) {
             return;
         }
@@ -455,10 +453,10 @@ public final class Interpreter {
         if (launcher instanceof FileValue file) {
             evaluator.files().acceptFileFromOutsideRoot(file.text());
         }
-        pointBootAt(launcher);
+        registerLauncherAsBoot(launcher);
     }
 
-    private void pointBootAt(Value launcher) {
+    private void registerLauncherAsBoot(Value launcher) {
         if (systemPaths.follow("system", "options") instanceof ObjectValue(Context options)) {
             options.register("boot", launcher);
         }
@@ -470,27 +468,27 @@ public final class Interpreter {
                 : "";
     }
 
-    public String writeWhatConsolePrints(ScriptOutcome outcome) {
+    public String responseBasedOnOutcome(ScriptOutcome outcome) {
         Value result = outcome.value();
         evaluator.setSystemState("last-result", result);
         if (outcome.conclusion() == Conclusion.HALTED || result instanceof UnsetValue) {
             return "";
         }
         if (result instanceof ErrorValue error) {
-            return cutShortAt(CONSOLE_PRINT_MAX_ERROR_LENGTH, error.formAsRebolDoes()) + "\n";
+            return truncateAt(CONSOLE_PRINT_MAX_ERROR_LENGTH, error.formAsRebolDoes()) + "\n";
         }
-        if (!showsResultsOfType(result.datatype())) {
+        if (!showsResults(result.datatype())) {
             return "";
         }
-        return RESULT_MARKER + cutShortAt(CONSOLE_PRINT_MAX_LENGTH, Molder.mold(result)) + "\n\n";
+        return RESULT_MARKER + truncateAt(CONSOLE_PRINT_MAX_LENGTH, Molder.mold(result)) + "\n\n";
     }
 
-    private boolean showsResultsOfType(Datatype type) {
+    private boolean showsResults(Datatype type) {
         return systemPaths.follow("system", "options", "result-types") instanceof TypesetValue shown
                 && shown.holds(type);
     }
 
-    private String cutShortAt(int longest, String written) {
+    private String truncateAt(int longest, String written) {
         if (written.codePointCount(0, written.length()) <= longest) {
             return written;
         }

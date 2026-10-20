@@ -6,14 +6,6 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 
-/**
- * ChaCha20 joined to Poly1305, RFC 8439 section 2.8.
- *
- * <p>The authenticator's key is the first thirty-two bytes of the cipher's own
- * keystream, taken from the block before the one the message starts at -- so
- * every message gets a key that has never existed before, which is what makes a
- * one-time authenticator safe to use more than once.
- */
 public final class ChaChaWithPoly1305 {
 
     private ChaChaWithPoly1305() {
@@ -21,7 +13,6 @@ public final class ChaChaWithPoly1305 {
 
     private static final int CHUNK = 16;
 
-    /** How long the nonce is, and where the message's counting starts. */
     public static final int NONCE = 12;
 
     private static final int THE_AUTHENTICATORS_BLOCK = 0;
@@ -32,38 +23,28 @@ public final class ChaChaWithPoly1305 {
 
     private static final int OCTETS_IN_A_SIXTY_FOUR_BIT_LENGTH = 8;
 
-    /** What a run through it produced. */
     public record Sealed(byte[] octets, byte[] tag) {
     }
 
-    /**
-     * Masks a message and authenticates it, in whichever direction. The masking
-     * is the same either way, because counting is its own inverse; only what
-     * gets authenticated differs, and it is always the cipher text.
-     */
-    public static Sealed seal(byte[] key, byte[] nonce, byte[] header,
-                              byte[] octets, boolean deciphering) {
-
+    public static Sealed seal(byte[] key, byte[] nonce, byte[] header, byte[] octets, boolean deciphering) {
         try {
-            byte[] authenticatorKey = generateTheKeystreamFrom(
-                    key, nonce, THE_AUTHENTICATORS_BLOCK, Poly1305.KEY);
-            byte[] masked = maskWith(generateTheKeystreamFrom(
+            byte[] authenticatorKey = generateKeystream(key, nonce, THE_AUTHENTICATORS_BLOCK, Poly1305.KEY);
+            byte[] masked = maskWith(generateKeystream(
                     key, nonce, WHERE_THE_MESSAGE_STARTS, octets.length), octets);
             byte[] overTheCipherText = deciphering ? octets : masked;
-            return new Sealed(masked, Poly1305.computeTheTagOf(authenticatorKey,
-                    collectWhatGetsAuthenticated(header, overTheCipherText)));
+            return new Sealed(masked, Poly1305.computeTag(authenticatorKey,
+                    collectAuthenticated(header, overTheCipherText)));
         } catch (GeneralSecurityException refused) {
             return new Sealed(new byte[0], new byte[0]);
         }
     }
 
-    private static byte[] collectWhatGetsAuthenticated(
+    private static byte[] collectAuthenticated(
             byte[] header, byte[] cipherText) {
-
-        byte[] joined = new byte[padTheLength(header.length)
-                + padTheLength(cipherText.length) + CHUNK];
+        byte[] joined = new byte[padLength(header.length)
+                + padLength(cipherText.length) + CHUNK];
         System.arraycopy(header, 0, joined, 0, header.length);
-        int at = padTheLength(header.length);
+        int at = padLength(header.length);
         System.arraycopy(cipherText, 0, joined, at, cipherText.length);
         at = joined.length - CHUNK;
         putLittleEndian(joined, at, header.length);
@@ -72,7 +53,7 @@ public final class ChaChaWithPoly1305 {
         return joined;
     }
 
-    private static int padTheLength(int octets) {
+    private static int padLength(int octets) {
         return octets % CHUNK == 0 ? octets : octets + CHUNK - octets % CHUNK;
     }
 
@@ -84,13 +65,7 @@ public final class ChaChaWithPoly1305 {
         }
     }
 
-    /**
-     * The nonce REBOL uses: the vector with the head of the record folded into
-     * its tail. In TLS the first eight bytes of a record's header are its
-     * sequence number, so every record under one key gets a nonce of its own
-     * without either end sending one.
-     */
-    public static byte[] makeTheNonceFrom(byte[] vector, byte[] header) {
+    public static byte[] makeNonce(byte[] vector, byte[] header) {
         byte[] nonce = Arrays.copyOf(vector, NONCE);
         int howMany = Math.min(header.length, A_SEQUENCE_NUMBER);
         for (int at = 0; at < howMany; at++) {
@@ -99,7 +74,7 @@ public final class ChaChaWithPoly1305 {
         return nonce;
     }
 
-    private static byte[] generateTheKeystreamFrom(
+    private static byte[] generateKeystream(
             byte[] key, byte[] nonce, int countingFrom, int howMany)
             throws GeneralSecurityException {
 

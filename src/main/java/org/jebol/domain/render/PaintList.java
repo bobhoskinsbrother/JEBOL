@@ -72,7 +72,7 @@ public record PaintList(List<PaintInstruction> instructions) {
 
     private static final int DEPTHS_WHOSE_TEXT_IS_A_TITLE = 2;
 
-    public List<DrawingCommand> calls(TextMeasure measure) {
+    public List<DrawingCommand> calls(TextMeasurement measure) {
         List<DrawingCommand> calls = new ArrayList<>();
         for (PaintInstruction instruction : instructions) {
             switch (instruction) {
@@ -87,7 +87,7 @@ public record PaintList(List<PaintInstruction> instructions) {
         return calls;
     }
 
-    public void executeOn(Surface surface, TextMeasure measure) {
+    public void executeOn(Surface surface, TextMeasurement measure) {
         calls(measure).forEach(surface::execute);
     }
 

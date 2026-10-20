@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class TextLinesFromTheSourceTest {
 
-    private final TextMeasure halfASizePerCharacter = run -> new TextExtent(
+    private final TextMeasurement halfASizePerCharacter = run -> new TextExtent(
             run.text().codePointCount(0, run.text().length()) * run.size() / 2,
             run.size() * 3 / 4,
             run.size() / 4);

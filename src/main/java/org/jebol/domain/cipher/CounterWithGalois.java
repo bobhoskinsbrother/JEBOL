@@ -2,29 +2,18 @@ package org.jebol.domain.cipher;
 
 import java.util.Arrays;
 
-/**
- * Counting with Galois, NIST SP 800-38D, written over any block cipher rather
- * than only the JVM's AES, and handing the tag back for the caller to compare.
- */
 public final class CounterWithGalois {
 
     private CounterWithGalois() {
     }
 
     private static final int BLOCK = 16;
-
-    /** How long a tag this mode computes before any of it is cut away. */
     public static final int WHOLE_TAG = 16;
+    private static final byte THE_FIELDS_OWN_CONSTANT = (byte) 0xE1;
 
-    /** What a run through the mode produced. */
     public record Sealed(byte[] octets, byte[] tag) {
     }
 
-    /**
-     * Masks a message and computes its tag, in whichever direction. The
-     * keystream is the same either way, because counting is its own inverse;
-     * only the tag differs, being always taken over the cipher text.
-     */
     public static Sealed seal(OneBlock cipher, byte[] vector, byte[] header,
                               byte[] octets, boolean deciphering) {
 
@@ -37,7 +26,7 @@ public final class CounterWithGalois {
         running = hashThrough(running, hashKey, header);
         running = hashThrough(running, hashKey, overTheCipherText);
         running = hashThrough(running, hashKey,
-                packTheTwoLengthsInBits(header.length, overTheCipherText.length));
+                packTwoLengthsInBits(header.length, overTheCipherText.length));
 
         byte[] maskedWith = cipher.encipher(startingCount);
         byte[] tag = new byte[WHOLE_TAG];
@@ -56,7 +45,7 @@ public final class CounterWithGalois {
             return counting;
         }
         byte[] running = hashThrough(new byte[BLOCK], hashKey, vector);
-        return hashThrough(running, hashKey, packTheTwoLengthsInBits(0, vector.length));
+        return hashThrough(running, hashKey, packTwoLengthsInBits(0, vector.length));
     }
 
     private static final int THE_VECTOR_LENGTH_THAT_NEEDS_NO_HASHING = 12;
@@ -90,7 +79,7 @@ public final class CounterWithGalois {
         }
     }
 
-    private static byte[] packTheTwoLengthsInBits(
+    private static byte[] packTwoLengthsInBits(
             int headerOctets, int cipherTextOctets) {
 
         byte[] lengths = new byte[BLOCK];
@@ -139,8 +128,6 @@ public final class CounterWithGalois {
         }
         return product;
     }
-
-    private static final byte THE_FIELDS_OWN_CONSTANT = (byte) 0xE1;
 
     private static void shiftTowardsTheTop(byte[] octets) {
         for (int at = BLOCK - 1; at > 0; at--) {

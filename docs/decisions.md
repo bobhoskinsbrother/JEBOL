@@ -1225,7 +1225,7 @@ the script runs inside main's fiber where suspension is legal. `JSPromise.await`
 `@JSExport`, not `@Export`: the first is a JS-facing export the runtime
 registers where `teavm.exports` can see it, the second is a raw wasm export
 nobody wraps. JSBody classes substitute by whole class and static method -
-`TextMeasures` became a factory class because the constructor-call
+`DefaultFont` became a factory class because the constructor-call
 substitution of `JavaTextMeasure` never applied, while the same shape as a
 static call applies fine. And the classlib lacks `ConcurrentLinkedQueue`, so
 the web build carries `TConcurrentLinkedQueue` at the classlib's own mapped

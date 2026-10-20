@@ -2,7 +2,7 @@ package org.jebol.adapter.web;
 
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
-import org.jebol.application.TextMeasures;
+import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.value.GobValue;
@@ -27,7 +27,7 @@ class JsonConverterFromSourceTest {
 
     private static String write(String source) {
         return JsonConverter.write(
-                PaintList.of(makeAGobFrom(source)).calls(TextMeasures.ofTheCarriedFont()), 800, 600);
+                PaintList.of(makeAGobFrom(source)).calls(DefaultFont.measurement()), 800, 600);
     }
 
     @Nested

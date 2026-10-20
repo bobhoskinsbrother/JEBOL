@@ -79,7 +79,7 @@ class AScriptOnTheCommandLineRunsAsLongAsItNeedsEndToEndTest {
 
         ScriptOutcome outcome = embedded.run("forever []");
 
-        assertThat(embedded.writeWhatConsolePrints(outcome))
+        assertThat(embedded.responseBasedOnOutcome(outcome))
                 .contains("** Access error: port action timed out")
                 .doesNotContain(ErrorWording.NOTHING_IN_THE_CATALOGUE);
     }
