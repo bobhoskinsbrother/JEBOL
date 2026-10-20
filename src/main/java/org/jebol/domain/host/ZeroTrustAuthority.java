@@ -2,7 +2,7 @@ package org.jebol.domain.host;
 
 import java.util.List;
 
-public final class TrustingNoAuthority implements CertificateAuthority {
+public final class ZeroTrustAuthority implements CertificateAuthority {
 
     @Override
     public ChainVerdict judge(List<byte[]> chain) {

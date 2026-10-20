@@ -48,6 +48,19 @@ its ports exist. Decided: replace them with one `HostPorts` value supplied at co
    `interpreter.useX(...)` switch to `Interpreter.createOn(HostPorts.none().withX(...), ...)`;
    add a small test-fixture helper if the pattern repeats.
 
+6. **The carried font reads through a `FilePort`.** `DefaultFont` stops reaching
+   for the classpath itself. `ClasspathFiles` becomes public and `DefaultFont`
+   becomes a value, `DefaultFont.readFrom(files)`, reading
+   `/org/jebol/fonts/NotoSans-Regular.ttf` through the port the way `RebolFile`
+   reads Rebol's own files - a build missing its font fails the read, not the
+   first measurement. No static font: `DesktopScreen.onThisMachine(files)` and
+   `BrowserScreen.showTo(viewer, files)` read one at construction and answer
+   `textMeasurement()` from it; `WebScreenServer.on(port, files)` serves the
+   bytes its own font holds rather than reading the classpath a second time;
+   `Java2DSurface`'s static AWT face goes, `DesktopScreen` building the face
+   once from its font and handing it to the surface with the measurement. The
+   call sites are step 5's, so do this after it and touch each once.
+
 ## Tests (written before step 2's code, confirmed red)
 
 - Unit: `HostPorts.none()` answers each port's refusing default; each wither replaces
@@ -56,10 +69,15 @@ its ports exist. Decided: replace them with one `HostPorts` value supplied at co
   built with a filesystem has its modules directory and confined launcher in place at
   construction (port the existing `useFileSystem`/`useScreen` assertions in
   `HostMachineTest`, `DesktopScreenFromTheSourceTest`, `PortsTest`).
+- Font: `DefaultFont.readFrom` takes its bytes from the port it is given (another
+  font's bytes measure differently; a refusing port fails the read), a screen built on
+  that port measures with it, and the suite's `DefaultFont.*` call sites move to a
+  fixture that reads through `ClasspathFiles`.
 - Existing suites carry the rest unchanged in behaviour.
 
 ## Verification
 
 `ide_diagnostics` after each step; `DependencyRuleTest`; ports, process, screen, module and
-boot tests; the command-line and browser end-to-end tests, since Repl and the worker change
-most. User runs `allTests`.
+boot tests; the screen, paint and web tests and the worker, since the worker and the served
+face both change; the command-line and browser end-to-end tests, since Repl and the worker
+change most. User runs `allTests`.

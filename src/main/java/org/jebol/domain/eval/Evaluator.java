@@ -45,7 +45,7 @@ public final class Evaluator {
     private MachinePort machine = MachinePort.none();
 
     private NetworkPort network = NetworkPort.none();
-    private CertificateAuthority certificateAuthority = new TrustingNoAuthority();
+    private CertificateAuthority certificateAuthority = new ZeroTrustAuthority();
     private BundledModules bundledModules = BundledModules.none();
     private final Construction construction;
     private final MakerSource makerSource;

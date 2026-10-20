@@ -48,7 +48,7 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
     public JavaCertificateAuthority(Set<TrustAnchor> trustAnchors, Clock clock) {
         if (trustAnchors.isEmpty()) {
             throw new IllegalArgumentException(
-                    "an authority that trusts no root trusts nothing; say so with TrustingNoAuthority");
+                    "an authority that trusts no root trusts nothing; say so with ZeroTrustAuthority");
         }
         this.trustAnchors = Set.copyOf(trustAnchors);
         this.clock = clock;

@@ -1731,7 +1731,7 @@ the JDK's own trust store, with an injectable clock and revocation off.
 Whether the names cover the host is `VouchedNames` in the domain, the same on
 every host: subject alternative names only, wildcards as one whole leftmost
 label with two labels after it, addresses compared as addresses.
-`TrustingNoAuthority` is what an interpreter has until the host supplies one.
+`ZeroTrustAuthority` is what an interpreter has until the host supplies one.
 
 **The grant.** `HostService.CERTIFICATES`, refused by `Bounds.standard()`
 like every other grant, and lacking in a browser, which judges certificates

@@ -116,7 +116,7 @@ public final class Repl {
                 argumentsWithoutJebolOnlySwitches(ChosenScreen.withoutTheSwitch(arguments))));
         asked.script().ifPresent(script -> asked.nameTheScript(findTheAppsEntry(script)));
         boolean anythingWasAsked = asked.script().isPresent() || !asked.flags().isEmpty();
-        Interpreter interpreter = buildAnInterpreter(arguments, out, anythingWasAsked, root);
+        Interpreter interpreter = buildInterpreter(arguments, out, anythingWasAsked, root);
         return new TheCommandLine(asked, startedIn, root)
                 .runThrough(interpreter, typed, out, errors);
     }
@@ -169,7 +169,7 @@ public final class Repl {
         return "";
     }
 
-    private static Interpreter buildAnInterpreter(String[] arguments, PrintStream out, boolean anythingWasAsked, Path root) {
+    private static Interpreter buildInterpreter(String[] arguments, PrintStream out, boolean anythingWasAsked, Path root) {
         Bounds bounds = grantEveryHostService().withoutATimeLimit();
         Interpreter interpreter = Interpreter.createWithOutput(new StreamOutput(out), bounds);
         interpreter.useTasks(new ThreadTasks(bounds));
