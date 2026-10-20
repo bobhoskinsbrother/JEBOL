@@ -1,0 +1,767 @@
+/***********************************************************************
+**
+**  REBOL [R3] Language Interpreter and Run-time Environment
+**
+**  Copyright 2012 REBOL Technologies
+**  Copyright 2021-2025 Rebol Open Source Contributors
+**  REBOL is a trademark of REBOL Technologies
+**
+**  Licensed under the Apache License, Version 2.0 (the "License");
+**  you may not use this file except in compliance with the License.
+**  You may obtain a copy of the License at
+**
+**  http://www.apache.org/licenses/LICENSE-2.0
+**
+**  Unless required by applicable law or agreed to in writing, software
+**  distributed under the License is distributed on an "AS IS" BASIS,
+**  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+**  See the License for the specific language governing permissions and
+**  limitations under the License.
+**
+************************************************************************
+**
+**  Module:  t-bitset.c
+**  Summary: bitset datatype
+**  Section: datatypes
+**  Author:  Carl Sassenrath
+**  Notes:
+**
+***********************************************************************/
+
+#include "sys-core.h"
+
+#define MAX_BITSET 0x7fffffff
+
+// use if you want compatibility with R3-alpha for returning NONE on non existing bit
+// #define PICK_BITSET_AS_NONE
+
+/***********************************************************************
+**
+*/	REBINT CT_Bitset(REBVAL *a, REBVAL *b, REBINT mode)
+/*
+***********************************************************************/
+{
+	if (mode == 3) return VAL_SERIES(a) == VAL_SERIES(b);
+	if (mode >= 0) return (
+		BITS_NOT(VAL_SERIES(a)) == BITS_NOT(VAL_SERIES(b))
+		&&
+		Compare_Binary_Vals(a, b) == 0
+	);
+	return -1;
+}
+
+
+/***********************************************************************
+**
+*/	REBSER *Make_Bitset(REBLEN len)
+/*
+**		Return a bitset series (binary.
+**
+**		len: the # of bits in the bitset.
+**
+***********************************************************************/
+{
+	REBSER *ser;
+
+	len = (len + 7) / 8;
+	ser = Make_Binary(len);
+	//No need to clear the series, because Make_Binary guarantees completely cleared memory.
+	//Clear_Series(ser);
+	SERIES_TAIL(ser) = len;
+	BITS_NOT(ser) = 0;
+
+	return ser;
+}
+
+
+/***********************************************************************
+**
+*/	void Mold_Bitset(REBVAL *value, REB_MOLD *mold)
+/*
+***********************************************************************/
+{
+	REBSER *ser = VAL_SERIES(value);
+
+	if (BITS_NOT(ser)) Append_Bytes(mold->series, "not ");
+	Mold_Binary(value, mold);
+}
+
+
+/***********************************************************************
+**
+*/	REBFLG MT_Bitset(REBVAL *out, REBVAL *data, REBCNT type)
+/*
+**	Construct a bitset, e.g.: #(bitset! #{FF}) or #(bitset! not #{FF})
+**
+**	NOTE: data are on stack, it is not a BLOCK value,
+**        so it is not possible to use macros like VAL_TAIL
+**
+***********************************************************************/
+{
+	REBFLG is_not = 0;
+	if (IS_WORD(data)) {
+		if (VAL_WORD_CANON(data++) == SYM_NOT) is_not = 1;
+		else return FALSE;
+	}
+	if (!IS_BINARY(data)) return FALSE;
+	Set_Series(REB_BITSET, out, VAL_SERIES(data));
+	BITS_NOT(VAL_SERIES(out)) = is_not;
+	return IS_END(++data);
+}
+
+
+/***********************************************************************
+**
+*/	REBCNT Find_Max_Bit(REBVAL *val)
+/*
+**		Return integer number for the maximum bit number defined by
+**		the value. Used to determine how much space to allocate.
+**
+***********************************************************************/
+{
+	REBCNT maxi = 0;
+	REBCNT n;
+
+	switch (VAL_TYPE(val)) {
+
+	case REB_CHAR:
+		maxi = VAL_CHAR(val)+1;
+		break;
+
+	case REB_INTEGER:
+		maxi = (REBCNT)Int32s(val, 0);
+		break;
+
+	case REB_STRING:
+	case REB_FILE:
+	case REB_EMAIL:
+	case REB_URL:
+	case REB_TAG:
+//	case REB_ISSUE:
+		if (IS_UTF8_STRING(val)) {
+			REBU32 chr;
+			REBCNT sz = VAL_LEN(val);
+			const REBYTE *bp = VAL_BIN_DATA(val);
+			while (sz > 0) {
+				chr = UTF8_Decode_Codepoint(&bp, &sz);
+				if (chr > maxi) maxi = chr;
+			}
+		}
+		else {
+			//ASCII...
+			REBYTE *bp = VAL_BIN(val);
+			for (n = VAL_INDEX(val); n < VAL_TAIL(val); n++)
+				if (bp[n] > maxi) maxi = bp[n];
+		}
+		//maxi++; //@@ https://github.com/Oldes/Rebol-issues/issues/2415
+		break;
+
+	case REB_BINARY:
+		maxi = VAL_LEN(val) * 8;
+		if (maxi > 0) maxi--;
+		break;
+
+	case REB_BLOCK:
+		for (val = VAL_BLK_DATA(val); NOT_END(val); val++) {
+			n = Find_Max_Bit(val);
+			if (n != NOT_FOUND && n > maxi) maxi = n;
+		}
+		//maxi++;
+		break;
+
+	case REB_NONE:
+		maxi = 0;
+		break;
+
+	default:
+		return -1;
+	}
+
+	return maxi;
+}
+
+
+/***********************************************************************
+**
+*/	REBFLG Check_Bit(const REBSER *bset, REBCNT c, REBFLG uncased)
+/*
+**		Check bit indicated. Returns TRUE if set.
+**		If uncased is TRUE, try to match either upper or lower case.
+**
+***********************************************************************/
+{
+	REBCNT i, n = c;
+	REBCNT tail = SERIES_TAIL(bset);
+	REBFLG flag = 0;
+
+	if (uncased) {
+		if (n >= UNICODE_CASES) uncased = FALSE; // no need to check
+		else n = LO_CASE(c);
+	}
+
+	// Check lowercase char:
+retry:
+	i = n >> 3;
+	if (i < tail)
+		flag = (0 != (BIN_HEAD(bset)[i] & (1 << (7 - ((n) & 7)))));
+
+	// Check uppercase if needed:
+	if (uncased && !flag) {
+		n = UP_CASE(c);
+		uncased = FALSE;
+		goto retry;
+	}
+		
+	return (BITS_NOT(bset)) ? !flag : flag;
+}
+
+
+/***********************************************************************
+**
+*/	REBFLG Check_Bit_Cased(REBSER *bset, REBCNT c)
+/*
+**		Check bit indicated. Returns TRUE if set.
+**		This is light variant of the Check_Bit function above (cased version only)
+**
+***********************************************************************/
+{
+	REBCNT i, n = c;
+	REBCNT tail = SERIES_TAIL(bset);
+	REBFLG flag = 0;
+
+	i = n >> 3;
+	if (i < tail)
+		flag = (0 != (BIN_HEAD(bset)[i] & (1 << (7 - ((n) & 7)))));
+
+	return (BITS_NOT(bset)) ? !flag : flag;
+}
+
+
+/***********************************************************************
+**
+*/	REBFLG Check_Bit_Str_Any(REBSER *bset, REBVAL *val, REBFLG uncased)
+/*
+**		If uncased is TRUE, try to match either upper or lower case.
+**		Returns TRUE when first bit is found.
+**
+***********************************************************************/
+{
+	REBCNT n = VAL_INDEX(val);
+
+	if (VAL_BYTE_SIZE(val)) {
+		REBYTE *bp = VAL_BIN(val);
+		for (; n < VAL_TAIL(val); n++)
+			if (Check_Bit(bset, bp[n], uncased)) return TRUE;
+	}
+	else {
+		REBUNI *up = VAL_UNI(val);
+		for (; n < VAL_TAIL(val); n++)
+			if (Check_Bit(bset, up[n], uncased)) return TRUE;
+	}
+	return FALSE;
+}
+
+/***********************************************************************
+**
+*/	REBFLG Check_Bit_Str_All(REBSER *bset, REBVAL *val, REBFLG uncased)
+/*
+**		If uncased is TRUE, try to match either upper or lower case.
+**		Returns TRUE when all bits are found.
+**
+***********************************************************************/
+{
+	REBCNT n = VAL_INDEX(val);
+
+	if (VAL_BYTE_SIZE(val)) {
+		REBYTE *bp = VAL_BIN(val);
+		for (; n < VAL_TAIL(val); n++)
+			if (!Check_Bit(bset, bp[n], uncased)) return FALSE;
+	}
+	else {
+		REBUNI *up = VAL_UNI(val);
+		for (; n < VAL_TAIL(val); n++)
+			if (!Check_Bit(bset, up[n], uncased)) return FALSE;
+	}
+	return TRUE;
+}
+
+
+/***********************************************************************
+**
+*/	void Set_Bit(REBSER *bset, REBCNT n, REBOOL set)
+/*
+**		Set/clear a single bit. Expand if needed.
+**
+***********************************************************************/
+{
+	REBCNT i = n >> 3;
+	REBCNT tail = SERIES_TAIL(bset);
+	REBYTE bit;
+
+	// Expand if not enough room:
+	if (i >= tail) {
+		if (!set) return; // no need to expand
+		Expand_Series(bset, tail, (i - tail) + 1);
+		CLEAR(BIN_SKIP(bset, tail), (i - tail) + 1);
+	}
+
+	bit = 1 << (7 - ((n) & 7));
+	if (set)
+		BIN_HEAD(bset)[i] |= bit;
+	else
+		BIN_HEAD(bset)[i] &= ~bit;
+}
+
+
+/***********************************************************************
+**
+*/	void Set_Bit_Str(REBSER *bset, REBVAL *val, REBOOL set)
+/*
+***********************************************************************/
+{
+	REBCNT index = VAL_INDEX(val);
+	REBCNT sz=VAL_LEN(val);
+	REBU32 chr;
+
+	if(IS_PROTECT_SERIES(bset)) Trap0(RE_PROTECTED);
+
+	if (IS_UTF8_STRING(val)) {
+		const REBYTE *bp = VAL_BIN_DATA(val);
+		while (sz > 0) {
+			chr = UTF8_Decode_Codepoint(&bp, &sz);
+			Set_Bit(bset, chr, set);
+		}
+	}
+	else {
+		REBYTE *bp = VAL_BIN(val);
+		for (; index < VAL_TAIL(val); index++)
+			Set_Bit(bset, bp[index], set);
+	}
+}
+
+
+/***********************************************************************
+**
+*/	REBFLG Set_Bits(REBSER *bset, REBVAL *val, REBOOL set)
+/*
+**		Set/clear bits indicated by strings and chars and ranges.
+**
+***********************************************************************/
+{
+	REBCNT n;
+	REBCNT c;
+
+	if(IS_PROTECT_SERIES(bset)) Trap0(RE_PROTECTED);
+
+	if (IS_CHAR(val)) {
+		Set_Bit(bset, VAL_CHAR(val), set);
+		return TRUE;
+	}
+
+	if (IS_INTEGER(val)) {
+		n = Int32s(val, 0);
+		if (n > MAX_BITSET) return 0;
+		Set_Bit(bset, n, set);
+		return TRUE;
+	}
+
+	if (ANY_BINSTR(val)) {
+		Set_Bit_Str(bset, val, set);
+		return TRUE;
+	}
+
+	if (!ANY_BLOCK(val)) Trap_Type(val);
+
+	val = VAL_BLK_DATA(val);
+	if (IS_SAME_WORD(val, SYM_NOT)) {
+		BITS_NOT(bset) = TRUE;
+		val++;
+	}
+
+	// Loop through block of bit specs:
+	for (; NOT_END(val); val++) {
+
+		switch (VAL_TYPE(val)) {
+
+		case REB_CHAR:
+			c = VAL_CHAR(val);
+			if (IS_SAME_WORD(val + 1, SYM__)) {
+				val += 2;
+				if (IS_CHAR(val)) {
+					n = VAL_CHAR(val);
+span_bits:
+					if (n < c) Trap1(RE_PAST_END, val);
+					for (; c <= n; c++) Set_Bit(bset, c, set);
+				} else Trap_Arg(val);
+			}
+			else Set_Bit(bset, c, set);
+			break;
+
+		case REB_INTEGER:
+			n = Int32s(val, 0);
+			if (n > MAX_BITSET) return 0;
+			if (IS_SAME_WORD(val + 1, SYM__)) {
+				c = n;
+				val += 2;
+				if (IS_INTEGER(val)) {
+					n = Int32s(val, 0);
+					goto span_bits;
+				} else Trap_Arg(val);
+			}
+			else Set_Bit(bset, n, set);
+			break;
+
+		case REB_STRING:
+		case REB_FILE:
+		case REB_EMAIL:
+		case REB_URL:
+		case REB_TAG:
+		case REB_REF:
+//		case REB_ISSUE:
+			Set_Bit_Str(bset, val, set);
+			break;
+
+		case REB_WORD:
+			// Special: BITS #{000...}
+			if (!IS_SAME_WORD(val, SYM_BITS)) return 0;
+			val++;
+			if (!IS_BINARY(val)) return 0;
+			// fall thru...
+		case REB_BINARY:
+			n = VAL_LEN(val);
+			c = bset->tail;
+			if (n >= c) {
+				Expand_Series(bset, c, (n - c));
+				CLEAR(BIN_SKIP(bset, c), (n - c));
+			}
+			REBYTE *b = BIN_HEAD(bset);
+			REBYTE *s = VAL_BIN_DATA(val);
+			for (REBCNT i = 0; i < n; i++) {
+				b[i] = b[i] | s[i];
+			}
+			break;
+
+		default:
+			return 0;
+		}
+	}
+
+	return TRUE;
+}
+
+		
+/***********************************************************************
+**
+*/	REBFLG Check_Bits(REBSER *bset, REBVAL *val, REBFLG uncased, REBFLG any)
+/*
+**		Check bits indicated by strings and chars and ranges.
+**		If uncased is TRUE, try to match either upper or lower case.
+**		If any is TRUE, than returns TRUE on first found bit.
+**
+***********************************************************************/
+{
+	REBCNT n;
+	REBUNI c;
+
+	if (IS_CHAR(val))
+		return Check_Bit(bset, VAL_CHAR(val), uncased);
+
+	if (IS_INTEGER(val))
+		return Check_Bit(bset, Int32s(val, 0), uncased);
+
+	if (ANY_BINSTR(val)) {
+		if (any) {
+			return Check_Bit_Str_Any(bset, val, uncased);
+		}
+		else {
+			return Check_Bit_Str_All(bset, val, uncased);
+		}
+		
+	}
+
+	if (!ANY_BLOCK(val)) Trap_Type(val);
+
+	// Loop through block of bit specs:
+	for (val = VAL_BLK_DATA(val); NOT_END(val); val++) {
+
+		switch (VAL_TYPE(val)) {
+
+		case REB_CHAR:
+			c = VAL_CHAR(val);
+			if (IS_SAME_WORD(val + 1, SYM__)) {
+				val += 2;
+				if (IS_CHAR(val)) {
+					n = VAL_CHAR(val);
+scan_bits:
+					if (n < c) Trap1(RE_PAST_END, val);
+					if (any) {
+						for (; c <= n; c++)
+							if (Check_Bit(bset, c, uncased)) return TRUE;
+					}
+					else {
+						for (; c <= n; c++)
+							if (!Check_Bit(bset, c, uncased)) return FALSE;
+						goto bit_found;
+					}
+				} else Trap_Arg(val);
+			}
+			else
+				if (Check_Bit(bset, c, uncased)) goto bit_found;
+			break;
+
+		case REB_INTEGER:
+			n = Int32s(val, 0);
+			if (n > 0xffff) goto bit_not_found;
+			if (IS_SAME_WORD(val + 1, SYM__)) {
+				c = n;
+				val += 2;
+				if (IS_INTEGER(val)) {
+					n = Int32s(val, 0);
+					goto scan_bits;
+				} else Trap_Arg(val);
+			}
+			else
+				if (Check_Bit(bset, n, uncased)) goto bit_found;
+			break;
+
+		case REB_BINARY:
+		case REB_STRING:
+		case REB_FILE:
+		case REB_EMAIL:
+		case REB_URL:
+		case REB_TAG:
+//		case REB_ISSUE:
+			if (any) {
+				if (Check_Bit_Str_Any(bset, val, uncased)) goto bit_found;
+			}
+			else {
+				if (Check_Bit_Str_All(bset, val, uncased)) goto bit_found;
+			}
+			break;
+
+		default:
+			Trap_Type(val);
+		}
+	bit_not_found:
+		if (!any)
+			return FALSE;
+		continue;
+	bit_found:
+		if (any) {
+			return TRUE;
+		}
+	}
+	return TRUE;
+}
+
+
+/***********************************************************************
+**
+*/	REBINT PD_Bitset(REBPVS *pvs)
+/*
+***********************************************************************/
+{
+	REBVAL *data = pvs->value;
+	REBVAL *val = pvs->setval;
+	REBSER *ser = VAL_SERIES(data);
+	REBFLG t;
+
+	if (val == 0) {
+#ifdef PICK_BITSET_AS_NONE
+		if (Check_Bits(ser, pvs->select, 0)) {
+			SET_TRUE(pvs->store);
+			return PE_USE;
+		}
+		return PE_NONE;
+#else
+		SET_LOGIC(pvs->store, Check_Bits(ser, pvs->select, 0, FALSE));
+		return PE_USE;
+#endif
+	}
+
+	t = IS_TRUE(val);
+	if (BITS_NOT(ser)) t = !t;
+	if (Set_Bits(ser, pvs->select, (REBOOL)t)) 
+		return PE_OK;	
+
+	return PE_BAD_SET;
+}
+
+/***********************************************************************
+**
+*/	REBOOL Is_Zero_Bitset(REBSER *bset)
+/*
+**		Check if all bits are unset.
+**
+***********************************************************************/
+{
+	REBCNT i;
+	REBYTE *bp = BIN_HEAD(bset);
+	REBYTE b = BITS_NOT(bset) ? 0xFF : 0; 
+
+	for(i = 0;  i < SERIES_TAIL(bset); i++) {
+		if(bp[i] != b) return FALSE;
+	}
+	return TRUE;
+}
+
+/***********************************************************************
+**
+*/	void Trim_Tail_Zeros(REBSER *ser)
+/*
+**		Remove extra zero bytes from end of byte string.
+**
+***********************************************************************/
+{
+	REBCNT tail = SERIES_TAIL(ser);
+	REBYTE *bp = BIN_HEAD(ser);
+
+	for (; tail > 0 && !bp[tail]; tail--);
+
+	if (bp[tail]) tail++;
+	SERIES_TAIL(ser) = tail;
+}
+
+/***********************************************************************
+**
+*/	REBNATIVE(complementq)
+/*
+//	complement?: native [
+//		"Returns TRUE if the bitset is complemented"
+//		value [bitset!]
+//	]
+***********************************************************************/
+{
+	return (BITS_NOT(VAL_SERIES(D_ARG(1))) ? R_TRUE : R_FALSE);
+}
+
+
+/***********************************************************************
+**
+*/	REBTYPE(Bitset)
+/*
+***********************************************************************/
+{
+	//REBYTE *data = 0;
+	REBVAL *value = D_ARG(1);
+	REBVAL *arg = D_ARG(2);
+	REBSER *ser;
+	REBLEN len;
+	REBINT diff;
+
+	//if (action != A_MAKE && action != A_TO)
+	//	data = VAL_BIT_DATA(value);
+
+	// Check must be in this order (to avoid checking a non-series value);
+	if (action >= A_TAKE && action <= A_SORT && IS_PROTECT_SERIES(VAL_SERIES(value)))
+		Trap0(RE_PROTECTED);
+
+	switch (action) {
+
+	// Define PICK for BITSETS?  PICK's set bits and returns #?
+	// Add AND, OR, XOR
+
+	case A_PICK:
+	case A_FIND:
+		if (!Check_Bits(VAL_SERIES(value), arg,(IS_CHAR(arg) && action == A_FIND && !D_REF(ARG_FIND_CASE)), (action == A_FIND && D_REF(ARG_FIND_ANY))))
+#ifdef PICK_BITSET_AS_NONE
+			return R_NONE;
+#else
+			return R_FALSE; // returning FALSE instead of NONE like Red does
+#endif
+		return R_TRUE;
+
+	case A_COMPLEMENT:
+	case A_NEGATE:
+		ser = Copy_Series(VAL_SERIES(value));
+		BITS_NOT(ser) = !BITS_NOT(VAL_SERIES(value));
+		Set_Series(REB_BITSET, value, ser);
+		break;
+
+	case A_MAKE:
+	case A_TO:
+		if (IS_BITSET(arg)) {
+			VAL_SERIES(arg) = Copy_Series_Value(arg);
+			return R_ARG2;
+		}
+		// Determine size of bitset. Returns -1 for errors.
+		len = Find_Max_Bit(arg);
+		if (len == UNKNOWN || len > 0x0FFFFFFF) Trap_Arg(arg);
+
+		ser = Make_Bitset(len);
+		Set_Series(REB_BITSET, value, ser);
+
+		// Nothing more to do.
+		if (IS_INTEGER(arg)) break;
+
+		if (IS_BINARY(arg)) {
+			memcpy(BIN_HEAD(ser), VAL_BIN_DATA(arg), len/8 + 1);
+			break;
+		}
+		// FALL THRU...
+
+	case A_APPEND:	// Accepts: #"a" "abc" [1 - 10] [#"a" - #"z"] etc.
+	case A_INSERT:
+		diff = TRUE;
+		goto set_bits;
+
+	case A_POKE:
+		diff = Get_Logic_Arg(D_ARG(3));
+set_bits:
+		if (BITS_NOT(VAL_SERIES(value))) diff = !diff;
+		if (Set_Bits(VAL_SERIES(value), arg, (REBOOL)diff)) break;
+		Trap_Arg(arg);
+
+	case A_REMOVE:	// #"a" "abc"  remove/key bs "abcd"
+		if (D_REF(ARG_REMOVE_KEY)) {
+			if (D_REF(ARG_REMOVE_PART))
+				Trap0(RE_BAD_REFINES);
+			arg = D_ARG(ARG_REMOVE_KEY_ARG);
+		} else if (D_REF(ARG_REMOVE_PART)) {
+			arg = D_ARG(ARG_REMOVE_RANGE);
+			// remove/part is allowed only with block, string, binary and char
+			if (!(IS_BLOCK(arg) || IS_STRING(arg) || IS_BINARY(arg) || IS_CHAR(arg)))
+				Trap_Arg(arg);
+		}
+		else Trap0(RE_MISSING_ARG); // /key or /part is required
+		if (Set_Bits(VAL_SERIES(value), arg, FALSE)) break;
+		Trap_Arg(D_ARG(3));
+
+	case A_COPY:
+		VAL_SERIES(value) = Copy_Series_Value(value);
+		break;
+
+	case A_LENGTHQ:
+		len = VAL_TAIL(value) * 8;
+		SET_INTEGER(value, len);
+		break;
+
+	case A_TAILQ:
+		// Necessary to make EMPTY? work:
+		return (VAL_TAIL(value) == 0) ? R_TRUE : R_FALSE;
+
+	case A_CLEAR:
+		//O: which version is better?
+		// version 1: clearing series and resetting length as well -> clear make bitset! {01} == make bitset! #{}
+		Clear_Series(VAL_SERIES(value));
+		// version 2: clearing series but keeping its length -> ... == make bitset! #{00}
+		// CLEAR(SERIES_DATA(VAL_SERIES(value)), SERIES_SPACE(VAL_SERIES(value)));
+		break;
+
+	case A_AND:
+	case A_OR:
+	case A_XOR:
+		if (!IS_BITSET(arg) && !IS_BINARY(arg))
+			Trap_Math_Args(VAL_TYPE(arg), action);
+		VAL_SERIES(value) = ser = Xandor_Bitset(action, value, arg);
+		Trim_Tail_Zeros(ser);
+		break;
+
+	default:
+		Trap_Action(REB_BITSET, action);
+	}
+
+	DS_RET_VALUE(value);
+	return R_RET;
+}
+

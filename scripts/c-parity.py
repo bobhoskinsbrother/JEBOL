@@ -65,7 +65,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-REBOL_SOURCE = Path.home() / "Code" / "personal" / "rebol3-source" / "src" / "boot"
+REBOL_SOURCE = REPO / "rebol3-source" / "src" / "boot"
 C_DECLARATIONS_KINDS = ("ACTION ", "NATIVE ")
 C_SURFACE = REPO / "src" / "testFixtures" / "resources" / "r3" / "c-surface.txt"
 JEBOL_SURFACE = REPO / "build" / "jebol-surface.txt"

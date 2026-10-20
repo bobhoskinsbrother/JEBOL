@@ -9,9 +9,8 @@ would be a transcription exercise with no reader.
 
 So this reads them out of the C and writes
 `src/main/java/org/jebol/domain/value/TerminalWidth.java`. Run it when Rebol's
-tables change; the generated file is checked in, because `rebol3-source/` is a
-symlink to a checkout that is not part of this repository and is not there at
-build time.
+tables change; the generated file is checked in, so the build does not read
+the C itself.
 
     python3 scripts/terminal-width-table.py
 """

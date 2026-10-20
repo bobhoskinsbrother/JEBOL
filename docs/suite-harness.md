@@ -395,9 +395,9 @@ given**, so the absence has to be checked separately or not at all.
 Rebol's own `run-tests.r3` names the files it runs, and that list is the
 authority. Every name on it is either vendored here or text in
 `not-vendored.txt` with the reason; a file that appears upstream and lands in
-neither place fails the build. That check only runs when the Rebol checkout is
-present - it is a gitignored symlink and not everybody has one - and it is
-**skipped rather than silently passing**, so the reason shows in the run.
+neither place fails the build. That check runs against the Rebol source now
+checked in under `rebol3-source/`, and it is **skipped rather than silently
+passing** when that tree is absent, so the reason shows in the run.
 
 **A vendored file is a copy and nothing else.** Counting whole files cannot report
 a missing line: **thirty-three assertions had been cut out of nine vendored

@@ -5,7 +5,7 @@ vendors them in `u-lzma.c`. This note carries what the code cannot: the format
 facts a reader would otherwise have to derive, and the handful of places where a
 plausible simplification changes the bytes or loses data.
 
-The C is checked out at `rebol3-source/`. Where a name below is a C function,
+The C is in `rebol3-source/`. Where a name below is a C function,
 `ide_search_text` with `filePattern: "*.c"` or `"*.h"` finds it.
 
 ---

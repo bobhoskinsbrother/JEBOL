@@ -45,9 +45,9 @@ comment, a string literal, a REBOL word inside a `.reb` resource. It is still th
 MCP and still better than grep, because it knows the project's scope and
 exclusions.
 
-**Rebol's own source is in the project too.** `rebol3-source/` is a symlink to the
-checkout, gitignored, so the IDE indexes it and the MCP searches it like anything
-else. That is where every port is read from:
+**Rebol's own source is in the project too.** `rebol3-source/` is a checked-in copy
+of the Oldes/Rebol3 checkout, so the IDE indexes it and the MCP searches it like
+anything else. That is where every port is read from:
 
 | Reading | Path |
 | --- | --- |
@@ -60,8 +60,8 @@ else. That is where every port is read from:
 So `ide_search_text` with `filePattern: "*.c"` answers a question about the C, and
 there is no reason left to grep it.
 
-**IntelliJ does follow the symlink -- tested, not assumed.** All three file types
-resolve through it: `Skip_Left_Arrow` finds `rebol3-source/src/core/l-scan.c`,
+**IntelliJ indexes the checked-in copy.** All three file types resolve:
+`Skip_Left_Arrow` finds `rebol3-source/src/core/l-scan.c`,
 `integer-divide` finds `rebol3-source/src/boot/ops.reb`, and a suite group name
 finds `rebol3-source/src/tests/units/lexer-test.r3`. Run `ide_sync_files` if a
 search comes back empty for something that is certainly there.

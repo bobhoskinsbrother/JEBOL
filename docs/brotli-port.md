@@ -9,7 +9,7 @@ first, list boundaries rather than counting samples, use the reference project's
 own corpus, and check that a fixture is what it says it is. Each of those four
 rules exists because it was broken here and cost something.
 
-The C is checked out at `rebol3-source/`. Where a name below is a C function,
+The C is in `rebol3-source/`. Where a name below is a C function,
 `ide_search_text` with `filePattern: "*.c"` or `"*.h"` finds it.
 
 ---

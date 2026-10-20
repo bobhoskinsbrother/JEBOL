@@ -13,6 +13,12 @@ REBOL, Copyright 2012 REBOL Technologies. Copyright 2012-2026 Rebol Open
 Source Contributors. Both are licensed under the Apache License,
 Version 2.0, and each file carries its own copyright and licence header.
 
+The complete Oldes/Rebol3 source tree is vendored under `rebol3-source/`,
+with its own LICENSE and NOTICE, so the C and Rebol library can be read,
+searched and built without a network or a separate checkout. It is reference
+source: it is not compiled into JEBOL and does not ship in the jar or the
+distribution archive.
+
 The files under src/main/resources/org/jebol/mezz/ are copies of Rebol's
 own library, taken from src/mezz/ upstream. Two are modified: prot-tls.reb
 carries four edits that make it check a server's certificates, and

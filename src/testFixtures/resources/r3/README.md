@@ -1,8 +1,8 @@
 # Rebol's surface, read from Rebol's source
 
-`c-surface.txt` is what Rebol is, taken from `~/Code/personal/rebol3-source`
-by `scripts/c-surface.py`. It is checked in so a change to it shows up in a
-diff and so the audit runs without Rebol's tree on disk.
+`c-surface.txt` is what Rebol is, taken from `rebol3-source/` by
+`scripts/c-surface.py`. It is checked in so a change to it shows up in a diff
+and so the audit runs without reading Rebol's tree.
 
 **There is no binary and no record of one.** `./r3` was deleted on purpose, and
 so was `surface.txt`, the dump of a running 3.22.1's `system/contexts/lib` that

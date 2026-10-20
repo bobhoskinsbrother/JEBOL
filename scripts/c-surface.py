@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Record Rebol's C surface, read from Rebol's own source.
 
-Everything here comes out of `~/Code/personal/rebol3-source`. No running
+Everything here comes out of `rebol3-source/` in this repository. No running
 binary is involved: a probe answers what one build does on one machine, and
 the source says what the language is. Where the two disagree the source wins,
 and the source is also the thing that explains itself.
@@ -36,7 +36,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-REBOL = Path.home() / "Code" / "personal" / "rebol3-source" / "src"
+REBOL = REPO / "rebol3-source" / "src"
 OUT = REPO / "src" / "testFixtures" / "resources" / "r3" / "c-surface.txt"
 
 # A word in a spec block that is not an argument.

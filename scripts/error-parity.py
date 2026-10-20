@@ -159,7 +159,7 @@ def ids_the_vendored_library_raises(catalogued):
 def main():
     quiet = "--quiet" in sys.argv
     if not CATALOGUE.exists():
-        print(f"no catalogue at {CATALOGUE} -- is rebol3-source linked?")
+        print(f"no catalogue at {CATALOGUE} -- is rebol3-source checked in?")
         return 1
 
     named = ids_rebol_names()

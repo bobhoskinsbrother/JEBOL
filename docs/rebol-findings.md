@@ -13,7 +13,7 @@ answered what one build of one fork did on one machine, and it was a fork rather
 than R3-Alpha itself. The commands are left in place so a claim can be traced,
 not so it can be rerun.
 
-**A new finding is read out of the C.** `~/Code/personal/rebol3-source` is the
+**A new finding is read out of the C.** `rebol3-source/` is the
 authority, and `docs/porting-guide.md` says where in it to look. A claim traced to a line of C
 explains itself as well as settling the question, which no probe does.
 

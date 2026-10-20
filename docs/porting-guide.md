@@ -64,7 +64,7 @@ Stop guessing inputs and watch the line. Copy `rebol3-source/` into the
 scratchpad, add a print where you want to know, build it with the compiler
 line `scripts/build-r3.sh` already uses, and run Rebol's own suite under it.
 **Never instrument `rebol3-source/` itself** -- it is the authority, and it is
-a symlink to somebody else's checkout.
+somebody else's checkout, kept here unmodified.
 
 `Throw_Error` in `c-error.c` is the funnel every `Trap` passes through, so
 four lines there report every error the interpreter raises:
