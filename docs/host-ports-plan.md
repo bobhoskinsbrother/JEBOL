@@ -14,9 +14,9 @@ its ports exist. Decided: replace them with one `HostPorts` value supplied at co
 ## Approach
 
 0. **Renames first** (IDE rename, every caller follows): `TrustingNoAuthority` ->
-   `ZeroTrustAuthority`, `Repl.buildAnInterpreter` -> `Repl.buildInterpreter`,
-   `TheInterpreterInAWorker` -> `WorkerInterpreter` (also its name in `build.gradle.kts`'s
-   TeaVM `mainClass`). The names below use the new spellings.
+   `ZeroTrustAuthority`, `Repl.buildAnInterpreter` -> `Repl.buildInterpreter`.
+   `TheInterpreterInAWorker` -> `WorkerInterpreter` is done, including its name in
+   `build.gradle.kts`'s TeaVM `mainClass`. The names below use the new spellings.
 
 1. **Spec first.** Add a guidance/rule note to `spec/embed.allium` (Interpreter entity):
    the host supplies its ports when the interpreter is built; a port it does not supply is

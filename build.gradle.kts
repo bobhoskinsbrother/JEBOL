@@ -46,7 +46,7 @@ sourceSets.named("teavm") {
 
 teavm {
     wasmGC {
-        mainClass.set("org.jebol.adapter.web.TheInterpreterInAWorker")
+        mainClass.set("org.jebol.adapter.web.WorkerInterpreter")
         targetFileName.set("jebol-web")
         obfuscated.set(false)
         outOfProcess.set(true)

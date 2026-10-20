@@ -537,6 +537,69 @@ class BrowserScreenFromTheSourceTest {
         }
 
         @Test
+        @DisplayName("with two windows open, a wheel turn reaches only the window it happened over")
+        @Timeout(20)
+        void reachOnlyTheWindowTheWheelTurnedOver() {
+            SomebodyLooking viewer = new SomebodyLooking();
+            BrowserScreen screen = BrowserScreen.showTo(viewer);
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
+            String setUp = """
+                    left: view/no-wait make gob! [size: 100x100 color: 1.1.1]
+                    left/offset: 0x0
+                    right: view/no-wait make gob! [size: 100x100 color: 2.2.2]
+                    right/offset: 200x0
+                    seen: copy []
+                    handle-events [
+                        name: 'watcher
+                        priority: 90
+                        handler: func [event] [
+                            append seen reduce [
+                                event/type
+                                case [same? event/window right ['right] same? event/window left ['left] true ['neither]]
+                            ]
+                            event
+                        ]
+                    ]""";
+            interpreter.defineNewWordsIn(setUp);
+            interpreter.run(setUp);
+
+            screen.report(ScreenEventType.SCROLL_LINE, new ScreenEventDetail.Scrolled(250, 50, 30));
+            screen.report(ScreenEventType.SCROLL_LINE, new ScreenEventDetail.Scrolled(50, 50, -30));
+            interpreter.run("wait [system/ports/event 0]");
+
+            assertThat(interpreter.display(interpreter.run("seen")))
+                    .isEqualTo("[scroll-line right scroll-line left]");
+        }
+
+        @Test
+        @DisplayName("and a wheel turn on the bare page between two windows reaches neither")
+        @Timeout(20)
+        void reachNobodyWhenTheWheelTurnsOnTheBarePage() {
+            SomebodyLooking viewer = new SomebodyLooking();
+            BrowserScreen screen = BrowserScreen.showTo(viewer);
+            Interpreter interpreter = makeAnInterpreterWithABrowser(screen);
+            String setUp = """
+                    left: view/no-wait make gob! [size: 100x100 color: 1.1.1]
+                    left/offset: 0x0
+                    right: view/no-wait make gob! [size: 100x100 color: 2.2.2]
+                    right/offset: 200x0
+                    seen: copy []
+                    handle-events [
+                        name: 'watcher
+                        priority: 90
+                        handler: func [event] [append seen event/type event]
+                    ]""";
+            interpreter.defineNewWordsIn(setUp);
+            interpreter.run(setUp);
+
+            screen.report(ScreenEventType.SCROLL_LINE, new ScreenEventDetail.Scrolled(150, 50, 30));
+            interpreter.run("wait [system/ports/event 0]");
+
+            assertThat(interpreter.display(interpreter.run("empty? seen")))
+                    .isEqualTo("#(true)");
+        }
+
+        @Test
         @DisplayName("a click is judged against where the windows stand when the script takes it, not when the page posted it")
         @Timeout(20)
         void judgeAClickWhenTaken() {

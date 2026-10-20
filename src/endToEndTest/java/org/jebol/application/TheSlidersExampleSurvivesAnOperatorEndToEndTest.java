@@ -196,6 +196,46 @@ class TheSlidersExampleSurvivesAnOperatorEndToEndTest {
         clickAsTheOperator(across, down);
     }
 
+    @Test
+    @DisplayName("a wheel over the scroller moves it a line each notch, toward the start when away")
+    void scrollsTheScrollerALineAtATime() {
+        clickAsTheOperator(270, 273);
+        assertThat(readTheScrollersValue()).as("the Set button put it at 50%").isEqualTo("50%");
+
+        ScreenEventDetail.At over = findTheMiddlesOf("scroller").getFirst();
+        assertThat(actAsTheOperator(ScreenEventType.MOVE, over)).isEqualTo(NOTHING_WENT_WRONG);
+
+        assertThat(actAsTheOperator(ScreenEventType.SCROLL_LINE,
+                new ScreenEventDetail.Scrolled(over.across(), over.down(), 30)))
+                .as("wheeling away over the scroller").isEqualTo(NOTHING_WENT_WRONG);
+        assertThat(readTheScrollersValue()).as("after a notch away").isEqualTo("40%");
+
+        assertThat(actAsTheOperator(ScreenEventType.SCROLL_LINE,
+                new ScreenEventDetail.Scrolled(over.across(), over.down(), -30)))
+                .as("wheeling back toward the operator").isEqualTo(NOTHING_WENT_WRONG);
+        assertThat(readTheScrollersValue()).as("after a notch back").isEqualTo("50%");
+    }
+
+    @Test
+    @DisplayName("a page wheel over the scroller takes it to the end it is turned toward")
+    void scrollsTheScrollerAPageAtATime() {
+        clickAsTheOperator(270, 273);
+        assertThat(readTheScrollersValue()).as("the Set button put it at 50%").isEqualTo("50%");
+
+        ScreenEventDetail.At over = findTheMiddlesOf("scroller").getFirst();
+        assertThat(actAsTheOperator(ScreenEventType.MOVE, over)).isEqualTo(NOTHING_WENT_WRONG);
+
+        assertThat(actAsTheOperator(ScreenEventType.SCROLL_PAGE,
+                new ScreenEventDetail.Scrolled(over.across(), over.down(), 10)))
+                .as("paging away over the scroller").isEqualTo(NOTHING_WENT_WRONG);
+        assertThat(readTheScrollersValue()).as("after a page away").isEqualTo("0%");
+
+        assertThat(actAsTheOperator(ScreenEventType.SCROLL_PAGE,
+                new ScreenEventDetail.Scrolled(over.across(), over.down(), -10)))
+                .as("paging back toward the operator").isEqualTo(NOTHING_WENT_WRONG);
+        assertThat(readTheScrollersValue()).as("after a page back").isEqualTo("100%");
+    }
+
     private List<ScreenEventDetail.At> findTheMiddlesOf(String style) {
         String found = interpreter.display(interpreter.run("""
                 the-middles-of '%s""".formatted(style)));

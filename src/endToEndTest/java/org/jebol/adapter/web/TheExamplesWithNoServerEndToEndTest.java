@@ -12,6 +12,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.interactions.WheelInput;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.IOException;
@@ -129,6 +130,33 @@ class TheExamplesWithNoServerEndToEndTest {
                         .count() > 1);
         assertThat(findTheLineStartingWith("slider ").substring("slider ".length()))
                 .as("the slider the operator dragged is not the one it was")
+                .isNotEqualTo(before);
+    }
+
+    @Test
+    @DisplayName("the scroller is turned by a real wheel in a page with no server, and its value changes")
+    void turnsTheScrollerWithNoServer() {
+        waitUntilThePageSays("the scroller is found and the windows are open",
+                () -> readTheLinesSoFar().contains("open")
+                        && readTheLinesSoFar().stream().anyMatch(line -> line.startsWith("scroller-at "))
+                        && readTheLinesSoFar().stream().anyMatch(line -> line.startsWith("scroller ")));
+
+        String middle = findTheLineStartingWith("scroller-at ").substring("scroller-at ".length());
+        String before = findTheLineStartingWith("scroller ").substring("scroller ".length());
+        int across = readTheAcrossOf(middle);
+        int down = readTheDownOf(middle);
+
+        placeTheOperatorAt(across, down).perform();
+        new Actions(browser)
+                .scrollFromOrigin(WheelInput.ScrollOrigin.fromViewport(across, down), 0, 400)
+                .perform();
+
+        waitUntilThePageSays("the scroller's value changed",
+                () -> readTheLinesSoFar().stream()
+                        .filter(line -> line.startsWith("scroller "))
+                        .count() > 1);
+        assertThat(findTheLineStartingWith("scroller ").substring("scroller ".length()))
+                .as("the scroller the operator turned is not the one it was")
                 .isNotEqualTo(before);
     }
 

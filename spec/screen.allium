@@ -79,7 +79,7 @@ enum WindowStanding {
 -- which are the C's, and the order there cannot change because reb-evtypes.h
 -- is generated from it.
 --
--- These eight are what a window can say in this increment. The catalogue has
+-- These ten are what a window can say in this increment. The catalogue has
 -- forty-odd; the rest belong to ports, to the console and to devices.
 enum ScreenEventKind {
     close          -- the operator asked for the window to go away
@@ -92,6 +92,9 @@ enum ScreenEventKind {
     | down         -- a pointer button went down
     | up           -- a pointer button came up
     | move         -- the pointer moved
+    | scroll_line  -- a wheel turned: one notch is a line of scrolling
+    | scroll_page  -- a wheel turned a page, because control was held or the
+                   -- machine counts its wheel in pages
 }
 
 ------------------------------------------------------------
@@ -180,8 +183,10 @@ entity ScreenEvent {
     kind: ScreenEventKind
     window: ScreenWindow
     delivered: boolean
-    across: Integer?            -- present when the event has a position or a size
-    down: Integer?
+    across: Integer?            -- present when the event has a position, a size
+                                -- or an amount; nought down the across half of a
+                                -- scroll, which has no place of its own
+    down: Integer?              -- a position, a size, or how far to scroll
     key: String?                -- a character, or one of system/catalog's key names
 }
 
@@ -528,6 +533,16 @@ rule AnEventFromTheScreenIsQueuedRatherThanDelivered {
 -- a character, so the two cannot be mixed. A key the list does not name is
 -- not reported.
 --
+-- A wheel is a scroll event rather than a pointer one. It carries how far to
+-- scroll in the down half of `event/offset`, and nought across. The face it
+-- reaches is the one the pointer is already over, because a move event before
+-- it has told the GUI that; the wheel itself needs no place of its own. A
+-- turn away from the operator is positive, which is how R3's host reports it
+-- and what the 2010 GUI's division by minus thirty expects: a positive line
+-- carries the value toward the beginning rather than the end. Thirty is one
+-- line of scrolling, and a page event is taken as whole pages whatever the
+-- amount's size.
+--
 -- A close carries neither.
 rule AScreenEventCarriesItsPositionOrItsKey {
     when: the_screen_reports(port, kind, window)
@@ -541,6 +556,8 @@ rule AScreenEventCarriesItsPositionOrItsKey {
             the_event_offset_is(the_screen_position_of(window))
         else if kind = key or kind = key_up or kind = control or kind = control_up:
             the_event_key_is(the_key_pressed)
+        else if kind = scroll_line or kind = scroll_page:
+            the_event_offset_is(the_turn_of_the_wheel)
 }
 
 -- A browser keeps the rule above the same way a desktop window does. The page
@@ -551,13 +568,19 @@ rule AScreenEventCarriesItsPositionOrItsKey {
 -- the character, or, for a key that types nothing, with its name from the
 -- catalogue's key list.
 --
+-- The page posts a wheel's turn too: where the pointer is, so the event can
+-- reach the window under it, and the same amount a desktop window posts,
+-- already scaled from the wheel's own units. A page reports its turn the way
+-- a window does, positive away from the operator.
+--
 -- A number rather than the character itself, because the page's message is
 -- read as flat fields and a comma typed as a key would split it.
 --
 -- What cannot be delivered whole is not delivered at all: a pointer event with
--- no position, or one whose position is not two whole numbers; a key event
--- whose number is no character; a control event whose name the catalogue does
--- not know. Delivering any of them would hand the GUI an event R3's host never
+-- no position, or one whose position is not two whole numbers; a scroll event
+-- with no place or no amount; a key event whose number is no character; a
+-- control event whose name the catalogue does not know. Delivering any of them
+-- would hand the GUI an event R3's host never
 -- makes -- a click with no offset fails `event/offset:` in the 2010 GUI as it
 -- does in R3. Until 2026-10-09 the page posted only the kind, so every click in
 -- a browser was such an event and no GUI could be used there.

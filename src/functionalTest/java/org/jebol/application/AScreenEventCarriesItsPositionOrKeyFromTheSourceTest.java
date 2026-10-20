@@ -81,6 +81,24 @@ class AScreenEventCarriesItsPositionOrKeyFromTheSourceTest {
     }
 
     @Test
+    @DisplayName("a line wheel turn arrives as scroll-line and reads its amount from event/offset's down half")
+    @Timeout(20)
+    void deliversALineWheelTurnAsTheOffset() {
+        assertThat(readWhatTheHandlerSawAfter(ScreenEventType.SCROLL_LINE,
+                new ScreenEventDetail.Scrolled(10, 20, -30)))
+                .isEqualTo("[[scroll-line 0x-30 _]]");
+    }
+
+    @Test
+    @DisplayName("a page wheel turn arrives as scroll-page and reads its amount the same way")
+    @Timeout(20)
+    void deliversAPageWheelTurnAsTheOffset() {
+        assertThat(readWhatTheHandlerSawAfter(ScreenEventType.SCROLL_PAGE,
+                new ScreenEventDetail.Scrolled(10, 20, -10)))
+                .isEqualTo("[[scroll-page 0x-10 _]]");
+    }
+
+    @Test
     @DisplayName("a typed character arrives as event/key")
     @Timeout(20)
     void deliversATypedCharacterAsTheKey() {

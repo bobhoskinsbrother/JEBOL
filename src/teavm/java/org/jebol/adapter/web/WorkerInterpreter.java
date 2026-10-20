@@ -13,7 +13,7 @@ import org.teavm.jso.function.JSConsumer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-public class TheInterpreterInAWorker {
+public class WorkerInterpreter {
 
     private static BrowserScreen screen;
     private static WebConsole console;
@@ -26,7 +26,7 @@ public class TheInterpreterInAWorker {
         screen = BrowserScreen.showTo(thePage);
         console = new WebConsole(thePage::takeWhatThePagePosts);
         interpreter = Interpreter.createWithOutput(
-                TheInterpreterInAWorker::asTheScriptPrints, boundAWorkerToTheScreen());
+                WorkerInterpreter::asTheScriptPrints, boundAWorkerToTheScreen());
         interpreter.useScreen(screen);
         interpreter.useConsole(console);
         files = new WebFiles(BrowserStore.openForThePage());

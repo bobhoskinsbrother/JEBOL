@@ -65,7 +65,17 @@ final class PageEvent {
                     .filter(named -> EventCatalogue.findTheKeyIndexOf(named).isPresent())
                     .map(ScreenEventDetail.NamedKey::new);
             case CLOSE, RESIZE, OFFSET -> Optional.of(new ScreenEventDetail.NothingMore());
+            case SCROLL_LINE, SCROLL_PAGE -> wheelTurn();
         };
+    }
+
+    private Optional<ScreenEventDetail> wheelTurn() {
+        Optional<Integer> across = eventFields.readWholeNumber("across");
+        Optional<Integer> down = eventFields.readWholeNumber("down");
+        Optional<Integer> amount = eventFields.readWholeNumber("amount");
+        return across.isPresent() && down.isPresent() && amount.isPresent()
+                ? Optional.of(new ScreenEventDetail.Scrolled(across.get(), down.get(), amount.get()))
+                : Optional.empty();
     }
 
     private Optional<ScreenEventType> findTypeNamed(String word) {

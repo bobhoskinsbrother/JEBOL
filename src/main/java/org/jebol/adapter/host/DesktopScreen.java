@@ -311,6 +311,20 @@ public final class DesktopScreen extends GobScreen {
                 post(ScreenEventType.MOVE, gob, locateThePointer(dragged));
             }
         });
+        frame.getContentPane().addMouseWheelListener(new MouseWheelListener() {
+
+            private final WheelScrolling wheel = new WheelScrolling();
+
+            @Override
+            public void mouseWheelMoved(MouseWheelEvent turnedBy) {
+                boolean aWholePage = turnedBy.isControlDown()
+                        || turnedBy.getScrollType() == MouseWheelEvent.WHEEL_BLOCK_SCROLL;
+                wheel.take(turnedBy.getPreciseWheelRotation(), aWholePage)
+                        .ifPresent(turning -> post(turning.kind(), gob,
+                                new ScreenEventDetail.Scrolled(
+                                        turnedBy.getX(), turnedBy.getY(), turning.amount())));
+            }
+        });
     }
 
     private ScreenEventDetail locateThePointer(MouseEvent pointer) {

@@ -227,6 +227,8 @@ public class WaitNative extends PortWakingNative {
                     .<List<Value>>map(position -> List.of(
                             SetWordValue.of("code"), IntegerValue.of(position + 1)))
                     .orElse(List.of());
+            case ScreenEventDetail.Scrolled(_, _, int amount) ->
+                    List.of(SetWordValue.of("offset"), PairValue.of(0, amount));
             case ScreenEventDetail.NothingMore nothing -> List.of();
         };
     }

@@ -298,6 +298,49 @@ class WebScreenServerFromTheSourceTest {
                     {"type":"%s","across":5,"down":5}""".formatted(kind))).isEmpty();
         }
 
+        @ParameterizedTest(name = "a {0} of {1} posted from the page reaches the window under it")
+        @CsvSource({
+                "scroll-line, 30,  SCROLL_LINE",
+                "scroll-line, -30, SCROLL_LINE",
+                "scroll-page, 10,  SCROLL_PAGE",
+                "scroll-page, -10, SCROLL_PAGE",
+        })
+        @DisplayName("a wheel turn posted from the page reaches the window it happened over, with its amount")
+        @Timeout(20)
+        void carriesAWheelTurn(String kind, int amount, ScreenEventType expected) throws Exception {
+            showAWindowAt(10, 20);
+
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"%s","across":50,"down":60,"amount":%d}""".formatted(kind, amount)))
+                    .contains(makeAnEvent(expected, new ScreenEventDetail.Scrolled(50, 60, amount)));
+        }
+
+        @ParameterizedTest(name = "a wheel turn with {0} is not delivered")
+        @ValueSource(strings = {
+                "{\"type\":\"scroll-line\",\"down\":60,\"amount\":30}",
+                "{\"type\":\"scroll-line\",\"across\":50,\"amount\":30}",
+                "{\"type\":\"scroll-line\",\"across\":50,\"down\":60}",
+                "{\"type\":\"scroll-line\",\"across\":50,\"down\":60,\"amount\":\"30\"}",
+                "{\"type\":\"scroll-line\",\"across\":50,\"down\":60,\"amount\":1.5}",
+        })
+        @DisplayName("a wheel turn with no place or no whole amount is not delivered at all")
+        @Timeout(20)
+        void dropsAWheelTurnWithNoPlaceOrAmount(String body) throws Exception {
+            showAWindowAt(10, 20);
+
+            assertThat(readWhatIsQueuedAfterPosting(body)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("a wheel turn on no window reaches nothing")
+        @Timeout(20)
+        void dropsAWheelTurnOnNoWindow() throws Exception {
+            showAWindowAt(10, 20);
+
+            assertThat(readWhatIsQueuedAfterPosting("""
+                    {"type":"scroll-line","across":0,"down":0,"amount":30}""")).isEmpty();
+        }
+
         @ParameterizedTest(name = "a move posted with {0} is not delivered")
         @ValueSource(strings = {
                 """

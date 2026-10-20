@@ -5,7 +5,7 @@ package org.jebol.domain.host;
  *
  * <p>The spellings are {@code EventCatalogue}'s, which are the C's, and the
  * order there cannot change because {@code reb-evtypes.h} is generated from
- * it. These eight are what a window says; the catalogue's other forty belong
+ * it. These ten are what a window says; the catalogue's other forty belong
  * to ports, to the console and to devices.
  *
  * <p>Specified in {@code spec/screen.allium}.
@@ -21,7 +21,9 @@ public enum ScreenEventType {
     CONTROL_UP("control-up"),
     DOWN("down"),
     UP("up"),
-    MOVE("move");
+    MOVE("move"),
+    SCROLL_LINE("scroll-line"),
+    SCROLL_PAGE("scroll-page");
 
     private final String spelling;
 

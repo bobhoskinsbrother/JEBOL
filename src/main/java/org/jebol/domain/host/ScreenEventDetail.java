@@ -20,6 +20,10 @@ public sealed interface ScreenEventDetail {
     record NamedKey(String name) implements ScreenEventDetail {
     }
 
+    /** Where a wheel turned, and how far: the GUI reads the amount as its offset. */
+    record Scrolled(int across, int down, int amount) implements ScreenEventDetail {
+    }
+
     /** Nothing beside the type: a close, or a key nothing names. */
     record NothingMore() implements ScreenEventDetail {
     }

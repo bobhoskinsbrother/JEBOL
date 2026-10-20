@@ -264,6 +264,40 @@ function tellWhereThePointerIs(kind, pointer) {
   tellTheWorker({ type: kind, across: Math.round(pointer.offsetX), down: Math.round(pointer.offsetY) });
 }
 
+const pixelsInANotch = 100;
+const linesInANotch = 3;
+const aLineOfScrolling = 30;
+const aPageOfScrolling = 10;
+
+let turned = 0;
+
+function theNotchesIn(wheel) {
+  if (wheel.deltaMode === 1) {
+    return wheel.deltaY / linesInANotch;
+  }
+  if (wheel.deltaMode === 2) {
+    return wheel.deltaY;
+  }
+  return wheel.deltaY / pixelsInANotch;
+}
+
+function tellTheWheel(wheel) {
+  wheel.preventDefault();
+  turned += theNotchesIn(wheel);
+  const whole = Math.trunc(turned);
+  if (whole === 0) {
+    return;
+  }
+  turned -= whole;
+  const wholePages = wheel.ctrlKey || wheel.deltaMode === 2;
+  tellTheWorker({
+    type: wholePages ? 'scroll-page' : 'scroll-line',
+    across: Math.round(wheel.offsetX),
+    down: Math.round(wheel.offsetY),
+    amount: -whole * (wholePages ? aPageOfScrolling : aLineOfScrolling)
+  });
+}
+
 function theCharacterTyped(pressed) {
   if (pressed.key in keysThatTypeAControlCharacter) {
     return keysThatTypeAControlCharacter[pressed.key];
@@ -286,6 +320,7 @@ window.addEventListener('resize', sayHowBigWeAre);
 canvas.addEventListener('mousedown', pointer => tellWhereThePointerIs('down', pointer));
 canvas.addEventListener('mouseup', pointer => tellWhereThePointerIs('up', pointer));
 canvas.addEventListener('mousemove', pointer => tellWhereThePointerIs('move', pointer));
+canvas.addEventListener('wheel', tellTheWheel, { passive: false });
 window.addEventListener('keydown', pressed => tellTheKey(pressed, 'key', 'control'));
 window.addEventListener('keyup', pressed => tellTheKey(pressed, 'key-up', 'control-up'));
 window.addEventListener('beforeunload', () => tellTheWorker({ type: 'close' }));

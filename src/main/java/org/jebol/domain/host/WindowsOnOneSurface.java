@@ -17,7 +17,8 @@ public final class WindowsOnOneSurface {
         forgetWindowsNoLongerShowing(showingFromBottomToTop);
         List<GobValue> heardBy = switch (kind) {
             case DOWN -> findWhoHearsAPress(detail, showingFromBottomToTop);
-            case MOVE, UP -> findWhoHearsThePointer(kind, detail, showingFromBottomToTop);
+            case MOVE, UP, SCROLL_LINE, SCROLL_PAGE ->
+                    findWhoHearsThePointer(kind, detail, showingFromBottomToTop);
             case KEY, KEY_UP, CONTROL, CONTROL_UP -> findWhoHearsAKey(showingFromBottomToTop);
             case CLOSE -> showingFromBottomToTop;
             case RESIZE, OFFSET -> List.of();
@@ -61,8 +62,20 @@ public final class WindowsOnOneSurface {
     }
 
     private Optional<GobValue> findTheTopmostWindowUnder(ScreenEventDetail detail, List<GobValue> showing) {
-        if (!(detail instanceof ScreenEventDetail.At(int across, int down))) {
-            return Optional.empty();
+        int across;
+        int down;
+        switch (detail) {
+            case ScreenEventDetail.At(int atAcross, int atDown) -> {
+                across = atAcross;
+                down = atDown;
+            }
+            case ScreenEventDetail.Scrolled(int atAcross, int atDown, _) -> {
+                across = atAcross;
+                down = atDown;
+            }
+            default -> {
+                return Optional.empty();
+            }
         }
         for (GobValue window : showing.reversed()) {
             if (covers(window, across, down)) {

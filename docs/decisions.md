@@ -1197,7 +1197,7 @@ down next.
 **A page's worker runs the WebAssembly interpreter and owns the canvas; the
 page's own thread only paints what arrives and posts what the operator does.**
 The worker's shell (`src/teavm/js/jebol-worker.js`) loads the module, calls the
-boot, and speaks for the page. Java's side is `TheInterpreterInAWorker`
+boot, and speaks for the page. Java's side is `WorkerInterpreter`
 (`src/teavm`): `main` boots and then runs the loop - await a script from the
 page, run it, report, repeat. Paint lists cross to the page as the same JSON
 the server arrangement writes, so the page paints with the existing renderer;

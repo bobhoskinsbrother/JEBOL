@@ -78,6 +78,18 @@ Alternatively, pass script content via standard input:
 ```
 cat my-script.reb | jebol
 ```
+
+### **Running a GUI Application**
+
+A script that uses `VIEW` needs a screen. `--screen=window` attaches a native window; with no switch the interpreter runs headless and a view draws nothing. `--screen=web` serves the same picture to a browser page instead and prints the address to open.
+
+```
+JAVA_HOME=$(ls -d ~/.gradle/jdks/*25*/*/Contents/Home | head -1)
+./build/install/jebol/bin/jebol --screen=window examples/r3-gui/
+```
+
+The shipped example is the 2010 R3 GUI. The window opens with the sliders and survey layouts, and changes to either are printed in the console as the operator makes them. Closing the window ends the process.
+
 ---
 
 ## **3. Embedding JEBOL in Java Applications**

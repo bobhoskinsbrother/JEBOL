@@ -13,6 +13,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.interactions.WheelInput;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.IOException;
@@ -254,6 +255,45 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
             return "#(true)".equals(answerTo("before <> get-face the-slider"));
         });
         assertThat(answerTo("(get-face the-slider) > before")).isEqualTo("#(true)");
+    }
+
+    @Test
+    @DisplayName("the sliders example's scroller is turned by a real wheel in a browser, and its value changes")
+    void turnsTheScrollerInABrowser() {
+        String opened = answerTo("""
+                change-dir %examples/r3-gui/
+                do %gui-322.r
+                the-layout: last load %sliders.r
+                gui-view: get bind 'view first find gui first [view:]
+                the-window: gui-view/no-wait the-layout
+                the-scroller: none
+                the-middle-of-the-scroller: none
+                walk: func [gob at] [
+                    foreach sub any [gob/pane []] [
+                        if all [object? sub/data 'scroller = select sub/data 'style none? the-scroller] [
+                            the-scroller: sub/data
+                            the-middle-of-the-scroller: at + sub/offset + to pair! sub/size / 2
+                        ]
+                        walk sub at + sub/offset
+                    ]
+                ]
+                walk the-window the-window/offset
+                before: get-face the-scroller
+                to pair! reduce [to integer! the-middle-of-the-scroller/x to integer! the-middle-of-the-scroller/y]""");
+        String[] middle = opened.split("x");
+        int across = Integer.parseInt(middle[0]);
+        int down = Integer.parseInt(middle[1]);
+
+        placeTheOperatorAt(across, down).perform();
+        new Actions(browser)
+                .scrollFromOrigin(WheelInput.ScrollOrigin.fromViewport(across, down), 0, 400)
+                .perform();
+
+        new WebDriverWait(browser, Duration.ofSeconds(20)).until(anything -> {
+            answerTo("wait [gui-event-port 0.05]");
+            return "#(true)".equals(answerTo("before <> get-face the-scroller"));
+        });
+        assertThat(answerTo("(get-face the-scroller) > before")).isEqualTo("#(true)");
     }
 
     private void openTheSurvey() {

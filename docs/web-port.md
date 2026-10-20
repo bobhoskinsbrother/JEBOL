@@ -20,14 +20,14 @@ The pieces:
 
 | Piece | Where |
 | --- | --- |
-| The web's main class, the run loop in the worker | `src/teavm/java/org/jebol/adapter/web/TheInterpreterInAWorker`, booting on `main` and awaiting scripts the page hands over |
+| The web's main class, the run loop in the worker | `src/teavm/java/org/jebol/adapter/web/WorkerInterpreter`, booting on `main` and awaiting scripts the page hands over |
 | The worker's shell | `src/teavm/js/jebol-worker.js`, copied beside the module by the `copyTheWorkerScript` task |
 | The web's substitutions and the library-file list | `src/teavm/java` and `src/teavm/resources`, wired in `build.gradle.kts` |
 | The library files TeaVM must embed | listed by the `writeTheWebResourceList` task from `src/main/resources/org/jebol`, so the list cannot drift |
 | The page and its scripts | `site/runner.html` is the runner every site is built around -- canvas, the replayer of the surface's calls copied from `WebScreenPage`, and the worker hookup -- fill in with an app's file list and entry; `src/test/resources/web/rebol-on-a-page.html` and `rebol-adapters-on-a-page.html` are the gate's own |
 | The site a host serves | `assembleTheSite` copies the app (`examples/r3-gui` by default, `-PsiteDir=my-app`), the module, its loader, the worker's shell and the font with its licence into `build/site`, and writes `index.html` from `site/runner.html` around the app's file list; `TheExamplesWithNoServerEndToEndTest` serves that directory and nothing else, so the gate drives the artifact itself |
 | The unit level | `AScriptInAPageTagFromTheSourceTest` runs the first tag's script on the JVM and pins its eight printed lines; `AFilesystemInTheWorkersMemoryTest` and `ThePageConsoleFromTheSourceTest` cover the browser's files and console |
-| The end-to-end level | `AScriptInAPageTagRunsInABrowserEndToEndTest` serves the build and the page, drives Chrome, and checks the eight lines, the canvas, a click, and a resize; `TheBrowserAdaptersEndToEndTest` fetches from the test's own server, writes and reads a file, types into the console element, and catches the refusals; `TheExamplesWithNoServerEndToEndTest` drives the assembled site -- a real drag changes the slider, a real click and real keys put a name in the survey's field |
+| The end-to-end level | `AScriptInAPageTagRunsInABrowserEndToEndTest` serves the build and the page, drives Chrome, and checks the eight lines, the canvas, a click, and a resize; `TheBrowserAdaptersEndToEndTest` fetches from the test's own server, writes and reads a file, types into the console element, and catches the refusals; `TheExamplesWithNoServerEndToEndTest` drives the assembled site -- a real drag changes the slider, a real wheel turn changes the scroller, and a real click and real keys put a name in the survey's field |
 
 Measured on 2026-10-12, `gzip -9`: the module is 13.7 MB unobfuscated and 4.1 MB
 gzipped, the runtime loader 38 KB and 8.6 KB, the worker's shell 5.5 KB and
@@ -171,7 +171,7 @@ and a stub without a hierarchy is invalid wasm wherever a cast touches it.
 ## What the web build refuses
 
 **A page has less outside it than a machine, and the worker says so once.**
-`TheInterpreterInAWorker` builds the browser's bounds: console, files,
+`WorkerInterpreter` builds the browser's bounds: console, files,
 windows, web and a working directory are granted, because each of those the
 page can supply; network, processes and environment are `unavailable`, so a
 script that reaches for a raw connection or another program reads

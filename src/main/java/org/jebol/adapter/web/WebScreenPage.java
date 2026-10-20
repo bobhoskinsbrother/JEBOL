@@ -235,6 +235,40 @@ final class WebScreenPage {
               dispatch({ type: kind, across: Math.round(pointer.offsetX), down: Math.round(pointer.offsetY) });
             }
 
+            const pixelsInANotch = 100;
+            const linesInANotch = 3;
+            const aLineOfScrolling = 30;
+            const aPageOfScrolling = 10;
+
+            let turned = 0;
+
+            function theNotchesIn(wheel) {
+              if (wheel.deltaMode === 1) {
+                return wheel.deltaY / linesInANotch;
+              }
+              if (wheel.deltaMode === 2) {
+                return wheel.deltaY;
+              }
+              return wheel.deltaY / pixelsInANotch;
+            }
+
+            function wheelTurn(wheel) {
+              wheel.preventDefault();
+              turned += theNotchesIn(wheel);
+              const whole = Math.trunc(turned);
+              if (whole === 0) {
+                return;
+              }
+              turned -= whole;
+              const wholePages = wheel.ctrlKey || wheel.deltaMode === 2;
+              dispatch({
+                type: wholePages ? 'scroll-page' : 'scroll-line',
+                across: Math.round(wheel.offsetX),
+                down: Math.round(wheel.offsetY),
+                amount: -whole * (wholePages ? aPageOfScrolling : aLineOfScrolling)
+              });
+            }
+
             function characterTyped(pressed) {
               if (pressed.key in keysThatTypeAControlCharacter) {
                 return keysThatTypeAControlCharacter[pressed.key];
@@ -257,6 +291,7 @@ final class WebScreenPage {
             canvas.addEventListener('mousedown', pointer => pointerLocation('down', pointer));
             canvas.addEventListener('mouseup', pointer => pointerLocation('up', pointer));
             canvas.addEventListener('mousemove', pointer => pointerLocation('move', pointer));
+            canvas.addEventListener('wheel', wheelTurn, { passive: false });
             window.addEventListener('keydown', pressed => dispatchKey(pressed, 'key', 'control'));
             window.addEventListener('keyup', pressed => dispatchKey(pressed, 'key-up', 'control-up'));
             window.addEventListener('beforeunload', () => dispatch({ type: 'close' }));
