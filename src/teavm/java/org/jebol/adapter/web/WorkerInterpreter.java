@@ -3,6 +3,7 @@ package org.jebol.adapter.web;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.FilePort;
+import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.render.DrawingCommand;
 import org.teavm.jso.JSBody;
@@ -25,13 +26,15 @@ public class WorkerInterpreter {
         ThePageOnTheOtherSide thePage = new ThePageOnTheOtherSide();
         screen = BrowserScreen.showTo(thePage);
         console = new WebConsole(thePage::takeWhatThePagePosts);
-        interpreter = Interpreter.createWithOutput(
-                WorkerInterpreter::asTheScriptPrints, boundAWorkerToTheScreen());
-        interpreter.useScreen(screen);
-        interpreter.useConsole(console);
         files = new WebFiles(BrowserStore.openForThePage());
-        interpreter.useFileSystem(files);
-        interpreter.useHttp(new WebHttp());
+        interpreter = Interpreter.createOn(
+                Interpreter.standardPorts()
+                        .withScreen(screen)
+                        .withConsole(console)
+                        .withFiles(files)
+                        .withHttp(new WebHttp()),
+                WorkerInterpreter::asTheScriptPrints,
+                boundAWorkerToTheScreen());
         say("booted", "");
         while (true) {
             String source = awaitAScriptFromThePage().await();

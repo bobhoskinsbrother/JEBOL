@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,12 +17,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DoFileFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterGrantedFilesUnder(Path root) {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
+                OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
-        return interpreter;
     }
 
     private static String answerTo(Path root, String source) {

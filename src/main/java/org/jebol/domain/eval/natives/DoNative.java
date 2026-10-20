@@ -103,7 +103,7 @@ public class DoNative extends DefaultNative {
     }
 
     private Value handToTheHost(TaskValue task, Evaluator evaluator) {
-        evaluator.tasks().runTheBody(Molder.mold(task.body()), evaluator.findTheOutput());
+        evaluator.ports().tasks().runTheBody(Molder.mold(task.body()), evaluator.findTheOutput());
         return task;
     }
 

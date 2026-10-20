@@ -4,6 +4,7 @@ import org.jebol.application.Bounds;
 import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,9 +34,10 @@ class DirectoryQuestionFromTheSourceTest {
         for (HostService service : granted) {
             bounds = bounds.grant(service);
         }
-        Interpreter interpreter = Interpreter.withBounds(bounds);
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                OutputPort.discard(),
+                bounds);
     }
 
     private static Interpreter makeAnInterpreterHoldingADirectoryAndAFile(Path root) throws Exception {

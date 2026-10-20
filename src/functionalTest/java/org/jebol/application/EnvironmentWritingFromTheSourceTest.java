@@ -3,6 +3,7 @@ package org.jebol.application;
 import org.jebol.adapter.host.JavaProcess;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -11,10 +12,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class EnvironmentWritingFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterReaching() {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withEnvironment(new ProcessEnvironment()),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.ENVIRONMENT));
-        interpreter.useEnvironment(new ProcessEnvironment());
-        return interpreter;
     }
 
     private static String answerTo(Interpreter interpreter, String source) {
@@ -124,10 +125,14 @@ class EnvironmentWritingFromTheSourceTest {
     @Test
     @DisplayName("a program started afterwards inherits what was set")
     void passesItToAStartedProgram() {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                .grant(HostService.ENVIRONMENT).grant(HostService.PROCESSES));
-        interpreter.useEnvironment(new ProcessEnvironment());
-        interpreter.useProcesses(new JavaProcess());
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts()
+                        .withEnvironment(new ProcessEnvironment())
+                        .withProcesses(new JavaProcess()),
+                OutputPort.discard(),
+                Bounds.standard()
+                        .grant(HostService.ENVIRONMENT)
+                        .grant(HostService.PROCESSES));
         assertThat(answerTo(interpreter, """
                 set-env "JB_CHILD" "inherited"
                 seen: copy ""
@@ -139,8 +144,10 @@ class EnvironmentWritingFromTheSourceTest {
     @Test
     @DisplayName("without the environment grant, all three refuse")
     void refusesWithoutTheGrant() {
-        Interpreter without = Interpreter.withBounds(Bounds.standard());
-        without.useEnvironment(new ProcessEnvironment());
+        Interpreter without = Interpreter.createOn(
+                Interpreter.standardPorts().withEnvironment(new ProcessEnvironment()),
+                OutputPort.discard(),
+                Bounds.standard());
         assertThat(answerTo(without,
                 "e: try [set-env \"JB_H\" \"x\"] either error? e [e/id] ['no-error]"))
                 .isEqualTo("no-service");

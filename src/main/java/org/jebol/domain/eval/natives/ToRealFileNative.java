@@ -31,7 +31,7 @@ public class ToRealFileNative extends HostNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.FILES);
-            return runThroughTheFileSystem(() -> evaluator.files()
+            return runThroughTheFileSystem(() -> evaluator.ports().files()
                     .resolvedFile(((AnyStringValue) arguments.getFirst()).text()));
         };
     }

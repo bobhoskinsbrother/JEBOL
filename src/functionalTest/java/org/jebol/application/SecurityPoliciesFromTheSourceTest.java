@@ -6,6 +6,8 @@ import org.jebol.adapter.host.JavaSocket;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.HostPorts;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.value.IntegerValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,16 +44,16 @@ class SecurityPoliciesFromTheSourceTest {
         for (HostService service : HostService.values()) {
             everything = everything.grant(service);
         }
-        return makeAnInterpreterWithTheHostsAdapters(Interpreter.withBounds(everything));
+        return Interpreter.createOn(theHostsAdapters(), OutputPort.discard(), everything);
     }
 
-    private Interpreter makeAnInterpreterWithTheHostsAdapters(Interpreter made) {
-        made.useFileSystem(FileSystemPort.rootFileSystem(root));
-        made.useEnvironment(new ProcessEnvironment());
-        made.useProcesses(new JavaProcess());
-        made.useNetwork(new JavaSocket());
-        made.useImages(new JavaImage());
-        return made;
+    private HostPorts theHostsAdapters() {
+        return Interpreter.standardPorts()
+                .withFiles(FileSystemPort.rootFileSystem(root))
+                .withEnvironment(new ProcessEnvironment())
+                .withProcesses(new JavaProcess())
+                .withNetwork(new JavaSocket())
+                .withImages(new JavaImage());
     }
 
     private String answerTo(String source) {
@@ -144,8 +146,10 @@ class SecurityPoliciesFromTheSourceTest {
             for (HostService service : HostService.values()) {
                 everything = everything.grant(service);
             }
-            Interpreter asking = makeAnInterpreterWithTheHostsAdapters(Interpreter.createWithOutput(printed::append, everything));
-            asking.useConsole(new KeysTypedAtATerminal(keys));
+            Interpreter asking = Interpreter.createOn(
+                    theHostsAdapters().withConsole(new KeysTypedAtATerminal(keys)),
+                    printed::append,
+                    everything);
             answerTo(asking, "cd %/app/ secure [file ask]");
             return asking;
         }
@@ -600,8 +604,9 @@ class SecurityPoliciesFromTheSourceTest {
         @Test
         @DisplayName("a service the host withheld is refused as not granted, whatever the policy says")
         void refuseAWithheldServiceAsNotGranted() {
-            Interpreter withoutProcesses = makeAnInterpreterWithTheHostsAdapters(Interpreter.withBounds(
-                    Bounds.standard().grant(HostService.FILES)));
+            Interpreter withoutProcesses = Interpreter.createOn(
+                    theHostsAdapters(), OutputPort.discard(),
+                    Bounds.standard().grant(HostService.FILES));
             answerTo(withoutProcesses, "secure [call throw]");
 
             assertThat(answerTo(withoutProcesses, "e: try [call/wait {true}] e/id")).isEqualTo("no-service");
@@ -610,8 +615,9 @@ class SecurityPoliciesFromTheSourceTest {
         @Test
         @DisplayName("and allowing everything does not reach what the host held back")
         void allowDoesNotReachIt() {
-            Interpreter withoutProcesses = makeAnInterpreterWithTheHostsAdapters(Interpreter.withBounds(
-                    Bounds.standard().grant(HostService.FILES)));
+            Interpreter withoutProcesses = Interpreter.createOn(
+                    theHostsAdapters(), OutputPort.discard(),
+                    Bounds.standard().grant(HostService.FILES));
             answerTo(withoutProcesses, "secure allow");
 
             assertThat(answerTo(withoutProcesses, "e: try [call/wait {true}] e/id")).isEqualTo("no-service");

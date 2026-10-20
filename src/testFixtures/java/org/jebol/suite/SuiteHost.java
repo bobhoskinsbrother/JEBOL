@@ -15,7 +15,9 @@ import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.application.Bounds;
 import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
+import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 
 final class SuiteHost {
 
@@ -30,20 +32,26 @@ final class SuiteHost {
         return bounds;
     }
 
-    static Interpreter installOn(Interpreter interpreter) {
+    static Interpreter anInterpreterFor(Bounds bounds) {
+        return anInterpreterFor(bounds, OutputPort.discard());
+    }
+
+    static Interpreter anInterpreterFor(Bounds bounds, OutputPort output) {
         Path theRootOfThisRun;
         try {
             theRootOfThisRun = Files.createTempDirectory("jebol-suite");
             layOutTheFilesTheSuiteReads(theRootOfThisRun);
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(theRootOfThisRun));
         } catch (IOException noDirectory) {
             throw new UncheckedIOException(noDirectory);
         }
-        interpreter.useEnvironment(new ProcessEnvironment());
-        interpreter.useProcesses(new JavaProcess());
-        interpreter.useImages(new JavaImage());
-        interpreter.useNetwork(new JavaSocket());
-        interpreter.useCertificateAuthority(new JavaCertificateAuthority());
+        HostPorts ports = Interpreter.standardPorts()
+                .withFiles(FileSystemPort.rootFileSystem(theRootOfThisRun))
+                .withEnvironment(new ProcessEnvironment())
+                .withProcesses(new JavaProcess())
+                .withImages(new JavaImage())
+                .withNetwork(new JavaSocket())
+                .withCertificateAuthority(new JavaCertificateAuthority());
+        Interpreter interpreter = Interpreter.createOn(ports, output, bounds);
         putHomeInsideTheDirectoryTheRunCanReach(interpreter);
         putTheApplicationDataDirectoryThereToo(interpreter);
         try {

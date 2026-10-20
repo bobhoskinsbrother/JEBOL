@@ -23,6 +23,14 @@ import java.util.function.Supplier;
  * <p>The exception is {@link #cancel()}, which is meant to be called from
  * another thread and does nothing but set a flag the running script notices.
  *
+ * <p>A host supplies every port the interpreter will ever have when it builds
+ * it, as one {@link HostPorts} value; a port it does not supply is that port's
+ * refusing default, so {@code createOn(HostPorts.none(), ...)} reaches
+ * nothing and the convenience factories supply a JVM interpreter's own
+ * machine and thread pause. Nothing changes a port afterwards, because a
+ * script that could run under one host's rules and finish under another's
+ * would be no rule at all.
+ *
  * <p>Nothing here throws for anything a script can do. Failing, running too
  * long and nesting too deep all arrive as a {@link ScriptOutcome}, because a
  * host that had to catch a throwable to learn a script misbehaved could not
@@ -40,7 +48,7 @@ public final class Interpreter {
     private final Evaluator evaluator;
     private final RebolLibraryLoader library;
     private final Bounds bounds;
-    private final MachinePort machine;
+    private final HostPorts ports;
     private final AtomicBoolean cancellationRequested = new AtomicBoolean();
     private volatile long deadlineNanos = Long.MAX_VALUE;
     private final List<ExtensionReport> extensionReports;
@@ -48,12 +56,12 @@ public final class Interpreter {
     private Context userContext;
     private String sharedRoot = "";
 
-    private Interpreter(MachinePort machine, OutputPort output, Bounds bounds) {
-        this.machine = refuseUnknownOperatingSystem(machine);
+    private Interpreter(HostPorts ports, OutputPort output, Bounds bounds) {
+        this.ports = anInterpreterIsBuiltWith(ports);
         Set<HostService> duringBoot = EnumSet.of(HostService.CLOCK, HostService.WINDOWS);
         duringBoot.addAll(bounds.grantedServices());
         RebolFiles rebolFiles = new RebolFiles(new ClasspathFiles());
-        Boot boot = Boot.makeStandard(machine, rebolFiles, duringBoot);
+        Boot boot = Boot.makeStandard(this.ports.machine(), rebolFiles, duringBoot);
         this.bounds = bounds;
         SystemObject system = boot.start();
         this.systemContext = system.lib();
@@ -61,14 +69,13 @@ public final class Interpreter {
         this.userContext = Context.makeChildOf(systemContext);
         this.evaluator = new Evaluator(
                 systemContext,
+                this.ports,
                 boot.construction(),
                 boot::makeMakerFor,
                 output,
                 bounds.maximumNesting(),
                 this::reasonToStop,
                 bounds.checkEvery());
-        evaluator.usePause(new ThreadPause());
-        evaluator.useMachine(machine);
         evaluator.putRuntimeWordsIn(userContext);
         this.library = new RebolLibraryLoader(rebolFiles, systemContext, system.internals(), this::run);
         library.supplySymbolsAndModules(evaluator);
@@ -77,6 +84,7 @@ public final class Interpreter {
         library.load(evaluator);
         declareLauncherAfterLibraryLoads();
         library.registerSchemes();
+        evaluator.installTheHostsHttpActor();
         boot.grantOnly(bounds.grantedServices());
         boot.markOnlyUnavailable(bounds.unavailableServices());
         boot.useHostName(bounds.hostName());
@@ -85,28 +93,40 @@ public final class Interpreter {
         library.seal();
         ExtensionInstallation installation = new ExtensionInstallation(evaluator, library);
         this.extensionReports = bounds.extensions().stream().map(installation::installAndReport).toList();
+        handTheFilesystemAndTheScreenTheirWork();
         evaluator.symbols().startCountingSessionReads();
     }
 
-
     public static Interpreter create() {
-        return new Interpreter(new JavaMachine(), OutputPort.discard(), Bounds.standard());
+        return new Interpreter(standardPorts(), OutputPort.discard(), Bounds.standard());
     }
 
     public static Interpreter withBounds(Bounds bounds) {
-        return new Interpreter(new JavaMachine(), OutputPort.discard(), bounds);
+        return new Interpreter(standardPorts(), OutputPort.discard(), bounds);
     }
 
     public static Interpreter createWithOutput(OutputPort output) {
-        return new Interpreter(new JavaMachine(), output, Bounds.standard());
+        return new Interpreter(standardPorts(), output, Bounds.standard());
     }
 
     public static Interpreter createWithOutput(OutputPort output, Bounds bounds) {
-        return new Interpreter(new JavaMachine(), output, bounds);
+        return new Interpreter(standardPorts(), output, bounds);
     }
 
-    public static Interpreter createOn(MachinePort machine, OutputPort output, Bounds bounds) {
-        return new Interpreter(machine, output, bounds);
+    public static Interpreter createOn(HostPorts ports, OutputPort output, Bounds bounds) {
+        return new Interpreter(ports, output, bounds);
+    }
+
+    /**
+     * The ports a host on this machine gets when it has no opinion about them:
+     * the JVM's own machine and a pause that really waits. A host customising
+     * ports starts from these and replaces what it knows better, rather than
+     * from {@link HostPorts#none()}, which reaches nothing at all.
+     */
+    public static HostPorts standardPorts() {
+        return HostPorts.none()
+                .withMachine(new JavaMachine())
+                .withPause(new ThreadPause());
     }
 
     public Bounds bounds() {
@@ -137,18 +157,22 @@ public final class Interpreter {
         return outcome;
     }
 
-    private MachinePort refuseUnknownOperatingSystem(MachinePort machine) {
-        if (machine == null || machine.operatingSystem().isBlank()) {
+    private static HostPorts anInterpreterIsBuiltWith(HostPorts ports) {
+        if (ports == null) {
+            throw new IllegalArgumentException(
+                    "an interpreter is built with its ports; use HostPorts.none() to reach nothing");
+        }
+        if (ports.machine().operatingSystem().isBlank()) {
             throw new IllegalArgumentException("Unknown operating system");
         }
-        return machine;
+        return ports;
     }
 
     private void declareLauncherAfterLibraryLoads() {
         if (!bounds.grantedServices().contains(HostService.PROCESSES)) {
             return;
         }
-        registerLauncherAsBoot(machine.launcherFor("/", ""));
+        registerLauncherAsBoot(ports.machine().launcherFor("/", ""));
     }
 
     private void publishUserContext() {
@@ -196,7 +220,7 @@ public final class Interpreter {
 
     private ScriptOutcome concludeWithinBounds(Supplier<Outcome> evaluating) {
         cancellationRequested.set(false);
-        evaluator.screen().acceptPendingReports();
+        evaluator.ports().screen().acceptPendingReports();
         long startedAt = System.nanoTime();
         deadlineNanos = bounds.computeDeadline(startedAt);
         try {
@@ -218,7 +242,7 @@ public final class Interpreter {
                     Duration.ofNanos(System.nanoTime() - startedAt));
         } finally {
             deadlineNanos = Long.MAX_VALUE;
-            evaluator.screen().offerShown();
+            evaluator.ports().screen().offerShown();
         }
     }
 
@@ -231,7 +255,7 @@ public final class Interpreter {
 
     public Step runNext(String source) {
         cancellationRequested.set(false);
-        evaluator.screen().acceptPendingReports();
+        evaluator.ports().screen().acceptPendingReports();
         long startedAt = System.nanoTime();
         deadlineNanos = bounds.computeDeadline(startedAt);
         try {
@@ -275,7 +299,7 @@ public final class Interpreter {
                     Duration.ofNanos(System.nanoTime() - startedAt)), "");
         } finally {
             deadlineNanos = Long.MAX_VALUE;
-            evaluator.screen().offerShown();
+            evaluator.ports().screen().offerShown();
         }
     }
 
@@ -356,50 +380,22 @@ public final class Interpreter {
         userContext.register(name, JavaObjectValue.holdHostNull(type.getName()));
     }
 
-    public void useNetwork(NetworkPort port) {
-        evaluator.useNetwork(port);
+    private void handTheFilesystemAndTheScreenTheirWork() {
+        if (theHostGaveAFileSystem()) {
+            setSharedRootForChildInterpreters(ports.files());
+            followApplicationDataDirectory();
+        }
+        handOverRootGobTo(ports.screen());
+        dispatchDrawDialectTo(ports.screen());
     }
 
-    public void useCertificateAuthority(CertificateAuthority authority) {
-        evaluator.useCertificateAuthority(authority);
-    }
-
-    public void useHttp(HttpPort port) {
-        evaluator.useHttp(port);
-    }
-
-    public void useClipboard(ClipboardPort port) {
-        evaluator.useClipboard(port);
-    }
-
-    public void useMidiDevices(MidiDevices devices) {
-        evaluator.useMidiDevices(devices);
-    }
-
-    public void useProcesses(ProcessPort port) {
-        evaluator.useProcesses(port);
-    }
-
-    public void useConsole(ConsolePort port) {
-        evaluator.useConsole(port);
-    }
-
-    public void useTasks(TaskPort port) {
-        evaluator.useTasks(port);
-    }
-
-    public void useWindows(WindowPort port) {
-        evaluator.useWindows(port);
-    }
-
-    public void useScreen(ScreenPort port) {
-        evaluator.useScreen(port);
-        handOverRootGobTo(port);
-        dispatchDrawDialectTo(port);
-    }
-
-    public void usePause(PausePort port) {
-        evaluator.usePause(port);
+    private boolean theHostGaveAFileSystem() {
+        try {
+            ports.files().workingDirectory();
+            return true;
+        } catch (RuntimeException noFileSystem) {
+            return false;
+        }
     }
 
     private void dispatchDrawDialectTo(ScreenPort port) {
@@ -413,20 +409,6 @@ public final class Interpreter {
         if (systemPaths.follow("system", "view", "screen-gob") instanceof GobValue root) {
             port.takeAsRoot(root);
         }
-    }
-
-    public void useEnvironment(EnvironmentPort port) {
-        evaluator.useEnvironment(port);
-    }
-
-    public void useImages(ImagePort port) {
-        evaluator.useImages(port);
-    }
-
-    public void useFileSystem(FilePort port) {
-        evaluator.useFiles(port);
-        setSharedRootForChildInterpreters(port);
-        followApplicationDataDirectory();
     }
 
     public void followApplicationDataDirectory() {
@@ -449,9 +431,9 @@ public final class Interpreter {
         if (sharedRoot.isEmpty()) {
             return;
         }
-        Value launcher = machine.launcherFor(sharedRoot, findDataDirectory());
+        Value launcher = ports.machine().launcherFor(sharedRoot, findDataDirectory());
         if (launcher instanceof FileValue file) {
-            evaluator.files().acceptFileFromOutsideRoot(file.text());
+            evaluator.ports().files().acceptFileFromOutsideRoot(file.text());
         }
         registerLauncherAsBoot(launcher);
     }

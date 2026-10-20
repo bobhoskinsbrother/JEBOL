@@ -57,7 +57,7 @@ public class ImageNative extends DefaultNative {
         String type = asked.filter(AnyWordValue.class::isInstance)
                 .map(word -> ((AnyWordValue) word).canonical())
                 .orElse("");
-        boolean theHostKnowsIt = evaluator.images().hasImageType(type);
+        boolean theHostKnowsIt = evaluator.ports().images().hasImageType(type);
         if (asked.isPresent() && !theHostKnowsIt) {
             throw Raised.of(EvaluationFailure.BAD_FUNC_ARG, asked.get());
         }
@@ -88,11 +88,11 @@ public class ImageNative extends DefaultNative {
         try {
             encoded = source instanceof BinaryValue bytes
                     ? bytes.octetsFromHere()
-                    : evaluator.files().readBytes(((AnyStringValue) source).text());
+                    : evaluator.ports().files().readBytes(((AnyStringValue) source).text());
         } catch (FilePort.Denied unreadable) {
             return Optional.empty();
         }
-        return Optional.ofNullable(evaluator.images().decode(encoded, type, frame));
+        return Optional.ofNullable(evaluator.ports().images().decode(encoded, type, frame));
     }
 
     private Value makeAnImageOf(ImagePort.Pixels read) {
@@ -120,12 +120,12 @@ public class ImageNative extends DefaultNative {
         if (!(given instanceof ImageValue image)) {
             throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(given));
         }
-        byte[] written = evaluator.images().encode(readTheWholeOf(image), type);
+        byte[] written = evaluator.ports().images().encode(readTheWholeOf(image), type);
         if (written == null) {
             throw Raised.of(EvaluationFailure.NO_CODEC, IntegerValue.of(0));
         }
         if (destination instanceof FileValue address) {
-            evaluator.files().write(address.text(), written);
+            evaluator.ports().files().write(address.text(), written);
             return destination;
         }
         if (destination instanceof BinaryValue holding) {

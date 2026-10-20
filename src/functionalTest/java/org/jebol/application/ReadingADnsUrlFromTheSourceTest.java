@@ -3,6 +3,7 @@ package org.jebol.application;
 import org.jebol.adapter.host.JavaSocket;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.NetworkPort;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -15,8 +16,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ReadingADnsUrlFromTheSourceTest {
 
     private String answerTo(NetworkPort network, String source) {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard().grant(HostService.NETWORK));
-        interpreter.useNetwork(network);
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withNetwork(network),
+                OutputPort.discard(),
+                Bounds.standard().grant(HostService.NETWORK));
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

@@ -57,8 +57,8 @@ public class AccessOsNative extends DefaultNative {
             AnyWordValue field = (AnyWordValue) arguments.getFirst();
             Optional<Value> setTo = readTheArgumentOf("set", 0, arguments, refinements);
             if (THE_PROCESS_NUMBER.equals(field.canonical())) {
-                return setTo.map(asked -> signal(asked, evaluator.processes()))
-                        .orElseGet(() -> IntegerValue.of(evaluator.machine().processNumber()));
+                return setTo.map(asked -> signal(asked, evaluator.ports().processes()))
+                        .orElseGet(() -> IntegerValue.of(evaluator.ports().machine().processNumber()));
             }
             WhoTheProcessRunsAs asked = Optional.ofNullable(THE_IDENTITY_FIELDS.get(field.canonical()))
                     .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_ARG, field));
@@ -70,7 +70,7 @@ public class AccessOsNative extends DefaultNative {
 
     private Value askWhoTheProcessRunsAs(AnyWordValue field, WhoTheProcessRunsAs asked,
                                          Evaluator evaluator) {
-        long answered = evaluator.processes().identify(asked)
+        long answered = evaluator.ports().processes().identify(asked)
                 .orElseThrow(() -> Raised.of(EvaluationFailure.NOT_HERE, field));
         return IntegerValue.of(answered);
     }

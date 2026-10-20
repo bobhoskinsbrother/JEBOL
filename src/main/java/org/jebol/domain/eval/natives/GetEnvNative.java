@@ -34,7 +34,7 @@ public class GetEnvNative extends EnvironmentNative {
             granted.require(HostService.ENVIRONMENT);
             evaluator.policies().require(PolicyClass.ENVR, PolicyAccess.READ, Optional.of(arguments.getFirst()));
             return runThroughTheFileSystem(() -> {
-                String held = evaluator.environment().valueOf(readTheVariableNamedBy(arguments.getFirst()));
+                String held = evaluator.ports().environment().valueOf(readTheVariableNamedBy(arguments.getFirst()));
                 return held == null ? NoneValue.none() : StringValue.of(held);
             });
         };

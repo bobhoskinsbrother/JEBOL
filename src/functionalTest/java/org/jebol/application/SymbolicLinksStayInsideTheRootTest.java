@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -33,10 +34,16 @@ class SymbolicLinksStayInsideTheRootTest {
         outside = Files.createDirectories(machine.resolve("outside"));
         Files.writeString(root.resolve("inside.txt"), "inside");
         Files.writeString(outside.resolve("secret.txt"), "secret");
-        interpreter = Interpreter.withBounds(Bounds.standard()
-                .grant(HostService.FILES)
-                .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
+        interpreter = over(root);
+    }
+
+    private static Interpreter over(Path root) {
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
+                OutputPort.discard(),
+                Bounds.standard()
+                        .grant(HostService.FILES)
+                        .grant(HostService.WORKING_DIRECTORY));
     }
 
     private String answerTo(String source) {
@@ -251,7 +258,7 @@ class SymbolicLinksStayInsideTheRootTest {
     void keepsTheFilesOfARootReachedThroughALink() throws IOException {
         Path aliasOfTheRoot = machine.resolve("alias-of-root");
         Files.createSymbolicLink(aliasOfTheRoot, root);
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(aliasOfTheRoot));
+        interpreter = over(aliasOfTheRoot);
 
         assertThat(answerTo("to string! read %inside.txt")).isEqualTo("\"inside\"");
     }
@@ -260,7 +267,7 @@ class SymbolicLinksStayInsideTheRootTest {
     @DisplayName("a script on the whole machine follows any link, as there is no outside to reach")
     void followsAnyLinkOnTheWholeMachine() throws IOException {
         link("door.txt", outside.resolve("secret.txt"));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(Path.of("/")));
+        interpreter = over(Path.of("/"));
         String door = root.resolve("door.txt").toAbsolutePath().toString();
 
         assertThat(answerTo("to string! read %" + door)).isEqualTo("\"secret\"");

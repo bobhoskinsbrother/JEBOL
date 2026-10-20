@@ -79,7 +79,7 @@ final class ProgramCalling {
 
     private Optional<String> findWhereTheChildStarts(Evaluator evaluator) {
         try {
-            return Optional.of(evaluator.files().hostPath(evaluator.files().workingDirectory()));
+            return Optional.of(evaluator.ports().files().hostPath(evaluator.ports().files().workingDirectory()));
         } catch (FilePort.Denied noFilesystem) {
             return Optional.empty();
         }
@@ -87,7 +87,7 @@ final class ProgramCalling {
 
     private Map<String, String> listWhatTheChildInherits(Evaluator evaluator) {
         try {
-            return evaluator.environment().readAll();
+            return evaluator.ports().environment().readAll();
         } catch (FilePort.Denied noEnvironment) {
             return Map.of();
         }
@@ -134,7 +134,7 @@ final class ProgramCalling {
 
     private String resolveAsReadWould(String path, Evaluator evaluator) {
         try {
-            return evaluator.files().hostPath(path);
+            return evaluator.ports().files().hostPath(path);
         } catch (FilePort.Denied noDirectoryToAsk) {
             return path;
         }

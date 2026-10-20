@@ -21,10 +21,10 @@ class TheDatagramPortFromTheSourceTest {
     }
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.createWithOutput(
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withNetwork(new JavaSocket()),
                 message -> { },
                 Bounds.standard().grant(HostService.NETWORK));
-        interpreter.useNetwork(new JavaSocket());
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

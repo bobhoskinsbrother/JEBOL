@@ -9,6 +9,7 @@ import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.NetworkPort;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -75,10 +76,12 @@ class APortsStorageFromTheSourceTest {
     }
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                .grant(HostService.NETWORK)
-                .grant(HostService.CLOCK));
-        interpreter.useNetwork(new ACannedServer().reply("what came back"));
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withNetwork(new ACannedServer().reply("what came back")),
+                OutputPort.discard(),
+                Bounds.standard()
+                        .grant(HostService.NETWORK)
+                        .grant(HostService.CLOCK));
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

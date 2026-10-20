@@ -38,7 +38,7 @@ public class BrowseNative extends WindowNative {
             evaluator.policies().require(PolicyClass.BROWSE, PolicyAccess.EXECUTE, Optional.of(arguments.getFirst()));
             return runThroughTheWindows(() -> {
                 if (arguments.getFirst() instanceof AnyStringValue target) {
-                    evaluator.windows().browse(target.text());
+                    evaluator.ports().windows().browse(target.text());
                 }
                 return NoneValue.none();
             });

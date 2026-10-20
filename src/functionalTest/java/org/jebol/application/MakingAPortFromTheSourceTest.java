@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -15,9 +16,10 @@ class MakingAPortFromTheSourceTest {
     private static String answerReachingTheFilesystem(
             java.nio.file.Path directory, String source) {
 
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         return answerFrom(interpreter, source);
     }
 

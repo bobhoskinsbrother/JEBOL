@@ -9,8 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UnicodeUtilsModuleLoadsTest {
 
     private static String answerTo(String source) {
-        Interpreter interpreter = SuiteHost.installOn(
-                Interpreter.withBounds(SuiteHost.grantEverything()));
+        Interpreter interpreter = SuiteHost.anInterpreterFor(
+                SuiteHost.grantEverything());
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

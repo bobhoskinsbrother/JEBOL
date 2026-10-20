@@ -2,6 +2,7 @@ package org.jebol.domain.eval.natives;
 
 import org.jebol.domain.eval.Evaluator;
 import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.ScreenPort;
@@ -99,9 +100,7 @@ class WhatEachScreenNativeDeclaresTest {
     }
 
     private Evaluator makeAnEvaluatorOn(ScreenPort screen) {
-        Evaluator evaluator = new Evaluator(Context.root(), line -> { });
-        evaluator.useScreen(screen);
-        return evaluator;
+        return new Evaluator(Context.root(), HostPorts.none().withScreen(screen), line -> { });
     }
 
     private Value call(DefaultNative definition, ScreenPort screen, Set<String> refinements,

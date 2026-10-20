@@ -4,6 +4,7 @@ import net.jqwik.api.ForAll;
 import net.jqwik.api.Property;
 import net.jqwik.api.constraints.IntRange;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 
 import java.time.Duration;
 
@@ -12,12 +13,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ScreenAndGobTreeAgreeProperties {
 
     private static Interpreter makeAnInterpreterWithAScreen(RecordingScreen screen) {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withScreen(screen),
+                OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.WINDOWS)
                         .withTimeLimit(Duration.ofSeconds(10)));
-        interpreter.useScreen(screen);
-        return interpreter;
     }
 
     @Property(tries = 40)

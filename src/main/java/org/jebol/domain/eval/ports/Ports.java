@@ -122,7 +122,7 @@ public final class Ports {
     }
 
     public void requireTheFilePolicy(String path, Evaluator evaluator, Set<PolicyAccess> accesses) {
-        Value subject = runThroughTheFileSystem(() -> FileValue.of(evaluator.files().locationFor(path)));
+        Value subject = runThroughTheFileSystem(() -> FileValue.of(evaluator.ports().files().locationFor(path)));
         for (PolicyAccess access : PolicyAccess.values()) {
             if (accesses.contains(access)) {
                 evaluator.policies().require(PolicyClass.FILE, access, Optional.of(subject));
@@ -132,7 +132,7 @@ public final class Ports {
 
     public boolean namesADirectory(String path, Evaluator evaluator) {
         return path.endsWith("/") || runThroughTheFileSystem(() ->
-                LogicValue.of(evaluator.files().isDirectory(path))).isTruthy();
+                LogicValue.of(evaluator.ports().files().isDirectory(path))).isTruthy();
     }
 
     public boolean routesToAScheme(Value source) {
@@ -231,7 +231,7 @@ public final class Ports {
     private Value lineReadFromTheConsole(Evaluator evaluator) {
         granted.require(HostService.CONSOLE);
         return runThroughTheFileSystem(() -> {
-            String line = evaluator.console().readLine();
+            String line = evaluator.ports().console().readLine();
             return line == null ? NoneValue.none() : StringValue.of(line);
         });
     }
@@ -253,7 +253,7 @@ public final class Ports {
 
     private String askTheClipboard(Evaluator evaluator) {
         try {
-            return evaluator.clipboard().read();
+            return evaluator.ports().clipboard().read();
         } catch (ClipboardPort.Unreachable unreachable) {
             throw Raised.of(EvaluationFailure.READ_ERROR, unreachable.getMessage());
         }
@@ -306,7 +306,7 @@ public final class Ports {
     private Value answerWhatTheDnsUrlAsks(PortValue port, Evaluator evaluator) {
         granted.require(HostService.NETWORK);
         String host = readTheHostNamedBy(port);
-        NetworkPort network = evaluator.network();
+        NetworkPort network = evaluator.ports().network();
         return runThroughTheNetwork(() -> {
             if (host.isEmpty()) {
                 return StringValue.of(network.hostName());
@@ -341,7 +341,7 @@ public final class Ports {
         SeekableFilePort seekable = new SeekableFilePort(port);
         if (port.schemeName().equals("dir")) {
             requireTheFilePolicy(seekable.path(), evaluator, Set.of(PolicyAccess.READ));
-            return runThroughTheFileSystem(() -> listTheNamesIn(evaluator.files(), seekable.path()));
+            return runThroughTheFileSystem(() -> listTheNamesIn(evaluator.ports().files(), seekable.path()));
         }
         boolean wasClosed = !port.isOpen();
         if (wasClosed) {
@@ -357,7 +357,7 @@ public final class Ports {
         if (howMany.isPresent() && howMany.get() < 0 && -howMany.get() > seekable.position()) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, asked.part().orElseThrow());
         }
-        Value read = runThroughTheFileSystem(() -> seekable.readFrom(evaluator.files(), howMany));
+        Value read = runThroughTheFileSystem(() -> seekable.readFrom(evaluator.ports().files(), howMany));
         if (wasClosed) {
             port.markOpen(false);
         }
@@ -387,7 +387,7 @@ public final class Ports {
     public Value readTheFile(String path, Evaluator evaluator, PortRequest asked) {
         granted.require(HostService.FILES);
         requireTheFilePolicy(path, evaluator, Set.of(PolicyAccess.READ));
-        return runThroughTheFileSystem(() -> new FileReading(path, asked).answerThrough(evaluator.files()));
+        return runThroughTheFileSystem(() -> new FileReading(path, asked).answerThrough(evaluator.ports().files()));
     }
 
     public Value writeTheFile(Value destination, Value data, Evaluator evaluator, PortRequest asked) {
@@ -395,7 +395,7 @@ public final class Ports {
         requireTheFilePolicy(((AnyStringValue) destination).text(), evaluator, Set.of(PolicyAccess.WRITE));
         return runThroughTheFileSystem(() -> {
             new FileWriting(((AnyStringValue) destination).text(), data, asked)
-                    .performThrough(evaluator.files());
+                    .performThrough(evaluator.ports().files());
             return destination;
         });
     }
@@ -417,7 +417,7 @@ public final class Ports {
                 if (!port.isOpen()) {
                     requireTheFilePolicy(readThePathOf(port), evaluator, Set.of(PolicyAccess.WRITE));
                 }
-                yield new OpenFile(port, evaluator.files(), granted)
+                yield new OpenFile(port, evaluator.ports().files(), granted)
                         .write(data, asked.seek(), asked.part(), asked.refinements().contains("append"));
             }
             default -> throw refuseWithNoActionFor("write");
@@ -438,7 +438,7 @@ public final class Ports {
             default -> throw Raised.of(EvaluationFailure.INVALID_PORT_ARG, data);
         };
         try {
-            evaluator.clipboard().write(text);
+            evaluator.ports().clipboard().write(text);
         } catch (ClipboardPort.Unreachable unreachable) {
             throw Raised.of(EvaluationFailure.WRITE_ERROR, unreachable.getMessage());
         }
@@ -516,7 +516,7 @@ public final class Ports {
 
     private PortValue connectOrLeaveClosed(PortValue port, Evaluator evaluator) {
         try {
-            NetworkPort.Connection made = evaluator.network().connectTo(readTheHostNamedBy(port), readThePortNumberOf(port));
+            NetworkPort.Connection made = evaluator.ports().network().connectTo(readTheHostNamedBy(port), readThePortNumberOf(port));
             port.setField("state", JavaObjectValue.of(made));
             queueWhatHappenedTo(port, "connect", evaluator);
             return markOpen(port);
@@ -533,7 +533,7 @@ public final class Ports {
         if (port.schemeName().equals("dir")) {
             requireTheFilePolicy(path, evaluator, Set.of(PolicyAccess.READ));
             if (!runThroughTheFileSystem(() -> LogicValue.of(
-                    isSomethingThereFor(path, evaluator.files()))).isTruthy()) {
+                    isSomethingThereFor(path, evaluator.ports().files()))).isTruthy()) {
                 throw Raised.of(EvaluationFailure.CANNOT_OPEN,
                         FileValue.of(path), IntegerValue.of(OPEN_FAILED));
             }
@@ -544,14 +544,14 @@ public final class Ports {
         asked.refuseANewFileNobodyMayWriteTo(path);
         requireTheFilePolicy(path, evaluator, asked.listTheAccessesItAsksFor());
         boolean alreadyThere = runThroughTheFileSystem(() ->
-                LogicValue.of(evaluator.files().exists(path))).isTruthy();
+                LogicValue.of(evaluator.ports().files().exists(path))).isTruthy();
         if (!asked.mayWrite()) {
             if (!alreadyThere) {
                 throw Raised.of(EvaluationFailure.CANNOT_OPEN, FileValue.of(path));
             }
         } else if (!alreadyThere || asked.emptiesWhatIsThere()) {
             runThroughTheFileSystem(() -> {
-                evaluator.files().write(path, new byte[0]);
+                evaluator.ports().files().write(path, new byte[0]);
                 return NoneValue.none();
             });
         }
@@ -643,7 +643,7 @@ public final class Ports {
                 ? readThePortNumberOf(port)
                 : WHATEVER_NUMBER_THE_MACHINE_HAS_FREE;
         runThroughTheNetwork(() -> {
-            NetworkPort.Datagrams bound = evaluator.network().bindTo(number);
+            NetworkPort.Datagrams bound = evaluator.ports().network().bindTo(number);
             port.setField("state", JavaObjectValue.of(bound));
             return port;
         });

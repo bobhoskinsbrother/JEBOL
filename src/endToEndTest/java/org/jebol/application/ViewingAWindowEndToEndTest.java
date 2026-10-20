@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -15,12 +16,12 @@ class ViewingAWindowEndToEndTest {
     private static final String TRUE = "#(true)";
 
     private static Interpreter makeAnInterpreterWithAScreen(RecordingScreen screen) {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withScreen(screen),
+                OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.WINDOWS)
                         .withTimeLimit(Duration.ofSeconds(10)));
-        interpreter.useScreen(screen);
-        return interpreter;
     }
 
     private static String sessionOn(RecordingScreen screen, String script) {

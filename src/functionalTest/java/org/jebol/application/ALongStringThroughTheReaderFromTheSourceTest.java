@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -12,9 +13,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ALongStringThroughTheReaderFromTheSourceTest {
 
     private static String answerTo(Path directory, String source) {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

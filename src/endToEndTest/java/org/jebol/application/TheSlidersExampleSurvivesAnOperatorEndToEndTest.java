@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.render.PaintInstruction;
@@ -87,10 +88,14 @@ class TheSlidersExampleSurvivesAnOperatorEndToEndTest {
         for (HostService service : HostService.values()) {
             everything = everything.grant(service);
         }
-        interpreter = Interpreter.withBounds(everything);
-        interpreter.useScreen(screen);
-        interpreter.useEnvironment(new ProcessEnvironment());
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(Path.of("src/testFixtures/resources").toAbsolutePath()));
+        interpreter = Interpreter.createOn(
+                Interpreter.standardPorts()
+                        .withScreen(screen)
+                        .withEnvironment(new ProcessEnvironment())
+                        .withFiles(FileSystemPort.rootFileSystem(
+                                Path.of("src/testFixtures/resources").toAbsolutePath())),
+                OutputPort.discard(),
+                everything);
         interpreter.defineNewWordsIn(OPEN_THE_EXAMPLE);
         assertThat(interpreter.display(interpreter.run(OPEN_THE_EXAMPLE)))
                 .as("the example opens its window")

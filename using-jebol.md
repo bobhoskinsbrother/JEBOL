@@ -131,31 +131,34 @@ Initial interpreter instantiation takes approximately 430 ms, settling to around
 
 By default, scripts execute in a strict sandbox without access to file systems, network adapters, system clocks, consoles, or subprocesses.
 
-Enabling external capabilities requires granting the corresponding service in Bounds and providing a port implementation to the interpreter:
+Enabling external capabilities requires granting the corresponding service in Bounds and supplying the matching port when the interpreter is built, as one HostPorts value:
 
-| What the script must do                      | The service       | The port to supply                           |
-|----------------------------------------------|-------------------|----------------------------------------------|
-| Read, write, delete, rename, list files      | FILES             | useFileSystem(FileSystemPort.rootedAt(path)) |
-| Know where a relative path starts            | WORKING_DIRECTORY | the same file port                           |
-| Read the names and values of the environment | ENVIRONMENT       | useEnvironment(port)                         |
-| Start another program and wait for it        | PROCESSES         | useProcesses(port)                           |
-| Read a line from the operator                | CONSOLE           | useConsole(port)                             |
-| Ask what the time is                         | CLOCK             | none                                         |
-| Open a connection to another machine         | NETWORK           | useNetwork(port)                             |
-| Fetch a url with HTTP or HTTPS               | WEB               | useHttp(port)                                |
-| Trust a server's certificates over TLS       | CERTIFICATES      | useCertificateAuthority(authority)           |
-| Ask the operator through a window            | WINDOWS           | useWindows(port) and useScreen(port)         |
-| Read and write what the operator copied      | CLIPBOARD         | useClipboard(port)                           |
-| List, hear and play MIDI instruments         | MIDI              | useMidiDevices(devices)                      |
+| What the script must do                      | The service       | The port to supply                            |
+|----------------------------------------------|-------------------|-----------------------------------------------|
+| Read, write, delete, rename, list files      | FILES             | withFiles(FileSystemPort.rootFileSystem(path)) |
+| Know where a relative path starts            | WORKING_DIRECTORY | the same file port                            |
+| Read the names and values of the environment | ENVIRONMENT       | withEnvironment(port)                         |
+| Start another program and wait for it        | PROCESSES         | withProcesses(port)                           |
+| Read a line from the operator                | CONSOLE           | withConsole(port)                             |
+| Ask what the time is                         | CLOCK             | none                                          |
+| Open a connection to another machine         | NETWORK           | withNetwork(port)                             |
+| Fetch a url with HTTP or HTTPS               | WEB               | withHttp(port)                                |
+| Trust a server's certificates over TLS       | CERTIFICATES      | withCertificateAuthority(authority)           |
+| Ask the operator through a window            | WINDOWS           | withWindows(port) and withScreen(port)        |
+| Read and write what the operator copied      | CLIPBOARD         | withClipboard(port)                           |
+| List, hear and play MIDI instruments         | MIDI              | withMidiDevices(devices)                      |
 ```java
-Interpreter interpreter = Interpreter.withBounds(  
-Bounds.standard().grant(HostService.FILES));  
-interpreter.useFileSystem(FileSystemPort.rootedAt(Path.of("/srv/scripts")).readOnly());
+HostPorts ports = Interpreter.standardPorts()  
+.withFiles(FileSystemPort.rootFileSystem(Path.of("/srv/scripts")).readOnlyFileSystem());  
+Interpreter interpreter = Interpreter.createOn(ports, OutputPort.discard(),  
+Bounds.standard().grant(HostService.FILES));
 ```
+
+Ports are supplied once, at construction, and never change afterwards. `Interpreter.standardPorts()` is the JVM's own machine and a pause that really waits; `HostPorts.none()` is every port refusing, so `Interpreter.createOn(HostPorts.none(), ...)` reaches nothing. A port the host does not supply is that port's refusing default, and the refusal a script meets names what was not supplied.
 
 A host can explicitly mark capabilities as unavailable using lacking(...). Scripts requesting unavailable services receive a not_present error rather than not_granted.
 
-useHttp(port) delegates HTTP/HTTPS requests to the host platform. If no HTTP port is supplied, REBOL's default scheme handler falls back to establishing direct TCP connections via the NETWORK service.
+A host that supplies an http port with withHttp(port) delegates HTTP/HTTPS requests to the host platform. If none is supplied, REBOL's default scheme handler falls back to establishing direct TCP connections via the NETWORK service.
 
 ### **Trusted certificates**
 
@@ -277,11 +280,12 @@ When using the CLI, --root /work/projects/app sets the root directory. Combined 
 >> delete %logo.txt                    ; removes the link; shared/logo.txt stays
 ```
 
-In Java, root restrictions are established during port initialization:
+In Java, root restrictions are established when the port is built:
 ```java
-Interpreter interpreter = Interpreter.withBounds(  
-Bounds.standard().grant(HostService.FILES));  
-interpreter.useFileSystem(FileSystemPort.rootedAt(Path.of("/work/projects/app")));
+HostPorts ports = Interpreter.standardPorts()  
+.withFiles(FileSystemPort.rootFileSystem(Path.of("/work/projects/app")));  
+Interpreter interpreter = Interpreter.createOn(ports, OutputPort.discard(),  
+Bounds.standard().grant(HostService.FILES));
 
 ScriptOutcome linked = interpreter.run("read %assets/door.txt");  
 // RAISED: ** Access error: security violation: %assets/door.txt
@@ -502,7 +506,7 @@ Review this section prior to integration. It details feature coverage, pending w
 
 **Test Suite Parity:** All assertions in REBOL's test suite either pass in JEBOL or represent known failures present in standard Oldes/Rebol3 3.22.5 (documented in fails-on-rebol-too.txt). Intentional architectural differences are tracked in goals.md.
 
-**Datatypes and System Features:** All standard R3 datatypes are implemented. task! execution requires host thread support enabled via useTasks. OS user context fields in access-os (uid, euid, gid, egid) return not-here due to JVM platform abstractions. Scheme names match R3 registrations, failing at open time if unhandled by the host.
+**Datatypes and System Features:** All standard R3 datatypes are implemented. task! execution requires host thread support enabled via withTasks. OS user context fields in access-os (uid, euid, gid, egid) return not-here due to JVM platform abstractions. Scheme names match R3 registrations, failing at open time if unhandled by the host.
 
 **TLS Transport Security:** Unlike stock R3 3.22.5, JEBOL enforces strict TLS certificate validation. HTTPS connections verify server certificates using host trust stores configured via CERTIFICATES grants.
 

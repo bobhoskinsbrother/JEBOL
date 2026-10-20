@@ -356,8 +356,8 @@ final class SuiteGrading {
     }
 
     private static Interpreter makeAnInterpreterWithAHost() {
-        return SuiteHost.installOn(
-                Interpreter.withBounds(SuiteHost.grantEverything()));
+        return SuiteHost.anInterpreterFor(
+                SuiteHost.grantEverything());
     }
 
     private static final class TheSuiteReadOncePerProcess {

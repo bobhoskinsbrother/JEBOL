@@ -64,7 +64,7 @@ public class CallNative extends HostNative {
                     readTheArgumentOf("input", 0, arguments, refinements),
                     readTheArgumentOf("output", 0, arguments, refinements),
                     readTheArgumentOf("error", 0, arguments, refinements));
-            return runThroughTheFileSystem(() -> calling.answerThrough(evaluator.processes(), evaluator));
+            return runThroughTheFileSystem(() -> calling.answerThrough(evaluator.ports().processes(), evaluator));
         };
     }
 

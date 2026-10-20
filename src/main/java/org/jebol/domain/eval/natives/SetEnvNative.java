@@ -42,9 +42,9 @@ public class SetEnvNative extends EnvironmentNative {
             String variable = readTheVariableNamedBy(arguments.getFirst());
             return runThroughTheFileSystem(() -> {
                 if (given instanceof AnyStringValue held) {
-                    evaluator.environment().assign(variable, held.text());
+                    evaluator.ports().environment().assign(variable, held.text());
                 } else {
-                    evaluator.environment().assign(variable, null);
+                    evaluator.ports().environment().assign(variable, null);
                 }
                 return given;
             });

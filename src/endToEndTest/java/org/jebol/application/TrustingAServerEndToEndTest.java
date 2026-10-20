@@ -58,16 +58,21 @@ class TrustingAServerEndToEndTest {
     }
 
     private Interpreter makeAnInterpreterTrustingTheTestRoot(Instant now) {
-        Interpreter interpreter = makeANetworkedInterpreter(tlsBounds());
-        interpreter.useCertificateAuthority(new JavaCertificateAuthority(
-                fixtures.trustOnly("test-root"), Clock.fixed(now, ZoneOffset.UTC)));
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts()
+                        .withNetwork(new JavaSocket())
+                        .withCertificateAuthority(new JavaCertificateAuthority(
+                                fixtures.trustOnly("test-root"),
+                                Clock.fixed(now, ZoneOffset.UTC))),
+                printed::append,
+                tlsBounds());
     }
 
     private Interpreter makeANetworkedInterpreter(Bounds bounds) {
-        Interpreter interpreter = Interpreter.createWithOutput(printed::append, bounds);
-        interpreter.useNetwork(new JavaSocket());
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withNetwork(new JavaSocket()),
+                printed::append,
+                bounds);
     }
 
     private String run(Interpreter interpreter, String source) {
@@ -284,9 +289,14 @@ class TrustingAServerEndToEndTest {
                     .grant(HostService.WEB)
                     .grant(HostService.CLOCK);
             try (LocalTlsServer server = new LocalTlsServer(rsaIdentity(), TLS_1_3)) {
-                Interpreter interpreter = makeANetworkedInterpreter(withoutCertificates);
-                interpreter.useCertificateAuthority(new JavaCertificateAuthority(
-                        fixtures.trustOnly("test-root"), Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC)));
+                Interpreter interpreter = Interpreter.createOn(
+                        Interpreter.standardPorts()
+                                .withNetwork(new JavaSocket())
+                                .withCertificateAuthority(new JavaCertificateAuthority(
+                                        fixtures.trustOnly("test-root"),
+                                        Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC))),
+                        printed::append,
+                        withoutCertificates);
 
                 assertThat(readError(interpreter, localhostUrl(server))).isEqualTo("[Access no-service]");
                 assertThat(run(interpreter, """

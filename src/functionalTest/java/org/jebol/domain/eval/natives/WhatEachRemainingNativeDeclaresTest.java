@@ -5,6 +5,7 @@ import org.jebol.adapter.host.JavaProcess;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.eval.Encodings;
 import org.jebol.domain.eval.GrantedServices;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.host.ProcessPort;
 import org.jebol.domain.eval.actions.RandomAction;
 import org.jebol.domain.host.HostService;
@@ -64,8 +65,10 @@ class WhatEachRemainingNativeDeclaresTest {
     }
 
     private String answerFromAHostThatKnowsWhoItRunsAs(String source) {
-        Interpreter interpreter = Interpreter.withBounds(everythingGranted());
-        interpreter.useProcesses(new AHostThatKnowsWhoItRunsAs());
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withProcesses(new AHostThatKnowsWhoItRunsAs()),
+                OutputPort.discard(),
+                everythingGranted());
         return Molder.moldFlat(interpreter.run(source).value());
     }
 
@@ -74,8 +77,10 @@ class WhatEachRemainingNativeDeclaresTest {
     }
 
     private String errorArgumentsWithProcesses(String source) {
-        Interpreter interpreter = Interpreter.withBounds(everythingGranted());
-        interpreter.useProcesses(new JavaProcess());
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withProcesses(new JavaProcess()),
+                OutputPort.discard(),
+                everythingGranted());
         return Molder.moldFlat(interpreter.run("e: try [" + source + "] reduce [e/id e/arg1 e/arg2 e/arg3]").value());
     }
 

@@ -4,6 +4,7 @@ import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.WindowPort;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -58,9 +59,10 @@ class DesktopWindowsTest {
         @Test
         @DisplayName("and reaches a script as a catchable error, not a throwable")
         void raisesTheRefusalInTheScript() {
-            Interpreter interpreter = Interpreter.withBounds(
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts().withWindows(DesktopWindows.onThisMachine()),
+                    OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
-            interpreter.useWindows(DesktopWindows.onThisMachine());
 
             String source = "e: try [request-color] either error? e [e/id] ['no-error]";
             interpreter.defineNewWordsIn(source);
@@ -125,9 +127,10 @@ class DesktopWindowsTest {
                 }
             };
 
-            Interpreter interpreter = Interpreter.withBounds(
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts().withWindows(declining),
+                    OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
-            interpreter.useWindows(declining);
 
             String source = "none? request-color";
             interpreter.defineNewWordsIn(source);

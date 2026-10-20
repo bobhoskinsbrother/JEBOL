@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.host.EnvironmentPort;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -43,13 +44,15 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
     }
 
     private static String answerTo(Path root, EnvironmentPort environment, String source) {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts()
+                        .withFiles(FileSystemPort.rootFileSystem(root))
+                        .withEnvironment(environment),
+                OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY)
                         .grant(HostService.ENVIRONMENT));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
-        interpreter.useEnvironment(environment);
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -121,11 +124,12 @@ class ChangingDirectoryWritesPwdFromTheSourceTest {
     @Test
     @DisplayName("and a host that granted no environment still moves")
     void stillMovesForAHostThatGrantedNoEnvironment(@TempDir Path root) {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
+                OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
         String source = """
                 make-dir %inner/
                 change-dir %inner/

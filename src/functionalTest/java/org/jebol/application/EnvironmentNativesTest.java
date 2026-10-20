@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.host.EnvironmentPort;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -46,9 +47,10 @@ class EnvironmentNativesTest {
         Bounds bounds = granted
                 ? Bounds.standard().grant(HostService.ENVIRONMENT)
                 : Bounds.standard();
-        Interpreter interpreter = Interpreter.withBounds(bounds);
-        interpreter.useEnvironment(makeUpAnEnvironment());
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withEnvironment(makeUpAnEnvironment()),
+                OutputPort.discard(),
+                bounds);
     }
 
     private static String answerTo(Interpreter interpreter, String source) {

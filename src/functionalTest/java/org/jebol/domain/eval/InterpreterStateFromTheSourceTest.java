@@ -4,6 +4,7 @@ import org.jebol.application.Bounds;
 import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,9 +27,10 @@ class InterpreterStateFromTheSourceTest {
     }
 
     private static String runWithFilesUnder(Path directory, String source) {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
@@ -266,9 +268,10 @@ class InterpreterStateFromTheSourceTest {
         @DisplayName("what is printed reaches the file as well as the output")
         void copiesRatherThanRedirects(@TempDir Path directory) throws Exception {
             StringBuilder printed = new StringBuilder();
-            Interpreter interpreter = Interpreter.createWithOutput(
-                    printed::append, Bounds.standard().grant(HostService.FILES));
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                    printed::append,
+                    Bounds.standard().grant(HostService.FILES));
 
             interpreter.run("echo %log.txt print \"hello\"");
 
@@ -280,9 +283,10 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("ECHO of none stops it, and what follows is not in the file")
         void stopsForNone(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = Interpreter.withBounds(
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                    OutputPort.discard(),
                     Bounds.standard().grant(HostService.FILES));
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             interpreter.run("echo %log.txt print \"kept\" echo none print \"dropped\"");
 
@@ -294,9 +298,10 @@ class InterpreterStateFromTheSourceTest {
         @Test
         @DisplayName("echoing again replaces rather than stacking")
         void replacesWhenEchoingAgain(@TempDir Path directory) throws Exception {
-            Interpreter interpreter = Interpreter.withBounds(
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                    OutputPort.discard(),
                     Bounds.standard().grant(HostService.FILES));
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
 
             interpreter.run(
                     "echo %one.txt print \"first\" echo %two.txt print \"second\"");

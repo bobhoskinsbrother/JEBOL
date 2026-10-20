@@ -1164,7 +1164,8 @@ asks for one fifty millisecond slice at a time and checks its own reason to
 stop between them, so the length and the deadline stay the interpreter's and
 only the pause crosses. Every interpreter is built with `ThreadPause`
 (`org.jebol.application`), which stops the thread the script runs on, so `wait`
-works with no host at all; `Interpreter.usePause` replaces it. The web build
+works with no host at all; a host with its own supplies it when the interpreter
+is built. The web build
 gets its own when the worker arrives, which is why the seam exists: a worker
 can be stopped outright, and a page's main thread cannot.
 
@@ -1321,7 +1322,8 @@ is that `read http://...` uses it.
 
 **The seam is the scheme's actor, not the scheme.** `HttpPort`
 (`org.jebol.domain.host`) is a new port: one exchange in, one answer out.
-`Interpreter.useHttp(port)` swaps the actor of `http` and `https` for
+A host that supplies one with `HostPorts.withHttp(port)` gets the actor of
+`http` and `https` swapped for
 `HttpSchemeActor`, a native that answers OPEN, READ and CLOSE through the
 port and declines everything else. Rebol's protocol stays loaded and the
 scheme keeps its spec and its `info`, so `query http://x none` answers the

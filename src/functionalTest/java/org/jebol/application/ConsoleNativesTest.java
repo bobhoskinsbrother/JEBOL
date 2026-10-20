@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -36,9 +37,10 @@ class ConsoleNativesTest {
         Bounds bounds = granted
                 ? Bounds.standard().grant(HostService.CONSOLE)
                 : Bounds.standard();
-        Interpreter interpreter = Interpreter.withBounds(bounds);
-        interpreter.useConsole(new Prepared(lines));
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withConsole(new Prepared(lines)),
+                OutputPort.discard(),
+                bounds);
     }
 
     private static String answerTo(Interpreter interpreter, String source) {

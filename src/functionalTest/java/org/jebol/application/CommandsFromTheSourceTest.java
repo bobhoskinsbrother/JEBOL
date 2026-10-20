@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.UnsetValue;
 import org.junit.jupiter.api.DisplayName;
@@ -156,8 +157,10 @@ class CommandsFromTheSourceTest {
         @Test
         @DisplayName("SECURE's extension policy is checked first")
         void secureComesFirst(@TempDir Path root) {
-            Interpreter interpreter = Interpreter.withBounds(Bounds.standard().grant(HostService.FILES));
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
+                    OutputPort.discard(),
+                    Bounds.standard().grant(HostService.FILES));
             answerTo(interpreter, "secure [extension throw]");
 
             assertThat(readTheRefusalIn(interpreter, "load-extension %camera.so")).isEqualTo("[security %camera.so _]");

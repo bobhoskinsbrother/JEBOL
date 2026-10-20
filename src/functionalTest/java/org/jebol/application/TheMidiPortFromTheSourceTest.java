@@ -4,6 +4,7 @@ import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.MidiDevice;
 import org.jebol.domain.host.MidiDevices;
 import org.jebol.domain.host.MidiRoute;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -108,8 +109,10 @@ class TheMidiPortFromTheSourceTest {
     }
 
     private String answerWith(MidiDevices devices, String source) {
-        Interpreter interpreter = makeAnInterpreterGrantedMidi();
-        interpreter.useMidiDevices(devices);
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withMidiDevices(devices),
+                message -> { },
+                Bounds.standard().grant(HostService.MIDI));
         return readTheAnswerFrom(interpreter, source);
     }
 
@@ -122,8 +125,10 @@ class TheMidiPortFromTheSourceTest {
     }
 
     private String runWithoutTheGrant(String source) {
-        Interpreter interpreter = Interpreter.create();
-        interpreter.useMidiDevices(attachAKeyboardAndTwoSynths());
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withMidiDevices(attachAKeyboardAndTwoSynths()),
+                OutputPort.discard(),
+                Bounds.standard());
         return readTheAnswerFrom(interpreter, source);
     }
 

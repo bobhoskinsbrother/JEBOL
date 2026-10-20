@@ -9,6 +9,7 @@ import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.render.DrawingCommand;
 import org.jebol.domain.value.GobValue;
@@ -73,20 +74,21 @@ class BrowserScreenFromTheSourceTest {
     private static Interpreter makeAnInterpreterWithABrowser(
             BrowserScreen screen, int wide, int high) {
 
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withScreen(screen),
+                OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.WINDOWS)
                         .withTimeLimit(Duration.ofSeconds(10)));
-        interpreter.useScreen(screen);
         screen.measure(wide, high);
         return interpreter;
     }
 
     private static Interpreter makeAnInterpreterWithASilentBrowser(BrowserScreen screen) {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withScreen(screen),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
-        interpreter.useScreen(screen);
-        return interpreter;
     }
 
     private static String sessionOn(BrowserScreen screen, String script) {
@@ -341,9 +343,10 @@ class BrowserScreenFromTheSourceTest {
         @DisplayName("a resize arriving while the script waits is taken at the next take, inside the wait")
         void takesAResizeWhileWaiting() throws Exception {
             BrowserScreen screen = BrowserScreen.showTo(new SomebodyLooking());
-            Interpreter interpreter = Interpreter.withBounds(
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts().withScreen(screen),
+                    OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
-            interpreter.useScreen(screen);
             screen.measure(800, 600);
             interpreter.run("view/no-wait make gob! [size: 100x100 color: 1.1.1]");
 
@@ -719,8 +722,10 @@ class BrowserScreenFromTheSourceTest {
         private final BrowserScreen screen = BrowserScreen.showTo(new SomebodyLooking());
 
         private Interpreter openAWindowUnder(Bounds bounds) {
-            Interpreter interpreter = Interpreter.withBounds(bounds.grant(HostService.WINDOWS));
-            interpreter.useScreen(screen);
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts().withScreen(screen),
+                    OutputPort.discard(),
+                    bounds.grant(HostService.WINDOWS));
             screen.measure(800, 600);
             String opening = """
                     view/no-wait make gob! [size: 100x100 color: 1.1.1]""";

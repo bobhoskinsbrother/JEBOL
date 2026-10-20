@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -14,10 +15,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AFileThatCannotBeMadeOrMovedFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterReaching(Path directory) {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
-        return interpreter;
     }
 
     private static String answerTo(Interpreter interpreter, String source) {

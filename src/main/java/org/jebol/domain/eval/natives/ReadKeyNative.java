@@ -36,7 +36,7 @@ public class ReadKeyNative extends HostNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.CONSOLE);
-            int code = evaluator.console().readKey();
+            int code = evaluator.ports().console().readKey();
             refuseAnyModifierKeyHeld(evaluator);
             return code < NO_KEY_CAME
                     ? NoneValue.none()

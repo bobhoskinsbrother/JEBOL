@@ -11,8 +11,8 @@ public final class SweepRunner {
     }
 
     static void main(String[] argued) throws Exception {
-        Interpreter interpreter = SuiteHost.installOn(
-                Interpreter.createWithOutput(new OutputPort() {
+        Interpreter interpreter = SuiteHost.anInterpreterFor(
+                SuiteHost.grantEverything(), new OutputPort() {
                     @Override
                     public void write(String text) {
                         System.out.print(text);
@@ -22,7 +22,7 @@ public final class SweepRunner {
                     public void writeLine(String text) {
                         System.out.println(text);
                     }
-                }, SuiteHost.grantEverything()));
+                });
         String source = Files.readString(Path.of(argued[0]));
         interpreter.defineNewWordsIn(source);
         interpreter.run(source);

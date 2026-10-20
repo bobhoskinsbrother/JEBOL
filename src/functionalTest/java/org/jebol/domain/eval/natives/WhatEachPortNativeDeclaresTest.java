@@ -5,6 +5,7 @@ import org.jebol.application.Bounds;
 import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.EnvironmentPort;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.eval.GrantedServices;
 import org.jebol.domain.eval.LocalFileSeparator;
 import org.jebol.domain.eval.ports.Ports;
@@ -59,15 +60,18 @@ class WhatEachPortNativeDeclaresTest {
     }
 
     private String answerIn(Path directory, String source) {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                .grant(HostService.FILES)
-                .grant(HostService.WORKING_DIRECTORY)
-                .grant(HostService.ENVIRONMENT)
-                .grant(HostService.PROCESSES)
-                .grant(HostService.CLOCK));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
-        interpreter.useEnvironment(new AnEnvironmentOfItsOwn());
-        interpreter.useProcesses(new JavaProcess());
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts()
+                        .withFiles(FileSystemPort.rootFileSystem(directory))
+                        .withEnvironment(new AnEnvironmentOfItsOwn())
+                        .withProcesses(new JavaProcess()),
+                OutputPort.discard(),
+                Bounds.standard()
+                        .grant(HostService.FILES)
+                        .grant(HostService.WORKING_DIRECTORY)
+                        .grant(HostService.ENVIRONMENT)
+                        .grant(HostService.PROCESSES)
+                        .grant(HostService.CLOCK));
         interpreter.defineNewWordsIn(source);
         return Molder.moldFlat(interpreter.run(source).value());
     }

@@ -5,6 +5,7 @@ import org.jebol.application.Bounds;
 import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.*;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
@@ -51,10 +52,14 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
         for (HostService service : HostService.values()) {
             everything = everything.grant(service);
         }
-        interpreter = Interpreter.withBounds(everything);
-        interpreter.useScreen(screen);
-        interpreter.useEnvironment(new ProcessEnvironment());
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(Path.of("src/testFixtures/resources").toAbsolutePath()));
+        interpreter = Interpreter.createOn(
+                Interpreter.standardPorts()
+                        .withScreen(screen)
+                        .withEnvironment(new ProcessEnvironment())
+                        .withFiles(FileSystemPort.rootFileSystem(
+                                Path.of("src/testFixtures/resources").toAbsolutePath())),
+                OutputPort.discard(),
+                everything);
     }
 
     @AfterEach

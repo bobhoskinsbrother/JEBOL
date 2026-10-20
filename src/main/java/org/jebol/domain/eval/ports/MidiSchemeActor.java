@@ -100,7 +100,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
                 && !(spec.readTheFieldValue("device-out") instanceof IntegerValue)) {
             makeTheOneDeviceAnOutput(spec);
         }
-        MidiDevices devices = evaluator.midiDevices();
+        MidiDevices devices = evaluator.ports().midiDevices();
         MidiRoute route = findTheRouteTheSpecNames(port, spec, devices);
         try {
             port.setField("state", JavaObjectValue.of(devices.connect(route)));
@@ -192,7 +192,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         if (!(field instanceof NoneValue)) {
             granted.require(HostService.MIDI);
         }
-        return new TheDevicesTheHostLists(evaluator.midiDevices()).answer(field, evaluator);
+        return new TheDevicesTheHostLists(evaluator.ports().midiDevices()).answer(field, evaluator);
     }
 
     private MidiDevices.Connection findTheOpenConnectionBehind(PortValue port) {

@@ -40,7 +40,7 @@ public class RequestColorNative extends WindowNative {
             Optional<int[]> suggested = readTheArgumentOf("default", 0, arguments, refinements)
                     .filter(TupleValue.class::isInstance)
                     .map(given -> ((TupleValue) given).segments());
-            return runThroughTheWindows(() -> evaluator.windows().chooseColour(suggested)
+            return runThroughTheWindows(() -> evaluator.ports().windows().chooseColour(suggested)
                     .<Value>map(TupleValue::of)
                     .orElseGet(NoneValue::none));
         };

@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,13 @@ class PortsTest {
 
     private static Interpreter grantedFiles() {
         return Interpreter.withBounds(
+                Bounds.standard().grant(org.jebol.domain.host.HostService.FILES));
+    }
+
+    private static Interpreter over(Path root) {
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(root)),
+                OutputPort.discard(),
                 Bounds.standard().grant(org.jebol.domain.host.HostService.FILES));
     }
 
@@ -61,8 +69,7 @@ class PortsTest {
             Path file = directory.resolve("greeting.txt");
             Files.writeString(file, "hello from disk", StandardCharsets.UTF_8);
 
-            Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = over(directory);
 
             assertThat(interpreter.run("read/string %greeting.txt").display())
                     .isEqualTo("\"hello from disk\"");
@@ -70,8 +77,7 @@ class PortsTest {
 
         @Test
         void writesAFile(@TempDir Path directory) throws IOException {
-            Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = over(directory);
 
             interpreter.run("write %written.txt \"from the script\"");
 
@@ -82,8 +88,7 @@ class PortsTest {
         @Test
         @DisplayName("reading something that is not there is an error, not empty text")
         void raisesForReadingSomethingAbsent(@TempDir Path directory) {
-            Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = over(directory);
 
             ScriptOutcome outcome = interpreter.run("read %missing.txt");
 
@@ -95,8 +100,7 @@ class PortsTest {
         @DisplayName("a script can tell whether a file is there")
         void asksWhetherAFileExists(@TempDir Path directory) throws IOException {
             Files.writeString(directory.resolve("here.txt"), "yes");
-            Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = over(directory);
 
             assertThat(interpreter.run("exists? %here.txt").display()).isEqualTo("file");
             assertThat(interpreter.run("exists? %not-here.txt").display()).isEqualTo("_");
@@ -111,8 +115,7 @@ class PortsTest {
         @DisplayName("a script climbing out reaches inside the root instead")
         void refusesEscapingTheRoot(@TempDir Path directory) throws IOException {
             Files.writeString(directory.resolve("inside.txt"), "fine");
-            Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = over(directory);
 
             ScriptOutcome outcome = interpreter.run("read %../../../etc/passwd");
 
@@ -125,8 +128,7 @@ class PortsTest {
         @Test
         @DisplayName("and a climbing write lands under the root, not above it")
         void landsAClimbingWriteUnderTheRoot(@TempDir Path directory) {
-            Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = over(directory);
 
             interpreter.run("write %../../../climbed.txt \"inside\"");
 
@@ -144,8 +146,7 @@ class PortsTest {
                 throws IOException {
 
             Files.writeString(directory.resolve("inside.txt"), "fine");
-            Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = over(directory);
 
             assertThat(interpreter.display(interpreter.run("""
                     to string! read %/inside.txt""")))
@@ -156,8 +157,7 @@ class PortsTest {
         @Test
         @DisplayName("so a machine path reaches nothing rather than reaching out")
         void reachesNothingByAMachinePath(@TempDir Path directory) {
-            Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = over(directory);
 
             ScriptOutcome outcome = interpreter.run("read %/etc/passwd");
 
@@ -170,8 +170,7 @@ class PortsTest {
         @Test
         @DisplayName("and dots in an absolute path clamp at the root the same way")
         void keepsDotsInAnAbsolutePathFromClimbingOut(@TempDir Path directory) {
-            Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = over(directory);
 
             ScriptOutcome outcome = interpreter.run("read %/../../../etc/passwd");
 
@@ -183,8 +182,7 @@ class PortsTest {
         @DisplayName("a read-only port refuses writes")
         void refusesWritesToAReadOnlyPort(@TempDir Path directory) throws IOException {
             Files.writeString(directory.resolve("readable.txt"), "contents");
-            Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory).readOnlyFileSystem());
+            Interpreter interpreter = readOnlyOver(directory);
 
             assertThat(interpreter.run("read %readable.txt").succeeded()).isTrue();
 
@@ -198,8 +196,7 @@ class PortsTest {
         void changesNothingForARefusedWrite(@TempDir Path directory) throws IOException {
             Path file = directory.resolve("readable.txt");
             Files.writeString(file, "original");
-            Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory).readOnlyFileSystem());
+            Interpreter interpreter = readOnlyOver(directory);
 
             interpreter.run("write %readable.txt \"changed\"");
 
@@ -299,9 +296,11 @@ class PortsTest {
         }
 
         private Interpreter readOnlyOver(Path directory) {
-            Interpreter interpreter = grantedFiles();
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory).readOnlyFileSystem());
-            return interpreter;
+            return Interpreter.createOn(
+                    Interpreter.standardPorts().withFiles(
+                            FileSystemPort.rootFileSystem(directory).readOnlyFileSystem()),
+                    OutputPort.discard(),
+                    Bounds.standard().grant(org.jebol.domain.host.HostService.FILES));
         }
     }
 }

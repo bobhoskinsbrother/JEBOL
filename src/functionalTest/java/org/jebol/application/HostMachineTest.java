@@ -140,7 +140,10 @@ class HostMachineTest {
     }
 
     private Interpreter interpreterOn(MachinePort machine, Bounds bounds) {
-        return Interpreter.createOn(machine, OutputPort.discard(), bounds);
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withMachine(machine),
+                OutputPort.discard(),
+                bounds);
     }
 
     private String answerOn(MachinePort machine, String source) {
@@ -298,9 +301,12 @@ class HostMachineTest {
             DescribedMachine machine = new DescribedMachine()
                     .launchesFor("/", "/tmp/whole.sh")
                     .launchesFor(root, "/tmp/confined.sh");
-            Interpreter interpreter = interpreterOn(machine, grantingProcesses().grant(HostService.FILES));
-
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts()
+                            .withMachine(machine)
+                            .withFiles(FileSystemPort.rootFileSystem(directory)),
+                    OutputPort.discard(),
+                    grantingProcesses().grant(HostService.FILES));
 
             assertThat(machine.launchersAskedFor).last()
                     .isEqualTo(new LauncherRequest(root, "/home/someone/.jebol/"));
@@ -312,9 +318,12 @@ class HostMachineTest {
         @DisplayName("a confined launcher the machine cannot make leaves boot none, never the unconfined one")
         void dropsUnconfinedLauncher(@TempDir Path directory) {
             DescribedMachine machine = new DescribedMachine().launchesFor("/", "/tmp/whole.sh");
-            Interpreter interpreter = interpreterOn(machine, grantingProcesses().grant(HostService.FILES));
-
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts()
+                            .withMachine(machine)
+                            .withFiles(FileSystemPort.rootFileSystem(directory)),
+                    OutputPort.discard(),
+                    grantingProcesses().grant(HostService.FILES));
 
             assertThat(interpreter.run("""
                     none? system/options/boot""").display()).isEqualTo("#(true)");
@@ -341,9 +350,12 @@ class HostMachineTest {
     class EndingProcessAsksHost {
 
         private Interpreter withProcesses(RecordedProcesses processes) {
-            Interpreter interpreter = interpreterOn(new DescribedMachine(), grantingProcesses());
-            interpreter.useProcesses(processes);
-            return interpreter;
+            return Interpreter.createOn(
+                    Interpreter.standardPorts()
+                            .withMachine(new DescribedMachine())
+                            .withProcesses(processes),
+                    OutputPort.discard(),
+                    grantingProcesses());
         }
 
         @Test
@@ -400,8 +412,12 @@ class HostMachineTest {
         @DisplayName("without processes granted it is no-service, and the host is never asked")
         void refusesWithoutGrant() {
             RecordedProcesses processes = new RecordedProcesses().running(77);
-            Interpreter interpreter = interpreterOn(new DescribedMachine());
-            interpreter.useProcesses(processes);
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts()
+                            .withMachine(new DescribedMachine())
+                            .withProcesses(processes),
+                    OutputPort.discard(),
+                    Bounds.standard());
 
             assertThat(interpreter.run("""
                     access-os/set 'pid 77""").errorId()).contains("no-service");

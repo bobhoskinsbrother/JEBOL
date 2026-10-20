@@ -3,6 +3,7 @@ package org.jebol.adapter.web;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
@@ -75,10 +76,10 @@ class WebScreenServerFromTheSourceTest {
     }
 
     private Interpreter makeAnInterpreterOnThisScreen() {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withScreen(screen),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
-        interpreter.useScreen(screen);
-        return interpreter;
     }
 
     private HttpResponse<String> get(String path) throws Exception {

@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.adapter.host.JavaImage;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -19,16 +20,19 @@ class ImageCodecFromTheSourceTest {
             Path.of("src", "testFixtures", "resources", "rebol-suite", "units", "files");
 
     private static Interpreter makeAnInterpreterReaching(Path directory) {
-        Interpreter interpreter = makeAnInterpreterWithAFilesystemOn(directory);
-        interpreter.useImages(new JavaImage());
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts()
+                        .withFiles(FileSystemPort.rootFileSystem(directory))
+                        .withImages(new JavaImage()),
+                OutputPort.discard(),
+                Bounds.standard().grant(HostService.FILES));
     }
 
     private static Interpreter makeAnInterpreterWithAFilesystemOn(Path directory) {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
-        return interpreter;
     }
 
     private static String answerTo(Interpreter interpreter, String source) {

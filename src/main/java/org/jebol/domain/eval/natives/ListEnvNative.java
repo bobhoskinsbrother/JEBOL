@@ -34,7 +34,7 @@ public class ListEnvNative extends EnvironmentNative {
             granted.require(HostService.ENVIRONMENT);
             return runThroughTheFileSystem(() -> {
                 List<Value> pairs = new ArrayList<>();
-                evaluator.environment().readAll().entrySet().stream()
+                evaluator.ports().environment().readAll().entrySet().stream()
                         .sorted(Map.Entry.comparingByKey())
                         .forEach(one -> {
                             pairs.add(StringValue.of(one.getKey()));

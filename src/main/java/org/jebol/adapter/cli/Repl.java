@@ -12,6 +12,7 @@ import org.jebol.application.Conclusion;
 import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.application.ScriptOutcome;
+import org.jebol.domain.host.HostPorts;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.value.ErrorCategory;
 import org.jebol.domain.value.ErrorValue;
@@ -171,23 +172,23 @@ public final class Repl {
 
     private static Interpreter buildInterpreter(String[] arguments, PrintStream out, boolean anythingWasAsked, Path root) {
         Bounds bounds = grantEveryHostService().withoutATimeLimit();
-        Interpreter interpreter = Interpreter.createWithOutput(new StreamOutput(out), bounds);
-        interpreter.useTasks(new ThreadTasks(bounds));
-        useJavaImagesCodecWhichReachesNothingAndIsNotAGrant(interpreter);
         ProcessEnvironment environment = new ProcessEnvironment();
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
-        interpreter.useEnvironment(environment);
-        interpreter.useProcesses(new JavaProcess());
-        interpreter.useClipboard(new JavaClipboard());
-        interpreter.useNetwork(new JavaSocket());
         String cafile = readTrailingArgument(CAFILE_SWITCH, arguments);
-        interpreter.useCertificateAuthority(cafile.isEmpty()
-                ? new JavaCertificateAuthority()
-                : JavaCertificateAuthority.trustingTheMachineAnd(Path.of(cafile)));
-        putTheApplicationDataWhereTheParentKeepsIt(interpreter, environment, arguments);
+        HostPorts ports = useJavaImagesCodecWhichReachesNothingAndIsNotAGrant(Interpreter.standardPorts()
+                .withTasks(new ThreadTasks(bounds))
+                .withFiles(FileSystemPort.rootFileSystem(root))
+                .withEnvironment(environment)
+                .withProcesses(new JavaProcess())
+                .withClipboard(new JavaClipboard())
+                .withNetwork(new JavaSocket())
+                .withCertificateAuthority(cafile.isEmpty()
+                        ? new JavaCertificateAuthority()
+                        : JavaCertificateAuthority.trustingTheMachineAnd(Path.of(cafile))));
         if (ChosenScreen.isAskedFor(arguments)) {
-            ChosenScreen.attachTo(interpreter, arguments, out, anythingWasAsked);
+            ports = ports.withScreen(ChosenScreen.aScreenFor(arguments, out, anythingWasAsked));
         }
+        Interpreter interpreter = Interpreter.createOn(ports, new StreamOutput(out), bounds);
+        putTheApplicationDataWhereTheParentKeepsIt(interpreter, environment, arguments);
         return interpreter;
     }
 
@@ -203,9 +204,8 @@ public final class Repl {
         interpreter.followApplicationDataDirectory();
     }
 
-    private static void useJavaImagesCodecWhichReachesNothingAndIsNotAGrant(
-            Interpreter interpreter) {
-        interpreter.useImages(new JavaImage());
+    private static HostPorts useJavaImagesCodecWhichReachesNothingAndIsNotAGrant(HostPorts ports) {
+        return ports.withImages(new JavaImage());
     }
 
     private static Bounds grantEveryHostService() {

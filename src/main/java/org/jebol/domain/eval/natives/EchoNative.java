@@ -47,7 +47,7 @@ public class EchoNative extends HostNative {
             String path = target instanceof AnyStringValue address
                     ? address.text()
                     : WHERE_A_TRUE_ECHO_WRITES;
-            FilePort files = evaluator.files();
+            FilePort files = evaluator.ports().files();
             return runThroughTheFileSystem(() -> {
                 files.write(path, new byte[0]);
                 evaluator.alsoWriteTo(text -> files.appendTo(

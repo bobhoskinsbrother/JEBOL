@@ -22,7 +22,7 @@ public abstract class SeriesOrFileAction extends DefaultNative implements Action
     }
 
     protected OpenFile findTheFileBehind(PortValue port, Evaluator evaluator) {
-        return new OpenFile(port, evaluator.files(), granted);
+        return new OpenFile(port, evaluator.ports().files(), granted);
     }
 
     protected Set<Datatype> somewhereToStand() {

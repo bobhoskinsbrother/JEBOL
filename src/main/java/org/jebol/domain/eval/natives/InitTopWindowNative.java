@@ -33,7 +33,7 @@ public class InitTopWindowNative extends ScreenNative {
             if (!(arguments.getFirst() instanceof GobValue root)) {
                 return refuseTheArgument(arguments.getFirst(), "gob");
             }
-            evaluator.screen().takeAsRoot(root);
+            evaluator.ports().screen().takeAsRoot(root);
             return UnsetValue.unset();
         };
     }

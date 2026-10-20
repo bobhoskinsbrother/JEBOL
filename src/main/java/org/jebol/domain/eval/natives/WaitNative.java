@@ -164,12 +164,12 @@ public class WaitNative extends PortWakingNative {
     }
 
     private boolean doesAQueuedEventWake(PortValue port, Evaluator evaluator) {
-        Optional<ScreenEvent> next = evaluator.screen().acceptNextEvent();
+        Optional<ScreenEvent> next = evaluator.ports().screen().acceptNextEvent();
         while (next.isPresent()) {
             if (wakes(port, makeAGuiEventFor(next.get()), evaluator)) {
                 return true;
             }
-            next = evaluator.screen().acceptNextEvent();
+            next = evaluator.ports().screen().acceptNextEvent();
         }
         return false;
     }
@@ -248,7 +248,7 @@ public class WaitNative extends PortWakingNative {
 
     private boolean letTheHostPassTime(Evaluator evaluator, long milliseconds) {
         try {
-            return evaluator.pause().pauseFor(milliseconds);
+            return evaluator.ports().pause().pauseFor(milliseconds);
         } catch (FilePort.Denied refused) {
             throw refused.raise();
         }

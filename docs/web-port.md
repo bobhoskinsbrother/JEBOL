@@ -47,8 +47,8 @@ warm create.
 The two pieces of blocking code named in this note are gone. WAIT's sleep is a
 port (`PausePort`, in `org.jebol.domain.host`) that the interpreter asks one
 fifty millisecond slice at a time, so it can still end a wait at its own
-deadline between slices; an interpreter is built with `ThreadPause` and a host
-replaces it through `Interpreter.usePause`. And `ScreenEventQueue` is plain
+deadline between slices; the standard ports carry a `ThreadPause` and a host
+that has its own supplies it when the interpreter is built. And `ScreenEventQueue` is plain
 storage again: an adapter that hears a toolkit's listener leaves the event in a
 `ConcurrentLinkedQueue` through `GobScreen.posted`, and `acceptNextEvent`
 moves what was posted into the interpreter's own queue on the interpreter's

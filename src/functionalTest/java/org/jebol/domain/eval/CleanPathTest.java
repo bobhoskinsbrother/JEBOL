@@ -71,10 +71,12 @@ class CleanPathTest {
     @DisplayName("with the grant, a relative path is made whole")
     void putsTheCurrentDirectoryInFront() {
         String source = "#\"/\" = first clean-path %a/b";
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = Interpreter.createOn(
+                org.jebol.application.Interpreter.standardPorts().withFiles(
+                        org.jebol.application.FileSystemPort.rootFileSystem(
+                                java.nio.file.Path.of("."))),
+                org.jebol.domain.host.OutputPort.discard(),
                 Bounds.standard().grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(org.jebol.application.FileSystemPort.rootFileSystem(
-                java.nio.file.Path.of(".")));
         interpreter.defineNewWordsIn(source);
         assertThat(interpreter.display(interpreter.run(source))).isEqualTo("#(true)");
     }

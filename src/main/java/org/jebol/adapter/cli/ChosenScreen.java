@@ -3,7 +3,7 @@ package org.jebol.adapter.cli;
 import org.jebol.adapter.host.DesktopScreen;
 import org.jebol.adapter.web.BrowserScreen;
 import org.jebol.adapter.web.WebScreenServer;
-import org.jebol.application.Interpreter;
+import org.jebol.domain.host.ScreenPort;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -43,37 +43,37 @@ final class ChosenScreen {
                 .toArray(String[]::new);
     }
 
-    static void attachTo(Interpreter interpreter, String[] arguments, PrintStream out, boolean forAScript) {
+    static ScreenPort aScreenFor(String[] arguments, PrintStream out, boolean forAScript) {
         String asked = switchValue(arguments).orElseThrow();
-        switch (asked.toLowerCase(Locale.ROOT)) {
-            case WINDOW -> attachWindow(interpreter, out);
-            case PAGE -> attachPage(interpreter, out, forAScript);
+        return switch (asked.toLowerCase(Locale.ROOT)) {
+            case WINDOW -> aWindow(out);
+            case PAGE -> aPage(out, forAScript);
             default -> refuseAsNotUnderstood(asked);
-        }
+        };
     }
 
-    private static void attachWindow(Interpreter interpreter, PrintStream out) {
+    private static ScreenPort aWindow(PrintStream out) {
         DesktopScreen screen = DesktopScreen.onThisMachine();
-        interpreter.useScreen(screen);
         out.println(screen.hasDisplay()
                 ? "Screen: a native window."
                 : "Screen: asked for a window and this machine has no display.");
+        return screen;
     }
 
-    private static void attachPage(Interpreter interpreter, PrintStream out, boolean forAScript) {
+    private static ScreenPort aPage(PrintStream out, boolean forAScript) {
         try {
             WebScreenServer serving = WebScreenServer.on(ANY_AVAILABLE_PORT);
             BrowserScreen screen = BrowserScreen.showTo(serving);
             serving.reportTo(screen);
-            interpreter.useScreen(screen);
             if (forAScript) {
                 out.println("Screen: a page at " + serving.address()
                         + " -- the script starts once it is open.");
                 waitForABrowser(screen);
-                return;
+                return screen;
             }
             out.println("Screen: a page at " + serving.address()
                     + " -- open it, then VIEW.");
+            return screen;
         } catch (IOException couldNotListen) {
             throw new IllegalStateException(
                     "the page could not be served: " + couldNotListen.getMessage(),
@@ -92,7 +92,7 @@ final class ChosenScreen {
         }
     }
 
-    private static void refuseAsNotUnderstood(String asked) {
+    private static ScreenPort refuseAsNotUnderstood(String asked) {
         throw new IllegalArgumentException(
                 "there is no screen called " + asked
                         + "; it is " + WINDOW + " or " + PAGE);

@@ -11,6 +11,7 @@ import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.NetworkPort;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -81,11 +82,12 @@ class WaitingOnAPortFromTheSourceTest {
     }
 
     private static Interpreter reaching(ACannedServer server) {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                .grant(HostService.NETWORK)
-                .grant(HostService.CLOCK));
-        interpreter.useNetwork(server);
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withNetwork(server),
+                OutputPort.discard(),
+                Bounds.standard()
+                        .grant(HostService.NETWORK)
+                        .grant(HostService.CLOCK));
     }
 
     private static String answerFrom(ACannedServer server, String source) {

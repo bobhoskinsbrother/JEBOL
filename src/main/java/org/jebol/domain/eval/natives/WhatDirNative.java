@@ -29,7 +29,7 @@ public class WhatDirNative extends HostNative {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WORKING_DIRECTORY);
             return runThroughTheFileSystem(() ->
-                    FileValue.of(evaluator.files().workingDirectory()));
+                    FileValue.of(evaluator.ports().files().workingDirectory()));
         };
     }
 }

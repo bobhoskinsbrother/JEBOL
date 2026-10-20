@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.host.PausePort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,9 +31,10 @@ class AWaitsTimeIsPassedByTheHostTest {
     }
 
     private static Interpreter makeAnInterpreterWithThePause(ARecordedPause pause) {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard());
-        interpreter.usePause(pause);
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withPause(pause),
+                OutputPort.discard(),
+                Bounds.standard());
     }
 
     @Test

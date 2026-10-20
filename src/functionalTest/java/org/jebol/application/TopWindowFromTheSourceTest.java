@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -12,10 +13,10 @@ class TopWindowFromTheSourceTest {
     private static final String TRUE = "#(true)";
 
     private static Interpreter makeAnInterpreterWithAScreen(RecordingScreen screen) {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withScreen(screen),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
-        interpreter.useScreen(screen);
-        return interpreter;
     }
 
     private static String answerFrom(RecordingScreen screen, String source) {
@@ -102,8 +103,8 @@ class TopWindowFromTheSourceTest {
     }
 
     @Nested
-    @DisplayName("when the screen arrives after the library has loaded")
-    class TheLateScreen {
+    @DisplayName("the screen the interpreter was built with")
+    class TheScreenItWasBuiltWith {
 
         @Test
         @DisplayName("a screen nobody has handed a root to has not got one")
@@ -114,34 +115,27 @@ class TopWindowFromTheSourceTest {
         }
 
         @Test
-        @DisplayName("and the root is re-measured, so it is not left at nothing")
-        void remeasuresTheRoot() {
-            Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().grant(HostService.WINDOWS));
+        @DisplayName("the root is measured from that screen, not left at nothing")
+        void measuresTheRootFromTheScreen() {
+            Interpreter interpreter = makeAnInterpreterWithAScreen(
+                    RecordingScreen.measure(1024, 768));
 
             assertThat(interpreter.display(interpreter.run(
-                    "system/view/screen-gob/size")))
-                    .as("before a screen arrives, the root was sized against none")
-                    .isEqualTo("0x0");
-
-            interpreter.useScreen(RecordingScreen.measure(1024, 768));
-
-            assertThat(interpreter.display(interpreter.run(
-                    "system/view/screen-gob/size")))
-                    .as("and it is brought up to date when one does")
-                    .isEqualTo("1024x768");
+                    "system/view/screen-gob/size"))).isEqualTo("1024x768");
         }
 
         @Test
-        @DisplayName("a second screen moves it again")
-        void asecondScreenMovesItAgain() {
-            Interpreter interpreter = Interpreter.withBounds(
-                    Bounds.standard().grant(HostService.WINDOWS));
-            interpreter.useScreen(RecordingScreen.measure(1024, 768));
-            interpreter.useScreen(RecordingScreen.measure(640, 480));
+        @DisplayName("and each interpreter keeps the one it was built with")
+        void keepsTheScreenItWasBuiltWith() {
+            Interpreter wide = makeAnInterpreterWithAScreen(
+                    RecordingScreen.measure(1024, 768));
+            Interpreter narrow = makeAnInterpreterWithAScreen(
+                    RecordingScreen.measure(640, 480));
 
-            assertThat(interpreter.display(interpreter.run(
-                    "system/view/screen-gob/size"))).isEqualTo("640x480");
+            assertThat(wide.display(wide.run("system/view/screen-gob/size")))
+                    .isEqualTo("1024x768");
+            assertThat(narrow.display(narrow.run("system/view/screen-gob/size")))
+                    .isEqualTo("640x480");
         }
     }
 

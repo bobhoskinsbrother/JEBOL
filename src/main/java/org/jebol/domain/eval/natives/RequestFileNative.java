@@ -47,7 +47,7 @@ public class RequestFileNative extends WindowNative {
             granted.require(HostService.WINDOWS);
             List<String> filters = filterPairsIn(arguments, refinements);
             return runThroughTheWindows(() -> {
-                List<String> chosen = evaluator.windows().chooseFiles(
+                List<String> chosen = evaluator.ports().windows().chooseFiles(
                         refinements.contains("save"),
                         refinements.contains("multi"),
                         textGivenFor("file", arguments, refinements),

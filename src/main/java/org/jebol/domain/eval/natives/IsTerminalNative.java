@@ -22,6 +22,6 @@ public class IsTerminalNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                LogicValue.of(evaluator.console().isATerminal());
+                LogicValue.of(evaluator.ports().console().isATerminal());
     }
 }

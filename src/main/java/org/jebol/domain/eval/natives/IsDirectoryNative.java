@@ -59,6 +59,6 @@ public class IsDirectoryNative extends HostNative {
 
     private boolean liesOnTheDiskAsADirectory(Evaluator evaluator, String path) {
         granted.require(HostService.FILES);
-        return runThroughTheFileSystem(() -> LogicValue.of(evaluator.files().isDirectory(path))).isTruthy();
+        return runThroughTheFileSystem(() -> LogicValue.of(evaluator.ports().files().isDirectory(path))).isTruthy();
     }
 }

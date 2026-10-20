@@ -5,6 +5,7 @@ import org.jebol.adapter.host.JavaSocket;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -65,11 +66,12 @@ class ReadingHttpFromALocalServerFromTheSourceTest {
     }
 
     private static Interpreter reachingTheNetwork() {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                .grant(HostService.NETWORK)
-                .grant(HostService.CLOCK));
-        interpreter.useNetwork(new JavaSocket());
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withNetwork(new JavaSocket()),
+                OutputPort.discard(),
+                Bounds.standard()
+                        .grant(HostService.NETWORK)
+                        .grant(HostService.CLOCK));
     }
 
     private String answerTo(String source) {

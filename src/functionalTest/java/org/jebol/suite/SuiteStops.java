@@ -14,8 +14,8 @@ public final class SuiteStops {
     private static final int ENOUGH_STOPS_TO_SEE_THE_SHAPE = 10;
 
     private static Interpreter fullyBounded() {
-        Interpreter interpreter = SuiteHost.installOn(
-                Interpreter.withBounds(SuiteHost.grantEverything()));
+        Interpreter interpreter = SuiteHost.anInterpreterFor(
+                SuiteHost.grantEverything());
         String dialect = String.join("\n",
                 "--assert: func [x [any-type!]][:x]",
                 "--assert-numbered: func [n [integer!] x [any-type!]][:x]",

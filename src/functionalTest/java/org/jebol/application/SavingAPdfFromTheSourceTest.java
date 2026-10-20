@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -19,11 +20,12 @@ class SavingAPdfFromTheSourceTest {
             Path.of("src", "testFixtures", "resources", "pdf", "hello-linearized.pdf");
 
     private static Interpreter makeAnInterpreterReaching(Path directory) {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                .grant(HostService.FILES)
-                .grant(HostService.CLOCK));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                OutputPort.discard(),
+                Bounds.standard()
+                        .grant(HostService.FILES)
+                        .grant(HostService.CLOCK));
     }
 
     private static String answerTo(Path directory, String source) {

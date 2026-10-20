@@ -49,7 +49,7 @@ public class GuiMetricNative extends ScreenNative {
             granted.require(HostService.WINDOWS);
             ScreenMetric metric = readTheMetricNamedBy(arguments.getFirst());
             int display = displayAskedFor(arguments, refinements);
-            return measure(evaluator.screen(), metric, display);
+            return measure(evaluator.ports().screen(), metric, display);
         };
     }
 

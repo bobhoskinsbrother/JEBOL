@@ -28,24 +28,8 @@ public final class Evaluator {
     private final Interruption interruption;
     private final int checkEvery;
 
-    private FilePort files = FilePort.none();
+    private final HostPorts ports;
 
-    private EnvironmentPort environment = EnvironmentPort.none();
-
-    private ImagePort images = ImagePort.none();
-
-    private ConsolePort console = ConsolePort.none();
-
-    private WindowPort windows = WindowPort.none();
-    private ScreenPort screen = ScreenPort.none();
-    private PausePort pause = PausePort.none();
-
-    private ProcessPort processes = ProcessPort.none();
-
-    private MachinePort machine = MachinePort.none();
-
-    private NetworkPort network = NetworkPort.none();
-    private CertificateAuthority certificateAuthority = new ZeroTrustAuthority();
     private BundledModules bundledModules = BundledModules.none();
     private final Construction construction;
     private final MakerSource makerSource;
@@ -161,12 +145,17 @@ public final class Evaluator {
     }
 
     public Evaluator(Context systemContext, OutputPort output) {
-        this(systemContext, Construction.refused(), MakerSource.none(), output,
+        this(systemContext, HostPorts.none(), output);
+    }
+
+    public Evaluator(Context systemContext, HostPorts ports, OutputPort output) {
+        this(systemContext, ports, Construction.refused(), MakerSource.none(), output,
                 DEFAULT_MAXIMUM_DEPTH, Interruption.never(), DEFAULT_CHECK_EVERY);
     }
 
     public Evaluator(
             Context systemContext,
+            HostPorts ports,
             Construction construction,
             MakerSource makerSource,
             OutputPort output,
@@ -174,6 +163,7 @@ public final class Evaluator {
             Interruption interruption,
             int checkEvery) {
         this.systemContext = systemContext;
+        this.ports = ports;
         this.construction = construction;
         this.makerSource = makerSource;
         this.wording = new ErrorWording(systemContext);
@@ -204,51 +194,31 @@ public final class Evaluator {
         this.alsoWritingTo = null;
     }
 
-    public ProcessPort processes() {
-        return processes;
-    }
-
-    public MachinePort machine() {
-        return machine;
-    }
-
-    public void useMachine(MachinePort port) {
-        this.machine = port;
-    }
-
-    public NetworkPort network() {
-        return network;
-    }
-
-    public void useNetwork(NetworkPort port) {
-        this.network = port;
-    }
-
-    public CertificateAuthority certificateAuthority() {
-        return certificateAuthority;
-    }
-
-    public void useCertificateAuthority(CertificateAuthority authority) {
-        this.certificateAuthority = authority;
+    /** Every port this evaluator has, as one value it was built with. */
+    public HostPorts ports() {
+        return ports;
     }
 
     /**
-     * Tells this interpreter where HTTP goes, and gives the http and https
-     * schemes an actor that fetches there.
+     * Gives the http and https schemes the actor of the port this host
+     * supplied, when it supplied one.
      *
      * <p>Swapping the actor is what makes every route the same: a url read,
      * a port opened by hand and a port stepped through all ask the actor,
      * and the actor is this host's. Rebol's own protocol stays loaded and
      * its scheme keeps its spec and its info; only the arm that reached the
-     * connection changes.
+     * connection changes. Called once the schemes are registered, and never
+     * when the host supplied no port, which leaves HTTP to Rebol's own.
      */
-    public void useHttp(HttpPort port) {
-        for (String scheme : List.of("http", "https")) {
-            findTheSchemeNamed(scheme).orElseThrow(() -> new IllegalStateException(
-                            "the " + scheme + " scheme is not registered yet"))
-                    .context().ownSlotFor("actor")
-                    .setBeneathAnyProtection(new HttpSchemeActor(scheme, port));
-        }
+    public void installTheHostsHttpActor() {
+        ports.http().ifPresent(port -> {
+            for (String scheme : List.of("http", "https")) {
+                findTheSchemeNamed(scheme).orElseThrow(() -> new IllegalStateException(
+                                "the " + scheme + " scheme is not registered yet"))
+                        .context().ownSlotFor("actor")
+                        .setBeneathAnyProtection(new HttpSchemeActor(scheme, port));
+            }
+        });
     }
 
     private Optional<ObjectValue> findTheSchemeNamed(String name) {
@@ -260,36 +230,6 @@ public final class Evaluator {
         return definition instanceof ObjectValue found
                 ? Optional.of(found)
                 : Optional.empty();
-    }
-
-    private ClipboardPort clipboard = ClipboardPort.none();
-
-    public ClipboardPort clipboard() {
-        return clipboard;
-    }
-
-    public void useClipboard(ClipboardPort port) {
-        this.clipboard = port;
-    }
-
-    private MidiDevices midiDevices = new NoMidiDevices();
-
-    public MidiDevices midiDevices() {
-        return midiDevices;
-    }
-
-    public void useMidiDevices(MidiDevices devices) {
-        this.midiDevices = devices;
-    }
-
-    private TaskPort tasks = TaskPort.none();
-
-    public TaskPort tasks() {
-        return tasks;
-    }
-
-    public void useTasks(TaskPort port) {
-        this.tasks = port;
     }
 
     public BundledModules bundledModules() {
@@ -432,66 +372,6 @@ public final class Evaluator {
 
     public ErrorValue speakHere(ErrorValue error) {
         return error.wording().equals(wording) ? error : error.speakWith(wording);
-    }
-
-    public void useProcesses(ProcessPort port) {
-        this.processes = port;
-    }
-
-    public ConsolePort console() {
-        return console;
-    }
-
-    public void useConsole(ConsolePort port) {
-        this.console = port;
-    }
-
-    public WindowPort windows() {
-        return windows;
-    }
-
-    public void useWindows(WindowPort port) {
-        this.windows = port;
-    }
-
-    public ScreenPort screen() {
-        return screen;
-    }
-
-    public void useScreen(ScreenPort port) {
-        this.screen = port;
-    }
-
-    public PausePort pause() {
-        return pause;
-    }
-
-    public void usePause(PausePort port) {
-        this.pause = port;
-    }
-
-    public EnvironmentPort environment() {
-        return environment;
-    }
-
-    public void useEnvironment(EnvironmentPort port) {
-        this.environment = port;
-    }
-
-    public ImagePort images() {
-        return images;
-    }
-
-    public void useImages(ImagePort port) {
-        this.images = port;
-    }
-
-    public FilePort files() {
-        return files;
-    }
-
-    public void useFiles(FilePort port) {
-        this.files = port;
     }
 
     public Value applyFunction(Value callee, List<Value> arguments) {

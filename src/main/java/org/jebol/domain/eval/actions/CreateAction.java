@@ -51,9 +51,9 @@ public class CreateAction extends PortAction {
         ports.requireTheFilePolicy(path, evaluator, Set.of(PolicyAccess.WRITE));
         return ports.runThroughTheFileSystem(() -> {
             if (path.endsWith("/")) {
-                evaluator.files().makeDirectory(path, NOT_ITS_PARENTS);
+                evaluator.ports().files().makeDirectory(path, NOT_ITS_PARENTS);
             } else {
-                evaluator.files().write(path, new byte[0]);
+                evaluator.ports().files().write(path, new byte[0]);
             }
             return port;
         });

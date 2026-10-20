@@ -63,11 +63,12 @@ class ReplEndToEndTest {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
 
-        Interpreter interpreter = Interpreter.createWithOutput(new StreamOutput(output),
+        Interpreter interpreter = Interpreter.createOn(
+                org.jebol.application.Interpreter.standardPorts().withFiles(
+                        org.jebol.application.FileSystemPort.rootFileSystem(directory)),
+                new StreamOutput(output),
                 org.jebol.application.Bounds.standard()
                         .grant(org.jebol.domain.host.HostService.FILES));
-        interpreter.useFileSystem(
-                org.jebol.application.FileSystemPort.rootFileSystem(directory));
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
 
         return captured.toString(StandardCharsets.UTF_8);
@@ -386,10 +387,11 @@ class ReplEndToEndTest {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream output = new PrintStream(captured, true, StandardCharsets.UTF_8);
 
-        Interpreter interpreter = Interpreter.createWithOutput(new StreamOutput(output),
+        Interpreter interpreter = Interpreter.createOn(
+                org.jebol.application.Interpreter.standardPorts().withProcesses(new JavaProcess()),
+                new StreamOutput(output),
                 org.jebol.application.Bounds.standard()
                         .grant(org.jebol.domain.host.HostService.PROCESSES));
-        interpreter.useProcesses(new JavaProcess());
         new Repl(interpreter, new BufferedReader(new StringReader(typed)), output).run();
 
         return captured.toString(StandardCharsets.UTF_8);

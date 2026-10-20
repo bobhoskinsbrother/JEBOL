@@ -27,10 +27,12 @@ class CheckingCertificatesFromTheSourceTest {
     private final StringBuilder printed = new StringBuilder();
 
     private Interpreter makeAGrantedInterpreter() {
-        Interpreter interpreter = grantedWithoutAuthority();
-        interpreter.useCertificateAuthority(new JavaCertificateAuthority(
-                fixtures.trustOnly("test-root"), Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC)));
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withCertificateAuthority(new JavaCertificateAuthority(
+                        fixtures.trustOnly("test-root"),
+                        Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC))),
+                printed::append,
+                Bounds.standard().grant(HostService.CERTIFICATES));
     }
 
     private Interpreter grantedWithoutAuthority() {

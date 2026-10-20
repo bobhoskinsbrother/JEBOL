@@ -52,7 +52,7 @@ public class CheckCertificatesNative extends HostNative {
             if (chain.isEmpty()) {
                 throw refuseAsMistrusted(CertificateMistrust.NO_CERTIFICATE, host);
             }
-            requireTrust(evaluator.certificateAuthority(), chain, host);
+            requireTrust(evaluator.ports().certificateAuthority(), chain, host);
             return NoneValue.none();
         };
     }

@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.adapter.host.JavaImage;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -15,10 +16,12 @@ class BlurringARealPictureFromTheSourceTest {
             Path.of("src", "testFixtures", "resources", "rebol-suite", "units", "files");
 
     private static String answerTo(String source) {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts()
+                        .withFiles(FileSystemPort.rootFileSystem(VENDORED))
+                        .withImages(new JavaImage()),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(VENDORED));
-        interpreter.useImages(new JavaImage());
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

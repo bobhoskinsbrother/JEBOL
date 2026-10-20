@@ -6,6 +6,7 @@ import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.PairValue;
 import org.junit.jupiter.api.DisplayName;
@@ -221,9 +222,10 @@ class DesktopScreenFromTheSourceTest {
         @Test
         @DisplayName("and an interpreter given this screen refuses to view, by that name")
         void refusesAnInterpretersView() {
-            Interpreter interpreter = Interpreter.withBounds(
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts().withScreen(DesktopScreen.onThisMachine()),
+                    OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
-            interpreter.useScreen(DesktopScreen.onThisMachine());
             String script = """
                     e: try [view/no-wait make gob! [size: 100x100]]
                     either error? e [form e/arg1] ["no error at all"]""";
@@ -236,9 +238,10 @@ class DesktopScreenFromTheSourceTest {
         @Test
         @DisplayName("and the root gob it is given is sized at nothing")
         void sizesTheRootAtNothing() {
-            Interpreter interpreter = Interpreter.withBounds(
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts().withScreen(DesktopScreen.onThisMachine()),
+                    OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
-            interpreter.useScreen(DesktopScreen.onThisMachine());
 
             assertThat(interpreter.display(interpreter.run(
                     "system/view/screen-gob/size"))).isEqualTo("0x0");

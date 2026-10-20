@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.host.ConsolePort;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -30,10 +31,10 @@ class PortDatatypeTest {
     }
 
     private static Interpreter makeAnInterpreterWithAConsole(String... lines) {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withConsole(new Lines(lines)),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.CONSOLE));
-        interpreter.useConsole(new Lines(lines));
-        return interpreter;
     }
 
     private static String answerFrom(Interpreter interpreter, String source) {

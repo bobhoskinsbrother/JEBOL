@@ -4,6 +4,7 @@ import org.jebol.adapter.host.JavaProcess;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -17,8 +18,10 @@ class AccessOsFromTheSourceTest {
     }
 
     private static String answerAllowingProcesses(String source) {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard().grant(HostService.PROCESSES));
-        interpreter.useProcesses(new JavaProcess());
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withProcesses(new JavaProcess()),
+                OutputPort.discard(),
+                Bounds.standard().grant(HostService.PROCESSES));
         return answerFrom(interpreter, source);
     }
 

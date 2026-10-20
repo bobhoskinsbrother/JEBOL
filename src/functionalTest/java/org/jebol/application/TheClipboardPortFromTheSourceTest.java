@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.host.ClipboardPort;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -37,17 +38,19 @@ class TheClipboardPortFromTheSourceTest {
     }
 
     private static String answerWith(ClipboardPort clipboard, String source) {
-        Interpreter interpreter = Interpreter.createWithOutput(
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withClipboard(clipboard),
                 message -> { },
                 Bounds.standard().grant(HostService.CLIPBOARD));
-        interpreter.useClipboard(clipboard);
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }
 
     private static String runWithoutTheGrant(String source) {
-        Interpreter interpreter = Interpreter.create();
-        interpreter.useClipboard(new ARememberedClipboard("secret"));
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withClipboard(new ARememberedClipboard("secret")),
+                OutputPort.discard(),
+                Bounds.standard());
         interpreter.defineNewWordsIn(source);
         return interpreter.display(interpreter.run(source));
     }

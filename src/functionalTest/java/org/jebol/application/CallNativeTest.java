@@ -1,5 +1,6 @@
 package org.jebol.application;
 
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.host.ProcessPort;
 import org.jebol.domain.host.HostService;
 import org.junit.jupiter.api.DisplayName;
@@ -43,9 +44,10 @@ class CallNativeTest {
         Bounds bounds = granted
                 ? Bounds.standard().grant(HostService.PROCESSES)
                 : Bounds.standard();
-        Interpreter interpreter = Interpreter.withBounds(bounds);
-        interpreter.useProcesses(port);
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withProcesses(port),
+                OutputPort.discard(),
+                bounds);
     }
 
     private static String answerTo(Interpreter interpreter, String source) {
@@ -194,8 +196,12 @@ class CallNativeTest {
         void resolvesARedirectFileUnderTheFilePort(
                 @TempDir java.nio.file.Path directory) {
             Recorded port = new Recorded();
-            Interpreter interpreter = makeAnInterpreterReaching(true, port);
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts()
+                            .withProcesses(port)
+                            .withFiles(FileSystemPort.rootFileSystem(directory)),
+                    OutputPort.discard(),
+                    Bounds.standard().grant(HostService.PROCESSES));
             answerTo(interpreter, """
                     call/input/output [{x}] %in.txt %out.txt""");
             assertThat(port.asked.inputFile().orElseThrow())
@@ -210,11 +216,14 @@ class CallNativeTest {
                 @TempDir java.nio.file.Path directory) throws java.io.IOException {
             java.nio.file.Files.createDirectory(directory.resolve("sub"));
             Recorded port = new Recorded();
-            Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                    .grant(HostService.PROCESSES)
-                    .grant(HostService.WORKING_DIRECTORY));
-            interpreter.useProcesses(port);
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts()
+                            .withProcesses(port)
+                            .withFiles(FileSystemPort.rootFileSystem(directory)),
+                    OutputPort.discard(),
+                    Bounds.standard()
+                            .grant(HostService.PROCESSES)
+                            .grant(HostService.WORKING_DIRECTORY));
 
             answerTo(interpreter, """
                     call [{ls}]""");
@@ -410,9 +419,10 @@ class CallNativeTest {
             ProcessPort broken = program -> new ProcessPort.ProgramResult(
                     1, Optional.empty(), Optional.empty(), Optional.empty(),
                     Optional.empty());
-            Interpreter interpreter = Interpreter.withBounds(
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts().withProcesses(broken),
+                    OutputPort.discard(),
                     Bounds.standard().grant(HostService.PROCESSES));
-            interpreter.useProcesses(broken);
             assertThat(readTheErrorIdOf(interpreter, """
                     call/wait [{x}]""")).isEqualTo("call-fail");
         }

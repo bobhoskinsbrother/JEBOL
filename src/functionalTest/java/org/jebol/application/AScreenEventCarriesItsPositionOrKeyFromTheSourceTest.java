@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.value.GobValue;
@@ -36,10 +37,12 @@ class AScreenEventCarriesItsPositionOrKeyFromTheSourceTest {
     private final Interpreter interpreter = makeAnInterpreterOn(screen);
 
     private Interpreter makeAnInterpreterOn(RecordingScreen watched) {
-        Interpreter made = Interpreter.withBounds(Bounds.standard()
-                .grant(HostService.WINDOWS)
-                .withTimeLimit(Duration.ofSeconds(10)));
-        made.useScreen(watched);
+        Interpreter made = Interpreter.createOn(
+                Interpreter.standardPorts().withScreen(watched),
+                OutputPort.discard(),
+                Bounds.standard()
+                        .grant(HostService.WINDOWS)
+                        .withTimeLimit(Duration.ofSeconds(10)));
         made.defineNewWordsIn(A_WINDOW_AND_A_WATCHER);
         made.run(A_WINDOW_AND_A_WATCHER);
         return made;

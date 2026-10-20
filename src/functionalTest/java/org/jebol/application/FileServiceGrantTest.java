@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -19,9 +20,10 @@ class FileServiceGrantTest {
     }
 
     private static Interpreter makeAnInterpreterReadingUnder(Bounds bounds, Path directory) {
-        Interpreter interpreter = Interpreter.withBounds(bounds);
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                OutputPort.discard(),
+                bounds);
     }
 
     private static String answerTo(Interpreter interpreter, String source) {

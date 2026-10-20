@@ -93,11 +93,12 @@ class SmallSuiteBehavioursFromTheSourceTest {
     @DisplayName("READ on a missing file names the file in the error")
     void readOnAMissingFileNamesTheFile(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = Interpreter.createOn(
+                org.jebol.application.Interpreter.standardPorts().withFiles(
+                        org.jebol.application.FileSystemPort.rootFileSystem(directory)),
+                org.jebol.domain.host.OutputPort.discard(),
                 org.jebol.application.Bounds.standard()
                         .grant(org.jebol.domain.host.HostService.FILES));
-        interpreter.useFileSystem(
-                org.jebol.application.FileSystemPort.rootFileSystem(directory));
         String source = """
                 e: try [read %nonsense] reduce [e/id = 'cannot-open e/arg1 = %nonsense]""";
         interpreter.defineNewWordsIn(source);

@@ -3,6 +3,7 @@ package org.jebol.application;
 import org.jebol.adapter.host.JavaProcess;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -25,16 +26,18 @@ class BootProcessFromTheSourceTest {
         for (HostService service : HostService.values()) {
             bounds = bounds.grant(service);
         }
-        Interpreter interpreter = Interpreter.withBounds(bounds);
         try {
-            interpreter.useFileSystem(FileSystemPort.rootFileSystem(
-                    Files.createTempDirectory("jebol-boot")));
+            return Interpreter.createOn(
+                    Interpreter.standardPorts()
+                            .withFiles(FileSystemPort.rootFileSystem(
+                                    Files.createTempDirectory("jebol-boot")))
+                            .withEnvironment(new ProcessEnvironment())
+                            .withProcesses(new JavaProcess()),
+                    OutputPort.discard(),
+                    bounds);
         } catch (IOException noDirectory) {
             throw new UncheckedIOException(noDirectory);
         }
-        interpreter.useEnvironment(new ProcessEnvironment());
-        interpreter.useProcesses(new JavaProcess());
-        return interpreter;
     }
 
     @Test

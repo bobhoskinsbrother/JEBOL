@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.HttpPort;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -17,11 +18,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class TheHostsOwnHttpFromTheSourceTest {
 
     private static Interpreter makeAHostThatFetches(HttpPort port) {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withHttp(port),
+                OutputPort.discard(),
                 Bounds.standard().withoutATimeLimit()
                         .grant(HostService.WEB).grant(HostService.CONSOLE));
-        interpreter.useHttp(port);
-        return interpreter;
     }
 
     private static String answerTo(Interpreter interpreter, String source) {
@@ -204,9 +205,10 @@ class TheHostsOwnHttpFromTheSourceTest {
     @Test
     @DisplayName("without the web service, even a host that fetches is refused")
     void needsTheServiceToo() {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withHttp(new ACannedHost()),
+                OutputPort.discard(),
                 Bounds.standard().withoutATimeLimit());
-        interpreter.useHttp(new ACannedHost());
 
         assertThat(answerTo(interpreter, "e: try [read http://example.com/a] mold e"))
                 .contains("web is not granted");

@@ -5,6 +5,7 @@ import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.application.DefaultFont;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.render.PaintList;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ObjectValue;
@@ -375,9 +376,10 @@ class PageRendersLikeTheDesktopTest {
     private ObjectValue theDrawDialect;
 
     private Interpreter makeAnInterpreterOnThisPage() {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withScreen(screen),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
-        interpreter.useScreen(screen);
         theDrawDialect = (ObjectValue)
                 interpreter.run("system/dialects/draw").value();
         return interpreter;

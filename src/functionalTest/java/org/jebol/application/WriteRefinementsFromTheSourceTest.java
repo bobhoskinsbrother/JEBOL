@@ -1,6 +1,7 @@
 package org.jebol.application;
 
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -14,10 +15,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class WriteRefinementsFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterWritingUnder(Path directory) {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
-        return interpreter;
     }
 
     private static String answerTo(Interpreter interpreter, String source) {
@@ -489,9 +490,11 @@ class WriteRefinementsFromTheSourceTest {
     @Test
     @DisplayName("a read-only port refuses the seeking and appending forms too")
     void refusesEveryFormOnAReadOnlyPort(@TempDir Path directory) {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(
+                        FileSystemPort.rootFileSystem(directory).readOnlyFileSystem()),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.FILES));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory).readOnlyFileSystem());
         assertThat(readTheErrorIdOf(interpreter, """
                 write/append %a.txt {x}""")).isEqualTo("read-only");
         assertThat(readTheErrorIdOf(interpreter, """
@@ -501,8 +504,10 @@ class WriteRefinementsFromTheSourceTest {
     @Test
     @DisplayName("a refinement write still needs the filePort grant")
     void stillNeedsTheGrantWithRefinements(@TempDir Path directory) {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard());
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withFiles(FileSystemPort.rootFileSystem(directory)),
+                OutputPort.discard(),
+                Bounds.standard());
         assertThat(readTheErrorIdOf(interpreter, """
                 write/append %a.txt {x}""")).isEqualTo("no-service");
     }

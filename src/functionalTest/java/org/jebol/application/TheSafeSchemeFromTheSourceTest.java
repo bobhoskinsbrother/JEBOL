@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -14,14 +15,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TheSafeSchemeFromTheSourceTest {
 
     private static Interpreter makeAnInterpreterReaching(Path directory) {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts()
+                        .withFiles(FileSystemPort.rootFileSystem(directory))
+                        .withEnvironment(new ProcessEnvironment()),
+                OutputPort.discard(),
                 Bounds.standard()
                         .grant(HostService.FILES)
                         .grant(HostService.ENVIRONMENT)
                         .grant(HostService.CLOCK));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(directory));
-        interpreter.useEnvironment(new ProcessEnvironment());
-        return interpreter;
     }
 
     private static String answerTo(Path directory, String source) {

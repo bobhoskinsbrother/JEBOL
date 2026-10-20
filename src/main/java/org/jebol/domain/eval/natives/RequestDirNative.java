@@ -39,7 +39,7 @@ public class RequestDirNative extends WindowNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
-            return runThroughTheWindows(() -> evaluator.windows().chooseDirectory(
+            return runThroughTheWindows(() -> evaluator.ports().windows().chooseDirectory(
                             textGivenFor("dir", arguments, refinements),
                             textGivenFor("title", arguments, refinements))
                     .<Value>map(FileValue::of)

@@ -3,6 +3,7 @@ package org.jebol.adapter.web;
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -112,9 +113,10 @@ class TheRootGobTakesThePageEndToEndTest {
     }
 
     private Interpreter makeAScriptOnThisPage(String source) {
-        Interpreter interpreter = Interpreter.withBounds(
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts().withScreen(screen),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
-        interpreter.useScreen(screen);
         interpreter.defineNewWordsIn(source);
         interpreter.run(source);
         return interpreter;

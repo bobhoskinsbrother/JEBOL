@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.adapter.host.JavaProcess;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -12,9 +13,10 @@ class EndingAProcessThatIsNotThereFromTheSourceTest {
     private static final String A_NUMBER_NO_PROCESS_IS_RUNNING_UNDER = "2147483646";
 
     private static Interpreter granted() {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard().grant(HostService.PROCESSES));
-        interpreter.useProcesses(new JavaProcess());
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withProcesses(new JavaProcess()),
+                OutputPort.discard(),
+                Bounds.standard().grant(HostService.PROCESSES));
     }
 
     private static String answerTo(Interpreter interpreter, String source) {

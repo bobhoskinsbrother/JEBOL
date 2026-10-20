@@ -23,9 +23,10 @@ class DoOfATaskFromTheSourceTest {
     private static final Duration A_WHILE = Duration.ofSeconds(10);
 
     private static Interpreter makeAnInterpreterWritingTo(StringBuffer written) {
-        Interpreter interpreter = Interpreter.createWithOutput(written::append);
-        interpreter.useTasks(new ThreadTasks(Bounds.standard().withoutATimeLimit()));
-        return interpreter;
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withTasks(new ThreadTasks(Bounds.standard().withoutATimeLimit())),
+                written::append,
+                Bounds.standard());
     }
 
     private static void waitUntilOutputSays(StringBuffer written, String mark) {

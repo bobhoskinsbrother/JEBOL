@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpServer;
 import org.jebol.adapter.host.JavaCertificateAuthority;
 import org.jebol.adapter.host.JavaSocket;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.jebol.tls.LocalTlsServer;
 import org.jebol.tls.LocalTlsServer.Identity;
 import org.jebol.tls.TestCertificates;
@@ -36,18 +37,22 @@ class TheThruCacheFunctionsFromTheSourceTest {
     }
 
     private Interpreter makeAnInterpreterTrustingTheTestRoot(Path root) {
-        Interpreter interpreter = Interpreter.withBounds(Bounds.standard()
-                .withTimeLimit(HANDSHAKE_TIMEOUT)
-                .grant(HostService.NETWORK)
-                .grant(HostService.WEB)
-                .grant(HostService.CLOCK)
-                .grant(HostService.CERTIFICATES)
-                .grant(HostService.FILES)
-                .grant(HostService.WORKING_DIRECTORY));
-        interpreter.useFileSystem(FileSystemPort.rootFileSystem(root));
-        interpreter.useNetwork(new JavaSocket());
-        interpreter.useCertificateAuthority(new JavaCertificateAuthority(
-                fixtures.trustOnly("test-root"), Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC)));
+        Interpreter interpreter = Interpreter.createOn(
+                Interpreter.standardPorts()
+                        .withFiles(FileSystemPort.rootFileSystem(root))
+                        .withNetwork(new JavaSocket())
+                        .withCertificateAuthority(new JavaCertificateAuthority(
+                                fixtures.trustOnly("test-root"),
+                                Clock.fixed(FIXTURE_TIME, ZoneOffset.UTC))),
+                OutputPort.discard(),
+                Bounds.standard()
+                        .withTimeLimit(HANDSHAKE_TIMEOUT)
+                        .grant(HostService.NETWORK)
+                        .grant(HostService.WEB)
+                        .grant(HostService.CLOCK)
+                        .grant(HostService.CERTIFICATES)
+                        .grant(HostService.FILES)
+                        .grant(HostService.WORKING_DIRECTORY));
         String settingUp = """
                 system/options/data: %/data/
                 make-dir/deep system/options/data

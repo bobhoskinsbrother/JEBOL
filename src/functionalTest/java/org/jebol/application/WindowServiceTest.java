@@ -2,6 +2,7 @@ package org.jebol.application;
 
 import org.jebol.domain.host.WindowPort;
 import org.jebol.domain.host.HostService;
+import org.jebol.domain.host.OutputPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -81,10 +82,10 @@ class WindowServiceTest {
     }
 
     private static Interpreter makeAnInterpreterWithAScreen(WindowPort screen) {
-        Interpreter interpreter = Interpreter.withBounds(
+        return Interpreter.createOn(
+                Interpreter.standardPorts().withWindows(screen),
+                OutputPort.discard(),
                 Bounds.standard().grant(HostService.WINDOWS));
-        interpreter.useWindows(screen);
-        return interpreter;
     }
 
     private static String answerFrom(Interpreter interpreter, String source) {
@@ -290,9 +291,10 @@ class WindowServiceTest {
         @Test
         @DisplayName("the windows grant does not open anything else")
         void grantOneServicePerGrant() {
-            Interpreter interpreter = Interpreter.withBounds(
+            Interpreter interpreter = Interpreter.createOn(
+                    Interpreter.standardPorts().withWindows(Screen.makeOneAnswering("x")),
+                    OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
-            interpreter.useWindows(Screen.makeOneAnswering("x"));
 
             assertThat(readTheErrorIdFrom(interpreter, "read %a.txt")).isEqualTo("no-service");
         }
