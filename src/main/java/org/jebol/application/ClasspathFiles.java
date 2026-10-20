@@ -15,7 +15,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-final class ClasspathFiles implements FilePort {
+public final class ClasspathFiles implements FilePort {
 
     private static final Map<String, byte[]> READ = new ConcurrentHashMap<>();
     private static final Set<String> CARRIED = Collections.newSetFromMap(new ConcurrentHashMap<>());

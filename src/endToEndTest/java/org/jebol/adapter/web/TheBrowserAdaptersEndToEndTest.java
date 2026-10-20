@@ -2,7 +2,7 @@ package org.jebol.adapter.web;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import org.jebol.application.DefaultFont;
+import org.jebol.application.TheCarriedFont;
 import org.jebol.domain.host.DigestPorts;
 import org.jebol.domain.render.Colour;
 import org.jebol.domain.render.TextExtent;
@@ -132,7 +132,7 @@ class TheBrowserAdaptersEndToEndTest {
     }
 
     private static String measureTheLabelsText() {
-        TextExtent extent = DefaultFont.measurement().measureTheExtentOf(
+        TextExtent extent = TheCarriedFont.measurement().measureTheExtentOf(
                 new TextRun("MMMM", Colour.BLACK, 12, false, false));
         return Math.round(extent.wide()) + "x" + Math.round(extent.high());
     }

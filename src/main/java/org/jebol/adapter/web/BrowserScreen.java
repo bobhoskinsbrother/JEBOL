@@ -1,6 +1,7 @@
 package org.jebol.adapter.web;
 
 import org.jebol.application.DefaultFont;
+import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.ScreenEvent;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenPort;
@@ -23,6 +24,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public final class BrowserScreen extends GobScreen {
 
     private final Viewer viewer;
+    private final DefaultFont font;
     private final List<GobValue> gobValues = new ArrayList<>();
     private final WindowsOnOneSurface surface = new WindowsOnOneSurface();
     private final Queue<ScreenPost> posts = new ConcurrentLinkedQueue<>();
@@ -30,12 +32,13 @@ public final class BrowserScreen extends GobScreen {
     private PairValue viewport = PairValue.of(0, 0);
     private boolean isPictureRequired;
 
-    private BrowserScreen(Viewer viewer) {
+    private BrowserScreen(Viewer viewer, DefaultFont font) {
         this.viewer = viewer;
+        this.font = font;
     }
 
-    public static BrowserScreen showTo(Viewer viewer) {
-        return new BrowserScreen(viewer);
+    public static BrowserScreen showTo(Viewer viewer, FilePort files) {
+        return new BrowserScreen(viewer, DefaultFont.readFrom(files));
     }
 
     @Override
@@ -102,7 +105,7 @@ public final class BrowserScreen extends GobScreen {
 
     @Override
     public TextMeasurement textMeasurement() {
-        return hasDisplay() ? DefaultFont.measurement() : ScreenPort.none().textMeasurement();
+        return hasDisplay() ? font.measurement() : ScreenPort.none().textMeasurement();
     }
 
     public void report(ScreenEventType kind, ScreenEventDetail detail) {

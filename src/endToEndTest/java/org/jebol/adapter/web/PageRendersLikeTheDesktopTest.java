@@ -2,8 +2,9 @@ package org.jebol.adapter.web;
 
 import org.jebol.adapter.host.Java2DSurface;
 import org.jebol.application.Bounds;
+import org.jebol.application.ClasspathFiles;
 import org.jebol.application.Interpreter;
-import org.jebol.application.DefaultFont;
+import org.jebol.application.TheCarriedFont;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
 import org.jebol.domain.render.PaintList;
@@ -42,8 +43,8 @@ class PageRendersLikeTheDesktopTest {
 
     @BeforeEach
     void openAPage() throws IOException {
-        serving = WebScreenServer.on(0);
-        screen = BrowserScreen.showTo(serving);
+        serving = WebScreenServer.on(0, new ClasspathFiles());
+        screen = BrowserScreen.showTo(serving, new ClasspathFiles());
         serving.reportTo(screen);
 
         ChromeOptions asked = new ChromeOptions();
@@ -366,7 +367,7 @@ class PageRendersLikeTheDesktopTest {
             onto.fillRect(0, 0, wide, high);
             Java2DSurface.execute(onto,
                     PaintList.ofScreen(root, wide, high, theDrawDialect),
-                    DefaultFont.measurement());
+                    TheCarriedFont.measurement(), TheCarriedFont.face());
         } finally {
             onto.dispose();
         }

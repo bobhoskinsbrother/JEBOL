@@ -1,6 +1,6 @@
 package org.jebol.domain.render;
 
-import org.jebol.application.DefaultFont;
+import org.jebol.application.TheCarriedFont;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -10,7 +10,7 @@ class TheDefaultFontRendererFromTheSourceTest {
 
     private static final Colour BLACK = Colour.BLACK;
 
-    private static final DefaultFontRenderer THE_FONT = DefaultFont.renderer();
+    private static final DefaultFontRenderer THE_FONT = TheCarriedFont.font().renderer();
 
     private static TextExtent measureTheExtentOf(String text, double size) {
         return THE_FONT.measure().measureTheExtentOf(new TextRun(text, BLACK, size, false, false));
@@ -83,7 +83,7 @@ class TheDefaultFontRendererFromTheSourceTest {
     @Test
     @DisplayName("the same bytes read twice measure the same")
     void readsTheSameTwice() {
-        assertThat(DefaultFont.renderer().measure().measureTheExtentOf(
+        assertThat(TheCarriedFont.font().renderer().measure().measureTheExtentOf(
                 new TextRun("survey", BLACK, 20, false, false)).wide())
                 .isEqualTo(measureTheExtentOf("survey", 20).wide());
     }

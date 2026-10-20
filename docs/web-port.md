@@ -204,11 +204,12 @@ the TLS checking is goal 1's.
 The web build starts no processes: `ProcessHandle` answers "there is only this
 one" and `ExecutableFile.markRunnable` answers true without touching the file.
 
-The worker measures text with the font this build carries: `DefaultFontRenderer`
-reads the metrics and `DefaultFont` is the one measure every screen
-answers with, so SIZE-TEXT, wrapping and carets are the domain's and the same
-on every platform. The page draws its glyphs with the same face, loaded from
-the file the build serves. Decisions 33 and 35.
+The worker measures text with the font this build carries: the bytes are read
+through the carried-files port and `DefaultFontRenderer` reads the metrics, so
+`DefaultFont` is the one measure every screen answers with and SIZE-TEXT,
+wrapping and carets are the domain's and the same on every platform. The page
+draws its glyphs with the same face, loaded from the file the build serves.
+Decisions 33 and 35.
 
 What replaced the trial's scratchpad harness: the shipped page reports its own
 boot in the output panel, and `TheExamplesWithNoServerEndToEndTest` fails if

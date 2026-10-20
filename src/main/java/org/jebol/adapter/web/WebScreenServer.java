@@ -2,10 +2,11 @@ package org.jebol.adapter.web;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import org.jebol.application.DefaultFont;
+import org.jebol.domain.host.FilePort;
 import org.jebol.domain.render.DrawingCommand;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -19,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseable {
 
     private final HttpServer server;
+    private final DefaultFont font;
     private final List<OutputStream> browserConnections = new CopyOnWriteArrayList<>();
     private BrowserScreen screen;
     private volatile int width;
@@ -26,14 +28,15 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
 
     private static final AtomicInteger CONNECTIONS = new AtomicInteger();
 
-    private WebScreenServer(HttpServer server) {
+    private WebScreenServer(HttpServer server, DefaultFont font) {
         this.server = server;
+        this.font = font;
     }
 
     /** Starts serving on a port, or on any free one when given zero. */
-    public static WebScreenServer on(int port) throws IOException {
+    public static WebScreenServer on(int port, FilePort files) throws IOException {
         HttpServer listening = HttpServer.create(new InetSocketAddress(findLoopbackAddress(), port), 0);
-        WebScreenServer serving = new WebScreenServer(listening);
+        WebScreenServer serving = new WebScreenServer(listening, DefaultFont.readFrom(files));
         listening.setExecutor(Executors.newCachedThreadPool(WebScreenServer::startADaemonConnection));
         listening.createContext("/", serving::servePage);
         listening.createContext("/paint", serving::openPaintStreamThatTheBrowserCloses);
@@ -91,15 +94,11 @@ public final class WebScreenServer implements BrowserScreen.Viewer, AutoCloseabl
     }
 
     private void serveFont(HttpExchange exchange) throws IOException {
-        byte[] font;
-        try (InputStream reading = WebScreenServer.class
-                .getResourceAsStream("/org/jebol/fonts/NotoSans-Regular.ttf")) {
-            font = reading.readAllBytes();
-        }
+        byte[] written = font.readFontBytes();
         exchange.getResponseHeaders().add("Content-Type", "font/ttf");
-        exchange.sendResponseHeaders(200, font.length);
+        exchange.sendResponseHeaders(200, written.length);
         try (OutputStream out = exchange.getResponseBody()) {
-            out.write(font);
+            out.write(written);
         }
     }
 

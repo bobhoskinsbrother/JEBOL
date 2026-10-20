@@ -1,6 +1,7 @@
 package org.jebol.adapter.host;
 
 import org.jebol.application.DefaultFont;
+import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.ScreenEventDetail;
 import org.jebol.domain.host.ScreenEventType;
 import org.jebol.domain.host.GobScreen;
@@ -26,15 +27,19 @@ public final class DesktopScreen extends GobScreen {
 
     private final JebolIcon icon = new JebolIcon();
     private final boolean present;
+    private final DefaultFont font;
+    private final Font face;
     private final Map<GobValue, JFrame> windows = new IdentityHashMap<>();
 
-    private DesktopScreen(boolean present) {
+    private DesktopScreen(FilePort files, boolean present) {
         this.present = present;
+        this.font = DefaultFont.readFrom(files);
+        this.face = Java2DSurface.faceFrom(font.readFontBytes());
     }
 
-    public static DesktopScreen onThisMachine() {
+    public static DesktopScreen onThisMachine(FilePort files) {
         System.setProperty(MACOS_APP_NAME_PROPERTY, JebolIcon.APPLICATION_NAME);
-        return new DesktopScreen(!GraphicsEnvironment.isHeadless());
+        return new DesktopScreen(files, !GraphicsEnvironment.isHeadless());
     }
 
     private void showJebolIcon(JFrame frame) {
@@ -153,7 +158,7 @@ public final class DesktopScreen extends GobScreen {
         if (!present) {
             return ScreenPort.none().textMeasurement();
         }
-        return DefaultFont.measurement();
+        return font.measurement();
     }
 
     @Override
@@ -227,7 +232,8 @@ public final class DesktopScreen extends GobScreen {
             protected void paintComponent(Graphics onto) {
                 super.paintComponent(onto);
                 Java2DSurface.paintTheContentsOfLeavingItsTitleToTheTitleBar(
-                        (Graphics2D) onto, gob, drawDialect, onThisScreen.textMeasurement());
+                        (Graphics2D) onto, gob, drawDialect, onThisScreen.textMeasurement(),
+                        onThisScreen.face);
             }
         };
         surface.setPreferredSize(new Dimension(

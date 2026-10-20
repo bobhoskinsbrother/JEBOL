@@ -1,6 +1,7 @@
 package org.jebol.adapter.web;
 
 import org.jebol.application.Bounds;
+import org.jebol.application.ClasspathFiles;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
 import org.jebol.domain.host.OutputPort;
@@ -33,8 +34,8 @@ class WebScreenServerFromTheSourceTest {
 
     @BeforeEach
     void startServing() throws IOException {
-        serving = WebScreenServer.on(0);
-        screen = BrowserScreen.showTo(serving);
+        serving = WebScreenServer.on(0, new ClasspathFiles());
+        screen = BrowserScreen.showTo(serving, new ClasspathFiles());
         serving.reportTo(screen);
         client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5)).build();

@@ -3,6 +3,7 @@ package org.jebol.adapter.cli;
 import org.jebol.adapter.host.DesktopScreen;
 import org.jebol.adapter.web.BrowserScreen;
 import org.jebol.adapter.web.WebScreenServer;
+import org.jebol.domain.host.FilePort;
 import org.jebol.domain.host.ScreenPort;
 
 import java.io.IOException;
@@ -43,27 +44,28 @@ final class ChosenScreen {
                 .toArray(String[]::new);
     }
 
-    static ScreenPort aScreenFor(String[] arguments, PrintStream out, boolean forAScript) {
+    static ScreenPort aScreenFor(
+            String[] arguments, PrintStream out, boolean forAScript, FilePort files) {
         String asked = switchValue(arguments).orElseThrow();
         return switch (asked.toLowerCase(Locale.ROOT)) {
-            case WINDOW -> aWindow(out);
-            case PAGE -> aPage(out, forAScript);
+            case WINDOW -> aWindow(out, files);
+            case PAGE -> aPage(out, forAScript, files);
             default -> refuseAsNotUnderstood(asked);
         };
     }
 
-    private static ScreenPort aWindow(PrintStream out) {
-        DesktopScreen screen = DesktopScreen.onThisMachine();
+    private static ScreenPort aWindow(PrintStream out, FilePort files) {
+        DesktopScreen screen = DesktopScreen.onThisMachine(files);
         out.println(screen.hasDisplay()
                 ? "Screen: a native window."
                 : "Screen: asked for a window and this machine has no display.");
         return screen;
     }
 
-    private static ScreenPort aPage(PrintStream out, boolean forAScript) {
+    private static ScreenPort aPage(PrintStream out, boolean forAScript, FilePort files) {
         try {
-            WebScreenServer serving = WebScreenServer.on(ANY_AVAILABLE_PORT);
-            BrowserScreen screen = BrowserScreen.showTo(serving);
+            WebScreenServer serving = WebScreenServer.on(ANY_AVAILABLE_PORT, files);
+            BrowserScreen screen = BrowserScreen.showTo(serving, files);
             serving.reportTo(screen);
             if (forAScript) {
                 out.println("Screen: a page at " + serving.address()

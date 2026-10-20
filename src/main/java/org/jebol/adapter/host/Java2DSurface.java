@@ -1,6 +1,5 @@
 package org.jebol.adapter.host;
 
-import org.jebol.application.DefaultFont;
 import org.jebol.domain.render.*;
 import org.jebol.domain.value.GobValue;
 import org.jebol.domain.value.ImageValue;
@@ -24,26 +23,40 @@ import static java.awt.Font.*;
 public final class Java2DSurface implements Surface {
 
     private static final int OPAQUE = Placement.OPAQUE;
-    private static final Font DEFAULT_FONT = loadDefaultFont();
     private static final float THE_MITRE_LIMIT_BOTH_TOOLKITS_START_AT = 10;
 
-    public static void paint(Graphics2D target, GobValue gob, TextMeasurement measure) {
-        PaintList.of(gob).executeOn(new Java2DSurface(target), measure);
+    /** The face the font this build carries draws with, for a caller that has its bytes. */
+    public static Font faceFrom(byte[] font) {
+        try {
+            return Font.createFont(TRUETYPE_FONT, new ByteArrayInputStream(font));
+        } catch (FontFormatException | IOException unreadable) {
+            throw new IllegalStateException(
+                    "these bytes are not a font a toolkit can draw with", unreadable);
+        }
     }
 
-    public static void execute(Graphics2D onto, PaintList painting, TextMeasurement measure) {
-        painting.executeOn(new Java2DSurface(onto), measure);
+    public static void paint(
+            Graphics2D target, GobValue gob, TextMeasurement measure, Font face) {
+        PaintList.of(gob).executeOn(new Java2DSurface(target, face), measure);
+    }
+
+    public static void execute(
+            Graphics2D onto, PaintList painting, TextMeasurement measure, Font face) {
+        painting.executeOn(new Java2DSurface(onto, face), measure);
     }
 
     public static void paintTheContentsOfLeavingItsTitleToTheTitleBar(
-            Graphics2D onto, GobValue window, ObjectValue drawDialect, TextMeasurement measure) {
-        PaintList.ofAWindow(window, drawDialect).executeOn(new Java2DSurface(onto), measure);
+            Graphics2D onto, GobValue window, ObjectValue drawDialect,
+            TextMeasurement measure, Font face) {
+        PaintList.ofAWindow(window, drawDialect).executeOn(new Java2DSurface(onto, face), measure);
     }
 
     private final Graphics2D onto;
+    private final Font face;
 
-    private Java2DSurface(Graphics2D onto) {
+    private Java2DSurface(Graphics2D onto, Font face) {
         this.onto = onto;
+        this.face = face;
     }
 
     @Override
@@ -185,18 +198,8 @@ public final class Java2DSurface implements Surface {
                 left, top, Math.max(0, right - left), Math.max(0, bottom - top)));
     }
 
-    private static Font loadDefaultFont() {
-        try {
-            return Font.createFont(Font.TRUETYPE_FONT,
-                    new ByteArrayInputStream(DefaultFont.readFontBytes()));
-        } catch (FontFormatException | IOException unreadable) {
-            throw new IllegalStateException(
-                    "the font this build carries would not load", unreadable);
-        }
-    }
-
     private  Font convertToAwtFont(TextRun text) {
-        return DEFAULT_FONT.deriveFont(
+        return face.deriveFont(
                 (text.bold() ? BOLD : PLAIN) | (text.italic() ? ITALIC : PLAIN),
                 (float) text.size());
     }

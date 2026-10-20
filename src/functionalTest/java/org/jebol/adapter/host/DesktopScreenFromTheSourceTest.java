@@ -2,7 +2,8 @@ package org.jebol.adapter.host;
 
 import org.jebol.application.Bounds;
 import org.jebol.application.Interpreter;
-import org.jebol.application.DefaultFont;
+import org.jebol.application.ClasspathFiles;
+import org.jebol.application.TheCarriedFont;
 import org.jebol.domain.host.ScreenMetric;
 import org.jebol.domain.host.ScreenPort;
 import org.jebol.domain.host.HostService;
@@ -33,7 +34,7 @@ class DesktopScreenFromTheSourceTest {
                 new BufferedImage(wide, high, BufferedImage.TYPE_INT_ARGB);
         Graphics2D onto = surface.createGraphics();
         try {
-            Java2DSurface.paint(onto, gob, DefaultFont.measurement());
+            Java2DSurface.paint(onto, gob, TheCarriedFont.measurement(), TheCarriedFont.face());
         } finally {
             onto.dispose();
         }
@@ -175,13 +176,13 @@ class DesktopScreenFromTheSourceTest {
         @Test
         @DisplayName("the adapter says it has no display")
         void hasNoDisplay() {
-            assertThat(DesktopScreen.onThisMachine().hasDisplay()).isFalse();
+            assertThat(DesktopScreen.onThisMachine(new ClasspathFiles()).hasDisplay()).isFalse();
         }
 
         @Test
         @DisplayName("every measurement is zero rather than a guess")
         void measuresZeroEverywhere() {
-            DesktopScreen screen = DesktopScreen.onThisMachine();
+            DesktopScreen screen = DesktopScreen.onThisMachine(new ClasspathFiles());
 
             for (ScreenMetric metric : ScreenMetric.values()) {
                 if (metric.isACount()) {
@@ -196,13 +197,13 @@ class DesktopScreenFromTheSourceTest {
         @Test
         @DisplayName("and there are no displays to count")
         void countsNoDisplays() {
-            assertThat(DesktopScreen.onThisMachine().displayCount()).isZero();
+            assertThat(DesktopScreen.onThisMachine(new ClasspathFiles()).displayCount()).isZero();
         }
 
         @Test
         @DisplayName("taking the root gob is accepted, so the library still loads")
         void acceptsTakingTheRoot() {
-            DesktopScreen screen = DesktopScreen.onThisMachine();
+            DesktopScreen screen = DesktopScreen.onThisMachine(new ClasspathFiles());
 
             screen.takeAsRoot(GobValue.empty());
 
@@ -212,7 +213,7 @@ class DesktopScreenFromTheSourceTest {
         @Test
         @DisplayName("but showing refuses, because that is the one that needs pixels")
         void refusesToShow() {
-            DesktopScreen screen = DesktopScreen.onThisMachine();
+            DesktopScreen screen = DesktopScreen.onThisMachine(new ClasspathFiles());
 
             assertThatThrownBy(() -> screen.show(GobValue.empty()))
                     .isInstanceOf(ScreenPort.Denied.class)
@@ -223,7 +224,7 @@ class DesktopScreenFromTheSourceTest {
         @DisplayName("and an interpreter given this screen refuses to view, by that name")
         void refusesAnInterpretersView() {
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withScreen(DesktopScreen.onThisMachine()),
+                    Interpreter.standardPorts().withScreen(DesktopScreen.onThisMachine(new ClasspathFiles())),
                     OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
             String script = """
@@ -239,7 +240,7 @@ class DesktopScreenFromTheSourceTest {
         @DisplayName("and the root gob it is given is sized at nothing")
         void sizesTheRootAtNothing() {
             Interpreter interpreter = Interpreter.createOn(
-                    Interpreter.standardPorts().withScreen(DesktopScreen.onThisMachine()),
+                    Interpreter.standardPorts().withScreen(DesktopScreen.onThisMachine(new ClasspathFiles())),
                     OutputPort.discard(),
                     Bounds.standard().grant(HostService.WINDOWS));
 

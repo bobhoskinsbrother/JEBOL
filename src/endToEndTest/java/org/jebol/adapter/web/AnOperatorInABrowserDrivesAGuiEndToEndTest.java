@@ -2,6 +2,7 @@ package org.jebol.adapter.web;
 
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.application.Bounds;
+import org.jebol.application.ClasspathFiles;
 import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
 import org.jebol.domain.host.HostService;
@@ -35,8 +36,8 @@ class AnOperatorInABrowserDrivesAGuiEndToEndTest {
 
     @BeforeEach
     void openAPage() throws IOException {
-        serving = WebScreenServer.on(0);
-        screen = BrowserScreen.showTo(serving);
+        serving = WebScreenServer.on(0, new ClasspathFiles());
+        screen = BrowserScreen.showTo(serving, new ClasspathFiles());
         serving.reportTo(screen);
         ChromeOptions asked = new ChromeOptions();
         asked.addArguments("--headless=new",

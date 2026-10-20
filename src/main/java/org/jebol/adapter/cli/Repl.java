@@ -8,6 +8,7 @@ import org.jebol.adapter.host.JavaSocket;
 import org.jebol.adapter.host.ProcessEnvironment;
 import org.jebol.adapter.host.ThreadTasks;
 import org.jebol.application.Bounds;
+import org.jebol.application.ClasspathFiles;
 import org.jebol.application.Conclusion;
 import org.jebol.application.FileSystemPort;
 import org.jebol.application.Interpreter;
@@ -185,7 +186,8 @@ public final class Repl {
                         ? new JavaCertificateAuthority()
                         : JavaCertificateAuthority.trustingTheMachineAnd(Path.of(cafile))));
         if (ChosenScreen.isAskedFor(arguments)) {
-            ports = ports.withScreen(ChosenScreen.aScreenFor(arguments, out, anythingWasAsked));
+            ports = ports.withScreen(ChosenScreen.aScreenFor(
+                    arguments, out, anythingWasAsked, new ClasspathFiles()));
         }
         Interpreter interpreter = Interpreter.createOn(ports, new StreamOutput(out), bounds);
         putTheApplicationDataWhereTheParentKeepsIt(interpreter, environment, arguments);
