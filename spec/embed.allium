@@ -340,6 +340,14 @@ enum WindowRequest {
 -- it. A host running many scripts at once runs many of these; it does not
 -- share one, because series share mutable storage and confining that to a
 -- single thread is what makes it need no synchronisation.
+--
+-- The host hands over every port the interpreter will ever have when it
+-- builds it, and there is no way to change them afterwards: a port supplied
+-- after a script had already run would let a run begin under one host's
+-- rules and finish under another's, and a setter for one models a change
+-- that never happens. A port the host does not supply is that port's
+-- refusing default, so an interpreter built with none reaches nothing, and
+-- the refusal a script meets names the kind of thing that was not supplied.
 entity Interpreter {
     bounds: Bounds
     machine: HostMachine
