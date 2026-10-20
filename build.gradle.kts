@@ -151,7 +151,8 @@ tasks.withType<JavaCompile>().configureEach {
 val unitTest = sourceSets.create("unitTest")
 val functionalTest = sourceSets.create("functionalTest")
 val endToEndTest = sourceSets.create("endToEndTest")
-val testSuites = listOf(unitTest, functionalTest, endToEndTest)
+val networkTest = sourceSets.create("networkTest")
+val testSuites = listOf(unitTest, functionalTest, endToEndTest, networkTest)
 
 val testLibraries = listOf(
     "org.junit.jupiter:junit-jupiter:5.11.4",
@@ -208,8 +209,13 @@ fun Test.readsAlsoFrom(what: String, vararg files: Any) {
 val unitTests = tasks.register<Test>("unitTests") {
     description = "Tests that never build an interpreter: values, codecs, the reader, the domain on its own"
     runsTheTestsIn(unitTest)
-    dependsOn(functionalTest.classesTaskName, endToEndTest.classesTaskName)
-    readsAlsoFrom("the other suites' classes", functionalTest.output.classesDirs, endToEndTest.output.classesDirs)
+    dependsOn(functionalTest.classesTaskName, endToEndTest.classesTaskName, networkTest.classesTaskName)
+    readsAlsoFrom(
+        "the other suites' classes",
+        functionalTest.output.classesDirs,
+        endToEndTest.output.classesDirs,
+        networkTest.output.classesDirs,
+    )
     readsAlsoFrom("the editor grammar", fileTree("editors"))
     readsAlsoFrom("the shipped examples", fileTree("examples"))
 }
@@ -227,7 +233,7 @@ val functionalTests = tasks.register<Test>("functionalTests") {
 }
 
 val endToEndTests = tasks.register<Test>("endToEndTests") {
-    description = "Tests that drive a real interface: the command line, a real browser, and real servers on the internet"
+    description = "Tests that drive a real interface: the command line, a real browser, and local servers"
     runsTheTestsIn(endToEndTest)
     systemProperty(
         "jebol.webBuild",
@@ -238,6 +244,19 @@ val endToEndTests = tasks.register<Test>("endToEndTests") {
         layout.buildDirectory.dir("site").get().asFile.path,
     )
     dependsOn(tasks.named("buildWasmGC"), assembleTheSite)
+    outputs.upToDateWhen { false }
+    mustRunAfter(functionalTests)
+}
+
+// Rebol's own assertions that reach a host on the internet live in a gate of
+// their own, out of `allTests`: a gate that runs everywhere can only run them
+// where the network answers, and a run that reached out would measure the
+// machine rather than JEBOL. What belongs to this gate is listed, with the line
+// in each that decides it, in
+// src/testFixtures/resources/rebol-suite/needs-the-network.txt.
+val networkTests = tasks.register<Test>("networkTests") {
+    description = "Rebol's own assertions that need the network, run against the hosts they name"
+    runsTheTestsIn(networkTest)
     outputs.upToDateWhen { false }
     mustRunAfter(functionalTests)
 }

@@ -133,11 +133,14 @@ it. Do not leave it in the repo root, and do not consult it for an answer.
 All of these stay where they are. A change that moves one is wrong.
 
 - **`RebolSuiteTest`** -- Rebol's own assertions, about a minute alone. The
-  inner loop between changes. **Every assertion its sixty-seven files write is
+  inner loop between changes. **Every assertion its files write is
   run.** `fails-on-rebol-too.txt` holds the ones that are not run at
   all, each carrying the `r3-head` session showing a real Rebol does not run it
   either. **For the counts see `goals.md`, which is the only file that carries
   them.**
+- **`./gradlew networkTests`** -- the twelve suite assertions that reach a host,
+  in a gate of their own and out of `allTests` on purpose. Run it after a change
+  to fetching, TLS, or import from a url.
 
   **It fails two different ways and they mean opposite things.** A
   `holdsTheAssertion` failure is a regression and has to be fixed. A

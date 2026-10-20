@@ -94,7 +94,8 @@ catching up its assertions are what to obey: if it says `e/arg1 = "path"`, that 
 the answer, and a disagreement means JEBOL is wrong until the C says otherwise.
 
 **It is scaffolding, though.** It is vendored somebody else's test code, it is one
-class of 10,133 assertions so a failure names a group rather than a behaviour, and it
+class of 10,144 assertions (10,132 on every build, 12 in `./gradlew
+networkTests`) so a failure names a group rather than a behaviour, and it
 will be deleted when it goes green. Coverage that lives only there does not survive
 that.
 
@@ -177,20 +178,40 @@ each its own source set and its own task:
 | --- | --- | --- |
 | `unitTests` | `src/unitTest` | Tests that never build an interpreter: values, codecs, the reader, the domain on its own |
 | `functionalTests` | `src/functionalTest` | Tests that build an interpreter and run REBOL through it, Rebol's own suite included |
-| `endToEndTests` | `src/endToEndTest` | Tests that drive a real interface: the command line, a real Chrome, real servers on the internet |
+| `endToEndTests` | `src/endToEndTest` | Tests that drive a real interface: the command line, a real Chrome, servers the tests spin up themselves |
+
+A fourth source set, `src/networkTest`, holds the one gate that reaches out:
+`./gradlew networkTests` runs the twelve suite assertions named in
+`needs-the-network.txt` against the hosts they name. It is not part of
+`allTests`, because a build that needs the network cannot run everywhere. The
+default suite does not run those steps at all rather than skipping the
+assertions conditionally.
 
 Where a test lives says what it is: put a new one in the source set that
 matches. Helpers and every resource the three share are in `src/testFixtures`.
 `./gradlew test` and `./gradlew check` both run `allTests`, so no name runs
 less than it sounds like.
 
-`endToEndTests` needs Chrome installed and the internet, the first time for a
-browser driver and every time for badssl.com. It builds the core for the web
+`endToEndTests` needs Chrome installed, and Selenium fetches the browser driver
+the first time it runs. Its TLS and http checks put the command line to servers
+it spins itself up: a local server whose chain the test root vouches for is
+read, and local servers that are self-signed, expired, wrongly named or chained
+to a stranger are refused. It builds the core for the web
 with TeaVM, drives a real Chrome through WebDriver, compares the same paint list
 rendered in Java2D and in the browser pixel for pixel, and puts the command
 line's TLS to hosts a browser trusts and hosts it refuses. Run it after any
 change to the core, to `PaintList`, to either renderer, to the page, to
 `prot-tls.reb`, the certificate natives or `JavaCertificateAuthority`.
+
+Two files name hosts on the internet: `thru-cache-test.r3` (github and httpbin)
+and `module-test.r3` (one github import). Their twelve assertions run in
+`./gradlew networkTests`, not in `allTests`; `needs-the-network.txt` lists them
+and decision 46 says why. They pass: the command line trusts the machine's
+authorities, and the borrowed DER/CRT codecs decode the GeneralizedTime
+validity certificates a TLS inspector presents. `--cafile file.pem` adds
+authorities to the machine's. A script may be given by https url and runs
+through the same path as a file; `sys-start.reb` is edited for that, and
+ORDER.txt lists the edit beside the other borrowed-file changes.
 
 The functional tests take about five minutes, and their floor is
 `Interpreter.create()`: about 54ms warm, and one full run

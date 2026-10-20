@@ -5,12 +5,10 @@ import org.jebol.domain.host.CertificateMistrust;
 import org.jebol.domain.host.ChainVerdict;
 import org.jebol.domain.host.VouchedNames;
 
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
 import javax.security.auth.x500.X500Principal;
 import java.io.ByteArrayInputStream;
+import java.nio.file.Path;
 import java.security.GeneralSecurityException;
-import java.security.KeyStore;
 import java.security.cert.CertPath;
 import java.security.cert.CertPathValidator;
 import java.security.cert.CertPathValidatorException;
@@ -23,7 +21,6 @@ import java.security.cert.TrustAnchor;
 import java.security.cert.X509Certificate;
 import java.time.Clock;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -39,8 +36,13 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
     private final Clock clock;
 
     public JavaCertificateAuthority() {
-        this.trustAnchors = loadTheJdkTrustAnchors();
+        this.trustAnchors = JavaTrustAnchors.fromThisMachine();
         this.clock = Clock.systemUTC();
+    }
+
+    public static JavaCertificateAuthority trustingTheMachineAnd(Path supplied) {
+        return new JavaCertificateAuthority(
+                JavaTrustAnchors.fromThisMachineAnd(supplied), Clock.systemUTC());
     }
 
     public JavaCertificateAuthority(Set<TrustAnchor> trustAnchors, Clock clock) {
@@ -148,19 +150,5 @@ public final class JavaCertificateAuthority implements CertificateAuthority {
                 .filter(alternative -> Integer.valueOf(kind).equals(alternative.getFirst()))
                 .map(alternative -> String.valueOf(alternative.get(1)))
                 .collect(Collectors.toSet());
-    }
-
-    private Set<TrustAnchor> loadTheJdkTrustAnchors() {
-        try {
-            TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-            factory.init((KeyStore) null);
-            return Arrays.stream(factory.getTrustManagers())
-                    .filter(X509TrustManager.class::isInstance)
-                    .flatMap(manager -> Arrays.stream(((X509TrustManager) manager).getAcceptedIssuers()))
-                    .map(root -> new TrustAnchor(root, null))
-                    .collect(Collectors.toUnmodifiableSet());
-        } catch (GeneralSecurityException noStore) {
-            throw new IllegalStateException("the JDK offers no store of trusted authorities", noStore);
-        }
     }
 }

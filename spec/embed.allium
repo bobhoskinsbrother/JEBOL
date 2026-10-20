@@ -1387,9 +1387,12 @@ rule ASecureConnectionAsksForTheService {
     ensures: script_asks_for(run, certificates)
 }
 
--- The host's authority judges the chain in the order the server sent it,
--- first certificate first. Each certificate must be issued by the one after
--- it, or the chain is broken before any authority is asked about it.
+-- Two owners decide trust. The chain is judged in the order the server sent
+-- it, first certificate first. Each certificate must be issued by the one after
+-- it, or the chain is broken before any authority is asked about it. Whether
+-- the chain leads to an authority worth trusting is the host's, because the
+-- list of authorities is the host's; whether the certificate names the server
+-- the script asked for is the domain's.
 --
 -- The chain ends at the first certificate carrying the name and key of a
 -- root the host trusts, whatever follows it and whoever signed that copy.
@@ -1399,7 +1402,7 @@ rule ASecureConnectionAsksForTheService {
 --
 -- A host that supplied no authority has one that trusts nothing, so every
 -- chain is unknown_authority.
-rule TheHostJudgesTheChain {
+rule AuthorityAndNameDecideWhetherToTrust {
     when: server_sends_its_certificates(run, host, chain)
     requires: certificates in run.interpreter.bounds.granted_services
     requires: chain.count > 0
@@ -1408,6 +1411,34 @@ rule TheHostJudgesTheChain {
         TheHandshakeEnds(run: run, mistrust: verdict.mistrust)
     ensures: if verdict.trusted and not names_cover(verdict, host):
         TheHandshakeEnds(run: run, mistrust: wrong_host)
+}
+
+-- Where the authorities come from is the host's to choose, and the command
+-- line's host chooses the machine it runs on: the runtime's own store and the
+-- store the operating system keeps. macOS keeps them in its keychain, Windows
+-- in its own root store, and a Linux system in a bundle on disk. A company
+-- that reads traffic installs its authority where the machine already looks,
+-- so a browser and this interpreter trust the same servers.
+--
+-- The list widens and no verdict changes. A certificate that is expired, signs
+-- itself, names another host, or leads to an authority the machine does not
+-- trust still ends the handshake.
+rule AServerTheMachineTrustsIsTrusted {
+    when: server_sends_its_certificates(run, host, chain)
+    requires: the_command_lines_host_is_running(run)
+    requires: the_machines_authorities_vouch_for(chain)
+    ensures: run.interpreter.certificate_authority.judge(chain).trusted
+}
+
+-- An authority supplied when the command line starts is trusted beside the
+-- machine's, not instead of them. It is how a container or a build host with
+-- no readable system store is given one, and how a test puts a local server on
+-- the same footing as a public one.
+rule ASuppliedAuthorityIsTrusted {
+    when: server_sends_its_certificates(run, host, chain)
+    requires: the_command_lines_host_is_running(run)
+    requires: the_supplied_authorities_vouch_for(chain)
+    ensures: run.interpreter.certificate_authority.judge(chain).trusted
 }
 
 rule NoCertificateIsNoTrust {

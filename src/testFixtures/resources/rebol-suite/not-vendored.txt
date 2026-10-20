@@ -7,13 +7,22 @@
 # forgotten -- which is how 54 of them went missing before.
 #
 # The test for inclusion is whether the file stays inside the process. A test
-# that reaches the network, a shell, a clipboard or a terminal measures the
-# machine it runs on, and would either hang the gate or pass and fail by
-# whether somebody is online.
+# that reaches a host on the internet, drives a child process, measures the
+# operator's clipboard, needs a real terminal or imports a compiled native
+# extension measures the machine it runs on, and would either hang the gate or
+# pass and fail by what happens to be reachable. JEBOL implements all of those
+# areas in the host's language; what keeps a file out is the reach written in
+# the file, not a missing feature. Where a file here is left out for reaching
+# outward, JEBOL's own tests cover the same shapes against locally spun-up
+# servers or injected stand-ins.
 #
 # Each reason below was read out of the file, not guessed from its name.
 # Guessing from the name got three of these right for the wrong reason and
 # would have got crash-test.r3 wrong outright.
+#
+# A vendored file that needs the network is not left out. Its assertions are
+# named in needs-the-network.txt and run in ./gradlew networkTests, which is
+# not part of allTests.
 #
 # integer-test_.r3 is not on this list because it is not a Rebol test. Its
 # header reads Red [...]; it is Red/System's integer tests, BSD-3 from the
@@ -23,23 +32,44 @@
 # csv-test.r3 carries a Red header too and is vendored, which is right. Its
 # own note says "Base of this file are Red CSV tests. Rebol CSV codec does not
 # have same results!" and lists the four differences, so it was adapted for
-# Rebol, and Rebol's runner runs it. It contributes no failures here only
-# because the slicer reaches none of its 35 assertions -- see reader-stops.txt.
-# Zero failures out of zero run is not a pass.
+# Rebol, and Rebol's runner runs it.
 
-port-http-test.r3      read http://httpbin.org/ -- the network. Rebol's own
-                       runner has it commented out too, saying "temporary
-                       disabled, because httpbin.org server has serious
-                       connection issues"
-port-net-test.r3       read whois://google.com, read dns:// -- the network
-port-clipboard-test.r3 open clipboard:// -- the host's clipboard
-port-console-test.r3   query system/ports/input 'window-cols -- a real terminal
-call-test.r3           call/shell, call/wait -- spawns processes
-crash-test.r3          write clipboard://, open tcp://localhost:10000, and
-                       read/binary https://github.com/... -- all three
-extension-test.r3      imports a built extension, and Rebol's own runner does
-                       not run it either
+port-http-test.r3      read http://httpbin.org/ -- a host on the internet.
+                       Rebol's own runner has it commented out too, saying
+                       "temporary disabled, because httpbin.org server has
+                       serious connection issues". JEBOL's own http, including
+                       the security refusal, is read against a locally
+                       spun-up server in
+                       ReadingHttpFromALocalServerFromTheSourceTest.
+port-net-test.r3       read whois://google.com, read dns://8.8.8.8, open
+                       tcp://8.8.8.8:80 -- hosts on the internet. The tcp, dns
+                       and whois schemes all work here; the address is what
+                       decides it.
+port-clipboard-test.r3 the whole file sits inside
+                       `if system/platform = 'Windows [...]`, and inside that
+                       it reads and writes the operator's real clipboard. On
+                       any other platform its assertions never run, and an
+                       assertion that never runs is not a pass. JEBOL's own
+                       clipboard port is tested with an injected one in
+                       TheClipboardPortFromTheSourceTest.
+call-test.r3           call/shell and call/wait run system/options/boot, the
+                       REBOL command line itself, as a child process reading
+                       files relative to that child's working directory.
+                       JEBOL's own CALL and command line are tested in
+                       CallNativeTest and the command-line end-to-end tests;
+                       this file wants the two together, which belongs beside
+                       those.
+crash-test.r3          mostly interpreter crash regressions, but one test is
+                       read/binary of a large file from
+                       github.com/json-iterator/test-data -- a host on the
+                       internet. A vendored file is byte-identical to
+                       upstream, so the file cannot come in without it.
+extension-test.r3      imports %test-x64.rebx, a compiled x64 native
+                       extension. JEBOL's extensions are Java, loaded through
+                       Rebol's own extension words, and cannot stand in for a
+                       compiled one. Rebol's own runner does not run this file
+                       either.
 _known-issues_.r3      titled "Rebol3 known (not yet fixed) issues" -- it
                        asserts what Rebol does wrong today, so passing it
                        would mean reproducing bugs upstream intends to
-                       remove. Rebol's own runner has it commented out
+                       remove. Rebol's own runner has it commented out.

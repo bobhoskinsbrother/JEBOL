@@ -122,6 +122,79 @@ class SuiteSelectionTest {
                 .isEmpty();
     }
 
+    private record NetworkEntry(String file, String group, String test) {
+    }
+
+    private static List<NetworkEntry> needsTheNetwork() {
+        try {
+            List<NetworkEntry> entries = new java.util.ArrayList<>();
+            for (String line : Files.readAllLines(
+                    VENDORED.resolve("needs-the-network.txt"), StandardCharsets.UTF_8)) {
+                String trimmed = line.strip();
+                if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                    continue;
+                }
+                String[] named = trimmed.split("\\s*/\\s*", 3);
+                if (named.length == 1) {
+                    entries.add(new NetworkEntry(named[0].strip(), null, null));
+                } else if (named.length == 3) {
+                    entries.add(new NetworkEntry(
+                            named[0].strip(), named[1].strip(), named[2].strip()));
+                }
+            }
+            return entries;
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException(unreadable);
+        }
+    }
+
+    @Test
+    @DisplayName("every entry that needs the network names something the suite still has")
+    void everyNetworkEntryNamesSomethingThatIsThere() {
+        List<String> stale = new java.util.ArrayList<>();
+        for (NetworkEntry entry : needsTheNetwork()) {
+            SuiteFile file = SuiteGrading.filesInSuite().stream()
+                    .filter(each -> each.name().equals(entry.file()))
+                    .findFirst()
+                    .orElse(null);
+            if (file == null) {
+                stale.add(entry.file() + " names no suite file");
+                continue;
+            }
+            if (entry.group() != null && file.assertions().stream().noneMatch(assertion ->
+                    assertion.group().equals(entry.group())
+                            && assertion.test().equals(entry.test()))) {
+                stale.add(entry.file() + " / " + entry.group() + " / " + entry.test()
+                        + " names no test in that file");
+            }
+        }
+
+        assertThat(needsTheNetwork())
+                .as("with no entries the checks below hold vacuously")
+                .isNotEmpty();
+        assertThat(stale)
+                .as("a list of assertions that need the network, one of which no "
+                        + "longer exists, would hold a line for ever and hide the "
+                        + "next file that starts reaching out:%n  %s",
+                        String.join("\n  ", stale))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("nothing that needs the network is graded on the build that has none")
+    void gradesNothingThatNeedsTheNetworkOnEveryBuild() {
+        List<String> graded = SuiteGrading.listTheAssertionsNeedingTheNetwork()
+                .filter(SuiteGrading::holds)
+                .map(SuiteFile.Assertion::toString)
+                .toList();
+
+        assertThat(graded)
+                .as("these run on a build that promises to need nothing but a JDK, "
+                        + "so a machine with no network changes what the build says:%n  %s",
+                        String.join("\n  ", graded))
+                .isEmpty();
+    }
+
     @Test
     @EnabledIf("rebolsOwnSourceIsHere")
     @DisplayName("every vendored file is the upstream file, byte for byte")
@@ -190,7 +263,7 @@ class SuiteSelectionTest {
     @Test
     @DisplayName("no test has lost the assertions written under it")
     void losesNoTestsAssertions() {
-        List<String> hollow = RebolSuiteTest.filesInSuite().stream()
+        List<String> hollow = SuiteGrading.filesInSuite().stream()
                 .flatMap(file -> testsAssertingNothingIn(file).stream())
                 .filter(named -> !EMPTY_UPSTREAM_TOO.contains(named))
                 .toList();

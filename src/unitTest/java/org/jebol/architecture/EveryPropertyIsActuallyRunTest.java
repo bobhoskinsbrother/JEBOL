@@ -36,13 +36,14 @@ class EveryPropertyIsActuallyRunTest {
     }
 
     @Test
-    @DisplayName("the classes of all three suites are handed over, unit, functional and end to end")
+    @DisplayName("the classes of all four suites are handed over, unit, functional, end to end and network")
     void handsOverEverySuite() {
         assertThat(everySuitesClasses)
                 .as("jebol.testClassesDirs=%s", System.getProperty("jebol.testClassesDirs"))
                 .anyMatch(directory -> directory.endsWith(Path.of("java", "unitTest")))
                 .anyMatch(directory -> directory.endsWith(Path.of("java", "functionalTest")))
-                .anyMatch(directory -> directory.endsWith(Path.of("java", "endToEndTest")));
+                .anyMatch(directory -> directory.endsWith(Path.of("java", "endToEndTest")))
+                .anyMatch(directory -> directory.endsWith(Path.of("java", "networkTest")));
     }
 
     private static boolean isAJupiterContainer(JavaClass type) {

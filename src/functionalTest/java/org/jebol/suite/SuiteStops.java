@@ -33,7 +33,7 @@ public final class SuiteStops {
     }
 
     static void main(String[] argued) {
-        for (SuiteFile file : RebolSuiteTest.filesInSuite()) {
+        for (SuiteFile file : SuiteGrading.filesInSuite()) {
             if (argued.length > 0 && !file.name().equals(argued[0])) {
                 continue;
             }

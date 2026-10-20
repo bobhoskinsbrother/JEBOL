@@ -164,7 +164,7 @@ class SuiteFileTest {
         void stillReadsEverySource() {
             List<String> unreadable = new java.util.ArrayList<>();
 
-            for (SuiteFile file : RebolSuiteTest.filesInSuite()) {
+            for (SuiteFile file : SuiteGrading.filesInSuite()) {
                 Interpreter reader = Interpreter.create();
                 for (SuiteFile.Assertion assertion : file.assertions()) {
                     if (!reader.read(assertion.source()).succeeded()) {
@@ -184,7 +184,7 @@ class SuiteFileTest {
         void rewritesNothingOnTheWayOut() {
             List<String> rewritten = new java.util.ArrayList<>();
 
-            for (SuiteFile file : RebolSuiteTest.filesInSuite()) {
+            for (SuiteFile file : SuiteGrading.filesInSuite()) {
                 String original = stripWhitespace(read(
                         Path.of("src", "testFixtures", "resources", "rebol-suite", file.name())));
                 for (SuiteFile.Assertion assertion : file.assertions()) {
@@ -251,7 +251,7 @@ class SuiteFileTest {
         @Test
         @DisplayName("Rebol's own files use it, and power-test is where it bites")
         void appearsInRebolsOwnFiles() {
-            List<SuiteFile.Assertion> marked = RebolSuiteTest.filesInSuite().stream()
+            List<SuiteFile.Assertion> marked = SuiteGrading.filesInSuite().stream()
                     .flatMap(file -> file.assertions().stream())
                     .filter(SuiteFile.Assertion::redOnly)
                     .toList();

@@ -20,6 +20,7 @@ import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.List;
+import java.util.function.Function;
 
 public final class LocalTlsServer implements AutoCloseable {
 
@@ -30,6 +31,7 @@ public final class LocalTlsServer implements AutoCloseable {
 
     private final SSLServerSocket listening;
     private final Thread acceptor;
+    private final Function<String, String> bodyForPath;
     private int connectionsAccepted;
     private int connectionsClosed;
     private int requestsReceived;
@@ -38,6 +40,11 @@ public final class LocalTlsServer implements AutoCloseable {
     }
 
     public LocalTlsServer(Identity identity, String protocol) {
+        this(identity, protocol, path -> PAGE_BODY);
+    }
+
+    public LocalTlsServer(Identity identity, String protocol, Function<String, String> bodyForPath) {
+        this.bodyForPath = bodyForPath;
         try {
             SSLContext context = SSLContext.getInstance("TLS");
             context.init(new KeyManager[] {new FixedKeyManager(identity)}, null, null);
@@ -102,9 +109,10 @@ public final class LocalTlsServer implements AutoCloseable {
         try (connection) {
             connection.setSoTimeout(READ_TIMEOUT_MILLISECONDS);
             connection.startHandshake();
-            if (readRequest(connection.getInputStream())) {
+            String path = readRequest(connection.getInputStream());
+            if (path != null) {
                 countRequest();
-                writePage(connection.getOutputStream());
+                writePage(connection.getOutputStream(), bodyForPath.apply(path));
             }
         } catch (IOException ignored) {
         } finally {
@@ -112,20 +120,25 @@ public final class LocalTlsServer implements AutoCloseable {
         }
     }
 
-    private boolean readRequest(InputStream in) throws IOException {
+    private String readRequest(InputStream in) throws IOException {
         StringBuilder head = new StringBuilder();
         int next;
         while ((next = in.read()) != -1) {
             head.append((char) next);
             if (head.toString().endsWith("\r\n\r\n")) {
-                return true;
+                break;
             }
         }
-        return !head.isEmpty();
+        if (head.isEmpty()) {
+            return null;
+        }
+        String requestLine = head.toString().lines().findFirst().orElse("");
+        String[] parts = requestLine.split(" ");
+        return parts.length > 1 ? parts[1] : "/";
     }
 
-    private void writePage(OutputStream out) throws IOException {
-        byte[] body = PAGE_BODY.getBytes(StandardCharsets.US_ASCII);
+    private void writePage(OutputStream out, String page) throws IOException {
+        byte[] body = page.getBytes(StandardCharsets.UTF_8);
         String head = "HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\nContent-Length: "
                 + body.length + "\r\nConnection: close\r\n\r\n";
         out.write(head.getBytes(StandardCharsets.US_ASCII));

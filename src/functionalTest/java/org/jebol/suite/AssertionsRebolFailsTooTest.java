@@ -15,11 +15,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AssertionsRebolFailsTooTest {
 
     static List<String> listEveryEntry() {
-        return RebolSuiteTest.failingOnRebolToo();
+        return SuiteGrading.failingOnRebolToo();
     }
 
     private static Map<String, SuiteFile.Assertion> indexTheSuiteByName() {
-        return RebolSuiteTest.listEveryAssertion().collect(Collectors.toMap(
+        return SuiteGrading.listEveryAssertion().collect(Collectors.toMap(
                 SuiteFile.Assertion::toString, Function.identity(), (first, next) -> first));
     }
 
@@ -32,7 +32,7 @@ class AssertionsRebolFailsTooTest {
                 .as("%s names no assertion in the suite, so nothing can ever take "
                         + "it off the list; delete the entry", entry)
                 .isNotNull();
-        assertThat(RebolSuiteTest.holds(assertion))
+        assertThat(SuiteGrading.holds(assertion))
                 .as("%s%n  passes here now, and a real 3.22.5 does not pass it. "
                         + "While there are goals left that is a divergence and so "
                         + "a defect: find out why JEBOL answers differently. Only "

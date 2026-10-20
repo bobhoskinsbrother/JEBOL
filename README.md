@@ -71,9 +71,17 @@ standard input pipes into the console.
 ```commandline
 java -jar build/libs/jebol-3.22.5.jar my-script.reb
 java -jar build/libs/jebol-3.22.5.jar my-app/
+java -jar build/libs/jebol-3.22.5.jar https://example.com/app/main.reb
+java -jar build/libs/jebol-3.22.5.jar --cafile company-ca.pem my-script.reb
 java -jar build/libs/jebol-3.22.5.jar --do "print 1 + 2"
 cat my-script.reb | java -jar build/libs/jebol-3.22.5.jar
 ```
+
+A script may be given by https url as well as by path; it runs the same way,
+header, `Needs:` and exit status included. `--cafile` adds the authorities in a
+PEM file to the ones the machine trusts, which the command line already uses:
+the keychain on macOS, the Windows root store, or the Linux system bundle,
+beside the JVM's own store.
 
 A directory is an app: it runs the `main.reb` inside it, with the app as the
 working directory, so `do %lib/whatever.reb` and `read %data.txt` find the
@@ -191,9 +199,9 @@ the prose. `errors.reb` is there on the same footing.
 
 ## How it is checked
 
-**Rebol's own test suite is the measure.** All sixty-seven files from
-`src/tests/units/` are vendored and every assertion they write is reached and
-run. 
+**Rebol's own test suite is the measure.** Every file from `src/tests/units/`
+that Rebol's own runner runs is vendored (the few deliberately left out are
+named in `not-vendored.txt`) and every assertion they write is reached and run.
 
 **The counts live in `goals.md` and nowhere else**, so there is one place to
 correct when they move rather than four that drift apart.
@@ -379,7 +387,8 @@ no runtime dependencies; the jar carries everything it needs.
 ./gradlew allTests         # the spec check and all three suites below
 ./gradlew unitTests        # tests that never build an interpreter
 ./gradlew functionalTests  # tests that run REBOL through an interpreter
-./gradlew endToEndTests    # the command line, a real browser, real servers
+./gradlew endToEndTests    # the command line, a real browser, local servers
+./gradlew networkTests     # Rebol's suite assertions that need the network
 ./gradlew jar              # just the jar: build/libs/jebol-3.22.5.jar
 ./gradlew build            # allTests, then the jar
 ./gradlew assembleTheSite  # the static site in build/site (see JEBOL Web)
@@ -397,14 +406,17 @@ $ java -jar build/libs/jebol-3.22.5.jar --do "print 1 + 2"
 validated by the same command as the code. It fails on any error, any analysis
 finding, and any warning not on the allowlist.
 
-`unitTests` and `functionalTests` need nothing but a JDK. `endToEndTests` needs
-Chrome installed and the internet. It builds the interpreter for the web with
+`unitTests`, `functionalTests` and `endToEndTests` need nothing from the
+network: every host they use is spun up by the tests. `endToEndTests` needs
+Chrome installed, and Selenium fetches the driver the first time it runs. The
+twelve suite assertions that do need the internet are in `networkTests`, run on
+its own and not part of `allTests`. It builds the interpreter for the web with
 TeaVM, drives a real Chrome through WebDriver, runs a script that sits in a
 page's tag, renders the same paint list in Java2D and in the browser, and
 compares the two pixel for pixel — which is how "a page and a window show the
 same picture" is a thing the build knows rather than a thing somebody says. It
-also puts the command line's TLS to real servers that a browser trusts and
-real servers it refuses.
+also puts the command line's TLS to local servers it trusts and local servers it
+refuses.
 
 **The measures are scripts, and they are run rather than remembered.**
 `./r3-head` is a real Rebol 3.22.5 built from the checkout beside it

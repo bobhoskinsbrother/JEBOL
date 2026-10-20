@@ -8,7 +8,7 @@ public final class ShowAssertion {
     static void main(String[] argued) throws Exception {
         org.jebol.application.Interpreter.create();
         String wanted = argued[0];
-        for (SuiteFile file : RebolSuiteTest.filesInSuite()) {
+        for (SuiteFile file : SuiteGrading.filesInSuite()) {
             for (SuiteFile.Assertion assertion : file.assertions()) {
                 if (assertion.toString().contains(wanted)) {
                     System.out.println("=== " + assertion);

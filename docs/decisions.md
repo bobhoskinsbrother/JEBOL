@@ -354,9 +354,10 @@ which reads directly as a specification of what those functions do.
 
 The fork also ships `src/tests/units/`: 77 files, 3,290 named tests and
 11,899 assertions, text by the people who maintain the implementation.
-That is a far better source of cases than boundaries we invent. Sixty-seven of
+That is a far better source of cases than boundaries we invent. Sixty-eight of
 those files are now imported under `src/testFixtures/resources/rebol-suite/` and run on
-every build as `RebolSuiteTest`: 10,133 assertions, none of them skipped.
+every build as `RebolSuiteTest`: 10,144 assertions, every one run -- 10,132 by
+every build and 12 by `./gradlew networkTests`.
 
 The C is a reference, not a thing to translate. Its `REBVAL` is a tagged
 union, its series are pointer arithmetic, its errors are `setjmp` and its
@@ -1771,10 +1772,13 @@ them over TLS 1.2 or 1.3. It can also present a chain with a key that does
 not belong to it, which is how the impostor tests stand in for someone in
 between.
 
-**A third gate, `./gradlew networkCheck`,** puts the command line to
-badssl.com: three hosts a browser trusts and four it refuses. Like
-`browserCheck` it is out of `check` because it needs something the ordinary
-gate should not, and everything tagged `network` runs every time it runs.
+**The command line's TLS is checked against servers the tests spin up
+themselves,** over the fixtures above. `TrustingAServerEndToEndTest` reads a
+chain the host trusts and refuses expired, self-signed, wrong-host and untrusted
+chains; `SecureConnectionsAtTheCommandLineEndToEndTest` and
+`UntrustedServersAtTheCommandLineEndToEndTest` put the command line itself to a
+local server it must refuse. Nothing in those checks reaches a host on the
+internet.
 
 ## 44. Running out of memory is `no-memory`, raised where the work asked for it
 
@@ -1837,7 +1841,7 @@ and nothing in the name said it would.
 | --- | --- | --- |
 | `unitTests` | `src/unitTest` | The test never builds an interpreter |
 | `functionalTests` | `src/functionalTest` | The test builds one and runs REBOL through it; Rebol's own suite is here |
-| `endToEndTests` | `src/endToEndTest` | The test drives a real interface: the command line, a real Chrome, real servers on the internet |
+| `endToEndTests` | `src/endToEndTest` | The test drives a real interface: the command line, a real Chrome, servers the tests spin up themselves |
 
 `allTests` runs the spec check and all three. `test` and `check` both run
 `allTests`, so no task runs less than its name suggests -- which means `build`
@@ -1854,7 +1858,7 @@ with the gates they selected for.
 suite host, the corpus runner, the TLS server and its certificates, the timing
 programs, and every test resource. The scripts that run those programs
 (`sweep.py`, `runtime-parity.py`, `timing.py`) put `testFixtures` on their
-classpath. Three programs that read `RebolSuiteTest` -- `ShowAssertion`,
+classpath. Three programs that read the suite -- `ShowAssertion`,
 `ShowFailures`, `SuiteStops` -- live with it in `functionalTest`.
 
 **One check had to learn where the suites are.** `EveryPropertyIsActuallyRunTest`
@@ -1862,3 +1866,60 @@ found the test classes by asking where its own class was compiled, which after
 the split would have been the unit suite alone, and the rule would have held
 for a third of the tests while reporting green for all of them. It is now
 handed all three directories by the build, and asserts that it was.
+
+## 46. The assertions that need the network have a gate of their own
+
+**Twelve of Rebol's assertions reach a host on the internet.** Ten are
+`thru-cache-test.r3`, which fetches from `raw.githubusercontent.com` and reads
+`httpbin.org`; two are the `import needs url!` test in `module-test.r3`, which
+imports a script from `github.com`. A real 3.22.5 fails them too, so they are
+already findings, but keeping them in `functionalTests` made every build depend
+on those hosts -- and on whatever answers them, which on a machine behind TLS
+inspection is not github at all.
+
+**They run in `./gradlew networkTests`, from `src/networkTest`, out of
+`allTests`.** `needs-the-network.txt` names them beside the vendored files;
+`RebolSuiteTest` does not run the step that would fetch, and answers a verdict
+saying the network gate grades it. The network gate grades the three that are
+not findings and re-checks the nine that are, so a finding that starts passing
+still turns a build red. `SuiteSelectionTest` fails if an entry stops naming an
+assertion.
+
+**Why not a tag or a property.** Decision 45 settled that a test's kind is
+where it lives: a tag would make the same class mean different things on
+different machines, and a property would hide which assertions a green build
+did not run. The list is data beside the Rebol files it is about, so it moves
+with them and is read by both gates.
+
+**What the vendored suite still measures.** Everything else runs on every
+build, against local servers or in-process stand-ins. The two files keep their
+network assertions, unmodified, in the gate that can honestly run them.
+
+## 47. The command line trusts the machine, and runs a script from a url
+
+**The authorities are the machine's, not only the runtime's.**
+`JavaTrustAnchors` adds the platform store to the JDK's: the keychain on macOS,
+`Windows-ROOT` on Windows, and the system bundle on Linux. `--cafile` adds a
+bundle of its own, read at startup and taken off before R3's argument parser
+sees it. The list widens and no verdict moves: expired, self-signed, wrong-host
+and unknown still end the handshake. Embedders keep the "trusts nothing"
+default, because the anchor list is the host's; this is the command line's
+host.
+
+**A certificate with a GeneralizedTime validity now reads.** X.509 permits it.
+The borrowed `codec-der.reb`, `codec-utc-time.reb` and `codec-crt.reb` decoded
+only `UTC_TIME`, so a certificate that wrote its validity the other way lost
+everything after that field and the handshake stopped at "Missing public key in
+certifiate". The three files now decode both forms, and ORDER.txt records the
+edits. That is what made github readable behind this machine's TLS inspector,
+and it is why the nine github assertions came off `fails-on-rebol-too.txt`: a
+real 3.22.5 still cannot read them, and JEBOL now can. Standing says so.
+
+**A script may be given by https url.** `jebol https://.../main.reb` takes the
+same path as `jebol main.reb`: the header is read, `system/script` is filled,
+`NEEDS:` are imported, a module is imported as a module, and QUIT is not caught
+on the way out. A url has no directory to run in and no local file to check, so
+those two steps are the file's alone; `sys-start.reb` carries the branch and
+ORDER.txt the note. A url that cannot be fetched is reported and leaves with
+one, as a missing file does. `./gradlew networkTests` runs a real github
+script, with its arguments, at the command line.

@@ -65,15 +65,15 @@ entity BatchRun {
     }
 }
 
--- The third way in, and the one a person reaches for first: a path on the
--- command line is a script to run.
+-- The third way in, and the one a person reaches for first: a path or an
+-- http(s) url on the command line is a script to run.
 --
--- It is a batch run whose source came out of a file, and everything the batch
--- run already says holds -- a fresh set-word gets a slot, and the number the
--- process leaves with is whatever QUIT carried. What it adds is where the
--- script counts from and what it can tell about itself.
+-- It is a batch run whose source came out of a file or over the wire, and
+-- everything the batch run already says holds -- a fresh set-word gets a slot,
+-- and the number the process leaves with is whatever QUIT carried. What it
+-- adds is where the script counts from and what it can tell about itself.
 entity ScriptRun {
-    path: String            -- as it was written on the command line
+    path: String            -- as it was written: a local path or a url
     arguments: List<String> -- whatever followed it, untouched
 
     status: running | finished
@@ -424,12 +424,49 @@ rule AScriptRunConcludesWithWhatQuitCarried {
 rule AScriptRunsInItsOwnDirectory {
     when: run: ScriptRun.created
     requires: run.status = running
+    requires: the_path_is_local(run.path)
 
     ensures:
         the_directory_relative_paths_count_from() = the_directory_holding(run.path)
         system_options_script() = the_full_path_of(run.path)
         system_options_path() = the_directory_the_command_was_given_in()
         system_options_args() = run.arguments
+}
+
+-- A script given by url has no directory of its own, so it runs in the one the
+-- command was given in, and relative file paths count from there. What it can
+-- tell about itself names the url it came from.
+--
+-- Everything else a local script gets, it gets too: the fetch is a secure one,
+-- so the machine's authorities decide whether it happens; the header is read;
+-- its NEEDS are imported; a module is imported as a module; and a QUIT is not
+-- caught on the way out. `jebol https://example.test/main.reb` and `jebol
+-- main.reb` differ in where the bytes came from and in nothing a script sees.
+rule AScriptMayComeFromAUrl {
+    when: run: ScriptRun.created
+    requires: the_path_names_an_https_url(run.path)
+    requires: run.status = running
+
+    ensures:
+        the_directory_relative_paths_count_from() = the_directory_the_command_was_given_in()
+        system_options_script() = the_url_as_written(run.path)
+        system_options_path() = the_directory_the_command_was_given_in()
+        system_options_args() = run.arguments
+        the_script_is_fetched_over_a_secure_connection(run.path)
+        its_header_is_read_and_its_needs_imported()
+}
+
+-- A url that cannot be fetched is a failure the way a path that is not there
+-- is: reported on the error stream, and one as the exit status.
+rule AScriptThatCannotBeFetchedIsAFailure {
+    when: run: ScriptRun.created
+    requires: the_path_names_an_https_url(run.path)
+    requires: the_url_could_not_be_fetched(run.path)
+
+    ensures:
+        run.status = finished
+        run.exit_status = 1
+        the_error_stream_receives(the_fetch_failure(run.path))
 }
 
 -- A script may be confined, and then every path it is given is a path inside
@@ -443,6 +480,7 @@ rule AScriptRunsInItsOwnDirectory {
 rule ARootedScriptReadsEveryPathInsideItsRoot {
     when: run: ScriptRun.created
     requires: the_command_line_named_a_root()
+    requires: the_path_is_local(run.path)
 
     ensures:
         the_filesystem_reaches() = only_below(the_root_named())
@@ -569,9 +607,9 @@ rule AScriptThatIsNotThereIsAFailure {
 -- option that takes a value and has no next word, and any option nobody knows,
 -- asks for the usage text instead.
 --
--- `--root`, `--data` and `--screen=` are JEBOL's own and are taken off before
--- R3's reading starts, because to R3 they would be unknown options asking for
--- help.
+-- `--root`, `--data`, `--cafile` and `--screen=` are JEBOL's own and are taken
+-- off before R3's reading starts, because to R3 they would be unknown options
+-- asking for help.
 entity CommandLine {
     words: List<String>
     flags: Set<String>         -- spelled as system/catalog/boot-flags spells them
@@ -592,16 +630,16 @@ rule TheCommandLineIsReadAsRebolsHostReadsIt {
 -- What was asked is handed to the system object as Init_Main_Args in b-init.c
 -- hands it: system/options/flags is a block of the flags given, in boot-flags
 -- order, ending in a true so that `flags/verbose` reads as a logic; quiet and
--- no-color are set by their flags; the script is a file as it was written;
--- do-arg, debug, version and import are text; secure and boot-level are words;
--- and path is the directory the command was given in.
+-- no-color are set by their flags; the script is a file or a url as it was
+-- written; do-arg, debug, version and import are text; secure and boot-level
+-- are words; and path is the directory the command was given in.
 rule TheSystemIsToldWhatWasAsked {
     when: line: CommandLine.created
     requires: anything_was_asked(line)
 
     ensures:
         system_options_flags() = the_flag_words_in_boot_flags_order(line.flags) + [true]
-        system_options_script() = file_as_written(line.script)
+        system_options_script() = script_as_written(line.script)
         system_options_args() = line.arguments
         system_options_path() = the_directory_the_command_was_given_in()
 }

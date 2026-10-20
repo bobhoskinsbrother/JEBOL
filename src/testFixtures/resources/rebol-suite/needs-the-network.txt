@@ -1,0 +1,20 @@
+# Assertions in Rebol's own suite that reach a host on the internet, and the
+# line in each that decides it.
+#
+# These are not left out: ./gradlew networkTests runs them, against the hosts
+# they name, in full. They are out of the suites that run on every build
+# because a test that reaches a host measures the machine's network -- on the
+# machine these were written on a TLS inspector answers github, so both
+# engines fail these assertions for reasons that are not about JEBOL. The
+# default run must need nothing but a JDK, so its steps for these assertions
+# are not run at all; SuiteSelectionTest fails if an entry here stops naming
+# something real, and TheNetworkAssertionsTest carries them where they run.
+#
+# thru-cache-test.r3        the whole file: READ-THRU, LOAD-THRU, EXISTS-THRU?,
+#                           DO-THRU, CLEAR-THRU and DELETE-THRU all fetch from
+#                           raw.githubusercontent.com, and one test reads
+#                           httpbin.org/status/400.
+# module-test.r3 / module import / import needs url!
+#                           one assertion, whose import names github.com.
+thru-cache-test.r3
+module-test.r3 / module import / import needs url!

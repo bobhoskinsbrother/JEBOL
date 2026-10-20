@@ -6100,7 +6100,7 @@ arguments and calling an AGG that is not vendored.
 
 So `value? 'draw` is **false** on a Rebol built from this checkout, and so is
 `value? 'effect`. A stock 3.22.5 on macOS or Linux draws nothing at all, no
-assertion in the 10,133 mentions the dialect, and there is no picture anywhere
+assertion in the 10,144 mentions the dialect, and there is no picture anywhere
 to compare a port against. The arguments are recoverable from that Windows C;
 the pixels are recoverable from nothing.
 

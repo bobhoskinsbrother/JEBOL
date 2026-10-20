@@ -21,6 +21,7 @@ import org.jebol.domain.value.IntegerValue;
 import org.jebol.domain.value.LogicValue;
 import org.jebol.domain.value.FileValue;
 import org.jebol.domain.value.StringValue;
+import org.jebol.domain.value.UrlValue;
 import org.jebol.domain.value.Value;
 import org.jebol.domain.value.WordValue;
 
@@ -70,6 +71,10 @@ public final class Repl {
 
     static final String DATA_SWITCH = "--data";
 
+    static final String CAFILE_SWITCH = "--cafile";
+
+    private static final String HTTPS_PREFIX = "https://";
+
     private static final String REBOL_HOME = "REBOL_HOME";
 
     private final Interpreter interpreter;
@@ -117,7 +122,7 @@ public final class Repl {
     }
 
     private static String findTheAppsEntry(String whereItPoints) {
-        if (whereItPoints.isEmpty()) {
+        if (whereItPoints.isEmpty() || isAnHttpsUrl(whereItPoints)) {
             return whereItPoints;
         }
         Path asked = Path.of(whereItPoints);
@@ -136,7 +141,8 @@ public final class Repl {
     private static String[] argumentsWithoutJebolOnlySwitches(String[] arguments) {
         List<String> reply = new ArrayList<>();
         for (int at = 0; at < arguments.length; at++) {
-            if (arguments[at].equals(ROOT_SWITCH) || arguments[at].equals(DATA_SWITCH)) {
+            if (arguments[at].equals(ROOT_SWITCH) || arguments[at].equals(DATA_SWITCH)
+                    || arguments[at].equals(CAFILE_SWITCH)) {
                 at++;
                 continue;
             }
@@ -148,6 +154,10 @@ public final class Repl {
     private static Path readRoot(String[] arguments) {
         String trailingArgument = readTrailingArgument(ROOT_SWITCH, arguments);
         return trailingArgument.isEmpty() ? WHOLE_MACHINE : Path.of(trailingArgument);
+    }
+
+    private static boolean isAnHttpsUrl(String written) {
+        return written.toLowerCase(Locale.ROOT).startsWith(HTTPS_PREFIX);
     }
 
     private static String readTrailingArgument(String switchName, String[] arguments) {
@@ -170,7 +180,10 @@ public final class Repl {
         interpreter.useProcesses(new JavaProcess());
         interpreter.useClipboard(new JavaClipboard());
         interpreter.useNetwork(new JavaSocket());
-        interpreter.useCertificateAuthority(new JavaCertificateAuthority());
+        String cafile = readTrailingArgument(CAFILE_SWITCH, arguments);
+        interpreter.useCertificateAuthority(cafile.isEmpty()
+                ? new JavaCertificateAuthority()
+                : JavaCertificateAuthority.trustingTheMachineAnd(Path.of(cafile)));
         putTheApplicationDataWhereTheParentKeepsIt(interpreter, environment, arguments);
         if (ChosenScreen.isAskedFor(arguments)) {
             ChosenScreen.attachTo(interpreter, arguments, out, anythingWasAsked);
@@ -258,7 +271,9 @@ public final class Repl {
                 interpreter.setSystemValue("no-color", LogicValue.yes());
             }
             arguments.script().ifPresent(script ->
-                    interpreter.setSystemValue("script", FileValue.of(script)));
+                    interpreter.setSystemValue("script", isAnHttpsUrl(script)
+                            ? UrlValue.of(script)
+                            : FileValue.of(script)));
             arguments.valueOf(RebolArguments.Flag.BOOT).ifPresent(level ->
                     interpreter.setSystemValue("boot-level", WordValue.of(level)));
             interpreter.setSystemValue("args", listTheArgumentsForTheScript());

@@ -73,6 +73,15 @@ Directories lacking a `main.reb` file will produce an error.
 jebol my-script.reb  
 jebol my-app/
 ```
+A script may also be given by https url. It runs the same way a local script does: its header is read, `system/options/script` is the url, `Needs:` entries are imported, and QUIT still decides the exit status. A url that cannot be fetched is reported and leaves with one.
+
+```
+jebol https://example.com/app/main.reb
+jebol --cafile company-ca.pem https://example.com/app/main.reb
+```
+
+`--cafile` adds the authorities in that file to the ones the machine trusts; it does not replace them. See "Trusted certificates" in section 4.
+
 Alternatively, pass script content via standard input:
 
 ```
@@ -147,6 +156,12 @@ interpreter.useFileSystem(FileSystemPort.rootedAt(Path.of("/srv/scripts")).readO
 A host can explicitly mark capabilities as unavailable using lacking(...). Scripts requesting unavailable services receive a not_present error rather than not_granted.
 
 useHttp(port) delegates HTTP/HTTPS requests to the host platform. If no HTTP port is supplied, REBOL's default scheme handler falls back to establishing direct TCP connections via the NETWORK service.
+
+### **Trusted certificates**
+
+The command line trusts the authorities of the machine it runs on: the keychain on macOS, the Windows root store, or the Linux system bundle, together with the JVM's own store. A company's TLS inspection therefore reads the way it does in a browser. `--cafile path.pem` adds the authorities in that file as well; that is how a container or a build host with no readable system store is given one.
+
+Trust is still judged. An expired certificate, one that signed itself, one naming another host, and one from an authority the machine does not trust are each refused, and the script sees which. A real 3.22.5 reads all four.
 
 Each interpreter manages its working directory within the file port's rooted path. Because the underlying JVM process working directory remains fixed, directory state is isolated per interpreter instance.
 

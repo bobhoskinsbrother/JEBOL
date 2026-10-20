@@ -309,6 +309,30 @@ start: func [
 		]
 	]
 
+	;-- Evaluate a script given as an https url. It runs the way a file does,
+	;-- from the directory the command was given in, since it has no directory
+	;-- of its own and no local file to check first.
+	if url? script [
+		sys/log/info 'REBOL ["Evaluating:" script]
+		code: load/header/as script 'unbound
+		system/script: make system/standard/script [
+			title: select first code 'title
+			header: first code
+			parent: none
+			path: none
+			args: either system/options/flags/args [to block! first script-args][script-args]
+		]
+		either 'module = select first code 'type [
+			code: reduce [first+ code code]
+			if object? tmp: do-needs/no-user first code [append code tmp]
+			import make module! code
+		][
+			do-needs first+ code
+			do intern code
+		]
+		if flags/halt [lib/halt]
+	]
+
 	exit
 
 ] system/options

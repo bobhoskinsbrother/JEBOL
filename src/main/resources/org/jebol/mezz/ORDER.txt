@@ -50,6 +50,33 @@
 #   mezz-banner.reb      the banner's title line says "(JEBOL port)" where
 #                        Rebol's says "(Oldes branch)". Keep the edit when
 #                        taking a newer copy.
+#   sys-start.reb        runs a script given as an https url through the same
+#                        script path as a file: header, system/script, NEEDS,
+#                        module or script, QUIT. A url has no directory to run
+#                        in and no local file to check, so those two steps are
+#                        the file's alone. Keep the edit when taking a newer
+#                        copy, or `jebol https://...` stops being a script.
+#   codec-der.reb        decodes GENERALIZED_TIME as well as UTC_TIME, which
+#   codec-utc-time.reb   X.509 permits for a certificate's validity, and
+#   codec-crt.reb        accepts either there. A real 3.22.5 stops at the
+#                        first GeneralizedTime and loses everything after it,
+#                        which is what stopped a certificate from a company's
+#                        TLS inspector being read at all. Keep all three edits
+#                        when taking newer copies.
+#
+# and one outside this directory, because there is nowhere else that records
+# a borrowed file differing from Rebol's:
+#
+#   modules/unicode-utils.reb
+#                        the checkout's copy closes its `make vector!`
+#                        specification one bracket short, so no interpreter
+#                        reads it: r3-head refuses it, and so did JEBOL until
+#                        the bundled copy added the missing bracket. Upstream's
+#                        master had the same fault when this was checked on
+#                        2026-10-20, and r3-head reads the repaired copy.
+#                        SuiteSelectionTest names this file as the one bundled
+#                        module allowed to differ. Check upstream before taking
+#                        a newer copy.
 #
 # BorrowedFilesLoadWholeTest fails if any file stops partway, and its list
 # of known stops is empty. A file that stops defines nothing below the line

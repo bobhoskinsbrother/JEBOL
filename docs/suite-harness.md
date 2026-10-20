@@ -58,6 +58,18 @@ took the count down by one and broke nothing.
 
 ---
 
+## Twelve assertions run in a gate of their own
+
+`needs-the-network.txt`, beside the vendored files, names the assertions that
+reach a host: all of `thru-cache-test.r3` and the `import needs url!` test in
+`module-test.r3`. `RebolSuiteTest` runs every other assertion, and does not run
+the steps that would fetch; its verdict for one of the twelve says the network
+gate grades it. `./gradlew networkTests`, from `src/networkTest`, runs them
+against the hosts they name and grades the three that are not findings while
+re-checking the nine that are. `SuiteSelectionTest` fails if an entry stops
+naming an assertion, so the list cannot rot; `docs/decisions.md` decision 46
+says why the gate exists rather than a tag.
+
 ## `--red--` is not work to do, and treating it as work cost eight lines
 
 Rebol's own runner counts a failing `--red--` assertion apart from its failures,
@@ -311,7 +323,8 @@ IMPORT looks in three places - what is loaded, a file in the modules directory,
 and the address in `system/modules`, which it downloads and saves. The third
 works, and a gate that used it would reach `src.rebol.tech` once per file that
 imports anything. That is one host too many: `thru-cache-test.r3` already names
-`raw.githubusercontent.com` and `httpbin.org` in its own assertions and nothing
+`raw.githubusercontent.com` and `httpbin.org` in its own assertions, and
+`module-test.r3` imports one script from `github.com`, and nothing
 can take those out short of rewriting a vendored file.
 
 **The suite's own file names stand in the run directory.** Rebol runs its tests

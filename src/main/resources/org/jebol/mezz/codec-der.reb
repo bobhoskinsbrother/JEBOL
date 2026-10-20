@@ -107,6 +107,9 @@ register-codec [
 					UTC_TIME [
 						data: system/codecs/utc-time/decode data
 					]
+					GENERALIZED_TIME [
+						data: system/codecs/utc-time/decode data
+					]
 					UTF8_STRING
 					PRINTABLE_STRING
 					IA5_STRING

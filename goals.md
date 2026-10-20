@@ -10,16 +10,18 @@ and `using-jebol.md` point here for them.
 
 ## Where the port stands
 
-Measured on 2026-10-12, and the test count and timing rows on 2026-10-13.
+Measured on 2026-10-12, the test count row on 2026-10-20 and the timing rows on
+2026-10-13.
 
 | Measure | Reads |
 | --- | --- |
-| `fails-on-rebol-too.txt` | 169 a real 3.22.5 also fails or never runs |
+| `fails-on-rebol-too.txt` | 160 a real 3.22.5 also fails or never runs |
 | `scripts/c-parity.py` | 279 of 279 C functions match R3's surface |
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 120 of Rebol's 142 error ids can be raised |
 | `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 11 |
-| `./gradlew allTests` | 27,943 tests on 2026-10-15: `unitTests` 2,536, `functionalTests` 23,501, `endToEndTests` 1,906 |
+| `./gradlew allTests` | 28,406 tests on 2026-10-20: `unitTests` 2,649, `functionalTests` 23,838, `endToEndTests` 1,919 |
+| `./gradlew networkTests` | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line |
 | `corpus/` | 1,140 of 1,140 entries pass |
 | the shipped jar | about 3,090 KB at its last build (the carried font, 556 KB, is most of what the last two batches added), and no dependencies |
 | the web build | 13.7 MB of WebAssembly (4.1 MB gzipped) beside a 38 KB loader, a 5.9 KB worker and a 556 KB font; the whole site 14.3 MB, 4.4 MB gzipped |
@@ -235,7 +237,9 @@ decide first: what drives it (the Debug Adapter Protocol, text here since
 the jar takes no dependencies); what a paused script does to the deadline and
 grants it runs under; and whether a script may debug itself.
 
-### 16. Tools for a model writing REBOL
+### 16. Dev tools
+
+#### 16.a MCP tools for AI tools to write REBOL
 
 - **A dialect that fails loudly.** A rule that does not match answers false
   and the calling code drops it.
@@ -248,6 +252,12 @@ grants it runs under; and whether a script may debug itself.
   reporting services asked for), `match` (where a block stopped against a
   grammar) and `word` (what a word takes and whether it is reliable here).
 
+#### 16.b Hot reload
+After the checksum has been implemented, and loading rebol by url is already in
+place, so we have the base ingredients to be able to hot reload any file changes.
+Add this as a feature part of the dev tools above
+
+
 ### 17. What the command line does differently from r3
 
 1. **`--trace` does not trace the boot.** Do with goal 15.
@@ -258,14 +268,6 @@ grants it runs under; and whether a script may debug itself.
 3. **A `quit/return 42` typed at the console leaves with nought.** R3 leaves
    with 42, because its console carries what QUIT held out to the process. The
    console loop here returns without it.
-
-### 18. Take the network out of the gate
-
-`thru-cache-test.r3` reads `raw.githubusercontent.com` and `httpbin.org`, so
-`./gradlew functionalTests` depends on two outside services. Replace them -- a
-recorded exchange, a local server, or a move to `./gradlew endToEndTests`, the
-suite that is allowed a network and already holds the badssl.com checks -- so
-the functional tests need nothing but a JDK.
 
 ### 19. A drag still lags, and the interpreter has a next tier
 
@@ -309,6 +311,15 @@ still reads slow after the paint work:
   real 3.22.5 and is refused here, and a TLS 1.2 elliptic curve server reads
   here and fails there. The vendored `prot-tls.reb` carries four edits for
   it. Decision 43 and finding 222 say what and why.
+- **The command line trusts the machine's authorities, and a certificate with
+  a GeneralizedTime validity reads here, on purpose.** The keychain, the
+  Windows root store and the Linux bundle are added to the JDK's, and
+  `--cafile` adds a bundle of its own; the verdicts above still hold. The
+  borrowed DER/CRT codecs now decode GeneralizedTime, which X.509 permits, so
+  a server behind a company's TLS inspector reads here and stops a real
+  3.22.5 at "Missing public key in certifiate". The nine github assertions
+  that came off `fails-on-rebol-too.txt` for that reason are this divergence.
+  Decision 47.
 - **A file is judged by where it really leads, where R3 judges the path as
   text, on purpose.** A symbolic link in a script's own folder pointing out
   of it reads in a real 3.22.5 and is a security violation here, naming where
@@ -336,10 +347,3 @@ A flake is a fail. None of these is closed.
 - **`WebScreenServerFromTheSourceTest`** failed once with 404 where it wanted
   204, and has passed every time since. The assertion now carries the whole
   response for next time.
-- **`thru-cache-test.r3`** failed once under a full gate on 2026-10-12 -- three
-  assertions "never reached" because the script died before them, and the
-  whole suite passed alone straight after. The reads to
-  `raw.githubusercontent.com` are goal 18's dependency on two outside
-  services, and under a parallel gate one of them stalled past the run's
-  deadline. Goal 18 is the fix; until then a full gate can fail here without
-  anything having changed.
