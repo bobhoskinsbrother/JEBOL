@@ -17,7 +17,7 @@ class TextLinesFromTheSourceTest {
             run.size() * 3 / 4,
             run.size() / 4);
 
-    private final Placement aBox = new Placement(0, 0, 200, 100, ClipRectangle.coverTheWholeSurface(400, 400), Placement.OPAQUE);
+    private final Placement aBox = new Placement(0, 0, 200, 100, ClipRectangle.coverWholeSurface(400, 400), Placement.OPAQUE);
 
     private final TextLayout noInset = new TextLayout(0, 0, 0, 0,
             TextAlignment.LEFT, TextVerticalAlignment.TOP, 0, 0);

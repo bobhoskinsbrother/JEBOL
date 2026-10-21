@@ -119,7 +119,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
 
     @Override
     public Value combineBitwise(Value right, BitwiseOperation operation) {
-        return cycleAgainstTheLonger(takeSomeOctetsFrom(right), operation);
+        return cycleAgainstLonger(takeSomeOctetsFrom(right), operation);
     }
 
     private BinaryValue takeSomeOctetsFrom(Value right) {
@@ -129,7 +129,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         throw Raised.of(EvaluationFailure.INVALID_ARG, right);
     }
 
-    private Value cycleAgainstTheLonger(
+    private Value cycleAgainstLonger(
             BinaryValue right, BitwiseOperation operation) {
 
         BinaryValue longer = lengthFromHere() >= right.lengthFromHere() ? this : right;

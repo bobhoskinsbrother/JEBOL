@@ -56,7 +56,7 @@ public class RandomAction extends DefaultNative implements ActionValue {
     }
 
     private Value seedWith(Value chosen) {
-        randomness.seed(chosen.asRandomSeed(encodings::computeTheChecksumSeed));
+        randomness.seed(chosen.asRandomSeed(encodings::computeChecksumSeed));
         return UnsetValue.unset();
     }
 }

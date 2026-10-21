@@ -36,7 +36,7 @@ public class ComposeNative extends DefaultNative {
             boolean keepingBlocksWhole = refinements.contains("only");
             boolean goingDeep = refinements.contains("deep");
             if (template instanceof MapValue map) {
-                return composeAMap(map, evaluator, context, keepingBlocksWhole, goingDeep);
+                return composeMap(map, evaluator, context, keepingBlocksWhole, goingDeep);
             }
             Optional<Value> target = readTheArgumentOf("into", 0, arguments, refinements);
             if (!(template instanceof AnyBlockValue block)) {
@@ -82,7 +82,7 @@ public class ComposeNative extends DefaultNative {
             return compose(nested, evaluator, context, keepingBlocksWhole, GOING_DEEP);
         }
         if (goingDeep && item instanceof MapValue nested) {
-            return composeAMap(nested, evaluator, context, keepingBlocksWhole, GOING_DEEP);
+            return composeMap(nested, evaluator, context, keepingBlocksWhole, GOING_DEEP);
         }
         return goingDeep ? copyBlockShapeWhole(item) : item;
     }
@@ -108,8 +108,8 @@ public class ComposeNative extends DefaultNative {
                 : item;
     }
 
-    private MapValue composeAMap(MapValue template, Evaluator evaluator, Context context,
-                                 boolean keepingBlocksWhole, boolean goingDeep) {
+    private MapValue composeMap(MapValue template, Evaluator evaluator, Context context,
+                                boolean keepingBlocksWhole, boolean goingDeep) {
         return new MapActions(template).composeThrough(held -> {
             if (held instanceof ParenValue paren) {
                 return evaluator.evaluateOrRaise(paren.asBlock(), context);
@@ -118,7 +118,7 @@ public class ComposeNative extends DefaultNative {
                 return compose(nested, evaluator, context, keepingBlocksWhole, GOING_DEEP);
             }
             if (goingDeep && held instanceof MapValue nested) {
-                return composeAMap(nested, evaluator, context, keepingBlocksWhole, GOING_DEEP);
+                return composeMap(nested, evaluator, context, keepingBlocksWhole, GOING_DEEP);
             }
             return held;
         });

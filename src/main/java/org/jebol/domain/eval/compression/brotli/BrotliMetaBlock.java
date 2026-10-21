@@ -114,10 +114,10 @@ final class BrotliMetaBlock {
         if (total == 0) {
             return false;
         }
-        double withNoContext = estimateTheEntropy(regardless, 0, 32);
+        double withNoContext = estimateEntropy(regardless, 0, 32);
         double withContexts = 0;
         for (int context = 0; context < THIRTEEN_CONTEXTS_COUNT; context++) {
-            withContexts += estimateTheEntropy(byContext, context << 5, 32);
+            withContexts += estimateEntropy(byContext, context << 5, 32);
         }
         double perSymbol = 1.0 / (double) total;
         withNoContext *= perSymbol;
@@ -133,12 +133,12 @@ final class BrotliMetaBlock {
             alone[which % 3] += pairs[which];
             byWhatCameBefore[which % 6] += pairs[which];
         }
-        double withNoContext = estimateTheEntropy(alone, 0, 3);
-        double withTwoContexts = estimateTheEntropy(byWhatCameBefore, 0, 3)
-                + estimateTheEntropy(byWhatCameBefore, 3, 3);
+        double withNoContext = estimateEntropy(alone, 0, 3);
+        double withTwoContexts = estimateEntropy(byWhatCameBefore, 0, 3)
+                + estimateEntropy(byWhatCameBefore, 3, 3);
         double withThreeContexts = 0;
         for (int which = 0; which < 3; which++) {
-            withThreeContexts += estimateTheEntropy(pairs, 3 * which, 3);
+            withThreeContexts += estimateEntropy(pairs, 3 * which, 3);
         }
 
         long total = alone[0] + alone[1] + alone[2];
@@ -161,7 +161,7 @@ final class BrotliMetaBlock {
         return THREE_CONTEXTS;
     }
 
-    private static double estimateTheEntropy(int[] population, int at, int size) {
+    private static double estimateEntropy(int[] population, int at, int size) {
         long total = 0;
         double answer = 0;
         for (int each = 0; each < size; each++) {

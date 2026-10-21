@@ -28,7 +28,7 @@ final class BrotliMetaBlockWriter {
         into.jumpToByteBoundary();
     }
 
-    private static int codeTheBlockLength(int length) {
+    private static int codeBlockLength(int length) {
         int code = length >= 177 ? (length >= 753 ? 20 : 14) : (length >= 41 ? 7 : 0);
         while (code < BLOCK_LENGTH_SYMBOLS - 1
                 && length >= BLOCK_LENGTH_FROM[code + 1]) {
@@ -340,7 +340,7 @@ final class BrotliMetaBlockWriter {
                 if (block != 0) {
                     typeHistogram[code]++;
                 }
-                lengthHistogram[codeTheBlockLength(split.readLengthAt(block))]++;
+                lengthHistogram[codeBlockLength(split.readLengthAt(block))]++;
             }
 
             writeNumberNoLargerThanAByte(howManyTypes - 1, into);
@@ -366,7 +366,7 @@ final class BrotliMetaBlockWriter {
             if (!isTheFirst) {
                 into.write(typeDepth[typeCode], typeBits[typeCode]);
             }
-            int lengthCode = codeTheBlockLength(blockLength);
+            int lengthCode = codeBlockLength(blockLength);
             into.write(lengthDepth[lengthCode], lengthBits[lengthCode]);
             into.write(BLOCK_LENGTH_EXTRA_BITS[lengthCode],
                     blockLength - BLOCK_LENGTH_FROM[lengthCode]);

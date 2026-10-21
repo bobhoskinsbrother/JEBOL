@@ -23,7 +23,7 @@ final class Exclude implements SetOperation {
     }
 
     @Override
-    public int combineTheBits(int mine, int yours) {
+    public int combineBits(int mine, int yours) {
         return mine & ~yours;
     }
 }

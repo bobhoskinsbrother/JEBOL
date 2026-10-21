@@ -138,8 +138,8 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
                 return new ImageValue(original.storage().copy(), 1);
             }
             if (spec instanceof PairValue(double x, double y)) {
-                return ImageValue.of(clampTheSide(x),
-                        clampTheSide(y));
+                return ImageValue.of(clampSide(x),
+                        clampSide(y));
             }
             if (spec instanceof AnyBlockValue parts && !parts.remaining().isEmpty()) {
                 return makeImageFromParts(parts);
@@ -185,7 +185,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
             return construction.make(this, BlockValue.of(contents));
         }
 
-        private int clampTheSide(double given) {
+        private int clampSide(double given) {
             int side = (int) given;
             if (side > ImageStorage.LONGEST_SIDE) {
                 throw Raised.of(EvaluationFailure.SIZE_LIMIT, this);

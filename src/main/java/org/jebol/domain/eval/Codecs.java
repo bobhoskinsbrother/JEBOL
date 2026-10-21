@@ -29,11 +29,11 @@ public final class Codecs {
             return new Answer(Kind.STRING, text, 0);
         }
 
-        static Answer answerWithABlock(Value items) {
+        static Answer answerWithBlock(Value items) {
             return new Answer(Kind.BLOCK, items, 0);
         }
 
-        static Answer answerWithABinary(Value bytes) {
+        static Answer answerWithBinary(Value bytes) {
             return new Answer(Kind.BINARY, bytes, 0);
         }
 
@@ -59,8 +59,8 @@ public final class Codecs {
         return switch (action) {
             case IDENTIFY -> Answer.checkWhoseErrorCodeIsTheInvertedResult(
                     Qoi.identifies(readTheBytesOf(data)) ? YES : NO);
-            case DECODE -> decodeTheImageIn(readTheBytesOf(data));
-            case ENCODE -> Answer.answerWithABinary(writeBytesBlueFirst((ImageValue) data));
+            case DECODE -> decodeImageIn(readTheBytesOf(data));
+            case ENCODE -> Answer.answerWithBinary(writeBytesBlueFirst((ImageValue) data));
         };
     }
 
@@ -68,7 +68,7 @@ public final class Codecs {
 
     private static final int NO = 1;
 
-    private Answer decodeTheImageIn(byte[] bytes) {
+    private Answer decodeImageIn(byte[] bytes) {
         Qoi.Decoded read = Qoi.decode(bytes);
         if (read == null) {
             return Answer.answerNotAvailable();
@@ -109,14 +109,14 @@ public final class Codecs {
             case IDENTIFY -> Answer.checkWhoseErrorCodeIsTheInvertedResult(YES);
             case DECODE -> Answer.string(StringValue.of(
                     encodings.textBehindAnyMark(readTheBytesOf(data))));
-            case ENCODE -> Answer.answerWithABinary(BinaryValue.of());
+            case ENCODE -> Answer.answerWithBinary(BinaryValue.of());
         };
     }
 
     private Answer handleMarkup(Action action, Value data) {
         return switch (action) {
             case IDENTIFY -> Answer.checkWhoseErrorCodeIsTheInvertedResult(NO);
-            case DECODE -> Answer.answerWithABlock(BlockValue.of(
+            case DECODE -> Answer.answerWithBlock(BlockValue.of(
                     parseTheMarkupOf(new String(readTheBytesOf(data), StandardCharsets.UTF_8))));
             case ENCODE -> Answer.answerNotAvailable();
         };
@@ -140,7 +140,7 @@ public final class Codecs {
             if (opened < 0) {
                 break;
             }
-            if (!canStartATag(source, opened + 1)) {
+            if (!canStartTag(source, opened + 1)) {
                 at = opened + 1;
                 continue;
             }
@@ -167,7 +167,7 @@ public final class Codecs {
         return opened;
     }
 
-    private boolean canStartATag(String source, int at) {
+    private boolean canStartTag(String source, int at) {
         if (at >= source.length()) {
             return false;
         }

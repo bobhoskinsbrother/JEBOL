@@ -177,7 +177,7 @@ public record VectorValue(VectorStorage storage, int index) implements RebolSeri
             if (howMany < 0) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, Molder.mold(spec));
             }
-            return allocateWithinTheHost(() -> VectorSpec.ofSize((int) howMany));
+            return allocateWithinHost(() -> VectorSpec.ofSize((int) howMany));
         }
 
         @Override

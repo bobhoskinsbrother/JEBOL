@@ -37,7 +37,7 @@ public final class BlockActions extends SeriesActions {
 
     @Override
     public Value clear() {
-        return clearOneAtATime();
+        return clearOneAtTime();
     }
 
     @Override

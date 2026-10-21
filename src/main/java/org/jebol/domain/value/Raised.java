@@ -82,13 +82,13 @@ public final class Raised extends RuntimeException {
         return cannotUse(value, nativeName, WordValue.of(nativeName));
     }
 
-    public static Raised cannotUseTheAction(Value value, String actionName) {
+    public static Raised cannotUseAction(Value value, String actionName) {
         return cannotUse(value, actionName, SetWordValue.of(actionName));
     }
 
     public static Raised cannotUse(Value value, NativeValue refusing) {
         return refusing instanceof ActionValue
-                ? cannotUseTheAction(value, refusing.nativeName())
+                ? cannotUseAction(value, refusing.nativeName())
                 : cannotUse(value, refusing.nativeName());
     }
 

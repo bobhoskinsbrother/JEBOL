@@ -23,7 +23,7 @@ public record TextLayout(
     public record LinePlacement(double across, double baseline) {
     }
 
-    public boolean castsAShadow() {
+    public boolean castsShadow() {
         return shadowAcross != 0 || shadowDown != 0;
     }
 

@@ -49,7 +49,7 @@ public final class BrowserDigests implements DigestPort {
     }
 
     @Override
-    public byte[] digestWithAKey(String method, byte[] octets, byte[] key) {
+    public byte[] digestWithKey(String method, byte[] octets, byte[] key) {
         require(method);
         WhatCameBack answer =
                 jebolKeyedDigest(method, asATypedArray(key), asATypedArray(octets)).await();

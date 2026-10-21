@@ -154,7 +154,7 @@ public final class Comparison {
 
         return left.isEqualTo(right, approved
                 ? new Sameness(stepsAllowed, true)
-                : Sameness.allowStepsInsideASeries(stepsAllowed));
+                : Sameness.allowStepsInsideSeries(stepsAllowed));
     }
 
 
@@ -183,7 +183,7 @@ public final class Comparison {
             return first.asDeci().isEqualTo(second.asDeci());
         }
         if (left instanceof PairValue && right instanceof PairValue) {
-            return compareTheOrder(left, right) == 0;
+            return compareOrder(left, right) == 0;
         }
         if (left instanceof TupleValue first && right instanceof TupleValue second) {
             return first.equals(second) && first.segmentCount() == second.segmentCount();
@@ -223,14 +223,14 @@ public final class Comparison {
             return false;
         }
         if (left instanceof AnyDecimalValue first && right instanceof AnyDecimalValue second) {
-            return areBothNotANumber(first, second)
-                    || areNearlyTheSameNumber(first.quantity(), second.quantity(),
+            return areBothNotNumber(first, second)
+                    || areNearlySameNumber(first.quantity(), second.quantity(),
                             STEPS_ALLOWED_INSIDE_A_SERIES);
         }
         return areStrictlyEqual(left, right);
     }
 
-    private static boolean areBothNotANumber(AnyDecimalValue first, AnyDecimalValue second) {
+    private static boolean areBothNotNumber(AnyDecimalValue first, AnyDecimalValue second) {
         return Double.isNaN(first.quantity()) && Double.isNaN(second.quantity());
     }
 
@@ -269,7 +269,7 @@ public final class Comparison {
             return first.equals(second) && first.segmentCount() == second.segmentCount();
         }
         if (left instanceof PairValue && right instanceof PairValue) {
-            return compareTheOrder(left, right) == 0;
+            return compareOrder(left, right) == 0;
         }
         return left.equals(right);
     }
@@ -284,10 +284,10 @@ public final class Comparison {
                 || REFUSE_TO_BE_ORDERED.contains(right.datatype())) {
             throw refuse(left, right);
         }
-        return wanted.test(compareTheOrder(left, right));
+        return wanted.test(compareOrder(left, right));
     }
 
-    private static int compareTheOrder(Value left, Value right) {
+    private static int compareOrder(Value left, Value right) {
         if (left instanceof HandleValue first && right instanceof HandleValue second) {
             return first.compareWith(second);
         }
@@ -333,7 +333,7 @@ public final class Comparison {
                 return 1;
             }
             int theFirstItemThatTellsThemApart =
-                    compareInsideASeries(ours.get(at), theirs.get(at));
+                    compareInsideSeries(ours.get(at), theirs.get(at));
             if (theFirstItemThatTellsThemApart != 0) {
                 return theFirstItemThatTellsThemApart;
             }
@@ -346,7 +346,7 @@ public final class Comparison {
         return ours.size() == theirs.size() ? 0 : -1;
     }
 
-    private static int compareInsideASeries(Value left, Value right) {
+    private static int compareInsideSeries(Value left, Value right) {
         if (!ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(left.datatype())
                 || !ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(right.datatype())) {
             return compareForSorting(left, right, false);
@@ -354,11 +354,11 @@ public final class Comparison {
         if (left instanceof AnyDecimalValue || right instanceof AnyDecimalValue) {
             double first = asDouble(left);
             double second = asDouble(right);
-            return areNearlyTheSameNumber(first, second, STEPS_ALLOWED_INSIDE_A_SERIES)
+            return areNearlySameNumber(first, second, STEPS_ALLOWED_INSIDE_A_SERIES)
                     ? 0
                     : Double.compare(first, second);
         }
-        return compareTheOrder(left, right);
+        return compareOrder(left, right);
     }
 
     private static int comparePairs(PairValue left, PairValue right) {
@@ -413,7 +413,7 @@ public final class Comparison {
             return compareTuples(first, second);
         }
         if (MONEY.meetsMoney(left, right)) {
-            return MONEY.compareTheSortingOrder(left, right);
+            return MONEY.compareSortingOrder(left, right);
         }
         if (isNumeric(left) && isNumeric(right)) {
             boolean leftIsNaN = Double.isNaN(asDouble(left));
@@ -431,7 +431,7 @@ public final class Comparison {
                 : Molder.form(left).compareToIgnoreCase(Molder.form(right));
     }
 
-    private static boolean areNearlyTheSameNumber(double first, double second, long stepsAllowed) {
+    private static boolean areNearlySameNumber(double first, double second, long stepsAllowed) {
         long steps = placeInRunningOrder(first) - placeInRunningOrder(second);
         return Math.abs(steps) <= stepsAllowed;
     }

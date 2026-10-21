@@ -333,7 +333,7 @@ class DashesArrowheadsAndGradientsFromTheSourceTest {
                             + "box 0x0 100x100").painted().fillGradient().orElseThrow();
 
             assertThat(diagonal.angle()).isEqualTo(straight.angle() + 45);
-            assertThat(diagonal.shape().canBeDrawnByAToolkit()).isTrue();
+            assertThat(diagonal.shape().canBeDrawnByToolkit()).isTrue();
         }
 
         @Test

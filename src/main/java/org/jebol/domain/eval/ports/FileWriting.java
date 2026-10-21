@@ -44,9 +44,9 @@ final class FileWriting {
     }
 
     void performThrough(FilePort files) {
-        byte[] bytes = encodeTheBytesToWrite();
+        byte[] bytes = encodeBytesToWrite();
         if (position.isPresent()) {
-            files.writeAt(path, clipToTheFileSize(files), bytes);
+            files.writeAt(path, clipToFileSize(files), bytes);
         } else if (atTheEnd) {
             files.appendTo(path, bytes);
         } else {
@@ -54,16 +54,16 @@ final class FileWriting {
         }
     }
 
-    private long clipToTheFileSize(FilePort files) {
+    private long clipToFileSize(FilePort files) {
         long size = files.describe(path)
                 .flatMap(FileInformation::size)
                 .orElse(0L);
         return Math.min(position.orElseThrow(), size);
     }
 
-    private byte[] encodeTheBytesToWrite() {
+    private byte[] encodeBytesToWrite() {
         if (data instanceof BinaryValue binary) {
-            return withTheLineFeedByteLinesAsks(boundTheOctets(binary.octetsFromHere()));
+            return withTheLineFeedByteLinesAsks(boundOctets(binary.octetsFromHere()));
         }
         if (data instanceof CharacterValue(int codepoint)) {
             return encodeAsUtf8(new String(Character.toChars(codepoint)));
@@ -71,7 +71,7 @@ final class FileWriting {
         if (data instanceof AnyBlockValue block && oneValuePerLine) {
             return encodeAsUtf8(formEachValueOnItsOwnLine(block));
         }
-        return encodeAsUtf8(withTheLineFeedLinesAsks(boundTheText(asTextToWrite())));
+        return encodeAsUtf8(withTheLineFeedLinesAsks(boundText(asTextToWrite())));
     }
 
     private String asTextToWrite() {
@@ -99,7 +99,7 @@ final class FileWriting {
         return fed;
     }
 
-    private String boundTheText(String text) {
+    private String boundText(String text) {
         if (bound.isEmpty()) {
             return text;
         }
@@ -108,7 +108,7 @@ final class FileWriting {
         return text.substring(0, text.offsetByCodePoints(0, kept));
     }
 
-    private byte[] boundTheOctets(byte[] octets) {
+    private byte[] boundOctets(byte[] octets) {
         if (bound.isEmpty() || bound.orElseThrow() >= octets.length) {
             return octets;
         }

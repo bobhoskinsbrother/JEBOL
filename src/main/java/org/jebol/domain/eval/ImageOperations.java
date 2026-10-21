@@ -72,13 +72,13 @@ public final class ImageOperations {
                                       int wide, int high, int spread) {
 
         System.arraycopy(picture, 0, working, 0, wide * high * CHANNELS);
-        blurAlongTheRows(working, picture, wide, high, spread);
-        blurDownTheColumns(picture, working, wide, high, spread);
+        blurAlongRows(working, picture, wide, high, spread);
+        blurDownColumns(picture, working, wide, high, spread);
         System.arraycopy(working, 0, picture, 0, wide * high * CHANNELS);
     }
 
-    private static void blurAlongTheRows(byte[] from, byte[] into,
-                                         int wide, int high, int spread) {
+    private static void blurAlongRows(byte[] from, byte[] into,
+                                      int wide, int high, int spread) {
 
         for (int row = 0; row < high; row++) {
             for (int channel = 0; channel < CHANNELS; channel++) {
@@ -114,8 +114,8 @@ public final class ImageOperations {
         }
     }
 
-    private static void blurDownTheColumns(byte[] from, byte[] into,
-                                           int wide, int high, int spread) {
+    private static void blurDownColumns(byte[] from, byte[] into,
+                                        int wide, int high, int spread) {
 
         int aRow = wide * CHANNELS;
         for (int column = 0; column < wide; column++) {

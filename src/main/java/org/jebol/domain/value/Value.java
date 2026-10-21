@@ -86,7 +86,7 @@ public sealed interface Value permits
     }
 
     default boolean atTail() {
-        throw Raised.cannotUseTheAction(this, "tail?");
+        throw Raised.cannotUseAction(this, "tail?");
     }
 
     default String writeInHex(HexWidth width) {
@@ -99,14 +99,14 @@ public sealed interface Value permits
     }
 
     default Value pick(int oneBasedPosition) {
-        throw Raised.cannotUseTheAction(this, "pick");
+        throw Raised.cannotUseAction(this, "pick");
     }
 
     default Value pickBy(Value selector) {
         if (selector instanceof IntegerValue(long magnitude)) {
             return pick((int) magnitude);
         }
-        throw Raised.cannotUseTheAction(this, "pick");
+        throw Raised.cannotUseAction(this, "pick");
     }
 
     default Value reflect(AnyWordValue field) {
@@ -124,13 +124,13 @@ public sealed interface Value permits
                 .orElseGet(NoneValue::none);
     }
 
-    default boolean declaresTheField(String field) {
+    default boolean declaresField(String field) {
         return fieldsAsAContext().map(fields -> fields.holds(field)).orElse(false);
     }
 
-    default boolean declaresAFieldFindCanReachBy(Value wanted) {
+    default boolean declaresFieldFindCanReachBy(Value wanted) {
         return wanted instanceof WordValue word
-                && declaresTheField(word.canonical());
+                && declaresField(word.canonical());
     }
 
     default boolean isProtected() {
@@ -154,11 +154,11 @@ public sealed interface Value permits
     }
 
     default Value calculate(Value right, ArithmeticOperation operation) {
-        throw Raised.cannotUseTheAction(this, operation.spelling());
+        throw Raised.cannotUseAction(this, operation.spelling());
     }
 
     default Value makeAbsolute() {
-        throw Raised.cannotUseTheAction(this, "absolute");
+        throw Raised.cannotUseAction(this, "absolute");
     }
 
     default Value negated() {
@@ -175,7 +175,7 @@ public sealed interface Value permits
     }
 
     default Value randomise(RandomDraw draw) {
-        throw Raised.cannotUseTheAction(this, "random");
+        throw Raised.cannotUseAction(this, "random");
     }
 
     default Value pickAtRandom(RandomDraw draw) {
@@ -183,7 +183,7 @@ public sealed interface Value permits
     }
 
     default long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
-        throw Raised.cannotUseTheAction(this, "random");
+        throw Raised.cannotUseAction(this, "random");
     }
 
     default Value holdBetween(Value lowest, Value highest) {

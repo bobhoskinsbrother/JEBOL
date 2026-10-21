@@ -56,7 +56,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
         }
 
         @Override
-        protected int bytesAnItemTakes() {
+        protected int bytesItemTakes() {
             return BYTES_A_SLOT_TAKES;
         }
 
@@ -92,7 +92,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
 
         @Override
         protected Value build(Conversion asking, Value from, Maker maker) {
-            return allocateWithinTheHost(() -> buildBlock(asking, from, maker));
+            return allocateWithinHost(() -> buildBlock(asking, from, maker));
         }
 
         private Value buildBlock(Conversion asking, Value from, Maker maker) {
@@ -173,12 +173,12 @@ public abstract sealed class AnyBlockValue implements RebolSeries
 
     @Override
     public Value randomise(RandomDraw draw) {
-        throw Raised.cannotUseTheAction(this, "random");
+        throw Raised.cannotUseAction(this, "random");
     }
 
     @Override
     public Value pickAtRandom(RandomDraw draw) {
-        throw Raised.cannotUseTheAction(this, "random");
+        throw Raised.cannotUseAction(this, "random");
     }
 
     @Override
@@ -275,11 +275,11 @@ public abstract sealed class AnyBlockValue implements RebolSeries
 
     public BlockValue declaredParameters() {
         return BlockValue.of(remaining().stream()
-                .filter(AnyBlockValue::declaresAParameter)
+                .filter(AnyBlockValue::declaresParameter)
                 .toList());
     }
 
-    private static boolean declaresAParameter(Value item) {
+    private static boolean declaresParameter(Value item) {
         return item instanceof AnyWordValue word
                 && !(word instanceof SetWordValue || word instanceof IssueValue);
     }

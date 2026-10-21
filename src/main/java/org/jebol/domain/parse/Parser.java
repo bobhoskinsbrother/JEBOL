@@ -76,7 +76,7 @@ public final class Parser implements ParseWalk {
             } catch (AlternativeSkipped committed) {
                 at += 2;
             } catch (BlockEnded ended) {
-                if (ended.endedAsAMatch()) {
+                if (ended.endedAsMatch()) {
                     blockEndedInAMatch = true;
                     return true;
                 }
@@ -127,12 +127,12 @@ public final class Parser implements ParseWalk {
             return Optional.empty();
         }
         if (at + 1 >= rules.size()) {
-            return Optional.of(answerForAKeywordAlone(keyword));
+            return Optional.of(answerForKeywordAlone(keyword));
         }
         return keyword.ownsTheRuleAfterIt() && at + keyword.slotsBeforeTheRuleSpan() >= rules.size() ? Optional.of(NO_MATCH) : Optional.empty();
     }
 
-    private int answerForAKeywordAlone(ParseKeyword keyword) {
+    private int answerForKeywordAlone(ParseKeyword keyword) {
         return switch (keyword.describeWhenNothingFollows()) {
             case DOES_NOT_MATCH -> NO_MATCH;
             case RAISES_PARSE_END -> throw Raised.of(EvaluationFailure.PARSE_END, keyword.spelling());
@@ -318,9 +318,9 @@ public final class Parser implements ParseWalk {
     @Override
     public void assign(AnyWordValue word, Value value) {
         if (walkingABlock) {
-            assignOverABlock(word, value);
+            assignOverBlock(word, value);
         } else {
-            assignOverAString(word, value);
+            assignOverString(word, value);
         }
     }
 
@@ -374,7 +374,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public void deliverTheCollectedTo(AnyWordValue target, List<Value> mine, boolean appending) {
+    public void deliverCollectedTo(AnyWordValue target, List<Value> mine, boolean appending) {
         if (walkingABlock) {
             Value existing = valueOf(target);
             refuseATargetThatCannotHoldWhatThisParseYieldsOverABlock(existing);
@@ -438,7 +438,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public void deliverTheCollected(List<Value> mine) {
+    public void deliverCollected(List<Value> mine) {
         if (!collectionsOpenInnermostLast.isEmpty()) {
             collectionsOpenInnermostLast.peek().add(BlockValue.of(mine));
         } else if (gathered == null) {
@@ -539,7 +539,7 @@ public final class Parser implements ParseWalk {
             return matchCountedRule(rules, at);
         }
         if (rule instanceof SetWordValue mark) {
-            assignOverABlock(mark, source == null ? BlockValue.of(input.subList(position, input.size())) : source.atIndex(source.index() + position));
+            assignOverBlock(mark, source == null ? BlockValue.of(input.subList(position, input.size())) : source.atIndex(source.index() + position));
             return 1;
         }
         if (rule instanceof GetWordValue back) {
@@ -658,7 +658,7 @@ public final class Parser implements ParseWalk {
         return target.contains(word.canonical()) ? target.findSlotFor(word.canonical()).value() : NoneValue.none();
     }
 
-    private void assignOverABlock(AnyWordValue word, Value value) {
+    private void assignOverBlock(AnyWordValue word, Value value) {
         Context target = word.isBound() ? word.binding() : context;
         if (!target.contains(word.canonical())) {
             target.register(word.spelling());
@@ -817,7 +817,7 @@ public final class Parser implements ParseWalk {
     int matchOneOverAString(List<Value> rules, int at) {
         Value rule = rules.get(at);
         if (rule instanceof SetWordValue mark) {
-            assignOverAString(mark, source.atIndex(source.index() + position));
+            assignOverString(mark, source.atIndex(source.index() + position));
             return 1;
         }
         if (rule instanceof GetWordValue back) {
@@ -979,7 +979,7 @@ public final class Parser implements ParseWalk {
         }
     }
 
-    private void assignOverAString(AnyWordValue word, Value value) {
+    private void assignOverString(AnyWordValue word, Value value) {
         Context target = word.isBound() ? word.binding() : context;
         target.register(word.canonical(), value);
     }

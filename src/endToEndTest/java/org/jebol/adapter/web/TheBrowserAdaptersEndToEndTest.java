@@ -143,7 +143,7 @@ class TheBrowserAdaptersEndToEndTest {
     }
 
     private static String writeTheKeyedHexOf(String text) {
-        return encodeAsHex(new JvmDigests().digestWithAKey(
+        return encodeAsHex(new JvmDigests().digestWithKey(
                 "sha1", text.getBytes(StandardCharsets.UTF_8),
                 "key".getBytes(StandardCharsets.UTF_8)));
     }

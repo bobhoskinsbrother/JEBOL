@@ -24,12 +24,12 @@ abstract class PositionedSeriesDatatype extends SeriesDatatype {
         if (asked < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, spec.toString());
         }
-        refuseMoreRoomThanFits(asked, bytesAnItemTakes());
+        refuseMoreRoomThanFits(asked, bytesItemTakes());
         int room = (int) Math.min(Integer.MAX_VALUE, (long) asked);
-        return allocateWithinTheHost(() -> withRoomFor(room));
+        return allocateWithinHost(() -> withRoomFor(room));
     }
 
-    protected int bytesAnItemTakes() {
+    protected int bytesItemTakes() {
         return 1;
     }
 

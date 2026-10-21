@@ -117,7 +117,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
     private Value combineEveryOctetAgainst(long magnitude, BitwiseOperation operation) {
         int[] combined = new int[segments.length];
         for (int at = 0; at < combined.length; at++) {
-            combined[at] = clampToAnOctet(
+            combined[at] = clampToOctet(
                     operation.onWholeElements(segments[at], magnitude));
         }
         return TupleValue.of(combined);
@@ -129,13 +129,13 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
         for (int at = 0; at < combined.length; at++) {
             long mine = at < segments.length ? segments[at] : 0;
             long theirsHere = at < yours.length ? yours[at] : 0;
-            combined[at] = clampToAnOctet(
+            combined[at] = clampToOctet(
                     operation.onWholeElements(mine, theirsHere));
         }
         return TupleValue.of(combined);
     }
 
-    private int clampToAnOctet(long combined) {
+    private int clampToOctet(long combined) {
         return (int) Math.clamp(combined, 0L, 255L);
     }
 

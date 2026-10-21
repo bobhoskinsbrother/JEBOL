@@ -478,14 +478,14 @@ public final class FileSystemPort implements FilePort {
                 continue;
             }
             if (segment.equals("..")) {
-                dropTheSegmentAboveOrStayAtTheRoot(segments);
+                dropSegmentAboveOrStayAtRoot(segments);
             } else {
                 segments.addLast(segment);
             }
         }
     }
 
-    private void dropTheSegmentAboveOrStayAtTheRoot(Deque<String> segments) {
+    private void dropSegmentAboveOrStayAtRoot(Deque<String> segments) {
         segments.pollLast();
     }
 }

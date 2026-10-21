@@ -17,10 +17,10 @@ public interface SetOperation {
 
     boolean keepsFromTheSecondSet(boolean inOurs);
 
-    int combineTheBits(int mine, int yours);
+    int combineBits(int mine, int yours);
 
     default boolean holdsWhen(boolean inMine, boolean inYours) {
-        return combineTheBits(inMine ? 1 : 0, inYours ? 1 : 0) != 0;
+        return combineBits(inMine ? 1 : 0, inYours ? 1 : 0) != 0;
     }
 
     Map<String, SetOperation> BY_SPELLING = Stream.of(

@@ -20,14 +20,14 @@ public class CheckNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            if (carriesAZeroAnywhere(arguments.getFirst())) {
+            if (carriesZeroAnywhere(arguments.getFirst())) {
                 throw Raised.of(EvaluationFailure.BAD_SERIES);
             }
             return arguments.getFirst();
         };
     }
 
-    private boolean carriesAZeroAnywhere(Value series) {
+    private boolean carriesZeroAnywhere(Value series) {
         return switch (series) {
             case AnyStringValue text -> text.head().text().indexOf(0) >= 0;
             case BinaryValue octets -> holdsAZero(octets.head().octetsFromHere());

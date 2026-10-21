@@ -10,7 +10,7 @@ public record Sameness(long stepsAllowed, boolean theyWereBroughtTogetherFirst) 
         return new Sameness(STEPS_ALLOWED_INSIDE_A_SERIES, false);
     }
 
-    public static Sameness allowStepsInsideASeries(long stepsAllowed) {
+    public static Sameness allowStepsInsideSeries(long stepsAllowed) {
         return new Sameness(stepsAllowed, false);
     }
 

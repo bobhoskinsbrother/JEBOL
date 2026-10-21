@@ -17,10 +17,10 @@ public final class TupleActions {
 
     public Value combineWith(Value left, Value right, ArithmeticOperation operation) {
         return workOctetByOctet(left, right, (octet, against, fractional) ->
-                combineAnOctet(octet, against, fractional, operation));
+                combineOctet(octet, against, fractional, operation));
     }
 
-    private long combineAnOctet(
+    private long combineOctet(
             long octet, double against, boolean fractional,
             ArithmeticOperation operation) {
 

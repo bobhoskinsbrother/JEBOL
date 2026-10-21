@@ -55,7 +55,7 @@ public final class GobText {
     public Placement findGobsOwnBox() {
         int wide = (int) Math.round(gob.storage().size().x());
         int high = (int) Math.round(gob.storage().size().y());
-        return new Placement(0, 0, wide, high, ClipRectangle.coverTheWholeSurface(Math.max(1, wide), Math.max(1, high)),
+        return new Placement(0, 0, wide, high, ClipRectangle.coverWholeSurface(Math.max(1, wide), Math.max(1, high)),
                 Placement.OPAQUE);
     }
 

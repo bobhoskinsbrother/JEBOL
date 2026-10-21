@@ -228,7 +228,7 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
 
             assertThat(laidOut.shadowAcross()).isEqualTo(2);
             assertThat(laidOut.shadowDown()).isEqualTo(2);
-            assertThat(laidOut.castsAShadow()).isTrue();
+            assertThat(laidOut.castsShadow()).isTrue();
         }
 
         @ParameterizedTest(name = "shadow {0} casts {1} across and {2} down")
@@ -257,7 +257,7 @@ class AGobsTextIsLaidOutByItsParaFromTheSourceTest {
             assertThat(findTheOnlyLineOf("""
                     font (make object! [shadow: 0x0])
                     "label"
-                    """).layout().castsAShadow()).isFalse();
+                    """).layout().castsShadow()).isFalse();
         }
     }
 

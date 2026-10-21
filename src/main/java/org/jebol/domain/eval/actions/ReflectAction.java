@@ -58,12 +58,12 @@ public class ReflectAction extends DefaultNative implements ActionValue {
         return switch (field) {
             case "title" -> StringValue.of(described.title());
             case "type" -> WordValue.of(described.category());
-            case "spec" -> new ObjectValue(describeTheTitleAndType(described));
+            case "spec" -> new ObjectValue(describeTitleAndType(described));
             default -> NoneValue.none();
         };
     }
 
-    private Context describeTheTitleAndType(DatatypeSpec described) {
+    private Context describeTitleAndType(DatatypeSpec described) {
         Context fields = Context.root();
         fields.register("title", StringValue.of(described.title()));
         fields.register("type", WordValue.of(described.category()));

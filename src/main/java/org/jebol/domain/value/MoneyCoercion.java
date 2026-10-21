@@ -29,7 +29,7 @@ public final class MoneyCoercion {
         return theirs.isLesserOrEqualTo(ours) ? 1 : -1;
     }
 
-    public int compareTheSortingOrder(Value left, Value right) {
+    public int compareSortingOrder(Value left, Value right) {
         boolean cmpValueComparesTheAmounts = right instanceof MoneyValue
                 && (left instanceof MoneyValue || left instanceof AnyDecimalValue);
         if (!cmpValueComparesTheAmounts) {

@@ -15,8 +15,8 @@ public abstract class ProtectingNative extends DefaultNative {
         return acceptsWhateverComesAlong("target");
     }
 
-    protected void changeTheProtection(Value target, boolean protectedNow,
-                                       Set<String> refinements) {
+    protected void changeProtection(Value target, boolean protectedNow,
+                                    Set<String> refinements) {
 
         if (!protectFieldNamedBy(target, protectedNow, refinements)) {
             protectNamed(target, protectedNow, refinements);

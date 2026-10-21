@@ -110,7 +110,7 @@ public record PlacedText(
     }
 
     private static Optional<PlacedShadow> placeTheShadowOf(TextLayout layout) {
-        return layout.castsAShadow()
+        return layout.castsShadow()
                 ? Optional.of(new PlacedShadow(layout.shadowAcross(), layout.shadowDown(), Colour.BLACK))
                 : Optional.empty();
     }

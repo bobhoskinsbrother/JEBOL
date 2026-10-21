@@ -124,7 +124,7 @@ final class ChecksumPort {
         return overshoot < 0 ? backwards + overshoot : backwards;
     }
 
-    Value digestSoFarLeftInTheDataFieldAsWell(PortValue port) {
+    Value digestSoFarLeftInDataFieldAsWell(PortValue port) {
         return findTheSumInProgress(port).<Value>map(sum -> {
             BinaryValue answered = BinaryValue.ofBytes(sum.soFar());
             port.setField("data", answered);

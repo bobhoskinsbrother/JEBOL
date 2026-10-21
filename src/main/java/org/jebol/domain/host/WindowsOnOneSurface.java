@@ -95,12 +95,12 @@ public final class WindowsOnOneSurface {
     private List<ScreenEvent> makeEvents(List<GobValue> heardBy, ScreenEventType kind, ScreenEventDetail detail) {
         List<ScreenEvent> addressed = new ArrayList<>();
         for (GobValue window : heardBy) {
-            addressed.add(new ScreenEvent(kind, window, countFromTheWindow(detail, window)));
+            addressed.add(new ScreenEvent(kind, window, countFromWindow(detail, window)));
         }
         return addressed;
     }
 
-    private ScreenEventDetail countFromTheWindow(ScreenEventDetail detail, GobValue window) {
+    private ScreenEventDetail countFromWindow(ScreenEventDetail detail, GobValue window) {
         if (!(detail instanceof ScreenEventDetail.At(int across, int down))) {
             return detail;
         }

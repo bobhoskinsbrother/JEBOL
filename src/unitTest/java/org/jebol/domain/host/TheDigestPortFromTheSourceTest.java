@@ -43,7 +43,7 @@ class TheDigestPortFromTheSourceTest {
         Mac mac = Mac.getInstance("HmacSHA1");
         mac.init(new SecretKeySpec(readTheBytesOf("key"), "HmacSHA1"));
 
-        assertThat(THE_PORT.digestWithAKey("sha1", readTheBytesOf("abc"), readTheBytesOf("key")))
+        assertThat(THE_PORT.digestWithKey("sha1", readTheBytesOf("abc"), readTheBytesOf("key")))
                 .isEqualTo(mac.doFinal(readTheBytesOf("abc")));
     }
 

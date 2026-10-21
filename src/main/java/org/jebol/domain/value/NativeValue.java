@@ -36,12 +36,12 @@ public sealed interface NativeValue extends DeclaresParameters
     default int countArity() {
         long base = parameters().stream()
                 .filter(parameter -> parameter.owningRefinement().isEmpty())
-                .filter(Parameter::consumesAnArgument)
+                .filter(Parameter::consumesArgument)
                 .count();
         long forRefinements = parameters().stream()
                 .filter(parameter -> parameter.owningRefinement()
                         .map(askedRefinements()::contains).orElse(false))
-                .filter(Parameter::consumesAnArgument)
+                .filter(Parameter::consumesArgument)
                 .count();
         return (int) (base + forRefinements);
     }

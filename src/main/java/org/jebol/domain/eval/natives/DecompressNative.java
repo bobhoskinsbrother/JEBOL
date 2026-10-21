@@ -101,7 +101,7 @@ public class DecompressNative extends CompressionNative {
     }
 
     private byte[] ofTheSizeAsked(byte[] whole, String method, int wanted) {
-        if (wanted == AS_MUCH_AS_IT_HOLDS || encodings.cutsShortToTheSizeAsked(method)
+        if (wanted == AS_MUCH_AS_IT_HOLDS || encodings.cutsShortToSizeAsked(method)
                 || whole.length == wanted) {
             return whole;
         }

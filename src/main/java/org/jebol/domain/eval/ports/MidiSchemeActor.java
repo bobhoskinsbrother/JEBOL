@@ -164,7 +164,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         granted.require(HostService.MIDI);
         MidiDevices.Connection connection = findTheOpenConnectionBehind(port);
         try {
-            BinaryValue arrived = BinaryValue.ofBytes(connection.arrivedSinceTheLastRead());
+            BinaryValue arrived = BinaryValue.ofBytes(connection.arrivedSinceLastRead());
             port.setField("data", arrived);
             return arrived;
         } catch (MidiDevices.Refused refused) {

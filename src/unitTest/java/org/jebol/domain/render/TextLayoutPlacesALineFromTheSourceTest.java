@@ -13,7 +13,7 @@ class TextLayoutPlacesALineFromTheSourceTest {
 
     private static final double DESCENT = 4;
 
-    private final Placement aButton = new Placement(10, 20, 100, 40, ClipRectangle.coverTheWholeSurface(400, 400), Placement.OPAQUE);
+    private final Placement aButton = new Placement(10, 20, 100, 40, ClipRectangle.coverWholeSurface(400, 400), Placement.OPAQUE);
 
     private TextLayout layOut(TextAlignment align, TextVerticalAlignment valign) {
         return new TextLayout(2, 2, 2, 2, align, valign, 0, 0);
@@ -91,7 +91,7 @@ class TextLayoutPlacesALineFromTheSourceTest {
     @Test
     @DisplayName("a box with no room left still places the line, at its origin")
     void placesInABoxWithNoRoom() {
-        Placement nothing = new Placement(10, 20, 0, 0, ClipRectangle.coverTheWholeSurface(400, 400), Placement.OPAQUE);
+        Placement nothing = new Placement(10, 20, 0, 0, ClipRectangle.coverWholeSurface(400, 400), Placement.OPAQUE);
 
         TextLayout.LinePlacement placed = TextLayout.STANDARD.placeTheLine(nothing, 40, ASCENT, DESCENT);
 

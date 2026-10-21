@@ -86,7 +86,7 @@ public class DoNative extends DefaultNative {
             case AnyStringValue address when address.isALocation() ->
                     runAsAScript(address, evaluator);
             case AnyStringValue text -> evaluateTheSource(text.text(), evaluator);
-            case BinaryValue bytes -> doAsAScript(bytes, evaluator);
+            case BinaryValue bytes -> doAsScript(bytes, evaluator);
             case ErrorValue built -> throw new Raised(built.raisedAsItStands());
             case AnyWordValue word when word.looksUpItsDeclaration() ->
                     evaluator.readTheValueOfWordIn(word, context);
@@ -115,7 +115,7 @@ public class DoNative extends DefaultNative {
         }
     }
 
-    private Value doAsAScript(BinaryValue bytes, Evaluator evaluator) {
+    private Value doAsScript(BinaryValue bytes, Evaluator evaluator) {
         Value loadHeader = evaluator.systemContext().findSystemFunctionNamed("load-header");
         Value read = evaluator.applyFunction(loadHeader, List.of(bytes));
         if (read instanceof AnyWordValue why) {
@@ -132,7 +132,7 @@ public class DoNative extends DefaultNative {
         if (header instanceof ObjectValue(Context fields)
                 && fields.holds("needs")
                 && fields.findSlotFor("needs").value() instanceof TupleValue wanted
-                && !doesTheInterpreterMeet(wanted, evaluator)) {
+                && !doesInterpreterMeet(wanted, evaluator)) {
             throw new Raised(ErrorValue.of(SyntaxFailure.NEEDS.category(),
                     SyntaxFailure.NEEDS.errorId(),
                     SyntaxFailure.NEEDS.description()));
@@ -147,7 +147,7 @@ public class DoNative extends DefaultNative {
                 : ((BinaryValue) parts.get(1)).asStrictText();
     }
 
-    private boolean doesTheInterpreterMeet(TupleValue wanted, Evaluator evaluator) {
+    private boolean doesInterpreterMeet(TupleValue wanted, Evaluator evaluator) {
         return evaluator.systemContext().readValueAt("system", "version") instanceof TupleValue own
                 && !Comparison.holds(wanted, own, Comparison.Strictness.GREATER);
     }

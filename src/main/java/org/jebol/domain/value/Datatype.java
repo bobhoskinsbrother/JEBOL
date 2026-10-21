@@ -90,7 +90,7 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
         }
     }
 
-    protected Value allocateWithinTheHost(Supplier<Value> allocating) {
+    protected Value allocateWithinHost(Supplier<Value> allocating) {
         try {
             return allocating.get();
         } catch (OutOfMemoryError nothingLeftToGive) {

@@ -57,7 +57,7 @@ public final class StringActions extends SeriesActions {
 
     @Override
     public Value clear() {
-        return clearOneAtATime();
+        return clearOneAtTime();
     }
 
     @Override

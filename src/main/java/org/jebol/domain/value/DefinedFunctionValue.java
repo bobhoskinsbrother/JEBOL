@@ -100,7 +100,7 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
     }
 
     public int arity() {
-        return (int) parameters.stream().filter(Parameter::consumesAnArgument).count();
+        return (int) parameters.stream().filter(Parameter::consumesArgument).count();
     }
 
     @Override

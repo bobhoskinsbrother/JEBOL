@@ -123,9 +123,9 @@ public final class SeriesSorting {
             return compareByColumns(left, right, columns.remaining());
         }
         return wholeRecord
-                ? askComparatorTheOtherWayRound(asked,
+                ? askComparatorOtherWayRound(asked,
                         lendTheRecordOf(series, left), lendTheRecordOf(series, right))
-                : askComparatorTheOtherWayRound(asked,
+                : askComparatorOtherWayRound(asked,
                         lendTheElementOf(series, left.getFirst()),
                         lendTheElementOf(series, right.getFirst()));
     }
@@ -213,7 +213,7 @@ public final class SeriesSorting {
         return 0;
     }
 
-    private int askComparatorTheOtherWayRound(Value asked, Value left, Value right) {
+    private int askComparatorOtherWayRound(Value asked, Value left, Value right) {
         Value answer = evaluator.applyFunction(asked, List.of(right, left));
         if (answer instanceof LogicValue(boolean truth)) {
             return truth ? 1 : -1;

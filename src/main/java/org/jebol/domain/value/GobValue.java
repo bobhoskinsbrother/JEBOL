@@ -92,7 +92,7 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
 
     @Override
     public Value copyFront(int howMany, boolean deeply, Set<Datatype> kinds) {
-        throw Raised.cannotUseTheAction(this, "copy");
+        throw Raised.cannotUseAction(this, "copy");
     }
 
     @Override
@@ -108,15 +108,15 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
 
     @Override
     public Value pick(int oneBasedPosition) {
-        return countToAChild(oneBasedPosition);
+        return countToChild(oneBasedPosition);
     }
 
     @Override
     public Value pickBy(Value selector) {
-        return countToAChild(selector.asPosition());
+        return countToChild(selector.asPosition());
     }
 
-    public Value countToAChild(long count) {
+    public Value countToChild(long count) {
         long at = index - 1 + count;
         return at < 1 || at > storage.length()
                 ? NoneValue.none()

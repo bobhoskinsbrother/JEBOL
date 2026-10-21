@@ -52,7 +52,7 @@ public class SelectAction extends SeriesSearchAction {
     }
 
     private Value readFieldWanted(Value object, Value wanted) {
-        if (!object.declaresAFieldFindCanReachBy(wanted)) {
+        if (!object.declaresFieldFindCanReachBy(wanted)) {
             return NoneValue.none();
         }
         return object.readFieldValue(((AnyWordValue) wanted).canonical());

@@ -604,9 +604,9 @@ public final class Encodings {
         }
     }
 
-    public byte[] digestWithAKey(byte[] octets, String method, byte[] key) {
+    public byte[] digestWithKey(byte[] octets, String method, byte[] key) {
         try {
-            return port.digestWithAKey(method, octets, key);
+            return port.digestWithKey(method, octets, key);
         } catch (DigestPort.Refused refused) {
             throw Raised.of(EvaluationFailure.FEATURE_NA, method);
         }
@@ -624,26 +624,26 @@ public final class Encodings {
         return JAVA_DIGESTS.contains(method) || port.methods().contains(method);
     }
 
-    public long computeTheCyclicCheck(byte[] octets, String method) {
+    public long computeCyclicCheck(byte[] octets, String method) {
         return switch (method) {
-            case "crc32" -> computeTheChecksum(new CRC32(), octets);
-            case "adler32" -> computeTheChecksum(new Adler32(), octets);
-            case "crc24" -> computeTheCrc24(octets);
-            case "tcp" -> computeTheTcpSum(octets);
+            case "crc32" -> computeChecksum(new CRC32(), octets);
+            case "adler32" -> computeChecksum(new Adler32(), octets);
+            case "crc24" -> computeCrc24(octets);
+            case "tcp" -> computeTcpSum(octets);
             default -> throw new IllegalArgumentException(method);
         };
     }
 
-    private long computeTheChecksum(Checksum running, byte[] octets) {
+    private long computeChecksum(Checksum running, byte[] octets) {
         running.update(octets, 0, octets.length);
         return running.getValue();
     }
 
-    public long computeTheChecksumSeed(byte[] octets) {
-        return computeTheCrc24(octets);
+    public long computeChecksumSeed(byte[] octets) {
+        return computeCrc24(octets);
     }
 
-    private long computeTheCrc24(byte[] octets) {
+    private long computeCrc24(byte[] octets) {
         int running = 0xB704CE;
         for (byte each : octets) {
             running ^= (each & 0xFF) << 16;
@@ -657,7 +657,7 @@ public final class Encodings {
         return running & 0xFFFFFF;
     }
 
-    private long computeTheTcpSum(byte[] octets) {
+    private long computeTcpSum(byte[] octets) {
         int running = 0;
         for (int at = 0; at + 1 < octets.length; at += 2) {
             running += ((octets[at] & 0xFF) << 8) | (octets[at + 1] & 0xFF);
@@ -706,12 +706,12 @@ public final class Encodings {
             case "br" -> Brotli.decompress(octets, wanted);
             default -> throw new IllegalArgumentException(method);
         };
-        return wanted > 0 && whole.length > wanted && cutsShortToTheSizeAsked(method)
+        return wanted > 0 && whole.length > wanted && cutsShortToSizeAsked(method)
                 ? Arrays.copyOf(whole, wanted)
                 : whole;
     }
 
-    public boolean cutsShortToTheSizeAsked(String method) {
+    public boolean cutsShortToSizeAsked(String method) {
         return !COMPRESSIONS_WITH_NO_HEADER.contains(method);
     }
 
@@ -818,10 +818,10 @@ public final class Encodings {
         if (!bigEndian && !"UTF-32LE".equalsIgnoreCase(charset.name())) {
             return new String(octets, charset);
         }
-        return decodeUtf32KeepingTheLeadingMark(octets, bigEndian);
+        return decodeUtf32KeepingLeadingMark(octets, bigEndian);
     }
 
-    private String decodeUtf32KeepingTheLeadingMark(
+    private String decodeUtf32KeepingLeadingMark(
             byte[] octets, boolean bigEndian) {
         StringBuilder text = new StringBuilder();
         for (int at = 0; at + 4 <= octets.length; at += 4) {

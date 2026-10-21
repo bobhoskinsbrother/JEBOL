@@ -311,7 +311,7 @@ public final class Bincode {
                     readWholeNumberAfter(dialect, ++step, command));
             case "bit" -> read.add(LogicValue.of(readNextBit(cursor) == 1));
             case "not-bit" -> read.add(LogicValue.of(readNextBit(cursor) == 0));
-            case "align" -> alignToAByte(cursor);
+            case "align" -> alignToByte(cursor);
             case "msdos-time" -> read.add(readMsdosTime(cursor));
             case "msdos-date" -> read.add(readMsdosDate(cursor));
             case "msdos-datetime" -> read.add(readMsdosDateTime(cursor));
@@ -602,7 +602,7 @@ public final class Bincode {
         return number & WIDEST_A_NARROW_ONE_TAKES;
     }
 
-    private static void alignToAByte(Cursor cursor) {
+    private static void alignToByte(Cursor cursor) {
         if (cursor.bitsTaken > 0) {
             cursor.bitsTaken = 0;
             cursor.at++;

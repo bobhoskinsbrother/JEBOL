@@ -214,7 +214,7 @@ public final class Ports {
             case "tcp" -> readBytesFromConnection(port, evaluator);
             case "udp" -> readOneDatagramInto(port, evaluator);
             case "dns" -> answerWhatTheDnsUrlAsks(port, evaluator);
-            case "checksum" -> checksumPort.digestSoFarLeftInTheDataFieldAsWell(port);
+            case "checksum" -> checksumPort.digestSoFarLeftInDataFieldAsWell(port);
             case "crypt" -> {
                 cryptPort.refuseWhenClosed(port);
                 yield cryptPort.read(port);
@@ -289,13 +289,13 @@ public final class Ports {
         NetworkPort.Connection connection = findTheConnectionBehind(port);
         return runThroughTheNetwork(() -> {
             BinaryValue arrived = BinaryValue.ofBytes(connection.read());
-            addToThePortsData(port, arrived);
+            addToPortsData(port, arrived);
             queueWhatHappenedTo(port, arrived.lengthFromHere() == 0 ? "close" : "read", evaluator);
             return arrived;
         });
     }
 
-    private void addToThePortsData(PortValue port, BinaryValue arrived) {
+    private void addToPortsData(PortValue port, BinaryValue arrived) {
         if (!(port.readFieldValue("data") instanceof BinaryValue held)) {
             port.setField("data", arrived);
             return;
@@ -414,7 +414,7 @@ public final class Ports {
             case "tcp" -> sendDownTheConnection(port, data, evaluator);
             case "udp" -> sendOneDatagramFrom(port, data, evaluator);
             case "checksum" -> sumIntoThePort(port, data, asked);
-            case "crypt" -> encipherIntoThePort(port, data);
+            case "crypt" -> encipherIntoPort(port, data);
             case "file" -> {
                 if (!port.isOpen()) {
                     requireTheFilePolicy(readThePathOf(port), evaluator, Set.of(PolicyAccess.WRITE));
@@ -479,7 +479,7 @@ public final class Ports {
         return asked.filter(Comparison::isNumeric).map(number -> (long) Comparison.asDouble(number));
     }
 
-    private Value encipherIntoThePort(PortValue port, Value data) {
+    private Value encipherIntoPort(PortValue port, Value data) {
         cryptPort.refuseWhenClosed(port);
         if (!(data instanceof BinaryValue octets)) {
             throw Raised.of(EvaluationFailure.FEATURE_NA, readTheReferenceOf(port));
@@ -606,7 +606,7 @@ public final class Ports {
 
     public Value update(PortValue port) {
         if (port.schemeName().equals("checksum")) {
-            checksumPort.digestSoFarLeftInTheDataFieldAsWell(port);
+            checksumPort.digestSoFarLeftInDataFieldAsWell(port);
             return port;
         }
         if (port.schemeName().equals("crypt")) {
@@ -673,7 +673,7 @@ public final class Ports {
         NetworkPort.Datagrams bound = findTheDatagramsBehind(port);
         return runThroughTheNetwork(() -> {
             BinaryValue arrived = BinaryValue.ofBytes(bound.receive());
-            addToThePortsData(port, arrived);
+            addToPortsData(port, arrived);
             queueWhatHappenedTo(port, "read", evaluator);
             return port;
         });

@@ -40,12 +40,12 @@ public record PaintList(List<PaintInstruction> instructions) {
     public static PaintList of(GobValue root, ObjectValue drawDialect) {
         int wide = roundToWhole(root.storage().size().x());
         int high = roundToWhole(root.storage().size().y());
-        return within(root, ClipRectangle.coverTheWholeSurface(wide, high), 0, drawDialect);
+        return within(root, ClipRectangle.coverWholeSurface(wide, high), 0, drawDialect);
     }
 
     /** The same, clipped to a surface of a stated size. */
     public static PaintList onASurface(GobValue root, int wide, int high) {
-        return within(root, ClipRectangle.coverTheWholeSurface(wide, high), 0, null);
+        return within(root, ClipRectangle.coverWholeSurface(wide, high), 0, null);
     }
 
     /**
@@ -59,7 +59,7 @@ public record PaintList(List<PaintInstruction> instructions) {
     public static PaintList ofScreen(
             GobValue root, int wide, int high, ObjectValue drawDialect) {
 
-        return within(root, ClipRectangle.coverTheWholeSurface(wide, high),
+        return within(root, ClipRectangle.coverWholeSurface(wide, high),
                 DEPTHS_WHOSE_TEXT_IS_A_TITLE, drawDialect);
     }
 
@@ -67,7 +67,7 @@ public record PaintList(List<PaintInstruction> instructions) {
     public static PaintList ofAWindow(GobValue window, ObjectValue drawDialect) {
         int wide = roundToWhole(window.storage().size().x());
         int high = roundToWhole(window.storage().size().y());
-        return within(window, ClipRectangle.coverTheWholeSurface(wide, high), 1, drawDialect);
+        return within(window, ClipRectangle.coverWholeSurface(wide, high), 1, drawDialect);
     }
 
     private static final int DEPTHS_WHOSE_TEXT_IS_A_TITLE = 2;

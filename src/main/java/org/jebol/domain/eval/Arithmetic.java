@@ -75,13 +75,13 @@ public final class Arithmetic {
     private static boolean isNegligibleAgainstItsOperands(
             double rest, double dividend, double divisor) {
 
-        return areNearlyTheSame(dividend, dividend - rest)
-                || areNearlyTheSame(divisor, divisor + rest);
+        return areNearlySame(dividend, dividend - rest)
+                || areNearlySame(divisor, divisor + rest);
     }
 
     private static final long STEPS_MODULUS_ALLOWS = 10;
 
-    public static boolean areNearlyTheSame(double first, double second) {
+    public static boolean areNearlySame(double first, double second) {
         return Comparison.areLooselyEqual(
                 DecimalValue.of(first), DecimalValue.of(second), STEPS_MODULUS_ALLOWS);
     }

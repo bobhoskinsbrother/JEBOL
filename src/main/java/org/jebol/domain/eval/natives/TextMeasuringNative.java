@@ -15,7 +15,7 @@ public abstract class TextMeasuringNative extends ScreenNative {
 
     protected GobText readTheTextOf(GobValue gob, Evaluator evaluator) {
         granted.require(HostService.WINDOWS);
-        return askThroughTheScreen(() -> new GobText(gob, evaluator.ports().screen().textMeasurement()));
+        return askThroughScreen(() -> new GobText(gob, evaluator.ports().screen().textMeasurement()));
     }
 
     protected PairValue roundToWholePixels(double across, double down) {

@@ -75,7 +75,7 @@ public class ChecksumNative extends EncodingNative {
             if (spec.isPresent()) {
                 throw Raised.of(EvaluationFailure.BAD_REFINES);
             }
-            return IntegerValue.of(encodings.computeTheCyclicCheck(octets, asked));
+            return IntegerValue.of(encodings.computeCyclicCheck(octets, asked));
         }
         if (HASH_INTO_A_TABLE.equals(asked)) {
             return IntegerValue.of(hashIntoATable(data,
@@ -88,7 +88,7 @@ public class ChecksumNative extends EncodingNative {
         if (key instanceof IntegerValue) {
             throw Raised.of(EvaluationFailure.BAD_REFINE, key);
         }
-        return encodings.digestWithAKey(octets, method, key.asOctets());
+        return encodings.digestWithKey(octets, method, key.asOctets());
     }
 
     private long hashIntoATable(Value value, Value size) {

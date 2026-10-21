@@ -63,7 +63,7 @@ final class SingleCommand implements Command {
         }
     }
 
-    boolean escapesFromTheScript(RuntimeException failed) {
+    boolean escapesFromScript(RuntimeException failed) {
         return escaped.filter(failed::equals).isPresent();
     }
 

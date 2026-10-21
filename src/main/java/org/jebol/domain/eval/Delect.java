@@ -36,11 +36,11 @@ public final class Delect {
             return NoneValue.none();
         }
         if (!readsWholeBlock) {
-            run.emptyTheOutput();
+            run.emptyOutput();
             run.readOneCommand();
             return input.atIndex(run.reachedIndex());
         }
-        run.emptyTheOutput();
+        run.emptyOutput();
         while (!run.hasNothingLeft() && run.readOneCommand()) {
             continue;
         }
@@ -128,7 +128,7 @@ public final class Delect {
             return Math.min(at, input.storage().length() + 1);
         }
 
-        void emptyTheOutput() {
+        void emptyOutput() {
             while (output.storage().length() > 0) {
                 output.storage().removeAt(1);
             }

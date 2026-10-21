@@ -123,7 +123,7 @@ public final class Context {
         return slotsByCanonicalName.containsKey(canonicalName);
     }
 
-    public boolean bindsAWordSpelt(String canonicalName) {
+    public boolean bindsWordSpelt(String canonicalName) {
         return holds(canonicalName) || answersToItsOwnSelf(canonicalName);
     }
 

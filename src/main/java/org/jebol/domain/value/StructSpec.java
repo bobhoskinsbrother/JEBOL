@@ -198,7 +198,7 @@ public record StructSpec(AnyBlockValue declaration, List<StructField> fields, in
      * {@code (make struct! [a [u8!] b [u8!]]) = (make struct! [a [uint8!] b [uint8!]])}
      * true while {@code ==} on the same pair is false.
      */
-    public boolean describesTheSameBytesAs(StructSpec other) {
+    public boolean describesSameBytesAs(StructSpec other) {
         if (fields.size() != other.fields.size() || size != other.size) {
             return false;
         }
@@ -216,7 +216,7 @@ public record StructSpec(AnyBlockValue declaration, List<StructField> fields, in
     private static boolean isSameType(StructFieldType mine, StructFieldType theirs) {
         if (mine instanceof StructFieldType.Nested(StructSpec spec1)
                 && theirs instanceof StructFieldType.Nested(StructSpec spec)) {
-            return spec1.describesTheSameBytesAs(spec);
+            return spec1.describesSameBytesAs(spec);
         }
         return mine.equals(theirs);
     }

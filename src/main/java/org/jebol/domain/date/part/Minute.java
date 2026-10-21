@@ -18,6 +18,6 @@ final class Minute implements WritableDateField {
 
     @Override
     public DateValue writeOn(DateValue date, Assigned given) {
-        return date.atTheTime(date.clock().withTheMinute(given.asWholeNumber()));
+        return date.atTime(date.clock().withTheMinute(given.asWholeNumber()));
     }
 }

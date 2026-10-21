@@ -372,7 +372,7 @@ final class BrotliTwoPassEncoder {
         }
 
         private boolean isWorthCompressing(int at, int size) {
-            if (doTheMatchesPayOutright(size)) {
+            if (doMatchesPayOutright(size)) {
                 return true;
             }
             double mostTheSampledBytesMayCost = (double) size * 8
@@ -387,7 +387,7 @@ final class BrotliTwoPassEncoder {
                     < mostTheSampledBytesMayCost;
         }
 
-        private boolean doTheMatchesPayOutright(int size) {
+        private boolean doMatchesPayOutright(int size) {
             return (double) literalCount
                     < LITERALS_PER_BYTE_BELOW_WHICH_MATCHES_PAID * (double) size;
         }

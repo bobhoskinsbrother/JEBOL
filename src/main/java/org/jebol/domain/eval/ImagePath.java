@@ -9,7 +9,7 @@ final class ImagePath {
 
     static Value read(ImageValue image, Value selector) {
         if (selector instanceof AnyWordValue field) {
-            return describeTheImage(image, field);
+            return describeImage(image, field);
         }
         int pixel = findPixelNamedBy(image, selector);
         if (pixel < 1 || pixel > image.lengthFromHere()) {
@@ -139,13 +139,13 @@ final class ImagePath {
                     laid.length, image.lengthFromHere());
             for (int step = 0; step < pixels; step++) {
                 image.storage().setAlphaAt(image.index() + step,
-                        convertTheAlphaToOpacity(laid[step]));
+                        convertAlphaToOpacity(laid[step]));
             }
             return;
         }
         int octet = readByteOrRefuse(written);
         for (int pixel = image.index(); pixel <= image.storageLength(); pixel++) {
-            image.storage().setAlphaAt(pixel, convertTheAlphaToOpacity(octet));
+            image.storage().setAlphaAt(pixel, convertAlphaToOpacity(octet));
         }
     }
 
@@ -257,7 +257,7 @@ final class ImagePath {
         return (int) octet;
     }
 
-    private static Value describeTheImage(ImageValue image, AnyWordValue field) {
+    private static Value describeImage(ImageValue image, AnyWordValue field) {
         return switch (field.canonical()) {
             case "size" -> image.size();
             case "width" -> IntegerValue.of(image.storage().wide());
@@ -308,12 +308,12 @@ final class ImagePath {
         int pixels = image.lengthFromHere();
         int[] octets = new int[pixels];
         for (int pixel = 1; pixel <= pixels; pixel++) {
-            octets[pixel - 1] = convertTheAlphaToOpacity(image.readPixelAt(pixel)[3]);
+            octets[pixel - 1] = convertAlphaToOpacity(image.readPixelAt(pixel)[3]);
         }
         return new BinaryValue(BinaryStorage.of(octets), 1);
     }
 
-    private static int convertTheAlphaToOpacity(int alpha) {
+    private static int convertAlphaToOpacity(int alpha) {
         return 255 - alpha;
     }
 

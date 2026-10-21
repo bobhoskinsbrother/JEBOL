@@ -33,15 +33,15 @@ final class Collect extends SameForABlockAndAString {
         List<Value> mine = walk.stopCollecting();
 
         if (goes.appendedTo() != null) {
-            walk.deliverTheCollectedTo(goes.appendedTo(), mine, true);
+            walk.deliverCollectedTo(goes.appendedTo(), mine, true);
         } else if (goes.insertedInto() != null) {
-            walk.deliverTheCollectedTo(goes.insertedInto(), mine, false);
+            walk.deliverCollectedTo(goes.insertedInto(), mine, false);
         } else if (destination != null) {
             for (Value item : mine) {
                 destination.storage().insertAt(destination.storageLength() + 1, item);
             }
         } else {
-            walk.deliverTheCollected(mine);
+            walk.deliverCollected(mine);
         }
         return consumed == ParseWalk.NO_MATCH
                 ? ParseWalk.NO_MATCH

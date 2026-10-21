@@ -40,7 +40,7 @@ public class SplitLinesNative extends DefaultNative {
         while (at < stopsAtTheLengthFromHereCountedFromTheHead) {
             int letter = readCodePointAfter(text, at);
             at++;
-            if (endsALine(letter)) {
+            if (endsLine(letter)) {
                 lines.add(lineBetween(text, start, at - 1));
                 at = skipALineFeedFollowing(text, letter, at);
                 start = at;
@@ -52,7 +52,7 @@ public class SplitLinesNative extends DefaultNative {
         return lines;
     }
 
-    private boolean endsALine(int letter) {
+    private boolean endsLine(int letter) {
         return letter == LINE_FEED || letter == CARRIAGE_RETURN;
     }
 

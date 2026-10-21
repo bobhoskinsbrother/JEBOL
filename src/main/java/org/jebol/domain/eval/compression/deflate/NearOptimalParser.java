@@ -198,7 +198,7 @@ final class NearOptimalParser extends DeflateParser {
                 if (!splitStatistics.isReadyToCheck(blockBegin, next, length)) {
                     continue;
                 }
-                if (splitStatistics.endsTheBlock(next - blockBegin)) {
+                if (splitStatistics.endsBlock(next - blockBegin)) {
                     changeDetected = true;
                     break;
                 }
@@ -218,7 +218,7 @@ final class NearOptimalParser extends DeflateParser {
                 cache.moveToTheStart(cacheAt, rewound);
                 cacheAt = rewound;
                 saveStatistics();
-                splitStatistics.clearTheOldObservations();
+                splitStatistics.clearOldObservations();
                 Arrays.fill(matchLengthFrequencies, 0);
                 blockBegin = previousEndBlockCheck;
             } else {

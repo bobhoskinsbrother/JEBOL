@@ -397,7 +397,7 @@ public final class Evaluator {
         List<Value> valueAndName = List.of(caught, carriedName);
         checkArgumentTypes(function.parameters(), valueAndName, "catch");
         long positionalArity = function.parameters().stream()
-                .filter(Parameter::consumesAnArgument)
+                .filter(Parameter::consumesArgument)
                 .filter(parameter -> parameter.owningRefinement().isEmpty())
                 .count();
         List<Value> padded = new ArrayList<>(valueAndName);
@@ -677,7 +677,7 @@ public final class Evaluator {
                     }
                     throw Raised.of(EvaluationFailure.NO_ARG,
                             WordValue.of(gathering.nameInAnArgumentError()),
-                            gathering.describeTheArgumentStillWanted());
+                            gathering.describeArgumentStillWanted());
                 }
                 Value finished = frame.lastResult;
                 if (frame.functionBody && !functionsBeingRun.isEmpty()) {
@@ -1150,7 +1150,7 @@ public final class Evaluator {
 
         int at = 0;
         for (Parameter parameter : function.parameters()) {
-            if (!parameter.consumesAnArgument()) {
+            if (!parameter.consumesArgument()) {
                 continue;
             }
             boolean granted = parameter.owningRefinement()
@@ -1166,7 +1166,7 @@ public final class Evaluator {
 
         for (Parameter parameter : function.parameters()) {
             boolean alreadyGiven = parameter.owningRefinement().isPresent()
-                    && parameter.consumesAnArgument()
+                    && parameter.consumesArgument()
                     && parameter.owningRefinement()
                             .map(refinements::contains).orElse(true);
             if (parameter.owningRefinement().isPresent() && !alreadyGiven) {
@@ -1216,7 +1216,7 @@ public final class Evaluator {
             List<Value> arguments, String calleeName, int checkedFrom) {
         int at = 0;
         for (Parameter parameter : parameters) {
-            if (!parameter.consumesAnArgument()) {
+            if (!parameter.consumesArgument()) {
                 continue;
             }
             boolean takesAnArgumentThisCall = parameter.owningRefinement()
@@ -1243,7 +1243,7 @@ public final class Evaluator {
                             + argument.datatype().literalSpelling()
                             + " for its " + parameter.name() + " argument",
                     WordValue.of(calleeName),
-                    parameter.asWrittenInTheSpec(),
+                    parameter.asWrittenInSpec(),
                     argument.datatype()));
         }
     }
@@ -1468,7 +1468,7 @@ public final class Evaluator {
         throw Raised.of(EvaluationFailure.INVALID_PATH);
     }
 
-    private static long countFromTheSeriesPosition(long index) {
+    private static long countFromSeriesPosition(long index) {
         return index < 0 ? index + 1 : index;
     }
 
@@ -1557,13 +1557,13 @@ public final class Evaluator {
     private static boolean reachesIntoTheSeries(
             RebolSeries series, IntegerValue position) {
 
-        long counted = countFromTheSeriesPosition(position.magnitude());
+        long counted = countFromSeriesPosition(position.magnitude());
         return counted >= 1 && counted <= series.lengthFromHere();
     }
 
     private static int findPositionIn(RebolSeries series, IntegerValue position) {
         return series.index()
-                + (int) countFromTheSeriesPosition(position.magnitude()) - 1;
+                + (int) countFromSeriesPosition(position.magnitude()) - 1;
     }
 
     private void refusePathIntoSomethingWithNoParts(
@@ -1688,7 +1688,7 @@ public final class Evaluator {
             return StructPath.read(struct, selector);
         }
         if (target instanceof RebolSeries series && selector instanceof IntegerValue(long magnitude)) {
-            long index = countFromTheSeriesPosition(magnitude);
+            long index = countFromSeriesPosition(magnitude);
             if (index < 1 - (series.index() - 1) || index > series.lengthFromHere()) {
                 return NoneValue.none();
             }

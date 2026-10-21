@@ -48,11 +48,11 @@ public class IsDirectoryNative extends HostNative {
                     && liesOnTheDiskAsADirectory(evaluator, address.text())) {
                 return LogicValue.of(true);
             }
-            return LogicValue.of(endsTheWayADirectoryIsWritten(address.text()));
+            return LogicValue.of(endsWayDirectoryIsWritten(address.text()));
         };
     }
 
-    private boolean endsTheWayADirectoryIsWritten(String path) {
+    private boolean endsWayDirectoryIsWritten(String path) {
         char last = path.charAt(path.length() - 1);
         return last == '/' || last == '\\';
     }

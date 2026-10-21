@@ -12,7 +12,7 @@ public interface MidiDevices {
 
     interface Connection {
 
-        byte[] arrivedSinceTheLastRead();
+        byte[] arrivedSinceLastRead();
 
         void send(byte[] message);
 

@@ -83,7 +83,7 @@ public record ErrorValue(
                 case ObjectValue(Context fields) ->
                         makeErrorSpeltOutBy(BlockValue.of(fields.setWordsAndValues()), true, spec, maker);
                 case BlockValue body -> makeErrorSpeltOutBy(BlockValue.of(
-                        maker.evaluateAnObject(body).context().setWordsAndValues()), false, spec, maker);
+                        maker.evaluateObject(body).context().setWordsAndValues()), false, spec, maker);
                 case AnyBlockValue fields -> makeErrorSpeltOutBy(fields, false, spec, maker);
                 case StringValue written -> maker.speakHere(new ErrorValue(ErrorCategory.USER, "message",
                         written.text(), Optional.of(spec),
@@ -178,7 +178,7 @@ public record ErrorValue(
     }
 
     @Override
-    public boolean declaresTheField(String field) {
+    public boolean declaresField(String field) {
         return FIELDS.contains(field);
     }
 

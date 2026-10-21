@@ -9,7 +9,7 @@ package org.jebol.domain.render;
 public record ClipRectangle(int across, int down, int wide, int high) {
 
     /** The whole of a surface of this size, which is what a root starts with. */
-    public static ClipRectangle coverTheWholeSurface(int wide, int high) {
+    public static ClipRectangle coverWholeSurface(int wide, int high) {
         return new ClipRectangle(0, 0, wide, high);
     }
 

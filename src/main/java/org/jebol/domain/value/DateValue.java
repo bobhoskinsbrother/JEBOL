@@ -244,7 +244,7 @@ public record DateValue(
                         Optional.of(TimeValue.ofNanoseconds(0)), Optional.empty());
     }
 
-    public DateValue atTheTime(TimeValue given) {
+    public DateValue atTime(TimeValue given) {
         return new DateValue(year, month, day, Optional.of(given), zoneMinutes);
     }
 
@@ -268,7 +268,7 @@ public record DateValue(
                 timeOfDay, other.zoneMinutes);
     }
 
-    public DateValue asJustTheDay() {
+    public DateValue asJustDay() {
         return DateValue.of(year, month, day);
     }
 
@@ -285,7 +285,7 @@ public record DateValue(
                 Optional.of(clock()), Optional.of(offsetMinutes));
     }
 
-    public DateValue atTheSameInstantIn(int offsetMinutes) {
+    public DateValue atSameInstantIn(int offsetMinutes) {
         DateValue standing = withTheSameClockIn(zoneMinutes.orElse(0));
         long sinceMidnight = standing.clock().nanoseconds()
                 + (offsetMinutes - standing.zoneMinutes.orElse(0)) * NANOSECONDS_A_MINUTE;

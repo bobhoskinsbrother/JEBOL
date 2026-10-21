@@ -47,7 +47,7 @@ public final class SeriesChange {
             case AnyStringValue text -> overwrite((AnyStringValue) text.clampToTail(), replacing);
             case VectorValue vector -> overwrite((VectorValue) vector.clampToTail());
             case AnyBlockValue block -> overwrite((AnyBlockValue) block.clampToTail(), replacing);
-            case Value anythingElse -> throw Raised.cannotUseTheAction(anythingElse, "change");
+            case Value anythingElse -> throw Raised.cannotUseAction(anythingElse, "change");
         };
     }
 

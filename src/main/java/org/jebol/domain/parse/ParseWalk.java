@@ -92,11 +92,11 @@ public interface ParseWalk {
 
     List<Value> stopCollecting();
 
-    void deliverTheCollected(List<Value> mine);
+    void deliverCollected(List<Value> mine);
 
     void keep(Value gathering);
 
     void keepEachBetween(int from, int to);
 
-    void deliverTheCollectedTo(AnyWordValue target, List<Value> mine, boolean appending);
+    void deliverCollectedTo(AnyWordValue target, List<Value> mine, boolean appending);
 }

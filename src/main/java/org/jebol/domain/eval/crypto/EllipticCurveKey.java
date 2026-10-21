@@ -86,7 +86,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
         this.publicPoint = publicPoint;
     }
 
-    private boolean doesTheArithmeticInThisBuild() {
+    private boolean doesArithmeticInThisBuild() {
         return computedHere != null;
     }
 
@@ -168,7 +168,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
     }
 
     public byte[] publishThePoint() {
-        if (doesTheArithmeticInThisBuild()) {
+        if (doesArithmeticInThisBuild()) {
             return writeTheTwoCoordinatesOf(publicPoint.x(), publicPoint.y());
         }
         return published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN
@@ -219,7 +219,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
         if (handedBack) {
             return Optional.empty();
         }
-        if (doesTheArithmeticInThisBuild()) {
+        if (doesArithmeticInThisBuild()) {
             return computedHere.pointFromTheWire(peersPoint)
                     .map(theirs -> computedHere.writeCoordinateOnWire(
                             computedHere.multiply(theirs, privateNumber).x()));
@@ -270,7 +270,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
                 || published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN) {
             return Optional.empty();
         }
-        if (doesTheArithmeticInThisBuild()) {
+        if (doesArithmeticInThisBuild()) {
             BigInteger[] pair =
                     computedHere.signOver(privateNumber, hash, RANDOMLY);
             return Optional.of(writeADerSequenceOfTwoIntegers(pair[0], pair[1]));
@@ -290,7 +290,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
                 || published == HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN) {
             return false;
         }
-        if (doesTheArithmeticInThisBuild()) {
+        if (doesArithmeticInThisBuild()) {
             return readTheTwoIntegersOf(signature)
                     .filter(pair -> computedHere.verifiesTheSignature(
                             publicPoint, hash, pair[0], pair[1]))

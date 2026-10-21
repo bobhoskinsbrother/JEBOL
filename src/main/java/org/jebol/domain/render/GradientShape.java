@@ -39,7 +39,7 @@ public enum GradientShape {
     }
 
     /** Whether a toolkit's own gradient can carry this one. */
-    public boolean canBeDrawnByAToolkit() {
+    public boolean canBeDrawnByToolkit() {
         return this != CONIC && this != DIAMOND;
     }
 

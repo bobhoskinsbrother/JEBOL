@@ -125,7 +125,7 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
 
         @Override
         public Value makeFrom(Value spec, Maker maker) {
-            if (!canNameAScheme(spec)) {
+            if (!canNameScheme(spec)) {
                 throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
             }
             if (!(maker.applySystemFunction("make-port*", spec) instanceof PortValue port)) {
@@ -134,7 +134,7 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
             return port;
         }
 
-        private boolean canNameAScheme(Value spec) {
+        private boolean canNameScheme(Value spec) {
             return spec instanceof FileValue
                     || spec instanceof UrlValue
                     || spec instanceof BlockValue

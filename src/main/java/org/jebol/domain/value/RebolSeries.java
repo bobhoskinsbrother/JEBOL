@@ -33,7 +33,7 @@ public sealed interface RebolSeries extends Value
     }
 
     default void putItemAt(int positionFromTheHead, Value item) {
-        throw Raised.cannotUseTheAction(this, "swap");
+        throw Raised.cannotUseAction(this, "swap");
     }
 
     default RebolSeries clampToTail() {

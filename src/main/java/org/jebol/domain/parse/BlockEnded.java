@@ -19,7 +19,7 @@ public final class BlockEnded extends RuntimeException {
         return new BlockEnded(false);
     }
 
-    public boolean endedAsAMatch() {
+    public boolean endedAsMatch() {
         return asAMatch;
     }
 }

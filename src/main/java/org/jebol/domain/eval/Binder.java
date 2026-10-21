@@ -107,11 +107,11 @@ public final class Binder {
             int where = block.index() + at;
             Value item = block.storage().at(where);
             if (item instanceof AnyWordValue word) {
-                if (target.bindsAWordSpelt(word.canonical())) {
+                if (target.bindsWordSpelt(word.canonical())) {
                     block.storage().rebindAt(where, word.bindTo(target));
                 }
             } else if (deeply) {
-                bindIfTheTargetHoldsIt(item, target);
+                bindIfTargetHoldsIt(item, target);
             }
         }
         return block;
@@ -141,15 +141,15 @@ public final class Binder {
         return layOutLike(block, new BlockStorage(copied));
     }
 
-    private static Value bindIfTheTargetHoldsIt(Value value, Context target) {
+    private static Value bindIfTargetHoldsIt(Value value, Context target) {
         return switch (value) {
-            case AnyWordValue word when target.bindsAWordSpelt(word.canonical()) ->
+            case AnyWordValue word when target.bindsWordSpelt(word.canonical()) ->
                     word.bindTo(target);
             case AnyWordValue word -> word;
             case AnyBlockValue nested -> bindWhatTheTargetHoldsItself(nested, target);
             case MapValue map -> {
                 for (Value key : map.keys()) {
-                    map.put(key, bindIfTheTargetHoldsIt(map.select(key), target));
+                    map.put(key, bindIfTargetHoldsIt(map.select(key), target));
                 }
                 yield map;
             }

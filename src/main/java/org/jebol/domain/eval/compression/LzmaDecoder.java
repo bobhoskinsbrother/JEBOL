@@ -219,7 +219,7 @@ final class LzmaDecoder {
                 == THE_REPEAT_WAS_A_SINGLE_BYTE_WHICH_IS_NOT_A_LENGTH_OF_ZERO) {
             return;
         }
-        copyFromTheDistanceStoppingShortRatherThanRefusing(length);
+        copyFromDistanceStoppingShortRatherThanRefusing(length);
     }
 
     private void decodeLiteral() {
@@ -334,7 +334,7 @@ final class LzmaDecoder {
         if (Integer.compareUnsigned(distance, reachable) >= 0) {
             throw new IllegalArgumentException("LZMA distance reaches before the start");
         }
-        copyFromTheDistanceStoppingShortRatherThanRefusing(length);
+        copyFromDistanceStoppingShortRatherThanRefusing(length);
     }
 
     private int readLeastSignificantBitFirst(
@@ -366,7 +366,7 @@ final class LzmaDecoder {
     }
 
 
-    private void copyFromTheDistanceStoppingShortRatherThanRefusing(int length) {
+    private void copyFromDistanceStoppingShortRatherThanRefusing(int length) {
         int wholeLength = length + MATCH_MIN_LEN;
         int room = output.length - outputAt;
         if (room == 0) {

@@ -461,7 +461,7 @@ public final class Molder {
                 case '\n', '"' -> escaped.appendCodePoint(codepoint);
                 case '{', '}' -> escaped.append(
                         bracesAreUnbalanced ? "^" + (char) codepoint : (char) codepoint);
-                default -> escaped.append(escapeTheCodepoint(codepoint));
+                default -> escaped.append(escapeCodepoint(codepoint));
             }
         });
         return escaped.toString();
@@ -482,7 +482,7 @@ public final class Molder {
     private static final int LONGEST_QUOTED = 50;
 
     static String moldTheText(String text) {
-        String deciding = asFarAsTheLimitLooks(text);
+        String deciding = asFarAsLimitLooks(text);
         long newlines = deciding.chars().filter(each -> each == '\n').count();
         boolean quoted = deciding.indexOf('"') < 0
                 && newlines < 3
@@ -492,7 +492,7 @@ public final class Molder {
                 : "{" + escapeInBraces(text, !hasBalancedBraces(text)) + "}";
     }
 
-    private static String asFarAsTheLimitLooks(String text) {
+    private static String asFarAsLimitLooks(String text) {
         int limit = AS_MUCH_AS_WAS_ASKED_FOR.get();
         if (limit == NO_LIMIT) {
             return text;
@@ -506,11 +506,11 @@ public final class Molder {
     private static String escape(String text) {
         StringBuilder escaped = new StringBuilder(text.length());
         text.codePoints().forEach(
-                codepoint -> escaped.append(escapeTheCodepoint(codepoint)));
+                codepoint -> escaped.append(escapeCodepoint(codepoint)));
         return escaped.toString();
     }
 
-    private static String escapeTheCodepoint(int codepoint) {
+    private static String escapeCodepoint(int codepoint) {
         if (codepoint == 0x1E || (codepoint >= 0x7F && codepoint <= 0x9F)) {
             return "^(" + "%02X".formatted(codepoint) + ")";
         }
@@ -801,7 +801,7 @@ public final class Molder {
         if (segments.isEmpty() && !WRITING_EVERYTHING_OUT.get()) {
             return "";
         }
-        if (cannotReadBackAsAPath(path, segments)) {
+        if (cannotReadBackAsPath(path, segments)) {
             return writeEverythingOut(() -> "#("
                     + path.datatype().literalSpelling() + " ["
                     + segments.stream().map(Molder::mold).collect(Collectors.joining(" "))
@@ -812,7 +812,7 @@ public final class Molder {
                 .collect(Collectors.joining("/")) + suffix;
     }
 
-    private static boolean cannotReadBackAsAPath(AnyBlockValue path, List<Value> segments) {
+    private static boolean cannotReadBackAsPath(AnyBlockValue path, List<Value> segments) {
         return segments.isEmpty()
                 || path.storageLength() <= 1
                 || !(segments.getFirst() instanceof WordValue);
@@ -838,19 +838,19 @@ public final class Molder {
         });
         return openFor(EventValue.TYPE) + "[" + fields
                 + (onSeparateLines ? indentALineAsDeepAsWeAre() : "")
-                + "]" + closedAfterATypeName();
+                + "]" + closedAfterTypeName();
     }
 
     private static String renderNative(NativeValue built) {
         return built.ownSpec()
-                .map(spec -> openFor(built.datatype()) + "[" + mold(spec.head()) + "]" + closedAfterATypeName())
+                .map(spec -> openFor(built.datatype()) + "[" + mold(spec.head()) + "]" + closedAfterTypeName())
                 .orElseGet(() -> "#[native! " + built.nativeName() + "]");
     }
 
     private static String renderOperator(OperatorValue operator) {
         return operator.underlying() instanceof NativeValue built && built.ownSpec().isPresent()
                 ? openFor(OperatorValue.TYPE) + "[" + mold(built.ownSpec().orElseThrow().head()) + "]"
-                        + closedAfterATypeName()
+                        + closedAfterTypeName()
                 : "#[op! " + operator.operatorName() + "]";
     }
 
@@ -858,7 +858,7 @@ public final class Molder {
         return openFor(function.datatype()) + "["
                 + mold(function.spec().head())
                 + mold(function.body().head())
-                + "]" + closedAfterATypeName();
+                + "]" + closedAfterTypeName();
     }
 
     private static String renderGob(GobValue gob, boolean forReading) {
@@ -870,7 +870,7 @@ public final class Molder {
             }
             built.append(render(spec.get(at), forReading));
         }
-        return built.append(']').append(closedAfterATypeName()).toString();
+        return built.append(']').append(closedAfterTypeName()).toString();
     }
 
     private static final ThreadLocal<Set<Context>> BEING_RENDERED =
@@ -898,7 +898,7 @@ public final class Molder {
                                             ContextSlot::value,
                                             (older, newer) -> newer,
                                             LinkedHashMap::new)))
-                            + "]" + closedAfterATypeName()
+                            + "]" + closedAfterTypeName()
                     : formTheFields(object);
         } finally {
             enclosing.remove(object.context());
@@ -910,7 +910,7 @@ public final class Molder {
                 + datatype.literalSpelling() + " ";
     }
 
-    private static String closedAfterATypeName() {
+    private static String closedAfterTypeName() {
         return WRITING_EVERYTHING_OUT.get() ? ")" : "";
     }
 
@@ -923,7 +923,7 @@ public final class Molder {
             fields.put(name, error.readTheField(name).orElseGet(NoneValue::none));
         }
         return openFor(ErrorValue.TYPE) + "[" + moldTheFields(fields) + "]"
-                + closedAfterATypeName();
+                + closedAfterTypeName();
     }
 
     private static String listNamesInTypeset(TypesetValue typeset) {

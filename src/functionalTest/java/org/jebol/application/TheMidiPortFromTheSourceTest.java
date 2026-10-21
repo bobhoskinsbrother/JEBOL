@@ -79,7 +79,7 @@ class TheMidiPortFromTheSourceTest {
             return new Connection() {
 
                 @Override
-                public byte[] arrivedSinceTheLastRead() {
+                public byte[] arrivedSinceLastRead() {
                     failIfAsked();
                     return arriving.isEmpty() ? new byte[0] : arriving.removeFirst();
                 }

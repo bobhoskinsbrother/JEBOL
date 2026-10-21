@@ -15,6 +15,6 @@ final class UniversalTime implements WritableDateField {
         DateValue other = given.asDate();
         return other.zoneMinutes().orElse(0) == 0
                 ? other.withTheZoneForgotten()
-                : other.atTheSameInstantIn(0).withTheZoneForgotten();
+                : other.atSameInstantIn(0).withTheZoneForgotten();
     }
 }

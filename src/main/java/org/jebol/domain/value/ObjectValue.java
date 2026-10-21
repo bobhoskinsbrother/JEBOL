@@ -135,7 +135,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
         @Override
         public Value makeFrom(Value spec, Maker maker) {
             return switch (spec) {
-                case AnyBlockValue body -> maker.evaluateAnObject(body);
+                case AnyBlockValue body -> maker.evaluateObject(body);
                 case IntegerValue(long magnitude) -> makeEmptyObjectWithRoomFor(spec, magnitude, maker);
                 case DecimalValue number -> makeEmptyObjectWithRoomFor(spec, number.quantity(), maker);
                 case MapValue map -> makeAnObjectOfTheWordKeysIn(map, maker);
@@ -144,7 +144,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
         }
 
         private Value makeAnObjectOfTheWordKeysIn(MapValue map, Maker maker) {
-            ObjectValue made = maker.evaluateAnObject(BlockValue.of());
+            ObjectValue made = maker.evaluateObject(BlockValue.of());
             List<Value> keys = map.keys();
             List<Value> values = map.values();
             for (int at = 0; at < keys.size(); at++) {
@@ -159,7 +159,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
             if (asked < 0) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE, spec);
             }
-            return maker.evaluateAnObject(BlockValue.of());
+            return maker.evaluateObject(BlockValue.of());
         }
 
         @Override

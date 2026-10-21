@@ -131,7 +131,7 @@ public final class Lzw {
                         || entriesAvailable * 100 < mostEntriesAvailable) {
                     outputBytes = writeOneCodeInAdjustedBinary(
                             into, shifter, CLEAR_CODE, highestSoFar, outputBytes);
-                    clearTheFirstTwoHundredAndFiftySix(dictionary);
+                    clearFirstTwoHundredAndFiftySix(dictionary);
                     entriesAvailable = mostEntriesAvailable;
                     nextString = FIRST_STRING;
                     highestSoFar = FIRST_STRING;
@@ -144,7 +144,7 @@ public final class Lzw {
             if (outputBytes > inputBytes + (inputBytes >> 4)) {
                 outputBytes = writeOneCodeInAdjustedBinary(
                         into, shifter, CLEAR_CODE, highestSoFar, outputBytes);
-                clearTheFirstTwoHundredAndFiftySix(dictionary);
+                clearFirstTwoHundredAndFiftySix(dictionary);
                 entriesAvailable = mostEntriesAvailable;
                 nextString = FIRST_STRING;
                 highestSoFar = FIRST_STRING;
@@ -172,7 +172,7 @@ public final class Lzw {
         return into.toArray();
     }
 
-    private void clearTheFirstTwoHundredAndFiftySix(Encoding[] dictionary) {
+    private void clearFirstTwoHundredAndFiftySix(Encoding[] dictionary) {
         for (int at = 0; at < 256; at++) {
             dictionary[at].clear();
         }

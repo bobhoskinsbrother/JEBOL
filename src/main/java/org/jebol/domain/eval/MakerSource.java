@@ -35,42 +35,42 @@ public interface MakerSource {
 
         @Override
         public Value makeObjectFrom(ObjectValue prototype, BlockValue body) {
-            throw Raised.cannotUseTheAction(body, "make");
+            throw Raised.cannotUseAction(body, "make");
         }
 
         @Override
         public Value mergeAnObject(ObjectValue prototype, ObjectValue other) {
-            throw Raised.cannotUseTheAction(other, "make");
+            throw Raised.cannotUseAction(other, "make");
         }
 
         @Override
         public Value makeFunctionFrom(AnyFunctionValue prototype, AnyBlockValue spec) {
-            throw Raised.cannotUseTheAction(spec, "make");
+            throw Raised.cannotUseAction(spec, "make");
         }
 
         @Override
         public Value makeCommandFrom(AnyBlockValue definition) {
-            throw Raised.cannotUseTheAction(definition, "make");
+            throw Raised.cannotUseAction(definition, "make");
         }
 
         @Override
         public Value makeStructFrom(StructValue prototype, Value spec) {
-            throw Raised.cannotUseTheAction(spec, "make");
+            throw Raised.cannotUseAction(spec, "make");
         }
 
         @Override
-        public ObjectValue evaluateAnObject(AnyBlockValue body) {
-            throw Raised.cannotUseTheAction(body, "make");
+        public ObjectValue evaluateObject(AnyBlockValue body) {
+            throw Raised.cannotUseAction(body, "make");
         }
 
         @Override
         public FunctionValue bindFunction(AnyBlockValue spec, AnyBlockValue body) {
-            throw Raised.cannotUseTheAction(spec, "make");
+            throw Raised.cannotUseAction(spec, "make");
         }
 
         @Override
         public Value applySystemFunction(String name, Value argument) {
-            throw Raised.cannotUseTheAction(argument, "make");
+            throw Raised.cannotUseAction(argument, "make");
         }
 
         @Override
@@ -95,7 +95,7 @@ public interface MakerSource {
 
         @Override
         public AnyBlockValue readSource(String source) {
-            throw Raised.cannotUseTheAction(StringValue.of(source), "to");
+            throw Raised.cannotUseAction(StringValue.of(source), "to");
         }
     }
 }

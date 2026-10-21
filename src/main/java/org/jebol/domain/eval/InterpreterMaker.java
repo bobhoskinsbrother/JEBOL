@@ -43,7 +43,7 @@ public final class InterpreterMaker implements Maker {
     }
 
     @Override
-    public ObjectValue evaluateAnObject(AnyBlockValue body) {
+    public ObjectValue evaluateObject(AnyBlockValue body) {
         return evaluator.evaluateInto(evaluator.makeFreshObjectWithin(context), body);
     }
 

@@ -168,15 +168,15 @@ public final class DrawDialect {
 
         private PaintState makeStateRendererGets() {
             PaintState carried = state.fillGradient()
-                    .filter(gradient -> !gradient.shape().canBeDrawnByAToolkit())
+                    .filter(gradient -> !gradient.shape().canBeDrawnByToolkit())
                     .isPresent()
                     ? state.withFillGradient(Optional.empty())
                             .withFill(Optional.empty())
                     : state;
-            return correctForTheGamma(carried);
+            return correctForGamma(carried);
         }
 
-        private PaintState correctForTheGamma(PaintState carried) {
+        private PaintState correctForGamma(PaintState carried) {
             if (gamma == 1) {
                 return carried;
             }
@@ -185,10 +185,10 @@ public final class DrawDialect {
                             .map(colour -> colour.correctForGamma(gamma)))
                     .withFill(carried.fillColour()
                             .map(colour -> colour.correctForGamma(gamma)))
-                    .withFillGradient(carried.fillGradient().map(this::correctForTheGamma));
+                    .withFillGradient(carried.fillGradient().map(this::correctForGamma));
         }
 
-        private Gradient correctForTheGamma(Gradient gradient) {
+        private Gradient correctForGamma(Gradient gradient) {
             return new Gradient(gradient.shape(),
                     gradient.acrossOffset(), gradient.downOffset(),
                     gradient.from(), gradient.to(), gradient.angle(),
@@ -199,7 +199,7 @@ public final class DrawDialect {
 
         private void paintAGradientNoToolkitHas(List<PathStep> path) {
             Optional<Gradient> awkward = state.fillGradient()
-                    .filter(gradient -> !gradient.shape().canBeDrawnByAToolkit());
+                    .filter(gradient -> !gradient.shape().canBeDrawnByToolkit());
             if (awkward.isEmpty()) {
                 return;
             }
@@ -211,12 +211,12 @@ public final class DrawDialect {
                         .withFillGradient(Optional.empty())
                         .withFill(Optional.of(piece.colour()));
                 painted.add(new PaintInstruction.Drawn(
-                        clipToTheShapeItFills(path), piece.path(), findTransformOnSurface(), state));
+                        clipToShapeItFills(path), piece.path(), findTransformOnSurface(), state));
             }
             state = wasStanding;
         }
 
-        private Placement clipToTheShapeItFills(List<PathStep> path) {
+        private Placement clipToShapeItFills(List<PathStep> path) {
             ClipRectangle area = measureAreaCovered(path);
             return new Placement(where.across(), where.down(),
                     where.wide(), where.high(), clip.overlapWith(area),

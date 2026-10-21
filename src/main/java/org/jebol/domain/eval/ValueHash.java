@@ -194,12 +194,12 @@ public final class ValueHash {
         for (int character : spelling.codePoints().toArray()) {
             int lowered = UnicodeCases.TABLES.toLower(character) & 0xFF;
             int entry = ((hash >>> CRC_INITIAL_SHIFT) ^ lowered) & 0xFF;
-            hash = ((hash << Byte.SIZE) & CRC_MASK) ^ computeACrcTableEntry(entry);
+            hash = ((hash << Byte.SIZE) & CRC_MASK) ^ computeCrcTableEntry(entry);
         }
         return hash;
     }
 
-    private int computeACrcTableEntry(int byteValue) {
+    private int computeCrcTableEntry(int byteValue) {
         int accumulated = 0;
         int data = byteValue << CRC_INITIAL_SHIFT;
         for (int bit = 0; bit < Byte.SIZE; bit++) {

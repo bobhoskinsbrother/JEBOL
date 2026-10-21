@@ -69,7 +69,7 @@ public class ApplyNative extends DefaultNative {
     private long countTheArityOf(Value callee) {
         return switch (callee) {
             case NativeValue built -> built.parameters().stream()
-                    .filter(Parameter::consumesAnArgument)
+                    .filter(Parameter::consumesArgument)
                     .filter(parameter -> parameter.owningRefinement().isEmpty())
                     .count();
             case DefinedFunctionValue function -> function.parameters().size();
@@ -123,7 +123,7 @@ public class ApplyNative extends DefaultNative {
                 refinementArguments.put(name, new ArrayDeque<>(values)));
         List<Value> arguments = new ArrayList<>();
         for (Parameter parameter : refined.parameters()) {
-            if (!parameter.consumesAnArgument()) {
+            if (!parameter.consumesArgument()) {
                 continue;
             }
             Optional<String> owner = parameter.owningRefinement();

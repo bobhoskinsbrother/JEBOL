@@ -997,7 +997,7 @@ final class SourceScanner {
         int cp = position[0];
         int first = at(cp);
         if (first >= 0x80) {
-            return decodeAUtf8Codepoint(position);
+            return decodeUtf8Codepoint(position);
         }
         cp++;
         if (first != '^') {
@@ -1071,7 +1071,7 @@ final class SourceScanner {
         return from + lowerCase.length();
     }
 
-    private int decodeAUtf8Codepoint(int[] position) {
+    private int decodeUtf8Codepoint(int[] position) {
         int cp = position[0];
         int first = at(cp);
         int size;
@@ -1583,7 +1583,7 @@ final class SourceScanner {
                 return StringValue.of(scannedText());
             }
             case TOKEN_BINARY -> {
-                return decodeABinary(scanned.readBinaryBase(bp, len)).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
+                return decodeBinary(scanned.readBinaryBase(bp, len)).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
             }
             case TOKEN_PAIR -> {
                 return scanned.scanAPair(bp, len).orElseThrow(() -> refuseAsInvalid(token, bp, ep));
@@ -1712,7 +1712,7 @@ final class SourceScanner {
         return malformed.asAFailure().error().orElseThrow();
     }
 
-    private Optional<Value> decodeABinary(int base) {
+    private Optional<Value> decodeBinary(int base) {
         byte[] digits = scanBuffer.toByteArray();
         return switch (base) {
             case 16 -> decodeHexadecimal(digits);
@@ -1793,7 +1793,7 @@ final class SourceScanner {
         return false;
     }
 
-    private int decodeABase64Digit(int octet, boolean urlSafe) {
+    private int decodeBase64Digit(int octet, boolean urlSafe) {
         if (octet >= 'A' && octet <= 'Z') {
             return octet - 'A';
         }
@@ -1836,7 +1836,7 @@ final class SourceScanner {
                 }
                 return Optional.empty();
             }
-            int digit = decodeABase64Digit(octet, urlSafe);
+            int digit = decodeBase64Digit(octet, urlSafe);
             if (digit < BASE64_SPACE) {
                 if (octet != '=') {
                     accumulated = (accumulated << 6) + digit;
@@ -1955,7 +1955,7 @@ final class SourceScanner {
                 written.write(encoded, 0, encoded.length);
             } else {
                 int[] position = {src};
-                int codepoint = decodeAUtf8Codepoint(position);
+                int codepoint = decodeUtf8Codepoint(position);
                 src = position[0];
                 byte[] encoded = new String(Character.toChars(Math.max(codepoint, 0)))
                         .getBytes(StandardCharsets.UTF_8);

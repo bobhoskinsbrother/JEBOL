@@ -34,7 +34,7 @@ public abstract class ArithmeticNative extends DefaultNative {
                 MoneyValue.TYPE, TimeValue.TYPE, PairValue.TYPE));
     }
 
-    protected List<Parameter> acceptsAnythingWithARange(String... names) {
+    protected List<Parameter> acceptsAnythingWithRange(String... names) {
         return declareEach(names, TypesetValue.NUMBER.membersAnd(
                 TupleValue.TYPE, PairValue.TYPE, MoneyValue.TYPE));
     }
@@ -44,7 +44,7 @@ public abstract class ArithmeticNative extends DefaultNative {
                 MoneyValue.TYPE, CharacterValue.TYPE, TimeValue.TYPE));
     }
 
-    protected List<Parameter> acceptsAnythingWithASign(String... names) {
+    protected List<Parameter> acceptsAnythingWithSign(String... names) {
         return declareEach(names, TypesetValue.NUMBER.membersAnd(
                 PairValue.TYPE, MoneyValue.TYPE, TimeValue.TYPE, BitsetValue.TYPE));
     }

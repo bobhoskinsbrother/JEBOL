@@ -71,9 +71,9 @@ final class PendingCall {
         return Optional.ofNullable(consumeAt(arguments.size()));
     }
 
-    Value describeTheArgumentStillWanted() {
+    Value describeArgumentStillWanted() {
         Parameter wanted = consumeAt(arguments.size());
-        return wanted != null ? wanted.asWrittenInTheSpec() : NoneValue.none();
+        return wanted != null ? wanted.asWrittenInSpec() : NoneValue.none();
     }
 
     String nameInAnArgumentError() {
@@ -177,7 +177,7 @@ final class PendingCall {
             List<Parameter> parameters, List<String> mentioned) {
         int counted = 0;
         for (Parameter parameter : parameters) {
-            if (parameter.consumesAnArgument()
+            if (parameter.consumesArgument()
                     && parameter.owningRefinement().map(mentioned::contains).orElse(true)) {
                 counted++;
             }
@@ -238,7 +238,7 @@ final class PendingCall {
     private List<Parameter> listWhatIsConsumedInDeclaredOrder() {
         List<Parameter> declared = new ArrayList<>(parameters.size());
         for (Parameter parameter : parameters) {
-            if (parameter.consumesAnArgument()) {
+            if (parameter.consumesArgument()) {
                 declared.add(parameter);
             }
         }
@@ -249,13 +249,13 @@ final class PendingCall {
         if (consuming == null) {
             List<Parameter> sequence = new ArrayList<>(parameters.size());
             for (Parameter parameter : parameters) {
-                if (parameter.consumesAnArgument() && parameter.owningRefinement().isEmpty()) {
+                if (parameter.consumesArgument() && parameter.owningRefinement().isEmpty()) {
                     sequence.add(parameter);
                 }
             }
             for (String refinement : mentioned) {
                 for (Parameter parameter : parameters) {
-                    if (parameter.consumesAnArgument()
+                    if (parameter.consumesArgument()
                             && parameter.owningRefinement().filter(refinement::equals).isPresent()) {
                         sequence.add(parameter);
                     }

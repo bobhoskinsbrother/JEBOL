@@ -152,8 +152,8 @@ public record CharacterValue(int codepoint) implements Value {
                 case CharacterValue already -> already;
                 case StringValue text when text.text().isEmpty() -> throw refuse(from);
                 case StringValue text -> CharacterValue.of(text.text().codePointAt(0));
-                case BinaryValue octets -> decodeTheLeadingCharacter(octets);
-                case IssueValue issue -> decodeAHexIssue(issue);
+                case BinaryValue octets -> decodeLeadingCharacter(octets);
+                case IssueValue issue -> decodeHexIssue(issue);
                 case IntegerValue whole -> makeCharacterAt(whole.magnitude());
                 case DecimalValue number -> makeCharacterAt((long) number.quantity());
                 default -> throw refuse(from);
@@ -175,7 +175,7 @@ public record CharacterValue(int codepoint) implements Value {
             return asked <= Character.MAX_VALUE && Character.isSurrogate((char) asked);
         }
 
-        private Value decodeTheLeadingCharacter(BinaryValue octets) {
+        private Value decodeLeadingCharacter(BinaryValue octets) {
             byte[] bytes = octets.readBytesFromHere();
             if (bytes.length == 0) {
                 throw refuse(octets);
@@ -215,7 +215,7 @@ public record CharacterValue(int codepoint) implements Value {
             return 0;
         }
 
-        private Value decodeAHexIssue(AnyWordValue issue) {
+        private Value decodeHexIssue(AnyWordValue issue) {
             String spelling = issue.spelling();
             if (spelling.isEmpty() || spelling.length() > MOST_HEX_DIGITS_SCANNED) {
                 throw refuse(issue);

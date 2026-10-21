@@ -96,7 +96,7 @@ final class BrotliCommand {
         copyLengthAndItsCodeDeltaInTheTopSevenBits[which]++;
     }
 
-    int copyLengthPlusItsModifierReadPlainlyAsTheCReadsIt(int which) {
+    int copyLengthPlusItsModifierReadPlainlyAsCReadsIt(int which) {
         return (copyLengthAndItsCodeDeltaInTheTopSevenBits[which] & 0x1FFFFFF)
                 + (copyLengthAndItsCodeDeltaInTheTopSevenBits[which] >>> 25);
     }
@@ -126,7 +126,7 @@ final class BrotliCommand {
         insertLength[count] = insertLengthGiven;
         copyLengthAndItsCodeDeltaInTheTopSevenBits[count] =
                 copyLengthGiven | (delta << 25);
-        long encoded = encodeTheDistance(distanceCode, directCodes, postfixBits);
+        long encoded = encodeDistance(distanceCode, directCodes, postfixBits);
         distancePrefixAndItsExtraBitsInTheTopSixBits[count] = (int) (encoded >>> 32);
         distanceExtra[count] = (int) encoded;
         commandPrefix[count] = codeTheLength(insertLengthGiven,
@@ -159,7 +159,7 @@ final class BrotliCommand {
                 + directCodes + DISTANCE_SHORT_CODES;
     }
 
-    static long encodeTheDistance(int distanceCode, int directCodes, int postfixBits) {
+    static long encodeDistance(int distanceCode, int directCodes, int postfixBits) {
         if (distanceCode < DISTANCE_SHORT_CODES + directCodes) {
             return (long) distanceCode << 32;
         }

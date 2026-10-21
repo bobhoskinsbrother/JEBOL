@@ -7,7 +7,7 @@ final class CalendarDay implements WritableDateField {
 
     @Override
     public Value readFrom(DateValue date) {
-        return date.asJustTheDay();
+        return date.asJustDay();
     }
 
     @Override

@@ -87,11 +87,11 @@ final class BrotliContextBlockSplitter {
         howManyBlocks++;
         split.addType();
         currentHistogram += howManyContexts;
-        clearTheCurrentHistograms();
+        clearCurrentHistograms();
         blockSize = 0;
     }
 
-    private void clearTheCurrentHistograms() {
+    private void clearCurrentHistograms() {
         if (currentHistogram >= howManyHistogramsAreUsed) {
             return;
         }
@@ -143,7 +143,7 @@ final class BrotliContextBlockSplitter {
         howManyBlocks++;
         split.addType();
         currentHistogram += howManyContexts;
-        clearTheCurrentHistograms();
+        clearCurrentHistograms();
         blockSize = 0;
         mergesInARow = 0;
         targetBlockSize = smallestBlock;

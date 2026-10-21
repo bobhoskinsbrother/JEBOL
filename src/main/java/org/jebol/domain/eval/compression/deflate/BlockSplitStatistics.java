@@ -35,7 +35,7 @@ final class BlockSplitStatistics {
         observationCount = 0;
     }
 
-    void clearTheOldObservations() {
+    void clearOldObservations() {
         Arrays.fill(observations, 0);
         observationCount = 0;
     }
@@ -66,10 +66,10 @@ final class BlockSplitStatistics {
     }
 
     boolean shouldEndBlock(int blockBegin, int next, int end) {
-        return isReadyToCheck(blockBegin, next, end) && endsTheBlock(next - blockBegin);
+        return isReadyToCheck(blockBegin, next, end) && endsBlock(next - blockBegin);
     }
 
-    boolean endsTheBlock(int blockLength) {
+    boolean endsBlock(int blockLength) {
         if (observationCount > 0) {
             long totalDelta = 0;
             for (int type = 0; type < OBSERVATION_TYPES; type++) {

@@ -83,7 +83,7 @@ public record Parameter(
     }
 
 
-    public AnyWordValue asWrittenInTheSpec() {
+    public AnyWordValue asWrittenInSpec() {
         return switch (kind) {
             case SOFT_QUOTED -> LitWordValue.of(name);
             case HARD_QUOTED -> GetWordValue.of(name);
@@ -92,7 +92,7 @@ public record Parameter(
     }
 
     /** Whether this parameter takes a value from the block being evaluated. */
-    public boolean consumesAnArgument() {
+    public boolean consumesArgument() {
         return kind == ParameterKind.NORMAL
                 || kind == ParameterKind.HARD_QUOTED
                 || kind == ParameterKind.SOFT_QUOTED

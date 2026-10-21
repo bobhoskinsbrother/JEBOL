@@ -34,7 +34,7 @@ class EveryNativeTakesItsArgumentsAsRebolDeclaresTest {
 
     private String theArgumentsItsParametersName(NativeValue built) {
         return built.parameters().stream()
-                .filter(Parameter::consumesAnArgument)
+                .filter(Parameter::consumesArgument)
                 .map(Parameter::name)
                 .sorted()
                 .collect(Collectors.joining(" ", "[", "]"));

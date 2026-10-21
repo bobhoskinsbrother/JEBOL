@@ -10,7 +10,7 @@ public interface DigestPort {
 
     byte[] digestOf(String method, byte[] octets);
 
-    byte[] digestWithAKey(String method, byte[] octets, byte[] key);
+    byte[] digestWithKey(String method, byte[] octets, byte[] key);
 
     interface RunningDigest {
 
@@ -38,7 +38,7 @@ public interface DigestPort {
             }
 
             @Override
-            public byte[] digestWithAKey(String method, byte[] octets, byte[] key) {
+            public byte[] digestWithKey(String method, byte[] octets, byte[] key) {
                 throw refuse();
             }
 

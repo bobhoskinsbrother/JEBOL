@@ -12,13 +12,13 @@ public abstract class ScreenNative extends WindowNative {
     }
 
     protected void runThroughTheScreen(Runnable operation) {
-        askThroughTheScreen(() -> {
+        askThroughScreen(() -> {
             operation.run();
             return null;
         });
     }
 
-    protected <T> T askThroughTheScreen(Supplier<T> asking) {
+    protected <T> T askThroughScreen(Supplier<T> asking) {
         try {
             return asking.get();
         } catch (ScreenPort.Denied denied) {

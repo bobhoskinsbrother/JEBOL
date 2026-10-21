@@ -36,7 +36,7 @@ public class Rc4Native extends CipherNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             if (refinements.contains("stream")) {
-                return encipherThroughTheStreamInPlace(
+                return encipherThroughStreamInPlace(
                         (HandleValue) readTheArgumentOf("stream", 0, arguments, refinements)
                                 .orElseThrow(),
                         (BinaryValue) readTheArgumentOf("stream", 1, arguments, refinements)
@@ -52,7 +52,7 @@ public class Rc4Native extends CipherNative {
         };
     }
 
-    private Value encipherThroughTheStreamInPlace(HandleValue held, BinaryValue data) {
+    private Value encipherThroughStreamInPlace(HandleValue held, BinaryValue data) {
         StreamCipher cipher = readKeyHeldBy(held, RC4_HANDLE_TYPE, StreamCipher.class)
                 .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_HANDLE, held.typeName()));
         data.requireChangeable();

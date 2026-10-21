@@ -14,7 +14,7 @@ public class ClampNative extends ArithmeticNative {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return acceptsAnythingWithARange("value", "minimum", "maximum");
+        return acceptsAnythingWithRange("value", "minimum", "maximum");
     }
 
     @Override

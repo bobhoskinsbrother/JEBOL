@@ -38,7 +38,7 @@ class TheHostsDigestsFromTheSourceTest {
             }
 
             @Override
-            public byte[] digestWithAKey(String method, byte[] octets, byte[] key) {
+            public byte[] digestWithKey(String method, byte[] octets, byte[] key) {
                 throw new DigestPort.Refused("feature-na", method);
             }
         };

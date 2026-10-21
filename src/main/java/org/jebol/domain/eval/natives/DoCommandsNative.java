@@ -85,7 +85,7 @@ public class DoCommandsNative extends DefaultNative {
             }
             List<Value> gathered = new ArrayList<>();
             for (Parameter parameter : command.parameters()) {
-                if (parameter.consumesAnArgument() && parameter.owningRefinement().isEmpty()) {
+                if (parameter.consumesArgument() && parameter.owningRefinement().isEmpty()) {
                     gathered.add(readArgumentFor(parameter, named));
                 }
             }
@@ -101,21 +101,21 @@ public class DoCommandsNative extends DefaultNative {
 
         private Value readArgumentFor(Parameter parameter, Value named) {
             if (at >= items.size()) {
-                throw Raised.of(EvaluationFailure.NO_ARG, named, parameter.asWrittenInTheSpec());
+                throw Raised.of(EvaluationFailure.NO_ARG, named, parameter.asWrittenInSpec());
             }
-            Value given = evaluateTheArgument(items.get(at++), parameter);
+            Value given = evaluateArgument(items.get(at++), parameter);
             if (!parameter.accepts(given.datatype())) {
                 throw new Raised(ErrorValue.of(
                         EvaluationFailure.EXPECT_ARG.category(),
                         EvaluationFailure.EXPECT_ARG.errorId(),
                         "a command does not allow " + given.datatype().literalSpelling()
                                 + " for its " + parameter.name() + " argument",
-                        named, parameter.asWrittenInTheSpec(), given.datatype()));
+                        named, parameter.asWrittenInSpec(), given.datatype()));
             }
             return given;
         }
 
-        private Value evaluateTheArgument(Value written, Parameter parameter) {
+        private Value evaluateArgument(Value written, Parameter parameter) {
             boolean fetched = parameter.kind() == ParameterKind.NORMAL;
             return switch (written) {
                 case ParenValue paren -> evaluator.evaluateOrRaise(paren, context);

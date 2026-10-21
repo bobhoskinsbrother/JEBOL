@@ -74,7 +74,7 @@ class SurfaceReportTest {
 
     private static void appendArguments(StringBuilder shape, List<Parameter> parameters) {
         for (Parameter parameter : parameters) {
-            if (!parameter.consumesAnArgument()) {
+            if (!parameter.consumesArgument()) {
                 shape.append(" /").append(parameter.name());
                 continue;
             }

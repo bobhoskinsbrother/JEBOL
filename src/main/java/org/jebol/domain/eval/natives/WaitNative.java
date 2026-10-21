@@ -151,11 +151,11 @@ public class WaitNative extends PortWakingNative {
     }
 
     private Value waitOnTheScreen(PortValue port, Evaluator evaluator) {
-        while (doesTheScreenStillHaveSomethingToSay(evaluator)) {
-            if (doesAQueuedEventWake(port, evaluator)) {
+        while (doesScreenStillHaveSomethingToSay(evaluator)) {
+            if (doesQueuedEventWake(port, evaluator)) {
                 return NoneValue.none();
             }
-            if (!doesTheScreenStillHaveSomethingToSay(evaluator)
+            if (!doesScreenStillHaveSomethingToSay(evaluator)
                     || !sleepWithoutBeingInterrupted(SCREEN_POLL_MILLISECONDS, evaluator)) {
                 return NoneValue.none();
             }
@@ -163,7 +163,7 @@ public class WaitNative extends PortWakingNative {
         return NoneValue.none();
     }
 
-    private boolean doesAQueuedEventWake(PortValue port, Evaluator evaluator) {
+    private boolean doesQueuedEventWake(PortValue port, Evaluator evaluator) {
         Optional<ScreenEvent> next = evaluator.ports().screen().acceptNextEvent();
         while (next.isPresent()) {
             if (wakes(port, makeGuiEventFor(next.get()), evaluator)) {
@@ -188,7 +188,7 @@ public class WaitNative extends PortWakingNative {
     private Value waitOnTheScreenFor(PortValue port, long milliseconds, Evaluator evaluator) {
         long deadline = System.nanoTime() + milliseconds * NANOSECONDS_IN_A_MILLISECOND;
         while (true) {
-            if (doesAQueuedEventWake(port, evaluator)) {
+            if (doesQueuedEventWake(port, evaluator)) {
                 return port;
             }
             long remainingNanoseconds = deadline - System.nanoTime();
@@ -200,7 +200,7 @@ public class WaitNative extends PortWakingNative {
         }
     }
 
-    private boolean doesTheScreenStillHaveSomethingToSay(Evaluator evaluator) {
+    private boolean doesScreenStillHaveSomethingToSay(Evaluator evaluator) {
         Value root = evaluator.systemContext().readValueAt("system", "view", "screen-gob");
         return root instanceof GobValue gob && gob.storage().length() > 0;
     }

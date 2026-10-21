@@ -15,7 +15,7 @@ public interface Maker {
 
     Value makeStructFrom(StructValue prototype, Value spec);
 
-    ObjectValue evaluateAnObject(AnyBlockValue body);
+    ObjectValue evaluateObject(AnyBlockValue body);
 
     FunctionValue bindFunction(AnyBlockValue spec, AnyBlockValue body);
 

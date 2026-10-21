@@ -200,7 +200,7 @@ public final class BitsetValue implements Value {
         for (int at = 0; at < both.length; at++) {
             int ours = at < mine.length ? mine[at] & 0xFF : 0;
             int theirsHere = at < yours.length ? yours[at] & 0xFF : 0;
-            both[at] = (byte) keeping.how().combineTheBits(ours, theirsHere);
+            both[at] = (byte) keeping.how().combineBits(ours, theirsHere);
         }
         return BitsetValue.of(both);
     }

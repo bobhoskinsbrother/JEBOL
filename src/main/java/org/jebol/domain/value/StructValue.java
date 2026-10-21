@@ -211,7 +211,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
             return;
         }
         if (written instanceof StructValue given
-                && inside.spec().describesTheSameBytesAs(given.spec())) {
+                && inside.spec().describesSameBytesAs(given.spec())) {
             data.write(at, given.octets(), inside.spec().size());
             return;
         }
@@ -391,7 +391,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
      * spelt differently are still equal.
      */
     public boolean holdsTheSameAs(StructValue other) {
-        return spec.describesTheSameBytesAs(other.spec)
+        return spec.describesSameBytesAs(other.spec)
                 && java.util.Arrays.equals(octets(), other.octets());
     }
 

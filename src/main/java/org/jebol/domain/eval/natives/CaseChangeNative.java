@@ -29,12 +29,12 @@ public abstract class CaseChangeNative extends DefaultNative {
             case CharacterValue letter -> CharacterValue.of(change(letter.codepoint()));
             case AnyStringValue text when refinements.contains("part") -> partChanged(text,
                     readTheArgumentOf("part", 0, arguments, refinements).orElseThrow());
-            case AnyStringValue text -> text.rewriteFromHere(this::changeTheText);
+            case AnyStringValue text -> text.rewriteFromHere(this::changeText);
             case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 
-    private String changeTheText(String text) {
+    private String changeText(String text) {
         StringBuilder changed = new StringBuilder();
         text.codePoints().map(this::change).forEach(changed::appendCodePoint);
         return changed.toString();
@@ -46,7 +46,7 @@ public abstract class CaseChangeNative extends DefaultNative {
         int changing = wanted < 0
                 ? text.index() - changingFrom.index()
                 : (int) Math.min(wanted, text.lengthFromHere());
-        changingFrom.rewriteTheFront(changing, this::changeTheText);
+        changingFrom.rewriteTheFront(changing, this::changeText);
         return text;
     }
 

@@ -56,7 +56,7 @@ class AValueMakesItsOwnKindTest {
         }
 
         @Override
-        public ObjectValue evaluateAnObject(AnyBlockValue body) {
+        public ObjectValue evaluateObject(AnyBlockValue body) {
             asked.add("object evaluated");
             return anEvaluatedObject;
         }

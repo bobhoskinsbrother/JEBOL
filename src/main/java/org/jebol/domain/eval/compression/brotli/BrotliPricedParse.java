@@ -278,7 +278,7 @@ final class BrotliPricedParse {
                 long howFarBack = matches.readDistanceAt(match);
                 boolean isADictionaryWord = howFarBack > dictionaryStart;
                 long plainCode = howFarBack + BrotliCommand.DISTANCE_SHORT_CODES - 1;
-                long encoded = BrotliCommand.encodeTheDistance((int) plainCode,
+                long encoded = BrotliCommand.encodeDistance((int) plainCode,
                         distances.directCodes(), distances.postfixBits());
                 int distanceSymbol = (int) (encoded >>> 32);
                 int howManyExtraBits = distanceSymbol >>> 10;

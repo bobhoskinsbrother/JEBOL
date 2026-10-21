@@ -18,8 +18,8 @@ public final class PairActions {
             operation.requireNonZeroDivisor(readTheSecondHalfOf(right));
         }
         return PairValue.of(
-                combineAHalf(readTheFirstHalfOf(left), readTheFirstHalfOf(right), operation),
-                combineAHalf(readTheSecondHalfOf(left), readTheSecondHalfOf(right), operation));
+                combineHalf(readTheFirstHalfOf(left), readTheFirstHalfOf(right), operation),
+                combineHalf(readTheSecondHalfOf(left), readTheSecondHalfOf(right), operation));
     }
 
     private static void refuseWhatIsNotAPairOrAPlainNumber(Value side) {
@@ -32,7 +32,7 @@ public final class PairActions {
                 side.datatype().literalSpelling() + " does not go with pair arithmetic");
     }
 
-    private static double combineAHalf(
+    private static double combineHalf(
             double ours, double theirs, ArithmeticOperation operation) {
         return ((AnyDecimalValue) operation.onFractions(ours, theirs))
                 .quantity();

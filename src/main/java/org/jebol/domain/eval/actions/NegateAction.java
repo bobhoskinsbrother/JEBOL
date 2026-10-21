@@ -16,7 +16,7 @@ public class NegateAction extends ArithmeticNative implements ActionValue {
 
     @Override
     public List<Parameter> parametersAsWritten() {
-        return acceptsAnythingWithASign("value");
+        return acceptsAnythingWithSign("value");
     }
 
     @Override

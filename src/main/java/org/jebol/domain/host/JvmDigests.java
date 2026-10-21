@@ -54,7 +54,7 @@ public final class JvmDigests implements DigestPort {
     }
 
     @Override
-    public byte[] digestWithAKey(String method, byte[] octets, byte[] key) {
+    public byte[] digestWithKey(String method, byte[] octets, byte[] key) {
         try {
             String algorithm = "Hmac" + findDigestNamed(method).getAlgorithm().replace("-", "");
             Mac mac = Mac.getInstance(algorithm);

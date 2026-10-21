@@ -42,7 +42,7 @@ public class FindAction extends SeriesSearchAction {
             return switch (subject) {
                 case NoneValue nothing -> nothing;
                 case Value object when object.isAnyObject() ->
-                        object.declaresAFieldFindCanReachBy(wanted)
+                        object.declaresFieldFindCanReachBy(wanted)
                                 ? LogicValue.of(true)
                                 : NoneValue.none();
                 case MapValue map -> map.findStoredKeyLike(wanted, refinements.contains("case"));

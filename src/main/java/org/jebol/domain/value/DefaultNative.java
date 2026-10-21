@@ -83,7 +83,7 @@ public abstract non-sealed class DefaultNative implements NativeValue {
     }
 
     private boolean arrivesInThisCall(Parameter parameter, Set<String> asked) {
-        return parameter.consumesAnArgument()
+        return parameter.consumesArgument()
                 && parameter.owningRefinement().map(asked::contains).orElse(true);
     }
 
