@@ -54,7 +54,7 @@ public interface ParseWalk {
 
     Value evaluateParen(AnyBlockValue paren);
 
-    Value readWhatTheWordHolds(Value wanted);
+    Value resolveWord(Value wanted);
 
     Value chooseValueToInsert(Value written);
 
@@ -78,7 +78,7 @@ public interface ParseWalk {
 
     int findFirstMatchFrom(int[] needle, int from);
 
-    String readTheTextOf(Value value);
+    String textFrom(Value value);
 
     void removeBetween(int from, int howMany);
 

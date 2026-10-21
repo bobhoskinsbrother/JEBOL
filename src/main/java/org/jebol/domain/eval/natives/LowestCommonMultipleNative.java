@@ -21,8 +21,8 @@ public class LowestCommonMultipleNative extends WholeNumberNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            long first = readTheWholeNumberOf(arguments.get(0));
-            long second = readTheWholeNumberOf(arguments.get(1));
+            long first = wholeNumberFrom(arguments.get(0));
+            long second = wholeNumberFrom(arguments.get(1));
             long divisor = findGreatestDivisorSharedBy(first, second);
             return IntegerValue.of(divisor == 0
                     ? 0

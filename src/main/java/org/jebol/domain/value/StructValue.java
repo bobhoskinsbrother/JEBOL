@@ -163,7 +163,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
      * {@code [uint8! [1]]} reflects as a bare number while reading it through
      * a path gives a vector of one.
      */
-    public Value reflectTheValueOf(StructField field) {
+    public Value reflectedValue(StructField field) {
         return field.dimension() > 1
                 ? BlockValue.of(readTheElementsOf(field))
                 : elementAt(field, 0);
@@ -338,7 +338,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
 
     /** VALUES-OF: what each field currently holds. */
     public List<Value> fieldValues() {
-        return spec.fields().stream().map(this::reflectTheValueOf).toList();
+        return spec.fields().stream().map(this::reflectedValue).toList();
     }
 
     /** BODY-OF: the field names as set-words, each followed by its value. */
@@ -346,7 +346,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         List<Value> written = new ArrayList<>();
         for (StructField field : spec.fields()) {
             written.add(SetWordValue.of(field.name()));
-            written.add(reflectTheValueOf(field));
+            written.add(reflectedValue(field));
         }
         return written;
     }

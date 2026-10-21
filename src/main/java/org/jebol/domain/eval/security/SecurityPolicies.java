@@ -84,8 +84,8 @@ public final class SecurityPolicies {
 
     private boolean covers(Value name, Value subject) {
         boolean foldCase = !(name instanceof FileValue) || fileNamesFoldCase;
-        int[] named = readTheTextOf(name).codePoints().toArray();
-        int[] asked = readTheTextOf(subject).codePoints().toArray();
+        int[] named = textFrom(name).codePoints().toArray();
+        int[] asked = textFrom(subject).codePoints().toArray();
         if (named.length > asked.length) {
             return false;
         }
@@ -103,7 +103,7 @@ public final class SecurityPolicies {
                 : named == asked;
     }
 
-    private String readTheTextOf(Value value) {
+    private String textFrom(Value value) {
         return switch (value) {
             case AnyStringValue text -> text.text();
             case BinaryValue bytes -> new String(bytes.octetsFromHere(), StandardCharsets.UTF_8);

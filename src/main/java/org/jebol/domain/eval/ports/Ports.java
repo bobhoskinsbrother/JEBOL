@@ -209,7 +209,7 @@ public final class Ports {
         }
         return switch (port.schemeName()) {
             case "console" -> lineReadFromConsole(evaluator);
-            case "clipboard" -> readWhatTheOperatorLastCopied(port, evaluator, asked);
+            case "clipboard" -> lastCopiedText(port, evaluator, asked);
             case "bundled" -> bundledModuleSource(port, evaluator);
             case "tcp" -> readBytesFromConnection(port, evaluator);
             case "udp" -> readOneDatagramInto(port, evaluator);
@@ -238,7 +238,7 @@ public final class Ports {
         });
     }
 
-    private Value readWhatTheOperatorLastCopied(PortValue port, Evaluator evaluator, PortRequest asked) {
+    private Value lastCopiedText(PortValue port, Evaluator evaluator, PortRequest asked) {
         granted.require(HostService.CLIPBOARD);
         String whole = askClipboard(evaluator);
         String copied = asked.part()

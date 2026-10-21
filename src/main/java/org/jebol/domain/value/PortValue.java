@@ -76,13 +76,13 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
                 : Optional.empty();
     }
 
-    public void refuseASpecThatIsNotAnObject() {
+    public void requireObjectSpec() {
         if (!(readFieldValue("spec") instanceof ObjectValue)) {
             throw Raised.of(EvaluationFailure.INVALID_PORT);
         }
     }
 
-    public void refuseAnActorThatIsNeitherANativeNorAnObject() {
+    public void requireNativeOrObjectActor() {
         Value actor = readFieldValue("actor");
         if (actor instanceof ObjectValue || actor instanceof NativeValue
                 || actor instanceof NoneValue) {

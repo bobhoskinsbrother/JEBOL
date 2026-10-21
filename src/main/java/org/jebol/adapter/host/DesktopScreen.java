@@ -197,7 +197,7 @@ public final class DesktopScreen extends GobScreen {
     }
 
     private JFrame showWindow(GobValue gob) {
-        JFrame frame = new JFrame(readTheTitleOf(gob));
+        JFrame frame = new JFrame(windowTitle(gob));
         showJebolIcon(frame);
         frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         frame.setContentPane(paintSurface(gob));
@@ -208,7 +208,7 @@ public final class DesktopScreen extends GobScreen {
         return frame;
     }
 
-    private static String readTheTitleOf(GobValue gob) {
+    private static String windowTitle(GobValue gob) {
         Value text = gob.storage().readContentIfKind(
                 org.jebol.domain.value.GobStorage.Content.STRING);
         return text instanceof AnyStringValue title && !title.text().isEmpty()

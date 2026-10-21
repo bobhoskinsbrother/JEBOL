@@ -181,7 +181,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public Value readWhatTheWordHolds(Value wanted) {
+    public Value resolveWord(Value wanted) {
         if (!(wanted instanceof WordValue word)) {
             return wanted;
         }
@@ -377,7 +377,7 @@ public final class Parser implements ParseWalk {
     public void deliverCollectedTo(AnyWordValue target, List<Value> mine, boolean appending) {
         if (walkingABlock) {
             Value existing = valueOf(target);
-            refuseATargetThatCannotHoldWhatThisParseYieldsOverABlock(existing);
+            requireBlockTargetForParseInto(existing);
             if (existing instanceof AnyBlockValue block) {
                 int where = appending ? block.storageLength() + 1 : block.index();
                 for (int added = mine.size(); added > 0; added--) {
@@ -630,7 +630,7 @@ public final class Parser implements ParseWalk {
     }
 
 
-    private void refuseATargetThatCannotHoldWhatThisParseYieldsOverABlock(Value target) {
+    private void requireBlockTargetForParseInto(Value target) {
         Datatype kind = target.datatype();
         boolean holdsWhatWeParse = kind == BinaryValue.TYPE && parsing == BinaryValue.TYPE;
         if (!holdsWhatWeParse && kind != BlockValue.TYPE && kind != ParenValue.TYPE && kind != HashValue.TYPE) {
@@ -822,7 +822,7 @@ public final class Parser implements ParseWalk {
         }
         if (rule instanceof GetWordValue back) {
             Context holder = back.isBound() ? back.binding() : context;
-            ParseTargets.refuseAnInputThatIsNotASeries(back, readWhatTheSlotHolds(holder, back));
+            ParseTargets.refuseAnInputThatIsNotASeries(back, slotValue(holder, back));
             if (holder.findSlotFor(back.canonical()).value() instanceof AnyStringValue marked) {
                 if (!marked.sharesStorageWith(source)) {
                     adoptInput(marked);
@@ -871,7 +871,7 @@ public final class Parser implements ParseWalk {
         return NO_MATCH;
     }
 
-    private static Value readWhatTheSlotHolds(Context holder, AnyWordValue word) {
+    private static Value slotValue(Context holder, AnyWordValue word) {
         return holder.contains(word.canonical()) ? holder.findSlotFor(word.canonical()).value() : NoneValue.none();
     }
 
@@ -927,7 +927,7 @@ public final class Parser implements ParseWalk {
         return BinaryValue.of(octets);
     }
 
-    private void refuseATargetThatCannotHoldWhatThisParseYieldsOverAString(Value target) {
+    private void requireStringTargetForParseInto(Value target) {
         boolean suits = target instanceof BlockValue
                 || target instanceof ParenValue
                 || target instanceof HashValue
@@ -940,8 +940,8 @@ public final class Parser implements ParseWalk {
 
     private void deliver(AnyWordValue word, List<Value> gathered, boolean past) {
         Context holder = word.isBound() ? word.binding() : context;
-        Value target = readWhatTheSlotHolds(holder, word);
-        refuseATargetThatCannotHoldWhatThisParseYieldsOverAString(target);
+        Value target = slotValue(holder, word);
+        requireStringTargetForParseInto(target);
         switch (target) {
             case AnyBlockValue existing -> {
                 int where = past ? existing.storageLength() + 1 : existing.index();
@@ -1071,7 +1071,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public String readTheTextOf(Value value) {
+    public String textFrom(Value value) {
         return textOf(value);
     }
 

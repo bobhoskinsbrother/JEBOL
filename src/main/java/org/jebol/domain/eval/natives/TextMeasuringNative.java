@@ -13,7 +13,7 @@ public abstract class TextMeasuringNative extends ScreenNative {
         super(granted);
     }
 
-    protected GobText readTheTextOf(GobValue gob, Evaluator evaluator) {
+    protected GobText gobText(GobValue gob, Evaluator evaluator) {
         granted.require(HostService.WINDOWS);
         return askThroughScreen(() -> new GobText(gob, evaluator.ports().screen().textMeasurement()));
     }

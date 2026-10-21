@@ -21,7 +21,7 @@ public class PrimeNative extends WholeNumberNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> LogicValue.of(
-                hasNoDivisorBelowItsSquareRoot(readTheWholeNumberOf(arguments.getFirst())));
+                hasNoDivisorBelowItsSquareRoot(wholeNumberFrom(arguments.getFirst())));
     }
 
     private boolean hasNoDivisorBelowItsSquareRoot(long candidate) {

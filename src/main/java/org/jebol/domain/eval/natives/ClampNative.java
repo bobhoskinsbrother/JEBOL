@@ -23,12 +23,12 @@ public class ClampNative extends ArithmeticNative {
             Value value = arguments.get(0);
             Value lowest = arguments.get(1);
             Value highest = arguments.get(2);
-            refuseARangeOfAnotherDatatype(value, lowest, highest);
+            requireSameDatatype(value, lowest, highest);
             return value.holdBetween(lowest, highest);
         };
     }
 
-    private void refuseARangeOfAnotherDatatype(
+    private void requireSameDatatype(
             Value value, Value lowest, Value highest) {
 
         if (value.datatype() == lowest.datatype()

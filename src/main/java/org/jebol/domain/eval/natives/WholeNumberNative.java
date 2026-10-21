@@ -6,7 +6,7 @@ import org.jebol.domain.value.Value;
 
 public abstract class WholeNumberNative extends ArithmeticNative {
 
-    protected long readTheWholeNumberOf(Value given) {
+    protected long wholeNumberFrom(Value given) {
         return ((IntegerValue) given).magnitude();
     }
 

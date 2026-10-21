@@ -28,7 +28,7 @@ public class SizeTextNative extends TextMeasuringNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            TextLines lines = readTheTextOf((GobValue) arguments.getFirst(), evaluator).lines();
+            TextLines lines = gobText((GobValue) arguments.getFirst(), evaluator).lines();
             return roundToWholePixels(lines.widest(), lines.tallness());
         };
     }

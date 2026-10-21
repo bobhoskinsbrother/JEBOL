@@ -89,10 +89,10 @@ public class DoNative extends DefaultNative {
             case BinaryValue bytes -> doAsScript(bytes, evaluator);
             case ErrorValue built -> throw new Raised(built.raisedAsItStands());
             case AnyWordValue word when word.looksUpItsDeclaration() ->
-                    evaluator.readTheValueOfWordIn(word, context);
+                    evaluator.wordValueIn(word, context);
             case LitWordValue quoted -> quoted.asWord();
             case LitPathValue quoted -> quoted.asPath();
-            case PathValue path -> evaluator.readTheValueOfPathIn(path, context);
+            case PathValue path -> evaluator.pathValueIn(path, context);
             case SetWordValue assigning ->
                     raiseHalfExpression(assigning);
             case SetPathValue assigning ->
@@ -122,11 +122,11 @@ public class DoNative extends DefaultNative {
             throw Raised.of(EvaluationFailure.INVALID_ARG, why.spelling());
         }
         List<Value> parts = ((AnyBlockValue) read).remaining();
-        refuseAScriptThatNeedsANewerInterpreter(parts.getFirst(), evaluator);
+        requireInterpreterNewEnough(parts.getFirst(), evaluator);
         return evaluateSource(scriptBody(parts), evaluator);
     }
 
-    private void refuseAScriptThatNeedsANewerInterpreter(
+    private void requireInterpreterNewEnough(
             Value header, Evaluator evaluator) {
 
         if (header instanceof ObjectValue(Context fields)

@@ -71,12 +71,12 @@ public final class View {
     public ScriptOutcome raise(String handle) {
         AnyBlockValue action = actions.get(handle);
         if (action == null) {
-            return refuseABrowserOutOfStep(handle);
+            return unknownActionOutcome(handle);
         }
         return interpreter.run(Molder.moldOnly(action));
     }
 
-    private static ScriptOutcome refuseABrowserOutOfStep(String handle) {
+    private static ScriptOutcome unknownActionOutcome(String handle) {
         return new ScriptOutcome(
                 Conclusion.RAISED,
                 ErrorValue.of(ErrorCategory.SCRIPT, "no-such-action",

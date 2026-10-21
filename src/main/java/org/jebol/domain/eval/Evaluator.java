@@ -246,8 +246,8 @@ public final class Evaluator {
         if (!(arguments.getFirst() instanceof PortValue port)) {
             return Optional.empty();
         }
-        port.refuseASpecThatIsNotAnObject();
-        port.refuseAnActorThatIsNeitherANativeNorAnObject();
+        port.requireObjectSpec();
+        port.requireNativeOrObjectActor();
         if (port.hasNoActor()) {
             return Optional.of(NoneValue.none());
         }
@@ -303,10 +303,10 @@ public final class Evaluator {
 
     public Value readSimpleValue(Value given, Context where) {
         if (given instanceof AnyWordValue word && word.looksUpItsDeclaration()) {
-            return readTheValueOfWordIn(word, where);
+            return wordValueIn(word, where);
         }
         if (given instanceof AnyBlockValue path && path.looksUpItsDeclaration()) {
-            return readTheValueOfPathIn(path, where);
+            return pathValueIn(path, where);
         }
         return given;
     }
@@ -963,11 +963,11 @@ public final class Evaluator {
         };
     }
 
-    public Value readTheValueOfWordIn(AnyWordValue word, Context context) {
+    public Value wordValueIn(AnyWordValue word, Context context) {
         return resolve(word.isBound() ? word : word.bindTo(context)).value();
     }
 
-    public Value readTheValueOfPathIn(AnyBlockValue path, Context context) {
+    public Value pathValueIn(AnyBlockValue path, Context context) {
         return select(path, context).value();
     }
 

@@ -16,10 +16,10 @@ public final class DateOrder {
                 && first.month() == second.month()
                 && first.day() == second.day()
                 && first.timeOfDay().equals(second.timeOfDay())
-                && readTheZoneOrNoOffset(first).equals(readTheZoneOrNoOffset(second));
+                && zoneMinutesOrZero(first).equals(zoneMinutesOrZero(second));
     }
 
-    private static Integer readTheZoneOrNoOffset(DateValue date) {
+    private static Integer zoneMinutesOrZero(DateValue date) {
         return date.zoneMinutes().orElse(0);
     }
 }

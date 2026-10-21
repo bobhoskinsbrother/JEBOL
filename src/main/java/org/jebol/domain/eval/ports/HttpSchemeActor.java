@@ -113,13 +113,13 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
 
     private HttpPort.Answer fetch(PortValue port, WhatWasAsked asked) {
         HttpPort.Request request = new HttpPort.Request(
-                readTheUrlOf(port),
+                requestUrl(port),
                 httpMethod(port),
                 listTheHeaderNamesOf(port, asked),
                 listTheHeaderValuesOf(port, asked),
                 contentBytes(port),
                 followsRedirects(port),
-                readTheTimeoutOf(port));
+                httpTimeout(port));
         try {
             return host.fetch(request);
         } catch (HttpPort.Refused refused) {
@@ -239,7 +239,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
                 .map(phrase -> ((AnyStringValue) phrase).text());
     }
 
-    private String readTheUrlOf(PortValue port) {
+    private String requestUrl(PortValue port) {
         Value spec = port.readFieldValue("spec");
         Value reference = spec.readFieldValue("ref");
         if (reference instanceof AnyStringValue written && !(reference instanceof FileValue)) {
@@ -307,7 +307,7 @@ public final class HttpSchemeActor extends DefaultNative implements ServesPortAc
         return !(redirects instanceof NoneValue) && redirects.isTruthy();
     }
 
-    private Optional<Duration> readTheTimeoutOf(PortValue port) {
+    private Optional<Duration> httpTimeout(PortValue port) {
         return readAnIntegerIn(port.readFieldValue("spec"), "timeout")
                 .filter(seconds -> seconds > 0)
                 .map(Duration::ofSeconds);

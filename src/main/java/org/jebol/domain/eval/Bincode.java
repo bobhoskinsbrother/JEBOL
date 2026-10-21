@@ -15,7 +15,7 @@ public final class Bincode {
     private Bincode() {
     }
 
-    private static int readTheWidthOf(String code) {
+    private static int codeWidth(String code) {
         return switch (baseCode(code)) {
             case "ui8", "si8" -> 1;
             case "ui16", "si16" -> 2;
@@ -55,7 +55,7 @@ public final class Bincode {
     }
 
     static boolean knows(String code) {
-        return readTheWidthOf(code) > 0 || floatWidth(code) > 0
+        return codeWidth(code) > 0 || floatWidth(code) > 0
                 || POSITIONS.contains(baseCode(code))
                 || DATA.contains(baseCode(code))
                 || VARIABLE_WIDTH.contains(code)
@@ -165,7 +165,7 @@ public final class Bincode {
                 continue;
             }
             String code = findCodeAt(dialect, step);
-            if (readTheWidthOf(code) > 0) {
+            if (codeWidth(code) > 0) {
                 step++;
                 writeWholeNumber(cursor, code,
                         writeWholeNumber(readItemAt(dialect, step, code)));
@@ -233,7 +233,7 @@ public final class Bincode {
             }
             String code = readCodeAt(dialect, step);
             cursor.reading = dialect.asWritten(step);
-            if (readTheWidthOf(code) > 0) {
+            if (codeWidth(code) > 0) {
                 read.add(IntegerValue.of(readWholeNumber(cursor, code)));
                 continue;
             }
@@ -390,7 +390,7 @@ public final class Bincode {
             return "";
         }
         String prefix = code.substring(0, code.length() - "bytes".length());
-        return readTheWidthOf(prefix) > 0 ? prefix : "";
+        return codeWidth(prefix) > 0 ? prefix : "";
     }
 
     private static void refuseNumberTooWide(String code, long value) {
@@ -423,7 +423,7 @@ public final class Bincode {
 
     private static void writeWholeNumber(Cursor cursor, String code, long value) {
         refuseNumberTooWide(code, value);
-        int width = readTheWidthOf(code);
+        int width = codeWidth(code);
         for (int byteAt = 0; byteAt < width; byteAt++) {
             int shift = isMostSignificantFirst(code)
                     ? (width - 1 - byteAt) * 8
@@ -733,7 +733,7 @@ public final class Bincode {
     }
 
     private static long readWholeNumber(Cursor cursor, String code) {
-        int width = readTheWidthOf(code);
+        int width = codeWidth(code);
         refuseReadPastEnd(cursor, width);
         long value = 0;
         for (int byteAt = 0; byteAt < width; byteAt++) {

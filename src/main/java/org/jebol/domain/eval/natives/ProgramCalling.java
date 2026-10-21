@@ -149,11 +149,11 @@ final class ProgramCalling {
             }
             case StringValue text ->
                     new String(bytes, StandardCharsets.UTF_8).codePoints().forEach(text.storage()::append);
-            default -> refuseABufferThatIsNeitherAStringNorABinary();
+            default -> ignoreOtherBuffers();
         }
     }
 
-    private void refuseABufferThatIsNeitherAStringNorABinary() {
+    private void ignoreOtherBuffers() {
     }
 
     private Value makeInformationObject(ProcessPort.ProgramResult result, Evaluator evaluator) {

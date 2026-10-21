@@ -38,7 +38,7 @@ public class CaretToOffsetNative extends TextMeasuringNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            GobText text = readTheTextOf((GobValue) arguments.get(0), evaluator);
+            GobText text = gobText((GobValue) arguments.get(0), evaluator);
             TextLines.CaretPlace placed = text.lines().caretPlace(
                     text.findRunAt(findPlaceInBlock(arguments.get(1))),
                     findCharacterBefore(arguments.get(2)),

@@ -102,13 +102,13 @@ final class BlockEncoder {
 
     private void makeStaticCodes() {
         for (int symbol = 0; symbol < LITLEN_SYMBOL_COUNT; symbol++) {
-            litlenFrequencies[symbol] = readTheStaticLitlenFrequencyOf(symbol);
+            litlenFrequencies[symbol] = staticLitlenFrequency(symbol);
         }
         Arrays.fill(offsetFrequencies, 1);
         makeHuffmanCodes(staticCodes);
     }
 
-    private int readTheStaticLitlenFrequencyOf(int symbol) {
+    private int staticLitlenFrequency(int symbol) {
         if (symbol < FIRST_HIGH_LITERAL) {
             return 2;
         }

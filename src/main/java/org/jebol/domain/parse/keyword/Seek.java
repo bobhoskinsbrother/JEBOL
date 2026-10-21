@@ -33,7 +33,7 @@ final class Seek extends DeclaredKeyword {
             walk.moveTo(walk.inputLength());
             return 2;
         }
-        Value looked = walk.readWhatTheWordHolds(wanted);
+        Value looked = walk.resolveWord(wanted);
         while (walk.position() <= walk.inputLength()) {
             int before = walk.position();
             if (walk.matchValue(looked)) {
@@ -60,7 +60,7 @@ final class Seek extends DeclaredKeyword {
             return moveToPlaceItNames(walk, where);
         }
         refuseWhatIsNeitherAPlaceNorSomethingToLookFor(wanted);
-        Value looked = walk.readWhatTheWordHolds(wanted);
+        Value looked = walk.resolveWord(wanted);
         return looked instanceof AnyBlockValue || looked instanceof BitsetValue
                 ? findFirstPlaceRuleMatches(walk, looked)
                 : findFirstPlaceTextAppears(walk, looked);
@@ -107,7 +107,7 @@ final class Seek extends DeclaredKeyword {
     }
 
     private int findFirstPlaceTextAppears(ParseWalk walk, Value looked) {
-        int[] needle = walk.readTheTextOf(looked).codePoints().toArray();
+        int[] needle = walk.textFrom(looked).codePoints().toArray();
         int found = walk.findFirstMatchFrom(needle, walk.position());
         if (found < 0) {
             return ParseWalk.NO_MATCH;

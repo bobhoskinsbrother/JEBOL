@@ -95,7 +95,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
 
     private Value open(PortValue port, Set<String> refinements, Evaluator evaluator) {
         granted.require(HostService.MIDI);
-        ObjectValue spec = readTheSpecOf(port);
+        ObjectValue spec = portSpec(port);
         if (refinements.contains("write") && !refinements.contains("read")
                 && !(spec.readFieldValue("device-out") instanceof IntegerValue)) {
             makeOneDeviceOutput(spec);
@@ -208,7 +208,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
         return Optional.empty();
     }
 
-    private ObjectValue readTheSpecOf(PortValue port) {
+    private ObjectValue portSpec(PortValue port) {
         if (!(port.readFieldValue("spec") instanceof ObjectValue spec)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, port);
         }
@@ -216,7 +216,7 @@ public final class MidiSchemeActor extends DefaultNative implements ServesPortAc
     }
 
     private Value readTheReferenceOf(PortValue port) {
-        return readTheSpecOf(port).readFieldValue("ref");
+        return portSpec(port).readFieldValue("ref");
     }
 
     private void queueWhatHappenedTo(PortValue port, String happened, Evaluator evaluator) {

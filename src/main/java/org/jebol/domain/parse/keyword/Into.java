@@ -17,7 +17,7 @@ final class Into extends DeclaredKeyword {
 
     @Override
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
-        if (!(walk.readWhatTheWordHolds(rules.get(at + 1)) instanceof AnyBlockValue innerRule)) {
+        if (!(walk.resolveWord(rules.get(at + 1)) instanceof AnyBlockValue innerRule)) {
             throw Raised.of(EvaluationFailure.PARSE_RULE,
                     "into needs a block of rules to apply");
         }

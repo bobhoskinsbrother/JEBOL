@@ -29,7 +29,7 @@ public class FactorialNative extends WholeNumberNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                multiplyEveryWholeNumberUpTo(readTheWholeNumberOf(arguments.getFirst()));
+                multiplyEveryWholeNumberUpTo(wholeNumberFrom(arguments.getFirst()));
     }
 
     private Value multiplyEveryWholeNumberUpTo(long value) {
