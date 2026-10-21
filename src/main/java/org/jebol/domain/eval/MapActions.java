@@ -39,15 +39,15 @@ public final class MapActions implements Actions {
 
     @Override
     public Value append(Asked asked) {
-        return takeTheBlockOfPairs(asked, "append");
+        return addPairsFrom(asked, "append");
     }
 
     @Override
     public Value insert(Asked asked) {
-        return takeTheBlockOfPairs(asked, "insert");
+        return addPairsFrom(asked, "insert");
     }
 
-    Value takeTheBlockOfPairs(Asked asked, String nativeName) {
+    Value addPairsFrom(Asked asked, String nativeName) {
         pairs.requireChangeable();
         refuseWhatIsNotAWholeBlockOfPairs(
                 asked.given(), asked.refinementsAsked().contains("dup"), nativeName);

@@ -282,7 +282,7 @@ public final class CryptPort {
             case "algorithm" -> setAlgorithm(working, given);
             case "direction" -> setDirection(working, given);
             case "key" -> setARunOfOctetsOrText(given, octets -> working.key = octets);
-            case "iv", "init-vector" -> setAVectorOfOctetsOnly(working, given);
+            case "iv", "init-vector" -> setVectorFromOctets(working, given);
             case "tag-length" -> setACount(given, count -> working.tagOctets = count);
             case "aad-length" -> setACount(given,
                     count -> working.toAuthenticateOctets = count);
@@ -342,7 +342,7 @@ public final class CryptPort {
         return false;
     }
 
-    private boolean setAVectorOfOctetsOnly(Working working, Value given) {
+    private boolean setVectorFromOctets(Working working, Value given) {
         if (given instanceof NoneValue) {
             working.vector = new byte[0];
             return true;
@@ -395,12 +395,12 @@ public final class CryptPort {
     private int measureHowMuchCanBeTransformed(Cipherworks works, int gathered) {
         int block = works.blockOctets();
         if (block == 0 || works.mode() == Mode.STREAM) {
-            return takeAllOrNoneWhileShortOfABlock(gathered, block);
+            return takeWholeBlocksOrNone(gathered, block);
         }
         return gathered - gathered % block;
     }
 
-    private int takeAllOrNoneWhileShortOfABlock(int gathered, int block) {
+    private int takeWholeBlocksOrNone(int gathered, int block) {
         return gathered < block ? 0 : gathered;
     }
 

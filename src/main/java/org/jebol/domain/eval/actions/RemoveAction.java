@@ -70,7 +70,7 @@ public class RemoveAction extends DefaultNative implements ActionValue {
     private Value removeFromTheSeries(
             RebolSeries series, Optional<Value> key, Optional<Value> part) {
         if (key.isPresent() && series instanceof AnyBlockValue pairs) {
-            pairs.removeTheFirstPairWhoseKey(
+            pairs.removeFirstPairMatching(
                     item -> Comparison.areIdenticallyEqual(item, key.get()));
             return series;
         }

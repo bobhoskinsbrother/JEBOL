@@ -326,7 +326,7 @@ public final class Parser implements ParseWalk {
 
     @Override
     public Value readFirstItemBetween(int from, int to) {
-        return takeTheFirstOf(List.copyOf(input.subList(from, to)));
+        return firstItem(List.copyOf(input.subList(from, to)));
     }
 
     @Override
@@ -465,7 +465,7 @@ public final class Parser implements ParseWalk {
 
     @Override
     public Value sliceBetween(int from, int to) {
-        return walkingABlock ? sliceOfTheInputKeepingItsOwnDatatype(List.copyOf(input.subList(from, to))) : textSliceBetween(from, to);
+        return walkingABlock ? sliceInSourceKind(List.copyOf(input.subList(from, to))) : textSliceBetween(from, to);
     }
 
     private AnyBlockValue readBlockBeingWalked() {
@@ -644,12 +644,12 @@ public final class Parser implements ParseWalk {
         return ParseTargets.refuseAnythingSetAndCopyCannotWriteInto(at + 1 < rules.size() ? rules.get(at + 1) : null);
     }
 
-    Value sliceOfTheInputKeepingItsOwnDatatype(List<Value> taken) {
+    Value sliceInSourceKind(List<Value> taken) {
         AnyBlockValue slice = BlockValue.of(taken);
         return source instanceof AnyBlockValue whole ? whole.wrap(taken) : slice;
     }
 
-    Value takeTheFirstOf(List<Value> taken) {
+    Value firstItem(List<Value> taken) {
         return taken.isEmpty() ? NoneValue.none() : taken.getFirst();
     }
 
@@ -855,13 +855,13 @@ public final class Parser implements ParseWalk {
             return matchValueOverString(resolved) ? 1 : -1;
         }
         if (rule instanceof GetPathValue path) {
-            return switchTheInputToWhatThisNames(path);
+            return adoptInputNamedBy(path);
         }
         return matchValueOverString(rule) ? 1 : -1;
     }
 
 
-    private int switchTheInputToWhatThisNames(AnyBlockValue path) {
+    private int adoptInputNamedBy(AnyBlockValue path) {
         Value held = evaluator.evaluateOrRaise(BlockValue.of(List.of(path)), context);
         ParseTargets.refuseAnInputThatIsNotASeries(path, held);
         if (held instanceof AnyStringValue marked) {

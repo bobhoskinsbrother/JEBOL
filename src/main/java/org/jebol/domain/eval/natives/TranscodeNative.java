@@ -73,13 +73,13 @@ public class TranscodeNative extends DefaultNative {
         List<Value> values = reading.valuesReadBeforeStopping().stream()
                 .map(value -> bindCallLocations(value, evaluator))
                 .toList();
-        if (stopsBeforeTheEndOfTheSource(asked) && values.isEmpty()) {
+        if (stopsShortOfEnd(asked) && values.isEmpty()) {
             return handBackOrRaise(asked, pastEnd());
         }
         if (asked.answeringTheValueAlone()) {
             return values.getFirst();
         }
-        return BlockValue.of(stopsBeforeTheEndOfTheSource(asked)
+        return BlockValue.of(stopsShortOfEnd(asked)
                 ? withWhatWasLeftUnread(asked, values, reading)
                 : values);
     }
@@ -102,7 +102,7 @@ public class TranscodeNative extends DefaultNative {
         }
     }
 
-    private boolean stopsBeforeTheEndOfTheSource(Reading asked) {
+    private boolean stopsShortOfEnd(Reading asked) {
         return asked.extent() != Transcoder.Extent.WHOLE_SOURCE
                 || asked.handingBackFailures();
     }

@@ -43,18 +43,18 @@ public final class GobActions extends SeriesActions {
     @Override
     public Value append(Asked asked) {
         asked.refuseRefinementsThisDatatypeDoesNotServe("append");
-        takeTheChildrenOf(asked.given(), gob.storage().length() + 1);
+        insertChildren(asked.given(), gob.storage().length() + 1);
         return gob;
     }
 
     @Override
     public Value insert(Asked asked) {
         asked.refuseRefinementsThisDatatypeDoesNotServe("insert");
-        takeTheChildrenOf(asked.given(), gob.findPositionWithinPane());
+        insertChildren(asked.given(), gob.findPositionWithinPane());
         return gob;
     }
 
-    Value takeTheChildrenOf(Value value, int at) {
+    Value insertChildren(Value value, int at) {
         int goesAt = at;
         for (Value child : listTheChildrenOffered(value)) {
             if (!(child instanceof GobValue one)) {

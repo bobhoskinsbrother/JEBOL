@@ -8,7 +8,7 @@ public class IfNative extends OneBranchNative {
     }
 
     @Override
-    protected boolean runsTheBranchWhenTheConditionHolds() {
+    protected boolean runsOnTruthy() {
         return true;
     }
 }

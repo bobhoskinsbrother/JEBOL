@@ -362,10 +362,10 @@ public final class Comparison {
     }
 
     private static int comparePairs(PairValue left, PairValue right) {
-        int theXHalvesDecideItFirst = signOfTheDifference(left.x(), right.x());
+        int theXHalvesDecideItFirst = differenceSign(left.x(), right.x());
         return theXHalvesDecideItFirst != 0
                 ? theXHalvesDecideItFirst
-                : signOfTheDifference(left.y(), right.y());
+                : differenceSign(left.y(), right.y());
     }
 
     private static int compareTuples(TupleValue left, TupleValue right) {
@@ -388,7 +388,7 @@ public final class Comparison {
         return left.compareWith(right);
     }
 
-    private static int signOfTheDifference(double half, double other) {
+    private static int differenceSign(double half, double other) {
         double difference = half - other;
         return difference > 0.0 ? 1 : (difference < 0.0 ? -1 : 0);
     }

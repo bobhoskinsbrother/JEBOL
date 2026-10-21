@@ -243,7 +243,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
         return this;
     }
 
-    public void removeTheFirstPairWhoseKey(Predicate<Value> matches) {
+    public void removeFirstPairMatching(Predicate<Value> matches) {
         List<Value> items = remaining();
         for (int at = 0; at + 1 < items.size(); at += 2) {
             if (matches.test(items.get(at))) {

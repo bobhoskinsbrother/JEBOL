@@ -223,7 +223,7 @@ public final class Repl {
         private int runThrough(Interpreter interpreter, BufferedReader typed, PrintStream out, PrintStream errors) {
             tellItWhatWasAsked(interpreter);
             int reported = REPORT_PRODUCED_VALUE;
-            if (!stopsTheBootShortOfStart()) {
+            if (!bootStopsShortOfStart()) {
                 ScriptOutcome outcome = interpreter.start();
                 if (outcome.conclusion() == Conclusion.QUIT_EARLY) {
                     return readWhatQuitCarries(outcome);
@@ -241,7 +241,7 @@ public final class Repl {
             return KEEP_PROCESS;
         }
 
-        private boolean stopsTheBootShortOfStart() {
+        private boolean bootStopsShortOfStart() {
             return arguments.valueOf(RebolArguments.Flag.BOOT)
                     .map(level -> LEVELS_THAT_STOP_SHORT_OF_START.contains(level.toLowerCase(Locale.ROOT)))
                     .orElse(false);

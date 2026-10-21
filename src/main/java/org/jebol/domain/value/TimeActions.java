@@ -24,7 +24,7 @@ public final class TimeActions {
             throw refuseAsNotRelatedToTime(operation);
         }
         if (operation.keepsDividendSign()) {
-            return takeTheRestOfTheNanoseconds(right, operation);
+            return nanosecondsRemainder(right, operation);
         }
         if (operation.scalesRatherThanShifts()) {
             return scaleByPlainNumber(right, operation);
@@ -75,7 +75,7 @@ public final class TimeActions {
         return TimeValue.ofNanoseconds((long) (span.nanoseconds() * portion.quantity()));
     }
 
-    private Value takeTheRestOfTheNanoseconds(Value right, ArithmeticOperation operation) {
+    private Value nanosecondsRemainder(Value right, ArithmeticOperation operation) {
         if (!(right instanceof IntegerValue(long divisor))) {
             throw refuseAsNotRelatedToTime(operation);
         }

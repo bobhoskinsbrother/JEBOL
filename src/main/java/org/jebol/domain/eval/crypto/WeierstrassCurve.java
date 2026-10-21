@@ -118,7 +118,7 @@ final class WeierstrassCurve {
     BigInteger[] signOver(
             BigInteger privateNumber, byte[] hash, SecureRandom randomly) {
 
-        BigInteger digest = takeTheLeftmostBitsOf(hash);
+        BigInteger digest = truncateToOrderBits(hash);
         while (true) {
             BigInteger chosen = drawPrivateNumber(randomly);
             Point marker = multiplyGenerator(chosen);
@@ -142,7 +142,7 @@ final class WeierstrassCurve {
                 || first.compareTo(order) >= 0 || second.compareTo(order) >= 0) {
             return false;
         }
-        BigInteger digest = takeTheLeftmostBitsOf(hash);
+        BigInteger digest = truncateToOrderBits(hash);
         BigInteger inverse = second.modInverse(order);
         Point marker = addPoints(
                 multiplyGenerator(digest.multiply(inverse).mod(order)),
@@ -150,7 +150,7 @@ final class WeierstrassCurve {
         return !marker.isInfinity() && marker.x().mod(order).equals(first);
     }
 
-    private BigInteger takeTheLeftmostBitsOf(byte[] hash) {
+    private BigInteger truncateToOrderBits(byte[] hash) {
         BigInteger whole = new BigInteger(1, hash);
         int beyondTheOrder = hash.length * 8 - order.bitLength();
         return beyondTheOrder > 0 ? whole.shiftRight(beyondTheOrder) : whole;

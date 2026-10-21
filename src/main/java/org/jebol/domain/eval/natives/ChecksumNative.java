@@ -54,7 +54,7 @@ public class ChecksumNative extends EncodingNative {
             Value data = arguments.getFirst();
             AnyWordValue method = (AnyWordValue) arguments.get(1);
             if (data instanceof FileValue) {
-                return sumTheContentsOfThatFile(data, method, evaluator, refinements);
+                return fileChecksum(data, method, evaluator, refinements);
             }
             return sum(data, readOctetsWithinAnyPart(data, arguments, refinements), method,
                     arguments, refinements);
@@ -106,7 +106,7 @@ public class ChecksumNative extends EncodingNative {
                 : encodings.hashCaseFolded(value.asOctets()) ^ value.datatype().numberCGivesIt();
     }
 
-    private Value sumTheContentsOfThatFile(
+    private Value fileChecksum(
             Value file, AnyWordValue method, Evaluator evaluator, Set<String> refinements) {
 
         if (!encodings.canDigest(method.canonical())) {

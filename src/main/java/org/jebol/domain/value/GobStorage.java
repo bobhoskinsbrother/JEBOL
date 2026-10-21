@@ -90,7 +90,7 @@ public final class GobStorage {
         return offset;
     }
 
-    public void setTheOffset(PairValue where) {
+    public void setOffset(PairValue where) {
         this.offset = where;
     }
 

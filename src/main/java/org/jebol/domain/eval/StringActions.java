@@ -82,11 +82,11 @@ public final class StringActions extends SeriesActions {
                 ? added.runTogether()
                 : Molder.form(adding);
         return asked.howMuchOfIt()
-                .map(count -> takeTheFirstCodePointsOf(written, count.intValue()))
+                .map(count -> firstCodePoints(written, count.intValue()))
                 .orElse(written);
     }
 
-    private String takeTheFirstCodePointsOf(String written, int wanted) {
+    private String firstCodePoints(String written, int wanted) {
         int taking = Math.min(wanted, written.codePointCount(0, written.length()));
         return written.substring(0, written.offsetByCodePoints(0, taking));
     }

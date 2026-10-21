@@ -66,7 +66,7 @@ public class ComposeNative extends DefaultNative {
                         goingDeep));
             } else {
                 asWritten = false;
-                spliceWhatTheParenProduces(built, paren, evaluator, context, keepingBlocksWhole);
+                spliceParenResult(built, paren, evaluator, context, keepingBlocksWhole);
             }
             if (asWritten && template.storage().breaksLineAt(reading)) {
                 built.setLineBreakAt(built.length(), true);
@@ -87,8 +87,8 @@ public class ComposeNative extends DefaultNative {
         return goingDeep ? copyBlockShapeWhole(item) : item;
     }
 
-    private void spliceWhatTheParenProduces(BlockStorage built, ParenValue paren,
-            Evaluator evaluator, Context context, boolean keepingBlocksWhole) {
+    private void spliceParenResult(BlockStorage built, ParenValue paren,
+                                   Evaluator evaluator, Context context, boolean keepingBlocksWhole) {
         for (Value produced : evaluator.evaluateEachOrRaise(paren.asBlock(), context)) {
             if (produced instanceof UnsetValue) {
                 continue;

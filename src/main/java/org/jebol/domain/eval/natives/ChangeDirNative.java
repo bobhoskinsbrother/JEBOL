@@ -36,13 +36,13 @@ public class ChangeDirNative extends HostNative {
             String asked = ((AnyStringValue) arguments.getFirst()).text();
             return runThroughFileSystem(() -> {
                 evaluator.ports().files().changeDirectory(asked);
-                sayWhereTheInterpreterIsStanding(evaluator);
+                updateShellWorkingDirectory(evaluator);
                 return FileValue.of(evaluator.ports().files().workingDirectory());
             });
         };
     }
 
-    private void sayWhereTheInterpreterIsStanding(Evaluator evaluator) {
+    private void updateShellWorkingDirectory(Evaluator evaluator) {
         if (granted.allow(HostService.ENVIRONMENT)) {
             evaluator.ports().environment().assign(
                     WHERE_SHELL_SAYS_IT_IS_STANDING, evaluator.ports().files().workingDirectory());

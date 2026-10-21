@@ -8,7 +8,7 @@ import java.util.List;
 
 public abstract class OneBranchNative extends BranchingNative {
 
-    protected abstract boolean runsTheBranchWhenTheConditionHolds();
+    protected abstract boolean runsOnTruthy();
 
     @Override
     public List<Parameter> parametersAsWritten() {
@@ -18,7 +18,7 @@ public abstract class OneBranchNative extends BranchingNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) ->
-                arguments.get(0).isTruthy() == runsTheBranchWhenTheConditionHolds()
+                arguments.get(0).isTruthy() == runsOnTruthy()
                         ? takeTheBranch(arguments.get(1), evaluator, context, refinements)
                         : NoneValue.none();
     }

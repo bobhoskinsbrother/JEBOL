@@ -36,7 +36,7 @@ class WindowsOnOneSurfaceTest {
 
     private GobValue makeAWindowAt(int across, int down, int wide, int high) {
         GobValue window = GobValue.empty();
-        window.storage().setTheOffset(PairValue.of(across, down));
+        window.storage().setOffset(PairValue.of(across, down));
         window.storage().size(PairValue.of(wide, high));
         return window;
     }
@@ -163,7 +163,7 @@ class WindowsOnOneSurfaceTest {
         @DisplayName("is judged against where the windows stand when it is addressed, not when it was reported")
         void isJudgedWhenAddressed() {
             reportThePointer(ScreenEventType.DOWN, 300, 300);
-            lower.storage().setTheOffset(PairValue.of(250, 250));
+            lower.storage().setOffset(PairValue.of(250, 250));
 
             assertThat(deliverWhatWasReported()).containsExactly(makeAnEvent(ScreenEventType.DOWN, lower, 50, 50));
         }

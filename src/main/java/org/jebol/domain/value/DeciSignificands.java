@@ -60,7 +60,7 @@ final class DeciSignificands {
         return truncation == MORE_THAN_HALF || (truncation == EXACTLY_HALF && kept.testBit(0));
     }
 
-    BigInteger roundUpWhenTheTruncationSays(Shifted shifted) {
+    BigInteger truncatedOrRoundedUp(Shifted shifted) {
         return roundsTruncationUp(shifted.truncation(), shifted.value())
                 ? shifted.value().add(BigInteger.ONE)
                 : shifted.value();
@@ -108,7 +108,7 @@ final class DeciSignificands {
             if (raised < BELOW_THIS_NOTHING_IS_LEFT) {
                 return new Scaled(BigInteger.ZERO, 0);
             }
-            return new Scaled(roundUpWhenTheTruncationSays(
+            return new Scaled(truncatedOrRoundedUp(
                     shiftRight(significand, SMALLEST_EXPONENT - raised, truncation)),
                     SMALLEST_EXPONENT);
         }

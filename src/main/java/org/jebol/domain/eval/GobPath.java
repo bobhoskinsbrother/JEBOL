@@ -79,7 +79,7 @@ public final class GobPath {
     public static boolean accepts(GobStorage storage, String field, Value written) {
         return switch (field) {
             case "offset" -> asPairWhereALoneNumberIsBothHalves(written).map(pair -> {
-                storage.setTheOffset(pair);
+                storage.setOffset(pair);
                 return true;
             }).orElse(false);
             case "size" -> asPairWhereALoneNumberIsBothHalves(written).map(pair -> {

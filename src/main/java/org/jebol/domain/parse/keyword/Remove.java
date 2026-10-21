@@ -15,11 +15,11 @@ final class Remove extends SameForABlockAndAString {
     int apply(ParseWalk walk, List<Value> rules, int at) {
         Integer markOffset = walk.findTheSameStorageOffset(rules.get(at + 1));
         return markOffset != null
-                ? takeOutWhatReachesBackToTheMark(walk, markOffset)
+                ? removeBackToMark(walk, markOffset)
                 : takeOutWhatTheRuleMatches(walk, rules, at);
     }
 
-    private static int takeOutWhatReachesBackToTheMark(ParseWalk walk, int markOffset) {
+    private static int removeBackToMark(ParseWalk walk, int markOffset) {
         int begin = Math.min(walk.position(), markOffset);
         walk.removeBetween(begin, Math.abs(walk.position() - markOffset));
         walk.moveTo(begin);

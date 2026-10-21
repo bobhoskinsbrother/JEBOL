@@ -157,7 +157,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
             sum = shifted.value();
             truncation = shifted.truncation();
         }
-        return new Deci(SIGNIFICANDS.roundUpWhenTheTruncationSays(new Shifted(sum, truncation)),
+        return new Deci(SIGNIFICANDS.truncatedOrRoundedUp(new Shifted(sum, truncation)),
                 raised, negative);
     }
 
@@ -196,7 +196,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
             Shifted shifted = SIGNIFICANDS.shiftRight(product, shift, EXACT);
             truncation = shifted.truncation();
             product = raised >= SMALLEST_EXPONENT
-                    ? SIGNIFICANDS.roundUpWhenTheTruncationSays(shifted)
+                    ? SIGNIFICANDS.truncatedOrRoundedUp(shifted)
                     : shifted.value();
         }
         return scaleBy(product, raised, truncation, negative != other.negative);
@@ -226,7 +226,7 @@ public record Deci(BigInteger significand, int exponent, boolean negative) {
                 truncateDivision(quotientAndRemainder[1], other.significand));
         lowered += SIGNIFICANDS.measureMinShiftRight(quotientAndRemainder[0]);
         BigInteger quotient = lowered >= SMALLEST_EXPONENT
-                ? SIGNIFICANDS.roundUpWhenTheTruncationSays(normalised)
+                ? SIGNIFICANDS.truncatedOrRoundedUp(normalised)
                 : normalised.value();
         return scaleBy(quotient, lowered, normalised.truncation(), signed);
     }

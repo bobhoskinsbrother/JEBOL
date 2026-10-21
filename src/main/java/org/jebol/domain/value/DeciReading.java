@@ -110,7 +110,7 @@ public final class DeciReading {
                 Shifted oneOff = SIGNIFICANDS.shiftRight(significand, 1, truncation);
                 truncation = oneOff.truncation();
                 exponent++;
-                significand = SIGNIFICANDS.roundUpWhenTheTruncationSays(oneOff);
+                significand = SIGNIFICANDS.truncatedOrRoundedUp(oneOff);
             }
         }
         Scaled scaled = SIGNIFICANDS.multiplyByTenTo(significand, 0, exponent, truncation);

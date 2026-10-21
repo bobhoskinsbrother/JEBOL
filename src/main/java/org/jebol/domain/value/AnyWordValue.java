@@ -87,14 +87,14 @@ public abstract sealed class AnyWordValue implements Value
             return switch (from) {
                 case AnyWordValue word -> spell(word.spelling(), word.binding());
                 case LogicValue(boolean truth) -> spell(Boolean.toString(truth));
-                case CharacterValue letter -> spell(spellTheWordOfACharacter(letter));
+                case CharacterValue letter -> spell(wordFromCharacter(letter));
                 case AnyStringValue text -> spell(readSpellingFrom(text.text(), maker));
                 case Datatype asked -> spell(readSpellingFrom(asked.literalSpelling(), maker));
                 default -> throw Raised.of(EvaluationFailure.EXPECT_VAL, WordValue.TYPE, from.datatype());
             };
         }
 
-        private String spellTheWordOfACharacter(CharacterValue letter) {
+        private String wordFromCharacter(CharacterValue letter) {
             if (!spellsWordAlone(letter.codepoint())) {
                 throw Raised.of(EvaluationFailure.BAD_CHAR, letter);
             }

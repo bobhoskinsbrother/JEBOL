@@ -28,7 +28,7 @@ final class Keep extends DeclaredKeyword {
             return 2;
         }
         if (saysOneAtTime(kept)) {
-            return spreadWhatTheRuleMatched(walk, rules, at);
+            return keepEachMatched(walk, rules, at);
         }
         if (isWord(kept, WHOLE_SLICE)) {
             return keepCapture(walk, rules, at + 1);
@@ -45,7 +45,7 @@ final class Keep extends DeclaredKeyword {
             return 2;
         }
         if (saysOneAtTime(kept)) {
-            return spreadWhatTheRuleMatched(walk, rules, at);
+            return keepEachMatched(walk, rules, at);
         }
         boolean wholeSlice = isWord(kept, WHOLE_SLICE);
         int before = walk.position();
@@ -71,7 +71,7 @@ final class Keep extends DeclaredKeyword {
         return 1 + walk.ruleSpan(rules, at + 1);
     }
 
-    private static int spreadWhatTheRuleMatched(
+    private static int keepEachMatched(
             ParseWalk walk, List<Value> rules, int at) {
 
         if (at + 2 < rules.size()

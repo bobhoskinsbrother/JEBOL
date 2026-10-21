@@ -47,15 +47,15 @@ public final class BitsetActions implements Actions {
 
     @Override
     public Value append(Asked asked) {
-        return takeTheBitsOf(asked);
+        return addBitsFrom(asked);
     }
 
     @Override
     public Value insert(Asked asked) {
-        return takeTheBitsOf(asked);
+        return addBitsFrom(asked);
     }
 
-    private Value takeTheBitsOf(Asked asked) {
+    private Value addBitsFrom(Asked asked) {
         members.requireChangeable();
         addAllOf(asked.given());
         return members;
