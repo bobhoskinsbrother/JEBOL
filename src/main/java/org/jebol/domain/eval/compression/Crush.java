@@ -36,7 +36,7 @@ public final class Crush {
     private static final int HASH1_SHIFT = 7;
     private static final int HASH2_SHIFT = 5;
 
-    private static final int[] HOW_FAR_DOWN_A_CHAIN_EACH_LEVEL_LOOKS =
+    private static final int[] CHAIN_DEPTH_PER_LEVEL =
             {4, 256, 1 << 12};
 
     private static final int HEADER_BYTES = 4;
@@ -145,7 +145,7 @@ public final class Crush {
             }
 
             if (length < MAX_MATCH) {
-                int chain = HOW_FAR_DOWN_A_CHAIN_EACH_LEVEL_LOOKS[wanted];
+                int chain = CHAIN_DEPTH_PER_LEVEL[wanted];
                 int start = head[hash2 + HASH1_SIZE];
                 while (chain-- != 0 && start >= oldest) {
                     if (readOctetAt(source, start + length) == readOctetAt(source, at + length)
@@ -177,7 +177,7 @@ public final class Crush {
             if (wanted >= 2 && length >= MIN_MATCH && length < longestPossible) {
                 int next = at + 1;
                 int lazily = Math.min(length + 4, longestPossible);
-                int chain = HOW_FAR_DOWN_A_CHAIN_EACH_LEVEL_LOOKS[wanted];
+                int chain = CHAIN_DEPTH_PER_LEVEL[wanted];
                 int start = head[updateHash2(hash2,
                         readOctetAt(source, next + HASH2_LEN - 1)) + HASH1_SIZE];
                 while (chain-- != 0 && start >= oldest) {

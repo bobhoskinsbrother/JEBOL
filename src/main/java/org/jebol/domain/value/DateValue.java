@@ -179,7 +179,7 @@ public record DateValue(
     private static final int MONTHS_YEAR = 12;
     private static final int LONGEST_MONTH = 31;
     private static final int WHERE_YEAR_IS_PACKED = 48;
-    private static final int WHERE_THE_DAY_OF_THE_YEAR_IS_PACKED = 32;
+    private static final int DAY_OF_YEAR_SHIFT = 32;
 
     @Override
     public Value randomise(RandomDraw draw) {
@@ -198,7 +198,7 @@ public record DateValue(
     @Override
     public long asRandomSeed(ToLongFunction<byte[]> checksumOfTheOctets) {
         return ((long) year << WHERE_YEAR_IS_PACKED)
-                + ((long) asLocalDate().getDayOfYear() << WHERE_THE_DAY_OF_THE_YEAR_IS_PACKED)
+                + ((long) asLocalDate().getDayOfYear() << DAY_OF_YEAR_SHIFT)
                 + nanosecondsOnClock();
     }
 

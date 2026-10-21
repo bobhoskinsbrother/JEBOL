@@ -7,8 +7,8 @@ final class BrotliLiteralCosts {
     private static final double THREE_QUARTERS_IS_ENOUGH_TO_CALL_IT_UTF8 = 0.75;
     private static final int WINDOW_HALF_FOR_TEXT = 495;
     private static final int WINDOW_HALF_FOR_ANYTHING_ELSE = 2000;
-    private static final int HOW_MANY_BYTES_ARE_TREATED_AS_A_PROLOGUE = 2000;
-    private static final double HOW_MUCH_THE_PROLOGUE_COSTS_EXTRA = 0.35;
+    private static final int PROLOGUE_BYTES = 2000;
+    private static final double PROLOGUE_EXTRA_COST = 0.35;
     private static final int NOT_CHARACTER = 0x110000;
 
     private BrotliLiteralCosts() {
@@ -146,10 +146,10 @@ final class BrotliLiteralCosts {
             if (bits < 1.0) {
                 bits = bits * 0.5 + 0.5;
             }
-            if (each < HOW_MANY_BYTES_ARE_TREATED_AS_A_PROLOGUE) {
-                bits += HOW_MUCH_THE_PROLOGUE_COSTS_EXTRA
-                        + HOW_MUCH_THE_PROLOGUE_COSTS_EXTRA
-                                / HOW_MANY_BYTES_ARE_TREATED_AS_A_PROLOGUE
+            if (each < PROLOGUE_BYTES) {
+                bits += PROLOGUE_EXTRA_COST
+                        + PROLOGUE_EXTRA_COST
+                                / PROLOGUE_BYTES
                                 * (double) each;
             }
             cost[each] = (float) bits;

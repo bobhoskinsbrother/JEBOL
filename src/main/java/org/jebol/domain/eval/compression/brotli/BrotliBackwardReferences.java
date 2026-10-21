@@ -3,17 +3,17 @@ package org.jebol.domain.eval.compression.brotli;
 final class BrotliBackwardReferences {
 
     private static final long WORST_MATCH_WORTH_TAKING = 30 * 8L * 8L + 100;
-    private static final int HOW_MUCH_BETTER_THE_NEXT_BYTE_MUST_BE = 175;
+    private static final int BYTE_IMPROVEMENT_THRESHOLD = 175;
     private static final int MOST_BYTES_THAT_MAY_BE_PUT_OFF = 4;
 
     private BrotliBackwardReferences() {
     }
 
     static int measureFurthestBack(int windowBits) {
-        return (1 << windowBits) - SHORT_OF_THE_WINDOW_SO_THE_TWO_CANNOT_BE_CONFUSED;
+        return (1 << windowBits) - FURTHEST_BACK_MARGIN;
     }
 
-    private static final int SHORT_OF_THE_WINDOW_SO_THE_TWO_CANNOT_BE_CONFUSED = 16;
+    private static final int FURTHEST_BACK_MARGIN = 16;
 
     private static int measureSparseSearchDistance(int quality) {
         return quality < 9 ? 64 : 512;
@@ -82,7 +82,7 @@ final class BrotliBackwardReferences {
                 hasher.findLongestMatch(ringBuffer, mask, recentDistances, at + 1,
                         lengthLeft, backwardAhead, backwardAhead,
                         BrotliDistances.FURTHEST, ahead);
-                if (ahead.score < best.score + HOW_MUCH_BETTER_THE_NEXT_BYTE_MUST_BE) {
+                if (ahead.score < best.score + BYTE_IMPROVEMENT_THRESHOLD) {
                     break;
                 }
                 at++;

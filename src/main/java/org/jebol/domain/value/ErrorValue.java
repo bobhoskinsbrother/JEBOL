@@ -353,7 +353,7 @@ public record ErrorValue(
         return Character.toUpperCase(spelling.charAt(0)) + spelling.substring(1);
     }
 
-    private static final int MOST_OF_THE_LOCATION_THAT_IS_SHOWN = 60;
+    private static final int SHOWN_LOCATION_LIMIT = 60;
 
     /**
      * The four lines FORM writes: the type and the message, then the chain of
@@ -424,7 +424,7 @@ public record ErrorValue(
         }
         StringBuilder built = new StringBuilder();
         for (Value item : fragment.remaining()) {
-            if (built.length() > MOST_OF_THE_LOCATION_THAT_IS_SHOWN) {
+            if (built.length() > SHOWN_LOCATION_LIMIT) {
                 break;
             }
             if (!built.isEmpty()) {
@@ -432,8 +432,8 @@ public record ErrorValue(
             }
             built.append(Molder.mold(item));
         }
-        return built.length() > MOST_OF_THE_LOCATION_THAT_IS_SHOWN
-                ? built.substring(0, MOST_OF_THE_LOCATION_THAT_IS_SHOWN) + "..."
+        return built.length() > SHOWN_LOCATION_LIMIT
+                ? built.substring(0, SHOWN_LOCATION_LIMIT) + "..."
                 : built.toString();
     }
 

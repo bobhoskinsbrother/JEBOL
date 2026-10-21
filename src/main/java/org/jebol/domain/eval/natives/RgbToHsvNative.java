@@ -9,7 +9,7 @@ import java.util.Set;
 
 public class RgbToHsvNative extends ColourNative {
 
-    private static final double A_SIXTH_OF_THE_WHEEL = 42.5;
+    private static final double HUE_WHEEL_SIXTH = 42.5;
 
     private static final double GREEN_STARTS_AT = 85.0;
 
@@ -44,11 +44,11 @@ public class RgbToHsvNative extends ColourNative {
         int saturation = (int) (255.0 * spread / largest);
         double hue;
         if (largest == red) {
-            hue = A_SIXTH_OF_THE_WHEEL * (green - blue) / spread;
+            hue = HUE_WHEEL_SIXTH * (green - blue) / spread;
         } else if (largest == green) {
-            hue = GREEN_STARTS_AT + A_SIXTH_OF_THE_WHEEL * (blue - red) / spread;
+            hue = GREEN_STARTS_AT + HUE_WHEEL_SIXTH * (blue - red) / spread;
         } else {
-            hue = BLUE_STARTS_AT + A_SIXTH_OF_THE_WHEEL * (red - green) / spread;
+            hue = BLUE_STARTS_AT + HUE_WHEEL_SIXTH * (red - green) / spread;
         }
         return new int[] {wrapNegativeHueRatherThanClamping(hue), saturation, largest};
     }

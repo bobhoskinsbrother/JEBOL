@@ -16,9 +16,9 @@ public class EvokeNative extends DefaultNative {
             "crash-dump", "watch-recycle", "watch-alloc",
             "watch-obj-copy", "watch-expand", "crash");
 
-    private static final String A_CHANT_THAT_TAKES_A_SIZE = "stack-size";
+    private static final String STACK_SIZE_CHANT = "stack-size";
 
-    private static final String A_CHANT_THAT_DOES_NOTHING_HERE = "delect";
+    private static final String DELECT_CHANT = "delect";
 
     private static final long FIRST_NUMBERED_CHECK = 0;
 
@@ -73,10 +73,10 @@ public class EvokeNative extends DefaultNative {
         if (DEBUG_ONLY_CHANTS.contains(asked)) {
             throw Raised.of(EvaluationFailure.FEATURE_NA);
         }
-        if (A_CHANT_THAT_TAKES_A_SIZE.equals(asked)) {
+        if (STACK_SIZE_CHANT.equals(asked)) {
             return 1;
         }
-        if (!A_CHANT_THAT_DOES_NOTHING_HERE.equals(asked)) {
+        if (!DELECT_CHANT.equals(asked)) {
             evaluator.findOutput().write(EVOKE_HELP);
         }
         return 0;

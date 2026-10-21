@@ -24,7 +24,7 @@ public final class SeekableFilePort {
 
     private static final String POSITION_AND_WHETHER_IT_MAY_WRITE = "state";
 
-    private static final String WHAT_THE_PORT_WAS_MADE_FROM = "ref";
+    private static final String REFERENCE_FIELD = "ref";
 
     private static final String WHERE_URL_LEAVES_ITS_PATH = "path";
 
@@ -70,10 +70,10 @@ public final class SeekableFilePort {
         if (!(port.readFieldValue("spec") instanceof ObjectValue spec)) {
             return "";
         }
-        if (!spec.context().holds(WHAT_THE_PORT_WAS_MADE_FROM)) {
+        if (!spec.context().holds(REFERENCE_FIELD)) {
             throw Raised.of(EvaluationFailure.INVALID_SPEC, spec);
         }
-        Value made = spec.context().ownSlotFor(WHAT_THE_PORT_WAS_MADE_FROM).value();
+        Value made = spec.context().ownSlotFor(REFERENCE_FIELD).value();
         if (made instanceof UrlValue) {
             return spec.readFieldValue(WHERE_URL_LEAVES_ITS_PATH) instanceof AnyStringValue path ? path.text() : "";
         }

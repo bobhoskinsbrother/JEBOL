@@ -19,7 +19,7 @@ public final class ParseTargets {
             "no-case", "accept", "break", "skip", "to", "thru", "quote",
             "do", "into", "only", "end");
 
-    public static final Set<String> THE_WORDS_THAT_NAME_WHERE_COLLECT_PUTS_IT =
+    public static final Set<String> COLLECT_TARGET_WORDS =
             Set.of("set", "into", "after");
 
     private ParseTargets() {

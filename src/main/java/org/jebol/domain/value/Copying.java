@@ -5,7 +5,7 @@ import java.util.Set;
 
 public final class Copying {
 
-    public static final Set<Datatype> WHAT_A_DEEP_COPY_COPIES = listWhatADeepCopyCopies();
+    public static final Set<Datatype> DEEP_COPY_DATATYPES = listWhatADeepCopyCopies();
 
     public static final Set<Datatype> NOTHING_INSIDE = Set.of();
 

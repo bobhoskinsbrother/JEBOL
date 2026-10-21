@@ -121,7 +121,7 @@ public final class DateFactory {
                 && parts.get(2) instanceof IntegerValue(long third)) {
             long day = first;
             long year = third;
-            if (first > MOST_A_DAY_OF_THE_MONTH_COULD_BE) {
+            if (first > MOST_DAYS_IN_MONTH) {
                 year = first;
                 day = third;
             }
@@ -139,7 +139,7 @@ public final class DateFactory {
         throw refuse(parts);
     }
 
-    private static final int MOST_A_DAY_OF_THE_MONTH_COULD_BE = 99;
+    private static final int MOST_DAYS_IN_MONTH = 99;
 
     private static int countParts(List<Value> after) {
         if (after.isEmpty()) {

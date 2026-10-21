@@ -6,7 +6,7 @@ import java.util.Set;
 
 public record PortValue(Context context) implements Value, PathTargetWithFields {
 
-    private static final Set<String> THE_SCHEMES_THAT_ARE_QUEUES =
+    private static final Set<String> QUEUE_SCHEMES =
             Set.of("system", "event", "callback");
 
     public PortValue {
@@ -32,7 +32,7 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
     }
 
     public Optional<AnyBlockValue> findTheEventQueue() {
-        if (!THE_SCHEMES_THAT_ARE_QUEUES.contains(schemeName())) {
+        if (!QUEUE_SCHEMES.contains(schemeName())) {
             return Optional.empty();
         }
         if (!(readFieldValue("state") instanceof AnyBlockValue queue)) {

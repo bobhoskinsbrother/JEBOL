@@ -301,11 +301,11 @@ final class BrotliCodes {
     private static boolean straysTooFarFromInEitherDirection(
             long limit, int count) {
         long difference = 256L * count - limit;
-        return difference >= HOW_FAR_A_COUNT_MAY_STRAY
-                || difference < -HOW_FAR_A_COUNT_MAY_STRAY;
+        return difference >= COUNT_STRAY_LIMIT
+                || difference < -COUNT_STRAY_LIMIT;
     }
 
-    private static final int HOW_FAR_A_COUNT_MAY_STRAY = 1240;
+    private static final int COUNT_STRAY_LIMIT = 1240;
 
     private static void flattenRestIntoRuns(int[] counts, int length,
                                             boolean[] alreadyARun) {

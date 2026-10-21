@@ -18,9 +18,9 @@ import java.util.Optional;
 
 public final class PolicyEnforcement {
 
-    private static final int WHAT_A_QUIT_POLICY_LEAVES_WITH = 101;
+    private static final int QUIT_POLICY_EXIT_CODE = 101;
 
-    private static final String THE_PLATFORM_WHOSE_FILE_NAMES_FOLD_CASE = "windows";
+    private static final String CASE_FOLDING_PLATFORM = "windows";
 
     private final Evaluator evaluator;
 
@@ -39,7 +39,7 @@ public final class PolicyEnforcement {
             case ALLOW -> letAccessGoAhead();
             case ASK -> refuseUnlessConfirmed(state.get(), kind, access, subject);
             case THROW -> throw refuseAsViolation(kind, subject);
-            case QUIT -> throw new QuitRequested(IntegerValue.of(WHAT_A_QUIT_POLICY_LEAVES_WITH));
+            case QUIT -> throw new QuitRequested(IntegerValue.of(QUIT_POLICY_EXIT_CODE));
         }
     }
 
@@ -61,7 +61,7 @@ public final class PolicyEnforcement {
 
     private boolean fileNamesFoldCase() {
         return evaluator.systemContext().readValueAt("system", "platform") instanceof AnyWordValue platform
-                && platform.canonical().equals(THE_PLATFORM_WHOSE_FILE_NAMES_FOLD_CASE);
+                && platform.canonical().equals(CASE_FOLDING_PLATFORM);
     }
 
     private void refuseUnlessConfirmed(

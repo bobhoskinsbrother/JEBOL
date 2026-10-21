@@ -375,7 +375,7 @@ public final class Evaluator {
                 findFrameThisCallTakesOverFrom(function).giveWayTo(locals);
                 functionsBeingRun.push(new OpenCall("", function, locals));
                 try {
-                    yield walk(running, locals, 1, null, THE_BODY_OF_AN_APPLIED_FUNCTION);
+                    yield walk(running, locals, 1, null, APPLIED_FUNCTION_BODY);
                 } catch (ReturnSignal returned) {
                     yield returned.value();
                 } finally {
@@ -630,7 +630,7 @@ public final class Evaluator {
 
     private static final boolean ORDINARY_BLOCK = false;
 
-    private static final boolean THE_BODY_OF_AN_APPLIED_FUNCTION = true;
+    private static final boolean APPLIED_FUNCTION_BODY = true;
 
     private Value walk(AnyBlockValue code, Context context, int depth, ResultSink sink,
                        boolean bodyOfAnAppliedFunction) {
@@ -1493,7 +1493,7 @@ public final class Evaluator {
                 && refused.error().subject().isEmpty()) {
             return Raised.of(EvaluationFailure.OUT_OF_RANGE, segment);
         }
-        for (EvaluationFailure saidOfTheWholePath : SAID_OF_THE_WHOLE_PATH) {
+        for (EvaluationFailure saidOfTheWholePath : WHOLE_PATH_FAILURES) {
             if (refusal.equals(saidOfTheWholePath.errorId())) {
                 return Raised.of(saidOfTheWholePath, asWritten, segment);
             }
@@ -1501,7 +1501,7 @@ public final class Evaluator {
         return refused;
     }
 
-    private static final List<EvaluationFailure> SAID_OF_THE_WHOLE_PATH =
+    private static final List<EvaluationFailure> WHOLE_PATH_FAILURES =
             List.of(EvaluationFailure.INVALID_PATH, EvaluationFailure.BAD_PATH_SET);
 
     private Selection select(AnyBlockValue path, AnyBlockValue asWritten, Context context) {

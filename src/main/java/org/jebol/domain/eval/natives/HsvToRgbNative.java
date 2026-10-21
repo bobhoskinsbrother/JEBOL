@@ -9,7 +9,7 @@ import java.util.Set;
 
 public class HsvToRgbNative extends ColourNative {
 
-    private static final double A_SIXTH_OF_THE_WHEEL = 255.0 / 6;
+    private static final double HUE_WHEEL_SIXTH = 255.0 / 6;
 
     @Override
     public String nativeName() {
@@ -32,7 +32,7 @@ public class HsvToRgbNative extends ColourNative {
         if (saturation == 0) {
             return setAllThreeTo(hsv[2]);
         }
-        double sixths = hsv[0] / A_SIXTH_OF_THE_WHEEL;
+        double sixths = hsv[0] / HUE_WHEEL_SIXTH;
         int sector = (int) sixths;
         double into = sixths - sector;
         double whole = hsv[2] / 255.0;

@@ -150,7 +150,7 @@ public final class InterpreterMaker implements Maker {
     @Override
     public Value makeCommandFrom(AnyBlockValue definition) {
         List<Value> parts = definition.remaining();
-        if (parts.size() != PARTS_OF_A_COMMAND_DEFINITION
+        if (parts.size() != COMMAND_DEFINITION_PARTS
                 || !(parts.getFirst() instanceof AnyBlockValue spec)
                 || !(parts.get(1) instanceof PathTargetWithFields extension)
                 || !hasExtensionHandleFirst(extension)
@@ -165,7 +165,7 @@ public final class InterpreterMaker implements Maker {
         return made;
     }
 
-    private static final int PARTS_OF_A_COMMAND_DEFINITION = 3;
+    private static final int COMMAND_DEFINITION_PARTS = 3;
 
     private static final long LARGEST_COMMAND_INDEX = 0xFFFF;
 

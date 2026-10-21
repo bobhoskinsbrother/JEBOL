@@ -6,11 +6,11 @@ public record HexWidth(OptionalLong asked) {
 
     private static final int WIDEST_NUMBER_IS_WRITTEN = 16;
 
-    private static final long THE_WIDEST_THAT_CAN_BE_ASKED = 0xFFFFFFFFL;
+    private static final long MOST_ASKABLE_WIDTH = 0xFFFFFFFFL;
 
     public HexWidth {
         asked.ifPresent(width -> {
-            if (width <= 0 || width > THE_WIDEST_THAT_CAN_BE_ASKED) {
+            if (width <= 0 || width > MOST_ASKABLE_WIDTH) {
                 throw Raised.of(EvaluationFailure.INVALID_ARG, IntegerValue.of(width));
             }
         });

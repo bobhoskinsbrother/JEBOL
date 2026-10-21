@@ -7,7 +7,7 @@ import java.util.Set;
 
 public record ImageValue(ImageStorage storage, int index) implements RebolSeries {
 
-    private static final int PARTS_OF_A_PIXEL = 4;
+    private static final int CHANNELS_PER_PIXEL = 4;
 
     private static final int WHOLLY = 0xFF;
 
@@ -122,11 +122,11 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
 
         private static final int WIDEST_HUNDRED_WIDE_PICTURE = 10000;
 
-        private static final int A_ROW_OF_A_BIG_PICTURE = 500;
+        private static final int BIG_PICTURE_ROW_WIDTH = 500;
 
         private static final int BYTES_PIXEL = 4;
 
-        private static final int THE_BITS_OF_AN_OCTET = 0xFF;
+        private static final int OCTET_MASK = 0xFF;
 
         ImageDatatype() {
             super("image");
@@ -163,7 +163,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
                     ? pixels
                     : pixels < WIDEST_HUNDRED_WIDE_PICTURE
                             ? WIDEST_ROW_OF_ITS_OWN_LENGTH
-                            : A_ROW_OF_A_BIG_PICTURE;
+                            : BIG_PICTURE_ROW_WIDTH;
             int down = pixels / across;
             if (across * down < pixels) {
                 down++;
@@ -218,7 +218,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
                 at++;
                 if (at < parts.size() && parts.get(at) instanceof IntegerValue(long magnitude)) {
                     for (int pixel = 1; pixel <= made.storageLength(); pixel++) {
-                        made.storage().setAlphaAt(pixel, (int) magnitude & THE_BITS_OF_AN_OCTET);
+                        made.storage().setAlphaAt(pixel, (int) magnitude & OCTET_MASK);
                     }
                     at++;
                 }
@@ -498,9 +498,9 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
 
     private List<PixelWrite> readBytesFourAtTime(BinaryValue bytes, boolean colourOnly) {
         List<PixelWrite> pixels = new ArrayList<>();
-        int howMany = bytes.lengthFromHere() / PARTS_OF_A_PIXEL;
+        int howMany = bytes.lengthFromHere() / CHANNELS_PER_PIXEL;
         for (int pixel = 0; pixel < howMany; pixel++) {
-            int at = bytes.index() + (pixel * PARTS_OF_A_PIXEL);
+            int at = bytes.index() + (pixel * CHANNELS_PER_PIXEL);
             pixels.add(new PixelWrite(bytes.storage().at(at), bytes.storage().at(at + 1),
                     bytes.storage().at(at + 2),
                     colourOnly ? 0 : bytes.storage().at(at + 3),
@@ -523,11 +523,11 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     }
 
     public byte[] copyEveryPixel() {
-        byte[] octets = new byte[storageLength() * PARTS_OF_A_PIXEL];
+        byte[] octets = new byte[storageLength() * CHANNELS_PER_PIXEL];
         for (int pixel = 0; pixel < storageLength(); pixel++) {
             int[] parts = readPixelAt(pixel + 1);
-            for (int part = 0; part < PARTS_OF_A_PIXEL; part++) {
-                octets[pixel * PARTS_OF_A_PIXEL + part] = (byte) parts[part];
+            for (int part = 0; part < CHANNELS_PER_PIXEL; part++) {
+                octets[pixel * CHANNELS_PER_PIXEL + part] = (byte) parts[part];
             }
         }
         return octets;

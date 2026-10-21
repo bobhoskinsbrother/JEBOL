@@ -220,7 +220,7 @@ public final class Aria {
         runRoundFunction(derived[3], derived[2], CONSTANTS_KEY_SCHEDULE_FOLDS_KEY_AGAINST[which],
                 derived[1], ODD_ROUND_TABLES);
 
-        int[][] roundKeys = new int[HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS][WORDS];
+        int[][] roundKeys = new int[MOST_ROUND_KEYS][WORDS];
         for (int at = 0; at < 4; at++) {
             int[] next = derived[(at + 1) & 3];
             rotateByteOrder(roundKeys[at], derived[at], next, 128 - 19);
@@ -232,7 +232,7 @@ public final class Aria {
         return roundKeys;
     }
 
-    private static final int HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS = 17;
+    private static final int MOST_ROUND_KEYS = 17;
 
     private static void runRoundFunction(int[] into, int[] from,
                                          int[] constant, int[] addedAfter, int[][] tables) {
@@ -267,8 +267,8 @@ public final class Aria {
     }
 
     private static int[][] reverseForDeciphering(int[][] forwards, int rounds) {
-        int[][] backwards = new int[HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS][WORDS];
-        for (int at = 0; at < HOW_MANY_ROUND_KEYS_THE_LONGEST_SCHEDULE_NEEDS; at++) {
+        int[][] backwards = new int[MOST_ROUND_KEYS][WORDS];
+        for (int at = 0; at < MOST_ROUND_KEYS; at++) {
             backwards[at] = forwards[at].clone();
         }
         for (int front = 0, back = rounds; front < back; front++, back--) {

@@ -216,7 +216,7 @@ final class LzmaDecoder {
         }
         length = decodeRepeat(positionState);
         if (length
-                == THE_REPEAT_WAS_A_SINGLE_BYTE_WHICH_IS_NOT_A_LENGTH_OF_ZERO) {
+                == SINGLE_BYTE_REPEAT) {
             return;
         }
         copyFromDistanceStoppingShortRatherThanRefusing(length);
@@ -254,7 +254,7 @@ final class LzmaDecoder {
     }
 
     private static final int
-            THE_REPEAT_WAS_A_SINGLE_BYTE_WHICH_IS_NOT_A_LENGTH_OF_ZERO = -1;
+            SINGLE_BYTE_REPEAT = -1;
 
     private int decodeRepeat(int positionState) {
         if (decodeBit(isRepeatG0, state) == 0) {
@@ -263,7 +263,7 @@ final class LzmaDecoder {
                 outputAt++;
                 processed++;
                 state = state < LITERAL_STATES ? 9 : 11;
-                return THE_REPEAT_WAS_A_SINGLE_BYTE_WHICH_IS_NOT_A_LENGTH_OF_ZERO;
+                return SINGLE_BYTE_REPEAT;
             }
         } else {
             int distance;

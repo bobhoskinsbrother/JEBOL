@@ -22,7 +22,7 @@ final class BrotliLog2 {
             4.4407139084295174e-17, 3.2653869625311436e-17, 4.991495917345345e-17, -3.7239566747188146e-17,
     };
 
-    private static final int HOW_MANY_TERMS_BEFORE_A_PAIR_OF_DOUBLES_STOPS_CARING = 12;
+    private static final int CONVERGENCE_TERMS = 12;
 
     static double of(long value) {
         if (value <= 0) {
@@ -54,8 +54,8 @@ final class BrotliLog2 {
         double[] ratio = divideCorrectedTwiceBecauseOnceRoundsSomeWrong(above[0], above[1], below[0], below[1]);
         double[] squared = multiply(ratio[0], ratio[1], ratio[0], ratio[1]);
 
-        double[] sum = {1.0 / (2 * HOW_MANY_TERMS_BEFORE_A_PAIR_OF_DOUBLES_STOPS_CARING - 1), 0.0};
-        for (int term = HOW_MANY_TERMS_BEFORE_A_PAIR_OF_DOUBLES_STOPS_CARING - 1; term >= 1; term--) {
+        double[] sum = {1.0 / (2 * CONVERGENCE_TERMS - 1), 0.0};
+        for (int term = CONVERGENCE_TERMS - 1; term >= 1; term--) {
             sum = multiply(sum[0], sum[1], squared[0], squared[1]);
             sum = add(sum[0], sum[1], 1.0 / (2 * term - 1), 0.0);
         }

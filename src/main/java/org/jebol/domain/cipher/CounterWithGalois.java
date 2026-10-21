@@ -39,7 +39,7 @@ public final class CounterWithGalois {
     private static byte[] computeTheStartingCount(
             OneBlock cipher, byte[] hashKey, byte[] vector) {
 
-        if (vector.length == THE_VECTOR_LENGTH_THAT_NEEDS_NO_HASHING) {
+        if (vector.length == NO_HASH_VECTOR_LENGTH) {
             byte[] counting = Arrays.copyOf(vector, BLOCK);
             counting[BLOCK - 1] = 1;
             return counting;
@@ -48,7 +48,7 @@ public final class CounterWithGalois {
         return hashThrough(running, hashKey, packTwoLengthsInBits(0, vector.length));
     }
 
-    private static final int THE_VECTOR_LENGTH_THAT_NEEDS_NO_HASHING = 12;
+    private static final int NO_HASH_VECTOR_LENGTH = 12;
 
     private static final int OCTETS_COUNT_OCCUPIES = 4;
 

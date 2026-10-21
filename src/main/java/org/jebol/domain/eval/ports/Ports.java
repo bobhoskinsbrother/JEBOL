@@ -62,7 +62,7 @@ public final class Ports {
 
     private static final int IPV4_PARTS = 4;
 
-    private static final Set<String> SCHEMES_WHOSE_ACTOR_TAKES_AN_UPDATE = Set.of(
+    private static final Set<String> UPDATABLE_SCHEMES = Set.of(
             "console", "dns", "clipboard", "tcp", "udp", "event", "system", "callback");
 
     private final GrantedServices granted;
@@ -614,7 +614,7 @@ public final class Ports {
             cryptPort.update(port);
             return port;
         }
-        if (!SCHEMES_WHOSE_ACTOR_TAKES_AN_UPDATE.contains(port.schemeName())) {
+        if (!UPDATABLE_SCHEMES.contains(port.schemeName())) {
             throw refuseWithNoActionFor("update");
         }
         return NoneValue.none();

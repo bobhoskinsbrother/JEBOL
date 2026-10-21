@@ -15,7 +15,7 @@ import java.util.Set;
 
 public class TranscodeNative extends DefaultNative {
 
-    private static final long THE_FIRST_LINE_OF_ANY_SOURCE = 1;
+    private static final long FIRST_LINE = 1;
 
     private record Reading(String whole, String readable, long firstLine,
             Transcoder.Extent extent, boolean countingLines, boolean handingBackFailures,
@@ -158,10 +158,10 @@ public class TranscodeNative extends DefaultNative {
 
     private long readFirstLineNumberIn(Optional<Value> line) {
         if (line.isEmpty()) {
-            return THE_FIRST_LINE_OF_ANY_SOURCE;
+            return FIRST_LINE;
         }
         long asked = (long) Arithmetic.asMagnitude(line.get());
-        if (asked < THE_FIRST_LINE_OF_ANY_SOURCE) {
+        if (asked < FIRST_LINE) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, line.get());
         }
         return asked;

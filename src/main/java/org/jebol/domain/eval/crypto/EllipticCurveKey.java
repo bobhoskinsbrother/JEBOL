@@ -51,7 +51,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
             "curve25519", NamedParameterSpec.X25519.getName(),
             "curve448", NamedParameterSpec.X448.getName());
 
-    private static final Map<String, Integer> WIDTH_OF_THE_EXCHANGE_ONLY_CURVES =
+    private static final Map<String, Integer> EXCHANGE_CURVE_WIDTHS =
             Map.of("curve25519", 32, "curve448", 56);
 
     private static final SecureRandom RANDOMLY = new SecureRandom();
@@ -120,7 +120,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
         if (known == null) {
             return Optional.empty();
         }
-        return WIDTH_OF_THE_EXCHANGE_ONLY_CURVES.containsKey(curveName)
+        return EXCHANGE_CURVE_WIDTHS.containsKey(curveName)
                 ? makeForTheExchangeAlone(curveName, known)
                 : makeOnACurveWithTwoCoordinates(curveName, known);
     }
@@ -156,7 +156,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
             generating.initialize(new NamedParameterSpec(asTheJdkCallsIt));
             return Optional.of(new EllipticCurveKey(
                     generating.generateKeyPair(), curveName,
-                    WIDTH_OF_THE_EXCHANGE_ONLY_CURVES.get(curveName),
+                    EXCHANGE_CURVE_WIDTHS.get(curveName),
                     HowThePointIsPublished.ONE_COORDINATE_LITTLE_ENDIAN_ON_ITS_OWN));
         } catch (GeneralSecurityException | RuntimeException noSuchCurve) {
             return Optional.empty();
@@ -318,7 +318,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
                     .isPresent();
         }
         String known = CURVES_THIS_BUILD_HAS.get(curveName);
-        if (known == null || WIDTH_OF_THE_EXCHANGE_ONLY_CURVES.containsKey(curveName)) {
+        if (known == null || EXCHANGE_CURVE_WIDTHS.containsKey(curveName)) {
             return false;
         }
         try {

@@ -13,7 +13,7 @@ import java.util.Map;
 
 public final class SymbolTable {
 
-    private static final String ALL_THAT_SEPARATES_THE_SYMBOLS = "\\s+";
+    private static final String SYMBOL_SEPARATOR = "\\s+";
 
     private final List<Integer> canonByIndex = new ArrayList<>(List.of(0));
 
@@ -24,7 +24,7 @@ public final class SymbolTable {
     private boolean countingWhatTheSessionReads;
 
     public void useBootSymbols(String source) {
-        for (String spelling : source.strip().split(ALL_THAT_SEPARATES_THE_SYMBOLS)) {
+        for (String spelling : source.strip().split(SYMBOL_SEPARATOR)) {
             canonicalIndexFor(spelling);
         }
     }

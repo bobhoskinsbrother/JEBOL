@@ -60,7 +60,7 @@ public record PaintList(List<PaintInstruction> instructions) {
             GobValue root, int wide, int high, ObjectValue drawDialect) {
 
         return within(root, ClipRectangle.coverWholeSurface(wide, high),
-                DEPTHS_WHOSE_TEXT_IS_A_TITLE, drawDialect);
+                TITLE_TEXT_DEPTH, drawDialect);
     }
 
     /** One window and its contents, with its own title left out. */
@@ -70,7 +70,7 @@ public record PaintList(List<PaintInstruction> instructions) {
         return within(window, ClipRectangle.coverWholeSurface(wide, high), 1, drawDialect);
     }
 
-    private static final int DEPTHS_WHOSE_TEXT_IS_A_TITLE = 2;
+    private static final int TITLE_TEXT_DEPTH = 2;
 
     public List<DrawingCommand> calls(TextMeasurement measure) {
         List<DrawingCommand> calls = new ArrayList<>();

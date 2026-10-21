@@ -118,11 +118,11 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
      */
     public static final int BINARY_WIDTH = 12;
 
-    private static final long THE_HIGHEST_WORD_OF_THE_LARGEST_SIGNIFICAND = 5421010L;
+    private static final long LARGEST_SIGNIFICAND_HIGH_WORD = 5421010L;
 
-    private static final long THE_MIDDLE_WORD_OF_THE_LARGEST_SIGNIFICAND = 3704098002L;
+    private static final long LARGEST_SIGNIFICAND_MIDDLE_WORD = 3704098002L;
 
-    private static final long THE_LOWEST_WORD_OF_THE_LARGEST_SIGNIFICAND = 3825205247L;
+    private static final long LARGEST_SIGNIFICAND_LOW_WORD = 3825205247L;
 
     private static final long WORD = 0xFFFFFFFFL;
 
@@ -174,11 +174,11 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
         long highest = significand.shiftRight(64).longValue() & WORD;
         long middle = significand.shiftRight(32).longValue() & WORD;
         long lowest = significand.longValue() & WORD;
-        boolean refusedByBinaryToDeci = highest >= THE_HIGHEST_WORD_OF_THE_LARGEST_SIGNIFICAND
-                && (middle >= THE_MIDDLE_WORD_OF_THE_LARGEST_SIGNIFICAND
-                        ? lowest > THE_LOWEST_WORD_OF_THE_LARGEST_SIGNIFICAND
-                                || middle > THE_MIDDLE_WORD_OF_THE_LARGEST_SIGNIFICAND
-                        : highest > THE_HIGHEST_WORD_OF_THE_LARGEST_SIGNIFICAND);
+        boolean refusedByBinaryToDeci = highest >= LARGEST_SIGNIFICAND_HIGH_WORD
+                && (middle >= LARGEST_SIGNIFICAND_MIDDLE_WORD
+                        ? lowest > LARGEST_SIGNIFICAND_LOW_WORD
+                                || middle > LARGEST_SIGNIFICAND_MIDDLE_WORD
+                        : highest > LARGEST_SIGNIFICAND_HIGH_WORD);
         if (refusedByBinaryToDeci) {
             throw Raised.of(EvaluationFailure.OVERFLOW);
         }

@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 final class BrotliClustering {
 
-    private static final int HOW_MANY_AT_A_TIME = 64;
+    private static final int BATCH_SIZE = 64;
     private static final int MOST_HISTOGRAMS_ALLOWED = 256;
 
     private BrotliClustering() {
@@ -209,11 +209,11 @@ final class BrotliClustering {
             whichOneEachUses[each] = each;
         }
 
-        int roomForPairs = HOW_MANY_AT_A_TIME * HOW_MANY_AT_A_TIME / 2;
+        int roomForPairs = BATCH_SIZE * BATCH_SIZE / 2;
         Queue queue = new Queue(roomForPairs);
         int howManyClusters = 0;
-        for (int at = 0; at < howManyGiven; at += HOW_MANY_AT_A_TIME) {
-            int howManyHere = Math.min(howManyGiven - at, HOW_MANY_AT_A_TIME);
+        for (int at = 0; at < howManyGiven; at += BATCH_SIZE) {
+            int howManyHere = Math.min(howManyGiven - at, BATCH_SIZE);
             for (int each = 0; each < howManyHere; each++) {
                 clusters[howManyClusters + each] = at + each;
             }

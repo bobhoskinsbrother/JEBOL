@@ -139,7 +139,7 @@ public final class Camellia {
         }
         foldKeyThrough(derived, key.length > 16);
 
-        int[] subkeys = new int[HOW_MANY_SUBKEYS_THE_LONGEST_SCHEDULE_NEEDS];
+        int[] subkeys = new int[MOST_SUBKEYS];
         int[] rotating = new int[20];
         placeRotationsOf(derived, 0, width, subkeys, rotating);
         if (key.length > 16) {
@@ -150,14 +150,14 @@ public final class Camellia {
             placeRotationsOf(derived, 3, width, subkeys, rotating);
         }
         for (int at = 0; at < 20; at++) {
-            if (THE_LAST_SUBKEYS_WHICH_COPY_EARLIER_ONES[width][at] != -1) {
-                subkeys[32 + 12 * width + at] = subkeys[THE_LAST_SUBKEYS_WHICH_COPY_EARLIER_ONES[width][at]];
+            if (LATER_SUBKEY_SOURCES[width][at] != -1) {
+                subkeys[32 + 12 * width + at] = subkeys[LATER_SUBKEY_SOURCES[width][at]];
             }
         }
         return subkeys;
     }
 
-    private static final int HOW_MANY_SUBKEYS_THE_LONGEST_SCHEDULE_NEEDS = 68;
+    private static final int MOST_SUBKEYS = 68;
 
     private static void foldKeyThrough(int[] derived, boolean longKey) {
         for (int at = 0; at < 4; at++) {
@@ -206,7 +206,7 @@ public final class Camellia {
     private static int[] scheduleDecipherKeys(byte[] key) {
         int[] forwards = scheduleCipherKeys(key);
         int width = key.length <= 16 ? 0 : 1;
-        int[] backwards = new int[HOW_MANY_SUBKEYS_THE_LONGEST_SCHEDULE_NEEDS];
+        int[] backwards = new int[MOST_SUBKEYS];
         int from = 48 + 16 * width;
         int to = 0;
         for (int at = 0; at < 4; at++) {
@@ -258,7 +258,7 @@ public final class Camellia {
         }
     };
 
-    private static final int[][] THE_LAST_SUBKEYS_WHICH_COPY_EARLIER_ONES = {
+    private static final int[][] LATER_SUBKEY_SOURCES = {
         {21, 22, 23, 20, -1, -1, -1, -1, 18, 19, 16, 17,
             11, 8, 9, 10, 15, 12, 13, 14},
         {25, 26, 27, 24, 29, 30, 31, 28, 18, 19, 16, 17,

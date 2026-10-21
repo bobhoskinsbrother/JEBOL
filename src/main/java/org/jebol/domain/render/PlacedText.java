@@ -36,7 +36,7 @@ public record PlacedText(
 
     public static final Colour COLOUR_SELECTION_IS_MARKED_IN = new Colour(170, 200, 245);
 
-    private static final double THE_WIDTH_OF_A_CARET = 1;
+    private static final double CARET_WIDTH = 1;
 
     public static PlacedText of(PaintInstruction.Writing written, TextMeasurement measure) {
         Placement where = written.where();
@@ -106,7 +106,7 @@ public record PlacedText(
                 ? written.runs().get(caret.run()).colour()
                 : Colour.BLACK;
         return Optional.of(new PlacedCaret(placed.across(), placed.top(),
-                THE_WIDTH_OF_A_CARET, placed.high(), inked));
+                CARET_WIDTH, placed.high(), inked));
     }
 
     private static Optional<PlacedShadow> placedShadowFor(TextLayout layout) {

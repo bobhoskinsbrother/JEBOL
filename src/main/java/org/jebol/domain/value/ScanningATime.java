@@ -3,7 +3,7 @@ package org.jebol.domain.value;
 final class ScanningATime {
 
     private static final int NOT_GIVEN = -1;
-    private static final int DIGITS_OF_A_FRACTION = 9;
+    private static final int FRACTION_DIGITS = 9;
     private static final long NANOSECONDS_SECOND = 1_000_000_000L;
     private static final long NANOSECONDS_MINUTE = 60L * NANOSECONDS_SECOND;
     private static final long NANOSECONDS_HOUR = 60L * NANOSECONDS_MINUTE;
@@ -147,7 +147,7 @@ final class ScanningATime {
 
     private int readScaledNumberFromHere() {
         long counted = 0;
-        int placesLeft = DIGITS_OF_A_FRACTION;
+        int placesLeft = FRACTION_DIGITS;
         while (placesLeft > 0 && isAnAsciiDigit(here())) {
             counted = counted * 10 + (here() - '0');
             at++;

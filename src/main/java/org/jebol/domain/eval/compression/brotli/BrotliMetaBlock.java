@@ -17,7 +17,7 @@ final class BrotliMetaBlock {
     private static final int QUALITY_THAT_FIRST_MODELS_CONTEXT = 5;
     private static final int QUALITY_THAT_FIRST_ALLOWS_THREE_CONTEXTS = 7;
     private static final double SAVING_THAT_MAKES_CONTEXTS_WORTH_IT = 0.2;
-    private static final int HOW_OFTEN_THE_INPUT_IS_SAMPLED = 4096;
+    private static final int SAMPLING_INTERVAL = 4096;
     private static final int HOW_MUCH_OF_IT_IS_LOOKED_AT = 64;
 
     private static final int[] SPACE_THEN_ANYTHING_ELSE_THEN_CONTINUATION_BYTE =
@@ -76,7 +76,7 @@ final class BrotliMetaBlock {
         int[] pairs = new int[9];
         int end = from + length;
         for (int at = from; at + HOW_MUCH_OF_IT_IS_LOOKED_AT <= end;
-                at += HOW_OFTEN_THE_INPUT_IS_SAMPLED) {
+                at += SAMPLING_INTERVAL) {
             int stretchEnd = at + HOW_MUCH_OF_IT_IS_LOOKED_AT;
             int before = SPACE_THEN_ANYTHING_ELSE_THEN_CONTINUATION_BYTE[(data[at & mask] & 0xFF) >> 6] * 3;
             for (int pos = at + 1; pos < stretchEnd; pos++) {
@@ -96,7 +96,7 @@ final class BrotliMetaBlock {
         long total = 0;
         int end = from + length;
         for (int at = from; at + HOW_MUCH_OF_IT_IS_LOOKED_AT <= end;
-                at += HOW_OFTEN_THE_INPUT_IS_SAMPLED) {
+                at += SAMPLING_INTERVAL) {
             int stretchEnd = at + HOW_MUCH_OF_IT_IS_LOOKED_AT;
             int beforeThat = data[at & mask] & 0xFF;
             int previous = data[(at + 1) & mask] & 0xFF;

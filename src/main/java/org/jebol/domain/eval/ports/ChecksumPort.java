@@ -12,7 +12,7 @@ final class ChecksumPort {
 
     static final String HANDLE_TYPE = "checksum";
 
-    private static final Set<String> DIGESTS_THAT_KEEP_THE_BYTES = Set.of(
+    private static final Set<String> BYTE_PRESERVING_DIGESTS = Set.of(
             Encodings.RIPEMD_160, Encodings.XXH_3, Encodings.XXH_32,
             Encodings.XXH_64, Encodings.XXH_128, Encodings.MD_4);
 
@@ -39,7 +39,7 @@ final class ChecksumPort {
     private RunningSumThatAReadDoesNotEnd sumNamed(String method) {
         String algorithm = Optional.ofNullable(Encodings.DIGESTS.get(method))
                 .orElseThrow(() -> Raised.of(EvaluationFailure.INVALID_SPEC, method));
-        if (DIGESTS_THAT_KEEP_THE_BYTES.contains(algorithm)) {
+        if (BYTE_PRESERVING_DIGESTS.contains(algorithm)) {
             return keepBytes(method);
         }
         DigestPort.RunningDigest running = encodings.startARunningDigest(method);

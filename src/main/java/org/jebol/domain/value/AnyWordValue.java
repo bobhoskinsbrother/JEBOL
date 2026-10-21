@@ -44,7 +44,7 @@ public abstract sealed class AnyWordValue implements Value
 
     public abstract static class AnyWordDatatype extends Datatype {
 
-        private static final String THE_PUNCTUATION_THAT_SPELLS_A_WORD_ALONE = "!%&*+-./<=>?^`|~";
+        private static final String SELF_SPELLING_PUNCTUATION = "!%&*+-./<=>?^`|~";
 
         private static final int FIRST_CODE_POINT_SCANNER_TAKES_FOR_LETTER = 128;
 
@@ -104,7 +104,7 @@ public abstract sealed class AnyWordValue implements Value
         private boolean spellsWordAlone(int codepoint) {
             return codepoint >= FIRST_CODE_POINT_SCANNER_TAKES_FOR_LETTER
                     || Character.isLetter(codepoint)
-                    || THE_PUNCTUATION_THAT_SPELLS_A_WORD_ALONE.indexOf(codepoint) >= 0;
+                    || SELF_SPELLING_PUNCTUATION.indexOf(codepoint) >= 0;
         }
 
         private String readSpellingFrom(String text, Maker maker) {

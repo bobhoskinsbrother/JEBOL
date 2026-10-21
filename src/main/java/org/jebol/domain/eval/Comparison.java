@@ -127,7 +127,7 @@ public final class Comparison {
 
     private static final boolean IT_DID_NOT = false;
 
-    private static final Set<Datatype> ANY_NUMBER_WHICH_EXCLUDES_A_TIME =
+    private static final Set<Datatype> NUMBERS_EXCLUDING_TIME =
             TypesetValue.NUMBER.membersAnd(MoneyValue.TYPE);
 
     /**
@@ -347,8 +347,8 @@ public final class Comparison {
     }
 
     private static int compareInsideSeries(Value left, Value right) {
-        if (!ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(left.datatype())
-                || !ANY_NUMBER_WHICH_EXCLUDES_A_TIME.contains(right.datatype())) {
+        if (!NUMBERS_EXCLUDING_TIME.contains(left.datatype())
+                || !NUMBERS_EXCLUDING_TIME.contains(right.datatype())) {
             return compareForSorting(left, right, false);
         }
         if (left instanceof AnyDecimalValue || right instanceof AnyDecimalValue) {

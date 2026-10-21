@@ -62,7 +62,7 @@ public sealed interface Value permits
     }
 
     default Value copy(boolean deeply) {
-        return copy(deeply, Copying.WHAT_A_DEEP_COPY_COPIES);
+        return copy(deeply, Copying.DEEP_COPY_DATATYPES);
     }
 
     default Value copy(boolean deeply, Set<Datatype> kinds) {

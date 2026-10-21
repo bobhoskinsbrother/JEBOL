@@ -26,7 +26,7 @@ import java.util.Set;
 
 public class DoCommandsNative extends DefaultNative {
 
-    private static final String WHAT_A_FAILED_COMMAND_RAISES = "command-fail";
+    private static final String COMMAND_FAIL_ID = "command-fail";
 
     @Override
     public String nativeName() {
@@ -92,7 +92,7 @@ public class DoCommandsNative extends DefaultNative {
             try {
                 return command.behaviour().call(gathered, evaluator, context, Set.of());
             } catch (Raised failed) {
-                if (failed.error().errorId().equals(WHAT_A_FAILED_COMMAND_RAISES)) {
+                if (failed.error().errorId().equals(COMMAND_FAIL_ID)) {
                     return UnsetValue.unset();
                 }
                 throw failed;

@@ -6,8 +6,8 @@ import java.util.Optional;
 
 final class WheelScrolling {
 
-    private static final int A_LINE_OF_SCROLLING = 30;
-    private static final int A_PAGE_OF_SCROLLING = 10;
+    private static final int LINE_SCROLL_PIXELS = 30;
+    private static final int PAGE_SCROLL_PIXELS = 10;
 
     private double turned;
 
@@ -20,7 +20,7 @@ final class WheelScrolling {
         turned -= whole;
         return Optional.of(new Turning(
                 aWholePage ? ScreenEventType.SCROLL_PAGE : ScreenEventType.SCROLL_LINE,
-                -whole * (aWholePage ? A_PAGE_OF_SCROLLING : A_LINE_OF_SCROLLING)));
+                -whole * (aWholePage ? PAGE_SCROLL_PIXELS : LINE_SCROLL_PIXELS)));
     }
 
     record Turning(ScreenEventType kind, int amount) {

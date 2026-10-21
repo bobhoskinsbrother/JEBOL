@@ -55,7 +55,7 @@ final class LzmaEncoder {
 
     private static final int[] PROBABILITY_PRICES =
             priceEveryRoundedProbability();
-    private static final byte[] SLOT_OF_A_SMALL_DISTANCE = makeSlotTable();
+    private static final byte[] SMALL_DISTANCE_SLOTS = makeSlotTable();
 
     private static int[] priceEveryRoundedProbability() {
         int[] prices = new int[BIT_MODEL_TOTAL >> MOVE_REDUCING_BITS];
@@ -93,7 +93,7 @@ final class LzmaEncoder {
 
     private static int slotForDistance(int distance) {
         if (Integer.compareUnsigned(distance, FULL_DISTANCES) < 0) {
-            return SLOT_OF_A_SMALL_DISTANCE[distance & (FULL_DISTANCES - 1)];
+            return SMALL_DISTANCE_SLOTS[distance & (FULL_DISTANCES - 1)];
         }
         return slotForLargeDistance(distance);
     }
@@ -102,7 +102,7 @@ final class LzmaEncoder {
         int shift = Integer.compareUnsigned(distance, 1 << (LOG_BITS + 6)) < 0
                 ? 6
                 : 6 + LOG_BITS - 1;
-        return SLOT_OF_A_SMALL_DISTANCE[distance >>> shift] + shift * 2;
+        return SMALL_DISTANCE_SLOTS[distance >>> shift] + shift * 2;
     }
 
     static byte[] writeProperties(int level) {
@@ -667,7 +667,7 @@ final class LzmaEncoder {
         matchPriceCount = 0;
         for (int distance = START_POSITION_MODEL_INDEX;
                 distance < FULL_DISTANCES; distance++) {
-            int slot = SLOT_OF_A_SMALL_DISTANCE[distance];
+            int slot = SMALL_DISTANCE_SLOTS[distance];
             int footerBits = (slot >> 1) - 1;
             int base = (2 | (slot & 1)) << footerBits;
             int price = 0;
@@ -708,7 +708,7 @@ final class LzmaEncoder {
             System.arraycopy(slotPrices, priceBase + 0, distancePrices, distanceBase + 0, 4);
             for (int distance = 4; distance < FULL_DISTANCES; distance += 2) {
                 int slotPrice =
-                        slotPrices[priceBase + SLOT_OF_A_SMALL_DISTANCE[distance]];
+                        slotPrices[priceBase + SMALL_DISTANCE_SLOTS[distance]];
                 distancePrices[distanceBase + distance] =
                         slotPrice + footerPrices[distance];
                 distancePrices[distanceBase + distance + 1] =

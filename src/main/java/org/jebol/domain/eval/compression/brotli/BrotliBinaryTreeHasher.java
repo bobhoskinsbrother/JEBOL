@@ -6,7 +6,7 @@ final class BrotliBinaryTreeHasher {
 
     private static final int MIXING_MULTIPLIER = 0x1E35A7BD;
     private static final int BUCKET_BITS = 17;
-    private static final int HOW_FAR_DOWN_THE_TREE_TO_WALK = 64;
+    private static final int TREE_WALK_DEPTH = 64;
 
     static final int LONGEST_COMPARED = 128;
 
@@ -71,7 +71,7 @@ final class BrotliBinaryTreeHasher {
         if (shouldReRoot) {
             buckets[slot] = at;
         }
-        for (int depthLeft = HOW_FAR_DOWN_THE_TREE_TO_WALK; ; depthLeft--) {
+        for (int depthLeft = TREE_WALK_DEPTH; ; depthLeft--) {
             long backward = (long) at - Integer.toUnsignedLong(previousAt);
             int previous = previousAt & mask;
             if (backward <= 0 || backward > maxBackward || depthLeft == 0) {

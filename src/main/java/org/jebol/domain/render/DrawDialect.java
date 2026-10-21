@@ -313,7 +313,7 @@ public final class DrawDialect {
                             .withFill(filled)));
         }
 
-        private static final double HOW_FAR_A_CUBIC_PULLS_TO_MAKE_A_QUARTER_CIRCLE = 0.5522847498;
+        private static final double QUARTER_CIRCLE_HANDLE = 0.5522847498;
         private static final int GRADIENT_TYPE = 0;
         private static final int GRADIENT_OFFSET = 2;
         private static final int GRADIENT_RANGE_FROM = 4;
@@ -573,7 +573,7 @@ public final class DrawDialect {
         private List<PathStep> drawABoxWithRoundedCorners(
                 double left, double top, double right, double bottom, double radius) {
 
-            double pull = radius * HOW_FAR_A_CUBIC_PULLS_TO_MAKE_A_QUARTER_CIRCLE;
+            double pull = radius * QUARTER_CIRCLE_HANDLE;
             return List.of(
                     new PathStep.MoveTo(left + radius, top),
                     new PathStep.LineTo(right - radius, top),

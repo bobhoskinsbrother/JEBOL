@@ -225,14 +225,14 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
         return segments.clone();
     }
 
-    private static final int THE_BITS_OF_AN_OCTET = 0xFF;
+    private static final int OCTET_MASK = 0xFF;
 
     @Override
     public Value randomise(RandomDraw draw) {
         int[] octets = segments();
         for (int at = 0; at < octets.length; at++) {
             if (octets[at] != 0) {
-                octets[at] = draw.belowWithoutNarrowing(octets[at] + 1) & THE_BITS_OF_AN_OCTET;
+                octets[at] = draw.belowWithoutNarrowing(octets[at] + 1) & OCTET_MASK;
             }
         }
         return TupleValue.of(octets);
@@ -308,7 +308,7 @@ public record TupleValue(int[] segments) implements Value, PathTarget {
             int width = Math.min(octets.lengthFromHere(), MAXIMUM_SEGMENTS);
             int[] kept = new int[width];
             for (int at = 0; at < width; at++) {
-                kept[at] = octets.storage().at(octets.index() + at) & THE_BITS_OF_AN_OCTET;
+                kept[at] = octets.storage().at(octets.index() + at) & OCTET_MASK;
             }
             return TupleValue.of(kept);
         }

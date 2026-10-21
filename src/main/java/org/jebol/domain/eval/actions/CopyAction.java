@@ -90,10 +90,10 @@ public class CopyAction extends DefaultNative implements ActionValue {
                 .<Set<Datatype>>map(kinds -> switch (kinds) {
                     case Datatype one -> Set.of(one);
                     case TypesetValue several -> several.members();
-                    default -> Copying.WHAT_A_DEEP_COPY_COPIES;
+                    default -> Copying.DEEP_COPY_DATATYPES;
                 })
                 .orElse(refinements.contains("deep")
-                        ? Copying.WHAT_A_DEEP_COPY_COPIES
+                        ? Copying.DEEP_COPY_DATATYPES
                         : Copying.NOTHING_INSIDE);
     }
 

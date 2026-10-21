@@ -150,7 +150,7 @@ public final class Parser implements ParseWalk {
             return counts + ruleSpan(rules, at + counts);
         }
         if (rules.get(at) instanceof WordValue word) {
-            if (word.canonical().equals("collect") && at + 2 < rules.size() && rules.get(at + 1) instanceof WordValue keyword && ParseTargets.THE_WORDS_THAT_NAME_WHERE_COLLECT_PUTS_IT.contains(keyword.canonical()) && rules.get(at + 2) instanceof AnyWordValue) {
+            if (word.canonical().equals("collect") && at + 2 < rules.size() && rules.get(at + 1) instanceof WordValue keyword && ParseTargets.COLLECT_TARGET_WORDS.contains(keyword.canonical()) && rules.get(at + 2) instanceof AnyWordValue) {
                 return 3 + ruleSpan(rules, at + 3);
             }
             return ParseKeyword.findTheKeywordNamed(word.canonical()).map(keyword -> countSlotsTakenBy(keyword, rules, at)).orElse(1);

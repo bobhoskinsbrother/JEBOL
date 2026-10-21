@@ -6,7 +6,7 @@ final class BitWriter {
 
     private static final int SMALLEST_BUFFER = 64;
 
-    private static final int HEADER_BITS_THAT_STILL_FIT_A_BYTE = 5;
+    private static final int HEADER_BITS_FITTING_BYTE = 5;
 
     private byte[] held;
 
@@ -36,7 +36,7 @@ final class BitWriter {
 
     void startStoredBlock(boolean finalBlock) {
         write(((finalBlock ? 1 : 0) << pendingCount) | (int) pendingBits);
-        if (pendingCount > HEADER_BITS_THAT_STILL_FIT_A_BYTE) {
+        if (pendingCount > HEADER_BITS_FITTING_BYTE) {
             write(0);
         }
         pendingBits = 0;
