@@ -222,7 +222,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
 
         private Value readAWholeNumberFromText(AnyStringValue text) {
             String withoutSeparators = new WrittenText(text.text())
-                    .findTheOneNumberIn("an integer", MOST_WHOLE_NUMBER_CHARACTERS)
+                    .findTheOneNumberIn(MOST_WHOLE_NUMBER_CHARACTERS)
                     .replace("'", "");
             try {
                 return IntegerValue.of(Long.parseLong(withoutSeparators));

@@ -162,12 +162,11 @@ public final class BitsetActions implements Actions {
                     BitsetValue.ofCharacters(text.text().codePoints().toArray());
             case CharacterValue character -> BitsetValue.ofCharacters(character.codepoint());
             case IntegerValue room -> BitsetValue.of(
-                    new byte[(findTheBitAsked(room.magnitude()) + 7) / 8]);
+                    new byte[(findTheRoomAsked(room.magnitude()) + 7) / 8]);
             case BinaryValue octets -> BitsetValue.of(octets.octetsFromHere());
             case BitsetValue existing -> existing.duplicate();
             case AnyBlockValue members -> fromBlock(members);
-            default -> throw Raised.of(EvaluationFailure.INVALID_ARG,
-                    Molder.mold(source) + " names no characters a set could hold");
+            default -> throw Raised.of(EvaluationFailure.INVALID_ARG, source);
         };
     }
 
@@ -293,12 +292,21 @@ public final class BitsetActions implements Actions {
                 : (int) Comparison.asDouble(value);
     }
 
+    private static final int MOST_BITS_A_SET_IS_ALLOWED = 0x0FFFFFFF;
+
     static int findTheBitAsked(long codepoint) {
         if (codepoint < 0 || codepoint > Integer.MAX_VALUE) {
-            throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                    codepoint + " names no bit a set could hold");
+            throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(codepoint));
         }
         return (int) codepoint;
+    }
+
+    private static int findTheRoomAsked(long bits) {
+        int asked = findTheBitAsked(bits);
+        if (asked > MOST_BITS_A_SET_IS_ALLOWED) {
+            throw Raised.of(EvaluationFailure.INVALID_ARG, IntegerValue.of(bits));
+        }
+        return asked;
     }
 
     private static byte[] withBitSet(byte[] octets, int point) {

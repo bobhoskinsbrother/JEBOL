@@ -36,6 +36,7 @@ public sealed interface Value permits
         BitsetValue,
         ErrorValue,
         StructValue,
+        UtypeValue,
         JavaObjectValue {
 
     Datatype datatype();

@@ -324,8 +324,7 @@ public final class MapValue implements Value, PathTarget {
 
         private Value withRoomFor(Value spec, double asked) {
             if (asked < 0) {
-                throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
-                        "a map cannot have room for " + Molder.form(spec) + " pairs");
+                throw Raised.of(EvaluationFailure.OUT_OF_RANGE, spec);
             }
             refuseMoreRoomThanFits(asked, BYTES_A_SLOT_TAKES);
             return MapValue.empty();

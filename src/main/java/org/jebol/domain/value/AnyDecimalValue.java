@@ -137,7 +137,7 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
         private OptionalDouble scanTheQuantityFrom(Value from) {
             if (from instanceof StringValue text) {
                 return scanADecimalFrom(new WrittenText(text.text())
-                        .findTheOneNumberIn("a number", MOST_FRACTION_CHARACTERS));
+                        .findTheOneNumberIn(MOST_FRACTION_CHARACTERS));
             }
             if (from instanceof AnyBlockValue parts) {
                 return OptionalDouble.of(multiplyTheMantissaByTenTo(parts));
@@ -166,8 +166,9 @@ public abstract sealed class AnyDecimalValue implements Value, RebolNumber
         private double readTheNumberInTheBlock(Value part) {
             return switch (part) {
                 case IntegerValue(long magnitude) -> magnitude;
-                case AnyDecimalValue number -> number.quantity();
-                default -> throw refuse(part);
+                case DecimalValue number -> number.quantity();
+                default -> throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
+                        DecimalValue.TYPE, part);
             };
         }
 

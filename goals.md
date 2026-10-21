@@ -10,7 +10,7 @@ and `using-jebol.md` point here for them.
 
 ## Where the port stands
 
-Measured on 2026-10-12, the test count row on 2026-10-20 and the timing rows on
+Measured on 2026-10-12, the test count row on 2026-10-21 and the timing rows on
 2026-10-13.
 
 | Measure | Reads |
@@ -20,7 +20,7 @@ Measured on 2026-10-12, the test count row on 2026-10-20 and the timing rows on
 | `scripts/runtime-parity.py` | 0 of 582 absent; 3 differ, all deliberate -- see Standing |
 | `scripts/error-parity.py` | 120 of Rebol's 142 error ids can be raised |
 | `PortingBacklogTest` | reports `init-schemes` missing, wrongly -- see goal 11 |
-| `./gradlew allTests` | 28,406 tests on 2026-10-20: `unitTests` 2,649, `functionalTests` 23,838, `endToEndTests` 1,919 |
+| `./gradlew allTests` | 28,608 tests on 2026-10-21: `unitTests` 2,656, `functionalTests` 24,033, `endToEndTests` 1,919 |
 | `./gradlew networkTests` | 15 tests on 2026-10-20: the 12 suite assertions that need the network, all graded, and a github script at the command line |
 | `corpus/` | 1,140 of 1,140 entries pass |
 | the shipped jar | about 3,090 KB at its last build (the carried font, 556 KB, is most of what the last two batches added), and no dependencies |
@@ -133,20 +133,6 @@ arrives on another thread and reaches the port's `awake` through the
 interpreter's postbox, as a `read` event; the C sends one for each message
 that arrives. Whether opening an open port should do what the C does is an
 open question in `spec/natives.allium`.
-
-### 9. MAKE and TO answers no assertion asks
-
-- **`to paren! any-string!`** is a block in R3, because `Set_Block` writes
-  `REB_BLOCK` whatever was asked for, and a paren here. A decision rather than
-  a fix.
-- **79 other answers differed at the sweep of 2026-10-08**, mostly wording:
-  an error's `arg1` text as a sentence where R3 writes `_`; R3 molding `10%`
-  as `10.000000000000001%`; `hash!` under MOLD/ALL; a pair, tuple or date given
-  `"a b"` refusing as `bad-make-arg` where R3 says `invalid-chars`. Two are R3
-  oddities (`to url! []` naming `email!`, `make percent!` errors naming
-  `decimal!`).
-- **`make utype! [[x] [x]]`** -- R3 builds something, and what it builds is
-  an open question in `spec/natives.allium`.
 
 ### 10. Two found in Rebol's own declarations
 

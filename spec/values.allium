@@ -10,9 +10,14 @@
 -- value and `datatype? #(frame!)` is true, because the reader has no
 -- business deciding which datatypes exist -- but no value of one can be made,
 -- by MAKE, by TO or by the construction syntax, so there is nothing to
--- specify beyond the name and the refusal. Six of them: end!, frame!,
--- rebcode!, command!, library! and utype!. The refusals are rules in
--- natives.allium.
+-- specify beyond the name and the refusal. Four of them: end!, frame!,
+-- rebcode! and library!. The refusals are rules in natives.allium.
+--
+-- utype! was the fifth and moved out of that group when it turned out a real
+-- R3 does build one: `make utype! [[spec] [body]]` answers a value that
+-- moulds, compares and refuses every action, and UtypeValue below says what
+-- that leaves. command! was the sixth and moved out when extensions existed;
+-- MakingACommandChecksItsDefinition is what it does now.
 --
 -- struct! is neither a full datatype nor a bare name. A value of it can be
 -- made and STRUCT? affirms it, but only the layout is held. StructValue below
@@ -35,8 +40,8 @@ enum Datatype {
     | module | port -- a context that carries something extra: a header, or
                     -- a way out of the interpreter
     | java_object   -- a value belonging to the host, reachable both ways
-    | bitset | closure | event | gob | handle | hash | image
-    | struct | task | typeset | vector
+    | bitset | closure | command | event | gob | handle | hash | image
+    | struct | task | typeset | utype | vector
 
     -- Named but never built. No value of these exists, and the names
     -- still have to: `#(frame!)` is a datatype value and `datatype?`
@@ -47,7 +52,7 @@ enum Datatype {
     -- name is a word and the reader has no business deciding which
     -- datatypes exist. The names are needed for the construction form,
     -- which is a different question and does need them.
-    | command | end | frame | library | rebcode | utype
+    | end | frame | library | rebcode
 }
 
 -- ACTION was in that list, and moved out of it when values of it started
@@ -802,6 +807,27 @@ variant PortValue : Value {
 variant JavaObjectValue : Value {
     class_name: String          -- the runtime class, for TYPE? and MOLD
     is_host_null: Boolean       -- a held Java null, distinct from NONE
+}
+
+-- A user-defined type, which a real R3 builds and does nothing with.
+--
+-- `make utype! [[spec] [body]]` reads two blocks and answers a value of this
+-- datatype. The specification is only checked for being a block; the body's
+-- set-words are collected into an object under `system/standard/utype` whose
+-- fields are never given the values written beside them, so the object is
+-- every action still none. That is why nothing below holds the spec or the
+-- body: there is no way for a script to read either one back, and no
+-- behaviour that depends on them.
+--
+-- What is left is the type, the two ways of writing it, and an equality that
+-- is always false. `CT_Utype` returns FALSE in every mode, so `u = u` is
+-- false, `u == u` is false and `same? u u` is false -- the one value in
+-- REBOL that is not equal to itself. Every action traps, because the object
+-- has no function in the field the action looks in: `length? u` is an
+-- expect-arg about a series, and `u + 1` a cannot-use naming add:.
+variant UtypeValue : Value {
+    -- Nothing. The specification and the body are read and thrown away, and
+    -- the object the C keeps is unreachable from a script.
 }
 
 -- An error, which is a value like any other until something tries to

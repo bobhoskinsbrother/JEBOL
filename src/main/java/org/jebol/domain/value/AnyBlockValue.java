@@ -116,7 +116,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
                 }
             } else if (wrapsWhatItConverts()) {
                 return from instanceof TypesetValue kinds && listsATypesetsMembers()
-                        ? wrap(Catalogue.DATATYPES.selectWhere(kinds::holds).stream()
+                        ? BlockValue.of(Catalogue.DATATYPES.selectWhere(kinds::holds).stream()
                                 .<Value>map(datatype -> datatype).toList())
                         : wrap(List.of(from));
             }
@@ -129,7 +129,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
             if (from instanceof PairValue) {
                 return wrap(List.of());
             }
-            throw Raised.of(EvaluationFailure.INVALID_ARG, Molder.mold(from));
+            throw Raised.of(EvaluationFailure.INVALID_ARG, from);
         }
 
         private Value readTheSourceToANoughtByte(String source, Maker maker) {

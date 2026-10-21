@@ -275,7 +275,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         }
 
         private Raised refuseAsMalconstructed(Value from) {
-            return Raised.of(EvaluationFailure.MALCONSTRUCT, Molder.mold(from));
+            return Raised.of(EvaluationFailure.MALCONSTRUCT, from);
         }
     }
 

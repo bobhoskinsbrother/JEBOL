@@ -10,27 +10,23 @@ record WrittenText(String text) {
 
     private static final int LONGEST_TIME_A_STRING_MAY_SPELL = 30;
 
-    String findTheOneNumberIn(String reading, int mostCharacters) {
+    String findTheOneNumberIn(int mostCharacters) {
         int start = findTheFirstNonSpace();
         int past = start;
         while (past < text.length() && !isLexicalSpace(text.charAt(past))) {
             if (text.charAt(past) > MOST_LETTERS_ARE_ONE_BYTE) {
-                throw Raised.of(EvaluationFailure.INVALID_CHARS,
-                        "\"" + text + "\" holds a character a number may not");
+                throw Raised.of(EvaluationFailure.INVALID_CHARS);
             }
             past++;
             if (past - start > mostCharacters) {
-                throw Raised.of(EvaluationFailure.TOO_LONG,
-                        "\"" + text + "\" is longer than a written number may be");
+                throw Raised.of(EvaluationFailure.TOO_LONG);
             }
         }
         if (past == start) {
-            throw Raised.of(EvaluationFailure.TOO_SHORT,
-                    "there is nothing in \"" + text + "\" to read as " + reading);
+            throw Raised.of(EvaluationFailure.TOO_SHORT);
         }
         if (hasAnythingButSpacesAndTabsFrom(past)) {
-            throw Raised.of(EvaluationFailure.INVALID_CHARS,
-                    "\"" + text + "\" has more than one value in it");
+            throw Raised.of(EvaluationFailure.INVALID_CHARS);
         }
         return text.substring(start, past);
     }
@@ -51,6 +47,27 @@ record WrittenText(String text) {
         return trimmed;
     }
 
+    String findTheOneToken(int mostCharacters) {
+        int from = findTheFirstNonSpace();
+        int to = from;
+        while (to < text.length() && !isLexicalSpace(text.charAt(to))) {
+            if (text.charAt(to) > ASCII_ENDS_AT) {
+                throw Raised.of(EvaluationFailure.INVALID_CHARS);
+            }
+            to++;
+            if (to - from > mostCharacters) {
+                throw Raised.of(EvaluationFailure.TOO_LONG);
+            }
+        }
+        if (to == from) {
+            throw Raised.of(EvaluationFailure.TOO_SHORT);
+        }
+        if (hasAnythingButSpacesAndTabsFrom(to)) {
+            throw Raised.of(EvaluationFailure.INVALID_CHARS);
+        }
+        return text.substring(from, to);
+    }
+
     String findTheOneTime() {
         int from = 0;
         while (from < text.length() && isSpaceOrTab(text.charAt(from))) {
@@ -59,18 +76,18 @@ record WrittenText(String text) {
         int to = from;
         while (to < text.length() && !isSpaceOrTab(text.charAt(to))) {
             if (text.charAt(to) > ASCII_ENDS_AT) {
-                throw Raised.of(EvaluationFailure.INVALID_CHARS, text);
+                throw Raised.of(EvaluationFailure.INVALID_CHARS);
             }
             to++;
         }
         if (to == from) {
-            throw Raised.of(EvaluationFailure.TOO_SHORT, text);
+            throw Raised.of(EvaluationFailure.TOO_SHORT);
         }
         if (to - from > LONGEST_TIME_A_STRING_MAY_SPELL) {
-            throw Raised.of(EvaluationFailure.TOO_LONG, text);
+            throw Raised.of(EvaluationFailure.TOO_LONG);
         }
         if (hasAnythingButSpacesAndTabsFrom(to)) {
-            throw Raised.of(EvaluationFailure.INVALID_CHARS, text);
+            throw Raised.of(EvaluationFailure.INVALID_CHARS);
         }
         return text.substring(from, to);
     }

@@ -121,6 +121,9 @@ public final class Molder {
             if (value instanceof ImageValue picture) {
                 return render(picture, true);
             }
+            if (value instanceof HashValue hash) {
+                return writeAHashAsAConstruct(hash);
+            }
             if (value instanceof RebolSeries series
                     && standsWithinNeverPastTheEndForABlockOrAPath(series) > 1) {
                 return "#(" + value.datatype().literalSpelling() + " "
@@ -132,6 +135,14 @@ public final class Molder {
             }
             return render(value, true);
         });
+    }
+
+    private static String writeAHashAsAConstruct(HashValue hash) {
+        String items = hash.remaining().stream()
+                .map(Molder::mold)
+                .collect(Collectors.joining(" "));
+        int position = standsWithinNeverPastTheEndForABlockOrAPath(hash);
+        return "#(hash! [" + items + "]" + (position > 1 ? " " + position : "") + ")";
     }
 
     static final ThreadLocal<Boolean> WRITING_EVERYTHING_OUT =
@@ -266,6 +277,9 @@ public final class Molder {
             case TaskValue task -> renderObject(
                     new ObjectValue(task.context()), TaskValue.TYPE, ALWAYS_MOLDED);            case ErrorValue error -> renderError(error, forReading);
             case StructValue struct -> renderStruct(struct, forReading);
+            case UtypeValue ignored -> forReading
+                    ? (WRITING_EVERYTHING_OUT.get() ? "#(utype!)" : "utype!")
+                    : "?utype!?";
             case JavaObjectValue host -> "#[java-object! " + host.className() + "]";
         };
     }

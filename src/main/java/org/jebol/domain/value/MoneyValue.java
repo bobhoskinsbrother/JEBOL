@@ -270,7 +270,7 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
 
         private MoneyValue readMoney(AnyStringValue text) {
             String written = new WrittenText(text.text())
-                    .findTheOneNumberIn("a money", MOST_MONEY_CHARACTERS);
+                    .findTheOneNumberIn(MOST_MONEY_CHARACTERS);
             return new DeciReading(written).readTheWhole()
                     .map(MoneyValue::new)
                     .orElseThrow(() -> refuse(text));

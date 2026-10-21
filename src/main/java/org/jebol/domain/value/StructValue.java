@@ -47,23 +47,26 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
             if (!(spec instanceof AnyBlockValue given)) {
                 throw refuse(spec);
             }
-            List<Value> written = given.remaining();
-            boolean carriesInitialValues = written.size() == 2
-                    && written.get(0) instanceof AnyBlockValue
-                    && written.get(1) instanceof AnyBlockValue;
-            AnyBlockValue layout = carriesInitialValues && written.getFirst() instanceof AnyBlockValue first
-                    ? first
-                    : given;
-            StructValue made = StructValue.of(layOutBy(layout, maker));
-            if (carriesInitialValues) {
-                made.startWith(written.get(1));
-            }
-            return made;
+            return StructValue.of(layOutBy(given, maker));
         }
 
         @Override
         public Value convert(Value value, Maker maker) {
             return makeFrom(value, maker);
+        }
+
+        @Override
+        public Value construct(List<Value> contents, Construction construction) {
+            if (contents.size() >= 2
+                    && contents.get(0) instanceof AnyBlockValue layout
+                    && contents.get(1) instanceof AnyBlockValue values) {
+                Value made = construction.make(this, layout);
+                if (made instanceof StructValue struct) {
+                    struct.startWith(values);
+                }
+                return made;
+            }
+            return super.construct(contents, construction);
         }
 
         private StructSpec layOutBy(AnyBlockValue layout, Maker maker) {

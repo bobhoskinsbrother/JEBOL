@@ -1194,23 +1194,18 @@ rule MakingFromAnOperatorPrototypeIsRefused {
     ensures: CallFails(error: cannot_use, about: definition)
 }
 
--- Five datatypes have no values: end!, frame!, rebcode!, library! and
--- utype!. Every way of building one is refused, and a real R3 refuses them
--- the same way. command! was the sixth until extensions existed;
--- MakingACommandChecksItsDefinition is what it does now. MAKE and TO answer bad-make-arg naming the datatype and
--- what was offered, whether the offer is a block, a number or none: `make
--- frame! []` gives arg1 frame! and arg2 [].
+-- Four datatypes have no values: end!, frame!, rebcode! and library!. Every
+-- way of building one is refused, and a real R3 refuses them the same way.
+-- command! was the fifth until extensions existed;
+-- MakingACommandChecksItsDefinition is what it does now. MAKE and TO answer
+-- bad-make-arg naming the datatype and what was offered, whether the offer is
+-- a block, a number or none: `make frame! []` gives arg1 frame! and arg2 [].
 --
--- utype! is the exception in wording rather than in outcome. MAKE refuses
--- it as an invalid argument naming what was offered, and TO as an invalid
--- type naming utype! itself.
---
--- The construction syntax refuses all six as malconstruct, the same as any
+-- The construction syntax refuses all four as malconstruct, the same as any
 -- other literal the reader cannot build: `#(frame! [])` does not read.
 rule MakingADatatypeWithNoValuesIsRefused {
     when: EvaluateCall(make, datatype, offered)
     requires: has_no_values(datatype)
-    requires: datatype != utype
 
     ensures: CallFails(error: bad_make_arg, about: datatype, and: offered)
 }
@@ -1218,14 +1213,53 @@ rule MakingADatatypeWithNoValuesIsRefused {
 rule ConvertingToADatatypeWithNoValuesIsRefused {
     when: EvaluateCall(to, datatype, offered)
     requires: has_no_values(datatype)
-    requires: datatype != utype
 
     ensures: CallFails(error: bad_make_arg, about: datatype, and: offered)
 }
 
-rule MakingAUtypeIsRefusedAsAnInvalidArgument {
+rule ConstructingADatatypeWithNoValuesIsMalconstructed {
+    when: ReadConstruction(datatype, contents)
+    requires: has_no_values(datatype)
+
+    ensures: ReadFails(error: malconstruct, about: contents)
+}
+
+-- === A user-defined type ====================================
+
+-- MAKE UTYPE! builds a value from a block whose first two elements are
+-- blocks: a specification and a body. Everything else is an invalid argument
+-- naming the whole offer, so `make utype! []`, `make utype! [1 2]` and
+-- `make utype! [[x]]` all raise the same way. `[[x] [x] extra]` builds, and
+-- the extra element is not looked at, because `t-utype.c` reads the first
+-- two and stops.
+--
+-- What it builds does nothing, which is the C's own state rather than
+-- something left undone here. The file's header says NOT IMPLEMENTED: the
+-- specification is checked for being a block and then thrown away, the body
+-- is collected for its set-words and their values are never set, and the
+-- object the value holds is `system/standard/utype` with every action still
+-- none. So every action traps, and equality is false in every mode --
+-- `u = u` is false, and so is `same? u u`, because CT_Utype answers FALSE
+-- whatever it is asked.
+--
+-- What is left a script can see is the type, MOLD writing `utype!`, FORM
+-- writing `?utype!?`, and MOLD/ALL writing `#(utype!)`.
+rule MakingAUtypeBuildsAValue {
+    when: EvaluateCall(make, datatype, definition)
+    requires: datatype = utype
+    requires: is_block(definition)
+    requires: is_block(first_of(definition))
+    requires: is_block(second_of(definition))
+
+    ensures: CallResult(value: a_user_defined_type)
+}
+
+rule MakingAUtypeFromAnythingElseIsAnInvalidArgument {
     when: EvaluateCall(make, datatype, offered)
     requires: datatype = utype
+    requires: not (is_block(offered)
+        and is_block(first_of(offered))
+        and is_block(second_of(offered)))
 
     ensures: CallFails(error: invalid_arg, about: offered)
 }
@@ -1237,14 +1271,13 @@ rule ConvertingToAUtypeIsRefusedAsAnInvalidType {
     ensures: CallFails(error: invalid_type, about: datatype)
 }
 
-rule ConstructingADatatypeWithNoValuesIsMalconstructed {
-    when: ReadConstruction(datatype, contents)
-    requires: has_no_values(datatype)
+rule AUserDefinedTypeIsEqualToNothing {
+    when: EvaluateComparison(request)
+    requires: is_utype(request.left) or is_utype(request.right)
+    requires: request.strictness in {equal, equiv, strict_equal, same}
 
-    ensures: ReadFails(error: malconstruct, about: contents)
+    ensures: ComparisonHolds(holds: false)
 }
-
-open question "A real R3 answers `make utype! [[x] [x]]` with a value rather than a refusal -- a spec and a body make a user-defined type there, a feature R3-Alpha started and never finished. JEBOL refuses it as an invalid argument, as it does every other offer. Is a user-defined type something JEBOL should ever build, or is utype! a name kept only so scripts that mention it still read?"
 
 
 -- === Making a module ========================================
@@ -9117,16 +9150,40 @@ rule AUrlOrEmailThatWouldNotReadBackMoldsAsAConstruct {
 -- content; writing the content in its own literal form would name the
 -- datatype twice and, for a path, would not read back at all -- `#(path! p/p
 -- 3)` is a construct of three values where two were meant.
+--
+-- A hash is not covered here. Its body is written from where it stands
+-- rather than from its head, which no other block shape does, and
+-- AHashUnderAllMoldsAsAConstructFromItsPosition says why.
 rule APositionedSeriesMoldsItsBodyInConstructNotation {
     when: EvaluateMold(subject)
     requires: refinement_asked(all)
     requires: is_series(subject)
     requires: subject.index > 1
+    requires: not is_hash(subject)
 
     ensures: MoldResult(construct_body:
         if is_any_block(subject): bracketed_as_a_block(the_items_of(subject.head))
         else if is_any_string(subject): quoted_as_a_string(the_whole_text_of(subject))
         else: what_plain_mold_writes(subject.head))
+}
+
+-- A hash under MOLD/ALL is a construct whether or not it stands at its head,
+-- and its body is the items from where it stands rather than from its head.
+--
+-- Mold_Hash is the one series molder that passes the index:
+-- `Mold_Block_Series(mold, VAL_SERIES(value), VAL_INDEX(value), 0)` where
+-- every other block shape passes zero. So `mold/all make hash! [1 2 3]` is
+-- `#(hash! [1 2 3])` and `mold/all next make hash! [1 2 3]` is
+-- `#(hash! [2 3] 2)` -- not `#(hash! [1 2 3] 2)` as a block would write it,
+-- and not `make hash! [2 3]`, because under /ALL the construct form is what
+-- a hash always gets.
+rule AHashUnderAllMoldsAsAConstructFromItsPosition {
+    when: EvaluateMold(subject)
+    requires: refinement_asked(all)
+    requires: is_hash(subject)
+
+    ensures: MoldResult(text: the_construct_form_naming(hash,
+        the_items_from_where_it_stands(subject), subject.index))
 }
 
 -- An empty tag molds as a construct under /ALL, because `<>` reads back as
@@ -12344,6 +12401,280 @@ rule TheHourIsBoundedAndTheRestIsNot {
     requires: the_hour_in(written) > the_widest_hour()
 
     ensures: CallFails(error: bad_make_arg, about: written)
+}
+
+-- === Reading a value out of text ============================
+
+-- A string given to MAKE or TO for something that is not text is qualified
+-- before it is scanned, and `Qualify_String` is one function shared by every
+-- one of them: a decimal, a percent, a money, a pair, a tuple, a date and a
+-- time. It steps over the leading blanks, takes the run up to the next
+-- blank, and then requires everything after that run to be blank again.
+--
+-- Three ways to fail, and every one of them is Trap0, so the error carries
+-- no argument at all. There is nothing to name: the text is not a wrong
+-- value, it is not one value.
+--
+-- The length each datatype gives the qualifier is its own, and one of them
+-- is not a limit at all: a pair passes the length it already has, so a pair
+-- can never be too long. `t-decimal.c` passes twenty-four, `t-time.c`
+-- thirty, `t-date.c` forty-five, `t-tuple.c` forty-five and `t-money.c`
+-- thirty-six.
+rule AStringThatIsNotOneValueIsRefusedWithoutNamingIt {
+    when: EvaluateCall(verb, datatype, written)
+    requires: verb in {make, to}
+    requires: is_string(written)
+    requires: reads_text_as_a_scalar(datatype)
+
+    ensures:
+        if is_empty(the_content_of(written)):
+            CallFails(error: too_short)
+        else if length_of(the_content_of(written)) > the_limit_qualification_allows(datatype):
+            CallFails(error: too_long)
+        else if holds_more_than_whitespace_after_the_content(written)
+                or holds_a_character_outside_ascii(written):
+            CallFails(error: invalid_chars)
+}
+
+-- A string that qualifies as one value and then will not scan is refused by
+-- the scanner's caller, which names the datatype asked for and the text:
+-- `Trap_Make(type, val)`. So `to pair! "abc"` is bad-make-arg naming the
+-- pair datatype, and `to date! "abc"` the same for a date -- a different
+-- answer from the one a string holding two values gets, and the reason
+-- `to decimal! "1 2"` and `to decimal! "abc"` are two different failures.
+rule AQualifiedStringTheScannerCannotReadIsANamedRefusal {
+    when: EvaluateCall(verb, datatype, written)
+    requires: verb in {make, to}
+    requires: is_string(written)
+    requires: reads_text_as_a_scalar(datatype)
+    requires: not is_empty(the_content_of(written))
+    requires: length_of(the_content_of(written)) <= the_limit_qualification_allows(datatype)
+    requires: not holds_more_than_whitespace_after_the_content(written)
+    requires: not holds_a_character_outside_ascii(written)
+    requires: not the_scanner_can_read(datatype, the_content_of(written))
+
+    ensures: CallFails(error: bad_make_arg, about: datatype, and: written)
+}
+
+-- === Making a bitset ========================================
+
+-- MAKE and TO BITSET! take a character, text, a binary, another bitset, a
+-- block of those, or a whole number that is room. Everything else is an
+-- invalid argument naming the value itself, and nothing is appended to what
+-- it names: `make bitset! 1.5` is invalid-arg with arg1 the decimal 1.5,
+-- where the error a script reads is `invalid argument: 1.5`.
+--
+-- A whole number that names no bit is refused in one of two ways, and the
+-- line between them is the C's. `Int32s(val, 0)` reads the number with a
+-- floor of zero, so a negative count and one past the largest signed 32-bit
+-- number are out of range naming the number. A count that fits but is past
+-- 0x0FFFFFFF -- the most bits a set is allowed -- is an invalid argument
+-- naming the number instead: `if (len == UNKNOWN || len > 0x0FFFFFFF)
+-- Trap_Arg(arg);`.
+rule ABitsetRefusesAValueItCannotHoldNamingIt {
+    when: EvaluateCall(verb, datatype, offered)
+    requires: verb in {make, to}
+    requires: datatype = bitset
+    requires: not (is_any_string(offered) or is_char(offered) or is_binary(offered)
+        or is_bitset(offered) or is_block(offered) or is_integer(offered))
+
+    ensures: CallFails(error: invalid_arg, about: offered)
+}
+
+rule ABitsetRoomCountOutsideItsRangeNamesTheNumber {
+    when: EvaluateCall(verb, datatype, room)
+    requires: verb in {make, to}
+    requires: datatype = bitset
+    requires: is_integer(room)
+    requires: room < 0 or room > the_largest_signed_32_bit_number()
+
+    ensures: CallFails(error: out_of_range, about: room)
+}
+
+rule ABitsetRoomCountPastTheLimitIsAnInvalidArgument {
+    when: EvaluateCall(verb, datatype, room)
+    requires: verb in {make, to}
+    requires: datatype = bitset
+    requires: is_integer(room)
+    requires: room >= 0 and room <= the_largest_signed_32_bit_number()
+    requires: room > the_most_bits_a_set_is_allowed()
+
+    ensures: CallFails(error: invalid_arg, about: room)
+}
+
+-- === Refusing a value into a block, a binary or an image =====
+
+-- The refusal names the value that would not do, never a sentence coined
+-- about it. `Trap_Arg(arg)` puts arg itself in ARG1, so `make block! 10%`
+-- raises invalid-arg with the percent in ARG1 -- which is what
+-- `mold/all e/arg1` writes as `10.000000000000001%`, where the message a
+-- person reads molds it the short way.
+rule AnInvalidArgumentNamesTheValueItWasGiven {
+    when: EvaluateCall(verb, datatype, given)
+    requires: verb in {make, to}
+    requires: datatype in {block, paren, path, set_path, get_path, lit_path, hash}
+    requires: not (is_any_block(given) or is_map(given) or is_any_object(given)
+        or is_vector(given) or is_integer(given) or is_decimal(given)
+        or is_string(given) or is_binary(given) or is_pair(given))
+    requires: not (verb = to and is_typeset(given) and datatype in {block, paren})
+
+    ensures: CallFails(error: invalid_arg, about: given)
+}
+
+-- === A block or a paren made out of a typeset ===============
+
+-- TO BLOCK! and TO PAREN! of a typeset both answer a *block*, whatever was
+-- asked for. `Set_Block(value, Typeset_To_Block(arg))` writes REB_BLOCK and
+-- does not look at the type the caller named, so `to paren! any-string!` is
+-- `[#(string!) #(file!) #(email!) #(ref!) #(url!) #(tag!)]` -- square
+-- brackets, and `type?` of it is block!.
+--
+-- The path shapes are not caught by it. Their type is inside ANY_BLOCK_TYPE
+-- but not equal to REB_BLOCK or REB_PAREN, so the same call falls through to
+-- the ordinary conversion and `to set-path! any-string!` is a set-path
+-- holding the typeset.
+rule ABlockOrParenMadeOutOfATypesetIsABlock {
+    when: EvaluateCall(to, datatype, kinds)
+    requires: datatype in {block, paren}
+    requires: is_typeset(kinds)
+
+    ensures: CallResult(value: a_block_of_the_datatypes_the_typeset_holds(kinds))
+}
+
+-- === A percent and a decimal share one arm ==================
+
+-- A block of exactly two is a mantissa and an exponent for both a decimal
+-- and a percent, and the two parts must be whole numbers or decimals. When
+-- one is not -- a percent included, because the C tests `IS_PERCENT(val)`
+-- on the block rather than on the part and that is never true -- the
+-- refusal names **decimal!** whichever datatype was asked for, because the
+-- C hardcodes it: `else Trap_Make(REB_DECIMAL, arg);` in the arm that reads
+-- the block, twice.
+--
+-- So `make percent! [a: 1]` is `bad-make-arg` with arg1 `#(decimal!)` and
+-- arg2 the offending `a:`, and a script asking for a percent is told about a
+-- decimal. Reproduced rather than corrected: a caller catching the failure
+-- reads the datatype it names.
+--
+-- A block that is not exactly two long is a different refusal and names the
+-- datatype that was asked for: `make percent! [1 2 3]` is bad-make-arg with
+-- arg1 percent!.
+rule APercentFromABlockOfTwoNamesDecimalWhenAPartWillNotDo {
+    when: EvaluateCall(verb, datatype, parts)
+    requires: verb in {make, to}
+    requires: datatype in {decimal, percent}
+    requires: is_block(parts) and length_of(parts) = 2
+    requires: not (is_integer(first_of(parts)) or is_decimal(first_of(parts)))
+        or not (is_integer(second_of(parts)) or is_decimal(second_of(parts)))
+
+    ensures: CallFails(error: bad_make_arg,
+        about: decimal_datatype, and: the_part_that_will_not_do(parts))
+}
+
+rule APercentFromABlockOfAnotherLengthNamesTheDatatypeAskedFor {
+    when: EvaluateCall(verb, datatype, parts)
+    requires: verb in {make, to}
+    requires: datatype in {decimal, percent}
+    requires: is_block(parts)
+    requires: length_of(parts) != 2
+
+    ensures: CallFails(error: bad_make_arg, about: datatype, and: parts)
+}
+
+-- === A url and an email share one arm =======================
+
+-- MAKE URL! from an empty block names **email!**, because the C hardcodes
+-- it: `if (VAL_LEN(arg) == 0) Trap_Make(REB_EMAIL, arg);` sits above the
+-- branch that would have used the type the caller asked for. So
+-- `make url! []` and `to url! []` are both `bad-make-arg` with arg1
+-- `#(email!)` and arg2 `[]`.
+--
+-- Reproduced rather than corrected, for the same reason the percent is: a
+-- caller reads the datatype the error names, and the suite cannot tell the
+-- two apart because it never asks.
+rule AnEmptyBlockIsRefusedAsAnEmailEvenForAUrl {
+    when: EvaluateCall(verb, datatype, parts)
+    requires: verb in {make, to}
+    requires: datatype in {url, email}
+    requires: is_block(parts) and is_empty(parts)
+
+    ensures: CallFails(error: bad_make_arg, about: email_datatype, and: parts)
+}
+
+-- === Making a struct ========================================
+
+-- MAKE STRUCT! skips one leading block before it reads any fields, and that
+-- block is never used. `Prepare_Struct` does
+-- `while (IS_STRING(blk)) ++blk; if (IS_BLOCK(blk)) ++blk;` -- doc strings,
+-- then one block of attributes that the C's own comment marks as ignored --
+-- and only then starts looking for word-then-block pairs.
+--
+-- What follows is fields, or it is malconstruct naming the position that
+-- failed, and a spec with no field at all is malconstruct naming the whole
+-- spec: `make struct! []` and `make struct! [[]]` both name what was
+-- written. So the two-block shape that the *construct* form uses,
+-- `#(struct! [a [uint8!]] [a: 0])`, is not a MAKE shape at all: MAKE skips
+-- the first block and refuses the second, `malconstruct [a: 0]`.
+rule MakingAStructSkipsALeadingBlockAndReadsFields {
+    when: EvaluateCall(make, datatype, spec)
+    requires: datatype = struct
+    requires: is_block(spec)
+    requires: not has_a_position_that_is_not_a_field(spec)
+    requires: not has_a_field_whose_type_will_not_read(spec)
+    requires: not is_empty(the_fields_of(spec))
+
+    ensures: CallResult(value: a_struct_laid_out_by(the_fields_of(spec)))
+}
+
+rule AStructSpecWithNoFieldIsMalconstructed {
+    when: EvaluateCall(make, datatype, spec)
+    requires: datatype = struct
+    requires: is_block(spec)
+    requires: is_empty(the_fields_of(spec))
+
+    ensures: CallFails(error: malconstruct, about: spec)
+}
+
+rule AStructFieldThatIsNotAWordAndABlockIsMalconstructed {
+    when: EvaluateCall(make, datatype, spec)
+    requires: datatype = struct
+    requires: is_block(spec)
+    requires: has_a_position_that_is_not_a_field(spec)
+
+    ensures: CallFails(error: malconstruct, about: the_first_position_that_is_not_a_field(spec))
+}
+
+-- A field whose type block will not read is the second pass failing rather
+-- than the first, and it is a different error: `parse_field_type` returning
+-- FALSE sets FIELD_ERROR_INVALID_SPEC and the caller does `Trap_Arg(blk)`
+-- with the *type block*. So `make struct! [a [23]]` is invalid-arg naming
+-- `[23]` and `make struct! [x []]` names `[]`, where a block of the wrong
+-- shape names the item at the position instead.
+rule AStructFieldWhoseTypeWillNotReadIsAnInvalidArgument {
+    when: EvaluateCall(make, datatype, spec)
+    requires: datatype = struct
+    requires: is_block(spec)
+    requires: has_a_field_whose_type_will_not_read(spec)
+
+    ensures: CallFails(error: invalid_arg,
+        about: the_first_field_whose_type_will_not_read(spec))
+}
+
+-- The construct form is the one place the two-block shape belongs, and it
+-- reads differently: `#(struct! [a [uint8!]] [a: 0])` hands the first block
+-- to the layout reader and the second to the initialiser, so the layout is
+-- parsed as itself rather than being skipped as attributes. `Construct_Value`
+-- passes the first element after the datatype word as the layout and the
+-- element after that as the values, and anything past the two is not looked
+-- at.
+rule AStructConstructTakesALayoutAndThenItsValues {
+    when: ReadConstruction(datatype, contents)
+    requires: datatype = struct
+    requires: is_block(first_of(contents))
+    requires: is_block(second_of(contents))
+
+    ensures: ReadResult(value: a_struct_laid_out_by(first_of(contents))
+        holding_what_the_second_block_sets)
 }
 
 -- NOW answers the local date and time, with the host's offset attached.

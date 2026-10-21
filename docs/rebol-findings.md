@@ -6683,3 +6683,147 @@ held here too: the
 public badssl.com corpus found a fault the project's own fixtures did not. Its expired
 host ends its chain in a cross-signed copy of a root the JDK trusts, and
 judging past that copy reported the wrong reason.
+
+## 223. A string read as a value is qualified before it is scanned, and the qualification names nothing
+
+`Qualify_String` is one function shared by every MAKE that reads text as
+something other than text: an integer, a decimal, a percent, a money, a pair,
+a tuple, a date and a time. It steps over the leading blanks, takes the run up
+to the next blank, and requires everything after that run to be blank again.
+Every failure in it is `Trap0` - no argument at all, because the text is not a
+wrong value, it is not one value:
+
+| the string | the failure |
+| --- | --- |
+| `"1 2"`, or any byte above ASCII | `invalid-chars`, arg1 none |
+| `""` | `too-short`, arg1 none |
+| past the datatype's limit | `too-long`, arg1 none |
+
+The limit is each caller's own: 24 for a decimal, 30 for a time, 36 for a
+money, 45 for a date and a tuple, 255 for a word. A pair passes the length it
+already has, so a pair can never be too long.
+
+A string that qualifies and then will not scan is the one refusal in the
+family that names anything, and it names two: `Trap_Make(type, val)`, so
+`to pair! "abc"` is bad-make-arg with arg1 `#(pair!)` and arg2 `"abc"`. The
+two are different answers for different mistakes - `to decimal! "1 2"` and
+`to decimal! "abc"` - which is why the order the C tests them in is
+observable.
+
+## 224. `Mold_Hash` is the one series molder that writes from the index
+
+Every block shape under MOLD/ALL writes its whole series and then the
+position: `mold/all next [1 2 3]` is `#(block! [1 2 3] 2)`. A hash does not:
+
+```rebol
+h: make hash! [1 2 3]
+probe mold/all h          ; #(hash! [1 2 3])
+probe mold/all next h     ; #(hash! [2 3] 2)
+probe mold/all tail h     ; #(hash! [] 4)
+```
+
+`Mold_Hash` is `Mold_Block_Series(mold, VAL_SERIES(value), VAL_INDEX(value),
+0)` where every other block molder passes zero for the index, and under /ALL
+it is always the construct form - `make hash! [...]` is what plain MOLD
+writes. A positioned hash is therefore not `#(hash! [1 2 3] 2)` as a block
+would write it, and the items are written from where the hash stands.
+
+## 225. A percent's block-of-two refusal names `decimal!`, whatever was asked for
+
+`make percent! [a: 1]` is `bad-make-arg` with arg1 `#(decimal!)` and arg2 the
+offending `a:`. So is `make decimal! [a: 1]`, and so is a part that is a
+percent: `make decimal! [10% 2]` names decimal! and the percent. The C
+hardcodes `Trap_Make(REB_DECIMAL, arg)` in the arm that reads the mantissa and
+the exponent, twice, and its guard is `IS_DECIMAL(arg) || IS_PERCENT(val)` -
+testing the *block* rather than the part, which is never true. So that arm
+can never accept a percent even when a percent is what was asked for.
+
+A block that is not exactly two long is a different refusal and names the
+datatype that was asked for: `make percent! [1 2 3]` is bad-make-arg with arg1
+percent!.
+
+## 226. A url from an empty block names `email!`
+
+`if (VAL_LEN(arg) == 0) Trap_Make(REB_EMAIL, arg);` sits above the branch
+that would have used the type the caller asked for, so `make url! []` and
+`to url! []` are both `bad-make-arg` with arg1 `#(email!)` and arg2 `[]`. The
+url and the email share one maker in `t-string.c` and the empty-block refusal
+was written before the branch that tells them apart.
+
+## 227. MAKE STRUCT! skips a leading block, and only the construct form takes a layout and values
+
+`Prepare_Struct` opens with `while (IS_STRING(blk)) ++blk; if (IS_BLOCK(blk))
+++blk;` - doc strings, then one block of attributes the C's own comment marks
+as ignored - and only then looks for word-then-block pairs. So the two-block
+shape is not a MAKE shape at all:
+
+```rebol
+make struct! [[x] [x]]              ; malconstruct [x]
+make struct! [[a [uint8!]] [1]]     ; malconstruct [1]
+make struct! [[]]                   ; malconstruct [[]]
+make struct! [a]                    ; malconstruct a
+make struct! [a [23]]               ; invalid-arg [23]
+```
+
+A spec with no field names the whole spec, a position that is not
+word-then-block names that position, and a type block that will not read is
+the second pass failing and names the type block instead.
+
+The *construct* form is the one place the two-block shape belongs, because
+the reader hands `Construct_Value`'s first element to the layout reader and
+the element after it to the initialiser: `#(struct! [a [uint8!]] [a: 1])`
+builds, and that is the shape `mold/all/flat` writes.
+
+## 228. `Set_Block` makes TO PAREN! of a typeset a block
+
+`if (IS_TYPESET(arg) && (type == REB_BLOCK || type == REB_PAREN)) Set_Block(value,
+Typeset_To_Block(arg));` - and `Set_Block` writes REB_BLOCK without looking at
+the type the caller named. So `to paren! any-string!` is a block:
+
+```rebol
+probe type? to paren! any-string!     ; block!
+probe mold to paren! any-string!      ; [#(string!) #(file!) #(email!) ...]
+```
+
+The path shapes are not caught by it. Their type is inside `ANY_BLOCK_TYPE`
+but is neither `REB_BLOCK` nor `REB_PAREN`, so the same call falls through to
+the ordinary conversion and `to set-path! any-string!` is a set-path holding
+the typeset.
+
+## 229. A utype is a value, and it is not equal to itself
+
+`make utype! [[spec] [body]]` answers a value of the datatype. The file's
+header says NOT IMPLEMENTED and it means it: the specification is checked for
+being a block and thrown away, the body's set-words are collected into an
+object under `system/standard/utype` whose fields are never given the values
+written beside them, and so the object is every action still none.
+
+What a script can see is the type, the writing and the comparison:
+
+```rebol
+u: make utype! [[x] [x]]
+probe reduce [type? u utype? u]     ; [utype! true]
+probe reduce [mold u mold/all u form u]  ; ["utype!" "#(utype!)" "?utype!?"]
+probe reduce [u = u u == u same? u u]    ; [false false false]
+```
+
+`CT_Utype` returns FALSE whatever mode it is asked, which makes this the one
+value in REBOL that is not equal to itself. `same? u u` included. Every
+action traps through the ordinary parameter checks: `length? u` is
+`expect-arg length? series #(utype!)` and `u + 1` is `cannot-use add:
+#(utype!)`.
+
+Everything else is refused. `make utype! []`, `make utype! [1 2]` and
+`make utype! [[x]]` are invalid-arg naming the whole offer, `[[x] [x] extra]`
+builds because the C reads the first two elements and stops, `to utype!` is
+invalid-type naming utype!, and the construction syntax is malconstruct
+because `MT_Utype` is `return FALSE` and the construct never reaches the MAKE
+arm at all.
+
+## 230. `make event! [[x] [x]]` is a segmentation fault in a real 3.22.5
+
+Both `make event! [[x] [x]]` and `to event! [[x] [x]]` exit `./r3-head` on
+SIGSEGV, so there is no answer to port and the sweep leaves both out of
+`make-and-to-as-r3-answers.tsv`. JEBOL refuses them as `bad-field-set` naming
+`[x]`, and `WhereR3Dies` pins that so the refusal cannot drift. Nothing in
+Rebol's own suite asks.

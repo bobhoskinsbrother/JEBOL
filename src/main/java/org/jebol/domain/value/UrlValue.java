@@ -24,7 +24,8 @@ public final class UrlValue extends AnyStringValue {
         private Value buildAUrlFrom(AnyBlockValue parts) {
             List<Value> written = parts.remaining();
             if (written.isEmpty()) {
-                throw refuse(parts);
+                throw Raised.of(EvaluationFailure.BAD_MAKE_ARG,
+                        EmailValue.TYPE, parts);
             }
             String scheme = Molder.form(written.getFirst());
             String rest = written.subList(1, written.size()).stream()

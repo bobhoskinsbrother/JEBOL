@@ -97,6 +97,8 @@ public record DateValue(
 
         private static final long MICROSECONDS_A_SECOND = 1_000_000L;
 
+        private static final int MOST_DATE_CHARACTERS = 45;
+
         DateDatatype() {
             super("date");
         }
@@ -134,7 +136,9 @@ public record DateValue(
         }
 
         private Value readADateFrom(AnyStringValue written, Maker maker) {
-            return maker.readTheValuesFrom(written.text())
+            String token = new WrittenText(written.text())
+                    .findTheOneToken(MOST_DATE_CHARACTERS);
+            return maker.readTheValuesFrom(token)
                     .filter(read -> read.size() == 1 && read.getFirst() instanceof DateValue)
                     .map(List::getFirst)
                     .orElseThrow(() -> refuse(written));

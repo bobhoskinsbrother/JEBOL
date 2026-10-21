@@ -99,6 +99,7 @@ make integer! 1	1
 make integer! -1	-1
 make integer! 1.5	1
 make integer! {12}	12
+make integer! {a b}	E invalid-chars _
 make integer! none	E bad-make-arg #(integer!)
 make integer! [1 2]	E bad-make-arg #(integer!)
 make integer! #{01020304}	16909060
@@ -122,6 +123,7 @@ make decimal! 1	1.0
 make decimal! -1	-1.0
 make decimal! 1.5	1.5
 make decimal! {12}	12.0
+make decimal! {a b}	E invalid-chars _
 make decimal! none	E bad-make-arg #(decimal!)
 make decimal! [1 2]	100.0
 make decimal! #{01020304}	8.3541856494683883e-317
@@ -145,6 +147,7 @@ make percent! 1	100%
 make percent! -1	-100%
 make percent! 1.5	150%
 make percent! {12}	12%
+make percent! {a b}	E invalid-chars _
 make percent! none	E bad-make-arg #(percent!)
 make percent! [1 2]	100%
 make percent! #{01020304}	8.3542054120942219e-317%
@@ -157,6 +160,8 @@ make percent! 12:00	43200%
 make percent! $1	100%
 make percent! true	100%
 make percent! %f	E bad-make-arg #(percent!)
+make percent! [a: 1]	E bad-make-arg #(decimal!)
+make percent! [[x] [x]]	E bad-make-arg #(decimal!)
 make percent! integer!	E bad-make-arg #(percent!)
 make percent! #abc	E bad-make-arg #(percent!)
 make percent! a@b	E bad-make-arg #(percent!)
@@ -166,6 +171,7 @@ make money! 1	$1
 make money! -1	-$1
 make money! 1.5	$1.5
 make money! {12}	$12
+make money! {a b}	E invalid-chars _
 make money! none	E bad-make-arg #(money!)
 make money! [1 2]	E bad-make-arg #(money!)
 make money! #{01020304}	$16909060
@@ -213,6 +219,7 @@ make pair! 1	1x1
 make pair! -1	-1x-1
 make pair! 1.5	1.5x1.5
 make pair! {12}	E bad-make-arg #(pair!)
+make pair! {a b}	E invalid-chars _
 make pair! none	E bad-make-arg #(pair!)
 make pair! [1 2]	1x2
 make pair! #{01020304}	E bad-make-arg #(pair!)
@@ -236,6 +243,7 @@ make tuple! 1	E bad-make-arg #(tuple!)
 make tuple! -1	E bad-make-arg #(tuple!)
 make tuple! 1.5	E bad-make-arg #(tuple!)
 make tuple! {12}	12.0.0
+make tuple! {a b}	E invalid-chars _
 make tuple! none	E bad-make-arg #(tuple!)
 make tuple! [1 2]	1.2.0
 make tuple! #{01020304}	1.2.3.4
@@ -259,6 +267,7 @@ make time! 1	0:00:01
 make time! -1	-0:00:01
 make time! 1.5	0:00:01.5
 make time! {12}	E bad-make-arg #(time!)
+make time! {a b}	E invalid-chars _
 make time! none	E bad-make-arg #(time!)
 make time! [1 2]	1:02
 make time! #{01020304}	E bad-make-arg #(time!)
@@ -282,6 +291,7 @@ make date! 1	1970-01-01T00:00:01
 make date! -1	1969-12-31T23:59:59
 make date! 1.5	1970-01-01T00:00:01.5
 make date! {12}	E bad-make-arg #(date!)
+make date! {a b}	E invalid-chars _
 make date! none	E bad-make-arg #(date!)
 make date! [1 2]	E bad-make-arg #(date!)
 make date! #{01020304}	E bad-make-arg #(date!)
@@ -312,6 +322,7 @@ make binary! #{01020304}	#{01020304}
 make binary! 'a	E invalid-arg a
 make binary! #"a"	#{61}
 make binary! 1x2	E invalid-arg 1x2
+make binary! 10%	E invalid-arg 10.000000000000001%
 make binary! 1.2.3	#{010203}
 make binary! 12:00	E invalid-arg 12:00
 make binary! $1	#{000000000000000000000001}
@@ -419,6 +430,7 @@ make ref! integer!	#(ref! "integer!")
 make ref! #abc	#(ref! "abc")
 make ref! a@b	#(ref! "a@b")
 make ref! http://x	#(ref! "http://x")
+make url! []	E bad-make-arg #(email!)
 make url! 1	#(url! "")
 make url! -1	E out-of-range -1
 make url! 1.5	#(url! "")
@@ -468,15 +480,26 @@ make tag! a@b	<a@b>
 make tag! http://x	<http://x>
 make bitset! []	#(bitset! #{})
 make bitset! 1	#(bitset! #{00})
+make bitset! -1	E out-of-range -1
+make bitset! 1.5	E invalid-arg 1.5
 make bitset! {12}	#(bitset! #{00000000000060})
 make bitset! {a b}	#(bitset! #{00000000800000000000000060})
 make bitset! none	E invalid-type #(none!)
 make bitset! [1 2]	#(bitset! #{60})
 make bitset! #{01020304}	#(bitset! #{01020304})
+make bitset! 'a	E invalid-arg a
 make bitset! #"a"	#(bitset! #{00000000000000000000000040})
+make bitset! 1x2	E invalid-arg 1x2
+make bitset! 10%	E invalid-arg 10.000000000000001%
+make bitset! 1.2.3	E invalid-arg 1.2.3
+make bitset! 12:00	E invalid-arg 12:00
+make bitset! $1	E invalid-arg $1
+make bitset! true	E invalid-arg #(true)
 make bitset! %f	#(bitset! #{00000000000000000000000002})
 make bitset! [a: 1]	E invalid-arg [a: 1]
 make bitset! [[x] [x]]	E invalid-arg [[x] [x]]
+make bitset! integer!	E invalid-arg #(integer!)
+make bitset! #abc	E invalid-arg #abc
 make bitset! a@b	#(bitset! #{00000000000000008000000060})
 make bitset! http://x	#(bitset! #{00000000000100200000000000808880})
 make image! []	E malconstruct []
@@ -491,6 +514,7 @@ make image! #{01020304}	E malconstruct #{01020304}
 make image! 'a	E malconstruct a
 make image! #"a"	E malconstruct #"a"
 make image! 1x2	#(image! 1x2 #{FFFFFFFFFFFF})
+make image! 10%	E malconstruct 10.000000000000001%
 make image! 1.2.3	E malconstruct 1.2.3
 make image! 12:00	E malconstruct 12:00
 make image! $1	E malconstruct $1
@@ -538,6 +562,7 @@ make block! #{01020304}	[]
 make block! 'a	E invalid-arg a
 make block! #"a"	E invalid-arg #"a"
 make block! 1x2	[]
+make block! 10%	E invalid-arg 10.000000000000001%
 make block! 1.2.3	E invalid-arg 1.2.3
 make block! 12:00	E invalid-arg 12:00
 make block! $1	E invalid-arg $1
@@ -561,6 +586,7 @@ make paren! #{01020304}	()
 make paren! 'a	E invalid-arg a
 make paren! #"a"	E invalid-arg #"a"
 make paren! 1x2	()
+make paren! 10%	E invalid-arg 10.000000000000001%
 make paren! 1.2.3	E invalid-arg 1.2.3
 make paren! 12:00	E invalid-arg 12:00
 make paren! $1	E invalid-arg $1
@@ -584,6 +610,7 @@ make path! #{01020304}	#(path! [])
 make path! 'a	E invalid-arg a
 make path! #"a"	E invalid-arg #"a"
 make path! 1x2	#(path! [])
+make path! 10%	E invalid-arg 10.000000000000001%
 make path! 1.2.3	E invalid-arg 1.2.3
 make path! 12:00	E invalid-arg 12:00
 make path! $1	E invalid-arg $1
@@ -607,6 +634,7 @@ make set-path! #{01020304}	#(set-path! [])
 make set-path! 'a	E invalid-arg a
 make set-path! #"a"	E invalid-arg #"a"
 make set-path! 1x2	#(set-path! [])
+make set-path! 10%	E invalid-arg 10.000000000000001%
 make set-path! 1.2.3	E invalid-arg 1.2.3
 make set-path! 12:00	E invalid-arg 12:00
 make set-path! $1	E invalid-arg $1
@@ -630,6 +658,7 @@ make get-path! #{01020304}	#(get-path! [])
 make get-path! 'a	E invalid-arg a
 make get-path! #"a"	E invalid-arg #"a"
 make get-path! 1x2	#(get-path! [])
+make get-path! 10%	E invalid-arg 10.000000000000001%
 make get-path! 1.2.3	E invalid-arg 1.2.3
 make get-path! 12:00	E invalid-arg 12:00
 make get-path! $1	E invalid-arg $1
@@ -653,6 +682,7 @@ make lit-path! #{01020304}	#(lit-path! [])
 make lit-path! 'a	E invalid-arg a
 make lit-path! #"a"	E invalid-arg #"a"
 make lit-path! 1x2	#(lit-path! [])
+make lit-path! 10%	E invalid-arg 10.000000000000001%
 make lit-path! 1.2.3	E invalid-arg 1.2.3
 make lit-path! 12:00	E invalid-arg 12:00
 make lit-path! $1	E invalid-arg $1
@@ -664,21 +694,33 @@ make lit-path! integer!	E invalid-arg #(integer!)
 make lit-path! #abc	E invalid-arg #abc
 make lit-path! a@b	E invalid-arg a@b
 make lit-path! http://x	E invalid-arg http://x
+make hash! []	#(hash! [])
+make hash! 1	#(hash! [])
 make hash! -1	E out-of-range -1
+make hash! 1.5	#(hash! [])
+make hash! {12}	#(hash! [12])
+make hash! {a b}	#(hash! [a b])
 make hash! none	E invalid-arg _
+make hash! [1 2]	#(hash! [1 2])
+make hash! #{01020304}	#(hash! [])
 make hash! 'a	E invalid-arg a
 make hash! #"a"	E invalid-arg #"a"
+make hash! 1x2	#(hash! [])
+make hash! 10%	E invalid-arg 10.000000000000001%
 make hash! 1.2.3	E invalid-arg 1.2.3
 make hash! 12:00	E invalid-arg 12:00
 make hash! $1	E invalid-arg $1
 make hash! true	E invalid-arg #(true)
 make hash! %f	E invalid-arg %f
+make hash! [a: 1]	#(hash! [a: 1])
+make hash! [[x] [x]]	#(hash! [[x] [x]])
 make hash! integer!	E invalid-arg #(integer!)
 make hash! #abc	E invalid-arg #abc
 make hash! a@b	E invalid-arg a@b
 make hash! http://x	E invalid-arg http://x
 make map! []	#(map! [])
 make map! 1	#(map! [])
+make map! -1	E out-of-range -1
 make map! 1.5	#(map! [])
 make map! {12}	E bad-make-arg #(map!)
 make map! {a b}	E bad-make-arg #(map!)
@@ -983,6 +1025,7 @@ make command! $1	E bad-make-arg #(command!)
 make command! true	E bad-make-arg #(command!)
 make command! %f	E bad-make-arg #(command!)
 make command! [a: 1]	E bad-make-arg #(command!)
+make command! [[x] [x]]	E bad-func-def [[x] [x]]
 make command! integer!	E bad-make-arg #(command!)
 make command! #abc	E bad-make-arg #(command!)
 make command! a@b	E bad-make-arg #(command!)
@@ -1107,6 +1150,30 @@ make object! integer!	E bad-make-arg #(object!)
 make object! #abc	E bad-make-arg #(object!)
 make object! a@b	E bad-make-arg #(object!)
 make object! http://x	E bad-make-arg #(object!)
+make module! []	E wrong-type spec
+make module! 1	E bad-make-arg #(module!)
+make module! -1	E bad-make-arg #(module!)
+make module! 1.5	E bad-make-arg #(module!)
+make module! {12}	E bad-make-arg #(module!)
+make module! {a b}	E bad-make-arg #(module!)
+make module! none	E bad-make-arg #(module!)
+make module! [1 2]	E wrong-type spec
+make module! #{01020304}	E bad-make-arg #(module!)
+make module! 'a	E bad-make-arg #(module!)
+make module! #"a"	E bad-make-arg #(module!)
+make module! 1x2	E bad-make-arg #(module!)
+make module! 10%	E bad-make-arg #(module!)
+make module! 1.2.3	E bad-make-arg #(module!)
+make module! 12:00	E bad-make-arg #(module!)
+make module! $1	E bad-make-arg #(module!)
+make module! true	E bad-make-arg #(module!)
+make module! %f	E bad-make-arg #(module!)
+make module! [a: 1]	E wrong-type spec
+make module! [[x] [x]]	E no-value x
+make module! integer!	E bad-make-arg #(module!)
+make module! #abc	E bad-make-arg #(module!)
+make module! a@b	E bad-make-arg #(module!)
+make module! http://x	E bad-make-arg #(module!)
 make error! []	E invalid-error _
 make error! 1	E invalid-arg 1
 make error! -1	E invalid-arg -1
@@ -1131,6 +1198,28 @@ make error! integer!	E invalid-arg #(integer!)
 make error! #abc	E invalid-arg #abc
 make error! a@b	E invalid-arg a@b
 make error! http://x	E invalid-arg http://x
+make port! []	E no-scheme _
+make port! 1	E invalid-spec 1
+make port! -1	E invalid-spec -1
+make port! 1.5	E invalid-spec 1.5
+make port! {12}	E invalid-spec "12"
+make port! {a b}	E invalid-spec "a b"
+make port! none	E invalid-spec _
+make port! [1 2]	E no-scheme _
+make port! #{01020304}	E invalid-spec #{01020304}
+make port! 'a	E no-scheme a
+make port! #"a"	E invalid-spec #"a"
+make port! 1x2	E invalid-spec 1x2
+make port! 10%	E invalid-spec 10.000000000000001%
+make port! 1.2.3	E invalid-spec 1.2.3
+make port! 12:00	E invalid-spec 12:00
+make port! $1	E invalid-spec $1
+make port! true	E invalid-spec #(true)
+make port! [a: 1]	E no-scheme _
+make port! [[x] [x]]	E no-scheme _
+make port! integer!	E invalid-spec #(integer!)
+make port! #abc	E invalid-spec #abc
+make port! a@b	E invalid-spec a@b
 make gob! []	#(gob! [offset: 0x0 size: 100x100])
 make gob! 1	E bad-make-arg #(gob!)
 make gob! -1	E bad-make-arg #(gob!)
@@ -1221,6 +1310,7 @@ make struct! $1	E bad-make-arg #(struct!)
 make struct! true	E bad-make-arg #(struct!)
 make struct! %f	E bad-make-arg #(struct!)
 make struct! [a: 1]	E malconstruct a:
+make struct! [[x] [x]]	E malconstruct [x]
 make struct! integer!	E bad-make-arg #(struct!)
 make struct! #abc	E bad-make-arg #(struct!)
 make struct! a@b	E bad-make-arg #(struct!)
@@ -1268,6 +1358,7 @@ make utype! $1	E invalid-arg $1
 make utype! true	E invalid-arg #(true)
 make utype! %f	E invalid-arg %f
 make utype! [a: 1]	E invalid-arg [a: 1]
+make utype! [[x] [x]]	#(utype!)
 make utype! integer!	E invalid-arg #(integer!)
 make utype! #abc	E invalid-arg #abc
 make utype! a@b	E invalid-arg a@b
@@ -1373,6 +1464,7 @@ to integer! 1	1
 to integer! -1	-1
 to integer! 1.5	1
 to integer! {12}	12
+to integer! {a b}	E invalid-chars _
 to integer! none	E bad-make-arg #(integer!)
 to integer! [1 2]	E bad-make-arg #(integer!)
 to integer! #{01020304}	16909060
@@ -1396,6 +1488,7 @@ to decimal! 1	1.0
 to decimal! -1	-1.0
 to decimal! 1.5	1.5
 to decimal! {12}	12.0
+to decimal! {a b}	E invalid-chars _
 to decimal! none	E bad-make-arg #(decimal!)
 to decimal! [1 2]	100.0
 to decimal! #{01020304}	8.3541856494683883e-317
@@ -1419,6 +1512,7 @@ to percent! 1	100%
 to percent! -1	-100%
 to percent! 1.5	150%
 to percent! {12}	12%
+to percent! {a b}	E invalid-chars _
 to percent! none	E bad-make-arg #(percent!)
 to percent! [1 2]	100%
 to percent! #{01020304}	8.3542054120942219e-317%
@@ -1431,6 +1525,8 @@ to percent! 12:00	43200%
 to percent! $1	100%
 to percent! true	E bad-make-arg #(percent!)
 to percent! %f	E bad-make-arg #(percent!)
+to percent! [a: 1]	E bad-make-arg #(decimal!)
+to percent! [[x] [x]]	E bad-make-arg #(decimal!)
 to percent! integer!	E bad-make-arg #(percent!)
 to percent! #abc	E bad-make-arg #(percent!)
 to percent! a@b	E bad-make-arg #(percent!)
@@ -1440,6 +1536,7 @@ to money! 1	$1
 to money! -1	-$1
 to money! 1.5	$1.5
 to money! {12}	$12
+to money! {a b}	E invalid-chars _
 to money! none	E bad-make-arg #(money!)
 to money! [1 2]	E bad-make-arg #(money!)
 to money! #{01020304}	$16909060
@@ -1487,6 +1584,7 @@ to pair! 1	1x1
 to pair! -1	-1x-1
 to pair! 1.5	1.5x1.5
 to pair! {12}	E bad-make-arg #(pair!)
+to pair! {a b}	E invalid-chars _
 to pair! none	E bad-make-arg #(pair!)
 to pair! [1 2]	1x2
 to pair! #{01020304}	E bad-make-arg #(pair!)
@@ -1510,6 +1608,7 @@ to tuple! 1	E bad-make-arg #(tuple!)
 to tuple! -1	E bad-make-arg #(tuple!)
 to tuple! 1.5	E bad-make-arg #(tuple!)
 to tuple! {12}	12.0.0
+to tuple! {a b}	E invalid-chars _
 to tuple! none	E bad-make-arg #(tuple!)
 to tuple! [1 2]	1.2.0
 to tuple! #{01020304}	1.2.3.4
@@ -1533,6 +1632,7 @@ to time! 1	0:00:01
 to time! -1	-0:00:01
 to time! 1.5	0:00:01.5
 to time! {12}	E bad-make-arg #(time!)
+to time! {a b}	E invalid-chars _
 to time! none	E bad-make-arg #(time!)
 to time! [1 2]	1:02
 to time! #{01020304}	E bad-make-arg #(time!)
@@ -1556,6 +1656,7 @@ to date! 1	1970-01-01T00:00:01
 to date! -1	1969-12-31T23:59:59
 to date! 1.5	1970-01-01T00:00:01.5
 to date! {12}	E bad-make-arg #(date!)
+to date! {a b}	E invalid-chars _
 to date! none	E bad-make-arg #(date!)
 to date! [1 2]	E bad-make-arg #(date!)
 to date! #{01020304}	E bad-make-arg #(date!)
@@ -1586,6 +1687,7 @@ to binary! #{01020304}	#{01020304}
 to binary! 'a	E invalid-arg a
 to binary! #"a"	#{61}
 to binary! 1x2	E invalid-arg 1x2
+to binary! 10%	E invalid-arg 10.000000000000001%
 to binary! 1.2.3	#{010203}
 to binary! 12:00	E invalid-arg 12:00
 to binary! $1	#{000000000000000000000001}
@@ -1693,6 +1795,7 @@ to ref! integer!	#(ref! "integer!")
 to ref! #abc	#(ref! "abc")
 to ref! a@b	#(ref! "a@b")
 to ref! http://x	#(ref! "http://x")
+to url! []	E bad-make-arg #(email!)
 to url! 1	#(url! "1")
 to url! -1	#(url! "-1")
 to url! 1.5	#(url! "1.5")
@@ -1742,15 +1845,26 @@ to tag! a@b	<a@b>
 to tag! http://x	<http://x>
 to bitset! []	#(bitset! #{})
 to bitset! 1	#(bitset! #{00})
+to bitset! -1	E out-of-range -1
+to bitset! 1.5	E invalid-arg 1.5
 to bitset! {12}	#(bitset! #{00000000000060})
 to bitset! {a b}	#(bitset! #{00000000800000000000000060})
 to bitset! none	E invalid-type #(none!)
 to bitset! [1 2]	#(bitset! #{60})
 to bitset! #{01020304}	#(bitset! #{01020304})
+to bitset! 'a	E invalid-arg a
 to bitset! #"a"	#(bitset! #{00000000000000000000000040})
+to bitset! 1x2	E invalid-arg 1x2
+to bitset! 10%	E invalid-arg 10.000000000000001%
+to bitset! 1.2.3	E invalid-arg 1.2.3
+to bitset! 12:00	E invalid-arg 12:00
+to bitset! $1	E invalid-arg $1
+to bitset! true	E invalid-arg #(true)
 to bitset! %f	#(bitset! #{00000000000000000000000002})
 to bitset! [a: 1]	E invalid-arg [a: 1]
 to bitset! [[x] [x]]	E invalid-arg [[x] [x]]
+to bitset! integer!	E invalid-arg #(integer!)
+to bitset! #abc	E invalid-arg #abc
 to bitset! a@b	#(bitset! #{00000000000000008000000060})
 to bitset! http://x	#(bitset! #{00000000000100200000000000808880})
 to image! []	E invalid-type #(block!)
@@ -1945,17 +2059,26 @@ to lit-path! integer!	#(lit-path! [#(integer!)])
 to lit-path! #abc	#(lit-path! [#abc])
 to lit-path! a@b	#(lit-path! [a@b])
 to lit-path! http://x	#(lit-path! [http://x])
+to hash! []	#(hash! [])
 to hash! 1	E invalid-arg 1
 to hash! -1	E invalid-arg -1
 to hash! 1.5	E invalid-arg 1.5
+to hash! {12}	#(hash! [12])
+to hash! {a b}	#(hash! [a b])
 to hash! none	E invalid-arg _
+to hash! [1 2]	#(hash! [1 2])
+to hash! #{01020304}	#(hash! [])
 to hash! 'a	E invalid-arg a
 to hash! #"a"	E invalid-arg #"a"
+to hash! 1x2	#(hash! [])
+to hash! 10%	E invalid-arg 10.000000000000001%
 to hash! 1.2.3	E invalid-arg 1.2.3
 to hash! 12:00	E invalid-arg 12:00
 to hash! $1	E invalid-arg $1
 to hash! true	E invalid-arg #(true)
 to hash! %f	E invalid-arg %f
+to hash! [a: 1]	#(hash! [a: 1])
+to hash! [[x] [x]]	#(hash! [[x] [x]])
 to hash! integer!	E invalid-arg #(integer!)
 to hash! #abc	E invalid-arg #abc
 to hash! a@b	E invalid-arg a@b
@@ -2267,6 +2390,7 @@ to command! $1	E bad-make-arg #(command!)
 to command! true	E bad-make-arg #(command!)
 to command! %f	E bad-make-arg #(command!)
 to command! [a: 1]	E bad-make-arg #(command!)
+to command! [[x] [x]]	E bad-func-def [[x] [x]]
 to command! integer!	E bad-make-arg #(command!)
 to command! #abc	E bad-make-arg #(command!)
 to command! a@b	E bad-make-arg #(command!)
@@ -2553,6 +2677,7 @@ to struct! $1	E bad-make-arg #(struct!)
 to struct! true	E bad-make-arg #(struct!)
 to struct! %f	E bad-make-arg #(struct!)
 to struct! [a: 1]	E malconstruct a:
+to struct! [[x] [x]]	E malconstruct [x]
 to struct! integer!	E bad-make-arg #(struct!)
 to struct! #abc	E bad-make-arg #(struct!)
 to struct! a@b	E bad-make-arg #(struct!)

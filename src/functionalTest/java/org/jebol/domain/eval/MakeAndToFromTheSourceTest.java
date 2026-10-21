@@ -27,6 +27,10 @@ class MakeAndToFromTheSourceTest {
         return answerTo("either error? e: try [" + source + "] [e/id] [" + source + "]");
     }
 
+    private static String errorFields(String source) {
+        return answerTo("e: try [" + source + "] mold reduce [e/id e/arg1 e/arg2]");
+    }
+
     @Nested
     @DisplayName("a date from a count of seconds since 1970")
     class FromATimestamp {
@@ -1265,6 +1269,311 @@ class MakeAndToFromTheSourceTest {
         @DisplayName("MAKE reads it the same way, because the C shares the arm")
         void makereadsItTheSameWay() {
             assertThat(answerTo("make integer! #FF")).isEqualTo("255");
+        }
+    }
+
+    @Nested
+    @DisplayName("a string that is not one value is refused without naming it")
+    class ReadingTextAsAValue {
+
+        @ParameterizedTest(name = "to {0}! a two-value string names nothing")
+        @ValueSource(strings = {
+            "integer", "decimal", "percent", "money", "time", "pair", "tuple", "date",
+        })
+        @DisplayName("Qualify_String's trailing run is Trap0, so ARG1 is none")
+        void moreThanOneValueNamesNothing(String datatype) {
+            assertThat(errorFields("to " + datatype + "! \"a b\""))
+                    .as("the text is not a wrong value, it is not one value, so "
+                            + "there is nothing for the error to name")
+                    .isEqualTo("[invalid-chars _ _]");
+            assertThat(errorFields("make " + datatype + "! \"a b\""))
+                    .isEqualTo("[invalid-chars _ _]");
+        }
+
+        @Test
+        @DisplayName("an empty string is too-short and an over-long one too-long, "
+                + "and neither names anything either")
+        void emptyAndOverlongNameNothing() {
+            assertThat(errorFields("to decimal! \"\"")).isEqualTo("[too-short _ _]");
+            assertThat(errorFields("to time! \"\"")).isEqualTo("[too-short _ _]");
+            assertThat(errorFields("to decimal! \"1234567890123456789012345\""))
+                    .as("twenty-four characters is the limit t-decimal.c gives "
+                            + "the qualifier, and twenty-five is past it")
+                    .isEqualTo("[too-long _ _]");
+            assertThat(errorFields("to time! \"1234567890123456789012345678901\""))
+                    .as("t-time.c's limit is thirty")
+                    .isEqualTo("[too-long _ _]");
+        }
+
+        @Test
+        @DisplayName("a string that qualifies and then will not scan names the "
+                + "datatype and the text")
+        void aQualifiedStringThatWillNotScanNamesItself() {
+            assertThat(errorFields("to pair! \"abc\""))
+                    .as("Trap_Make names the type asked for and the value, which "
+                            + "is the one place this family of failures carries "
+                            + "an argument")
+                    .isEqualTo("[bad-make-arg #(pair!) \"abc\"]");
+            assertThat(errorFields("to tuple! \"abc\""))
+                    .isEqualTo("[bad-make-arg #(tuple!) \"abc\"]");
+            assertThat(errorFields("to date! \"abc\""))
+                    .isEqualTo("[bad-make-arg #(date!) \"abc\"]");
+            assertThat(errorFields("make date! \"abc\""))
+                    .isEqualTo("[bad-make-arg #(date!) \"abc\"]");
+        }
+    }
+
+    @Nested
+    @DisplayName("a bitset names the value it cannot hold")
+    class MakingABitset {
+
+        @Test
+        @DisplayName("an invalid argument is the value itself, with nothing appended")
+        void anInvalidArgumentIsTheValueItself() {
+            assertThat(errorFields("make bitset! 1.5"))
+                    .as("the decimal is ARG1, so `e/arg1 = 1.5` compares true "
+                            + "where a word coined from the message would not")
+                    .isEqualTo("[invalid-arg 1.5 _]");
+            assertThat(errorFields("make bitset! 'a")).isEqualTo("[invalid-arg a _]");
+            assertThat(errorFields("to bitset! #abc")).isEqualTo("[invalid-arg #abc _]");
+            assertThat(errorFields("to bitset! true")).isEqualTo("[invalid-arg #(true) _]");
+        }
+
+        @Test
+        @DisplayName("a count that names no bit is out of range naming the number")
+        void aCountThatNamesNoBit() {
+            assertThat(errorFields("make bitset! -1")).isEqualTo("[out-of-range -1 _]");
+            assertThat(errorFields("to bitset! -2147483648"))
+                    .isEqualTo("[out-of-range -2147483648 _]");
+        }
+
+        @Test
+        @DisplayName("a count past 0x0FFFFFFF is an invalid argument instead, "
+                + "because the C checks twice")
+        void pastTheLimitIsAnInvalidArgument() {
+            assertThat(answerTo("length? to bitset! 268435455"))
+                    .as("0x0FFFFFFF bits is the largest set the C will make")
+                    .isEqualTo("268435456");
+            assertThat(errorFields("to bitset! 268435456"))
+                    .isEqualTo("[invalid-arg 268435456 _]");
+            assertThat(errorFields("to bitset! 2147483648"))
+                    .isEqualTo("[out-of-range 2147483648 _]");
+        }
+    }
+
+    @Nested
+    @DisplayName("an invalid argument names the value, never a sentence about it")
+    class NamingTheValue {
+
+        @ParameterizedTest(name = "make {0}! 10% names the percent")
+        @ValueSource(strings = {
+            "block", "paren", "path", "set-path", "get-path", "lit-path", "hash",
+            "binary",
+        })
+        @DisplayName("so MOLD/ALL of ARG1 writes every digit a double has")
+        void namesThePercent(String datatype) {
+            assertThat(answerTo("e: try [make " + datatype + "! 10%] mold/all e/arg1"))
+                    .as("Trap_Arg puts the value itself in ARG1, where the "
+                            + "message molds it the short way and MOLD/ALL writes "
+                            + "the number underneath")
+                    .isEqualTo("10.000000000000001%");
+        }
+
+        @Test
+        @DisplayName("an image refuses the same value as a malconstruct")
+        void anImageNamesThePercent() {
+            assertThat(answerTo("""
+                    e: try [make image! 10%]
+                    mold/all e/arg1""")).isEqualTo("10.000000000000001%");
+            assertThat(errorOr("make image! 10%")).isEqualTo("malconstruct");
+        }
+
+        @Test
+        @DisplayName("and a map's room refusal names the count")
+        void amapsRoomRefusalNamesTheCount() {
+            assertThat(errorFields("make map! -1")).isEqualTo("[out-of-range -1 _]");
+        }
+    }
+
+    @Nested
+    @DisplayName("a hash under MOLD/ALL is a construct")
+    class MoldingAHashUnderAll {
+
+        @Test
+        @DisplayName("whether or not it stands at its head")
+        void whetherOrNotItStandsAtItsHead() {
+            assertThat(answerTo("mold/all make hash! [1 2 3]"))
+                    .as("plain MOLD writes `make hash! [...]` and MOLD/ALL writes "
+                            + "the construct, the way it does for every other "
+                            + "series that has a position to keep")
+                    .isEqualTo("#(hash! [1 2 3])");
+            assertThat(answerTo("mold make hash! [1 2 3]"))
+                    .isEqualTo("make hash! [1 2 3]");
+        }
+
+        @Test
+        @DisplayName("and its body is the items from where it stands, not from its head")
+        void bodyIsFromWhereItStands() {
+            assertThat(answerTo("mold/all next make hash! [1 2 3]"))
+                    .as("Mold_Hash is the one series molder that passes the index, "
+                            + "so this is not #(hash! [1 2 3] 2) as a block would "
+                            + "write it")
+                    .isEqualTo("#(hash! [2 3] 2)");
+            assertThat(answerTo("mold/all tail make hash! [1 2 3]"))
+                    .isEqualTo("#(hash! [] 4)");
+        }
+    }
+
+    @Nested
+    @DisplayName("a percent from a block of two names decimal!")
+    class NamingDecimal {
+
+        @Test
+        @DisplayName("because the C hardcodes the type in the arm that reads the block")
+        void thePartThatWillNotDoNamesDecimal() {
+            assertThat(errorFields("make percent! [a: 1]"))
+                    .as("a script asking for a percent is told about a decimal, "
+                            + "and ARG2 is the offending part")
+                    .isEqualTo("[bad-make-arg #(decimal!) a:]");
+            assertThat(errorFields("to percent! [[x] [x]]"))
+                    .isEqualTo("[bad-make-arg #(decimal!) [x]]");
+        }
+
+        @Test
+        @DisplayName("and a percent part is not a number to that arm either")
+        void aPercentPartIsNotANumber() {
+            assertThat(errorFields("make decimal! [10% 2]"))
+                    .as("the C tests IS_PERCENT on the block rather than on the "
+                            + "part, so that arm can never accept a percent")
+                    .isEqualTo("[bad-make-arg #(decimal!) 10%]");
+            assertThat(answerTo("mold make decimal! [1.5 2]")).isEqualTo("150.0");
+        }
+
+        @Test
+        @DisplayName("while a block of another length names the datatype asked for")
+        void anotherLengthNamesTheDatatypeAskedFor() {
+            assertThat(errorFields("make percent! [1 2 3]"))
+                    .isEqualTo("[bad-make-arg #(percent!) [1 2 3]]");
+            assertThat(errorFields("make decimal! [1]"))
+                    .isEqualTo("[bad-make-arg #(decimal!) [1]]");
+        }
+    }
+
+    @Nested
+    @DisplayName("a url from an empty block names email!")
+    class NamingEmail {
+
+        @Test
+        @DisplayName("because the C hardcodes that too, above the branch that would use the type asked for")
+        void anEmptyBlockNamesEmail() {
+            assertThat(errorFields("make url! []"))
+                    .isEqualTo("[bad-make-arg #(email!) []]");
+            assertThat(errorFields("to url! []"))
+                    .isEqualTo("[bad-make-arg #(email!) []]");
+            assertThat(errorFields("make email! []"))
+                    .isEqualTo("[bad-make-arg #(email!) []]");
+        }
+    }
+
+    @Nested
+    @DisplayName("MAKE STRUCT! skips a leading block and reads the rest as fields")
+    class MakingAStruct {
+
+        @Test
+        @DisplayName("so the two-block shape the construct form uses is refused")
+        void theTwoBlockShapeIsRefused() {
+            assertThat(errorFields("make struct! [[x] [x]]"))
+                    .as("the first block is skipped as attributes and the second "
+                            + "is then not a field")
+                    .isEqualTo("[malconstruct [x] _]");
+            assertThat(errorFields("make struct! [[a [uint8!]] [1]]"))
+                    .isEqualTo("[malconstruct [1] _]");
+        }
+
+        @Test
+        @DisplayName("a spec with no field names the whole spec")
+        void aSpecWithNoFieldNamesTheWholeSpec() {
+            assertThat(errorFields("make struct! []"))
+                    .isEqualTo("[malconstruct [] _]");
+            assertThat(errorFields("make struct! [[]]"))
+                    .isEqualTo("[malconstruct [[]] _]");
+            assertThat(errorFields("make struct! [\"doc\" [a [uint8!]]]"))
+                    .isEqualTo("[malconstruct [\"doc\" [a [uint8!]]] _]");
+        }
+
+        @Test
+        @DisplayName("a field whose type will not read names the type block")
+        void aFieldWhoseTypeWillNotRead() {
+            assertThat(errorFields("make struct! [a [23]]"))
+                    .isEqualTo("[invalid-arg [23] _]");
+            assertThat(errorFields("make struct! [x []]"))
+                    .isEqualTo("[invalid-arg [] _]");
+        }
+
+        @Test
+        @DisplayName("while a doc string and fields still build")
+        void aDocStringAndFieldsStillBuild() {
+            assertThat(answerTo("""
+                    s: make struct! ["doc" a [uint8!]]
+                    mold reduce [length? s s/a]""")).isEqualTo("[1 0]");
+        }
+
+        @Test
+        @DisplayName("and the construct form takes a layout and then its values")
+        void theConstructFormTakesLayoutAndValues() {
+            assertThat(answerTo("""
+                    s: load {#(struct! [a [uint8!]] [a: 1])}
+                    mold reduce [length? s s/a]"""))
+                    .as("the reader hands the first block to the layout reader "
+                            + "and the second to the initialiser, so this is the "
+                            + "one place the two-block shape belongs")
+                    .isEqualTo("[1 1]");
+            assertThat(answerTo("""
+                    s: load {#(struct! [a [uint8!]])}
+                    length? s""")).isEqualTo("1");
+        }
+    }
+
+    @Nested
+    @DisplayName("a block or a paren made out of a typeset is a block")
+    class MakingABlockFromATypeset {
+        @Test
+        @DisplayName("whatever was asked for, because Set_Block writes REB_BLOCK")
+        void whateverWasAskedFor() {
+            assertThat(answerTo("type? to paren! any-string!"))
+                    .as("Set_Block does not look at the type the caller named")
+                    .isEqualTo("#(block!)");
+            assertThat(answerTo("mold to paren! any-string!"))
+                    .isEqualTo("[#(string!) #(file!) #(email!) #(ref!) #(url!) #(tag!)]");
+            assertThat(answerTo("type? to block! any-string!"))
+                    .isEqualTo("#(block!)");
+        }
+
+        @Test
+        @DisplayName("but the path shapes are not caught by it")
+        void thePathShapesAreNotCaught() {
+            assertThat(answerTo("type? to set-path! any-string!"))
+                    .as("their type is inside ANY_BLOCK_TYPE but is neither "
+                            + "REB_BLOCK nor REB_PAREN")
+                    .isEqualTo("#(set-path!)");
+            assertThat(answerTo("type? to lit-path! any-string!"))
+                    .isEqualTo("#(lit-path!)");
+        }
+    }
+
+    @Nested
+    @DisplayName("an event from a block of two blocks is where a real R3 dies")
+    class WhereR3Dies {
+
+        @Test
+        @DisplayName("so JEBOL refuses rather than copying a crash")
+        void refusesRatherThanCopyingACrash() {
+            assertThat(errorOr("make event! [[x] [x]]"))
+                    .as("a real 3.22.5 exits on SIGSEGV for both of these, so "
+                            + "there is no answer to match; the refusal is "
+                            + "JEBOL's own and is pinned so it cannot drift")
+                    .isEqualTo("bad-field-set");
+            assertThat(errorOr("to event! [[x] [x]]")).isEqualTo("bad-field-set");
         }
     }
 }

@@ -19,7 +19,7 @@ class MakeAndToAnswerAsR3DoesTest {
 
     private static final String R3_ANSWERS = "/org/jebol/make-and-to-as-r3-answers.tsv";
 
-    private static final int EXPECTED_CASES = 2607;
+    private static final int EXPECTED_CASES = 2732;
 
     private final Interpreter interpreter = AnInterpreter.create();
 
