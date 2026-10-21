@@ -43,7 +43,7 @@ public class TakeAction extends DefaultNative implements ActionValue {
                 yield cryptPort.read(port);
             }
             case RebolSeries series -> takeFrom(series, arguments, refinements);
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 

@@ -15,13 +15,13 @@ public final class Overflowing {
         }
     }
 
-    public static void refuseAZeroDivisor(double divisor) {
+    public static void refuseZeroDivisor(double divisor) {
         if (divisor == 0) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE);
         }
     }
 
-    public static void refuseAZeroOctetDivisor(double divisor) {
+    public static void refuseZeroOctetDivisor(double divisor) {
         if (divisor == 0) {
             throw Raised.of(EvaluationFailure.ZERO_DIVIDE, "tuple");
         }

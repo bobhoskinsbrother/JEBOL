@@ -251,7 +251,7 @@ public record MoneyValue(BigDecimal amount, Optional<String> currency, boolean n
 
         @Override
         public Value construct(List<Value> contents, Construction construction) {
-            throw refuseTheConstruction(contents);
+            throw refuseConstruction(contents);
         }
 
         @Override

@@ -32,7 +32,7 @@ public class TruncateNative extends DefaultNative {
             case RebolSeries series -> truncate(series,
                     readTheArgumentOf("part", 0, arguments, refinements)
                             .map(count -> ((IntegerValue) count).magnitude()));
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 

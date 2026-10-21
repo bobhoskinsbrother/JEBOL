@@ -168,7 +168,7 @@ public final class Bincode {
             if (readTheWidthOf(code) > 0) {
                 step++;
                 writeWholeNumber(cursor, code,
-                        writeAWholeNumber(readItemAt(dialect, step, code)));
+                        writeWholeNumber(readItemAt(dialect, step, code)));
                 continue;
             }
             if (readTheFloatWidthOf(code) > 0) {
@@ -198,22 +198,22 @@ public final class Bincode {
             return step;
         }
         if (MOMENTS.contains(code)) {
-            return writeAMoment(cursor, dialect, step, code, secondsSinceTheEpoch);
+            return writeMoment(cursor, dialect, step, code, secondsSinceTheEpoch);
         }
         switch (readTheBaseOf(code)) {
-            case "at" -> moveTo(cursor, writeAWholeNumber(readItemAt(dialect, ++step, code)) - 1);
-            case "atz" -> moveTo(cursor, writeAWholeNumber(readItemAt(dialect, ++step, code)));
+            case "at" -> moveTo(cursor, writeWholeNumber(readItemAt(dialect, ++step, code)) - 1);
+            case "atz" -> moveTo(cursor, writeWholeNumber(readItemAt(dialect, ++step, code)));
             case "bytes" -> writeBytes(cursor, readItemAt(dialect, ++step, code));
             case "pad" -> padTo(cursor,
-                    alignUp(cursor.at, writeAWholeNumber(readItemAt(dialect, ++step, code))));
+                    alignUp(cursor.at, writeWholeNumber(readItemAt(dialect, ++step, code))));
             case "random-bytes" -> writeRandom(cursor,
-                    writeAWholeNumber(readItemAt(dialect, ++step, code)));
-            case "encodedu32" -> writeSevenBitsAByte(cursor, refuseAWiderNumber(
-                    writeAWholeNumber(readItemAt(dialect, ++step, code))));
+                    writeWholeNumber(readItemAt(dialect, ++step, code)));
+            case "encodedu32" -> writeSevenBitsAByte(cursor, refuseWiderNumber(
+                    writeWholeNumber(readItemAt(dialect, ++step, code))));
             case "encodedu64" -> writeSevenBitsAByte(cursor,
-                    writeAWholeNumber(readItemAt(dialect, ++step, code)));
-            case "vint" -> writeAVariableNumber(cursor,
-                    writeAWholeNumber(readItemAt(dialect, ++step, code)));
+                    writeWholeNumber(readItemAt(dialect, ++step, code)));
+            case "vint" -> writeVariableNumber(cursor,
+                    writeWholeNumber(readItemAt(dialect, ++step, code)));
             default -> throw refuse(dialect.asWritten(step));
         }
         return step;
@@ -348,7 +348,7 @@ public final class Bincode {
     }
 
     private static Value runOfBytesRead(Cursor cursor, String code, int wanted) {
-        refuseAReadPastTheEnd(cursor, wanted);
+        refuseReadPastEnd(cursor, wanted);
         int from = cursor.at;
         cursor.at += wanted;
         if (code.equals("bytes")) {
@@ -370,7 +370,7 @@ public final class Bincode {
 
     private static Value readBytesAfterTheirLength(Cursor cursor, String lengthCode) {
         int wanted = (int) readWholeNumber(cursor, lengthCode);
-        refuseAReadPastTheEnd(cursor, wanted);
+        refuseReadPastEnd(cursor, wanted);
         Value taken = readTheBinaryOf(cursor, cursor.at, wanted);
         cursor.at += wanted;
         return taken;
@@ -393,7 +393,7 @@ public final class Bincode {
         return readTheWidthOf(prefix) > 0 ? prefix : "";
     }
 
-    private static void refuseANumberTooWide(String code, long value) {
+    private static void refuseNumberTooWide(String code, long value) {
         String base = readTheBaseOf(code);
         long ceiling = findTheMostThatFitsIn(base);
         if (value > ceiling || value < findTheLeastThatFitsIn(base, ceiling)) {
@@ -422,7 +422,7 @@ public final class Bincode {
     }
 
     private static void writeWholeNumber(Cursor cursor, String code, long value) {
-        refuseANumberTooWide(code, value);
+        refuseNumberTooWide(code, value);
         int width = readTheWidthOf(code);
         for (int byteAt = 0; byteAt < width; byteAt++) {
             int shift = isMostSignificantFirst(code)
@@ -451,7 +451,7 @@ public final class Bincode {
 
     private static Value readFloat(Cursor cursor, String code) {
         int width = readTheFloatWidthOf(code);
-        refuseAReadPastTheEnd(cursor, width);
+        refuseReadPastEnd(cursor, width);
         long bits = 0;
         for (int byteAt = 0; byteAt < width; byteAt++) {
             int shift = isAFloatMostSignificantFirst(code)
@@ -480,7 +480,7 @@ public final class Bincode {
     private static final double A_WHOLE_FIXED_POINT_UNIT = 65536.0;
 
     private static int readNextBit(Cursor cursor) {
-        refuseAReadPastTheEnd(cursor, 1);
+        refuseReadPastEnd(cursor, 1);
         int bit = (readOctetAt(cursor, cursor.at) >> (7 - cursor.bitsTaken)) & 1;
         cursor.bitsTaken++;
         if (cursor.bitsTaken == 8) {
@@ -522,7 +522,7 @@ public final class Bincode {
         int shift = 0;
         int octet;
         do {
-            refuseAReadPastTheEnd(cursor, 1);
+            refuseReadPastEnd(cursor, 1);
             octet = readOctetAt(cursor, cursor.at);
             cursor.at++;
             gathered |= (long) (octet & 0x7F) << shift;
@@ -531,8 +531,8 @@ public final class Bincode {
         return gathered;
     }
 
-    private static void writeAVariableNumber(Cursor cursor, long number) {
-        refuseANumberWithNoVariableForm(number);
+    private static void writeVariableNumber(Cursor cursor, long number) {
+        refuseNumberWithNoVariableForm(number);
         int howManyBytes = 1;
         while (Long.compareUnsigned(number, 1L << (7 * howManyBytes)) >= 0) {
             howManyBytes++;
@@ -550,14 +550,14 @@ public final class Bincode {
         }
     }
 
-    private static void refuseANumberWithNoVariableForm(long number) {
+    private static void refuseNumberWithNoVariableForm(long number) {
         if (number < 0) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(number));
         }
     }
 
     private static long readAVariableNumber(Cursor cursor) {
-        refuseAReadPastTheEnd(cursor, 1);
+        refuseReadPastEnd(cursor, 1);
         int first = readOctetAt(cursor, cursor.at);
         int howManyBytes = 1;
         int marker = 0x80;
@@ -565,7 +565,7 @@ public final class Bincode {
             marker >>= 1;
             howManyBytes++;
         }
-        refuseAReadPastTheEnd(cursor, howManyBytes);
+        refuseReadPastEnd(cursor, howManyBytes);
         long gathered = first & (0xFF >> howManyBytes);
         for (int at = 1; at < howManyBytes; at++) {
             gathered = gathered << 8 | readOctetAt(cursor, cursor.at + at);
@@ -577,7 +577,7 @@ public final class Bincode {
     private static void skipBits(Cursor cursor, long howManyBits) {
         long wholeBytes = (howManyBits & 0xFFFFFFFFL) / 8;
         if (wholeBytes > 0) {
-            refuseASkipPastTheEnd(cursor, wholeBytes, howManyBits);
+            refuseSkipPastEnd(cursor, wholeBytes, howManyBits);
             cursor.at += (int) wholeBytes;
         }
         for (long left = howManyBits - wholeBytes * 8; left > 0; left--) {
@@ -585,7 +585,7 @@ public final class Bincode {
         }
     }
 
-    private static void refuseASkipPastTheEnd(
+    private static void refuseSkipPastEnd(
             Cursor cursor, long wanted, long asWritten) {
 
         if (cursor.at + wanted > cursor.octets.size()) {
@@ -594,7 +594,7 @@ public final class Bincode {
         }
     }
 
-    private static long refuseAWiderNumber(long number) {
+    private static long refuseWiderNumber(long number) {
         if (number > WIDEST_A_NARROW_ONE_TAKES
                 || number < -WIDEST_A_NARROW_ONE_TAKES) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE, IntegerValue.of(number));
@@ -633,21 +633,21 @@ public final class Bincode {
         return DateValue.of(day.year(), day.month(), day.day(), clock);
     }
 
-    private static int writeAMoment(Cursor cursor, Script dialect,
-                                    int step, String code, LongSupplier secondsSinceTheEpoch) {
+    private static int writeMoment(Cursor cursor, Script dialect,
+                                   int step, String code, LongSupplier secondsSinceTheEpoch) {
         switch (code) {
             case "unixtime-now" ->
                     writeWholeNumber(cursor, "ui32", secondsSinceTheEpoch.getAsLong());
             case "unixtime-now-le" ->
                     writeWholeNumber(cursor, "ui32le", secondsSinceTheEpoch.getAsLong());
-            case "msdos-time" -> writeAnMsdosTime(cursor, readItemAt(dialect, ++step, code));
-            case "msdos-date" -> writeAnMsdosDate(cursor, readItemAt(dialect, ++step, code));
-            default -> writeAnMsdosDateTime(cursor, readItemAt(dialect, ++step, code));
+            case "msdos-time" -> writeMsdosTime(cursor, readItemAt(dialect, ++step, code));
+            case "msdos-date" -> writeMsdosDate(cursor, readItemAt(dialect, ++step, code));
+            default -> writeMsdosDateTime(cursor, readItemAt(dialect, ++step, code));
         }
         return step;
     }
 
-    private static void writeAnMsdosTime(Cursor cursor, Value given) {
+    private static void writeMsdosTime(Cursor cursor, Value given) {
         long nanoseconds = given instanceof TimeValue(long nanoseconds1)
                 ? nanoseconds1
                 : readInstantIn(given).timeOfDay()
@@ -659,7 +659,7 @@ public final class Bincode {
                         | seconds % 60 / 2);
     }
 
-    private static void writeAnMsdosDate(Cursor cursor, Value given) {
+    private static void writeMsdosDate(Cursor cursor, Value given) {
         DateValue day = readInstantIn(given);
         writeWholeNumber(cursor, "ui16le",
                 (long) Math.floorMod(day.year() - MSDOS_EPOCH_YEAR,
@@ -677,10 +677,10 @@ public final class Bincode {
         return day.asStoredInUtc();
     }
 
-    private static void writeAnMsdosDateTime(Cursor cursor, Value given) {
+    private static void writeMsdosDateTime(Cursor cursor, Value given) {
         DateValue instant = readInstantIn(given);
-        writeAnMsdosTime(cursor, instant);
-        writeAnMsdosDate(cursor, instant);
+        writeMsdosTime(cursor, instant);
+        writeMsdosDate(cursor, instant);
     }
 
     private static boolean matches(Cursor cursor, BinaryValue wanted) {
@@ -698,7 +698,7 @@ public final class Bincode {
     }
 
     private static Value readATuple(Cursor cursor, int parts) {
-        refuseAReadPastTheEnd(cursor, parts);
+        refuseReadPastEnd(cursor, parts);
         int[] segments = new int[parts];
         for (int at = 0; at < parts; at++) {
             segments[at] = readOctetAt(cursor, cursor.at + at);
@@ -723,7 +723,7 @@ public final class Bincode {
     }
 
     private static Value readABitset(Cursor cursor, int width) {
-        refuseAReadPastTheEnd(cursor, width);
+        refuseReadPastEnd(cursor, width);
         byte[] octets = new byte[width];
         for (int at = 0; at < width; at++) {
             octets[at] = (byte) readOctetAt(cursor, cursor.at + at);
@@ -734,7 +734,7 @@ public final class Bincode {
 
     private static long readWholeNumber(Cursor cursor, String code) {
         int width = readTheWidthOf(code);
-        refuseAReadPastTheEnd(cursor, width);
+        refuseReadPastEnd(cursor, width);
         long value = 0;
         for (int byteAt = 0; byteAt < width; byteAt++) {
             int octet = readOctetAt(cursor, cursor.at + byteAt);
@@ -820,14 +820,14 @@ public final class Bincode {
     }
 
     private static long readALengthPrefix(Cursor cursor) {
-        refuseAReadPastTheEnd(cursor, 1);
+        refuseReadPastEnd(cursor, 1);
         int first = readOctetAt(cursor, cursor.at);
         if (first <= 128) {
             cursor.at++;
             return first;
         }
         int carrying = first & 0x7F;
-        refuseAReadPastTheEnd(cursor, carrying + 1);
+        refuseReadPastEnd(cursor, carrying + 1);
         long counted = 0;
         for (int at = 1; at <= carrying; at++) {
             counted = counted << 8 | readOctetAt(cursor, cursor.at + at);
@@ -836,7 +836,7 @@ public final class Bincode {
         return counted;
     }
 
-    private static void refuseAReadPastTheEnd(Cursor cursor, int wanted) {
+    private static void refuseReadPastEnd(Cursor cursor, int wanted) {
         if (wanted < 0 || cursor.at + wanted > cursor.octets.size()) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                     cursor.reading instanceof NoneValue
@@ -891,7 +891,7 @@ public final class Bincode {
         throw Raised.of(EvaluationFailure.INVALID_SPEC, dialect.asWritten(step));
     }
 
-    private static long writeAWholeNumber(Value given) {
+    private static long writeWholeNumber(Value given) {
         if (given instanceof IntegerValue(long magnitude)) {
             return magnitude;
         }

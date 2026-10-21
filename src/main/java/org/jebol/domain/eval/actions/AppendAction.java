@@ -38,7 +38,7 @@ public class AppendAction extends AddingAction {
                 case Value subject when Actions.of(subject).isPresent() ->
                         Actions.of(subject).orElseThrow().append(
                                 readWhatIsAskedOf(subject, arguments, refinements, evaluator, context));
-                case Value anythingElse -> refuseTheDatatype(anythingElse);
+                case Value anythingElse -> refuseDatatype(anythingElse);
             };
         };
     }

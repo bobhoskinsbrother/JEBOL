@@ -47,7 +47,7 @@ public class IndexAction extends SeriesOrFileAction {
                     findFileBehind(port, evaluator).position() + COUNTING_FROM_ONE);
             case GobValue gob -> IntegerValue.of(gob.positionCountedAsUnsigned());
             case RebolSeries series -> IntegerValue.of(series.index());
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 }

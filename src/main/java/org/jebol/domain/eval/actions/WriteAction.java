@@ -56,7 +56,7 @@ public class WriteAction extends PortAction {
                 return ports.writeTo(ports.openAPortFor(destination, evaluator, context),
                         data, evaluator, asked);
             }
-            return ports.writeTheFile(destination, data, evaluator, asked);
+            return ports.writeFile(destination, data, evaluator, asked);
         };
     }
 }

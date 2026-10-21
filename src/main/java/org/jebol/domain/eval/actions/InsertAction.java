@@ -27,7 +27,7 @@ public class InsertAction extends AddingAction {
             case Value subject when Actions.of(subject).isPresent() ->
                     Actions.of(subject).orElseThrow().insert(
                             readWhatIsAskedOf(subject, arguments, refinements, evaluator, context));
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 }

@@ -58,7 +58,7 @@ public class RemoveEachNative extends LoopingNative {
                     removeEachFromABlock(block, arguments, refinements, evaluator, context);
             case RebolSeries other -> removeEachByDecidingForwardsThenRewriting(
                     other, arguments, refinements, evaluator, context);
-            default -> refuseTheDatatype(arguments.get(1));
+            default -> refuseDatatype(arguments.get(1));
         };
     }
 

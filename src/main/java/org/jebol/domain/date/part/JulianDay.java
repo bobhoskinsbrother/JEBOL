@@ -84,18 +84,18 @@ final class JulianDay {
 
     private static LocalDate rollTheDayOver(int year, int month, int day) {
         if (year < 0 || year > WIDEST_YEAR_A_DATE_HOLDS) {
-            throw refuseAnUnreachableYear();
+            throw refuseUnreachableYear();
         }
         try {
             return LocalDate.of(year, 1, 1)
                     .plusMonths(month - 1L)
                     .plusDays(day - 1L);
         } catch (java.time.DateTimeException | ArithmeticException unreachable) {
-            throw refuseAnUnreachableYear();
+            throw refuseUnreachableYear();
         }
     }
 
-    private static Raised refuseAnUnreachableYear() {
+    private static Raised refuseUnreachableYear() {
         return Raised.of(EvaluationFailure.TYPE_LIMIT, DateValue.TYPE);
     }
 }

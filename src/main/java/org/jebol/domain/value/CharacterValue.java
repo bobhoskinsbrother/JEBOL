@@ -143,7 +143,7 @@ public record CharacterValue(int codepoint) implements Value {
 
         @Override
         public Value construct(List<Value> contents, Construction construction) {
-            throw refuseTheConstruction(contents);
+            throw refuseConstruction(contents);
         }
 
         @Override

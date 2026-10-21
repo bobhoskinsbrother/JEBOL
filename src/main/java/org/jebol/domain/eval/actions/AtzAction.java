@@ -43,7 +43,7 @@ public class AtzAction extends SeriesOrFileAction {
                 case PortValue port when port.isAFile() -> findFileBehind(port, evaluator)
                         .moveTo((long) Arithmetic.asMagnitude(position));
                 case RebolSeries series -> series.atClamped(findWhereItStands(series, position));
-                case Value anythingElse -> refuseTheArgument(anythingElse, "series");
+                case Value anythingElse -> refuseArgument(anythingElse, "series");
             };
         };
     }

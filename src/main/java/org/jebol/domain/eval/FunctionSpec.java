@@ -32,9 +32,9 @@ final class FunctionSpec {
             if (!(item instanceof AnyWordValue word)
                     || word instanceof IssueValue
                     || word instanceof SetWordValue && !isTheOneSetWordASpecMayHold(word, items, index)) {
-                throw refuseTheWholeSpec(spec);
+                throw refuseWholeSpec(spec);
             }
-            refuseADuplicateNamingItAsItWasWritten(word, alreadyNamed);
+            refuseDuplicateNamingItAsItWasWritten(word, alreadyNamed);
             if (word instanceof RefinementValue) {
                 currentRefinement = word.canonical();
                 parameters.add(Parameter.ofARefinement(word.spelling()));
@@ -84,7 +84,7 @@ final class FunctionSpec {
                 && items.get(index + 1) instanceof AnyBlockValue;
     }
 
-    private static void refuseADuplicateNamingItAsItWasWritten(
+    private static void refuseDuplicateNamingItAsItWasWritten(
             AnyWordValue word, Set<String> alreadyNamed) {
         if (!alreadyNamed.add(word.canonical())) {
             throw new Raised(org.jebol.domain.value.ErrorValue.of(
@@ -95,7 +95,7 @@ final class FunctionSpec {
         }
     }
 
-    private static Raised refuseTheWholeSpec(
+    private static Raised refuseWholeSpec(
             AnyBlockValue spec) {
         return new Raised(org.jebol.domain.value.ErrorValue.of(
                 org.jebol.domain.value.ErrorCategory.SCRIPT,

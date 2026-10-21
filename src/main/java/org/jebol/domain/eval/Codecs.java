@@ -60,7 +60,7 @@ public final class Codecs {
             case IDENTIFY -> Answer.checkWhoseErrorCodeIsTheInvertedResult(
                     Qoi.identifies(readTheBytesOf(data)) ? YES : NO);
             case DECODE -> decodeTheImageIn(readTheBytesOf(data));
-            case ENCODE -> Answer.answerWithABinary(writeTheBytesBlueFirst((ImageValue) data));
+            case ENCODE -> Answer.answerWithABinary(writeBytesBlueFirst((ImageValue) data));
         };
     }
 
@@ -84,7 +84,7 @@ public final class Codecs {
         return new Answer(Answer.Kind.IMAGE, picture, 0);
     }
 
-    private Value writeTheBytesBlueFirst(ImageValue picture) {
+    private Value writeBytesBlueFirst(ImageValue picture) {
         int wide = picture.storage().wide();
         int high = picture.storage().high();
         byte[] pixels = new byte[wide * high * 4];

@@ -203,7 +203,7 @@ public sealed interface Value permits
     }
 
 
-    default Value refuseTheArithmetic(Value right) {
+    default Value refuseArithmetic(Value right) {
         throw Raised.ofUnrelated(this, right);
     }
 

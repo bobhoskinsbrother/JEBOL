@@ -29,12 +29,12 @@ public final class OpenFile {
     }
 
     public long position() {
-        refuseAClosedPosition();
+        refuseClosedPosition();
         return seekable.position();
     }
 
     public Value moveTo(long wanted) {
-        refuseAClosedPosition();
+        refuseClosedPosition();
         granted.require(HostService.FILES);
         seekable.moveTo(Math.max(0, Math.min(wanted, measureTheWholeSize())));
         return port;
@@ -49,13 +49,13 @@ public final class OpenFile {
     }
 
     public boolean atItsEnd() {
-        refuseAClosedPosition();
+        refuseClosedPosition();
         granted.require(HostService.FILES);
         return answerAcrossTheHost(() -> seekable.atTail(files));
     }
 
     public Value measureTheLengthLeft() {
-        refuseAClosedPosition();
+        refuseClosedPosition();
         granted.require(HostService.FILES);
         return answerAcrossTheHost(() -> seekable.measureTheLengthLeft(files));
     }
@@ -87,7 +87,7 @@ public final class OpenFile {
     }
 
     public Value truncateAtThePosition() {
-        refuseAClosedPosition();
+        refuseClosedPosition();
         refuseWritingWhenOpenedOnlyToRead(EvaluationFailure.WRITE_ERROR);
         granted.require(HostService.FILES);
         return answerAcrossTheHost(() -> {
@@ -115,7 +115,7 @@ public final class OpenFile {
         return ((IntegerValue) answerAcrossTheHost(() -> seekable.measureTheWholeSize(files))).magnitude();
     }
 
-    private void refuseAClosedPosition() {
+    private void refuseClosedPosition() {
         if (!port.isOpen()) {
             throw Raised.of(EvaluationFailure.NOT_OPEN, seekable.path());
         }

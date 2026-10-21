@@ -102,7 +102,7 @@ public abstract non-sealed class Datatype implements Value, Comparable<Datatype>
         return Raised.of(EvaluationFailure.BAD_MAKE_ARG, this, given);
     }
 
-    protected Raised refuseTheConstruction(List<Value> contents) {
+    protected Raised refuseConstruction(List<Value> contents) {
         return Raised.of(EvaluationFailure.MALCONSTRUCT, BlockValue.of(contents));
     }
 

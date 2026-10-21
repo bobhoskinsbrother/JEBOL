@@ -116,7 +116,7 @@ public record DateValue(
         public Value construct(List<Value> contents, Construction construction) {
             Value specification = readSpecificationIn(contents);
             if (!(specification instanceof AnyBlockValue || specification instanceof DateValue)) {
-                throw refuseTheConstruction(contents);
+                throw refuseConstruction(contents);
             }
             return construction.make(this, specification);
         }
@@ -417,10 +417,10 @@ public record DateValue(
         if (timeOfDay.isEmpty()) {
             return calendar;
         }
-        return calendar + "T" + writeTheIsoClock() + writeTheIsoOffset();
+        return calendar + "T" + writeIsoClock() + writeTheIsoOffset();
     }
 
-    private String writeTheIsoClock() {
+    private String writeIsoClock() {
         long nanoseconds = timeOfDay.orElseThrow().nanoseconds();
         long seconds = nanoseconds / A_SECOND;
         String written = "%02d:%02d:%02d".formatted(

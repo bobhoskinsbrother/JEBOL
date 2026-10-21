@@ -45,7 +45,7 @@ public class IndexzAction extends SeriesOrFileAction {
             case PortValue port when port.isAFile() ->
                     IntegerValue.of(findFileBehind(port, evaluator).position());
             case RebolSeries series -> IntegerValue.of(series.index() - THE_HEAD_IS_ONE);
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 }

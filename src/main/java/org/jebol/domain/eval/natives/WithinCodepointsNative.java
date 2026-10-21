@@ -21,7 +21,7 @@ public abstract class WithinCodepointsNative extends DefaultNative {
             case IntegerValue codepoint -> LogicValue.of(codepoint.magnitude() <= highest());
             case AnyStringValue text -> LogicValue.of(text.text().codePoints()
                     .allMatch(codepoint -> codepoint <= highest()));
-            default -> refuseTheArgument(arguments.getFirst(), "value");
+            default -> refuseArgument(arguments.getFirst(), "value");
         };
     }
 }

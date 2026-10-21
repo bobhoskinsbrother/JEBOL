@@ -139,7 +139,7 @@ public final class Context {
         return itsOwnSelf.filter(self -> self == slot).isPresent();
     }
 
-    public void refuseAFieldSpeltLikeItsOwnSelf(Value named) {
+    public void refuseFieldSpeltLikeItsOwnSelf(Value named) {
         if (named instanceof AnyWordValue word && answersToItsOwnSelf(word.canonical())) {
             throw Raised.of(EvaluationFailure.SELF_PROTECTED);
         }

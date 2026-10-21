@@ -26,26 +26,26 @@ public final class ParseTargets {
     }
 
     public static AnyWordValue refuseAnythingSetAndCopyCannotWriteInto(Value written) {
-        AnyWordValue word = refuseAnythingButAWordOrASetWord(written);
+        AnyWordValue word = refuseAnythingButWordOrSetWord(written);
         if (THE_WORDS_THE_DIALECT_RESERVES.contains(word.canonical())) {
             throw Raised.of(EvaluationFailure.PARSE_COMMAND, word);
         }
         return word;
     }
 
-    public static AnyWordValue refuseAnythingButAWordOrASetWord(Value written) {
+    public static AnyWordValue refuseAnythingButWordOrSetWord(Value written) {
         if (written instanceof AnyWordValue word
                 && (word instanceof WordValue || word instanceof SetWordValue)) {
             return word;
         }
-        throw refuseANonVariable(written);
+        throw refuseNonVariable(written);
     }
 
-    public static AnyWordValue refuseAnythingButAWordOrAGetWord(Value read) {
+    public static AnyWordValue refuseAnythingButWordOrGetWord(Value read) {
         if (read instanceof AnyWordValue word && word.looksUpItsDeclaration()) {
             return word;
         }
-        throw refuseANonVariable(read);
+        throw refuseNonVariable(read);
     }
 
     public static void refuseAnInputThatIsNotASeries(Value rule, Value held) {
@@ -54,7 +54,7 @@ public final class ParseTargets {
         }
     }
 
-    private static Raised refuseANonVariable(Value written) {
+    private static Raised refuseNonVariable(Value written) {
         return written == null
                 ? Raised.of(EvaluationFailure.PARSE_VARIABLE)
                 : Raised.of(EvaluationFailure.PARSE_VARIABLE, written);

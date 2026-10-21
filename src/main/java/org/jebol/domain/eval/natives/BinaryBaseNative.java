@@ -13,12 +13,12 @@ public abstract class BinaryBaseNative extends EncodingNative {
         super(encodings);
     }
 
-    abstract Raised refuseAnUnknownBase(List<Value> arguments);
+    abstract Raised refuseUnknownBase(List<Value> arguments);
 
     protected int readAKnownBase(List<Value> arguments) {
         long base = ((IntegerValue) arguments.get(1)).magnitude();
         if (base != (int) base || !Encodings.BASES.contains((int) base)) {
-            throw refuseAnUnknownBase(arguments);
+            throw refuseUnknownBase(arguments);
         }
         return (int) base;
     }

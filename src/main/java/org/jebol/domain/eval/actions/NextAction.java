@@ -25,7 +25,7 @@ public class NextAction extends SeriesOrFileAction {
             case PortValue port when port.isAFile() ->
                     findFileBehind(port, evaluator).moveBy(ONE_STEP);
             case RebolSeries series -> series.atClamped(series.index() + ONE_STEP);
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 }

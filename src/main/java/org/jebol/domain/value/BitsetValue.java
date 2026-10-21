@@ -31,12 +31,12 @@ public final class BitsetValue implements Value {
                 return BitsetValue.of(octets.octetsFromHere()).complement();
             }
             if (contents.size() != 1) {
-                throw refuseTheConstruction(contents);
+                throw refuseConstruction(contents);
             }
             return switch (contents.getFirst()) {
                 case BinaryValue octets -> BitsetValue.of(octets.octetsFromHere());
                 case BitsetValue already -> already;
-                default -> throw refuseTheConstruction(contents);
+                default -> throw refuseConstruction(contents);
             };
         }
     };

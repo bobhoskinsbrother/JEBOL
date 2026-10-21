@@ -94,7 +94,7 @@ final class BrotliGenericEncoder {
         int bytes = inputAt - lastProcessedAt;
         if (bytes == 0 && !anythingWrittenToTheRingBuffer) {
             if (isLast) {
-                BrotliMetaBlockWriter.writeAnEmptyLastMetaBlock(writer);
+                BrotliMetaBlockWriter.writeEmptyLastMetaBlock(writer);
             }
             return;
         }
@@ -243,7 +243,7 @@ final class BrotliGenericEncoder {
     private void writeOneMetaBlock(byte[] data, int mask, boolean isLast) {
         int length = inputAt - lastFlushAt;
         int startedAt = writer.at();
-        writeTheMetaBlockOneWayOrAnother(data, mask, length, isLast, startedAt);
+        writeMetaBlockOneWayOrAnother(data, mask, length, isLast, startedAt);
 
         lastFlushAt = inputAt;
         lastProcessedAt = inputAt;
@@ -258,8 +258,8 @@ final class BrotliGenericEncoder {
         System.arraycopy(recentDistances, 0, savedRecentDistances, 0, 4);
     }
 
-    private void writeTheMetaBlockOneWayOrAnother(byte[] data, int mask,
-            int length, boolean isLast, int startedAt) {
+    private void writeMetaBlockOneWayOrAnother(byte[] data, int mask,
+                                               int length, boolean isLast, int startedAt) {
 
         if (length == 0) {
             writer.write(2, 3);
@@ -272,7 +272,7 @@ final class BrotliGenericEncoder {
                     length, isLast, writer);
             return;
         }
-        writeTheCompressedForm(data, mask, length, isLast);
+        writeCompressedForm(data, mask, length, isLast);
         if (hasOutgrownTheInput(length, startedAt)) {
             System.arraycopy(savedRecentDistances, 0, recentDistances, 0, 4);
             writer.rewindTo(startedAt);
@@ -286,8 +286,8 @@ final class BrotliGenericEncoder {
         return length + 4 < bitsWrittenIntoTheBuffer >> 3;
     }
 
-    private void writeTheCompressedForm(byte[] data, int mask, int length,
-            boolean isLast) {
+    private void writeCompressedForm(byte[] data, int mask, int length,
+                                     boolean isLast) {
 
         if (quality < QUALITY_THAT_FIRST_MEASURES_ITS_CODES) {
             BrotliMetaBlockWriter.writeWithMostlyFixedCodes(data, mask,
@@ -300,7 +300,7 @@ final class BrotliGenericEncoder {
             return;
         }
         if (quality >= LOWEST_QUALITY_THAT_PRICES_EVERYTHING) {
-            writeTheClusteredForm(data, mask, length, isLast);
+            writeClusteredForm(data, mask, length, isLast);
             return;
         }
         int[] contextMap = BrotliMetaBlock.chooseTheContextMapFor(data, mask, lastFlushAt,
@@ -321,8 +321,8 @@ final class BrotliGenericEncoder {
         return BrotliContext.SIGNED;
     }
 
-    private void writeTheClusteredForm(byte[] data, int mask, int length,
-            boolean isLast) {
+    private void writeClusteredForm(byte[] data, int mask, int length,
+                                    boolean isLast) {
 
         int contextMode = chooseTheContextModeFor(data, mask, length);
         BrotliClusteredMetaBlock.Built built = BrotliClusteredMetaBlock.build(

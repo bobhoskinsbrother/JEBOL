@@ -21,7 +21,7 @@ final class Keep extends DeclaredKeyword {
 
     @Override
     public int applyToBlock(ParseWalk walk, List<Value> rules, int at) {
-        refuseAKeepWithNoCollectAroundIt(walk);
+        refuseKeepWithNoCollectAroundIt(walk);
         Value kept = rules.get(at + 1);
         if (kept instanceof ParenValue paren) {
             walk.keep(walk.evaluateParen(paren));
@@ -38,7 +38,7 @@ final class Keep extends DeclaredKeyword {
 
     @Override
     public int applyToString(ParseWalk walk, List<Value> rules, int at) {
-        refuseAKeepWithNoCollectAroundIt(walk);
+        refuseKeepWithNoCollectAroundIt(walk);
         Value kept = rules.get(at + 1);
         if (kept instanceof ParenValue paren) {
             walk.keep(walk.evaluateParen(paren));
@@ -109,7 +109,7 @@ final class Keep extends DeclaredKeyword {
         return 3 + walk.ruleSpan(rules, at + 2);
     }
 
-    private static void refuseAKeepWithNoCollectAroundIt(ParseWalk walk) {
+    private static void refuseKeepWithNoCollectAroundIt(ParseWalk walk) {
         if (walk.hasNoCollectionOpen()) {
             throw Raised.of(EvaluationFailure.PARSE_NO_COLLECT,
                     "keep has no collect around it");

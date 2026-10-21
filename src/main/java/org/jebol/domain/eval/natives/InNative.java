@@ -62,7 +62,7 @@ public class InNative extends DefaultNative {
             AnyBlockValue searched, Value wanted, Evaluator evaluator, Context context) {
 
         if (!(wanted instanceof AnyWordValue word)) {
-            return refuseTheArgument(wanted, "word");
+            return refuseArgument(wanted, "word");
         }
         for (Value item : searched.remaining()) {
             Value resolved = item instanceof AnyWordValue bound && bound.isBound()

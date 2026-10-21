@@ -31,7 +31,7 @@ public class InitTopWindowNative extends ScreenNative {
         return (arguments, evaluator, context, refinements) -> {
             granted.require(HostService.WINDOWS);
             if (!(arguments.getFirst() instanceof GobValue root)) {
-                return refuseTheArgument(arguments.getFirst(), "gob");
+                return refuseArgument(arguments.getFirst(), "gob");
             }
             evaluator.ports().screen().takeAsRoot(root);
             return UnsetValue.unset();

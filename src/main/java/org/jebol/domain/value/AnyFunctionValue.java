@@ -5,12 +5,12 @@ public sealed interface AnyFunctionValue extends Value permits DeclaresParameter
     @Override
     default Value make(Value spec, Maker maker) {
         if (!(spec instanceof AnyBlockValue block)) {
-            throw refuseAsAPrototypeFor(spec);
+            throw refuseAsPrototypeFor(spec);
         }
         return maker.makeFunctionFrom(this, block);
     }
 
-    default Raised refuseAsAPrototypeFor(Value spec) {
+    default Raised refuseAsPrototypeFor(Value spec) {
         return Raised.of(EvaluationFailure.CANNOT_USE, spec, datatype());
     }
 }

@@ -26,10 +26,10 @@ public class FormOidNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> StringValue.of(
-                writeTheObjectIdentifier(((BinaryValue) arguments.getFirst()).octetsFromHere()));
+                writeObjectIdentifier(((BinaryValue) arguments.getFirst()).octetsFromHere()));
     }
 
-    private String writeTheObjectIdentifier(byte[] encoded) {
+    private String writeObjectIdentifier(byte[] encoded) {
         if (encoded.length == 0) {
             return "";
         }

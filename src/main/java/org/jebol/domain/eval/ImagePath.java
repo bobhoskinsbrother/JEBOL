@@ -42,7 +42,7 @@ final class ImagePath {
 
     static void writeThroughPath(ImageValue image, Value selector, Value written) {
         if (selector instanceof AnyWordValue field) {
-            writeTheWholePicture(image, field, written);
+            writeWholePicture(image, field, written);
             return;
         }
         int pixel = findPixelNamedBy(image, selector);
@@ -53,7 +53,7 @@ final class ImagePath {
         write(image, image.index() + pixel - 1, written);
     }
 
-    private static void writeTheWholePicture(
+    private static void writeWholePicture(
             ImageValue image, AnyWordValue field, Value written) {
 
         switch (field.canonical()) {

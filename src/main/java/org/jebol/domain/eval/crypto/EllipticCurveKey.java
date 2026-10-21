@@ -221,7 +221,7 @@ public final class EllipticCurveKey implements AKeyThatCanBeReleased {
         }
         if (doesTheArithmeticInThisBuild()) {
             return computedHere.pointFromTheWire(peersPoint)
-                    .map(theirs -> computedHere.writeTheCoordinateOnTheWire(
+                    .map(theirs -> computedHere.writeCoordinateOnWire(
                             computedHere.multiply(theirs, privateNumber).x()));
         }
         try {

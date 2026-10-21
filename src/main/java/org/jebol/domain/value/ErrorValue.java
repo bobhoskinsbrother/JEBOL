@@ -69,7 +69,7 @@ public record ErrorValue(
 
         @Override
         public Value construct(List<Value> contents, Construction construction) {
-            throw refuseTheConstruction(contents);
+            throw refuseConstruction(contents);
         }
 
         @Override
@@ -379,7 +379,7 @@ public record ErrorValue(
 
     private String readCataloguesMessage() {
         return wording.wordTheId(category.spelling(), errorId)
-                .map(this::writeTheMessageFrom)
+                .map(this::writeMessageFrom)
                 .orElseGet(this::fallBackToPlainWords);
     }
 
@@ -391,7 +391,7 @@ public record ErrorValue(
         return ErrorCatalogue.listTheIdsIn(category.spelling()).contains(errorId);
     }
 
-    private String writeTheMessageFrom(Value said) {
+    private String writeMessageFrom(Value said) {
         if (!(said instanceof AnyBlockValue words)) {
             return Molder.form(said);
         }

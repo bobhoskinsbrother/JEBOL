@@ -53,7 +53,7 @@ public class SetNative extends DefaultNative {
                 }
                 case ObjectValue into -> spreadOver(listTheWordsOf(into), supplied, refinements);
                 case AnyBlockValue words -> spreadOver(words.remaining(), supplied, refinements);
-                default -> refuseTheDatatype(target);
+                default -> refuseDatatype(target);
             };
         };
     }
@@ -114,20 +114,20 @@ public class SetNative extends DefaultNative {
     private Value writeThroughAPath(AnyBlockValue path, Value supplied) {
         List<Value> segments = path.remaining();
         if (segments.size() < 2 || !(segments.getFirst() instanceof AnyWordValue head)) {
-            return refuseTheDatatype(path);
+            return refuseDatatype(path);
         }
         Value holder = head.findBoundSlot().value();
         for (int at = 1; at < segments.size() - 1; at++) {
             if (!(segments.get(at) instanceof AnyWordValue field)
                     || !(holder instanceof ObjectValue(Context fields))
                     || !fields.holds(field.canonical())) {
-                return refuseTheDatatype(path);
+                return refuseDatatype(path);
             }
             holder = fields.findSlotFor(field.canonical()).value();
         }
         if (!(segments.getLast() instanceof AnyWordValue field)
                 || !(holder instanceof ObjectValue(Context fields))) {
-            return refuseTheDatatype(path);
+            return refuseDatatype(path);
         }
         if (!fields.holds(field.canonical())) {
             throw Raised.of(EvaluationFailure.INVALID_PATH, field.spelling());

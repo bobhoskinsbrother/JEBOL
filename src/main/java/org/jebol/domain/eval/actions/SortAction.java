@@ -34,7 +34,7 @@ public class SortAction extends DefaultNative implements ActionValue {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             if (!(arguments.getFirst() instanceof RebolSeries series)) {
-                return refuseTheDatatype(arguments.getFirst());
+                return refuseDatatype(arguments.getFirst());
             }
             Optional<Value> comparator = readTheArgumentOf("compare", 0, arguments, refinements);
             Optional<Value> partCount = readTheArgumentOf("part", 0, arguments, refinements);

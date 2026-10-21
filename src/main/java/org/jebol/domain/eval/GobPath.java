@@ -93,14 +93,14 @@ public final class GobPath {
                 storage.setTheAlpha(magnitude);
                 yield true;
             }
-            case "image" -> writeTheImage(storage, written);
+            case "image" -> writeImage(storage, written);
             case "draw" -> writeOneBlockContent(storage, GobStorage.Content.DRAW, written);
             case "effect" -> writeOneBlockContent(storage, GobStorage.Content.EFFECT, written);
-            case "text" -> writeTheText(storage, written);
-            case "color" -> writeTheColour(storage, written);
-            case "pane" -> writeThePane(storage, written);
-            case "data" -> writeTheData(storage, written);
-            case "flags" -> writeTheFlags(storage, written);
+            case "text" -> writeText(storage, written);
+            case "color" -> writeColour(storage, written);
+            case "pane" -> writePane(storage, written);
+            case "data" -> writeData(storage, written);
+            case "flags" -> writeFlags(storage, written);
             case "owner" -> {
                 if (!(written instanceof GobValue owner)) {
                     yield false;
@@ -126,7 +126,7 @@ public final class GobPath {
         return java.util.Optional.empty();
     }
 
-    private static boolean writeTheImage(GobStorage storage, Value written) {
+    private static boolean writeImage(GobStorage storage, Value written) {
         if (written instanceof ImageValue image) {
             storage.setTheContent(GobStorage.Content.IMAGE, image);
             storage.size(PairValue.of(image.storage().wide(), image.storage().high()));
@@ -144,7 +144,7 @@ public final class GobPath {
         return empty(storage, written);
     }
 
-    private static boolean writeTheText(GobStorage storage, Value written) {
+    private static boolean writeText(GobStorage storage, Value written) {
         if (written instanceof BlockValue block) {
             storage.setTheContent(GobStorage.Content.TEXT, block);
             return true;
@@ -156,7 +156,7 @@ public final class GobPath {
         return empty(storage, written);
     }
 
-    private static boolean writeTheColour(GobStorage storage, Value written) {
+    private static boolean writeColour(GobStorage storage, Value written) {
         if (written instanceof TupleValue colour) {
             int[] parts = colour.segments();
             storage.setTheContent(GobStorage.Content.COLOUR, TupleValue.of(
@@ -186,7 +186,7 @@ public final class GobPath {
         return false;
     }
 
-    private static boolean writeThePane(GobStorage storage, Value written) {
+    private static boolean writePane(GobStorage storage, Value written) {
         List<Value> children;
         if (written instanceof AnyBlockValue block) {
             children = block.remaining();
@@ -215,7 +215,7 @@ public final class GobPath {
         storage.removeChildren(1, storage.length());
     }
 
-    private static boolean writeTheData(GobStorage storage, Value written) {
+    private static boolean writeData(GobStorage storage, Value written) {
         GobStorage.Held kind = switch (written) {
             case ObjectValue ignored -> GobStorage.Held.OBJECT;
             case BinaryValue ignored -> GobStorage.Held.BINARY;
@@ -233,7 +233,7 @@ public final class GobPath {
         return true;
     }
 
-    private static boolean writeTheFlags(GobStorage storage, Value written) {
+    private static boolean writeFlags(GobStorage storage, Value written) {
         if (written instanceof AnyWordValue aLoneWordAddsToWhatIsThere) {
             raiseUnlessTheWordIsNoFlag(storage, aLoneWordAddsToWhatIsThere);
             return true;

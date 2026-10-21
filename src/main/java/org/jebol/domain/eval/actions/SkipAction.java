@@ -38,7 +38,7 @@ public class SkipAction extends SeriesOrFileAction {
                         .moveBy((long) Arithmetic.asMagnitude(offset));
                 case RebolSeries series -> series.skip(
                         series.findPositionNamedBy(offset, COUNTING_FROM_NOUGHT));
-                case Value anythingElse -> refuseTheDatatype(anythingElse);
+                case Value anythingElse -> refuseDatatype(anythingElse);
             };
         };
     }

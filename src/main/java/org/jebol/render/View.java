@@ -57,7 +57,7 @@ public final class View {
     }
 
     /** The page as it stands, built afresh so it cannot drift from the state. */
-    public String writeTheMarkup() {
+    public String writeMarkup() {
         rebuild();
         return Html.render(faces, List.copyOf(actions.keySet()));
     }

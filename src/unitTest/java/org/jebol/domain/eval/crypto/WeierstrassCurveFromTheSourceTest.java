@@ -85,9 +85,9 @@ class WeierstrassCurveFromTheSourceTest {
 
         byte[] written = new byte[1 + 2 * curve.coordinateWidth()];
         written[0] = 0x04;
-        System.arraycopy(curve.writeTheCoordinateOnTheWire(point.x()), 0,
+        System.arraycopy(curve.writeCoordinateOnWire(point.x()), 0,
                 written, 1, curve.coordinateWidth());
-        System.arraycopy(curve.writeTheCoordinateOnTheWire(point.y()), 0,
+        System.arraycopy(curve.writeCoordinateOnWire(point.y()), 0,
                 written, 1 + curve.coordinateWidth(), curve.coordinateWidth());
 
         assertThat(curve.pointFromTheWire(written)).as("%s", name)

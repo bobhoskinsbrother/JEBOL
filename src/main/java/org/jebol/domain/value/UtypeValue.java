@@ -46,7 +46,7 @@ public record UtypeValue() implements Value {
 
         @Override
         public Value construct(List<Value> contents, Construction construction) {
-            throw refuseTheConstruction(contents);
+            throw refuseConstruction(contents);
         }
 
         private boolean isSpecificationAndBody(Value spec) {

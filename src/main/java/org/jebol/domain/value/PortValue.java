@@ -120,7 +120,7 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
 
         @Override
         public Value construct(List<Value> contents, Construction construction) {
-            throw refuseTheConstruction(contents);
+            throw refuseConstruction(contents);
         }
 
         @Override

@@ -33,7 +33,7 @@ public final class TupleActions {
     }
 
     public Value workOctetByOctet(Value left, Value right, OctetWork work) {
-        refuseATimeBesideATuple(left, right);
+        refuseTimeBesideTuple(left, right);
         if (!(left instanceof TupleValue ours)) {
             throw Raised.cannotUse(left, "tuple arithmetic");
         }
@@ -60,7 +60,7 @@ public final class TupleActions {
         return right instanceof IntegerValue || right instanceof AnyDecimalValue;
     }
 
-    private void refuseATimeBesideATuple(Value left, Value right) {
+    private void refuseTimeBesideTuple(Value left, Value right) {
         if (left instanceof TimeValue || right instanceof TimeValue) {
             throw Raised.of(EvaluationFailure.NOT_RELATED,
                     TimeValue.TYPE,

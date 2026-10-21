@@ -9,7 +9,7 @@ public final class Remainder implements ArithmeticOperation {
 
     @Override
     public Value onWholeNumbers(long left, long right) {
-        Overflowing.refuseAZeroDivisor(right);
+        Overflowing.refuseZeroDivisor(right);
         return IntegerValue.of(left % right);
     }
 
@@ -25,13 +25,13 @@ public final class Remainder implements ArithmeticOperation {
 
     @Override
     public long onCodepoints(long codepoint, long other) {
-        Overflowing.refuseAZeroDivisor(other);
+        Overflowing.refuseZeroDivisor(other);
         return codepoint % other;
     }
 
     @Override
     public long onOctets(long octet, double against, boolean fractional) {
-        Overflowing.refuseAZeroOctetDivisor((long) against);
+        Overflowing.refuseZeroOctetDivisor((long) against);
         return octet % (long) against;
     }
 

@@ -286,10 +286,10 @@ public record TimeValue(long nanoseconds) implements Value {
         if (seconds() == 0 && subsecondNanoseconds() == 0) {
             return written;
         }
-        return written + ":" + String.format("%02d", seconds()) + writeTheFraction();
+        return written + ":" + String.format("%02d", seconds()) + writeFraction();
     }
 
-    private String writeTheFraction() {
+    private String writeFraction() {
         long fraction = subsecondNanoseconds();
         if (fraction == 0) {
             return "";

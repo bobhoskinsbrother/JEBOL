@@ -44,7 +44,7 @@ public record OperatorValue(String operatorName, AnyFunctionValue underlying) im
 
         @Override
         public Value construct(List<Value> contents, Construction construction) {
-            throw refuseTheConstruction(contents);
+            throw refuseConstruction(contents);
         }
 
         @Override

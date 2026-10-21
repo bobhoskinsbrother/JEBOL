@@ -63,7 +63,7 @@ public class CopyAction extends DefaultNative implements ActionValue {
                             + original.datatype().literalSpelling() + " has none");
         }
         if (!(original instanceof RebolSeries series)) {
-            return refuseTheDatatype(original);
+            return refuseDatatype(original);
         }
         Value limit = readTheArgumentOf("part", 0, arguments, refinements).orElseThrow();
         if (series instanceof ImageValue picture && limit instanceof PairValue(double x, double y)) {

@@ -10,7 +10,7 @@ import java.util.Set;
 
 record OpeningAFile(Set<String> refinements) {
 
-    void refuseANewFileNobodyMayWriteTo(String path) {
+    void refuseNewFileNobodyMayWriteTo(String path) {
         if (refinements.contains("new") && !mayWrite()) {
             throw Raised.of(EvaluationFailure.BAD_FILE_MODE, FileValue.of(path));
         }

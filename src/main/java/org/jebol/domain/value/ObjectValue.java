@@ -181,13 +181,13 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
         @Override
         public Value construct(List<Value> contents, Construction construction) {
             if (contents.size() != 1 || !(contents.getFirst() instanceof AnyBlockValue fields)) {
-                throw refuseTheConstruction(contents);
+                throw refuseConstruction(contents);
             }
             Context built = Context.root();
             List<Value> items = fields.remaining();
             for (int at = 0; at < items.size(); at++) {
                 if (!(items.get(at) instanceof SetWordValue name)) {
-                    throw refuseTheConstruction(contents);
+                    throw refuseConstruction(contents);
                 }
                 at++;
                 built.register(name.spelling(), at < items.size() ? items.get(at) : NoneValue.none());

@@ -85,7 +85,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
             return switch (only) {
                 case AnyStringValue text -> as(text);
                 case BinaryValue _ -> construction.make(this, only);
-                default -> throw refuseTheConstruction(List.of(only));
+                default -> throw refuseConstruction(List.of(only));
             };
         }
     }

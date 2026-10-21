@@ -24,7 +24,7 @@ public final class DecimalValue extends AnyDecimalValue {
             return switch (contents.getFirst()) {
                 case IntegerValue(long magnitude) -> DecimalValue.of(magnitude);
                 case DecimalValue already -> already;
-                default -> throw refuseTheConstruction(contents);
+                default -> throw refuseConstruction(contents);
             };
         }
     };

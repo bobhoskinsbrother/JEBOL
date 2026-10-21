@@ -105,7 +105,7 @@ final class LzmaEncoder {
         return SLOT_OF_A_SMALL_DISTANCE[distance >>> shift] + shift * 2;
     }
 
-    static byte[] writeTheProperties(int level) {
+    static byte[] writeProperties(int level) {
         Settings settings = Settings.chooseForLevel(level);
         byte[] written = new byte[5];
         written[0] = (byte) ((settings.positionBits * 5 + settings.literalPositionBits) * 9

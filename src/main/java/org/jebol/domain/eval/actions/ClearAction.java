@@ -33,7 +33,7 @@ public class ClearAction extends SeriesOrFileAction {
                 struct.clear();
                 yield struct;
             }
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 }

@@ -79,7 +79,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
         @Override
         protected Value constructFromOne(Value only, Construction construction) {
             if (!(only instanceof AnyBlockValue block)) {
-                throw refuseTheConstruction(List.of(only));
+                throw refuseConstruction(List.of(only));
             }
             return as(block);
         }

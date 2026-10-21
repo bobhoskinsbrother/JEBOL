@@ -29,7 +29,7 @@ public abstract class SteppingNative extends DefaultNative {
             case IntegerValue whole -> IntegerValue.of(whole.magnitude() + step());
             case CharacterValue letter -> CharacterValue.of(letter.codepoint() + step());
             case RebolSeries series -> series.atClamped(series.index() + step());
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 }

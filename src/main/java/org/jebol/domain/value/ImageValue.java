@@ -357,7 +357,7 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
     public Value change(Value given, long howManyTimes, boolean colourOnly,
                         Value shapeOfTheRectangle) {
         if (given instanceof ImageValue rectangle) {
-            return writeARectangle(rectangle, howManyTimes, shapeOfTheRectangle);
+            return writeRectangle(rectangle, howManyTimes, shapeOfTheRectangle);
         }
         List<PixelWrite> pixels = collectEveryPixelOrNone(given, colourOnly);
         int at = index;
@@ -437,8 +437,8 @@ public record ImageValue(ImageStorage storage, int index) implements RebolSeries
         return colourOnly || parts.length <= 3 || there[3] == parts[3];
     }
 
-    private Value writeARectangle(ImageValue rectangle, long howManyTimes,
-                                  Value shapeOfTheRectangle) {
+    private Value writeRectangle(ImageValue rectangle, long howManyTimes,
+                                 Value shapeOfTheRectangle) {
         if (storage.wide() == 0 || howManyTimes == 0) {
             return this;
         }

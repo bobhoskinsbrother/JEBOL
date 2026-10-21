@@ -64,7 +64,7 @@ public enum DatePart implements DateField {
 
     public static DateValue writeOn(DateValue date, Value selector, Value given) {
         return findThePartNamed(selector)
-                .orElseThrow(() -> refuseAnUnknownPart(selector))
+                .orElseThrow(() -> refuseUnknownPart(selector))
                 .writeOn(date, given);
     }
 
@@ -90,7 +90,7 @@ public enum DatePart implements DateField {
         return name().toLowerCase(Locale.ROOT);
     }
 
-    private static Raised refuseAnUnknownPart(Value selector) {
+    private static Raised refuseUnknownPart(Value selector) {
         return Raised.of(EvaluationFailure.INVALID_PATH,
                 selector instanceof AnyWordValue word ? word.spelling() : "date");
     }

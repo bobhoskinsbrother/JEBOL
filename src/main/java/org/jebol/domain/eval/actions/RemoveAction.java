@@ -63,7 +63,7 @@ public class RemoveAction extends DefaultNative implements ActionValue {
             }
             case RebolSeries series -> removeFromTheSeries(series, key,
                     readTheArgumentOf("part", 0, arguments, refinements));
-            case Value anythingElse -> refuseTheArgument(anythingElse, "series");
+            case Value anythingElse -> refuseArgument(anythingElse, "series");
         };
     }
 

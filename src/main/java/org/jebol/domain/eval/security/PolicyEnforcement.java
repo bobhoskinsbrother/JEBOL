@@ -38,7 +38,7 @@ public final class PolicyEnforcement {
         switch (level) {
             case ALLOW -> letTheAccessGoAhead();
             case ASK -> refuseUnlessConfirmed(state.get(), kind, access, subject);
-            case THROW -> throw refuseAsAViolation(kind, subject);
+            case THROW -> throw refuseAsViolation(kind, subject);
             case QUIT -> throw new QuitRequested(IntegerValue.of(WHAT_A_QUIT_POLICY_LEAVES_WITH));
         }
     }
@@ -73,11 +73,11 @@ public final class PolicyEnforcement {
                 IntegerValue.of(access.asConfirmPolicyCountsIt()),
                 subject.orElseGet(NoneValue::none)));
         if (!(answer instanceof LogicValue confirmed && confirmed.isTruthy())) {
-            throw refuseAsAViolation(kind, subject);
+            throw refuseAsViolation(kind, subject);
         }
     }
 
-    private Raised refuseAsAViolation(PolicyClass kind, Optional<Value> subject) {
+    private Raised refuseAsViolation(PolicyClass kind, Optional<Value> subject) {
         return Raised.of(EvaluationFailure.SECURITY, subject.orElseGet(() -> WordValue.of(kind.word())));
     }
 }

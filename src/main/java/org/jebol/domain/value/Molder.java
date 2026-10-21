@@ -116,7 +116,7 @@ public final class Molder {
     public static String moldAll(Value value) {
         return writeEverythingOut(() -> {
             if (value instanceof VectorValue vector) {
-                return writeAsAVector(vector, 1, true, vector.index());
+                return writeAsVector(vector, 1, true, vector.index());
             }
             if (value instanceof ImageValue picture) {
                 return render(picture, true);
@@ -250,7 +250,7 @@ public final class Molder {
             case BinaryValue binary -> renderBinary(binary, forReading);
             case ImageValue image -> renderImage(image, forReading);
             case GobValue gob -> renderGob(gob, forReading);
-            case VectorValue vector -> writeAsAVector(
+            case VectorValue vector -> writeAsVector(
                     vector, vector.index(), forReading, 1);
             case AnyBlockValue block -> renderBlock(block, forReading);
             case AnyWordValue word -> forReading ? word.mold() : word.form();
@@ -708,8 +708,8 @@ public final class Molder {
 
     private static final int NUMBERS_TO_A_LINE = 10;
 
-    private static String writeAsAVector(VectorValue vector, int from,
-                                         boolean forReading, int positionToName) {
+    private static String writeAsVector(VectorValue vector, int from,
+                                        boolean forReading, int positionToName) {
         List<String> numbers = new ArrayList<>();
         for (int at = from; at <= vector.storageLength(); at++) {
             numbers.add(render(vector.readItemAt(at), forReading));

@@ -392,7 +392,7 @@ public final class Ports {
         return runThroughTheFileSystem(() -> new FileReading(path, asked).answerThrough(evaluator.ports().files()));
     }
 
-    public Value writeTheFile(Value destination, Value data, Evaluator evaluator, PortRequest asked) {
+    public Value writeFile(Value destination, Value data, Evaluator evaluator, PortRequest asked) {
         granted.require(HostService.FILES);
         requireTheFilePolicy(((AnyStringValue) destination).text(), evaluator, Set.of(PolicyAccess.WRITE));
         return runThroughTheFileSystem(() -> {
@@ -543,7 +543,7 @@ public final class Ports {
             return;
         }
         OpeningAFile asked = new OpeningAFile(refinements);
-        asked.refuseANewFileNobodyMayWriteTo(path);
+        asked.refuseNewFileNobodyMayWriteTo(path);
         requireTheFilePolicy(path, evaluator, asked.listTheAccessesItAsksFor());
         boolean alreadyThere = runThroughTheFileSystem(() ->
                 LogicValue.of(evaluator.ports().files().exists(path))).isTruthy();

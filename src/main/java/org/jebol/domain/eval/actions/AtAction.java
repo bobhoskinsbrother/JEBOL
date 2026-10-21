@@ -41,7 +41,7 @@ public class AtAction extends SeriesOrFileAction {
                 case RebolSeries series -> series.atClamped(series.index()
                         + series.findPositionNamedBy(index, COUNTING_FROM_ONE)
                         - WHERE_IT_STANDS_IS_ONE);
-                case Value anythingElse -> refuseTheDatatype(anythingElse);
+                case Value anythingElse -> refuseDatatype(anythingElse);
             };
         };
     }

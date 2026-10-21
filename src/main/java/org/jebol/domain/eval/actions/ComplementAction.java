@@ -32,7 +32,7 @@ public class ComplementAction extends DefaultNative implements ActionValue {
                     case TupleValue tuple -> new TupleActions().complement(tuple);
                     case Value subject when Actions.of(subject).isPresent() ->
                             Actions.of(subject).orElseThrow().complement();
-                    default -> refuseTheArgument(arguments.getFirst(), "value");
+                    default -> refuseArgument(arguments.getFirst(), "value");
                 };
     }
 }

@@ -170,7 +170,7 @@ public record IntegerValue(long magnitude) implements Value, RebolNumber {
 
         @Override
         public Value construct(List<Value> contents, Construction construction) {
-            throw refuseTheConstruction(contents);
+            throw refuseConstruction(contents);
         }
 
         @Override

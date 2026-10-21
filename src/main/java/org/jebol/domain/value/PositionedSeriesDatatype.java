@@ -50,12 +50,12 @@ abstract class PositionedSeriesDatatype extends SeriesDatatype {
     }
 
     protected Value constructFromMore(List<Value> contents, Construction construction) {
-        throw refuseTheConstruction(contents);
+        throw refuseConstruction(contents);
     }
 
     protected Value standWhereItWasTold(Value whole, Value position) {
         if (!(whole instanceof RebolSeries series)) {
-            throw refuseTheConstruction(List.of(whole, position));
+            throw refuseConstruction(List.of(whole, position));
         }
         if (!(position instanceof IntegerValue(long magnitude))) {
             return series;

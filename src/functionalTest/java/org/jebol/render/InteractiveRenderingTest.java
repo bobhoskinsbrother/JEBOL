@@ -1,7 +1,6 @@
 package org.jebol.render;
 
 import org.jebol.application.AnInterpreter;
-import org.jebol.application.Interpreter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,7 +22,7 @@ class InteractiveRenderingTest {
         void actionableFacesAreNamed() {
             View view = viewOf("[button \"Press\" [count: 1]]");
 
-            assertThat(view.writeTheMarkup()).contains("data-jebol-action=");
+            assertThat(view.writeMarkup()).contains("data-jebol-action=");
         }
 
         @Test
@@ -31,7 +30,7 @@ class InteractiveRenderingTest {
         void inertFacesAreNotNamed() {
             View view = viewOf("[text \"just words\"]");
 
-            assertThat(view.writeTheMarkup()).doesNotContain("data-jebol-action=");
+            assertThat(view.writeMarkup()).doesNotContain("data-jebol-action=");
         }
 
         @Test
@@ -98,7 +97,7 @@ class InteractiveRenderingTest {
             View view = viewOf("[button \"Press\" [divide 1 0]]");
 
             assertThat(view.raise(view.actionHandles().get(0)).succeeded()).isFalse();
-            assertThat(view.writeTheMarkup()).contains("Press");
+            assertThat(view.writeMarkup()).contains("Press");
         }
     }
 
@@ -112,10 +111,10 @@ class InteractiveRenderingTest {
             View view = viewOf(
                     "caption: \"before\" [button caption [caption: \"after\"]]");
 
-            assertThat(view.writeTheMarkup()).contains("before");
+            assertThat(view.writeMarkup()).contains("before");
             view.raise(view.actionHandles().get(0));
 
-            assertThat(view.writeTheMarkup())
+            assertThat(view.writeMarkup())
                     .as("the view is built again from the values, so it cannot drift")
                     .contains("after");
         }
@@ -125,7 +124,7 @@ class InteractiveRenderingTest {
         void staysStable() {
             View view = viewOf("[text \"steady\"]");
 
-            assertThat(view.writeTheMarkup()).isEqualTo(view.writeTheMarkup());
+            assertThat(view.writeMarkup()).isEqualTo(view.writeMarkup());
         }
     }
 }

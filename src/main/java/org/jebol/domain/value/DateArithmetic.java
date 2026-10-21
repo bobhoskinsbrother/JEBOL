@@ -36,14 +36,14 @@ public final class DateArithmetic {
     }
 
     private Value moveBy(Value span, ArithmeticOperation operation) {
-        refuseASpanADateCannotMoveBy(span, operation);
+        refuseSpanDateCannotMoveBy(span, operation);
         int sign = operation.signWhenMoving();
         return span instanceof IntegerValue
                 ? moveByDays(sign * (long) readTheQuantityOf(span))
                 : moveByTheClock(sign * measureTheClockShiftOf(span));
     }
 
-    private void refuseASpanADateCannotMoveBy(Value span, ArithmeticOperation operation) {
+    private void refuseSpanDateCannotMoveBy(Value span, ArithmeticOperation operation) {
         boolean movesADate = operation.isCommutative()
                 ? !operation.multiplies()
                 : operation.canSubtractOneFromOther();

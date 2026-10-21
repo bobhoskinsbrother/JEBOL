@@ -134,7 +134,7 @@ public final class DrawDialect {
                 case "spline" -> paint(drawASplineThroughEveryPoint(arguments));
                 case "shape" -> paint(drawAHandWrittenPath(arguments));
                 case "image" -> showTheImage(arguments);
-                case "text" -> writeTheText(arguments);
+                case "text" -> writeText(arguments);
                 case "clip" -> clipTo(arguments);
                 case "transform" -> transformAboutACentre(arguments);
                 case "invert-matrix" -> transform = transform.invert();
@@ -441,7 +441,7 @@ public final class DrawDialect {
         private static final int THE_TEXT_OFFSET = 1;
         private static final int THE_TEXT_BLOCK = 3;
 
-        private void writeTheText(List<Value> arguments) {
+        private void writeText(List<Value> arguments) {
             if (THE_TEXT_BLOCK >= arguments.size()
                     || !(arguments.get(THE_TEXT_BLOCK) instanceof AnyBlockValue written)
                     || state.strokeColour().isEmpty()) {

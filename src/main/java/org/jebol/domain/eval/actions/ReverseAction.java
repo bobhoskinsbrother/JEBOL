@@ -38,7 +38,7 @@ public class ReverseAction extends DefaultNative implements ActionValue {
                         limit.orElseGet(() -> IntegerValue.of(tuple.segmentCount()))));
                 case PairValue pair -> pair.reversed();
                 case RebolSeries series -> series.reversedFromHere();
-                case Value anythingElse -> refuseTheArgument(anythingElse, "series");
+                case Value anythingElse -> refuseArgument(anythingElse, "series");
             };
         };
     }

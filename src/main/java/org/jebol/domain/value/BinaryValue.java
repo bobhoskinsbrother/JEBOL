@@ -101,7 +101,7 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
     }
 
     @Override
-    public void refuseANeedleItCannotHold(Value needle, String nativeName) {
+    public void refuseNeedleItCannotHold(Value needle, String nativeName) {
         if (needle instanceof IntegerValue(long magnitude) && (magnitude < 0 || magnitude > 255)) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                     nativeName + " on a binary wanted a byte, not " + magnitude);

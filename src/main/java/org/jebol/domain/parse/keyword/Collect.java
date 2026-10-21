@@ -59,13 +59,13 @@ final class Collect extends SameForABlockAndAString {
         Value name = at + 2 < rules.size() ? rules.get(at + 2) : null;
         return switch (keyword.canonical()) {
             case "set" -> new WhereItGoes(
-                    ParseTargets.refuseAnythingButAWordOrASetWord(name),
+                    ParseTargets.refuseAnythingButWordOrSetWord(name),
                     null, null, at + 3);
             case "into" -> new WhereItGoes(null,
-                    ParseTargets.refuseAnythingButAWordOrAGetWord(name),
+                    ParseTargets.refuseAnythingButWordOrGetWord(name),
                     null, at + 3);
             case "after" -> new WhereItGoes(null, null,
-                    ParseTargets.refuseAnythingButAWordOrAGetWord(name), at + 3);
+                    ParseTargets.refuseAnythingButWordOrGetWord(name), at + 3);
             default -> new WhereItGoes(null, null, null, at + 1);
         };
     }

@@ -32,7 +32,7 @@ public class ParseNative extends DefaultNative {
             case AnyBlockValue rules -> Parser.parseOver(
                             evaluator, context, arguments.getFirst(), refinements.contains("case"))
                     .answerFor(rules);
-            case Value other -> refuseTheArgument(other, "rules");
+            case Value other -> refuseArgument(other, "rules");
         };
     }
 }

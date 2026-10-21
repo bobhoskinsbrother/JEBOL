@@ -23,7 +23,7 @@ public class LastNative extends DefaultNative {
         return (arguments, evaluator, context, refinements) -> switch (arguments.getFirst()) {
             case TupleValue parts -> IntegerValue.of(parts.readOctetAt(parts.segmentCount()));
             case RebolSeries series -> series.pick(series.lengthFromHere());
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 }

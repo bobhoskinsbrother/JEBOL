@@ -9,7 +9,7 @@ public final class Divide implements ArithmeticOperation {
 
     @Override
     public Value onWholeNumbers(long left, long right) {
-        Overflowing.refuseAZeroDivisor(right);
+        Overflowing.refuseZeroDivisor(right);
         if (left == Long.MIN_VALUE && right == -1) {
             throw Raised.of(EvaluationFailure.OVERFLOW);
         }
@@ -21,7 +21,7 @@ public final class Divide implements ArithmeticOperation {
     @Override
     public Value onFractions(double left, double right, boolean infinitiesAllowed) {
         if (!infinitiesAllowed) {
-            Overflowing.refuseAZeroDivisor(right);
+            Overflowing.refuseZeroDivisor(right);
         }
         return DecimalValue.of(left / right);
     }
@@ -33,13 +33,13 @@ public final class Divide implements ArithmeticOperation {
 
     @Override
     public long onCodepoints(long codepoint, long other) {
-        Overflowing.refuseAZeroDivisor(other);
+        Overflowing.refuseZeroDivisor(other);
         return codepoint / other;
     }
 
     @Override
     public long onOctets(long octet, double against, boolean fractional) {
-        Overflowing.refuseAZeroOctetDivisor(against);
+        Overflowing.refuseZeroOctetDivisor(against);
         return fractional
                 ? (long) Overflowing.roundHalfAwayFromZero(octet / against)
                 : octet / (long) against;

@@ -215,13 +215,13 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
             data.write(at, given.octets(), inside.spec().size());
             return;
         }
-        throw StructLayoutRefused.refuseTheField(written,
+        throw StructLayoutRefused.refuseField(written,
                 "an inner struct takes a block or a struct of the same shape, not "
                         + written.datatype().literalSpelling());
     }
 
     private static StructLayoutRefused refuseFor(StructField field, Value written) {
-        return StructLayoutRefused.refuseTheField(written,
+        return StructLayoutRefused.refuseField(written,
                 "the field " + field.name() + " holds " + field.type().spelling()
                         + " and cannot take " + written.datatype().literalSpelling());
     }
@@ -244,7 +244,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         }
         if (!(written instanceof AnyBlockValue given)
                 || given.remaining().size() != field.dimension()) {
-            throw StructLayoutRefused.refuseTheField(written,
+            throw StructLayoutRefused.refuseField(written,
                     "the field " + field.name() + " holds " + field.dimension()
                             + " values and takes a block of exactly that many");
         }
@@ -258,7 +258,7 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         if (!(field.type() instanceof StructFieldType.Numeric(VectorKind kind))
                 || given.lengthFromHere() != field.dimension()
                 || given.storage().kind().bytes() != kind.bytes()) {
-            throw StructLayoutRefused.refuseTheField(given,
+            throw StructLayoutRefused.refuseField(given,
                     "the field " + field.name() + " takes " + field.dimension()
                             + " values of its own width and this vector is not that");
         }
@@ -291,11 +291,11 @@ public record StructValue(StructSpec spec, StructData data, int offset) implemen
         if (!written.isEmpty() && written.getFirst() instanceof SetWordValue) {
             for (int at = 0; at + 1 < written.size(); at += 2) {
                 if (!(written.get(at) instanceof AnyWordValue name)) {
-                    throw StructLayoutRefused.refuseTheField(written.get(at),
+                    throw StructLayoutRefused.refuseField(written.get(at),
                             "a named initialiser is a set-word and then a value");
                 }
                 writeField(spec.findTheFieldCalled(name.spelling()).orElseThrow(
-                        () -> StructLayoutRefused.refuseTheField(name,
+                        () -> StructLayoutRefused.refuseField(name,
                                 "this struct has no field called " + name.spelling())),
                         written.get(at + 1));
             }

@@ -36,7 +36,7 @@ public abstract class TabbingNative extends DefaultNative {
                         new String(octets.octetsFromHere(), StandardCharsets.ISO_8859_1),
                         aTabsWorthOfSpaces).getBytes(StandardCharsets.ISO_8859_1));
                 case AnyStringValue text -> text.wrap(tab(text.text(), aTabsWorthOfSpaces));
-                case Value anythingElse -> refuseTheDatatype(anythingElse);
+                case Value anythingElse -> refuseDatatype(anythingElse);
             };
         };
     }

@@ -72,7 +72,7 @@ public abstract sealed class AnyWordValue implements Value
 
         @Override
         public Value construct(List<Value> contents, Construction construction) {
-            throw refuseTheConstruction(contents);
+            throw refuseConstruction(contents);
         }
 
         @Override

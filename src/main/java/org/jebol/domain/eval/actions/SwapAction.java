@@ -23,14 +23,14 @@ public class SwapAction extends DefaultNative implements ActionValue {
             Value here = arguments.getFirst();
             Value there = arguments.get(1);
             return switch (here) {
-                case GobValue gob -> refuseTheDatatype(gob);
+                case GobValue gob -> refuseDatatype(gob);
                 case AnyStringValue text when there instanceof AnyStringValue other ->
                         text.swapFirstItemWith(other);
                 case BinaryValue bytes when there instanceof BinaryValue other ->
                         bytes.swapFirstItemWith(other);
                 case AnyBlockValue block when there instanceof AnyBlockValue other ->
                         block.swapFirstItemWith(other);
-                case Value anythingElse -> refuseTheArgument(anythingElse, "series1");
+                case Value anythingElse -> refuseArgument(anythingElse, "series1");
             };
         };
     }

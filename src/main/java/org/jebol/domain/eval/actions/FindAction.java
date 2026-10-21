@@ -55,10 +55,10 @@ public class FindAction extends SeriesSearchAction {
                 case ImageValue picture -> picture.findThePixel(wanted,
                         refinements.contains("match"), refinements.contains("only"),
                         refinements.contains("tail"));
-                case VectorValue numbers -> refuseTheDatatype(numbers);
+                case VectorValue numbers -> refuseDatatype(numbers);
                 case RebolSeries series ->
                         findMatch(series, wanted, arguments, refinements);
-                case Value anythingElse -> refuseTheDatatype(anythingElse);
+                case Value anythingElse -> refuseDatatype(anythingElse);
             };
         };
     }
@@ -77,7 +77,7 @@ public class FindAction extends SeriesSearchAction {
                 readTheArgumentOf("part", 0, arguments, refinements),
                 readTheArgumentOf("skip", 0, arguments, refinements),
                 readTheArgumentOf("with", 0, arguments, refinements));
-        series.refuseANeedleItCannotHold(wanted, nativeName());
+        series.refuseNeedleItCannotHold(wanted, nativeName());
         if (search.stridesForwardByLessThanOne()) {
             if (series instanceof AnyBlockValue) {
                 throw Raised.of(EvaluationFailure.OUT_OF_RANGE,

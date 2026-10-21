@@ -91,7 +91,7 @@ public abstract non-sealed class DefaultNative implements NativeValue {
         return parameter.owningRefinement().filter(refinement::equals).isPresent();
     }
 
-    protected Value refuseTheArgument(Value given, String declaredArgument) {
+    protected Value refuseArgument(Value given, String declaredArgument) {
         throw new Raised(ErrorValue.of(
                 EvaluationFailure.EXPECT_ARG.category(),
                 EvaluationFailure.EXPECT_ARG.errorId(),
@@ -102,7 +102,7 @@ public abstract non-sealed class DefaultNative implements NativeValue {
                 given.datatype()));
     }
 
-    protected Value refuseTheDatatype(Value given) {
+    protected Value refuseDatatype(Value given) {
         throw Raised.cannotUse(given, this);
     }
 

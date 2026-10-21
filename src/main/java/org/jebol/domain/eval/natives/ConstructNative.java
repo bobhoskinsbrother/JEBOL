@@ -52,7 +52,7 @@ public class ConstructNative extends DefaultNative {
     private void refuseAnyFieldSpeltLikeItsOwnSelf(Context built, List<Value> items) {
         items.stream()
                 .filter(SetWordValue.class::isInstance)
-                .forEach(built::refuseAFieldSpeltLikeItsOwnSelf);
+                .forEach(built::refuseFieldSpeltLikeItsOwnSelf);
     }
 
     private List<Value> listTheItemsOf(Value body) {

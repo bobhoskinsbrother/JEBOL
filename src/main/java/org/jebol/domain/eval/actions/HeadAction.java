@@ -25,7 +25,7 @@ public class HeadAction extends SeriesOrFileAction {
             case PortValue port when port.isAFile() ->
                     findFileBehind(port, evaluator).moveTo(THE_FIRST_BYTE);
             case RebolSeries series -> series.head();
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 }

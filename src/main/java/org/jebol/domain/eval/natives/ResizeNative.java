@@ -38,7 +38,7 @@ public class ResizeNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             readTheArgumentOf("filter", 0, arguments, refinements)
-                    .ifPresent(this::refuseAFilterTheCatalogueHasNot);
+                    .ifPresent(this::refuseFilterCatalogueHasNot);
             return resize((ImageValue) arguments.getFirst(), arguments.get(1));
         };
     }
@@ -77,7 +77,7 @@ public class ResizeNative extends DefaultNative {
         return against == 0 ? 0 : (given * toKeep) / against;
     }
 
-    private void refuseAFilterTheCatalogueHasNot(Value asked) {
+    private void refuseFilterCatalogueHasNot(Value asked) {
         boolean known = asked instanceof AnyWordValue word
                 && THE_FILTERS.stream().anyMatch(word.canonical()::equalsIgnoreCase);
         if (!known) {

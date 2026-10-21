@@ -49,11 +49,11 @@ public final class EventPath {
             case OBJECT -> event.attached();
             case CALLBACK -> callbackPort;
             case CONSOLE -> consolePort;
-            case DEVICE -> refuseAnIoRequest();
+            case DEVICE -> refuseIoRequest();
         };
     }
 
-    private static Value refuseAnIoRequest() {
+    private static Value refuseIoRequest() {
         return NoneValue.none();
     }
 

@@ -105,7 +105,7 @@ public sealed interface RebolSeries extends Value
         return atIndex(storageLength() + 1);
     }
 
-    default void refuseANeedleItCannotHold(Value needle, String nativeName) {
+    default void refuseNeedleItCannotHold(Value needle, String nativeName) {
     }
 
     default RebolSeries pickTheEarlierOf(RebolSeries other) {

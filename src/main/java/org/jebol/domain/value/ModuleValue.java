@@ -113,13 +113,13 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
         @Override
         public Value construct(List<Value> contents, Construction construction) {
             if (!(readSpecificationIn(contents) instanceof AnyBlockValue parts)) {
-                throw refuseTheConstruction(contents);
+                throw refuseConstruction(contents);
             }
             List<Value> given = parts.remaining();
             if (given.size() < 2
                     || !(given.get(0) instanceof ObjectValue header)
                     || !(given.get(1) instanceof ObjectValue(Context fields))) {
-                throw refuseTheConstruction(contents);
+                throw refuseConstruction(contents);
             }
             return new ModuleValue(fields, header);
         }

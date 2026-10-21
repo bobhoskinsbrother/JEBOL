@@ -207,7 +207,7 @@ public final class Crush {
 
             if (length >= MIN_MATCH) {
                 bits.put(1, 1);
-                writeTheLength(bits, length - MIN_MATCH);
+                writeLength(bits, length - MIN_MATCH);
                 writeTheOffset(bits, offset - 1);
             } else {
                 length = 1;
@@ -227,7 +227,7 @@ public final class Crush {
         return Arrays.copyOf(bits.data, bits.index);
     }
 
-    private static void writeTheLength(Bits bits, int length) {
+    private static void writeLength(Bits bits, int length) {
         if (length < A) {
             bits.put(1, 1);
             bits.put(A_BITS, length);

@@ -47,7 +47,7 @@ public class PutAction extends DefaultNative implements ActionValue {
                     Molder.mold(key) + " is not a word an object can hold a field under");
             case AnyBlockValue block -> putIntoTheBlock(block, key, written,
                     recordWidth(arguments, refinements), refinements.contains("case"));
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         }
         return written;
     }

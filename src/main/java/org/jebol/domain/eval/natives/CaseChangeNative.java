@@ -30,7 +30,7 @@ public abstract class CaseChangeNative extends DefaultNative {
             case AnyStringValue text when refinements.contains("part") -> partChanged(text,
                     readTheArgumentOf("part", 0, arguments, refinements).orElseThrow());
             case AnyStringValue text -> text.rewriteFromHere(this::changeTheText);
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 

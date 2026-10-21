@@ -168,7 +168,7 @@ final class WeierstrassCurve {
         return holds(read) ? Optional.of(read) : Optional.empty();
     }
 
-    byte[] writeTheCoordinateOnTheWire(BigInteger coordinate) {
+    byte[] writeCoordinateOnWire(BigInteger coordinate) {
         byte[] written = new byte[coordinateWidth];
         byte[] raw = coordinate.toByteArray();
         int taking = Math.min(raw.length, coordinateWidth);

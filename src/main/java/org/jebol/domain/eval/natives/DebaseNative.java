@@ -52,7 +52,7 @@ public class DebaseNative extends BinaryBaseNative {
     }
 
     @Override
-    Raised refuseAnUnknownBase(List<Value> arguments) {
+    Raised refuseUnknownBase(List<Value> arguments) {
         return Raised.of(EvaluationFailure.INVALID_DATA, arguments.getFirst());
     }
 }

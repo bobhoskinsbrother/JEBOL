@@ -65,7 +65,7 @@ public abstract sealed class DefinedFunctionValue implements DeclaresParameters
                     || definition.remaining().size() != 2
                     || !(definition.remaining().get(0) instanceof BlockValue functionSpec)
                     || !(definition.remaining().get(1) instanceof BlockValue body)) {
-                throw refuseTheConstruction(contents);
+                throw refuseConstruction(contents);
             }
             return construction.makeFunction(functionSpec, body);
         }

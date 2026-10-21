@@ -23,7 +23,7 @@ final class BrotliMetaBlockWriter {
     private BrotliMetaBlockWriter() {
     }
 
-    static void writeAnEmptyLastMetaBlock(BrotliBits into) {
+    static void writeEmptyLastMetaBlock(BrotliBits into) {
         into.write(2, 3);
         into.jumpToByteBoundary();
     }
@@ -37,7 +37,7 @@ final class BrotliMetaBlockWriter {
         return code;
     }
 
-    private static void writeTheLength(int length, BrotliBits into) {
+    private static void writeLength(int length, BrotliBits into) {
         int bitsNeeded = length == 1 ? 1 : BrotliCodes.floorTheLog2(length - 1) + 1;
         int nibbles = (bitsNeeded < 16 ? 16 : bitsNeeded + 3) / 4;
         into.write(2, nibbles - 4);
@@ -51,7 +51,7 @@ final class BrotliMetaBlockWriter {
         if (isLast) {
             into.write(1, 0);
         }
-        writeTheLength(length, into);
+        writeLength(length, into);
         if (!isLast) {
             into.write(1, 0);
         }
@@ -72,7 +72,7 @@ final class BrotliMetaBlockWriter {
             boolean isLast, BrotliBits into) {
 
         into.write(1, 0);
-        writeTheLength(length, into);
+        writeLength(length, into);
         into.write(1, 1);
         into.jumpToByteBoundary();
 
@@ -331,7 +331,7 @@ final class BrotliMetaBlockWriter {
             return code;
         }
 
-        void writeTheSwitchingCode(BrotliCodes.Tree tree, BrotliBits into) {
+        void writeSwitchingCode(BrotliCodes.Tree tree, BrotliBits into) {
             int[] typeHistogram = new int[howManyTypes + 2];
             int[] lengthHistogram = new int[BLOCK_LENGTH_SYMBOLS];
             OneAlphabet counting = new OneAlphabet(alphabetLength, split);
@@ -356,11 +356,11 @@ final class BrotliMetaBlockWriter {
             writeATreeFor(lengthHistogram, BLOCK_LENGTH_SYMBOLS,
                     BLOCK_LENGTH_SYMBOLS, tree, lengthDepth, 0, lengthBits, 0,
                     into);
-            writeASwitch(split.readLengthAt(0), split.readTypeAt(0), true, into);
+            writeSwitch(split.readLengthAt(0), split.readTypeAt(0), true, into);
         }
 
-        private void writeASwitch(int blockLength, int blockType,
-                boolean isTheFirst, BrotliBits into) {
+        private void writeSwitch(int blockLength, int blockType,
+                                 boolean isTheFirst, BrotliBits into) {
 
             int typeCode = findNextTypeCode(blockType);
             if (!isTheFirst) {
@@ -392,7 +392,7 @@ final class BrotliMetaBlockWriter {
             int length = split.readLengthAt(whichBlock);
             int type = split.readTypeAt(whichBlock);
             leftInTheBlock = length;
-            writeASwitch(length, type, false, into);
+            writeSwitch(length, type, false, into);
             return type;
         }
 
@@ -450,9 +450,9 @@ final class BrotliMetaBlockWriter {
         OneAlphabet distanceSymbols = new OneAlphabet(
                 distances.alphabetSize(), split.distances);
 
-        literals.writeTheSwitchingCode(tree, into);
-        commandSymbols.writeTheSwitchingCode(tree, into);
-        distanceSymbols.writeTheSwitchingCode(tree, into);
+        literals.writeSwitchingCode(tree, into);
+        commandSymbols.writeSwitchingCode(tree, into);
+        distanceSymbols.writeSwitchingCode(tree, into);
 
         into.write(2, distances.postfixBits());
         into.write(4, distances.directCodes() >> distances.postfixBits());
@@ -648,8 +648,8 @@ final class BrotliMetaBlockWriter {
             }
             BrotliCodes.buildAndStoreHuffmanTreeFast(tree, histogram,
                     howManyLiterals, 8, literalDepth, literalBits, into);
-            BrotliStaticCodes.writeTheCommandTree(into);
-            BrotliStaticCodes.writeTheDistanceTree(into);
+            BrotliStaticCodes.writeCommandTree(into);
+            BrotliStaticCodes.writeDistanceTree(into);
             writeTheSymbols(data, mask, from, commands, literalDepth, literalBits,
                     BrotliStaticCodes.COMMAND_DEPTH, BrotliStaticCodes.COMMAND_BITS,
                     BrotliStaticCodes.DISTANCE_DEPTH, BrotliStaticCodes.DISTANCE_BITS,

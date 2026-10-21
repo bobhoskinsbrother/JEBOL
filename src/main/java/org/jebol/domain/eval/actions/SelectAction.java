@@ -40,14 +40,14 @@ public class SelectAction extends SeriesSearchAction {
         Value wanted = arguments.get(1);
         return switch (subject) {
             case MapValue map -> map.select(wanted, refinements.contains("case"));
-            case VectorValue numbers -> refuseTheDatatype(numbers);
+            case VectorValue numbers -> refuseDatatype(numbers);
             case NoneValue nothing -> nothing;
             case Value object when object.isAnyObject() -> readFieldWanted(object, wanted);
             case RebolSeries series -> {
-                series.refuseANeedleItCannotHold(wanted, nativeName());
+                series.refuseNeedleItCannotHold(wanted, nativeName());
                 yield findItemAfterMatch(series, wanted, arguments, refinements);
             }
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 
@@ -65,7 +65,7 @@ public class SelectAction extends SeriesSearchAction {
                 readTheArgumentOf("skip", 0, arguments, refinements),
                 readTheArgumentOf("with", 0, arguments, refinements));
         if (search.stridesForwardByLessThanOne()) {
-            return refuseARecordWidthBelowOne(series, search.stride());
+            return refuseRecordWidthBelowOne(series, search.stride());
         }
         int found = search.findPosition();
         if (found < 0) {
@@ -77,7 +77,7 @@ public class SelectAction extends SeriesSearchAction {
                 : series.head().listTheItems().get(after);
     }
 
-    private Value refuseARecordWidthBelowOne(RebolSeries series, long stride) {
+    private Value refuseRecordWidthBelowOne(RebolSeries series, long stride) {
         if (series instanceof AnyBlockValue) {
             throw Raised.of(EvaluationFailure.OUT_OF_RANGE,
                     "select/skip needs a record width of at least one, not " + stride);

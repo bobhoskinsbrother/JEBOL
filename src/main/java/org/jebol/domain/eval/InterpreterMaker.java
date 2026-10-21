@@ -127,11 +127,11 @@ public final class InterpreterMaker implements Maker {
                 ? Optional.of(given)
                 : Optional.empty();
         if (newSpecification.isEmpty() && !isTheStarThatMeansKeepIt(first)) {
-            throw prototype.refuseAsAPrototypeFor(spec);
+            throw prototype.refuseAsPrototypeFor(spec);
         }
         Optional<Value> newBody = parts.size() > 1 ? Optional.of(parts.get(1)) : Optional.empty();
         if (newBody.isPresent() && !takesTheBody(prototype, newBody.get())) {
-            throw prototype.refuseAsAPrototypeFor(spec);
+            throw prototype.refuseAsPrototypeFor(spec);
         }
         return switch (prototype) {
             case DefinedFunctionValue written -> Binder.bindTheFunctionsBody(

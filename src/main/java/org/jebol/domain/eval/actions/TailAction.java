@@ -23,7 +23,7 @@ public class TailAction extends SeriesOrFileAction {
             case PortValue port when port.isAFile() ->
                     findFileBehind(port, evaluator).movedToTheEnd();
             case RebolSeries series -> series.tail();
-            case Value anythingElse -> refuseTheDatatype(anythingElse);
+            case Value anythingElse -> refuseDatatype(anythingElse);
         };
     }
 }

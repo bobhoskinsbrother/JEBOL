@@ -24,7 +24,7 @@ public class RegisterNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
             if (!(arguments.getFirst() instanceof AnyWordValue name)) {
-                return refuseTheArgument(arguments.getFirst(), "name");
+                return refuseArgument(arguments.getFirst(), "name");
             }
             StructValue given = (StructValue) arguments.get(1);
             if (name instanceof SetWordValue) {

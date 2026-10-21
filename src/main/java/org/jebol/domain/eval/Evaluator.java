@@ -512,7 +512,7 @@ public final class Evaluator {
 
     public ObjectValue evaluateInto(ObjectValue built, AnyBlockValue body) {
         Context fields = built.context();
-        body.setWordsFromHere().forEach(fields::refuseAFieldSpeltLikeItsOwnSelf);
+        body.setWordsFromHere().forEach(fields::refuseFieldSpeltLikeItsOwnSelf);
         body.setWordsFromHere().stream().map(AnyWordValue::spelling).forEach(fields::register);
         evaluateOrRaise(Binder.bindOnly(body, fields, fields.listTheNamesItBinds()), fields);
         return built;
@@ -1266,7 +1266,7 @@ public final class Evaluator {
         if (callee instanceof DefinedFunctionValue written) {
             for (int index = 0; index < mentioned.size(); index++) {
                 if (!declaresRefinement(written, mentioned.get(index))) {
-                    throw refuseAnUnknownRefinement(selection, index);
+                    throw refuseUnknownRefinement(selection, index);
                 }
             }
             return callee;
@@ -1281,7 +1281,7 @@ public final class Evaluator {
                 if (systemContext.contains(refinedName)) {
                     return systemContext.findSlotFor(refinedName).value();
                 }
-                throw refuseAnUnknownRefinement(selection, index);
+                throw refuseUnknownRefinement(selection, index);
             }
         }
         return selection.refinements().isEmpty()
@@ -1289,7 +1289,7 @@ public final class Evaluator {
                 : built.askFor(Set.copyOf(selection.refinements()));
     }
 
-    private Raised refuseAnUnknownRefinement(Selection selection, int index) {
+    private Raised refuseUnknownRefinement(Selection selection, int index) {
         Value calledBy = selection.calledBy() instanceof AnyWordValue word
                 ? word.asWord()
                 : selection.calledBy();
@@ -1333,7 +1333,7 @@ public final class Evaluator {
         List<Value> segments = path.remaining();
         AnyBlockValue allButLast = PathValue.of(segments.subList(0, segments.size() - 1));
         Slot place = select(allButLast, path, frame.context).slot();
-        refuseAPathIntoSomethingWithNoParts(path, place.value(), segments.size() - 2);
+        refusePathIntoSomethingWithNoParts(path, place.value(), segments.size() - 2);
         try {
             writeThroughTheLastSegment(frame, path, place, written);
         } catch (Raised refused) {
@@ -1526,7 +1526,7 @@ public final class Evaluator {
                 }
                 continue;
             }
-            refuseAPathIntoSomethingWithNoParts(asWritten, current.value(), index - 1);
+            refusePathIntoSomethingWithNoParts(asWritten, current.value(), index - 1);
             current = findTheSlotWithTheSegment(asWritten, current, segment, context);
             calledBy = segment;
         }
@@ -1566,7 +1566,7 @@ public final class Evaluator {
                 + (int) countFromTheSeriesPosition(position.magnitude()) - 1;
     }
 
-    private void refuseAPathIntoSomethingWithNoParts(
+    private void refusePathIntoSomethingWithNoParts(
             AnyBlockValue asWritten, Value current, int reachedThroughSegment) {
 
         if (!HAVE_NO_PARTS_TO_SELECT.contains(current.datatype())) {

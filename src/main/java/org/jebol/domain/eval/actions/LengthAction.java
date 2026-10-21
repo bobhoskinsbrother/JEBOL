@@ -49,7 +49,7 @@ public class LengthAction extends SeriesOrFileAction {
             case RebolSeries series -> IntegerValue.of(series.lengthFromHere());
             case ModuleValue module -> IntegerValue.of(module.context().fieldCount());
             case StructValue struct -> IntegerValue.of(struct.size());
-            case Value anythingElse -> refuseTheArgument(anythingElse, "series");
+            case Value anythingElse -> refuseArgument(anythingElse, "series");
         };
     }
 

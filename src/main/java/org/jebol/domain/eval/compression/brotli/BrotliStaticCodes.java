@@ -5,12 +5,12 @@ final class BrotliStaticCodes {
     private BrotliStaticCodes() {
     }
 
-    static void writeTheCommandTree(BrotliBits into) {
+    static void writeCommandTree(BrotliBits into) {
         into.write(56, 0x92624416307003L);
         into.write(3, 0);
     }
 
-    static void writeTheDistanceTree(BrotliBits into) {
+    static void writeDistanceTree(BrotliBits into) {
         into.write(28, 0x0369DC03L);
     }
 

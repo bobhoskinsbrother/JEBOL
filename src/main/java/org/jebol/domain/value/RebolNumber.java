@@ -28,7 +28,7 @@ public sealed interface RebolNumber extends Value permits IntegerValue, AnyDecim
                     octets.calculate(this, operation);
             case VectorValue vector when operation.isCommutative() ->
                     VectorMath.calculate(this, vector, operation);
-            default -> refuseTheArithmetic(right);
+            default -> refuseArithmetic(right);
         };
     }
 }

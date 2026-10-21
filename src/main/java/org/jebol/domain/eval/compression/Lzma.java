@@ -13,7 +13,7 @@ public final class Lzma {
     private static final int SHORTEST_STREAM = PROPERTIES_LENGTH + LENGTH_TRAILER;
 
     public static byte[] compress(byte[] octets, int level) {
-        byte[] properties = LzmaEncoder.writeTheProperties(level);
+        byte[] properties = LzmaEncoder.writeProperties(level);
         byte[] body = LzmaEncoder.encode(octets, level);
         byte[] whole =
                 new byte[properties.length + body.length + LENGTH_TRAILER];

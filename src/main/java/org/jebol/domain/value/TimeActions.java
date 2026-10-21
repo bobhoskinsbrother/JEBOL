@@ -21,7 +21,7 @@ public final class TimeActions {
             return scaleBy(portion, operation);
         }
         if (!(right instanceof IntegerValue) && !(right instanceof AnyDecimalValue)) {
-            throw refuseAsNotRelatedToATime(operation);
+            throw refuseAsNotRelatedToTime(operation);
         }
         if (operation.keepsTheSignOfTheDividend()) {
             return takeTheRestOfTheNanoseconds(right, operation);
@@ -36,7 +36,7 @@ public final class TimeActions {
         boolean allowed = operation.isCommutative()
                 || (operation.canSubtractOneFromOther() && left instanceof IntegerValue);
         if (!allowed) {
-            throw refuseAsNotRelatedToATime(operation);
+            throw refuseAsNotRelatedToTime(operation);
         }
         if (operation.canSubtractOneFromOther()) {
             return TimeValue.ofNanoseconds(withinWhatADurationHolds(
@@ -52,7 +52,7 @@ public final class TimeActions {
                     (double) span.nanoseconds() / (double) other.nanoseconds());
         }
         if (operation.multiplies()) {
-            throw refuseAsNotRelatedToATime(operation);
+            throw refuseAsNotRelatedToTime(operation);
         }
         return addInWholeNanosecondsTo(other, operation);
     }
@@ -65,19 +65,19 @@ public final class TimeActions {
         if (operation.divides()) {
             return new MoneyValue(rate.asDeci().divideBy(hours));
         }
-        throw refuseAsNotRelatedToATime(operation);
+        throw refuseAsNotRelatedToTime(operation);
     }
 
     private Value scaleBy(AnyDecimalValue portion, ArithmeticOperation operation) {
         if (!operation.multiplies()) {
-            throw refuseAsNotRelatedToATime(operation);
+            throw refuseAsNotRelatedToTime(operation);
         }
         return TimeValue.ofNanoseconds((long) (span.nanoseconds() * portion.quantity()));
     }
 
     private Value takeTheRestOfTheNanoseconds(Value right, ArithmeticOperation operation) {
         if (!(right instanceof IntegerValue(long divisor))) {
-            throw refuseAsNotRelatedToATime(operation);
+            throw refuseAsNotRelatedToTime(operation);
         }
         operation.requireANonZeroDivisor(divisor);
         return TimeValue.ofNanoseconds(span.nanoseconds() % divisor);
@@ -114,7 +114,7 @@ public final class TimeActions {
                 : Math.floorMod(ours, theirs);
     }
 
-    private static Raised refuseAsNotRelatedToATime(ArithmeticOperation operation) {
+    private static Raised refuseAsNotRelatedToTime(ArithmeticOperation operation) {
         return Raised.of(EvaluationFailure.NOT_RELATED,
                 WordValue.of(operation.spelling()),
                 TimeValue.TYPE);
