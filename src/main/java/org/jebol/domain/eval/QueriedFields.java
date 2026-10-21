@@ -46,7 +46,7 @@ public abstract class QueriedFields {
             case AnyWordValue asked -> findFieldNamed(findFieldItAsksFor(asked)).orElseGet(() -> answerUnknownAlone(asked));
             case AnyBlockValue several -> answerEachOf(several);
             case NoneValue nothing -> listNames();
-            default -> gatherEveryFieldIntoAnObject(evaluator);
+            default -> gatherEveryFieldIntoObject(evaluator);
         };
     }
 
@@ -72,7 +72,7 @@ public abstract class QueriedFields {
         return answered;
     }
 
-    protected Value gatherEveryFieldIntoAnObject(Evaluator evaluator) {
+    protected Value gatherEveryFieldIntoObject(Evaluator evaluator) {
         ObjectValue described = new ObjectValue(Context.makeChildOf(evaluator.systemContext()));
         described.context().pointItsOwnSelfAt(described);
         return withEveryFieldIn(described);

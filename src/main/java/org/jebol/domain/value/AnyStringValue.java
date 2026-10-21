@@ -253,7 +253,7 @@ public abstract sealed class AnyStringValue implements RebolSeries
         }
         String indented = trimming.ofTheCommonIndent() ? withoutCommonIndent(text) : text;
         if (trimming.atOneEndOnly()) {
-            return trimming.fromTheHead() ? indented.stripLeading() : indented.stripTrailing();
+            return trimming.fromHead() ? indented.stripLeading() : indented.stripTrailing();
         }
         return trimming.ofTheCommonIndent() || trimming.atBothNamedEnds()
                 ? indented.strip()

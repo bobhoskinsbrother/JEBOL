@@ -218,7 +218,7 @@ final class BrotliCodes {
         return answer < (double) sum ? (double) sum : answer;
     }
 
-    static int floorTheLog2(int value) {
+    static int floorLog2(int value) {
         return 31 - Integer.numberOfLeadingZeros(value);
     }
 
@@ -244,7 +244,7 @@ final class BrotliCodes {
         }
         boolean[] alreadyARun =
                 runsAlreadyCheapEnoughToLeaveUndisturbed(counts, length);
-        flattenTheRestIntoRuns(counts, length, alreadyARun);
+        flattenRestIntoRuns(counts, length, alreadyARun);
     }
 
     private static boolean isWorthSmoothing(int[] counts, int length) {
@@ -307,8 +307,8 @@ final class BrotliCodes {
 
     private static final int HOW_FAR_A_COUNT_MAY_STRAY = 1240;
 
-    private static void flattenTheRestIntoRuns(int[] counts, int length,
-            boolean[] alreadyARun) {
+    private static void flattenRestIntoRuns(int[] counts, int length,
+                                            boolean[] alreadyARun) {
 
         int run = 0;
         long limit = 256L * (counts[0] + counts[1] + counts[2]) / 3 + 420;

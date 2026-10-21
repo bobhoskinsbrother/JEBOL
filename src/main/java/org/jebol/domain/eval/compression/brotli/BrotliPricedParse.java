@@ -373,7 +373,7 @@ final class BrotliPricedParse {
 
         BrotliCostModel model =
                 new BrotliCostModel(howManyBytes, distances.alphabetSize());
-        model.guessFromTheDataAlone(data, blockStart, mask);
+        model.guessFromDataAlone(data, blockStart, mask);
 
         int furthestBack = BrotliBackwardReferences.measureFurthestBack(windowBits);
         int rememberUntil = howManyBytes >= BrotliBinaryTreeHasher.LONGEST_COMPARED
@@ -474,7 +474,7 @@ final class BrotliPricedParse {
                 new BrotliCostModel(howManyBytes, distances.alphabetSize());
         for (int round = 0; round < 2; round++) {
             if (round == 0) {
-                model.guessFromTheDataAlone(data, blockStart, mask);
+                model.guessFromDataAlone(data, blockStart, mask);
             } else {
                 model.measureFromTheCommands(data, blockStart, mask, commands,
                         startingCommands, commands.count() - startingCommands,

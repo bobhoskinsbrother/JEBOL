@@ -230,7 +230,7 @@ public final class Repl {
                 }
                 reported = readStartReport(interpreter, outcome, errors);
             }
-            if (arguments.has(RebolArguments.Flag.CGI) || !followsWithTheConsole(reported)) {
+            if (arguments.has(RebolArguments.Flag.CGI) || !followsWithConsole(reported)) {
                 return 0;
             }
             if (reported < 0 && !arguments.has(RebolArguments.Flag.HALT)) {
@@ -247,7 +247,7 @@ public final class Repl {
                     .orElse(false);
         }
 
-        private boolean followsWithTheConsole(int reported) {
+        private boolean followsWithConsole(int reported) {
             return arguments.script().isEmpty() || reported < 0 || arguments.has(RebolArguments.Flag.HALT);
         }
 

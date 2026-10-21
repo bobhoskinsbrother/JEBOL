@@ -899,7 +899,7 @@ public final class Molder {
                                             (older, newer) -> newer,
                                             LinkedHashMap::new)))
                             + "]" + closedAfterTypeName()
-                    : formTheFields(object);
+                    : formFields(object);
         } finally {
             enclosing.remove(object.context());
         }
@@ -951,7 +951,7 @@ public final class Molder {
         return written + (onSeparateLines ? indentALineAsDeepAsWeAre() : "");
     }
 
-    private static String formTheFields(ObjectValue object) {
+    private static String formFields(ObjectValue object) {
         return listTheFieldsOutsideSelf(object)
                 .map(slot -> slot.spelling() + ": " + renderField(slot.value(), true))
                 .collect(Collectors.joining("\n"));

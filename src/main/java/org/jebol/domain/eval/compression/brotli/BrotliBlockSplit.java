@@ -33,7 +33,7 @@ final class BrotliBlockSplit {
         lengths[which] = length;
     }
 
-    void growTheLength(int which, int by) {
+    void growLength(int which, int by) {
         lengths[which] += by;
     }
 

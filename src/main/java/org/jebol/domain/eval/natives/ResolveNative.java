@@ -33,14 +33,14 @@ public class ResolveNative extends DefaultNative {
     @Override
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> {
-            Context into = arguments.getFirst().fieldsAsAContext().orElseThrow();
+            Context into = arguments.getFirst().fieldsAsContext().orElseThrow();
             if (into.isClosedToNewNames()) {
                 throw Raised.of(EvaluationFailure.PROTECTED);
             }
             Value onlyThese = refinements.contains("only") && arguments.size() > WHERE_ONLY_ARRIVES
                     ? arguments.get(WHERE_ONLY_ARRIVES)
                     : NoneValue.none();
-            resolveInto(into, arguments.get(1).fieldsAsAContext().orElseThrow(),
+            resolveInto(into, arguments.get(1).fieldsAsContext().orElseThrow(),
                     refinements, onlyThese);
             return arguments.getFirst();
         };

@@ -164,7 +164,7 @@ public record PaintList(List<PaintInstruction> instructions) {
             if (titledDepths <= 0) {
                 gathered.addAll(writeAsRichText(richText, where));
             }
-        } else if (titledDepths <= 0 || !hasATitleForItsText(gob)) {
+        } else if (titledDepths <= 0 || !hasTitleForItsText(gob)) {
             makeInstructionFor(gob, where).ifPresent(gathered::add);
         }
 
@@ -178,7 +178,7 @@ public record PaintList(List<PaintInstruction> instructions) {
         }
     }
 
-    private static boolean hasATitleForItsText(GobStorage gob) {
+    private static boolean hasTitleForItsText(GobStorage gob) {
         return gob.contentKind() == GobStorage.Content.STRING
                 || gob.contentKind() == GobStorage.Content.TEXT;
     }

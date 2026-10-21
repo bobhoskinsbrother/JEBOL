@@ -229,7 +229,7 @@ public final class Parser implements ParseWalk {
     }
 
     @Override
-    public int giveUpTheNextAlternative(List<Value> rules, int at) {
+    public int giveUpNextAlternative(List<Value> rules, int at) {
         if (matchOne(rules, at + 1) == NO_MATCH) {
             throw new AlternativeSkipped();
         }

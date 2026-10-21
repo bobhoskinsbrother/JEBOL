@@ -165,7 +165,7 @@ final class BrotliCommand {
         }
         int distance = (1 << (postfixBits + 2))
                 + (distanceCode - DISTANCE_SHORT_CODES - directCodes);
-        int bucket = BrotliCodes.floorTheLog2(distance) - 1;
+        int bucket = BrotliCodes.floorLog2(distance) - 1;
         int postfixMask = (1 << postfixBits) - 1;
         int postfix = distance & postfixMask;
         int prefix = (distance >>> bucket) & 1;
@@ -182,11 +182,11 @@ final class BrotliCommand {
             return insertLength;
         }
         if (insertLength < 130) {
-            int width = BrotliCodes.floorTheLog2(insertLength - 2) - 1;
+            int width = BrotliCodes.floorLog2(insertLength - 2) - 1;
             return (width << 1) + ((insertLength - 2) >> width) + 2;
         }
         if (insertLength < 2114) {
-            return BrotliCodes.floorTheLog2(insertLength - 66) + 10;
+            return BrotliCodes.floorLog2(insertLength - 66) + 10;
         }
         if (insertLength < 6210) {
             return 21;
@@ -199,11 +199,11 @@ final class BrotliCommand {
             return copyLength - 2;
         }
         if (copyLength < 134) {
-            int width = BrotliCodes.floorTheLog2(copyLength - 6) - 1;
+            int width = BrotliCodes.floorLog2(copyLength - 6) - 1;
             return (width << 1) + ((copyLength - 6) >> width) + 4;
         }
         if (copyLength < 2118) {
-            return BrotliCodes.floorTheLog2(copyLength - 70) + 12;
+            return BrotliCodes.floorLog2(copyLength - 70) + 12;
         }
         return 23;
     }

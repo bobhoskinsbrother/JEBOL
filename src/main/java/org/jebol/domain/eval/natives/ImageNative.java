@@ -129,12 +129,12 @@ public class ImageNative extends DefaultNative {
             return destination;
         }
         if (destination instanceof BinaryValue holding) {
-            return fillWithTheEncodedBytes(holding, written);
+            return fillWithEncodedBytes(holding, written);
         }
         return BinaryValue.ofBytes(written);
     }
 
-    private Value fillWithTheEncodedBytes(BinaryValue destination, byte[] written) {
+    private Value fillWithEncodedBytes(BinaryValue destination, byte[] written) {
         BinaryStorage storage = destination.storage();
         while (storage.length() >= destination.index()) {
             storage.removeAt(destination.index());

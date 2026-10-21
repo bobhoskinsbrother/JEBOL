@@ -37,7 +37,7 @@ public final class CryptPort {
         CHACHA_WITH_POLY1305, STREAM
     }
 
-    private boolean gathersEverythingAndAnswersATagBesideIt(Mode mode) {
+    private boolean gathersEverythingAndAnswersTagBesideIt(Mode mode) {
         return mode == Mode.COUNTER_WITH_GALOIS
                 || mode == Mode.COUNTER_WITH_CBC_MAC
                 || mode == Mode.CHACHA_WITH_POLY1305;
@@ -375,7 +375,7 @@ public final class CryptPort {
         if (working.wouldNotRun) {
             return;
         }
-        if (gathersEverythingAndAnswersATagBesideIt(working.works().mode())) {
+        if (gathersEverythingAndAnswersTagBesideIt(working.works().mode())) {
             if (octets.length == 0
                     && working.works().mode() == Mode.CHACHA_WITH_POLY1305) {
                 return;
@@ -410,7 +410,7 @@ public final class CryptPort {
             return;
         }
         if (working.works() != null
-                && gathersEverythingAndAnswersATagBesideIt(working.works().mode())) {
+                && gathersEverythingAndAnswersTagBesideIt(working.works().mode())) {
             if (working.works().mode() == Mode.COUNTER_WITH_GALOIS) {
                 finishGalois(working);
             }

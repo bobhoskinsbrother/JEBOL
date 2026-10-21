@@ -38,7 +38,7 @@ final class BrotliMetaBlockWriter {
     }
 
     private static void writeLength(int length, BrotliBits into) {
-        int bitsNeeded = length == 1 ? 1 : BrotliCodes.floorTheLog2(length - 1) + 1;
+        int bitsNeeded = length == 1 ? 1 : BrotliCodes.floorLog2(length - 1) + 1;
         int nibbles = (bitsNeeded < 16 ? 16 : bitsNeeded + 3) / 4;
         into.write(2, nibbles - 4);
         into.write(nibbles * 4, length - 1);
@@ -62,7 +62,7 @@ final class BrotliMetaBlockWriter {
             into.write(1, 0);
             return;
         }
-        int width = BrotliCodes.floorTheLog2(number);
+        int width = BrotliCodes.floorLog2(number);
         into.write(1, 1);
         into.write(3, width);
         into.write(width, number - (1L << width));
@@ -236,7 +236,7 @@ final class BrotliMetaBlockWriter {
             }
             longestRun = Math.max(longestRun, run);
         }
-        int longestCode = longestRun > 0 ? BrotliCodes.floorTheLog2(longestRun) : 0;
+        int longestCode = longestRun > 0 ? BrotliCodes.floorLog2(longestRun) : 0;
         longestCode = Math.min(longestCode, mostBitsARunMayUse);
 
         int written = 0;
@@ -253,7 +253,7 @@ final class BrotliMetaBlockWriter {
             at += run;
             while (run != 0) {
                 if (run < (2 << longestCode)) {
-                    int code = BrotliCodes.floorTheLog2(run);
+                    int code = BrotliCodes.floorLog2(run);
                     values[written++] = code + ((run - (1 << code)) << SYMBOL_BITS);
                     break;
                 }
@@ -662,7 +662,7 @@ final class BrotliMetaBlockWriter {
             int[] distanceDepth = new int[MOST_DISTANCE_SYMBOLS_A_SIMPLE_CODE_NEEDS];
             int[] distanceBits = new int[MOST_DISTANCE_SYMBOLS_A_SIMPLE_CODE_NEEDS];
             int distanceCodeWidth =
-                    BrotliCodes.floorTheLog2(distances.alphabetSize() - 1) + 1;
+                    BrotliCodes.floorLog2(distances.alphabetSize() - 1) + 1;
             BrotliCodes.buildAndStoreHuffmanTreeFast(tree,
                     counted.literals.counts(), counted.literals.total(), 8,
                     literalDepth, literalBits, into);

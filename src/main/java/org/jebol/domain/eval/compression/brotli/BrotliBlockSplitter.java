@@ -103,9 +103,9 @@ final class BrotliBlockSplitter {
             startANewType(onItsOwn);
         } else if (costOfMerging[1]
                 < costOfMerging[0] - SECOND_LAST_MUST_BEAT_LAST_BY) {
-            giveTheBatchToTheTypeBeforeLast(mergedEntropy[1]);
+            giveBatchToTypeBeforeLast(mergedEntropy[1]);
         } else {
-            foldTheBatchIntoTheLastType(mergedEntropy[0]);
+            foldBatchIntoLastType(mergedEntropy[0]);
         }
     }
 
@@ -127,7 +127,7 @@ final class BrotliBlockSplitter {
         targetBlockSize = smallestBlock;
     }
 
-    private void giveTheBatchToTheTypeBeforeLast(double mergedEntropy) {
+    private void giveBatchToTypeBeforeLast(double mergedEntropy) {
         split.setTheLength(howManyBlocks, blockSize);
         split.setTheType(howManyBlocks, split.readTypeAt(howManyBlocks - 2));
         int swapped = lastHistogram[0];
@@ -143,8 +143,8 @@ final class BrotliBlockSplitter {
         targetBlockSize = smallestBlock;
     }
 
-    private void foldTheBatchIntoTheLastType(double mergedEntropy) {
-        split.growTheLength(howManyBlocks - 1, blockSize);
+    private void foldBatchIntoLastType(double mergedEntropy) {
+        split.growLength(howManyBlocks - 1, blockSize);
         histograms[lastHistogram[0]].copyFrom(merged[0]);
         lastEntropy[0] = mergedEntropy;
         if (split.countTypes() == 1) {

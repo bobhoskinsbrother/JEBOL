@@ -22,7 +22,7 @@ final class BrotliMatch {
 
     static long score(long copyLength, long distance) {
         return FLOOR_KEEPING_EVERY_SCORE_POSITIVE + WORTH_PER_LITERAL_BYTE * copyLength
-                - COST_PER_DISTANCE_BIT * (long) BrotliCodes.floorTheLog2((int) distance);
+                - COST_PER_DISTANCE_BIT * (long) BrotliCodes.floorLog2((int) distance);
     }
 
     static long scoreUsingLastDistance(long copyLength) {

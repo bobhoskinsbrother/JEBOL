@@ -7,7 +7,7 @@ public final class ClosureValue extends DefinedFunctionValue {
     public static final Datatype TYPE = new DefinedFunctionDatatype("closure") {
 
         @Override
-        Value fromTheFunction(FunctionValue made) {
+        Value fromFunction(FunctionValue made) {
             return made.asClosure();
         }
     };

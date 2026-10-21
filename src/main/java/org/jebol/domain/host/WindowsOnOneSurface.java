@@ -18,7 +18,7 @@ public final class WindowsOnOneSurface {
         List<GobValue> heardBy = switch (kind) {
             case DOWN -> findWhoHearsAPress(detail, showingFromBottomToTop);
             case MOVE, UP, SCROLL_LINE, SCROLL_PAGE ->
-                    findWhoHearsThePointer(kind, detail, showingFromBottomToTop);
+                    findWhoHearsPointer(kind, detail, showingFromBottomToTop);
             case KEY, KEY_UP, CONTROL, CONTROL_UP -> findWhoHearsAKey(showingFromBottomToTop);
             case CLOSE -> showingFromBottomToTop;
             case RESIZE, OFFSET -> List.of();
@@ -44,8 +44,8 @@ public final class WindowsOnOneSurface {
         return hit.stream().toList();
     }
 
-    private List<GobValue> findWhoHearsThePointer(ScreenEventType kind, ScreenEventDetail detail,
-                                                  List<GobValue> showing) {
+    private List<GobValue> findWhoHearsPointer(ScreenEventType kind, ScreenEventDetail detail,
+                                               List<GobValue> showing) {
         Optional<GobValue> heardBy = pressedIn.or(() -> findTheTopmostWindowUnder(detail, showing));
         if (kind == ScreenEventType.UP) {
             pressedIn = Optional.empty();

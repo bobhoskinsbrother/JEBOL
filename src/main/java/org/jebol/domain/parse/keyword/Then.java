@@ -13,6 +13,6 @@ final class Then extends SameForABlockAndAString {
 
     @Override
     int apply(ParseWalk walk, List<Value> rules, int at) {
-        return walk.giveUpTheNextAlternative(rules, at);
+        return walk.giveUpNextAlternative(rules, at);
     }
 }

@@ -109,7 +109,7 @@ final class BrotliGenericEncoder {
 
         int startedAt = lastProcessedAt;
         if (commands.count() != 0 && insertLengthNotYetSpokenFor == 0) {
-            startedAt = extendTheLastCommand(data, mask, startedAt);
+            startedAt = extendLastCommand(data, mask, startedAt);
             bytes = inputAt - startedAt;
         }
 
@@ -359,7 +359,7 @@ final class BrotliGenericEncoder {
         return BrotliCodes.measureBitsEntropy(sample, 256) <= asMuchEntropyAsIsWorthIt;
     }
 
-    private int extendTheLastCommand(byte[] data, int mask, int startedAt) {
+    private int extendLastCommand(byte[] data, int mask, int startedAt) {
         int which = commands.count() - 1;
         int copyLength = commands.copyLengthAt(which);
         long furthestBack = BrotliBackwardReferences.measureFurthestBack(WINDOW_BITS);

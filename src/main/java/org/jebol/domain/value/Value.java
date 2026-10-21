@@ -45,7 +45,7 @@ public sealed interface Value permits
         return datatype().makeFrom(spec, maker);
     }
 
-    default Optional<Context> fieldsAsAContext() {
+    default Optional<Context> fieldsAsContext() {
         return Optional.empty();
     }
 
@@ -114,18 +114,18 @@ public sealed interface Value permits
     }
 
     default boolean isAnyObject() {
-        return fieldsAsAContext().isPresent();
+        return fieldsAsContext().isPresent();
     }
 
     default Value readFieldValue(String field) {
-        return fieldsAsAContext()
+        return fieldsAsContext()
                 .filter(fields -> fields.holds(field))
                 .map(fields -> fields.ownSlotFor(field).value())
                 .orElseGet(NoneValue::none);
     }
 
     default boolean declaresField(String field) {
-        return fieldsAsAContext().map(fields -> fields.holds(field)).orElse(false);
+        return fieldsAsContext().map(fields -> fields.holds(field)).orElse(false);
     }
 
     default boolean declaresFieldFindCanReachBy(Value wanted) {

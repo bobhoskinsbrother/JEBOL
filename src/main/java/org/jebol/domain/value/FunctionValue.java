@@ -7,7 +7,7 @@ public final class FunctionValue extends DefinedFunctionValue {
     public static final Datatype TYPE = new DefinedFunctionDatatype("function") {
 
         @Override
-        Value fromTheFunction(FunctionValue made) {
+        Value fromFunction(FunctionValue made) {
             return made;
         }
     };

@@ -59,7 +59,7 @@ public record ObjectValue(Context context) implements Value, PathTargetWithField
     }
 
     @Override
-    public Optional<Context> fieldsAsAContext() {
+    public Optional<Context> fieldsAsContext() {
         return Optional.of(context);
     }
 

@@ -54,7 +54,7 @@ final class WeierstrassCurve {
         return left.equals(right);
     }
 
-    boolean hasAValidGenerator() {
+    boolean hasValidGenerator() {
         return holds(generator) && multiply(generator, order).isInfinity();
     }
 

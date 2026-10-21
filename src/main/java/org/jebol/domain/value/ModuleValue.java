@@ -15,7 +15,7 @@ public record ModuleValue(Context context, ObjectValue header) implements Value,
     }
 
     @Override
-    public Optional<Context> fieldsAsAContext() {
+    public Optional<Context> fieldsAsContext() {
         return Optional.of(context);
     }
 

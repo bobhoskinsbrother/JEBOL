@@ -16,7 +16,7 @@ public record PortValue(Context context) implements Value, PathTargetWithFields 
     }
 
     @Override
-    public Optional<Context> fieldsAsAContext() {
+    public Optional<Context> fieldsAsContext() {
         return Optional.of(context);
     }
 

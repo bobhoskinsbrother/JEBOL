@@ -169,7 +169,7 @@ final class BrotliContextBlockSplitter {
     }
 
     private void foldTheBatchIntoTheLastType(double[] mergedEntropy) {
-        split.growTheLength(howManyBlocks - 1, blockSize);
+        split.growLength(howManyBlocks - 1, blockSize);
         for (int context = 0; context < howManyContexts; context++) {
             histograms[lastHistogram[0] + context].copyFrom(merged[context]);
             lastEntropy[context] = mergedEntropy[context];

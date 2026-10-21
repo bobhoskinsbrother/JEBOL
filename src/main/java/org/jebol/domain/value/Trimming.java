@@ -4,11 +4,11 @@ import java.util.Set;
 
 public record Trimming(Set<String> asked, Set<Integer> unwantedCodePoints) {
 
-    public boolean fromTheHead() {
+    public boolean fromHead() {
         return asked.contains("head") || !asked.contains("tail");
     }
 
-    public boolean fromTheTail() {
+    public boolean fromTail() {
         return asked.contains("tail") || !asked.contains("head");
     }
 

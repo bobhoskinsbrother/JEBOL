@@ -105,7 +105,7 @@ public abstract sealed class AnyBlockValue implements RebolSeries
                 return as(pairs.layThePairsOnLines());
             }
             if (from.isAnyObject()) {
-                return as(from.fieldsAsAContext().orElseThrow().setWordsAndValuesOnLines());
+                return as(from.fieldsAsContext().orElseThrow().setWordsAndValuesOnLines());
             }
             if (from instanceof VectorValue numbers) {
                 return wrap(numbers.listRemaining());
@@ -374,10 +374,10 @@ public abstract sealed class AnyBlockValue implements RebolSeries
         if (trimming.everywhere()) {
             items.removeIf(NoneValue.class::isInstance);
         } else {
-            while (trimming.fromTheHead() && !items.isEmpty() && items.getFirst() instanceof NoneValue) {
+            while (trimming.fromHead() && !items.isEmpty() && items.getFirst() instanceof NoneValue) {
                 items.removeFirst();
             }
-            while (trimming.fromTheTail() && !items.isEmpty() && items.getLast() instanceof NoneValue) {
+            while (trimming.fromTail() && !items.isEmpty() && items.getLast() instanceof NoneValue) {
                 items.removeLast();
             }
         }

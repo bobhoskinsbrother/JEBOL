@@ -24,7 +24,7 @@ class AValueHandsOverItsFieldsTest {
     void coversAnObject() {
         Context fields = makeAContextHolding("a", IntegerValue.of(1));
 
-        assertThat(new ObjectValue(fields).fieldsAsAContext()).containsSame(fields);
+        assertThat(new ObjectValue(fields).fieldsAsContext()).containsSame(fields);
     }
 
     @Test
@@ -33,7 +33,7 @@ class AValueHandsOverItsFieldsTest {
         Context fields = makeAContextHolding("a", IntegerValue.of(1));
         ObjectValue header = new ObjectValue(Context.root());
 
-        assertThat(new ModuleValue(fields, header).fieldsAsAContext()).containsSame(fields);
+        assertThat(new ModuleValue(fields, header).fieldsAsContext()).containsSame(fields);
     }
 
     @Test
@@ -41,7 +41,7 @@ class AValueHandsOverItsFieldsTest {
     void coversAPort() {
         Context fields = makeAContextHolding("spec", NoneValue.none());
 
-        assertThat(new PortValue(fields).fieldsAsAContext()).containsSame(fields);
+        assertThat(new PortValue(fields).fieldsAsContext()).containsSame(fields);
     }
 
     @Test
@@ -51,7 +51,7 @@ class AValueHandsOverItsFieldsTest {
                 ErrorCategory.MATH, "zero-divide", "attempt to divide by zero",
                 IntegerValue.of(7));
 
-        Context fields = error.fieldsAsAContext().orElseThrow();
+        Context fields = error.fieldsAsContext().orElseThrow();
 
         assertThat(ErrorValue.FIELDS).allSatisfy(name ->
                 assertThat(fields.holds(name)).as(name).isTrue());
@@ -73,6 +73,6 @@ class AValueHandsOverItsFieldsTest {
     @MethodSource("valuesWithNoFields")
     @DisplayName("anything else has no fields to hand over")
     void answersAnythingElse(Value value) {
-        assertThat(value.fieldsAsAContext()).isEmpty();
+        assertThat(value.fieldsAsContext()).isEmpty();
     }
 }

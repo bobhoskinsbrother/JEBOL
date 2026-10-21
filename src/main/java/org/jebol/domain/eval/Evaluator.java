@@ -379,7 +379,7 @@ public final class Evaluator {
                 } catch (ReturnSignal returned) {
                     yield returned.value();
                 } finally {
-                    handBackTheFrameTakenOverBy(functionsBeingRun.pop());
+                    handBackFrameTakenOverBy(functionsBeingRun.pop());
                     locals.markCallEnded();
                 }
             }
@@ -646,7 +646,7 @@ public final class Evaluator {
         } finally {
             walksInProgress.pop();
             while (functionsBeingRun.size() > callsOpenBeforeTheWalk) {
-                handBackTheFrameTakenOverBy(functionsBeingRun.pop());
+                handBackFrameTakenOverBy(functionsBeingRun.pop());
             }
         }
     }
@@ -681,7 +681,7 @@ public final class Evaluator {
                 }
                 Value finished = frame.lastResult;
                 if (frame.functionBody && !functionsBeingRun.isEmpty()) {
-                    handBackTheFrameTakenOverBy(functionsBeingRun.pop());
+                    handBackFrameTakenOverBy(functionsBeingRun.pop());
                 }
                 if (frame.functionBody) {
                     frame.context.markCallEnded();
@@ -787,7 +787,7 @@ public final class Evaluator {
         return function.declaredWords();
     }
 
-    private void handBackTheFrameTakenOverBy(OpenCall ending) {
+    private void handBackFrameTakenOverBy(OpenCall ending) {
         ending.locals().giveWayTo(null);
         findFrameThisCallTakesOverFrom(ending.function()).giveWayTo(null);
     }

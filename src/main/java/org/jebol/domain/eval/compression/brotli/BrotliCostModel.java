@@ -38,7 +38,7 @@ final class BrotliCostModel {
         return cheapestCommand;
     }
 
-    void guessFromTheDataAlone(byte[] data, int from, int mask) {
+    void guessFromDataAlone(byte[] data, int from, int mask) {
         float[] perByte = new float[howManyBytes];
         BrotliLiteralCosts.estimate(data, from, howManyBytes, mask, perByte);
         accumulateCarryingWhatFloatAdditionWouldLose(perByte);

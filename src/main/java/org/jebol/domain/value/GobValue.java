@@ -50,7 +50,7 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
                 }
                 case BlockValue fields -> {
                     GobValue made = empty();
-                    fillFromTheSpec(made, fields.remaining(), maker);
+                    fillFromSpec(made, fields.remaining(), maker);
                     yield made;
                 }
                 default -> throw refuse(spec);
@@ -62,7 +62,7 @@ public record GobValue(GobStorage storage, int index) implements RebolSeries {
             throw Raised.of(EvaluationFailure.INVALID_ARG, this);
         }
 
-        private void fillFromTheSpec(GobValue gob, List<Value> spec, Maker maker) {
+        private void fillFromSpec(GobValue gob, List<Value> spec, Maker maker) {
             for (int at = 0; at < spec.size(); at += 2) {
                 Value name = spec.get(at);
                 if (!(name instanceof SetWordValue field)) {

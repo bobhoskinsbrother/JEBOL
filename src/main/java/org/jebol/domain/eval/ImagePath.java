@@ -63,9 +63,9 @@ final class ImagePath {
             case "bgra", "bgro" -> fillEveryPixel(image, written, 2, 1, 0, 3);
             case "argb", "orgb" -> fillEveryPixel(image, written, 3, 0, 1, 2);
             case "abgr", "obgr" -> fillEveryPixel(image, written, 3, 2, 1, 0);
-            case "luminosity", "gray" -> fillTheSameByteEverywhere(image, written);
+            case "luminosity", "gray" -> fillSameByteEverywhere(image, written);
             case "alpha" -> fillOneChannel(image, written, 4);
-            case "opacity" -> fillTheOpacity(image, written);
+            case "opacity" -> fillOpacity(image, written);
             case "red" -> fillOneChannel(image, written, 1);
             case "green" -> fillOneChannel(image, written, 2);
             case "blue" -> fillOneChannel(image, written, 3);
@@ -116,7 +116,7 @@ final class ImagePath {
                 : new int[] {grey, grey, grey};
     }
 
-    private static void fillTheSameByteEverywhere(ImageValue image, Value written) {
+    private static void fillSameByteEverywhere(ImageValue image, Value written) {
         if (readAPicturesWorthOfBytes(written) instanceof int[] greys) {
             int pixels = stopAtWhicheverRunsOutFirst(
                     greys.length, image.lengthFromHere());
@@ -133,7 +133,7 @@ final class ImagePath {
         }
     }
 
-    private static void fillTheOpacity(ImageValue image, Value written) {
+    private static void fillOpacity(ImageValue image, Value written) {
         if (readAPicturesWorthOfBytes(written) instanceof int[] laid) {
             int pixels = stopAtWhicheverRunsOutFirst(
                     laid.length, image.lengthFromHere());

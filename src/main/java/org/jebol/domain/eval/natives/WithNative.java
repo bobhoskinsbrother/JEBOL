@@ -28,7 +28,7 @@ public class WithNative extends DefaultNative {
     public RefinedCallable behaviour() {
         return (arguments, evaluator, context, refinements) -> evaluator.evaluateOrRaise(
                 Binder.bindWhatTheTargetHoldsItself((AnyBlockValue) arguments.get(1),
-                        arguments.getFirst().fieldsAsAContext().orElseThrow()),
+                        arguments.getFirst().fieldsAsContext().orElseThrow()),
                 context);
     }
 }

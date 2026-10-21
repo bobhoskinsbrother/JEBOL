@@ -26,7 +26,7 @@ final class ScanningATime {
 
     boolean readsATime() {
         readAnyLeadingSign();
-        if (hasASignAfterTheSign()) {
+        if (hasSignAfterSign()) {
             return false;
         }
         firstNumber = readWholeNumberFromHere();
@@ -82,7 +82,7 @@ final class ScanningATime {
         }
     }
 
-    private boolean hasASignAfterTheSign() {
+    private boolean hasSignAfterSign() {
         return here() == '-' || here() == '+';
     }
 

@@ -163,7 +163,7 @@ public record ErrorValue(
     }
 
     @Override
-    public Optional<Context> fieldsAsAContext() {
+    public Optional<Context> fieldsAsContext() {
         Context fields = Context.root();
         for (String name : FIELDS) {
             fields.register(name, readTheField(name).orElseGet(NoneValue::none));
@@ -174,7 +174,7 @@ public record ErrorValue(
     @Override
     public Value trim(Trimming trimming) {
         trimming.refuseEveryRefinementOnFields();
-        return new ObjectValue(fieldsAsAContext().orElseThrow().withoutTheFieldsHoldingNothing());
+        return new ObjectValue(fieldsAsContext().orElseThrow().withoutTheFieldsHoldingNothing());
     }
 
     @Override

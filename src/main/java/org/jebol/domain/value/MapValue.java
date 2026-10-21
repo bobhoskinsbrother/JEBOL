@@ -107,7 +107,7 @@ public final class MapValue implements Value, PathTarget {
         return own;
     }
 
-    private static Value handBackTheKeyAsAWord(Value stored) {
+    private static Value handBackKeyAsWord(Value stored) {
         return stored instanceof SetWordValue word
                 ? word.asWord()
                 : stored;
@@ -212,7 +212,7 @@ public final class MapValue implements Value, PathTarget {
 
     public List<Value> keys() {
         return entries.keySet().stream()
-                .map(MapValue::handBackTheKeyAsAWord).toList();
+                .map(MapValue::handBackKeyAsWord).toList();
     }
 
     public List<Value> values() {
@@ -248,7 +248,7 @@ public final class MapValue implements Value, PathTarget {
     public List<Value> listTheItems() {
         List<Value> flat = new ArrayList<>();
         entries.forEach((key, value) -> {
-            flat.add(handBackTheKeyAsAWord(key));
+            flat.add(handBackKeyAsWord(key));
             flat.add(value);
         });
         return List.copyOf(flat);

@@ -31,7 +31,7 @@ class WeierstrassCurveFromTheSourceTest {
     void placesTheGeneratorOnTheCurveWithTheStatedOrder(String name) {
         WeierstrassCurve curve = WeierstrassCurve.findTheCurveNamed(name).orElseThrow();
 
-        assertThat(curve.hasAValidGenerator())
+        assertThat(curve.hasValidGenerator())
                 .as("%s: a mistyped parameter would fail this and nothing else", name)
                 .isTrue();
     }

@@ -48,7 +48,7 @@ public class BindNative extends DefaultNative {
         if (target instanceof AnyWordValue word) {
             return word.isBound() ? Optional.of(word.binding()) : Optional.empty();
         }
-        return target.fieldsAsAContext();
+        return target.fieldsAsContext();
     }
 
     private Value bindAWordInto(AnyWordValue word, Context target,

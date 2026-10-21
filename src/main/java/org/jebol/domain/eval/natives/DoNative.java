@@ -85,7 +85,7 @@ public class DoNative extends DefaultNative {
             case ParenValue paren -> evaluator.evaluateOrRaise(paren, context);
             case AnyStringValue address when address.isALocation() ->
                     runAsAScript(address, evaluator);
-            case AnyStringValue text -> evaluateTheSource(text.text(), evaluator);
+            case AnyStringValue text -> evaluateSource(text.text(), evaluator);
             case BinaryValue bytes -> doAsScript(bytes, evaluator);
             case ErrorValue built -> throw new Raised(built.raisedAsItStands());
             case AnyWordValue word when word.looksUpItsDeclaration() ->
@@ -97,17 +97,17 @@ public class DoNative extends DefaultNative {
                     raiseHalfAnExpression(assigning);
             case SetPathValue assigning ->
                     raiseHalfAnExpression(assigning);
-            case TaskValue task -> handToTheHost(task, evaluator);
+            case TaskValue task -> handToHost(task, evaluator);
             default -> value;
         };
     }
 
-    private Value handToTheHost(TaskValue task, Evaluator evaluator) {
+    private Value handToHost(TaskValue task, Evaluator evaluator) {
         evaluator.ports().tasks().runTheBody(Molder.mold(task.body()), evaluator.findOutput());
         return task;
     }
 
-    private Value evaluateTheSource(String source, Evaluator evaluator) {
+    private Value evaluateSource(String source, Evaluator evaluator) {
         try {
             return evaluator.evaluateSource(source);
         } catch (ReturnSignal returned) {
@@ -123,7 +123,7 @@ public class DoNative extends DefaultNative {
         }
         List<Value> parts = ((AnyBlockValue) read).remaining();
         refuseAScriptThatNeedsANewerInterpreter(parts.getFirst(), evaluator);
-        return evaluateTheSource(readTheBodyOf(parts), evaluator);
+        return evaluateSource(readTheBodyOf(parts), evaluator);
     }
 
     private void refuseAScriptThatNeedsANewerInterpreter(

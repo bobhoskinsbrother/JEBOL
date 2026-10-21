@@ -40,7 +40,7 @@ public interface ParseWalk {
 
     int negate(List<Value> rules, int at);
 
-    int giveUpTheNextAlternative(List<Value> rules, int at);
+    int giveUpNextAlternative(List<Value> rules, int at);
 
     int matchWithoutConsuming(List<Value> rules, int at);
 

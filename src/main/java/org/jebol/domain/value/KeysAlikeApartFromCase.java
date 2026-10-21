@@ -48,14 +48,14 @@ final class KeysAlikeApartFromCase {
 
     private Object fold(Value key) {
         return switch (key) {
-            case AnyStringValue text -> new Folded(text.datatype(), foldTheText(text.text()));
+            case AnyStringValue text -> new Folded(text.datatype(), foldText(text.text()));
             case AnyWordValue word -> new Folded(word.datatype(), word.canonical());
             case CharacterValue(int codepoint) -> new Folded(key.datatype(), Character.toLowerCase(codepoint));
             default -> key;
         };
     }
 
-    private String foldTheText(String text) {
+    private String foldText(String text) {
         StringBuilder folded = new StringBuilder(text.length());
         text.codePoints().forEach(codepoint ->
                 folded.appendCodePoint(Character.toLowerCase(Character.toUpperCase(codepoint))));

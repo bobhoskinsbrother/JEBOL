@@ -220,7 +220,7 @@ public final class DrawDialect {
             ClipRectangle area = measureAreaCovered(path);
             return new Placement(where.across(), where.down(),
                     where.wide(), where.high(), clip.overlapWith(area),
-                    where.opacity()).fitInsideTheShape(path);
+                    where.opacity()).fitInsideShape(path);
         }
 
         private ClipRectangle measureAreaCovered(List<PathStep> path) {
@@ -675,7 +675,7 @@ public final class DrawDialect {
                         .withFillGradient(Optional.empty())
                         .withFill(Optional.of(piece.colour()));
                 painted.add(new PaintInstruction.Drawn(
-                        findWhereTheClipStandsNow().fitInsideTheShape(outline),
+                        findWhereTheClipStandsNow().fitInsideShape(outline),
                         piece.path(), findTransformOnSurface(), makeStateRendererGets()));
             }
             state = wasStanding.withFill(Optional.empty())

@@ -70,7 +70,7 @@ public final class DeflateCompressor {
         for (int each = 0; each < GZIP_TIME_FIELD_LENGTH; each++) {
             out.write(0);
         }
-        out.write(flagTheGzipEffort());
+        out.write(flagGzipEffort());
         out.write(GZIP_UNKNOWN_SYSTEM);
         deflateInto(out, input);
         CRC32 checksum = new CRC32();
@@ -90,7 +90,7 @@ public final class DeflateCompressor {
         return level < 8 ? 2 : 3;
     }
 
-    private int flagTheGzipEffort() {
+    private int flagGzipEffort() {
         if (level < 2) {
             return GZIP_FASTEST;
         }

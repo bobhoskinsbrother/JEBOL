@@ -39,7 +39,7 @@ public class FindScriptNative extends DefaultNative {
         String lowered = text.toLowerCase(Locale.ROOT);
         for (int at = lowered.indexOf(HEADER_WORD); at >= 0;
                 at = lowered.indexOf(HEADER_WORD, at + 1)) {
-            if (hasOnlySpacesBefore(text, at) && hasABracketAfter(text, at + HEADER_WORD.length())) {
+            if (hasOnlySpacesBefore(text, at) && hasBracketAfter(text, at + HEADER_WORD.length())) {
                 return OptionalInt.of(at);
             }
         }
@@ -59,7 +59,7 @@ public class FindScriptNative extends DefaultNative {
         return true;
     }
 
-    private boolean hasABracketAfter(String text, int at) {
+    private boolean hasBracketAfter(String text, int at) {
         int forward = at;
         while (forward < text.length() && Character.isWhitespace(text.charAt(forward))) {
             forward++;

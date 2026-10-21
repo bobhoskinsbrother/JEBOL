@@ -87,7 +87,7 @@ public final class Interpreter {
         library.seal();
         ExtensionInstallation installation = new ExtensionInstallation(evaluator, library);
         this.extensionReports = bounds.extensions().stream().map(installation::installAndReport).toList();
-        handTheFilesystemAndTheScreenTheirWork();
+        handFilesystemAndScreenTheirWork();
         evaluator.symbols().startCountingSessionReads();
     }
 
@@ -345,7 +345,7 @@ public final class Interpreter {
         userContext.register(name, JavaObjectValue.holdHostNull(type.getName()));
     }
 
-    private void handTheFilesystemAndTheScreenTheirWork() {
+    private void handFilesystemAndScreenTheirWork() {
         if (theHostGaveAFileSystem()) {
             setSharedRootForChildInterpreters(ports.files());
             followApplicationDataDirectory();

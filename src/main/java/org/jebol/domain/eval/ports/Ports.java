@@ -632,7 +632,7 @@ public final class Ports {
             cryptPort.refuseWhenClosed(port);
             cryptPort.stop(port);
         }
-        handBackTheConnectionBehind(port);
+        handBackConnectionBehind(port);
         port.markOpen(false);
         if (port.schemeName().equals("checksum")) {
             checksumPort.stop(port);
@@ -715,7 +715,7 @@ public final class Ports {
         }
     }
 
-    private void handBackTheConnectionBehind(PortValue port) {
+    private void handBackConnectionBehind(PortValue port) {
         if (port.readFieldValue("state") instanceof JavaObjectValue carried
                 && carried.held().orElse(null) instanceof NetworkPort.Connection open) {
             open.close();

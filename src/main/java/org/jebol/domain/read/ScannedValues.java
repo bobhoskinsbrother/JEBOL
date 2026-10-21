@@ -81,7 +81,7 @@ final class ScannedValues {
         return cp;
     }
 
-    int grabAnInteger(int from) {
+    int grabInteger(int from) {
         int cp = from;
         boolean negative = false;
         if (at(cp) == '-') {
@@ -334,7 +334,7 @@ final class ScannedValues {
         if (at(cp) == '-' || at(cp) == '+') {
             return Optional.empty();
         }
-        long part1 = grabAnInteger(cp);
+        long part1 = grabInteger(cp);
         cp = findIntegerEnd(cp);
         if (part1 > MAX_HOUR) {
             return Optional.empty();
@@ -343,7 +343,7 @@ final class ScannedValues {
             return Optional.empty();
         }
         int sp = findIntegerEnd(cp);
-        long part2 = grabAnInteger(cp);
+        long part2 = grabInteger(cp);
         if (part2 < 0 || sp == cp) {
             return Optional.empty();
         }
@@ -353,7 +353,7 @@ final class ScannedValues {
         if (at(cp) == ':') {
             sp = cp + 1;
             cp = findIntegerEnd(sp);
-            part3 = grabAnInteger(sp);
+            part3 = grabInteger(sp);
             if (part3 < 0 || cp == sp) {
                 return Optional.empty();
             }
@@ -437,7 +437,7 @@ final class ScannedValues {
             return Optional.empty();
         }
         ep = findIntegerEnd(cp);
-        int num = grabAnInteger(cp);
+        int num = grabInteger(cp);
         if (num < 0) {
             return Optional.empty();
         }
@@ -455,7 +455,7 @@ final class ScannedValues {
         }
         int separator = at(cp++);
         ep = findIntegerEnd(cp);
-        num = grabAnInteger(cp);
+        num = grabInteger(cp);
         if (num < 0) {
             return Optional.empty();
         }
@@ -485,7 +485,7 @@ final class ScannedValues {
             return Optional.empty();
         }
         ep = findIntegerEnd(cp);
-        num = grabAnInteger(cp);
+        num = grabInteger(cp);
         if (at(cp) == '-' || num < 0) {
             return Optional.empty();
         }
@@ -540,7 +540,7 @@ final class ScannedValues {
             }
             if (at(cp) == '-' || at(cp) == '+') {
                 ep = findIntegerEnd(cp + 1);
-                num = grabAnInteger(cp + 1);
+                num = grabInteger(cp + 1);
                 if (ep - cp == 0) {
                     return Optional.empty();
                 }
@@ -558,7 +558,7 @@ final class ScannedValues {
                     zone = num * (60 / ZONE_MINUTES);
                     int minutesFrom = ep + 1;
                     ep = findIntegerEnd(minutesFrom);
-                    num = grabAnInteger(minutesFrom);
+                    num = grabInteger(minutesFrom);
                     if (num % ZONE_MINUTES != 0) {
                         return Optional.empty();
                     }
@@ -668,7 +668,7 @@ final class ScannedValues {
         int written = 0;
         int ep = from;
         for (; length > ep - from; ep++) {
-            int n = grabAnInteger(ep);
+            int n = grabInteger(ep);
             ep = findIntegerEnd(ep);
             if (n < 0 || n > 255) {
                 return Optional.empty();
@@ -737,7 +737,7 @@ final class ScannedValues {
         int base = 16;
         if (at(cp) != '#') {
             int ep = findIntegerEnd(cp);
-            base = grabAnInteger(cp);
+            base = grabInteger(cp);
             if (cp == ep || at(ep) != '#') {
                 return 0;
             }

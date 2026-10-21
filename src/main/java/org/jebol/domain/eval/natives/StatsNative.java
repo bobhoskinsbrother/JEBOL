@@ -39,7 +39,7 @@ public class StatsNative extends DefaultNative {
                 return IntegerValue.of(evaluator.valuesWalked());
             }
             if (refinements.contains("profile")) {
-                return fillInTheProfile(evaluator);
+                return fillInProfile(evaluator);
             }
             return IntegerValue.of(SeriesMemory.countBytesHeld());
         };
@@ -49,7 +49,7 @@ public class StatsNative extends DefaultNative {
         return TimeValue.ofNanoseconds(System.nanoTime() - startedAt);
     }
 
-    private Value fillInTheProfile(Evaluator evaluator) {
+    private Value fillInProfile(Evaluator evaluator) {
         Value standing = evaluator.systemContext().readValueAt("system", "standard", "stats");
         if (!(standing instanceof ObjectValue profile)) {
             return NoneValue.none();

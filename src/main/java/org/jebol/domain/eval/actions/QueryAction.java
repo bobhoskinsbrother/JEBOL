@@ -153,7 +153,7 @@ public class QueryAction extends PortAction {
     private abstract static class TheFieldsOfAnObjectWithoutASelf extends QueriedFields {
 
         @Override
-        protected Value gatherEveryFieldIntoAnObject(Evaluator evaluator) {
+        protected Value gatherEveryFieldIntoObject(Evaluator evaluator) {
             return withEveryFieldIn(new ObjectValue(Context.root()));
         }
     }

@@ -185,10 +185,10 @@ public record BinaryValue(BinaryStorage storage, int index) implements RebolSeri
         if (trimming.everywhere()) {
             kept.removeIf(octet -> octet == 0);
         } else {
-            while (trimming.fromTheHead() && !kept.isEmpty() && kept.getFirst() == 0) {
+            while (trimming.fromHead() && !kept.isEmpty() && kept.getFirst() == 0) {
                 kept.removeFirst();
             }
-            while (trimming.fromTheTail() && !kept.isEmpty() && kept.getLast() == 0) {
+            while (trimming.fromTail() && !kept.isEmpty() && kept.getLast() == 0) {
                 kept.removeLast();
             }
         }
